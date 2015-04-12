@@ -12,6 +12,12 @@ class Optimizer(object):
         """Initialize state. Child class using state should override it. """
         return None
 
+    def zero_grads(self):
+        """Set gradients zero."""
+
+        for _, g, _ in self.tuples:
+            g.fill(0)
+
     def update(self):
         for p, g, s in self.tuples:
             self.update_one(p, g, s)
