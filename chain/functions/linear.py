@@ -4,9 +4,9 @@ import pycuda.gpuarray as gpuarray
 import scikits.cuda.linalg as culinalg
 import scikits.cuda.misc as cumisc
 
-from chain import ParameterizedFunction
+from chain import Function
 
-class Linear(ParameterizedFunction):
+class Linear(Function):
     """Implementation of fully-connected layer."""
 
     parameter_names = ('W', 'b')

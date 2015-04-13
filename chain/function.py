@@ -10,11 +10,23 @@ def _is_gpu_input(inputs):
 class Function(object):
     """Function node.
 
-    Function implementation is classified into two types: non-parameterized ones
-    and parameterized ones. Parameterized one should inherit
-    ParameterizedFunction class.
+    Each function implementation inherits this class. The implementation should
+    provides {forward,backward}_{cpu,gpu} methods. By default, backward
+    propagates None, which indicates no error propagates back from this node.
+
+    Application of __call__ method inserts a copy of the Function instance to
+    the computational graph. Note: the copy is shallow, so be careful to
+    implement a function that shares some reference values between multiple
+    applications.
+
+    If the implementation holds parameters and corresponding gradients, these
+    should be kept as attributes and ``parameter_names`` and ``gradient_names``
+    attributes should indicates their names. Then, appropriate accessors are
+    defined. Otherwise, the implementation itself must provide these accessors.
 
     """
+    parameter_names = ()
+    gradient_names = ()
 
     def __init__(self):
         self.inputs  = None
@@ -23,6 +35,9 @@ class Function(object):
 
     def __call__(self, *inputs):
         """Execute function and chain the input/output variables."""
+
+        # First copy itself to avoid duplication within the graph.
+        self = copy.copy(self)
 
         self.inputs = list(inputs)
         for i, x in enumerate(inputs):
@@ -33,6 +48,7 @@ class Function(object):
         self.rank = max(x.rank for x in self.inputs)
 
         outputs = self.forward(tuple(x.data for x in self.inputs))
+        assert type(outputs) == tuple
 
         self.outputs = list(Variable(y) for y in outputs)
         for y in self.outputs:
@@ -46,8 +62,7 @@ class Function(object):
         """Forward function.
 
         It delegates the procedure to forward_{cpu,gpu} by default. User must
-        either implement cpu/gpu methods or override this method. It must
-        outputs a tuple of variable(s).
+        either implement cpu/gpu methods or override this method.
 
         """
         if _is_gpu_input(inputs):
@@ -87,21 +102,21 @@ class Function(object):
 
     @property
     def parameters(self):
-        return ()
+        return tuple(getattr(self, name) for name in self.parameter_names)
 
     @parameters.setter
     def parameters(self, values):
-        if values != ():
-            raise RuntimeError('Cannot set parameters')
+        for name, value in zip(self.parameter_names, values):
+            setattr(self, name, value)
 
     @property
     def gradients(self):
-        return ()
+        return tuple(getattr(self, name) for name in self.gradient_names)
 
     @gradients.setter
     def gradients(self, values):
-        if values != ():
-            raise RuntimeError('Cannot set gradients')
+        for name, value in zip(self.gradient_names, values):
+            setattr(self, name, value)
 
 
 class Split(Function):
@@ -137,43 +152,3 @@ class Split(Function):
             else:
                 gx += gy
         return (gx,)
-
-
-class ParameterizedFunction(Function):
-    """Parameterized function.
-
-    Parameterized function shares parameters and gradients between multiple
-    applications. In order to realize it, ParameterizedFunction.__call__ inserts
-    its copy to the computational graph, and actual computation is done by this
-    copy.
-
-    NOTE: The copy is *shallow*, so be careful to implement a parameterized
-    function that shares and updates some reference values between
-    calls.
-
-    Implementation should set ``parameter_names`` and ``gradient_names``
-    attributes. The default implementations of ``parameters`` and ``gradients``
-    rely on them.
-
-    """
-    def __call__(self, *inputs):
-        cp = copy.copy(self)
-        return Function.__call__(cp, *inputs)
-
-    @property
-    def parameters(self):
-        return tuple(getattr(self, name) for name in self.parameter_names)
-
-    @parameters.setter
-    def parameters(self, values):
-        for name, value in zip(self.parameter_names, values):
-            setattr(self, name, value)
-
-    @property
-    def gradients(self):
-        return tuple(getattr(self, name) for name in self.gradient_names)
-
-    @gradients.setter
-    def gradients(self, values):
-        for name, value in zip(self.gradient_names, values):
-            setattr(self, name, value)
