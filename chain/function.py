@@ -1,3 +1,4 @@
+import copy
 import numpy
 from pycuda.gpuarray import GPUArray
 
@@ -7,7 +8,13 @@ def _is_gpu_input(inputs):
     return any(type(x) == GPUArray for x in inputs)
 
 class Function(object):
-    """Function node."""
+    """Function node.
+
+    Function implementation is classified into two types: non-parameterized ones
+    and parameterized ones. Parameterized one should inherit
+    ParameterizedFunction class.
+
+    """
 
     def __init__(self):
         self.inputs  = None
@@ -78,6 +85,24 @@ class Function(object):
         self.outputs = None
         self.inputs = None
 
+    @property
+    def parameters(self):
+        return ()
+
+    @parameters.setter
+    def parameters(self, values):
+        if values != ():
+            raise RuntimeError('Cannot set parameters')
+
+    @property
+    def gradients(self):
+        return ()
+
+    @gradients.setter
+    def gradients(self, values):
+        if values != ():
+            raise RuntimeError('Cannot set gradients')
+
 
 class Split(Function):
     """Special function to branch the graph at variable node.
@@ -114,18 +139,26 @@ class Split(Function):
         return (gx,)
 
 
-class Layer(object):
-    """Parameterized function generator.
+class ParameterizedFunction(Function):
+    """Parameterized function.
 
-    Layer generates parameterized function and attach it to the computational
-    graph in __call__. Typical implementation sets parameters and gradients to
-    attributes, whose names should be set to parameter_names and gradient_names
-    fields. The default implementations of ``parameters`` and ``gradients`` rely
-    on them.
+    Parameterized function shares parameters and gradients between multiple
+    applications. In order to realize it, ParameterizedFunction.__call__ inserts
+    its copy to the computational graph, and actual computation is done by this
+    copy.
+
+    NOTE: The copy is *shallow*, so be careful to implement a parameterized
+    function that shares and updates some reference values between
+    calls.
+
+    Implementation should set ``parameter_names`` and ``gradient_names``
+    attributes. The default implementations of ``parameters`` and ``gradients``
+    rely on them.
 
     """
-    def __call__(self, *a, **kw):
-        raise NotImplementedError()
+    def __call__(self, *inputs):
+        cp = copy.copy(self)
+        return Function.__call__(cp, *inputs)
 
     @property
     def parameters(self):
@@ -144,54 +177,3 @@ class Layer(object):
     def gradients(self, values):
         for name, value in zip(self.gradient_names, values):
             setattr(self, name, value)
-
-
-def _to_gpu(array):
-    if type(array) == gpuarray.GPUArray:
-        return array
-    return gpuarray.to_gpu(array)
-
-def _to_cpu(array):
-    if type(array) == numpy.ndarray:
-        return array
-    return array.get()
-
-class LayerSet(object):
-    """Set of layers (parameterized function generators).
-
-    User typically stores layer instances into LayerSet. LayerSet makes it easy
-    to controll cpu vs. gpu and manage the list of parameters/gradients.
-
-    """
-
-    def __init__(self, **layers):
-        self.layers = layers
-        for name, layer in layers.iteritems():
-            setattr(self, name, layer)
-
-    def collect_parameters(self):
-        """Collect parameters and gradients."""
-
-        params, grads = [], []
-        for layer in self.layers.itervalues():
-            params += layer.parameters
-            grads  += layer.gradients
-        return params, grads
-
-    def to_gpu(self):
-        """Move all parameters and gradients to GPU."""
-
-        for layer in self.layers.itervalues():
-            params = layer.parameters
-            layer.parameters = (_to_gpu(w) for w in params)
-            grads  = layer.gradients
-            layer.gradients  = (_to_gpu(g) for g in grads)
-
-    def to_cpu(self):
-        """Move all parameters and gradients to CPU."""
-
-        for layer in self.layers.itervalues():
-            params = layer.parameters
-            layer.parameters = (_to_cpu(w) for w in params)
-            grads  = layer.gradients
-            layer.gradients  = (_to_cpu(g) for g in grads)
