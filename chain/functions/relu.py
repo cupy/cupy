@@ -1,6 +1,5 @@
 import numpy
 import pycuda.gpuarray as gpuarray
-from pycuda.elementwise import ElementwiseKernel
 
 from chain import Function
 
