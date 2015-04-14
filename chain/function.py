@@ -39,6 +39,16 @@ class Function(object):
         # First copy itself to avoid duplication within the graph.
         self = copy.copy(self)
 
+        if any(x.volatile for x in inputs):  # not build graph
+            assert all(x.volatile for x in inputs)  # do not mix multiple volatility
+            outputs = self.forward(tuple(x.data for x in inputs))
+            assert type(outputs) == tuple
+            outputs = list(Variable(y, volatile=True) for y in outputs)
+            if len(outputs) == 1:
+                return outputs[0]
+            return outputs
+
+        # build graph
         self.inputs = list(inputs)
         for i, x in enumerate(inputs):
             if not hasattr(x, 'splitter'):

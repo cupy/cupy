@@ -3,9 +3,10 @@ import heapq
 class Variable(object):
     """Variable node."""
 
-    def __init__(self, data, rank=0):
+    def __init__(self, data, rank=0, volatile=False):
         self.data = data
         self.rank = rank
+        self.volatile = volatile
 
         self.grad = None
         self.creator = None
