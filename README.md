@@ -9,3 +9,4 @@
 - NumPy
 - PyCUDA (pip install pycuda)
 - scikits.cuda (GitHub master version, installed by setup.py)
+- cudnn-python-wrappers (GitHub master version, installed by setup.py)
