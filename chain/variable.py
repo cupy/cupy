@@ -25,6 +25,11 @@ class Variable(object):
         cand_funcs = []
         seen_set = set()
 
+        # Initilize error by 1, if this is a loss variable
+        if len(self.data) == 1 and self.grad is None:
+            self.grad = self.data.copy()
+            self.grad.fill(1)
+
         def add_cand(cand):
             if cand is not None and cand not in seen_set:
                 # Negate since heapq is min-heap
