@@ -38,20 +38,19 @@ class TestSoftmax(TestCase):
 
         self.assertLess(l_infty_dist(gx, x.grad), 1e-5)
 
-    # TODO(beam2d): Fix it!
-    # def test_backward_gpu(self):
-    #     x = Variable(gpuarray.to_gpu(self.x))
-    #     y = softmax(x)
-    #     y.grad = gpuarray.to_gpu(self.gy)
-    #     y.backward()
+    def test_backward_gpu(self):
+        x = Variable(gpuarray.to_gpu(self.x))
+        y = softmax(x)
+        y.grad = gpuarray.to_gpu(self.gy)
+        y.backward()
 
-    #     x2 = Variable(self.x)
-    #     y2 = softmax(x2)
-    #     y2.grad = self.gy
-    #     y2.backward()
+        x2 = Variable(self.x)
+        y2 = softmax(x2)
+        y2.grad = self.gy
+        y2.backward()
 
-    #     func = y.creator
-    #     f = lambda: func.forward((x.data,))
-    #     gx, = numerical_grad(f, (x.data,), (y.grad,))
+        func = y.creator
+        f = lambda: func.forward((x.data,))
+        gx, = numerical_grad(f, (x.data,), (y.grad,))
 
-    #     self.assertLess(l_infty_dist(gx, x.grad), 1e-5)
+        self.assertLess(l_infty_dist(gx, x.grad), 1e-5)
