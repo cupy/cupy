@@ -12,11 +12,11 @@ class Linear(Function):
     parameter_names = ('W', 'b')
     gradient_names  = ('gW', 'gb')
 
-    def __init__(self, in_size, out_size, wscale=1):
+    def __init__(self, in_size, out_size, wscale=1, bias=0):
         self.W = numpy.random.normal(
             0, wscale * math.sqrt(1. / in_size),
             (out_size, in_size)).astype(numpy.float32)
-        self.b = numpy.zeros((out_size,), dtype=numpy.float32)
+        self.b = numpy.repeat(numpy.float32(bias), out_size)
 
         self.gW = numpy.empty_like(self.W)
         self.gb = numpy.empty_like(self.b)
