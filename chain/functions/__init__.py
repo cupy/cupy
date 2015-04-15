@@ -1,4 +1,5 @@
 # Non-parameterized functions
+from accuracy import accuracy
 from identity import identity
 from relu     import relu
 from softmax  import softmax
