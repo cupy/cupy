@@ -27,7 +27,7 @@ class Variable(object):
         seen_set = set()
 
         # Initilize error by 1, if this is a loss variable
-        if len(self.data) == 1 and self.grad is None:
+        if self.data.size == 1 and self.grad is None:
             self.grad = self.data.copy()
             self.grad.fill(1)
 
