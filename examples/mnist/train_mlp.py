@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """Sample script to train multi-layer perceptron on MNIST."""
 
 from math import sqrt
@@ -25,6 +24,10 @@ x_train, x_test = np.split(mnist.data, [N])
 y_train, y_test = np.split(mnist.target, [N])
 N_test = y_test.size
 
+x_mean = x_train.mean(axis=0, keepdims=True)
+x_train = (x_train - x_mean) / 255
+x_test  = (x_test - x_mean) / 255
+
 # Initialize model
 model = FunctionSet(
     l1=Linear(784,  1000, wscale=sqrt(2)),
@@ -49,7 +52,7 @@ optimizer.setup(model.collect_parameters())
 # Learning loop
 batchsize = 100
 n_iter = N / batchsize
-for epoch in xrange(100):
+for epoch in xrange(10):
     print 'epoch', epoch
 
     perm = np.random.permutation(N)
@@ -57,6 +60,7 @@ for epoch in xrange(100):
     sum_loss = 0
     for i in xrange(0, N, batchsize):
         sys.stdout.write('\rtrain {} / {}'.format(i, N))
+        sys.stdout.flush()
 
         optimizer.zero_grads()  # set gradients to zero
 
@@ -75,12 +79,14 @@ for epoch in xrange(100):
 
     mean_loss = sum_loss / N
     mean_accuracy = sum_accuracy / N
-    print '\ntrain mean loss=' + mean_loss + ', accuracy=' + mean_accuracy
+    print '\ntrain mean loss={}, accuracy={}'.format(mean_loss, mean_accuracy)
 
     sum_accuracy = 0
     sum_loss = 0
     for i in xrange(0, N_test, batchsize):
         sys.stdout.write('\rtest {} / {}'.format(i, N_test))
+        sys.stdout.flush()
+
         x_batch = gpuarray.to_gpu(x_test[i : i + batchsize])
         y_batch = gpuarray.to_gpu(y_test[i : i + batchsize])
         L, acc = forward(x_batch, y_batch)
@@ -91,7 +97,7 @@ for epoch in xrange(100):
 
     mean_loss = sum_loss / N_test
     mean_accuracy = sum_accuracy / N_test
-    print '\ntest mean loss=' + mean_loss + ', accuracy=' + mean_accuracy
+    print '\ntest mean loss={}, accuracy={}'.format(mean_loss, mean_accuracy)
 
 # Save the model
 with open('mlp', 'wb') as f:
