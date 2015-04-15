@@ -4,9 +4,9 @@ import pycuda.gpuarray as gpuarray
 class Optimizer(object):
     """Optimizers' base class."""
 
-    def setup(self, params, grads):
+    def setup(self, params_grads):
         self.tuples = [(p, g, self.init_state(p, g))
-                       for p, g in zip(params, grads)]
+                       for p, g in params_grads]
 
     def init_state(self, param, grad):
         """Initialize state. Child class using state should override it. """
