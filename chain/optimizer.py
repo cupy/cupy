@@ -6,7 +6,7 @@ class Optimizer(object):
 
     def setup(self, params_grads):
         self.tuples = [(p, g, self.init_state(p, g))
-                       for p, g in params_grads]
+                       for p, g in zip(*params_grads)]
 
     def init_state(self, param, grad):
         """Initialize state. Child class using state should override it. """

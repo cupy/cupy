@@ -53,11 +53,8 @@ class SoftmaxCrossEntropy(Function):
 
     def backward_gpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        print t
-        print self.y
         gx = self.y  # reuse the memory
         _backward_gpu(gx, self.y, t, gloss)
-        print gx
         return gx, None
 
 

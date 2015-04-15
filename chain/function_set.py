@@ -1,3 +1,17 @@
+import numpy
+import pycuda.gpuarray as gpuarray
+from chain import Function
+
+def _to_gpu(array):
+    if type(array) == numpy.ndarray:
+        return gpuarray.to_gpu(array)
+    return array
+
+def _to_cpu(array):
+    if type(array) == gpuarray.GPUArray:
+        return array.get()
+    return array
+
 class FunctionSet(object):
     """Manager of a set of functions.
 
@@ -9,14 +23,19 @@ class FunctionSet(object):
     def __init__(self, **functions):
         self.functions = {}
         for name, func in functions.iteritems():
-            setattr(self, name, func)
+            self[name] = func
 
     def __setitem__(self, name, func):
-        assert type(func) == Function
+        assert isinstance(func, Function)
         self.functions[name] = func
+        setattr(self, name, func)
 
     def __getitem__(self, name):
         return self.functions[name]
+
+    def __delitem__(self, name):
+        del self.functions[name]
+        delattr(self, name)
 
     def collect_parameters(self):
         """Collect parameters and gradients."""
@@ -30,9 +49,9 @@ class FunctionSet(object):
         """Move all parameters and gradients to GPU."""
         for func in self.functions.itervalues():
             params = func.parameters
-            func.parameters = (self._to_gpu(w) for w in params)
+            func.parameters = (_to_gpu(w) for w in params)
             grads  = func.gradients
-            func.gradients  = (self._to_gpu(g) for g in grads)
+            func.gradients  = (_to_gpu(g) for g in grads)
 
     def to_cpu(self):
         """Move all parameters and gradients to CPU."""

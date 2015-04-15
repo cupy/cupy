@@ -8,13 +8,13 @@ class Accuracy(Function):
     def forward_cpu(self, inputs):
         y, t = inputs
         pred = y.argmax(axis=1)
-        return (pred == t).mean(keepdims=True),
+        return (pred == t).mean(dtype=numpy.float32),
 
     def forward_gpu(self, inputs):
         # Fallback to CPU
         # TODO(beam2d): Pure GPU version
-        accuracy = self.forward_cpu((a.get() for a in inputs))
-        return gpuarray.to_gpu(accuracy),
+        accuracy, = self.forward_cpu((a.get() for a in inputs))
+        return gpuarray.to_gpu(numpy.array(accuracy)),
 
 
 def accuracy(y, t):
