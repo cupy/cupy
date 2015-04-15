@@ -18,11 +18,11 @@ class Softmax(Function):
         return y,
 
     def forward_gpu(self, x):
-        context = cudnn.get_default_context()
+        handle = cudnn.get_default_handle()
         desc = cudnn.get_tensor_desc(x[0], 1, 1)
         y = gpuarray.empty_like(x[0])
         libcudnn.cudnnSoftmaxForward(
-            context, _algorithm, _mode,
+            handle, _algorithm, _mode,
             1, desc, cudnn.get_ptr(x[0]), 0, desc, cudnn.get_ptr(y))
         return y,
 
@@ -35,11 +35,11 @@ class Softmax(Function):
 
     def backward_gpu(self, x, gy):
         y, gy = self.outputs[0].data, gy[0]
-        context = cudnn.get_default_context()
+        handle = cudnn.get_default_handle()
         desc = cudnn.get_tensor_desc(x[0], 1, 1)
         gx = gpuarray.empty_like(x[0])
         libcudnn.cudnnSoftmaxBackward(
-            context, _algorithm, _mode, 1, desc, cudnn.get_ptr(y),
+            handle, _algorithm, _mode, 1, desc, cudnn.get_ptr(y),
             desc, cudnn.get_ptr(gy), 0, desc, cudnn.get_ptr(gx))
         return gx,
 

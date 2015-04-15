@@ -8,14 +8,14 @@ import pycuda.gpuarray as gpuarray
 def get_ptr(x):
     return ctypes.c_void_p(int(x.gpudata))
 
-_default_context = None
+_default_handle = None
 
-def get_default_context():
-    """Get the default context of CuDNN."""
-    global _default_context
-    if _default_context is None:
-        _default_context = libcudnn.cudnnCreate()
-    return _default_context
+def get_default_handle():
+    """Get the default handle of CuDNN."""
+    global _default_handle
+    if _default_handle is None:
+        _default_handle = libcudnn.cudnnCreate()
+    return _default_handle
 
 _dtypes = {numpy.dtype('float32'): libcudnn.cudnnDataType['CUDNN_DATA_FLOAT'],
            numpy.dtype('float64'): libcudnn.cudnnDataType['CUDNN_DATA_DOUBLE']}
