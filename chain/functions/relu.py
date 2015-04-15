@@ -1,7 +1,10 @@
+import ctypes
+import libcudnn
 import numpy
 import pycuda.gpuarray as gpuarray
+from chain import Function, cudnn
 
-from chain import Function
+_mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_RELU']
 
 class ReLU(Function):
     """Rectified Linear Unit."""
@@ -11,14 +14,26 @@ class ReLU(Function):
         return numpy.maximum(0, x[0]),
 
     def forward_gpu(self, x):
-        return gpuarray.maximum(0, x[0]),
+        handle = cudnn.get_default_handle()
+        desc = cudnn.get_tensor_desc(x[0], 1, 1)
+        y = gpuarray.empty_like(x[0])
+        libcudnn.cudnnActivationForward(
+            handle, _mode, 1, desc, cudnn.get_ptr(x[0]),
+            0, desc, cudnn.get_ptr(y))
+        return y,
 
     def backward_cpu(self, x, gy):
         return gy[0] * (x[0] > 0),
 
     def backward_gpu(self, x, gy):
-        # TODO(beam2d): Unify kernel
-        return gy[0] * (x[0] > 0),
+        y, gy = self.outputs[0].data, gy[0]
+        handle = cudnn.get_default_handle()
+        desc = cudnn.get_tensor_desc(y, 1, 1)
+        gx = gpuarray.empty_like(y)
+        libcudnn.cudnnActivationBackward(
+            handle, _mode, 1, desc, cudnn.get_ptr(y), desc, cudnn.get_ptr(gy),
+            desc, cudnn.get_ptr(x[0]), 0, desc, cudnn.get_ptr(gx))
+        return gx,
 
 def relu(x):
     return ReLU()(x)
