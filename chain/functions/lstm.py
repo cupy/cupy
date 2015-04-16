@@ -1,0 +1,152 @@
+import numpy
+from pycuda.elementwise import ElementwiseKernel
+import pycuda.gpuarray as gpuarray
+from pytools import memoize
+from chain import Function
+
+def _extract_gates(x):
+    r = x.reshape((x.shape[0], x.shape[1] / 4, 4) + x.shape[2:])
+    return (r[:, :, i] for i in xrange(4))
+
+def _sigmoid(x):
+    return 1 / (1 + numpy.exp(-x))
+
+def _grad_sigmoid(x):
+    return x * (1 - x)
+
+def _grad_tanh(x):
+    return 1 - x * x
+
+_preamble = '''
+__device__ float sigmoid(float x)      { return 1 / (1 + __expf(-x)); }
+__device__ float grad_sigmoid(float y) { return y * (1 - y); }
+__device__ float grad_tanh(float y)    { return 1 - y * y; }
+
+#define COMMON_ROUTINE \
+    int I = i / rsize; \
+    int J = i % rsize; \
+    const float* x_i = x + I * 4 * rsize; \
+    float aa =   tanhf(x_i[          J]); \
+    float ai = sigmoid(x_i[  rsize + J]); \
+    float af = sigmoid(x_i[2*rsize + J]); \
+    float ao = sigmoid(x_i[3*rsize + J]);
+'''
+
+@memoize
+def _forward_kernel():
+    # TODO(beam2d): Tune it
+    return ElementwiseKernel(
+        '''
+          float* c, float* h, const float* c_prev, const float* x,
+          int lsize, int rsize
+        ''', '''
+          COMMON_ROUTINE;
+          c[i] = aa * ai + af * c_prev[i];
+          h[i] = ao * tanhf(c[i]);
+        ''', preamble=_preamble)
+
+@memoize
+def _backward_kernel():
+    # TODO(bema2d): Tune it
+    return ElementwiseKernel(
+        '''
+          float* gc_prev, float* gx, const float* c_prev, const float* x,
+          const float* c, const float* h, const float* gc, const float* gh,
+          int lsize, int rsize
+        ''', '''
+          COMMON_ROUTINE;
+          float* gx_i = gx + I * 4 * rsize;
+          float& ga = gx_i[          J];
+          float& gi = gx_i[  rsize + J];
+          float& gf = gx_i[2*rsize + J];
+          float& go = gx_i[3*rsize + J];
+
+          float co  = tanhf(c[i]);
+          // Odd rule: if gh == h [gc == c] then gh [gc] is not given, since we
+          // cannot pass null pointer to the kernel through PyCUDA.
+          float gc1 = (gh == h ? 0 : gh[i] * ao * grad_tanh(co))
+                    + (gc == c ? 0 : gc[i]);
+          go        =  gh == h ? 0 : gh[i] * co * grad_sigmoid(ao);
+
+          gc_prev[i] = gc1 * af;
+          ga         = gc1 * ai        * grad_tanh(aa);
+          gi         = gc1 * aa        * grad_sigmoid(ai);
+          gf         = gc1 * c_prev[i] * grad_sigmoid(af);
+        ''', preamble=_preamble)
+
+
+class LSTM(Function):
+    """Long short-term memory unit with forget gate.
+
+    It has two inputs (c, x) and two outputs (c, h), where c indicates the cell
+    state. x must have four times channels compared to the number of units.
+
+    """
+    def forward_cpu(self, inputs):
+        c_prev, x = inputs
+        n_unit = c_prev.shape[1]
+        assert x.shape[1] == 4 * n_unit
+
+        a, i, f, o = _extract_gates(x)
+        self.a = numpy.tanh(a)
+        self.i = _sigmoid(i)
+        self.f = _sigmoid(f)
+        self.o = _sigmoid(o)
+
+        c = self.a * self.i + self.f * c_prev
+        h = self.o * numpy.tanh(c)
+        return c, h
+
+    def backward_cpu(self, inputs, grad_outputs):
+        c_prev = inputs[0]
+        c, h   = (_.data for _ in self.outputs)
+        gc, gh = grad_outputs
+
+        gx  = numpy.empty_like(inputs[1])
+        ga, gi, gf, go = _extract_gates(gx)
+
+        # Consider the case that either gradient is not given
+        if gc is None: gc = 0
+        if gh is None: gh = 0
+
+        co = numpy.tanh(c)
+        gc_prev = gh * self.o * _grad_tanh(co) + gc  # multiply f later
+        ga[:] = gc_prev * self.i * _grad_tanh(self.a)
+        gi[:] = gc_prev * self.a * _grad_sigmoid(self.i)
+        gf[:] = gc_prev * c_prev * _grad_sigmoid(self.f)
+        go[:] = gh * co * _grad_sigmoid(self.o)
+        gc_prev *= self.f  # multiply f here
+
+        return gc_prev, gx
+
+    def forward_gpu(self, inputs):
+        c_prev, x = inputs
+        lsize = c_prev.shape[0] * c_prev.shape[1]
+        rsize = c_prev.size / lsize
+
+        c  = gpuarray.empty_like(c_prev)
+        h  = gpuarray.empty_like(c_prev)
+        _forward_kernel()(c, h, c_prev, x, lsize, rsize)
+
+        return c, h
+
+    def backward_gpu(self, inputs, grad_outputs):
+        c_prev, x = inputs
+        c, h      = (_.data for _ in self.outputs)
+        gc, gh    = grad_outputs
+        lsize = c_prev.shape[0] * c_prev.shape[1]
+        rsize = c_prev.size / lsize
+
+        # Odd rule to determine whether the gradient is given or not.
+        if gc is None: gc = c
+        if gh is None: gh = h
+
+        gc_prev = gpuarray.empty_like(c_prev)
+        gx      = gpuarray.empty_like(x)
+        _backward_kernel()(gc_prev, gx, c_prev, x, c, h, gc, gh, lsize, rsize)
+
+        return gc_prev, gx
+
+
+def lstm(c_prev, x):
+    return LSTM()(c_prev, x)

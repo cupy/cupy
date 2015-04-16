@@ -2,6 +2,7 @@
 from accuracy import accuracy
 from dropout  import dropout
 from identity import identity
+from lstm     import lstm
 from relu     import relu
 from sigmoid  import sigmoid
 from softmax  import softmax
