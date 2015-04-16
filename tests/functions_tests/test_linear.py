@@ -34,7 +34,7 @@ class TestLinear(TestCase):
         self.to_gpu()
         x = Variable(gpuarray.to_gpu(self.x))
         y = self.fgen(x)
-        self.assertLess(l_infty_dist(self.y, y.data.get()), 1e-7)
+        self.assertLess(l_infty_dist(self.y, y.data.get()), 1e-6)
 
     def check_backward(self, x, y):
         func = y.creator
