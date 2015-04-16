@@ -9,4 +9,5 @@ from softmax_cross_entropy import softmax_cross_entropy
 from tanh     import tanh
 
 # Parameterized layers
-from linear import Linear
+from embed_id import EmbedID
+from linear   import Linear
