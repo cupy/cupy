@@ -4,7 +4,6 @@ import pycuda.gpuarray as gpuarray
 from pycuda.elementwise import ElementwiseKernel
 from pytools import memoize
 from chain import Function
-from chain.functions import identity
 from chain.random import get_generator
 
 @memoize
@@ -45,4 +44,4 @@ class Dropout(Function):
 def dropout(x, ratio=.5, train=True):
     if train:
         return Dropout(ratio)(x)
-    return identity(x)
+    return x
