@@ -16,8 +16,9 @@ def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
             flat_x[i] = orig
 
             for y1, y2, gy in zip(ys1, ys2, grad_outputs):
-                dot = float(sum(((y1 - y2) * gy).ravel()))
-                flat_gx[i] += dot / (2 * eps)
+                if gy is not None:
+                    dot = float(sum(((y1 - y2) * gy).ravel()))
+                    flat_gx[i] += dot / (2 * eps)
 
     return grads
 
@@ -40,8 +41,9 @@ def numerical_grad_gpu(f, inputs, grad_outputs, eps=1e-3):
             x.set(x_cpu)
 
             for y1, y2, gy in zip(ys1, ys2, grad_outputs):
-                dot = sum(((y1 - y2) * gy).ravel()).get()
-                gx_cpu[i] += dot / (2 * eps)
+                if gy is not None:
+                    dot = sum(((y1 - y2) * gy).ravel()).get()
+                    gx_cpu[i] += dot / (2 * eps)
         gx.set(gx_cpu)
 
     return grads
