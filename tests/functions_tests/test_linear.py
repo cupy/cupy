@@ -1,4 +1,4 @@
-ofrom unittest import TestCase
+from unittest import TestCase
 
 import numpy
 import pycuda.gpuarray as gpuarray
@@ -36,12 +36,7 @@ class TestLinear(TestCase):
         y = self.fgen(x)
         self.assertLess(l_infty_dist(self.y, y.data.get()), 1e-7)
 
-    def test_backward_cpu(self):
-        x = Variable(self.x)
-        y = self.fgen(x)
-        y.grad = self.gy
-        y.backward()
-
+    def check_backward(self, x, y):
         func = y.creator
         f = lambda: func.forward((x.data,))
         gx, gW, gb = numerical_grad(f, (x.data, func.W, func.b), (y.grad,))
@@ -49,6 +44,13 @@ class TestLinear(TestCase):
         self.assertLess(l_infty_dist(gx, x.grad), 1e-5)
         self.assertLess(l_infty_dist(gW, func.gW), 1e-5)
         self.assertLess(l_infty_dist(gb, func.gb), 1e-5)
+
+    def test_backward_cpu(self):
+        x = Variable(self.x)
+        y = self.fgen(x)
+        y.grad = self.gy
+        y.backward()
+        self.check_backward(x, y)
 
     def test_backward_gpu(self):
         self.to_gpu()
@@ -56,11 +58,4 @@ class TestLinear(TestCase):
         y = self.fgen(x)
         y.grad = gpuarray.to_gpu(self.gy)
         y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, gW, gb = numerical_grad(f, (x.data, func.W, func.b), (y.grad,))
-
-        self.assertLess(l_infty_dist(gx, x.grad), 1e-5)
-        self.assertLess(l_infty_dist(gW, func.gW), 1e-5)
-        self.assertLess(l_infty_dist(gb, func.gb), 1e-5)
+        self.check_backward(x, y)
