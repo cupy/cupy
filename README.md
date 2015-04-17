@@ -1,7 +1,5 @@
 # chainer: Neural network framework
 
-★名称募集中
-
 ## Requirements
 
 - Python 2.7+ (developing on v2.7.8)
