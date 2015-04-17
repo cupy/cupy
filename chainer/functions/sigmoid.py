@@ -2,15 +2,15 @@ import ctypes
 import libcudnn
 import numpy
 import pycuda.gpuarray as gpuarray
-from chain import Function, cudnn
+from chainer import Function, cudnn
 
-_mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_TANH']
+_mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_SIGMOID']
 
-class Tanh(Function):
-    """Hyperbolic tangent function."""
+class Sigmoid(Function):
+    """Logistic sigmoid function."""
 
     def forward_cpu(self, x):
-        self.y = numpy.tanh(x[0])
+        self.y = 1 / (1 + numpy.exp(-x[0]))
         return self.y,
 
     def forward_gpu(self, x):
@@ -23,7 +23,7 @@ class Tanh(Function):
         return self.y,
 
     def backward_cpu(self, x, gy):
-        return gy[0] * (1 - self.y * self.y),
+        return gy[0] * self.y * (1 - self.y),
 
     def backward_gpu(self, x, gy):
         handle = cudnn.get_default_handle()
@@ -35,5 +35,5 @@ class Tanh(Function):
             0, desc, cudnn.get_ptr(gx))
         return gx,
 
-def tanh(x):
-    return Tanh()(x)
+def sigmoid(x):
+    return Sigmoid()(x)

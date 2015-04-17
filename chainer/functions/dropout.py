@@ -3,8 +3,8 @@ import pycuda.curandom as curandom
 import pycuda.gpuarray as gpuarray
 from pycuda.elementwise import ElementwiseKernel
 from pytools import memoize
-from chain import Function
-from chain.random import get_generator
+from chainer import Function
+from chainer.random import get_generator
 
 @memoize
 def _dropout_kernel():

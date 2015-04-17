@@ -1,6 +1,6 @@
 import numpy
 import pycuda.gpuarray as gpuarray
-from chain import Function
+from chainer import Function
 
 def _to_gpu(array):
     if type(array) == numpy.ndarray:

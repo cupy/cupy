@@ -1,4 +1,4 @@
-from chain import Optimizer
+from chainer import Optimizer
 
 class SGD(Optimizer):
     """Vanilla Stochastic Gradient Descent."""

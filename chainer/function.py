@@ -35,7 +35,7 @@ class Function(object):
         self.rank    = None
 
     def __call__(self, *inputs):
-        """Execute function and chain the input/output variables."""
+        """Execute function and chainer the input/output variables."""
 
         # First copy itself to avoid duplication within the graph.
         self = copy.copy(self)

@@ -1,4 +1,4 @@
-from chain import Function
+from chainer import Function
 
 class Identity(Function):
     """Identity function."""

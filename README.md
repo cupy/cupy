@@ -1,4 +1,4 @@
-# chain: Neural network framework
+# chainer: Neural network framework
 
 ★名称募集中
 

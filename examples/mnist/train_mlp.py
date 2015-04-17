@@ -9,9 +9,9 @@ import numpy as np
 import pycuda.gpuarray as gpuarray
 from sklearn.datasets import fetch_mldata
 
-from chain import Variable, FunctionSet
-from chain.functions import accuracy, Linear, relu, softmax_cross_entropy
-from chain.optimizers import SGD
+from chainer import Variable, FunctionSet
+from chainer.functions import accuracy, Linear, relu, softmax_cross_entropy
+from chainer.optimizers import SGD
 
 # Prepare dataset
 print 'fetch MNIST dataset'

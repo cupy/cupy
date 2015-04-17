@@ -1,8 +1,8 @@
 from unittest import TestCase
 import numpy
 
-from chain import Variable
-from chain.functions import identity
+from chainer import Variable
+from chainer.functions import identity
 
 class TestFunction(TestCase):
     def test_forward(self):

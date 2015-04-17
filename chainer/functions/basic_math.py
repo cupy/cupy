@@ -1,4 +1,4 @@
-from chain import Function, Variable
+from chainer import Function, Variable
 
 class Neg(Function):
     def forward(self, x):

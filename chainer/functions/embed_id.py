@@ -2,7 +2,7 @@ import numpy
 from pycuda.elementwise import ElementwiseKernel
 import pycuda.gpuarray as gpuarray
 from pytools import memoize
-from chain import Function
+from chainer import Function
 
 @memoize
 def _lookup_kernel():

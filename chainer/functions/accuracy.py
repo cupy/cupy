@@ -1,6 +1,6 @@
 import numpy
 import pycuda.gpuarray as gpuarray
-from chain import Function
+from chainer import Function
 
 class Accuracy(Function):
     """Compute accuracy within minibatch."""

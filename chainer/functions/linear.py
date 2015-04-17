@@ -5,7 +5,7 @@ from pycuda.elementwise import ElementwiseKernel
 from pytools import memoize
 import scikits.cuda.linalg as culinalg
 import scikits.cuda.misc as cumisc
-from chain import Function
+from chainer import Function
 
 @memoize
 def _add_bias_kernel():

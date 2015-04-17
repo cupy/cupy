@@ -3,9 +3,9 @@ from unittest import TestCase
 import numpy
 import pycuda.gpuarray as gpuarray
 
-from chain import Variable
-from chain.gradient_check import numerical_grad, l_infty_dist
-from chain.functions import lstm
+from chainer import Variable
+from chainer.gradient_check import numerical_grad, l_infty_dist
+from chainer.functions import lstm
 
 def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))

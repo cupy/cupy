@@ -2,7 +2,7 @@ import numpy
 from pycuda.elementwise import ElementwiseKernel
 import pycuda.gpuarray as gpuarray
 from pytools import memoize
-from chain import Function
+from chainer import Function
 
 def _extract_gates(x):
     r = x.reshape((x.shape[0], x.shape[1] / 4, 4) + x.shape[2:])

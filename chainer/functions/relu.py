@@ -2,7 +2,7 @@ import ctypes
 import libcudnn
 import numpy
 import pycuda.gpuarray as gpuarray
-from chain import Function, cudnn
+from chainer import Function, cudnn
 
 _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_RELU']
 

@@ -4,8 +4,8 @@ from pycuda.elementwise import ElementwiseKernel
 from pycuda.reduction import ReductionKernel
 from pytools import memoize
 
-from chain import Function, cudnn
-from chain.functions.softmax import Softmax
+from chainer import Function, cudnn
+from chainer.functions.softmax import Softmax
 
 @memoize
 def _cross_entropy_kernel():
