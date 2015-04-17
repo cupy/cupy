@@ -9,7 +9,6 @@ from chain import Function
 
 @memoize
 def _add_bias_kernel():
-    # TODO(beam2d): More efficient kernel
     return ElementwiseKernel(
         'float* y, float* b, int n_channel',
         'y[i] += b[i % n_channel]')

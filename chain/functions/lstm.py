@@ -51,8 +51,7 @@ def _backward_kernel():
     return ElementwiseKernel(
         '''
           float* gc_prev, float* gx, const float* c_prev, const float* x,
-          const float* c, const float* h, const float* gc, const float* gh,
-          int lsize, int rsize
+          const float* c, const float* gc, const float* gh, int lsize, int rsize
         ''', '''
           COMMON_ROUTINE;
           float* gx_i = gx + I * 4 * rsize;
@@ -62,11 +61,11 @@ def _backward_kernel():
           float& go = gx_i[3*rsize + J];
 
           float co  = tanhf(c[i]);
-          // Odd rule: if gh == h [gc == c] then gh [gc] is not given, since we
+          // Odd rule: if gh == c [gc == c] then gh [gc] is not given, since we
           // cannot pass null pointer to the kernel through PyCUDA.
-          float gc1 = (gh == h ? 0 : gh[i] * ao * grad_tanh(co))
+          float gc1 = (gh == c ? 0 : gh[i] * ao * grad_tanh(co))
                     + (gc == c ? 0 : gc[i]);
-          go        =  gh == h ? 0 : gh[i] * co * grad_sigmoid(ao);
+          go        =  gh == c ? 0 : gh[i] * co * grad_sigmoid(ao);
 
           gc_prev[i] = gc1 * af;
           ga         = gc1 * ai        * grad_tanh(aa);
@@ -93,13 +92,12 @@ class LSTM(Function):
         self.f = _sigmoid(f)
         self.o = _sigmoid(o)
 
-        c = self.a * self.i + self.f * c_prev
-        h = self.o * numpy.tanh(c)
-        return c, h
+        self.c = self.a * self.i + self.f * c_prev
+        h = self.o * numpy.tanh(self.c)
+        return self.c, h
 
     def backward_cpu(self, inputs, grad_outputs):
         c_prev = inputs[0]
-        c, h   = (_.data for _ in self.outputs)
         gc, gh = grad_outputs
 
         gx  = numpy.empty_like(inputs[1])
@@ -109,7 +107,7 @@ class LSTM(Function):
         if gc is None: gc = 0
         if gh is None: gh = 0
 
-        co = numpy.tanh(c)
+        co = numpy.tanh(self.c)
         gc_prev = gh * self.o * _grad_tanh(co) + gc  # multiply f later
         ga[:] = gc_prev * self.i * _grad_tanh(self.a)
         gi[:] = gc_prev * self.a * _grad_sigmoid(self.i)
@@ -124,26 +122,25 @@ class LSTM(Function):
         lsize = c_prev.shape[0] * c_prev.shape[1]
         rsize = c_prev.size / lsize
 
-        c  = gpuarray.empty_like(c_prev)
-        h  = gpuarray.empty_like(c_prev)
-        _forward_kernel()(c, h, c_prev, x, lsize, rsize)
+        self.c = gpuarray.empty_like(c_prev)
+        h      = gpuarray.empty_like(c_prev)
+        _forward_kernel()(self.c, h, c_prev, x, lsize, rsize)
 
-        return c, h
+        return self.c, h
 
     def backward_gpu(self, inputs, grad_outputs):
         c_prev, x = inputs
-        c, h      = (_.data for _ in self.outputs)
         gc, gh    = grad_outputs
         lsize = c_prev.shape[0] * c_prev.shape[1]
         rsize = c_prev.size / lsize
 
         # Odd rule to determine whether the gradient is given or not.
-        if gc is None: gc = c
-        if gh is None: gh = h
+        if gc is None: gc = self.c
+        if gh is None: gh = self.c
 
         gc_prev = gpuarray.empty_like(c_prev)
         gx      = gpuarray.empty_like(x)
-        _backward_kernel()(gc_prev, gx, c_prev, x, c, h, gc, gh, lsize, rsize)
+        _backward_kernel()(gc_prev, gx, c_prev, x, self.c, gc, gh, lsize, rsize)
 
         return gc_prev, gx
 

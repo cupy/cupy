@@ -69,7 +69,6 @@ for epoch in xrange(10):
         y_batch = gpuarray.to_gpu(y_train[perm[i : i + batchsize]])
         L, acc = forward(x_batch, y_batch)
         L.backward()
-        L.forget_backward()
 
         optimizer.update()  # update
 
@@ -90,7 +89,6 @@ for epoch in xrange(10):
         x_batch = gpuarray.to_gpu(x_test[i : i + batchsize])
         y_batch = gpuarray.to_gpu(y_test[i : i + batchsize])
         L, acc = forward(x_batch, y_batch)
-        L.forget_backward()
 
         sum_loss += float(L.data.get()) * batchsize
         sum_accuracy += float(acc.data.get()) * batchsize

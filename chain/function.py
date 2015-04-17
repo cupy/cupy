@@ -1,4 +1,5 @@
 import copy
+import weakref
 import numpy
 from pycuda.gpuarray import GPUArray
 
@@ -48,25 +49,32 @@ class Function(object):
                 return outputs[0]
             return outputs
 
-        # build graph
+        # Build graph
+        # Be careful that forward references must be weak
         self.inputs = list(inputs)
         for i, x in enumerate(inputs):
-            if not hasattr(x, 'splitter'):
-                x.splitter = Split(x)
-            self.inputs[i] = x.splitter.add_branch()
+            if hasattr(x, 'splitter'):
+                splitter = x.splitter()
+            if not hasattr(x, 'splitter') or splitter is None:
+                splitter = Split(x)
+                x.splitter = weakref.ref(splitter)
+            self.inputs[i] = splitter.add_branch()
 
         self.rank = max(x.rank for x in self.inputs)
 
         outputs = self.forward(tuple(x.data for x in self.inputs))
         assert type(outputs) == tuple
 
-        self.outputs = list(Variable(y) for y in outputs)
-        for y in self.outputs:
+        ret = tuple(Variable(y) for y in outputs)
+        for y in ret:
             y.set_creator(self)
 
-        if len(self.outputs) == 1:
-            return self.outputs[0]
-        return self.outputs
+        # Make forward references weak
+        self.outputs = tuple(weakref.ref(y) for y in ret)
+
+        if len(ret) == 1:
+            return ret[0]
+        return ret
 
     def forward(self, inputs):
         """Forward function.
@@ -104,10 +112,11 @@ class Function(object):
         """Purge in/out variables and remove this node from the graph."""
 
         for y in self.outputs:
-            y.creator = None
+            y_ref = y()
+            if y_ref is not None:
+                y_ref.creator = None
         for x in self.inputs:
             x.splitter = None
-        self.outputs = None
         self.inputs = None
 
     @property
@@ -145,7 +154,7 @@ class Split(Function):
         x = self.inputs[0]
         output = Variable(x.data)
         output.set_creator(self)
-        self.outputs.append(output)
+        self.outputs.append(weakref.ref(output))
         return output
 
     def backward(self, inputs, grad_outputs):

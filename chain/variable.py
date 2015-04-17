@@ -41,8 +41,9 @@ class Variable(object):
 
         while cand_funcs:
             _, func = heapq.heappop(cand_funcs)
+            outputs = (y() for y in func.outputs)  # access via weak ref
             gxs = func.backward(tuple(x.data for x in func.inputs),
-                                tuple(y.grad for y in func.outputs))
+                                tuple(y and y.grad for y in outputs))
             for x, gx in zip(func.inputs, gxs):
                 x.grad = gx
                 if gx is not None:  # skip if gradient does not flow
@@ -64,5 +65,5 @@ class Variable(object):
         while cand_funcs:
             func = cand_funcs.pop()
             for var in func.inputs:
-                add_cand(var.creator)
+                add_cand(var.creator())
             func.forget()
