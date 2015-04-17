@@ -51,7 +51,6 @@ optimizer.setup(model.collect_parameters())
 
 # Learning loop
 batchsize = 100
-n_iter = N / batchsize
 for epoch in xrange(10):
     print 'epoch', epoch
 
