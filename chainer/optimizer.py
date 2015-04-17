@@ -1,5 +1,12 @@
+import math
 import numpy
 import pycuda.gpuarray as gpuarray
+
+def _sqnorm(x):
+    if type(x) == gpuarray.GPUArray:
+        return float(gpuarray.dot(x, x).get())
+    x = x.ravel()
+    return float(x.dot(x))
 
 class Optimizer(object):
     """Optimizers' base class."""
@@ -17,6 +24,18 @@ class Optimizer(object):
 
         for _, g, _ in self.tuples:
             g.fill(0)
+
+    def clip_grads(self, maxnorm):
+        """Clip norm of the gradient."""
+
+        sqnorm = 0
+        for _, g, _ in self.tuples:
+            sqnorm += _sqnorm(g)
+        norm = math.sqrt(sqnorm)
+        if norm > maxnorm:
+            ratio = maxnorm / norm
+            for _, g, _ in self.tuples:
+                g *= ratio
 
     def update(self):
         for p, g, s in self.tuples:
