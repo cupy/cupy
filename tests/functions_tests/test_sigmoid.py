@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 import numpy
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 
 from chainer import Variable
 from chainer.gradient_check import numerical_grad, l_infty_dist

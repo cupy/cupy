@@ -1,6 +1,6 @@
 import math
 import numpy
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 
 def _sqnorm(x):
     if type(x) == gpuarray.GPUArray:

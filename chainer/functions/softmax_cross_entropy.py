@@ -1,5 +1,5 @@
 import numpy
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 from pycuda.elementwise import ElementwiseKernel
 from pycuda.reduction import ReductionKernel
 from pytools import memoize

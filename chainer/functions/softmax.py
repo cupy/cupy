@@ -1,7 +1,7 @@
 import ctypes
 import libcudnn
 import numpy
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 from chainer import Function, cudnn
 
 _algorithm = libcudnn.cudnnSoftmaxAlgorithm['CUDNN_SOFTMAX_ACCURATE']

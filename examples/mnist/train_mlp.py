@@ -6,7 +6,7 @@ import cPickle as pickle
 import sys
 
 import numpy as np
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 from sklearn.datasets import fetch_mldata
 
 from chainer import Variable, FunctionSet

@@ -1,6 +1,6 @@
 import numpy
 import pycuda.cumath as cumath
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 
 def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
     grads = tuple(numpy.zeros_like(x) for x in inputs)

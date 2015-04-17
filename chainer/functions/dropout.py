@@ -1,6 +1,6 @@
 import numpy
 import pycuda.curandom as curandom
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 from pycuda.elementwise import ElementwiseKernel
 from pytools import memoize
 from chainer import Function

@@ -9,7 +9,7 @@ import cPickle as pickle
 import datetime, math, sys, time
 
 import numpy as np
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 
 from chainer import Variable, FunctionSet
 from chainer.functions import dropout, EmbedID, Linear, lstm, softmax_cross_entropy

@@ -1,6 +1,6 @@
 import numpy
 from pycuda.elementwise import ElementwiseKernel
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 from pytools import memoize
 from chainer import Function
 

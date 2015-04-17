@@ -3,7 +3,7 @@
 import os
 import numpy
 import pycuda.curandom as curandom
-import pycuda.gpuarray as gpuarray
+from pycuda import gpuarray
 
 _seed = os.environ.get('CHAIN_SEED')
 
