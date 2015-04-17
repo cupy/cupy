@@ -65,8 +65,8 @@ def forward_one_step(x_data, y_data, state, train=True):
     return state, softmax_cross_entropy(y, t)
 
 def make_initial_state(volatile=False):
-    return {name: Variable(gpuarray.zeros((batchsize, n_unit), dtype=np.float32,
-                                          volatile=volatile))
+    return {name: Variable(gpuarray.zeros((batchsize, n_unit), dtype=np.float32),
+                           volatile=volatile)
             for name in ('c1', 'h1', 'c2', 'h2')}
 
 whole_len = train_data.shape[0]
