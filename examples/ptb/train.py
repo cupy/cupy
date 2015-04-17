@@ -64,8 +64,9 @@ def forward_one_step(x_data, y_data, state, train=True):
     state  = {'c1': c1, 'h1': h1, 'c2': c2, 'h2': h2}
     return state, softmax_cross_entropy(y, t)
 
-def make_initial_state():
-    return {name: Variable(gpuarray.zeros((batchsize, n_unit), dtype=np.float32))
+def make_initial_state(volatile=False):
+    return {name: Variable(gpuarray.zeros((batchsize, n_unit), dtype=np.float32,
+                                          volatile=volatile))
             for name in ('c1', 'h1', 'c2', 'h2')}
 
 whole_len = train_data.shape[0]
@@ -116,7 +117,7 @@ def train_one_epoch(state):
 def evaluate(dataset):
     dataset_len = dataset.size
     sum_log_perp = 0
-    state = make_initial_state()
+    state = make_initial_state(volatile=True)
 
     start_at = time.time()
     for i in xrange(dataset_len - 1):
