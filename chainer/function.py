@@ -53,9 +53,10 @@ class Function(object):
         # Be careful that forward references must be weak
         self.inputs = list(inputs)
         for i, x in enumerate(inputs):
-            if hasattr(x, 'splitter'):
+            has_splitter = hasattr(x, 'splitter') and x.splitter is not None
+            if has_splitter:
                 splitter = x.splitter()
-            if not hasattr(x, 'splitter') or splitter is None:
+            if not has_splitter or splitter is None:
                 splitter = Split(x)
                 x.splitter = weakref.ref(splitter)
             self.inputs[i] = splitter.add_branch()

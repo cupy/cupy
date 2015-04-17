@@ -65,5 +65,5 @@ class Variable(object):
         while cand_funcs:
             func = cand_funcs.pop()
             for var in func.inputs:
-                add_cand(var.creator())
+                add_cand(var.creator)
             func.forget()
