@@ -1,4 +1,11 @@
+from pycuda.elementwise import ElementwiseKernel
+from pytools import memoize
 from chainer import Optimizer
+
+@memoize
+def _update_kernel():
+    return ElementwiseKernel('float* param, const float* grad, float lr',
+                             'param[i] -= lr * grad[i]')
 
 class SGD(Optimizer):
     """Vanilla Stochastic Gradient Descent."""
@@ -7,4 +14,4 @@ class SGD(Optimizer):
         self.lr = lr
 
     def update_one(self, param, grad, _):
-        param -= self.lr * grad
+        _update_kernel()(param, grad, self.lr)
