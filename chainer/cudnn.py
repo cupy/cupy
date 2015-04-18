@@ -3,7 +3,6 @@
 import ctypes
 import libcudnn
 import numpy
-from pycuda import gpuarray
 
 def get_ptr(x):
     return ctypes.c_void_p(int(x.gpudata))
