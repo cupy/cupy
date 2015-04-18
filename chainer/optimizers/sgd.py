@@ -13,5 +13,8 @@ class SGD(Optimizer):
     def __init__(self, lr=0.01):
         self.lr = lr
 
-    def update_one(self, param, grad, _):
+    def update_one_cpu(self, param, grad, _):
+        param -= self.lr * grad
+
+    def update_one_gpu(self, param, grad, _):
         _update_kernel()(param, grad, self.lr)
