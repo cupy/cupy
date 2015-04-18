@@ -9,13 +9,8 @@ from chainer import Function
 
 @memoize
 def _add_bias_kernel():
-    return ElementwiseKernel(
-        'float* y, float* b, int n_channel',
-        'y[i] += b[i % n_channel]')
-
-def add_bias(mat, vec):
-    kernel = _add_bias_kernel()
-    kernel(mat, vec, vec.size)
+    return ElementwiseKernel('float* y, float* b, int n_channel',
+                             'y[i] += b[i % n_channel]')
 
 class Linear(Function):
     """Implementation of fully-connected layer."""
@@ -37,7 +32,7 @@ class Linear(Function):
 
     def forward_gpu(self, x):
         Wx = culinalg.dot(x[0], self.W, transb='T')
-        add_bias(Wx, self.b)
+        _add_bias_kernel()(Wx, self.b, self.b.size)
         return Wx,
 
     def backward_cpu(self, x, gy):
