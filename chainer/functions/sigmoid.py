@@ -1,4 +1,3 @@
-import ctypes
 import libcudnn
 import numpy
 from pycuda import gpuarray
