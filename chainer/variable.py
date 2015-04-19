@@ -20,7 +20,7 @@ class Variable(object):
         self.creator = gen_func
         self.rank = gen_func.rank + 1
 
-    def backward(self):
+    def backward(self, retain_grad=False):
         """Run error backpropagation from this variable node."""
 
         cand_funcs = []
@@ -44,6 +44,9 @@ class Variable(object):
             outputs = (y() for y in func.outputs)  # access via weak ref
             gxs = func.backward(tuple(x.data for x in func.inputs),
                                 tuple(y and y.grad for y in outputs))
+            if not retain_grad:
+                for y in outputs:
+                    y.grad = None
             for x, gx in zip(func.inputs, gxs):
                 x.grad = gx
                 if gx is not None:  # skip if gradient does not flow
