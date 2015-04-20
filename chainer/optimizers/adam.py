@@ -16,7 +16,7 @@ def _update_kernel():
           v[i] = beta2   * v[i] + (1 - beta2)   * grad[i] * grad[i];
           float m_hat = m[i] / (1 - __powf(beta1, t));
           float v_hat = v[i] / (1 - __powf(beta2, t));
-          param[i] -= lr * m_hat / (sqrtf(v[i]) + eps);
+          param[i] -= lr * m_hat / (sqrtf(v_hat) + eps);
         ''')
 
 class Adam(Optimizer):
