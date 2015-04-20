@@ -1,5 +1,6 @@
 # Non-parameterized functions
 from accuracy   import accuracy
+from concat     import concat
 from dropout    import dropout
 from identity   import identity
 from lstm       import lstm
