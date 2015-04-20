@@ -16,8 +16,8 @@ class Concat(TestCase):
         self.xs1 = [self.y1[:2], self.y1[2:5], self.y1[5:]]
 
     def check_forward(self, xs_data, y_data, axis):
-        xs = (Variable(x_data) for x_data in xs_data)
-        y  = concat(*xs, axis=axis)
+        xs = tuple(Variable(x_data) for x_data in xs_data)
+        y  = concat(xs, axis=axis)
         assert_allclose(y_data, y.data, atol=0, rtol=0)
 
     def test_forward_cpu_0(self):
@@ -35,8 +35,8 @@ class Concat(TestCase):
             [to_gpu(x.copy()) for x in self.xs1], to_gpu(self.y1), axis=0)
 
     def check_backward(self, xs_data, axis):
-        xs = (Variable(x_data) for x_data in xs_data)
-        y  = concat(*xs, axis=axis)
+        xs = tuple(Variable(x_data) for x_data in xs_data)
+        y  = concat(xs, axis=axis)
         y.grad = y.data
         y.backward()
 

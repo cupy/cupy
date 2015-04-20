@@ -68,5 +68,5 @@ class Concat(Function):
         return gxs
 
 
-def concat(*xs, **kw):
-    return Concat(axis=kw.get('axis', 1))(*xs)
+def concat(xs, axis=1):
+    return Concat(axis=axis)(*xs)
