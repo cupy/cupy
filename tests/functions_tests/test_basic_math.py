@@ -1,22 +1,25 @@
 from unittest import TestCase
 
 import numpy
-from pycuda import gpuarray
+from pycuda.gpuarray import to_gpu
 
 from chainer import Variable
-from chainer.gradient_check import numerical_grad, l_infty_dist
+from chainer.gradient_check import assert_allclose, numerical_grad
 
 class TestBinaryOp(TestCase):
     def setUp(self):
-        self.x1 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
+        self.x1 = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.x2 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-.1, .1, (3, 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+
+    def check_forward(self, op, x1_data, x2_data):
+        x1 = Variable(x1_data)
+        x2 = Variable(x2_data)
+        y = op(x1, x2)
+        assert_allclose(op(self.x1, self.x2), y.data, atol=0, rtol=0)
 
     def forward_cpu(self, op):
-        x1 = Variable(self.x1)
-        x2 = Variable(self.x2)
-        y = op(x1, x2)
-        self.assertTrue((op(self.x1, self.x2) == y.data).all())
+        self.check_forward(op, self.x1, self.x2)
 
     def test_add_forward_cpu(self): self.forward_cpu(lambda x, y: x + y)
     def test_sub_forward_cpu(self): self.forward_cpu(lambda x, y: x - y)
@@ -24,29 +27,28 @@ class TestBinaryOp(TestCase):
     def test_div_forward_cpu(self): self.forward_cpu(lambda x, y: x / y)
 
     def forward_gpu(self, op):
-        x1 = Variable(gpuarray.to_gpu(self.x1))
-        x2 = Variable(gpuarray.to_gpu(self.x2))
-        y = op(x1, x2)
-        self.assertTrue((op(self.x1, self.x2) == y.data.get()).all())
+        self.check_forward(op, to_gpu(self.x1), to_gpu(self.x2))
 
     def test_add_forward_gpu(self): self.forward_gpu(lambda x, y: x + y)
     def test_sub_forward_gpu(self): self.forward_gpu(lambda x, y: x - y)
     def test_mul_forward_gpu(self): self.forward_gpu(lambda x, y: x * y)
     def test_div_forward_gpu(self): self.forward_gpu(lambda x, y: x / y)
 
-    def backward_cpu(self, op):
-        x1 = Variable(self.x1)
-        x2 = Variable(self.x2)
+    def check_backward(self, op, x1_data, x2_data, y_grad):
+        x1 = Variable(x1_data)
+        x2 = Variable(x2_data)
         y = op(x1, x2)
-        y.grad = self.gy
+        y.grad = y_grad
         y.backward()
 
         func = y.creator
         f = lambda: func.forward((x1.data, x2.data))
         gx1, gx2 = numerical_grad(f, (x1.data, x2.data), (y.grad,))
+        assert_allclose(gx1, x1.grad)
+        assert_allclose(gx2, x2.grad)
 
-        self.assertLess(l_infty_dist(gx1, x1.grad), 1e-5)
-        self.assertLess(l_infty_dist(gx2, x2.grad), 1e-5)
+    def backward_cpu(self, op):
+        self.check_backward(op, self.x1, self.x2, self.gy)
 
     def test_add_backward_cpu(self): self.backward_cpu(lambda x, y: x + y)
     def test_sub_backward_cpu(self): self.backward_cpu(lambda x, y: x - y)
@@ -54,18 +56,7 @@ class TestBinaryOp(TestCase):
     def test_div_backward_cpu(self): self.backward_cpu(lambda x, y: x / y)
 
     def backward_gpu(self, op):
-        x1 = Variable(gpuarray.to_gpu(self.x1))
-        x2 = Variable(gpuarray.to_gpu(self.x2))
-        y = op(x1, x2)
-        y.grad = gpuarray.to_gpu(self.gy)
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x1.data, x2.data))
-        gx1, gx2 = numerical_grad(f, (x1.data, x2.data), (y.grad,))
-
-        self.assertLess(l_infty_dist(gx1, x1.grad), 1e-5)
-        self.assertLess(l_infty_dist(gx2, x2.grad), 1e-5)
+        self.check_backward(op, to_gpu(self.x1), to_gpu(self.x2), to_gpu(self.gy))
 
     def test_add_backward_gpu(self): self.backward_gpu(lambda x, y: x + y)
     def test_sub_backward_gpu(self): self.backward_gpu(lambda x, y: x - y)
@@ -76,13 +67,16 @@ class TestBinaryOp(TestCase):
 class TestVariableConstantOp(TestCase):
     def setUp(self):
         self.x  = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-.1, .1, (3, 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.value = .5
 
-    def forward_cpu(self, op):
-        x = Variable(self.x)
+    def check_forward(self, op, x_data):
+        x = Variable(x_data)
         y = op(x, self.value)
-        self.assertTrue((op(self.x, self.value) == y.data).all())
+        assert_allclose(op(self.x, self.value), y.data, atol=0, rtol=0)
+
+    def forward_cpu(self, op):
+        self.check_forward(op, self.x)
 
     def test_add_forward_cpu(self):  self.forward_cpu(lambda x, y: x + y)
     def test_radd_forward_cpu(self): self.forward_cpu(lambda x, y: y + x)
@@ -94,9 +88,7 @@ class TestVariableConstantOp(TestCase):
     def test_rdiv_forward_cpu(self): self.forward_cpu(lambda x, y: y / x)
 
     def forward_gpu(self, op):
-        x = Variable(gpuarray.to_gpu(self.x))
-        y = op(x, self.value)
-        self.assertTrue((op(self.x, self.value) == y.data.get()).all())
+        self.check_forward(op, to_gpu(self.x))
 
     def test_add_forward_gpu(self):  self.forward_gpu(lambda x, y: x + y)
     def test_radd_forward_gpu(self): self.forward_gpu(lambda x, y: y + x)
@@ -107,17 +99,20 @@ class TestVariableConstantOp(TestCase):
     def test_div_forward_gpu(self):  self.forward_gpu(lambda x, y: x / y)
     def test_rdiv_forward_gpu(self): self.forward_gpu(lambda x, y: y / x)
 
-    def backward_cpu(self, op):
-        x = Variable(self.x)
+    def check_backward(self, op, x_data, y_grad):
+        x = Variable(x_data)
         y = op(x, self.value)
-        y.grad = self.gy
+        y.grad = y_grad
         y.backward()
 
         func = y.creator
         f = lambda: func.forward((x.data,))
-        gx = numerical_grad(f, (x.data,), (y.grad,))
+        gx, = numerical_grad(f, (x.data,), (y.grad,))
 
-        self.assertLess(l_infty_dist(gx, x.grad), 1e-5)
+        assert_allclose(gx, x.grad)
+
+    def backward_cpu(self, op):
+        self.check_backward(op, self.x, self.gy)
 
     def test_add_backward_cpu(self):  self.backward_cpu(lambda x, y: x + y)
     def test_radd_backward_cpu(self): self.backward_cpu(lambda x, y: y + x)
@@ -129,13 +124,13 @@ class TestVariableConstantOp(TestCase):
     def test_rdiv_backward_cpu(self): self.backward_cpu(lambda x, y: y / x)
 
     def backward_gpu(self, op):
-        x = Variable(gpuarray.to_gpu(self.x))
-        y = op(x, self.value)
-        y.grad = gpuarray.to_gpu(self.gy)
-        y.backward()
+        self.check_backward(op, to_gpu(self.x), to_gpu(self.gy))
 
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx = numerical_grad(f, (x.data,), (y.grad,))
-
-        self.assertLess(l_infty_dist(gx, x.grad), 1e-5)
+    def test_add_backward_gpu(self):  self.backward_gpu(lambda x, y: x + y)
+    def test_radd_backward_gpu(self): self.backward_gpu(lambda x, y: y + x)
+    def test_sub_backward_gpu(self):  self.backward_gpu(lambda x, y: x - y)
+    def test_rsub_backward_gpu(self): self.backward_gpu(lambda x, y: y - x)
+    def test_mul_backward_gpu(self):  self.backward_gpu(lambda x, y: x * y)
+    def test_rmul_backward_gpu(self): self.backward_gpu(lambda x, y: y * x)
+    def test_div_backward_gpu(self):  self.backward_gpu(lambda x, y: x / y)
+    def test_rdiv_backward_gpu(self): self.backward_gpu(lambda x, y: y / x)
