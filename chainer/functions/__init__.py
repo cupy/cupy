@@ -1,13 +1,14 @@
 # Non-parameterized functions
-from accuracy import accuracy
-from dropout  import dropout
-from identity import identity
-from lstm     import lstm
-from relu     import relu
-from sigmoid  import sigmoid
-from softmax  import softmax
+from accuracy   import accuracy
+from dropout    import dropout
+from identity   import identity
+from lstm       import lstm
+from pooling_2d import average_pooling_2d, max_pooling_2d
+from relu       import relu
+from sigmoid    import sigmoid
+from softmax    import softmax
 from softmax_cross_entropy import softmax_cross_entropy
-from tanh     import tanh
+from tanh       import tanh
 
 # Parameterized layers
 from convolution_2d import Convolution2D

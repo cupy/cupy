@@ -63,3 +63,14 @@ def get_conv2d_desc(pad, stride, mode=_default_conv_mode):
     libcudnn.cudnnSetConvolution2dDescriptor(
         desc, pad[0], pad[1], stride[0], stride[1], 1, 1, mode)
     return Auto(desc, libcudnn.cudnnDestroyConvolutionDescriptor)
+
+_pool_mode = {'MAX': libcudnn.cudnnPoolingMode['CUDNN_POOLING_MAX'],
+              'AVE': libcudnn.cudnnPoolingMode['CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING']}
+
+def get_pool2d_desc(ksize, stride, pad, mode):
+    """Create a 2d pooling descriptor."""
+    desc = libcudnn.cudnnCreatePoolingDescriptor()
+    libcudnn.cudnnSetPooling2dDescriptor(
+        desc, libcudnn.cudnnPoolingMode[mode], ksize[0], ksize[1],
+        pad[0], pad[1], stride[0], stride[1])
+    return Auto(desc, libcudnn.cudnnDestroyPoolingDescriptor)
