@@ -4,6 +4,11 @@ import numpy
 from pycuda import gpuarray
 from chainer import Function, cudnn
 
+def _pair(x):
+    if hasattr(x, '__getitem__'):
+        return x
+    return (x, x)
+
 _fwd_pref = libcudnn.cudnnConvolutionFwdPreference[
     'CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT']
 
@@ -13,8 +18,12 @@ class Convolution2D(Function):
     parameter_names = ('W', 'b')
     gradient_names  = ('gW', 'gb')
 
-    def __init__(self, in_channels, out_channels, ksize, stride=(1, 1), pad=(0, 0),
+    def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0):
+        ksize  = _pair(ksize)
+        stride = _pair(stride)
+        pad    = _pair(pad)
+
         self.kh, self.kw = ksize
         self.sy, self.sx = stride
         self.ph, self.pw = pad

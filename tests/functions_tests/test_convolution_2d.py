@@ -9,7 +9,7 @@ from chainer.functions import Convolution2D
 
 class TestConvolution2D(TestCase):
     def setUp(self):
-        self.func = Convolution2D(3, 2, (3, 3), stride=(2, 2), pad=(1, 1))
+        self.func = Convolution2D(3, 2, 3, stride=2, pad=1)
         self.func.b = numpy.random.uniform(
             -.1, .1, self.func.b.shape).astype(numpy.float32)
         self.func.gW.fill(0)
