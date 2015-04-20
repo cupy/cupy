@@ -7,7 +7,7 @@ from chainer import Variable
 from chainer.gradient_check import numerical_grad, l_infty_dist
 from chainer.functions import Convolution2D
 
-class TestLinear(TestCase):
+class TestConvolution2D(TestCase):
     def setUp(self):
         self.func = Convolution2D(3, 2, (3, 3), stride=(2, 2), pad=(1, 1))
         self.func.b = numpy.random.uniform(
