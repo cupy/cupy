@@ -149,7 +149,7 @@ def evaluate(dataset):
     start_at = time.time()
     for i in xrange(dataset_len - 1):
         sys.stderr.write('\reval: {} / {}'.format(i, dataset_len - 1))
-        sys.err.flush()
+        sys.stderr.flush()
 
         x_cpu = dataset[i   : i+1]
         y_cpu = dataset[i+1 : i+2]
