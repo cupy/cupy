@@ -118,6 +118,24 @@ def rdiv(lhs, rhs):  # rhs / lhs
     return Div()(rhs, lhs)
 
 
+class PowVarConst(Function):
+    def __init__(self, value):
+        self.value = value
+
+    def forward(self, x):
+        return x[0] ** self.value,
+
+    def backward(self, x, gy):
+        # TODO(beam2d): Unify to one kernel
+        return self.value * (x[0] ** (self.value - 1)) * gy[0],
+
+def pow(lhs, rhs):  # lhs ** rhs
+    # TODO(beam2d): Support const ** var and var ** var
+    if type(rhs) == Variable:
+        raise NotImplementedError()
+    return PowVarConst(rhs)(lhs)
+
+
 # Variable operators
 Variable.__neg__  = neg
 Variable.__add__  = add
@@ -128,3 +146,4 @@ Variable.__mul__  = mul
 Variable.__rmul__ = mul
 Variable.__div__  = div
 Variable.__rdiv__ = rdiv
+Variable.__pow__  = pow
