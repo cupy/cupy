@@ -1,4 +1,4 @@
-from chainer import Function, FunctionSet
+from chainer import Function, FunctionSet, Variable
 from chainer.functions import concat, Convolution2D, max_pooling_2d, relu
 
 class Inception(Function):
@@ -14,13 +14,20 @@ class Inception(Function):
             projp = Convolution2D(in_channels, proj_pool, 1),
         )
 
-    def __call__(self, x):
-        f = self.f
-        out1 = f.conv1(x)
-        out3 = f.conv3(relu(f.proj3(x)))
-        out5 = f.conv5(relu(f.proj5(x)))
-        pool = f.projp(max_pooling_2d(x, 3, stride=1, pad=1))
-        return relu(concat((out1, out3, out5, pool), axis=1))
+    def forward(self, x):
+        self.x = Variable(x[0])
+        out1 = self.f.conv1(self.x)
+        out3 = self.f.conv3(relu(self.f.proj3(self.x)))
+        out5 = self.f.conv5(relu(self.f.proj5(self.x)))
+        pool = self.f.projp(max_pooling_2d(self.x, 3, stride=1, pad=1))
+        self.y = relu(concat((out1, out3, out5, pool), axis=1))
+
+        return self.y.data,
+
+    def backward(self, x, gy):
+        self.y.grad = gy[0]
+        self.y.backward()
+        return self.x.grad,
 
     @property
     def parameters(self):
