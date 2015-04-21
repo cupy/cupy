@@ -14,6 +14,9 @@ class Variable(object):
     def __pos__(self):
         return self
 
+    def __len__(self):
+        return self.data.size
+
     def set_creator(self, gen_func):
         """Set function that creates this variable."""
 
