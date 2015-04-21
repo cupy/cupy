@@ -15,4 +15,5 @@ from tanh       import tanh
 # Parameterized layers
 from convolution_2d import Convolution2D
 from embed_id       import EmbedID
+from inception      import Inception
 from linear         import Linear
