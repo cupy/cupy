@@ -41,13 +41,7 @@ class Concat(TestCase):
         y.backward()
 
         for x in xs:
-            if type(x.data) == GPUArray:
-                x_data = x.data.get()
-                x_grad = x.grad.get()
-            else:
-                x_data = x.data
-                x_grad = x.grad
-            assert_allclose(x_data, x_grad, atol=0, rtol=0)
+            assert_allclose(x.data, x.grad, atol=0, rtol=0)
 
     def test_backward_cpu_0(self):
         self.check_backward(self.xs0, axis=1)

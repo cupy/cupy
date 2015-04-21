@@ -52,11 +52,11 @@ class Concat(Function):
         return y,
 
     def backward_cpu(self, xs, gy):
-        sizes = numpy.array([x.shape[self.axis] for x in xs[1:]]).cumsum()
-        return numpy.split(gy, sizes, axis=self.axis)
+        sizes = numpy.array([x.shape[self.axis] for x in xs[:-1]]).cumsum()
+        return numpy.split(gy[0], sizes, axis=self.axis)
 
     def backward_gpu(self, xs, gy):
-        gxs = (gpuarray.empty_like(x) for x in xs)
+        gxs = tuple(gpuarray.empty_like(x) for x in xs)
 
         coffset = 0
         kernel  = _copy_y_to_x_kernel()
