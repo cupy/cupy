@@ -39,11 +39,7 @@ class FunctionSet(object):
 
     def collect_parameters(self):
         """Collect parameters and gradients."""
-        params, grads = [], []
-        for func in self.functions.itervalues():
-            params += func.parameters
-            grads  += func.gradients
-        return params, grads
+        return self.parameters, self.gradients
 
     def to_gpu(self):
         """Move all parameters and gradients to GPU."""
@@ -60,3 +56,26 @@ class FunctionSet(object):
             func.parameters = (_to_cpu(w) for w in params)
             grads  = func.gradients
             func.gradients  = (_to_cpu(g) for g in grads)
+
+    @property
+    def parameters(self):
+        return sum((func.parameters for _, func in self._get_sorted_funcs()), ())
+
+    @parameters.setter
+    def parameters(self, params):
+        param_iter = iter(params)
+        for _, func in self._get_sorted_funcs():
+            func.parameters = param_iter
+
+    @property
+    def gradients(self):
+        return sum((func.gradients for _, func in self._get_sorted_funcs()), ())
+
+    @gradients.setter
+    def gradients(self, grads):
+        grad_iter = iter(grads)
+        for _, func in self._get_sorted_funcs():
+            func.gradients = grad_iter
+
+    def _get_sorted_funcs(self):
+        return sorted(self.functions.iteritems())
