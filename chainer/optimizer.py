@@ -34,12 +34,16 @@ class Optimizer(object):
         for _, g, _ in self.tuples:
             g.fill(0)
 
-    def clip_grads(self, maxnorm):
-        """Clip norm of the gradient."""
+    def compute_grads_norm(self):
+        """Compute norm of the gradient."""
         sqnorm = 0
         for _, g, _ in self.tuples:
             sqnorm += _sqnorm(g)
-        norm = math.sqrt(sqnorm)
+        return math.sqrt(sqnorm)
+
+    def clip_grads(self, maxnorm):
+        """Clip norm of the gradient."""
+        norm = self.compute_grads_norm()
         if norm > maxnorm:
             ratio = maxnorm / norm
             for _, g, _ in self.tuples:
