@@ -34,7 +34,6 @@ __device__ float grad_tanh(float y)    { return 1 - y * y; }
 
 @memoize
 def _forward_kernel():
-    # TODO(beam2d): Tune it
     return ElementwiseKernel(
         '''
           float* c, float* h, const float* c_prev, const float* x,
@@ -47,7 +46,6 @@ def _forward_kernel():
 
 @memoize
 def _backward_kernel():
-    # TODO(bema2d): Tune it
     return ElementwiseKernel(
         '''
           float* gc_prev, float* gx, const float* c_prev, const float* x,
