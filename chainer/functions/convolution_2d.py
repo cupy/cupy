@@ -15,11 +15,8 @@ _fwd_pref = libcudnn.cudnnConvolutionFwdPreference[
 class Convolution2D(Function):
     """Two-dimensional convolution function."""
 
-    parameter_names = ('W', 'b')
-    gradient_names  = ('gW', 'gb')
-
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
-                 wscale=1, bias=0):
+                 wscale=1, bias=0, nobias=False):
         ksize  = _pair(ksize)
         stride = _pair(stride)
         pad    = _pair(pad)
@@ -31,16 +28,33 @@ class Convolution2D(Function):
         self.W = numpy.random.normal(
             0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
             (out_channels, in_channels, self.kh, self.kw)).astype(numpy.float32)
-        self.b = numpy.repeat(numpy.float32(bias), out_channels)
         self.gW = numpy.empty_like(self.W)
-        self.gb = numpy.empty_like(self.b)
+
+        if nobias:
+            self.b  = None
+            self.gb = None
+        else:
+            self.b  = numpy.repeat(numpy.float32(bias), out_channels)
+            self.gb = numpy.empty_like(self.b)
+            self.bias_desc = cudnn.get_conv_bias_desc(self.b)
 
         self.filter_desc = cudnn.get_filter4d_desc(self.W)
         self.conv_desc = cudnn.get_conv2d_desc(pad, stride)
-        self.bias_desc = cudnn.get_conv_bias_desc(self.b)
 
         # chance to choose implicit-precomp-gemm algorithm
         self.max_workspace_size = in_channels * self.kh * self.kw * 4
+
+    @property
+    def parameter_names(self):
+        if self.b is None:
+            return 'W',
+        return 'W', 'b'
+
+    @property
+    def gradient_names(self):
+        if self.gb is None:
+            return 'gW',
+        return 'gW', 'gb'
 
     # TODO(beam2d): Implement CPU version.
 
@@ -69,10 +83,11 @@ class Convolution2D(Function):
             0, y_desc.value, cudnn.get_ptr(y))
 
         # TODO(beam2d): Support unshared bias
-        libcudnn.cudnnAddTensor(
-            handle, libcudnn.cudnnAddMode['CUDNN_ADD_SAME_C'],
-            1, self.bias_desc.value, cudnn.get_ptr(self.b),
-            1, y_desc.value, cudnn.get_ptr(y))
+        if self.b is not None:
+            libcudnn.cudnnAddTensor(
+                handle, libcudnn.cudnnAddMode['CUDNN_ADD_SAME_C'],
+                1, self.bias_desc.value, cudnn.get_ptr(self.b),
+                1, y_desc.value, cudnn.get_ptr(y))
 
         return y,
 
@@ -81,9 +96,11 @@ class Convolution2D(Function):
         x_desc  = cudnn.get_tensor_desc( x[0],  x[0].shape[2],  x[0].shape[3])
         gy_desc = cudnn.get_tensor_desc(gy[0], gy[0].shape[2], gy[0].shape[3])
 
-        libcudnn.cudnnConvolutionBackwardBias(
-            handle, 1, gy_desc.value, cudnn.get_ptr(gy[0]),
-            1, self.bias_desc.value, cudnn.get_ptr(self.gb))
+        if self.b is not None:
+            libcudnn.cudnnConvolutionBackwardBias(
+                handle, 1, gy_desc.value, cudnn.get_ptr(gy[0]),
+                1, self.bias_desc.value, cudnn.get_ptr(self.gb))
+
         libcudnn.cudnnConvolutionBackwardFilter(
             handle, 1, x_desc.value, cudnn.get_ptr(x[0]),
             gy_desc.value, cudnn.get_ptr(gy[0]), self.conv_desc.value,
