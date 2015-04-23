@@ -13,6 +13,7 @@ from sum        import sum
 from tanh       import tanh
 
 # Parameterized layers
+from batch_normalization import BatchNormalization
 from convolution_2d import Convolution2D
 from embed_id       import EmbedID
 from inception      import Inception
