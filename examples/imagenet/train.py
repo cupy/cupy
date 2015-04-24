@@ -159,7 +159,7 @@ def show_result():
                 train_cur_accuracy = 0
         else:
             val_count += val_batchsize
-            sys.stderr.write('\rval   {} batches ({} samples)'.format(val_count, val_count * val_batchsize))
+            sys.stderr.write('\rval   {} batches ({} samples)'.format(val_count / val_batchsize, val_count))
 
             val_loss += loss
             val_accuracy += accuracy
