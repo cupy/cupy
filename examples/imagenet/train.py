@@ -30,9 +30,9 @@ mean_image = pickle.load(open('mean.npy', 'rb'))
 
 # model
 model = FunctionSet(
-    conv1 = F.Convolution2D( 3,  64, 7, stride=2, pad=3),
+    conv1 = F.Convolution2D( 3,  64, 7, stride=2, pad=3, nobias=True),
     norm1 = F.BatchNormalization(64),
-    conv2 = F.Convolution2D(64, 192, 3, pad=1),
+    conv2 = F.Convolution2D(64, 192, 3, pad=1, nobias=True),
     norm2 = F.BatchNormalization(192),
     inc3a = InceptionBN( 192,  64,  64,  64,  64,  96, 'avg',  32),
     inc3b = InceptionBN( 256,  64,  64,  96,  64,  96, 'avg',  64),
@@ -44,30 +44,63 @@ model = FunctionSet(
     inc4e = InceptionBN( 576,   0, 128, 192, 192, 256, 'max', stride=2),
     inc5a = InceptionBN(1024, 352, 192, 320, 160, 224, 'avg', 128),
     inc5b = InceptionBN(1024, 352, 192, 320, 192, 224, 'max', 128),
-    out   = F.Linear(1024, 1024),
+    out   = F.Linear(1024, 1000),
+
+    conva  = F.Convolution2D(576, 64, 1, nobias=True),
+    norma  = F.BatchNormalization(64),
+    lina   = F.Linear(1024, 1024, nobias=True),
+    norma2 = F.BatchNormalization(1024),
+    outa   = F.Linear(1024, 1000),
+
+    convb  = F.Convolution2D(576, 64, 1, nobias=True),
+    normb  = F.BatchNormalization(64),
+    linb   = F.Linear(1024, 1024, nobias=True),
+    normb2 = F.BatchNormalization(1024),
+    outb   = F.Linear(1024, 1000),
 )
 
 # Architecture
 def forward(x_data, y_data, volatile=False):
     x = Variable(x_data, volatile=volatile)
     t = Variable(y_data, volatile=volatile)
+
     h1 = F.max_pooling_2d(F.relu(model.norm1(model.conv1(x))),  3, stride=2, pad=1)
     h2 = F.max_pooling_2d(F.relu(model.norm2(model.conv2(h1))), 3, stride=2, pad=1)
+
     h5  = model.inc3a(h2)
     h8  = model.inc3b(h5)
     h11 = model.inc3c(h8)
     h14 = model.inc4a(h11)
+
+    a14 = F.average_pooling_2d(h14, 5, stride=3)
+    a15 = F.relu(model.norma(model.conva(a14)))
+    a16 = F.relu(model.norma2(model.lina(a15)))
+    ya  = model.outa(a16)
+    la  = F.softmax_cross_entropy(ya, t)
+
     h17 = model.inc4b(h14)
     h20 = model.inc4c(h17)
     h23 = model.inc4d(h20)
+
+    b23 = F.average_pooling_2d(h23, 5, stride=3)
+    b24 = F.relu(model.normb(model.convb(b23)))
+    b25 = F.relu(model.normb2(model.linb(b24)))
+    yb  = model.outb(b25)
+    lb  = F.softmax_cross_entropy(yb, t)
+
     h26 = model.inc4e(h23)
     h29 = model.inc5a(h26)
     h32 = F.average_pooling_2d(model.inc5b(h29), 7)
     y   = model.out(h32)
-    return F.softmax_cross_entropy(y, t) / x_data.shape[0], F.accuracy(y, t)
+    l   = F.softmax_cross_entropy(y, t)
+
+    acc = F.accuracy(y, t)
+
+    L   = (la * 0.3 + lb * 0.3 + l) / x_data.shape[0]
+    return L, acc
 
 # Setup optimizer
-optimizer = O.MomentumSGD(lr=0.045, momentum=0.9)
+optimizer = O.MomentumSGD(lr=0.0075, momentum=0.9)
 
 # Learning loop
 trash_q  = Queue.Queue()
@@ -101,6 +134,7 @@ def train_loop():
                 continue
 
             if train:
+                optimizer.zero_grads()
                 loss, accuracy = forward(*batch)
                 loss.backward()
                 optimizer.update()
@@ -153,8 +187,10 @@ def show_result():
             if train_count % 1000 == 0:
                 mean_loss  = train_cur_loss / 1000
                 mean_error = 1 - train_cur_accuracy / 1000
+                print >> sys.stderr, ''
                 print json.dumps({'type': 'train', 'iteration': train_count,
                                   'error': mean_error, 'loss': mean_loss})
+                sys.stdout.flush()
                 train_cur_loss = 0
                 train_cur_accuracy = 0
         else:
@@ -166,8 +202,10 @@ def show_result():
             if val_count == 50000:
                 mean_loss  = val_loss * val_batchsize / 50000
                 mean_error = 1 - val_accuarcy * val_batchsize / 50000
+                print >> sys.stderr, ''
                 print json.dumps({'type': 'val', 'iteration': train_count,
                                   'error': mean_error, 'loss': mean_loss})
+                sys.stdout.flush()
 
         result_q.task_done()
 
@@ -229,6 +267,7 @@ def feed_data():
                     data_q.put((to_gpu(val_x_batch), to_gpu(val_y_batch)))
                     j = 0
                 trash()
+            data_q.put('train')
         trash()
 
 learner = threading.Thread(target=train_loop)
@@ -236,8 +275,10 @@ learner.start()
 shower  = threading.Thread(target=show_result)
 shower.start()
 
-for epoch in xrange(5):
+for epoch in xrange(6):
     print >> sys.stderr, 'epoch', epoch
     print >> sys.stderr, 'learning rate', optimizer.lr
     feed_data()
     optimizer.lr *= 0.97
+
+pickle.dump(model, open('model', 'wb'), -1)

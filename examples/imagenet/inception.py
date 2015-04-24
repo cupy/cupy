@@ -12,11 +12,11 @@ class InceptionBN(Function):
             assert proj_pool is not None
 
         self.f = FunctionSet(
-            proj3    = F.Convolution2D(in_channels,  proj3, 1),
-            conv3    = F.Convolution2D(      proj3,   out3, 3, pad=1, stride=stride),
-            proj33   = F.Convolution2D(in_channels, proj33, 1),
-            conv33a  = F.Convolution2D(     proj33,  out33, 3, pad=1),
-            conv33b  = F.Convolution2D(      out33,  out33, 3, pad=1, stride=stride),
+            proj3    = F.Convolution2D(in_channels,  proj3, 1, nobias=True),
+            conv3    = F.Convolution2D(      proj3,   out3, 3, pad=1, stride=stride, nobias=True),
+            proj33   = F.Convolution2D(in_channels, proj33, 1, nobias=True),
+            conv33a  = F.Convolution2D(     proj33,  out33, 3, pad=1, nobias=True),
+            conv33b  = F.Convolution2D(      out33,  out33, 3, pad=1, stride=stride, nobias=True),
             proj3n   = F.BatchNormalization(proj3),
             conv3n   = F.BatchNormalization(out3),
             proj33n  = F.BatchNormalization(proj33),
@@ -25,11 +25,11 @@ class InceptionBN(Function):
         )
 
         if out1 > 0:
-            self.f.conv1  = F.Convolution2D(in_channels, out1, 1, stride=stride)
+            self.f.conv1  = F.Convolution2D(in_channels, out1, 1, stride=stride, nobias=True)
             self.f.conv1n = F.BatchNormalization(out1)
 
         if proj_pool is not None:
-            self.f.poolp  = F.Convolution2D(in_channels, proj_pool, 1)
+            self.f.poolp  = F.Convolution2D(in_channels, proj_pool, 1, nobias=True)
             self.f.poolpn = F.BatchNormalization(proj_pool)
 
         if pooltype == 'max':
