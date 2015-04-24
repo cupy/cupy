@@ -41,13 +41,15 @@ class Linear(Function):
         return 'gW', 'gb'
 
     def forward_cpu(self, x):
-        Wx = x[0].dot(self.W.T)
+        x = x[0].reshape(x[0].shape[0], self.W.shape[1])
+        Wx = x.dot(self.W.T)
         if self.b is not None:
             Wx += self.b
         return Wx,
 
     def forward_gpu(self, x):
-        Wx = culinalg.dot(x[0], self.W, transb='T')
+        x = x[0].reshape(x[0].shape[0], self.W.shape[1])
+        Wx = culinalg.dot(x, self.W, transb='T')
         if self.b is not None:
             _add_bias_kernel()(Wx, self.b, self.b.size)
         return Wx,
@@ -56,10 +58,11 @@ class Linear(Function):
         self.gW += gy[0].T.dot(x[0])
         if self.gb is not None:
             self.gb += gy[0].sum(0)
-        return gy[0].dot(self.W),
+        return gy[0].dot(self.W).reshape(x[0].shape),
 
     def backward_gpu(self, x, gy):
-        culinalg.add_dot(gy[0], x[0], self.gW, transa='T')
+        _x = x[0].reshape(x[0].shape[0], self.W.shape[1])
+        culinalg.add_dot(gy[0], _x, self.gW, transa='T')
         if self.gb is not None:
             self.gb += cumisc.sum(gy[0], 0)
-        return culinalg.dot(gy[0], self.W),
+        return culinalg.dot(gy[0], self.W).reshape(x[0].shape),
