@@ -21,21 +21,22 @@ class FunctionSet(object):
 
     """
     def __init__(self, **functions):
-        self.functions = {}
+        object.__setattr__(self, 'functions', {})
         for name, func in functions.iteritems():
-            self[name] = func
+            setattr(self, name, func)
 
-    def __setitem__(self, name, func):
-        assert isinstance(func, Function)
-        self.functions[name] = func
-        setattr(self, name, func)
-
-    def __getitem__(self, name):
+    def __getattr__(self, name):
         return self.functions[name]
 
-    def __delitem__(self, name):
+    def __setattr__(self, name, value):
+        if name in ('parameters', 'gradients'):
+            object.__setattr__(self, name, value)
+        else:
+            assert isinstance(value, Function)
+            self.functions[name] = value
+
+    def __delattr__(self, name):
         del self.functions[name]
-        delattr(self, name)
 
     def collect_parameters(self):
         """Collect parameters and gradients."""
