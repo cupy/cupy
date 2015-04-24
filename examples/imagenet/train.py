@@ -64,7 +64,7 @@ def forward(x_data, y_data, volatile=False):
     h29 = model.inc5a(h26)
     h32 = F.average_pooling_2d(model.inc5b(h29), 7)
     y   = model.out(h32)
-    return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
+    return F.softmax_cross_entropy(y, t) / x_data.shape[0], F.accuracy(y, t)
 
 # Setup optimizer
 optimizer = O.MomentumSGD(lr=0.045, momentum=0.9)
@@ -118,6 +118,7 @@ def train_loop():
         cuda.Context.pop()
 
 batchsize = 32
+val_batchsize = 256
 
 # Show result
 def show_result():
@@ -157,14 +158,14 @@ def show_result():
                 train_cur_loss = 0
                 train_cur_accuracy = 0
         else:
-            val_count += 1
-            sys.stderr.write('\rval   {}'.format(val_count))
+            val_count += val_batchsize
+            sys.stderr.write('\rval   {} batches ({} samples)'.format(val_count, val_count * val_batchsize))
 
             val_loss += loss
             val_accuracy += accuracy
             if val_count == 50000:
-                mean_loss  = val_loss / 50000
-                mean_error = 1 - val_accuarcy / 50000
+                mean_loss  = val_loss * val_batchsize / 50000
+                mean_error = 1 - val_accuarcy * val_batchsize / 50000
                 print json.dumps({'type': 'val', 'iteration': train_count,
                                   'error': mean_error, 'loss': mean_loss})
 
@@ -185,12 +186,19 @@ def read_image(path, center=False):
     image /= 255
     return image
 
+def trash():
+    while True:
+        try:
+            trash_q.get_nowait()
+            trash_q.task_done()
+        except:
+            break
+
 # data feeder
 x_batch = np.ndarray((batchsize, 3, 224, 224), dtype=np.float32)
 y_batch = np.ndarray((batchsize,), dtype=np.int32)
-val_batchsize = 128
-val_x_batch = np.ndarray((batchsize, 3, 224, 224), dtype=np.float32)
-val_y_batch = np.ndarray((batchsize,), dtype=np.int32)
+val_x_batch = np.ndarray((val_batchsize, 3, 224, 224), dtype=np.float32)
+val_y_batch = np.ndarray((val_batchsize,), dtype=np.int32)
 def feed_data():
     perm = np.random.permutation(len(train_list))
     data_q.put('train')
@@ -208,23 +216,20 @@ def feed_data():
 
         count += 1
         if count % 10000 == 0:
+            data_q.join()
+            trash()
             data_q.put('val')
             j = 0
             for path, label in val_list:
-                val_x_batch[i] = read_image(path, center=True)
-                val_y_batch[i] = label
+                val_x_batch[j] = read_image(path, center=True)
+                val_y_batch[j] = label
                 j += 1
 
                 if j == val_batchsize:
                     data_q.put((to_gpu(val_x_batch), to_gpu(val_y_batch)))
                     j = 0
-        # trash batches as much as possible
-        while True:
-            try:
-                trash_q.get_nowait()
-                trash_q.task_done()
-            except:
-                break
+                trash()
+        trash()
 
 learner = threading.Thread(target=train_loop)
 learner.start()
