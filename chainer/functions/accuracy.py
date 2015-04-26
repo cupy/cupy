@@ -7,6 +7,7 @@ class Accuracy(Function):
 
     def forward_cpu(self, inputs):
         y, t = inputs
+        y = y.reshape(y.shape[0], y.size / y.shape[0])  # flatten
         pred = y.argmax(axis=1)
         return (pred == t).mean(dtype=numpy.float32),
 
