@@ -34,7 +34,7 @@ class TestLinear(TestCase):
         x = Variable(x_data)
         y = self.func(x)
         y_expect = self.x.dot(self.W.T) + self.b
-        assert_allclose(y_expect, y.data, atol=1e-7, rtol=1e-7)
+        assert_allclose(y_expect, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
