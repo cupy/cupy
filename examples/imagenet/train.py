@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import json, cPickle as pickle, Queue, random, sys, threading
+import argparse, json, math, cPickle as pickle, Queue, random, sys, threading
 import cv2, numpy as np
 from pycuda.gpuarray import to_gpu
 from chainer import Variable, FunctionSet
@@ -7,6 +7,19 @@ import chainer.functions as F
 import chainer.optimizers as O
 
 from inception import InceptionBN
+
+parser = argparse.ArgumentParser(description='Learning convnet from ILSVRC2012 dataset')
+parser.add_argument('--arch', '-a', default='inceptionbn',
+                    help='convnet architecture (nin, inceptionbn)')
+parser.add_argument('--batchsize', '-B', type=int, default=32,
+                    help='learning batchsize')
+parser.add_argument('--val_batchsize', '-b', type=int, default=250,
+                    help='validation batchsize (must be divide 50000)')
+args = parser.parse_args()
+
+batchsize = args.batchsize
+val_batchsize = args.val_batchsize
+assert 50000 % val_batchsize == 0
 
 def indicate(i, n):
     sys.stderr.write('\r{} / {}'.format(i, n))
@@ -26,18 +39,21 @@ val_list   = load_image_list(val_path)
 
 mean_image = pickle.load(open('mean.npy', 'rb'))
 
-batchsize = 32
-val_batchsize = 250
+if args.arch == 'inceptionbn':
+    insize = 224
+elif args.arch == 'nin':
+    insize = 227
+cropwidth = 256 - insize
 
 def read_image(path, center=False):
     image = cv2.imread(path)
     if center:
-        top = left = 16
+        top = left = cropwidth / 2
     else:
-        top  = random.randint(0, 31)
-        left = random.randint(0, 31)
-    bottom = 256 - (32 - top)
-    right  = 256 - (32 - left)
+        top  = random.randint(0, cropwidth - 1)
+        left = random.randint(0, cropwidth - 1)
+    bottom = 256 - (cropwidth - top)
+    right  = 256 - (cropwidth - left)
 
     image = image[top:bottom, left:right, [2, 1, 0]].transpose(2, 0, 1).astype(np.float32)
     image -= mean_image[:, top:bottom, left:right]
@@ -50,9 +66,9 @@ res_q  = Queue.Queue()
 
 # data feeder
 n_epoch = 6
-x_batch = np.ndarray((batchsize, 3, 224, 224), dtype=np.float32)
+x_batch = np.ndarray((batchsize, 3, insize, insize), dtype=np.float32)
 y_batch = np.ndarray((batchsize,), dtype=np.int32)
-val_x_batch = np.ndarray((val_batchsize, 3, 224, 224), dtype=np.float32)
+val_x_batch = np.ndarray((val_batchsize, 3, insize, insize), dtype=np.float32)
 val_y_batch = np.ndarray((val_batchsize,), dtype=np.int32)
 def feed_data():
     for epoch in xrange(1, 1 + n_epoch):
@@ -139,35 +155,55 @@ def log_result():
                 sys.stdout.flush()
 
 # model
-model = FunctionSet(
-    conv1 = F.Convolution2D( 3,  64, 7, stride=2, pad=3, nobias=True),
-    norm1 = F.BatchNormalization(64),
-    conv2 = F.Convolution2D(64, 192, 3, pad=1, nobias=True),
-    norm2 = F.BatchNormalization(192),
-    inc3a = InceptionBN( 192,  64,  64,  64,  64,  96, 'avg',  32),
-    inc3b = InceptionBN( 256,  64,  64,  96,  64,  96, 'avg',  64),
-    inc3c = InceptionBN( 320,   0, 128, 160,  64,  96, 'max', stride=2),
-    inc4a = InceptionBN( 576, 224,  64,  96,  96, 128, 'avg', 128),
-    inc4b = InceptionBN( 576, 192,  96, 128,  96, 128, 'avg', 128),
-    inc4c = InceptionBN( 576, 128, 128, 160, 128, 160, 'avg', 128),
-    inc4d = InceptionBN( 576,  64, 128, 192, 160, 192, 'avg', 128),
-    inc4e = InceptionBN( 576,   0, 128, 192, 192, 256, 'max', stride=2),
-    inc5a = InceptionBN(1024, 352, 192, 320, 160, 224, 'avg', 128),
-    inc5b = InceptionBN(1024, 352, 192, 320, 192, 224, 'max', 128),
-    out   = F.Linear(1024, 1000),
+if args.arch == 'inceptionbn':
+    model = FunctionSet(
+        conv1 = F.Convolution2D( 3,  64, 7, stride=2, pad=3, nobias=True),
+        norm1 = F.BatchNormalization(64),
+        conv2 = F.Convolution2D(64, 192, 3, pad=1, nobias=True),
+        norm2 = F.BatchNormalization(192),
+        inc3a = InceptionBN( 192,  64,  64,  64,  64,  96, 'avg',  32),
+        inc3b = InceptionBN( 256,  64,  64,  96,  64,  96, 'avg',  64),
+        inc3c = InceptionBN( 320,   0, 128, 160,  64,  96, 'max', stride=2),
+        inc4a = InceptionBN( 576, 224,  64,  96,  96, 128, 'avg', 128),
+        inc4b = InceptionBN( 576, 192,  96, 128,  96, 128, 'avg', 128),
+        inc4c = InceptionBN( 576, 128, 128, 160, 128, 160, 'avg', 128),
+        inc4d = InceptionBN( 576,  64, 128, 192, 160, 192, 'avg', 128),
+        inc4e = InceptionBN( 576,   0, 128, 192, 192, 256, 'max', stride=2),
+        inc5a = InceptionBN(1024, 352, 192, 320, 160, 224, 'avg', 128),
+        inc5b = InceptionBN(1024, 352, 192, 320, 192, 224, 'max', 128),
+        out   = F.Linear(1024, 1000),
 
-    conva  = F.Convolution2D(576, 64, 1, nobias=True),
-    norma  = F.BatchNormalization(64),
-    lina   = F.Linear(1024, 1024, nobias=True),
-    norma2 = F.BatchNormalization(1024),
-    outa   = F.Linear(1024, 1000),
+        conva  = F.Convolution2D(576, 128, 1, nobias=True),
+        norma  = F.BatchNormalization(128),
+        lina   = F.Linear(2048, 1024, nobias=True),
+        norma2 = F.BatchNormalization(1024),
+        outa   = F.Linear(1024, 1000),
 
-    convb  = F.Convolution2D(576, 64, 1, nobias=True),
-    normb  = F.BatchNormalization(64),
-    linb   = F.Linear(1024, 1024, nobias=True),
-    normb2 = F.BatchNormalization(1024),
-    outb   = F.Linear(1024, 1000),
-)
+        convb  = F.Convolution2D(576, 128, 1, nobias=True),
+        normb  = F.BatchNormalization(128),
+        linb   = F.Linear(2048, 1024, nobias=True),
+        normb2 = F.BatchNormalization(1024),
+        outb   = F.Linear(1024, 1000),
+    )
+elif args.arch == 'nin':
+    w = math.sqrt(2)  # MSRA scaling
+    model = FunctionSet(
+        conv1  = F.Convolution2D(   3,   96, 11, wscale=w, stride=4),
+        conv1a = F.Convolution2D(  96,   96,  1, wscale=w),
+        conv1b = F.Convolution2D(  96,   96,  1, wscale=w),
+        conv2  = F.Convolution2D(  96,  256,  5, wscale=w, pad=2),
+        conv2a = F.Convolution2D( 256,  256,  1, wscale=w),
+        conv2b = F.Convolution2D( 256,  256,  1, wscale=w),
+        conv3  = F.Convolution2D( 256,  384,  3, wscale=w, pad=1),
+        conv3a = F.Convolution2D( 384,  384,  1, wscale=w),
+        conv3b = F.Convolution2D( 384,  384,  1, wscale=w),
+        conv4  = F.Convolution2D( 384, 1024,  3, wscale=w, pad=1),
+        conv4a = F.Convolution2D(1024, 1024,  1, wscale=w),
+        conv4b = F.Convolution2D(1024, 1000,  1, wscale=w),
+    )
+else:
+    raise NotImplementedError()
+
 model.to_gpu()
 
 # Architecture
@@ -175,43 +211,64 @@ def forward(x_data, y_data, volatile=False):
     x = Variable(x_data, volatile=volatile)
     t = Variable(y_data, volatile=volatile)
 
-    h1 = F.max_pooling_2d(F.relu(model.norm1(model.conv1(x))),  3, stride=2, pad=1)
-    h2 = F.max_pooling_2d(F.relu(model.norm2(model.conv2(h1))), 3, stride=2, pad=1)
+    if args.arch == 'inceptionbn':
+        h = F.max_pooling_2d(F.relu(model.norm1(model.conv1(x))),  3, stride=2, pad=1)
+        h = F.max_pooling_2d(F.relu(model.norm2(model.conv2(h))), 3, stride=2, pad=1)
 
-    h5  = model.inc3a(h2)
-    h8  = model.inc3b(h5)
-    h11 = model.inc3c(h8)
-    h14 = model.inc4a(h11)
+        h = model.inc3a(h)
+        h = model.inc3b(h)
+        h = model.inc3c(h)
+        h = model.inc4a(h)
 
-    a14 = F.average_pooling_2d(h14, 5, stride=3)
-    a15 = F.relu(model.norma(model.conva(a14)))
-    a16 = F.relu(model.norma2(model.lina(a15)))
-    ya  = model.outa(a16)
-    la  = F.softmax_cross_entropy(ya, t)
+        a = F.average_pooling_2d(h, 5, stride=3)
+        a = F.relu(model.norma(model.conva(a)))
+        a = F.relu(model.norma2(model.lina(a)))
+        a = model.outa(a)
+        a = F.softmax_cross_entropy(a, t)
 
-    h17 = model.inc4b(h14)
-    h20 = model.inc4c(h17)
-    h23 = model.inc4d(h20)
+        h = model.inc4b(h)
+        h = model.inc4c(h)
+        h = model.inc4d(h)
 
-    b23 = F.average_pooling_2d(h23, 5, stride=3)
-    b24 = F.relu(model.normb(model.convb(b23)))
-    b25 = F.relu(model.normb2(model.linb(b24)))
-    yb  = model.outb(b25)
-    lb  = F.softmax_cross_entropy(yb, t)
+        b = F.average_pooling_2d(h, 5, stride=3)
+        b = F.relu(model.normb(model.convb(b)))
+        b = F.relu(model.normb2(model.linb(b)))
+        b = model.outb(b)
+        b = F.softmax_cross_entropy(b, t)
 
-    h26 = model.inc4e(h23)
-    h29 = model.inc5a(h26)
-    h32 = F.average_pooling_2d(model.inc5b(h29), 7)
-    y   = model.out(h32)
-    l   = F.softmax_cross_entropy(y, t)
+        h = model.inc4e(h)
+        h = model.inc5a(h)
+        h = F.average_pooling_2d(model.inc5b(h), 7)
+        h = model.out(h)
+        l = F.softmax_cross_entropy(h, t)
+        acc = F.accuracy(h, t)
+        L   = (a * 0.3 + b * 0.3 + l) / x_data.shape[0]
+    elif args.arch == 'nin':
+        h = F.relu(model.conv1(x))
+        h = F.relu(model.conv1a(h))
+        h = F.relu(model.conv1b(h))
+        h = F.max_pooling_2d(h, 3, stride=2)
+        h = F.relu(model.conv2(h))
+        h = F.relu(model.conv2a(h))
+        h = F.relu(model.conv2b(h))
+        h = F.max_pooling_2d(h, 3, stride=2)
+        h = F.relu(model.conv3(h))
+        h = F.relu(model.conv3a(h))
+        h = F.relu(model.conv3b(h))
+        h = F.max_pooling_2d(h, 3, stride=2)
+        h = F.dropout(h, train=not volatile)
+        h = F.relu(model.conv4(h))
+        h = F.relu(model.conv4a(h))
+        h = F.relu(model.conv4b(h))
+        h = F.average_pooling_2d(h, 6)
+        l = F.softmax_cross_entropy(h, t)
+        acc = F.accuracy(h, t)
+        L = l / x_data.shape[0]
 
-    acc = F.accuracy(y, t)
-
-    L   = (la * 0.3 + lb * 0.3 + l) / x_data.shape[0]
     return L, acc
 
 # Setup optimizer
-optimizer = O.MomentumSGD(lr=0.0075, momentum=0.9)
+optimizer = O.MomentumSGD(lr=0.01, momentum=0.9)
 optimizer.setup(model.collect_parameters())
 
 # Main loop
