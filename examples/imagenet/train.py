@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import argparse, json, math, cPickle as pickle, Queue, random, sys, threading
 import cv2, numpy as np
-from pycuda.gpuarray import to_gpu
-from chainer import Variable, FunctionSet
+from chainer      import cuda, Variable, FunctionSet
+from chainer.cuda import to_gpu
 import chainer.functions as F
 import chainer.optimizers as O
 
@@ -153,6 +153,8 @@ def log_result():
                 print json.dumps({'type': 'val', 'iteration': train_count,
                                   'error': mean_error, 'loss': mean_loss})
                 sys.stdout.flush()
+
+cuda.init()
 
 # model
 if args.arch == 'inceptionbn':
