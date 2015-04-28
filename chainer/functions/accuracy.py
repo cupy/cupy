@@ -1,6 +1,5 @@
 import numpy
-from pycuda import gpuarray
-from chainer import Function
+from chainer import cuda, Function
 
 class Accuracy(Function):
     """Compute accuracy within minibatch."""
@@ -15,7 +14,7 @@ class Accuracy(Function):
         # Fallback to CPU
         # TODO(beam2d): Pure GPU version
         accuracy, = self.forward_cpu((a.get() for a in inputs))
-        return gpuarray.to_gpu(numpy.array(accuracy)),
+        return cuda.to_gpu_async(numpy.array(accuracy)),
 
 
 def accuracy(y, t):

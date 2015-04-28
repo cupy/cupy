@@ -1,11 +1,11 @@
 from unittest import TestCase
-
 import numpy
-from pycuda.gpuarray import to_gpu, GPUArray
-
-from chainer import Variable
+from chainer      import cuda, Variable
+from chainer.cuda import to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import average_pooling_2d, max_pooling_2d
+
+cuda.init()
 
 class TestMaxPooling2D(TestCase):
     def setUp(self):

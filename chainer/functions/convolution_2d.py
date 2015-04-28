@@ -1,8 +1,7 @@
 import math
 import libcudnn
 import numpy
-from pycuda import gpuarray
-from chainer import Function, cudnn
+from chainer import cuda, cudnn, Function
 
 def _pair(x):
     if hasattr(x, '__getitem__'):
@@ -64,7 +63,7 @@ class Convolution2D(Function):
 
         out_shape = libcudnn.cudnnGetConvolution2dForwardOutputDim(
             self.conv_desc.value, x_desc.value, self.filter_desc.value)
-        y = gpuarray.empty(out_shape, dtype=numpy.float32)
+        y = cuda.empty(out_shape, dtype=numpy.float32)
         y_desc = cudnn.get_tensor_desc(y, y.shape[2], y.shape[3])
 
         algo = libcudnn.cudnnGetConvolutionForwardAlgorithm(
@@ -73,7 +72,7 @@ class Convolution2D(Function):
         workspace_size = libcudnn.cudnnGetConvolutionForwardWorkspaceSize(
             handle, x_desc.value, self.filter_desc.value, self.conv_desc.value,
             y_desc.value, algo).value
-        workspace = gpuarray.empty(
+        workspace = cuda.empty(
             (max(workspace_size / 4, 1),), dtype=numpy.float32)
 
         libcudnn.cudnnConvolutionForward(
@@ -106,7 +105,7 @@ class Convolution2D(Function):
             gy_desc.value, cudnn.get_ptr(gy[0]), self.conv_desc.value,
             1, self.filter_desc.value, cudnn.get_ptr(self.gW))
 
-        gx = gpuarray.empty_like(x[0])
+        gx = cuda.empty_like(x[0])
         libcudnn.cudnnConvolutionBackwardData(
             handle, 1, self.filter_desc.value, cudnn.get_ptr(self.W),
             gy_desc.value, cudnn.get_ptr(gy[0]), self.conv_desc.value,

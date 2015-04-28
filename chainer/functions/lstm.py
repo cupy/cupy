@@ -1,8 +1,5 @@
 import numpy
-from pycuda.elementwise import ElementwiseKernel
-from pycuda import gpuarray
-from pytools import memoize
-from chainer import Function
+from chainer import cuda, Function
 
 def _extract_gates(x):
     r = x.reshape((x.shape[0], x.shape[1] / 4, 4) + x.shape[2:])
@@ -31,46 +28,6 @@ __device__ float grad_tanh(float y)    { return 1 - y * y; }
     float af = sigmoid(x_i[2*rsize + J]); \
     float ao = sigmoid(x_i[3*rsize + J]);
 '''
-
-@memoize
-def _forward_kernel():
-    return ElementwiseKernel(
-        '''
-          float* c, float* h, const float* c_prev, const float* x,
-          int lsize, int rsize
-        ''', '''
-          COMMON_ROUTINE;
-          c[i] = aa * ai + af * c_prev[i];
-          h[i] = ao * tanhf(c[i]);
-        ''', preamble=_preamble)
-
-@memoize
-def _backward_kernel():
-    return ElementwiseKernel(
-        '''
-          float* gc_prev, float* gx, const float* c_prev, const float* x,
-          const float* c, const float* gc, const float* gh, int lsize, int rsize
-        ''', '''
-          COMMON_ROUTINE;
-          float* gx_i = gx + I * 4 * rsize;
-          float& ga = gx_i[          J];
-          float& gi = gx_i[  rsize + J];
-          float& gf = gx_i[2*rsize + J];
-          float& go = gx_i[3*rsize + J];
-
-          float co  = tanhf(c[i]);
-          // Odd rule: if gh == c [gc == c] then gh [gc] is not given, since we
-          // cannot pass null pointer to the kernel through PyCUDA.
-          float gc1 = (gh == c ? 0 : gh[i] * ao * grad_tanh(co))
-                    + (gc == c ? 0 : gc[i]);
-          go        =  gh == c ? 0 : gh[i] * co * grad_sigmoid(ao);
-
-          gc_prev[i] = gc1 * af;
-          ga         = gc1 * ai        * grad_tanh(aa);
-          gi         = gc1 * aa        * grad_sigmoid(ai);
-          gf         = gc1 * c_prev[i] * grad_sigmoid(af);
-        ''', preamble=_preamble)
-
 
 class LSTM(Function):
     """Long short-term memory unit with forget gate.
@@ -120,9 +77,15 @@ class LSTM(Function):
         lsize = c_prev.shape[0] * c_prev.shape[1]
         rsize = c_prev.size / lsize
 
-        self.c = gpuarray.empty_like(c_prev)
-        h      = gpuarray.empty_like(c_prev)
-        _forward_kernel()(self.c, h, c_prev, x, lsize, rsize)
+        self.c = cuda.empty_like(c_prev)
+        h      = cuda.empty_like(c_prev)
+        cuda.elementwise(
+            '''float* c, float* h, const float* c_prev, const float* x,
+               int lsize, int rsize''',
+            '''COMMON_ROUTINE;
+               c[i] = aa * ai + af * c_prev[i];
+               h[i] = ao * tanhf(c[i]);''',
+            'lstm_fwd', preamble=_preamble)(self.c, h, c_prev, x, lsize, rsize)
 
         return self.c, h
 
@@ -136,9 +99,31 @@ class LSTM(Function):
         if gc is None: gc = self.c
         if gh is None: gh = self.c
 
-        gc_prev = gpuarray.empty_like(c_prev)
-        gx      = gpuarray.empty_like(x)
-        _backward_kernel()(gc_prev, gx, c_prev, x, self.c, gc, gh, lsize, rsize)
+        gc_prev = cuda.empty_like(c_prev)
+        gx      = cuda.empty_like(x)
+        cuda.elementwise(
+            '''float* gc_prev, float* gx, const float* c_prev, const float* x,
+               const float* c, const float* gc, const float* gh, int lsize, int rsize''',
+            '''COMMON_ROUTINE;
+               float* gx_i = gx + I * 4 * rsize;
+               float& ga = gx_i[          J];
+               float& gi = gx_i[  rsize + J];
+               float& gf = gx_i[2*rsize + J];
+               float& go = gx_i[3*rsize + J];
+
+               float co  = tanhf(c[i]);
+               // Odd rule: if gh == c [gc == c] then gh [gc] is not given, since we
+               // cannot pass null pointer to the kernel through PyCUDA.
+               float gc1 = (gh == c ? 0 : gh[i] * ao * grad_tanh(co))
+                         + (gc == c ? 0 : gc[i]);
+               go        =  gh == c ? 0 : gh[i] * co * grad_sigmoid(ao);
+
+               gc_prev[i] = gc1 * af;
+               ga         = gc1 * ai        * grad_tanh(aa);
+               gi         = gc1 * aa        * grad_sigmoid(ai);
+               gf         = gc1 * c_prev[i] * grad_sigmoid(af);''',
+            'lstm_bwd', preamble=_preamble)(
+                gc_prev, gx, c_prev, x, self.c, gc, gh, lsize, rsize)
 
         return gc_prev, gx
 

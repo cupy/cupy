@@ -1,6 +1,6 @@
 """Common routines to use CuDNN."""
 
-import ctypes
+import atexit, ctypes, os
 import libcudnn
 import numpy
 
@@ -19,14 +19,33 @@ class Auto(object):
         except:
             pass
 
-_default_handle = None
+_handle = None
+_pid    = None
 
 def get_default_handle():
     """Get the default handle of CuDNN."""
-    global _default_handle
-    if _default_handle is None:
-        _default_handle = Auto(libcudnn.cudnnCreate(), libcudnn.cudnnDestroy)
-    return _default_handle.value
+
+    global _handle, _pid
+    pid = os.getpid()
+    if _pid == pid:  # already initialized
+        return _handle
+
+    _handle = libcudnn.cudnnCreate()
+    atexit.register(shutdown)
+
+    _pid = pid  # mark as initialized
+    return _handle
+
+def shutdown():
+    global _handle, _pid
+
+    pid = os.getpid()
+    if _pid != pid:  # not initialized
+        return
+
+    libcudnn.cudnnDestroy(_handle)
+    _handle = None
+    _pid    = None  # mark as uninitialized
 
 _dtypes = {numpy.dtype('float32'): libcudnn.cudnnDataType['CUDNN_DATA_FLOAT'],
            numpy.dtype('float64'): libcudnn.cudnnDataType['CUDNN_DATA_DOUBLE']}

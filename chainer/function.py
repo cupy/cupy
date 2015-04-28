@@ -1,12 +1,11 @@
-import copy
-import weakref
+import copy, weakref
 import numpy
-from pycuda.gpuarray import GPUArray
 
+import cuda
 from variable import Variable
 
 def _is_gpu_input(inputs):
-    return any(type(x) == GPUArray for x in inputs)
+    return any(type(x) == cuda.GPUArray for x in inputs)
 
 class Function(object):
     """Function node.
@@ -168,7 +167,10 @@ class Split(Function):
                     gx = gy  # no copy
                 else:
                     # TODO(beam2d): Add fast (no copy) option
-                    gx = gy.copy()
+                    if isinstance(gy, cuda.GPUArray):
+                        gx = cuda.copy(gy)
+                    else:
+                        gx = gy.copy()
             else:
                 gx += gy
         return (gx,)

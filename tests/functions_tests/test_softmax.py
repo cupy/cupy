@@ -1,11 +1,11 @@
 from unittest import TestCase
-
 import numpy
-from pycuda.gpuarray import to_gpu
-
-from chainer import Variable
+from chainer      import cuda, Variable
+from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import softmax
+
+cuda.init()
 
 class TestSoftmax(TestCase):
     def setUp(self):

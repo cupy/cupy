@@ -1,6 +1,7 @@
 import numpy
 import pycuda.cumath as cumath
-from pycuda import gpuarray
+
+import cuda
 
 def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
     grads = tuple(numpy.zeros_like(x) for x in inputs)
@@ -23,7 +24,7 @@ def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
     return grads
 
 def numerical_grad_gpu(f, inputs, grad_outputs, eps=1e-3):
-    grads = tuple(gpuarray.zeros_like(x) for x in inputs)
+    grads = tuple(cuda.zeros_like(x) for x in inputs)
     for x, gx in zip(inputs, grads):
         x  = x.ravel()
         gx = gx.ravel()
@@ -54,14 +55,14 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     This function is used to implement gradient check.
 
     """
-    if any(type(x) == gpuarray.GPUArray for x in inputs):
+    if any(isinstance(x, cuda.GPUArray) for x in inputs):
         return numerical_grad_gpu(f, inputs, grad_outputs, eps)
     return numerical_grad_cpu(f, inputs, grad_outputs, eps)
 
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
     """Assert if some corresponding element of x and y differs too match."""
-    if type(x) == gpuarray.GPUArray:
+    if isinstance(x, cuda.GPUArray):
         x = x.get()
-    if type(y) == gpuarray.GPUArray:
+    if isinstance(y, cuda.GPUArray):
         y = y.get()
     numpy.testing.assert_allclose(x, y, atol=atol, rtol=rtol, verbose=verbose)

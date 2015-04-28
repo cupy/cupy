@@ -1,8 +1,7 @@
 import ctypes
 import libcudnn
 import numpy
-from pycuda import gpuarray
-from chainer import Function, cudnn
+from chainer import cuda, cudnn, Function
 
 _algorithm = libcudnn.cudnnSoftmaxAlgorithm['CUDNN_SOFTMAX_ACCURATE']
 _mode      = libcudnn.cudnnSoftmaxMode['CUDNN_SOFTMAX_MODE_INSTANCE']
@@ -20,7 +19,7 @@ class Softmax(Function):
     def forward_gpu(self, x):
         handle = cudnn.get_default_handle()
         desc = cudnn.get_tensor_desc(x[0], 1, 1)
-        self.y = gpuarray.empty_like(x[0])
+        self.y = cuda.empty_like(x[0])
         libcudnn.cudnnSoftmaxForward(
             handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(x[0]),
             0, desc.value, cudnn.get_ptr(self.y))
@@ -35,7 +34,7 @@ class Softmax(Function):
     def backward_gpu(self, x, gy):
         handle = cudnn.get_default_handle()
         desc = cudnn.get_tensor_desc(x[0], 1, 1)
-        gx = gpuarray.empty_like(x[0])
+        gx = cuda.empty_like(x[0])
         libcudnn.cudnnSoftmaxBackward(
             handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(self.y),
             desc.value, cudnn.get_ptr(gy[0]), 0, desc.value, cudnn.get_ptr(gx))

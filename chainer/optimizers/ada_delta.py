@@ -1,21 +1,5 @@
 import numpy
-from pycuda import gpuarray
-from pycuda.elementwise import ElementwiseKernel
-from pytools import memoize
-from chainer import Optimizer
-
-@memoize
-def _update_kernel():
-    return ElementwiseKernel(
-        '''
-          float* param, const float* grad, float* msg, float* msdx,
-          float rho, float eps
-        ''', '''
-          msg[i]   = rho * msg[i]  + (1 - rho) * grad[i] * grad[i];
-          float dx = - sqrtf((msdx + eps) / (msg + eps)) * grad[i];
-          msdx[i]  = rho * msdx[i] + (1 - rho) * dx * dx;
-          param[i] += dx;
-        ''')
+from chainer import cuda, Optimizer
 
 class AdaDelta(Optimizer):
     """Zeiler's ADADELTA.
@@ -31,7 +15,7 @@ class AdaDelta(Optimizer):
         return numpy.zeros_like(param), numpy.zeros_like(param)
 
     def init_state_gpu(self, param, grad):
-        return gpuarray.zeros_like(param), gpuarray.zeros_like(param)
+        return cuda.zeros_like(param), cuda.zeros_like(param)
 
     def update_one_cpu(self, param, grad, state):
         msg, msdx = state
@@ -43,4 +27,11 @@ class AdaDelta(Optimizer):
         param += dx
 
     def update_one_gpu(self, param, grad, ms):
-        _update_kernel()(param, grad, msg, msdx, self.rho, self.eps)
+        cuda.elementwise(
+            '''float* param, const float* grad, float* msg, float* msdx,
+               float rho, float eps''',
+            '''msg[i]   = rho * msg[i]  + (1 - rho) * grad[i] * grad[i];
+               float dx = - sqrtf((msdx + eps) / (msg + eps)) * grad[i];
+               msdx[i]  = rho * msdx[i] + (1 - rho) * dx * dx;
+               param[i] += dx;''',
+            'adadelta')(param, grad, msg, msdx, self.rho, self.eps)

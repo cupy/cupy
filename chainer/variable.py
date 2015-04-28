@@ -1,4 +1,7 @@
 import heapq
+import numpy
+
+import cuda
 
 class Variable(object):
     """Variable node."""
@@ -31,7 +34,10 @@ class Variable(object):
 
         # Initilize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
-            self.grad = self.data.copy()
+            if isinstance(self.data, cuda.GPUArray):
+                self.grad = cuda.empty_like(self.data)
+            else:
+                self.grad = numpy.empty_like(self.data)
             self.grad.fill(1)
 
         def add_cand(cand):

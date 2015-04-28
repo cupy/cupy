@@ -1,9 +1,4 @@
-def _init():
-    import pycuda.autoinit
-    import scikits.cuda.linalg as culinalg
-    culinalg.init()
-_init()
-
+import cuda
 from variable     import Variable
 from function     import Function
 from function_set import FunctionSet

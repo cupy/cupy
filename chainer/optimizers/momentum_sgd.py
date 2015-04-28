@@ -1,18 +1,5 @@
 import numpy
-from pycuda import gpuarray
-from pycuda.elementwise import ElementwiseKernel
-from pytools import memoize
-
-from chainer import Optimizer
-
-@memoize
-def _update_kernel():
-    return ElementwiseKernel(
-        'float* param, const float* grad, float* v, float lr, float momentum',
-        '''
-          v[i] = momentum * v[i] - lr * grad[i];
-          param[i] += v[i];
-        ''')
+from chainer import cuda, Optimizer
 
 class MomentumSGD(Optimizer):
     """Classical momentum SGD."""
@@ -25,7 +12,7 @@ class MomentumSGD(Optimizer):
         return numpy.zeros_like(param)
 
     def init_state_gpu(self, param, grad):
-        return gpuarray.zeros_like(param)
+        return cuda.zeros_like(param)
 
     def update_one_cpu(self, param, grad, v):
         v *= self.momentum
@@ -33,4 +20,8 @@ class MomentumSGD(Optimizer):
         param += v
 
     def update_one_gpu(self, param, grad, v):
-        _update_kernel()(param, grad, v, self.lr, self.momentum)
+        cuda.elementwise(
+            'float* param, const float* grad, float* v, float lr, float momentum',
+            '''v[i] = momentum * v[i] - lr * grad[i];
+               param[i] += v[i];''',
+            'momentum_sgd')(param, grad, v, self.lr, self.momentum)

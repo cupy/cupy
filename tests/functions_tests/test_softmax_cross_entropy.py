@@ -1,12 +1,12 @@
 from unittest import TestCase
-
 import math
 import numpy
-from pycuda.gpuarray import to_gpu, GPUArray
-
-from chainer import Variable
+from chainer      import cuda, Variable
+from chainer.cuda import to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import softmax_cross_entropy
+
+cuda.init()
 
 class TestSoftmaxCrossEntropy(TestCase):
     def setUp(self):

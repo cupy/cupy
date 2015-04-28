@@ -1,10 +1,10 @@
 from unittest import TestCase
-
 import numpy
-from pycuda.gpuarray import to_gpu
-
-from chainer import Variable
+from chainer      import cuda, Variable
+from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
+
+cuda.init()
 
 class TestBinaryOp(TestCase):
     def setUp(self):

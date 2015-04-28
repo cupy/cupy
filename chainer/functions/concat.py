@@ -1,8 +1,5 @@
 import numpy
-from pycuda import gpuarray
-from pycuda.elementwise import ElementwiseKernel
-from pytools import memoize
-from chainer import Function
+from chainer import cuda, Function
 
 _args = 'const float* x, float* y, int cdimx, int cdimy, int rdim, int coffset'
 _preamble = '''
@@ -13,14 +10,6 @@ _preamble = '''
     int idx = r + rdim * (c + cdimy * l);  \
     statement;
 '''
-
-@memoize
-def _copy_x_to_y_kernel():
-    return ElementwiseKernel(_args, 'COPY(y[idx] = x[i])', preamble=_preamble)
-
-@memoize
-def _copy_y_to_x_kernel():
-    return ElementwiseKernel(_args, 'COPY(x[i] = y[idx])', preamble=_preamble)
 
 class Concat(Function):
     """Concatenate multiple tensors towards specified axis."""
@@ -38,12 +27,13 @@ class Concat(Function):
             shape[self.axis] += x.shape[self.axis]
         self.shape = shape
 
-        y = gpuarray.empty(shape, dtype=xs[0].dtype)
+        y = cuda.empty(shape, dtype=xs[0].dtype)
         self.cdimy = y.shape[self.axis]
         self.rdim  = numpy.prod(shape[self.axis + 1:])
 
         coffset = 0
-        kernel  = _copy_x_to_y_kernel()
+        kernel  = cuda.elementwise(
+            _args, 'COPY(y[idx] = x[i])', 'concat_fwd', preamble=_preamble)
         for x in xs:
             cdimx = x.shape[self.axis]
             kernel(x, y, cdimx, self.cdimy, self.rdim, coffset)
@@ -56,10 +46,11 @@ class Concat(Function):
         return numpy.split(gy[0], sizes, axis=self.axis)
 
     def backward_gpu(self, xs, gy):
-        gxs = tuple(gpuarray.empty_like(x) for x in xs)
+        gxs = tuple(cuda.empty_like(x) for x in xs)
 
         coffset = 0
-        kernel  = _copy_y_to_x_kernel()
+        kernel  = cuda.elementwise(
+            _args, 'COPY(x[i] = y[idx])', 'concat_bwd', preamble=_preamble)
         for gx in gxs:
             cdimx = gx.shape[self.axis]
             kernel(gx, gy[0], cdimx, self.cdimy, self.rdim, coffset)

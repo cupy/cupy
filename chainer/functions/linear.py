@@ -1,16 +1,8 @@
 import math
 import numpy
-from pycuda import gpuarray
-from pycuda.elementwise import ElementwiseKernel
-from pytools import memoize
 import scikits.cuda.linalg as culinalg
 import scikits.cuda.misc as cumisc
-from chainer import Function
-
-@memoize
-def _add_bias_kernel():
-    return ElementwiseKernel('float* y, float* b, int n_channel',
-                             'y[i] += b[i % n_channel]')
+from chainer import cuda, Function
 
 class Linear(Function):
     """Implementation of fully-connected layer."""
@@ -49,10 +41,13 @@ class Linear(Function):
 
     def forward_gpu(self, x):
         _x = x[0].reshape(x[0].shape[0], self.W.shape[1])
-        y = gpuarray.empty((x[0].shape[0], self.W.shape[0]), dtype=_x.dtype)
+        y = cuda.empty((x[0].shape[0], self.W.shape[0]), dtype=_x.dtype)
         culinalg.dot(_x, self.W, transb='T', out=y)
         if self.b is not None:
-            _add_bias_kernel()(y, self.b, self.b.size)
+            cuda.elementwise(
+                'float* y, float* b, int n_channel',
+                'y[i] += b[i % n_channel]',
+                'linear_bias')(y, self.b, self.b.size)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -63,9 +58,9 @@ class Linear(Function):
 
     def backward_gpu(self, x, gy):
         _x = x[0].reshape(x[0].shape[0], self.W.shape[1])
+        gx = cuda.empty_like(_x)
         culinalg.add_dot(gy[0], _x, self.gW, transa='T')
         if self.gb is not None:
             self.gb += cumisc.sum(gy[0], 0)
-        gx = gpuarray.empty_like(_x)
         culinalg.dot(gy[0], self.W, out=gx)
         return gx.reshape(x[0].shape),

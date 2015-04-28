@@ -1,8 +1,7 @@
 from collections import Iterable
 import libcudnn
 import numpy
-from pycuda import gpuarray
-from chainer import Function, cudnn
+from chainer import cuda, cudnn, Function
 
 def _pair(x):
     if isinstance(x, Iterable):
@@ -27,8 +26,8 @@ class Pooling2D(Function):
 
         y_h = 1 + (x[0].shape[2] + self.ph * 2 - self.kh) / self.sy
         y_w = 1 + (x[0].shape[3] + self.pw * 2 - self.kw) / self.sx
-        self.y = gpuarray.empty((x[0].shape[0], x[0].shape[1], y_h, y_w),
-                                dtype=numpy.float32)
+        self.y = cuda.empty((x[0].shape[0], x[0].shape[1], y_h, y_w),
+                            dtype=numpy.float32)
         y_desc = cudnn.get_tensor_desc(self.y, y_h, y_w)
 
         libcudnn.cudnnPoolingForward(
@@ -43,7 +42,7 @@ class Pooling2D(Function):
         x_desc = cudnn.get_tensor_desc( x[0],  x[0].shape[2],  x[0].shape[3])
         y_desc = cudnn.get_tensor_desc(gy[0], gy[0].shape[2], gy[0].shape[3])
 
-        gx = gpuarray.empty_like(x[0])
+        gx = cuda.empty_like(x[0])
         libcudnn.cudnnPoolingBackward(
             handle, pool_desc.value, 1, y_desc.value, cudnn.get_ptr(self.y),
             y_desc.value, cudnn.get_ptr(gy[0]), x_desc.value, cudnn.get_ptr(x[0]),

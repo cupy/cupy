@@ -17,7 +17,7 @@ class Optimizer(object):
         self.t = 0
 
     def init_state(self, param, grad):
-        if type(param) == gpuarray.GPUArray:
+        if isinstance(param, gpuarray.GPUArray):
             return self.init_state_gpu(param, grad)
         return self.init_state_cpu(param, grad)
 
@@ -55,7 +55,7 @@ class Optimizer(object):
             self.update_one(p, g, s)
 
     def update_one(self, param, grad, state):
-        if type(param) == gpuarray.GPUArray:
+        if isinstance(param, gpuarray.GPUArray):
             self.update_one_gpu(param, grad, state)
         else:
             self.update_one_cpu(param, grad, state)

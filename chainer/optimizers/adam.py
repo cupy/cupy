@@ -1,23 +1,5 @@
 import numpy
-from pycuda import gpuarray
-from pycuda.elementwise import ElementwiseKernel
-from pytools import memoize
-from chainer import Optimizer
-
-@memoize
-def _update_kernel():
-    return ElementwiseKernel(
-        '''
-          float* param, const float* grad, float* m, float* v,
-          float lr, float beta1, float beta2, float lam, float eps, int t
-        ''', '''
-          float beta1_t = beta1 * (__powf(lam, t - 1));
-          m[i] = beta1_t * m[i] + (1 - beta1_t) * grad[i];
-          v[i] = beta2   * v[i] + (1 - beta2)   * grad[i] * grad[i];
-          float m_hat = m[i] / (1 - __powf(beta1, t));
-          float v_hat = v[i] / (1 - __powf(beta2, t));
-          param[i] -= lr * m_hat / (sqrtf(v_hat) + eps);
-        ''')
+from chainer import cuda, Optimizer
 
 class Adam(Optimizer):
     """Adam optimization algorithm.
@@ -36,7 +18,7 @@ class Adam(Optimizer):
         return numpy.zeros_like(param), numpy.zeros_like(param)
 
     def init_state_gpu(self, param, grad):
-        return gpuarray.zeros_like(param), gpuarray.zeros_like(param)
+        return cuda.zeros_like(param), cuda.zeros_like(param)
 
     def update_one_cpu(self, param, grad, state):
         m, v = state
@@ -51,5 +33,14 @@ class Adam(Optimizer):
 
     def update_one_gpu(self, param, grad, state):
         m, v = state
-        _update_kernel()(param, grad, m, v, self.lr, self.beta1, self.beta2,
-                         self.lam, self.eps, self.t)
+        cuda.elementwise(
+            '''float* param, const float* grad, float* m, float* v,
+               float lr, float beta1, float beta2, float lam, float eps, int t''',
+            '''float beta1_t = beta1 * (__powf(lam, t - 1));
+               m[i] = beta1_t * m[i] + (1 - beta1_t) * grad[i];
+               v[i] = beta2   * v[i] + (1 - beta2)   * grad[i] * grad[i];
+               float m_hat = m[i] / (1 - __powf(beta1, t));
+               float v_hat = v[i] / (1 - __powf(beta2, t));
+               param[i] -= lr * m_hat / (sqrtf(v_hat) + eps);''',
+            'adam')(param, grad, m, v, self.lr, self.beta1, self.beta2,
+                    self.lam, self.eps, self.t)

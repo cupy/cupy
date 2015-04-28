@@ -1,66 +1,13 @@
 import numpy
-from pycuda import gpuarray
-from pycuda.elementwise import ElementwiseKernel
 from pycuda import cumath
-from pytools import memoize
 import scikits.cuda.misc as cumisc
-from chainer import Function
+from chainer import cuda, Function
 
-def _kernel_with_I(args, expr):
-    return ElementwiseKernel(
+def _kernel_with_I(args, expr, name):
+    return cuda.elementwise(
         '{}, int cdim, int rdim'.format(args),
-        'int I = i / rdim % cdim; {};'.format(expr))
-
-@memoize
-def _var_kernel():
-    return ElementwiseKernel(
-        'float* var, const float* mean, const float* sqmean, float eps',
-        'var[i] = sqmean[i] - mean[i] * mean[i] + eps')
-
-@memoize
-def _stdinv_kernel():
-    return ElementwiseKernel(
-        'float* stdinv, const float* mean, const float* sqmean, float eps',
-        'stdinv[i] = rsqrtf(sqmean[i] - mean[i] * mean[i] + eps)')
-
-@memoize
-def _coeff_kernel():
-    return ElementwiseKernel(
-        'float* coeff, const float* var, const float* gamma',
-        'coeff[i] = rsqrtf(var[i]) * gamma[i]')
-
-@memoize
-def _bias_kernel():
-    return ElementwiseKernel(
-        'float* bias, const float* coeff, const float* mean, const float* beta',
-        'bias[i] = beta[i] - coeff[i] * mean[i]')
-
-@memoize
-def _forward_kernel():
-    return _kernel_with_I(
-        'float* y, const float* x, const float* coeff, const float* bias',
-        'y[i] = coeff[I] * x[i] + bias[I]')
-
-@memoize
-def _moving_avg_kernel():
-    return ElementwiseKernel(
-        'float* mean, const float* x, float decay, float adjust',
-        'mean[i] = decay * mean[i] + (1 - decay) * adjust * x[i]')
-
-@memoize
-def _x_hat_kernel():
-    return _kernel_with_I(
-        'float* x_hat, const float* x, const float* mean, const float* stdinv',
-        'x_hat[i] = (x[i] - mean[I]) * stdinv[I]')
-
-@memoize
-def _backward_kernel():
-    return _kernel_with_I(
-        '''
-          float* gx, const float* x_hat, const float* gy, const float* coeff,
-          const float* ggamma, const float* gbeta
-        ''',
-        'gx[i] = coeff[I] * (gy[i] - x_hat[i] * ggamma[I] - gbeta[I])')
+        'int I = i / rdim % cdim; {};'.format(expr),
+        name)
 
 def _cumean_axis02(x):
     if x.shape[2] > 1:
@@ -160,18 +107,29 @@ class BatchNormalization(Function):
             mean   = _cumean_axis02(x)
             sqmean = _cumean_axis02(x * x)
             var    = sqmean  # reuse buffer
-            _var_kernel()(var, mean, sqmean, self.eps)
+            cuda.elementwise(
+                'float* var, const float* mean, const float* sqmean, float eps',
+                'var[i] = sqmean[i] - mean[i] * mean[i] + eps',
+                'bn_var')(var, mean, sqmean, self.eps)
         else:
             mean = self.avg_mean
             var  = self.avg_var
 
-        coeff = gpuarray.empty_like(var)
-        _coeff_kernel()(coeff, var, self.gamma)
-        bias  = gpuarray.empty_like(var)
-        _bias_kernel()(bias, coeff, mean, self.beta)
+        coeff = cuda.empty_like(var)
+        bias  = cuda.empty_like(var)
+        y     = cuda.empty_like(x_orig[0])
 
-        y = gpuarray.empty_like(x_orig[0])
-        _forward_kernel()(y, x, coeff, bias, cdim, rdim)
+        cuda.elementwise(
+            '''float* coeff, float* bias, const float* mean, const float* var,
+               const float* gamma, const float* beta''',
+            '''coeff[i] = rsqrtf(var[i]) * gamma[i];
+               bias[i]  = beta[i] - coeff[i] * mean[i];''',
+            'bn_fwd_prep')(coeff, bias, mean, var, self.gamma, self.beta)
+
+        _kernel_with_I(
+            'float* y, const float* x, const float* coeff, const float* bias',
+            'y[i] = coeff[I] * x[i] + bias[I]',
+            'bn_fwd')(y, x, coeff, bias, cdim, rdim)
 
         # Compute exponential moving average
         if self.use_batch_mean:
@@ -183,7 +141,10 @@ class BatchNormalization(Function):
 
             m = ldim * rdim
             adjust = m / max(m - 1., 1.)  # unbiased estimation
-            kern = _moving_avg_kernel()
+            kern = cuda.elementwise(
+                'float* mean, const float* x, float decay, float adjust',
+                'mean[i] = decay * mean[i] + (1 - decay) * adjust * x[i]',
+                'bn_moving_avg')
             kern(self.avg_mean, mean, decay, adjust)
             kern(self.avg_var,  var,  decay, adjust)
 
@@ -221,14 +182,23 @@ class BatchNormalization(Function):
         mean   = _cumean_axis02(x)
         sqmean = _cumean_axis02(x * x)
         stdinv = sqmean  # reuse buffer
-        _stdinv_kernel()(stdinv, mean, sqmean, self.eps)
+        cuda.elementwise(
+            'float* stdinv, const float* mean, const float* sqmean, float eps',
+            'stdinv[i] = rsqrtf(sqmean[i] - mean[i] * mean[i] + eps)',
+            'bn_stdinv')(stdinv, mean, sqmean, self.eps)
 
-        x_hat = gpuarray.empty_like(x)
-        _x_hat_kernel()(x_hat, x, mean, stdinv, cdim, rdim)
+        x_hat = cuda.empty_like(x)
+        gx    = cuda.empty_like(x)
+
+        _kernel_with_I(
+            'float* x_hat, const float* x, const float* mean, const float* stdinv',
+            'x_hat[i] = (x[i] - mean[I]) * stdinv[I]',
+            'bn_x_hat')(x_hat, x, mean, stdinv, cdim, rdim)
         mean = None
 
         ggamma = _cusum_axis02(x_hat * gy)
         gbeta  = _cusum_axis02(gy)
+        # TODO(beam2d): Unify these lines into one kernel
         self.ggamma += ggamma.reshape(self.ggamma.shape)
         self.gbeta  += gbeta.reshape(self.gbeta.shape)
 
@@ -236,22 +206,23 @@ class BatchNormalization(Function):
         coeff *= self.gamma
         ggamma /= m
         gbeta  /= m
-        gx = gpuarray.empty_like(x)
-        _backward_kernel()(gx, x_hat, gy, coeff, ggamma, gbeta, cdim, rdim)
+
+        _kernel_with_I(
+            '''float* gx, const float* x_hat, const float* gy, const float* coeff,
+               const float* ggamma, const float* gbeta''',
+            'gx[i] = coeff[I] * (gy[i] - x_hat[i] * ggamma[I] - gbeta[I])',
+            'bn_bwd')(gx, x_hat, gy, coeff, ggamma, gbeta, cdim, rdim)
 
         return gx.reshape(x_orig[0].shape),
 
     def _to_cpu(self):
-        if type(self.avg_mean) == gpuarray.GPUArray:
-            self.avg_mean = self.avg_mean.get()
-        if type(self.avg_var) == gpuarray.GPUArray:
-            self.avg_var = self.avg_variange.get()
+        self.avg_mean = cuda.to_cpu(self.avg_mean)
+        self.avg_var  = cuda.to_cpu(self.avg_var)
 
     def _to_gpu(self):
-        if type(self.avg_mean) == numpy.ndarray:
-            self.avg_mean = gpuarray.to_gpu(self.avg_mean)
-        if type(self.avg_var) == numpy.ndarray:
-            self.avg_var = gpuarray.to_gpu(self.avg_var)
+        # TODO(beam2d): Make them async.
+        self.avg_mean = cuda.to_gpu(self.avg_mean)
+        self.avg_var  = cuda.to_gpu(self.avg_var)
 
     def _internal_shape(self, x):
         ldim = x.shape[0]
