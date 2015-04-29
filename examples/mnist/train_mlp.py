@@ -6,12 +6,14 @@ import cPickle as pickle
 import sys
 
 import numpy as np
-from pycuda import gpuarray
 from sklearn.datasets import fetch_mldata
 
-from chainer import Variable, FunctionSet
+from chainer import cuda, Variable, FunctionSet
+from chainer.cuda import to_gpu
 from chainer.functions import accuracy, Linear, relu, softmax_cross_entropy
 from chainer.optimizers import SGD
+
+cuda.init()
 
 # Prepare dataset
 print 'fetch MNIST dataset'
@@ -64,8 +66,8 @@ for epoch in xrange(10):
         optimizer.zero_grads()  # set gradients to zero
 
         # fprop/bprop
-        x_batch = gpuarray.to_gpu(x_train[perm[i : i + batchsize]])
-        y_batch = gpuarray.to_gpu(y_train[perm[i : i + batchsize]])
+        x_batch = to_gpu(x_train[perm[i : i + batchsize]])
+        y_batch = to_gpu(y_train[perm[i : i + batchsize]])
         L, acc = forward(x_batch, y_batch)
         L.backward()
 
@@ -85,8 +87,8 @@ for epoch in xrange(10):
         sys.stdout.write('\rtest {} / {}'.format(i, N_test))
         sys.stdout.flush()
 
-        x_batch = gpuarray.to_gpu(x_test[i : i + batchsize])
-        y_batch = gpuarray.to_gpu(y_test[i : i + batchsize])
+        x_batch = to_gpu(x_test[i : i + batchsize])
+        y_batch = to_gpu(y_test[i : i + batchsize])
         L, acc = forward(x_batch, y_batch)
 
         sum_loss += float(L.data.get()) * batchsize
