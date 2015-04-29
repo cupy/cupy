@@ -171,7 +171,7 @@ def copy(array, out=None):
     """Copy GPUArray synchronously."""
     if out is None:
         out = gpuarray.empty_like(array)
-    drv.memcpy_dtod(out.ptr, array.ptr, out.mem_size)
+    drv.memcpy_dtod(out.ptr, array.ptr, out.nbytes)
     return out
 
 
@@ -179,7 +179,7 @@ def copy_async(array, out=None, stream=None):
     """Copy GPUArray asynchronously."""
     if out is None:
         out = gpuarray.empty_like(array)
-    drv.memcpy_dtod_async(out.ptr, array.ptr, out.mem_size, stream=stream)
+    drv.memcpy_dtod_async(out.ptr, array.ptr, out.nbytes, stream=stream)
     return out
 
 
