@@ -160,8 +160,8 @@ class Split(Function):
     def backward(self, inputs, grad_outputs):
         # Accumulate gradients
         gx = None
+        grad_outputs = [gy for gy in grad_outputs if gy is not None]
         for gy in grad_outputs:
-            if gy is None: continue
             if gx is None:
                 if len(grad_outputs) == 1:
                     gx = gy  # no copy
