@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import argparse, json, math, cPickle as pickle, Queue, random, sys, threading
+import argparse, json, math, cPickle as pickle, Queue, random, sys, threading, time
+from datetime import timedelta
 import cv2, numpy as np
 from chainer      import cuda, Variable, FunctionSet
 from chainer.cuda import to_gpu
@@ -10,7 +11,7 @@ from inception import InceptionBN
 
 parser = argparse.ArgumentParser(description='Learning convnet from ILSVRC2012 dataset')
 parser.add_argument('--arch', '-a', default='inceptionbn',
-                    help='convnet architecture (nin, inceptionbn)')
+                    help='convnet architecture (nin, inceptionbn, alexbn)')
 parser.add_argument('--batchsize', '-B', type=int, default=32,
                     help='learning batchsize')
 parser.add_argument('--val_batchsize', '-b', type=int, default=250,
@@ -41,11 +42,11 @@ mean_image = pickle.load(open('mean.npy', 'rb'))
 
 if args.arch == 'inceptionbn':
     insize = 224
-elif args.arch == 'nin':
+elif args.arch == 'nin' or args.arch == 'alexbn':
     insize = 227
 cropwidth = 256 - insize
 
-def read_image(path, center=False):
+def read_image(path, center=False, flip=False):
     image = cv2.imread(path)
     if center:
         top = left = cropwidth / 2
@@ -58,6 +59,9 @@ def read_image(path, center=False):
     image = image[top:bottom, left:right, [2, 1, 0]].transpose(2, 0, 1).astype(np.float32)
     image -= mean_image[:, top:bottom, left:right]
     image /= 255
+    if flip and random.randint(0, 1) == 0:
+        image = image[:, :, ::-1]
+
     return image
 
 # Inter-thread communication
@@ -71,16 +75,17 @@ y_batch = np.ndarray((batchsize,), dtype=np.int32)
 val_x_batch = np.ndarray((val_batchsize, 3, insize, insize), dtype=np.float32)
 val_y_batch = np.ndarray((val_batchsize,), dtype=np.int32)
 def feed_data():
+    i = 0
+    count = 0
     for epoch in xrange(1, 1 + n_epoch):
         print >> sys.stderr, 'epoch', epoch
         print >> sys.stderr, 'learning rate', optimizer.lr
         perm = np.random.permutation(len(train_list))
-        data_q.put('train')
-        i = 0
-        count = 0
+        if i == 0:
+            data_q.put('train')
         for idx in perm:
             path, label = train_list[idx]
-            x_batch[i] = read_image(path)
+            x_batch[i] = read_image(path, flip=True)
             y_batch[i] = label
             i += 1
 
@@ -109,6 +114,8 @@ def log_result():
     train_count = 0
     train_cur_loss = 0
     train_cur_accuracy = 0
+    begin_at = time.time()
+    val_begin_at = None
     while True:
         result = res_q.get()
         if result == 'end':
@@ -117,17 +124,26 @@ def log_result():
         elif result == 'train':
             print >> sys.stderr, ''
             train = True
+            if val_begin_at is not None:
+                begin_at += time.time() - val_begin_at
+                val_begin_at = None
             continue
         elif result == 'val':
             print >> sys.stderr, ''
             train = False
             val_count = val_loss = val_accuracy = 0
+            val_begin_at = time.time()
             continue
 
         loss, accuracy = result
         if train:
             train_count += 1
-            sys.stderr.write('\rtrain {} updates ({} samples)'.format(train_count, train_count * batchsize))
+            duration = time.time() - begin_at
+            t_per_sample = duration / (train_count * batchsize)
+            sys.stderr.write(
+                '\rtrain {} updates ({} samples) time: {} ({} sec/sample)'
+                .format(train_count, train_count * batchsize,
+                        timedelta(seconds=duration), t_per_sample))
 
             train_cur_loss += loss
             train_cur_accuracy += accuracy
@@ -142,7 +158,12 @@ def log_result():
                 train_cur_accuracy = 0
         else:
             val_count += val_batchsize
-            sys.stderr.write('\rval   {} batches ({} samples)'.format(val_count / val_batchsize, val_count))
+            duration = time.time() - val_begin_at
+            t_per_samle = duration / val_count
+            sys.stderr.write(
+                '\rval   {} batches ({} samples) time: {} ({} sec/sample)'
+                .format(val_count / val_batchsize, val_count,
+                        timedelta(seconds=duration), t_per_samle))
 
             val_loss += loss
             val_accuracy += accuracy
@@ -202,6 +223,19 @@ elif args.arch == 'nin':
         conv4  = F.Convolution2D( 384, 1024,  3, wscale=w, pad=1),
         conv4a = F.Convolution2D(1024, 1024,  1, wscale=w),
         conv4b = F.Convolution2D(1024, 1000,  1, wscale=w),
+    )
+elif args.arch == 'alexbn':
+    model = FunctionSet(
+        conv1 = F.Convolution2D(  3,  96, 11, stride=4),
+        bn1   = F.BatchNormalization( 96),
+        conv2 = F.Convolution2D( 96, 256,  5, pad=2),
+        bn2   = F.BatchNormalization(256),
+        conv3 = F.Convolution2D(256, 384,  3, pad=1),
+        conv4 = F.Convolution2D(384, 384,  3, pad=1),
+        conv5 = F.Convolution2D(384, 256,  3, pad=1),
+        fc6   = F.Linear(9216, 4096),
+        fc7   = F.Linear(4096, 4096),
+        fc8   = F.Linear(4096, 1000),
     )
 else:
     raise NotImplementedError()
@@ -263,6 +297,18 @@ def forward(x_data, y_data, volatile=False):
         h = F.relu(model.conv4a(h))
         h = F.relu(model.conv4b(h))
         h = F.average_pooling_2d(h, 6)
+        l = F.softmax_cross_entropy(h, t)
+        acc = F.accuracy(h, t)
+        L = l / x_data.shape[0]
+    elif args.arch == 'alexbn':
+        h = F.max_pooling_2d(F.relu(model.bn1(model.conv1(x))), 3, stride=2)
+        h = F.max_pooling_2d(F.relu(model.bn2(model.conv2(h))), 3, stride=2)
+        h = F.relu(model.conv3(h))
+        h = F.relu(model.conv4(h))
+        h = F.max_pooling_2d(F.relu(model.conv5(h)), 3, stride=2)
+        h = F.dropout(F.relu(model.fc6(h)))
+        h = F.dropout(F.relu(model.fc7(h)))
+        h = model.fc8(h)
         l = F.softmax_cross_entropy(h, t)
         acc = F.accuracy(h, t)
         L = l / x_data.shape[0]
