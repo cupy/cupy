@@ -168,9 +168,9 @@ def zeros_like(array, stream=None):
     
 
 def copy(array, out=None):
-    """Copy GPUArray synchronously."""
+    """Copy GPUArray in default stream."""
     if out is None:
-        out = gpuarray.empty_like(array)
+        out = empty_like(array)
     drv.memcpy_dtod(out.ptr, array.ptr, out.nbytes)
     return out
 
@@ -178,7 +178,7 @@ def copy(array, out=None):
 def copy_async(array, out=None, stream=None):
     """Copy GPUArray asynchronously."""
     if out is None:
-        out = gpuarray.empty_like(array)
+        out = empty_like(array)
     drv.memcpy_dtod_async(out.ptr, array.ptr, out.nbytes, stream=stream)
     return out
 
@@ -187,7 +187,7 @@ def copy_peer(array, out_device, src_device, out=None):
     """Copy GPUArray over devices synchronously."""
     use_device(out_device)
     if out is None:
-        out = gpuarray.empty_like(array)
+        out = empty_like(array)
     drv.memcpy_peer(out.ptr, array.ptr, out.nbytes, out_device, src_device)
     drv.Context.pop()
     return out
@@ -197,7 +197,7 @@ def copy_peer_async(array, out_device, src_device, out=None, stream=None):
     """Copy GPUArray over devices asynchronously."""
     use_device(out_device)
     if out is None:
-        out = gpuarray.empty_like(array)
+        out = empty_like(array)
     drv.memcpy_peer_async(out.ptr, array.ptr, out.nbytes, out_device, src_device,
                            stream=stream)
     drv.Context.pop()
@@ -214,7 +214,7 @@ def copy_peer_async(array, out=None, device=None, stream=None):
     if out is None:
         assert device is not None
         use_device(device)
-        out = gpuarray.empty(array.shape, array.dtype)
+        out = empty(array.shape, array.dtype)
 
 
 class IPCArrayHandle(object):
