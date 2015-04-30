@@ -104,6 +104,12 @@ def use_device(device):
         _contexts[device].push()
 
 
+def free_pool():
+    """Free memory allocations held by memory pool."""
+    if _pool is not None:
+        _pool.free_held()
+
+
 # ------------------------------------------------------------------------------
 # GPUArray allocation and copy
 # ------------------------------------------------------------------------------
