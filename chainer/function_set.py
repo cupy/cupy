@@ -36,18 +36,12 @@ class FunctionSet(object):
     def to_gpu(self):
         """Move all parameters and gradients to GPU."""
         for func in self.functions.itervalues():
-            params = func.parameters
-            func.parameters = (cuda.to_gpu(w) for w in params)
-            grads  = func.gradients
-            func.gradients  = (cuda.to_gpu(g) for g in grads)
+            func.to_gpu()
 
     def to_cpu(self):
         """Move all parameters and gradients to CPU."""
         for func in self.functions.itervalues():
-            params = func.parameters
-            func.parameters = (cuda.to_cpu(w) for w in params)
-            grads  = func.gradients
-            func.gradients  = (cuda.to_cpu(g) for g in grads)
+            func.to_cpu()
 
     @property
     def parameters(self):

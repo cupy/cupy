@@ -119,6 +119,28 @@ class Function(object):
             x.splitter = None
         self.inputs = None
 
+    def to_gpu(self):
+        """Migrate to GPU.
+
+        The default implementation moves all fields of type ``numpy.ndarray``
+        onto GPU.
+
+        """
+        for k, v in self.__dict__.iteritems():
+            if isinstance(v, numpy.ndarray):
+                setattr(self, k, cuda.to_gpu(v))
+
+    def to_cpu(self):
+        """Migrate to CPU.
+
+        The default implementation moves all fields of type ``cuda.GPUArray``
+        onto CPU.
+
+        """
+        for k, v in self.__dict__.iteritems():
+            if isinstance(v, cuda.GPUArray):
+                setattr(self, k, cuda.to_cpu(v))
+
     @property
     def parameters(self):
         return tuple(getattr(self, name) for name in self.parameter_names)
