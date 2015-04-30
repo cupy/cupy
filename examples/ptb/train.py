@@ -7,13 +7,14 @@ https://github.com/tomsercu/lstm
 
 import cPickle as pickle
 import datetime, math, sys, time
-
 import numpy as np
-from pycuda import gpuarray
 
-from chainer import Variable, FunctionSet
+from chainer import cuda, Variable, FunctionSet
+from chainer.cuda import to_gpu
 from chainer.functions import dropout, EmbedID, Linear, lstm, softmax_cross_entropy
 from chainer.optimizers import SGD
+
+cuda.init()
 
 # Prepare dataset
 vocab = {}
@@ -67,7 +68,7 @@ def forward_one_step(x_data, y_data, state, train=True):
     return state, softmax_cross_entropy(y, t)
 
 def make_initial_state(batchsize, volatile=False):
-    return {name: Variable(gpuarray.zeros((batchsize, n_unit), dtype=np.float32),
+    return {name: Variable(cuda.zeros((batchsize, n_unit), dtype=np.float32),
                            volatile=volatile)
             for name in ('c1', 'h1', 'c2', 'h2')}
 
@@ -94,7 +95,7 @@ def train_whole():
         y_cpu = np.array([train_data[(jump * j + i + 1) % whole_len]
                           for j in xrange(batchsize)])
         state, loss_i = forward_one_step(
-            gpuarray.to_gpu(x_cpu), gpuarray.to_gpu(y_cpu), state)
+            to_gpu(x_cpu), to_gpu(y_cpu), state)
         accum_loss   += loss_i
         cur_log_perp += float(loss_i.data.get()) / batchsize
 
@@ -154,7 +155,7 @@ def evaluate(dataset):
         x_cpu = dataset[i   : i+1]
         y_cpu = dataset[i+1 : i+2]
         state, loss = forward_one_step(
-            gpuarray.to_gpu(x_cpu), gpuarray.to_gpu(y_cpu), state, train=False)
+            to_gpu(x_cpu), to_gpu(y_cpu), state, train=False)
         sum_log_perp += float(loss.data.get())
 
     print '\nwhole time:', datetime.timedelta(seconds = time.time() - start_at)
