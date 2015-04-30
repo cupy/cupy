@@ -91,17 +91,41 @@ def shutdown():
     _pid      = None  # mark as uninitialized
 
 
-def use_device(device):
+def get_device(device):
+    """Get device from id."""
+
+    if isinstance(device, drv.Device):
+        return device
+    return drv.Device(device)
+
+
+def use_device(device, pop=True):
     """Switch context to use given device."""
 
-    if not isinstance(device, drv.Device):
-        device = drv.Device(device)
+    if pop:
+        drv.Context.pop()
 
-    drv.Context.pop()
+    device = get_device(device)
     if device not in _contexts:
         _contexts[device] = device.make_context()
     else:
         _contexts[device].push()
+
+
+class DeviceUser(object):
+    """Device user for 'with' statement."""
+
+    def __init__(self, device):
+        self.device = device
+
+    def __enter__(self):
+        use_device(self.device, pop=False)
+
+    def __exit__(self, typ, value, traceback):
+        drv.Context.pop()
+
+def using_device(device):
+    return DeviceUser(device)
 
 
 def free_pool():
@@ -191,36 +215,27 @@ def copy_async(array, out=None, stream=None):
 
 def copy_peer(array, out_device, src_device, out=None):
     """Copy GPUArray over devices synchronously."""
-    use_device(out_device)
-    if out is None:
-        out = empty_like(array)
-    drv.memcpy_peer(out.ptr, array.ptr, out.nbytes, out_device, src_device)
-    drv.Context.pop()
+    out_device = get_device(out_device)
+    src_device = get_device(src_device)
+
+    with using_device(out_device):
+        if out is None:
+            out = empty_like(array)
+        drv.memcpy_peer(out.ptr, array.ptr, out.nbytes, out_device, src_device)
     return out
 
 
 def copy_peer_async(array, out_device, src_device, out=None, stream=None):
     """Copy GPUArray over devices asynchronously."""
-    use_device(out_device)
-    if out is None:
-        out = empty_like(array)
-    drv.memcpy_peer_async(out.ptr, array.ptr, out.nbytes, out_device, src_device,
-                           stream=stream)
-    drv.Context.pop()
+    out_device = get_device(out_device)
+    src_device = get_device(src_device)
+
+    with using_device(out_device):
+        if out is None:
+            out = empty_like(array)
+        drv.memcpy_peer_async(out.ptr, array.ptr, out.nbytes, out_device, src_device,
+                              stream=stream)
     return out
-
-
-def copy_peer_async(array, out=None, device=None, stream=None):
-    """Copy GPUArray over devices asynchronously.
-
-    ``array`` must reside at the current device.
-
-    """
-    cur_device = drv.Context.get_device()
-    if out is None:
-        assert device is not None
-        use_device(device)
-        out = empty(array.shape, array.dtype)
 
 
 class IPCArrayHandle(object):
