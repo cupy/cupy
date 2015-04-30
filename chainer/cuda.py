@@ -141,19 +141,19 @@ def to_cpu_async(array, stream=None):
     return arra.get_async(stream=stream)
 
 
-def empty(shape, dtype):
+def empty(shape, dtype=numpy.float32):
     """Create an uninitialized GPUArray."""
     return gpuarray.empty(shape, dtype, allocator=mem_alloc)
 
 
-def full(shape, fill_value, dtype, stream=None):
+def full(shape, fill_value, dtype=numpy.float32, stream=None):
     """Create constant-filled GPUArray."""
     array = empty(shape, dtype)
     array.fill(fill_value, stream=stream)
     return array
 
 
-def zeros(shape, dtype, stream=None):
+def zeros(shape, dtype=numpy.float32, stream=None):
     """Create zero-filled GPUArray."""
     return full(shape, 0, dtype, stream=stream)
 
@@ -277,8 +277,8 @@ def _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
     return ReductionKernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
                            name, keep, options, preamble)
 
-def reduce(arguments, map_expr, reduce_expr, neutral, name, dtype_out,
-           keep=False, options=None, preamble=''):
+def reduce(arguments, map_expr, reduce_expr, neutral, name,
+           dtype_out=numpy.float32, keep=False, options=None, preamble=''):
     """Return memoized reduction kernel function."""
     kern = _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
                           name, keep, options, preamble)
