@@ -26,12 +26,6 @@ class TestBatchNormalization(TestCase):
         self.x  = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
 
-    def to_gpu(self):
-        self.func.gamma  = to_gpu(self.func.gamma)
-        self.func.ggamma = to_gpu(self.func.ggamma)
-        self.func.beta   = to_gpu(self.func.beta)
-        self.func.gbeta  = to_gpu(self.func.gbeta)
-
     def check_forward(self, x_data):
         x = Variable(x_data)
         y = self.func(x)
@@ -46,7 +40,7 @@ class TestBatchNormalization(TestCase):
         self.check_forward(self.x)
 
     def test_forward_gpu(self):
-        self.to_gpu()
+        self.func.to_gpu()
         self.check_forward(to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
@@ -67,7 +61,7 @@ class TestBatchNormalization(TestCase):
         self.check_backward(self.x, self.gy)
 
     def test_backward_gpu(self):
-        self.to_gpu()
+        self.func.to_gpu()
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
 
 

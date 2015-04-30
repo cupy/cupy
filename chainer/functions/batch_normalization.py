@@ -53,20 +53,16 @@ class BatchNormalization(Function):
         self.gbeta  = numpy.empty_like(self.beta)
 
         self.decay = decay
-        self.N     = numpy.array(0)  # as a reference
+        self.N     = [0]  # as a reference
         self.eps   = eps
 
     def __call__(self, x, test=False, finetune=False):
         self.use_batch_mean = not test or finetune
         self.is_finetune    = finetune
-        if isinstance(x.data, cuda.GPUArray):
-            self._to_gpu()
-        else:
-            self._to_cpu()
         return Function.__call__(self, x)
 
     def start_finetuning(self):
-        self.N = numpy.array(0)
+        self.N[0] = numpy.array(0)
 
     def forward_cpu(self, x_orig):
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
@@ -87,8 +83,8 @@ class BatchNormalization(Function):
         # Compute exponential moving average
         if self.use_batch_mean:
             if self.is_finetune:
-                self.N += 1
-                decay = 1. / self.N
+                self.N[0] += 1
+                decay = 1. / self.N[0]
             else:
                 decay = self.decay
 
@@ -136,8 +132,8 @@ class BatchNormalization(Function):
         # Compute exponential moving average
         if self.use_batch_mean:
             if self.is_finetune:
-                self.N += 1
-                decay = 1. / self.N
+                self.N[0] += 1
+                decay = 1. / self.N[0]
             else:
                 decay = self.decay
 
@@ -216,15 +212,6 @@ class BatchNormalization(Function):
             'bn_bwd')(gx, x_hat, gy, coeff, ggamma, gbeta, cdim, rdim)
 
         return gx.reshape(x_orig[0].shape),
-
-    def _to_cpu(self):
-        self.avg_mean = cuda.to_cpu(self.avg_mean)
-        self.avg_var  = cuda.to_cpu(self.avg_var)
-
-    def _to_gpu(self):
-        # TODO(beam2d): Make them async.
-        self.avg_mean = cuda.to_gpu(self.avg_mean)
-        self.avg_var  = cuda.to_gpu(self.avg_var)
 
     def _internal_shape(self, x):
         ldim = x.shape[0]
