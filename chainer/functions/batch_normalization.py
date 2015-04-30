@@ -59,13 +59,16 @@ class BatchNormalization(Function):
     def __call__(self, x, test=False, finetune=False):
         self.use_batch_mean = not test or finetune
         self.is_finetune    = finetune
+        if isinstance(x.data, cuda.GPUArray):
+            self._to_gpu()
+        else:
+            self._to_cpu()
         return Function.__call__(self, x)
 
     def start_finetuning(self):
         self.N = numpy.array(0)
 
     def forward_cpu(self, x_orig):
-        self._to_cpu()
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
         x = x_orig[0].reshape(ldim, cdim, rdim)
 
@@ -99,7 +102,6 @@ class BatchNormalization(Function):
         return y.reshape(x_orig[0].shape),
 
     def forward_gpu(self, x_orig):
-        self._to_gpu()
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
         x = x_orig[0].reshape(ldim, cdim, rdim)
 
