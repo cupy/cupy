@@ -20,5 +20,5 @@ python setup.py install
 
 echo
 echo 'Now you can use chainer by import chainer.'
-echo 'If you want to run unittests, install nose (pip install nose) and'
+echo 'If you want to run unittests to check the installation, install nose (pip install nose) and'
 echo 'run nosetests command at "tests" directory (not this directory).'
