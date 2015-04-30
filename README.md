@@ -11,3 +11,4 @@
 - scikits.cuda (GitHub master version, installed by setup.py)
 - cudnn-python-wrappers (GitHub master version, installed by setup.py)
 - scikit-learn (to run examples)
+- OpenCV 2.4 (to run examples)
