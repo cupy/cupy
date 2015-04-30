@@ -168,7 +168,7 @@ class Split(Function):
                 else:
                     # TODO(beam2d): Add fast (no copy) option
                     if isinstance(gy, cuda.GPUArray):
-                        gx = cuda.copy(gy)
+                        gx = cuda.copy_async(gy)
                     else:
                         gx = gy.copy()
             else:
