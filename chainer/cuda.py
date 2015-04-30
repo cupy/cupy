@@ -56,7 +56,7 @@ def init(device=None):
     if device is None:  # use default device
         context = cutools.make_default_context()
     else:
-        device   = Device(device)
+        device  = Device(device)
         context = device.make_context()
     _contexts = {Context.get_device(): context}
 
