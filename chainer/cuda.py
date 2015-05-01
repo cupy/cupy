@@ -27,8 +27,8 @@ class IPCEvent(Event):
 mem_alloc = None
 
 _contexts = {}
+_pools    = {}
 _pid      = None
-_pool     = None
 
 _seed      = os.environ.get('CHAINER_SEED')
 generator = None
@@ -45,7 +45,7 @@ def init(device=None):
     **after the fork** and before using chainer with PyCUDA.
 
     """
-    global generator, mem_alloc, _contexts, _pid, _pool
+    global generator, _contexts, _pid
 
     pid = os.getpid()
     if _pid == pid:  # already initialized
@@ -55,13 +55,11 @@ def init(device=None):
 
     if device is None:  # use default device
         context = cutools.make_default_context()
+        device  = Context.get_device()
     else:
         device  = Device(device)
         context = device.make_context()
-    _contexts = {Context.get_device(): context}
-
-    _pool     = cutools.DeviceMemoryPool()
-    mem_alloc = _pool.allocate
+    _contexts = {device: context}
 
     generator = curandom.XORWOWRandomNumberGenerator(seed_getter=_seed_getter)
 
@@ -74,7 +72,7 @@ def init(device=None):
 def shutdown():
     """Finalize CUDA global state."""
 
-    global mem_alloc, _contexts, _pid, _pool
+    global _contexts, _pid, _pools
 
     pid = os.getpid()
     if _pid != pid:  # not initialized
@@ -82,8 +80,7 @@ def shutdown():
 
     cumisc.shutdown()
 
-    mem_alloc = None
-    _pool     = None
+    _pools = {}
 
     for ctx in _contexts.itervalues():
         ctx.detach()
@@ -126,6 +123,20 @@ class DeviceUser(object):
 
 def using_device(device):
     return DeviceUser(device)
+
+
+def mem_alloc(nbytes):
+    """Allocate memory from memory pool corresponding to the current device."""
+    global _pools
+
+    device = Context.get_device()
+    pool   = _pools.get(device, None)
+
+    if pool is None:
+        pool = drv.DeviceMemoryPool()
+        _pools[device] = pool
+
+    return pool.allocate(nbytes)
 
 
 def free_pool():
@@ -182,6 +193,11 @@ def zeros(shape, dtype=numpy.float32, stream=None):
     return full(shape, 0, dtype, stream=stream)
 
 
+def ones(shape, dtype=numpy.float32, stream=None):
+    """Create one-filled GPUArray."""
+    return full(shape, 1, dtype, stream=stream)
+
+
 empty_like = gpuarray.empty_like
 
 
@@ -195,6 +211,11 @@ def full_like(array, fill_value, stream=None):
 def zeros_like(array, stream=None):
     """Create a zero-filled GPUArray like ``array``."""
     return full_like(array, 0, stream=stream)
+
+
+def ones_like(array, stream=None):
+    """Create a zero-filled GPUArray like ``array``."""
+    return full_like(array, 1, stream=stream)
     
 
 def copy(array, out=None):
