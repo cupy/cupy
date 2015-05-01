@@ -99,5 +99,4 @@ for epoch in xrange(10):
     print '\ntest mean loss={}, accuracy={}'.format(mean_loss, mean_accuracy)
 
 # Save the model
-with open('mlp', 'wb') as f:
-    pickle.dump(model, f, -1)
+pickle.dump(model, open('mlp', 'wb'), -1)
