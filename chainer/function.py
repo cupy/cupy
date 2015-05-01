@@ -84,6 +84,7 @@ class Function(object):
 
         """
         if _is_gpu_input(inputs):
+            self.device = cuda.Context.get_device()
             return self.forward_gpu(inputs)
         return self.forward_cpu(inputs)
 
@@ -97,6 +98,7 @@ class Function(object):
 
     def backward(self, inputs, grad_outputs):
         if _is_gpu_input(inputs):
+            cuda.use_device(self.device)
             return self.backward_gpu(inputs, grad_outputs)
         return self.backward_cpu(inputs, grad_outputs)
 
@@ -172,6 +174,9 @@ class Split(Function):
         self.outputs = []
         self.rank    = var.rank
 
+        if isinstance(var, cuda.GPUArray):
+            self.device = cuda.Context.get_device()
+
     def add_branch(self):
         x = self.inputs[0]
         output = Variable(x.data)
@@ -190,6 +195,7 @@ class Split(Function):
                 else:
                     # TODO(beam2d): Add fast (no copy) option
                     if isinstance(gy, cuda.GPUArray):
+                        cuda.use_device(self.device)
                         gx = cuda.copy_async(gy)
                     else:
                         gx = gy.copy()

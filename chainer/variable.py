@@ -29,16 +29,19 @@ class Variable(object):
     def backward(self, retain_grad=False):
         """Run error backpropagation from this variable node."""
 
+        if self.creator is None:
+            return
+
         cand_funcs = []
         seen_set = set()
 
         # Initilize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
             if isinstance(self.data, cuda.GPUArray):
-                self.grad = cuda.empty_like(self.data)
+                cuda.use_device(self.creator.device)
+                self.grad = cuda.ones_like(self.data)
             else:
-                self.grad = numpy.empty_like(self.data)
-            self.grad.fill(1)
+                self.grad = numpy.ones_like(self.data)
 
         def add_cand(cand):
             if cand is not None and cand not in seen_set:
