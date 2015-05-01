@@ -49,6 +49,11 @@ class Optimizer(object):
             for _, g, _ in self.tuples:
                 g *= ratio
 
+    def weight_decay(self, decay):
+        """Apply weight decay."""
+        for p, g, _ in self.tuples:
+            g -= decay * p
+
     def update(self):
         self.t += 1
         for p, g, s in self.tuples:
