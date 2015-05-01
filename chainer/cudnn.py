@@ -4,6 +4,8 @@ import atexit, ctypes, os
 import libcudnn
 import numpy
 
+import cuda
+
 def get_ptr(x):
     return ctypes.c_void_p(int(x.gpudata))
 
@@ -19,33 +21,41 @@ class Auto(object):
         except:
             pass
 
-_handle = None
-_pid    = None
+_handles = {}
+_pid     = None
 
 def get_default_handle():
     """Get the default handle of CuDNN."""
 
-    global _handle, _pid
+    global _handles, _pid
+
     pid = os.getpid()
-    if _pid == pid:  # already initialized
-        return _handle
+    if _pid != pid:  # not initialized yet
+        _handles = {}
+        atexit.register(shutdown)
+        _pid     = pid
 
-    _handle = libcudnn.cudnnCreate()
-    atexit.register(shutdown)
+    device = cuda.Context.get_device()
+    if device in _handles:
+        return _handles[device]
 
-    _pid = pid  # mark as initialized
-    return _handle
+    handle = libcudnn.cudnnCreate()
+    _handles[device] = handle
+
+    return handle
 
 def shutdown():
-    global _handle, _pid
+    global _handles, _pid
 
     pid = os.getpid()
     if _pid != pid:  # not initialized
         return
 
-    libcudnn.cudnnDestroy(_handle)
-    _handle = None
-    _pid    = None  # mark as uninitialized
+    for handle in _handles.itervalues():
+        libcudnn.cudnnDestroy(handle)
+
+    _handles = {}
+    _pid     = None  # mark as uninitialized
 
 _dtypes = {numpy.dtype('float32'): libcudnn.cudnnDataType['CUDNN_DATA_FLOAT'],
            numpy.dtype('float64'): libcudnn.cudnnDataType['CUDNN_DATA_DOUBLE']}
