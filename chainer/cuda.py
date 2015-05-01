@@ -88,21 +88,23 @@ def shutdown():
     _pid      = None  # mark as uninitialized
 
 
-def get_device(device):
-    """Get device from id."""
+def get_device(arg):
+    """Get device from id or chainer array."""
 
-    if isinstance(device, drv.Device):
-        return device
-    return drv.Device(device)
+    if isinstance(arg, drv.Device):
+        return arg
+    elif isinstance(arg, GPUArray):
+        return arg.gpudata.device
+    return drv.Device(arg)
 
 
-def use_device(device, pop=True):
+def use_device(arg, pop=True):
     """Switch context to use given device."""
 
     if pop:
         drv.Context.pop()
 
-    device = get_device(device)
+    device = get_device(arg)
     if device not in _contexts:
         _contexts[device] = device.make_context()
     else:
@@ -112,17 +114,17 @@ def use_device(device, pop=True):
 class DeviceUser(object):
     """Device user for 'with' statement."""
 
-    def __init__(self, device):
-        self.device = device
+    def __init__(self, arg):
+        self.arg = arg
 
     def __enter__(self):
-        use_device(self.device, pop=False)
+        use_device(self.arg, pop=False)
 
     def __exit__(self, typ, value, traceback):
         drv.Context.pop()
 
-def using_device(device):
-    return DeviceUser(device)
+def using_device(arg):
+    return DeviceUser(arg)
 
 
 def mem_alloc(nbytes):
@@ -136,13 +138,9 @@ def mem_alloc(nbytes):
         pool = drv.DeviceMemoryPool()
         _pools[device] = pool
 
-    return pool.allocate(nbytes)
-
-
-def free_pool():
-    """Free memory allocations held by memory pool."""
-    if _pool is not None:
-        _pool.free_held()
+    allocation = pool.allocate(nbytes)
+    setattr(allocation, 'device', device)
+    return allocation
 
 
 # ------------------------------------------------------------------------------
@@ -218,44 +216,52 @@ def ones_like(array, stream=None):
     return full_like(array, 1, stream=stream)
     
 
-def copy(array, out=None):
+def copy(array, out=None, out_device=None):
     """Copy GPUArray in default stream."""
+
+    in_device = get_device(array)
     if out is None:
-        out = empty_like(array)
-    drv.memcpy_dtod(out.ptr, array.ptr, out.nbytes)
+        if out_device is None:
+            out_device = in_device
+        else:
+            out_device = get_device(out_device)
+
+        with using_device(out_device):
+            out = empty_like(array)
+    else:
+        out_device = get_device(out)
+
+    with using_device(in_device):
+        if in_device == out_device:
+            drv.memcpy_dtod(out.ptr, array.ptr, out.nbytes)
+        else:
+            drv.memcpy_peer(out.ptr, array.ptr, out.nbytes, out_device, in_device)
+
     return out
 
 
-def copy_async(array, out=None, stream=None):
+def copy_async(array, out=None, out_device=None, stream=None):
     """Copy GPUArray asynchronously."""
+
+    in_device = get_device(array)
     if out is None:
-        out = empty_like(array)
-    drv.memcpy_dtod_async(out.ptr, array.ptr, out.nbytes, stream=stream)
-    return out
+        if out_device is None:
+            out_device = in_device
+        else:
+            out_device = get_device(out_device)
 
-
-def copy_peer(array, out_device, src_device, out=None):
-    """Copy GPUArray over devices synchronously."""
-    out_device = get_device(out_device)
-    src_device = get_device(src_device)
-
-    with using_device(out_device):
-        if out is None:
+        with using_device(out_device):
             out = empty_like(array)
-        drv.memcpy_peer(out.ptr, array.ptr, out.nbytes, out_device, src_device)
-    return out
+    else:
+        out_device = get_device(out)
 
+    with using_device(in_device):
+        if in_device == out_device:
+            drv.memcpy_dtod_async(out.ptr, array.ptr, out.nbytes, stream=stream)
+        else:
+            drv.memcpy_peer_async(out.ptr, array.ptr, out.nbytes, out_device,
+                                  in_device, stream=stream)
 
-def copy_peer_async(array, out_device, src_device, out=None, stream=None):
-    """Copy GPUArray over devices asynchronously."""
-    out_device = get_device(out_device)
-    src_device = get_device(src_device)
-
-    with using_device(out_device):
-        if out is None:
-            out = empty_like(array)
-        drv.memcpy_peer_async(out.ptr, array.ptr, out.nbytes, out_device, src_device,
-                              stream=stream)
     return out
 
 

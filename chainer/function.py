@@ -4,8 +4,11 @@ import numpy
 import cuda
 from variable import Variable
 
-def _is_gpu_input(inputs):
-    return any(type(x) == cuda.GPUArray for x in inputs)
+def _get_device_if_gpu(xs):
+    for x in xs:
+        if isinstance(x, cuda.GPUArray):
+            return cuda.get_device(x)
+    return None
 
 class Function(object):
     """Function node.
@@ -83,10 +86,11 @@ class Function(object):
         either implement cpu/gpu methods or override this method.
 
         """
-        if _is_gpu_input(inputs):
-            self.device = cuda.Context.get_device()
+        device = _get_device_if_gpu(inputs)
+        if device is None:
+            return self.forward_cpu(inputs)
+        with cuda.using_device(device):
             return self.forward_gpu(inputs)
-        return self.forward_cpu(inputs)
 
     def forward_cpu(self, inputs):
         """Forward function on CPU implemented by child class."""
@@ -97,10 +101,11 @@ class Function(object):
         raise NotImplementedError()
 
     def backward(self, inputs, grad_outputs):
-        if _is_gpu_input(inputs):
-            cuda.use_device(self.device)
+        device = _get_device_if_gpu(grad_outputs + inputs)
+        if device is None:
+            return self.backward_cpu(inputs, grad_outputs)
+        with cuda.using_device(device):
             return self.backward_gpu(inputs, grad_outputs)
-        return self.backward_cpu(inputs, grad_outputs)
 
     def backward_cpu(self, inputs, grad_outputs):
         """Default implementation of backward on CPU, which does nothing."""
@@ -174,9 +179,6 @@ class Split(Function):
         self.outputs = []
         self.rank    = var.rank
 
-        if isinstance(var, cuda.GPUArray):
-            self.device = cuda.Context.get_device()
-
     def add_branch(self):
         x = self.inputs[0]
         output = Variable(x.data)
@@ -186,19 +188,24 @@ class Split(Function):
 
     def backward(self, inputs, grad_outputs):
         # Accumulate gradients
+        if len(grad_outputs) == 1:
+            return grad_outputs  # no copy
+
         gx = None
         grad_outputs = [gy for gy in grad_outputs if gy is not None]
-        for gy in grad_outputs:
-            if gx is None:
-                if len(grad_outputs) == 1:
-                    gx = gy  # no copy
+        device_changed = False
+        try:
+            for gy in grad_outputs:
+                if gx is not None:
+                    gx += gy
+                elif isinstance(gy, cuda.GPUArray):
+                    cuda.use_device(gy, pop=False)  # it affects to above +=, too
+                    device_changed = True
+                    gx = cuda.copy_async(gy)
                 else:
-                    # TODO(beam2d): Add fast (no copy) option
-                    if isinstance(gy, cuda.GPUArray):
-                        cuda.use_device(self.device)
-                        gx = cuda.copy_async(gy)
-                    else:
-                        gx = gy.copy()
-            else:
-                gx += gy
-        return (gx,)
+                    gx = gy.copy()
+        finally:
+            if device_changed:
+                cuda.Context.pop()
+            
+        return gx,

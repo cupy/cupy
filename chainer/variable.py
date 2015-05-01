@@ -38,8 +38,8 @@ class Variable(object):
         # Initilize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
             if isinstance(self.data, cuda.GPUArray):
-                cuda.use_device(self.creator.device)
-                self.grad = cuda.ones_like(self.data)
+                with cuda.using_device(self.data):
+                    self.grad = cuda.ones_like(self.data)
             else:
                 self.grad = numpy.ones_like(self.data)
 
