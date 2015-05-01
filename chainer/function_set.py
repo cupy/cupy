@@ -19,10 +19,10 @@ class FunctionSet(object):
         """Collect parameters and gradients."""
         return self.parameters, self.gradients
 
-    def to_gpu(self):
+    def to_gpu(self, device=None):
         """Move all parameters and gradients to GPU."""
         for func in self.__dict__.itervalues():
-            func.to_gpu()
+            func.to_gpu(device=device)
 
     def to_cpu(self):
         """Move all parameters and gradients to CPU."""

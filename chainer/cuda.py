@@ -95,10 +95,12 @@ def shutdown():
     _pid      = None  # mark as uninitialized
 
 
-def get_device(arg):
+def get_device(arg=None):
     """Get device from id or chainer array."""
 
-    if isinstance(arg, drv.Device):
+    if arg is None:
+        return Context.get_device()
+    elif isinstance(arg, drv.Device):
         return arg
     elif isinstance(arg, GPUArray):
         return arg.gpudata.device
