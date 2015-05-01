@@ -12,22 +12,8 @@ class FunctionSet(object):
 
     """
     def __init__(self, **functions):
-        object.__setattr__(self, 'functions', {})
         for name, func in functions.iteritems():
             setattr(self, name, func)
-
-    def __getattr__(self, name):
-        return self.functions[name]
-
-    def __setattr__(self, name, value):
-        if name in ('parameters', 'gradients'):
-            object.__setattr__(self, name, value)
-        else:
-            assert isinstance(value, Function)
-            self.functions[name] = value
-
-    def __delattr__(self, name):
-        del self.functions[name]
 
     def collect_parameters(self):
         """Collect parameters and gradients."""
@@ -35,12 +21,12 @@ class FunctionSet(object):
 
     def to_gpu(self):
         """Move all parameters and gradients to GPU."""
-        for func in self.functions.itervalues():
+        for func in self.__dict__.itervalues():
             func.to_gpu()
 
     def to_cpu(self):
         """Move all parameters and gradients to CPU."""
-        for func in self.functions.itervalues():
+        for func in self.__dict__.itervalues():
             func.to_cpu()
 
     @property
@@ -64,4 +50,4 @@ class FunctionSet(object):
             func.gradients = grad_iter
 
     def _get_sorted_funcs(self):
-        return sorted(self.functions.iteritems())
+        return sorted(self.__dict__.iteritems())
