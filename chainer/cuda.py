@@ -8,6 +8,7 @@ from pycuda.reduction   import ReductionKernel
 from pycuda import gpuarray
 from pycuda import curandom
 import pycuda.tools as cutools
+from scikits.cuda import cublas
 import scikits.cuda.misc as cumisc
 
 # ------------------------------------------------------------------------------
@@ -28,6 +29,7 @@ mem_alloc = None
 
 _contexts = {}
 _pools    = {}
+_cublas_handles = {}
 _pid      = None
 
 _seed      = os.environ.get('CHAINER_SEED')
@@ -59,7 +61,7 @@ def init(device=None):
     else:
         device  = Device(device)
         context = device.make_context()
-    _contexts = {device: context}
+    _contexts  = {device: context}
 
     generator = curandom.XORWOWRandomNumberGenerator(seed_getter=_seed_getter)
 
@@ -67,16 +69,21 @@ def init(device=None):
     atexit.register(shutdown)
 
     cumisc.init(mem_alloc)
+    _cublas_handles = {device: cumisc._global_cublas_handle}
 
 
 def shutdown():
     """Finalize CUDA global state."""
 
-    global _contexts, _pid, _pools
+    global _contexts, _cublas_handles, _pid, _pools
 
     pid = os.getpid()
     if _pid != pid:  # not initialized
         return
+
+    for cublas_handle in _cublas_handles.itervalues():
+        cublas.cublasDestroy(cublas_handle)
+    _cublas_handles = {}
 
     cumisc.shutdown()
 
@@ -328,3 +335,40 @@ def reduce(arguments, map_expr, reduce_expr, neutral, name,
         kwargs['allocator'] = mem_alloc
         return kern(*args, **kwargs)
     return call_kern
+
+
+# ------------------------------------------------------------------------------
+# CUBLAS
+# ------------------------------------------------------------------------------
+
+def get_cublas_handle():
+    """Get CUBLAS handle for current device."""
+
+    global _cublas_handles
+
+    device = Context.get_device()
+    if device in _cublas_handles:
+        return _cublas_handles[device]
+
+    handle = cublas.cublasCreate()
+    _cublas_handles[device] = handle
+    return handle
+
+
+class CumiscUser(object):
+    def __init__(self, handle):
+        self.handle = cumisc._global_cublas_handle
+        self.tmp_handle = handle
+
+    def __enter__(self):
+        cumisc._global_cublas_handle = self.tmp_handle
+
+    def __exit__(self, typ, value, traceback):
+        cumisc._global_cublas_handle = self.handle
+
+
+def using_cumisc(handle=None):
+    """Temporarily use chainer's CUBLAS handle on scikits.cuda.misc."""
+    if handle is None:
+        handle = get_cublas_handle()
+    return CumiscUser(handle)
