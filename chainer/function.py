@@ -101,7 +101,7 @@ class Function(object):
         raise NotImplementedError()
 
     def backward(self, inputs, grad_outputs):
-        device = _get_device_if_gpu(grad_outputs + inputs)
+        device = _get_device_if_gpu(inputs)
         if device is None:
             return self.backward_cpu(inputs, grad_outputs)
         with cuda.using_device(device):
