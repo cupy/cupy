@@ -42,7 +42,8 @@ class Linear(Function):
     def forward_gpu(self, x):
         _x = x[0].reshape(x[0].shape[0], self.W.shape[1])
         y = cuda.empty((x[0].shape[0], self.W.shape[0]), dtype=_x.dtype)
-        culinalg.dot(_x, self.W, transb='T', out=y)
+        with cuda.using_cumisc():
+            culinalg.dot(_x, self.W, transb='T', out=y)
         if self.b is not None:
             cuda.elementwise(
                 'float* y, float* b, int n_channel',
@@ -59,8 +60,9 @@ class Linear(Function):
     def backward_gpu(self, x, gy):
         _x = x[0].reshape(x[0].shape[0], self.W.shape[1])
         gx = cuda.empty_like(_x)
-        culinalg.add_dot(gy[0], _x, self.gW, transa='T')
-        if self.gb is not None:
-            self.gb += cumisc.sum(gy[0], 0)
-        culinalg.dot(gy[0], self.W, out=gx)
+        with cuda.using_cumisc():
+            culinalg.add_dot(gy[0], _x, self.gW, transa='T')
+            if self.gb is not None:
+                self.gb += cumisc.sum(gy[0], 0)
+            culinalg.dot(gy[0], self.W, out=gx)
         return gx.reshape(x[0].shape),
