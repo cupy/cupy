@@ -10,26 +10,28 @@ def _kernel_with_I(args, expr, name):
         name)
 
 def _cumean_axis02(x):
-    if x.shape[2] > 1:
-        # cumisc.mean does not support more than two dimensions
-        shape = x.shape
-        x = x.reshape(shape[0] * shape[1], shape[2])
-        x = cumisc.mean(x, axis=1)
-        x = x.reshape(shape[0], shape[1])
-    else:
-        x = x.reshape(x.shape[:2])
-    return cumisc.mean(x, axis=0)
+    with cuda.using_cumisc():
+        if x.shape[2] > 1:
+            # cumisc.mean does not support more than two dimensions
+            shape = x.shape
+            x = x.reshape(shape[0] * shape[1], shape[2])
+            x = cumisc.mean(x, axis=1)
+            x = x.reshape(shape[0], shape[1])
+        else:
+            x = x.reshape(x.shape[:2])
+        return cumisc.mean(x, axis=0)
 
 def _cusum_axis02(x):
-    if x.shape[2] > 1:
-        # cumisc.sum does not support more than two dimensions
-        shape = x.shape
-        x = x.reshape(shape[0] * shape[1], shape[2])
-        x = cumisc.sum(x, axis=1)
-        x = x.reshape(shape[0], shape[1])
-    else:
-        x = x.reshape(x.shape[:2])
-    return cumisc.sum(x, axis=0)
+    with cuda.using_cumisc():
+        if x.shape[2] > 1:
+            # cumisc.sum does not support more than two dimensions
+            shape = x.shape
+            x = x.reshape(shape[0] * shape[1], shape[2])
+            x = cumisc.sum(x, axis=1)
+            x = x.reshape(shape[0], shape[1])
+        else:
+            x = x.reshape(x.shape[:2])
+        return cumisc.sum(x, axis=0)
 
 
 class BatchNormalization(Function):
