@@ -1,9 +1,10 @@
 import math
 import numpy
 from pycuda import gpuarray
+import cuda
 
 def _sqnorm(x):
-    if type(x) == gpuarray.GPUArray:
+    if isinstance(x, cuda.GPUArray):
         return float(gpuarray.dot(x, x).get())
     x = x.ravel()
     return float(x.dot(x))
@@ -32,10 +33,15 @@ class Optimizer(object):
     def zero_grads(self):
         """Set gradients zero."""
         for _, g, _ in self.tuples:
-            g.fill(0)
+            if isinstance(g, cuda.GPUArray):
+                with cuda.using_device(g):
+                    g.fill(0)
+            else:
+                g.fill(0)
 
     def compute_grads_norm(self):
         """Compute norm of the gradient."""
+        # TODO(beam2d): Make it asynchronous to CPU when gradients exist on GPU
         sqnorm = 0
         for _, g, _ in self.tuples:
             sqnorm += _sqnorm(g)
@@ -52,7 +58,13 @@ class Optimizer(object):
     def weight_decay(self, decay):
         """Apply weight decay."""
         for p, g, _ in self.tuples:
-            g -= decay * p
+            if isinstance(p, cuda.GPUArray):
+                with cuda.using_device(p):
+                    cuda.elementwise('float* g, const float* p, float decay',
+                                     'g[i] -= decay * p[i]',
+                                     'weight_decay')(g, p, decay)
+            else:
+                g -= decay * p
 
     def update(self):
         self.t += 1
@@ -60,8 +72,9 @@ class Optimizer(object):
             self.update_one(p, g, s)
 
     def update_one(self, param, grad, state):
-        if isinstance(param, gpuarray.GPUArray):
-            self.update_one_gpu(param, grad, state)
+        if isinstance(param, cuda.GPUArray):
+            with cuda.using_device(param):
+                self.update_one_gpu(param, grad, state)
         else:
             self.update_one_cpu(param, grad, state)
 
