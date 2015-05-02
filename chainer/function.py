@@ -137,6 +137,8 @@ class Function(object):
             for k, v in self.__dict__.iteritems():
                 if isinstance(v, numpy.ndarray):
                     setattr(self, k, cuda.to_gpu(v))
+                elif isinstance(v, cuda.GPUArray) and v.gpudata.device != device:
+                    setattr(self, k, cuda.copy(v, out_device=device))
         return self
 
     def to_cpu(self):
