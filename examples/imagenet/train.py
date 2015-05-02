@@ -273,8 +273,8 @@ def forward(x_data, y_data, volatile=False):
         h = F.average_pooling_2d(model.inc5b(h), 7)
         h = model.out(h)
         l = F.softmax_cross_entropy(h, t)
+        L = (a * 0.3 + b * 0.3 + l) / x_data.shape[0]
         acc = F.accuracy(h, t)
-        L   = (a * 0.3 + b * 0.3 + l) / x_data.shape[0]
     elif args.arch == 'nin':
         h = F.relu(model.conv1(x))
         h = F.relu(model.conv1a(h))
