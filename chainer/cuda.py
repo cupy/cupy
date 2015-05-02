@@ -136,6 +136,15 @@ def using_device(arg):
     return DeviceUser(arg)
 
 
+def get_context(device=None):
+    """Get the context of given device.
+
+    If device is not specified, it returns the current context.
+
+    """
+    return _contexts[get_device(device)]
+
+
 def mem_alloc(nbytes):
     """Allocate memory from memory pool corresponding to the current device."""
     global _pools
