@@ -66,6 +66,25 @@ class Optimizer(object):
             else:
                 g -= decay * p
 
+    def accumulate_grads(self, grads):
+        """Accumulate gradients from other source.
+
+        This function is typically used in data-parallel optimization. Each
+        gradient may reside on different devices.
+
+        """
+        for (_, g_dst, _), g_src in zip(self.tuples, grads):
+            if isinstance(g_dst, numpy.ndarray):
+                g_dst += cuda.to_cpu(g_src)
+                continue
+
+            with cuda.using_device(g_dst):
+                if (isinstance(g_src, cuda.GPUArray) and
+                    g_dst.gpudata.device != g_src.gpudata.device):
+                    g_dst += cuda.copy(g_src, out_device=g_src.gpudata.device)
+                else:
+                    g_dst += cuda.to_gpu(g_src)
+
     def update(self):
         self.t += 1
         for p, g, s in self.tuples:
