@@ -22,10 +22,6 @@ batchsize = args.batchsize
 val_batchsize = args.val_batchsize
 assert 50000 % val_batchsize == 0
 
-def indicate(i, n):
-    sys.stderr.write('\r{} / {}'.format(i, n))
-    sys.stderr.flush()
-
 def load_image_list(path):
     tuples = []
     for line in open(path):
