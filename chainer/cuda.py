@@ -1,6 +1,6 @@
 """Device, context and memory management on PyCUDA."""
 
-import atexit, os
+import atexit, copy_reg, os
 import numpy
 import pycuda.driver as drv
 from pycuda.elementwise import ElementwiseKernel
@@ -160,6 +160,19 @@ def to_gpu(array):
     if isinstance(array, GPUArray):
         return array
     return gpuarray.to_gpu(array, allocator=mem_alloc)
+
+# Pickle redefinition of GPUArray. Note that pickling and unpickling of GPUArray
+# do not preserve device information, i.e. the unpickled GPUArray may reside on
+# a GPU different from the GPU that the original has resided on.
+def _reconstruct(array, is_chainer_array):
+    if is_chainer_array:
+        return to_gpu(array)
+    return gpuarray.to_gpu(array)
+
+copy_reg.pickle(
+    GPUArray,
+    lambda data: (_reconstruct, (data.get(), hasattr(data.gpudata, 'device'))),
+    _reconstruct)
 
 
 def to_gpu_async(array, stream=None):
