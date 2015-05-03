@@ -104,7 +104,7 @@ def train_whole():
 
             accum_loss /= batchsize
             accum_loss.backward()
-            accum_loss.forget_backward()
+            accum_loss.unchain_backward()
             accum_loss = 0
 
             optimizer.clip_grads(grad_clip)

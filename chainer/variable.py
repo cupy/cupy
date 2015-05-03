@@ -64,7 +64,7 @@ class Variable(object):
                 if gx is not None:  # skip if gradient does not flow
                     add_cand(x.creator)
 
-    def forget_backward(self):
+    def unchain_backward(self):
         """Delete nodes backward through the graph."""
 
         cand_funcs = []
@@ -81,4 +81,4 @@ class Variable(object):
             func = cand_funcs.pop()
             for var in func.inputs:
                 add_cand(var.creator)
-            func.forget()
+            func.unchain()

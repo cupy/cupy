@@ -115,7 +115,7 @@ class Function(object):
         """Default implementation of backward on GPU, which does nothing."""
         return tuple(None for _ in inputs)
 
-    def forget(self):
+    def unchain(self):
         """Purge in/out variables and remove this node from the graph."""
 
         for y in self.outputs:
