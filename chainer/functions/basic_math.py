@@ -158,7 +158,7 @@ class PowVarConst(Function):
         cuda.elementwise(
             'float* gx, const float* x, const float* gy, float value',
             'gx[i] = value * __powf(x[i], value - 1) * gy[i]',
-            'pow_v_c_fwd')(gx, x[0], gy[0], self.value)
+            'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
 def pow(lhs, rhs):  # lhs ** rhs
