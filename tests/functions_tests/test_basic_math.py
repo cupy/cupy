@@ -87,6 +87,7 @@ class TestVariableConstantOp(TestCase):
     def test_div_forward_cpu(self):  self.forward_cpu(lambda x, y: x / y)
     def test_rdiv_forward_cpu(self): self.forward_cpu(lambda x, y: y / x)
     def test_pow_forward_cpu(self):  self.forward_cpu(lambda x, y: x ** y)
+    def test_rpow_forward_cpu(self): self.forward_cpu(lambda x, y: y ** x)
 
     def forward_gpu(self, op):
         self.check_forward(op, to_gpu(self.x))
@@ -100,6 +101,7 @@ class TestVariableConstantOp(TestCase):
     def test_div_forward_gpu(self):  self.forward_gpu(lambda x, y: x / y)
     def test_rdiv_forward_gpu(self): self.forward_gpu(lambda x, y: y / x)
     def test_pow_forward_gpu(self):  self.forward_gpu(lambda x, y: x ** y)
+    def test_rpow_forward_gpu(self): self.forward_gpu(lambda x, y: y ** x)
 
     def check_backward(self, op, x_data, y_grad):
         x = Variable(x_data)
@@ -125,6 +127,7 @@ class TestVariableConstantOp(TestCase):
     def test_div_backward_cpu(self):  self.backward_cpu(lambda x, y: x / y)
     def test_rdiv_backward_cpu(self): self.backward_cpu(lambda x, y: y / x)
     def test_pow_backward_cpu(self):  self.backward_cpu(lambda x, y: x ** y)
+    def test_rpow_backward_cpu(self): self.backward_cpu(lambda x, y: y ** x)
 
     def backward_gpu(self, op):
         self.check_backward(op, to_gpu(self.x), to_gpu(self.gy))
@@ -138,3 +141,4 @@ class TestVariableConstantOp(TestCase):
     def test_div_backward_gpu(self):  self.backward_gpu(lambda x, y: x / y)
     def test_rdiv_backward_gpu(self): self.backward_gpu(lambda x, y: y / x)
     def test_pow_backward_gpu(self):  self.backward_gpu(lambda x, y: x ** y)
+    def test_rpow_backward_gpu(self): self.backward_gpu(lambda x, y: y ** x)
