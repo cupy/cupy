@@ -30,9 +30,9 @@ class AddConstant(Function):
         return gy[0],
 
 def add(lhs, rhs):  # lhs + rhs
-    if type(rhs) != Variable:
-        return AddConstant(rhs)(lhs)
-    return Add()(lhs, rhs)
+    if isinstance(rhs, Variable):
+        return Add()(lhs, rhs)
+    return AddConstant(rhs)(lhs)
 
 
 class Sub(Function):
@@ -43,9 +43,9 @@ class Sub(Function):
         return gy[0], -gy[0]
 
 def sub(lhs, rhs):  # lhs - rhs
-    if type(rhs) != Variable:
-        return AddConstant(-rhs)(lhs)
-    return Sub()(lhs, rhs)
+    if isinstance(rhs, Variable):
+        return Sub()(lhs, rhs)
+    return AddConstant(-rhs)(lhs)
 
 
 class SubFromConstant(Function):
@@ -59,9 +59,7 @@ class SubFromConstant(Function):
         return -gy[0],
 
 def rsub(lhs, rhs):  # rhs - lhs
-    if type(rhs) != Variable:
-        return SubFromConstant(rhs)(lhs)
-    return Sub()(rhs, lhs)
+    return SubFromConstant(rhs)(lhs)
 
 
 class Mul(Function):
@@ -92,9 +90,9 @@ class MulConstant(Function):
         return self.value * gy[0],
 
 def mul(lhs, rhs):  # lhs * rhs
-    if type(rhs) != Variable:
-        return MulConstant(rhs)(lhs)
-    return Mul()(lhs, rhs)
+    if isinstance(rhs, Variable):
+        return Mul()(lhs, rhs)
+    return MulConstant(rhs)(lhs)
 
 
 class Div(Function):
@@ -116,9 +114,9 @@ class Div(Function):
         return gx0, gx1
 
 def div(lhs, rhs):  # lhs / rhs
-    if type(rhs) != Variable:
-        return MulConstant(1. / rhs)(lhs)
-    return Div()(lhs, rhs)
+    if isinstance(rhs, Variable):
+        return Div()(lhs, rhs)
+    return MulConstant(1. / rhs)(lhs)
 
 class DivFromConstant(Function):
     def __init__(self, value):
@@ -139,9 +137,7 @@ class DivFromConstant(Function):
         return gx,
 
 def rdiv(lhs, rhs):  # rhs / lhs
-    if type(rhs) != Variable:
-        return DivFromConstant(rhs)(lhs)
-    return Div()(rhs, lhs)
+    return DivFromConstant(rhs)(lhs)
 
 
 class PowVarConst(Function):
@@ -163,8 +159,7 @@ class PowVarConst(Function):
         return gx,
 
 def pow(lhs, rhs):  # lhs ** rhs
-    # TODO(beam2d): Support const ** var and var ** var
-    if type(rhs) == Variable:
+    if isinstance(rhs, Variable):
         raise NotImplementedError()
     return PowVarConst(rhs)(lhs)
 
