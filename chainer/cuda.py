@@ -102,6 +102,8 @@ def get_device(arg=None):
         return Context.get_device()
     elif isinstance(arg, drv.Device):
         return arg
+    elif isinstance(arg, numpy.ndarray):
+        return None
     elif isinstance(arg, GPUArray):
         return arg.gpudata.device
     return drv.Device(arg)
@@ -110,10 +112,13 @@ def get_device(arg=None):
 def use_device(arg, pop=True):
     """Switch context to use given device."""
 
+    device = get_device(arg)
+    if device is None:
+        return
+
     if pop:
         drv.Context.pop()
 
-    device = get_device(arg)
     if device not in _contexts:
         _contexts[device] = device.make_context()
     else:
@@ -127,22 +132,42 @@ class DeviceUser(object):
         self.arg = arg
 
     def __enter__(self):
-        use_device(self.arg, pop=False)
+        if self.is_active:
+            use_device(self.arg, pop=False)
+        return self
 
     def __exit__(self, typ, value, traceback):
-        drv.Context.pop()
+        if self.is_active:
+            drv.Context.pop()
+        self.arg = None
 
-def using_device(arg):
-    return DeviceUser(arg)
+    @property
+    def is_active(self):
+        return self.arg is not None
 
+def using_device(*args):
+    """Return DeviceUser object of the first GPUArray argument.
 
-def get_context(device=None):
-    """Get the context of given device.
-
-    If device is not specified, it returns the current context.
+    If none of the arguments is GPUArray, then it returns dummy DeviceUser that
+    does nothing.
 
     """
-    return _contexts[get_device(device)]
+    for arg in args:
+        if isinstance(arg, GPUArray):
+            return DeviceUser(arg)
+    return DeviceUser(None)
+
+
+def get_context(arg=None):
+    """Get the context of given device.
+
+    If arg is not specified, it returns the current context.
+
+    """
+    device = get_device(arg)
+    if device is None:
+        return None
+    return _contexts[device]
 
 
 def mem_alloc(nbytes):

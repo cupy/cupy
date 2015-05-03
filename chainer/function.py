@@ -4,12 +4,6 @@ import numpy
 import cuda
 from variable import Variable
 
-def _get_device_if_gpu(xs):
-    for x in xs:
-        if isinstance(x, cuda.GPUArray):
-            return cuda.get_device(x)
-    return None
-
 class Function(object):
     """Function node.
 
@@ -44,9 +38,13 @@ class Function(object):
 
         if any(x.volatile for x in inputs):  # not build graph
             assert all(x.volatile for x in inputs)  # do not mix multiple volatility
-            outputs = self.forward(tuple(x.data for x in inputs))
-            assert type(outputs) == tuple
-            outputs = list(Variable(y, volatile=True) for y in outputs)
+
+            in_data = tuple(x.data for x in inputs)
+            with cuda.using_device(*in_data):
+                out_data = self.forward(in_data)
+            assert type(out_data) == tuple
+
+            outputs = list(Variable(y, volatile=True) for y in out_data)
             if len(outputs) == 1:
                 return outputs[0]
             return outputs
@@ -65,7 +63,9 @@ class Function(object):
 
         self.rank = max(x.rank for x in self.inputs)
 
-        outputs = self.forward(tuple(x.data for x in self.inputs))
+        in_data = tuple(x.data for x in self.inputs)
+        with cuda.using_device(*in_data):
+            outputs = self.forward(in_data)
         assert type(outputs) == tuple
 
         ret = tuple(Variable(y) for y in outputs)
@@ -86,11 +86,10 @@ class Function(object):
         either implement cpu/gpu methods or override this method.
 
         """
-        device = _get_device_if_gpu(inputs)
-        if device is None:
-            return self.forward_cpu(inputs)
-        with cuda.using_device(device):
+        if any(isinstance(x, cuda.GPUArray) for x in inputs):
             return self.forward_gpu(inputs)
+        else:
+            return self.forward_cpu(inputs)
 
     def forward_cpu(self, inputs):
         """Forward function on CPU implemented by child class."""
@@ -101,11 +100,10 @@ class Function(object):
         raise NotImplementedError()
 
     def backward(self, inputs, grad_outputs):
-        device = _get_device_if_gpu(inputs)
-        if device is None:
-            return self.backward_cpu(inputs, grad_outputs)
-        with cuda.using_device(device):
+        if any(isinstance(x, cuda.GPUArray) for x in inputs):
             return self.backward_gpu(inputs, grad_outputs)
+        else:
+            return self.backward_cpu(inputs, grad_outputs)
 
     def backward_cpu(self, inputs, grad_outputs):
         """Default implementation of backward on CPU, which does nothing."""

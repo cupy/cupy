@@ -37,11 +37,11 @@ class Variable(object):
 
         # Initilize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
-            if isinstance(self.data, cuda.GPUArray):
-                with cuda.using_device(self.data):
+            with cuda.using_device(self.data) as user:
+                if user.is_active:
                     self.grad = cuda.ones_like(self.data)
-            else:
-                self.grad = numpy.ones_like(self.data)
+                else:
+                    self.grad = numpy.ones_like(self.data)
 
         def add_cand(cand):
             if cand is not None and cand not in seen_set:
@@ -54,8 +54,12 @@ class Variable(object):
         while cand_funcs:
             _, func = heapq.heappop(cand_funcs)
             outputs = (y() for y in func.outputs)  # access via weak ref
-            gxs = func.backward(tuple(x.data for x in func.inputs),
-                                tuple(y and y.grad for y in outputs))
+
+            in_data  = tuple(x.data for x in func.inputs)
+            out_grad = tuple(y and y.grad for y in outputs)
+            with cuda.using_device(*in_data):
+                gxs = func.backward(in_data, out_grad)
+
             if not retain_grad:
                 for y in outputs:
                     y.grad = None
