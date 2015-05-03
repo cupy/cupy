@@ -1,4 +1,4 @@
-from chainer import Function, Variable
+from chainer import cuda, Function, Variable
 
 class Neg(Function):
     def forward(self, x):
@@ -67,9 +67,18 @@ class Mul(Function):
     def forward(self, x):
         return x[0] * x[1],
 
-    def backward(self, x, gy):
-        # TODO(beam2d): Unify to one kernel
+    def backward_cpu(self, x, gy):
         return gy[0] * x[1], gy[0] * x[0]
+
+    def backward_gpu(self, x, gy):
+        gx0 = cuda.empty_like(x[0])
+        gx1 = cuda.empty_like(x[1])
+        cuda.elementwise(
+            'float* gx0, float* gx1, const float* x0, const float* x1, const float* gy',
+            '''gx0[i] = gy[i] * x1[i];
+               gx1[i] = gy[i] * x0[i];''',
+            'mul_bwd')(gx0, gx1, x[0], x[1], gy[0])
+        return gx0, gx1
 
 class MulConstant(Function):
     def __init__(self, value):
@@ -91,10 +100,19 @@ class Div(Function):
     def forward(self, x):
         return x[0] / x[1],
 
-    def backward(self, x, gy):
-        # TODO(beam2d): Unify to one kernel
+    def backward_cpu(self, x, gy):
         gx0 = gy[0] / x[1]
         return gx0, -gx0 * x[0] / x[1]
+
+    def backward_gpu(self, x, gy):
+        gx0 = cuda.empty_like(x[0])
+        gx1 = cuda.empty_like(x[1])
+        cuda.elementwise(
+            'float* gx0, float* gx1, const float* x0, const float* x1, const float* gy',
+            '''gx0[i] = gy[i] / x1[i];
+               gx1[i] = -gx0[i] * x0[i] / x1[i];''',
+            'div_bwd')(gx0, gx1, x[0], x[1], gy[0])
+        return gx0, gx1
 
 def div(lhs, rhs):  # lhs / rhs
     if type(rhs) != Variable:
@@ -108,9 +126,16 @@ class DivFromConstant(Function):
     def forward(self, x):
         return self.value / x[0],
 
-    def backward(self, x, gy):
-        # TODO(beam2d): Unify to one kernel
+    def backward_cpu(self, x, gy):
         return -self.value * gy[0] / (x[0] ** 2),
+
+    def backward_gpu(self, x, gy):
+        gx = cuda.empty_like(x[0])
+        cuda.elementwise(
+            'float* gx, const float* x, const float* gy, float value',
+            'gx[i] = -value * gy[i] / (x[i] * x[i])',
+            'div_from_const_bwd')(gx, x[0], gy[0], self.value)
+        return gx,
 
 def rdiv(lhs, rhs):  # rhs / lhs
     if type(rhs) != Variable:
@@ -125,9 +150,16 @@ class PowVarConst(Function):
     def forward(self, x):
         return x[0] ** self.value,
 
-    def backward(self, x, gy):
-        # TODO(beam2d): Unify to one kernel
+    def backward_cpu(self, x, gy):
         return self.value * (x[0] ** (self.value - 1)) * gy[0],
+
+    def backward_gpu(self, x, gy):
+        gx = cuda.empty_like(x[0])
+        cuda.elementwise(
+            'float* gx, const float* x, const float* gy, float value',
+            'gx[i] = value * __powf(x[i], value - 1) * gy[i]',
+            'pow_v_c_fwd')(gx, x[0], gy[0], self.value)
+        return gx,
 
 def pow(lhs, rhs):  # lhs ** rhs
     # TODO(beam2d): Support const ** var and var ** var
