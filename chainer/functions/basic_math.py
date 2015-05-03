@@ -1,4 +1,5 @@
 import math
+import numpy
 from chainer import cuda, Function, Variable
 
 class Neg(Function):
@@ -140,6 +141,29 @@ def rdiv(lhs, rhs):  # rhs / lhs
     return DivFromConstant(rhs)(lhs)
 
 
+class PowVarVar(Function):
+    def forward_cpu(self, x):
+        self.y = x[0] ** x[1]
+        return self.y,
+
+    def forward_gpu(self, x):
+        return x[0] ** x[1],
+
+    def backward_cpu(self, x, gy):
+        gx0 = x[1] * (x[0] ** (x[1] - 1)) * gy[0]
+        gx1 = numpy.log(x[0]) * self.y * gy[0]
+        return gx0, gx1
+
+    def backward_gpu(self, x, gy):
+        gx0 = cuda.empty_like(x[0])
+        gx1 = cuda.empty_like(x[1])
+        cuda.elementwise(
+            'float* gx0, float* gx1, const float* x0, const float* x1, const float* gy',
+            '''gx0[i] = x1[i] * __powf(x0[i], x1[i] - 1) * gy[i];
+               gx1[i] = __logf(x0[i]) * __powf(x0[i], x1[i]) * gy[i];''',
+            'pow_var_var_bwd')(gx0, gx1, x[0], x[1], gy[0])
+        return gx0, gx1
+
 class PowVarConst(Function):
     def __init__(self, value):
         self.value = value
@@ -160,7 +184,7 @@ class PowVarConst(Function):
 
 def pow(lhs, rhs):  # lhs ** rhs
     if isinstance(rhs, Variable):
-        raise NotImplementedError()
+        return PowVarVar()(lhs, rhs)
     return PowVarConst(rhs)(lhs)
 
 class PowConstVar(Function):

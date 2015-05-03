@@ -8,7 +8,7 @@ cuda.init()
 
 class TestBinaryOp(TestCase):
     def setUp(self):
-        self.x1 = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.x1 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
         self.x2 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
@@ -16,7 +16,7 @@ class TestBinaryOp(TestCase):
         x1 = Variable(x1_data)
         x2 = Variable(x2_data)
         y = op(x1, x2)
-        assert_allclose(op(self.x1, self.x2), y.data, atol=0, rtol=0)
+        assert_allclose(op(self.x1, self.x2), y.data)
 
     def forward_cpu(self, op):
         self.check_forward(op, self.x1, self.x2)
@@ -25,6 +25,7 @@ class TestBinaryOp(TestCase):
     def test_sub_forward_cpu(self): self.forward_cpu(lambda x, y: x - y)
     def test_mul_forward_cpu(self): self.forward_cpu(lambda x, y: x * y)
     def test_div_forward_cpu(self): self.forward_cpu(lambda x, y: x / y)
+    def test_pow_forward_cpu(self): self.forward_cpu(lambda x, y: x ** y)
 
     def forward_gpu(self, op):
         self.check_forward(op, to_gpu(self.x1), to_gpu(self.x2))
@@ -33,6 +34,7 @@ class TestBinaryOp(TestCase):
     def test_sub_forward_gpu(self): self.forward_gpu(lambda x, y: x - y)
     def test_mul_forward_gpu(self): self.forward_gpu(lambda x, y: x * y)
     def test_div_forward_gpu(self): self.forward_gpu(lambda x, y: x / y)
+    def test_pow_forward_gpu(self): self.forward_gpu(lambda x, y: x ** y)
 
     def check_backward(self, op, x1_data, x2_data, y_grad):
         x1 = Variable(x1_data)
@@ -54,6 +56,7 @@ class TestBinaryOp(TestCase):
     def test_sub_backward_cpu(self): self.backward_cpu(lambda x, y: x - y)
     def test_mul_backward_cpu(self): self.backward_cpu(lambda x, y: x * y)
     def test_div_backward_cpu(self): self.backward_cpu(lambda x, y: x / y)
+    def test_pow_backward_cpu(self): self.backward_cpu(lambda x, y: x ** y)
 
     def backward_gpu(self, op):
         self.check_backward(op, to_gpu(self.x1), to_gpu(self.x2), to_gpu(self.gy))
@@ -62,6 +65,7 @@ class TestBinaryOp(TestCase):
     def test_sub_backward_gpu(self): self.backward_gpu(lambda x, y: x - y)
     def test_mul_backward_gpu(self): self.backward_gpu(lambda x, y: x * y)
     def test_div_backward_gpu(self): self.backward_gpu(lambda x, y: x / y)
+    def test_pow_backward_gpu(self): self.backward_gpu(lambda x, y: x ** y)
 
 
 class TestVariableConstantOp(TestCase):
