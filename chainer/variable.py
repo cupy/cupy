@@ -1,4 +1,4 @@
-import heapq
+import heapq, weakref
 import numpy
 
 import cuda
@@ -11,8 +11,9 @@ class Variable(object):
         self.rank = rank
         self.volatile = volatile
 
-        self.grad = None
-        self.creator = None
+        self.splitter = weakref.ref(lambda: 0)  # dead ref
+        self.grad     = None
+        self.creator  = None
 
     def __pos__(self):
         return self

@@ -51,15 +51,13 @@ class Function(object):
 
         # Build graph
         # Be careful that forward references must be weak
-        self.inputs = list(inputs)
-        for i, x in enumerate(inputs):
-            has_splitter = hasattr(x, 'splitter') and x.splitter is not None
-            if has_splitter:
-                splitter = x.splitter()
-            if not has_splitter or splitter is None:
+        self.inputs = []
+        for x in inputs:
+            splitter = x.splitter()
+            if splitter is None:
                 splitter = Split(x)
                 x.splitter = weakref.ref(splitter)
-            self.inputs[i] = splitter.add_branch()
+            self.inputs.append(splitter.add_branch())
 
         self.rank = max(x.rank for x in self.inputs)
 
