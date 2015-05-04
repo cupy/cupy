@@ -24,6 +24,16 @@ class TestConvolution2D(TestCase):
         self.func.gW = to_gpu(self.func.gW)
         self.func.gb = to_gpu(self.func.gb)
 
+    def test_forward_consistency(self):
+        x_cpu = Variable(self.x)
+        y_cpu = self.func(x_cpu)
+
+        self.to_gpu()
+        x_gpu = Variable(to_gpu(self.x))
+        y_gpu = self.func(x_gpu)
+
+        assert_allclose(y_cpu.data, y_gpu.data.get())
+
     def check_backward(self, x_data, y_grad):
         x = Variable(x_data)
         y = self.func(x)
@@ -37,6 +47,9 @@ class TestConvolution2D(TestCase):
         assert_allclose(gx, x.grad)
         assert_allclose(gW, func.gW)
         assert_allclose(gb, func.gb)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.gy)
 
     def test_backward_gpu(self):
         self.to_gpu()

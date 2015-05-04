@@ -2,6 +2,7 @@ import math
 import libcudnn
 import numpy
 from chainer import cuda, cudnn, Function
+from chainer.utils import conv
 
 def _pair(x):
     if hasattr(x, '__getitem__'):
@@ -55,7 +56,13 @@ class Convolution2D(Function):
             return 'gW',
         return 'gW', 'gb'
 
-    # TODO(beam2d): Implement CPU version.
+    def forward_cpu(self, x):
+        self.col = conv.im2col_cpu(
+            x[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
+        y = numpy.tensordot(self.col, self.W, ([1, 2, 3], [1, 2, 3]))
+        if self.b is not None:
+            y += self.b
+        return numpy.rollaxis(y, 3, 1),
 
     def forward_gpu(self, x):
         handle = cudnn.get_default_handle()
@@ -89,6 +96,16 @@ class Convolution2D(Function):
                 1, y_desc.value, cudnn.get_ptr(y))
 
         return y,
+
+    def backward_cpu(self, x, gy):
+        if self.gb is not None:
+            self.gb += gy[0].sum(axis=(0, 2, 3))
+        self.gW += numpy.tensordot(gy[0], self.col, ([0, 2, 3], [0, 4, 5]))
+        gcol = numpy.tensordot(self.W, gy[0], (0, 1))
+        gcol = numpy.rollaxis(gcol, 3)
+
+        h, w = x[0].shape[2:]
+        return conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w),
 
     def backward_gpu(self, x, gy):
         handle = cudnn.get_default_handle()
