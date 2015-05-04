@@ -7,7 +7,7 @@ import numpy
 import cuda
 
 def get_ptr(x):
-    return ctypes.c_void_p(int(x.gpudata))
+    return ctypes.c_void_p(x.ptr)
 
 class Auto(object):
     """Object to be destoryed automatically."""
