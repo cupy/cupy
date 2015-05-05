@@ -4,12 +4,13 @@ from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import Convolution2D
+from chainer.utils import conv
 
 cuda.init()
 
 class TestConvolution2D(TestCase):
-    def setUp(self):
-        self.func = Convolution2D(3, 2, 3, stride=2, pad=1)
+    def setUp(self, use_cudnn=True):
+        self.func = Convolution2D(3, 2, 3, stride=2, pad=1, use_cudnn=use_cudnn)
         self.func.b = numpy.random.uniform(
             -1, 1, self.func.b.shape).astype(numpy.float32)
         self.func.gW.fill(0)
@@ -20,9 +21,22 @@ class TestConvolution2D(TestCase):
 
     def to_gpu(self):
         self.func.W  = to_gpu(self.func.W)
-        self.func.b  = to_gpu(self.func.b)
         self.func.gW = to_gpu(self.func.gW)
-        self.func.gb = to_gpu(self.func.gb)
+        if self.func.b is not None:
+            self.func.b  = to_gpu(self.func.b)
+            self.func.gb = to_gpu(self.func.gb)
+
+    def test_im2col_consistency(self):
+        col_cpu = conv.im2col_cpu(self.x, 3, 3, 2, 2, 1, 1)
+        col_gpu = conv.im2col_gpu(to_gpu(self.x), 3, 3, 2, 2, 1, 1)
+        assert_allclose(col_cpu, col_gpu.get(), atol=0, rtol=0)
+
+    def test_col2im_consistency(self):
+        col = conv.im2col_cpu(self.x, 3, 3, 2, 2, 1, 1)
+        h, w = self.x.shape[2:]
+        im_cpu = conv.col2im_cpu(col,         2, 2, 1, 1, h, w)
+        im_gpu = conv.col2im_gpu(to_gpu(col), 2, 2, 1, 1, h, w)
+        assert_allclose(im_cpu, im_gpu.get())
 
     def test_forward_consistency(self):
         x_cpu = Variable(self.x)
@@ -32,7 +46,13 @@ class TestConvolution2D(TestCase):
         x_gpu = Variable(to_gpu(self.x))
         y_gpu = self.func(x_gpu)
 
+        for i in xrange(y_cpu.data.shape[0]):
+            print i, numpy.abs(y_cpu.data[i] - y_gpu.data[i].get()).max()
         assert_allclose(y_cpu.data, y_gpu.data.get())
+
+    def test_forward_consistency_im2col(self):
+        self.func.use_cudnn = False
+        self.test_forward_consistency()
 
     def check_backward(self, x_data, y_grad):
         x = Variable(x_data)
@@ -54,3 +74,7 @@ class TestConvolution2D(TestCase):
     def test_backward_gpu(self):
         self.to_gpu()
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
+
+    def test_backward_gpu_im2col(self):
+        self.func.use_cudnn = False
+        self.test_backward_gpu()

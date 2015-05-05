@@ -6,6 +6,8 @@ import numpy
 
 import cuda
 
+enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
+
 def get_ptr(x):
     return ctypes.c_void_p(x.ptr)
 
