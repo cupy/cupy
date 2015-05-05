@@ -12,9 +12,9 @@ class TestReLU(TestCase):
         self.x  = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
-    def check_backward(self, x_data, y_grad):
+    def check_backward(self, x_data, y_grad, use_cudnn=True):
         x = Variable(x_data)
-        y = relu(x)
+        y = relu(x, use_cudnn=use_cudnn)
         y.grad = y_grad
         y.backward()
 
@@ -29,3 +29,6 @@ class TestReLU(TestCase):
 
     def test_backward_gpu(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
+
+    def test_backward_cpu_no_cudnn(self):
+        self.check_backward(to_gpu(self.x), to_gpu(self.gy), False)

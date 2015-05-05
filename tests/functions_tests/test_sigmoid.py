@@ -12,16 +12,19 @@ class TestSigmoid(TestCase):
         self.x  = numpy.random.uniform(-.5, .5, (3, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-.1, .1, (3, 2)).astype(numpy.float32)
 
-    def test_forward_gpu(self):
+    def test_forward_gpu(self, use_cudnn=True):
         x = Variable(to_gpu(self.x))
-        y = sigmoid(x)
+        y = sigmoid(x, use_cudnn=use_cudnn)
         y_expect = sigmoid(Variable(self.x))
 
         assert_allclose(y_expect.data, y.data)
 
-    def check_backward(self, x_data, y_grad):
+    def test_forward_gpu_no_cudnn(self):
+        self.test_forward_gpu(False)
+
+    def check_backward(self, x_data, y_grad, use_cudnn=True):
         x = Variable(x_data)
-        y = sigmoid(x)
+        y = sigmoid(x, use_cudnn=use_cudnn)
         y.grad = y_grad
         y.backward()
 
@@ -36,3 +39,6 @@ class TestSigmoid(TestCase):
 
     def test_backward_gpu(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
+
+    def test_backward_gpu_no_cudnn(self):
+        self.check_backward(to_gpu(self.x), to_gpu(self.gy), False)

@@ -1,37 +1,56 @@
-import libcudnn
 import numpy
-from chainer import cuda, cudnn, Function
+from chainer import cuda, Function
 
-_mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_SIGMOID']
+try:
+    import libcudnn
+    from chainer import cudnn
+    _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_SIGMOID']
+    use_cudnn = cudnn.enabled
+except:
+    use_cudnn = False
 
 class Sigmoid(Function):
     """Logistic sigmoid function."""
+
+    def __init__(self, use_cudnn=True):
+        self.use_cudnn = use_cudnn
 
     def forward_cpu(self, x):
         self.y = 1 / (1 + numpy.exp(-x[0]))
         return self.y,
 
     def forward_gpu(self, x):
-        handle = cudnn.get_default_handle()
-        desc = cudnn.get_tensor_desc(x[0], 1, 1)
         self.y = cuda.empty_like(x[0])
-        libcudnn.cudnnActivationForward(
-            handle, _mode, 1, desc.value, cudnn.get_ptr(x[0]),
-            0, desc.value, cudnn.get_ptr(self.y))
+        if use_cudnn and self.use_cudnn:
+            handle = cudnn.get_default_handle()
+            desc = cudnn.get_tensor_desc(x[0], 1, 1)
+            libcudnn.cudnnActivationForward(
+                handle, _mode, 1, desc.value, cudnn.get_ptr(x[0]),
+                0, desc.value, cudnn.get_ptr(self.y))
+        else:
+            cuda.elementwise(
+                'float* y, const float* x', 'y[i] = 1 / (1 + __expf(-x[i]))',
+                'sigmoid_fwd')(self.y, x[0])
         return self.y,
 
     def backward_cpu(self, x, gy):
         return gy[0] * self.y * (1 - self.y),
 
     def backward_gpu(self, x, gy):
-        handle = cudnn.get_default_handle()
-        desc = cudnn.get_tensor_desc(self.y, 1, 1)
-        gx = cuda.empty_like(self.y)
-        libcudnn.cudnnActivationBackward(
-            handle, _mode, 1, desc.value, cudnn.get_ptr(self.y),
-            desc.value, cudnn.get_ptr(gy[0]), desc.value, cudnn.get_ptr(x[0]),
-            0, desc.value, cudnn.get_ptr(gx))
+        gx = cuda.empty_like(x[0])
+        if use_cudnn and self.use_cudnn:
+            handle = cudnn.get_default_handle()
+            desc = cudnn.get_tensor_desc(self.y, 1, 1)
+            libcudnn.cudnnActivationBackward(
+                handle, _mode, 1, desc.value, cudnn.get_ptr(self.y),
+                desc.value, cudnn.get_ptr(gy[0]), desc.value, cudnn.get_ptr(x[0]),
+                0, desc.value, cudnn.get_ptr(gx))
+        else:
+            cuda.elementwise(
+                'float* gx, const float* y, const float* gy',
+                'gx[i] = gy[i] * y[i] * (1 - y[i])',
+                'sigmoid_bwd')(gx, self.y, gy[0])
         return gx,
 
-def sigmoid(x):
-    return Sigmoid()(x)
+def sigmoid(x, use_cudnn=True):
+    return Sigmoid(use_cudnn)(x)
