@@ -65,4 +65,8 @@ def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
         x = x.get()
     if isinstance(y, cuda.GPUArray):
         y = y.get()
-    numpy.testing.assert_allclose(x, y, atol=atol, rtol=rtol, verbose=verbose)
+    try:
+        numpy.testing.assert_allclose(x, y, atol=atol, rtol=rtol, verbose=verbose)
+    except:
+        print 'error:', numpy.abs(x - y).max()
+        raise
