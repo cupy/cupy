@@ -3,17 +3,13 @@ import numpy
 from scikits.cuda import cublas
 import scikits.cuda.linalg as culinalg
 import scikits.cuda.misc as cumisc
-from chainer import cuda, Function
+from chainer import cuda, cudnn, Function
 from chainer.utils import conv
 
-try:
-    import libcudnn
-    from chainer import cudnn
+if cudnn.available:
+    from chainer.cudnn import libcudnn
     _fwd_pref = libcudnn.cudnnConvolutionFwdPreference[
         'CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT']
-    use_cudnn = cudnn.enabled
-except:
-    use_cudnn = False
 
 def _pair(x):
     if hasattr(x, '__getitem__'):
@@ -24,7 +20,7 @@ class Convolution2D(Function):
     """Two-dimensional convolution function."""
 
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
-                 wscale=1, bias=0, nobias=False, use_cudnn=use_cudnn):
+                 wscale=1, bias=0, nobias=False, use_cudnn=True):
         ksize  = _pair(ksize)
         stride = _pair(stride)
         pad    = _pair(pad)
@@ -46,7 +42,7 @@ class Convolution2D(Function):
             self.gb = numpy.empty_like(self.b)
 
         self.use_cudnn = use_cudnn
-        if use_cudnn:
+        if cudnn.enabled and use_cudnn:
             self.filter_desc = cudnn.get_filter4d_desc(self.W)
             self.conv_desc = cudnn.get_conv2d_desc(pad, stride)
             if self.b is not None:
@@ -82,7 +78,7 @@ class Convolution2D(Function):
         out_c = self.W.shape[0]
         y = cuda.empty((n, out_c, out_h, out_w), dtype=numpy.float32)
 
-        if self.use_cudnn:
+        if cudnn.enabled and self.use_cudnn:
             handle = cudnn.get_default_handle()
             x_desc = cudnn.get_tensor_desc(x[0], h, w)
             y_desc = cudnn.get_tensor_desc(y, out_h, out_w)
@@ -144,7 +140,7 @@ class Convolution2D(Function):
         out_c, out_h, out_w = gy[0].shape[1:]
         n, c, h, w = x[0].shape
 
-        if self.use_cudnn:
+        if cudnn.enabled and self.use_cudnn:
             handle = cudnn.get_default_handle()
             x_desc  = cudnn.get_tensor_desc(x[0], h, w)
             gy_desc = cudnn.get_tensor_desc(gy[0], out_h, out_w)

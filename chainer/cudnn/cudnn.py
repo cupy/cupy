@@ -1,12 +1,13 @@
 """Common routines to use CuDNN."""
 
 import atexit, ctypes, os
-import libcudnn
 import numpy
 
-import cuda
+from chainer import cuda
+import libcudnn
 
 enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
+available = True
 
 def get_ptr(x):
     return ctypes.c_void_p(x.ptr)

@@ -1,4 +1,4 @@
-import cuda
+import cuda, cudnn
 from variable     import Variable
 from function     import Function
 from function_set import FunctionSet

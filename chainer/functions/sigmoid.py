@@ -1,13 +1,9 @@
 import numpy
-from chainer import cuda, Function
+from chainer import cuda, cudnn, Function
 
-try:
-    import libcudnn
-    from chainer import cudnn
+if cudnn.available:
+    from chainer.cudnn import libcudnn
     _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_SIGMOID']
-    use_cudnn = cudnn.enabled
-except:
-    use_cudnn = False
 
 class Sigmoid(Function):
     """Logistic sigmoid function."""
@@ -21,7 +17,7 @@ class Sigmoid(Function):
 
     def forward_gpu(self, x):
         self.y = cuda.empty_like(x[0])
-        if use_cudnn and self.use_cudnn:
+        if cudnn.enabled and self.use_cudnn:
             handle = cudnn.get_default_handle()
             desc = cudnn.get_tensor_desc(x[0], 1, 1)
             libcudnn.cudnnActivationForward(
@@ -38,7 +34,7 @@ class Sigmoid(Function):
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
-        if use_cudnn and self.use_cudnn:
+        if cudnn.enabled and self.use_cudnn:
             handle = cudnn.get_default_handle()
             desc = cudnn.get_tensor_desc(self.y, 1, 1)
             libcudnn.cudnnActivationBackward(

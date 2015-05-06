@@ -1,14 +1,10 @@
 from collections import Iterable
 import numpy
-from chainer import cuda, Function
+from chainer import cuda, cudnn, Function
 from chainer.utils import conv
 
-try:
-    import libcudnn
-    from chainer import cudnn
-    use_cudnn = cudnn.enabled
-except:
-    use_cudnn = False
+if cudnn.available:
+    from chainer.cudnn import libcudnn
 
 def _pair(x):
     if isinstance(x, Iterable):
@@ -81,7 +77,7 @@ class MaxPooling2D(Pooling2D):
         return y,
 
     def forward_gpu(self, x):
-        if use_cudnn and self.use_cudnn:
+        if cudnn.enabled and self.use_cudnn:
             return super(MaxPooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
@@ -142,7 +138,7 @@ class MaxPooling2D(Pooling2D):
         return gx,
 
     def backward_gpu(self, x, gy):
-        if use_cudnn and self.use_cudnn:
+        if cudnn.enabled and self.use_cudnn:
             return super(MaxPooling2D, self).backward_gpu(x, gy)
 
         n, c, h, w = x[0].shape
@@ -199,7 +195,7 @@ class AveragePooling2D(Pooling2D):
         return y,
 
     def forward_gpu(self, x):
-        if use_cudnn and self.use_cudnn:
+        if cudnn.enabled and self.use_cudnn:
             return super(AveragePooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
@@ -242,7 +238,7 @@ class AveragePooling2D(Pooling2D):
         return gx,
 
     def backward_gpu(self, x, gy):
-        if use_cudnn and self.use_cudnn:
+        if cudnn.enabled and self.use_cudnn:
             return super(AveragePooling2D, self).backward_gpu(x, gy)
 
         n, c, h, w = x[0].shape
