@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 2.7+ (developing on v2.7.8)
+- Python 2.7+ (developing on v2.7.9)
 - CUDA 6.5+
 - NumPy
 - PyCUDA
