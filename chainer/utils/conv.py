@@ -4,12 +4,13 @@ from chainer import cuda
 def get_conv_outsize(size, k, s, p):
     return (size + p * 2 - k) / s + 1
 
-def im2col_cpu(img, kh, kw, sy, sx, ph, pw):
+def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0):
     n, c, h, w = img.shape
     out_h = get_conv_outsize(h, kh, sy, ph)
     out_w = get_conv_outsize(w, kw, sx, pw)
 
-    img = numpy.pad(img, ((0, 0), (0, 0), (ph, ph), (pw, pw)), mode='constant')
+    img = numpy.pad(img, ((0, 0), (0, 0), (ph, ph), (pw, pw)),
+                    mode='constant', constant_values=(pval,))
     col = numpy.ndarray((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
 
     for i in xrange(kh):

@@ -1,7 +1,7 @@
 from unittest import TestCase
 import numpy
 from chainer      import cuda, Variable
-from chainer.cuda import to_gpu, GPUArray
+from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import average_pooling_2d, max_pooling_2d
 
@@ -15,7 +15,7 @@ class TestMaxPooling2D(TestCase):
     def check_forward(self, x_data):
         x = Variable(x_data)
         y = max_pooling_2d(x, 3, stride=2, pad=1)
-        if type(y.data) == GPUArray:
+        if isinstance(y.data, GPUArray):
             y_data = y.data.get()
         else:
             y_data = y.data
@@ -27,6 +27,9 @@ class TestMaxPooling2D(TestCase):
                     [self.x[k, c, 0:2, 0:2].max(), self.x[k, c, 0:2, 1:3].max()],
                     [self.x[k, c, 1:4, 0:2].max(), self.x[k, c, 1:4, 1:3].max()]])
                 assert_allclose(expect, y_data[k, c])
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x)
 
     def test_forward_gpu(self):
         self.check_forward(to_gpu(self.x))
@@ -41,7 +44,10 @@ class TestMaxPooling2D(TestCase):
         f = lambda: func.forward((x.data,))
         gx, = numerical_grad(f, (x.data,), (y.grad,))
 
-        assert_allclose(gx.get(), x.grad.get())
+        assert_allclose(to_cpu(gx), to_cpu(x.grad))
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.gy)
 
     def test_backward_gpu(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
@@ -69,6 +75,9 @@ class TestAveragePooling2D(TestCase):
                 ) / 9
                 assert_allclose(expect, y_data[k, c])
 
+    def test_forward_cpu(self):
+        self.check_forward(self.x)
+
     def test_forward_gpu(self):
         self.check_forward(to_gpu(self.x))
 
@@ -82,7 +91,10 @@ class TestAveragePooling2D(TestCase):
         f = lambda: func.forward((x.data,))
         gx, = numerical_grad(f, (x.data,), (y.grad,), eps=1e-2)
 
-        assert_allclose(gx.get(), x.grad.get())
+        assert_allclose(to_cpu(gx), to_cpu(x.grad))
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.gy)
 
     def test_backward_gpu(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
