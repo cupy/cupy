@@ -11,7 +11,6 @@
 Recommended:
 
 - CuDNN v2
-- cudnn-python-wrappers (GitHub master version, installed by setup.py)
 - scikit-learn (to run some examples)
 - OpenCV 2.4 (to run some examples)
 
