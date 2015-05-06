@@ -5,9 +5,9 @@
 - Python 2.7+ (developing on v2.7.8)
 - CUDA 6.5+
 - NumPy
-- PyCUDA (pip install pycuda)
-- scikits.cuda (GitHub master version, installed by setup.py)
--- depending on Mako (pip install Mako)
+- PyCUDA
+- scikits.cuda (pip install 'scikits.cuda>=0.5.0b1,!=0.042')
+- Mako (depending through PyCUDA)
 
 Recommended:
 
@@ -17,4 +17,6 @@ Recommended:
 
 ## Installation
 
-Prepare environment with CUDA 6.5+, CuDNN v2 and NumPy. Then, run `install.sh` (with sudo if necessary).
+```
+pip install -e .
+```
