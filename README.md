@@ -7,6 +7,7 @@
 - NumPy
 - PyCUDA (pip install pycuda)
 - scikits.cuda (GitHub master version, installed by setup.py)
+-- depending on Mako (pip install Mako)
 
 Recommended:
 
