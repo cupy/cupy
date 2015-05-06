@@ -10,11 +10,6 @@ cd scikits.cuda
 python setup.py install
 cd ..
 
-git clone https://github.com/hannes-brt/cudnn-python-wrappers
-cd cudnn-python-wrappers
-python setup.py install
-cd ..
-
 cd ..
 python setup.py install
 
