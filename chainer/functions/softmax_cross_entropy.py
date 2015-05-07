@@ -21,14 +21,14 @@ class SoftmaxCrossEntropy(Function):
 
     def backward_cpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        gx = self.y  # reuse the memory
+        gx = self.y.copy()
         gx[xrange(len(t)), t] -= 1
         gx *= gloss[0] / t.size
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        gx = self.y  # reuse the memory
+        gx = cuda.empty_like(self.y)
         coeff = gloss / t.size
         cuda.elementwise(
             'float* gx, const float* y, const int* t, const float* coeff, int n_channel',
