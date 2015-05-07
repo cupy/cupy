@@ -15,10 +15,7 @@ class TestMaxPooling2D(TestCase):
     def check_forward(self, x_data, use_cudnn=True):
         x = Variable(x_data)
         y = max_pooling_2d(x, 3, stride=2, pad=1, use_cudnn=use_cudnn)
-        if isinstance(y.data, GPUArray):
-            y_data = y.data.get()
-        else:
-            y_data = y.data
+        y_data = to_cpu(y.data)
 
         self.assertEqual((2, 3, 2, 2), y_data.shape)
         for k in xrange(2):
@@ -67,10 +64,7 @@ class TestAveragePooling2D(TestCase):
     def check_forward(self, x_data, use_cudnn=True):
         x = Variable(x_data)
         y = average_pooling_2d(x, 3, stride=2, pad=1, use_cudnn=use_cudnn)
-        if type(y.data) == GPUArray:
-            y_data = y.data.get()
-        else:
-            y_data = y.data
+        y_data = to_cpu(y.data)
 
         self.assertEqual((2, 3, 2, 2), y_data.shape)
         for k in xrange(2):

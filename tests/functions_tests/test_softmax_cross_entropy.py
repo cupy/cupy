@@ -2,7 +2,7 @@ from unittest import TestCase
 import math
 import numpy
 from chainer      import cuda, Variable
-from chainer.cuda import to_gpu, GPUArray
+from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import softmax_cross_entropy
 
@@ -17,10 +17,7 @@ class TestSoftmaxCrossEntropy(TestCase):
         x = Variable(x_data)
         t = Variable(t_data)
         loss = softmax_cross_entropy(x, t, use_cudnn)
-        if type(loss.data) == GPUArray:
-            loss_value = float(loss.data.get())
-        else:
-            loss_value = float(loss.data)
+        loss_value = float(to_cpu(loss.data))
 
         # Compute expected value
         y = numpy.exp(self.x)
