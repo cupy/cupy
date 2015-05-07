@@ -27,6 +27,7 @@ class TestSoftmaxCrossEntropy(TestCase):
         loss_expect = 0
         for i in xrange(y.shape[0]):
             loss_expect -= math.log(y[i, self.t[i]] / y[i].sum())
+        loss_expect /= y.shape[0]
 
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
