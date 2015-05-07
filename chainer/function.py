@@ -18,7 +18,7 @@ class Function(object):
 
     If the implementation holds parameters and corresponding gradients, these
     should be kept as attributes and ``parameter_names`` and ``gradient_names``
-    attributes should indicates their names. Then, appropriate accessors are
+    attributes should indicate their names. Then, appropriate accessors are
     defined. Otherwise, the implementation itself must provide these accessors.
 
     """
