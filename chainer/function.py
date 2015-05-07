@@ -119,7 +119,7 @@ class Function(object):
             if y_ref is not None:
                 y_ref.creator = None
         for x in self.inputs:
-            x.splitter = None
+            x.splitter = weakref.ref(lambda: 0)  # dead ref
         self.inputs = None
 
     def to_gpu(self, device=None):
