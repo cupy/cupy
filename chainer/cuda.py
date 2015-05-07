@@ -240,9 +240,9 @@ def to_gpu_async(array, stream=None):
 
 def to_cpu(array):
     """Copy array to host synchronously."""
-    if isinstance(array, numpy.ndarray):
-        return array
-    return array.get()
+    if isinstance(array, GPUArray):
+        return array.get()
+    return array
 
 
 def to_cpu_async(array, stream=None):
