@@ -97,12 +97,11 @@ def train_whole():
         state, loss_i = forward_one_step(
             to_gpu(x_cpu), to_gpu(y_cpu), state)
         accum_loss   += loss_i
-        cur_log_perp += float(loss_i.data.get()) / batchsize
+        cur_log_perp += float(loss_i.data.get())
 
         if (i + 1) % bpsize == 0:
             optimizer.zero_grads()
 
-            accum_loss /= batchsize
             accum_loss.backward()
             accum_loss.unchain_backward()
             accum_loss = 0

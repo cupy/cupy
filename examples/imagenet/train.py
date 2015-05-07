@@ -273,7 +273,7 @@ def forward(x_data, y_data, volatile=False):
         h = F.average_pooling_2d(model.inc5b(h), 7)
         h = model.out(h)
         l = F.softmax_cross_entropy(h, t)
-        L = (a * 0.3 + b * 0.3 + l) / x_data.shape[0]
+        L = a * 0.3 + b * 0.3 + l
         acc = F.accuracy(h, t)
     elif args.arch == 'nin':
         h = F.relu(model.conv1(x))
@@ -293,9 +293,8 @@ def forward(x_data, y_data, volatile=False):
         h = F.relu(model.conv4a(h))
         h = F.relu(model.conv4b(h))
         h = F.average_pooling_2d(h, 6)
-        l = F.softmax_cross_entropy(h, t)
+        L = F.softmax_cross_entropy(h, t)
         acc = F.accuracy(h, t)
-        L = l / x_data.shape[0]
     elif args.arch == 'alexbn':
         h = F.max_pooling_2d(F.relu(model.bn1(model.conv1(x))), 3, stride=2)
         h = F.max_pooling_2d(F.relu(model.bn2(model.conv2(h))), 3, stride=2)
@@ -305,9 +304,8 @@ def forward(x_data, y_data, volatile=False):
         h = F.dropout(F.relu(model.fc6(h)))
         h = F.dropout(F.relu(model.fc7(h)))
         h = model.fc8(h)
-        l = F.softmax_cross_entropy(h, t)
+        L = F.softmax_cross_entropy(h, t)
         acc = F.accuracy(h, t)
-        L = l / x_data.shape[0]
 
     return L, acc
 
