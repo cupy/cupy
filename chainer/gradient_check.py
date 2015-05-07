@@ -61,10 +61,8 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
 
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
     """Assert if some corresponding element of x and y differs too match."""
-    if isinstance(x, cuda.GPUArray):
-        x = x.get()
-    if isinstance(y, cuda.GPUArray):
-        y = y.get()
+    x = cuda.to_cpu(x)
+    y = cuda.to_cpu(y)
     try:
         numpy.testing.assert_allclose(x, y, atol=atol, rtol=rtol, verbose=verbose)
     except:
