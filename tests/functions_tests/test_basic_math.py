@@ -16,6 +16,8 @@ class TestBinaryOp(TestCase):
         x1 = Variable(x1_data)
         x2 = Variable(x2_data)
         y = op(x1, x2)
+        if isinstance(y.data, cuda.GPUArray):
+            self.assertTrue(hasattr(y.data.gpudata, 'device'))
         assert_allclose(op(self.x1, self.x2), y.data)
 
     def forward_cpu(self, op):
@@ -35,6 +37,13 @@ class TestBinaryOp(TestCase):
     def test_mul_forward_gpu(self): self.forward_gpu(lambda x, y: x * y)
     def test_div_forward_gpu(self): self.forward_gpu(lambda x, y: x / y)
     def test_pow_forward_gpu(self): self.forward_gpu(lambda x, y: x ** y)
+
+    def test_add_constant_allocation(self):
+        x = 0
+        y = Variable(cuda.ones((1,)))
+        z = y + x
+        self.assertEqual(1, z.data.get()[0])
+        self.assertTrue(hasattr(z.data.gpudata, 'device'))
 
     def check_backward(self, op, x1_data, x2_data, y_grad):
         x1 = Variable(x1_data)

@@ -189,6 +189,23 @@ def mem_alloc(nbytes):
 # ------------------------------------------------------------------------------
 # GPUArray allocation and copy
 # ------------------------------------------------------------------------------
+# Workaround: the original GPUArray.copy does not use the user-defined
+# allocator, so we have to replace it. A good solution is to inherit GPUArray
+# and override copy method, but since many functions of pycuda.gpuarray directly
+# use the original GPUArray class, we choose easy and ugly solution that
+# directly replaces the original method.
+# TODO(beam2d): Fix this ugly solution
+def _gpuarray_copy(array):
+    if not array.flags.forc:
+        raise RuntimeError('only contiguous arrays may copied.')
+
+    new = GPUArray(array.shape, array.dtype, allocator=array.allocator)
+    drv.memcpy_dtod(new.gpudata, array.gpudata, array.nbytes)
+    return new
+
+GPUArray.copy = _gpuarray_copy
+
+
 def to_gpu(array):
     """Copy array to the current device."""
     if isinstance(array, GPUArray):
