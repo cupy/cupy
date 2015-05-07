@@ -59,7 +59,10 @@ class Function(object):
                 x.splitter = weakref.ref(splitter)
             self.inputs.append(splitter.add_branch())
 
-        self.rank = max(x.rank for x in self.inputs)
+        if self.inputs:
+            self.rank = max(x.rank for x in self.inputs)
+        else:
+            self.rank = 0
 
         in_data = tuple(x.data for x in self.inputs)
         with cuda.using_device(*in_data):
@@ -98,7 +101,7 @@ class Function(object):
         raise NotImplementedError()
 
     def backward(self, inputs, grad_outputs):
-        if any(isinstance(x, cuda.GPUArray) for x in inputs):
+        if any(isinstance(x, cuda.GPUArray) for x in inputs + grad_outputs):
             return self.backward_gpu(inputs, grad_outputs)
         else:
             return self.backward_cpu(inputs, grad_outputs)

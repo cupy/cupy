@@ -58,8 +58,9 @@ class Variable(object):
 
             in_data  = tuple(x.data for x in func.inputs)
             out_grad = tuple(y and y.grad for y in outputs)
-            with cuda.using_device(*in_data):
+            with cuda.using_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
+            assert len(gxs) == len(in_data)
 
             if not retain_grad:
                 for y in outputs:
