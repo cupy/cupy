@@ -26,19 +26,12 @@ class IPCEvent(Event):
 # Global states
 # ------------------------------------------------------------------------------
 mem_alloc = None
+generator = None
 
 _contexts = {}
 _pools    = {}
 _cublas_handles = {}
 _pid      = None
-
-_seed      = os.environ.get('CHAINER_SEED')
-generator = None
-
-def _seed_getter(N):
-    if _seed is None:
-        return curandom.seed_getter_uniform(N)
-    return full((N,), _seed, numpy.int32)
 
 def init(device=None):
     """Initialize CUDA global state.
@@ -63,7 +56,7 @@ def init(device=None):
         context = device.make_context()
     _contexts  = {device: context}
 
-    generator = curandom.XORWOWRandomNumberGenerator(seed_getter=_seed_getter)
+    seed(os.environ.get('CHAINER_SEED'))
 
     _pid      = pid  # mark as initialized
     atexit.register(shutdown)
@@ -184,6 +177,18 @@ def mem_alloc(nbytes):
     allocation = pool.allocate(nbytes)
     setattr(allocation, 'device', device)
     return allocation
+
+
+def seed(s=None):
+    """Initialize the random number generator by given seed."""
+    global generator
+
+    def seed_getter(N):
+        if s is None:
+            return curandom.seed_getter_uniform(N)
+        return full((N,), s, numpy.int32)
+
+    generator = curandom.XORWOWRandomNumberGenerator(seed_getter=seed_getter)
 
 
 # ------------------------------------------------------------------------------
