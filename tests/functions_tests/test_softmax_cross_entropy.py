@@ -13,10 +13,10 @@ class TestSoftmaxCrossEntropy(TestCase):
         self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.t = numpy.random.randint(0, 3, (4,)).astype(numpy.int32)
 
-    def check_forward(self, x_data, t_data):
+    def check_forward(self, x_data, t_data, use_cudnn=True):
         x = Variable(x_data)
         t = Variable(t_data)
-        loss = softmax_cross_entropy(x, t)
+        loss = softmax_cross_entropy(x, t, use_cudnn)
         if type(loss.data) == GPUArray:
             loss_value = float(loss.data.get())
         else:
@@ -37,10 +37,13 @@ class TestSoftmaxCrossEntropy(TestCase):
     def test_forward_gpu(self):
         self.check_forward(to_gpu(self.x), to_gpu(self.t))
 
-    def check_backward(self, x_data, t_data):
+    def test_forward_gpu_no_cudnn(self):
+        self.check_forward(to_gpu(self.x), to_gpu(self.t), False)
+
+    def check_backward(self, x_data, t_data, use_cudnn=True):
         x = Variable(x_data)
         t = Variable(t_data)
-        loss = softmax_cross_entropy(x, t)
+        loss = softmax_cross_entropy(x, t, use_cudnn)
         loss.backward()
         self.assertEqual(None, t.grad)
 
@@ -55,3 +58,6 @@ class TestSoftmaxCrossEntropy(TestCase):
 
     def test_backward_gpu(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.t))
+
+    def test_backward_gpu_no_cudnn(self):
+        self.check_backward(to_gpu(self.x), to_gpu(self.t), False)

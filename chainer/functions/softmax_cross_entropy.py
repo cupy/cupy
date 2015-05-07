@@ -5,6 +5,9 @@ from chainer.functions.softmax import Softmax
 class SoftmaxCrossEntropy(Function):
     """Softmax activation followed by a cross entropy loss."""
 
+    def __init__(self, use_cudnn=True):
+        self.use_cudnn = use_cudnn
+
     def forward_cpu(self, inputs):
         x, t = inputs
         self.y, = Softmax().forward_cpu((x,))
@@ -12,7 +15,7 @@ class SoftmaxCrossEntropy(Function):
 
     def forward_gpu(self, inputs):
         x, t = inputs
-        self.y, = Softmax().forward_gpu((x,))
+        self.y, = Softmax(self.use_cudnn).forward_gpu((x,))
         ret = cuda.reduce(
             'int* t, float* y, int n_channel', '-log(y[i * n_channel + t[i]])',
             'a+b', '0', 'crossent_fwd', numpy.float32)(t, self.y, self.y.shape[1])
@@ -36,5 +39,5 @@ class SoftmaxCrossEntropy(Function):
             'softmax_crossent_bwd')(gx, self.y, t, coeff, self.y.shape[1])
         return gx, None
 
-def softmax_cross_entropy(x, t):
-    return SoftmaxCrossEntropy()(x, t)
+def softmax_cross_entropy(x, t, use_cudnn=True):
+    return SoftmaxCrossEntropy(use_cudnn)(x, t)

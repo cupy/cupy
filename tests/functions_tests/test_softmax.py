@@ -12,9 +12,9 @@ class TestSoftmax(TestCase):
         self.x  = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
 
-    def check_forward(self, x_data):
+    def check_forward(self, x_data, use_cudnn=True):
         x = Variable(x_data)
-        y = softmax(x)
+        y = softmax(x, use_cudnn)
 
         y_expect = numpy.exp(self.x)
         for i in xrange(y_expect.shape[0]):
@@ -28,9 +28,12 @@ class TestSoftmax(TestCase):
     def test_forward_gpu(self):
         self.check_forward(to_gpu(self.x))
 
-    def check_backward(self, x_data, gy_data):
+    def test_forwrad_gpu_no_cudnn(self):
+        self.check_forward(to_gpu(self.x), False)
+
+    def check_backward(self, x_data, gy_data, use_cudnn=True):
         x = Variable(x_data)
-        y = softmax(x)
+        y = softmax(x, use_cudnn)
         y.grad = gy_data
         y.backward()
 
@@ -45,3 +48,6 @@ class TestSoftmax(TestCase):
 
     def test_backward_gpu(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
+
+    def test_backward_gpu_no_cudnn(self):
+        self.check_backward(to_gpu(self.x), to_gpu(self.gy), False)
