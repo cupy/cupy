@@ -58,6 +58,5 @@ class Concat(Function):
 
         return gxs
 
-
 def concat(xs, axis=1):
     return Concat(axis=axis)(*xs)

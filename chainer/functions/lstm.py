@@ -127,6 +127,5 @@ class LSTM(Function):
 
         return gc_prev, gx
 
-
 def lstm(c_prev, x):
     return LSTM()(c_prev, x)

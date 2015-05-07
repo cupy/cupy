@@ -36,6 +36,5 @@ class SoftmaxCrossEntropy(Function):
             'softmax_crossent_bwd')(gx, self.y, t, coeff, self.y.shape[1])
         return gx, None
 
-
 def softmax_cross_entropy(x, t):
     return SoftmaxCrossEntropy()(x, t)

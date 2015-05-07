@@ -16,6 +16,5 @@ class Accuracy(Function):
         accuracy, = self.forward_cpu((a.get() for a in inputs))
         return cuda.to_gpu_async(numpy.array(accuracy)),
 
-
 def accuracy(y, t):
     return Accuracy()(y, t)

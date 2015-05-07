@@ -37,6 +37,5 @@ class MeanSquaredError(Function):
             'mse_bwd')(gx0, gx1, x0, x1, coeff)
         return gx0, gx1
 
-
 def mean_squared_error(x0, x1):
     return MeanSquaredError()(x0, x1)
