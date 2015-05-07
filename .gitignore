@@ -3,3 +3,6 @@
 build
 \#*\#
 .\#*
+htmlcov/
+chainer.egg-info/
+.coverage
