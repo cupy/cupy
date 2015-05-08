@@ -1,6 +1,11 @@
 import numpy
 from chainer import cuda, Function
 
+def _kern():
+    return cuda.elementwise(
+        'float* y, const float* cond, const float* x, float slope',
+        'y[i] = cond[i] >= 0 ? x[i] : slope * x[i]', 'lrelu')
+
 class LeakyReLU(Function):
     """Leaky rectifier unit."""
 
@@ -14,7 +19,7 @@ class LeakyReLU(Function):
 
     def forward_gpu(self, x):
         y = cuda.empty_like(x[0])
-        self._kern()(y, x[0], x[0], self.slope)
+        _kern()(y, x[0], x[0], self.slope)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -24,14 +29,8 @@ class LeakyReLU(Function):
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
-        self._kern()(gx, x[0], gy[0], self.slope)
+        _kern()(gx, x[0], gy[0], self.slope)
         return gx,
-
-    @staticmethod
-    def _kern():
-        return cuda.elementwise(
-            'float* y, const float* cond, const float* x, float slope',
-            'y[i] = cond[i] >= 0 ? x[i] : slope * x[i]', 'lrelu')
 
 def leaky_relu(x, slope=0.2):
     return LeakyReLU(slope)(x)
