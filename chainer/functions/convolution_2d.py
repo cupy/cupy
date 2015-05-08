@@ -1,4 +1,4 @@
-import math, os
+import math
 import numpy
 from scikits.cuda import cublas
 import scikits.cuda.linalg as culinalg

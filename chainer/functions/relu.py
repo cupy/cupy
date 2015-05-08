@@ -1,4 +1,3 @@
-import ctypes
 import numpy
 from chainer import cuda, cudnn, Function
 
