@@ -24,12 +24,6 @@ class TestLinear(TestCase):
         self.gy = numpy.random.uniform(-1, 1, (4, 2)).astype(numpy.float32)
         self.y  = self.x.dot(self.func.W.T) + self.func.b
 
-    def to_gpu(self):
-        self.func.W = to_gpu(self.func.W)
-        self.func.b = to_gpu(self.func.b)
-        self.func.gW = to_gpu(self.func.gW)
-        self.func.gb = to_gpu(self.func.gb)
-
     def check_forward(self, x_data):
         x = Variable(x_data)
         y = self.func(x)
@@ -40,7 +34,7 @@ class TestLinear(TestCase):
         self.check_forward(self.x)
 
     def test_forward_gpu(self):
-        self.to_gpu()
+        self.func.to_gpu()
         self.check_forward(to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
@@ -61,5 +55,5 @@ class TestLinear(TestCase):
         self.check_backward(self.x, self.gy)
 
     def test_backward_gpu(self):
-        self.to_gpu()
+        self.func.to_gpu()
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))

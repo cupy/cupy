@@ -19,13 +19,6 @@ class TestConvolution2D(TestCase):
         self.x  = numpy.random.uniform(-1, 1, (2, 3, 4, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (2, 2, 2, 2)).astype(numpy.float32)
 
-    def to_gpu(self):
-        self.func.W  = to_gpu(self.func.W)
-        self.func.gW = to_gpu(self.func.gW)
-        if self.func.b is not None:
-            self.func.b  = to_gpu(self.func.b)
-            self.func.gb = to_gpu(self.func.gb)
-
     def test_im2col_consistency(self):
         col_cpu = conv.im2col_cpu(self.x, 3, 3, 2, 2, 1, 1)
         col_gpu = conv.im2col_gpu(to_gpu(self.x), 3, 3, 2, 2, 1, 1)
@@ -42,7 +35,7 @@ class TestConvolution2D(TestCase):
         x_cpu = Variable(self.x)
         y_cpu = self.func(x_cpu)
 
-        self.to_gpu()
+        self.func.to_gpu()
         x_gpu = Variable(to_gpu(self.x))
         y_gpu = self.func(x_gpu)
 
@@ -72,7 +65,7 @@ class TestConvolution2D(TestCase):
         self.check_backward(self.x, self.gy)
 
     def test_backward_gpu(self):
-        self.to_gpu()
+        self.func.to_gpu()
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
 
     def test_backward_gpu_im2col(self):
