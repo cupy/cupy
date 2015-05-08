@@ -2,6 +2,7 @@
 import argparse, json, math, cPickle as pickle, Queue, random, sys, threading, time
 from datetime import timedelta
 import cv2, numpy as np
+from multiprocessing import Pool
 from chainer      import cuda, Variable, FunctionSet
 from chainer.cuda import to_gpu
 import chainer.functions as F
@@ -73,6 +74,9 @@ val_y_batch = np.ndarray((val_batchsize,), dtype=np.int32)
 def feed_data():
     i = 0
     count = 0
+    batch_pool = [None] * batchsize
+    val_batch_pool = [None] * val_batchsize
+    pool = Pool(batchsize * 2)
     for epoch in xrange(1, 1 + n_epoch):
         print >> sys.stderr, 'epoch', epoch
         print >> sys.stderr, 'learning rate', optimizer.lr
@@ -81,11 +85,13 @@ def feed_data():
             data_q.put('train')
         for idx in perm:
             path, label = train_list[idx]
-            x_batch[i] = read_image(path, flip=True)
+            batch_pool[i] = pool.apply_async(read_image, (path, False, True))
             y_batch[i] = label
             i += 1
 
             if i == batchsize:
+                for j, x in enumerate(batch_pool):
+                    x_batch[j] = x.get()
                 data_q.put((x_batch, y_batch))
                 i = 0
 
@@ -94,16 +100,20 @@ def feed_data():
                 data_q.put('val')
                 j = 0
                 for path, label in val_list:
-                    val_x_batch[j] = read_image(path, center=True)
+                    val_batch_pool[i] = pool.apply_async(read_image, (path, True, False))
                     val_y_batch[j] = label
                     j += 1
 
                     if j == val_batchsize:
+                        for k, x in val_batch_pool:
+                            val_x_batch[k] = x.get()
                         data_q.put((val_x_batch, val_y_batch))
                         j = 0
                 data_q.put('train')
 
         optimizer.lr *= 0.97
+    pool.close()
+    pool.join()
 
 # Log result
 def log_result():
