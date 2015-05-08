@@ -1,5 +1,6 @@
 # Non-parameterized functions
 from accuracy   import accuracy
+from basic_math import exp, log
 from concat     import concat
 from copy       import copy
 from dropout    import dropout

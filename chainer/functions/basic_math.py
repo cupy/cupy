@@ -1,6 +1,11 @@
 import math
 import numpy
+from pycuda import cumath
 from chainer import cuda, Function, Variable
+
+# ------------------------------------------------------------------------------
+# Arithmetic
+# ------------------------------------------------------------------------------
 
 class Neg(Function):
     def forward(self, x):
@@ -229,3 +234,36 @@ Variable.__div__  = div
 Variable.__rdiv__ = rdiv
 Variable.__pow__  = pow
 Variable.__rpow__ = rpow
+
+# ------------------------------------------------------------------------------
+# Special functions
+# ------------------------------------------------------------------------------
+
+class Exp(Function):
+    def forward_cpu(self, x):
+        self.y = numpy.exp(x[0])
+        return self.y,
+
+    def forward_gpu(self, x):
+        self.y = cumath.exp(x[0])
+        return self.y,
+
+    def backward(self, x, gy):
+        return self.y * gy[0],
+
+def exp(x):
+    return Exp()(x)
+
+
+class Log(Function):
+    def forward_cpu(self, x):
+        return numpy.log(x[0]),
+
+    def forward_gpu(self, x):
+        return cumath.log(x[0]),
+
+    def backward(self, x, gy):
+        return gy[0] / x[0],
+
+def log(x):
+    return Log()(x)
