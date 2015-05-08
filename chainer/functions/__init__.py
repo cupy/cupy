@@ -5,6 +5,7 @@ from concat     import concat
 from copy       import copy
 from dropout    import dropout
 from identity   import identity
+from leaky_relu import leaky_relu
 from lstm       import lstm
 from mean_squared_error import mean_squared_error
 from pooling_2d import average_pooling_2d, max_pooling_2d
