@@ -23,3 +23,4 @@ from embed_id       import EmbedID
 from inception      import Inception
 from linear         import Linear
 from parameter      import Parameter
+from prelu          import PReLU
