@@ -202,7 +202,8 @@ class Optimizer(object):
         """
         self.t += 1
         for p, g, s in self.tuples:
-            self.update_one(p, g, s)
+            with cuda.using_device(p) as user:
+                self.update_one(p, g, s)
 
     def update_one(self, param, grad, state):
         """Updates one parameter array and its state using the corresponding
@@ -222,8 +223,7 @@ class Optimizer(object):
 
         """
         if isinstance(param, cuda.GPUArray):
-            with cuda.using_device(param):
-                self.update_one_gpu(param, grad, state)
+            self.update_one_gpu(param, grad, state)
         else:
             self.update_one_cpu(param, grad, state)
 
