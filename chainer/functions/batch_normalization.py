@@ -37,7 +37,14 @@ def _cusum_axis02(x):
 class BatchNormalization(Function):
     """Batch normalization on outputs of linear or convolution function.
 
-    See: http://arxiv.org/abs/1502.03167
+    Args:
+        size (int or tuple of ints): Size (or shape) of channel
+            dimensions.
+        decay (float): Decay rate of moving average.
+        eps (float): Epsilon value for numerical stability.
+
+    See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
+          Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
 
     """
     parameter_names = ( 'gamma',  'beta')
@@ -59,6 +66,25 @@ class BatchNormalization(Function):
         self.eps   = eps
 
     def __call__(self, x, test=False, finetune=False):
+        """Invokes the forward propagation of BatchNormalization.
+
+        BatchNormalization accepts additional arguments, which controlls three
+        different running mode.
+
+        Args:
+            test (bool): If ``True``, BatchNormalization runs in testing mode;
+                it normalizes the input using precomputed statistics.
+            finetune (bool): If ``True``, BatchNormalization runs in finetuning
+                mode; it accumulates the input array to compute population
+                statistics for normalization, and normalizes the input using
+                batch statistics.
+
+        If ``test`` and ``finetune`` are both ``False``, then BatchNormalization
+        runs in training mode; it computes moving averages of mean and variance
+        for evaluation during training, and normalizes the input using batch
+        statistics.
+
+        """
         self.use_batch_mean = not test or finetune
         self.is_finetune    = finetune
         return Function.__call__(self, x)

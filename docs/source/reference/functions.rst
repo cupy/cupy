@@ -1,11 +1,21 @@
 Standard Function implementations
 =================================
 
-.. currentmodule:: chainer.functions
+.. module:: chainer.functions
+
+Chainer provides basic :class:`~chainer.Function` implementations in
+:mod:`chainer.functions` package.
+
+Non-parameterized functions are provided as plain Python functions. These can be
+directly used in forward computation without explicit handling of
+:class:`~chainer.Function` objects. On the other hand, parameterized functions
+should be used with explicit handling of :class:`~chainer.Function` objects.
 
 Parameterized function classes
 ------------------------------
 .. autoclass:: BatchNormalization
+   :members: __call__
+
 .. autoclass:: Convolution2D
 .. autoclass:: EmbedID
 .. autoclass:: Linear
@@ -21,7 +31,9 @@ Array manipulation functions
 
 Activation functions
 --------------------
+.. autofunction:: exp
 .. autofunction:: leaky_relu
+.. autofunction:: log
 .. autofunction:: lstm
 .. autofunction:: relu
 .. autofunction:: sigmoid
