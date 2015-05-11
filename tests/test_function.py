@@ -6,9 +6,12 @@ from chainer.functions import identity
 
 class TestFunction(TestCase):
     def test_forward(self):
-        xs = (Variable(numpy.array([0]), rank=1),
-              Variable(numpy.array([0]), rank=3),
-              Variable(numpy.array([0]), rank=2))
+        xs = (Variable(numpy.array([0])),
+              Variable(numpy.array([0])),
+              Variable(numpy.array([0])))
+        xs[0].rank = 1
+        xs[1].rank = 3
+        xs[2].rank = 2
         ys = identity(*xs)
 
         self.assertEqual(len(ys), len(xs))
