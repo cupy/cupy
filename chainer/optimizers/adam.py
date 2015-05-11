@@ -24,7 +24,7 @@ class Adam(Optimizer):
     def update_one_cpu(self, param, grad, state):
         m, v = state
         m += (1 - self.beta1_t) * (grad - m)
-        v += (1 - beta2) * (grad * grad - v)
+        v += (1 - self.beta2) * (grad * grad - v)
         param -= self.lr * m / (numpy.sqrt(v) + self.eps)
 
     def update_one_gpu(self, param, grad, state):
