@@ -10,28 +10,105 @@ def _sqnorm(x):
     return float(x.dot(x))
 
 class Optimizer(object):
-    """Optimizers' base class."""
+    """Base class of all numerical optimizers.
 
+    Optimizer is preliminary given references to parameters and gradients, and
+    then on every call of :meth:`update`, it updates parameters based on
+    corresponding gradients. Optimizer implementation must override
+    :meth:`update_one` method, which updates one parameter array using the
+    corresponding gradient array.
+
+    Optimizer can optionally use state for each parameter/gradient pair. It is
+    initialized by :meth:`init_state` method at set up.
+
+    Attributes:
+        t (int): Number of update steps. It can be used in :meth:`update_one`
+            implementation, where :attr:`t` is incremented beforehand.
+
+    """
     def setup(self, params_grads):
+        """Prepares parameter/gradient/state tuples for all given
+        parameter/gradient pairs.
+
+        Args:
+            params_grads: Tuple (pair) of two tuples. The first element is a
+                tuple of parameter arrays, and the second is a tuple of
+                corresponding gradient arrays.
+                Return value of :meth:`FunctionSet.collect_parameters` method
+                can be used.
+
+        """
         self.tuples = [(p, g, self.init_state(p, g))
                        for p, g in zip(*params_grads)]
         self.t = 0
 
     def init_state(self, param, grad):
+        """Returns initial state corresponding to the given parameter and
+        gradient.
+
+        Default implementation delegates the procedure to :meth:`init_state_cpu`
+        or :meth:`init_state_gpu` depending on the type of ``param``.
+
+        Args:
+            param: Parameter array.
+            grad: Gradient array corresponding to ``param``.
+
+        Returns:
+            Initial state value.
+
+            .. warning::
+
+                Note that, on every call of :meth:`update_one`, the state value
+                is passed by value and then the method updates its content, so
+                the state must be a reference. Especiallly, one cannot use a
+                value of built-in numeric type. If the state is one scalar
+                value, it is recommended to use scalar array, i.e.
+                :class:`~numpy.ndarray` with shape ``()``.
+
+        """
         if isinstance(param, gpuarray.GPUArray):
             return self.init_state_gpu(param, grad)
         return self.init_state_cpu(param, grad)
 
     def init_state_cpu(self, param, grad):
-        """Initialize state on CPU. Child class using state should override it."""
+        """Returns initial state corresponding to the given CPU parameter and
+        gradient.
+
+        Args:
+            param (:class:`~numpy.ndarray`): Parameter array.
+            grad  (:class:`~numpy.ndarray`): Gradient array.
+
+        Returns:
+            Initial state value.
+
+        .. seealso:: :meth:`init_state`, :meth:`init_state_gpu`
+
+        """
         return None
 
     def init_state_gpu(self, param, grad):
-        """Initialize state on GPU. Child class using state should override it."""
+        """Returns initial state corresponding to the given GPU parameter and
+        gradient.
+
+        Args:
+            param (:class:`~pycuda.gpuarray.GPUArray`): Parameter array.
+            grad  (:class:`~pycuda.gpuarray.GPUArray`): Gradient array.
+
+        Returns:
+            Initial state value.
+
+        .. seealso:: :meth:`init_state`, :meth:`init_state_gpu`
+
+        """
         return None
 
     def zero_grads(self):
-        """Set gradients zero."""
+        """Fills all gradient arrays by zeros.
+
+        This method should be call before backprop takes place, since gradients
+        are accumulated on backprop.
+
+        """
         for _, g, _ in self.tuples:
             if isinstance(g, cuda.GPUArray):
                 with cuda.using_device(g):
@@ -40,7 +117,19 @@ class Optimizer(object):
                 g.fill(0)
 
     def compute_grads_norm(self):
-        """Compute norm of the gradient."""
+        """Computes the norm of whole gradients.
+
+        Returns:
+            float: L2 norm of whole gradients, i.e. square root of sum of square
+            of all gradient elements.
+
+        .. warning::
+
+            This method returns CPU value, which indicates that this method
+            synchronizes between CPU and GPU if at least one of the gradients
+            reside on the GPU.
+
+        """
         # TODO(beam2d): Make it asynchronous to CPU when gradients exist on GPU
         sqnorm = 0
         for _, g, _ in self.tuples:
@@ -48,7 +137,17 @@ class Optimizer(object):
         return math.sqrt(sqnorm)
 
     def clip_grads(self, maxnorm):
-        """Clip norm of the gradient."""
+        """Clips the norm of whole gradients up to given threshold.
+
+        Args:
+            maxnorm (float): Threshold of gradient L2 norm.
+
+        .. seealso::
+
+            :meth:`compute_grads_norm`
+                It uses this method to compute the gradient norm to be clipped.
+
+        """
         norm = self.compute_grads_norm()
         if norm > maxnorm:
             ratio = maxnorm / norm
@@ -56,7 +155,13 @@ class Optimizer(object):
                 g *= ratio
 
     def weight_decay(self, decay):
-        """Apply weight decay."""
+        """Applies weight decay (a.k.a. L2 or Tikonov regularization) of given
+        scale to the current gradients.
+
+        Args:
+            decay (float): Coefficient of weight decay
+
+        """
         for p, g, _ in self.tuples:
             if isinstance(p, cuda.GPUArray):
                 with cuda.using_device(p):
@@ -67,10 +172,13 @@ class Optimizer(object):
                 g -= decay * p
 
     def accumulate_grads(self, grads):
-        """Accumulate gradients from other source.
+        """Accumulates gradients from other source.
 
-        This function is typically used in data-parallel optimization. Each
-        gradient may reside on different devices.
+        This method just adds given gradient arrays to gradients that this
+        optimizer holds. It is typically used in data-parallel optimization,
+        where gradients for different shards are computed in parallel and
+        aggregated by this method. This method correctly treats multiple GPU
+        devices.
 
         """
         for (_, g_dst, _), g_src in zip(self.tuples, grads):
@@ -86,11 +194,33 @@ class Optimizer(object):
                     g_dst += cuda.to_gpu(g_src)
 
     def update(self):
+        """Updates all parameters and states using corresponding gradients.
+
+        This method iteratively calls :meth:`update_one` for each parameter/
+        gradient/state tuple. Beforehand, :attr:`t` attribute is incremented.
+
+        """
         self.t += 1
         for p, g, s in self.tuples:
             self.update_one(p, g, s)
 
     def update_one(self, param, grad, state):
+        """Updates one parameter array and its state using the corresponding
+        gradient array.
+
+        The default implementation delegates the procedure to
+        :meth:`update_one_cpu` or :meth:`update_one_gpu` depending on the type
+        of the parameter array. Optimizer implmentation must override these
+        type-specific methods or this :meth:`update_one` method directly.
+
+        Args:
+            param: Parameter array.
+            grad:  Gradient array.
+            state: State value.
+
+        .. seealso:: :meth:`update_one_cpu`, :meth:`update_one_gpu`
+
+        """
         if isinstance(param, cuda.GPUArray):
             with cuda.using_device(param):
                 self.update_one_gpu(param, grad, state)
@@ -98,7 +228,29 @@ class Optimizer(object):
             self.update_one_cpu(param, grad, state)
 
     def update_one_cpu(self, param, grad, state):
+        """Updates one parameter array and its state using the corresponding
+        gradient array on CPU.
+
+        Args:
+            param (:class:`~numpy.ndarray`): Parameter array.
+            grad  (:class:`~numpy.ndarray`): Gradient array.
+            state: State value.
+
+        .. seealso:: :meth:`update_one`, :meth:`update_one_gpu`
+
+        """
         raise NotImplementedError()
 
     def update_one_gpu(self, param, grad, state):
+        """Updates one parameter array and its state using the corresponding
+        gradient array on GPU.
+
+        Args:
+            param (:class:`~pycuda.gpuarray.GPUArray`): Parameter array.
+            grad  (:class:`~pycuda.gpuarray.GPUArray`): Gradient array.
+            state: State value.
+
+        .. seealso:: :meth:`update_one`, :meth:`update_one_cpu`
+
+        """
         raise NotImplementedError()
