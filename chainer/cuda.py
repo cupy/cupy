@@ -34,7 +34,7 @@ def init(device=None):
     **after the fork** and before using chainer with PyCUDA.
 
     """
-    global generator, _contexts, _pid
+    global generator, _contexts, _cublas_handles, _pid, _pools
 
     pid = os.getpid()
     if _pid == pid:  # already initialized
@@ -49,14 +49,14 @@ def init(device=None):
         device  = Device(device)
         context = device.make_context()
     _contexts  = {device: context}
+    _pools = {}
+    _cublas_handles = {}
+    cumisc.init(mem_alloc)
 
     seed(os.environ.get('CHAINER_SEED'))
 
-    _pid      = pid  # mark as initialized
+    _pid = pid  # mark as initialized
     atexit.register(shutdown)
-
-    cumisc.init(mem_alloc)
-    _cublas_handles = {device: cumisc._global_cublas_handle}
 
 
 def shutdown():
