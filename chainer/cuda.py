@@ -17,15 +17,9 @@ import scikits.cuda.misc as cumisc
 from pycuda.driver   import Context, Device, Event, Stream
 from pycuda.gpuarray import GPUArray
 
-class IPCEvent(Event):
-    def __init__(self):
-        super(IPCEvent, self).__init__(
-            drv.event_flags.INTERPROCESS | drv.event_flags.DISABLE_TIMING)
-
 # ------------------------------------------------------------------------------
 # Global states
 # ------------------------------------------------------------------------------
-mem_alloc = None
 generator = None
 
 _contexts = {}
@@ -341,6 +335,15 @@ def copy_async(array, out=None, out_device=None, stream=None):
                                   in_device, stream=stream)
 
     return out
+
+
+# ------------------------------------------------------------------------------
+# Interprocess communication
+# ------------------------------------------------------------------------------
+class IPCEvent(Event):
+    def __init__(self):
+        super(IPCEvent, self).__init__(
+            drv.event_flags.INTERPROCESS | drv.event_flags.DISABLE_TIMING)
 
 
 class IPCArrayHandle(object):
