@@ -5,21 +5,87 @@ import cuda
 from variable import Variable
 
 class Function(object):
-    """Function node.
+    """Function of variable(s) to variable(s) that leaves footprint to the
+    output variables on application.
 
-    Each function implementation inherits this class. The implementation should
-    provides {forward,backward}_{cpu,gpu} methods. By default, backward
-    propagates None, which indicates no error propagates back from this node.
+    All function implementations defined in :mod:`functions` inherit this class.
 
-    Application of __call__ method inserts a copy of the Function instance to
-    the computational graph. Note: the copy is shallow, so be careful to
-    implement a function that shares some reference values between multiple
-    applications.
+    The main feature of this class is keeping track of function applications as
+    a backward graph. When a function is applied to :class:`Variable` objects,
+    the function is copied, and its :meth:`forward` method is called on
+    :`~Variable.data` fields of input variables, and at the same time it chains
+    references from output variables to the function and from the function to
+    its inputs.
 
-    If the implementation holds parameters and corresponding gradients, these
-    should be kept as attributes and ``parameter_names`` and ``gradient_names``
-    attributes should indicate their names. Then, appropriate accessors are
-    defined. Otherwise, the implementation itself must provide these accessors.
+    .. note::
+
+       Strictly speaking, when a function is applied to some variable, a special
+       :class:`Function` object called *splitter* is inserted between the
+       variable and the function. The splitter is used to manipulate multiple
+       function applications on the same variable, where gradients from
+       different backward paths are accumulated at the variable.
+
+    .. note::
+
+       :meth:`__call__` copies the function instance before the forward
+       computation and chaining. This enables us to reuse one function object
+       for multiple function applications, where the different calls must use
+       different references to the function object. Note that the copy is
+       shallow, so implementations of :class:`Function` must take care of any
+       member attributes shared accross forward and backward computations.
+
+    .. admonition:: Example
+
+       Let ``x`` an instance of :class:`Variable` and ``f`` that of
+       :class:`Function` taking only one argument. Then a line
+
+       >>> y = f(x)
+
+       computes a new variable ``y`` and makes backward references. Actually,
+       backward references are set as the following diagram::
+
+           x <--- (splitter) <--- x' <--- f' <--- y
+
+       where prime "'" indicates a copy of the original object. If another
+       application the function occurs as
+
+       >>> z = f(x)
+
+       then the splitter acts like a branch as the following new diagram::
+
+                               |--- x'  <--- f'  <--- y
+           x <--- (splitter) <-+
+                               |--- x'' <--- f'' <--- z
+    
+       Note that the splitter is implicitly inserted and user does not need to
+       take any special care of it; just remember that such branching is
+       correctly managed by chainer.
+
+    Every function implementation should provides :meth:`forward_cpu`,
+    :meth:`forward_gpu`, :meth:`backward_cpu` and :meth:`backward_gpu`.
+    Alternatively, one can provide :meth:`forward` and :meth:`backward` instead
+    of separated methods. Backward methods have default implementations that
+    just return ``None``, which indicates that the function is non-
+    differentiable.
+
+    Function implementations are classified into two types: parameterized ones
+    and non-parameterized ones. Parameterized function holds parameter arrays
+    and coresponding gradient arrays. Implementation can choose any way to keep
+    these arrays, but it is recommended to keep them as attributes to easily
+    migrate between CPU and GPU. Parameterized function must provide accessors
+    to these arrays called :meth:`parameters` and :meth:`gradients`.
+
+    Attributes:
+        inputs: A tuple or list of input variables.
+        outputs: A tuple or list of output variables.
+        parameter_names: A tuple or list of names of parameter attributes.
+            It is set to empty tuple by default. This attribute is used by the
+            default implementation of :meth:`parameters` property to gather the
+            collection of parameter arrays. Implementation of parameterized
+            function should override this field as an attribute or a property,
+            or otherwise it should override :meth:`parameters` property.
+        gradient_names: A tuple or list of names of gradient attributes. The
+            detail is same as :data:`parameter_names`.
 
     """
     parameter_names = ()
@@ -31,8 +97,29 @@ class Function(object):
         self.rank    = None
 
     def __call__(self, *inputs):
-        """Execute function and chainer the input/output variables."""
+        """Applies forward propagation on input variables with chaining backward
+        reference.
 
+        Basic behavior is also expressed in documentation of :class:`Function`
+        class. This function first copies itself to avoid conflict over multiple
+        invokations.
+
+        .. note::
+
+           If the :data:`~Variable.data` attribute of input variables reside on
+           GPU device, then, before it calls :meth:`forward` method, the
+           appropriate device is selected, so in most cases implementor does not
+           need to take care of device selection.
+
+        Args:
+            *inputs: Tuple of input :class:`Variable` objects. All input
+                variables must have same volatile flag.
+
+        Returns:
+            One :class:`Variable` object or a tuple of multiple
+            :class:`Variable` objects.
+
+        """
         # First copy itself to avoid duplication within the graph.
         self = copy.copy(self)
 
@@ -81,10 +168,23 @@ class Function(object):
         return ret
 
     def forward(self, inputs):
-        """Forward function.
+        """Applies forward propagation to input arrays.
 
-        It delegates the procedure to forward_{cpu,gpu} by default. User must
-        either implement cpu/gpu methods or override this method.
+        It delegates the procedure to :meth:`forward_cpu` or :meth:`forward_gpu`
+        by default. Which it selects is determined by the type of input arrays.
+        Implementation of :class:`Function` must implement either cpu/gpu
+        methods or this method.
+
+        Args:
+            inputs: Tuple of input array(s).
+
+        Returns:
+            Tuple of output array(s).
+
+        .. warning::
+
+            Implementation of :class:`Function` must take care of that the
+            return value must be a tuple even if it returns only one array.
 
         """
         if any(isinstance(x, cuda.GPUArray) for x in inputs):
@@ -93,30 +193,116 @@ class Function(object):
             return self.forward_cpu(inputs)
 
     def forward_cpu(self, inputs):
-        """Forward function on CPU implemented by child class."""
+        """Applies forward propagation to input arrays on CPU.
+
+        Args:
+            inputs: Tuple of :class:`~numpy.ndarray` object(s).
+
+        Returns:
+            Tuple of :class:`~numpy.ndarray` object(s).
+
+        .. warning::
+
+            Implementation of :class:`Function` must take care of that the
+            return value must be a tuple even if it returns only one array.
+
+        """
         raise NotImplementedError()
 
     def forward_gpu(self, inputs):
-        """Forward function on GPU implemented by child class."""
+        """Applies forward propagation to input arrays on GPU.
+
+        Args:
+            inputs: Tuple of :class:`~pycuda.gpuarray.GPUArray` object(s).
+
+        Returns:
+            Tuple of :class:`~pycuda.gpuarray.GPUArray` object(s).
+
+        .. warning::
+
+            Implementation of :class:`Function` must take care of that the
+            return value must be a tuple even if it returns only one array.
+
+        """
         raise NotImplementedError()
 
     def backward(self, inputs, grad_outputs):
+        """Applies backprop to output gradient arrays.
+
+        It delegates the procedure to :meth:`backward_cpu` or
+        :meth:`backward_gpu` by default. Which it selects is determined by the
+        type of input arrays and output gradient arrays. Implementation of
+        :class:`Function` must implement either cpu/gpu methods or this method,
+        if the function is intended to be backprop-ed.
+
+        Args:
+            inputs: Tuple of input arrays.
+            grad_outputs: Tuple of output gradient arrays.
+
+        Returns:
+            Tuple of input gradient arrays. Some or all of them can be ``None``,
+            if the function is not differentiable on corresponding inputs.
+
+        .. warning::
+
+            Implementation of :class:`Function` must take care of that the
+            return value must be a tuple even if it returns only one array.
+
+        """
         if any(isinstance(x, cuda.GPUArray) for x in inputs + grad_outputs):
             return self.backward_gpu(inputs, grad_outputs)
         else:
             return self.backward_cpu(inputs, grad_outputs)
 
     def backward_cpu(self, inputs, grad_outputs):
-        """Default implementation of backward on CPU, which does nothing."""
+        """Applies backprop to output gradient arrays on CPU.
+
+        Args:
+            inputs: Tuple of input :class:`~numpy.ndarray` object(s).
+            grad_outputs: Tuple of output gradient :class:`~numpy.ndarray`
+                object(s).
+
+        Returns:
+            Tuple of input gradient :class:`~numpy.ndarray` object(s). Some or
+            all of them can be ``None``, if the function is not differentiable
+            on corresponding inputs.
+
+        .. warning::
+
+            Implementation of :class:`Function` must take care of that the
+            return value must be a tuple even if it returns only one array.
+
+        """
         return tuple(None for _ in inputs)
 
     def backward_gpu(self, inputs, grad_outputs):
-        """Default implementation of backward on GPU, which does nothing."""
+        """Applies backprop to output gradient arrays on GPU.
+
+        Args:
+            inputs: Tuple of input :class:`~pycuda.gpuarray.GPUArray` object(s).
+            grad_outputs: Tuple of output gradient
+                :class:`~pycuda.gpuarray.GPUArray` object(s).
+
+        Returns:
+            Tuple of input gradient :class:`~pycuda.gpuarray.GPUArray`
+            object(s). Some or all of them can be ``None``, if the function is
+            not differentiable on corresponding inputs.
+
+        .. warning::
+
+            Implementation of :class:`Function` must take care of that the
+            return value must be a tuple even if it returns only one array.
+
+        """
         return tuple(None for _ in inputs)
 
     def unchain(self):
-        """Purge in/out variables and remove this node from the graph."""
+        """Purges in/out variables and removes this function from the backward
+        graph.
 
+        This method is called from :meth:`Variable.unchain_backward` method.
+
+        """
         for y in self.outputs:
             y_ref = y()
             if y_ref is not None:
@@ -126,10 +312,18 @@ class Function(object):
         self.inputs = None
 
     def to_gpu(self, device=None):
-        """Migrate to GPU and return self.
+        """Migrates the function to GPU and returns self.
 
-        The default implementation moves all fields of type ``numpy.ndarray``
-        onto GPU.
+        The default implementation moves all fields of type
+        :class:`~numpy.ndarray` onto GPU.
+
+        Args:
+            device (int or :class:`pycuda.driver.Device` or ``None``): Device ID
+                of GPU that the function will be migrated on. If this is
+                ``None``, the current device is used.
+
+        Returns:
+            self.
 
         """
         with cuda.using_device(device):
@@ -141,10 +335,13 @@ class Function(object):
         return self
 
     def to_cpu(self):
-        """Migrate to CPU and return self.
+        """Migrates the function to CPU and returns self.
 
-        The default implementation moves all fields of type ``cuda.GPUArray``
-        onto CPU.
+        The default implementation moves all fields of type
+        :class:`pycuda.gpuarray.GPUArray` onto CPU.
+
+        Returns:
+            self.
 
         """
         for k, v in self.__dict__.iteritems():
@@ -154,6 +351,12 @@ class Function(object):
 
     @property
     def parameters(self):
+        """A tuple of parameter arrays.
+
+        Default implementation collects parameter arrays based on
+        :data:`parameter_names` attribute.
+
+        """
         return tuple(getattr(self, name) for name in self.parameter_names)
 
     @parameters.setter
@@ -163,6 +366,12 @@ class Function(object):
 
     @property
     def gradients(self):
+        """A tuple of gradient arrays.
+
+        Default implementation collects gradient arrays based on
+        :data:`gradient_names` attribute.
+
+        """
         return tuple(getattr(self, name) for name in self.gradient_names)
 
     @gradients.setter
