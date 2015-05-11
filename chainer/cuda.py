@@ -1,5 +1,33 @@
-"""Device, context and memory management on PyCUDA."""
+"""Device, context and memory management on PyCUDA and scikits.cuda.
 
+Chainer uses PyCUDA facilities (with very thin wrapper) to get speed of GPU
+computation. Following modules and classes are imported to :mod:`cuda` module
+for convenience (refer this table when reading chainer's source codes).
+
+============================ =================================
+ imported name                original name
+============================ =================================
+ ``chainer.cuda.cublas``      :mod:`scikits.cuda.cublas`
+ ``chainer.cuda.curandom``    :mod:`pycuda.curandom`
+ ``chainer.cuda.cumisc``      :mod:`scikits.cuda.misc`
+ ``chainer.cuda.gpuarray``    :mod:`pycuda.gpuarray`
+
+ ``chainer.cuda.Context``     :mod:`pycuda.driver.Context`
+ ``chainer.cuda.Device``      :mod:`pycuda.driver.Device`
+ ``chainer.cuda.Event``       :mod:`pycuda.driver.Event`
+ ``chainer.cuda.GPUArray``    :mod:`pycuda.gpuarray.GPUArray`
+ ``chainer.cuda.Stream``      :mod:`pycuda.driver.Stream`
+============================ =================================
+
+Chainer provides thin wrappers of GPUArray allocation routines, which use
+:func:`mem_alloc` as the allocator. This allocator uses device-wise instance of
+:class:`~pycuda.tools.DeviceMemoryPool`, which enables us to reuse device memory
+over multiple forward/backward computations. :func:`mem_alloc` also inserts an
+additional attribute to the allocated memory called ``device``, which indicates
+the device that the memory is allocated on. Functions of :mod:`cuda` uses this
+attribute to select appropriate device on each manipulation routine.
+
+"""
 import atexit, copy_reg, os
 import numpy
 import pycuda.driver as drv
@@ -28,10 +56,27 @@ _cublas_handles = {}
 _pid      = None
 
 def init(device=None):
-    """Initialize CUDA global state.
+    """Initializes CUDA global state.
 
-    If you use chainer.cuda with multiprocessing, call init() for each process
-    **after the fork** and before using chainer with PyCUDA.
+    Chainer maintains CUDA context, CUBLAS context, random number generator and
+    device memory pool for each GPU device and for each process (the main
+    process or a process forked by :mod:`multiprocessing`). When this function
+    is called first time on the process, it initializes these global states.
+
+    .. warning::
+
+       This function also initializes PyCUDA and scikits.cuda. Since these
+       packages do not support forking after initialization, do not call this
+       function before forking the process.
+
+    This function also registers :func:`shutdown` to :mod:`atexit` slot.
+
+    It also initializes random number generator. User can set fixed seed with
+    ``CHAINER_SEED`` environment variable.
+
+    Args:
+        device (``int`` or :class:`~pycuda.driver.Device` or ``None``): Device
+            ID to initialize on.
 
     """
     global generator, _contexts, _cublas_handles, _pid, _pools
@@ -60,8 +105,12 @@ def init(device=None):
 
 
 def shutdown():
-    """Finalize CUDA global state."""
+    """Finalize CUDA global state.
 
+    This function is automatically called by :mod:`atexit`. Multiple calls is
+    allowed, so user can manually call it if necessary.
+
+    """
     global _contexts, _cublas_handles, _pid, _pools
 
     pid = os.getpid()
@@ -83,8 +132,28 @@ def shutdown():
 
 
 def get_device(arg=None):
-    """Get device from id or chainer array."""
+    """Gets the device from ID or given chainer's
+    :class:`~pycuda.gpuarray.GPUArray`.
 
+    Args:
+        arg: Value to specify a GPU device.
+
+    Returns:
+        Device object specified by given ``arg``.
+
+        The rule of device selection is following.
+
+        ==================================== =====================================
+         Type of ``arg``                      Return value
+        ==================================== =====================================
+         ``None``                             Current device
+         ``int``                              Device of ID ``arg``
+         :class:`~pycuda.driver.Device`       ``arg``
+         :class:`~pycuda.gpuarray.GPUArray`   Device given array was allocated on
+         :class:`~numpy.ndarray`              ``None``
+        ==================================== =====================================
+
+    """
     if arg is None:
         return Context.get_device()
     elif isinstance(arg, drv.Device):
@@ -97,8 +166,14 @@ def get_device(arg=None):
 
 
 def use_device(arg, pop=True):
-    """Switch context to use given device."""
+    """Swithces the CUDA context to use given device.
 
+    Args:
+        arg: Argument of :func:`get_device`.
+        pop (bool): If True, this function pops the current context from context
+            stack.
+
+    """
     device = get_device(arg)
     if device is None:
         return
@@ -113,8 +188,12 @@ def use_device(arg, pop=True):
 
 
 class DeviceUser(object):
-    """Device user for 'with' statement."""
+    """RAII-style CUDA context swithcer.
 
+    Attributes:
+        arg: Argument of :func:`use_device`.
+    
+    """
     def __init__(self, arg):
         self.arg = arg
 
@@ -133,10 +212,26 @@ class DeviceUser(object):
         return self.arg is not None
 
 def using_device(*args):
-    """Return DeviceUser object of the first GPUArray argument.
+    """Returns :class:`DeviceUser` object of the first
+    :class:`~pycuda.gpuarray.GPUArray` argument.
 
-    If none of the arguments is GPUArray, then it returns dummy DeviceUser that
-    does nothing.
+    If none of the arguments is :class:`~pycuda.gpuarray.GPUArray`, then it
+    returns dummy :class:`DeviceUser` object which is inactive.
+
+    Args:
+        *args: Objects based on which an appropriate device should be selected.
+
+    Returns:
+        DeviceUser: Device user instance of selected argument.
+
+    .. admonition:: Example
+
+        Suppose ``arrays`` is a list of arrays of type either
+        :class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`. Then,
+        following code invokes ``do_something_on`` with an appropriate context::
+
+            with using_device(*arrays):
+                do_something_on(arrays)
 
     """
     for arg in args:
@@ -146,9 +241,14 @@ def using_device(*args):
 
 
 def get_context(arg=None):
-    """Get the context of given device.
+    """Gets the context corresponding to the specified device.
 
-    If arg is not specified, it returns the current context.
+    Args:
+        arg: Argument of :func:`get_device`.
+
+    Returns:
+        ~pycuda.driver.Context: Context object corresponding to the specified
+        device.
 
     """
     device = get_device(arg)
@@ -158,7 +258,19 @@ def get_context(arg=None):
 
 
 def mem_alloc(nbytes):
-    """Allocate memory from memory pool corresponding to the current device."""
+    """Allocates device memory of given size from memory pool.
+
+    This function chooses memory pool corresponding to the current device.
+
+    Args:
+        nbytes (int): The size of memory in bytes.
+
+    Returns:
+        pycuda.tools.PooledDeviceAllocation: Allocated memory with additional
+        ``device`` attribute. This attribute is used to determine on which GPU
+        the memory resides.
+
+    """
     global _pools
 
     device = Context.get_device()
@@ -174,7 +286,13 @@ def mem_alloc(nbytes):
 
 
 def seed(s=None):
-    """Initialize the random number generator by given seed."""
+    """Resets the random number generator by given seed.
+
+    Args:
+        s (``int`` or ``None``): Seed value. If it is ``None``, it initializes
+            the generator without fixed seed.
+    
+    """
     global generator
 
     def seed_getter(N):
@@ -206,7 +324,19 @@ GPUArray.copy = _gpuarray_copy
 
 
 def to_gpu(array):
-    """Copy array to the current device."""
+    """Copies given CPU array to the current device.
+
+    Args:
+        array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
+            Array to be sent to GPU.
+
+    Returns:
+        ~pycuda.gpuarray.GPUArray: Array on GPU.
+
+        If ``array`` is already on GPU, then this function just returns
+        ``array`` without any copy.
+
+    """
     if isinstance(array, GPUArray):
         return array
     return gpuarray.to_gpu(array, allocator=mem_alloc)
@@ -226,71 +356,183 @@ copy_reg.pickle(
 
 
 def to_gpu_async(array, stream=None):
-    """Copy array asynchronously to the current device."""
+    """Copies given CPU array asynchronously to the current device.
+
+    Args:
+        array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
+            Array to be sent to GPU. If it is :class:`~numpy.ndarray`, then its
+            memory must be pagelocked.
+        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+
+    Returns:
+        ~pycuda.gpuarray.GPUArray: Array on GPU.
+
+        If given ``array`` is already on GPU, then this function just returns
+        ``array`` without any copy.
+
+    """
     if isinstance(array, GPUArray):
         return array
     return gpuarray.to_gpu_async(array, allocator=mem_alloc, stream=stream)
 
 
 def to_cpu(array):
-    """Copy array to host synchronously."""
+    """Copies given GPU array to host CPU.
+
+    Args:
+        array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
+            Array to be sent to GPU.
+
+    Returns:
+        ~numpy.ndarray: Array on CPU.
+
+        If given ``array`` is already on CPU, then this function just returns
+        ``array`` without any copy.
+
+    """
     if isinstance(array, GPUArray):
         return array.get()
     return array
 
 
 def to_cpu_async(array, stream=None):
-    """Copy array to host asynchronously."""
+    """Copies given GPU array asynchronously to host CPU.
+
+    Args:
+        array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
+            Array to be sent to GPU.
+        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+
+    Returns:
+        ~numpy.ndarray: Array on CPU.
+
+        If given ``array`` is already on CPU, then this function just returns
+        ``array`` without any copy.
+
+    """
     if isinstance(array, numpy.ndarray):
         return array
-    return arra.get_async(stream=stream)
+    return array.get_async(stream=stream)
 
 
 def empty(shape, dtype=numpy.float32):
-    """Create an uninitialized GPUArray."""
+    """Creates an uninitialized :class:`~pycuda.gpuarray.GPUArray`.
+
+    Args:
+        shape (tuple of ints): The shape of array.
+        dtype (:class:`numpy.dtype`): Element type.
+
+    Returns:
+        ~pycuda.gpuarray.GPUArray: Uninitialized GPU array allocated by memory
+        pool.
+
+    """
     return gpuarray.empty(shape, dtype, allocator=mem_alloc)
 
 
 def full(shape, fill_value, dtype=numpy.float32, stream=None):
-    """Create constant-filled GPUArray."""
+    """Creates a constan-filled :class:`~pycuda.gpuarray.GPUArray`.
+
+    Args:
+        shape (tuple of ints): The shape of array.
+        fill_value: Constant to fill the array by.
+        dtype (:class:`numpy.dtype`): Element type.
+        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+
+    Returns:
+        ~pycuda.gpuarray.GPUArray: Constant-filled GPU array allocated by memory
+        pool.
+
+    """
     array = empty(shape, dtype)
     array.fill(fill_value, stream=stream)
     return array
 
 
 def zeros(shape, dtype=numpy.float32, stream=None):
-    """Create zero-filled GPUArray."""
+    """Creates a zero-filled :class:`~pycuda.gpuarray.GPUArray`.
+
+    This function is equivalent to ``full(shape, 0, dtype, stream)``.
+
+    .. seealso:: full
+
+    """
     return full(shape, 0, dtype, stream=stream)
 
 
 def ones(shape, dtype=numpy.float32, stream=None):
-    """Create one-filled GPUArray."""
+    """Creates a zero-filled :class:`~pycuda.gpuarray.GPUArray`.
+
+    This function is equivalent to ``full(shape, 1, dtype, stream)``.
+
+    .. seealso:: full
+
+    """
     return full(shape, 1, dtype, stream=stream)
 
 
 empty_like = gpuarray.empty_like
+"""Alias to :func:`pycuda.gpuarray.empty_like`."""
 
 
 def full_like(array, fill_value, stream=None):
-    """Create a constant-filled GPUArray like ``array``."""
+    """Creates a constant-filled :class:`~pycuda.gpuarray.GPUArray` like
+    given array.
+
+    Args:
+        array (:class:`~pycuda.gpuarray.GPUArray`): Base array.
+        fill_value: Constant value to fill the array by.
+        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+
+    Returns:
+        ~pycuda.gpuarray.GPUArray: Constant-filled array.
+
+    """
     array = empty_like(array)
     array.fill(fill_value, stream=stream)
     return array
 
 
 def zeros_like(array, stream=None):
-    """Create a zero-filled GPUArray like ``array``."""
+    """Creates a zero-filled :class:`~pycuda.gpuarray.GPUArray` like
+    given array.
+
+    This function is equivalent to ``full_like(array, 0, stream)``.
+
+    """
     return full_like(array, 0, stream=stream)
 
 
 def ones_like(array, stream=None):
-    """Create a zero-filled GPUArray like ``array``."""
+    """Creates a one-filled :class:`~pycuda.gpuarray.GPUArray` like
+    given array.
+
+    This function is equivalent to ``full_like(array, 1, stream)``.
+
+    """
     return full_like(array, 1, stream=stream)
     
 
 def copy(array, out=None, out_device=None):
-    """Copy GPUArray in default stream."""
+    """Copies :class:`~pycuda.gpuarray.GPUArray` using default stream.
 
+    This function can copy the device array to the destination array on another
+    device.
+
+    Args:
+        array (:class:`~pycuda.gpuarray.GPUArray`): Array to be copied.
+        out (:class:`~pycuda.gpuarray.GPUArray` or ``None``): Destination array.
+            If it is not ``None``, then ``out_device`` argument is ignored.
+        out_device: Destination device specifier. Actual device object is
+            obtained by passing this value to :func:`get_device`.
+
+    Returns:
+        ~pycuda.gpuarray.GPUArray: Copied array.
+
+        If ``out`` is not specified, then the array is allocated on the device
+        specified by ``out_device`` argument.
+
+    """
     in_device = get_device(array)
     if out is None:
         if out_device is None:
@@ -313,8 +555,31 @@ def copy(array, out=None, out_device=None):
 
 
 def copy_async(array, out=None, out_device=None, stream=None):
-    """Copy GPUArray asynchronously."""
+    """Copies :class:`~pycuda.gpuarray.GPUArray` using given stream.
 
+    This function can copy the device array to the destination array on another
+    device.
+
+    Args:
+        array (:class:`~pycuda.gpuarray.GPUArray`): Array to be copied.
+        out (:class:`~pycuda.gpuarray.GPUArray` or ``None``): Destination array.
+            If it is not ``None``, then ``out_device`` argument is ignored.
+        out_device: Destination device specifier. Actual device object is
+            obtained by passing this value to :func:`get_device`.
+        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+
+    Returns:
+        ~pycuda.gpuarray.GPUArray: Copied array.
+
+        If ``out`` is not specified, then the array is allocated on the device
+        specified by ``out_device`` argument.
+
+    .. warning::
+
+       Currently, copy_async over different devices raises exception, since
+       PyCUDA drops the definition of :func:`pycuda.driver.memcopy_peer_async`.
+
+    """
     in_device = get_device(array)
     if out is None:
         if out_device is None:
@@ -341,21 +606,33 @@ def copy_async(array, out=None, out_device=None, stream=None):
 # Interprocess communication
 # ------------------------------------------------------------------------------
 class IPCEvent(Event):
+    """:class:`~pycuda.driver.Event` object for interprocess synchronization on
+    GPU."""
+
     def __init__(self):
         super(IPCEvent, self).__init__(
             drv.event_flags.INTERPROCESS | drv.event_flags.DISABLE_TIMING)
 
 
 class IPCArrayHandle(object):
-    """Converter between GPUArray and its Inter-Process Communication handle.
+    """Converter between :class:`~pycuda.gpuarray.GPUArray` and its
+    Inter-Process Communication handle.
 
     It holds IPC memory handle with shape and dtype information. The instance
     can be pickled, which means it can be passed through IPC path way, e.g. Pipe
-    and Queue. The other process can extract shared GPUArray by calling get().
-    Also, the extracted array can be re-converted into IPCArrayHandle.
+    and Queue. The other process can extract shared GPUArray by calling
+    :meth:`get`. Also, the extracted array can be re-converted into another
+    IPCArrayHandle.
 
     """
     def __init__(self, array):
+        """Creates an IPC memory handle of the device array.
+
+        Args:
+            array (:class:`~pycuda.gpuarray.GPUArray`): GPU array to be shared
+                accross processes.
+
+        """
         if isinstance(array, drv.IPCMemoryHandle):
             # do not doubly extract IPC memory handle
             self.handle = array.ipc_handle
@@ -368,6 +645,18 @@ class IPCArrayHandle(object):
         self.mem_size = array.mem_size
 
     def get(self):
+        """Creates :class:`~pycuda.gpuarray.GPUArray` from IPC memory handle.
+
+        Returns:
+            ~pycuda.gpuarray.GPUArray: Recovered GPU array with memory shared
+            accross processes.
+
+        .. note::
+
+           Note that :mod:`cuda` does not take care of data race between
+           multiple processes.
+
+        """
         mem = drv.IPCMemoryHandle(self.handle)
         array = gpuarray.GPUArray((0,), dtype=self.dtype)
         array.shape    = self.shape
@@ -389,7 +678,18 @@ def _eltwise_kernel(arguments, operation, name, keep, options,
 
 def elementwise(arguments, operation, name, keep=False, options=None,
                 preamble='', loop_prep='', after_loop=''):
-    """Return memoized elementwise kernel function."""
+    """Creates an elementwise kernel function.
+
+    This function uses :func:`pycuda.tools.context_dependent_memoize` to cache
+    the resulting kernel object, i.e. the resulting kernel object is cached for
+    each arguments and CUDA context.
+
+    The arguments are same as :func:`pycuda.elementwise.ElementwiseKernel`,
+    except that ``name`` argument is mandatory.
+
+    .. seealso:: :class:`pycuda.elementwise.ElementwiseKernel`
+
+    """
     return _eltwise_kernel(arguments, operation, name, keep, options,
                            preamble, loop_prep, after_loop)
 
@@ -402,7 +702,18 @@ def _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
 
 def reduce(arguments, map_expr, reduce_expr, neutral, name,
            dtype_out=numpy.float32, keep=False, options=None, preamble=''):
-    """Return memoized reduction kernel function."""
+    """Creates a global reduction kernel function.
+
+    This function uses :func:`pycuda.tools.context_dependent_memoize` to cache
+    the resulting kernel object, i.e. the resulting kernel object is cached for
+    each arguments and CUDA context.
+
+    The arguments are same as :func:`pycuda.reduction.ReductionKernel`,
+    except that the order is different and ``name`` argument is mandatory.
+
+    .. seealso:: :class:`pycuda.reduction.ReductionKernel`
+
+    """
     kern = _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
                           name, keep, options, preamble)
     def call_kern(*args, **kwargs):
@@ -416,8 +727,12 @@ def reduce(arguments, map_expr, reduce_expr, neutral, name,
 # ------------------------------------------------------------------------------
 
 def get_cublas_handle():
-    """Get CUBLAS handle for current device."""
+    """Gets CUBLAS handle for the current device.
 
+    Returns:
+        CUBLAS handle.
+
+    """
     global _cublas_handles
 
     device = Context.get_device()
@@ -430,7 +745,16 @@ def get_cublas_handle():
 
 
 class CumiscUser(object):
+    """RAII-style switcher of :mod:`scikits.cuda.misc` default CUBLAS handle.
+    """
+
     def __init__(self, handle):
+        """Initializes the misc user by given handle.
+
+        Args:
+            handle: CUBLAS handle.
+
+        """
         self.handle = cumisc._global_cublas_handle
         self.tmp_handle = handle
 
@@ -442,7 +766,18 @@ class CumiscUser(object):
 
 
 def using_cumisc(handle=None):
-    """Temporarily use chainer's CUBLAS handle on scikits.cuda.misc."""
+    """Temporarily use chainer's CUBLAS handle on :mod:`scikits.cuda.misc`.
+
+    The usage is similar to :func:`using_device`.
+
+    Args:
+        handle: CUBLAS handle. If ``None`` is specified, it uses CUBLAS handle
+            for the current device.
+
+    Returns:
+        CumiscUser: Misc user object.
+
+    """
     if handle is None:
         handle = get_cublas_handle()
     return CumiscUser(handle)
