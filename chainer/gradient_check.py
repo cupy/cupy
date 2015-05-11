@@ -50,9 +50,10 @@ def numerical_grad_gpu(f, inputs, grad_outputs, eps=1e-3):
     return grads
 
 def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
-    """Compute numerical gradient by finite differences.
+    """Computes numerical gradient by finite differences.
 
-    This function is used to implement gradient check.
+    This function is used to implement gradient check. For usage example, see
+    unit tests of :mod:`chainer.functions`.
 
     """
     if any(isinstance(x, cuda.GPUArray) for x in inputs):
@@ -60,7 +61,7 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     return numerical_grad_cpu(f, inputs, grad_outputs, eps)
 
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
-    """Assert if some corresponding element of x and y differs too match."""
+    """Asserts if some corresponding element of x and y differs too match."""
     x = cuda.to_cpu(x)
     y = cuda.to_cpu(y)
     try:
