@@ -1,4 +1,5 @@
 from unittest import TestCase
+import cPickle as pickle
 import numpy
 from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
@@ -71,3 +72,27 @@ class TestConvolution2D(TestCase):
     def test_backward_gpu_im2col(self):
         self.func.use_cudnn = False
         self.test_backward_gpu()
+
+    def check_pickling(self, x_data):
+        x = Variable(x_data)
+        y = self.func(x)
+        y_data1 = y.data
+
+        del x, y
+
+        pickled = pickle.dumps(self.func, -1)
+        del self.func
+        self.func = pickle.loads(pickled)
+
+        x = Variable(x_data)
+        y = self.func(x)
+        y_data2 = y.data
+
+        assert_allclose(y_data1, y_data2, atol=0, rtol=0)
+
+    def test_pickling_cpu(self):
+        self.check_pickling(self.x)
+
+    def test_pickling_gpu(self):
+        self.func.to_gpu()
+        self.check_pickling(to_gpu(self.x))

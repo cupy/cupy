@@ -43,11 +43,6 @@ class Convolution2D(Function):
 
         self.use_cudnn = use_cudnn
         if cudnn.enabled and use_cudnn:
-            self.filter_desc = cudnn.get_filter4d_desc(self.W)
-            self.conv_desc = cudnn.get_conv2d_desc(pad, stride)
-            if self.b is not None:
-                self.bias_desc = cudnn.get_conv_bias_desc(self.b)
-
             # chance to choose implicit-precomp-gemm algorithm
             self.max_workspace_size = in_channels * self.kh * self.kw * 4
 
@@ -82,6 +77,12 @@ class Convolution2D(Function):
             handle = cudnn.get_default_handle()
             x_desc = cudnn.get_tensor_desc(x[0], h, w)
             y_desc = cudnn.get_tensor_desc(y, out_h, out_w)
+
+            self.filter_desc = cudnn.get_filter4d_desc(self.W)
+            self.conv_desc = cudnn.get_conv2d_desc(
+                (self.ph, self.pw), (self.sy, self.sx))
+            if self.b is not None:
+                self.bias_desc = cudnn.get_conv_bias_desc(self.b)
 
             algo = libcudnn.cudnnGetConvolutionForwardAlgorithm(
                 handle, x_desc.value, self.filter_desc.value, self.conv_desc.value,
