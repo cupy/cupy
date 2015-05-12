@@ -139,6 +139,8 @@ for i in xrange(jump * n_epoch):
             optimizer.lr /= 1.2
             print 'learning rate =', optimizer.lr
 
+    sys.stdout.flush()
+
 # Evaluate on test dataset
 print 'test'
 test_perp = evaluate(test_data)
