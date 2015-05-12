@@ -130,8 +130,10 @@ for i in xrange(jump * n_epoch):
     if (i + 1) % jump == 0:
         epoch += 1
         print 'evaluate'
+        now  = time.time()
         perp = evaluate(valid_data)
         print 'epoch {} validation perplexity: {:.2f}'.format(epoch, perp)
+        cur_at += time.time() - now  # skip time of evaluation
 
         if epoch >= 6:
             optimizer.lr /= 1.2
