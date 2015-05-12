@@ -10,7 +10,6 @@ Initialization and global states
 .. autofunction:: init
 .. autofunction:: shutdown
 .. autofunction:: mem_alloc
-.. autofunction:: seed
 
 Devices and contexts
 ~~~~~~~~~~~~~~~~~~~~
@@ -43,6 +42,11 @@ GPUArray allocation and copy
 .. autofunction:: to_cpu_async
 .. autofunction:: to_gpu
 .. autofunction:: to_gpu_async
+
+Random number generators
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: get_generator
+.. autofunction:: seed
 
 Kernel definition utilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
