@@ -190,33 +190,36 @@ def use_device(arg, pop=True):
 class DeviceUser(object):
     """RAII-style CUDA context swithcer.
 
+    Args:
+        arg: Argument of :func:`get_device`.
+
     Attributes:
-        arg: Argument of :func:`use_device`.
+        device (~pycuda.driver.Device): Selected device.
     
     """
     def __init__(self, arg):
-        self.arg = arg
+        self.device = get_device(arg)
 
     def __enter__(self):
         if self.is_active:
-            use_device(self.arg, pop=False)
+            use_device(self.device, pop=False)
         return self
 
     def __exit__(self, typ, value, traceback):
         if self.is_active:
             drv.Context.pop()
-        self.arg = None
+        self.device = None
 
     @property
     def is_active(self):
-        return self.arg is not None
+        return self.device is not None
 
 def using_device(*args):
     """Returns :class:`DeviceUser` object of the first
     :class:`~pycuda.gpuarray.GPUArray` argument.
 
-    If none of the arguments is :class:`~pycuda.gpuarray.GPUArray`, then it
-    returns dummy :class:`DeviceUser` object which is inactive.
+    If none of the arguments specifies a GPU device, then it returns dummy
+    :class:`DeviceUser` object which is inactive.
 
     Args:
         *args: Objects based on which an appropriate device should be selected.
@@ -235,8 +238,9 @@ def using_device(*args):
 
     """
     for arg in args:
-        if isinstance(arg, GPUArray):
-            return DeviceUser(arg)
+        user = DeviceUser(arg)
+        if user.is_active:
+            return user
     return DeviceUser(None)
 
 
