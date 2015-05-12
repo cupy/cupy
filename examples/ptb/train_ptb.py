@@ -118,10 +118,10 @@ for i in xrange(jump * n_epoch):
         optimizer.clip_grads(grad_clip)
         optimizer.update()
 
-    if (i + 1) % 1000 == 0:
+    if (i + 1) % 10000 == 0:
         now      = time.time()
-        throuput = 1000. / (now - cur_at)
-        perp     = math.exp(cur_log_perp / 1000)
+        throuput = 10000. / (now - cur_at)
+        perp     = math.exp(cur_log_perp / 10000)
         print 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(
             i + 1, perp, throuput)
         cur_at   = now
