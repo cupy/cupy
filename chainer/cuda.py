@@ -50,10 +50,11 @@ from pycuda.gpuarray import GPUArray
 # ------------------------------------------------------------------------------
 generator = None
 
-_contexts = {}
-_pools    = {}
+_contexts       = {}
+_pools          = {}
+_generators     = {}
 _cublas_handles = {}
-_pid      = None
+_pid            = None
 
 def init(device=None):
     """Initializes CUDA global state.
@@ -79,7 +80,7 @@ def init(device=None):
             ID to initialize on.
 
     """
-    global generator, _contexts, _cublas_handles, _pid, _pools
+    global _contexts, _cublas_handles, _generators, _pid, _pools
 
     pid = os.getpid()
     if _pid == pid:  # already initialized
@@ -93,8 +94,9 @@ def init(device=None):
     else:
         device  = Device(device)
         context = device.make_context()
-    _contexts  = {device: context}
-    _pools = {}
+    _contexts       = {device: context}
+    _generators     = {}
+    _pools          = {}
     _cublas_handles = {}
     cumisc.init(mem_alloc)
 
@@ -292,22 +294,53 @@ def mem_alloc(nbytes):
     return allocation
 
 
-def seed(s=None):
-    """Resets the random number generator by given seed.
+def _get_seed_getter(s=None):
+    if s is None:
+        return curandom.seed_getter_uniform
+    else:
+        return lambda N: full((N,), s, numpy.int32)
+
+
+def get_generator(device=None):
+    """Gets the random number generator for the given device.
 
     Args:
-        s (``int`` or ``None``): Seed value. If it is ``None``, it initializes
-            the generator without fixed seed.
-    
+        device: Device specifier (an arugment of :func:`get_device`)
+
+    Returns:
+        pycuda.curandom.XORWOWRandomNumberGenerator: Random number generator.
+
     """
-    global generator
+    global _generators
 
-    def seed_getter(N):
-        if s is None:
-            return curandom.seed_getter_uniform(N)
-        return full((N,), s, numpy.int32)
+    device = get_device(device)
+    gen = _generators.get(device)
+    if gen is not None:
+        return gen
 
-    generator = curandom.XORWOWRandomNumberGenerator(seed_getter=seed_getter)
+    with using_device(device):
+        s = os.environ.get('CHAINER_SEED')
+        seed_getter = _get_seed_getter(s)
+        gen = curandom.XORWOWRandomNumberGenerator(seed_getter=seed_getter)
+        _generators[device] = gen
+        return gen
+
+
+def seed(s=None, device=None):
+    """Resets the random number generator of the specified device by given seed.
+
+    Args:
+        s (int or None): Seed value. If it is ``None``, it initializes the
+            generator without fixed seed.
+        device: Device specifier (i.e. argument of :func:`get_device`).
+
+    """
+    global _generators
+
+    with DeviceUser(device) as user:
+        seed_getter = _get_seed_getter(s)
+        gen = curandom.XORWOWRandomNumberGenerator(seed_getter=seed_getter)
+        _generators[user.device] = gen
 
 
 # ------------------------------------------------------------------------------

@@ -16,7 +16,7 @@ class Dropout(Function):
         self.rand = cuda.empty_like(x[0])
         y = cuda.empty_like(x[0])
 
-        cuda.generator.fill_uniform(self.rand)
+        cuda.get_generator().fill_uniform(self.rand)
         self.scale = 1. / (1 - self.dropout_ratio)
 
         self.kernel = cuda.elementwise(
