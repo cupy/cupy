@@ -198,7 +198,10 @@ class DeviceUser(object):
     
     """
     def __init__(self, arg):
-        self.device = get_device(arg)
+        if arg is None:
+            self.device = None
+        else:
+            self.device = get_device(arg)
 
     def __enter__(self):
         if self.is_active:
