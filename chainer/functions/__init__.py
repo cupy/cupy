@@ -13,6 +13,7 @@ from concat   import concat
 from copy     import copy
 from dropout  import dropout
 from identity import identity
+from reshape  import reshape
 
 # Activation functions
 from basic_math import exp, log
