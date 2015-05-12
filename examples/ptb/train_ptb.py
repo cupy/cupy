@@ -49,6 +49,8 @@ model = FunctionSet(embed=F.EmbedID(len(vocab), n_units),
                     l2_x =F.Linear(n_units, 4 * n_units),
                     l2_h =F.Linear(n_units, 4 * n_units),
                     l3   =F.Linear(n_units, len(vocab)))
+for param in model.parameters:
+    param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 if args.gpu >= 0:
     cuda.init(args.gpu)
     model.to_gpu()
