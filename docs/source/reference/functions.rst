@@ -28,6 +28,7 @@ Array manipulation functions
 .. autofunction:: copy
 .. autofunction:: dropout
 .. autofunction:: identity
+.. autofunction:: reshape
 
 Activation functions
 --------------------

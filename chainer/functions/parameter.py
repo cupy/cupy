@@ -15,9 +15,9 @@ class Parameter(Function):
         return self.W,
 
     def backward_cpu(self, x, gy):
-        self.gW[:] = gy[0]
+        self.gW[:] += gy[0]
         return ()
 
     def backward_gpu(self, x, gy):
-        cuda.copy(gy[0], out=self.gW)
+        self.gW += gy[0]
         return ()
