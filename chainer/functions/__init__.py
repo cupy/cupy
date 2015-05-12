@@ -4,7 +4,6 @@
 from batch_normalization import BatchNormalization
 from convolution_2d      import Convolution2D
 from embed_id            import EmbedID
-from inception           import Inception
 from linear              import Linear
 from parameter           import Parameter
 from prelu               import PReLU
@@ -32,3 +31,6 @@ from accuracy              import accuracy
 from mean_squared_error    import mean_squared_error
 from softmax_cross_entropy import softmax_cross_entropy
 from sum                   import sum
+
+# Parameterized models
+from inception import Inception
