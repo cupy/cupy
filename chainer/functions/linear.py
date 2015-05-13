@@ -4,6 +4,9 @@ import scikits.cuda.linalg as culinalg
 import scikits.cuda.misc as cumisc
 from chainer import cuda, Function
 
+def _as_mat(x):
+    return x.reshape(x.shape[0], x.size / x.shape[0])
+
 class Linear(Function):
     """Implementation of fully-connected layer."""
 
@@ -33,17 +36,17 @@ class Linear(Function):
         return 'gW', 'gb'
 
     def forward_cpu(self, x):
-        x = x[0].reshape(x[0].shape[0], self.W.shape[1])
+        x = _as_mat(x[0])
         Wx = x.dot(self.W.T)
         if self.b is not None:
             Wx += self.b
         return Wx,
 
     def forward_gpu(self, x):
-        _x = x[0].reshape(x[0].shape[0], self.W.shape[1])
-        y = cuda.empty((x[0].shape[0], self.W.shape[0]), dtype=_x.dtype)
+        x = _as_mat(x[0])
+        y = cuda.empty((x.shape[0], self.W.shape[0]), dtype=x.dtype)
         with cuda.using_cumisc():
-            culinalg.dot(_x, self.W, transb='T', out=y)
+            culinalg.dot(x, self.W, transb='T', out=y)
         if self.b is not None:
             cuda.elementwise(
                 'float* y, float* b, int n_channel',
@@ -52,13 +55,14 @@ class Linear(Function):
         return y,
 
     def backward_cpu(self, x, gy):
-        self.gW += gy[0].T.dot(x[0])
+        _x = _as_mat(x[0])
+        self.gW += gy[0].T.dot(_x)
         if self.gb is not None:
             self.gb += gy[0].sum(0)
         return gy[0].dot(self.W).reshape(x[0].shape),
 
     def backward_gpu(self, x, gy):
-        _x = x[0].reshape(x[0].shape[0], self.W.shape[1])
+        _x = _as_mat(x[0])
         gx = cuda.empty_like(_x)
         with cuda.using_cumisc():
             culinalg.add_dot(gy[0], _x, self.gW, transa='T')
