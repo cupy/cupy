@@ -73,6 +73,10 @@ class InceptionBN(Function):
         self.y.backward()
         return self.x.grad,
 
+    def to_gpu(self, device=None):
+        super(InceptionBN, self).to_gpu(device)
+        self.f.to_gpu(device)
+
     @property
     def parameters(self):
         return self.f.parameters
@@ -96,7 +100,7 @@ class GoogLeNetBN(FunctionSet):
     insize = 224
 
     def __init__(self):
-        super(InceptionBN, self).__init__(
+        super(GoogLeNetBN, self).__init__(
             conv1 = F.Convolution2D( 3,  64, 7, stride=2, pad=3, nobias=True),
             norm1 = F.BatchNormalization(64),
             conv2 = F.Convolution2D(64, 192, 3, pad=1, nobias=True),
