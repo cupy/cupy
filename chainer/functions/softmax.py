@@ -2,7 +2,7 @@ import numpy
 from chainer import cuda, cudnn, Function
 
 if cudnn.available:
-    import libcudnn
+    from chainer.cudnn import libcudnn
     _algorithm = libcudnn.cudnnSoftmaxAlgorithm['CUDNN_SOFTMAX_ACCURATE']
     _mode      = libcudnn.cudnnSoftmaxMode['CUDNN_SOFTMAX_MODE_INSTANCE']
 
