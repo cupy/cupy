@@ -65,7 +65,7 @@ class TestLSTM(TestCase):
 
         func = c.creator
         f = lambda: func.forward((c_prev.data, x.data))
-        gc_prev, gx = numerical_grad(f, (c_prev.data, x.data), (c.grad, h.grad), eps=1e-2)
+        gc_prev, gx = numerical_grad(f, (c_prev.data, x.data), (c_grad, h_grad), eps=1e-2)
 
         assert_allclose(gc_prev, c_prev.grad)
         assert_allclose(gx, x.grad)

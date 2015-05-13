@@ -137,7 +137,7 @@ class Variable(object):
 
         while cand_funcs:
             _, func = heapq.heappop(cand_funcs)
-            outputs = (y() for y in func.outputs)  # access via weak ref
+            outputs = tuple(y() for y in func.outputs)  # access via weak ref
 
             in_data  = tuple(x.data for x in func.inputs)
             out_grad = tuple(y and y.grad for y in outputs)
@@ -147,7 +147,8 @@ class Variable(object):
 
             if not retain_grad:
                 for y in outputs:
-                    y.grad = None
+                    if y is not None and y != self:
+                        y.grad = None
             for x, gx in zip(func.inputs, gxs):
                 x.grad = gx
                 if gx is not None:  # skip if gradient does not flow

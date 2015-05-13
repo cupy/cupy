@@ -27,7 +27,7 @@ class TestFunction(TestCase):
         z = y1 + y2
 
         z.grad = numpy.array([1])
-        z.backward()
+        z.backward(retain_grad=True)
 
         self.assertEqual(y1.grad[0], 1)
         self.assertEqual(y2.grad[0], 1)
