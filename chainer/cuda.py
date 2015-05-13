@@ -163,6 +163,8 @@ def get_device(arg=None):
     elif isinstance(arg, numpy.ndarray):
         return None
     elif isinstance(arg, GPUArray):
+        while not hasattr(arg.gpudata, 'device'):
+            arg = arg.base
         return arg.gpudata.device
     return drv.Device(arg)
 
