@@ -44,5 +44,5 @@ class NIN(FunctionSet):
         h = F.relu(self.conv4(h))
         h = F.relu(self.conv4a(h))
         h = F.relu(self.conv4b(h))
-        h = F.average_pooling_2d(h, 6)
+        h = F.reshape(F.average_pooling_2d(h, 6), (x_data.shape[0], 1000))
         return F.softmax_cross_entropy(h, t), F.accuracy(h, t)
