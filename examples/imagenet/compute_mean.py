@@ -3,8 +3,7 @@ import argparse, cPickle as pickle, sys
 import cv2, numpy
 
 parser = argparse.ArgumentParser(description='Compute images mean array')
-parser.add_argument('--dataset', '-d', default='/data/ILSVRC/train.txt',
-                    help='path to training dataset')
+parser.add_argument('dataset', help='Path to training image-label list file')
 parser.add_argument('--output', '-o', default='mean.npy',
                     help='path to output mean array')
 args = parser.parse_args()
