@@ -59,7 +59,7 @@ def col2im_cpu(col, sy, sx, ph, pw, h, w):
             j_lim = j + sx * out_w
             img[:, :, i:i_lim:sy, j:j_lim:sx] += col[:, :, i, j, :, :]
 
-    return img[:, :, ph:-ph, pw:-pw]
+    return img[:, :, ph:h+ph, pw:w+pw]
 
 def col2im_gpu(col, sy, sx, ph, pw, h, w):
     n, c, kh, kw, out_h, out_w = col.shape
