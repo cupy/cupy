@@ -10,6 +10,7 @@ This is a documentation of Chainer.
 .. toctree::
    :maxdepth: 1
 
+   tutorial/index
    reference/index
 
 

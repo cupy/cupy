@@ -34,6 +34,7 @@ sys.path.insert(0, '../..')
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
               'sphinx.ext.intersphinx',
+              'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
               'sphinx.ext.viewcode']
 
@@ -296,4 +297,5 @@ intersphinx_mapping = {
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'pycuda': ('http://documen.tician.de/pycuda/', None),
     'scikits.cuda': ('http://scikit-cuda.readthedocs.org/en/latest/', None),
+    'sklearn': ('http://scikit-learn.org/stable/', None),
 }
