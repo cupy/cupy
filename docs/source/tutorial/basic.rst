@@ -3,7 +3,7 @@ Basics of Chainer
 
 .. currentmodule:: chainer
 
-This is the very beginning of the Chainer Tutorial.
+This is the first section of the Chainer Tutorial.
 In this section, you will learn following things.
 
 * Pros and cons of existing frameworks and why we are developing Chainer
@@ -12,16 +12,16 @@ In this section, you will learn following things.
 * Management of a set of parameterized functions (a.k.a. "model" in most frameworks)
 * Optimization of parameters
 
-Reading this section, you will come to be able to
+By reading this section, you will come to be able to
 
-* Compute gradient of some arithmetics
-* Write multi-layer perceptron with Chainer
+* Compute gradient of some arithmetics,
+* Write multi-layer perceptron with Chainer.
 
 
 Core concept
 ~~~~~~~~~~~~
 
-Chainer is, as shown on the front page, a flexible framework of neural networks.
+Chainer is, as shown at the front page, a flexible framework of neural networks.
 We aim at its flexibility, so it must enable us to write complex architectures simply and intuitively.
 
 In the beginning of the deep learning era, most deep learning frameworks aimed at efficiency of feed-forward neural networks, especially of ConvNets.
