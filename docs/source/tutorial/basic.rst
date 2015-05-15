@@ -209,7 +209,9 @@ You can also set additional functions later by setting attributes::
 Since this is just an object with functions stored as its attributes, we can use these functions in forward computation::
 
   >>> x = Varaible(np.array([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.float32))
-  >>> y = model.l1(x)
+  >>> h1 = model.l1(x)
+  >>> h2 = model.l2(h1)
+  >>> h3 = model.l3(h2)
 
 One of the feature of FunctionSet is collecting parameters and gradients.
 A tuple of all parameters and a tuple of all gradients are extracted by :func:`FunctionSet.parameters` and :func:`FunctionSet.gradients` properties, respectively.
