@@ -1,5 +1,5 @@
-Recurrent nets and their graph management
------------------------------------------
+Recurrent nets and their computation graph
+------------------------------------------
 
 .. currentmodule:: chainer
 
@@ -93,7 +93,7 @@ Though, if the time range is long enough, this technique practically works well.
 
 How to implement truncated backprop in Chainer?
 Chainer has a smart mechanism to achieve truncation, called **backward unchaining**.
-It is implemented by :meth:`Variable.unchain_backward` method.
+It is implemented in :meth:`Variable.unchain_backward` method.
 Backward unchaining starts from the variable object, and it chops the computation history backward from the variable.
 The chopped variables are disposed automatically (if they are not referenced explicitly from any other user object).
 As a result, they are no longer a part of computation history, and does not get involved to backprop anymore.
@@ -134,7 +134,7 @@ Unchaining enables us to walk through unlimited length of sequences with limited
 
 Instead, Chainer provides evaluation mode of forward computation, which does not store the history of computation.
 This is enabled by just passing ``volatile`` flag to all input variables.
-Such variables is called *volatile variables*.
+Such variables are called *volatile variables*.
 
 .. warning::
 
