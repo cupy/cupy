@@ -5,3 +5,4 @@ Chainer Tutorial
    :maxdepth: 1
 
    basic
+   recurrentnet
