@@ -36,7 +36,6 @@ Before writing forward computation, we have to define parameterized functions::
   ...     h_to_h = F.Linear( 50,   50),
   ...     h_to_y = F.Linear( 50, 1000),
   ... )
-  ...
   >>> optimizer = optimizers.SGD()
   >>> optimizer.setup(model.collect_parameters())
 
