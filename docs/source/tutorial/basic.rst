@@ -44,15 +44,14 @@ Recursive nets require different connectivities on different samples, which most
 This limitation comes from the "Define-and-Run" regime, which fix the graph shape before learning and prediction.
 
 In order to overcome these limitations, we introduce on-the-fly network construction ("**Define-by-Run**" scheme).
-This is Chainer's most important feature, which you will learn in this section.
-This enables us to, e.g., write following things simply and intuitively without lacking efficiency.
+This is tha most important feature of Chainer, most of which you will learn in this section.
+This enables us to, for example, write following things simply and intuitively without lacking efficiency.
 
 * Variable length recurrent nets
 * Learning of recurrent nets from endless sequence usign truncated BPTT
-* Recurrent nets with different connections over time (e.g. Clockwork RNN)
 * Recursive nets with variable structure for each sample
 
-It also makes us easy to write multi-GPU parallelization, since logic comes closer to network description.
+It also makes it easy to write multi-GPU parallelization, since logic comes closer to network manipulation.
 We will review such amenities in later sections of this tutorial.
 
 
@@ -93,7 +92,7 @@ The resulting ``y`` is also Variable object, whose value can be extracted by :at
   array([ 16.], dtype=float32)
 
 What ``y`` holds is not only the result value.
-It also holds a history of computation, which enables us to compute its differentiation.
+It also holds history of computation (or computation graph), which enables us to compute its differentiation.
 This is done by calling its :meth:`~Variable.backward` method::
 
   >>> y.backward()
