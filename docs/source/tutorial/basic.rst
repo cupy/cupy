@@ -24,34 +24,20 @@ Core concept
 Chainer is, as shown at the front page, a flexible framework of neural networks.
 We aim at its flexibility, so it must enable us to write complex architectures simply and intuitively.
 
-In the beginning of the deep learning era, most deep learning frameworks aimed at efficiency of feed-forward neural networks, especially of ConvNets.
-Here the term "efficiency" includes two aspects: computational efficiency and design efficiency.
-Popular frameworks (e.g. Caffe) provide fast layer implementations and portable ways to define networks by human-readable serialization formats.
-This approach is very effective on designing static feed-forward neural networks.
-On the other hand, static representation of architecture is not suited to write down dynamic networks like recurrent nets.
-Most frameworks cannot handle loop in the networks directly, and so they are trying to introduce some tricks to write recurrent nets.
-These tricks are effective on certain situations, but do not generalize well.
+Most existing deep learning frameworks are based on **"Define-and-Run"** scheme.
+That is, the network is first defined and fixed, and then the user or system periodically feeds minibatches to it.
+Since network is statically defined before any forward/backward computation, all the logics must be embedded into network architecture as *data*.
+Consequently, it is declarative to define a network architecture in such systems (e.g. Caffe).
+Note that one can still produce such static network definition using imperative languages (e.g. Torch7 and Theano-based frameworks).
 
-Some frameworks are using scripts to define network architectures (e.g. Torch and most of Theano-based frameworks).
-This approach is more suited to define repetitive computations.
-However, most of these frameworks are still using "**Define-and-Run**" regime on network representation.
-Once a network architecture is defined, they fix it and periodically feed minibatches to it.
-This scheme lacks some degrees of freedom to define more flexible architecture, especially to define per-sample network shape.
-For example, many sequential prediciton tasks require variable length of minibatches.
-In order to solve such tasks by recurrent nets, we have to use different (i.e. variable length) graph for each minibatch.
-Another example is recursive nets.
-Recursive nets require different connectivities on different samples, which most existing frameworks cannot handle directly.
-This limitation comes from the "Define-and-Run" regime, which fix the graph shape before learning and prediction.
+Instead, Chainer uses **"Define-by-Run"** scheme, i.e. the network is defined on-the-fly by the actual forward computation.
+More precisely, Chainer stores the history of computation instead of programming logic.
+This strategy enables to fully leverage the power of programming logics in Python.
+For example, Chainer does not need any magic to introduce conditionals and loops into the network definitions.
+The Define-by-Run scheme is the core concept of Chainer.
+We will show in this tutorial how to define networks dynamically.
 
-In order to overcome these limitations, we introduce on-the-fly network construction ("**Define-by-Run**" scheme).
-This is tha most important feature of Chainer, most of which you will learn in this section.
-This enables us to, for example, write following things simply and intuitively without lacking efficiency.
-
-* Variable length recurrent nets
-* Learning of recurrent nets from endless sequence usign truncated BPTT
-* Recursive nets with variable structure for each sample
-
-It also makes it easy to write multi-GPU parallelization, since logic comes closer to network manipulation.
+This strategy also makes it easy to write multi-GPU parallelization, since logic comes closer to network manipulation.
 We will review such amenities in later sections of this tutorial.
 
 
@@ -249,6 +235,8 @@ Then, after computing gradient of each parameter, :meth:`~Optimizer.update` meth
 
 Optimizer also contains some features around parameter and gradient manipulation, e.g. weight decay and gradient clipping.
 
+
+.. _mnist_mlp_example:
 
 Example: multi-layer perceptron on MNIST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
