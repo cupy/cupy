@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """Chainer example: train a multi-layer perceptron on MNIST using two GPUs.
 
-This is a toy example to write a model-parallel computation in Chainer.
+This is a toy example to write a model-parallel computation in Chainer. Note
+that this is just an example; the network definition is not optimal and performs
+poorly on MNIST dataset.
 
 """
 import math
@@ -48,7 +50,6 @@ model = FunctionSet(
         l6=F.Linear(n_units / 2, 10,          wscale=wscale)
     ).to_gpu(1)
 )
-# optimizer = optimizers.MomentumSGD(lr=0.1, momentum=0.8)
 optimizer = optimizers.SGD(lr=0.1)
 optimizer.setup(model.collect_parameters())
 
