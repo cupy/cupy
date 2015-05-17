@@ -365,23 +365,26 @@ def _gpuarray_copy(array):
 GPUArray.copy = _gpuarray_copy
 
 
-def to_gpu(array):
-    """Copies given CPU array to the current device.
+def to_gpu(array, device=None):
+    """Copies given CPU array to specified device.
 
     Args:
         array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
             Array to be sent to GPU.
+        device: Device specifier.
 
     Returns:
         ~pycuda.gpuarray.GPUArray: Array on GPU.
 
         If ``array`` is already on GPU, then this function just returns
-        ``array`` without any copy.
+        ``array`` without any copy. Note that this function does not copy
+        GPUArray into specified device.
 
     """
     if isinstance(array, GPUArray):
         return array
-    return gpuarray.to_gpu(array, allocator=mem_alloc)
+    with using_device(device):
+        return gpuarray.to_gpu(array, allocator=mem_alloc)
 
 # Pickle redefinition of GPUArray. Note that pickling and unpickling of GPUArray
 # do not preserve device information, i.e. the unpickled GPUArray may reside on
