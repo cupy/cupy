@@ -48,18 +48,26 @@ class FunctionSet(object):
             device (int or :class:`pycuda.driver.Device` or ``None``): Device
                 ID of GPU. If ``None`` is given, it uses the current device.
 
+        Returns:
+            self
+
         """
         for func in self.__dict__.itervalues():
             func.to_gpu(device=device)
+        return self
 
     def to_cpu(self):
         """Migrates all parameters and gradients onto CPU.
 
         This method calls ``to_cpu`` method of each registered object.
 
+        Returns:
+            self
+
         """
         for func in self.__dict__.itervalues():
             func.to_cpu()
+        return self
 
     @property
     def parameters(self):
