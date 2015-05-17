@@ -38,9 +38,12 @@ class Optimizer(object):
                 can be used.
 
         """
-        self.tuples = [(p, g, self.init_state(p, g))
-                       for p, g in zip(*params_grads)]
         self.t = 0
+        self.tuples = []
+        for p, g in zip(*params_grads):
+            with cuda.using_device(p):
+                state = self.init_state(p, g)
+                self.tuples.append((p, g, state))
 
     def init_state(self, param, grad):
         """Returns initial state corresponding to the given parameter and
@@ -202,7 +205,7 @@ class Optimizer(object):
         """
         self.t += 1
         for p, g, s in self.tuples:
-            with cuda.using_device(p) as user:
+            with cuda.using_device(p):
                 self.update_one(p, g, s)
 
     def update_one(self, param, grad, state):
