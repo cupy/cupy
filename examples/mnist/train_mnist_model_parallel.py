@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+"""Chainer example: train a multi-layer perceptron on MNIST using two GPUs.
+
+This is a toy example to write a model-parallel computation in Chainer.
+
+"""
+import math
+import numpy as np
+from sklearn.datasets import fetch_mldata
+from chainer import cuda, functions as F, FunctionSet, optimizers, Variable
+
+batchsize =  100
+n_epoch   =   50
+n_units   = 2000
+
+# Prepare dataset
+print 'fetch MNIST dataset'
+mnist = fetch_mldata('MNIST original')
+mnist.data   = mnist.data.astype(np.float32)
+mnist.data  /= 255
+mnist.target = mnist.target.astype(np.int32)
+
+N = 60000
+x_train, x_test = np.split(mnist.data,   [N])
+y_train, y_test = np.split(mnist.target, [N])
+N_test = y_test.size
+
+# Prepare the multi-layer perceptron model
+# Note that the model splits into two GPUs at the first layer,
+# and share their activations only at third and sixth layers.
+cuda.init()
+wscale = math.sqrt(2)
+model = FunctionSet(
+    gpu0 = FunctionSet(
+        l1=F.Linear(        784, n_units / 2, wscale=wscale),
+        l2=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
+        l3=F.Linear(n_units / 2, n_units,     wscale=wscale),
+        l4=F.Linear(n_units,     n_units / 2, wscale=wscale),
+        l5=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
+        l6=F.Linear(n_units / 2, 10,          wscale=wscale)
+    ).to_gpu(0),
+    gpu1 = FunctionSet(
+        l1=F.Linear(        784, n_units / 2, wscale=wscale),
+        l2=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
+        l3=F.Linear(n_units / 2, n_units,     wscale=wscale),
+        l4=F.Linear(n_units,     n_units / 2, wscale=wscale),
+        l5=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
+        l6=F.Linear(n_units / 2, 10,          wscale=wscale)
+    ).to_gpu(1)
+)
+# optimizer = optimizers.MomentumSGD(lr=0.1, momentum=0.8)
+optimizer = optimizers.SGD(lr=0.1)
+optimizer.setup(model.collect_parameters())
+
+# Neural net architecture
+def forward(x_data, y_data, train=True):
+    x_0 = Variable(cuda.to_gpu(x_data, 0))
+    t   = Variable(cuda.to_gpu(y_data, 0))
+    x_1 = Variable(cuda.to_gpu(x_data, 1))
+
+    # Up to 3rd layer
+    h1_0 = F.dropout(F.relu(model.gpu0.l1(x_0)),  train=train)
+    h1_1 = F.dropout(F.relu(model.gpu1.l1(x_1)),  train=train)
+
+    h2_0 = F.dropout(F.relu(model.gpu0.l2(h1_0)), train=train)
+    h2_1 = F.dropout(F.relu(model.gpu1.l2(h1_1)), train=train)
+
+    h3_0 = F.dropout(F.relu(model.gpu0.l3(h2_0)), train=train)
+    h3_1 = F.dropout(F.relu(model.gpu1.l3(h2_1)), train=train)
+
+    # Synchronize
+    h3_0s = h3_0 + F.copy(h3_1, 0)
+    h3_1s = h3_1 + F.copy(h3_0, 1)
+
+    # up to 6th layer
+    h4_0 = F.dropout(F.relu(model.gpu0.l4(h3_0s)), train=train)
+    h4_1 = F.dropout(F.relu(model.gpu1.l4(h3_1s)), train=train)
+
+    h5_0 = F.dropout(F.relu(model.gpu0.l5(h4_0)),  train=train)
+    h5_1 = F.dropout(F.relu(model.gpu1.l5(h4_1)),  train=train)
+
+    h6_0  = F.relu(model.gpu0.l6(h5_0))
+    h6_1  = F.relu(model.gpu1.l6(h5_1))
+
+    # Synchronize
+    y  = h6_0 + F.copy(h6_1, 0)
+    return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
+
+# Learning loop
+x_batch = np.ndarray((batchsize, 784), dtype=np.float32)
+y_batch = np.ndarray((batchsize,), dtype=np.int32)
+for epoch in xrange(1, n_epoch+1):
+    print 'epoch', epoch
+
+    # training
+    perm = np.random.permutation(N)
+    sum_accuracy = 0
+    sum_loss = 0
+    for i in xrange(0, N, batchsize):
+        x_batch[:] = x_train[perm[i:i+batchsize]]
+        y_batch[:] = y_train[perm[i:i+batchsize]]
+
+        optimizer.zero_grads()
+        loss, acc = forward(x_batch, y_batch)
+        loss.backward()
+        optimizer.update()
+
+        sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
+        sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
+
+    print 'train mean loss={}, accuracy={}'.format(
+        sum_loss / N, sum_accuracy / N)
+
+    # evaluation
+    sum_accuracy = 0
+    sum_loss     = 0
+    for i in xrange(0, N_test, batchsize):
+        loss, acc = forward(x_test[i:i+batchsize], y_test[i:i+batchsize],
+                            train=False)
+
+        sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
+        sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
+
+    print 'test  mean loss={}, accuracy={}'.format(
+        sum_loss / N_test, sum_accuracy / N_test)
