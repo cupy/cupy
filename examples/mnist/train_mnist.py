@@ -23,7 +23,7 @@ n_units   = 1000
 
 # Prepare dataset
 print 'fetch MNIST dataset'
-mnist = fetch_mldata('MNIST original', data_home='.')
+mnist = fetch_mldata('MNIST original')
 mnist.data   = mnist.data.astype(np.float32)
 mnist.data  /= 255
 mnist.target = mnist.target.astype(np.int32)
