@@ -6,3 +6,4 @@ Chainer Tutorial
 
    basic
    recurrentnet
+   gpu
