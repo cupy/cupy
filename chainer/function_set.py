@@ -69,6 +69,24 @@ class FunctionSet(object):
             func.to_cpu()
         return self
 
+    def copy_parameters_from(self, params):
+        """Copies parameters from other source without reallocation.
+
+        Args:
+            params (Iterable): Iterable of parameter arrays.
+
+        """
+        for dst, src in zip(self.parameters, params):
+            if isinstance(dst, numpy.ndarray):
+                if isinstance(src, numpy.ndarray):
+                    dst.copy(src)
+                else:
+                    src.get(dst)
+            elif isinstance(src, numpy.ndarray):
+                dst.set(src)
+            else:
+                cuda.copy(src, out=dst)
+
     @property
     def parameters(self):
         """Tuple of parameter arrays of all registered functions.
