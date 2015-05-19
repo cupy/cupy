@@ -248,6 +248,79 @@ Almost same example code is available at ``examples/mnist/train_mnist_model_para
 Data-parallel computation on multiple GPUs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Data-parallel computation is another strategy to parallelize online processing.
+In the context of neural networks, it means that different device does computation on different subset of input data.
+In this subsection, we review the way to achieve data-parallel learning on two GPUs.
 
-Combination of model and data parallelisms on multiple GPUs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Suppose again our task is `the MNIST example <mnist_mlp_example>`_.
+This time we want to directly parallelize the three-layer network.
+The most simple form of data-parallelization is parallelizing the gradient computation for distinct set of data.
+First, define the model::
+
+  >>> model = FunctionSet(
+  ...     l1 = F.Linear(784, 100),
+  ...     l2 = F.Linear(100, 100),
+  ...     l3 = F.Linear(100,  10),
+  ... )
+
+We have to copy this model into two different devices.
+This is done by using :func:`copy.deepcopy` and :meth:`FunctionSet.to_gpu` method::
+
+  >>> import copy
+  >>> model_0 = copy.deepcopy(model).to_gpu(0)
+  >>> model_1 = model.to_gpu(1)
+
+Then, set up optimizer as::
+
+  >>> optimizer = optimizers.SGD()
+  >>> optimizer.setup(model_0.collect_parameters())
+
+Here we use the first copy of the model as *the master model*.
+Before its update, gradients of ``model_1`` must be aggregated to those of ``model_0``.
+
+Forward function is almost same as the original example::
+
+  >>> def forward(x_data, y_data, model):
+  ...     x = Variable(x_data)
+  ...     t = Variable(y_data)
+  ...     h1 = F.relu(model.l1(x))
+  ...     h2 = F.relu(model.l2(h1))
+  ...     y = model.l3(h2)
+  ...     return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
+  
+The only difference is that it accepts ``model`` as an argument.
+we can feed to it a model and arrays on appropriate device.
+Then, we can write data-parallel learning loop as follows::
+
+  >>> batchsize = 100
+  >>> for epoch in xrange(20):
+  ...     print 'epoch', epoch
+  ...     indexes = np.random.permutation(60000)
+  ...     for i in xrange(0, 60000, batchsize):
+  ...         x_batch = x_train[indexes[i : i + batchsize]]
+  ...         y_batch = y_train[indexes[i : i + batchsize]]
+  ...         
+  ...         optimizer.zero_grads()
+  ...         
+  ...         loss_0, accuracy_0 = forward(
+  ...             cuda.to_gpu(x_batch[:batchsize/2], 0),
+  ...             cuda.to_gpu(y_batch[:batchsize/2], 0),
+  ...             model_0)
+  ...         loss_0.backward()
+  ...         
+  ...         loss_1, accuracy_1 = forward(
+  ...             cuda.to_gpu(x_batch[batchsize/2:], 1),
+  ...             cuda.to_gpu(y_batch[batchsize/2:], 1),
+  ...             model_1)
+  ...         loss_1.backward()
+  ...         
+  ...         optimizer.acumulate_grads(model_1.gradients)
+  ...         optimizer.update()
+  ...         
+  ...         model_1.copy_parameters_from(model_0.parameters)
+
+The half of the minibatch is forwarded on GPU 0, while the other half on GPU 1.
+Then, the gradients are accumulated by :meth:`Optimizer.accumulate_grads` method.
+After the gradients are prepared, we can update the optimizer in usual way.
+Be careful that the update only modifies the parameters of model_0.
+So we must manually copy them to model_1 using :meth:`FunctionSet.copy_parameters_from` method.
