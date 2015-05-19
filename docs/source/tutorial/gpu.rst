@@ -129,7 +129,7 @@ Be careful that you must give parameters and gradients on GPU to the optimizer. 
   ...     l2 = F.Linear(100, 100),
   ...     l3 = F.Linear(100,  10),
   ... ).to_gpu()
-  >>> 
+  ...
   >>> optimizer = optimizers.SGD()
   >>> optimizer.setup(model.collect_parameters())
 
@@ -164,7 +164,85 @@ On the other hand, data-parallel indicates parallelizations by data sharding.
 In this subsection, we show how to do model-parallel on multiple GPUs in Chainer.
 
 `Recall the MNIST example <mnist_mlp_example>`_.
-Here suppose that we want to modify this example by expanding the network into 6 layers with 2000 units for each.
+Here suppose that we want to modify this example by expanding the network to 6 layers with 2000 units for each using two GPUs.
+In order to make multi-GPU computation efficient, we only make two GPUs communicate at the third and sixth layer.
+The overall architecture looks like the following diagram::
+
+  (GPU0) input --+--> l1 --> l2 --> l3 --+--> l4 --> l5 --> l6 --+--> output
+                 |                     |                     |
+  (GPU1)         ---> l1 --> l2 --> l3 --+--> l4 --> l5 --> l6 --+
+
+We first have to define :class:`FunctionSet`.
+Be careful that parameters that will be used on a device must reside on the devie.
+Here is a simple example of the model definition::
+
+  >>> model = FunctionSet(
+  ...     gpu0 = FunctionSet(
+  ...         l1=F.Linear( 784, 1000),
+  ...         l2=F.Linear(1000, 1000),
+  ...         l3=F.Linear(1000, 2000),
+  ...         l4=F.Linear(2000, 1000),
+  ...         l5=F.Linear(1000, 1000),
+  ...         l6=F.Linear(1000,   10)
+  ...     ).to_gpu(0),
+  ...     gpu1 = FunctionSet(
+  ...         l1=F.Linear( 784, 1000),
+  ...         l2=F.Linear(1000, 1000),
+  ...         l3=F.Linear(1000, 2000),
+  ...         l4=F.Linear(2000, 1000),
+  ...         l5=F.Linear(1000, 1000),
+  ...         l6=F.Linear(1000,   10)
+  ...     ).to_gpu(1)
+  ... )
+
+Recall that :meth:`FunctionSet.to_gpu` returns the FunctionSet object itself.
+Note that FunctionSet can be nested as above.
+
+Now we can define the network architecture that we have shown in the diagram::
+
+  >>> def forward(x_data, y_data):
+  ...     x_0 = Variable(cuda.to_gpu(x_data, 0))
+  ...     x_1 = Variable(cuda.to_gpu(x_data, 1))
+  ...     t   = Variable(cuda.to_gpu(y_data, 0))
+  ... 
+  ...     h1_0 = F.relu(model.gpu0.l1(x_0))
+  ...     h1_1 = F.relu(model.gpu1.l1(x_1))
+  ... 
+  ...     h2_0 = F.relu(model.gpu0.l2(h1_0))
+  ...     h2_1 = F.relu(model.gpu1.l2(h1_1))
+  ...
+  ...     h3_0 = F.relu(model.gpu0.l3(h2_0))
+  ...     h3_1 = F.relu(model.gpu1.l3(h2_1))
+  ...
+  ...     # Synchronize
+  ...     h3_0 += F.copy(h3_1, 0)
+  ...     h3_1  = F.copy(h3_0, 1)
+  ...
+  ...     h4_0 = F.relu(model.gpu0.l4(h3_0))
+  ...     h4_1 = F.relu(model.gpu1.l4(h3_1))
+  ...
+  ...     h5_0 = F.relu(model.gpu0.l5(h4_0))
+  ...     h5_1 = F.relu(model.gpu1.l5(h4_1))
+  ...
+  ...     h6_0 = F.relu(model.gpu0.l6(h5_0))
+  ...     h6_1 = F.relu(model.gpu1.l6(h5_1))
+  ...
+  ...     # Synchronize
+  ...     y = h6_0 + F.copy(h6_1, 0)
+  ...     return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
+
+First, recall that :func:`cuda.to_gpu` accepts an optional argument to specify the device identifier.
+We use this to transfer the input minibatch to both the 0th and the 1st devices.
+Then, we can write this model-parallel example just by using :func:`functions.copy` function.
+This function transfers an input array to another device.
+Since it is a function on :class:`Variable`, the operation supports backprop, which reversely transfers an output gradient to the input device.
+
+.. note::
+
+   Above code is not parallelized on CPU, but is parallelized on GPU.
+   This is because most of the GPU computation is asynchronous to the host CPU.
+
+Almost same example code is available at ``examples/mnist/train_mnist_model_parallel.py``.
 
 
 Data-parallel computation on multiple GPUs
