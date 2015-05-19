@@ -183,6 +183,9 @@ class Optimizer(object):
         aggregated by this method. This method correctly treats multiple GPU
         devices.
 
+        Args:
+            grads (Iterable): Iterable of gradient arrays to be accumulated.
+
         """
         for (_, g_dst, _), g_src in zip(self.tuples, grads):
             if isinstance(g_dst, numpy.ndarray):
