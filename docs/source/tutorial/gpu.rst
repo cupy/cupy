@@ -169,8 +169,8 @@ In order to make multi-GPU computation efficient, we only make two GPUs communic
 The overall architecture looks like the following diagram::
 
   (GPU0) input --+--> l1 --> l2 --> l3 --+--> l4 --> l5 --> l6 --+--> output
-                 |                     |                     |
-  (GPU1)         ---> l1 --> l2 --> l3 --+--> l4 --> l5 --> l6 --+
+                 |                       |                       |
+  (GPU1)         +--> l1 --> l2 --> l3 --+--> l4 --> l5 --> l6 --+
 
 We first have to define :class:`FunctionSet`.
 Be careful that parameters that will be used on a device must reside on the devie.
