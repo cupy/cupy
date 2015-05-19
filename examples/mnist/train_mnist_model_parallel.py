@@ -55,11 +55,10 @@ optimizer.setup(model.collect_parameters())
 
 # Neural net architecture
 def forward(x_data, y_data, train=True):
-    x_0 = Variable(cuda.to_gpu(x_data, 0))
-    t   = Variable(cuda.to_gpu(y_data, 0))
-    x_1 = Variable(cuda.to_gpu(x_data, 1))
+    x_0 = Variable(cuda.to_gpu(x_data, 0), volatile=not train)
+    x_1 = Variable(cuda.to_gpu(x_data, 1), volatile=not train)
+    t   = Variable(cuda.to_gpu(y_data, 0), volatile=not train)
 
-    # Up to 3rd layer
     h1_0 = F.dropout(F.relu(model.gpu0.l1(x_0)),  train=train)
     h1_1 = F.dropout(F.relu(model.gpu1.l1(x_1)),  train=train)
 
@@ -70,12 +69,11 @@ def forward(x_data, y_data, train=True):
     h3_1 = F.dropout(F.relu(model.gpu1.l3(h2_1)), train=train)
 
     # Synchronize
-    h3_0s = h3_0 + F.copy(h3_1, 0)
-    h3_1s = h3_1 + F.copy(h3_0, 1)
+    h3_0 += F.copy(h3_1, 0)
+    h3_1  = F.copy(h3_0, 1)
 
-    # up to 6th layer
-    h4_0 = F.dropout(F.relu(model.gpu0.l4(h3_0s)), train=train)
-    h4_1 = F.dropout(F.relu(model.gpu1.l4(h3_1s)), train=train)
+    h4_0 = F.dropout(F.relu(model.gpu0.l4(h3_0)), train=train)
+    h4_1 = F.dropout(F.relu(model.gpu1.l4(h3_1)), train=train)
 
     h5_0 = F.dropout(F.relu(model.gpu0.l5(h4_0)),  train=train)
     h5_1 = F.dropout(F.relu(model.gpu1.l5(h4_1)),  train=train)
