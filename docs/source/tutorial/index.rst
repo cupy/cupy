@@ -7,3 +7,4 @@ Chainer Tutorial
    basic
    recurrentnet
    gpu
+   function
