@@ -10,7 +10,7 @@ In this section, you will learn following things.
 * How to define a parameterized function
 * How to test the function definition
 
-By reading this section, you will come to be able to
+After reading this section, you will be able to
 
 * Write your own non-parameterized function
 * Define simple kernels in the function definition
@@ -20,8 +20,8 @@ By reading this section, you will come to be able to
 Non-parameterized functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Chainer provides a collection of functions in :mod:`functions` module.
-It covers typicall usages in deep learning, so many existing works can be implemented using them.
+Chainer provides a collection of functions in :mod:`~chainer.functions` module.
+It covers typical usage in deep learning, so many existing works can be implemented using them.
 On the other hand, deep learning is evolving rapidly and we cannot cover all possible functions to define unseen architectures.
 So it is important to learn how to define your own functions.
 
@@ -29,7 +29,7 @@ Since non-parameterized functions are simpler, we first review how to define the
 First, suppose we want to define elementwise function :math:`f(x, y, z) = x * y + z`.
 We can implement this equation just by using ``*`` and ``+`` functions.
 Though, defining a unified function may reduce memory consumption, so it is a bit meaningful.
-Here we call this function as *MulAdd*.
+Here we call this function *MulAdd*.
 
 Let's start with defining MulAdd working on CPU.
 Any function must inherits :class:`Function` class.
@@ -136,7 +136,7 @@ However, it invokes two kernels during each of forward and backward computations
 We can reduce the number of invokations by defining our own kernel.
 
 Most functions only require elementwise operations like MulAdd.
-PyCUDA provides useful tool to define elementwise kernel, and Chainer wraps it by :func:`cuda.elementwise` function.
+PyCUDA provides useful tool to define elementwise kernel: :class:`pycuda.elementwise.ElementwiseKernel` class, and Chainer wraps it by :func:`cuda.elementwise` function.
 Our MulAdd implementation can be improved as follows::
 
   class MulAdd(Function):
@@ -173,17 +173,18 @@ Our MulAdd implementation can be improved as follows::
           gz = gw  # no copy
           return gx, gy, gz
 
-:func:`cuda.elementwise` function accepts the essential implentation of the kernel function, and returns a kernel invokation function.
+:func:`cuda.elementwise` function accepts the essential implentation of the kernel function, and returns a kernel invokation function (actually, it returns :class:`~pycuda.elementwise.ElementwiseKernel` object, which is callable).
 In typical usage, we pass three arguments to this function.
 The first is an argument list of the kernel function.
 The second is a body of *parallel loop*, where the variable ``i`` indicates the index in the loop.
-Note that ``i`` runs through all indexes of the first array argument.
+Note that ``i`` runs through all indexes of the first array argument by default.
 The third is the name of the kernel function, which is shown in debugger and profilers.
 
 Above code does not run compilation on every forward/backward computation, since :func:`cuda.elementwise` function has two caching mechanisms.
 
 First is *binary caching*.
 :func:`cuda.elementwise` function caches the compiled binary under ``/tmp`` directory with a hash value of CUDA code, and reuse them if given code matches to the hash value.
+This caching mechanism is actually implemented in PyCUDA.
 
 Second is *upload caching*.
 Given a compiled binary code, we have to upload it to the current GPU in order to execute it.
@@ -211,7 +212,7 @@ There are two differences between parameterized functions and non-parameterized 
 
 * Parameterized functions have parameter arrays and corresponding gradient arrays.
   They are typically stored as attributes of the function class, where the function should provide :attr:`~Function.parameter_names` and :attr:`~Function.gradient_names` attributes (or properties).
-  Otherwise, the function must provide :attr:`~Function.parameters` and :attr:`~Function.gradients` properties directly.
+  Otherwise, the function must override :attr:`~Function.parameters` and :attr:`~Function.gradients` properties directly.
 * Parameterized functions must accumulate gradients on backward.
 
 Note that gradient arrays are automatically zeroed by an optimizer, so function implementation only need to initialize their shapes.
@@ -255,7 +256,7 @@ Testing function
 
 In order to isolate the cause of learning failure from implementation bugs, it is important to test function implementations.
 Chainer provides simple utilities to help writing unittests.
-They are defined in :mod:`gradient_check` module.
+They are defined in :mod:`~chainer.gradient_check` module.
 
 The most important test utility is :func:`~gradient_check.numerical_grad` function.
 This function computes numerical gradient of given function using finite differences.
