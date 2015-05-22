@@ -12,10 +12,10 @@ In this section, you will learn following things.
 * Management of a set of parameterized functions (a.k.a. "model" in most frameworks)
 * Optimization of parameters
 
-By reading this section, you will come to be able to
+After reading this section, you will be able to
 
-* Compute gradient of some arithmetics,
-* Write multi-layer perceptron with Chainer.
+* Compute gradients of some arithmetics
+* Write multi-layer perceptron with Chainer
 
 
 Core concept
@@ -25,8 +25,8 @@ Chainer is, as shown at the front page, a flexible framework of neural networks.
 We aim at its flexibility, so it must enable us to write complex architectures simply and intuitively.
 
 Most existing deep learning frameworks are based on **"Define-and-Run"** scheme.
-That is, the network is first defined and fixed, and then the user or system periodically feeds minibatches to it.
-Since network is statically defined before any forward/backward computation, all the logics must be embedded into network architecture as *data*.
+That is, a network is first defined and fixed, and then the user periodically feeds minibatches to it.
+Since the network is statically defined before any forward/backward computation, all the logics must be embedded into the network architecture as *data*.
 Consequently, it is declarative to define a network architecture in such systems (e.g. Caffe).
 Note that one can still produce such static network definition using imperative languages (e.g. Torch7 and Theano-based frameworks).
 
@@ -43,10 +43,10 @@ We will review such amenities in later sections of this tutorial.
 
 .. note::
 
-   In example codes of this tutorial, we suppose following symbols imported for simplicity::
+   In example codes of this tutorial, we suppose following symbols are imported for simplicity::
 
      import numpy as np
-     from chainer import cuda, Function, FunctionSet, Variable, optimizers
+     from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers
      import chainer.functions as F
 
    These imports appear widely in Chainer's codes and examples.
@@ -56,7 +56,6 @@ Forward/Backward computation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As described above, Chainer uses "Define-by-Run" scheme, so forward computation itself is the definition of networks.
-
 In order to start forward computation, we have to set the input array to :class:`Variable` object.
 Here we start with simple :class:`~numpy.ndarray` with only one element::
 
@@ -114,18 +113,18 @@ This is simply done by setting :attr:`~Variable.grad` attribute of the output va
 .. note::
 
    Many functions taking :class:`Variable` object(s) are defined in :mod:`functions` module.
-   You can combinate them to realize complicated function with backward computation.
+   You can combine them to realize complicated function with automatic backward computation.
 
 
 Parameterized functions
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-In order to write neural networks, we have to use some parameterized functions and optimize their parameters.
-As noted above, functions are predefined in :mod:`functions` module, which also includes some *parameterized functions*.
+In order to write neural networks, we have to use some *parameterized functions* and optimize their parameters.
+As noted above, functions are predefined in :mod:`functions` module, which also includes parameterized functions.
 
 One of the most fundamental parameterized function is :class:`~functions.Linear` function (a.k.a. *fully-connected layer* or *affine transformation*).
-It represents mathematical function :math:`f(x) = Wx + b`, where the matrix :math:`W` and the vector :math:`b` are all parameters.
-Linear function from three dimensional vectors to two dimensional vectors is defined by::
+It represents a mathematical function :math:`f(x) = Wx + b`, where the matrix :math:`W` and the vector :math:`b` are parameters.
+Linear function from three dimensional space to two dimensional space is defined by::
   
   >>> f = F.Linear(3, 2)
 
@@ -159,8 +158,8 @@ Parameter gradients of Linear function are stored in :attr:`~functions.Linear.gW
   >>> f.gW.fill(0)
   >>> f.gb.fill(0)
 
-This procedure is simplified by FunctionSet and Optimizer, which we will review in the next subsection.
-Now we can compute the gradient of parameters by simply calling backward method::
+This procedure is simplified by FunctionSet and Optimizer, which we will review later.
+Now we can compute the gradients of parameters by simply calling backward method::
 
   >>> y.grad = np.ones((2, 2), dtype=np.float32)
   >>> y.backward()
@@ -200,7 +199,7 @@ Since this is just an object with functions stored as its attributes, we can use
   >>> h3 = model.l3(h2)
 
 One of the feature of FunctionSet is collecting parameters and gradients.
-A tuple of all parameters and a tuple of all gradients are extracted by :func:`FunctionSet.parameters` and :func:`FunctionSet.gradients` properties, respectively.
+A tuple of all parameters and a tuple of all gradients are extracted by :attr:`FunctionSet.parameters` and :attr:`FunctionSet.gradients` properties, respectively.
 
 
 Optimizer
@@ -249,7 +248,7 @@ In order to use MNIST, :func:`sklearn.datasets.fetch_mldata` function of `scikit
   >>> mnist = fetch_mldata('MNIST original')
 
 Note that mnist dataset consists of 70,000 grayscale images of size 28x28 (i.e. 784 pixels) and corresponding digit labels.
-First, we divide the dataset into 60,000 training samples and 10,000 test samples, and scale pixels into [0, 1] values::
+First, we scale pixels to [0, 1] values, and divide the dataset into 60,000 training samples and 10,000 test samples.
 
   >>> x_all = mnist.data.astype(np.float32) / 255
   >>> y_all = mnist.target.astype(np.int32)
@@ -286,7 +285,7 @@ This function uses :func:`functions.relu` as an activation function.
 :func:`functions.softmax_cross_entropy` computes the loss function of softmax regression.
 :func:`functions.accuracy` computes the classification accuracy of this minibatch.
 
-Finally, we can write learning loop as following::
+Finally, we can write a learning loop as following::
 
   >>> batchsize = 100
   >>> for epoch in xrange(20):
@@ -307,7 +306,7 @@ Here you find that, at each iteration, the network is defined by forward computa
 By leveraging this "Define-by-Run" scheme, you can imagine that recurrent nets with variable length input are simply handled by just using loop over different length input for each iteration.
 
 After or during optimization, we want to evaluate the model on the test set.
-It can simply achieved by calling forward function::
+It can be simply achieved by calling forward function::
 
   >>> sum_loss, sum_accuracy = 0, 0
   >>> for i in xrange(0, 10000, batchsize):

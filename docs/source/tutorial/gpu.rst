@@ -10,9 +10,8 @@ In this section, you will learn following things.
 * Single GPU usage of Chainer
 * Multi GPU usage of model-parallel computing
 * Multi GPU usage of data-parallel computing
-* Combination of model-parallel and data-parallel
 
-By reading this section, you will come to be able to
+After reading this section, you will be able to
 
 * Use Chainer on CUDA-enabled GPU
 * Write model-parallel computing in Chainer
@@ -53,7 +52,7 @@ Basics of GPUArray in Chainer
 
 In order to use GPU in Chainer, we must initialize :mod:`chainer.cuda` module before any GPU-related operations::
 
-  >>> cuda.init()
+  cuda.init()
 
 :func:`cuda.init` function initializes its global state and PyCUDA.
 This function accepts optional argument ``device``, which indicates the GPU device ID to initially select.
@@ -63,55 +62,55 @@ This function accepts optional argument ``device``, which indicates the GPU devi
    If you are using :mod:`multiprocessing`, the initialization must take place for each process after the fork.
    The main process is not the exception, i.e. :func:`cuda.init` should not be called before all the forks that use GPU.
 
-Then we can create GPUArray using functions of :mod:`cuda` module.
+Then we can create a GPUArray object using functions of :mod:`~chainer.cuda` module.
 Chainer provides many constructor functions resembling ones of NumPy: :func:`~cuda.empty`, :func:`~cuda.empty_like`, :func:`~cuda.full`, :func:`~cuda.full_like`, :func:`~cuda.zeros`, :func:`~cuda.zeros_like`, :func:`~cuda.ones`, :func:`~cuda.ones_like`.
 
-Another useful function to create GPUArray is :func:`~cuda.to_gpu`.
-This function copies :class:`numpy.ndarray` to a newly allocated GPUArray.
+Another useful function to create a GPUArray object is :func:`~cuda.to_gpu`.
+This function copies a :class:`numpy.ndarray` object to a newly allocated GPUArray object.
 For example, the following code ::
 
-  >>> x_cpu = np.ones((5, 4, 3), dtype=np.float32)
-  >>> x_gpu = cuda.to_gpu(x_cpu)
+  x_cpu = np.ones((5, 4, 3), dtype=np.float32)
+  x_gpu = cuda.to_gpu(x_cpu)
 
 generates same ``x_gpu`` as the following code::
 
-  >>> x_gpu = cuda.ones((5, 4, 3))
+  x_gpu = cuda.ones((5, 4, 3))
 
 .. note::
 
-   Allocation functions of :mod:`cuda` module uses :class:`numpy.float32` as the default element type.
+   Allocation functions of :mod:`~chainer.cuda` module uses :class:`numpy.float32` as the default element type.
 
-:mod:`cuda` also has :func:`~cuda.to_cpu` function to copy GPUArray to ndarray::
+:mod:`~chainer.cuda` module also has :func:`~cuda.to_cpu` function to copy a GPUArray object to an ndarray object::
 
-  >>> x_cpu = cuda.to_cpu(x_gpu)
+  x_cpu = cuda.to_cpu(x_gpu)
 
 All GPUArray constructors allocate memory on the current device.
-In order to allocate GPUArray on a different device, we can use device switching utilities.
+In order to allocate memory on a different device, we can use device switching utilities.
 :func:`cuda.use_device` function simply changes the current device::
 
-  >>> cuda.use_device(1)
-  >>> x_gpu1 = cuda.empty((4, 3))
+  cuda.use_device(1)
+  x_gpu1 = cuda.empty((4, 3))
 
 There are many situations that we want to temporarily switch the device, where :func:`cuda.using_device` function is useful, which returns resource object that can be combinated with ``with`` statement::
 
-  >>> with cuda.using_device(1):
-  ...     x_gpu1 = cuda.empty((4, 3))
+  with cuda.using_device(1):
+      x_gpu1 = cuda.empty((4, 3))
 
-These device switching utilities also accepts GPUArray as a device specifier.
-In this case, Chainer switches the current device to one on which the array is allocated::
+These device switching utilities also accepts a GPUArray object as a device specifier.
+In this case, Chainer switches the current device to one that the array is allocated on::
 
-  >>> with cuda.using_device(x_gpu1):
-  ...     y_gpu1 = x_gpu1 + 1
+  with cuda.using_device(x_gpu1):
+      y_gpu1 = x_gpu1 + 1
 
 .. warning::
 
    An array that is not allocated by Chainer's allocator cannot be used as a device specifier.
 
-Chainer's GPUArray can be copied between GPUs by :func:`cuda.copy` function::
+A GPUArray object allocated by Chainer can be copied between GPUs by :func:`cuda.copy` function::
 
-  >>> cuda.use_device(0)
-  >>> x0 = cuda.ones((4, 3))
-  >>> x1 = cuda.copy(x0, out_device=1)
+  cuda.use_device(0)
+  x0 = cuda.ones((4, 3))
+  x1 = cuda.copy(x0, out_device=1)
 
 
 Run neural networks on single GPU
@@ -124,32 +123,32 @@ In this subsection, the code is based on :ref:`our first MNIST example on this t
 :class:`FunctionSet` object can be transferred to the specified GPU by :meth:`~FunctionSet.to_gpu` method.
 Be careful that you must give parameters and gradients on GPU to the optimizer. ::
 
-  >>> model = FunctionSet(
-  ...     l1 = F.Linear(784, 100),
-  ...     l2 = F.Linear(100, 100),
-  ...     l3 = F.Linear(100,  10),
-  ... ).to_gpu()
-  ...
-  >>> optimizer = optimizers.SGD()
-  >>> optimizer.setup(model.collect_parameters())
+  model = FunctionSet(
+      l1 = F.Linear(784, 100),
+      l2 = F.Linear(100, 100),
+      l3 = F.Linear(100,  10),
+  ).to_gpu()
+  
+  optimizer = optimizers.SGD()
+  optimizer.setup(model.collect_parameters())
 
 Note that this method returns the function set itself.
 The device specifier can be omitted, where it uses the current device.
 
 Then, what we only have to do is transferring each minibatch to GPU::
 
-  >>> batchsize = 100
-  >>> for epoch in xrange(20):
-  ...     print 'epoch', epoch
-  ...     indexes = np.random.permutation(60000)
-  ...     for i in xrange(0, 60000, batchsize):
-  ...         x_batch = cuda.to_gpu(x_train[indexes[i : i + batchsize]])
-  ...         y_batch = cuda.to_gpu(y_train[indexes[i : i + batchsize]])
-  ...         
-  ...         optimizer.zero_grads()
-  ...         loss, accuracy = forward(x_batch, y_batch)
-  ...         loss.backward()
-  ...         optimizer.update()
+  batchsize = 100
+  for epoch in xrange(20):
+      print 'epoch', epoch
+      indexes = np.random.permutation(60000)
+      for i in xrange(0, 60000, batchsize):
+          x_batch = cuda.to_gpu(x_train[indexes[i : i + batchsize]])
+          y_batch = cuda.to_gpu(y_train[indexes[i : i + batchsize]])
+          
+          optimizer.zero_grads()
+          loss, accuracy = forward(x_batch, y_batch)
+          loss.backward()
+          optimizer.update()
 
 It is almost same as that of the original example.
 We just insert :func:`cuda.to_gpu` function to the minibatch arrays.
@@ -165,7 +164,7 @@ In this subsection, we show how to do model-parallel on multiple GPUs in Chainer
 
 `Recall the MNIST example <mnist_mlp_example>`_.
 Here suppose that we want to modify this example by expanding the network to 6 layers with 2000 units for each using two GPUs.
-In order to make multi-GPU computation efficient, we only make two GPUs communicate at the third and sixth layer.
+In order to make multi-GPU computation efficient, we only make two GPUs communicate at the third and sixth layers.
 The overall architecture looks like the following diagram::
 
   (GPU0) input --+--> l1 --> l2 --> l3 --+--> l4 --> l5 --> l6 --+--> output
@@ -176,60 +175,60 @@ We first have to define :class:`FunctionSet`.
 Be careful that parameters that will be used on a device must reside on the devie.
 Here is a simple example of the model definition::
 
-  >>> model = FunctionSet(
-  ...     gpu0 = FunctionSet(
-  ...         l1=F.Linear( 784, 1000),
-  ...         l2=F.Linear(1000, 1000),
-  ...         l3=F.Linear(1000, 2000),
-  ...         l4=F.Linear(2000, 1000),
-  ...         l5=F.Linear(1000, 1000),
-  ...         l6=F.Linear(1000,   10)
-  ...     ).to_gpu(0),
-  ...     gpu1 = FunctionSet(
-  ...         l1=F.Linear( 784, 1000),
-  ...         l2=F.Linear(1000, 1000),
-  ...         l3=F.Linear(1000, 2000),
-  ...         l4=F.Linear(2000, 1000),
-  ...         l5=F.Linear(1000, 1000),
-  ...         l6=F.Linear(1000,   10)
-  ...     ).to_gpu(1)
-  ... )
+  model = FunctionSet(
+      gpu0 = FunctionSet(
+          l1=F.Linear( 784, 1000),
+          l2=F.Linear(1000, 1000),
+          l3=F.Linear(1000, 2000),
+          l4=F.Linear(2000, 1000),
+          l5=F.Linear(1000, 1000),
+          l6=F.Linear(1000,   10)
+      ).to_gpu(0),
+      gpu1 = FunctionSet(
+          l1=F.Linear( 784, 1000),
+          l2=F.Linear(1000, 1000),
+          l3=F.Linear(1000, 2000),
+          l4=F.Linear(2000, 1000),
+          l5=F.Linear(1000, 1000),
+          l6=F.Linear(1000,   10)
+      ).to_gpu(1)
+  )
 
 Recall that :meth:`FunctionSet.to_gpu` returns the FunctionSet object itself.
 Note that FunctionSet can be nested as above.
 
 Now we can define the network architecture that we have shown in the diagram::
 
-  >>> def forward(x_data, y_data):
-  ...     x_0 = Variable(cuda.to_gpu(x_data, 0))
-  ...     x_1 = Variable(cuda.to_gpu(x_data, 1))
-  ...     t   = Variable(cuda.to_gpu(y_data, 0))
-  ... 
-  ...     h1_0 = F.relu(model.gpu0.l1(x_0))
-  ...     h1_1 = F.relu(model.gpu1.l1(x_1))
-  ... 
-  ...     h2_0 = F.relu(model.gpu0.l2(h1_0))
-  ...     h2_1 = F.relu(model.gpu1.l2(h1_1))
-  ...
-  ...     h3_0 = F.relu(model.gpu0.l3(h2_0))
-  ...     h3_1 = F.relu(model.gpu1.l3(h2_1))
-  ...
-  ...     # Synchronize
-  ...     h3_0 += F.copy(h3_1, 0)
-  ...     h3_1  = F.copy(h3_0, 1)
-  ...
-  ...     h4_0 = F.relu(model.gpu0.l4(h3_0))
-  ...     h4_1 = F.relu(model.gpu1.l4(h3_1))
-  ...
-  ...     h5_0 = F.relu(model.gpu0.l5(h4_0))
-  ...     h5_1 = F.relu(model.gpu1.l5(h4_1))
-  ...
-  ...     h6_0 = F.relu(model.gpu0.l6(h5_0))
-  ...     h6_1 = F.relu(model.gpu1.l6(h5_1))
-  ...
-  ...     # Synchronize
-  ...     y = h6_0 + F.copy(h6_1, 0)
-  ...     return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
+  def forward(x_data, y_data):
+      x_0 = Variable(cuda.to_gpu(x_data, 0))
+      x_1 = Variable(cuda.to_gpu(x_data, 1))
+      t   = Variable(cuda.to_gpu(y_data, 0))
+  
+      h1_0 = F.relu(model.gpu0.l1(x_0))
+      h1_1 = F.relu(model.gpu1.l1(x_1))
+  
+      h2_0 = F.relu(model.gpu0.l2(h1_0))
+      h2_1 = F.relu(model.gpu1.l2(h1_1))
+  
+      h3_0 = F.relu(model.gpu0.l3(h2_0))
+      h3_1 = F.relu(model.gpu1.l3(h2_1))
+  
+      # Synchronize
+      h3_0 += F.copy(h3_1, 0)
+      h3_1  = F.copy(h3_0, 1)
+  
+      h4_0 = F.relu(model.gpu0.l4(h3_0))
+      h4_1 = F.relu(model.gpu1.l4(h3_1))
+  
+      h5_0 = F.relu(model.gpu0.l5(h4_0))
+      h5_1 = F.relu(model.gpu1.l5(h4_1))
+  
+      h6_0 = F.relu(model.gpu0.l6(h5_0))
+      h6_1 = F.relu(model.gpu1.l6(h5_1))
+  
+      # Synchronize
+      y = h6_0 + F.copy(h6_1, 0)
+      return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
 
 First, recall that :func:`cuda.to_gpu` accepts an optional argument to specify the device identifier.
 We use this to transfer the input minibatch to both the 0th and the 1st devices.
@@ -257,70 +256,76 @@ This time we want to directly parallelize the three-layer network.
 The most simple form of data-parallelization is parallelizing the gradient computation for distinct set of data.
 First, define the model::
 
-  >>> model = FunctionSet(
-  ...     l1 = F.Linear(784, 100),
-  ...     l2 = F.Linear(100, 100),
-  ...     l3 = F.Linear(100,  10),
-  ... )
+  model = FunctionSet(
+      l1 = F.Linear(784, 100),
+      l2 = F.Linear(100, 100),
+      l3 = F.Linear(100,  10),
+  )
 
 We have to copy this model into two different devices.
 This is done by using :func:`copy.deepcopy` and :meth:`FunctionSet.to_gpu` method::
 
-  >>> import copy
-  >>> model_0 = copy.deepcopy(model).to_gpu(0)
-  >>> model_1 = model.to_gpu(1)
+  import copy
+  model_0 = copy.deepcopy(model).to_gpu(0)
+  model_1 = model.to_gpu(1)
 
 Then, set up optimizer as::
 
-  >>> optimizer = optimizers.SGD()
-  >>> optimizer.setup(model_0.collect_parameters())
+  optimizer = optimizers.SGD()
+  optimizer.setup(model_0.collect_parameters())
 
 Here we use the first copy of the model as *the master model*.
 Before its update, gradients of ``model_1`` must be aggregated to those of ``model_0``.
 
 Forward function is almost same as the original example::
 
-  >>> def forward(x_data, y_data, model):
-  ...     x = Variable(x_data)
-  ...     t = Variable(y_data)
-  ...     h1 = F.relu(model.l1(x))
-  ...     h2 = F.relu(model.l2(h1))
-  ...     y = model.l3(h2)
-  ...     return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
+  def forward(x_data, y_data, model):
+      x = Variable(x_data)
+      t = Variable(y_data)
+      h1 = F.relu(model.l1(x))
+      h2 = F.relu(model.l2(h1))
+      y = model.l3(h2)
+      return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
   
 The only difference is that it accepts ``model`` as an argument.
-we can feed to it a model and arrays on appropriate device.
-Then, we can write data-parallel learning loop as follows::
+we can feed to it a model and arrays on an appropriate device.
+Then, we can write a data-parallel learning loop as follows::
 
-  >>> batchsize = 100
-  >>> for epoch in xrange(20):
-  ...     print 'epoch', epoch
-  ...     indexes = np.random.permutation(60000)
-  ...     for i in xrange(0, 60000, batchsize):
-  ...         x_batch = x_train[indexes[i : i + batchsize]]
-  ...         y_batch = y_train[indexes[i : i + batchsize]]
-  ...         
-  ...         optimizer.zero_grads()
-  ...         
-  ...         loss_0, accuracy_0 = forward(
-  ...             cuda.to_gpu(x_batch[:batchsize/2], 0),
-  ...             cuda.to_gpu(y_batch[:batchsize/2], 0),
-  ...             model_0)
-  ...         loss_0.backward()
-  ...         
-  ...         loss_1, accuracy_1 = forward(
-  ...             cuda.to_gpu(x_batch[batchsize/2:], 1),
-  ...             cuda.to_gpu(y_batch[batchsize/2:], 1),
-  ...             model_1)
-  ...         loss_1.backward()
-  ...         
-  ...         optimizer.acumulate_grads(model_1.gradients)
-  ...         optimizer.update()
-  ...         
-  ...         model_1.copy_parameters_from(model_0.parameters)
+  batchsize = 100
+  for epoch in xrange(20):
+      print 'epoch', epoch
+      indexes = np.random.permutation(60000)
+      for i in xrange(0, 60000, batchsize):
+          x_batch = x_train[indexes[i : i + batchsize]]
+          y_batch = y_train[indexes[i : i + batchsize]]
+          
+          optimizer.zero_grads()
+          
+          loss_0, accuracy_0 = forward(
+              cuda.to_gpu(x_batch[:batchsize/2], 0),
+              cuda.to_gpu(y_batch[:batchsize/2], 0),
+              model_0)
+          loss_0.backward()
+          
+          loss_1, accuracy_1 = forward(
+              cuda.to_gpu(x_batch[batchsize/2:], 1),
+              cuda.to_gpu(y_batch[batchsize/2:], 1),
+              model_1)
+          loss_1.backward()
+          
+          optimizer.acumulate_grads(model_1.gradients)
+          optimizer.update()
+          
+          model_1.copy_parameters_from(model_0.parameters)
 
 The half of the minibatch is forwarded on GPU 0, while the other half on GPU 1.
 Then, the gradients are accumulated by :meth:`Optimizer.accumulate_grads` method.
 After the gradients are prepared, we can update the optimizer in usual way.
 Be careful that the update only modifies the parameters of model_0.
 So we must manually copy them to model_1 using :meth:`FunctionSet.copy_parameters_from` method.
+
+--------
+
+Now you can use Chainer with GPUs.
+All examples in ``examples`` directory supports GPU computation, so please refer to them if you want to know more practices on using GPUs.
+In the next section, we will show how to define a differentiable (i.e. *backpropable*) function on Variable objects.
