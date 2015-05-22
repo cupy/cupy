@@ -17,6 +17,7 @@ from chainer.functions import linear
 from chainer.functions import local_response_normalization
 from chainer.functions import lstm
 from chainer.functions import mean_squared_error
+from chainer.functions import negative_sampling
 from chainer.functions import parameter
 from chainer.functions import pooling_2d
 from chainer.functions import prelu
@@ -61,6 +62,7 @@ EmbedID = embed_id.EmbedID
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 create_huffman_tree = hierarchical_softmax.create_huffman_tree
 Linear = linear.Linear
+NegativeSampling = negative_sampling.NegativeSampling
 Parameter = parameter.Parameter
 PReLU = prelu.PReLU
 
