@@ -6,6 +6,65 @@ from pycuda import gpuarray
 from chainer import cuda, Function
 from chainer.cuda import to_cpu, to_gpu, GPUArray
 
+class WalkerAlias(object):
+    def __init__(self, probs):
+        prob = numpy.array(probs, numpy.float32)
+        prob /= numpy.sum(prob)
+        threshold = numpy.ndarray(len(probs), numpy.float32)
+        values = numpy.ndarray(len(probs) * 2, numpy.int32)
+        il, ir = 0, 0
+        pairs = zip(prob, range(len(probs)))
+        pairs.sort()
+        for prob, i in pairs:
+            p = prob * len(probs)
+            while p > 1 and ir < len(threshold):
+                values[ir * 2 + 1] = i
+                p -= 1.0 - threshold[ir]
+                ir += 1
+            threshold[il] = p
+            values[il * 2] = i
+            il += 1
+
+        self.threshold = threshold
+        self.values = values
+        self.use_gpu = False
+
+    def to_gpu(self):
+        if not self.use_gpu:
+            self.threshold = to_gpu(self.threshold)
+            self.values = to_gpu(self.values)
+            self.use_gpu = True
+
+    def sample(self, shape):
+        if self.use_gpu:
+            return self.sample_gpu(shape)
+        else:
+            return self.sample_cpu(shape)
+
+    def sample_cpu(self, shape):
+        ps = numpy.random.uniform(0, 1, shape)
+        pb = ps * len(self.threshold)
+        index = pb.astype(numpy.int32)
+        left_right = (self.threshold[index] < pb - index).astype(numpy.int32)
+        return self.values[index * 2 + left_right]
+
+    def sample_gpu(self, shape):
+        ps = cuda.empty(shape, numpy.float32)
+        cuda.get_generator().fill_uniform(ps)
+        vs = cuda.empty(shape, numpy.int32)
+        cuda.elementwise(
+            'int* vs, const float* ps, const float* threshold, const int * values, int b',
+            '''
+            float pb = ps[i] * b;
+            int index = (int)pb;
+            int lr = threshold[index] < pb - index;
+            vs[i] = values[index * 2 + lr];
+            ''',
+            'walker_alias_sample'
+        )(vs, ps, self.threshold, self.values, len(self.threshold))
+        return vs
+
+
 class NegativeSampling(Function):
     """Negative sampling."""
 
@@ -17,7 +76,7 @@ class NegativeSampling(Function):
         # precision of float32 is not enough for `numpy.random.choice`
         p = numpy.array(counts, numpy.float64)
         p = numpy.power(p, power)
-        self.weight = p / numpy.sum(p)
+        self.sampler = WalkerAlias(p)
         
         vocab_size = len(counts)
         self.W = numpy.zeros((vocab_size, in_size)).astype(numpy.float32)
@@ -32,11 +91,7 @@ class NegativeSampling(Function):
         samples = numpy.ndarray((size, self.sample_size + 1), numpy.int32)
         # first one is the positive, and others are sampled negatives
         samples.T[0] = to_cpu(t)
-        self.weight = to_cpu(self.weight)
-        # TODO(unno): use Walker's alias algorithm
-        samples.T[1:] = numpy.random.choice(self.weight.shape[0],
-                                       (self.sample_size, size),
-                                       p=self.weight)
+        samples.T[1:] = self.sampler.sample((self.sample_size, size))
         self.samples = samples
 
     def forward_cpu(self, (x, t)):
