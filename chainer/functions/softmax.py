@@ -101,4 +101,20 @@ class Softmax(Function):
         return gx,
 
 def softmax(x, use_cudnn=True):
+    """Channelwise softmax function.
+
+    This function only accepts a two dimensional input array, and computes its
+    softmax along the second axis. For each index :math:`i, j` of the input
+    matrix :math:`x`, it computes
+    :math:`f_{ij}(x)={\\exp(x_{ij}) \\over \\sum_j \\exp(x_{ij})}`.
+
+    Args:
+        x (~chainer.Variable): Input varaible.
+        use_cudnn (bool): If True and CuDNN is enabled, then this function uses
+            CuDNN as the core implementation.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
     return Softmax(use_cudnn)(x)

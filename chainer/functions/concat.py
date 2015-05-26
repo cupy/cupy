@@ -59,4 +59,14 @@ class Concat(Function):
         return gxs
 
 def concat(xs, axis=1):
+    """Concatenates given variables along an axis.
+
+    Args:
+        xs (tuple of Variables): Variables to be concatenated.
+        axis (int): Axis that the input arrays are concatenated along.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
     return Concat(axis=axis)(*xs)

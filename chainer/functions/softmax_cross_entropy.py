@@ -40,4 +40,20 @@ class SoftmaxCrossEntropy(Function):
         return gx, None
 
 def softmax_cross_entropy(x, t, use_cudnn=True):
+    """Computes cross entropy loss on softmax of the prediction using
+    the groundtruth label vector.
+
+    Args:
+        x (Variable): Variable hoding a matrix whose (i, j) element indicates
+            unnormalized log probability of the class j at the i-th example.
+        t (Variable): Variable holding an int32 vector of groundtruth labels.
+
+    Returns:
+        Variable: A variable holding a scalar array of the cross entropy loss.
+
+    .. note::
+
+       This function is differentiable only by ``x``.
+
+    """
     return SoftmaxCrossEntropy(use_cudnn)(x, t)

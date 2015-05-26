@@ -10,4 +10,5 @@ class Identity(Function):
         return gys
 
 def identity(*inputs):
+    """Just returns input variables."""
     return Identity()(*inputs)

@@ -11,11 +11,23 @@ def _fwd_kern():
         'y[i] = cond[i] >= 0 ? x[i] : x[i] * W[i / rdim % cdim]', 'prelu')
 
 class PReLU(Function):
-    """Parametric ReLU, proposed in http://arxiv.org/abs/1502.01852.
+    """Parametric ReLU function.
 
-    Parameter shape is configured by the shape argument of initializer.
-    If the shape is empty tuple (), then it runs in 'channel-shared' mode.
-    It also supports multi-channel parameters.
+    PReLU function is written in elementwise equation as
+    :math:`PReLU(x) = \max(x, ax)`, where :math:`a` is a parameter array.
+
+    When the PReLU function is combined with two-dimensional convolution, the
+    elements of parameter :math:`a` are typically shared across the same filter
+    of different pixels. In order to support such usage, this function supports
+    the shape of parameter array that indicates leading dimensions of input
+    arrays except the batch dimension.
+
+    Args:
+        shape (tuple of ints): Shape of the parameter array.
+        init (float): Initial parameter value.
+
+    See detail in paper: `Delving Deep into Rectifiers: Surpassing Human-Level \
+    Performance on ImageNet Classification <http://arxiv.org/abs/1502.01852>`_.
 
     """
     parameter_names = 'W',

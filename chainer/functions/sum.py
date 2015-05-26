@@ -19,4 +19,5 @@ class Sum(Function):
         return cuda.full_like(x[0], gy[0].get()),
 
 def sum(x):
+    """Computes sum of all elements."""
     return Sum()(x)

@@ -48,4 +48,15 @@ class Tanh(Function):
         return gx,
 
 def tanh(x, use_cudnn=True):
+    """Elementwise hyperbolic tangent function.
+
+    Args:
+        x (~chainer.Variable): Input varaible.
+        use_cudnn (bool): If True and CuDNN is enabled, then this function uses
+            CuDNN as the core implementation.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
     return Tanh(use_cudnn)(x)

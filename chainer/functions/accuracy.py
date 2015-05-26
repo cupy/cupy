@@ -3,8 +3,6 @@ from pycuda import gpuarray
 from chainer import cuda, Function
 
 class Accuracy(Function):
-    """Compute accuracy within minibatch."""
-
     def forward_cpu(self, inputs):
         y, t = inputs
         y = y.reshape(y.shape[0], y.size / y.shape[0])  # flatten
@@ -33,4 +31,17 @@ class Accuracy(Function):
         return y,
 
 def accuracy(y, t):
+    """Computes muticlass classification accuracy of the minibatch.
+
+    Args:
+        y (Variable): Variable holding a matrix whose (i, j) element
+            indicates the score of the class j at the i-th example.
+        t (Variable): Variable holding an int32 vector of groundtruth labels.
+
+    Returns:
+        Variable: A variable holding a scalar array of the accuracy.
+
+    .. note:: This function is non-differentiable.
+
+    """
     return Accuracy()(y, t)

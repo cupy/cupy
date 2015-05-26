@@ -182,6 +182,28 @@ class MaxPooling2D(Pooling2D):
             'CUDNN_POOLING_MAX')
 
 def max_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
+    """Spatial max pooling function.
+
+    This function acts similarly as :class:`~functions.Convolution2D`, while
+    this function computes the maximum of input spatial patch for each channel
+    without any parameter instead of computing innerproducts.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+        ksize (int or (int, int)): Size of pooling window. ``ksize=k`` and
+            ``ksize=(k, k)`` are equivalent.
+        stride (int or (int, int) or None): Stride of pooling applications.
+            ``ksize=k`` and ``ksize=(k, k)`` are equivalent. If None is
+            specified, then it uses same stride as the pooling window size.
+        pad (int or (int, int)): Spatial padding width for the input array.
+            ``pad=p`` and ``pad=(p, p)`` are equivalent.
+        use_cudnn (bool): If True and CuDNN is enabled, then this function
+            uses CuDNN as the core implementation.
+
+    Returns:
+        ~chainer.Variable: Ouptut variable.
+
+    """
     return MaxPooling2D(ksize, stride, pad, use_cudnn)(x)
 
 
@@ -277,4 +299,26 @@ class AveragePooling2D(Pooling2D):
             'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING')
 
 def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
+    """Spatial average pooling function.
+
+    This function acts similarly as :class:`~functions.Convolution2D`, while
+    this function computes the average of input spatial patch for each channel
+    without any parameter instead of computing innerproducts.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+        ksize (int or (int, int)): Size of pooling window. ``ksize=k`` and
+            ``ksize=(k, k)`` are equivalent.
+        stride (int or (int, int) or None): Stride of pooling applications.
+            ``ksize=k`` and ``ksize=(k, k)`` are equivalent. If None is
+            specified, then it uses same stride as the pooling window size.
+        pad (int or (int, int)): Spatial padding width for the input array.
+            ``pad=p`` and ``pad=(p, p)`` are equivalent.
+        use_cudnn (bool): If True and CuDNN is enabled, then this function
+            uses CuDNN as the core implementation.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
     return AveragePooling2D(ksize, stride, pad, use_cudnn)(x)

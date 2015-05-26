@@ -17,8 +17,62 @@ def _pair(x):
     return (x, x)
 
 class Convolution2D(Function):
-    """Two-dimensional convolution function."""
+    """Two-dimensional convolution function.
 
+    The detail of this function is described below the arguments description.
+
+    Args:
+        in_channels (int): Number of channels of input arrays.
+        out_channels (int): Number of channels of output arrays.
+        ksize (int or (int, int)): Size of filters (a.k.a. kernels).
+            ``ksize=k`` and ``ksize=(k, k)`` are equivalent.
+        stride (int or (int, int)): Stride of filter applications.
+            ``stride=s`` and ``stride=(s, s)`` are equivalent.
+        pad (int or (int, int)): Spatial padding width for input arrays.
+            ``pad=p`` and ``pad=(p, p)`` are equivalent.
+        wscale (float): Scaling factor of the initial weight.
+        bias (float): Initial bias value.
+        nobias (bool): If True, then this function does not use the bias term.
+        use_cudnn (bool): If True, then this function uses CuDNN if available.
+
+    This function holds at most two parameter arrays: ``W`` and ``b``, which
+    indicate the filter weight and the bias vector, respectively.
+
+    The filter weight has four dimensions :math:`(c_O, c_I, k_H, k_W)`,
+    which indicate the number of output channels, the number of input channels,
+    height and width of the kernels, respectively.
+    The filter weight is initialized by i.i.d. Gaussian random samples each of
+    which has zero mean and deviation :math:`\sqrt{1/(c_I k_H k_W)}` by default.
+    The deviation may be scaled by ``wscale`` if specified.
+
+    The bias vector is of size :math:`c_O`.
+    Each element of it is initialized by ``bias`` argument.
+    If ``nobias`` argument is set to True, then this function does not hold
+    the bias parameter.
+
+    Two-dimensional convolution function is defined as follows.
+    Let :math:`X` be the input tensor of dimensions :math:`(n, c_I, h, w)`,
+    where :math:`n` is the batch size, and :math:`(h, w)` is spatial size of the
+    input image.
+    Then, ``Convolution2D`` function computes correlations between filters and
+    patches of size :math:`(k_H, k_W)` in :math:`X`.
+    Note that correlation here is equivalent to inner-product between expanded
+    vectors.
+    Patches are extracted at positions shifted by multiples of ``stride`` from
+    the first position ``-pad`` for each spatial axis.
+    The right-most (or bottom-most) patches do not run over the padded spatial
+    size.
+
+    Let :math:`(s_Y, s_X)` be the stride of filter application, and
+    :math:`(p_H, p_W)` the spatial padding size. Then, the output size
+    :math:`(h_O, w_O)` is determined by the following equations.
+
+    .. math::
+
+       h_O &= (h + 2p_H - k_H) / s_Y + 1,\\\\
+       w_O &= (w + 2p_W - k_W) / s_X + 1.
+
+    """
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True):
         ksize  = _pair(ksize)

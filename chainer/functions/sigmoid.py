@@ -49,4 +49,15 @@ class Sigmoid(Function):
         return gx,
 
 def sigmoid(x, use_cudnn=True):
+    """Elementwise sigmoid logistic function :math:`f(x)=(1 + \\exp(-x))^{-1}`.
+
+    Args:
+        x (~chainer.Variable): Input varaible.
+        use_cudnn (bool): If True and CuDNN is enabled, then this function uses
+            CuDNN as the core implementation.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
     return Sigmoid(use_cudnn)(x)

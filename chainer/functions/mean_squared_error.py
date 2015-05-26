@@ -38,4 +38,10 @@ class MeanSquaredError(Function):
         return gx0, gx1
 
 def mean_squared_error(x0, x1):
+    """Mean squared error function.
+
+    This function computes mean squared error between two variables. The mean is
+    taken over the minibatch. Note that the error is not scaled by 1/2.
+
+    """
     return MeanSquaredError()(x0, x1)

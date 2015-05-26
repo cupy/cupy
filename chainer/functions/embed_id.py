@@ -2,8 +2,24 @@ import numpy
 from chainer import cuda, Function
 
 class EmbedID(Function):
-    """Efficient linear function for one-hot input."""
+    """Efficient linear function for one-hot input.
 
+    This is a parameterized function to embed the given discrete identifier
+    (e.g. word) into a continuous vector space.
+    This function just holds embedding vectors for all identifiers as one large
+    matrix ``W``, which is learnable.
+    The identifiers are directly used as indexes of the matrix ``W``.
+
+    Args:
+        in_size (int): Number of different identifiers (a.k.a. vocabulary size).
+        out_size (int): Size of embedding vector.
+
+    .. note::
+
+       This function is non-differentiable with respect to the input
+       identifiers.
+
+    """
     parameter_names = ('W',)
     gradient_names  = ('gW',)
 

@@ -2,8 +2,15 @@ import numpy
 from chainer import cuda, Function
 
 class Parameter(Function):
-    """Function that returns its weight array as an output variable."""
+    """Function that outputs its weight array.
 
+    This is a parameterized function that takes no input and returns a variable
+    holding a shallow copy of the parameter array.
+
+    Args:
+        array: Initial parameter array.
+
+    """
     parameter_names = 'W',
     gradient_names  = 'gW',
 
@@ -14,10 +21,6 @@ class Parameter(Function):
     def forward(self, x):
         return self.W,
 
-    def backward_cpu(self, x, gy):
-        self.gW[:] += gy[0]
-        return ()
-
-    def backward_gpu(self, x, gy):
+    def backward(self, x, gy):
         self.gW += gy[0]
         return ()

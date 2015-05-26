@@ -37,6 +37,24 @@ class Dropout(Function):
 
 
 def dropout(x, ratio=.5, train=True):
+    """Dropouts elements of input variable randomly.
+
+    This function dropouts input elements randomly in probability ``ratio`` and
+    scales remained elements by factor ``1 / (1 - ratio)``. On testing mode, it
+    does nothing and just returns ``x``.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+        ratio (float): Dropout ratio.
+        train (bool): If True, executes dropout. Otherwise, do nothing.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    See the paper by G. Hinton: `Improving neural networks by preventing \
+    co-adaptation of feature detectors <http://arxiv.org/abs/1207.0580>`_.
+
+    """
     if train:
         return Dropout(ratio)(x)
     return x

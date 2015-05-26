@@ -252,6 +252,7 @@ class Exp(Function):
         return self.y * gy[0],
 
 def exp(x):
+    """Elementwise exponential function."""
     return Exp()(x)
 
 
@@ -266,4 +267,5 @@ class Log(Function):
         return gy[0] / x[0],
 
 def log(x):
+    """Elementwise natural logarithm function."""
     return Log()(x)

@@ -128,4 +128,36 @@ class LSTM(Function):
         return gc_prev, gx
 
 def lstm(c_prev, x):
+    """Long Short-Term Memory units as an activation function.
+
+    This function implements LSTM units with forget gates. Let the previous cell
+    state :math:`c_{\\text{prev}}` and the incoming signal :math:`x`. Then,
+    first the incoming signal :math:`x` is split along the second dimension into
+    four arrays :math:`a, i, f, o` of the same shapes. Second, it computes
+    outputs as:
+
+    .. math::
+
+        c &= \\tanh(a) \\text{sigmoid}(i)
+           + c_{\\text{prev}} \\text{sigmoid}(f), \\\\
+        h &= \\tanh(c) \\text{sigmoid}(o).
+
+    This function outputs these two arrays as a tuple of two variables.
+
+    Args:
+        c_prev (~chainer.Variable): Variable that holds the preivious cell
+            state. The cell state should be zero array or output of the previous
+            call of LSTM.
+        x (~chainer.Variable): Variable that holds the incoming signal. It must
+            have the second dimension four times of that of the cell state,
+
+    Returns:
+        tuple: Two :class:`~chainer.Variable` objects ``c`` and ``h``. ``c`` is
+            the updated cell state. ``h`` indicates the outgoing signal.
+
+    See the original paper proposing LSTM with forget gates:
+    `Long Short-Term Memory in Recurrent Neural Networks \
+    <http://www.felixgers.de/papers/phd.pdf>`_.
+
+    """
     return LSTM()(c_prev, x)

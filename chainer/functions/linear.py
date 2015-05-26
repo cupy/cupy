@@ -8,8 +8,40 @@ def _as_mat(x):
     return x.reshape(x.shape[0], x.size / x.shape[0])
 
 class Linear(Function):
-    """Implementation of fully-connected layer."""
+    """Implementation of linear function (a.k.a. fully-connected layer or affine
+    transformation).
 
+    This function holds a weight matrix ``W`` and a bias vector ``b``.
+
+    The weight matrix ``W`` has shape ``(out_size, in_size)``.
+    This matrix is initialized by i.i.d. Gaussian samples each of which has zero
+    mean and deviation :math:`\sqrt{1/\\text{in_size}}`.
+    The deviation may be scaled by factor ``wscale`` if specified.
+
+    The bias vector ``b`` is of size ``out_size``.
+    Each element is initialized by ``bias`` value.
+    If ``nobias`` argument is set to True, then this function does not hold the
+    bias vector.
+
+    Let :math:`X` be an input matrix, and :math:`W, b` the weight matrix and
+    the bias vector, respectively.
+    Then, the output matrix :math:`Y` is computed by :math:`Y = XW^\\top + b`,
+    where the addition by :math:`b` is broadcasted across the minibatch.
+
+    Args:
+        in_size (int): Dimension of input vectors.
+        out_size (int): Dimension of output vectors.
+        wscale (float): Scaling factor of the weight matrix.
+        bias (float): Initial bias value.
+        nobias (bool): If True, then this function does not use the bias.
+
+    .. note::
+
+       This function accepts an input variable of a non-matrix array.
+       In this case, the leading dimension is treated as the batch dimension,
+       and the other dimensions are reduced to one dimension.
+
+    """
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False):
         self.W = numpy.random.normal(
             0, wscale * math.sqrt(1. / in_size),
