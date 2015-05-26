@@ -21,17 +21,17 @@ class AdaDelta(Optimizer):
         msg, msdx = state
         msg *= self.rho
         msg += (1 - self.rho) * grad * grad
-        dx = - numpy.sqrt((msdx + self.eps) / (msg + self.eps)) * grad
+        dx = numpy.sqrt((msdx + self.eps) / (msg + self.eps)) * grad
         msdx *= self.rho
         msdx += (1 - self.rho) * dx * dx
-        param += dx
+        param -= dx
 
     def update_one_gpu(self, param, grad, ms):
         cuda.elementwise(
             '''float* param, const float* grad, float* msg, float* msdx,
-               float rho, float eps''',
-            '''msg[i]   = rho * msg[i]  + (1 - rho) * grad[i] * grad[i];
-               float dx = - sqrtf((msdx + eps) / (msg + eps)) * grad[i];
-               msdx[i]  = rho * msdx[i] + (1 - rho) * dx * dx;
-               param[i] += dx;''',
-            'adadelta')(param, grad, msg, msdx, self.rho, self.eps)
+               float one_minus_rho, float eps''',
+            '''msg[i]   += one_minus_rho * (grad[i] * grad[i] - msg[i]);
+               float dx  = sqrtf((msdx[i] + eps) / (msg[i] + eps)) * grad[i];
+               msdx[i]  += one_minus_rho * (dx * dx - msdx[i]);
+               param[i] -= dx;''',
+            'adadelta')(param, grad, msg, msdx, 1 - self.rho, self.eps)
