@@ -1,7 +1,5 @@
 import math
 import numpy
-import scikits.cuda.linalg as culinalg
-import scikits.cuda.misc as cumisc
 from chainer import cuda, Function
 
 def _as_mat(x):
@@ -78,7 +76,7 @@ class Linear(Function):
         x = _as_mat(x[0])
         y = cuda.empty((x.shape[0], self.W.shape[0]), dtype=x.dtype)
         with cuda.using_cumisc():
-            culinalg.dot(x, self.W, transb='T', out=y)
+            cuda.culinalg.dot(x, self.W, transb='T', out=y)
         if self.b is not None:
             cuda.elementwise(
                 'float* y, float* b, int n_channel',
@@ -97,8 +95,8 @@ class Linear(Function):
         _x = _as_mat(x[0])
         gx = cuda.empty_like(_x)
         with cuda.using_cumisc():
-            culinalg.add_dot(gy[0], _x, self.gW, transa='T')
+            cuda.culinalg.add_dot(gy[0], _x, self.gW, transa='T')
             if self.gb is not None:
-                self.gb += cumisc.sum(gy[0], 0)
-            culinalg.dot(gy[0], self.W, out=gx)
+                self.gb += cuda.cumisc.sum(gy[0], 0)
+            cuda.culinalg.dot(gy[0], self.W, out=gx)
         return gx.reshape(x[0].shape),

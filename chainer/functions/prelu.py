@@ -1,7 +1,4 @@
 import numpy
-from scikits.cuda import cublas
-import scikits.cuda.linalg as culinalg
-import scikits.cuda.misc as cumisc
 from chainer import cuda, Function
 
 def _fwd_kern():
@@ -77,8 +74,8 @@ class PReLU(Function):
                          'prelu_masked')(masked, x[0], gy[0])
 
         with cuda.using_cumisc():
-            rsum = cumisc.sum(masked.reshape(ldim * cdim, rdim), axis=1)
-            gW   = cumisc.sum(rsum.reshape(ldim, cdim), axis=0)
+            rsum = cuda.cumisc.sum(masked.reshape(ldim * cdim, rdim), axis=1)
+            gW   = cuda.cumisc.sum(rsum.reshape(ldim, cdim), axis=0)
             self.gW += gW.reshape(self.gW.shape)
             del rsum, gW
 

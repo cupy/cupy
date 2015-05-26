@@ -1,6 +1,5 @@
 import math
 import numpy
-from pycuda import cumath
 from chainer import cuda, Function, Variable
 
 # ------------------------------------------------------------------------------
@@ -245,7 +244,7 @@ class Exp(Function):
         return self.y,
 
     def forward_gpu(self, x):
-        self.y = cumath.exp(x[0])
+        self.y = cuda.cumath.exp(x[0])
         return self.y,
 
     def backward(self, x, gy):
@@ -261,7 +260,7 @@ class Log(Function):
         return numpy.log(x[0]),
 
     def forward_gpu(self, x):
-        return cumath.log(x[0]),
+        return cuda.cumath.log(x[0]),
 
     def backward(self, x, gy):
         return gy[0] / x[0],

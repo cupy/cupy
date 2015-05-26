@@ -1,11 +1,10 @@
 import math
 import numpy
-from pycuda import gpuarray
 import cuda
 
 def _sqnorm(x):
     if isinstance(x, cuda.GPUArray):
-        return float(gpuarray.dot(x, x).get())
+        return float(cuda.gpuarray.dot(x, x).get())
     x = x.ravel()
     return float(x.dot(x))
 
@@ -69,7 +68,7 @@ class Optimizer(object):
                 :class:`~numpy.ndarray` with shape ``()``.
 
         """
-        if isinstance(param, gpuarray.GPUArray):
+        if isinstance(param, cuda.GPUArray):
             return self.init_state_gpu(param, grad)
         return self.init_state_cpu(param, grad)
 

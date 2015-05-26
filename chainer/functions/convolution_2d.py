@@ -1,8 +1,5 @@
 import math
 import numpy
-from scikits.cuda import cublas
-import scikits.cuda.linalg as culinalg
-import scikits.cuda.misc as cumisc
 from chainer import cuda, cudnn, Function
 from chainer.utils import conv
 
@@ -170,7 +167,8 @@ class Convolution2D(Function):
             col_mats = self.col.reshape(n, c * self.kh * self.kw, out_h * out_w)
             y_mats   = y.reshape(n, out_c, out_h * out_w)
             for i in xrange(n):
-                culinalg.dot(W_mat, col_mats[i], handle=handle, out=y_mats[i])
+                cuda.culinalg.dot(W_mat, col_mats[i], handle=handle,
+                                  out=y_mats[i])
 
             # TODO(beam2d): Support unshared bias
             if self.b is not None:
@@ -219,8 +217,9 @@ class Convolution2D(Function):
             if self.gb is not None:
                 # TODO(beam2d): Unify kernels
                 with cuda.using_cumisc(handle):
-                    tmp = cumisc.sum(gy[0].reshape(n * out_c, out_h * out_w), axis=1)
-                    tmp = cumisc.sum(tmp.reshape(n, out_c), axis=0)
+                    tmp = cuda.cumisc.sum(
+                        gy[0].reshape(n * out_c, out_h * out_w), axis=1)
+                    tmp = cuda.cumisc.sum(tmp.reshape(n, out_c), axis=0)
                     self.gb += tmp
 
             # TODO(beam2d): Use streams
@@ -228,14 +227,14 @@ class Convolution2D(Function):
             col_mats = self.col.reshape(n, c * self.kh * self.kw, out_h * out_w)
             gy_mats  = gy[0].reshape(n, out_c, out_h * out_w)
             for i in xrange(n):
-                culinalg.add_dot(
+                cuda.culinalg.add_dot(
                     gy_mats[i], col_mats[i], gW_mat, transb='T', handle=handle)
 
             W_mat     = self.W.reshape(out_c, c * self.kh * self.kw)
             gcol      = cuda.empty_like(self.col)
             gcol_mats = gcol.reshape(n, c * self.kh * self.kw, out_h * out_w)
             for i in xrange(n):
-                culinalg.dot(
+                cuda.culinalg.dot(
                     W_mat, gy_mats[i], transa='T', handle=handle, out=gcol_mats[i])
 
             gx = conv.col2im_gpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)

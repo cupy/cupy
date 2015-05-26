@@ -8,7 +8,9 @@ for convenience (refer this table when reading chainer's source codes).
  imported name                original name
 ============================ =================================
  ``chainer.cuda.cublas``      :mod:`scikits.cuda.cublas`
+ ``chainer.cuda.cumath``      :mod:`pycuda.cumath`
  ``chainer.cuda.curandom``    :mod:`pycuda.curandom`
+ ``chainer.cuda.culinalg``    :mod:`scikits.cuda.linalg`
  ``chainer.cuda.cumisc``      :mod:`scikits.cuda.misc`
  ``chainer.cuda.gpuarray``    :mod:`pycuda.gpuarray`
 
@@ -30,20 +32,34 @@ attribute to select appropriate device on each manipulation routine.
 """
 import atexit, copy_reg, os
 import numpy
-import pycuda.driver as drv
-from pycuda.elementwise import ElementwiseKernel
-from pycuda.reduction   import ReductionKernel
-from pycuda import gpuarray
-from pycuda import curandom
-import pycuda.tools as cutools
-from scikits.cuda import cublas
-import scikits.cuda.misc as cumisc
+
+try:
+    import pycuda.driver as drv
+    from pycuda.elementwise import ElementwiseKernel
+    from pycuda.reduction   import ReductionKernel
+    from pycuda import gpuarray
+    from pycuda import cumath
+    from pycuda import curandom
+    import pycuda.tools as cutools
+    from scikits.cuda import cublas
+    import scikits.cuda.misc as cumisc
+    available = True
+except ImportError:
+    available = False
 
 # ------------------------------------------------------------------------------
 # Basic types
 # ------------------------------------------------------------------------------
-from pycuda.driver   import Context, Device, Event, Stream
-from pycuda.gpuarray import GPUArray
+if available:
+    from pycuda.driver   import Context, Device, Event, Stream
+    from pycuda.gpuarray import GPUArray
+else:
+    # Dummy classes
+    class Context(object): pass
+    class Device(object): pass
+    class Event(object): pass
+    class Stream(object): pass
+    class GPUArray(object): pass
 
 # ------------------------------------------------------------------------------
 # Global states
@@ -158,7 +174,7 @@ def get_device(arg=None):
     """
     if arg is None:
         return Context.get_device()
-    elif isinstance(arg, drv.Device):
+    elif isinstance(arg, Device):
         return arg
     elif isinstance(arg, numpy.ndarray):
         return None
@@ -516,8 +532,9 @@ def ones(shape, dtype=numpy.float32, stream=None):
     return full(shape, 1, dtype, stream=stream)
 
 
-empty_like = gpuarray.empty_like
-"""Alias to :func:`pycuda.gpuarray.empty_like`."""
+if available:
+    empty_like = gpuarray.empty_like
+    """Alias to :func:`pycuda.gpuarray.empty_like`."""
 
 
 def full_like(array, fill_value, stream=None):
@@ -714,12 +731,13 @@ class IPCArrayHandle(object):
 # ------------------------------------------------------------------------------
 # Kernel definition utility
 # ------------------------------------------------------------------------------
-@cutools.context_dependent_memoize
-def _eltwise_kernel(arguments, operation, name, keep, options,
-                    preamble, loop_prep, after_loop):
-    return ElementwiseKernel(
-        arguments, operation, name, keep, options,
-        preamble=preamble, loop_prep=loop_prep, after_loop=after_loop)
+if available:
+    @cutools.context_dependent_memoize
+    def _eltwise_kernel(arguments, operation, name, keep, options,
+                        preamble, loop_prep, after_loop):
+        return ElementwiseKernel(
+            arguments, operation, name, keep, options,
+            preamble=preamble, loop_prep=loop_prep, after_loop=after_loop)
 
 def elementwise(arguments, operation, name, keep=False, options=None,
                 preamble='', loop_prep='', after_loop=''):
@@ -739,11 +757,12 @@ def elementwise(arguments, operation, name, keep=False, options=None,
                            preamble, loop_prep, after_loop)
 
 
-@cutools.context_dependent_memoize
-def _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
-                   name, keep, options, preamble):
-    return ReductionKernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
-                           name, keep, options, preamble)
+if available:
+    @cutools.context_dependent_memoize
+    def _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
+                       name, keep, options, preamble):
+        return ReductionKernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
+                               name, keep, options, preamble)
 
 def reduce(arguments, map_expr, reduce_expr, neutral, name,
            dtype_out=numpy.float32, keep=False, options=None, preamble=''):

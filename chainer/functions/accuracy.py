@@ -1,5 +1,4 @@
 import numpy
-from pycuda import gpuarray
 from chainer import cuda, Function
 
 class Accuracy(Function):
@@ -26,7 +25,7 @@ class Accuracy(Function):
                }
                fragments[i] = argmax == t[i];
             ''', 'accuracy_fwd_map')(fragments, x, t, x.shape[1])
-        y = gpuarray.sum(fragments, dtype=numpy.float32)
+        y = cuda.gpuarray.sum(fragments, dtype=numpy.float32)
         y /= x.shape[0]
         return y,
 
