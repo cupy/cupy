@@ -42,6 +42,7 @@ try:
     from pycuda import curandom
     import pycuda.tools as cutools
     from scikits.cuda import cublas
+    import scikits.cuda.linalg as culinalg
     import scikits.cuda.misc as cumisc
     available = True
 except ImportError:
