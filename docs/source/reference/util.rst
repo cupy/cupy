@@ -58,23 +58,24 @@ Interprocess communication on GPU
 .. autoclass:: IPCEvent
 .. autoclass:: IPCArrayHandle
 
-CuDNN utilities
----------------
-.. automodule:: chainer.cudnn
+..
+   CuDNN utilities
+   ---------------
+   .. automodule:: chainer.cudnn
 
-.. autodata:: available
-.. autodata:: enabled
+   .. autodata:: available
+   .. autodata:: enabled
 
-.. autofunction:: get_default_handle
+   .. autofunction:: get_default_handle
 
-.. autofunction:: get_ptr
-.. autofunction:: get_conv_bias_desc
-.. autofunction:: get_conv2d_desc
-.. autofunction:: get_filter4d_desc
-.. autofunction:: get_pool2d_desc
-.. autofunction:: get_tensor_desc
+   .. autofunction:: get_ptr
+   .. autofunction:: get_conv_bias_desc
+   .. autofunction:: get_conv2d_desc
+   .. autofunction:: get_filter4d_desc
+   .. autofunction:: get_pool2d_desc
+   .. autofunction:: get_tensor_desc
 
-.. autofunction:: shutdown
+   .. autofunction:: shutdown
 
 Gradient checking utilities
 ---------------------------

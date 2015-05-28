@@ -1,6 +1,4 @@
 import numpy
-import pycuda.cumath as cumath
-
 import cuda
 
 def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
