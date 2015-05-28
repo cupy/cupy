@@ -516,8 +516,6 @@ def zeros(shape, dtype=numpy.float32, stream=None):
 
     This function is equivalent to ``full(shape, 0, dtype, stream)``.
 
-    .. seealso:: full
-
     """
     return full(shape, 0, dtype, stream=stream)
 
@@ -526,8 +524,6 @@ def ones(shape, dtype=numpy.float32, stream=None):
     """Creates a zero-filled :class:`~pycuda.gpuarray.GPUArray`.
 
     This function is equivalent to ``full(shape, 1, dtype, stream)``.
-
-    .. seealso:: full
 
     """
     return full(shape, 1, dtype, stream=stream)
@@ -751,8 +747,6 @@ def elementwise(arguments, operation, name, keep=False, options=None,
     The arguments are same as :func:`pycuda.elementwise.ElementwiseKernel`,
     except that ``name`` argument is mandatory.
 
-    .. seealso:: :class:`pycuda.elementwise.ElementwiseKernel`
-
     """
     return _eltwise_kernel(arguments, operation, name, keep, options,
                            preamble, loop_prep, after_loop)
@@ -775,8 +769,6 @@ def reduce(arguments, map_expr, reduce_expr, neutral, name,
 
     The arguments are same as :func:`pycuda.reduction.ReductionKernel`,
     except that the order is different and ``name`` argument is mandatory.
-
-    .. seealso:: :class:`pycuda.reduction.ReductionKernel`
 
     """
     kern = _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
