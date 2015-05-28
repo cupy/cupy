@@ -53,13 +53,37 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     This function is used to implement gradient check. For usage example, see
     unit tests of :mod:`chainer.functions`.
 
+    Args:
+        f (function): Python function with no arguments that runs forward
+            computation and returns the result.
+        inputs (tuple of arrays): Tuple of arrays that should be treated as
+            inputs. Each element of them is slightly modified to realize
+            numerical gradient by finite differences.
+        grad_outputs (tuple of arrays): Tuple of arrays that are treated as
+            output gradients.
+        eps (float): Epsilon value of finite differences.
+
+    Returns:
+        tuple: Numerical gradient arrays corresponding to ``inputs``.
+
     """
     if any(isinstance(x, cuda.GPUArray) for x in inputs):
         return numerical_grad_gpu(f, inputs, grad_outputs, eps)
     return numerical_grad_cpu(f, inputs, grad_outputs, eps)
 
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
-    """Asserts if some corresponding element of x and y differs too match."""
+    """Asserts if some corresponding element of x and y differs too match.
+
+    This function can handle both CPU and GPU arrays simultaneously.
+
+    Args:
+        x: Left-hand-side array.
+        y: Right-hand-side array.
+        atol (float): Absolute tolerance.
+        rtol (float): Relative tolerance.
+        verbose (bool): If True, it outputs verbose messages on error.
+
+    """
     x = cuda.to_cpu(x)
     y = cuda.to_cpu(y)
     try:
