@@ -386,8 +386,7 @@ def to_gpu(array, device=None):
     """Copies given CPU array to specified device.
 
     Args:
-        array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
-            Array to be sent to GPU.
+        array: Array to be sent to GPU.
         device: Device specifier.
 
     Returns:
@@ -421,10 +420,9 @@ def to_gpu_async(array, stream=None):
     """Copies given CPU array asynchronously to the current device.
 
     Args:
-        array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
-            Array to be sent to GPU. If it is :class:`~numpy.ndarray`, then its
-            memory must be pagelocked.
-        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+        array: Array to be sent to GPU. If it is :class:`~numpy.ndarray`, then
+            its memory must be pagelocked.
+        stream (~pycuda.driver.Stream): CUDA stream.
 
     Returns:
         ~pycuda.gpuarray.GPUArray: Array on GPU.
@@ -442,8 +440,7 @@ def to_cpu(array):
     """Copies given GPU array to host CPU.
 
     Args:
-        array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
-            Array to be sent to GPU.
+        array: Array to be sent to GPU.
 
     Returns:
         ~numpy.ndarray: Array on CPU.
@@ -461,9 +458,8 @@ def to_cpu_async(array, stream=None):
     """Copies given GPU array asynchronously to host CPU.
 
     Args:
-        array (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
-            Array to be sent to GPU.
-        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+        array: Array to be sent to GPU.
+        stream (~pycuda.driver.Stream): CUDA stream.
 
     Returns:
         ~numpy.ndarray: Array on CPU.
@@ -482,7 +478,7 @@ def empty(shape, dtype=numpy.float32):
 
     Args:
         shape (tuple of ints): The shape of array.
-        dtype (:class:`numpy.dtype`): Element type.
+        dtype (numpy.dtype): Element type.
 
     Returns:
         ~pycuda.gpuarray.GPUArray: Uninitialized GPU array allocated by memory
@@ -498,8 +494,8 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
     Args:
         shape (tuple of ints): The shape of array.
         fill_value: Constant to fill the array by.
-        dtype (:class:`numpy.dtype`): Element type.
-        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+        dtype (numpy.dtype): Element type.
+        stream (~pycuda.driver.Stream): CUDA stream.
 
     Returns:
         ~pycuda.gpuarray.GPUArray: Constant-filled GPU array allocated by memory
@@ -539,9 +535,9 @@ def full_like(array, fill_value, stream=None):
     given array.
 
     Args:
-        array (:class:`~pycuda.gpuarray.GPUArray`): Base array.
+        array (~pycuda.gpuarray.GPUArray): Base array.
         fill_value: Constant value to fill the array by.
-        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+        stream (~pycuda.driver.Stream): CUDA stream.
 
     Returns:
         ~pycuda.gpuarray.GPUArray: Constant-filled array.
@@ -579,8 +575,8 @@ def copy(array, out=None, out_device=None):
     device.
 
     Args:
-        array (:class:`~pycuda.gpuarray.GPUArray`): Array to be copied.
-        out (:class:`~pycuda.gpuarray.GPUArray` or ``None``): Destination array.
+        array (~pycuda.gpuarray.GPUArray): Array to be copied.
+        out (~pycuda.gpuarray.GPUArray): Destination array.
             If it is not ``None``, then ``out_device`` argument is ignored.
         out_device: Destination device specifier. Actual device object is
             obtained by passing this value to :func:`get_device`.
@@ -620,12 +616,12 @@ def copy_async(array, out=None, out_device=None, stream=None):
     device.
 
     Args:
-        array (:class:`~pycuda.gpuarray.GPUArray`): Array to be copied.
-        out (:class:`~pycuda.gpuarray.GPUArray` or ``None``): Destination array.
+        array (~pycuda.gpuarray.GPUArray): Array to be copied.
+        out (~pycuda.gpuarray.GPUArray): Destination array.
             If it is not ``None``, then ``out_device`` argument is ignored.
         out_device: Destination device specifier. Actual device object is
             obtained by passing this value to :func:`get_device`.
-        stream (:class:`~pycuda.driver.Stream` or ``None``): CUDA stream.
+        stream (~pycuda.driver.Stream): CUDA stream.
 
     Returns:
         ~pycuda.gpuarray.GPUArray: Copied array.
@@ -688,7 +684,7 @@ class IPCArrayHandle(object):
         """Creates an IPC memory handle of the device array.
 
         Args:
-            array (:class:`~pycuda.gpuarray.GPUArray`): GPU array to be shared
+            array (~pycuda.gpuarray.GPUArray): GPU array to be shared
                 accross processes.
 
         """

@@ -77,8 +77,8 @@ class Optimizer(object):
         gradient.
 
         Args:
-            param (:class:`~numpy.ndarray`): Parameter array.
-            grad  (:class:`~numpy.ndarray`): Gradient array.
+            param (~numpy.ndarray): Parameter array.
+            grad  (~numpy.ndarray): Gradient array.
 
         Returns:
             Initial state value.
@@ -93,8 +93,8 @@ class Optimizer(object):
         gradient.
 
         Args:
-            param (:class:`~pycuda.gpuarray.GPUArray`): Parameter array.
-            grad  (:class:`~pycuda.gpuarray.GPUArray`): Gradient array.
+            param (~pycuda.gpuarray.GPUArray): Parameter array.
+            grad  (~pycuda.gpuarray.GPUArray): Gradient array.
 
         Returns:
             Initial state value.
@@ -237,8 +237,8 @@ class Optimizer(object):
         gradient array on CPU.
 
         Args:
-            param (:class:`~numpy.ndarray`): Parameter array.
-            grad  (:class:`~numpy.ndarray`): Gradient array.
+            param (~numpy.ndarray): Parameter array.
+            grad  (~numpy.ndarray): Gradient array.
             state: State value.
 
         .. seealso:: :meth:`update_one`, :meth:`update_one_gpu`
@@ -251,8 +251,8 @@ class Optimizer(object):
         gradient array on GPU.
 
         Args:
-            param (:class:`~pycuda.gpuarray.GPUArray`): Parameter array.
-            grad  (:class:`~pycuda.gpuarray.GPUArray`): Gradient array.
+            param (~pycuda.gpuarray.GPUArray): Parameter array.
+            grad  (~pycuda.gpuarray.GPUArray): Gradient array.
             state: State value.
 
         .. seealso:: :meth:`update_one`, :meth:`update_one_cpu`

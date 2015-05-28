@@ -70,6 +70,7 @@ class BatchNormalization(Function):
         different running mode.
 
         Args:
+            x (Variable): An input variable.
             test (bool): If ``True``, BatchNormalization runs in testing mode;
                 it normalizes the input using precomputed statistics.
             finetune (bool): If ``True``, BatchNormalization runs in finetuning

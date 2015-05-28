@@ -77,8 +77,8 @@ class Variable(object):
         """Notifies the variable that the given function is its creator.
 
         Args:
-            gen_func (:class:`Function`): Function object that creates this
-                variable as one of its outputs.
+            gen_func (Function): Function object that creates this variable as
+                one of its outputs.
 
         """
         self.creator = gen_func

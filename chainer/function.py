@@ -199,7 +199,7 @@ class Function(object):
             inputs: Tuple of :class:`~numpy.ndarray` object(s).
 
         Returns:
-            Tuple of :class:`~numpy.ndarray` object(s).
+            tuple: Tuple of :class:`~numpy.ndarray` object(s).
 
         .. warning::
 
@@ -216,7 +216,7 @@ class Function(object):
             inputs: Tuple of :class:`~pycuda.gpuarray.GPUArray` object(s).
 
         Returns:
-            Tuple of :class:`~pycuda.gpuarray.GPUArray` object(s).
+            tuple: Tuple of :class:`~pycuda.gpuarray.GPUArray` object(s).
 
         .. warning::
 
@@ -240,8 +240,9 @@ class Function(object):
             grad_outputs: Tuple of output gradient arrays.
 
         Returns:
-            Tuple of input gradient arrays. Some or all of them can be ``None``,
-            if the function is not differentiable on corresponding inputs.
+            tuple: Tuple of input gradient arrays. Some or all of them can be
+            ``None``, if the function is not differentiable on
+            inputs.
 
         .. warning::
 
@@ -263,9 +264,9 @@ class Function(object):
                 object(s).
 
         Returns:
-            Tuple of input gradient :class:`~numpy.ndarray` object(s). Some or
-            all of them can be ``None``, if the function is not differentiable
-            on corresponding inputs.
+            tuple: Tuple of input gradient :class:`~numpy.ndarray` object(s).
+            Some or all of them can be ``None``, if the function is not
+            differentiable on corresponding inputs.
 
         .. warning::
 
@@ -284,7 +285,7 @@ class Function(object):
                 :class:`~pycuda.gpuarray.GPUArray` object(s).
 
         Returns:
-            Tuple of input gradient :class:`~pycuda.gpuarray.GPUArray`
+            tuple: Tuple of input gradient :class:`~pycuda.gpuarray.GPUArray`
             object(s). Some or all of them can be ``None``, if the function is
             not differentiable on corresponding inputs.
 
