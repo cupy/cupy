@@ -533,9 +533,9 @@ def ones(shape, dtype=numpy.float32, stream=None):
     return full(shape, 1, dtype, stream=stream)
 
 
-if available:
-    empty_like = gpuarray.empty_like
+def empty_like(array):
     """Alias to :func:`pycuda.gpuarray.empty_like`."""
+    return gpuarray.empty_like(array)
 
 
 def full_like(array, fill_value, stream=None):
