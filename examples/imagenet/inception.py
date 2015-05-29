@@ -47,21 +47,23 @@ class GoogLeNet(FunctionSet):
         h = F.max_pooling_2d(h, 3, stride=2, pad=1)
         h = self.inc4a(h)
 
-        loss1 = F.average_pooling_2d(h, 5, stride=3)
-        loss1 = F.relu(self.loss_conv(1))
-        loss1 = F.relu(self.loss1_fc1(self.reshape(loss1, (4*4*128))))
-        loss1 = self.loss1_fc2(loss1)
-        loss1 = F.softmax_cross_entropy(loss1, t)
+        if train:
+            loss1 = F.average_pooling_2d(h, 5, stride=3)
+            loss1 = F.relu(self.loss_conv(loss1))
+            loss1 = F.relu(self.loss1_fc1(loss1, 4*4*128))
+            loss1 = self.loss1_fc2(loss1)
+            loss1 = F.softmax_cross_entropy(loss1, t)
 
         h = self.inc4b(h)
         h = self.inc4c(h)
         h = self.inc4d(h)
 
-        loss2 = F.average_pooling_2d(h, 5, stride=3)
-        loss2 = F.relu(self.loss_conv(1))
-        loss2 = F.relu(self.loss2_fc1(self.reshape(loss2, (4*4*128))))
-        loss2 = self.loss2_fc2(loss2)
-        loss2 = F.softmax_cross_entropy(loss2, t)
+        if train:
+            loss2 = F.average_pooling_2d(h, 5, stride=3)
+            loss2 = F.relu(self.loss_conv(1))
+            loss2 = F.relu(self.loss2_fc1(loss2, 4*4*128))
+            loss2 = self.loss2_fc2(loss2)
+            loss2 = F.softmax_cross_entropy(loss2, t)
 
         h = self.inc4e(h)
         h = F.max_pooling_2d(h, 3, stride=2, pad=1)
