@@ -70,6 +70,11 @@ class GoogLeNet(FunctionSet):
         h = self.inc5a(h)
         h = self.inc5b(h)
 
-        loss3 = F.dropout(F.average_pooling_2d(h, 7, stride=1). 0.4)
-        loss3 = F.loss3_fc(loss3)
-        loss3 = F.softmax_cross_entropy(loss3, t)
+        h = F.dropout(F.average_pooling_2d(h, 7, stride=1), 0.4, train=train)
+        h = F.loss3_fc(loss3)
+        loss3 = F.softmax_cross_entropy(h, t)
+
+        loss = train ? 0.3*(loss1+loss2)+loss3 : loss3
+        accuracy = F.accuracy(h, t)
+        return loss, accuracy
+
