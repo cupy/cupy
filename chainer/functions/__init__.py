@@ -24,8 +24,9 @@ from sigmoid    import sigmoid
 from softmax    import softmax
 from tanh       import tanh
 
-# Pooling functions
+# Pooling and normalization functions
 from pooling_2d import average_pooling_2d, max_pooling_2d
+from local_response_normalization import local_response_normalization
 
 # Loss, evaluation and aggregation
 from accuracy              import accuracy
