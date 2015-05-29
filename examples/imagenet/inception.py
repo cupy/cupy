@@ -1,52 +1,7 @@
 from chainer import Function, FunctionSet, Variable
 import chainer.functions as F
 from chainer.functions.pooling_2d import AveragePooling2D, MaxPooling2D
-
-class Inception(Function):
-    def __init__(self, in_channels, out11, out33reduce, out33, out55reduce, out55, outproj):
-        self.f = FunctionSet(
-            conv11       = F.Convolution2D(in_channels, out11      , 1),
-            conv33reduce = F.Convolution2D(in_channels, out33reduce, 3, pad=1),
-            conv33       = F.Convolution2D(out33reduce, out33      , 3, pad=1),
-            conv55reduce = F.Convolution2D(in_channels, out55reduce, 5, pad=2),
-            conv55       = F.Convolution2D(out55reduce, out55      , 5, pad=2),
-            proj         = F.Convolution2D(in_channels, outproj    , 1)
-        )
-
-    def forward(self, x):
-        f = self.f
-
-        self.x = Variable(x[0])
-
-        outs = []
-        outs.append(F.relu(f.conv11(self.x)))
-        outs.append(F.relu(f.conv33(F.relu(f.conv33reduce(self.x)))))
-        outs.append(F.relu(f.conv55(F.relu(f.conv55reduce(self.x)))))
-        outs.append(F.relu(f.proj(F.max_pooling_2d(self.x, 3, stride=1, pad=1))))
-
-        self.y = F.concat(outs, axis=1)
-        return self.y.data,
-
-    def backward(self, x, gy):
-        self.y.grad = gy[0]
-        self.y.backward()
-        return self.x.grad,
-
-    @property
-    def parameters(self):
-        return self.f.parameters
-
-    @parameters.setter
-    def parameters(self, params):
-        self.f.parameters = params
-
-    @property
-    def gradients(self):
-        return self.f.gradients
-
-    @gradients.setter
-    def gradients(self, grads):
-        self.f.gradients = grads
+from chainer.functions.inception import Inception
 
 class GoogLeNet(FunctionSet):
 
