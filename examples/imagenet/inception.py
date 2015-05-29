@@ -1,7 +1,6 @@
 from chainer import Function, FunctionSet, Variable
 import chainer.functions as F
 from chainer.functions.pooling_2d import AveragePooling2D, MaxPooling2D
-from chainer.functions.inception import Inception
 
 class GoogLeNet(FunctionSet):
 
@@ -12,15 +11,15 @@ class GoogLeNet(FunctionSet):
             conv1        = F.Convolution2D( 3,  64, 7, stride=2, pad=3),
             conv2_reduce = F.Convolution2D(64,  64, 1),
             conv2        = F.Convolution2D(64, 192, 3, stride=1, pad=1),
-            inc3a = Inception( 256,  64,  96, 128, 16,  32,  32),
-            inc3b = Inception( 480, 128, 128, 192, 32,  96,  64),
-            inc4a = Inception( 512, 192,  96, 208, 16,  48,  64),
-            inc4b = Inception( 512, 160, 112, 224, 24,  64,  64),
-            inc4c = Inception( 512, 128, 128, 256, 24,  64,  64),
-            inc4d = Inception( 528, 112, 144, 288, 32,  64,  64),
-            inc4e = Inception( 832, 256, 160, 320, 32, 128, 128),
-            inc5a = Inception( 832, 256, 160, 320, 32, 128, 128),
-            inc5b = Inception(1024, 384, 192, 384, 48, 128, 128),
+            inc3a = F.Inception( 192,  64,  96, 128, 16,  32,  32),
+            inc3b = F.Inception( 256, 128, 128, 192, 32,  96,  64),
+            inc4a = F.Inception( 480, 192,  96, 208, 16,  48,  64),
+            inc4b = F.Inception( 512, 160, 112, 224, 24,  64,  64),
+            inc4c = F.Inception( 512, 128, 128, 256, 24,  64,  64),
+            inc4d = F.Inception( 512, 112, 144, 288, 32,  64,  64),
+            inc4e = F.Inception( 528, 256, 160, 320, 32, 128, 128),
+            inc5a = F.Inception( 832, 256, 160, 320, 32, 128, 128),
+            inc5b = F.Inception( 832, 384, 192, 384, 48, 128, 128),
             loss3_fc   = F.Linear(1024, 1000),
 
             loss1_conv = F.Convolution2D(512, 128, 1),
