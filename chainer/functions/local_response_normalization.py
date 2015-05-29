@@ -92,5 +92,29 @@ class LocalResponseNormalization(Function):
 
 
 def local_response_normalization(x, n=5, k=2, alpha=1e-4, beta=.75):
-    """TODO"""
+    """Local response normalization across neighboring channels.
+
+    This function implements normalization across channels. Let :math:`x` an
+    input image with :math:`N` channels. Then, this function computes an output
+    image :math:`y` by following formula:
+
+    .. math::
+       y_i = {x_i \\over \\left( k + \\
+              \\alpha \\sum_{j=\\max{1, i - n/2}}^{\\min{N, i + n/2}} \\
+              x_j^2 \\right)^\\beta}.
+
+    Args:
+        x (Variable): Input variable.
+        n (int): Normalization window width.
+        k (float): Smoothing parameter.
+        alpha (float): Normalizer scaling parameter.
+        beta (float): Normalizer power parameter.
+
+    Returns:
+        Variable: Output variable.
+
+    See: SSec. 3.3 of `ImageNet Classification with Deep Convolutional Neural \\
+    Networks <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_
+
+    """
     return LocalResponseNormalization(n, k, alpha, beta)(x)
