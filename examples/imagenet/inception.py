@@ -49,8 +49,8 @@ class GoogLeNet(FunctionSet):
 
         if train:
             loss1 = F.average_pooling_2d(h, 5, stride=3)
-            loss1 = F.relu(self.loss_conv(loss1))
-            loss1 = F.relu(self.loss1_fc1(loss1, 4*4*128))
+            loss1 = F.relu(self.loss1_conv(loss1))
+            loss1 = F.relu(self.loss1_fc1(loss1))
             loss1 = self.loss1_fc2(loss1)
             loss1 = F.softmax_cross_entropy(loss1, t)
 
@@ -60,8 +60,8 @@ class GoogLeNet(FunctionSet):
 
         if train:
             loss2 = F.average_pooling_2d(h, 5, stride=3)
-            loss2 = F.relu(self.loss_conv(1))
-            loss2 = F.relu(self.loss2_fc1(loss2, 4*4*128))
+            loss2 = F.relu(self.loss2_conv(loss2))
+            loss2 = F.relu(self.loss2_fc1(loss2))
             loss2 = self.loss2_fc2(loss2)
             loss2 = F.softmax_cross_entropy(loss2, t)
 
@@ -71,10 +71,13 @@ class GoogLeNet(FunctionSet):
         h = self.inc5b(h)
 
         h = F.dropout(F.average_pooling_2d(h, 7, stride=1), 0.4, train=train)
-        h = F.loss3_fc(loss3)
+        h = self.loss3_fc(h)
         loss3 = F.softmax_cross_entropy(h, t)
 
-        loss = train ? 0.3*(loss1+loss2)+loss3 : loss3
+        if train:
+            loss = 0.3*(loss1+loss2)+loss3
+        else:
+            loss = loss3
         accuracy = F.accuracy(h, t)
         return loss, accuracy
 
