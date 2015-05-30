@@ -25,7 +25,7 @@ batchsize = 20   # minibatch size
 bprop_len = 35   # length of truncated BPTT
 grad_clip = 5    # gradient norm threshold to clip
 
-# Prepare dataset (preliminary download dataset by ./download.sh)
+# Prepare dataset (preliminary download dataset by ./download.py)
 vocab   = {}
 def load_data(filename):
     global vocab, n_vocab
