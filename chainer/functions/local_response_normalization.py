@@ -6,23 +6,23 @@ def _cu_conv_sum(y, x, n):
     # TODO(beam2d): Use scan computation
     rdim = x.size / (x.shape[0] * x.shape[1])
     cuda.elementwise(
-        'float* y, const float* x, int rdim, int N, int n',
+        'float* y, const float* x, int rdim, int N, int n_',
         '''
-          int half_n = n / 2;
-          int offset = i / rdim * N * rdim;
-          x += offset;
-          y += offset;
+          int half_n = n_ / 2;
+          int offset = i / rdim * N * rdim + i % rdim;
+          float* xi = x + offset;
+          float* yi = y + offset;
 
           float sum_part = 0;
           for (int j = 0; j < N + half_n; ++j) {
             if (j < N) {
-              sum_part += x[j * rdim];
+              sum_part += xi[j * rdim];
             }
-            if (j >= n) {
-              sum_part -= x[(j - n) * rdim];
+            if (j >= n_) {
+              sum_part -= xi[(j - n_) * rdim];
             }
             if (j >= half_n) {
-              y[(j - half_n) * rdim] = sum_part;
+              yi[(j - half_n) * rdim] = sum_part;
             }
           }
         ''', 'lrn_conv_sum')(y, x, rdim, x.shape[1], n,
@@ -61,7 +61,7 @@ class LocalResponseNormalization(Function):
         return gx,
 
     def forward_gpu(self, x):
-        self.y = x[0] * x[0];  # temporary
+        self.y = x[0] * x[0]  # temporary
         self.scale = cuda.empty_like(self.y)
         _cu_conv_sum(self.scale, self.y, self.n)
         cuda.elementwise(
@@ -69,8 +69,7 @@ class LocalResponseNormalization(Function):
                float k, float alpha, float beta''',
             '''scale[i] = k + alpha * scale[i];
                y[i] = x[i] * __powf(scale[i], -beta);''',
-            'lrn_fwd')(
-                self.y, self.scale, x[0], self.k, self.alpha, self.beta)
+            'lrn_fwd')(self.y, self.scale, x[0], self.k, self.alpha, self.beta)
         return self.y,
 
     def backward_gpu(self, x, gy):
