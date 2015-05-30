@@ -30,11 +30,8 @@ class TestSum(TestCase):
         y.grad = y_grad
         y.backward()
 
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = numerical_grad(f, (x.data,), (y.grad,))
-
-        assert_allclose(gx, x.grad)
+        gx_expect = numpy.full_like(self.x, self.gy[0])
+        assert_allclose(gx_expect, x.grad)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)

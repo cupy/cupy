@@ -11,7 +11,11 @@ class TestMaxPooling2D(TestCase):
     cover_all = False
 
     def setUp(self):
-        self.x  = numpy.random.uniform(-1, 1, (2, 3, 4, 3)).astype(numpy.float32)
+        # Avoid unstability of numerical gradient
+        self.x  = numpy.arange(2*3*4*3, dtype=numpy.float32).reshape(2, 3, 4, 3)
+        numpy.random.shuffle(self.x)
+        self.x  = 2 * self.x / self.x.size - 1
+
         self.gy = numpy.random.uniform(-1, 1, (2, 3, 2, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):
@@ -70,7 +74,7 @@ class TestMaxPooling2DCoverAll(TestMaxPooling2D):
     cover_all = True
 
     def setUp(self):
-        self.x  = numpy.random.uniform(-1, 1, (2, 3, 4, 3)).astype(numpy.float32)
+        super(TestMaxPooling2DCoverAll, self).setUp()
         self.gy = numpy.random.uniform(-1, 1, (2, 3, 3, 2)).astype(numpy.float32)
 
 
