@@ -11,16 +11,12 @@ directly used in forward computation without explicit handling of
 :class:`~chainer.Function` objects. On the other hand, parameterized functions
 should be used with explicit handling of :class:`~chainer.Function` objects.
 
-Parameterized function classes
-------------------------------
-.. autoclass:: BatchNormalization
-   :members: __call__
-
+Learnable connections
+---------------------
 .. autoclass:: Convolution2D
 .. autoclass:: EmbedID
 .. autoclass:: Linear
 .. autoclass:: Parameter
-.. autoclass:: PReLU
 
 Array manipulation functions
 ----------------------------
@@ -36,6 +32,7 @@ Activation functions
 .. autofunction:: leaky_relu
 .. autofunction:: log
 .. autofunction:: lstm
+.. autoclass:: PReLU
 .. autofunction:: relu
 .. autofunction:: sigmoid
 .. autofunction:: softmax
@@ -45,6 +42,12 @@ Pooling functions
 -----------------
 .. autofunction:: average_pooling_2d
 .. autofunction:: max_pooling_2d
+
+Normalization functions
+-----------------------
+.. autoclass:: BatchNormalization
+   :members: __call__
+.. autofunction:: local_response_normalization
 
 Loss, evaluation and aggregation
 --------------------------------
