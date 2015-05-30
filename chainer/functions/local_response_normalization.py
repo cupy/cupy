@@ -10,19 +10,19 @@ def _cu_conv_sum(y, x, n):
         '''
           int half_n = n_ / 2;
           int offset = i / rdim * N * rdim + i % rdim;
-          x += offset;
-          y += offset;
+          float* xi = x + offset;
+          float* yi = y + offset;
 
           float sum_part = 0;
           for (int j = 0; j < N + half_n; ++j) {
             if (j < N) {
-              sum_part += x[j * rdim];
+              sum_part += xi[j * rdim];
             }
             if (j >= n_) {
-              sum_part -= x[(j - n_) * rdim];
+              sum_part -= xi[(j - n_) * rdim];
             }
             if (j >= half_n) {
-              y[(j - half_n) * rdim] = sum_part;
+              yi[(j - half_n) * rdim] = sum_part;
             }
           }
         ''', 'lrn_conv_sum')(y, x, rdim, x.shape[1], n,
