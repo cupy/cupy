@@ -29,6 +29,12 @@ class Inception(Function):
         self.y.backward()
         return self.x.grad,
 
+    def to_gpu(self, device=None):
+        return self.f.to_gpu(device)
+
+    def to_cpu(self):
+        return self.f.to_cpu()
+
     @property
     def parameters(self):
         return self.f.parameters
