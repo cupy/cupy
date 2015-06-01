@@ -9,15 +9,15 @@ class Variable(object):
     Every variable holds a data array of type either :class:`~numpy.ndarray` or
     :class:`~pycuda.gpuarray.GPUArray`.
 
-    Variable may be constructed in two ways: by user, or by some function. When
-    a variable is created by some function as one of its outputs, the variable
-    holds a reference to the function. This reference is used in error
+    A Variable object may be constructed in two ways: by the user or by some function.
+    When a variable is created by some function as one of its outputs, the variable
+    holds a reference to that function. This reference is used in error
     backpropagation (a.k.a. backprop). It is also used in *backward unchaining*.
-    Variable that does not hold a reference to its creator is called *root*
-    variable. A variable is root if it is created by user, or the reference is
+    A variable that does not hold a reference to its creator is called a *root*
+    variable. A variable is root if it is created by the user, or if the reference is
     deleted by :meth:`unchain_backward`.
 
-    User can disable this chaining behavior by setting volatile flag to the
+    Users can disable this chaining behavior by setting the volatile flag for the
     initial variables. When a function gets volatile variables as its inputs,
     the output variables do not hold references to the function. This acts like
     unchaining on every function application.
@@ -88,7 +88,7 @@ class Variable(object):
         """Runs error backpropagation (a.k.a. backprop) from this variable.
 
         On backprop, :meth:`Function.backward` is called on each
-        :class:`Function` object appeared in the backward graph starting from
+        :class:`Function` object appearing in the backward graph starting from
         this variable. The backward graph is represented by backward references
         from variables to their creators, and from functions to their inputs.
         The backprop stops at all root variables. Some functions set ``None``
@@ -97,7 +97,7 @@ class Variable(object):
 
         This method uses :data:`grad` as the initial error array. User can
         manually set a gradient array before calling this method. If
-        :data:`data` contains only one element (i.e. it is scalar) and
+        :data:`data` contains only one element (i.e., it is scalar) and
         :data:`grad` is None, then this method automatically complement 1.0 as
         the initial error. This is useful on starting backprop from some scalar
         loss value.
@@ -159,7 +159,7 @@ class Variable(object):
         a.k.a. *backward unchaining*.
 
         After this method completes, intermediate variables and functions that
-        anyone does not hold any references to them are deallocated by reference
+        are not referenced from anywhere are deallocated by reference
         count GC. Also this variable itself deletes the reference to its creator
         function, i.e. this variable becomes root in the computation graph. It
         indicates that backprop after unchaining stops at this variable. This

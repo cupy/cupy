@@ -8,12 +8,12 @@ class Function(object):
     """Function of variable(s) to variable(s) that leaves footprint to the
     output variables on application.
 
-    All function implementations defined in :mod:`functions` inherit this class.
+    All function implementations defined in :mod:`chainer.functions` inherit this class.
 
     The main feature of this class is keeping track of function applications as
     a backward graph. When a function is applied to :class:`Variable` objects,
     the function is copied, and its :meth:`forward` method is called on
-    :`~Variable.data` fields of input variables, and at the same time it chains
+    :data:`~Variable.data` fields of input variables, and at the same time it chains
     references from output variables to the function and from the function to
     its inputs.
 
@@ -36,13 +36,13 @@ class Function(object):
 
     .. admonition:: Example
 
-       Let ``x`` an instance of :class:`Variable` and ``f`` that of
+       Let ``x`` an instance of :class:`Variable` and ``f`` an instance of
        :class:`Function` taking only one argument. Then a line
 
        >>> y = f(x)
 
-       computes a new variable ``y`` and makes backward references. Actually,
-       backward references are set as the following diagram::
+       computes a new variable ``y`` and creates backward references. Actually,
+       backward references are set as per the following diagram::
 
            x <--- (splitter) <--- x' <--- f' <--- y
 
@@ -61,15 +61,15 @@ class Function(object):
        take any special care of it; just remember that such branching is
        correctly managed by chainer.
 
-    Every function implementation should provides :meth:`forward_cpu`,
+    Every function implementation should provide :meth:`forward_cpu`,
     :meth:`forward_gpu`, :meth:`backward_cpu` and :meth:`backward_gpu`.
     Alternatively, one can provide :meth:`forward` and :meth:`backward` instead
-    of separated methods. Backward methods have default implementations that
+    of separate methods. Backward methods have default implementations that
     just return ``None``, which indicates that the function is non-
     differentiable.
 
     Function implementations are classified into two types: parameterized ones
-    and non-parameterized ones. Parameterized function holds parameter arrays
+    and non-parameterized ones. A parameterized function holds parameter arrays
     and coresponding gradient arrays. Implementation can choose any way to keep
     these arrays, but it is recommended to keep them as attributes to easily
     migrate between CPU and GPU. Parameterized function must provide accessors
@@ -79,7 +79,7 @@ class Function(object):
         inputs: A tuple or list of input variables.
         outputs: A tuple or list of output variables.
         parameter_names: A tuple or list of names of parameter attributes.
-            It is set to empty tuple by default. This attribute is used by the
+            It is set to an empty tuple by default. This attribute is used by the
             default implementation of :meth:`parameters` property to gather the
             collection of parameter arrays. Implementation of parameterized
             function should override this field as an attribute or a property,
@@ -112,11 +112,12 @@ class Function(object):
            need to take care of device selection.
 
         Args:
-            *inputs: Tuple of input :class:`Variable` objects. All input
+            inputs: Tuple of input :class:`Variable` objects. All input
                 variables must have same volatile flag.
 
         Returns:
-            One :class:`Variable` object or a tuple of multiple
+            One
+            :class:`Variable` object or a tuple of multiple
             :class:`Variable` objects.
 
         """
@@ -172,7 +173,7 @@ class Function(object):
 
         It delegates the procedure to :meth:`forward_cpu` or :meth:`forward_gpu`
         by default. Which it selects is determined by the type of input arrays.
-        Implementation of :class:`Function` must implement either cpu/gpu
+        Implementations of :class:`Function` must implement either cpu/gpu
         methods or this method.
 
         Args:
@@ -183,7 +184,7 @@ class Function(object):
 
         .. warning::
 
-            Implementation of :class:`Function` must take care of that the
+            Implementations of :class:`Function` must take care that the
             return value must be a tuple even if it returns only one array.
 
         """
@@ -203,7 +204,7 @@ class Function(object):
 
         .. warning::
 
-            Implementation of :class:`Function` must take care of that the
+            Implementations of :class:`Function` must take care that the
             return value must be a tuple even if it returns only one array.
 
         """
@@ -220,7 +221,7 @@ class Function(object):
 
         .. warning::
 
-            Implementation of :class:`Function` must take care of that the
+            Implementations of :class:`Function` must take care that the
             return value must be a tuple even if it returns only one array.
 
         """
@@ -231,7 +232,7 @@ class Function(object):
 
         It delegates the procedure to :meth:`backward_cpu` or
         :meth:`backward_gpu` by default. Which it selects is determined by the
-        type of input arrays and output gradient arrays. Implementation of
+        type of input arrays and output gradient arrays. Implementations of
         :class:`Function` must implement either cpu/gpu methods or this method,
         if the function is intended to be backprop-ed.
 
@@ -246,7 +247,7 @@ class Function(object):
 
         .. warning::
 
-            Implementation of :class:`Function` must take care of that the
+            Implementations of :class:`Function` must take care that the
             return value must be a tuple even if it returns only one array.
 
         """
@@ -270,7 +271,7 @@ class Function(object):
 
         .. warning::
 
-            Implementation of :class:`Function` must take care of that the
+            Implementations of :class:`Function` must take care that the
             return value must be a tuple even if it returns only one array.
 
         """
@@ -291,7 +292,7 @@ class Function(object):
 
         .. warning::
 
-            Implementation of :class:`Function` must take care of that the
+            Implementations of :class:`Function` must take care that the
             return value must be a tuple even if it returns only one array.
 
         """
