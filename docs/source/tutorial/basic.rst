@@ -237,7 +237,7 @@ Then, after computing gradient of each parameter, :meth:`~Optimizer.update` meth
   >>> (compute gradient)
   >>> optimizer.update()
 
-Optimizer also contains some features around parameter and gradient manipulation, e.g. weight decay and gradient clipping.
+Optimizer also contains some features related to parameter and gradient manipulation, e.g. weight decay and gradient clipping.
 
 
 .. _mnist_mlp_example:
