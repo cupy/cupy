@@ -30,7 +30,7 @@ Since the network is statically defined before any forward/backward computation,
 Consequently, it is declarative to define a network architecture in such systems (e.g. Caffe).
 Note that one can still produce such static network definition using imperative languages (e.g. Torch7 and Theano-based frameworks).
 
-Instead, Chainer uses **"Define-by-Run"** scheme, i.e. the network is defined on-the-fly by the actual forward computation.
+Instead, Chainer adopts **"Define-by-Run"** scheme, i.e. the network is defined on-the-fly by the actual forward computation.
 More precisely, Chainer stores the history of computation instead of programming logic.
 This strategy enables to fully leverage the power of programming logics in Python.
 For example, Chainer does not need any magic to introduce conditionals and loops into the network definitions.
