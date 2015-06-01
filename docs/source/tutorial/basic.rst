@@ -230,6 +230,8 @@ Zeroing the initial gradient arrays are simply done by calling :meth:`~Optimizer
 
   >>> optimizer.zero_grads()
 
+This is equivalent to filling gradients of functions with zero in the previous section.
+
 Then, after computing gradient of each parameter, :meth:`~Optimizer.update` method runs one iteration of optimization::
 
   >>> (compute gradient)
