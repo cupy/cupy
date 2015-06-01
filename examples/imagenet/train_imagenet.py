@@ -231,6 +231,8 @@ def log_result():
 # Trainer
 def train_loop():
     while True:
+        while data_q.empty():
+            time.sleep(0.1)
         inp = data_q.get()
         if inp == 'end':  # quit
             res_q.put('end')
@@ -264,8 +266,10 @@ def train_loop():
 
 # Invoke threads
 feeder = Thread(target=feed_data)
+feeder.daemon = True
 feeder.start()
 logger = Thread(target=log_result)
+logger.daemon = True
 logger.start()
 
 train_loop()
