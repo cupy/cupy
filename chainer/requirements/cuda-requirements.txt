@@ -1,0 +1,4 @@
+pycuda>=2014.1
+scikits.cuda>=0.5.0b1,!=0.042
+Mako
+six>=1.9.0
