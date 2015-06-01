@@ -43,13 +43,13 @@ We will review such amenities in later sections of this tutorial.
 
 .. note::
 
-   In example codes of this tutorial, we suppose following symbols are imported for simplicity::
+   In example codes of this tutorial, we suppose following symbols are implicitly imported::
 
      import numpy as np
      from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers
      import chainer.functions as F
 
-   These imports appear widely in Chainer's codes and examples.
+   These imports appear widely in Chainer's codes and examples. For simplicity, we omit this idiom in this tutorial.
 
 
 Forward/Backward computation
