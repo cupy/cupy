@@ -194,7 +194,7 @@ You can also set additional functions later by setting attributes::
 
   >>> model.l3 = F.Linear(2, 2)
 
-Since this is just an object with functions stored as its attributes, we can use these functions in forward computation::
+Since :class:`FunctionSet` is just an object with functions stored as its attributes, we can use these functions in forward computation::
 
   >>> x = Varaible(np.array([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.float32))
   >>> h1 = model.l1(x)
