@@ -36,7 +36,7 @@ class GoogLeNet(FunctionSet):
         t = Variable(y_data, volatile=not train)
 
         h = F.relu(self.conv1(x))
-        h = F.max_pooling_2d(F.local_response_normalization(h, n=5), 3, stride=2, pad=1)
+        h = F.local_response_normalization(F.max_pooling_2d(h, 3, stride=2, pad=1), n=5)
 
         h = F.relu(self.conv2_reduce(h))
         h = F.relu(self.conv2(h))
