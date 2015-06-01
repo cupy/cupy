@@ -82,7 +82,7 @@ This is done by calling its :meth:`~Variable.backward` method::
 
   >>> y.backward()
 
-It runs so called *error backpropagation* (a.k.a. *backprop* or *reverse-mode auto differentiation*).
+It runs what is called *error backpropagation* (a.k.a. *backprop* or *reverse-mode auto differentiation*).
 Then, the gradient is computed into the :attr:`~Variable.grad` attribute of the input variable ``x``::
 
   >>> x.grad
