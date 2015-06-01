@@ -4,7 +4,7 @@ Basics of Chainer
 .. currentmodule:: chainer
 
 This is the first section of the Chainer Tutorial.
-In this section, you will learn following things.
+In this section, you will learn following things:
 
 * Pros and cons of existing frameworks and why we are developing Chainer
 * Simple example of forward and backward computation
