@@ -4,6 +4,7 @@
 from batch_normalization import BatchNormalization
 from convolution_2d      import Convolution2D
 from embed_id            import EmbedID
+from hierarchical_softmax import BinaryHierarchicalSoftmax, create_huffman_tree
 from linear              import Linear
 from parameter           import Parameter
 from prelu               import PReLU
