@@ -289,6 +289,7 @@ Typically it is defined as a simple python function given input arrays::
   ...     return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
 
 This function uses :func:`functions.relu` as an activation function.
+Since ReLU does not have parameters to optimize, it need not to be included in `model`.
 :func:`functions.softmax_cross_entropy` computes the loss function of softmax regression.
 :func:`functions.accuracy` computes the classification accuracy of this minibatch.
 
