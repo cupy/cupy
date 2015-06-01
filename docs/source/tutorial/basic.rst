@@ -152,13 +152,16 @@ Instance of parameterized function class acts as a usual function::
 
 Gradients of parameters are computed by :meth:`~Variable.backward` method.
 Note that gradients are **accumulated** by the method rather than overwritten.
-So first you must initialize gradients to zero.
-Parameter gradients of Linear function are stored in :attr:`~functions.Linear.gW` and :attr:`~functions.Linear.gb` attributes::
+So first you must initialize gradients to zero to renew the computation.
+Gradients of Linear function are stored in :attr:`~functions.Linear.gW` and :attr:`~functions.Linear.gb` attributes::
 
   >>> f.gW.fill(0)
   >>> f.gb.fill(0)
 
-This procedure is simplified by FunctionSet and Optimizer, which we will review later.
+.. note::
+
+   This procedure is simplified by FunctionSet and Optimizer, which we will see in the next seciton.
+
 Now we can compute the gradients of parameters by simply calling backward method::
 
   >>> y.grad = np.ones((2, 2), dtype=np.float32)
