@@ -130,8 +130,8 @@ Linear function from three dimensional space to two dimensional space is defined
 
 .. note::
 
-   Note that many functions only accepts minibatch input, where the first dimension of input arrays is considered as *batch dimension*.
-   In the above Linear function case, input must be of shape (N, 3), where N is the minibatch size.
+   Most functions only accept minibatch input, where the first dimension of input arrays is considered as *batch dimension*.
+   In the above Linear function case, input must has shape of (N, 3), where N is the minibatch size.
 
 The parameters of Linear function are stored in :attr:`~functions.Linear.W` and :attr:`~functions.Linear.b` attributes.
 By default, the matrix W is randomly initialized, while the vector b initialized by zeros.
