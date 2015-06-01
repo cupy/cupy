@@ -55,3 +55,7 @@ Loss, evaluation and aggregation
 .. autofunction:: mean_squared_error
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: sum
+
+Reusable subnetwork of complex architectures
+--------------------------------------------
+.. autoclass:: Inception

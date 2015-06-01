@@ -14,7 +14,7 @@ def _pair(x):
 class Pooling2D(Function):
     """Base class of pooling function over a set of 2d planes."""
 
-    def __init__(self, ksize, stride=None, pad=0, use_cudnn=True):
+    def __init__(self, ksize, stride=None, pad=0, cover_all=True, use_cudnn=True):
         if stride is None:
             stride = ksize
 
@@ -22,13 +22,14 @@ class Pooling2D(Function):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
 
+        self.cover_all = cover_all
         self.use_cudnn = use_cudnn
 
     def forward_gpu(self, x):
         # Implementation using cudnn
         n, c, h, w = x[0].shape
-        y_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph)
-        y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw)
+        y_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph, self.cover_all)
+        y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw, self.cover_all)
         y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
 
         handle = cudnn.get_default_handle()
@@ -68,7 +69,7 @@ class MaxPooling2D(Pooling2D):
     def forward_cpu(self, x):
         col = conv.im2col_cpu(
             x[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
-            pval=-float('inf'))
+            pval=-float('inf'), cover_all=self.cover_all)
         n, c, kh, kw, out_h, out_w = col.shape
         col = numpy.rollaxis(col.reshape(n, c, kh * kw, out_h, out_w), 2)
 
@@ -81,8 +82,8 @@ class MaxPooling2D(Pooling2D):
             return super(MaxPooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
-        y_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph)
-        y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw)
+        y_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph, self.cover_all)
+        y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw, self.cover_all)
         y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
         self.indexes = cuda.empty((n, c, y_h, y_w), dtype=numpy.int32)
 
@@ -93,7 +94,7 @@ class MaxPooling2D(Pooling2D):
                int kh, int kw, int sy, int sx, int ph, int pw
             ''', '''
                int c0    = i / (out_h * out_w);
-               int out_y = i / out_h % out_w;
+               int out_y = i / out_w % out_h;
                int out_x = i % out_w;
                int in_y_0 = max(0, out_y * sy - ph);
                int in_y_1 = min(h, out_y * sy + kh - ph);
@@ -181,7 +182,7 @@ class MaxPooling2D(Pooling2D):
             (self.kh, self.kw), (self.sy, self.sx), (self.ph, self.pw),
             'CUDNN_POOLING_MAX')
 
-def max_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
+def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True, use_cudnn=True):
     """Spatial max pooling function.
 
     This function acts similarly as :class:`~functions.Convolution2D`, while
@@ -197,6 +198,8 @@ def max_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
             specified, then it uses same stride as the pooling window size.
         pad (int or (int, int)): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
+        cover_all (bool): If True, all spatial locations are pooled into some
+            output pixels. It may make the output size larger.
         use_cudnn (bool): If True and CuDNN is enabled, then this function
             uses CuDNN as the core implementation.
 
@@ -204,15 +207,16 @@ def max_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
         ~chainer.Variable: Ouptut variable.
 
     """
-    return MaxPooling2D(ksize, stride, pad, use_cudnn)(x)
+    return MaxPooling2D(ksize, stride, pad, cover_all, use_cudnn)(x)
 
 
 class AveragePooling2D(Pooling2D):
     """Average pooling over a set of 2d planes."""
+    # TODO(beam2d): Support cover_all mode.
 
     def forward_cpu(self, x):
-        col = conv.im2col_cpu(
-            x[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
+        col = conv.im2col_cpu(x[0], self.kh, self.kw, self.sy, self.sx,
+                              self.ph, self.pw)
         y = col.mean(axis=(2, 3))
         return y,
 
@@ -232,7 +236,7 @@ class AveragePooling2D(Pooling2D):
                int kh, int kw, int sy, int sx, int ph, int pw, float coeff
             ''', '''
                int c0    = i / (out_h * out_w);
-               int out_y = i / out_h % out_w;
+               int out_y = i / out_w % out_h;
                int out_x = i % out_w;
                int in_y_0 = max(0, out_y * sy - ph);
                int in_y_1 = min(h, out_y * sy + kh - ph);
@@ -320,5 +324,10 @@ def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
     Returns:
         ~chainer.Variable: Output variable.
 
+    .. note::
+
+       This function currently does not support ``cover_all`` mode as
+       :func:`max_pooling_2d`. Average pooling runs in non-cover-all mode.
+
     """
-    return AveragePooling2D(ksize, stride, pad, use_cudnn)(x)
+    return AveragePooling2D(ksize, stride, pad, False, use_cudnn)(x)

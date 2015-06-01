@@ -141,7 +141,7 @@ def feed_data():
             if i == args.batchsize:
                 for j, x in enumerate(batch_pool):
                     x_batch[j] = x.get()
-                data_q.put((x_batch, y_batch))
+                data_q.put((x_batch.copy(), y_batch.copy()))
                 i = 0
 
             count += 1
@@ -157,7 +157,7 @@ def feed_data():
                     if j == args.val_batchsize:
                         for k, x in enumerate(val_batch_pool):
                             val_x_batch[k] = x.get()
-                        data_q.put((val_x_batch, val_y_batch))
+                        data_q.put((val_x_batch.copy(), val_y_batch.copy()))
                         j = 0
                 data_q.put('train')
 

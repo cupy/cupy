@@ -15,7 +15,9 @@ class TestPReLUSingle(TestCase):
 
         self.W = self.func.W.copy()  # fixed on CPU
 
-        self.x  = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
+        # Avoid unstability of numerical gradient
+        self.x  = numpy.random.uniform(.5, 1, (4, 3, 2)).astype(numpy.float32)
+        self.x *= numpy.random.randint(2, size=(4, 3, 2)) * 2 - 1
         self.gy = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data):
@@ -47,7 +49,7 @@ class TestPReLUSingle(TestCase):
         gx, gW = numerical_grad(f, (x.data, func.W), (y.grad,))
 
         assert_allclose(gx, x.grad)
-        assert_allclose(gW, func.gW)
+        assert_allclose(gW, func.gW, atol=1e-4)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
@@ -66,7 +68,9 @@ class TestPReLUMulti(TestPReLUSingle):
 
         self.W = self.func.W.copy()  # fixed on CPU
 
-        self.x  = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
+        # Avoid unstability of numerical gradient
+        self.x  = numpy.random.uniform(.5, 1, (4, 3, 2)).astype(numpy.float32)
+        self.x *= numpy.random.randint(2, size=(4, 3, 2)) * 2 - 1
         self.gy = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data):

@@ -46,7 +46,7 @@ class TestBinaryOp(TestCase):
         self.assertEqual(1, z.data.get()[0])
         self.assertTrue(hasattr(z.data.gpudata, 'device'))
 
-    def check_backward(self, op, x1_data, x2_data, y_grad):
+    def check_backward(self, op, x1_data, x2_data, y_grad, atol):
         x1 = Variable(x1_data)
         x2 = Variable(x2_data)
         y = op(x1, x2)
@@ -56,26 +56,26 @@ class TestBinaryOp(TestCase):
         func = y.creator
         f = lambda: func.forward((x1.data, x2.data))
         gx1, gx2 = numerical_grad(f, (x1.data, x2.data), (y.grad,))
-        assert_allclose(gx1, x1.grad)
-        assert_allclose(gx2, x2.grad)
+        assert_allclose(gx1, x1.grad, atol=atol)
+        assert_allclose(gx2, x2.grad, atol=atol)
 
-    def backward_cpu(self, op):
-        self.check_backward(op, self.x1, self.x2, self.gy)
+    def backward_cpu(self, op, atol=1e-5):
+        self.check_backward(op, self.x1, self.x2, self.gy, atol)
 
     def test_add_backward_cpu(self): self.backward_cpu(lambda x, y: x + y)
     def test_sub_backward_cpu(self): self.backward_cpu(lambda x, y: x - y)
     def test_mul_backward_cpu(self): self.backward_cpu(lambda x, y: x * y)
     def test_div_backward_cpu(self): self.backward_cpu(lambda x, y: x / y)
-    def test_pow_backward_cpu(self): self.backward_cpu(lambda x, y: x ** y)
+    def test_pow_backward_cpu(self): self.backward_cpu(lambda x, y: x ** y, atol=1e-4)
 
-    def backward_gpu(self, op):
-        self.check_backward(op, to_gpu(self.x1), to_gpu(self.x2), to_gpu(self.gy))
+    def backward_gpu(self, op, atol=1e-5):
+        self.check_backward(op, to_gpu(self.x1), to_gpu(self.x2), to_gpu(self.gy), atol)
 
     def test_add_backward_gpu(self): self.backward_gpu(lambda x, y: x + y)
     def test_sub_backward_gpu(self): self.backward_gpu(lambda x, y: x - y)
     def test_mul_backward_gpu(self): self.backward_gpu(lambda x, y: x * y)
     def test_div_backward_gpu(self): self.backward_gpu(lambda x, y: x / y)
-    def test_pow_backward_gpu(self): self.backward_gpu(lambda x, y: x ** y)
+    def test_pow_backward_gpu(self): self.backward_gpu(lambda x, y: x ** y, atol=1e-4)
 
 
 class TestVariableConstantOp(TestCase):
