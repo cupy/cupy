@@ -36,15 +36,15 @@ class GoogLeNet(FunctionSet):
         t = Variable(y_data, volatile=not train)
 
         h = F.relu(self.conv1(x))
-        h = F.local_response_normalization(F.max_pooling_2d(h, 3, stride=2, pad=1), n=5)
+        h = F.local_response_normalization(F.max_pooling_2d(h, 3, stride=2), n=5)
 
         h = F.relu(self.conv2_reduce(h))
         h = F.relu(self.conv2(h))
-        h = F.max_pooling_2d(F.local_response_normalization(h, n=5), 3, stride=2, pad=1)
+        h = F.max_pooling_2d(F.local_response_normalization(h, n=5), 3, stride=2)
 
         h = self.inc3a(h)
         h = self.inc3b(h)
-        h = F.max_pooling_2d(h, 3, stride=2, pad=1)
+        h = F.max_pooling_2d(h, 3, stride=2)
         h = self.inc4a(h)
 
         if train:
@@ -66,7 +66,7 @@ class GoogLeNet(FunctionSet):
             loss2 = F.softmax_cross_entropy(loss2, t)
 
         h = self.inc4e(h)
-        h = F.max_pooling_2d(h, 3, stride=2, pad=1)
+        h = F.max_pooling_2d(h, 3, stride=2)
         h = self.inc5a(h)
         h = self.inc5b(h)
 
