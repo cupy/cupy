@@ -314,7 +314,7 @@ Here you find that, at each iteration, the network is defined by forward computa
 By leveraging this "Define-by-Run" scheme, you can imagine that recurrent nets with variable length input are simply handled by just using loop over different length input for each iteration.
 
 After or during optimization, we want to evaluate the model on the test set.
-It can be simply achieved by calling forward function::
+It can be achieved simply by calling forward function::
 
   >>> sum_loss, sum_accuracy = 0, 0
   >>> for i in xrange(0, 10000, batchsize):
