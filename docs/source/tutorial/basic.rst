@@ -246,7 +246,9 @@ Example: multi-layer perceptron on MNIST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now you can solve multiclass classification task using multi-layer perceptron.
-Here we use hand-written digits dataset called MNIST, which is the long-standing de-facto "hello world" of machine learning.
+Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is the long-standing de-facto "hello world" of machine learning.
+This MNIST example is also found in ``examples/mnist`` directory of the official repository.
+
 In order to use MNIST, :func:`sklearn.datasets.fetch_mldata` function of `scikit-learn <http://scikit-learn.org/>`_ is useful::
 
   >>> from sklearn.datasets import fetch_mldata
@@ -324,6 +326,5 @@ It can be simply achieved by calling forward function::
   >>> mean_loss     = sum_loss / 10000
   >>> mean_accuracy = sum_accuracy / 10000
 
-This MNIST example is also found in ``examples/mnist`` directory of the official repository.
 The example code contains GPU support, though the essential part is same as the code in this tutorial.
 We will review in later sections how to use GPU(s).
