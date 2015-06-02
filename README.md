@@ -28,3 +28,7 @@ If you want to enable CUDA, install requirements by
 ```
 pip install -r cuda-requirements.txt
 ```
+
+## License
+
+MIT License (see `LICENSE` file).
