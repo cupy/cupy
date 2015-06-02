@@ -1,4 +1,4 @@
-Recurrent nets and their computation graph
+Recurrent Nets and their Computation Graph
 ------------------------------------------
 
 .. currentmodule:: chainer
@@ -7,28 +7,28 @@ In this section, you will learn how to write
 
 * recurrent nets with full backprop,
 * recurrent nets with truncated backprop,
-* evaluation of networks with few memory
+* evaluation of networks with few memory.
 
-After reading this section, you will be able to
+After reading this section, you will be able to:
 
 * Handle input sequences of variable length
 * Truncate upper stream of the network during forward computation
 * Use volatile variables to prevent network construction
 
 
-Recurent nets
-~~~~~~~~~~~~~
+Recurrent Nets
+~~~~~~~~~~~~~~
 
-Recurret nets are neural networks with loops.
-This is often used to learn from sequential input/output.
-Given an input stream :math:`x_1, x_2, \dots, x_t, \dots` and the initial state :math:`h_0`, it iteratively updates its state by :math:`h_t = f(x_t, h_{t-1})`, and at some or every time point :math:`t`, it outputs :math:`y_t = g(h_t)`.
+Recurrent nets are neural networks with loops.
+They are often used to learn from sequential input/output.
+Given an input stream :math:`x_1, x_2, \dots, x_t, \dots` and the initial state :math:`h_0`, a recurrent net iteratively updates its state by :math:`h_t = f(x_t, h_{t-1})`, and at some or every point in time :math:`t`, it outputs :math:`y_t = g(h_t)`.
 If we expand the procedure along the time axis, it looks like a regular feed-forward network except that same parameters are periodically used within the network.
 
-Here we learn how to write simple one-layer recurrent net.
+Here we learn how to write a simple one-layer recurrent net.
 The task is language modeling: given a finite sequence of words, we want to predict the next word at each position without peeking the successive words.
 Suppose that there are 1,000 different word types, and that we use 100 dimensional real vectors to represent each word (a.k.a. word embedding).
 
-Before writing forward computation, we have to define parameterized functions::
+Before writing the forward computation, we have to define parameterized functions::
 
   model = FunctionSet(
       embed  = F.EmbedID(100),
@@ -45,8 +45,8 @@ Other Linear layers represent the transformation as their names indicate.
 Here we use 50 hidden units.
 
 Then, we can write down the forward computation.
-Suppose that input word sequence is given as a list of integer arrays.
-The forward computation is simply written by for loop::
+Suppose that the input word sequence is given as a list of integer arrays.
+The forward computation is simply written with a for loop::
 
   def forward_one_step(h, cur_word, next_word, volatile=False):
       word = Variable(word_data, volatile=volatile)
@@ -65,9 +65,9 @@ The forward computation is simply written by for loop::
           loss += new_loss
       return loss
 
-We separated the implementation of one step forward computation, which is a best practice of writing recurrent nets for higher extensibility.
-Please ignore the argument ``volatile`` here, which we will review at the next subsection.
-The ``forward`` function is so simple, and there are no special handling of length of the input sequence.
+We implemented the one-step-forward computation as a separate function, which is a best practice of writing recurrent nets for higher extensibility.
+Ignore the argument ``volatile`` for now, we will review it in the next subsection.
+The ``forward`` function is very simple and no special care needs to be taken with respect to the length of the input sequence.
 This code actually handles variable length input sequences without any tricks.
 
 Of course, the accumulated loss is a Variable object with the full history of computation.
@@ -80,27 +80,27 @@ So we can just call its :meth:`~Variable.backward` method to compute gradients o
 
 Do not forget to call :meth:`Optimizer.zero_grads` before the backward computation!
 
-Truncate the graph by unchaining
+Truncate the Graph by Unchaining
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Learning from very long sequences is also a typical use case of recurrent nets.
-Suppose that the input and state sequence is too long to fit into the memory.
-In such case, we often truncate the backpropagation into short time range.
+Suppose that the input and state sequence is too long to fit into memory.
+In such cases, we often truncate the backpropagation into a short time range.
 This technique is called *truncated backprop*.
 It is heuristic, and it makes the gradients biased.
-Though, if the time range is long enough, this technique practically works well.
+However, this technique works well in practice if the time range is long enough.
 
 How to implement truncated backprop in Chainer?
 Chainer has a smart mechanism to achieve truncation, called **backward unchaining**.
-It is implemented in :meth:`Variable.unchain_backward` method.
-Backward unchaining starts from the variable object, and it chops the computation history backward from the variable.
+It is implemented in the :meth:`Variable.unchain_backward` method.
+Backward unchaining starts from the Variable object, and it chops the computation history backwards from the variable.
 The chopped variables are disposed automatically (if they are not referenced explicitly from any other user object).
-As a result, they are no longer a part of computation history, and does not get involved to backprop anymore.
+As a result, they are no longer a part of computation history, and are not involved in backprop anymore.
 
 Let's write an example of truncated backprop.
-Here we use the same network as one used in the previous subsection.
-Suppose here we are given a very long sequence, and we want to run backprop truncated at every 30 time steps.
-We can write truncated backprop using ``forward_one_step`` function that we wrote above. ::
+Here we use the same network as the one used in the previous subsection.
+Suppose that we are given a very long sequence, and we want to run backprop truncated at every 30 time steps.
+We can write truncated backprop using the ``forward_one_step`` function that we wrote above. ::
 
   h = Variable(np.zeros((50,), dtype=np.float32))
   loss   = 0
@@ -123,15 +123,15 @@ Then, the :meth:`~Variable.unchain_backward` method is called, which deletes the
 Note that the latest state ``h`` itself is not lost, since above code holds a reference to it.
 
 The implementation of truncated backprop is simple, and since there is no complicated trick on it, we can generalize this method to different situations.
-For example, we can easily extend above code to use different schedules between backprop timing and truncation length.
+For example, we can easily extend the above code to use different schedules between backprop timing and truncation length.
 
-Network evaluation without storing the history of computation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Network Evaluation without Storing the Computation History
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On evaluation of recurrent nets, we do not need to store the history of computation.
-Unchaining enables us to walk through unlimited length of sequences with limited memory, though is a bit roundabout approach.
+On evaluation of recurrent nets, there is typically no need to store the computation history.
+While unchaining enables us to walk through unlimited length of sequences with limited memory, it is a bit of a work-around.
 
-Instead, Chainer provides evaluation mode of forward computation, which does not store the history of computation.
+As an alternative, Chainer provides an evaluation mode of forward computation which does not store the computation history.
 This is enabled by just passing ``volatile`` flag to all input variables.
 Such variables are called *volatile variables*.
 
@@ -146,10 +146,10 @@ So we can enable volatile forward computation by just passing ``volatile=True`` 
 
 Volatile variables are also useful to evaluate feed-forward networks.
 
-Variable's volatility can be changed directly by setting :attr:`Variable.volatile` attribute.
-This enables us to combine some fixed feature extractor network and trainable predictor network.
-For example, suppose that we want to train a feed-forward network ``predictor_func``, which is located at the top of another fixed pretrained network ``fixed_func``.
-We want to train ``predictor_func`` without storing the history of computation for ``fixed_func``.
+Variable's volatility can be changed directly by setting the :attr:`Variable.volatile` attribute.
+This enables us to combine a fixed feature extractor network and a trainable predictor network.
+For example, suppose that we want to train a feed-forward network ``predictor_func``, which is located on top of another fixed pretrained network ``fixed_func``.
+We want to train ``predictor_func`` without storing the computation history for ``fixed_func``.
 This is simply done by following code snippets (suppose ``x_data`` and ``y_data`` indicate input data and label, respectively)::
 
   x = Variable(x_data, volatile=True)
@@ -158,12 +158,12 @@ This is simply done by following code snippets (suppose ``x_data`` and ``y_data`
   y = predictor_func(feat)
   y.backward()
 
-At first, the input variable ``x`` is volatile, so ``fixed_func`` is executed in volatile mode, i.e. without memorizing the history of computation.
-Then the intermediate variable ``feat`` is manually set to non-volatile, so ``predictor_func`` is executed in non-volatile mode, i.e. with memorizing the history of computation.
+At first, the input variable ``x`` is volatile, so ``fixed_func`` is executed in volatile mode, i.e. without memorizing the computation history.
+Then the intermediate variable ``feat`` is manually set to non-volatile, so ``predictor_func`` is executed in non-volatile mode, i.e., with memorizing the history of computation.
 Since the history of computation is only memorized between variables ``feat`` and ``y``, the backward computation stops at the ``feat`` variable.
 
 ---------
 
-We have shown the way how to write recurrent nets in Chainer and some fundamental techniques to manage the history of computation (a.k.a. computation graph).
-The example at ``examples/ptb`` directory implements truncated backprop learning of LSTM language model from Penn Tree Bank corpus.
+In this section we have demonstrated how to write recurrent nets in Chainer and some fundamental techniques to manage the history of computation (a.k.a. computation graph).
+The example in the ``examples/ptb`` directory implements truncated backprop learning of a LSTM language model from the Penn Treebank corpus.
 In the next section, we will review how to use GPU(s) in Chainer.

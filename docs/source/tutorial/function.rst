@@ -3,36 +3,36 @@ Define your own function
 
 .. currentmodule:: chainer
 
-In this section, you will learn following things.
+In this section, you will learn about the following things:
 
 * How to define a non-parameterized function
-* Useful tools to write a function with GPU
+* Useful tools to write a function using a GPU
 * How to define a parameterized function
 * How to test the function definition
 
-After reading this section, you will be able to
+After reading this section, you will be able to:
 
 * Write your own non-parameterized function
 * Define simple kernels in the function definition
 * Write your own parameterized function
 
 
-Non-parameterized functions
+Non-parameterized Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Chainer provides a collection of functions in :mod:`~chainer.functions` module.
-It covers typical usage in deep learning, so many existing works can be implemented using them.
+Chainer provides a collection of functions in the :mod:`~chainer.functions` module.
+It covers typical use cases in deep learning, so many existing works can be implemented with them.
 On the other hand, deep learning is evolving rapidly and we cannot cover all possible functions to define unseen architectures.
 So it is important to learn how to define your own functions.
 
-Since non-parameterized functions are simpler, we first review how to define them.
-First, suppose we want to define elementwise function :math:`f(x, y, z) = x * y + z`.
-We can implement this equation just by using ``*`` and ``+`` functions.
-Though, defining a unified function may reduce memory consumption, so it is a bit meaningful.
+Since they are simpler, we first show how to define non-parameterized functions.
+First, suppose we want to define an elementwise function :math:`f(x, y, z) = x * y + z`.
+While it is possible to implement this equation using a combination of the ``*`` and ``+`` functions,
+defining it as a single function may reduce memory consumption, so it is not *only* a toy example.
 Here we call this function *MulAdd*.
 
-Let's start with defining MulAdd working on CPU.
-Any function must inherits :class:`Function` class.
+Let's start with defining MulAdd working on the CPU.
+Any function must inherit the :class:`Function` class.
 The skeleton of a non-parameterized function looks like::
 
   class MulAdd(Function):
@@ -49,9 +49,9 @@ The non-self arguments of these functions are tuples of array(s), and these func
 
 .. warning::
 
-   Be careful that you must return a tuple of an array even if it returns just one array.
+   Be careful to return a tuple of arrays even if you have just one array to return.
 
-MulAdd is so simple, and implemented as follows::
+MulAdd is simple and implemented as follows::
 
   class MulAdd(Function):
       def forward_cpu(self, inputs):
@@ -68,18 +68,18 @@ MulAdd is so simple, and implemented as follows::
           gz = gw
           return gx, gy, gz
 
-As we warn you above, forward_cpu function returns a tuple of single element.
-The forward function is straightforward.
-Note that all arrays appeared in CPU functions are :class:`numpy.ndarray`.
+As per the warning above, ``forward_cpu`` function returns a tuple of single element.
+Note that all arrays appearing in CPU functions are :class:`numpy.ndarray`.
+The forward function is straightforward:
 It unpacks the input tuple, computes the output, and packs it into a tuple.
-The backward function is a bit complicated.
+The backward function is a bit more complicated.
 Recall the rule of differentiation of multiplication.
-This example just implement the rule.
-And look at the return values: it just packs the gradient of each input in same order and returns it.
+This example just implements the rule.
+Look at the return values, the function just packs the gradient of each input in same order and returns them.
 
 By just defining the core computation of forward and backward, Function class provides a chaining logic on it (i.e. storing the history of computation, etc.).
 
-Then, let's define GPU methods.
+Now let's define the corresponding GPU methods.
 You can easily predict that the methods we have to write are named :meth:`~Function.forward_gpu` and :meth:`~Function.backward_gpu`::
 
   class MulAdd(Function):
@@ -108,7 +108,7 @@ We use arithmetic operators defined for GPUArray.
 These operators implement the basic elementwise arithmetics.
 
 You maybe find that the definitions of GPU methods are exactly same as those of CPU methods.
-In such case, we can reduce them to :meth:`~Function.forward` and :meth:`~Function.backward` methods::
+In that case, we can reduce them to :meth:`~Function.forward` and :meth:`~Function.backward` methods::
 
   class MulAdd(Function):
       def forward(self, inputs):
@@ -125,18 +125,18 @@ In such case, we can reduce them to :meth:`~Function.forward` and :meth:`~Functi
           gz = gw
           return gx, gy, gz
 
-Note that this is a very rare case, since GPUArray does not imlement most features of :class:`numpy.ndarray`.
+Note that this is a very rare case, since GPUArray does not implement most features of :class:`numpy.ndarray`.
 
 
-Write an elementwise kernel function
+Write an Elementwise Kernel Function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Above GPU implementation of MulAdd is already fast and parallelized on cores of GPU.
-However, it invokes two kernels during each of forward and backward computations, which may hurt the performance.
-We can reduce the number of invokations by defining our own kernel.
+The GPU implementation of MulAdd as shown above is already fast and parallelized on GPU cores.
+However, it invokes two kernels during each of forward and backward computations, which may hurt performance.
+We can reduce the number of invocations by defining our own kernel.
 
 Most functions only require elementwise operations like MulAdd.
-PyCUDA provides useful tool to define elementwise kernel: :class:`pycuda.elementwise.ElementwiseKernel` class, and Chainer wraps it by :func:`cuda.elementwise` function.
+PyCUDA provides a useful tool to define elementwise kernels, the :class:`pycuda.elementwise.ElementwiseKernel` class, and Chainer wraps it by :func:`cuda.elementwise` function.
 Our MulAdd implementation can be improved as follows::
 
   class MulAdd(Function):
@@ -180,21 +180,21 @@ The second is a body of *parallel loop*, where the variable ``i`` indicates the 
 Note that ``i`` runs through all indexes of the first array argument by default.
 The third is the name of the kernel function, which is shown in debugger and profilers.
 
-Above code does not run compilation on every forward/backward computation, since :func:`cuda.elementwise` function has two caching mechanisms.
+Above code is not compiled on every forward/backward computation thanks to two caching mechanisms provided by :func:`cuda.elementwise`.
 
-First is *binary caching*.
-:func:`cuda.elementwise` function caches the compiled binary under ``/tmp`` directory with a hash value of CUDA code, and reuse them if given code matches to the hash value.
+The first one is *binary caching*:
+:func:`cuda.elementwise` function caches the compiled binary in the ``/tmp`` directory with a hash value of the CUDA code, and reuses it if the given code matches the hash value.
 This caching mechanism is actually implemented in PyCUDA.
 
-Second is *upload caching*.
+The second one is *upload caching*:
 Given a compiled binary code, we have to upload it to the current GPU in order to execute it.
 :func:`cuda.elementwise` function memoizes the arguments and the curent context, and if it is called with the same arguments and the same context, it reuses the previously uploaded kernel code.
 
 
-Parameterized functions
+Parameterized Functions
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Next, we show how to define a parameterized function.
+Next we show how to define a parameterized function.
 At this time, suppose that we want to implement elementwise product function between the input array and the parameter array.
 
 .. note::
@@ -206,9 +206,9 @@ At this time, suppose that we want to implement elementwise product function bet
      y = p() * x
 
    The Parameter function takes no arguments and just returns a variable holding the parameter array.
-   The example in this subsection may be slightly efficient on memory consumption, though.
+   The example in this subsection may be slightly more efficient with respect to memory consumption, though.
 
-There are two differences between parameterized functions and non-parameterized functions.
+There are two differences between parameterized functions and non-parameterized functions:
 
 * Parameterized functions have parameter arrays and corresponding gradient arrays.
   They are typically stored as attributes of the function class, where the function should provide :attr:`~Function.parameter_names` and :attr:`~Function.gradient_names` attributes (or properties).
@@ -247,19 +247,19 @@ Then, the implementation of elementwise product may be as following::
 
    .. warning::
 
-      You should not assume that calls of forward and backward are one-to-one.
-      You should think about users that call backward more than once after only one forward.
+      You should not assume a one-to-one match of calls of forward and backward.
+      Some users may call backward more than once after one forward call.
 
 
-Testing function
+Testing Function
 ~~~~~~~~~~~~~~~~
 
 In order to isolate the cause of learning failure from implementation bugs, it is important to test function implementations.
-Chainer provides simple utilities to help writing unittests.
-They are defined in :mod:`~chainer.gradient_check` module.
+Chainer provides simple utilities to help writing unit tests.
+They are defined in the :mod:`~chainer.gradient_check` module.
 
-The most important test utility is :func:`~gradient_check.numerical_grad` function.
-This function computes numerical gradient of given function using finite differences.
+The most important test utility is the :func:`~gradient_check.numerical_grad` function.
+This function computes the numerical gradient of given function using finite differences.
 It can be used as follows::
 
   x  = np.random.randn(4, 3).astype(np.float32)
@@ -269,7 +269,7 @@ It can be used as follows::
 
 ``f`` is a closure that returns a tuple of array(s) computed from input arrays.
 The second and third arguments of :func:`~gradient_check.numerical_grad` are tuples of input arrays and output gradient arrays, respectively.
-Above code computes numerical gradients of ``sum(f(x))``, where ``sum`` indicates the summation through all elements.
+The code above computes the numerical gradients of ``sum(f(x))``, where ``sum`` indicates the summation over all elements.
 The summation can be weighted by changing ``gy``.
 :func:`~gradient_check.numerical_grad` function also accepts additional ``eps`` argument, which indicates the quantization width of finite differences.
 
@@ -281,7 +281,7 @@ The summation can be weighted by changing ``gy``.
 Another utility is :func:`~gradient_check.assert_allclose` function.
 This is similar to :func:`numpy.testing.assert_allclose` function.
 The difference is that Chainer's version accepts CPU and GPU arrays as inputs.
-We can mix them in one invokation of assert_allclose.
+We can mix them in one invocation of assert_allclose.
 The default values of optional arguments are also different.
 
 Here is a typical usage of gradient checking utilities.

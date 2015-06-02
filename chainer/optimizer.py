@@ -11,9 +11,9 @@ def _sqnorm(x):
 class Optimizer(object):
     """Base class of all numerical optimizers.
 
-    Optimizer is preliminary given references to parameters and gradients, and
+    Optimizer is set up with references to parameters and gradients, and
     then on every call of :meth:`update`, it updates parameters based on
-    corresponding gradients. Optimizer implementation must override
+    corresponding gradients. Optimizer implementations must override
     :meth:`update_one` method, which updates one parameter array using the
     corresponding gradient array.
 
@@ -127,7 +127,7 @@ class Optimizer(object):
 
         .. warning::
 
-            This method returns CPU value, which indicates that this method
+            This method returns a CPU-computed value, which means that this method
             synchronizes between CPU and GPU if at least one of the gradients
             reside on the GPU.
 

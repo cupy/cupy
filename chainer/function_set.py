@@ -9,10 +9,10 @@ class FunctionSet(object):
     :class:`FunctionSet` is useful to collect parameters and gradients of
     multiple parameterized :class:`Function` objects. :class:`FunctionSet`
     itself also implements :attr:`~FunctionSet.parameters` and
-    :attr:`~FunctionSet.gradients`, so it can be nested to another
+    :attr:`~FunctionSet.gradients`, so it can be nested in another
     :class:`FunctionSet` object.
 
-    Function registration is done by just add an attribute to
+    Function registration is done by just adding an attribute to
     :class:`FunctionSet` object.
 
     """
@@ -70,7 +70,7 @@ class FunctionSet(object):
         return self
 
     def copy_parameters_from(self, params):
-        """Copies parameters from other source without reallocation.
+        """Copies parameters from another source without reallocation.
 
         Args:
             params (Iterable): Iterable of parameter arrays.

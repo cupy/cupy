@@ -3,17 +3,17 @@ Using GPU(s) in Chainer
 
 .. currentmodule:: chainer
 
-In this section, you will learn following things.
+In this section, you will learn about the following things:
 
 * Relationship between Chainer and PyCUDA
 * Basics of GPUArray
-* Single GPU usage of Chainer
-* Multi GPU usage of model-parallel computing
-* Multi GPU usage of data-parallel computing
+* Single-GPU usage of Chainer
+* Multi-GPU usage of model-parallel computing
+* Multi-GPU usage of data-parallel computing
 
-After reading this section, you will be able to
+After reading this section, you will be able to:
 
-* Use Chainer on CUDA-enabled GPU
+* Use Chainer on a CUDA-enabled GPU
 * Write model-parallel computing in Chainer
 * Write data-parallel computing in Chainer
 
@@ -21,19 +21,19 @@ After reading this section, you will be able to
 Relationship between Chainer and PyCUDA
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Chainer uses `PyCUDA <http://mathema.tician.de/software/pycuda/>`_ as its backend of GPU computation, and :class:`pycuda.gpuarray.GPUArray` class as the array implementation on GPU.
-GPUArray has far less features compared to :class:`numpy.ndarray`, though it is still enough to implement features of Chainer.
+Chainer uses `PyCUDA <http://mathema.tician.de/software/pycuda/>`_ as its backend for GPU computation and the :class:`pycuda.gpuarray.GPUArray` class as the GPU array implementation.
+GPUArray has far less features compared to :class:`numpy.ndarray`, though it is still enough to implement the required features for Chainer.
 
 .. note::
 
    :mod:`chainer.cuda` module imports many important symbols from PyCUDA.
-   For example, the GPUArray class is referred as ``cuda.GPUArray`` in the code of Chainer.
+   For example, the GPUArray class is referred as ``cuda.GPUArray`` in the Chainer code.
 
 Chainer provides wrappers of many PyCUDA functions and classes, mainly in order to support customized default allocation mechanism.
-As we have shown in the previous sections, Chainer constructs and destructs many arrays during learning and evaluating iterations.
-It is not suited for CUDA architecture, since memory allocation and release in CUDA (i.e. ``cuMemAlloc`` and ``cuMemFree`` functions) synchronize CPU and GPU computations, which much hurts its speed.
+As shown in the previous sections, Chainer constructs and destructs many arrays during learning and evaluating iterations.
+It is not well suited for CUDA architecture, since memory allocation and release in CUDA (i.e. ``cuMemAlloc`` and ``cuMemFree`` functions) synchronize CPU and GPU computations, which hurts performance.
 In order to avoid memory allocation and deallocation during the computation, Chainer uses PyCUDA's memory pool utilities as the standard memory allocator.
-Since memory pool is not the default allocator of PyCUDA, Chainer provides many wrapper functions and classes to simply use memory pools.
+Since memory pool is not the default allocator in PyCUDA, Chainer provides many wrapper functions and classes to use memory pools in a simple way.
 At the same time, Chainer's wrapper functions and classes make it easy to handle multiple GPUs.
 
 .. note::
@@ -54,16 +54,16 @@ In order to use GPU in Chainer, we must initialize :mod:`chainer.cuda` module be
 
   cuda.init()
 
-:func:`cuda.init` function initializes its global state and PyCUDA.
-This function accepts optional argument ``device``, which indicates the GPU device ID to initially select.
+The :func:`cuda.init` function initializes global state and PyCUDA.
+This function accepts an optional argument ``device``, which indicates the GPU device ID to select initially.
 
 .. warning::
 
-   If you are using :mod:`multiprocessing`, the initialization must take place for each process after the fork.
-   The main process is not the exception, i.e. :func:`cuda.init` should not be called before all the forks that use GPU.
+   If you are using :mod:`multiprocessing`, the initialization must take place for each process *after* the fork.
+   The main process is no exception, i.e., :func:`cuda.init` should not be called before all the children that use GPU have been forked.
 
-Then we can create a GPUArray object using functions of :mod:`~chainer.cuda` module.
-Chainer provides many constructor functions resembling ones of NumPy: :func:`~cuda.empty`, :func:`~cuda.empty_like`, :func:`~cuda.full`, :func:`~cuda.full_like`, :func:`~cuda.zeros`, :func:`~cuda.zeros_like`, :func:`~cuda.ones`, :func:`~cuda.ones_like`.
+Then we can create a GPUArray object using functions of the :mod:`~chainer.cuda` module.
+Chainer provides many constructor functions resembling the ones of NumPy: :func:`~cuda.empty`, :func:`~cuda.empty_like`, :func:`~cuda.full`, :func:`~cuda.full_like`, :func:`~cuda.zeros`, :func:`~cuda.zeros_like`, :func:`~cuda.ones`, :func:`~cuda.ones_like`.
 
 Another useful function to create a GPUArray object is :func:`~cuda.to_gpu`.
 This function copies a :class:`numpy.ndarray` object to a newly allocated GPUArray object.
@@ -72,26 +72,27 @@ For example, the following code ::
   x_cpu = np.ones((5, 4, 3), dtype=np.float32)
   x_gpu = cuda.to_gpu(x_cpu)
 
-generates same ``x_gpu`` as the following code::
+generates the same ``x_gpu`` as the following code::
 
   x_gpu = cuda.ones((5, 4, 3))
 
 .. note::
 
-   Allocation functions of :mod:`~chainer.cuda` module uses :class:`numpy.float32` as the default element type.
+   Allocation functions of the :mod:`~chainer.cuda` module use :class:`numpy.float32` as the default element type.
 
-:mod:`~chainer.cuda` module also has :func:`~cuda.to_cpu` function to copy a GPUArray object to an ndarray object::
+The :mod:`~chainer.cuda` module also has :func:`~cuda.to_cpu` function to copy a GPUArray object to an ndarray object::
 
   x_cpu = cuda.to_cpu(x_gpu)
 
 All GPUArray constructors allocate memory on the current device.
 In order to allocate memory on a different device, we can use device switching utilities.
-:func:`cuda.use_device` function simply changes the current device::
+:func:`cuda.use_device` function changes the current device::
 
   cuda.use_device(1)
   x_gpu1 = cuda.empty((4, 3))
 
-There are many situations that we want to temporarily switch the device, where :func:`cuda.using_device` function is useful, which returns resource object that can be combinated with ``with`` statement::
+There are many situations in which we want to temporarily switch the device, where the :func:`cuda.using_device` function is useful.
+It returns an resource object that can be combinated with the ``with`` statement::
 
   with cuda.using_device(1):
       x_gpu1 = cuda.empty((4, 3))
@@ -113,15 +114,15 @@ A GPUArray object allocated by Chainer can be copied between GPUs by :func:`cuda
   x1 = cuda.copy(x0, out_device=1)
 
 
-Run neural networks on single GPU
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Run Neural Networks on a Single GPU
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Single GPU usage is very simple.
-What you have to do is transferring :class:`FunctionSet` and input arrays to GPU beforehand.
-In this subsection, the code is based on :ref:`our first MNIST example on this tutorial <mnist_mlp_example>`.
+Single-GPU usage is very simple.
+What you have to do is transferring :class:`FunctionSet` and input arrays to the GPU beforehand.
+In this subsection, the code is based on :ref:`our first MNIST example in this tutorial <mnist_mlp_example>`.
 
-:class:`FunctionSet` object can be transferred to the specified GPU by :meth:`~FunctionSet.to_gpu` method.
-Be careful that you must give parameters and gradients on GPU to the optimizer. ::
+A :class:`FunctionSet` object can be transferred to the specified GPU using the :meth:`~FunctionSet.to_gpu` method.
+Make sure to give parameters and gradients of the GPU version to the optimizer. ::
 
   model = FunctionSet(
       l1 = F.Linear(784, 100),
@@ -133,9 +134,9 @@ Be careful that you must give parameters and gradients on GPU to the optimizer. 
   optimizer.setup(model.collect_parameters())
 
 Note that this method returns the function set itself.
-The device specifier can be omitted, where it uses the current device.
+The device specifier can be omitted, in which case it uses the current device.
 
-Then, what we only have to do is transferring each minibatch to GPU::
+Then, all we have to do is transferring each minibatch to the GPU::
 
   batchsize = 100
   for epoch in xrange(20):
@@ -150,29 +151,29 @@ Then, what we only have to do is transferring each minibatch to GPU::
           loss.backward()
           optimizer.update()
 
-It is almost same as that of the original example.
-We just insert :func:`cuda.to_gpu` function to the minibatch arrays.
+This is almost identical to the code of the original example,
+we just inserted a call to the :func:`cuda.to_gpu` function to the minibatch arrays.
 
 
-Model-parallel computation on multiple GPUs
+Model-parallel Computation on Multiple GPUs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parallelization of machine learning is roughly classified into two types called "model-parallel" and "data-parallel".
-Model-parallel indicates parallelizations of the computation inside of the model.
-On the other hand, data-parallel indicates parallelizations by data sharding.
-In this subsection, we show how to do model-parallel on multiple GPUs in Chainer.
+Model-parallel means parallelizations of the computations inside the model.
+In contrast, data-parallel means parallelizations using data sharding.
+In this subsection, we show how to use the model-parallel approach on multiple GPUs in Chainer.
 
 `Recall the MNIST example <mnist_mlp_example>`_.
-Here suppose that we want to modify this example by expanding the network to 6 layers with 2000 units for each using two GPUs.
-In order to make multi-GPU computation efficient, we only make two GPUs communicate at the third and sixth layers.
+Now suppose that we want to modify this example by expanding the network to 6 layers with 2000 units each using two GPUs.
+In order to make multi-GPU computation efficient, we only make the two GPUs communicate at the third and sixth layer.
 The overall architecture looks like the following diagram::
 
   (GPU0) input --+--> l1 --> l2 --> l3 --+--> l4 --> l5 --> l6 --+--> output
                  |                       |                       |
   (GPU1)         +--> l1 --> l2 --> l3 --+--> l4 --> l5 --> l6 --+
 
-We first have to define :class:`FunctionSet`.
-Be careful that parameters that will be used on a device must reside on the devie.
+We first have to define a :class:`FunctionSet`.
+Be careful that parameters that will be used on a device must reside on that device.
 Here is a simple example of the model definition::
 
   model = FunctionSet(
@@ -232,7 +233,7 @@ Now we can define the network architecture that we have shown in the diagram::
 
 First, recall that :func:`cuda.to_gpu` accepts an optional argument to specify the device identifier.
 We use this to transfer the input minibatch to both the 0th and the 1st devices.
-Then, we can write this model-parallel example just by using :func:`functions.copy` function.
+Then, we can write this model-parallel example employing the :func:`functions.copy` function.
 This function transfers an input array to another device.
 Since it is a function on :class:`Variable`, the operation supports backprop, which reversely transfers an output gradient to the input device.
 
@@ -241,19 +242,19 @@ Since it is a function on :class:`Variable`, the operation supports backprop, wh
    Above code is not parallelized on CPU, but is parallelized on GPU.
    This is because most of the GPU computation is asynchronous to the host CPU.
 
-Almost same example code is available at ``examples/mnist/train_mnist_model_parallel.py``.
+An almost identical example code can be found at ``examples/mnist/train_mnist_model_parallel.py``.
 
 
-Data-parallel computation on multiple GPUs
+Data-parallel Computation on Multiple GPUs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Data-parallel computation is another strategy to parallelize online processing.
-In the context of neural networks, it means that different device does computation on different subset of input data.
+In the context of neural networks, it means that a different device does computation on a different subset of the input data.
 In this subsection, we review the way to achieve data-parallel learning on two GPUs.
 
 Suppose again our task is `the MNIST example <mnist_mlp_example>`_.
 This time we want to directly parallelize the three-layer network.
-The most simple form of data-parallelization is parallelizing the gradient computation for distinct set of data.
+The most simple form of data-parallelization is parallelizing the gradient computation for a distinct set of data.
 First, define the model::
 
   model = FunctionSet(
@@ -287,8 +288,8 @@ Forward function is almost same as the original example::
       y = model.l3(h2)
       return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
   
-The only difference is that it accepts ``model`` as an argument.
-we can feed to it a model and arrays on an appropriate device.
+The only difference is that ``forward`` accepts ``model`` as an argument.
+We can feed it with a model and arrays on an appropriate device.
 Then, we can write a data-parallel learning loop as follows::
 
   batchsize = 100
@@ -318,15 +319,15 @@ Then, we can write a data-parallel learning loop as follows::
           
           model_1.copy_parameters_from(model_0.parameters)
 
-The half of the minibatch is forwarded on GPU 0, while the other half on GPU 1.
-Then, the gradients are accumulated by :meth:`Optimizer.accumulate_grads` method.
+One half of the minibatch is forwarded to GPU 0, the other half to GPU 1.
+Then the gradients are accumulated by the :meth:`Optimizer.accumulate_grads` method.
 After the gradients are prepared, we can update the optimizer in usual way.
-Be careful that the update only modifies the parameters of model_0.
-So we must manually copy them to model_1 using :meth:`FunctionSet.copy_parameters_from` method.
+Note that the update only modifies the parameters of ``model_0``.
+So we must manually copy them to ``model_1`` using :meth:`FunctionSet.copy_parameters_from` method.
 
 --------
 
 Now you can use Chainer with GPUs.
-All examples in ``examples`` directory supports GPU computation, so please refer to them if you want to know more practices on using GPUs.
+All examples in the ``examples`` directory support GPU computation, so please refer to them if you want to know more practices on using GPUs.
 In the next section, we will show how to define a differentiable (i.e. *backpropable*) function on Variable objects.
 We will also show there how to write a simple (elementwise) CUDA kernel using Chainer's CUDA utilities.
