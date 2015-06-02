@@ -30,7 +30,7 @@ Since the network is statically defined before any forward/backward computation,
 Consequently, defining a network architecture in such systems (e.g. Caffe) follows a declarative approach.
 Note that one can still produce such a static network definition using imperative languages (e.g. Torch7 and Theano-based frameworks).
 
-In contrast, Chainer uses a **"Define-by-Run"** scheme, i.e., the network is defined on-the-fly via the actual forward computation.
+In contrast, Chainer adopts a **"Define-by-Run"** scheme, i.e., the network is defined on-the-fly via the actual forward computation.
 More precisely, Chainer stores the history of computation instead of programming logic.
 This strategy enables to fully leverage the power of programming logic in Python.
 For example, Chainer does not need any magic to introduce conditionals and loops into the network definitions.
@@ -49,7 +49,7 @@ We will review such amenities in later sections of this tutorial.
      from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers
      import chainer.functions as F
 
-   These imports appear widely in Chainer's codes and examples.
+   These imports appear widely in Chainer's codes and examples. For simplicity, we omit this idiom in this tutorial.
 
 
 Forward/Backward Computation
@@ -82,7 +82,7 @@ This is done by calling its :meth:`~Variable.backward` method::
 
   >>> y.backward()
 
-This runs so called *error backpropagation* (a.k.a. *backprop* or *reverse-mode auto differentiation*).
+This runs *error backpropagation* (a.k.a. *backprop* or *reverse-mode automatic differentiation*).
 Then, the gradient is computed and stored in the :attr:`~Variable.grad` attribute of the input variable ``x``::
 
   >>> x.grad
@@ -130,8 +130,13 @@ A linear function from three-dimensional space to two-dimensional space is defin
 
 .. note::
 
+<<<<<<< HEAD
    Note that many functions only accept minibatch input, where the first dimension of input arrays is considered the *batch dimension*.
    In the above Linear function case, input must be of shape (N, 3), where N is the minibatch size.
+=======
+   Most functions only accept minibatch input, where the first dimension of input arrays is considered as *batch dimension*.
+   In the above Linear function case, input must has shape of (N, 3), where N is the minibatch size.
+>>>>>>> 329c97b9542a079cc87144d202bc57a25f7c613e
 
 The parameters of Linear function are stored in :attr:`~functions.Linear.W` and :attr:`~functions.Linear.b` attributes.
 By default, the matrix W is initialized randomly, while the vector b is initialized with zeros.
@@ -152,13 +157,16 @@ Instances of a parameterized function class act like usual functions::
 
 Gradients of parameters are computed by :meth:`~Variable.backward` method.
 Note that gradients are **accumulated** by the method rather than overwritten.
-So first you must initialize gradients to zero.
-Parameter gradients of Linear function are stored in :attr:`~functions.Linear.gW` and :attr:`~functions.Linear.gb` attributes::
+So first you must initialize gradients to zero to renew the computation.
+Gradients of Linear function are stored in :attr:`~functions.Linear.gW` and :attr:`~functions.Linear.gb` attributes::
 
   >>> f.gW.fill(0)
   >>> f.gb.fill(0)
 
-This procedure is simplified by FunctionSet and Optimizer, which we will review later.
+.. note::
+
+   This procedure is simplified by FunctionSet and Optimizer, which we will see in the next seciton.
+
 Now we can compute the gradients of parameters by simply calling backward method::
 
   >>> y.grad = np.ones((2, 2), dtype=np.float32)
@@ -191,7 +199,7 @@ You can also add additional functions later by setting attributes::
 
   >>> model.l3 = F.Linear(2, 2)
 
-Since this is just an object with functions stored as its attributes, we can use these functions in forward computation::
+Since the ``model`` is just an object with functions stored as its attributes, we can use these functions in forward computation::
 
   >>> x = Variable(np.array([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.float32))
   >>> h1 = model.l1(x)
@@ -227,12 +235,15 @@ Zeroing the initial gradient arrays are simply done by calling :meth:`~Optimizer
 
   >>> optimizer.zero_grads()
 
+We have done the zeroing manually in the previous section.
+The line above is an equivalent and simpler way to initialize the gradients.
+
 Then, after computing gradient of each parameter, :meth:`~Optimizer.update` method runs one iteration of optimization::
 
   >>> (compute gradient)
   >>> optimizer.update()
 
-Optimizer also contains some features around parameter and gradient manipulation, e.g. weight decay and gradient clipping.
+Optimizer also contains some features related to parameter and gradient manipulation, e.g. weight decay and gradient clipping.
 
 
 .. _mnist_mlp_example:
@@ -241,7 +252,9 @@ Example: Multi-layer Perceptron on MNIST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now you can solve a multiclass classification task using a multi-layer perceptron.
-Here we use hand-written digits dataset called MNIST, which is the long-standing de-facto "hello world" of machine learning.
+Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is the long-standing de-facto "hello world" of machine learning.
+This MNIST example is also found in ``examples/mnist`` directory of the official repository.
+
 In order to use MNIST, :func:`sklearn.datasets.fetch_mldata` function of `scikit-learn <http://scikit-learn.org/>`_ is useful::
 
   >>> from sklearn.datasets import fetch_mldata
@@ -282,6 +295,7 @@ Typically it is defined as a simple python function given input arrays::
   ...     return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
 
 This function uses :func:`functions.relu` as an activation function.
+Since ReLU does not have parameters to optimize, it does not need to be included in `model`.
 :func:`functions.softmax_cross_entropy` computes the loss function of softmax regression.
 :func:`functions.accuracy` computes the classification accuracy of this minibatch.
 
@@ -306,7 +320,7 @@ Here you find that, at each iteration, the network is defined by forward computa
 By leveraging this "Define-by-Run" scheme, you can imagine that recurrent nets with variable length input are simply handled by just using loop over different length input for each iteration.
 
 After or during optimization, we want to evaluate the model on the test set.
-It can be simply achieved by calling forward function::
+It can be achieved simply by calling forward function::
 
   >>> sum_loss, sum_accuracy = 0, 0
   >>> for i in xrange(0, 10000, batchsize):
@@ -319,6 +333,5 @@ It can be simply achieved by calling forward function::
   >>> mean_loss     = sum_loss / 10000
   >>> mean_accuracy = sum_accuracy / 10000
 
-This MNIST example is also found in ``examples/mnist`` directory of the official repository.
 The example code contains GPU support, though the essential part is same as the code in this tutorial.
 We will review in later sections how to use GPU(s).
