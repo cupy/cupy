@@ -33,7 +33,7 @@ parser.add_argument('val', help='Path to validation image-label list file')
 parser.add_argument('--mean', '-m', default='mean.npy',
                     help='Path to the mean file (computed by compute_mean.py)')
 parser.add_argument('--arch', '-a', default='nin',
-                    help='Convnet architecture (nin, alexbn, googlenetbn)')
+                    help='Convnet architecture (nin, alexbn, googlenet, googlenetbn)')
 parser.add_argument('--batchsize', '-B', type=int, default=32,
                     help='Learning minibatch size')
 parser.add_argument('--val_batchsize', '-b', type=int, default=250,
@@ -68,6 +68,9 @@ if args.arch == 'nin':
 elif args.arch == 'alexbn':
     import alexbn
     model = alexbn.AlexBN()
+elif args.arch == 'googlenet':
+    import inception
+    model = inception.GoogLeNet()
 elif args.arch == 'googlenetbn':
     import inceptionbn
     model = inceptionbn.GoogLeNetBN()
