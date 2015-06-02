@@ -16,7 +16,7 @@ def _pair(x):
 class Convolution2D(Function):
     """Two-dimensional convolution function.
 
-    The detail of this function is described below the arguments description.
+    The details of this function are described below the arguments description.
 
     Args:
         in_channels (int): Number of channels of input arrays.
@@ -35,25 +35,25 @@ class Convolution2D(Function):
     This function holds at most two parameter arrays: ``W`` and ``b``, which
     indicate the filter weight and the bias vector, respectively.
 
-    The filter weight has four dimensions :math:`(c_O, c_I, k_H, k_W)`,
+    The filter weight has four dimensions :math:`(c_O, c_I, k_H, k_W)`
     which indicate the number of output channels, the number of input channels,
     height and width of the kernels, respectively.
-    The filter weight is initialized by i.i.d. Gaussian random samples each of
+    The filter weight is initialized with i.i.d. Gaussian random samples, each of
     which has zero mean and deviation :math:`\sqrt{1/(c_I k_H k_W)}` by default.
-    The deviation may be scaled by ``wscale`` if specified.
+    The deviation is scaled by ``wscale`` if specified.
 
     The bias vector is of size :math:`c_O`.
     Each element of it is initialized by ``bias`` argument.
     If ``nobias`` argument is set to True, then this function does not hold
     the bias parameter.
 
-    Two-dimensional convolution function is defined as follows.
+    The two-dimensional convolution function is defined as follows.
     Let :math:`X` be the input tensor of dimensions :math:`(n, c_I, h, w)`,
     where :math:`n` is the batch size, and :math:`(h, w)` is spatial size of the
     input image.
-    Then, ``Convolution2D`` function computes correlations between filters and
+    Then the ``Convolution2D`` function computes correlations between filters and
     patches of size :math:`(k_H, k_W)` in :math:`X`.
-    Note that correlation here is equivalent to inner-product between expanded
+    Note that correlation here is equivalent to the inner product between expanded
     vectors.
     Patches are extracted at positions shifted by multiples of ``stride`` from
     the first position ``-pad`` for each spatial axis.
@@ -62,7 +62,7 @@ class Convolution2D(Function):
 
     Let :math:`(s_Y, s_X)` be the stride of filter application, and
     :math:`(p_H, p_W)` the spatial padding size. Then, the output size
-    :math:`(h_O, w_O)` is determined by the following equations.
+    :math:`(h_O, w_O)` is determined by the following equations:
 
     .. math::
 

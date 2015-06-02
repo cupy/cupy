@@ -33,7 +33,7 @@ def accuracy(y, t):
     """Computes muticlass classification accuracy of the minibatch.
 
     Args:
-        y (Variable): Variable holding a matrix whose (i, j) element
+        y (Variable): Variable holding a matrix whose (i, j)-th element
             indicates the score of the class j at the i-th example.
         t (Variable): Variable holding an int32 vector of groundtruth labels.
 

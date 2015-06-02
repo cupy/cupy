@@ -3,11 +3,11 @@ Standard Function implementations
 
 .. module:: chainer.functions
 
-Chainer provides basic :class:`~chainer.Function` implementations in
+Chainer provides basic :class:`~chainer.Function` implementations in the
 :mod:`chainer.functions` package.
 
 Non-parameterized functions are provided as plain Python functions. These can be
-directly used in forward computation without explicit handling of
+used directly in forward computation without explicit handling of
 :class:`~chainer.Function` objects. On the other hand, parameterized functions
 should be used with explicit handling of :class:`~chainer.Function` objects.
 

@@ -109,7 +109,7 @@ def softmax(x, use_cudnn=True):
     :math:`f_{ij}(x)={\\exp(x_{ij}) \\over \\sum_j \\exp(x_{ij})}`.
 
     Args:
-        x (~chainer.Variable): Input varaible.
+        x (~chainer.Variable): Input variable.
         use_cudnn (bool): If True and CuDNN is enabled, then this function uses
             CuDNN as the core implementation.
 

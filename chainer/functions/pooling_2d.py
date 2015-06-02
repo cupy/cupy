@@ -185,9 +185,9 @@ class MaxPooling2D(Pooling2D):
 def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True, use_cudnn=True):
     """Spatial max pooling function.
 
-    This function acts similarly as :class:`~functions.Convolution2D`, while
-    this function computes the maximum of input spatial patch for each channel
-    without any parameter instead of computing innerproducts.
+    This function acts similarly to :class:`~functions.Convolution2D`, but
+    it computes the maximum of input spatial patch for each channel
+    without any parameter instead of computing the inner products.
 
     Args:
         x (~chainer.Variable): Input variable.
@@ -305,9 +305,9 @@ class AveragePooling2D(Pooling2D):
 def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
     """Spatial average pooling function.
 
-    This function acts similarly as :class:`~functions.Convolution2D`, while
-    this function computes the average of input spatial patch for each channel
-    without any parameter instead of computing innerproducts.
+    This function acts similarly to :class:`~functions.Convolution2D`, but
+    it computes the average of input spatial patch for each channel
+    without any parameter instead of computing the inner products.
 
     Args:
         x (~chainer.Variable): Input variable.

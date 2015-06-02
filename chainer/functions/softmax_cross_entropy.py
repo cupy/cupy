@@ -44,7 +44,7 @@ def softmax_cross_entropy(x, t, use_cudnn=True):
     the groundtruth label vector.
 
     Args:
-        x (Variable): Variable hoding a matrix whose (i, j) element indicates
+        x (Variable): Variable holding a matrix whose (i, j)-th element indicates
             unnormalized log probability of the class j at the i-th example.
         t (Variable): Variable holding an int32 vector of groundtruth labels.
 

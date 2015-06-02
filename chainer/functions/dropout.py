@@ -37,16 +37,16 @@ class Dropout(Function):
 
 
 def dropout(x, ratio=.5, train=True):
-    """Dropouts elements of input variable randomly.
+    """Drops elements of input variable randomly.
 
-    This function dropouts input elements randomly in probability ``ratio`` and
-    scales remained elements by factor ``1 / (1 - ratio)``. On testing mode, it
+    This function drops input elements randomly with probability ``ratio`` and
+    scales the remaining elements by factor ``1 / (1 - ratio)``. In testing mode, it
     does nothing and just returns ``x``.
 
     Args:
         x (~chainer.Variable): Input variable.
         ratio (float): Dropout ratio.
-        train (bool): If True, executes dropout. Otherwise, do nothing.
+        train (bool): If True, executes dropout. Otherwise, does nothing.
 
     Returns:
         ~chainer.Variable: Output variable.

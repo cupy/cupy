@@ -33,7 +33,7 @@ def _cusum_axis02(x):
 
 
 class BatchNormalization(Function):
-    """Batch normalization on outputs of linear or convolution function.
+    """Batch normalization on outputs of linear or convolution functions.
 
     Args:
         size (int or tuple of ints): Size (or shape) of channel

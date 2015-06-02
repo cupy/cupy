@@ -20,7 +20,7 @@ def reshape(x, shape):
         shape (tuple of ints): Target shape.
 
     Returns:
-        ~chainer.Variable: Variable that holds a reshaped array of input
+        ~chainer.Variable: Variable that holds a reshaped version of the input
             variable.
 
     """

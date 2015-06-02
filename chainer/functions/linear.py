@@ -6,19 +6,19 @@ def _as_mat(x):
     return x.reshape(x.shape[0], x.size / x.shape[0])
 
 class Linear(Function):
-    """Implementation of linear function (a.k.a. fully-connected layer or affine
+    """Implementation of a linear function (a.k.a. fully-connected layer or affine
     transformation).
 
     This function holds a weight matrix ``W`` and a bias vector ``b``.
 
     The weight matrix ``W`` has shape ``(out_size, in_size)``.
-    This matrix is initialized by i.i.d. Gaussian samples each of which has zero
+    This matrix is initialized with i.i.d. Gaussian samples, each of which has zero
     mean and deviation :math:`\sqrt{1/\\text{in_size}}`.
-    The deviation may be scaled by factor ``wscale`` if specified.
+    The deviation is scaled by factor ``wscale`` if specified.
 
     The bias vector ``b`` is of size ``out_size``.
-    Each element is initialized by ``bias`` value.
-    If ``nobias`` argument is set to True, then this function does not hold the
+    Each element is initialized with the ``bias`` value.
+    If ``nobias`` argument is set to True, then this function does not hold a
     bias vector.
 
     Let :math:`X` be an input matrix, and :math:`W, b` the weight matrix and

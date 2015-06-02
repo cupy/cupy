@@ -145,8 +145,8 @@ def lstm(c_prev, x):
     This function outputs these two arrays as a tuple of two variables.
 
     Args:
-        c_prev (~chainer.Variable): Variable that holds the preivious cell
-            state. The cell state should be zero array or output of the previous
+        c_prev (~chainer.Variable): Variable that holds the previous cell
+            state. The cell state should be a zero array or the output of the previous
             call of LSTM.
         x (~chainer.Variable): Variable that holds the incoming signal. It must
             have the second dimension four times of that of the cell state,
