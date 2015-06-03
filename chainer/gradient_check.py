@@ -72,7 +72,7 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     return numerical_grad_cpu(f, inputs, grad_outputs, eps)
 
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
-    """Asserts if some corresponding element of x and y differs too match.
+    """Asserts if some corresponding element of x and y differs too much.
 
     This function can handle both CPU and GPU arrays simultaneously.
 

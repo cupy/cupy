@@ -1,8 +1,8 @@
 """Device, context and memory management on PyCUDA and scikits.cuda.
 
-Chainer uses PyCUDA facilities (with very thin wrapper) to get speed of GPU
+Chainer uses PyCUDA facilities (with very thin wrapper) to exploit the speed of GPU
 computation. Following modules and classes are imported to :mod:`cuda` module
-for convenience (refer this table when reading chainer's source codes).
+for convenience (refer to this table when reading chainer's source codes).
 
 ============================ =================================
  imported name                original name
@@ -23,7 +23,7 @@ for convenience (refer this table when reading chainer's source codes).
 
 Chainer provides thin wrappers of GPUArray allocation routines, which use
 :func:`mem_alloc` as the allocator. This allocator uses device-wise instance of
-:class:`~pycuda.tools.DeviceMemoryPool`, which enables us to reuse device memory
+:class:`~pycuda.tools.DeviceMemoryPool`, which enables the reuse of device memory
 over multiple forward/backward computations. :func:`mem_alloc` also inserts an
 additional attribute to the allocated memory called ``device``, which indicates
 the device that the memory is allocated on. Functions of :mod:`cuda` uses this
@@ -78,8 +78,8 @@ def init(device=None):
 
     Chainer maintains CUDA context, CUBLAS context, random number generator and
     device memory pool for each GPU device and for each process (the main
-    process or a process forked by :mod:`multiprocessing`). When this function
-    is called first time on the process, it initializes these global states.
+    process or a process forked by :mod:`multiprocessing`) as global states. When
+    called for the first time on the process, this function initializes these global states.
 
     .. warning::
 
@@ -124,10 +124,10 @@ def init(device=None):
 
 
 def shutdown():
-    """Finalize CUDA global state.
+    """Finalizes CUDA global state.
 
-    This function is automatically called by :mod:`atexit`. Multiple calls is
-    allowed, so user can manually call it if necessary.
+    This function is automatically called by :mod:`atexit`. Multiple calls are
+    allowed, so user can manually call this function if necessary.
 
     """
     global _contexts, _cublas_handles, _pid, _pools
@@ -151,7 +151,7 @@ def shutdown():
 
 
 def get_device(arg=None):
-    """Gets the device from ID or given chainer's
+    """Gets the device from ID ''arg'' or given chainer's
     :class:`~pycuda.gpuarray.GPUArray`.
 
     Args:
@@ -187,11 +187,11 @@ def get_device(arg=None):
 
 
 def use_device(arg, pop=True):
-    """Swithces the CUDA context to use given device.
+    """Switches the CUDA context to use given device.
 
     Args:
         arg: Argument of :func:`get_device`.
-        pop (bool): If True, this function pops the current context from context
+        pop (bool): If True, pop the current context from context
             stack.
 
     """
@@ -242,7 +242,7 @@ def using_device(*args):
     """Returns :class:`DeviceUser` object of the first
     :class:`~pycuda.gpuarray.GPUArray` argument.
 
-    If none of the arguments specifies a GPU device, then it returns dummy
+    If none of the arguments specifies a GPU device, then it returns a dummy
     :class:`DeviceUser` object which is inactive.
 
     Args:
@@ -255,7 +255,7 @@ def using_device(*args):
 
         Suppose ``arrays`` is a list of arrays of type either
         :class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`. Then,
-        following code invokes ``do_something_on`` with an appropriate context::
+        the following code invokes ``do_something_on`` with an appropriate context::
 
             with using_device(*arrays):
                 do_something_on(arrays)
@@ -346,7 +346,7 @@ def get_generator(device=None):
 
 
 def seed(s=None, device=None):
-    """Resets the random number generator of the specified device by given seed.
+    """Resets the random number generator of the specified device by the given seed.
 
     Args:
         s (int or None): Seed value. If it is ``None``, it initializes the
@@ -383,7 +383,7 @@ GPUArray.copy = _gpuarray_copy
 
 
 def to_gpu(array, device=None):
-    """Copies given CPU array to specified device.
+    """Copies the given CPU array to specified device.
 
     Args:
         array: Array to be sent to GPU.
@@ -393,7 +393,7 @@ def to_gpu(array, device=None):
         ~pycuda.gpuarray.GPUArray: Array on GPU.
 
         If ``array`` is already on GPU, then this function just returns
-        ``array`` without any copy. Note that this function does not copy
+        ``array`` without performing any copy. Note that this function does not copy
         GPUArray into specified device.
 
     """
@@ -417,7 +417,7 @@ copy_reg.pickle(
 
 
 def to_gpu_async(array, stream=None):
-    """Copies given CPU array asynchronously to the current device.
+    """Copies the given CPU array asynchronously to the current device.
 
     Args:
         array: Array to be sent to GPU. If it is :class:`~numpy.ndarray`, then
@@ -428,7 +428,7 @@ def to_gpu_async(array, stream=None):
         ~pycuda.gpuarray.GPUArray: Array on GPU.
 
         If given ``array`` is already on GPU, then this function just returns
-        ``array`` without any copy.
+        ``array`` without performing any copy.
 
     """
     if isinstance(array, GPUArray):
@@ -437,7 +437,7 @@ def to_gpu_async(array, stream=None):
 
 
 def to_cpu(array):
-    """Copies given GPU array to host CPU.
+    """Copies the given GPU array to host CPU.
 
     Args:
         array: Array to be sent to GPU.
@@ -446,7 +446,7 @@ def to_cpu(array):
         ~numpy.ndarray: Array on CPU.
 
         If given ``array`` is already on CPU, then this function just returns
-        ``array`` without any copy.
+        ``array`` without performing any copy.
 
     """
     if isinstance(array, GPUArray):
@@ -455,7 +455,7 @@ def to_cpu(array):
 
 
 def to_cpu_async(array, stream=None):
-    """Copies given GPU array asynchronously to host CPU.
+    """Copies the given GPU array asynchronously to host CPU.
 
     Args:
         array: Array to be sent to GPU.
@@ -465,7 +465,7 @@ def to_cpu_async(array, stream=None):
         ~numpy.ndarray: Array on CPU.
 
         If given ``array`` is already on CPU, then this function just returns
-        ``array`` without any copy.
+        ``array`` without performing any copy.
 
     """
     if isinstance(array, numpy.ndarray):
@@ -489,7 +489,7 @@ def empty(shape, dtype=numpy.float32):
 
 
 def full(shape, fill_value, dtype=numpy.float32, stream=None):
-    """Creates a constan-filled :class:`~pycuda.gpuarray.GPUArray`.
+    """Creates a constant-filled :class:`~pycuda.gpuarray.GPUArray`.
 
     Args:
         shape (tuple of ints): The shape of array.
@@ -740,7 +740,7 @@ def elementwise(arguments, operation, name, keep=False, options=None,
     the resulting kernel object, i.e. the resulting kernel object is cached for
     each arguments and CUDA context.
 
-    The arguments are same as :func:`pycuda.elementwise.ElementwiseKernel`,
+    The arguments are the same as those for :func:`pycuda.elementwise.ElementwiseKernel`,
     except that ``name`` argument is mandatory.
 
     """
@@ -761,10 +761,10 @@ def reduce(arguments, map_expr, reduce_expr, neutral, name,
 
     This function uses :func:`pycuda.tools.context_dependent_memoize` to cache
     the resulting kernel object, i.e. the resulting kernel object is cached for
-    each arguments and CUDA context.
+    each argument and CUDA context.
 
-    The arguments are same as :func:`pycuda.reduction.ReductionKernel`,
-    except that the order is different and ``name`` argument is mandatory.
+    The arguments are the same as those for :func:`pycuda.reduction.ReductionKernel`,
+    except that their order is different and ``name`` argument is mandatory.
 
     """
     kern = _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
