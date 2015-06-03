@@ -27,12 +27,12 @@ class Inception(Function):
 
     Returns:
         Variable: Output variable. Its array has the same spatial size and the
-            same minibatch size as of the input array. The channel dimension has
+            same minibatch size as the input array. The channel dimension has
             size ``out1 + out3 + out5 + proj_pool``.
 
     .. note::
 
-       This function inserts full computation graph of Inception module behind
+       This function inserts the full computation graph of the Inception module behind
        the input array. This function itself is not inserted into the
        computation graph.
 
