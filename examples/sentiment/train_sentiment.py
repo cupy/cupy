@@ -14,9 +14,8 @@ import re
 import time
 
 import numpy as np
-from chainer import cuda, Variable, FunctionSet
+from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
-import chainer.optimizers as O
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -147,7 +146,7 @@ if args.gpu >= 0:
     model.to_gpu()
 
 # Setup optimizer
-optimizer = O.AdaGrad(lr=0.1)
+optimizer = optimizers.AdaGrad(lr=0.1)
 optimizer.setup(model.collect_parameters())
 
 accum_loss = 0

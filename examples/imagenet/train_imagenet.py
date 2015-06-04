@@ -22,9 +22,8 @@ import time
 import cv2
 import numpy as np
 
-from chainer import cuda, Variable, FunctionSet
+from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
-import chainer.optimizers as O
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from ILSVRC2012 dataset')
@@ -82,7 +81,7 @@ if args.gpu >= 0:
     model.to_gpu()
 
 # Setup optimizer
-optimizer = O.MomentumSGD(lr=0.01, momentum=0.9)
+optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
 optimizer.setup(model.collect_parameters())
 
 

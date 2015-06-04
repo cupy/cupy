@@ -10,9 +10,8 @@ import math
 import sys
 import time
 import numpy as np
-from chainer import cuda, Variable, FunctionSet
+from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
-import chainer.optimizers as O
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -78,7 +77,7 @@ def make_initial_state(batchsize=batchsize, train=True):
             for name in ('c1', 'h1', 'c2', 'h2')}
 
 # Setup optimizer
-optimizer = O.SGD(lr=1.)
+optimizer = optimizers.SGD(lr=1.)
 optimizer.setup(model.collect_parameters())
 
 # Evaluation routine

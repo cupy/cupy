@@ -1,16 +1,15 @@
 #!/usr/bin/env python
-"""Chainer example: train a multi-layer perceptron on MNIST.
+"""Chainer example: train a multi-layer perceptron on MNIST
 
-This is a minimal example to write a feed-forward neural network. It requires
-scikit-learn to load MNIST dataset.
+This is a minimal example to write a feed-forward net. It requires scikit-learn
+to load MNIST dataset.
 
 """
 import argparse
 import numpy as np
 from sklearn.datasets import fetch_mldata
-from chainer import cuda, Variable, FunctionSet
+from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
-import chainer.optimizers as O
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -50,7 +49,7 @@ def forward(x_data, y_data, train=True):
     return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
 
 # Setup optimizer
-optimizer = O.Adam()
+optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
 
 # Learning loop
