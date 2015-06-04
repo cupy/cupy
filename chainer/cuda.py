@@ -45,8 +45,9 @@ try:
     import scikits.cuda.linalg as culinalg
     import scikits.cuda.misc as cumisc
     available = True
-except ImportError:
+except ImportError as e:
     available = False
+    _import_error = e
 
 # ------------------------------------------------------------------------------
 # Basic types
@@ -98,6 +99,12 @@ def init(device=None):
 
     """
     global _contexts, _cublas_handles, _generators, _pid, _pools
+
+    if not available:
+        global _import_error
+        raise RuntimeError(
+            'CUDA environment is not correctly set up. ' +
+            'The original import error said: ' + str(_import_error))
 
     pid = os.getpid()
     if _pid == pid:  # already initialized
