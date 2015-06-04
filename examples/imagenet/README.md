@@ -1,4 +1,4 @@
-# An example of learning large scale convnets
+# Large Scale ConvNets
 
 This is an experimental example of learning from the ILSVRC2012 classification dataset.
 It requires the training and validation dataset of following format:
