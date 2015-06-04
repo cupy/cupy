@@ -163,6 +163,7 @@ def feed_data():
         optimizer.lr *= 0.97
     pool.close()
     pool.join()
+    data_q.put('end')
 
 # Logger
 def log_result():
