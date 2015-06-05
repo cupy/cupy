@@ -2,9 +2,6 @@
 Chainer -- A flexible framework of neural networks
 ==================================================
 
-:Release: |version|
-:Date:    |today|
-
 This is the Chainer documentation.
 
 .. toctree::
