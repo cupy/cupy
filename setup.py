@@ -12,6 +12,7 @@ setup(
               'chainer.cudnn',
               'chainer.functions',
               'chainer.optimizers',
+              'chainer.requirements',
               'chainer.utils'],
     install_requires=['numpy'],
     scripts=['scripts/chainer-cuda-requirements'],
