@@ -24,16 +24,16 @@ Install Chainer via PyPI:
 pip install chainer
 ```
 
-If you want to enable CUDA, install requirements by:
-```
-pip install `chainer-cuda-requirements`
-```
-
-## Installation from Cloned Repository
-
 You can also install Chainer from the source code:
 ```
 python setup.py install
+```
+
+If you want to enable CUDA, first you have to install CUDA and set the environment variable `CUDA_DIR` to the installed path.
+You also have to set binary and library paths by appropriate environment variables like `PATH` and `LD_LIBRARY_PATH`.
+Then install CUDA-related packages by:
+```
+pip install `chainer-cuda-requirements`
 ```
 
 ## License
