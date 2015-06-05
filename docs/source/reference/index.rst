@@ -1,5 +1,5 @@
 ************************
-Chainer reference manual
+Chainer Reference Manual
 ************************
 
 .. module:: chainer
