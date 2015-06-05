@@ -3,7 +3,7 @@
 ## Requirements
 
 Minimum requirements:
-- Python 2.7+ (developing on v2.7.9)
+- Python 2.7+ (v2.7.9 is recommended)
 - NumPy
 
 Requirements to enable CUDA:
@@ -19,14 +19,21 @@ Recommended:
 
 ## Installation
 
-Install Chainer by
+Install Chainer via PyPI:
 ```
-pip install -e .
+pip install chainer
 ```
 
-If you want to enable CUDA, install requirements by
+If you want to enable CUDA, install requirements by:
 ```
-pip install -r cuda-requirements.txt
+pip install `chainer-cuda-requirements`
+```
+
+## Installation from Cloned Repository
+
+You can also install Chainer from the source code:
+```
+python setup.py install
 ```
 
 ## License
