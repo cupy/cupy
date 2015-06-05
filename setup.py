@@ -4,10 +4,10 @@ from distutils.core import setup
 setup(
     name='chainer',
     version='1.0.0',
-    description='Neural network framework with on-the-fly graph construction',
+    description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='https://github.com/pfnet/chainer',
+    url='http://chainer.org/',
     packages=['chainer',
               'chainer.cudnn',
               'chainer.functions',
