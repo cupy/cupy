@@ -1,5 +1,5 @@
-Recurrent Nets and their Computation Graph
-------------------------------------------
+Recurrent Nets and their Computational Graph
+--------------------------------------------
 
 .. currentmodule:: chainer
 
@@ -164,6 +164,6 @@ Since the history of computation is only memorized between variables ``feat`` an
 
 ---------
 
-In this section we have demonstrated how to write recurrent nets in Chainer and some fundamental techniques to manage the history of computation (a.k.a. computation graph).
+In this section we have demonstrated how to write recurrent nets in Chainer and some fundamental techniques to manage the history of computation (a.k.a. computational graph).
 The example in the ``examples/ptb`` directory implements truncated backprop learning of a LSTM language model from the Penn Treebank corpus.
 In the next section, we will review how to use GPU(s) in Chainer.

@@ -77,7 +77,7 @@ The resulting ``y`` is also Variable object, whose value can be extracted by acc
   array([ 16.], dtype=float32)
 
 What ``y`` holds is not only the result value.
-It also holds the history of computation (or computation graph), which enables us to compute its differentiation.
+It also holds the history of computation (or computational graph), which enables us to compute its differentiation.
 This is done by calling its :meth:`~Variable.backward` method::
 
   >>> y.backward()
