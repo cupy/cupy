@@ -34,7 +34,7 @@ class TestBinaryHierarchicalSoftmax(TestCase):
             t = numpy.array([i])
             loss, = self.func.forward_cpu((x, t))
             total += numpy.exp(-loss)
-        self.assertEquals(1.0, total)
+        self.assertEquals(1.0, float(total))
 
     def check_backward(self, x_data, t_data, y_grad, use_cudnn=True):
         x = Variable(x_data)
