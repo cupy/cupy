@@ -108,7 +108,7 @@ We can write truncated backprop using the ``forward_one_step`` function that we 
   seqlen = len(x_list[1:])
   
   for cur_word, next_word in zip(x_list, x_list[1:]):
-      new_loss, h = forward_one_step(h, cur_word, next_word)
+      h, new_loss = forward_one_step(h, cur_word, next_word)
       loss  += new_loss
       count += 1
       if count % 30 == 0 or count == seqlen:
