@@ -24,6 +24,24 @@ def _partial_reduce(x):
                             1, numpy.float32(0.0), ret.gpudata, 1)
     return ret
 
+@cuda.cutools.context_dependent_memoize
+def _create_reduction_kernel(shape0, expr1, expr2):
+    return cuda.elementwise(
+        '''
+            float* ret1, float* ret2,
+            const float* x, const float* y,
+            float alpha, int shape12
+        ''', '''
+            float sum1 = 0, sum2 = 0;
+            for (int j = 0; j < {0}; j++) {{
+                int I = j * shape12 + i;
+                sum1 += {1};
+                sum2 += {2};
+            }}
+            ret1[i] = sum1 * alpha;
+            ret2[i] = sum2 * alpha;
+        '''.format(shape0, expr1, expr2), 'bn_asix02')
+
 def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
     with cuda.using_cumisc():
         shape = x.shape
@@ -35,22 +53,8 @@ def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
         if mean:
             alpha = 1.0 / (shape[0] * shape[2])
 
-        cuda.elementwise(
-            '''
-                float* ret1, float* ret2,
-                const float* x, const float* y,
-                float alpha, int shape12
-            ''', '''
-                float sum1 = 0, sum2 = 0;
-                for (int j = 0; j < {0}; j++) {{
-                    int I = j * shape12 + i;
-                    sum1 += {1};
-                    sum2 += {2};
-                }}
-                ret1[i] = sum1 * alpha;
-                ret2[i] = sum2 * alpha;
-            '''.format(shape[0], expr1, expr2),
-            'bn_asix02')(ret1, ret2, x, y, alpha, shape[1] * shape[2])
+        _create_reduction_kernel(shape[0], expr1, expr2)(
+                ret1, ret2, x, y, alpha, shape[1] * shape[2])
 
         if shape[2] != 1:
             ret1 = _partial_reduce(ret1)
