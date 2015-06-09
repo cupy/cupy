@@ -49,7 +49,7 @@ Suppose that the input word sequence is given as a list of integer arrays.
 The forward computation is simply written with a for loop::
 
   def forward_one_step(h, cur_word, next_word, volatile=False):
-      word = Variable(word_data, volatile=volatile)
+      word = Variable(cur_word, volatile=volatile)
       t    = Variable(next_word, volatile=volatile)
       x    = F.tanh(model.embed(word))
       h    = F.tanh(model.x_to_h(x) + model.h_to_h(h))
