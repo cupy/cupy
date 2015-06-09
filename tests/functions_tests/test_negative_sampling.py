@@ -71,5 +71,5 @@ class TestNegativeSampling(TestCase):
 
     def test_backward_gpu(self):
         self.func.to_gpu()
-        self.check_backward(to_gpu(self.x), to_gpu(self.t), self.gy)
+        self.check_backward(to_gpu(self.x), to_gpu(self.t), to_gpu(self.gy))
 

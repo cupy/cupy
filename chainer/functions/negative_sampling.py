@@ -96,11 +96,22 @@ class NegativeSampling(Function):
             return self.samples
 
         size = int(t.shape[0])
-        samples = numpy.ndarray((size, self.sample_size + 1), numpy.int32)
         # first one is the positive, and others are sampled negatives
-        samples.T[0] = to_cpu(t)
-        samples.T[1:] = self.sampler.sample((self.sample_size, size))
+        samples = self.sampler.sample((size, self.sample_size + 1))
+        if isinstance(samples, numpy.ndarray):
+            samples.T[0] = t
+        else:
+            cuda.elementwise(
+                'const int* t, int* s, int m',
+                ''' s[i * m] = t[i]; ''',
+                'negative_sampling_assign'
+            )(t, samples, self.sample_size + 1)
+
         self.samples = samples
+
+    def to_gpu(self, device=None):
+        Function.to_gpu(self, device)
+        self.sampler.to_gpu()
 
     def forward_cpu(self, (x, t)):
         self._make_samples(t)
@@ -116,7 +127,6 @@ class NegativeSampling(Function):
     def forward_gpu(self, (x, t)):
         n_in = x.shape[1]
         self._make_samples(t)
-        self.samples = to_gpu(self.samples)
 
         wx = cuda.empty((x.shape[0], self.sample_size + 1))
         cuda.elementwise(
@@ -175,16 +185,11 @@ class NegativeSampling(Function):
         return gx, None
 
     def backward_gpu(self, (x, t), (gloss,)):
-        if isinstance(gloss, GPUArray):
-            gloss = gloss.get()
-        elif isinstance(gloss, numpy.ndarray):
-            gloss = gloss[0]
-
         size = x.shape[0]
         n_in = x.shape[1]
         g = cuda.empty_like(self.wx)
         cuda.elementwise(
-            'float* g, const float* wx, const float gloss, int m',
+            'float* g, const float* wx, const float* gloss, int m',
             '''
             float y;
             if (i % m == 0) {
@@ -193,7 +198,7 @@ class NegativeSampling(Function):
               y = -1;
             }
 
-            g[i] = -y * gloss / (1.0f + __expf(wx[i] * y));
+            g[i] = -y * *gloss / (1.0f + __expf(wx[i] * y));
             ''',
             'negative_sampling_calculate_g'
         )(g, self.wx, gloss, self.sample_size + 1)
