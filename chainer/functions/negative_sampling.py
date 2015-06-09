@@ -24,7 +24,11 @@ class WalkerAlias(object):
             threshold[il] = p
             values[il * 2] = i
             il += 1
+        # fill the rest
+        for i in range(ir, len(probs)):
+            values[i * 2 + 1] = 0
 
+        assert((values < len(threshold)).all())
         self.threshold = threshold
         self.values = values
         self.use_gpu = False
@@ -53,10 +57,14 @@ class WalkerAlias(object):
         cuda.get_generator().fill_uniform(ps)
         vs = cuda.empty(shape, numpy.int32)
         cuda.elementwise(
-            'int* vs, const float* ps, const float* threshold, const int * values, int b',
+            'int* vs, const float* ps, const float* threshold, const int* values, int b',
             '''
             float pb = ps[i] * b;
-            int index = (int)pb;
+            int index = __float2int_rd(pb);
+            // fill_uniform sometimes returns 1.0, so we need to check index
+            if (index >= b) {
+              index = 0;
+            }
             int lr = threshold[index] < pb - index;
             vs[i] = values[index * 2 + lr];
             ''',
