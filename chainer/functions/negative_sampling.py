@@ -1,10 +1,8 @@
 from itertools import izip
 
 import numpy
-from pycuda import gpuarray
 
 from chainer import cuda, Function
-from chainer.cuda import to_cpu, to_gpu, GPUArray
 
 class WalkerAlias(object):
     def __init__(self, probs):
@@ -35,8 +33,8 @@ class WalkerAlias(object):
 
     def to_gpu(self):
         if not self.use_gpu:
-            self.threshold = to_gpu(self.threshold)
-            self.values = to_gpu(self.values)
+            self.threshold = cuda.to_gpu(self.threshold)
+            self.values = cuda.to_gpu(self.values)
             self.use_gpu = True
 
     def sample(self, shape):
@@ -162,7 +160,7 @@ class NegativeSampling(Function):
             ''',
             'negative_sampling_forward'
         )(y, wx, n_in, self.sample_size + 1)
-        loss = gpuarray.sum(y)
+        loss = cuda.gpuarray.sum(y)
         return loss,
 
     def backward_cpu(self, (x, t), (gloss,)):
