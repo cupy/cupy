@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
+mod = cuda if args.gpu >= 0 else np
 
 n_epoch   = 39   # number of epochs
 n_units   = 650  # number of units per layer
@@ -71,7 +72,6 @@ def forward_one_step(x_data, y_data, state, train=True):
     return state, F.softmax_cross_entropy(y, t)
 
 def make_initial_state(batchsize=batchsize, train=True):
-    mod = cuda if args.gpu >= 0 else np
     return {name: Variable(mod.zeros((batchsize, n_units), dtype=np.float32),
                            volatile=not train)
             for name in ('c1', 'h1', 'c2', 'h2')}
@@ -82,24 +82,25 @@ optimizer.setup(model.collect_parameters())
 
 # Evaluation routine
 def evaluate(dataset):
-    sum_log_perp = 0
+    sum_log_perp = mod.zeros(())
     state        = make_initial_state(batchsize=1, train=False)
     for i in xrange(dataset.size - 1):
         x_batch = dataset[i  :i+1]
         y_batch = dataset[i+1:i+2]
         state, loss   = forward_one_step(x_batch, y_batch, state, train=False)
-        sum_log_perp += float(cuda.to_cpu(loss.data))
-    return math.exp(sum_log_perp / (dataset.size - 1))
+        sum_log_perp += loss.data.reshape(())
+
+    return math.exp(cuda.to_cpu(sum_log_perp) / (dataset.size - 1))
 
 # Learning loop
 whole_len    = train_data.shape[0]
 jump         = whole_len / batchsize
-cur_log_perp = 0
+cur_log_perp = mod.zeros(())
 epoch        = 0
 start_at     = time.time()
 cur_at       = start_at
 state        = make_initial_state()
-accum_loss   = 0
+accum_loss   = Variable(mod.zeros(()))
 print 'going to train {} iterations'.format(jump * n_epoch)
 for i in xrange(jump * n_epoch):
     x_batch = np.array([train_data[(jump * j + i) % whole_len]
@@ -108,13 +109,13 @@ for i in xrange(jump * n_epoch):
                         for j in xrange(batchsize)])
     state, loss_i = forward_one_step(x_batch, y_batch, state)
     accum_loss   += loss_i
-    cur_log_perp += float(cuda.to_cpu(loss_i.data))
+    cur_log_perp += loss_i.data.reshape(())
 
     if (i + 1) % bprop_len == 0:  # Run truncated BPTT
         optimizer.zero_grads()
         accum_loss.backward()
         accum_loss.unchain_backward()  # truncate
-        accum_loss = 0
+        accum_loss = Variable(mod.zeros(()))
 
         optimizer.clip_grads(grad_clip)
         optimizer.update()
@@ -122,11 +123,11 @@ for i in xrange(jump * n_epoch):
     if (i + 1) % 10000 == 0:
         now      = time.time()
         throuput = 10000. / (now - cur_at)
-        perp     = math.exp(cur_log_perp / 10000)
+        perp     = math.exp(cuda.to_cpu(cur_log_perp) / 10000)
         print 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(
             i + 1, perp, throuput)
         cur_at   = now
-        cur_log_perp = 0
+        cur_log_perp.fill(0)
 
     if (i + 1) % jump == 0:
         epoch += 1
