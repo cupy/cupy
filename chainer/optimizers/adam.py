@@ -34,7 +34,7 @@ class Adam(Optimizer):
                float one_minus_beta1_t, float one_minus_beta2, float eps''',
             '''m[i] += one_minus_beta1_t * (grad[i] - m[i]);
                v[i] += one_minus_beta2 * (grad[i] * grad[i] - v[i]);
-               param[i] -= lr * m[i] * rsqrtf(v[i] + eps);''',
+               param[i] -= lr * m[i] / (sqrtf(v[i]) + eps);''',
             'adam')(param, grad, m, v, self.lr,
                     1 - self.beta1_t, 1 - self.beta2, self.eps)
 
