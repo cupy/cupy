@@ -102,7 +102,7 @@ All these computations are easily generalized to multi-element array input.
 Note that if we want to start backward computation from a variable holding a multi-element array, we must set the *initial error* manually.
 This is simply done by setting the :attr:`~Variable.grad` attribute of the output variable::
 
-  >>> x = Variable(np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
+  >>> x = Variable(np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32))
   >>> y = x**2 - 2*x + 1
   >>> y.grad = np.ones((2, 3), dtype=np.float32)
   >>> y.backward()
