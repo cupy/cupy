@@ -16,6 +16,7 @@ from chainer.functions import leaky_relu
 from chainer.functions import linear
 from chainer.functions import local_response_normalization
 from chainer.functions import lstm
+from chainer.functions import matmul
 from chainer.functions import mean_squared_error
 from chainer.functions import parameter
 from chainer.functions import pooling_2d
@@ -34,10 +35,12 @@ Copy = copy.Copy
 Dropout = dropout.Dropout
 Identity = identity.Identity
 Reshape = reshape.Reshape
+BatchMatMul = matmul.BatchMatMul
 Exp = basic_math.Exp
 Log = basic_math.Log
 LeakyReLU = leaky_relu.LeakyReLU
 LSTM = lstm.LSTM
+MatMul = matmul.MatMul
 ReLU = relu.ReLU
 Sigmoid = sigmoid.Sigmoid
 Softmax = softmax.Softmax
@@ -71,10 +74,12 @@ identity = identity.identity
 reshape = reshape.reshape
 
 absolute = basic_math.absolute
+batch_matmul = matmul.batch_matmul
 exp = basic_math.exp
 log = basic_math.log
 leaky_relu = leaky_relu.leaky_relu
 lstm = lstm.lstm
+matmul = matmul.matmul
 relu = relu.relu
 sigmoid = sigmoid.sigmoid
 softmax = softmax.softmax
