@@ -31,7 +31,7 @@ Suppose that there are 1,000 different word types, and that we use 100 dimension
 Before writing the forward computation, we have to define parameterized functions::
 
   model = FunctionSet(
-      embed  = F.EmbedID(100),
+      embed  = F.EmbedID(1000, 100),
       x_to_h = F.Linear(100,   50),
       h_to_h = F.Linear( 50,   50),
       h_to_y = F.Linear( 50, 1000),
