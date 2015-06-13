@@ -105,7 +105,7 @@ def traverse(node, train=True, evaluate=None, root=True):
         loss += F.softmax_cross_entropy(y, t)
 
     if evaluate is not None:
-        predict = y.data.argmax(1)
+        predict = cuda.to_cpu(y.data).argmax(1)
         if predict[0] == node['label']:
             evaluate['correct_node'] += 1
         evaluate['total_node'] += 1
