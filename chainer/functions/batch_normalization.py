@@ -7,30 +7,63 @@ def _kernel_with_I(args, expr, name):
         'int I = i / rdim % cdim; {};'.format(expr),
         name)
 
-def _cumean_axis02(x):
-    with cuda.using_cumisc():
-        if x.shape[2] > 1:
-            # cumisc.mean does not support more than two dimensions
-            shape = x.shape
-            x = x.reshape(shape[0] * shape[1], shape[2])
-            x = cuda.cumisc.mean(x, axis=1)
-            x = x.reshape(shape[0], shape[1])
-        else:
-            x = x.reshape(x.shape[:2])
-        return cuda.cumisc.mean(x, axis=0)
+_one = None
 
-def _cusum_axis02(x):
-    with cuda.using_cumisc():
-        if x.shape[2] > 1:
-            # cumisc.sum does not support more than two dimensions
-            shape = x.shape
-            x = x.reshape(shape[0] * shape[1], shape[2])
-            x = cuda.cumisc.sum(x, axis=1)
-            x = x.reshape(shape[0], shape[1])
-        else:
-            x = x.reshape(x.shape[:2])
-        return cuda.cumisc.sum(x, axis=0)
+def _partial_reduce(x):
+    global _one
+    out_axis, sum_axis = x.shape
+    one = _one
+    if one is None or one.size < sum_axis:
+        one = cuda.ones(sum_axis)
+        _one = one
+    one = one[:sum_axis]
+    handle = cuda.get_cublas_handle()
+    ret = cuda.empty(out_axis)
+    cuda.cublas.cublasSgemv(handle, 't', sum_axis, out_axis,
+                            numpy.float32(1.0), x.gpudata, sum_axis, one.gpudata,
+                            1, numpy.float32(0.0), ret.gpudata, 1)
+    return ret
 
+@cuda.cutools.context_dependent_memoize
+def _create_reduction_kernel(shape0, expr1, expr2):
+    return cuda.elementwise(
+        '''
+            float* ret1, float* ret2,
+            const float* x, const float* y,
+            float alpha, int shape12
+        ''', '''
+            float sum1 = 0, sum2 = 0;
+            for (int j = 0; j < {0}; j++) {{
+                int I = j * shape12 + i;
+                sum1 += {1};
+                sum2 += {2};
+            }}
+            ret1[i] = sum1 * alpha;
+            ret2[i] = sum2 * alpha;
+        '''.format(shape0, expr1, expr2), 'bn_asix02')
+
+def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
+    with cuda.using_cumisc():
+        shape = x.shape
+        ret1 = cuda.empty_like(x[0])
+        ret2 = cuda.empty_like(x[0])
+        if y is None:
+            y = x
+        alpha = 1.0
+        if mean:
+            alpha = 1.0 / (shape[0] * shape[2])
+
+        # In most cases shape[0] is constant.
+        # Therefore, the kernel is compiled only once.
+        # If shape[0] is small, Compiler will perform loop unrolling.
+        _create_reduction_kernel(shape[0], expr1, expr2)(
+                ret1, ret2, x, y, alpha, shape[1] * shape[2])
+
+        if shape[2] != 1:
+            ret1 = _partial_reduce(ret1)
+            ret2 = _partial_reduce(ret2)
+        ret_shape = (1, shape[1], 1)
+        return (ret1.reshape(ret_shape), ret2.reshape(ret_shape))
 
 class BatchNormalization(Function):
     """Batch normalization on outputs of linear or convolution functions.
@@ -129,32 +162,24 @@ class BatchNormalization(Function):
         x = x_orig[0].reshape(ldim, cdim, rdim)
 
         if self.use_batch_mean:
-            mean   = _cumean_axis02(x)
-            sqmean = _cumean_axis02(x * x)
+            mean, sqmean = _cusum_axis02(x, mean=True)
             var    = sqmean  # reuse buffer
             cuda.elementwise(
-                'float* var, const float* mean, const float* sqmean, float eps',
-                'var[i] = sqmean[i] - mean[i] * mean[i] + eps',
-                'bn_var')(var, mean, sqmean, self.eps)
+                'float* var, const float* mean, float eps',
+                'var[i] = var[i] - mean[i] * mean[i] + eps',
+                'bn_var')(var, mean, self.eps)
         else:
             mean = self.avg_mean
             var  = self.avg_var
 
-        coeff = cuda.empty_like(var)
-        bias  = cuda.empty_like(var)
-        y     = cuda.empty_like(x_orig[0])
-
-        cuda.elementwise(
-            '''float* coeff, float* bias, const float* mean, const float* var,
-               const float* gamma, const float* beta''',
-            '''coeff[i] = rsqrtf(var[i]) * gamma[i];
-               bias[i]  = beta[i] - coeff[i] * mean[i];''',
-            'bn_fwd_prep')(coeff, bias, mean, var, self.gamma, self.beta)
-
+        y = cuda.empty_like(x_orig[0])
         _kernel_with_I(
-            'float* y, const float* x, const float* coeff, const float* bias',
-            'y[i] = coeff[I] * x[i] + bias[I]',
-            'bn_fwd')(y, x, coeff, bias, cdim, rdim)
+            '''
+                float* y, const float* x,
+                const float* mean, const float* var,
+                const float* gamma, const float* beta
+            ''', 'y[i] = (x[i] - mean[I]) * rsqrtf(var[I]) * gamma[I] + beta[I];',
+            'bn_fwd')(y, x, mean, var, self.gamma, self.beta, cdim, rdim)
 
         # Compute exponential moving average
         if self.use_batch_mean:
@@ -166,12 +191,15 @@ class BatchNormalization(Function):
 
             m = ldim * rdim
             adjust = m / max(m - 1., 1.)  # unbiased estimation
-            kern = cuda.elementwise(
-                'float* mean, const float* x, float decay, float adjust',
-                'mean[i] = decay * mean[i] + (1 - decay) * adjust * x[i]',
-                'bn_moving_avg')
-            kern(self.avg_mean, mean, decay, adjust)
-            kern(self.avg_var,  var,  decay, adjust)
+            cuda.elementwise(
+                '''
+                    float* avg_mean, const float* mean,
+                    float* avg_var, const float* var,
+                    float decay, float adjust
+                ''','''
+                    avg_mean[i] = decay * avg_mean[i] + (1 - decay) * adjust * mean[i];
+                    avg_var[i]  = decay * avg_var[i]  + (1 - decay) * adjust * var[i];
+                ''', 'bn_moving_avg')(self.avg_mean, mean, self.avg_var, var, decay, adjust)
 
         return y,
 
@@ -204,40 +232,48 @@ class BatchNormalization(Function):
         gy = gy[0].reshape(ldim, cdim, rdim)
         m = ldim * rdim
 
-        mean   = _cumean_axis02(x)
-        sqmean = _cumean_axis02(x * x)
+        mean, sqmean = _cusum_axis02(x, mean=True)
         stdinv = sqmean  # reuse buffer
         cuda.elementwise(
-            'float* stdinv, const float* mean, const float* sqmean, float eps',
-            'stdinv[i] = rsqrtf(sqmean[i] - mean[i] * mean[i] + eps)',
-            'bn_stdinv')(stdinv, mean, sqmean, self.eps)
+            'float* stdinv, const float* mean, float eps',
+            'stdinv[i] = rsqrtf(stdinv[i] - mean[i] * mean[i] + eps)',
+            'bn_stdinv')(stdinv, mean, self.eps)
 
         x_hat = cuda.empty_like(x)
         gx    = cuda.empty_like(x)
 
         _kernel_with_I(
-            'float* x_hat, const float* x, const float* mean, const float* stdinv',
-            'x_hat[i] = (x[i] - mean[I]) * stdinv[I]',
+            '''
+                float* x_hat, const float* x,
+                const float* mean, const float* stdinv
+            ''', 'x_hat[i] = (x[i] - mean[I]) * stdinv[I]',
             'bn_x_hat')(x_hat, x, mean, stdinv, cdim, rdim)
         mean = None
 
-        ggamma = _cusum_axis02(x_hat * gy)
-        gbeta  = _cusum_axis02(gy)
-        # TODO(beam2d): Unify these lines into one kernel
-        self.ggamma += ggamma.reshape(self.ggamma.shape)
-        self.gbeta  += gbeta.reshape(self.gbeta.shape)
-
-        coeff = stdinv  # reuse buffer
-        coeff *= self.gamma
-        ggamma /= m
-        gbeta  /= m
+        gbeta, ggamma = _cusum_axis02(gy, x_hat, expr2='x[I] * y[I]')
+        cuda.elementwise(
+            '''
+                float* self_ggammma, const float* ggamma,
+                float* slef_gbeta, const float* gbeta
+            ''','''
+                self_ggammma[i] += ggamma[i];
+                slef_gbeta[i] += gbeta[i];
+            ''','bn_add')(
+                self.ggamma, ggamma,
+                self.gbeta, gbeta)
 
         _kernel_with_I(
-            '''float* gx, const float* x_hat, const float* gy, const float* coeff,
-               const float* ggamma, const float* gbeta''',
-            'gx[i] = coeff[I] * (gy[i] - x_hat[i] * ggamma[I] - gbeta[I])',
-            'bn_bwd')(gx, x_hat, gy, coeff, ggamma, gbeta, cdim, rdim)
-
+            '''
+                float* gx, const float* x_hat,
+                const float* gy, const float* stdinv,
+                const float* ggamma, const float* gbeta,
+                const float* gamma, float inv_m
+            ''','''
+                gx[i] = gamma[I] * stdinv[I] *
+                    (gy[i] - (x_hat[i] * ggamma[I] + gbeta[I]) * inv_m)
+            ''','bn_bwd')(
+                gx, x_hat, gy, stdinv, ggamma, gbeta,
+                self.gamma, 1. / m, cdim, rdim)
         return gx.reshape(x_orig[0].shape),
 
     def _internal_shape(self, x):
