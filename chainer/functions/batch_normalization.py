@@ -54,7 +54,7 @@ def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
             alpha = 1.0 / (shape[0] * shape[2])
 
         # In most cases shape[0] is constant.
-        # Therefore, compiling the kernel only once in this code.
+        # Therefore, the kernel is compiled only once.
         # If shape[0] is small, Compiler will perform loop unrolling.
         _create_reduction_kernel(shape[0], expr1, expr2)(
                 ret1, ret2, x, y, alpha, shape[1] * shape[2])
