@@ -71,8 +71,8 @@ elif args.arch == 'googlenet':
     import googlenet
     model = googlenet.GoogLeNet()
 elif args.arch == 'googlenetbn':
-    import inceptionbn
-    model = inceptionbn.GoogLeNetBN()
+    import googlenetbn
+    model = googlenetbn.GoogLeNetBN()
 else:
     raise ValueError('Invalid architecture name')
 

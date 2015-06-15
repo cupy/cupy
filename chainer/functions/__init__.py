@@ -37,3 +37,4 @@ from sum                   import sum
 
 # Parameterized models
 from inception import Inception
+from inceptionbn import InceptionBN
