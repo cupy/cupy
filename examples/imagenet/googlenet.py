@@ -1,6 +1,5 @@
-from chainer import Function, FunctionSet, Variable
+from chainer import FunctionSet, Variable
 import chainer.functions as F
-from chainer.functions.pooling_2d import AveragePooling2D, MaxPooling2D
 
 class GoogLeNet(FunctionSet):
 
