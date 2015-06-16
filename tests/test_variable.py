@@ -51,29 +51,51 @@ class TestVariable(TestCase):
             self.assertTrue(all(intermediate_grads))
         self.assertFalse(any([x.grad is None for x in outputs]))
 
-    def create_linear_chain(self, gpu):
+    # length is number of edges. So, # of Variables created is length+1
+    def create_linear_chain(self, length, gpu):
         if gpu:
             x = Variable(cuda.to_gpu(self.x))
         else:
             x = Variable(self.x)
-        y = constant((x, ), (self.a,))
-        z = constant((y, ), (self.a,))
-        z.grad = np.zeros_like(z.data)
-        return (x, y, z)
+        ret = [x]
+        for i in xrange(length):
+            ret.append(constant((ret[i], ), (self.a, )))
+        ret[-1].grad = np.zeros_like(ret[-1].data)
+        return ret
 
     def test_backward_cpu(self):
-        x, y, z = self.create_linear_chain(False)
-        self.check_backward((x, ), (y, ), (z, ), False)
+        ret = self.create_linear_chain(2, False)
+        self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), False)
 
     def test_backward_gpu(self):
-        x, y, z = self.create_linear_chain(True)
-        self.check_backward((x, ), (y, ), (z, ), False)
+        ret = self.create_linear_chain(2, True)
+        self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), False)
 
     def test_backward_cpu_retain_grad(self):
-        x, y, z = self.create_linear_chain(False)
-        self.check_backward((x, ), (y, ), (z, ), True)
+        ret = self.create_linear_chain(2, False)
+        self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), True)
 
     def test_backward_gpu_retain_grad(self):
-        x, y, z = self.create_linear_chain(True)
-        self.check_backward((x, ), (y, ), (z, ), True)
+        ret = self.create_linear_chain(2, True)
+        self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), True)
 
+    def test_unchain_backward_cpu(self):
+        ret = self.create_linear_chain(3, False)
+        ret[1].unchain_backward()
+        self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
+        
+    def test_unchain_backward_gpu(self):
+        ret = self.create_linear_chain(3, True)
+        ret[1].unchain_backward()
+        self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
+        
+    def test_unchain_backward_cpu_retain_grad(self):
+        ret = self.create_linear_chain(3, False)
+        ret[1].unchain_backward()
+        self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
+        
+    def test_unchain_backward_gpu_retain_grad(self):
+        ret = self.create_linear_chain(3, False)
+        ret[1].unchain_backward()
+        self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
+        
