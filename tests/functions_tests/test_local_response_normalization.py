@@ -3,8 +3,9 @@ import numpy
 from chainer import cuda, Variable
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import local_response_normalization
-
-cuda.init()
+from .. import attr
+if cuda.available:
+    cuda.init()
 
 class TestLocalResponseNormalization(TestCase):
     def setUp(self):
@@ -30,6 +31,7 @@ class TestLocalResponseNormalization(TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
+    @attr.gpu
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
@@ -48,5 +50,6 @@ class TestLocalResponseNormalization(TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
+    @attr.gpu
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))

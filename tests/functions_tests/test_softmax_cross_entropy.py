@@ -5,8 +5,9 @@ from chainer      import cuda, Variable
 from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import softmax_cross_entropy
-
-cuda.init()
+from .. import attr
+if cuda.available:
+    cuda.init()
 
 class TestSoftmaxCrossEntropy(TestCase):
     def setUp(self):
@@ -31,9 +32,11 @@ class TestSoftmaxCrossEntropy(TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
 
+    @attr.cudnn
     def test_forward_gpu(self):
         self.check_forward(to_gpu(self.x), to_gpu(self.t))
 
+    @attr.gpu
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(to_gpu(self.x), to_gpu(self.t), False)
 
@@ -53,8 +56,10 @@ class TestSoftmaxCrossEntropy(TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t)
 
+    @attr.cudnn
     def test_backward_gpu(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.t))
 
+    @attr.gpu
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.t), False)

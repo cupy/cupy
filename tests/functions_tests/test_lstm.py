@@ -4,8 +4,9 @@ from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import lstm
-
-cuda.init()
+from .. import attr
+if cuda.available:
+    cuda.init()
 
 def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
@@ -48,9 +49,11 @@ class TestLSTM(TestCase):
         self.flat()
         self.test_forward_cpu()
 
+    @attr.gpu
     def test_forward_gpu(self):
         self.check_forward(to_gpu(self.c_prev), to_gpu(self.x))
 
+    @attr.gpu
     def test_flat_forward_gpu(self):
         self.flat()
         self.test_forward_gpu()
@@ -91,26 +94,32 @@ class TestLSTM(TestCase):
         self.flat()
         self.test_no_gh_backward_cpu()
 
+    @attr.gpu
     def test_full_backward_gpu(self):
         self.check_backward(
             to_gpu(self.c_prev), to_gpu(self.x), to_gpu(self.gc), to_gpu(self.gh))
 
+    @attr.gpu
     def test_flat_full_backward_gpu(self):
         self.flat()
         self.test_full_backward_gpu()
 
+    @attr.gpu
     def test_no_gc_backward_gpu(self):
         self.check_backward(
             to_gpu(self.c_prev), to_gpu(self.x), None, to_gpu(self.gh))
 
+    @attr.gpu
     def test_flat_no_gc_backward_gpu(self):
         self.flat()
         self.test_no_gc_backward_gpu()
 
+    @attr.gpu
     def test_no_gh_backward_gpu(self):
         self.check_backward(
             to_gpu(self.c_prev), to_gpu(self.x), to_gpu(self.gc), None)
 
+    @attr.gpu
     def test_flat_no_gh_backward_gpu(self):
         self.flat()
         self.test_no_gh_backward_gpu()
