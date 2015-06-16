@@ -1,5 +1,9 @@
 import numpy
 
+import chainer.walker_alias
+
+WalkerAlias = chainer.walker_alias.WalkerAlias
+
 
 def force_array(x):
     # numpy returns a float value (scalar) when a return value of an operator
