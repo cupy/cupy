@@ -14,8 +14,7 @@ class NegativeSampling(Function):
 
     def __init__(self, in_size, counts, sample_size, power=0.75):
         self.sample_size = sample_size
-        # precision of float32 is not enough for `numpy.random.choice`
-        p = numpy.array(counts, numpy.float64)
+        p = numpy.array(counts, numpy.float32)
         p = numpy.power(p, power)
         self.sampler = WalkerAlias(p)
         
