@@ -5,6 +5,7 @@ from chainer.cuda import to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose
 from chainer.functions import concat
 from .. import attr
+
 if cuda.available:
     cuda.init()
 

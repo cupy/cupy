@@ -3,6 +3,7 @@ import numpy
 from chainer import cuda, Variable
 from chainer.functions import reshape
 from .. import attr
+
 if cuda.available:
     cuda.init()
 

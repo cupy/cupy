@@ -5,6 +5,7 @@ from chainer.cuda import to_cpu, to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import mean_squared_error
 from .. import attr
+
 if cuda.available:
     cuda.init()
 

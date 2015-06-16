@@ -5,6 +5,7 @@ from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import average_pooling_2d, max_pooling_2d
 from .. import attr
+
 if cuda.available:
     cuda.init()
 

@@ -6,6 +6,7 @@ from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import softmax_cross_entropy
 from .. import attr
+
 if cuda.available:
     cuda.init()
 

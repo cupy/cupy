@@ -10,6 +10,5 @@ def attr(*args, **kwargs):
         return x
     return wrap
 
-gpu = attr('gpu')
+gpu   = attr('gpu')
 cudnn = attr('gpu', 'cudnn')
-

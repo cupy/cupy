@@ -7,6 +7,7 @@ from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import Convolution2D
 from chainer.utils import conv
 from .. import attr
+
 if cuda.available:
     cuda.init()
 
