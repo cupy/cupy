@@ -17,6 +17,7 @@ Learnable connections
 .. autoclass:: Convolution2D
 .. autoclass:: EmbedID
 .. autoclass:: Linear
+.. autoclass:: NegativeSampling
 .. autoclass:: Parameter
 
 Array manipulation functions

@@ -7,7 +7,47 @@ from chainer.utils import WalkerAlias
 
 
 class NegativeSampling(Function):
-    """Negative sampling."""
+    """Implementation of negative sampling.
+
+    In natural language processing especially language modeling, a number of
+    vocabulraly is very large.
+    So, you need to spend a lot of time to calculate gradient of an embedding
+    matrix.
+
+    Instead, in negative sampling trick, you only need to calculate gradient for
+    a few sampled negative examples.
+
+    Objective function is below:
+
+    .. math::
+
+       f(x, p) = \log\sigma(x^\\top w_p) + \\
+       k E_{i \sim P(i)}[\log\sigma(- x^\\top w_i)],
+
+    where :math:`\sigma(\cdot)` is a sigmoid function, :math:`w_i` is a wegith
+    vector for a word :math:`i`, and :math:`p` is a positive example.
+    It is approximeted with :math:`k` examples :math:`N` sampled from probabity
+    :math:`P(i)`, like this:
+
+    .. math::
+
+       f(x, p) \\approx \log\sigma(x^\\top w_p) + \\
+       \sum_{n \in N} \log\sigma(-x^\\top w_n).
+
+    These samples are drawn from probabilities of words :math:`P(w)`.
+    That is calculated as :math:`P(w) = \\frac{1}{Z} c(w)^\\alpha`, where
+    :math:`c(w)` is unigram count of a word :math:`w`, :math:`\\alpha` is a
+    hyper-parameter, and :math:`Z` is a normalization constant.
+
+    Args:
+        in_size (int): Dimension of input vectors.
+        counts (int list): Number of each identifiers.
+        sample_size (int): Number of negative samples.
+        power (float): Power factor :math:`\\alpha`.
+
+    See: `Distributed Representations of Words and Phrases and their\
+         Compositionality <http://arxiv.org/abs/1310.4546>`_
+    """
 
     parameter_names = ('W',)
     gradient_names = ('gW',)
