@@ -1,0 +1,12 @@
+language: python
+
+python:
+  - "2.7"
+
+install:
+  - python setup.py install
+  - pip install nose
+
+script:
+  - chainer-cuda-requirements
+  - nosetests -a '!gpu'
