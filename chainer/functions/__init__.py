@@ -32,6 +32,7 @@ from local_response_normalization import local_response_normalization
 # Loss, evaluation and aggregation
 from accuracy              import accuracy
 from mean_squared_error    import mean_squared_error
+from sigmoid_cross_entropy import sigmoid_cross_entropy
 from softmax_cross_entropy import softmax_cross_entropy
 from sum                   import sum
 
