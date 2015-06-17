@@ -10,6 +10,7 @@ setup(
     url='http://chainer.org/',
     packages=[],
     install_requires=[
+        'chainer',
         'pycuda>=2014.1',
         'scikits.cuda>=0.5.0b1,!=0.042',
         'Mako',
