@@ -38,7 +38,7 @@ pip install chainer-cuda-deps
 
 or, from the source:
 ```
-python setup_cuda_deps.py install
+python cuda_deps/setup.py install
 ```
 
 ## License
