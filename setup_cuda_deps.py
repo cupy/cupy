@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name='chainer-cuda-deps',
     version='1.0.0',
-    description='A flexible framework of neural networks',
+    description='Install dependent packages to use Chainer on CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     url='http://chainer.org/',
