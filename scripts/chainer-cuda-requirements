@@ -5,4 +5,7 @@ import chainer.requirements
 
 
 if __name__ == '__main__':
+   sys.stderr.write('## This script is deplicated.\n')
+   sys.stderr.write('## Please use `pip install chainer-cuda-deps`\n')
+   sys.stderr.flush()
    sys.stdout.write(chainer.requirements.get_cuda_requirements())
