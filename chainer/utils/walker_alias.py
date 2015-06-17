@@ -4,6 +4,21 @@ from chainer import cuda
 
 
 class WalkerAlias(object):
+    """Implementation of Walker's alias method.
+
+    This method generates a random sample from given probabilities
+    :math:`p_1, \dots, p_n` in :math:`O(1)` time.
+    It is more efficient than :func:`~numpy.random.choice`.
+    This class has sampling methods in CPU and in GPU.
+
+    Args:
+        probs (float list): Probabilities of entries. They are normalized with
+                            `sum(probs)`.
+
+    See: `Wikipedia article <https://en.wikipedia.org/wiki/Alias_method>`_
+
+    """
+
     def __init__(self, probs):
         prob = numpy.array(probs, numpy.float32)
         prob /= numpy.sum(prob)
@@ -31,12 +46,24 @@ class WalkerAlias(object):
         self.use_gpu = False
 
     def to_gpu(self):
+        """Make a sampler GPU mode.
+        """
         if not self.use_gpu:
             self.threshold = cuda.to_gpu(self.threshold)
             self.values = cuda.to_gpu(self.values)
             self.use_gpu = True
 
     def sample(self, shape):
+        """Generates a random sample based on given probabilities.
+
+        Args:
+            shape (tuple of int): Shape of a return value.
+
+        Returns:
+            Returns a generated array with the given shape. If a sampler is in
+            CPU mode the return value is :class:`~numpy.ndarray`, and if it is
+            in GPU mode the return value is :class:`~pycuda.gpuarray.GPUArray`.
+        """
         if self.use_gpu:
             return self.sample_gpu(shape)
         else:
