@@ -26,7 +26,8 @@ class AdaDelta(Optimizer):
         msdx += (1 - self.rho) * dx * dx
         param -= dx
 
-    def update_one_gpu(self, param, grad, ms):
+    def update_one_gpu(self, param, grad, state):
+        msg, msdx = state
         cuda.elementwise(
             '''float* param, const float* grad, float* msg, float* msdx,
                float one_minus_rho, float eps''',
