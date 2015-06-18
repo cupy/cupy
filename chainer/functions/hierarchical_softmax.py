@@ -66,15 +66,16 @@ class BinaryHierarchicalSoftmax(Function):
     corresponding to a word in a vocabulary.
     When a word :math:`x` is given, exactly one path from the root of the tree
     to the leaf of the word exists.
-    :math:`p(x) = (e_1, b_1, \dots, e_m, b_m)` is assumed to be the path, where
-    :math:`e_i` is an index of :math:`i`-th internal node, and
-    :math:`b_i \in \{-1, 1\}` means left or right.
+    Let :math:`\mbox{path}(x) = (e_1, b_1, \dots, e_m, b_m)` be the path of
+    :math:`x`, where :math:`e_i` is an index of :math:`i`-th internal node, and
+    :math:`b_i \in \{-1, 1\}` indicates direction to move at :math:`i`-th
+    internal node (-1 is left, and 1 is right).
     Then, the probability of :math:`x` is given as below:
 
     .. math::
 
-       P(x) = \prod_{(e_i, b_i) \in p(x)} P(b_i | e_i)  \\\\
-            = \prod_{(e_i, b_i) \in p(x)} \sigma(b_i x^\\top w_{e_i}),
+       P(x) = \prod_{(e_i, b_i) \in \mbox{path}(x)} P(b_i | e_i)  \\\\
+            = \prod_{(e_i, b_i) \in \mbox{path}(x)} \sigma(b_i x^\\top w_{e_i}),
 
     where :math:`\sigma(\\cdot)` is a sigmoid function, and :math:`w` is a
     weight matrix.
@@ -87,7 +88,7 @@ class BinaryHierarchicalSoftmax(Function):
         in_size (int): Dimension of input vectors.
         tree: A binary tree made with tuples like `((1, 2), 3)`.
 
-    See: Hierarchical Probabilistic Neural Network Language Model.
+    See: Hierarchical Probabilistic Neural Network Language Model [Morin+, AISTAT2005].
     """
 
     parameter_names = ('W',)
