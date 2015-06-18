@@ -12,6 +12,9 @@ class TestFunctionSet(TestCase):
             b = Linear(3, 2)
         )
 
+    def test_get_sorted_funcs(self):
+        self.assertItemsEqual([k for (k, v) in self.fs._get_sorted_funcs()], ('a', 'b'))
+
     def check_equal_fs(self, fs1, fs2):
         self.assertTrue((fs1.a.W == fs2.a.W).all())
         self.assertTrue((fs1.a.b == fs2.a.b).all())
