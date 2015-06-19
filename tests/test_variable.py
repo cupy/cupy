@@ -5,7 +5,8 @@ from chainer import cuda, Variable, Function
 from chainer.gradient_check import assert_allclose
 from chainer.testing import attr
 
-cuda.init()
+if cuda.available:
+    cuda.init()
 
 class Constant(Function):
     def __init__(self, outputs):

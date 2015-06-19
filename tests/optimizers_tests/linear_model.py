@@ -2,7 +2,8 @@ import numpy as np
 from chainer import cuda, Variable, FunctionSet
 from chainer.functions import Linear, softmax_cross_entropy, accuracy
 
-cuda.init()
+if cuda.available:
+    cuda.init()
 
 class LinearModel(object):
     UNIT_NUM = 10
