@@ -4,7 +4,8 @@ from chainer import cuda, Optimizer
 from chainer.optimizer import _sqnorm
 from chainer.testing import attr
 
-cuda.init()
+if cuda.available:
+    cuda.init()
 
 class TestOptimizerUtility(TestCase):
     def setUp(self):
