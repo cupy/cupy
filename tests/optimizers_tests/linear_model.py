@@ -11,16 +11,16 @@ class LinearModel(object):
 
     def __init__(self, optimizer):
         self.model = FunctionSet(
-            l = Linear(LinearModel.UNIT_NUM, 2)
+            l = Linear(self.UNIT_NUM, 2)
         )
         self.optimizer = optimizer
         # true parameters
-        self.w      = np.random.uniform(-1, 1, (LinearModel.UNIT_NUM, 1)).astype(np.float32)
+        self.w      = np.random.uniform(-1, 1, (self.UNIT_NUM, 1)).astype(np.float32)
         self.b      = np.random.uniform(-1, 1, (1, )).astype(np.float32)
 
     def _train_linear_classifier(self, model, optimizer, gpu):
         def _make_label(x):
-            a = (np.dot(x, self.w) + self.b).reshape((LinearModel.BATCH_SIZE, ))
+            a = (np.dot(x, self.w) + self.b).reshape((self.BATCH_SIZE, ))
             t = np.empty_like(a).astype(np.int32)
             t[a>=0] = 0
             t[a< 0] = 1
@@ -36,15 +36,15 @@ class LinearModel(object):
             t = Variable(t_data)
             return x, t
 
-        for epoch in xrange(LinearModel.EPOCH):
-            x, t = _make_dataset(LinearModel.BATCH_SIZE, LinearModel.UNIT_NUM, gpu)
+        for epoch in xrange(self.EPOCH):
+            x, t = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu)
             optimizer.zero_grads()
             y = model.l(x)
             loss = softmax_cross_entropy(y, t)
             loss.backward()
             optimizer.update()
 
-        x_test, t_test = _make_dataset(LinearModel.BATCH_SIZE, 10, gpu)
+        x_test, t_test = _make_dataset(self.BATCH_SIZE, 10, gpu)
         y_test = model.l(x_test)
         return accuracy(y_test, t_test)
 
