@@ -76,7 +76,6 @@ class TestBinaryOp(TestCase):
     def test_div_backward_cpu(self): self.backward_cpu(lambda x, y: x / y)
     def test_pow_backward_cpu(self): self.backward_cpu(lambda x, y: x ** y, atol=1e-4)
 
-    @attr.gpu
     def backward_gpu(self, op, atol=1e-5):
         self.check_backward(op, to_gpu(self.x1), to_gpu(self.x2), to_gpu(self.gy), atol)
 
