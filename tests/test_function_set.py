@@ -2,7 +2,7 @@ import cPickle as pickle
 from unittest import TestCase
 from chainer import cuda, FunctionSet
 from chainer.functions import Linear
-from . import attr
+from chainer.testing import attr
 
 if cuda.available:
     cuda.init()

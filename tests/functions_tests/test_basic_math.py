@@ -4,7 +4,7 @@ from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 import chainer.functions as F
-from .. import attr
+from chainer.testing import attr
 
 if cuda.available:
     cuda.init()
@@ -15,7 +15,6 @@ class TestBinaryOp(TestCase):
         self.x2 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
-    @attr.gpu
     def check_forward(self, op, x1_data, x2_data):
         x1 = Variable(x1_data)
         x2 = Variable(x2_data)
@@ -33,7 +32,6 @@ class TestBinaryOp(TestCase):
     def test_div_forward_cpu(self): self.forward_cpu(lambda x, y: x / y)
     def test_pow_forward_cpu(self): self.forward_cpu(lambda x, y: x ** y)
 
-    @attr.gpu
     def forward_gpu(self, op):
         self.check_forward(op, to_gpu(self.x1), to_gpu(self.x2))
 
@@ -119,7 +117,6 @@ class TestVariableConstantOp(TestCase):
     def test_pow_forward_cpu(self):  self.forward_cpu(lambda x, y: x ** y)
     def test_rpow_forward_cpu(self): self.forward_cpu(lambda x, y: y ** x)
 
-    @attr.gpu
     def forward_gpu(self, op):
         self.check_forward(op, to_gpu(self.x))
 
@@ -170,7 +167,6 @@ class TestVariableConstantOp(TestCase):
     def test_pow_backward_cpu(self):  self.backward_cpu(lambda x, y: x ** y)
     def test_rpow_backward_cpu(self): self.backward_cpu(lambda x, y: y ** x)
 
-    @attr.gpu
     def backward_gpu(self, op):
         self.check_backward(op, to_gpu(self.x), to_gpu(self.gy))
 

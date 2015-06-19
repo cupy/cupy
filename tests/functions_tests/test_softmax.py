@@ -4,7 +4,7 @@ from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import softmax
-from .. import attr
+from chainer.testing import attr
 
 if cuda.available:
     cuda.init()

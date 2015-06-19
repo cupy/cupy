@@ -4,7 +4,7 @@ from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import EmbedID
-from .. import attr
+from chainer.testing import attr
 
 if cuda.available:
     cuda.init()
@@ -19,7 +19,6 @@ class TestEmbedID(TestCase):
         self.x  = numpy.array([0, 1, 0], dtype=numpy.int32)
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
-    @attr.gpu
     def to_gpu(self):
         self.func.W  = to_gpu(self.func.W)
         self.func.gW = to_gpu(self.func.gW)

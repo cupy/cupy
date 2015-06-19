@@ -3,7 +3,7 @@ import numpy
 from chainer import cuda, Variable
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import Parameter
-from .. import attr
+from chainer.testing import attr
 
 if cuda.available:
     cuda.init()
@@ -17,7 +17,6 @@ class TestParameter(TestCase):
     def tearDown(self):
         del self.func
 
-    @attr.gpu
     def to_gpu(self):
         self.func.to_gpu()
 

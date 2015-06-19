@@ -3,7 +3,7 @@ import numpy
 from chainer import cuda, Variable
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import local_response_normalization
-from .. import attr
+from chainer.testing import attr
 
 if cuda.available:
     cuda.init()
