@@ -4,8 +4,10 @@ from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import relu
+from chainer.testing import attr
 
-cuda.init()
+if cuda.available:
+    cuda.init()
 
 class TestReLU(TestCase):
     def setUp(self):
@@ -29,8 +31,10 @@ class TestReLU(TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
+    @attr.cudnn
     def test_backward_gpu(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
 
+    @attr.gpu
     def test_backward_cpu_no_cudnn(self):
         self.check_backward(to_gpu(self.x), to_gpu(self.gy), False)
