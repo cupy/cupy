@@ -306,7 +306,6 @@ class TestUnaryFunctions(TestCase):
     def test_exp_forward_cpu(self): self.forward_cpu(F.exp, numpy.exp)
     def test_log_forward_cpu(self): self.forward_cpu(F.log, numpy.log)
 
-    @attr.gpu
     def forward_gpu(self, op, op_np):
         self.check_forward(op, op_np, to_gpu(self.x))
 
@@ -333,7 +332,6 @@ class TestUnaryFunctions(TestCase):
     def test_exp_backward_cpu(self): self.backward_cpu(F.exp)
     def test_log_backward_cpu(self): self.backward_cpu(F.log)
 
-    @attr.gpu
     def backward_gpu(self, op):
         self.check_backward(op, to_gpu(self.x), to_gpu(self.gy))
 
