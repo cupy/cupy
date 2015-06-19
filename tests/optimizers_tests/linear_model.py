@@ -44,7 +44,7 @@ class LinearModel(object):
             loss.backward()
             optimizer.update()
 
-        x_test, t_test = _make_dataset(self.BATCH_SIZE, 10, gpu)
+        x_test, t_test = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu)
         y_test = model.l(x_test)
         return accuracy(y_test, t_test)
 
