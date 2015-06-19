@@ -6,8 +6,11 @@ from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import Convolution2D
 from chainer.utils import conv
+from chainer.testing import attr
 
-cuda.init()
+if cuda.available:
+    cuda.init()
+
 
 class TestConvolution2D(TestCase):
     def setUp(self, use_cudnn=True):
@@ -20,11 +23,13 @@ class TestConvolution2D(TestCase):
         self.x  = numpy.random.uniform(-1, 1, (2, 3, 4, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (2, 2, 2, 2)).astype(numpy.float32)
 
+    @attr.gpu
     def test_im2col_consistency(self):
         col_cpu = conv.im2col_cpu(self.x, 3, 3, 2, 2, 1, 1)
         col_gpu = conv.im2col_gpu(to_gpu(self.x), 3, 3, 2, 2, 1, 1)
         assert_allclose(col_cpu, col_gpu.get(), atol=0, rtol=0)
 
+    @attr.gpu
     def test_col2im_consistency(self):
         col = conv.im2col_cpu(self.x, 3, 3, 2, 2, 1, 1)
         h, w = self.x.shape[2:]
@@ -32,6 +37,7 @@ class TestConvolution2D(TestCase):
         im_gpu = conv.col2im_gpu(to_gpu(col), 2, 2, 1, 1, h, w)
         assert_allclose(im_cpu, im_gpu.get())
 
+    @attr.cudnn
     def test_forward_consistency(self):
         x_cpu = Variable(self.x)
         y_cpu = self.func(x_cpu)
@@ -44,6 +50,7 @@ class TestConvolution2D(TestCase):
             print i, numpy.abs(y_cpu.data[i] - y_gpu.data[i].get()).max()
         assert_allclose(y_cpu.data, y_gpu.data.get())
 
+    @attr.gpu
     def test_forward_consistency_im2col(self):
         self.func.use_cudnn = False
         self.test_forward_consistency()
@@ -65,10 +72,12 @@ class TestConvolution2D(TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
+    @attr.cudnn
     def test_backward_gpu(self):
         self.func.to_gpu()
         self.check_backward(to_gpu(self.x), to_gpu(self.gy))
 
+    @attr.gpu
     def test_backward_gpu_im2col(self):
         self.func.use_cudnn = False
         self.test_backward_gpu()
@@ -93,6 +102,7 @@ class TestConvolution2D(TestCase):
     def test_pickling_cpu(self):
         self.check_pickling(self.x)
 
+    @attr.gpu
     def test_pickling_gpu(self):
         self.func.to_gpu()
         self.check_pickling(to_gpu(self.x))

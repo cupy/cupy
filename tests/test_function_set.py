@@ -3,8 +3,10 @@ import cPickle as pickle
 from unittest import TestCase
 from chainer import cuda, FunctionSet, Function
 from chainer.functions import Linear
+from chainer.testing import attr
 
-cuda.init()
+if cuda.available:
+    cuda.init()
 
 class MockFunction(Function):
     def __init__(self, shape):
@@ -75,6 +77,7 @@ class TestFunctionSet(TestCase):
         fs2 = pickle.loads(s)
         self.check_equal_fs(self.fs, fs2)
 
+    @attr.gpu
     def test_pickle_gpu(self):
         self.fs.to_gpu()
         s   = pickle.dumps(self.fs)

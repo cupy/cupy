@@ -2,8 +2,10 @@ from unittest import TestCase
 import numpy
 from chainer import cuda, Variable
 from chainer.functions import reshape
+from chainer.testing import attr
 
-cuda.init()
+if cuda.available:
+    cuda.init()
 
 class TestReshape(TestCase):
     def setUp(self):
@@ -19,6 +21,7 @@ class TestReshape(TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
+    @attr.gpu
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 

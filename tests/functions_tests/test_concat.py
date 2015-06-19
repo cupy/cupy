@@ -4,8 +4,10 @@ from chainer      import cuda, Variable
 from chainer.cuda import to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose
 from chainer.functions import concat
+from chainer.testing import attr
 
-cuda.init()
+if cuda.available:
+    cuda.init()
 
 class Concat(TestCase):
     def setUp(self):
@@ -26,10 +28,12 @@ class Concat(TestCase):
     def test_forward_cpu_1(self):
         self.check_forward(self.xs1, self.y1, axis=0)
 
+    @attr.gpu
     def test_forward_gpu_0(self):
         self.check_forward(
             [to_gpu(x.copy()) for x in self.xs0], to_gpu(self.y0), axis=1)
 
+    @attr.gpu
     def test_forward_gpu_1(self):
         self.check_forward(
             [to_gpu(x.copy()) for x in self.xs1], to_gpu(self.y1), axis=0)
@@ -49,8 +53,10 @@ class Concat(TestCase):
     def test_backward_cpu_1(self):
         self.check_backward(self.xs1, axis=0)
 
+    @attr.gpu
     def test_backward_gpu_0(self):
         self.check_backward([to_gpu(x.copy()) for x in self.xs0], axis=1)
 
+    @attr.gpu
     def test_backward_gpu_1(self):
         self.check_backward([to_gpu(x.copy()) for x in self.xs1], axis=0)

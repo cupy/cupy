@@ -17,4 +17,5 @@ setup(
     package_data={'chainer.requirements': ['cuda-requirements.txt']},
     install_requires=['numpy'],
     scripts=['scripts/chainer-cuda-requirements'],
+    tests_require=['nose'],
 )

@@ -3,7 +3,7 @@ from unittest import TestCase
 import numpy
 
 from chainer import Variable
-from chainer.cuda import to_cpu, to_gpu, GPUArray
+from chainer.cuda import to_cpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import BinaryHierarchicalSoftmax, create_huffman_tree
 
