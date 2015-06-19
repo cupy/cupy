@@ -44,13 +44,12 @@ class TestVariable(TestCase):
         for o in outputs:
             o.backward(retain_grad)
 
-        self.assertFalse(any([x.grad is None for x in inputs]))
-        intermediate_grads = [x.grad is None for x in intermediates]
+        self.assertTrue(all([x.grad is not None for x in inputs]))
         if retain_grad:
-            self.assertFalse(any(intermediate_grads))
+            self.assertTrue(all([x.grad is not None for x in intermediates]))
         else:
-            self.assertTrue(all(intermediate_grads))
-        self.assertFalse(any([x.grad is None for x in outputs]))
+            self.assertTrue(all([x.grad is None for x in intermediates]))
+        self.assertTrue(any([x.grad is not None for x in outputs]))
 
     # length is number of edges. So, # of Variables created is length+1
     def create_linear_chain(self, length, gpu):
