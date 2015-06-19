@@ -32,6 +32,7 @@ class TestNestedFunctionSet(TestCase):
         gp_a = np.ones((1, 2)).astype(np.float32)
 
         actual = self.fs2.collect_parameters()
+        self.assertTrue(map(len, actual) == [2, 2])
         self.assertTrue((actual[0][0] == p_b).all())
         self.assertTrue((actual[0][1] == p_a).all())
         self.assertTrue((actual[1][0] == gp_b).all())
