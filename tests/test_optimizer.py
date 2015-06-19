@@ -7,8 +7,6 @@ cuda.init()
 
 class TestOptimizerUtility(TestCase):
     def setUp(self):
-        # x is an arithmetic progression of length 6
-        # whose common difference is 0.5
         self.x = np.linspace(-1.0, 1.5, num=6).astype(np.float32).reshape(2, 3)
         self.a = np.array(2.0)
 

@@ -174,8 +174,10 @@ class TestVariableConstantArrayOp(TestCase):
     def forward_cpu(self, op):
         self.check_forward(op, self.x, False)
 
-    # 2015/6/15 Kenta OONO <oono@preferred.jp>
-    # Commented tests do not work. See issue #43
+    # TODO(delta2323): Commented tests check if op(array, Variable)
+    # work where op is radd/rsub and so on.
+    # Currently these fails. See issue #43 for details.
+    # (https://github.com/pfnet/chainer/issues/43)
     def test_add_forward_cpu(self):  self.forward_cpu(lambda x, y: x + y)
     # def test_radd_forward_cpu(self): self.forward_cpu(lambda x, y: y + x)
     def test_sub_forward_cpu(self):  self.forward_cpu(lambda x, y: x - y)
@@ -233,13 +235,12 @@ class TestVariableConstantArrayOp(TestCase):
     def backward_gpu(self, op):
         self.check_backward(op, to_gpu(self.x), to_gpu(self.gy), True)
 
-    # 2015/6/15 Kenta OONO <oono@preferred.jp>
-    # backward_gpu of SubFromConstant(rsub), DivFromConstant(rdiv),
-    # and PowVarConst(pow), PowConstVar(rpow) assume constant value is scalar.
     def test_add_backward_gpu(self):  self.backward_gpu(lambda x, y: x + y)
     # def test_radd_backward_gpu(self): self.backward_gpu(lambda x, y: y + x)
     def test_sub_backward_gpu(self):  self.backward_gpu(lambda x, y: x - y)
-    # def test_rsub_backward_gpu(self): self.backward_gpu(lambda x, y: y - x)
+    # TODO(delta2323): backward_gpu of SubFromConstant(resp. DivFromConstant,
+    # PowVarConst(pow) and PowConstVar(rpow)) assumes constant value is scalar.
+    # So corresponding test for rsub (resp. rsub, rdiv, pow, and rpow) fails.
     def test_mul_backward_gpu(self):  self.backward_gpu(lambda x, y: x * y)
     # def test_rmul_backward_gpu(self): self.backward_gpu(lambda x, y: y * x)
     def test_div_backward_gpu(self):  self.backward_gpu(lambda x, y: x / y)
