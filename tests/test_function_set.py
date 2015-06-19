@@ -46,6 +46,7 @@ class TestNestedFunctionSet(TestCase):
         self.assertTrue((self.fs2.b.p == fs2_loaded.b.p).all())
         self.assertTrue((self.fs2.fs1.a.p == fs2_loaded.fs1.a.p).all())
 
+    @attr.gpu
     def test_pickle_gpu(self):
         self.fs2.to_gpu()
         fs2_serialized = pickle.dumps(self.fs2)

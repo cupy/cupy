@@ -10,5 +10,6 @@ class TestAdaDelta(TestCase):
     def test_linear_model_cpu(self):
         self.assertGreater(self.model.accuracy(False), 0.75)
 
+    @attr.gpu
     def test_linear_model_gpu(self):
         self.assertGreater(self.model.accuracy(True), 0.75)

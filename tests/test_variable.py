@@ -38,6 +38,7 @@ class TestVariable(TestCase):
         self.assertEqual(len(x), 10)
 
     def test_len_cpu(self): self.check_len(False)
+    @attr.gpu
     def test_len_gpu(self): self.check_len(True)
 
     def check_backward(self, inputs, intermediates, outputs, retain_grad):
@@ -67,6 +68,7 @@ class TestVariable(TestCase):
         ret = self.create_linear_chain(2, False)
         self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), False)
 
+    @attr.gpu
     def test_backward_gpu(self):
         ret = self.create_linear_chain(2, True)
         self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), False)
@@ -75,6 +77,7 @@ class TestVariable(TestCase):
         ret = self.create_linear_chain(2, False)
         self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), True)
 
+    @attr.gpu
     def test_backward_gpu_retain_grad(self):
         ret = self.create_linear_chain(2, True)
         self.check_backward((ret[0], ), (ret[1], ), (ret[2], ), True)
@@ -84,6 +87,7 @@ class TestVariable(TestCase):
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
         
+    @attr.gpu
     def test_unchain_backward_gpu(self):
         ret = self.create_linear_chain(3, True)
         ret[1].unchain_backward()
@@ -94,6 +98,7 @@ class TestVariable(TestCase):
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
         
+    @attr.gpu
     def test_unchain_backward_gpu_retain_grad(self):
         ret = self.create_linear_chain(3, False)
         ret[1].unchain_backward()

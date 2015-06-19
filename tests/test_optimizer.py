@@ -17,10 +17,12 @@ class TestOptimizerUtility(TestCase):
     def test_sqnorm_scalar_cpu(self):
         self.assertAlmostEqual(_sqnorm(self.a), 4)
 
+    @attr.gpu
     def test_sqnorm_gpu(self):
         x = cuda.to_gpu(self.x)
         self.assertAlmostEqual(_sqnorm(x), 4.75)
 
+    @attr.gpu
     def test_sqnorm_scalar_gpu(self):
         a = cuda.to_gpu(self.a)
         self.assertAlmostEqual(_sqnorm(a), 4)

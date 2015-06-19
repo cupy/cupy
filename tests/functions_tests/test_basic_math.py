@@ -225,14 +225,19 @@ class TestVariableConstantArrayOp(TestCase):
     def forward_gpu(self, op):
         self.check_forward(op, to_gpu(self.x), True)
 
+    @attr.gpu
     def test_add_forward_gpu(self):  self.forward_gpu(lambda x, y: x + y)
     # def test_radd_forward_gpu(self): self.forward_gpu(lambda x, y: y + x)
+    @attr.gpu
     def test_sub_forward_gpu(self):  self.forward_gpu(lambda x, y: x - y)
     # def test_rsub_forward_gpu(self): self.forward_gpu(lambda x, y: y - x)
+    @attr.gpu
     def test_mul_forward_gpu(self):  self.forward_gpu(lambda x, y: x * y)
     # def test_rmul_forward_gpu(self): self.forward_gpu(lambda x, y: y * x)
+    @attr.gpu
     def test_div_forward_gpu(self):  self.forward_gpu(lambda x, y: x / y)
     # def test_rdiv_forward_gpu(self): self.forward_gpu(lambda x, y: y / x)
+    @attr.gpu
     def test_pow_forward_gpu(self):  self.forward_gpu(lambda x, y: x ** y)
     # def test_rpow_forward_gpu(self): self.forward_gpu(lambda x, y: y ** x)
 
@@ -268,14 +273,18 @@ class TestVariableConstantArrayOp(TestCase):
     def backward_gpu(self, op):
         self.check_backward(op, to_gpu(self.x), to_gpu(self.gy), True)
 
+    @attr.gpu
     def test_add_backward_gpu(self):  self.backward_gpu(lambda x, y: x + y)
     # def test_radd_backward_gpu(self): self.backward_gpu(lambda x, y: y + x)
+    @attr.gpu
     def test_sub_backward_gpu(self):  self.backward_gpu(lambda x, y: x - y)
     # TODO(delta2323): backward_gpu of SubFromConstant(resp. DivFromConstant,
     # PowVarConst(pow) and PowConstVar(rpow)) assumes constant value is scalar.
     # So corresponding test for rsub (resp. rsub, rdiv, pow, and rpow) fails.
+    @attr.gpu
     def test_mul_backward_gpu(self):  self.backward_gpu(lambda x, y: x * y)
     # def test_rmul_backward_gpu(self): self.backward_gpu(lambda x, y: y * x)
+    @attr.gpu
     def test_div_backward_gpu(self):  self.backward_gpu(lambda x, y: x / y)
     # def test_rdiv_backward_gpu(self): self.backward_gpu(lambda x, y: y / x)
     # def test_pow_backward_gpu(self):  self.backward_gpu(lambda x, y: x ** y)
