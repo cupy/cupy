@@ -3,6 +3,7 @@ import numpy as np
 
 from chainer import cuda, Variable, Function
 from chainer.gradient_check import assert_allclose
+from chainer.testing import attr
 
 cuda.init()
 

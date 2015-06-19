@@ -1,6 +1,7 @@
 from unittest import TestCase
 from linear_model import LinearModel
 from chainer.optimizers import AdaDelta
+from chainer.testing import attr
 
 class TestAdaDelta(TestCase):
     def setUp(self):

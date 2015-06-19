@@ -1,6 +1,7 @@
 from unittest import TestCase
 from linear_model import LinearModel
 from chainer.optimizers import AdaGrad
+from chainer.testing import attr
 
 class TestAdaGrad(TestCase):
     def setUp(self):
