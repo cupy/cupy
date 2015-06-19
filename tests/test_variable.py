@@ -30,14 +30,15 @@ class TestVariable(TestCase):
         self.x = np.random.uniform(-1, 1, 10).astype(np.float32)
         self.a = np.random.uniform(0.1, 10, 10).astype(np.float32)
 
-    def check_len(self, x, gpu):
+    def check_len(self, gpu):
+        x = self.x
         if gpu:
             x = cuda.to_gpu(x)
         x = Variable(x)
         self.assertEqual(len(x), 10)
 
-    def test_len_cpu(self): self.check_len(self.x, False)
-    def test_len_gpu(self): self.check_len(self.x, True)
+    def test_len_cpu(self): self.check_len(False)
+    def test_len_gpu(self): self.check_len(True)
 
     def check_backward(self, inputs, intermediates, outputs, retain_grad):
         for o in outputs:
