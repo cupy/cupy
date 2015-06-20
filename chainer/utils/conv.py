@@ -4,9 +4,9 @@ from chainer import cuda
 
 def get_conv_outsize(size, k, s, p, cover_all=False):
     if cover_all:
-        return int((size + p * 2 - k + s - 1) / s + 1)
+        return (size + p * 2 - k + s - 1) // s + 1
     else:
-        return int((size + p * 2 - k) / s + 1)
+        return (size + p * 2 - k) // s + 1
 
 def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
     n, c, h, w = img.shape

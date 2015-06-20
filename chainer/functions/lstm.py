@@ -76,7 +76,7 @@ class LSTM(Function):
     def forward_gpu(self, inputs):
         c_prev, x = inputs
         lsize = c_prev.shape[0] * c_prev.shape[1]
-        rsize = int(c_prev.size / lsize)
+        rsize = c_prev.size // lsize
 
         self.c = cuda.empty_like(c_prev)
         h      = cuda.empty_like(c_prev)
@@ -94,7 +94,7 @@ class LSTM(Function):
         c_prev, x = inputs
         gc, gh    = grad_outputs
         lsize = c_prev.shape[0] * c_prev.shape[1]
-        rsize = int(c_prev.size / lsize)
+        rsize = c_prev.size // lsize
 
         # Odd rule to determine whether the gradient is given or not.
         if gc is None: gc = self.c

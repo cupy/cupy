@@ -82,8 +82,8 @@ class MaxPooling2D(Pooling2D):
             return super(MaxPooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
-        y_h = int(conv.get_conv_outsize(h, self.kh, self.sy, self.ph, self.cover_all))
-        y_w = int(conv.get_conv_outsize(w, self.kw, self.sx, self.pw, self.cover_all))
+        y_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph, self.cover_all)
+        y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw, self.cover_all)
         y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
         self.indexes = cuda.empty((n, c, y_h, y_w), dtype=numpy.int32)
 

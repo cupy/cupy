@@ -95,7 +95,7 @@ def evaluate(dataset):
 
 # Learning loop
 whole_len    = train_data.shape[0]
-jump         = int(whole_len / batchsize)
+jump         = whole_len // batchsize
 cur_log_perp = mod.zeros(())
 epoch        = 0
 start_at     = time.time()

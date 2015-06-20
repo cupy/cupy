@@ -46,7 +46,7 @@ class PReLU(Function):
     def forward_gpu(self, x):
         self._check_shape(x[0])
         cdim = self.W.size
-        rdim = int(x[0].size / (x[0].shape[0] * cdim))
+        rdim = x[0].size // (x[0].shape[0] * cdim)
         y    = cuda.empty_like(x[0])
         _fwd_kern()(y, x[0], x[0], self.W, cdim, rdim)
         return y,
@@ -67,7 +67,7 @@ class PReLU(Function):
     def backward_gpu(self, x, gy):
         ldim = x[0].shape[0]
         cdim = self.W.size
-        rdim = int(x[0].size / (ldim * cdim))
+        rdim = x[0].size // (ldim * cdim)
 
         masked = cuda.empty_like(x[0])
         cuda.elementwise('float* masked, const float* x, const float* gy',
