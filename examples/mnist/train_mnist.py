@@ -22,7 +22,7 @@ n_epoch   = 20
 n_units   = 1000
 
 # Prepare dataset
-print 'fetch MNIST dataset'
+print('fetch MNIST dataset')
 mnist = fetch_mldata('MNIST original')
 mnist.data   = mnist.data.astype(np.float32)
 mnist.data  /= 255
@@ -55,7 +55,7 @@ optimizer.setup(model.collect_parameters())
 
 # Learning loop
 for epoch in range(1, n_epoch+1):
-    print 'epoch', epoch
+    print('epoch', epoch)
 
     # training
     perm = np.random.permutation(N)
@@ -76,8 +76,8 @@ for epoch in range(1, n_epoch+1):
         sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
         sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
 
-    print 'train mean loss={}, accuracy={}'.format(
-        sum_loss / N, sum_accuracy / N)
+    print('train mean loss={}, accuracy={}'.format(
+        sum_loss / N, sum_accuracy / N))
 
     # evaluation
     sum_accuracy = 0
@@ -94,5 +94,5 @@ for epoch in range(1, n_epoch+1):
         sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
         sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
 
-    print 'test  mean loss={}, accuracy={}'.format(
-        sum_loss / N_test, sum_accuracy / N_test)
+    print('test  mean loss={}, accuracy={}'.format(
+        sum_loss / N_test, sum_accuracy / N_test))
