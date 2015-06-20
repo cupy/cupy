@@ -1,8 +1,9 @@
 import copy, weakref
 import numpy
+from six import iteritems
 
-import cuda
-from variable import Variable
+from . import cuda
+from .variable import Variable
 
 class Function(object):
     """Function of variable(s) to variable(s) that leaves footprint to the
@@ -329,7 +330,7 @@ class Function(object):
 
         """
         with cuda.using_device(device):
-            for k, v in self.__dict__.iteritems():
+            for k, v in iteritems(self.__dict__):
                 if isinstance(v, numpy.ndarray):
                     setattr(self, k, cuda.to_gpu(v))
                 elif isinstance(v, cuda.GPUArray) and v.gpudata.device != device:
@@ -346,7 +347,7 @@ class Function(object):
             self.
 
         """
-        for k, v in self.__dict__.iteritems():
+        for k, v in iteritems(self.__dict__):
             if isinstance(v, cuda.GPUArray):
                 setattr(self, k, cuda.to_cpu(v))
         return self

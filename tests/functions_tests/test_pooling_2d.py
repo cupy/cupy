@@ -1,5 +1,6 @@
 from unittest import TestCase
 import numpy
+from six.moves import range
 from chainer      import cuda, Variable
 from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
@@ -27,8 +28,8 @@ class TestMaxPooling2D(TestCase):
         y_data = to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
-        for k in xrange(2):
-            for c in xrange(3):
+        for k in range(2):
+            for c in range(3):
                 if self.cover_all:
                     expect = numpy.array([
                         [self.x[k, c, 0:2, 0:2].max(), self.x[k, c, 0:2, 1:3].max()],
@@ -95,8 +96,8 @@ class TestAveragePooling2D(TestCase):
         y_data = to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
-        for k in xrange(2):
-            for c in xrange(3):
+        for k in range(2):
+            for c in range(3):
                 expect = numpy.array([
                     [self.x[k, c, 0:2, 0:2].sum(), self.x[k, c, 0:2, 1:3].sum()],
                     [self.x[k, c, 1:4, 0:2].sum(), self.x[k, c, 1:4, 1:3].sum()]]

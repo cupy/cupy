@@ -30,8 +30,10 @@ the device that the memory is allocated on. Functions of :mod:`cuda` uses this
 attribute to select appropriate device on each manipulation routine.
 
 """
-import atexit, copy_reg, os
+import atexit, os
 import numpy
+from six import itervalues
+from six.moves import copyreg
 
 try:
     import pycuda.driver as drv
@@ -143,7 +145,7 @@ def shutdown():
     if _pid != pid:  # not initialized
         return
 
-    for cublas_handle in _cublas_handles.itervalues():
+    for cublas_handle in itervalues(_cublas_handles):
         cublas.cublasDestroy(cublas_handle)
     _cublas_handles = {}
 
@@ -151,7 +153,7 @@ def shutdown():
 
     _pools = {}
 
-    for ctx in _contexts.itervalues():
+    for ctx in itervalues(_contexts):
         ctx.detach()
     _contexts = {}
     _pid      = None  # mark as uninitialized
@@ -417,7 +419,7 @@ def _reconstruct(array, is_chainer_array):
         return to_gpu(array)
     return gpuarray.to_gpu(array)
 
-copy_reg.pickle(
+copyreg.pickle(
     GPUArray,
     lambda data: (_reconstruct, (data.get(), hasattr(data.gpudata, 'device'))),
     _reconstruct)

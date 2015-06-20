@@ -1,6 +1,6 @@
 import math
 import numpy
-import cuda
+from . import cuda
 
 # TODO(delta2323): Make it public function and move it to common directory.
 def _sqnorm(x):

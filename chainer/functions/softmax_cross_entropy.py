@@ -1,4 +1,5 @@
 import numpy
+from six.moves import range
 from chainer import cuda, cudnn, Function
 from chainer.functions.softmax import Softmax
 
@@ -11,7 +12,7 @@ class SoftmaxCrossEntropy(Function):
     def forward_cpu(self, inputs):
         x, t = inputs
         self.y, = Softmax().forward_cpu((x,))
-        return -numpy.log(self.y[xrange(len(t)), t]).sum(keepdims=True) / t.size,
+        return -numpy.log(self.y[range(len(t)), t]).sum(keepdims=True) / t.size,
 
     def forward_gpu(self, inputs):
         x, t = inputs
@@ -25,7 +26,7 @@ class SoftmaxCrossEntropy(Function):
     def backward_cpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
         gx = self.y.copy()
-        gx[xrange(len(t)), t] -= 1
+        gx[range(len(t)), t] -= 1
         gx *= gloss[0] / t.size
         return gx, None
 

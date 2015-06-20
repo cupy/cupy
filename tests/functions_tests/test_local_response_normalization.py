@@ -1,5 +1,6 @@
 from unittest import TestCase
 import numpy
+from six.moves import range
 from chainer import cuda, Variable
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import local_response_normalization
@@ -22,7 +23,7 @@ class TestLocalResponseNormalization(TestCase):
         y_expect = numpy.zeros_like(self.x)
         for n, c, h, w in numpy.ndindex(self.x.shape):
             s = 0
-            for i in xrange(max(0, c - 2), min(7, c + 2)):
+            for i in range(max(0, c - 2), min(7, c + 2)):
                 s += self.x[n, i, h, w] ** 2
             denom = (2 + 1e-4 * s) ** .75
             y_expect[n, c, h, w] = self.x[n, c, h, w] / denom

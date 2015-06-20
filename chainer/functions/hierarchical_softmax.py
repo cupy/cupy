@@ -1,8 +1,9 @@
 import collections
-from itertools import izip
-from Queue import PriorityQueue
 
 import numpy
+from six import iteritems
+from six.moves import zip
+from six.moves.queue import PriorityQueue
 from chainer import Function
 
 class TreeParser(object):
@@ -103,13 +104,14 @@ class BinaryHierarchicalSoftmax(Function):
         self.W = numpy.random.uniform(-1, 1, (parser.size(), in_size)).astype(numpy.float32)
         self.gW = numpy.zeros(self.W.shape, numpy.float32)
 
-    def forward_cpu(self, (x, t)):
+    def forward_cpu(self, args):
+        x, t = args
         assert x.ndim == 2 and x.dtype.kind == 'f'
         assert t.ndim == 1 and t.dtype.kind == 'i'
         assert len(x) == len(t)
 
         loss = 0.0
-        for ix, it in izip(x, t):
+        for ix, it in zip(x, t):
             loss += self._forward_cpu_one(ix, it)
         return numpy.array([loss]),
 
@@ -121,9 +123,11 @@ class BinaryHierarchicalSoftmax(Function):
         loss = numpy.logaddexp(0, -wxy)  # == log(1 + exp(-wxy))
         return numpy.sum(loss)
 
-    def backward_cpu(self, (x, t), (gloss,)):
+    def backward_cpu(self, args, loss):
+        x, t = args
+        gloss, = loss
         gx = numpy.empty_like(x)
-        for i, (ix, it) in enumerate(izip(x, t)):
+        for i, (ix, it) in enumerate(zip(x, t)):
             gx[i] = self._backward_cpu_one(ix, it, gloss[0])
         return gx, None
 
@@ -157,7 +161,7 @@ def create_huffman_tree(word_counts):
         raise ValueError('Empty vocabulary')
 
     q = PriorityQueue()
-    for w, c in word_counts.iteritems():
+    for w, c in iteritems(word_counts):
         q.put((c, w))
 
     while q.qsize() >= 2:

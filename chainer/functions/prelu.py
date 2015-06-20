@@ -1,4 +1,5 @@
 import numpy
+from six.moves import range
 from chainer import cuda, Function
 
 def _fwd_kern():
@@ -45,7 +46,7 @@ class PReLU(Function):
     def forward_gpu(self, x):
         self._check_shape(x[0])
         cdim = self.W.size
-        rdim = x[0].size / (x[0].shape[0] * cdim)
+        rdim = int(x[0].size / (x[0].shape[0] * cdim))
         y    = cuda.empty_like(x[0])
         _fwd_kern()(y, x[0], x[0], self.W, cdim, rdim)
         return y,
@@ -53,7 +54,7 @@ class PReLU(Function):
     def backward_cpu(self, x, gy):
         mask = x[0] >= 0
         masked_x_gy = numpy.ma.array(x[0] * gy[0], mask=mask)
-        axes = (0,) + tuple(xrange(1 + len(self.W.shape), gy[0].ndim))
+        axes = (0,) + tuple(range(1 + len(self.W.shape), gy[0].ndim))
         self.gW += masked_x_gy.sum(axis=axes)
 
         gx = gy[0].copy()
@@ -66,7 +67,7 @@ class PReLU(Function):
     def backward_gpu(self, x, gy):
         ldim = x[0].shape[0]
         cdim = self.W.size
-        rdim = x[0].size / (ldim * cdim)
+        rdim = int(x[0].size / (ldim * cdim))
 
         masked = cuda.empty_like(x[0])
         cuda.elementwise('float* masked, const float* x, const float* gy',

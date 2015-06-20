@@ -7,6 +7,7 @@ to load MNIST dataset.
 """
 import argparse
 import numpy as np
+from six.moves import range
 from sklearn.datasets import fetch_mldata
 from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
@@ -53,14 +54,14 @@ optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
 
 # Learning loop
-for epoch in xrange(1, n_epoch+1):
+for epoch in range(1, n_epoch+1):
     print 'epoch', epoch
 
     # training
     perm = np.random.permutation(N)
     sum_accuracy = 0
     sum_loss = 0
-    for i in xrange(0, N, batchsize):
+    for i in range(0, N, batchsize):
         x_batch = x_train[perm[i:i+batchsize]]
         y_batch = y_train[perm[i:i+batchsize]]
         if args.gpu >= 0:
@@ -81,7 +82,7 @@ for epoch in xrange(1, n_epoch+1):
     # evaluation
     sum_accuracy = 0
     sum_loss     = 0
-    for i in xrange(0, N_test, batchsize):
+    for i in range(0, N_test, batchsize):
         x_batch = x_test[i:i+batchsize]
         y_batch = y_test[i:i+batchsize]
         if args.gpu >= 0:

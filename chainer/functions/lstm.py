@@ -1,9 +1,10 @@
 import numpy
+from six.moves import range
 from chainer import cuda, Function
 
 def _extract_gates(x):
     r = x.reshape((x.shape[0], x.shape[1] / 4, 4) + x.shape[2:])
-    return (r[:, :, i] for i in xrange(4))
+    return (r[:, :, i] for i in range(4))
 
 def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
@@ -75,7 +76,7 @@ class LSTM(Function):
     def forward_gpu(self, inputs):
         c_prev, x = inputs
         lsize = c_prev.shape[0] * c_prev.shape[1]
-        rsize = c_prev.size / lsize
+        rsize = int(c_prev.size / lsize)
 
         self.c = cuda.empty_like(c_prev)
         h      = cuda.empty_like(c_prev)
@@ -93,7 +94,7 @@ class LSTM(Function):
         c_prev, x = inputs
         gc, gh    = grad_outputs
         lsize = c_prev.shape[0] * c_prev.shape[1]
-        rsize = c_prev.size / lsize
+        rsize = int(c_prev.size / lsize)
 
         # Odd rule to determine whether the gradient is given or not.
         if gc is None: gc = self.c

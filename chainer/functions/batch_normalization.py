@@ -280,6 +280,6 @@ class BatchNormalization(Function):
     def _internal_shape(self, x):
         ldim = x.shape[0]
         cdim = self.gamma.size
-        rdim = x.size / (ldim * cdim)
+        rdim = int(x.size / (ldim * cdim))
         assert ldim * cdim * rdim == x.size
         return ldim, cdim, rdim

@@ -1,10 +1,11 @@
 import numpy
+from six.moves import range
 from chainer import cuda, Function
 
 def _cu_conv_sum(y, x, n):
     # Convolutional sum
     # TODO(beam2d): Use scan computation
-    rdim = x.size / (x.shape[0] * x.shape[1])
+    rdim = int(x.size / (x.shape[0] * x.shape[1]))
     cuda.elementwise(
         'float* y, const float* x, int rdim, int N, int n_',
         '''
@@ -38,10 +39,10 @@ class LocalResponseNormalization(Function):
         self.beta  = beta
 
     def forward_cpu(self, x):
-        half_n = self.n / 2
+        half_n = int(self.n / 2)
         x2 = x[0] * x[0]
         sum_part = x2.copy()
-        for i in xrange(1, half_n + 1):
+        for i in range(1, half_n + 1):
             sum_part[:, i:  ] += x2[:,  :-i]
             sum_part[:,  :-i] += x2[:, i:  ]
         self.unit_scale = self.k + self.alpha * sum_part
@@ -50,10 +51,10 @@ class LocalResponseNormalization(Function):
         return self.y,
 
     def backward_cpu(self, x, gy):
-        half_n = self.n / 2
+        half_n = int(self.n / 2)
         summand = self.y * gy[0] / self.unit_scale
         sum_part = summand.copy()
-        for i in xrange(1, half_n + 1):
+        for i in range(1, half_n + 1):
             sum_part[:, i:  ] += summand[:,  :-i]
             sum_part[:,  :-i] += summand[:, i:  ]
 

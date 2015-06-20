@@ -10,6 +10,7 @@ import math
 import sys
 import time
 import numpy as np
+from six.moves import range
 from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
 
@@ -84,7 +85,7 @@ optimizer.setup(model.collect_parameters())
 def evaluate(dataset):
     sum_log_perp = mod.zeros(())
     state        = make_initial_state(batchsize=1, train=False)
-    for i in xrange(dataset.size - 1):
+    for i in range(dataset.size - 1):
         x_batch = dataset[i  :i+1]
         y_batch = dataset[i+1:i+2]
         state, loss   = forward_one_step(x_batch, y_batch, state, train=False)
@@ -102,11 +103,11 @@ cur_at       = start_at
 state        = make_initial_state()
 accum_loss   = Variable(mod.zeros(()))
 print 'going to train {} iterations'.format(jump * n_epoch)
-for i in xrange(jump * n_epoch):
+for i in range(jump * n_epoch):
     x_batch = np.array([train_data[(jump * j + i) % whole_len]
-                        for j in xrange(batchsize)])
+                        for j in range(batchsize)])
     y_batch = np.array([train_data[(jump * j + i + 1) % whole_len]
-                        for j in xrange(batchsize)])
+                        for j in range(batchsize)])
     state, loss_i = forward_one_step(x_batch, y_batch, state)
     accum_loss   += loss_i
     cur_log_perp += loss_i.data.reshape(())

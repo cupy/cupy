@@ -1,5 +1,6 @@
 from unittest import TestCase
 import numpy
+from six.moves import range
 from chainer import cuda, Variable
 from chainer.cuda import to_cpu, to_gpu
 from chainer.gradient_check import assert_allclose
@@ -20,7 +21,7 @@ class TestAccuracy(TestCase):
         y = accuracy(x, t)
 
         count = 0
-        for i in xrange(self.t.size):
+        for i in range(self.t.size):
             pred = self.x[i].argmax()
             if pred == self.t[i]:
                 count += 1
