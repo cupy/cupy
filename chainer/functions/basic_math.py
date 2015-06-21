@@ -1,5 +1,6 @@
 import math
 import numpy
+from numbers import Number
 from chainer import cuda, Function, Variable
 
 # ------------------------------------------------------------------------------
@@ -135,10 +136,16 @@ class DivFromConstant(Function):
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
-        cuda.elementwise(
-            'float* gx, const float* x, const float* gy, float value',
-            'gx[i] = -value * gy[i] / (x[i] * x[i])',
-            'div_from_const_bwd')(gx, x[0], gy[0], self.value)
+        if isinstance(self.value, Number):
+            cuda.elementwise(
+                'float* gx, const float* x, const float* gy, const float value',
+                'gx[i] = -value * gy[i] / (x[i] * x[i])',
+                'div_from_const_bwd')(gx, x[0], gy[0], self.value)
+        else:
+            cuda.elementwise(
+                'float* gx, const float* x, const float* gy, const float* value',
+                'gx[i] = -value[i] * gy[i] / (x[i] * x[i])',
+                'div_from_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
 def rdiv(lhs, rhs):  # rhs / lhs
@@ -180,10 +187,16 @@ class PowVarConst(Function):
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
-        cuda.elementwise(
-            'float* gx, const float* x, const float* gy, float value',
-            'gx[i] = value * __powf(x[i], value - 1) * gy[i]',
-            'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
+        if isinstance(self.value, Number):
+            cuda.elementwise(
+                'float* gx, const float* x, const float* gy, const float value',
+                'gx[i] = value * __powf(x[i], value - 1) * gy[i]',
+                'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
+        else:
+            cuda.elementwise(
+                'float* gx, const float* x, const float* gy, const float* value',
+                'gx[i] = value[i] * __powf(x[i], value[i] - 1) * gy[i]',
+                'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
 def pow(lhs, rhs):  # lhs ** rhs
@@ -201,21 +214,32 @@ class PowConstVar(Function):
 
     def forward_gpu(self, x):
         y = cuda.empty_like(x[0])
-        cuda.elementwise('float* y, const float* x, float value',
-                         'y[i] = __powf(value, x[i])',
-                         'pow_const_var_fwd')(y, x[0], self.value)
+        if isinstance(self.value, Number):
+            cuda.elementwise('float* y, const float* x, const float value',
+                             'y[i] = __powf(value, x[i])',
+                             'pow_const_var_fwd')(y, x[0], self.value)
+        else:
+            cuda.elementwise('float* y, const float* x, const float *value',
+                             'y[i] = __powf(value[i], x[i])',
+                             'pow_const_var_fwd')(y, x[0], self.value)
         return y,
 
     def backward_cpu(self, x, gy):
         return numpy.log(self.value) * self.y * gy[0],
 
     def backward_gpu(self, x, gy):
-        logv = math.log(self.value)
         gx = cuda.empty_like(x[0])
-        cuda.elementwise(
-            'float* gx, const float* x, const float* gy, float value, float logv',
-            'gx[i] = logv * __powf(value, x[i]) * gy[i]',
-            'pow_const_var_bwd')(gx, x[0], gy[0], self.value, logv)
+        if isinstance(self.value, Number):
+            logv = math.log(self.value)
+            cuda.elementwise(
+                'float* gx, const float* x, const float* gy, const float value, const float logv',
+                'gx[i] = logv * __powf(value, x[i]) * gy[i]',
+                'pow_const_var_bwd')(gx, x[0], gy[0], self.value, logv)
+        else:
+            cuda.elementwise(
+                'float* gx, const float* x, const float* gy, const float* value',
+                'gx[i] = __logf(value[i]) * __powf(value[i], x[i]) * gy[i]',
+                'pow_const_var_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
 def rpow(lhs, rhs):  # rhs ** lhs
