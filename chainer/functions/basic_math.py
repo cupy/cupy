@@ -207,7 +207,7 @@ class PowConstVar(Function):
         return y,
 
     def backward_cpu(self, x, gy):
-        return math.log(self.value) * self.y * gy[0],
+        return numpy.log(self.value) * self.y * gy[0],
 
     def backward_gpu(self, x, gy):
         logv = math.log(self.value)
