@@ -144,7 +144,7 @@ class DivFromConstant(Function):
         return gx,
 
 def rdiv(lhs, rhs):  # rhs / lhs
-    if isinstance(rhs, variable):
+    if isinstance(rhs, Variable):
         return Div()(rhs, lhs)
     return DivFromConstant(rhs)(lhs)
 
@@ -223,7 +223,7 @@ class PowConstVar(Function):
         return gx,
 
 def rpow(lhs, rhs):  # rhs ** lhs
-    if isinstance(rhs, variable):
+    if isinstance(rhs, Variable):
         return PowVarVar()(rhs, lhs)
     return PowConstVar(rhs)(lhs)
 
