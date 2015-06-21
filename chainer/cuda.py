@@ -681,8 +681,9 @@ def _wrap_operation(obj, op):
         return rop(self)
     setattr(obj, op_name, new_op)
 
-for op in ('add', 'sub', 'mul', 'div', 'pow'):
-    _wrap_operation(GPUArray, op)
+if available:
+    for op in ('add', 'sub', 'mul', 'div', 'pow'):
+        _wrap_operation(GPUArray, op)
 
 # ------------------------------------------------------------------------------
 # Interprocess communication
