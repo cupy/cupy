@@ -31,6 +31,11 @@ class TestBinaryOp(TestCase):
     def test_mul_forward_cpu(self): self.forward_cpu(lambda x, y: x * y)
     def test_div_forward_cpu(self): self.forward_cpu(lambda x, y: x / y)
     def test_pow_forward_cpu(self): self.forward_cpu(lambda x, y: x ** y)
+    def test_radd_forward_cpu(self): self.forward_cpu(lambda x, y: y.__radd__(x))
+    def test_rsub_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rsub__(x))
+    def test_rmul_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rmul__(x))
+    def test_rdiv_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rdiv__(x))
+    def test_rpow_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rpow__(x))
 
     def forward_gpu(self, op):
         self.check_forward(op, to_gpu(self.x1), to_gpu(self.x2))
@@ -45,6 +50,16 @@ class TestBinaryOp(TestCase):
     def test_div_forward_gpu(self): self.forward_gpu(lambda x, y: x / y)
     @attr.gpu
     def test_pow_forward_gpu(self): self.forward_gpu(lambda x, y: x ** y)
+    @attr.gpu
+    def test_radd_forward_gpu(self): self.forward_gpu(lambda x, y: y.__radd__(x))
+    @attr.gpu
+    def test_rsub_forward_gpu(self): self.forward_gpu(lambda x, y: y.__rsub__(x))
+    @attr.gpu
+    def test_rmul_forward_gpu(self): self.forward_gpu(lambda x, y: y.__rmul__(x))
+    @attr.gpu
+    def test_rdiv_forward_gpu(self): self.forward_gpu(lambda x, y: y.__rdiv__(x))
+    @attr.gpu
+    def test_rpow_forward_gpu(self): self.forward_gpu(lambda x, y: y.__rpow__(x))
 
     @attr.gpu
     def test_add_constant_allocation(self):
