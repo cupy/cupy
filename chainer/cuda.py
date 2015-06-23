@@ -684,7 +684,7 @@ def _wrap_operation(obj, op):
     setattr(obj, op_name, new_op)
 
 if available:
-    for op in ('add', 'sub', 'mul', 'div', 'pow'):
+    for op in ('add', 'sub', 'mul', 'div', 'pow', 'truediv'):
         _wrap_operation(GPUArray, op)
 
 # ------------------------------------------------------------------------------

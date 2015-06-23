@@ -34,7 +34,7 @@ class TestBinaryOp(TestCase):
     def test_radd_forward_cpu(self): self.forward_cpu(lambda x, y: y.__radd__(x))
     def test_rsub_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rsub__(x))
     def test_rmul_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rmul__(x))
-    def test_rdiv_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rdiv__(x))
+    def test_rdiv_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rtruediv__(x))
     def test_rpow_forward_cpu(self): self.forward_cpu(lambda x, y: y.__rpow__(x))
 
     def forward_gpu(self, op):
@@ -57,7 +57,7 @@ class TestBinaryOp(TestCase):
     @attr.gpu
     def test_rmul_forward_gpu(self): self.forward_gpu(lambda x, y: y.__rmul__(x))
     @attr.gpu
-    def test_rdiv_forward_gpu(self): self.forward_gpu(lambda x, y: y.__rdiv__(x))
+    def test_rdiv_forward_gpu(self): self.forward_gpu(lambda x, y: y.__rtruediv__(x))
     @attr.gpu
     def test_rpow_forward_gpu(self): self.forward_gpu(lambda x, y: y.__rpow__(x))
 
