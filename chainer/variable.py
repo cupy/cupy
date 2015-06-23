@@ -181,3 +181,5 @@ class Variable(object):
             for var in func.inputs:
                 add_cand(var.creator)
             func.unchain()
+
+    __array_priority__ = 200

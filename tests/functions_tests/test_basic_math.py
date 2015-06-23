@@ -211,53 +211,59 @@ class TestVariableConstantArrayOp(TestCase):
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.value = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
-    def check_forward(self, op, x_data, gpu):
+    def check_forward(self, op, x_data, gpu, positive):
         value = self.value
+        if positive:
+            value = numpy.abs(value)
+        v = value
         if gpu:
-            value = cuda.to_gpu(value)
+            v = cuda.to_gpu(v)
         x = Variable(x_data)
-        y = op(x, value)
-        assert_allclose(op(self.x, self.value), y.data, atol=1e-6, rtol=1e-6)
+        y = op(x, v)
+        assert_allclose(op(self.x, value), y.data, atol=1e-6, rtol=1e-6)
 
-    def forward_cpu(self, op):
-        self.check_forward(op, self.x, False)
+    def forward_cpu(self, op, positive=False):
+        self.check_forward(op, self.x, False, positive)
 
-    # TODO(delta2323): Commented tests check if op(array, Variable)
-    # work where op is radd/rsub and so on.
-    # Currently these fails. See issue #43 for details.
-    # (https://github.com/pfnet/chainer/issues/43)
     def test_add_forward_cpu(self):  self.forward_cpu(lambda x, y: x + y)
-    # def test_radd_forward_cpu(self): self.forward_cpu(lambda x, y: y + x)
+    def test_radd_forward_cpu(self): self.forward_cpu(lambda x, y: y + x)
     def test_sub_forward_cpu(self):  self.forward_cpu(lambda x, y: x - y)
-    # def test_rsub_forward_cpu(self): self.forward_cpu(lambda x, y: y - x)
+    def test_rsub_forward_cpu(self): self.forward_cpu(lambda x, y: y - x)
     def test_mul_forward_cpu(self):  self.forward_cpu(lambda x, y: x * y)
-    # def test_rmul_forward_cpu(self): self.forward_cpu(lambda x, y: y * x)
+    def test_rmul_forward_cpu(self): self.forward_cpu(lambda x, y: y * x)
     def test_div_forward_cpu(self):  self.forward_cpu(lambda x, y: x / y)
-    # def test_rdiv_forward_cpu(self): self.forward_cpu(lambda x, y: y / x)
+    def test_rdiv_forward_cpu(self): self.forward_cpu(lambda x, y: y / x)
     def test_pow_forward_cpu(self):  self.forward_cpu(lambda x, y: x ** y)
-    # def test_rpow_forward_cpu(self): self.forward_cpu(lambda x, y: y ** x)
+    def test_rpow_forward_cpu(self): self.forward_cpu(lambda x, y: y ** x, positive=True)
 
-    def forward_gpu(self, op):
-        self.check_forward(op, to_gpu(self.x), True)
+    def forward_gpu(self, op, positive=False):
+        self.check_forward(op, to_gpu(self.x), True, positive)
 
     @attr.gpu
     def test_add_forward_gpu(self):  self.forward_gpu(lambda x, y: x + y)
-    # def test_radd_forward_gpu(self): self.forward_gpu(lambda x, y: y + x)
+    @attr.gpu
+    def test_radd_forward_gpu(self): self.forward_gpu(lambda x, y: y + x)
     @attr.gpu
     def test_sub_forward_gpu(self):  self.forward_gpu(lambda x, y: x - y)
-    # def test_rsub_forward_gpu(self): self.forward_gpu(lambda x, y: y - x)
+    @attr.gpu
+    def test_rsub_forward_gpu(self): self.forward_gpu(lambda x, y: y - x)
     @attr.gpu
     def test_mul_forward_gpu(self):  self.forward_gpu(lambda x, y: x * y)
-    # def test_rmul_forward_gpu(self): self.forward_gpu(lambda x, y: y * x)
+    @attr.gpu
+    def test_rmul_forward_gpu(self): self.forward_gpu(lambda x, y: y * x)
     @attr.gpu
     def test_div_forward_gpu(self):  self.forward_gpu(lambda x, y: x / y)
-    # def test_rdiv_forward_gpu(self): self.forward_gpu(lambda x, y: y / x)
+    @attr.gpu
+    def test_rdiv_forward_gpu(self): self.forward_gpu(lambda x, y: y / x)
     @attr.gpu
     def test_pow_forward_gpu(self):  self.forward_gpu(lambda x, y: x ** y)
-    # def test_rpow_forward_gpu(self): self.forward_gpu(lambda x, y: y ** x)
+    @attr.gpu
+    def test_rpow_forward_gpu(self): self.forward_gpu(lambda x, y: y ** x, positive=True)
 
-    def check_backward(self, op, x_data, y_grad, gpu):
+    def check_backward(self, op, x_data, y_grad, gpu, positive):
         value = self.value
+        if positive:
+            value = numpy.abs(value)
         if gpu:
             value = cuda.to_gpu(value)
         x = Variable(x_data)
@@ -271,39 +277,41 @@ class TestVariableConstantArrayOp(TestCase):
 
         assert_allclose(gx, x.grad, atol=1e-4, rtol=1e-4)
 
-    def backward_cpu(self, op):
-        self.check_backward(op, self.x, self.gy, False)
+    def backward_cpu(self, op, positive=False):
+        self.check_backward(op, self.x, self.gy, False, positive)
 
     def test_add_backward_cpu(self):  self.backward_cpu(lambda x, y: x + y)
-    # def test_radd_backward_cpu(self): self.backward_cpu(lambda x, y: y + x)
+    def test_radd_backward_cpu(self): self.backward_cpu(lambda x, y: y + x)
     def test_sub_backward_cpu(self):  self.backward_cpu(lambda x, y: x - y)
-    # def test_rsub_backward_cpu(self): self.backward_cpu(lambda x, y: y - x)
+    def test_rsub_backward_cpu(self): self.backward_cpu(lambda x, y: y - x)
     def test_mul_backward_cpu(self):  self.backward_cpu(lambda x, y: x * y)
-    # def test_rmul_backward_cpu(self): self.backward_cpu(lambda x, y: y * x)
+    def test_rmul_backward_cpu(self): self.backward_cpu(lambda x, y: y * x)
     def test_div_backward_cpu(self):  self.backward_cpu(lambda x, y: x / y)
-    # def test_rdiv_backward_cpu(self): self.backward_cpu(lambda x, y: y / x)
+    def test_rdiv_backward_cpu(self): self.backward_cpu(lambda x, y: y / x)
     def test_pow_backward_cpu(self):  self.backward_cpu(lambda x, y: x ** y)
-    # def test_rpow_backward_cpu(self): self.backward_cpu(lambda x, y: y ** x)
+    def test_rpow_backward_cpu(self): self.backward_cpu(lambda x, y: y ** x, positive=True)
 
-    def backward_gpu(self, op):
-        self.check_backward(op, to_gpu(self.x), to_gpu(self.gy), True)
+    def backward_gpu(self, op, positive=False):
+        self.check_backward(op, to_gpu(self.x), to_gpu(self.gy), True, positive)
 
     @attr.gpu
     def test_add_backward_gpu(self):  self.backward_gpu(lambda x, y: x + y)
-    # def test_radd_backward_gpu(self): self.backward_gpu(lambda x, y: y + x)
+    @attr.gpu
+    def test_radd_backward_gpu(self): self.backward_gpu(lambda x, y: y + x)
     @attr.gpu
     def test_sub_backward_gpu(self):  self.backward_gpu(lambda x, y: x - y)
-    # TODO(delta2323): backward_gpu of SubFromConstant(resp. DivFromConstant,
-    # PowVarConst(pow) and PowConstVar(rpow)) assumes constant value is scalar.
-    # So corresponding test for rsub (resp. rsub, rdiv, pow, and rpow) fails.
     @attr.gpu
     def test_mul_backward_gpu(self):  self.backward_gpu(lambda x, y: x * y)
-    # def test_rmul_backward_gpu(self): self.backward_gpu(lambda x, y: y * x)
+    @attr.gpu
+    def test_rmul_backward_gpu(self): self.backward_gpu(lambda x, y: y * x)
     @attr.gpu
     def test_div_backward_gpu(self):  self.backward_gpu(lambda x, y: x / y)
-    # def test_rdiv_backward_gpu(self): self.backward_gpu(lambda x, y: y / x)
-    # def test_pow_backward_gpu(self):  self.backward_gpu(lambda x, y: x ** y)
-    # def test_rpow_backward_gpu(self): self.backward_gpu(lambda x, y: y ** x)
+    @attr.gpu
+    def test_rdiv_backward_gpu(self): self.backward_gpu(lambda x, y: y / x)
+    @attr.gpu
+    def test_pow_backward_gpu(self):  self.backward_gpu(lambda x, y: x ** y)
+    @attr.gpu
+    def test_rpow_backward_gpu(self): self.backward_gpu(lambda x, y: y ** x, positive=True)
 
 class TestUnaryFunctions(TestCase):
     def setUp(self):
