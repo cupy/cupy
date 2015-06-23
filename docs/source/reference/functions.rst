@@ -13,6 +13,7 @@ should be used with explicit handling of :class:`~chainer.Function` objects.
 
 Learnable connections
 ---------------------
+.. autoclass:: BinaryHierarchicalSoftmax
 .. autoclass:: Convolution2D
 .. autoclass:: EmbedID
 .. autoclass:: Linear

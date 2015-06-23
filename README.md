@@ -33,7 +33,12 @@ If you want to enable CUDA, first you have to install CUDA and set the environme
 You also have to set binary and library paths by appropriate environment variables like `PATH` and `LD_LIBRARY_PATH`.
 Then install CUDA-related packages by:
 ```
-pip install `chainer-cuda-requirements`
+pip install chainer-cuda-deps
+```
+
+or, from the source:
+```
+python cuda_deps/setup.py install
 ```
 
 ## License

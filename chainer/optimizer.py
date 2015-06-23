@@ -2,6 +2,7 @@ import math
 import numpy
 import cuda
 
+# TODO(delta2323): Make it public function and move it to common directory.
 def _sqnorm(x):
     if isinstance(x, cuda.GPUArray):
         return float(cuda.gpuarray.dot(x, x).get())

@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='chainer',
-    version='1.0.0',
+    version='1.0.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -17,4 +17,5 @@ setup(
     package_data={'chainer.requirements': ['cuda-requirements.txt']},
     install_requires=['numpy'],
     scripts=['scripts/chainer-cuda-requirements'],
+    tests_require=['nose'],
 )

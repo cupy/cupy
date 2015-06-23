@@ -663,6 +663,27 @@ def copy_async(array, out=None, out_device=None, stream=None):
 
     return out
 
+# ------------------------------------------------------------------------------
+# Add comparison of `__array_priority__` to GPUArray binary operator
+# ------------------------------------------------------------------------------
+def _wrap_operation(obj, op):
+    op_name = '__{}__'.format(op)
+    rop_name = '__r{}__'.format(op)
+    raw_op = getattr(obj, op_name)
+    def new_op(self, other):
+        rop =  getattr(other, rop_name, None)
+        if rop is None:
+            return raw_op(self, other)
+        self_pri  = getattr(self,  '__array_priority__', 0.0)
+        other_pri = getattr(other, '__array_priority__', 0.0)
+        if self_pri >= other_pri:
+            return raw_op(self, other)
+        return rop(self)
+    setattr(obj, op_name, new_op)
+
+if available:
+    for op in ('add', 'sub', 'mul', 'div', 'pow'):
+        _wrap_operation(GPUArray, op)
 
 # ------------------------------------------------------------------------------
 # Interprocess communication
