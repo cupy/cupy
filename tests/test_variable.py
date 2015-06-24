@@ -1,5 +1,6 @@
 from unittest import TestCase
 import numpy as np
+from six.moves import range
 
 from chainer import cuda, Variable, Function
 from chainer.gradient_check import assert_allclose
@@ -61,7 +62,7 @@ class TestVariable(TestCase):
         else:
             x = Variable(self.x)
         ret = [x]
-        for i in xrange(length):
+        for i in range(length):
             ret.append(constant((ret[i], ), (self.a, )))
         ret[-1].grad = np.zeros_like(ret[-1].data)
         return ret

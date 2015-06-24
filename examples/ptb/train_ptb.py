@@ -10,6 +10,7 @@ import math
 import sys
 import time
 import numpy as np
+from six.moves import range
 from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
 
@@ -40,7 +41,7 @@ def load_data(filename):
 train_data = load_data('ptb.train.txt')
 valid_data = load_data('ptb.valid.txt')
 test_data  = load_data('ptb.test.txt')
-print '#vocab =', len(vocab)
+print('#vocab =', len(vocab))
 
 # Prepare RNNLM model
 model = FunctionSet(embed=F.EmbedID(len(vocab), n_units),
@@ -84,7 +85,7 @@ optimizer.setup(model.collect_parameters())
 def evaluate(dataset):
     sum_log_perp = mod.zeros(())
     state        = make_initial_state(batchsize=1, train=False)
-    for i in xrange(dataset.size - 1):
+    for i in range(dataset.size - 1):
         x_batch = dataset[i  :i+1]
         y_batch = dataset[i+1:i+2]
         state, loss   = forward_one_step(x_batch, y_batch, state, train=False)
@@ -94,19 +95,19 @@ def evaluate(dataset):
 
 # Learning loop
 whole_len    = train_data.shape[0]
-jump         = whole_len / batchsize
+jump         = whole_len // batchsize
 cur_log_perp = mod.zeros(())
 epoch        = 0
 start_at     = time.time()
 cur_at       = start_at
 state        = make_initial_state()
 accum_loss   = Variable(mod.zeros(()))
-print 'going to train {} iterations'.format(jump * n_epoch)
-for i in xrange(jump * n_epoch):
+print('going to train {} iterations'.format(jump * n_epoch))
+for i in range(jump * n_epoch):
     x_batch = np.array([train_data[(jump * j + i) % whole_len]
-                        for j in xrange(batchsize)])
+                        for j in range(batchsize)])
     y_batch = np.array([train_data[(jump * j + i + 1) % whole_len]
-                        for j in xrange(batchsize)])
+                        for j in range(batchsize)])
     state, loss_i = forward_one_step(x_batch, y_batch, state)
     accum_loss   += loss_i
     cur_log_perp += loss_i.data.reshape(())
@@ -124,26 +125,26 @@ for i in xrange(jump * n_epoch):
         now      = time.time()
         throuput = 10000. / (now - cur_at)
         perp     = math.exp(cuda.to_cpu(cur_log_perp) / 10000)
-        print 'iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(
-            i + 1, perp, throuput)
+        print('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(
+            i + 1, perp, throuput))
         cur_at   = now
         cur_log_perp.fill(0)
 
     if (i + 1) % jump == 0:
         epoch += 1
-        print 'evaluate'
+        print('evaluate')
         now  = time.time()
         perp = evaluate(valid_data)
-        print 'epoch {} validation perplexity: {:.2f}'.format(epoch, perp)
+        print('epoch {} validation perplexity: {:.2f}'.format(epoch, perp))
         cur_at += time.time() - now  # skip time of evaluation
 
         if epoch >= 6:
             optimizer.lr /= 1.2
-            print 'learning rate =', optimizer.lr
+            print('learning rate =', optimizer.lr)
 
     sys.stdout.flush()
 
 # Evaluate on test dataset
-print 'test'
+print('test')
 test_perp = evaluate(test_data)
-print 'test perplexity:', test_perp
+print('test perplexity:', test_perp)

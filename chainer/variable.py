@@ -1,7 +1,7 @@
 import heapq, weakref
 import numpy
 
-import cuda
+from . import cuda
 
 class Variable(object):
     """Array with a structure to keep track of computation
@@ -130,13 +130,13 @@ class Variable(object):
         def add_cand(cand):
             if cand is not None and cand not in seen_set:
                 # Negate since heapq is min-heap
-                heapq.heappush(cand_funcs, (-cand.rank, cand))
+                heapq.heappush(cand_funcs, (-cand.rank, len(seen_set), cand))
                 seen_set.add(cand)
 
         add_cand(self.creator)
 
         while cand_funcs:
-            _, func = heapq.heappop(cand_funcs)
+            _, _, func = heapq.heappop(cand_funcs)
             outputs = tuple(y() for y in func.outputs)  # access via weak ref
 
             in_data  = tuple(x.data for x in func.inputs)

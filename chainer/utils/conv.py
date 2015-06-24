@@ -1,11 +1,12 @@
 import numpy
+from six.moves import range
 from chainer import cuda
 
 def get_conv_outsize(size, k, s, p, cover_all=False):
     if cover_all:
-        return (size + p * 2 - k + s - 1) / s + 1
+        return (size + p * 2 - k + s - 1) // s + 1
     else:
-        return (size + p * 2 - k) / s + 1
+        return (size + p * 2 - k) // s + 1
 
 def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
     n, c, h, w = img.shape
@@ -16,9 +17,9 @@ def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
                     mode='constant', constant_values=(pval,))
     col = numpy.ndarray((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
 
-    for i in xrange(kh):
+    for i in range(kh):
         i_lim = i + sy * out_h
-        for j in xrange(kw):
+        for j in range(kw):
             j_lim = j + sx * out_w
             col[:, :, i, j, :, :] = img[:, :, i:i_lim:sy, j:j_lim:sx]
 
@@ -57,9 +58,9 @@ def col2im_cpu(col, sy, sx, ph, pw, h, w):
 
     img = numpy.zeros((n, c, h + 2 * ph + sy - 1, w + 2 * pw + sx - 1),
                       dtype=col.dtype)
-    for i in xrange(kh):
+    for i in range(kh):
         i_lim = i + sy * out_h
-        for j in xrange(kw):
+        for j in range(kw):
             j_lim = j + sx * out_w
             img[:, :, i:i_lim:sy, j:j_lim:sx] += col[:, :, i, j, :, :]
 

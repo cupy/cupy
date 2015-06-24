@@ -1,5 +1,6 @@
 from unittest import TestCase
 import numpy
+from six.moves import range
 from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
@@ -28,7 +29,7 @@ class TestEmbedID(TestCase):
         y = self.func(x)
 
         y_expect = numpy.empty_like(self.gy)
-        for i in xrange(self.x.size):
+        for i in range(self.x.size):
             y_expect[i] = self.W[int(self.x[i])]
 
         assert_allclose(y_expect, y.data, atol=0, rtol=0)

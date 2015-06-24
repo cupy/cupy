@@ -1,7 +1,8 @@
 import numpy
+from six import iteritems, itervalues
 
-import cuda
-from function import Function
+from . import cuda
+from .function import Function
 
 class FunctionSet(object):
     """Set of objects with ``parameters`` and ``gradients`` properties.
@@ -26,7 +27,7 @@ class FunctionSet(object):
                 object as attributes.
 
         """
-        for name, func in functions.iteritems():
+        for name, func in iteritems(functions):
             setattr(self, name, func)
 
     def collect_parameters(self):
@@ -52,7 +53,7 @@ class FunctionSet(object):
             self
 
         """
-        for func in self.__dict__.itervalues():
+        for func in itervalues(self.__dict__):
             func.to_gpu(device=device)
         return self
 
@@ -65,7 +66,7 @@ class FunctionSet(object):
             self
 
         """
-        for func in self.__dict__.itervalues():
+        for func in itervalues(self.__dict__):
             func.to_cpu()
         return self
 
@@ -118,4 +119,4 @@ class FunctionSet(object):
             func.gradients = grad_iter
 
     def _get_sorted_funcs(self):
-        return sorted(self.__dict__.iteritems())
+        return sorted(iteritems(self.__dict__))
