@@ -143,7 +143,7 @@ class Convolution2D(Function):
                 handle, x_desc.value, self.filter_desc.value, self.conv_desc.value,
                 y_desc.value, algo).value
             workspace = cuda.empty(
-                (max(workspace_size / 4, 1),), dtype=numpy.float32)
+                (max(workspace_size // 4, 1),), dtype=numpy.float32)
 
             libcudnn.cudnnConvolutionForward(
                 handle, 1, x_desc.value, cudnn.get_ptr(x[0]),
