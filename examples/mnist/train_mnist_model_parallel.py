@@ -35,20 +35,20 @@ cuda.init()
 wscale = math.sqrt(2)
 model = FunctionSet(
     gpu0 = FunctionSet(
-        l1=F.Linear(        784, n_units / 2, wscale=wscale),
-        l2=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
-        l3=F.Linear(n_units / 2, n_units,     wscale=wscale),
-        l4=F.Linear(n_units,     n_units / 2, wscale=wscale),
-        l5=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
-        l6=F.Linear(n_units / 2, 10,          wscale=wscale)
+        l1=F.Linear(         784, n_units // 2, wscale=wscale),
+        l2=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
+        l3=F.Linear(n_units // 2, n_units,      wscale=wscale),
+        l4=F.Linear(n_units,      n_units // 2, wscale=wscale),
+        l5=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
+        l6=F.Linear(n_units // 2, 10,           wscale=wscale)
     ).to_gpu(0),
     gpu1 = FunctionSet(
-        l1=F.Linear(        784, n_units / 2, wscale=wscale),
-        l2=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
-        l3=F.Linear(n_units / 2, n_units,     wscale=wscale),
-        l4=F.Linear(n_units,     n_units / 2, wscale=wscale),
-        l5=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
-        l6=F.Linear(n_units / 2, 10,          wscale=wscale)
+        l1=F.Linear(         784, n_units // 2, wscale=wscale),
+        l2=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
+        l3=F.Linear(n_units // 2, n_units,      wscale=wscale),
+        l4=F.Linear(n_units,      n_units // 2, wscale=wscale),
+        l5=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
+        l6=F.Linear(n_units // 2, 10,           wscale=wscale)
     ).to_gpu(1)
 )
 optimizer = optimizers.SGD(lr=0.1)
