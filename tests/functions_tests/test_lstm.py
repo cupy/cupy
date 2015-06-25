@@ -1,11 +1,15 @@
 from unittest import TestCase
 
 import numpy
-from chainer import Variable, cuda
+
+from chainer import cuda
 from chainer.cuda import to_gpu
 from chainer.functions import lstm
-from chainer.gradient_check import assert_allclose, numerical_grad
+from chainer.gradient_check import assert_allclose
+from chainer.gradient_check import numerical_grad
 from chainer.testing import attr
+from chainer import Variable
+
 
 if cuda.available:
     cuda.init()
@@ -105,7 +109,8 @@ class TestLSTM(TestCase):
     @attr.gpu
     def test_full_backward_gpu(self):
         self.check_backward(
-            to_gpu(self.c_prev), to_gpu(self.x), to_gpu(self.gc), to_gpu(self.gh))
+            to_gpu(self.c_prev), to_gpu(self.x),
+            to_gpu(self.gc), to_gpu(self.gh))
 
     @attr.gpu
     def test_flat_full_backward_gpu(self):

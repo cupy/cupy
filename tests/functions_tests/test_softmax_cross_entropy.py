@@ -2,13 +2,17 @@ import math
 from unittest import TestCase
 
 import numpy
-from chainer import Variable, cuda
-from chainer.cuda import GPUArray, to_cpu, to_gpu
-from chainer.functions import softmax_cross_entropy
-from chainer.gradient_check import assert_allclose, numerical_grad
-from chainer.testing import attr
-
 from six.moves import range
+
+from chainer import cuda
+from chainer.cuda import to_cpu
+from chainer.cuda import to_gpu
+from chainer.functions import softmax_cross_entropy
+from chainer.gradient_check import assert_allclose
+from chainer.gradient_check import numerical_grad
+from chainer.testing import attr
+from chainer import Variable
+
 
 if cuda.available:
     cuda.init()

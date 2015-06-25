@@ -1,13 +1,18 @@
 from unittest import TestCase
 
 import numpy
-from chainer import Variable, cuda
-from chainer.cuda import GPUArray, to_cpu, to_gpu
-from chainer.functions import average_pooling_2d, max_pooling_2d
-from chainer.gradient_check import assert_allclose, numerical_grad
-from chainer.testing import attr
-
 from six.moves import range
+
+from chainer import cuda
+from chainer.cuda import to_cpu
+from chainer.cuda import to_gpu
+from chainer.functions import average_pooling_2d
+from chainer.functions import max_pooling_2d
+from chainer.gradient_check import assert_allclose
+from chainer.gradient_check import numerical_grad
+from chainer.testing import attr
+from chainer import Variable
+
 
 if cuda.available:
     cuda.init()
@@ -41,12 +46,14 @@ class TestMaxPooling2D(TestCase):
                             k, c, 0:2, 1:3].max()],
                         [self.x[k, c, 1:4, 0:2].max(), self.x[
                             k, c, 1:4, 1:3].max()],
-                        [self.x[k, c, 3:4, 0:2].max(), self.x[k, c, 3:4, 1:3].max()]])
+                        [self.x[k, c, 3:4, 0:2].max(), self.x[
+                            k, c, 3:4, 1:3].max()]])
                 else:
                     expect = numpy.array([
                         [self.x[k, c, 0:2, 0:2].max(), self.x[
                             k, c, 0:2, 1:3].max()],
-                        [self.x[k, c, 1:4, 0:2].max(), self.x[k, c, 1:4, 1:3].max()]])
+                        [self.x[k, c, 1:4, 0:2].max(), self.x[
+                            k, c, 1:4, 1:3].max()]])
                 assert_allclose(expect, y_data[k, c])
 
     def test_forward_cpu(self):
@@ -113,8 +120,8 @@ class TestAveragePooling2D(TestCase):
                 expect = numpy.array([
                     [self.x[k, c, 0:2, 0:2].sum(), self.x[
                         k, c, 0:2, 1:3].sum()],
-                    [self.x[k, c, 1:4, 0:2].sum(), self.x[k, c, 1:4, 1:3].sum()]]
-                ) / 9
+                    [self.x[k, c, 1:4, 0:2].sum(), self.x[
+                        k, c, 1:4, 1:3].sum()]]) / 9
                 assert_allclose(expect, y_data[k, c])
 
     def test_forward_cpu(self):

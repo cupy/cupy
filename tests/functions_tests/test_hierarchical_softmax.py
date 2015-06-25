@@ -1,10 +1,13 @@
 from unittest import TestCase
 
 import numpy
-from chainer import Variable
+
 from chainer.cuda import to_cpu
-from chainer.functions import BinaryHierarchicalSoftmax, create_huffman_tree
-from chainer.gradient_check import assert_allclose, numerical_grad
+from chainer.functions import BinaryHierarchicalSoftmax
+from chainer.functions import create_huffman_tree
+from chainer.gradient_check import assert_allclose
+from chainer.gradient_check import numerical_grad
+from chainer import Variable
 
 
 class TestHuffmanTree(TestCase):

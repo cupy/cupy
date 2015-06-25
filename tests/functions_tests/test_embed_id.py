@@ -1,13 +1,16 @@
 from unittest import TestCase
 
 import numpy
-from chainer import Variable, cuda
+from six.moves import range
+
+from chainer import cuda
 from chainer.cuda import to_gpu
 from chainer.functions import EmbedID
-from chainer.gradient_check import assert_allclose, numerical_grad
+from chainer.gradient_check import assert_allclose
+from chainer.gradient_check import numerical_grad
 from chainer.testing import attr
+from chainer import Variable
 
-from six.moves import range
 
 if cuda.available:
     cuda.init()

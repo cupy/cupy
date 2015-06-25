@@ -1,9 +1,12 @@
 from unittest import TestCase
 
 import numpy
-from chainer import Variable, cuda
+
+from chainer import cuda
 from chainer.functions import reshape
 from chainer.testing import attr
+from chainer import Variable
+
 
 if cuda.available:
     cuda.init()

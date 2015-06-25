@@ -1,10 +1,11 @@
 from unittest import TestCase
 
 import numpy
-from chainer import Variable, cuda
+
+from chainer import cuda
 from chainer.functions import Parameter
-from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.testing import attr
+
 
 if cuda.available:
     cuda.init()
