@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 from six.moves import range
@@ -18,7 +18,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestMaxPooling2D(TestCase):
+class TestMaxPooling2D(unittest.TestCase):
     cover_all = False
 
     def setUp(self):
@@ -101,7 +101,7 @@ class TestMaxPooling2DCoverAll(TestMaxPooling2D):
                                        (2, 3, 3, 2)).astype(numpy.float32)
 
 
-class TestAveragePooling2D(TestCase):
+class TestAveragePooling2D(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1,

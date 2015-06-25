@@ -1,5 +1,5 @@
 import random
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -14,7 +14,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestLeakyReLU(TestCase):
+class TestLeakyReLU(unittest.TestCase):
 
     def setUp(self):
         # Avoid unstability of numeraical grad

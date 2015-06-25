@@ -1,8 +1,8 @@
-from unittest import TestCase
+import unittest
 
 import numpy
+import six
 import six.moves.cPickle as pickle
-from six.moves import range
 
 from chainer import cuda
 from chainer.cuda import to_gpu
@@ -18,7 +18,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestConvolution2D(TestCase):
+class TestConvolution2D(unittest.TestCase):
 
     def setUp(self, use_cudnn=True):
         self.func = Convolution2D(
@@ -56,7 +56,7 @@ class TestConvolution2D(TestCase):
         x_gpu = Variable(to_gpu(self.x))
         y_gpu = self.func(x_gpu)
 
-        for i in range(y_cpu.data.shape[0]):
+        for i in six.moves.range(y_cpu.data.shape[0]):
             print(i, numpy.abs(y_cpu.data[i] - y_gpu.data[i].get()).max())
         assert_allclose(y_cpu.data, y_gpu.data.get())
 

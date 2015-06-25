@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -16,7 +16,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestMeanSquaredError(TestCase):
+class TestMeanSquaredError(unittest.TestCase):
 
     def setUp(self):
         self.x0 = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)

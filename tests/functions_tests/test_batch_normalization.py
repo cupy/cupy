@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -17,7 +17,7 @@ if cuda.available:
 # fully-connected usage
 
 
-class TestBatchNormalization(TestCase):
+class TestBatchNormalization(unittest.TestCase):
     aggr_axes = 0
 
     def setUp(self):

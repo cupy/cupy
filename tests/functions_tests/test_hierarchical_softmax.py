@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -10,7 +10,7 @@ from chainer.gradient_check import numerical_grad
 from chainer import Variable
 
 
-class TestHuffmanTree(TestCase):
+class TestHuffmanTree(unittest.TestCase):
 
     def test_empty(self):
         with self.assertRaises(ValueError):
@@ -22,7 +22,7 @@ class TestHuffmanTree(TestCase):
         self.assertEqual(expect, tree)
 
 
-class TestBinaryHierarchicalSoftmax(TestCase):
+class TestBinaryHierarchicalSoftmax(unittest.TestCase):
 
     def setUp(self):
         tree = ((0, 1), ((2, 3), 4))

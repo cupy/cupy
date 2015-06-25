@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -19,7 +19,7 @@ def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
 
 
-class TestLSTM(TestCase):
+class TestLSTM(unittest.TestCase):
 
     def setUp(self):
         self.c_prev = numpy.random.uniform(-1,

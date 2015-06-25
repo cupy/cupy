@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -15,7 +15,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestSigmoid(TestCase):
+class TestSigmoid(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-.5, .5, (3, 2)).astype(numpy.float32)

@@ -1,19 +1,18 @@
-from unittest import TestCase
+import unittest
 
 import numpy as np
 
+import chainer
 from chainer import cuda
-from chainer import Function
 from chainer.testing import attr
-from chainer import Variable
 
-from six.moves import range
+import six
 
 if cuda.available:
     cuda.init()
 
 
-class Constant(Function):
+class Constant(chainer.Function):
 
     def __init__(self, outputs):
         self.outputs = outputs
@@ -35,7 +34,7 @@ def constant(xs, value):
     return Constant(value)(*xs)
 
 
-class TestVariable(TestCase):
+class TestVariable(unittest.TestCase):
 
     def setUp(self):
         self.x = np.random.uniform(-1, 1, 10).astype(np.float32)
@@ -45,7 +44,7 @@ class TestVariable(TestCase):
         x = self.x
         if gpu:
             x = cuda.to_gpu(x)
-        x = Variable(x)
+        x = chainer.Variable(x)
         self.assertEqual(len(x), 10)
 
     def test_len_cpu(self):
@@ -69,11 +68,11 @@ class TestVariable(TestCase):
     # length is number of edges. So, # of Variables created is length+1
     def create_linear_chain(self, length, gpu):
         if gpu:
-            x = Variable(cuda.to_gpu(self.x))
+            x = chainer.Variable(cuda.to_gpu(self.x))
         else:
-            x = Variable(self.x)
+            x = chainer.Variable(self.x)
         ret = [x]
-        for i in range(length):
+        for i in six.moves.range(length):
             ret.append(constant((ret[i], ), (self.a, )))
         ret[-1].grad = np.zeros_like(ret[-1].data)
         return ret

@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -15,7 +15,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestReLU(TestCase):
+class TestReLU(unittest.TestCase):
 
     def setUp(self):
         # Avoid unstability of numerical grad

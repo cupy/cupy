@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -14,7 +14,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestSum(TestCase):
+class TestSum(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)

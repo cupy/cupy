@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -11,7 +11,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestParameter(TestCase):
+class TestParameter(unittest.TestCase):
 
     def setUp(self):
         self.W = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)

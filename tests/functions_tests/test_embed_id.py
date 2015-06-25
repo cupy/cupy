@@ -1,7 +1,7 @@
-from unittest import TestCase
+import unittest
 
 import numpy
-from six.moves import range
+import six
 
 from chainer import cuda
 from chainer.cuda import to_gpu
@@ -16,7 +16,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestEmbedID(TestCase):
+class TestEmbedID(unittest.TestCase):
 
     def setUp(self):
         self.func = EmbedID(3, 2)
@@ -35,7 +35,7 @@ class TestEmbedID(TestCase):
         y = self.func(x)
 
         y_expect = numpy.empty_like(self.gy)
-        for i in range(self.x.size):
+        for i in six.moves.range(self.x.size):
             y_expect[i] = self.W[int(self.x[i])]
 
         assert_allclose(y_expect, y.data, atol=0, rtol=0)

@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -14,7 +14,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestPReLUSingle(TestCase):
+class TestPReLUSingle(unittest.TestCase):
 
     def setUp(self):
         self.func = PReLU()

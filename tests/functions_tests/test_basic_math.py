@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -15,7 +15,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestBinaryOp(TestCase):
+class TestBinaryOp(unittest.TestCase):
 
     def setUp(self):
         self.x1 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
@@ -170,7 +170,7 @@ class TestBinaryOp(TestCase):
         self.backward_gpu(lambda x, y: x ** y, atol=1e-4)
 
 
-class TestVariableConstantOp(TestCase):
+class TestVariableConstantOp(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
@@ -347,7 +347,7 @@ class TestVariableConstantOp(TestCase):
         self.backward_gpu(lambda x, y: y ** x)
 
 
-class TestVariableConstantArrayOp(TestCase):
+class TestVariableConstantArrayOp(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
@@ -532,7 +532,7 @@ class TestVariableConstantArrayOp(TestCase):
         self.backward_gpu(lambda x, y: y ** x, positive=True)
 
 
-class TestUnaryFunctions(TestCase):
+class TestUnaryFunctions(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)

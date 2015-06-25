@@ -1,44 +1,41 @@
-from unittest import TestCase
+import unittest
 
 import numpy
-from six.moves import range
+import six
 
+import chainer
 from chainer import cuda
-from chainer.cuda import to_cpu
-from chainer.cuda import to_gpu
-from chainer.functions import accuracy
-from chainer.gradient_check import assert_allclose
+import chainer.gradient_check
 from chainer.testing import attr
-from chainer import Variable
 
 
 if cuda.available:
     cuda.init()
 
 
-class TestAccuracy(TestCase):
+class TestAccuracy(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (10, 3)).astype(numpy.float32)
         self.t = numpy.random.randint(3, size=(10,)).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data):
-        x = Variable(x_data)
-        t = Variable(t_data)
-        y = accuracy(x, t)
+        x = chainer.Variable(x_data)
+        t = chainer.Variable(t_data)
+        y = chainer.functions.accuracy(x, t)
 
         count = 0
-        for i in range(self.t.size):
+        for i in six.moves.range(self.t.size):
             pred = self.x[i].argmax()
             if pred == self.t[i]:
                 count += 1
 
         expected = float(count) / self.t.size
-        assert_allclose(expected, to_cpu(y.data))
+        chainer.gradient_check.assert_allclose(expected, cuda.to_cpu(y.data))
 
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
 
     @attr.gpu
     def test_forward_gpu(self):
-        self.check_forward(to_gpu(self.x), to_gpu(self.t))
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))

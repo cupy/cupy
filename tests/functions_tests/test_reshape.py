@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -12,7 +12,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestReshape(TestCase):
+class TestReshape(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)

@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 from six.moves import range
@@ -15,7 +15,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestLocalResponseNormalization(TestCase):
+class TestLocalResponseNormalization(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1,

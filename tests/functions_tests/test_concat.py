@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -13,7 +13,7 @@ if cuda.available:
     cuda.init()
 
 
-class Concat(TestCase):
+class Concat(unittest.TestCase):
 
     def setUp(self):
         self.y0 = numpy.arange(42, dtype=numpy.float32).reshape(2, 7, 3)

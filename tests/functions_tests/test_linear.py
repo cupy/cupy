@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
@@ -15,7 +15,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestLinear(TestCase):
+class TestLinear(unittest.TestCase):
 
     def setUp(self):
         self.func = Linear(3, 2)

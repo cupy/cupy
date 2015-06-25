@@ -1,8 +1,8 @@
 import math
-from unittest import TestCase
+import unittest
 
 import numpy
-from six.moves import range
+import six
 
 from chainer import cuda
 from chainer.cuda import to_cpu
@@ -18,7 +18,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestSoftmaxCrossEntropy(TestCase):
+class TestSoftmaxCrossEntropy(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
@@ -33,7 +33,7 @@ class TestSoftmaxCrossEntropy(TestCase):
         # Compute expected value
         y = numpy.exp(self.x)
         loss_expect = 0
-        for i in range(y.shape[0]):
+        for i in six.moves.range(y.shape[0]):
             loss_expect -= math.log(y[i, self.t[i]] / y[i].sum())
         loss_expect /= y.shape[0]
 

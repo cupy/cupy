@@ -1,7 +1,7 @@
-from unittest import TestCase
+import unittest
 
 import numpy
-from six.moves import range
+import six
 
 from chainer import cuda
 from chainer.cuda import to_gpu
@@ -16,7 +16,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestSoftmax(TestCase):
+class TestSoftmax(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
@@ -27,7 +27,7 @@ class TestSoftmax(TestCase):
         y = softmax(x, use_cudnn)
 
         y_expect = numpy.exp(self.x)
-        for i in range(y_expect.shape[0]):
+        for i in six.moves.range(y_expect.shape[0]):
             y_expect[i] /= y_expect[i].sum()
 
         assert_allclose(y_expect, y.data)

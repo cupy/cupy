@@ -1,13 +1,12 @@
 from unittest import TestCase
 
 import numpy as np
-from six import assertCountEqual
+import six
 import six.moves.cPickle as pickle
 
+import chainer
 from chainer import cuda
-from chainer import Function
-from chainer.functions import Linear
-from chainer import FunctionSet
+from chainer import functions as F
 from chainer.testing import attr
 
 
@@ -15,7 +14,7 @@ if cuda.available:
     cuda.init()
 
 
-class MockFunction(Function):
+class MockFunction(chainer.Function):
 
     def __init__(self, shape):
         self.p = np.zeros(shape).astype(np.float32)
@@ -28,14 +27,14 @@ class MockFunction(Function):
 class TestNestedFunctionSet(TestCase):
 
     def setUp(self):
-        self.fs1 = FunctionSet(
+        self.fs1 = chainer.FunctionSet(
             a=MockFunction((1, 2)))
-        self.fs2 = FunctionSet(
+        self.fs2 = chainer.FunctionSet(
             fs1=self.fs1,
             b=MockFunction((3, 4)))
 
     def test_get_sorted_funcs(self):
-        assertCountEqual(
+        six.assertCountEqual(
             self, [k for (k, v) in self.fs2._get_sorted_funcs()], ('b', 'fs1'))
 
     def test_collect_parameters(self):
@@ -72,13 +71,13 @@ class TestNestedFunctionSet(TestCase):
 class TestFunctionSet(TestCase):
 
     def setUp(self):
-        self.fs = FunctionSet(
-            a=Linear(3, 2),
-            b=Linear(3, 2)
+        self.fs = chainer.FunctionSet(
+            a=F.Linear(3, 2),
+            b=F.Linear(3, 2)
         )
 
     def test_get_sorted_funcs(self):
-        assertCountEqual(
+        six.assertCountEqual(
             self, [k for (k, v) in self.fs._get_sorted_funcs()], ('a', 'b'))
 
     def check_equal_fs(self, fs1, fs2):
