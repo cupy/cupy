@@ -45,7 +45,8 @@ class Variable(object):
         """Initializes a variable.
 
         Args:
-            data (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
+            data (:class:`~numpy.ndarray` or \
+                :class:`~pycuda.gpuarray.GPUArray`):
                 Data array that this variable holds.
             volatile (bool): Volatility flag. If it is True, the variable will
                 not keep track of any function applications.
