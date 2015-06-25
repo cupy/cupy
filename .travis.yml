@@ -6,8 +6,9 @@ python:
 
 install:
   - python setup.py install
-  - pip install nose
+  - pip install nose flake8 hacking
 
 script:
   - chainer-cuda-requirements
   - nosetests -a '!gpu'
+  - flake8 chainer/**/*.py tests/**/*.py --exclude=libcudnn.py
