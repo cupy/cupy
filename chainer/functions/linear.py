@@ -1,6 +1,7 @@
 import math
+
 import numpy
-from chainer import cuda, Function
+from chainer import Function, cuda
 
 
 def _as_mat(x):

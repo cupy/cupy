@@ -1,7 +1,9 @@
 from unittest import TestCase
-from linear_model import LinearModel
+
 from chainer.optimizers import Adam
 from chainer.testing import attr
+
+from linear_model import LinearModel
 
 
 class TestAdam(TestCase):

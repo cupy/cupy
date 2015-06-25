@@ -1,6 +1,6 @@
 from unittest import TestCase
-import numpy
 
+import numpy
 from chainer import Variable
 from chainer.functions import identity
 

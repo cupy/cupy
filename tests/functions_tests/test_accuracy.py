@@ -1,11 +1,13 @@
 from unittest import TestCase
+
 import numpy
-from six.moves import range
-from chainer import cuda, Variable
+from chainer import Variable, cuda
 from chainer.cuda import to_cpu, to_gpu
-from chainer.gradient_check import assert_allclose
 from chainer.functions import accuracy
+from chainer.gradient_check import assert_allclose
 from chainer.testing import attr
+
+from six.moves import range
 
 if cuda.available:
     cuda.init()

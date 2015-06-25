@@ -1,6 +1,7 @@
 import numpy
+from chainer import Function, cuda
+
 from six.moves import range
-from chainer import cuda, Function
 
 
 def _extract_gates(x):

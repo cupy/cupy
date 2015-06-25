@@ -1,13 +1,15 @@
 from unittest import TestCase
+
 import numpy
-from six.moves import range
-import six.moves.cPickle as pickle
-from chainer import cuda, Variable
+from chainer import Variable, cuda
 from chainer.cuda import to_gpu
-from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import Convolution2D
-from chainer.utils import conv
+from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.testing import attr
+from chainer.utils import conv
+
+import six.moves.cPickle as pickle
+from six.moves import range
 
 if cuda.available:
     cuda.init()

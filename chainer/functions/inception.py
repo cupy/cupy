@@ -1,5 +1,5 @@
 from chainer import Function, FunctionSet, Variable
-from chainer.functions import concat, Convolution2D, max_pooling_2d, relu
+from chainer.functions import Convolution2D, concat, max_pooling_2d, relu
 
 
 class Inception(Function):

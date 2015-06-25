@@ -1,5 +1,5 @@
 import numpy
-from chainer import cuda, Function
+from chainer import Function, cuda
 
 
 def _kernel_with_I(args, expr, name):

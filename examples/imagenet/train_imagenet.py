@@ -9,22 +9,22 @@ zero-origin label (this format is same as that used by Caffe's ImageDataLayer).
 """
 import argparse
 import cPickle as pickle
-from datetime import timedelta
 import json
 import math
-from multiprocessing import Pool
-from Queue import Queue
 import random
 import sys
-from threading import Thread
 import time
+from datetime import timedelta
+from multiprocessing import Pool
+from Queue import Queue
+from threading import Thread
 
+import chainer.functions as F
 import cv2
 import numpy as np
-from six.moves import range
+from chainer import FunctionSet, Variable, cuda, optimizers
 
-from chainer import cuda, Variable, FunctionSet, optimizers
-import chainer.functions as F
+from six.moves import range
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from ILSVRC2012 dataset')

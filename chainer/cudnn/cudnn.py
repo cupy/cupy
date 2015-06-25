@@ -3,10 +3,10 @@
 import atexit
 import ctypes
 import os
-import numpy
 
-from chainer import cuda
 import libcudnn
+import numpy
+from chainer import cuda
 
 enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
 available = True

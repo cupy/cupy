@@ -1,5 +1,6 @@
 import copy
 import weakref
+
 import numpy
 from six import iteritems
 

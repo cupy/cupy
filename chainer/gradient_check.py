@@ -1,5 +1,7 @@
 import numpy
+
 from six.moves import range
+
 from . import cuda
 
 

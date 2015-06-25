@@ -1,5 +1,5 @@
 import numpy
-from chainer import cuda, cudnn, Function
+from chainer import Function, cuda, cudnn
 
 if cudnn.available:
     from chainer.cudnn import libcudnn

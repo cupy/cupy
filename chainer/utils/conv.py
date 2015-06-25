@@ -1,6 +1,7 @@
 import numpy
-from six.moves import range
 from chainer import cuda
+
+from six.moves import range
 
 
 def get_conv_outsize(size, k, s, p, cover_all=False):

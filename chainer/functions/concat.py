@@ -1,5 +1,5 @@
 import numpy
-from chainer import cuda, Function
+from chainer import Function, cuda
 
 _args = 'const float* x, float* y, int cdimx, int cdimy, int rdim, int coffset'
 _preamble = '''

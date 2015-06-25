@@ -1,7 +1,9 @@
 from unittest import TestCase
-from linear_model import LinearModel
+
 from chainer.optimizers import SGD
 from chainer.testing import attr
+
+from linear_model import LinearModel
 
 
 class TestSGD(TestCase):

@@ -32,8 +32,10 @@ attribute to select appropriate device on each manipulation routine.
 """
 import atexit
 import os
+
 import numpy
 from six import itervalues
+
 from six.moves import copyreg
 
 try:

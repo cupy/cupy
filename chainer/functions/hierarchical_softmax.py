@@ -1,10 +1,11 @@
 import collections
 
 import numpy
+from chainer import Function
 from six import iteritems
+
 from six.moves import zip
 from six.moves.queue import PriorityQueue
-from chainer import Function
 
 
 class TreeParser(object):

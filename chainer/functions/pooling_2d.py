@@ -1,6 +1,7 @@
 from collections import Iterable
+
 import numpy
-from chainer import cuda, cudnn, Function
+from chainer import Function, cuda, cudnn
 from chainer.utils import conv
 
 if cudnn.available:

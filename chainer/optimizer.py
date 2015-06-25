@@ -1,6 +1,9 @@
 import math
+
 import numpy
+
 from . import cuda
+
 
 # TODO(delta2323): Make it public function and move it to common directory.
 

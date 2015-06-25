@@ -1,5 +1,5 @@
-from chainer import FunctionSet, Variable
 import chainer.functions as F
+from chainer import FunctionSet, Variable
 
 
 class AlexBN(FunctionSet):

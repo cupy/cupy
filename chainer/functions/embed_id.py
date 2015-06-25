@@ -1,5 +1,5 @@
 import numpy
-from chainer import cuda, Function
+from chainer import Function, cuda
 
 
 class EmbedID(Function):

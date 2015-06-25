@@ -1,7 +1,8 @@
 import numpy as np
+from chainer import FunctionSet, Variable, cuda
+from chainer.functions import Linear, accuracy, softmax_cross_entropy
+
 from six.moves import range
-from chainer import cuda, Variable, FunctionSet
-from chainer.functions import Linear, softmax_cross_entropy, accuracy
 
 if cuda.available:
     cuda.init()

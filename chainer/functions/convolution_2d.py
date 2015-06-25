@@ -1,8 +1,10 @@
 import math
+
 import numpy
-from six.moves import range
-from chainer import cuda, cudnn, Function
+from chainer import Function, cuda, cudnn
 from chainer.utils import conv
+
+from six.moves import range
 
 if cudnn.available:
     from chainer.cudnn import libcudnn

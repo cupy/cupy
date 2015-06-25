@@ -1,10 +1,12 @@
-import numpy as np
 from unittest import TestCase
-import six.moves.cPickle as pickle
-from six import assertCountEqual
-from chainer import cuda, FunctionSet, Function
+
+import numpy as np
+from chainer import Function, FunctionSet, cuda
 from chainer.functions import Linear
 from chainer.testing import attr
+from six import assertCountEqual
+
+import six.moves.cPickle as pickle
 
 if cuda.available:
     cuda.init()

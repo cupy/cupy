@@ -9,10 +9,12 @@ import argparse
 import math
 import sys
 import time
-import numpy as np
-from six.moves import range
-from chainer import cuda, Variable, FunctionSet, optimizers
+
 import chainer.functions as F
+import numpy as np
+from chainer import FunctionSet, Variable, cuda, optimizers
+
+from six.moves import range
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,

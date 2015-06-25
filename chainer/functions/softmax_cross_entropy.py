@@ -1,7 +1,8 @@
 import numpy
-from six.moves import range
-from chainer import cuda, cudnn, Function
+from chainer import Function, cuda, cudnn
 from chainer.functions.softmax import Softmax
+
+from six.moves import range
 
 
 class SoftmaxCrossEntropy(Function):

@@ -1,10 +1,12 @@
 from unittest import TestCase
+
 import numpy
-from six.moves import range
-from chainer import cuda, Variable
-from chainer.gradient_check import assert_allclose, numerical_grad
+from chainer import Variable, cuda
 from chainer.functions import local_response_normalization
+from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.testing import attr
+
+from six.moves import range
 
 if cuda.available:
     cuda.init()

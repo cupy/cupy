@@ -1,5 +1,5 @@
-from chainer import Function, FunctionSet, Variable
 import chainer.functions as F
+from chainer import Function, FunctionSet, Variable
 from chainer.functions.pooling_2d import AveragePooling2D, MaxPooling2D
 
 

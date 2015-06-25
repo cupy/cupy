@@ -1,6 +1,7 @@
 from unittest import TestCase
+
 import numpy
-from chainer import cuda, Variable
+from chainer import Variable, cuda
 from chainer.functions import reshape
 from chainer.testing import attr
 

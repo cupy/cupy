@@ -6,11 +6,13 @@ to load MNIST dataset.
 
 """
 import argparse
-import numpy as np
-from six.moves import range
-from sklearn.datasets import fetch_mldata
-from chainer import cuda, Variable, FunctionSet, optimizers
+
 import chainer.functions as F
+import numpy as np
+from chainer import FunctionSet, Variable, cuda, optimizers
+from sklearn.datasets import fetch_mldata
+
+from six.moves import range
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,

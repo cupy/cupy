@@ -1,7 +1,9 @@
 import math
-import numpy
 from numbers import Number
-from chainer import cuda, Function, Variable
+
+import numpy
+from chainer import Function, Variable, cuda
+
 
 # ------------------------------------------------------------------------------
 # Arithmetic

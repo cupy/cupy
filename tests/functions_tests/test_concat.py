@@ -1,9 +1,10 @@
 from unittest import TestCase
+
 import numpy
-from chainer import cuda, Variable
-from chainer.cuda import to_gpu, GPUArray
-from chainer.gradient_check import assert_allclose
+from chainer import Variable, cuda
+from chainer.cuda import GPUArray, to_gpu
 from chainer.functions import concat
+from chainer.gradient_check import assert_allclose
 from chainer.testing import attr
 
 if cuda.available:

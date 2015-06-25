@@ -7,10 +7,13 @@ poorly on MNIST dataset.
 
 """
 import math
+
 import numpy as np
-from six.moves import range
+from chainer import functions as F
+from chainer import FunctionSet, Variable, cuda, optimizers
 from sklearn.datasets import fetch_mldata
-from chainer import cuda, functions as F, FunctionSet, optimizers, Variable
+
+from six.moves import range
 
 batchsize = 100
 n_epoch = 50

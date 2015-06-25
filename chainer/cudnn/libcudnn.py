@@ -1,8 +1,8 @@
 """Python interface to the NVIDIA cuDNN library."""
 
-import sys
 import ctypes
 import ctypes.util
+import sys
 
 if sys.platform in ('linux2', 'linux'):
     _libcudnn_libname_list = [
