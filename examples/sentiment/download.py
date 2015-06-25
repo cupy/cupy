@@ -4,6 +4,7 @@ import os.path
 import urllib
 import zipfile
 
+
 urllib.urlretrieve(
     'http://nlp.stanford.edu/sentiment/trainDevTestTrees_PTB.zip',
     'trainDevTestTrees_PTB.zip')
