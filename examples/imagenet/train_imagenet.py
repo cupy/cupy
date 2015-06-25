@@ -9,12 +9,12 @@ zero-origin label (this format is same as that used by Caffe's ImageDataLayer).
 """
 from __future__ import print_function
 import argparse
-from datetime import timedelta
+import datetime
 import json
-from multiprocessing import Pool
+import multiprocessing
 import random
 import sys
-from threading import Thread
+import threading
 import time
 
 import cv2
@@ -134,7 +134,7 @@ def feed_data():
 
     batch_pool = [None] * args.batchsize
     val_batch_pool = [None] * args.val_batchsize
-    pool = Pool(args.loaderjob)
+    pool = multiprocessing.Pool(args.loaderjob)
     data_q.put('train')
     for epoch in six.moves.range(1, 1 + args.epoch):
         print('epoch', epoch, file=sys.stderr)
@@ -210,7 +210,7 @@ def log_result():
             sys.stderr.write(
                 '\rtrain {} updates ({} samples) time: {} ({} images/sec)'
                 .format(train_count, train_count * args.batchsize,
-                        timedelta(seconds=duration), throughput))
+                        datetime.timedelta(seconds=duration), throughput))
 
             train_cur_loss += loss
             train_cur_accuracy += accuracy
@@ -230,7 +230,7 @@ def log_result():
             sys.stderr.write(
                 '\rval   {} batches ({} samples) time: {} ({} images/sec)'
                 .format(val_count / args.val_batchsize, val_count,
-                        timedelta(seconds=duration), throughput))
+                        datetime.timedelta(seconds=duration), throughput))
 
             val_loss += loss
             val_accuracy += accuracy
@@ -281,10 +281,10 @@ def train_loop():
         del loss, accuracy, x, y
 
 # Invoke threads
-feeder = Thread(target=feed_data)
+feeder = threading.Thread(target=feed_data)
 feeder.daemon = True
 feeder.start()
-logger = Thread(target=log_result)
+logger = threading.Thread(target=log_result)
 logger.daemon = True
 logger.start()
 
