@@ -310,20 +310,21 @@ def rpow(lhs, rhs):  # rhs ** lhs
         return PowVarVar()(rhs, lhs)
     return PowConstVar(rhs)(lhs)
 
-# Variable operators
-variable.Variable.__neg__ = neg
-variable.Variable.__add__ = add
-variable.Variable.__radd__ = add
-variable.Variable.__sub__ = sub
-variable.Variable.__rsub__ = rsub
-variable.Variable.__mul__ = mul
-variable.Variable.__rmul__ = mul
-variable.Variable.__div__ = div
-variable.Variable.__truediv__ = div
-variable.Variable.__rdiv__ = rdiv
-variable.Variable.__rtruediv__ = rdiv
-variable.Variable.__pow__ = pow
-variable.Variable.__rpow__ = rpow
+
+def install_variable_arithmetics():
+    variable.Variable.__neg__ = neg
+    variable.Variable.__add__ = add
+    variable.Variable.__radd__ = add
+    variable.Variable.__sub__ = sub
+    variable.Variable.__rsub__ = rsub
+    variable.Variable.__mul__ = mul
+    variable.Variable.__rmul__ = mul
+    variable.Variable.__div__ = div
+    variable.Variable.__truediv__ = div
+    variable.Variable.__rdiv__ = rdiv
+    variable.Variable.__rtruediv__ = rdiv
+    variable.Variable.__pow__ = pow
+    variable.Variable.__rpow__ = rpow
 
 # ------------------------------------------------------------------------------
 # Special functions
