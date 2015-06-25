@@ -1,5 +1,5 @@
 import numpy
-from six.moves import range
+import six
 
 from chainer import cuda
 
@@ -21,9 +21,9 @@ def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
                     mode='constant', constant_values=(pval,))
     col = numpy.ndarray((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
 
-    for i in range(kh):
+    for i in six.moves.range(kh):
         i_lim = i + sy * out_h
-        for j in range(kw):
+        for j in six.moves.range(kw):
             j_lim = j + sx * out_w
             col[:, :, i, j, :, :] = img[:, :, i:i_lim:sy, j:j_lim:sx]
 
@@ -64,9 +64,9 @@ def col2im_cpu(col, sy, sx, ph, pw, h, w):
 
     img = numpy.zeros((n, c, h + 2 * ph + sy - 1, w + 2 * pw + sx - 1),
                       dtype=col.dtype)
-    for i in range(kh):
+    for i in six.moves.range(kh):
         i_lim = i + sy * out_h
-        for j in range(kw):
+        for j in six.moves.range(kw):
             j_lim = j + sx * out_w
             img[:, :, i:i_lim:sy, j:j_lim:sx] += col[:, :, i, j, :, :]
 
