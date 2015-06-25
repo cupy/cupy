@@ -3,12 +3,12 @@ import unittest
 
 import numpy
 
+import chainer
 from chainer import cuda
-from chainer.functions import leaky_relu
-from chainer.gradient_check import assert_allclose
-from chainer.gradient_check import numerical_grad
+from chainer import functions
+from chainer import gradient_check
 from chainer.testing import attr
-from chainer import Variable
+
 
 if cuda.available:
     cuda.init()
@@ -24,15 +24,15 @@ class TestLeakyReLU(unittest.TestCase):
         self.slope = random.random()
 
     def check_forward(self, x_data):
-        x = Variable(x_data)
-        y = leaky_relu(x, slope=self.slope)
+        x = chainer.Variable(x_data)
+        y = functions.leaky_relu(x, slope=self.slope)
 
         expected = self.x.copy()
         for i in numpy.ndindex(self.x.shape):
             if self.x[i] < 0:
                 expected[i] *= self.slope
 
-        assert_allclose(expected, y.data)
+        gradient_check.assert_allclose(expected, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -42,16 +42,16 @@ class TestLeakyReLU(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = Variable(x_data)
-        y = leaky_relu(x, slope=self.slope)
+        x = chainer.Variable(x_data)
+        y = functions.leaky_relu(x, slope=self.slope)
         y.grad = y_grad
         y.backward()
 
         func = y.creator
         f = lambda: func.forward((x.data,))
-        gx, = numerical_grad(f, (x.data,), (y.grad,))
+        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
 
-        assert_allclose(gx, x.grad)
+        gradient_check.assert_allclose(gx, x.grad)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)

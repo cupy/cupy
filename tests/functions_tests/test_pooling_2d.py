@@ -3,15 +3,11 @@ import unittest
 import numpy
 import six
 
+import chainer
 from chainer import cuda
-from chainer.cuda import to_cpu
-from chainer.cuda import to_gpu
-from chainer.functions import average_pooling_2d
-from chainer.functions import max_pooling_2d
-from chainer.gradient_check import assert_allclose
-from chainer.gradient_check import numerical_grad
+from chainer import functions
+from chainer import gradient_check
 from chainer.testing import attr
-from chainer import Variable
 
 
 if cuda.available:
@@ -32,10 +28,11 @@ class TestMaxPooling2D(unittest.TestCase):
                                        (2, 3, 2, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):
-        x = Variable(x_data)
-        y = max_pooling_2d(x, 3, stride=2, pad=1, cover_all=self.cover_all,
-                           use_cudnn=use_cudnn)
-        y_data = to_cpu(y.data)
+        x = chainer.Variable(x_data)
+        y = functions.max_pooling_2d(x, 3, stride=2, pad=1,
+                                     cover_all=self.cover_all,
+                                     use_cudnn=use_cudnn)
+        y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
         for k in six.moves.range(2):
@@ -54,42 +51,43 @@ class TestMaxPooling2D(unittest.TestCase):
                             k, c, 0:2, 1:3].max()],
                         [self.x[k, c, 1:4, 0:2].max(), self.x[
                             k, c, 1:4, 1:3].max()]])
-                assert_allclose(expect, y_data[k, c])
+                gradient_check.assert_allclose(expect, y_data[k, c])
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.cudnn
     def test_forward_gpu(self):
-        self.check_forward(to_gpu(self.x))
+        self.check_forward(cuda.to_gpu(self.x))
 
     @attr.gpu
     def test_forward_gpu_no_cudnn(self):
-        self.check_forward(to_gpu(self.x), False)
+        self.check_forward(cuda.to_gpu(self.x), False)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
-        x = Variable(x_data)
-        y = max_pooling_2d(x, 3, stride=2, pad=1, cover_all=self.cover_all,
-                           use_cudnn=use_cudnn)
+        x = chainer.Variable(x_data)
+        y = functions.max_pooling_2d(x, 3, stride=2, pad=1,
+                                     cover_all=self.cover_all,
+                                     use_cudnn=use_cudnn)
         y.grad = y_grad
         y.backward()
 
         func = y.creator
         f = lambda: func.forward((x.data,))
-        gx, = numerical_grad(f, (x.data,), (y.grad,))
+        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
 
-        assert_allclose(to_cpu(gx), to_cpu(x.grad))
+        gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.cudnn
     def test_backward_gpu(self):
-        self.check_backward(to_gpu(self.x), to_gpu(self.gy))
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.gpu
     def test_backward_gpu_no_cudnn(self):
-        self.check_backward(to_gpu(self.x), to_gpu(self.gy), False)
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
 
 
 class TestMaxPooling2DCoverAll(TestMaxPooling2D):
@@ -110,9 +108,10 @@ class TestAveragePooling2D(unittest.TestCase):
                                        (2, 3, 2, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):
-        x = Variable(x_data)
-        y = average_pooling_2d(x, 3, stride=2, pad=1, use_cudnn=use_cudnn)
-        y_data = to_cpu(y.data)
+        x = chainer.Variable(x_data)
+        y = functions.average_pooling_2d(x, 3, stride=2,
+                                         pad=1, use_cudnn=use_cudnn)
+        y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
         for k in six.moves.range(2):
@@ -122,38 +121,39 @@ class TestAveragePooling2D(unittest.TestCase):
                         k, c, 0:2, 1:3].sum()],
                     [self.x[k, c, 1:4, 0:2].sum(), self.x[
                         k, c, 1:4, 1:3].sum()]]) / 9
-                assert_allclose(expect, y_data[k, c])
+                gradient_check.assert_allclose(expect, y_data[k, c])
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.cudnn
     def test_forward_gpu(self):
-        self.check_forward(to_gpu(self.x))
+        self.check_forward(cuda.to_gpu(self.x))
 
     @attr.gpu
     def test_forward_gpu_no_cudnn(self):
-        self.check_forward(to_gpu(self.x), False)
+        self.check_forward(cuda.to_gpu(self.x), False)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
-        x = Variable(x_data)
-        y = average_pooling_2d(x, 3, stride=2, pad=1, use_cudnn=use_cudnn)
+        x = chainer.Variable(x_data)
+        y = functions.average_pooling_2d(x, 3, stride=2,
+                                         pad=1, use_cudnn=use_cudnn)
         y.grad = y_grad
         y.backward()
 
         func = y.creator
         f = lambda: func.forward((x.data,))
-        gx, = numerical_grad(f, (x.data,), (y.grad,), eps=1e-2)
+        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,), eps=1e-2)
 
-        assert_allclose(to_cpu(gx), to_cpu(x.grad))
+        gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.cudnn
     def test_backward_gpu(self):
-        self.check_backward(to_gpu(self.x), to_gpu(self.gy))
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.gpu
     def test_backward_gpu_no_cudnn(self):
-        self.check_backward(to_gpu(self.x), to_gpu(self.gy), False)
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)

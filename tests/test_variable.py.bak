@@ -1,0 +1,52 @@
+class TestVariableOp(TestCase):
+    def setUp(self):
+        self.x = np.random.uniform(-1, 1, 10).astype(np.float32)
+        self.y = np.random.uniform(-1, 1, 10).astype(np.float32)
+        self.a = np.random.uniform(0.1, 10, 10).astype(np.float32)
+        self.b = np.float32(np.random.uniform(0.1))
+
+    def check_op(self, op, gpu, *args):
+        if gpu:
+            args = map(cuda.to_gpu, args)
+        z_data = op(*args)
+        z = op(*map(Variable, args))
+        assert_allclose(z.data, z_data)
+
+    def test_pos(self): self.check_op(lambda x: +x, False, self.x)
+    def test_neg(self): self.check_op(lambda x: -x, False, self.x)
+    def test_add(self): self.check_op(lambda x, y: x + y,  False, self.x, self.y)
+    def test_sub(self): self.check_op(lambda x, y: x - y,  False, self.x, self.y)
+    def test_mul(self): self.check_op(lambda x, y: x * y,  False, self.x, self.y)
+    def test_div(self): self.check_op(lambda x, y: x / y,  False, self.x, self.y)
+    def test_pow(self): self.check_op(lambda x, y: x ** y, False, self.a, self.x)
+
+    # 2015/6/15 Kenta OONO <oono@preferred.jp>
+    # GPUArray does not support + operator
+    # def test_pos_gpu(self): self.check_op(lambda x: +x, True, self.x)
+    def test_neg_gpu(self): self.check_op(lambda x: -x, True, self.x)
+    def test_add_gpu(self): self.check_op(lambda x, y: x + y,  True, self.x, self.y)
+    def test_sub_gpu(self): self.check_op(lambda x, y: x - y,  True, self.x, self.y)
+    def test_mul_gpu(self): self.check_op(lambda x, y: x * y,  True, self.x, self.y)
+    def test_div_gpu(self): self.check_op(lambda x, y: x / y,  True, self.x, self.y)
+    def test_pow_gpu(self): self.check_op(lambda x, y: x ** y, True, self.a, self.x)
+
+    # def test_add_array(self): self.check_op(lambda y: self.a + y, self.y)
+    # def test_sub_array(self): self.check_op(lambda y: self.a - y, self.y)
+    # def test_mul_array(self): self.check_op(lambda y: self.a * y, self.y)
+    # def test_div_array(self): self.check_op(lambda y: self.a / y, self.y)
+    # def test_pow_array(self): self.check_op(lambda y: self.a ** y, self.y)
+
+    def test_add_scalar(self): self.check_op(lambda y: self.b + y,  False, self.y)
+    def test_sub_scalar(self): self.check_op(lambda y: self.b - y,  False, self.y)
+    def test_mul_scalar(self): self.check_op(lambda y: self.b * y,  False, self.y)
+    def test_div_scalar(self): self.check_op(lambda y: self.b / y,  False, self.y)
+    def test_pow_scalar(self): self.check_op(lambda y: self.b ** y, False, self.y)
+
+    def test_add_scalar_gpu(self): self.check_op(lambda y: self.b + y,  True, self.y)
+    def test_sub_scalar_gpu(self): self.check_op(lambda y: self.b - y,  True, self.y)
+    def test_mul_scalar_gpu(self): self.check_op(lambda y: self.b * y,  True, self.y)
+    def test_div_scalar_gpu(self): self.check_op(lambda y: self.b / y,  True, self.y)
+    # 2015/6/15 Kenta OONO <oono@preferred.jp>
+    # ** or pow() do not support combination of numpy.float32 and GPUArray
+    # def test_pow_scalar_gpu(self): self.check_op(lambda y: self.b ** y, True, self.y)
+

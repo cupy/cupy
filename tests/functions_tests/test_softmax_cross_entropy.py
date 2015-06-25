@@ -4,14 +4,11 @@ import unittest
 import numpy
 import six
 
+import chainer
 from chainer import cuda
-from chainer.cuda import to_cpu
-from chainer.cuda import to_gpu
-from chainer.functions import softmax_cross_entropy
-from chainer.gradient_check import assert_allclose
-from chainer.gradient_check import numerical_grad
+from chainer import functions
+from chainer import gradient_check
 from chainer.testing import attr
-from chainer import Variable
 
 
 if cuda.available:
@@ -25,10 +22,10 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         self.t = numpy.random.randint(0, 3, (4,)).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data, use_cudnn=True):
-        x = Variable(x_data)
-        t = Variable(t_data)
-        loss = softmax_cross_entropy(x, t, use_cudnn)
-        loss_value = float(to_cpu(loss.data))
+        x = chainer.Variable(x_data)
+        t = chainer.Variable(t_data)
+        loss = functions.softmax_cross_entropy(x, t, use_cudnn)
+        loss_value = float(cuda.to_cpu(loss.data))
 
         # Compute expected value
         y = numpy.exp(self.x)
@@ -44,32 +41,32 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
 
     @attr.cudnn
     def test_forward_gpu(self):
-        self.check_forward(to_gpu(self.x), to_gpu(self.t))
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
     @attr.gpu
     def test_forward_gpu_no_cudnn(self):
-        self.check_forward(to_gpu(self.x), to_gpu(self.t), False)
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
 
     def check_backward(self, x_data, t_data, use_cudnn=True):
-        x = Variable(x_data)
-        t = Variable(t_data)
-        loss = softmax_cross_entropy(x, t, use_cudnn)
+        x = chainer.Variable(x_data)
+        t = chainer.Variable(t_data)
+        loss = functions.softmax_cross_entropy(x, t, use_cudnn)
         loss.backward()
         self.assertEqual(None, t.grad)
 
         func = loss.creator
         f = lambda: func.forward((x.data, t.data))
-        gx, = numerical_grad(f, (x.data,), (1,), eps=0.02)
+        gx, = gradient_check.numerical_grad(f, (x.data,), (1,), eps=0.02)
 
-        assert_allclose(gx, x.grad)
+        gradient_check.assert_allclose(gx, x.grad)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t)
 
     @attr.cudnn
     def test_backward_gpu(self):
-        self.check_backward(to_gpu(self.x), to_gpu(self.t))
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
     @attr.gpu
     def test_backward_gpu_no_cudnn(self):
-        self.check_backward(to_gpu(self.x), to_gpu(self.t), False)
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)

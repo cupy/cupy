@@ -2,10 +2,10 @@ import unittest
 
 import numpy
 
+import chainer
 from chainer import cuda
-from chainer.functions import reshape
+from chainer import functions
 from chainer.testing import attr
-from chainer import Variable
 
 
 if cuda.available:
@@ -20,8 +20,8 @@ class TestReshape(unittest.TestCase):
 
     def check_forward(self, x_data):
         shape = self.gy.shape
-        x = Variable(x_data)
-        y = reshape(x, shape)
+        x = chainer.Variable(x_data)
+        y = functions.reshape(x, shape)
         self.assertTrue((self.x.reshape(shape) == cuda.to_cpu(y.data)).all())
 
     def test_forward_cpu(self):
@@ -32,8 +32,8 @@ class TestReshape(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = Variable(x_data)
-        y = reshape(x, self.gy.shape)
+        x = chainer.Variable(x_data)
+        y = functions.reshape(x, self.gy.shape)
         y.grad = y_grad
         y.backward()
 

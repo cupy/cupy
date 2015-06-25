@@ -3,7 +3,7 @@ import unittest
 import numpy
 
 from chainer import cuda
-from chainer.functions import Parameter
+from chainer import functions
 from chainer.testing import attr
 
 
@@ -17,7 +17,7 @@ class TestParameter(unittest.TestCase):
         self.W = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.gW = numpy.random.uniform(-1, 1,
                                        self.W.shape).astype(numpy.float32)
-        self.func = Parameter(self.W)
+        self.func = functions.Parameter(self.W)
 
     def tearDown(self):
         del self.func

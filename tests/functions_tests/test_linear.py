@@ -2,13 +2,11 @@ import unittest
 
 import numpy
 
+import chainer
 from chainer import cuda
-from chainer.cuda import to_gpu
-from chainer.functions import Linear
-from chainer.gradient_check import assert_allclose
-from chainer.gradient_check import numerical_grad
+from chainer import functions
+from chainer import gradient_check
 from chainer.testing import attr
-from chainer import Variable
 
 
 if cuda.available:
@@ -18,7 +16,7 @@ if cuda.available:
 class TestLinear(unittest.TestCase):
 
     def setUp(self):
-        self.func = Linear(3, 2)
+        self.func = functions.Linear(3, 2)
         self.func.W = numpy.random.uniform(
             -1, 1, self.func.W.shape).astype(numpy.float32)
         self.func.b = numpy.random.uniform(
@@ -34,10 +32,10 @@ class TestLinear(unittest.TestCase):
         self.y = self.x.dot(self.func.W.T) + self.func.b
 
     def check_forward(self, x_data):
-        x = Variable(x_data)
+        x = chainer.Variable(x_data)
         y = self.func(x)
         y_expect = self.x.dot(self.W.T) + self.b
-        assert_allclose(y_expect, y.data)
+        gradient_check.assert_allclose(y_expect, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -45,22 +43,22 @@ class TestLinear(unittest.TestCase):
     @attr.gpu
     def test_forward_gpu(self):
         self.func.to_gpu()
-        self.check_forward(to_gpu(self.x))
+        self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = Variable(x_data)
+        x = chainer.Variable(x_data)
         y = self.func(x)
         y.grad = y_grad
         y.backward()
 
         func = y.creator
         f = lambda: func.forward((x.data,))
-        gx, gW, gb = numerical_grad(
+        gx, gW, gb = gradient_check.numerical_grad(
             f, (x.data, func.W, func.b), (y.grad,), eps=1e-2)
 
-        assert_allclose(gx, x.grad)
-        assert_allclose(gW, func.gW)
-        assert_allclose(gb, func.gb)
+        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.assert_allclose(gW, func.gW)
+        gradient_check.assert_allclose(gb, func.gb)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
@@ -68,4 +66,4 @@ class TestLinear(unittest.TestCase):
     @attr.gpu
     def test_backward_gpu(self):
         self.func.to_gpu()
-        self.check_backward(to_gpu(self.x), to_gpu(self.gy))
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
