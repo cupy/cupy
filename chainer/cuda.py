@@ -200,15 +200,15 @@ def get_device(arg=None):
 
         The rule of device selection is following.
 
-        ==================================== =====================================
-         Type of ``arg``                      Return value
-        ==================================== =====================================
-         ``None``                             Current device
-         ``int``                              Device of ID ``arg``
-         :class:`~pycuda.driver.Device`       ``arg``
-         :class:`~pycuda.gpuarray.GPUArray`   Device given array was allocated on
-         :class:`~numpy.ndarray`              ``None``
-        ==================================== =====================================
+==================================== =====================================
+ Type of ``arg``                      Return value
+==================================== =====================================
+ ``None``                             Current device
+ ``int``                              Device of ID ``arg``
+ :class:`~pycuda.driver.Device`       ``arg``
+ :class:`~pycuda.gpuarray.GPUArray`   Device given array was allocated on
+ :class:`~numpy.ndarray`              ``None``
+==================================== =====================================
 
     """
     if arg is None:
