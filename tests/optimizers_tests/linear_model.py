@@ -1,6 +1,11 @@
 import numpy as np
-from chainer import FunctionSet, Variable, cuda
-from chainer.functions import Linear, accuracy, softmax_cross_entropy
+
+from chainer import cuda
+from chainer.functions import accuracy
+from chainer.functions import Linear
+from chainer.functions import softmax_cross_entropy
+from chainer import FunctionSet
+from chainer import Variable
 
 from six.moves import range
 
@@ -32,8 +37,8 @@ class LinearModel(object):
             return t
 
         def _make_dataset(batch_size, unit_num, gpu):
-            x_data = np.random.uniform(-1, 1,
-                                       (batch_size, unit_num)).astype(np.float32)
+            x_data = np.random.uniform(
+                -1, 1, (batch_size, unit_num)).astype(np.float32)
             t_data = _make_label(x_data)
             if gpu:
                 x_data = cuda.to_gpu(x_data)

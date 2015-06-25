@@ -3,7 +3,7 @@ import weakref
 
 import numpy
 
-from . import cuda
+from chainer import cuda
 
 
 class Variable(object):
@@ -13,18 +13,18 @@ class Variable(object):
     Every variable holds a data array of type either :class:`~numpy.ndarray` or
     :class:`~pycuda.gpuarray.GPUArray`.
 
-    A Variable object may be constructed in two ways: by the user or by some function.
-    When a variable is created by some function as one of its outputs, the variable
-    holds a reference to that function. This reference is used in error
-    backpropagation (a.k.a. backprop). It is also used in *backward unchaining*.
-    A variable that does not hold a reference to its creator is called a *root*
-    variable. A variable is root if it is created by the user, or if the reference is
-    deleted by :meth:`unchain_backward`.
+    A Variable object may be constructed in two ways: by the user or by some
+    function. When a variable is created by some function as one of its
+    outputs, the variable holds a reference to that function. This reference is
+    used in error backpropagation (a.k.a. backprop). It is also used in
+    *backward unchaining*. A variable that does not hold a reference to its
+    creator is called a *root* variable. A variable is root if it is created by
+    the user, or if the reference is deleted by :meth:`unchain_backward`.
 
-    Users can disable this chaining behavior by setting the volatile flag for the
-    initial variables. When a function gets volatile variables as its inputs,
-    the output variables do not hold references to the function. This acts like
-    unchaining on every function application.
+    Users can disable this chaining behavior by setting the volatile flag for
+    the initial variables. When a function gets volatile variables as its
+    inputs, the output variables do not hold references to the function. This
+    acts like unchaining on every function application.
 
     Attributes:
         data: Data array of type either :class:`~numpy.ndarray` or
@@ -108,14 +108,14 @@ class Variable(object):
         loss value.
 
         Args:
-            retain_grad (bool): If True, the gradient arrays of all intermediate
-                variables are kept. Otherwise, :data:`grad` of the intermediate
-                variables are set to ``None`` on appropriate timing, which may
-                reduce the maximum memory consumption.
+            retain_grad (bool): If True, the gradient arrays of all
+                intermediate variables are kept. Otherwise, :data:`grad` of the
+                intermediate variables are set to ``None`` on appropriate
+                timing, which may reduce the maximum memory consumption.
 
-                In most cases of training some model, the purpose of backprop is
-                to compute gradients of parameters, not of variables, so it is
-                recommended to set this flag False.
+                In most cases of training some model, the purpose of backprop
+                is to compute gradients of parameters, not of variables, so it
+                is recommended to set this flag False.
 
         """
         if self.creator is None:
@@ -165,10 +165,10 @@ class Variable(object):
 
         After this method completes, intermediate variables and functions that
         are not referenced from anywhere are deallocated by reference
-        count GC. Also this variable itself deletes the reference to its creator
-        function, i.e. this variable becomes root in the computation graph. It
-        indicates that backprop after unchaining stops at this variable. This
-        behavior is useful to implement truncated BPTT.
+        count GC. Also this variable itself deletes the reference to its
+        creator function, i.e. this variable becomes root in the computation
+        graph. It indicates that backprop after unchaining stops at this
+        variable. This behavior is useful to implement truncated BPTT.
 
         """
         cand_funcs = []
