@@ -185,7 +185,7 @@ for epoch in range(n_epoch):
         evaluate(train_trees)
         print('Develop data evaluation:')
         evaluate(develop_trees)
-        print
+        print('')
 
-print ('Test evaluateion')
+print('Test evaluateion')
 evaluate(test_trees)

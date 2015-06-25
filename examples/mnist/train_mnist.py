@@ -7,6 +7,7 @@ to load MNIST dataset.
 """
 import argparse
 import numpy as np
+from six.moves import range
 from sklearn.datasets import fetch_mldata
 from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
@@ -21,7 +22,7 @@ n_epoch   = 20
 n_units   = 1000
 
 # Prepare dataset
-print 'fetch MNIST dataset'
+print('fetch MNIST dataset')
 mnist = fetch_mldata('MNIST original')
 mnist.data   = mnist.data.astype(np.float32)
 mnist.data  /= 255
@@ -53,14 +54,14 @@ optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
 
 # Learning loop
-for epoch in xrange(1, n_epoch+1):
-    print 'epoch', epoch
+for epoch in range(1, n_epoch+1):
+    print('epoch', epoch)
 
     # training
     perm = np.random.permutation(N)
     sum_accuracy = 0
     sum_loss = 0
-    for i in xrange(0, N, batchsize):
+    for i in range(0, N, batchsize):
         x_batch = x_train[perm[i:i+batchsize]]
         y_batch = y_train[perm[i:i+batchsize]]
         if args.gpu >= 0:
@@ -75,13 +76,13 @@ for epoch in xrange(1, n_epoch+1):
         sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
         sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
 
-    print 'train mean loss={}, accuracy={}'.format(
-        sum_loss / N, sum_accuracy / N)
+    print('train mean loss={}, accuracy={}'.format(
+        sum_loss / N, sum_accuracy / N))
 
     # evaluation
     sum_accuracy = 0
     sum_loss     = 0
-    for i in xrange(0, N_test, batchsize):
+    for i in range(0, N_test, batchsize):
         x_batch = x_test[i:i+batchsize]
         y_batch = y_test[i:i+batchsize]
         if args.gpu >= 0:
@@ -93,5 +94,5 @@ for epoch in xrange(1, n_epoch+1):
         sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
         sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
 
-    print 'test  mean loss={}, accuracy={}'.format(
-        sum_loss / N_test, sum_accuracy / N_test)
+    print('test  mean loss={}, accuracy={}'.format(
+        sum_loss / N_test, sum_accuracy / N_test))

@@ -21,6 +21,7 @@ import time
 
 import cv2
 import numpy as np
+from six.moves import range
 
 from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
@@ -127,7 +128,7 @@ def feed_data():
     val_batch_pool = [None] * args.val_batchsize
     pool           = Pool(args.loaderjob)
     data_q.put('train')
-    for epoch in xrange(1, 1 + args.epoch):
+    for epoch in range(1, 1 + args.epoch):
         print >> sys.stderr, 'epoch', epoch
         print >> sys.stderr, 'learning rate', optimizer.lr
         perm = np.random.permutation(len(train_list))

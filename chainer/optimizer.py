@@ -1,11 +1,12 @@
 import math
 import numpy
-import cuda
+from . import cuda
 
 # TODO(delta2323): Make it public function and move it to common directory.
 def _sqnorm(x):
     if isinstance(x, cuda.GPUArray):
-        return float(cuda.gpuarray.dot(x, x).get())
+        with cuda.using_device(x):
+            return float(cuda.gpuarray.dot(x, x).get())
     x = x.ravel()
     return float(x.dot(x))
 
@@ -155,7 +156,8 @@ class Optimizer(object):
         if norm > maxnorm:
             ratio = maxnorm / norm
             for _, g, _ in self.tuples:
-                g *= ratio
+                with cuda.using_device(g):
+                    g *= ratio
 
     def weight_decay(self, decay):
         """Applies weight decay (a.k.a. L2 or Tikonov regularization) of given

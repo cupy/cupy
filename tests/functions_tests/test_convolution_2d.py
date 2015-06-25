@@ -1,6 +1,7 @@
 from unittest import TestCase
-import cPickle as pickle
 import numpy
+from six.moves import range
+import six.moves.cPickle as pickle
 from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
@@ -46,8 +47,8 @@ class TestConvolution2D(TestCase):
         x_gpu = Variable(to_gpu(self.x))
         y_gpu = self.func(x_gpu)
 
-        for i in xrange(y_cpu.data.shape[0]):
-            print i, numpy.abs(y_cpu.data[i] - y_gpu.data[i].get()).max()
+        for i in range(y_cpu.data.shape[0]):
+            print(i, numpy.abs(y_cpu.data[i] - y_gpu.data[i].get()).max())
         assert_allclose(y_cpu.data, y_gpu.data.get())
 
     @attr.gpu

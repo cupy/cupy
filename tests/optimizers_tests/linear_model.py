@@ -1,4 +1,5 @@
 import numpy as np
+from six.moves import range
 from chainer import cuda, Variable, FunctionSet
 from chainer.functions import Linear, softmax_cross_entropy, accuracy
 
@@ -37,7 +38,7 @@ class LinearModel(object):
             t = Variable(t_data)
             return x, t
 
-        for epoch in xrange(self.EPOCH):
+        for epoch in range(self.EPOCH):
             x, t = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu)
             optimizer.zero_grads()
             y = model.l(x)

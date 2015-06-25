@@ -1,5 +1,6 @@
 from unittest import TestCase
 import numpy
+from six.moves import range
 from chainer      import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
@@ -19,7 +20,7 @@ class TestSoftmax(TestCase):
         y = softmax(x, use_cudnn)
 
         y_expect = numpy.exp(self.x)
-        for i in xrange(y_expect.shape[0]):
+        for i in range(y_expect.shape[0]):
             y_expect[i] /= y_expect[i].sum()
 
         assert_allclose(y_expect, y.data)

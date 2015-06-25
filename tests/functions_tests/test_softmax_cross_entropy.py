@@ -1,6 +1,7 @@
 from unittest import TestCase
 import math
 import numpy
+from six.moves import range
 from chainer      import cuda, Variable
 from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
@@ -24,7 +25,7 @@ class TestSoftmaxCrossEntropy(TestCase):
         # Compute expected value
         y = numpy.exp(self.x)
         loss_expect = 0
-        for i in xrange(y.shape[0]):
+        for i in range(y.shape[0]):
             loss_expect -= math.log(y[i, self.t[i]] / y[i].sum())
         loss_expect /= y.shape[0]
 

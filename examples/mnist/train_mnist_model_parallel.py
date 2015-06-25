@@ -8,6 +8,7 @@ poorly on MNIST dataset.
 """
 import math
 import numpy as np
+from six.moves import range
 from sklearn.datasets import fetch_mldata
 from chainer import cuda, functions as F, FunctionSet, optimizers, Variable
 
@@ -16,7 +17,7 @@ n_epoch   =   50
 n_units   = 2000
 
 # Prepare dataset
-print 'fetch MNIST dataset'
+print('fetch MNIST dataset')
 mnist = fetch_mldata('MNIST original')
 mnist.data   = mnist.data.astype(np.float32)
 mnist.data  /= 255
@@ -34,20 +35,20 @@ cuda.init()
 wscale = math.sqrt(2)
 model = FunctionSet(
     gpu0 = FunctionSet(
-        l1=F.Linear(        784, n_units / 2, wscale=wscale),
-        l2=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
-        l3=F.Linear(n_units / 2, n_units,     wscale=wscale),
-        l4=F.Linear(n_units,     n_units / 2, wscale=wscale),
-        l5=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
-        l6=F.Linear(n_units / 2, 10,          wscale=wscale)
+        l1=F.Linear(         784, n_units // 2, wscale=wscale),
+        l2=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
+        l3=F.Linear(n_units // 2, n_units,      wscale=wscale),
+        l4=F.Linear(n_units,      n_units // 2, wscale=wscale),
+        l5=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
+        l6=F.Linear(n_units // 2, 10,           wscale=wscale)
     ).to_gpu(0),
     gpu1 = FunctionSet(
-        l1=F.Linear(        784, n_units / 2, wscale=wscale),
-        l2=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
-        l3=F.Linear(n_units / 2, n_units,     wscale=wscale),
-        l4=F.Linear(n_units,     n_units / 2, wscale=wscale),
-        l5=F.Linear(n_units / 2, n_units / 2, wscale=wscale),
-        l6=F.Linear(n_units / 2, 10,          wscale=wscale)
+        l1=F.Linear(         784, n_units // 2, wscale=wscale),
+        l2=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
+        l3=F.Linear(n_units // 2, n_units,      wscale=wscale),
+        l4=F.Linear(n_units,      n_units // 2, wscale=wscale),
+        l5=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
+        l6=F.Linear(n_units // 2, 10,           wscale=wscale)
     ).to_gpu(1)
 )
 optimizer = optimizers.SGD(lr=0.1)
@@ -88,14 +89,14 @@ def forward(x_data, y_data, train=True):
 # Learning loop
 x_batch = np.ndarray((batchsize, 784), dtype=np.float32)
 y_batch = np.ndarray((batchsize,), dtype=np.int32)
-for epoch in xrange(1, n_epoch+1):
-    print 'epoch', epoch
+for epoch in range(1, n_epoch+1):
+    print('epoch', epoch)
 
     # training
     perm = np.random.permutation(N)
     sum_accuracy = 0
     sum_loss = 0
-    for i in xrange(0, N, batchsize):
+    for i in range(0, N, batchsize):
         x_batch[:] = x_train[perm[i:i+batchsize]]
         y_batch[:] = y_train[perm[i:i+batchsize]]
 
@@ -107,18 +108,18 @@ for epoch in xrange(1, n_epoch+1):
         sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
         sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
 
-    print 'train mean loss={}, accuracy={}'.format(
-        sum_loss / N, sum_accuracy / N)
+    print('train mean loss={}, accuracy={}'.format(
+        sum_loss / N, sum_accuracy / N))
 
     # evaluation
     sum_accuracy = 0
     sum_loss     = 0
-    for i in xrange(0, N_test, batchsize):
+    for i in range(0, N_test, batchsize):
         loss, acc = forward(x_test[i:i+batchsize], y_test[i:i+batchsize],
                             train=False)
 
         sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
         sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
 
-    print 'test  mean loss={}, accuracy={}'.format(
-        sum_loss / N_test, sum_accuracy / N_test)
+    print('test  mean loss={}, accuracy={}'.format(
+        sum_loss / N_test, sum_accuracy / N_test))

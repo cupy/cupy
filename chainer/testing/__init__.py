@@ -1,1 +1,1 @@
-import attr
+from . import attr

@@ -1,6 +1,7 @@
 import numpy as np
-import cPickle as pickle
 from unittest import TestCase
+import six.moves.cPickle as pickle
+from six import assertCountEqual
 from chainer import cuda, FunctionSet, Function
 from chainer.functions import Linear
 from chainer.testing import attr
@@ -25,7 +26,7 @@ class TestNestedFunctionSet(TestCase):
             b  = MockFunction((3, 4)))
 
     def test_get_sorted_funcs(self):
-        self.assertItemsEqual([k for (k, v) in self.fs2._get_sorted_funcs()], ('b', 'fs1'))
+        assertCountEqual(self, [k for (k, v) in self.fs2._get_sorted_funcs()], ('b', 'fs1'))
 
     def test_collect_parameters(self):
         p_b = np.zeros((3, 4)).astype(np.float32)
@@ -34,7 +35,7 @@ class TestNestedFunctionSet(TestCase):
         gp_a = np.ones((1, 2)).astype(np.float32)
 
         actual = self.fs2.collect_parameters()
-        self.assertTrue(map(len, actual) == [2, 2])
+        self.assertTrue(list(map(len, actual)) == [2, 2])
         self.assertTrue((actual[0][0] == p_b).all())
         self.assertTrue((actual[0][1] == p_a).all())
         self.assertTrue((actual[1][0] == gp_b).all())
@@ -65,7 +66,7 @@ class TestFunctionSet(TestCase):
         )
 
     def test_get_sorted_funcs(self):
-        self.assertItemsEqual([k for (k, v) in self.fs._get_sorted_funcs()], ('a', 'b'))
+        assertCountEqual(self, [k for (k, v) in self.fs._get_sorted_funcs()], ('a', 'b'))
 
     def check_equal_fs(self, fs1, fs2):
         self.assertTrue((fs1.a.W == fs2.a.W).all())
