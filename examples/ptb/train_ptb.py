@@ -11,14 +11,13 @@ import sys
 import time
 
 import numpy as np
+import six
 
+import chainer
 from chainer import cuda
 import chainer.functions as F
-from chainer import FunctionSet
 from chainer import optimizers
-from chainer import Variable
 
-from six.moves import range
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -52,12 +51,12 @@ test_data = load_data('ptb.test.txt')
 print('#vocab =', len(vocab))
 
 # Prepare RNNLM model
-model = FunctionSet(embed=F.EmbedID(len(vocab), n_units),
-                    l1_x=F.Linear(n_units, 4 * n_units),
-                    l1_h=F.Linear(n_units, 4 * n_units),
-                    l2_x=F.Linear(n_units, 4 * n_units),
-                    l2_h=F.Linear(n_units, 4 * n_units),
-                    l3=F.Linear(n_units, len(vocab)))
+model = chainer.FunctionSet(embed=F.EmbedID(len(vocab), n_units),
+                            l1_x=F.Linear(n_units, 4 * n_units),
+                            l1_h=F.Linear(n_units, 4 * n_units),
+                            l2_x=F.Linear(n_units, 4 * n_units),
+                            l2_h=F.Linear(n_units, 4 * n_units),
+                            l3=F.Linear(n_units, len(vocab)))
 for param in model.parameters:
     param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 if args.gpu >= 0:
@@ -71,8 +70,8 @@ def forward_one_step(x_data, y_data, state, train=True):
     if args.gpu >= 0:
         x_data = cuda.to_gpu(x_data)
         y_data = cuda.to_gpu(y_data)
-    x = Variable(x_data, volatile=not train)
-    t = Variable(y_data, volatile=not train)
+    x = chainer.Variable(x_data, volatile=not train)
+    t = chainer.Variable(y_data, volatile=not train)
     h0 = model.embed(x)
     h1_in = model.l1_x(F.dropout(h0, train=train)) + model.l1_h(state['h1'])
     c1, h1 = F.lstm(state['c1'], h1_in)
@@ -84,8 +83,9 @@ def forward_one_step(x_data, y_data, state, train=True):
 
 
 def make_initial_state(batchsize=batchsize, train=True):
-    return {name: Variable(mod.zeros((batchsize, n_units), dtype=np.float32),
-                           volatile=not train)
+    return {name: chainer.Variable(mod.zeros((batchsize, n_units),
+                                             dtype=np.float32),
+                                   volatile=not train)
             for name in ('c1', 'h1', 'c2', 'h2')}
 
 # Setup optimizer
@@ -98,7 +98,7 @@ optimizer.setup(model.collect_parameters())
 def evaluate(dataset):
     sum_log_perp = mod.zeros(())
     state = make_initial_state(batchsize=1, train=False)
-    for i in range(dataset.size - 1):
+    for i in six.moves.range(dataset.size - 1):
         x_batch = dataset[i:i + 1]
         y_batch = dataset[i + 1:i + 2]
         state, loss = forward_one_step(x_batch, y_batch, state, train=False)
@@ -114,13 +114,13 @@ epoch = 0
 start_at = time.time()
 cur_at = start_at
 state = make_initial_state()
-accum_loss = Variable(mod.zeros(()))
+accum_loss = chainer.Variable(mod.zeros(()))
 print('going to train {} iterations'.format(jump * n_epoch))
-for i in range(jump * n_epoch):
+for i in six.moves.range(jump * n_epoch):
     x_batch = np.array([train_data[(jump * j + i) % whole_len]
-                        for j in range(batchsize)])
+                        for j in six.moves.range(batchsize)])
     y_batch = np.array([train_data[(jump * j + i + 1) % whole_len]
-                        for j in range(batchsize)])
+                        for j in six.moves.range(batchsize)])
     state, loss_i = forward_one_step(x_batch, y_batch, state)
     accum_loss += loss_i
     cur_log_perp += loss_i.data.reshape(())
@@ -129,7 +129,7 @@ for i in range(jump * n_epoch):
         optimizer.zero_grads()
         accum_loss.backward()
         accum_loss.unchain_backward()  # truncate
-        accum_loss = Variable(mod.zeros(()))
+        accum_loss = chainer.Variable(mod.zeros(()))
 
         optimizer.clip_grads(grad_clip)
         optimizer.update()
