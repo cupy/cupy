@@ -1,10 +1,10 @@
 import numpy
 
 from chainer import cuda
-from chainer import Optimizer
+from chainer import optimizer
 
 
-class MomentumSGD(Optimizer):
+class MomentumSGD(optimizer.Optimizer):
 
     """Classical momentum SGD."""
 

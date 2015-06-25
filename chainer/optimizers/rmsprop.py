@@ -1,10 +1,10 @@
 import numpy
 
 from chainer import cuda
-from chainer import Optimizer
+from chainer import optimizer
 
 
-class RMSprop(Optimizer):
+class RMSprop(optimizer.Optimizer):
 
     """Hinton's RMSprop."""
 

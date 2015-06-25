@@ -3,10 +3,10 @@ import math
 import numpy
 
 from chainer import cuda
-from chainer import Optimizer
+from chainer import optimizer
 
 
-class Adam(Optimizer):
+class Adam(optimizer.Optimizer):
 
     """Adam optimization algorithm.
 
