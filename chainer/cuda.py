@@ -1,8 +1,9 @@
 """Device, context and memory management on PyCUDA and scikits.cuda.
 
-Chainer uses PyCUDA facilities (with very thin wrapper) to exploit the speed of GPU
-computation. Following modules and classes are imported to :mod:`cuda` module
-for convenience (refer to this table when reading chainer's source codes).
+Chainer uses PyCUDA facilities (with very thin wrapper) to exploit the speed of
+GPU computation. Following modules and classes are imported to :mod:`cuda`
+module for convenience (refer to this table when reading chainer's source
+codes).
 
 ============================ =================================
  imported name                original name
@@ -23,33 +24,40 @@ for convenience (refer to this table when reading chainer's source codes).
 
 Chainer provides thin wrappers of GPUArray allocation routines, which use
 :func:`mem_alloc` as the allocator. This allocator uses device-wise instance of
-:class:`~pycuda.tools.DeviceMemoryPool`, which enables the reuse of device memory
-over multiple forward/backward computations. :func:`mem_alloc` also inserts an
-additional attribute to the allocated memory called ``device``, which indicates
-the device that the memory is allocated on. Functions of :mod:`cuda` uses this
-attribute to select appropriate device on each manipulation routine.
+:class:`~pycuda.tools.DeviceMemoryPool`, which enables the reuse of device
+memory over multiple forward/backward computations. :func:`mem_alloc` also
+inserts an additional attribute to the allocated memory called ``device``,
+which indicates the device that the memory is allocated on. Functions of
+:mod:`cuda` uses this attribute to select appropriate device on each
+manipulation routine.
 
 """
 import atexit
 import os
 
 import numpy
-from six import itervalues
-
-from six.moves import copyreg
+import six
 
 try:
+    import pycuda.cumath
+    import pycuda.curandom
     import pycuda.driver as drv
-    from pycuda.elementwise import ElementwiseKernel
-    from pycuda.reduction import ReductionKernel
-    from pycuda import gpuarray
-    from pycuda import cumath
-    from pycuda import curandom
-    import pycuda.tools as cutools
-    from scikits.cuda import cublas
-    import scikits.cuda.linalg as culinalg
-    import scikits.cuda.misc as cumisc
+    import pycuda.elementwise
+    import pycuda.gpuarray
+    import pycuda.reduction
+    import pycuda.tools
+    import scikits.cuda.cublas
+    import scikits.cuda.linalg
+    import scikits.cuda.misc
     available = True
+
+    cublas = scikits.cuda.cublas
+    cumath = pycuda.cumath
+    curandom = pycuda.curandom
+    culinalg = scikits.cuda.linalg
+    cumisc = scikits.cuda.misc
+    cutools = pycuda.tools
+    gpuarray = pycuda.gpuarray
 except ImportError as e:
     available = False
     _import_error = e
@@ -58,8 +66,14 @@ except ImportError as e:
 # Basic types
 # ------------------------------------------------------------------------------
 if available:
-    from pycuda.driver import Context, Device, Event, Stream
-    from pycuda.gpuarray import GPUArray
+    import pycuda.driver
+    import pycuda.gpuarray
+
+    Context = pycuda.driver.Context
+    Device = pycuda.driver.Device
+    Event = pycuda.driver.Event
+    Stream = pycuda.driver.Stream
+    GPUArray = pycuda.gpuarray.GPUArray
 else:
     # Dummy classes
     class Context(object):
@@ -94,8 +108,9 @@ def init(device=None):
 
     Chainer maintains CUDA context, CUBLAS context, random number generator and
     device memory pool for each GPU device and for each process (the main
-    process or a process forked by :mod:`multiprocessing`) as global states. When
-    called for the first time on the process, this function initializes these global states.
+    process or a process forked by :mod:`multiprocessing`) as global states.
+    When called for the first time on the process, this function initializes
+    these global states.
 
     .. warning::
 
@@ -158,7 +173,7 @@ def shutdown():
     if _pid != pid:  # not initialized
         return
 
-    for cublas_handle in itervalues(_cublas_handles):
+    for cublas_handle in six.itervalues(_cublas_handles):
         cublas.cublasDestroy(cublas_handle)
     _cublas_handles = {}
 
@@ -166,7 +181,7 @@ def shutdown():
 
     _pools = {}
 
-    for ctx in itervalues(_contexts):
+    for ctx in six.itervalues(_contexts):
         ctx.detach()
     _contexts = {}
     _pid = None  # mark as uninitialized
@@ -281,7 +296,8 @@ def using_device(*args):
 
         Suppose ``arrays`` is a list of arrays of type either
         :class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`. Then,
-        the following code invokes ``do_something_on`` with an appropriate context::
+        the following code invokes ``do_something_on`` with an appropriate
+        context::
 
             with using_device(*arrays):
                 do_something_on(arrays)
@@ -394,9 +410,9 @@ def seed(s=None, device=None):
 # ------------------------------------------------------------------------------
 # Workaround: the original GPUArray.copy does not use the user-defined
 # allocator, so we have to replace it. A good solution is to inherit GPUArray
-# and override copy method, but since many functions of pycuda.gpuarray directly
-# use the original GPUArray class, we choose easy and ugly solution that
-# directly replaces the original method.
+# and override copy method, but since many functions of pycuda.gpuarray
+# directly use the original GPUArray class, we choose easy and ugly solution
+# that directly replaces the original method.
 # TODO(beam2d): Fix this ugly solution
 def _gpuarray_copy(array):
     if not array.flags.forc:
@@ -420,8 +436,8 @@ def to_gpu(array, device=None):
         ~pycuda.gpuarray.GPUArray: Array on GPU.
 
         If ``array`` is already on GPU, then this function just returns
-        ``array`` without performing any copy. Note that this function does not copy
-        GPUArray into specified device.
+        ``array`` without performing any copy. Note that this function does not
+        copy GPUArray into specified device.
 
     """
     if isinstance(array, GPUArray):
@@ -429,9 +445,9 @@ def to_gpu(array, device=None):
     with using_device(device):
         return gpuarray.to_gpu(array, allocator=mem_alloc)
 
-# Pickle redefinition of GPUArray. Note that pickling and unpickling of GPUArray
-# do not preserve device information, i.e. the unpickled GPUArray may reside on
-# a GPU different from the GPU that the original has resided on.
+# Pickle redefinition of GPUArray. Note that pickling and unpickling of
+# GPUArray do not preserve device information, i.e. the unpickled GPUArray may
+# reside on a GPU different from the GPU that the original has resided on.
 
 
 def _reconstruct(array, is_chainer_array):
@@ -439,7 +455,7 @@ def _reconstruct(array, is_chainer_array):
         return to_gpu(array)
     return gpuarray.to_gpu(array)
 
-copyreg.pickle(
+six.moves.copyreg.pickle(
     GPUArray,
     lambda data: (_reconstruct, (data.get(), hasattr(data.gpudata, 'device'))),
     _reconstruct)
@@ -527,8 +543,8 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
         stream (~pycuda.driver.Stream): CUDA stream.
 
     Returns:
-        ~pycuda.gpuarray.GPUArray: Constant-filled GPU array allocated by memory
-        pool.
+        ~pycuda.gpuarray.GPUArray: Constant-filled GPU array allocated by
+        memory pool.
 
     """
     array = empty(shape, dtype)
@@ -720,7 +736,8 @@ if available:
 class IPCEvent(Event):
 
     """:class:`~pycuda.driver.Event` object for interprocess synchronization on
-    GPU."""
+    GPU.
+    """
 
     def __init__(self):
         super(IPCEvent, self).__init__(
@@ -733,8 +750,8 @@ class IPCArrayHandle(object):
     Inter-Process Communication handle.
 
     It holds IPC memory handle with shape and dtype information. The instance
-    can be pickled, which means it can be passed through IPC path way, e.g. Pipe
-    and Queue. The other process can extract shared GPUArray by calling
+    can be pickled, which means it can be passed through IPC path way, e.g.
+    Pipe and Queue. The other process can extract shared GPUArray by calling
     :meth:`get`. Also, the extracted array can be re-converted into another
     IPCArrayHandle.
 
@@ -772,7 +789,7 @@ class IPCArrayHandle(object):
            multiple processes.
 
         """
-        mem = drv.IPCMemoryHandle(self.handle)
+        drv.IPCMemoryHandle(self.handle)
         array = gpuarray.GPUArray((0,), dtype=self.dtype)
         array.shape = self.shape
         array.size = self.size
@@ -788,7 +805,7 @@ if available:
     @cutools.context_dependent_memoize
     def _eltwise_kernel(arguments, operation, name, keep, options,
                         preamble, loop_prep, after_loop):
-        return ElementwiseKernel(
+        return pycuda.elementwise.ElementwiseKernel(
             arguments, operation, name, keep, options,
             preamble=preamble, loop_prep=loop_prep, after_loop=after_loop)
 
@@ -801,8 +818,9 @@ def elementwise(arguments, operation, name, keep=False, options=None,
     the resulting kernel object, i.e. the resulting kernel object is cached for
     each arguments and CUDA context.
 
-    The arguments are the same as those for :func:`pycuda.elementwise.ElementwiseKernel`,
-    except that ``name`` argument is mandatory.
+    The arguments are the same as those for
+    :func:`pycuda.elementwise.ElementwiseKernel`, except that ``name`` argument
+    is mandatory.
 
     """
     return _eltwise_kernel(arguments, operation, name, keep, options,
@@ -813,8 +831,9 @@ if available:
     @cutools.context_dependent_memoize
     def _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
                        name, keep, options, preamble):
-        return ReductionKernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
-                               name, keep, options, preamble)
+        return pycuda.reduction.ReductionKernel(
+            dtype_out, neutral, reduce_expr, map_expr,
+            arguments, name, keep, options, preamble)
 
 
 def reduce(arguments, map_expr, reduce_expr, neutral, name,
@@ -825,8 +844,9 @@ def reduce(arguments, map_expr, reduce_expr, neutral, name,
     the resulting kernel object, i.e. the resulting kernel object is cached for
     each argument and CUDA context.
 
-    The arguments are the same as those for :func:`pycuda.reduction.ReductionKernel`,
-    except that their order is different and ``name`` argument is mandatory.
+    The arguments are the same as those for
+    :func:`pycuda.reduction.ReductionKernel`, except that their order is
+    different and ``name`` argument is mandatory.
 
     """
     kern = _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
