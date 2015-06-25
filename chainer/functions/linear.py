@@ -12,8 +12,7 @@ def _as_mat(x):
 
 class Linear(function.Function):
 
-    """Implementation of a linear function (a.k.a. fully-connected layer or affine
-    transformation).
+    """Linear function (a.k.a. fully-connected layer or affine transformation).
 
     This function holds a weight matrix ``W`` and a bias vector ``b``.
 

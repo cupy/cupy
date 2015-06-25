@@ -188,7 +188,7 @@ def shutdown():
 
 
 def get_device(arg=None):
-    """Gets the device from ID ''arg'' or given chainer's.
+    """Gets the device from ID arg or given chainer's.
 
     :class:`~pycuda.gpuarray.GPUArray`.
 
@@ -280,8 +280,7 @@ class DeviceUser(object):
 
 
 def using_device(*args):
-    """Returns :class:`DeviceUser` object of the first
-    :class:`~pycuda.gpuarray.GPUArray` argument.
+    """Returns a DeviceUser object of the first GPUArray argument.
 
     If none of the arguments specifies a GPU device, then it returns a dummy
     :class:`DeviceUser` object which is inactive.
@@ -388,8 +387,7 @@ def get_generator(device=None):
 
 
 def seed(s=None, device=None):
-    """Resets the random number generator of the specified device by the given
-    seed.
+    """Resets the random number generator of the specified device.
 
     Args:
         s (int or None): Seed value. If it is ``None``, it initializes the
@@ -519,7 +517,7 @@ def to_cpu_async(array, stream=None):
 
 
 def empty(shape, dtype=numpy.float32):
-    """Creates an uninitialized :class:`~pycuda.gpuarray.GPUArray`.
+    """Creates an uninitialized GPUArray object.
 
     Args:
         shape (tuple of ints): The shape of array.
@@ -534,7 +532,7 @@ def empty(shape, dtype=numpy.float32):
 
 
 def full(shape, fill_value, dtype=numpy.float32, stream=None):
-    """Creates a constant-filled :class:`~pycuda.gpuarray.GPUArray`.
+    """Creates a constant-filled GPUArray object.
 
     Args:
         shape (tuple of ints): The shape of array.
@@ -553,7 +551,7 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
 
 
 def zeros(shape, dtype=numpy.float32, stream=None):
-    """Creates a zero-filled :class:`~pycuda.gpuarray.GPUArray`.
+    """Creates a zero-filled GPUArray object.
 
     This function is equivalent to ``full(shape, 0, dtype, stream)``.
 
@@ -562,7 +560,7 @@ def zeros(shape, dtype=numpy.float32, stream=None):
 
 
 def ones(shape, dtype=numpy.float32, stream=None):
-    """Creates a zero-filled :class:`~pycuda.gpuarray.GPUArray`.
+    """Creates a zero-filled GPUArray object.
 
     This function is equivalent to ``full(shape, 1, dtype, stream)``.
 
@@ -576,8 +574,7 @@ def empty_like(array):
 
 
 def full_like(array, fill_value, stream=None):
-    """Creates a constant-filled :class:`~pycuda.gpuarray.GPUArray` like
-    given array.
+    """Creates a constant-filled GPUArray object like the given array.
 
     Args:
         array (~pycuda.gpuarray.GPUArray): Base array.
@@ -594,8 +591,7 @@ def full_like(array, fill_value, stream=None):
 
 
 def zeros_like(array, stream=None):
-    """Creates a zero-filled :class:`~pycuda.gpuarray.GPUArray` like
-    given array.
+    """Creates a zero-filled GPUArray object like the given array.
 
     This function is equivalent to ``full_like(array, 0, stream)``.
 
@@ -604,8 +600,7 @@ def zeros_like(array, stream=None):
 
 
 def ones_like(array, stream=None):
-    """Creates a one-filled :class:`~pycuda.gpuarray.GPUArray` like
-    given array.
+    """Creates a one-filled GPUArray object like the given array.
 
     This function is equivalent to ``full_like(array, 1, stream)``.
 
@@ -614,7 +609,7 @@ def ones_like(array, stream=None):
 
 
 def copy(array, out=None, out_device=None):
-    """Copies :class:`~pycuda.gpuarray.GPUArray` using default stream.
+    """Copies a GPUArray object using the default stream.
 
     This function can copy the device array to the destination array on another
     device.
@@ -656,7 +651,7 @@ def copy(array, out=None, out_device=None):
 
 
 def copy_async(array, out=None, out_device=None, stream=None):
-    """Copies :class:`~pycuda.gpuarray.GPUArray` using given stream.
+    """Copies a GPUArray object using the given stream.
 
     This function can copy the device array to the destination array on another
     device.
@@ -735,9 +730,7 @@ if available:
 
 class IPCEvent(Event):
 
-    """:class:`~pycuda.driver.Event` object for interprocess synchronization on
-    GPU.
-    """
+    """Event object for interprocess synchronization on GPU."""
 
     def __init__(self):
         super(IPCEvent, self).__init__(
@@ -746,8 +739,7 @@ class IPCEvent(Event):
 
 class IPCArrayHandle(object):
 
-    """Converter between :class:`~pycuda.gpuarray.GPUArray` and its
-    Inter-Process Communication handle.
+    """Converter between GPUArray and its Inter-Process Communication handle.
 
     It holds IPC memory handle with shape and dtype information. The instance
     can be pickled, which means it can be passed through IPC path way, e.g.
@@ -777,7 +769,7 @@ class IPCArrayHandle(object):
         self.mem_size = array.mem_size
 
     def get(self):
-        """Creates :class:`~pycuda.gpuarray.GPUArray` from IPC memory handle.
+        """Creates a GPUArray object from the IPC memory handle.
 
         Returns:
             ~pycuda.gpuarray.GPUArray: Recovered GPU array with memory shared
@@ -882,8 +874,7 @@ def get_cublas_handle():
 
 class CumiscUser(object):
 
-    """RAII-style switcher of :mod:`scikits.cuda.misc` default CUBLAS handle.
-    """
+    """RAII-style switcher of scikits-cuda's default CUBLAS handle."""
 
     def __init__(self, handle):
         """Initializes the misc user by given handle.
@@ -903,7 +894,7 @@ class CumiscUser(object):
 
 
 def using_cumisc(handle=None):
-    """Temporarily use chainer's CUBLAS handle on :mod:`scikits.cuda.misc`.
+    """Temporarily set chainer's CUBLAS handle to scikits.cuda.
 
     The usage is similar to :func:`using_device`.
 

@@ -161,8 +161,7 @@ class Variable(object):
                     add_cand(x.creator)
 
     def unchain_backward(self):
-        """Deletes backward references of variables and functions backward,
-        a.k.a. *backward unchaining*.
+        """Deletes references between variables and functions backward.
 
         After this method completes, intermediate variables and functions that
         are not referenced from anywhere are deallocated by reference

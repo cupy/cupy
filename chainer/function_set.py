@@ -20,8 +20,7 @@ class FunctionSet(object):
     """
 
     def __init__(self, **functions):
-        """Initializes :class:`FunctionSet` by given key-value pairs of
-        :class:`Function` objects.
+        """Initializes the function set by given functions.
 
         Args:
             **functions: ``dict`` of ``str`` key and :class:`Function` values.

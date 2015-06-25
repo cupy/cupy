@@ -9,8 +9,8 @@ from chainer import variable
 
 
 class Function(object):
-    """Function of variable(s) to variable(s) that leaves footprint to the
-    output variables on application.
+
+    """Function on variables with backpropagation ability.
 
     All function implementations defined in :mod:`chainer.functions` inherit
     this class.
@@ -102,8 +102,7 @@ class Function(object):
         self.rank = None
 
     def __call__(self, *inputs):
-        """Applies forward propagation on input variables with chaining
-        backward reference.
+        """Applies forward propagation with chaining backward references.
 
         Basic behavior is also expressed in documentation of :class:`Function`
         class. This function first copies itself to avoid conflict over
@@ -308,8 +307,7 @@ class Function(object):
         return tuple(None for _ in inputs)
 
     def unchain(self):
-        """Purges in/out variables and removes this function from the backward
-        graph.
+        """Purges in/out variables and this function itself from the graph.
 
         This method is called from :meth:`Variable.unchain_backward` method.
 
