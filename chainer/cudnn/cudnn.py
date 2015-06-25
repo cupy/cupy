@@ -4,9 +4,10 @@ import atexit
 import ctypes
 import os
 
-import libcudnn
 import numpy
+
 from chainer import cuda
+import libcudnn
 
 enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
 available = True
@@ -27,7 +28,7 @@ class Auto(object):
     def __del__(self):
         try:
             self.destroyer(self.value)
-        except:
+        except Exception:
             pass
 
 _handles = {}
@@ -109,8 +110,11 @@ def get_conv2d_desc(pad, stride, mode=_default_conv_mode):
         desc, pad[0], pad[1], stride[0], stride[1], 1, 1, mode)
     return Auto(desc, libcudnn.cudnnDestroyConvolutionDescriptor)
 
-_pool_mode = {'MAX': libcudnn.cudnnPoolingMode['CUDNN_POOLING_MAX'],
-              'AVE': libcudnn.cudnnPoolingMode['CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING']}
+_pool_mode = {
+    'MAX': libcudnn.cudnnPoolingMode['CUDNN_POOLING_MAX'],
+    'AVE': libcudnn.cudnnPoolingMode[
+        'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING']
+}
 
 
 def get_pool2d_desc(ksize, stride, pad, mode):
