@@ -1,6 +1,7 @@
 from unittest import TestCase
 import math
 import numpy
+from six.moves import range
 from chainer      import cuda, Variable
 from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
@@ -23,8 +24,8 @@ class TestSigmoidCrossEntropy(TestCase):
 
         # Compute expected value
         loss_expect = 0
-        for i in xrange(self.x.shape[0]):
-            for j in xrange(self.x.shape[1]):
+        for i in range(self.x.shape[0]):
+            for j in range(self.x.shape[1]):
                 xd, td = self.x[i, j], self.t[i, j]
                 xdd = 1 if self.x[i, j] >= 0 else 0
                 loss_expect -= xd * (td - xdd) - math.log(1 + math.exp(-numpy.abs(xd)))
