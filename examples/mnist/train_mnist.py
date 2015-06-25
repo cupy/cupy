@@ -8,15 +8,13 @@ to load MNIST dataset.
 import argparse
 
 import numpy as np
+import six
 from sklearn.datasets import fetch_mldata
 
+import chainer
 from chainer import cuda
 import chainer.functions as F
-from chainer import FunctionSet
 from chainer import optimizers
-from chainer import Variable
-
-from six.moves import range
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -40,9 +38,9 @@ y_train, y_test = np.split(mnist.target, [N])
 N_test = y_test.size
 
 # Prepare multi-layer perceptron model
-model = FunctionSet(l1=F.Linear(784, n_units),
-                    l2=F.Linear(n_units, n_units),
-                    l3=F.Linear(n_units, 10))
+model = chainer.FunctionSet(l1=F.Linear(784, n_units),
+                            l2=F.Linear(n_units, n_units),
+                            l3=F.Linear(n_units, 10))
 if args.gpu >= 0:
     cuda.init(args.gpu)
     model.to_gpu()
@@ -51,7 +49,7 @@ if args.gpu >= 0:
 
 
 def forward(x_data, y_data, train=True):
-    x, t = Variable(x_data), Variable(y_data)
+    x, t = chainer.Variable(x_data), chainer.Variable(y_data)
     h1 = F.dropout(F.relu(model.l1(x)),  train=train)
     h2 = F.dropout(F.relu(model.l2(h1)), train=train)
     y = model.l3(h2)
@@ -62,14 +60,14 @@ optimizer = optimizers.Adam()
 optimizer.setup(model.collect_parameters())
 
 # Learning loop
-for epoch in range(1, n_epoch + 1):
+for epoch in six.moves.range(1, n_epoch + 1):
     print('epoch', epoch)
 
     # training
     perm = np.random.permutation(N)
     sum_accuracy = 0
     sum_loss = 0
-    for i in range(0, N, batchsize):
+    for i in six.moves.range(0, N, batchsize):
         x_batch = x_train[perm[i:i + batchsize]]
         y_batch = y_train[perm[i:i + batchsize]]
         if args.gpu >= 0:
@@ -90,7 +88,7 @@ for epoch in range(1, n_epoch + 1):
     # evaluation
     sum_accuracy = 0
     sum_loss = 0
-    for i in range(0, N_test, batchsize):
+    for i in six.moves.range(0, N_test, batchsize):
         x_batch = x_test[i:i + batchsize]
         y_batch = y_test[i:i + batchsize]
         if args.gpu >= 0:

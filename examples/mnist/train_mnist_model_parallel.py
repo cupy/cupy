@@ -9,14 +9,13 @@ and performs poorly on MNIST dataset.
 import math
 
 import numpy as np
-from six.moves import range
-from sklearn.datasets import fetch_mldata
+import six
+from sklearn import datasets
 
+import chainer
 from chainer import cuda
 from chainer import functions as F
-from chainer import FunctionSet
 from chainer import optimizers
-from chainer import Variable
 
 
 batchsize = 100
@@ -25,7 +24,7 @@ n_units = 2000
 
 # Prepare dataset
 print('fetch MNIST dataset')
-mnist = fetch_mldata('MNIST original')
+mnist = datasets.fetch_mldata('MNIST original')
 mnist.data = mnist.data.astype(np.float32)
 mnist.data /= 255
 mnist.target = mnist.target.astype(np.int32)
@@ -40,8 +39,8 @@ N_test = y_test.size
 # and share their activations only at third and sixth layers.
 cuda.init()
 wscale = math.sqrt(2)
-model = FunctionSet(
-    gpu0=FunctionSet(
+model = chainer.FunctionSet(
+    gpu0=chainer.FunctionSet(
         l1=F.Linear(784, n_units // 2, wscale=wscale),
         l2=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
         l3=F.Linear(n_units // 2, n_units,      wscale=wscale),
@@ -49,7 +48,7 @@ model = FunctionSet(
         l5=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
         l6=F.Linear(n_units // 2, 10,           wscale=wscale)
     ).to_gpu(0),
-    gpu1=FunctionSet(
+    gpu1=chainer.FunctionSet(
         l1=F.Linear(784, n_units // 2, wscale=wscale),
         l2=F.Linear(n_units // 2, n_units // 2, wscale=wscale),
         l3=F.Linear(n_units // 2, n_units,      wscale=wscale),
@@ -65,9 +64,9 @@ optimizer.setup(model.collect_parameters())
 
 
 def forward(x_data, y_data, train=True):
-    x_0 = Variable(cuda.to_gpu(x_data, 0), volatile=not train)
-    x_1 = Variable(cuda.to_gpu(x_data, 1), volatile=not train)
-    t = Variable(cuda.to_gpu(y_data, 0), volatile=not train)
+    x_0 = chainer.Variable(cuda.to_gpu(x_data, 0), volatile=not train)
+    x_1 = chainer.Variable(cuda.to_gpu(x_data, 1), volatile=not train)
+    t = chainer.Variable(cuda.to_gpu(y_data, 0), volatile=not train)
 
     h1_0 = F.dropout(F.relu(model.gpu0.l1(x_0)),  train=train)
     h1_1 = F.dropout(F.relu(model.gpu1.l1(x_1)),  train=train)
@@ -98,14 +97,14 @@ def forward(x_data, y_data, train=True):
 # Learning loop
 x_batch = np.ndarray((batchsize, 784), dtype=np.float32)
 y_batch = np.ndarray((batchsize,), dtype=np.int32)
-for epoch in range(1, n_epoch + 1):
+for epoch in six.moves.range(1, n_epoch + 1):
     print('epoch', epoch)
 
     # training
     perm = np.random.permutation(N)
     sum_accuracy = 0
     sum_loss = 0
-    for i in range(0, N, batchsize):
+    for i in six.moves.range(0, N, batchsize):
         x_batch[:] = x_train[perm[i:i + batchsize]]
         y_batch[:] = y_train[perm[i:i + batchsize]]
 
@@ -123,7 +122,7 @@ for epoch in range(1, n_epoch + 1):
     # evaluation
     sum_accuracy = 0
     sum_loss = 0
-    for i in range(0, N_test, batchsize):
+    for i in six.moves.range(0, N_test, batchsize):
         loss, acc = forward(x_test[i:i + batchsize], y_test[i:i + batchsize],
                             train=False)
 
