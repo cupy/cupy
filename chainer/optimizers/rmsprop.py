@@ -1,5 +1,7 @@
 import numpy
-from chainer import Optimizer, cuda
+
+from chainer import cuda
+from chainer import Optimizer
 
 
 class RMSprop(Optimizer):
