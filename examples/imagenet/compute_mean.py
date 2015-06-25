@@ -6,6 +6,7 @@ import cv2
 import numpy
 import six.moves.cPickle as pickle
 
+
 parser = argparse.ArgumentParser(description='Compute images mean array')
 parser.add_argument('dataset', help='Path to training image-label list file')
 parser.add_argument('--output', '-o', default='mean.npy',
