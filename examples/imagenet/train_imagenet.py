@@ -7,24 +7,25 @@ separated CSV whose first column is full path to image and second column is
 zero-origin label (this format is same as that used by Caffe's ImageDataLayer).
 
 """
+from __future__ import print_function
 import argparse
 import cPickle as pickle
-import json
-import math
-import random
-import sys
-import time
 from datetime import timedelta
+import json
 from multiprocessing import Pool
 from Queue import Queue
+import random
+import sys
 from threading import Thread
+import time
 
-import chainer.functions as F
 import cv2
 import numpy as np
-from chainer import FunctionSet, Variable, cuda, optimizers
-
 from six.moves import range
+
+from chainer import cuda
+from chainer import optimizers
+
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from ILSVRC2012 dataset')
@@ -33,7 +34,8 @@ parser.add_argument('val', help='Path to validation image-label list file')
 parser.add_argument('--mean', '-m', default='mean.npy',
                     help='Path to the mean file (computed by compute_mean.py)')
 parser.add_argument('--arch', '-a', default='nin',
-                    help='Convnet architecture (nin, alexbn, googlenet, googlenetbn)')
+                    help='Convnet architecture \
+                    (nin, alexbn, googlenet, googlenetbn)')
 parser.add_argument('--batchsize', '-B', type=int, default=32,
                     help='Learning minibatch size')
 parser.add_argument('--val_batchsize', '-b', type=int, default=250,
@@ -89,8 +91,8 @@ optimizer.setup(model.collect_parameters())
 
 
 # ------------------------------------------------------------------------------
-# This example consists of three threads: data feeder, logger and trainer. These
-# communicate with each other via Queue.
+# This example consists of three threads: data feeder, logger and trainer.
+# These communicate with each other via Queue.
 data_q = Queue(maxsize=1)
 res_q = Queue()
 
@@ -135,8 +137,8 @@ def feed_data():
     pool = Pool(args.loaderjob)
     data_q.put('train')
     for epoch in range(1, 1 + args.epoch):
-        print >> sys.stderr, 'epoch', epoch
-        print >> sys.stderr, 'learning rate', optimizer.lr
+        print('epoch', epoch, file=sys.stderr)
+        print('learning rate', optimizer.lr, file=sys.stderr)
         perm = np.random.permutation(len(train_list))
         for idx in perm:
             path, label = train_list[idx]
@@ -184,17 +186,17 @@ def log_result():
     while True:
         result = res_q.get()
         if result == 'end':
-            print >> sys.stderr, ''
+            print(file=sys.stderr)
             break
         elif result == 'train':
-            print >> sys.stderr, ''
+            print(file=sys.stderr)
             train = True
             if val_begin_at is not None:
                 begin_at += time.time() - val_begin_at
                 val_begin_at = None
             continue
         elif result == 'val':
-            print >> sys.stderr, ''
+            print(file=sys.stderr)
             train = False
             val_count = val_loss = val_accuracy = 0
             val_begin_at = time.time()
@@ -215,9 +217,9 @@ def log_result():
             if train_count % 1000 == 0:
                 mean_loss = train_cur_loss / 1000
                 mean_error = 1 - train_cur_accuracy / 1000
-                print >> sys.stderr, ''
-                print json.dumps({'type': 'train', 'iteration': train_count,
-                                  'error': mean_error, 'loss': mean_loss})
+                print(file=sys.stderr)
+                print(json.dumps({'type': 'train', 'iteration': train_count,
+                                  'error': mean_error, 'loss': mean_loss}))
                 sys.stdout.flush()
                 train_cur_loss = 0
                 train_cur_accuracy = 0
@@ -235,9 +237,9 @@ def log_result():
             if val_count == 50000:
                 mean_loss = val_loss * args.val_batchsize / 50000
                 mean_error = 1 - val_accuracy * args.val_batchsize / 50000
-                print >> sys.stderr, ''
-                print json.dumps({'type': 'val', 'iteration': train_count,
-                                  'error': mean_error, 'loss': mean_loss})
+                print(file=sys.stderr)
+                print(json.dumps({'type': 'val', 'iteration': train_count,
+                                  'error': mean_error, 'loss': mean_loss}))
                 sys.stdout.flush()
 
 # Trainer

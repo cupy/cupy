@@ -1,19 +1,23 @@
 #!/usr/bin/env python
 """Chainer example: train a multi-layer perceptron on MNIST using two GPUs.
 
-This is a toy example to write a model-parallel computation in Chainer. Note
-that this is just an example; the network definition is not optimal and performs
-poorly on MNIST dataset.
+This is a toy example to write a model-parallel computation in Chainer.
+Note that this is just an example; the network definition is not optimal
+and performs poorly on MNIST dataset.
 
 """
 import math
 
 import numpy as np
-from chainer import functions as F
-from chainer import FunctionSet, Variable, cuda, optimizers
+from six.moves import range
 from sklearn.datasets import fetch_mldata
 
-from six.moves import range
+from chainer import cuda
+from chainer import functions as F
+from chainer import FunctionSet
+from chainer import optimizers
+from chainer import Variable
+
 
 batchsize = 100
 n_epoch = 50
