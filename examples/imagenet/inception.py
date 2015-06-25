@@ -1,9 +1,8 @@
+import chainer
 import chainer.functions as F
-from chainer import FunctionSet
-from chainer import Variable
 
 
-class GoogLeNet(FunctionSet):
+class GoogLeNet(chainer.FunctionSet):
 
     insize = 224
 
@@ -33,8 +32,8 @@ class GoogLeNet(FunctionSet):
         )
 
     def forward(self, x_data, y_data, train=True):
-        x = Variable(x_data, volatile=not train)
-        t = Variable(y_data, volatile=not train)
+        x = chainer.Variable(x_data, volatile=not train)
+        t = chainer.Variable(y_data, volatile=not train)
 
         h = F.relu(self.conv1(x))
         h = F.local_response_normalization(

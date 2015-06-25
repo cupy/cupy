@@ -1,12 +1,8 @@
-from chainer import Function
+import chainer
 import chainer.functions as F
-from chainer.functions.pooling_2d import AveragePooling2D
-from chainer.functions.pooling_2d import MaxPooling2D
-from chainer import FunctionSet
-from chainer import Variable
 
 
-class InceptionBN(Function):
+class InceptionBN(chainer.Function):
 
     """Inception module in new GoogLeNet with BN."""
 
@@ -16,7 +12,7 @@ class InceptionBN(Function):
             assert stride == 1
             assert proj_pool is not None
 
-        self.f = FunctionSet(
+        self.f = chainer.FunctionSet(
             proj3=F.Convolution2D(in_channels,  proj3, 1, nobias=True),
             conv3=F.Convolution2D(
                 proj3,   out3, 3, pad=1, stride=stride, nobias=True),
@@ -42,16 +38,16 @@ class InceptionBN(Function):
             self.f.poolpn = F.BatchNormalization(proj_pool)
 
         if pooltype == 'max':
-            self.f.pool = MaxPooling2D(3, stride=stride, pad=1)
+            self.f.pool = F.pooling_2d.MaxPooling2D(3, stride=stride, pad=1)
         elif pooltype == 'avg':
-            self.f.pool = AveragePooling2D(3, stride=stride, pad=1)
+            self.f.pool = F.pooling_2d.AveragePooling2D(3, stride=stride, pad=1)
         else:
             raise NotImplementedError()
 
     def forward(self, x):
         f = self.f
 
-        self.x = Variable(x[0])
+        self.x = chainer.Variable(x[0])
         outs = []
 
         if hasattr(f, 'conv1'):
@@ -103,7 +99,7 @@ class InceptionBN(Function):
         self.f.gradients = grads
 
 
-class GoogLeNetBN(FunctionSet):
+class GoogLeNetBN(chainer.FunctionSet):
 
     """New GoogLeNet of BatchNormalization version."""
 
@@ -141,8 +137,8 @@ class GoogLeNetBN(FunctionSet):
         )
 
     def forward(self, x_data, y_data, train=True):
-        x = Variable(x_data, volatile=not train)
-        t = Variable(y_data, volatile=not train)
+        x = chainer.Variable(x_data, volatile=not train)
+        t = chainer.Variable(y_data, volatile=not train)
 
         h = F.max_pooling_2d(
             F.relu(self.norm1(self.conv1(x))),  3, stride=2, pad=1)

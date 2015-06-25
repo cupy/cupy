@@ -9,11 +9,9 @@ zero-origin label (this format is same as that used by Caffe's ImageDataLayer).
 """
 from __future__ import print_function
 import argparse
-import cPickle as pickle
 from datetime import timedelta
 import json
 from multiprocessing import Pool
-from Queue import Queue
 import random
 import sys
 from threading import Thread
@@ -21,7 +19,9 @@ import time
 
 import cv2
 import numpy as np
-from six.moves import range
+import six
+import six.moves.cPickle as pickle
+from six.moves import queue
 
 from chainer import cuda
 from chainer import optimizers
@@ -93,8 +93,8 @@ optimizer.setup(model.collect_parameters())
 # ------------------------------------------------------------------------------
 # This example consists of three threads: data feeder, logger and trainer.
 # These communicate with each other via Queue.
-data_q = Queue(maxsize=1)
-res_q = Queue()
+data_q = queue.Queue(maxsize=1)
+res_q = queue.Queue()
 
 # Data loading routine
 cropwidth = 256 - model.insize
@@ -136,7 +136,7 @@ def feed_data():
     val_batch_pool = [None] * args.val_batchsize
     pool = Pool(args.loaderjob)
     data_q.put('train')
-    for epoch in range(1, 1 + args.epoch):
+    for epoch in six.moves.range(1, 1 + args.epoch):
         print('epoch', epoch, file=sys.stderr)
         print('learning rate', optimizer.lr, file=sys.stderr)
         perm = np.random.permutation(len(train_list))

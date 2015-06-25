@@ -1,9 +1,8 @@
+import chainer
 import chainer.functions as F
-from chainer import FunctionSet
-from chainer import Variable
 
 
-class AlexBN(FunctionSet):
+class AlexBN(chainer.FunctionSet):
 
     """Single-GPU AlexNet with Normalization layers replaced by BatchNormalization.
 
@@ -26,8 +25,8 @@ class AlexBN(FunctionSet):
         )
 
     def forward(self, x_data, y_data, train=True):
-        x = Variable(x_data, volatile=not train)
-        t = Variable(y_data, volatile=not train)
+        x = chainer.Variable(x_data, volatile=not train)
+        t = chainer.Variable(y_data, volatile=not train)
 
         h = F.max_pooling_2d(F.relu(self.bn1(self.conv1(x))), 3, stride=2)
         h = F.max_pooling_2d(F.relu(self.bn2(self.conv2(h))), 3, stride=2)
