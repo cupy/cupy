@@ -1,1 +1,1 @@
-from . import attr
+from chainer.testring import attr
