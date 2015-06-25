@@ -1,7 +1,7 @@
-from chainer import Function
+from chainer import function
 
 
-class Reshape(Function):
+class Reshape(function.Function):
 
     """Reshapes an input array without copy."""
 

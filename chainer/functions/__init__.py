@@ -1,5 +1,27 @@
 """Collection of :class:`~chainer.Function` implementations."""
 
+# Forward import of classes
+from .concat import Concat
+from .copy import Copy
+from .dropout import Dropout
+from .identity import Identity
+from .reshape import Reshape
+from .basic_math import Exp, Log
+from .leaky_relu import LeakyReLU
+from .lstm import LSTM
+from .relu import ReLU
+from .sigmoid import Sigmoid
+from .softmax import Softmax
+from .tanh import Tanh
+from .pooling_2d import AveragePooling2D, MaxPooling2D, Pooling2D
+from .local_response_normalization import LocalResponseNormalization
+from .accuracy import Accuracy
+from .mean_squared_error import MeanSquaredError
+from .softmax_cross_entropy import SoftmaxCrossEntropy
+from .sum import Sum
+from .inception import Inception
+
+
 # Parameterized function classes
 from .batch_normalization import BatchNormalization
 from .convolution_2d import Convolution2D
@@ -34,6 +56,3 @@ from .accuracy import accuracy
 from .mean_squared_error import mean_squared_error
 from .softmax_cross_entropy import softmax_cross_entropy
 from .sum import sum
-
-# Parameterized models
-from .inception import Inception

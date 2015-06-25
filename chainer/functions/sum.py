@@ -1,8 +1,10 @@
 import numpy
-from chainer import Function, cuda
+
+from chainer import cuda
+from chainer import function
 
 
-class Sum(Function):
+class Sum(function.Function):
 
     """Summation over all elements."""
 

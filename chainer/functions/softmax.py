@@ -1,5 +1,8 @@
 import numpy
-from chainer import Function, cuda, cudnn
+
+from chainer import cuda
+from chainer import cudnn
+from chainer import function
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
@@ -7,7 +10,7 @@ if cudnn.available:
     _mode = libcudnn.cudnnSoftmaxMode['CUDNN_SOFTMAX_MODE_INSTANCE']
 
 
-class Softmax(Function):
+class Softmax(function.Function):
 
     """Softmax activation function."""
 
@@ -81,7 +84,8 @@ class Softmax(Function):
             libcudnn.cudnnSoftmaxBackward(
                 handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(
                     self.y),
-                desc.value, cudnn.get_ptr(gy[0]), 0, desc.value, cudnn.get_ptr(gx))
+                desc.value, cudnn.get_ptr(gy[0]), 0, desc.value,
+                cudnn.get_ptr(gx))
         else:
             gx = self.y * gy[0]
             c = gx.shape[1]

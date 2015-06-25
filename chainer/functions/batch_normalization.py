@@ -1,5 +1,7 @@
 import numpy
-from chainer import Function, cuda
+
+from chainer import cuda
+from chainer import function
 
 
 def _kernel_with_I(args, expr, name):
@@ -71,7 +73,7 @@ def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
         return (ret1.reshape(ret_shape), ret2.reshape(ret_shape))
 
 
-class BatchNormalization(Function):
+class BatchNormalization(function.Function):
 
     """Batch normalization on outputs of linear or convolution functions.
 
@@ -118,15 +120,15 @@ class BatchNormalization(Function):
                 statistics for normalization, and normalizes the input using
                 batch statistics.
 
-        If ``test`` and ``finetune`` are both ``False``, then BatchNormalization
-        runs in training mode; it computes moving averages of mean and variance
-        for evaluation during training, and normalizes the input using batch
-        statistics.
+        If ``test`` and ``finetune`` are both ``False``, then
+        BatchNormalization runs in training mode; it computes moving averages
+        of mean and variance for evaluation during training, and normalizes the
+        input using batch statistics.
 
         """
         self.use_batch_mean = not test or finetune
         self.is_finetune = finetune
-        return Function.__call__(self, x)
+        return function.Function.__call__(self, x)
 
     def start_finetuning(self):
         self.N[0] = numpy.array(0)
@@ -185,7 +187,8 @@ class BatchNormalization(Function):
                 float* y, const float* x,
                 const float* mean, const float* var,
                 const float* gamma, const float* beta
-            ''', 'y[i] = (x[i] - mean[I]) * rsqrtf(var[I]) * gamma[I] + beta[I];',
+            ''',
+            'y[i] = (x[i] - mean[I]) * rsqrtf(var[I]) * gamma[I] + beta[I];',
             'bn_fwd')(y, x, mean, var, self.gamma, self.beta, cdim, rdim)
 
         # Compute exponential moving average
@@ -200,13 +203,17 @@ class BatchNormalization(Function):
             adjust = m / max(m - 1., 1.)  # unbiased estimation
             cuda.elementwise(
                 '''
-                    float* avg_mean, const float* mean,
-                    float* avg_var, const float* var,
-                    float decay, float adjust
+                   float* avg_mean, const float* mean,
+                   float* avg_var, const float* var,
+                   float decay, float adjust
                 ''', '''
-                    avg_mean[i] = decay * avg_mean[i] + (1 - decay) * adjust * mean[i];
-                    avg_var[i]  = decay * avg_var[i]  + (1 - decay) * adjust * var[i];
-                ''', 'bn_moving_avg')(self.avg_mean, mean, self.avg_var, var, decay, adjust)
+                   avg_mean[i] = decay * avg_mean[i]
+                                 + (1 - decay) * adjust * mean[i];
+                   avg_var[i]  = decay * avg_var[i]
+                                 + (1 - decay) * adjust * var[i];
+                ''',
+                'bn_moving_avg')(
+                    self.avg_mean, mean, self.avg_var, var, decay, adjust)
 
         return y,
 
@@ -214,7 +221,6 @@ class BatchNormalization(Function):
         # TODO(beam2d): Support backprop on inference mode
         assert self.use_batch_mean and not self.is_finetune
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
-        x = x_orig[0].reshape(ldim, cdim, rdim)
         gy = gy[0].reshape(ldim, cdim, rdim)
         m = ldim * rdim
 

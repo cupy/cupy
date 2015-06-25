@@ -1,5 +1,7 @@
 import numpy
-from chainer import Function, cuda
+
+from chainer import cuda
+from chainer import function
 
 _args = 'const float* x, float* y, int cdimx, int cdimy, int rdim, int coffset'
 _preamble = '''
@@ -12,7 +14,7 @@ _preamble = '''
 '''
 
 
-class Concat(Function):
+class Concat(function.Function):
 
     """Concatenate multiple tensors towards specified axis."""
 

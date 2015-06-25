@@ -1,7 +1,10 @@
-from collections import Iterable
+import collections
 
 import numpy
-from chainer import Function, cuda, cudnn
+
+from chainer import cuda
+from chainer import cudnn
+from chainer import function
 from chainer.utils import conv
 
 if cudnn.available:
@@ -9,16 +12,17 @@ if cudnn.available:
 
 
 def _pair(x):
-    if isinstance(x, Iterable):
+    if isinstance(x, collections.Iterable):
         return x
     return (x, x)
 
 
-class Pooling2D(Function):
+class Pooling2D(function.Function):
 
     """Base class of pooling function over a set of 2d planes."""
 
-    def __init__(self, ksize, stride=None, pad=0, cover_all=True, use_cudnn=True):
+    def __init__(self, ksize, stride=None, pad=0, cover_all=True,
+                 use_cudnn=True):
         if stride is None:
             stride = ksize
 
@@ -130,8 +134,9 @@ class MaxPooling2D(Pooling2D):
                int argmax_ky = argmax_y + ph - out_y * sy;
                int argmax_kx = argmax_x + pw - out_x * sx;
                indexes[i] = argmax_kx + kw * argmax_ky;
-            ''', 'max_pool_fwd')(y, self.indexes, x[0], h, w, y_h, y_w, self.kh,
-                                 self.kw, self.sy, self.sx, self.ph, self.pw)
+            ''', 'max_pool_fwd')(y, self.indexes, x[0], h, w, y_h, y_w,
+                                 self.kh, self.kw, self.sy, self.sx, self.ph,
+                                 self.pw)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -193,7 +198,8 @@ class MaxPooling2D(Pooling2D):
             'CUDNN_POOLING_MAX')
 
 
-def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True, use_cudnn=True):
+def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True,
+                   use_cudnn=True):
     """Spatial max pooling function.
 
     This function acts similarly to :class:`~functions.Convolution2D`, but

@@ -1,8 +1,10 @@
 import numpy
-from chainer import Function, cuda
+
+from chainer import cuda
+from chainer import function
 
 
-class Dropout(Function):
+class Dropout(function.Function):
 
     """Dropout regularization."""
 
@@ -43,8 +45,8 @@ def dropout(x, ratio=.5, train=True):
     """Drops elements of input variable randomly.
 
     This function drops input elements randomly with probability ``ratio`` and
-    scales the remaining elements by factor ``1 / (1 - ratio)``. In testing mode, it
-    does nothing and just returns ``x``.
+    scales the remaining elements by factor ``1 / (1 - ratio)``. In testing
+    mode, it does nothing and just returns ``x``.
 
     Args:
         x (~chainer.Variable): Input variable.

@@ -1,12 +1,16 @@
 import numpy
-from chainer import Function, cuda, cudnn
+
+from chainer import cuda
+from chainer import cudnn
+from chainer import function
+
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
     _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_RELU']
 
 
-class ReLU(Function):
+class ReLU(function.Function):
 
     """Rectified Linear Unit."""
     # TODO(beam2d): Implement in-place version.
@@ -27,8 +31,9 @@ class ReLU(Function):
                 0, desc.value, cudnn.get_ptr(y))
             self.y = y
         else:
-            cuda.elementwise('float* y, const float* x', 'y[i] = max(0.f, x[i])',
-                             'relu_fwd')(y, x[0])
+            cuda.elementwise(
+                'float* y, const float* x', 'y[i] = max(0.f, x[i])',
+                'relu_fwd')(y, x[0])
         return y,
 
     def backward_cpu(self, x, gy):

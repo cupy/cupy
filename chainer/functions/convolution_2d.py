@@ -1,10 +1,12 @@
 import math
 
 import numpy
-from chainer import Function, cuda, cudnn
-from chainer.utils import conv
+from six import moves
 
-from six.moves import range
+from chainer import cuda
+from chainer import cudnn
+from chainer import function
+from chainer.utils import conv
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
@@ -18,7 +20,7 @@ def _pair(x):
     return (x, x)
 
 
-class Convolution2D(Function):
+class Convolution2D(function.Function):
 
     """Two-dimensional convolution function.
 
@@ -44,9 +46,9 @@ class Convolution2D(Function):
     The filter weight has four dimensions :math:`(c_O, c_I, k_H, k_W)`
     which indicate the number of output channels, the number of input channels,
     height and width of the kernels, respectively.
-    The filter weight is initialized with i.i.d. Gaussian random samples, each of
-    which has zero mean and deviation :math:`\sqrt{1/(c_I k_H k_W)}` by default.
-    The deviation is scaled by ``wscale`` if specified.
+    The filter weight is initialized with i.i.d. Gaussian random samples, each
+    of which has zero mean and deviation :math:`\sqrt{1/(c_I k_H k_W)}` by
+    default. The deviation is scaled by ``wscale`` if specified.
 
     The bias vector is of size :math:`c_O`.
     Each element of it is initialized by ``bias`` argument.
@@ -55,12 +57,12 @@ class Convolution2D(Function):
 
     The two-dimensional convolution function is defined as follows.
     Let :math:`X` be the input tensor of dimensions :math:`(n, c_I, h, w)`,
-    where :math:`n` is the batch size, and :math:`(h, w)` is spatial size of the
-    input image.
-    Then the ``Convolution2D`` function computes correlations between filters and
-    patches of size :math:`(k_H, k_W)` in :math:`X`.
-    Note that correlation here is equivalent to the inner product between expanded
-    vectors.
+    where :math:`n` is the batch size, and :math:`(h, w)` is spatial size of
+    the input image.
+    Then the ``Convolution2D`` function computes correlations between filters
+    and patches of size :math:`(k_H, k_W)` in :math:`X`.
+    Note that correlation here is equivalent to the inner product between
+    expanded vectors.
     Patches are extracted at positions shifted by multiples of ``stride`` from
     the first position ``-pad`` for each spatial axis.
     The right-most (or bottom-most) patches do not run over the padded spatial
@@ -76,7 +78,6 @@ class Convolution2D(Function):
        w_O &= (w + 2p_W - k_W) / s_X + 1.
 
     """
-
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True):
         ksize = _pair(ksize)
@@ -89,7 +90,8 @@ class Convolution2D(Function):
 
         self.W = numpy.random.normal(
             0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
-            (out_channels, in_channels, self.kh, self.kw)).astype(numpy.float32)
+            (out_channels, in_channels, self.kh, self.kw)
+        ).astype(numpy.float32)
         self.gW = numpy.empty_like(self.W)
 
         if nobias:
@@ -143,11 +145,12 @@ class Convolution2D(Function):
                 self.bias_desc = cudnn.get_conv_bias_desc(self.b)
 
             algo = libcudnn.cudnnGetConvolutionForwardAlgorithm(
-                handle, x_desc.value, self.filter_desc.value, self.conv_desc.value,
-                y_desc.value, _fwd_pref, self.max_workspace_size)
+                handle, x_desc.value, self.filter_desc.value,
+                self.conv_desc.value, y_desc.value, _fwd_pref,
+                self.max_workspace_size)
             workspace_size = libcudnn.cudnnGetConvolutionForwardWorkspaceSize(
-                handle, x_desc.value, self.filter_desc.value, self.conv_desc.value,
-                y_desc.value, algo).value
+                handle, x_desc.value, self.filter_desc.value,
+                self.conv_desc.value, y_desc.value, algo).value
             workspace = cuda.empty(
                 (max(workspace_size // 4, 1),), dtype=numpy.float32)
 
@@ -175,7 +178,7 @@ class Convolution2D(Function):
             col_mats = self.col.reshape(
                 n, c * self.kh * self.kw, out_h * out_w)
             y_mats = y.reshape(n, out_c, out_h * out_w)
-            for i in range(n):
+            for i in moves.range(n):
                 cuda.culinalg.dot(W_mat, col_mats[i], handle=handle,
                                   out=y_mats[i])
 
@@ -236,16 +239,16 @@ class Convolution2D(Function):
             col_mats = self.col.reshape(
                 n, c * self.kh * self.kw, out_h * out_w)
             gy_mats = gy[0].reshape(n, out_c, out_h * out_w)
-            for i in range(n):
+            for i in moves.range(n):
                 cuda.culinalg.add_dot(
                     gy_mats[i], col_mats[i], gW_mat, transb='T', handle=handle)
 
             W_mat = self.W.reshape(out_c, c * self.kh * self.kw)
             gcol = cuda.empty_like(self.col)
             gcol_mats = gcol.reshape(n, c * self.kh * self.kw, out_h * out_w)
-            for i in range(n):
-                cuda.culinalg.dot(
-                    W_mat, gy_mats[i], transa='T', handle=handle, out=gcol_mats[i])
+            for i in moves.range(n):
+                cuda.culinalg.dot(W_mat, gy_mats[i], transa='T', handle=handle,
+                                  out=gcol_mats[i])
 
             gx = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, h, w)

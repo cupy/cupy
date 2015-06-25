@@ -2,7 +2,10 @@ import math
 from numbers import Number
 
 import numpy
-from chainer import Function, Variable, cuda
+
+from chainer import cuda
+from chainer import function
+from chainer import variable
 
 
 # ------------------------------------------------------------------------------
@@ -10,7 +13,7 @@ from chainer import Function, Variable, cuda
 # ------------------------------------------------------------------------------
 
 
-class Neg(Function):
+class Neg(function.Function):
 
     def forward(self, x):
         return -x[0],
@@ -23,7 +26,7 @@ def neg(x):  # -x
     return Neg()(x)
 
 
-class Add(Function):
+class Add(function.Function):
 
     def forward(self, x):
         return x[0] + x[1],
@@ -32,7 +35,7 @@ class Add(Function):
         return gy[0], gy[0]
 
 
-class AddConstant(Function):
+class AddConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -45,12 +48,12 @@ class AddConstant(Function):
 
 
 def add(lhs, rhs):  # lhs + rhs
-    if isinstance(rhs, Variable):
+    if isinstance(rhs, variable.Variable):
         return Add()(lhs, rhs)
     return AddConstant(rhs)(lhs)
 
 
-class Sub(Function):
+class Sub(function.Function):
 
     def forward(self, x):
         return x[0] - x[1],
@@ -60,12 +63,12 @@ class Sub(Function):
 
 
 def sub(lhs, rhs):  # lhs - rhs
-    if isinstance(rhs, Variable):
+    if isinstance(rhs, variable.Variable):
         return Sub()(lhs, rhs)
     return AddConstant(-rhs)(lhs)
 
 
-class SubFromConstant(Function):
+class SubFromConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -78,12 +81,12 @@ class SubFromConstant(Function):
 
 
 def rsub(lhs, rhs):  # rhs - lhs
-    if isinstance(rhs, Variable):
+    if isinstance(rhs, variable.Variable):
         return Sub()(rhs, lhs)
     return SubFromConstant(rhs)(lhs)
 
 
-class Mul(Function):
+class Mul(function.Function):
 
     def forward(self, x):
         return x[0] * x[1],
@@ -95,14 +98,17 @@ class Mul(Function):
         gx0 = cuda.empty_like(x[0])
         gx1 = cuda.empty_like(x[1])
         cuda.elementwise(
-            'float* gx0, float* gx1, const float* x0, const float* x1, const float* gy',
-            '''gx0[i] = gy[i] * x1[i];
-               gx1[i] = gy[i] * x0[i];''',
-            'mul_bwd')(gx0, gx1, x[0], x[1], gy[0])
+            '''
+               float* gx0, float* gx1, const float* x0, const float* x1,
+               const float* gy
+            ''', '''
+               gx0[i] = gy[i] * x1[i];
+               gx1[i] = gy[i] * x0[i];
+            ''', 'mul_bwd')(gx0, gx1, x[0], x[1], gy[0])
         return gx0, gx1
 
 
-class MulConstant(Function):
+class MulConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -115,12 +121,12 @@ class MulConstant(Function):
 
 
 def mul(lhs, rhs):  # lhs * rhs
-    if isinstance(rhs, Variable):
+    if isinstance(rhs, variable.Variable):
         return Mul()(lhs, rhs)
     return MulConstant(rhs)(lhs)
 
 
-class Div(Function):
+class Div(function.Function):
 
     def forward(self, x):
         return x[0] / x[1],
@@ -133,20 +139,23 @@ class Div(Function):
         gx0 = cuda.empty_like(x[0])
         gx1 = cuda.empty_like(x[1])
         cuda.elementwise(
-            'float* gx0, float* gx1, const float* x0, const float* x1, const float* gy',
-            '''gx0[i] = gy[i] / x1[i];
-               gx1[i] = -gx0[i] * x0[i] / x1[i];''',
-            'div_bwd')(gx0, gx1, x[0], x[1], gy[0])
+            '''
+               float* gx0, float* gx1, const float* x0, const float* x1,
+               const float* gy
+            ''', '''
+               gx0[i] = gy[i] / x1[i];
+               gx1[i] = -gx0[i] * x0[i] / x1[i];
+            ''', 'div_bwd')(gx0, gx1, x[0], x[1], gy[0])
         return gx0, gx1
 
 
 def div(lhs, rhs):  # lhs / rhs
-    if isinstance(rhs, Variable):
+    if isinstance(rhs, variable.Variable):
         return Div()(lhs, rhs)
     return MulConstant(1. / rhs)(lhs)
 
 
-class DivFromConstant(Function):
+class DivFromConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -161,24 +170,30 @@ class DivFromConstant(Function):
         gx = cuda.empty_like(x[0])
         if isinstance(self.value, Number):
             cuda.elementwise(
-                'float* gx, const float* x, const float* gy, const float value',
+                '''
+                   float* gx, const float* x, const float* gy,
+                   const float value
+                ''',
                 'gx[i] = -value * gy[i] / (x[i] * x[i])',
                 'div_from_const_bwd')(gx, x[0], gy[0], self.value)
         else:
             cuda.elementwise(
-                'float* gx, const float* x, const float* gy, const float* value',
+                '''
+                   float* gx, const float* x, const float* gy,
+                   const float* value
+                ''',
                 'gx[i] = -value[i] * gy[i] / (x[i] * x[i])',
                 'div_from_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
 
 def rdiv(lhs, rhs):  # rhs / lhs
-    if isinstance(rhs, Variable):
+    if isinstance(rhs, variable.Variable):
         return Div()(rhs, lhs)
     return DivFromConstant(rhs)(lhs)
 
 
-class PowVarVar(Function):
+class PowVarVar(function.Function):
 
     def forward_cpu(self, x):
         self.y = x[0] ** x[1]
@@ -196,14 +211,17 @@ class PowVarVar(Function):
         gx0 = cuda.empty_like(x[0])
         gx1 = cuda.empty_like(x[1])
         cuda.elementwise(
-            'float* gx0, float* gx1, const float* x0, const float* x1, const float* gy',
-            '''gx0[i] = x1[i] * __powf(x0[i], x1[i] - 1) * gy[i];
-               gx1[i] = __logf(x0[i]) * __powf(x0[i], x1[i]) * gy[i];''',
-            'pow_var_var_bwd')(gx0, gx1, x[0], x[1], gy[0])
+            '''
+               float* gx0, float* gx1, const float* x0, const float* x1,
+               const float* gy
+            ''', '''
+               gx0[i] = x1[i] * __powf(x0[i], x1[i] - 1) * gy[i];
+               gx1[i] = __logf(x0[i]) * __powf(x0[i], x1[i]) * gy[i];
+            ''', 'pow_var_var_bwd')(gx0, gx1, x[0], x[1], gy[0])
         return gx0, gx1
 
 
-class PowVarConst(Function):
+class PowVarConst(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -218,24 +236,30 @@ class PowVarConst(Function):
         gx = cuda.empty_like(x[0])
         if isinstance(self.value, Number):
             cuda.elementwise(
-                'float* gx, const float* x, const float* gy, const float value',
+                '''
+                   float* gx, const float* x, const float* gy,
+                   const float value
+                ''',
                 'gx[i] = value * __powf(x[i], value - 1) * gy[i]',
                 'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         else:
             cuda.elementwise(
-                'float* gx, const float* x, const float* gy, const float* value',
+                '''
+                   float* gx, const float* x, const float* gy,
+                   const float* value
+                ''',
                 'gx[i] = value[i] * __powf(x[i], value[i] - 1) * gy[i]',
                 'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
 
 def pow(lhs, rhs):  # lhs ** rhs
-    if isinstance(rhs, Variable):
+    if isinstance(rhs, variable.Variable):
         return PowVarVar()(lhs, rhs)
     return PowVarConst(rhs)(lhs)
 
 
-class PowConstVar(Function):
+class PowConstVar(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -264,43 +288,49 @@ class PowConstVar(Function):
         if isinstance(self.value, Number):
             logv = math.log(self.value)
             cuda.elementwise(
-                'float* gx, const float* x, const float* gy, const float value, const float logv',
+                '''
+                   float* gx, const float* x, const float* gy,
+                   const float value, const float logv
+                ''',
                 'gx[i] = logv * __powf(value, x[i]) * gy[i]',
                 'pow_const_var_bwd')(gx, x[0], gy[0], self.value, logv)
         else:
             cuda.elementwise(
-                'float* gx, const float* x, const float* gy, const float* value',
+                '''
+                   float* gx, const float* x, const float* gy,
+                   const float* value
+                ''',
                 'gx[i] = __logf(value[i]) * __powf(value[i], x[i]) * gy[i]',
                 'pow_const_var_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
 
 def rpow(lhs, rhs):  # rhs ** lhs
-    if isinstance(rhs, Variable):
+    if isinstance(rhs, variable.Variable):
         return PowVarVar()(rhs, lhs)
     return PowConstVar(rhs)(lhs)
 
 # Variable operators
-Variable.__neg__ = neg
-Variable.__add__ = add
-Variable.__radd__ = add
-Variable.__sub__ = sub
-Variable.__rsub__ = rsub
-Variable.__mul__ = mul
-Variable.__rmul__ = mul
-Variable.__div__ = div
-Variable.__truediv__ = div
-Variable.__rdiv__ = rdiv
-Variable.__rtruediv__ = rdiv
-Variable.__pow__ = pow
-Variable.__rpow__ = rpow
+variable.Variable.__neg__ = neg
+variable.Variable.__add__ = add
+variable.Variable.__radd__ = add
+variable.Variable.__sub__ = sub
+variable.Variable.__rsub__ = rsub
+variable.Variable.__mul__ = mul
+variable.Variable.__rmul__ = mul
+variable.Variable.__div__ = div
+variable.Variable.__truediv__ = div
+variable.Variable.__rdiv__ = rdiv
+variable.Variable.__rtruediv__ = rdiv
+variable.Variable.__pow__ = pow
+variable.Variable.__rpow__ = rpow
 
 # ------------------------------------------------------------------------------
 # Special functions
 # ------------------------------------------------------------------------------
 
 
-class Exp(Function):
+class Exp(function.Function):
 
     def forward_cpu(self, x):
         self.y = numpy.exp(x[0])
@@ -319,7 +349,7 @@ def exp(x):
     return Exp()(x)
 
 
-class Log(Function):
+class Log(function.Function):
 
     def forward_cpu(self, x):
         return numpy.log(x[0]),

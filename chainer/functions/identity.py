@@ -1,7 +1,7 @@
-from chainer import Function
+from chainer import function
 
 
-class Identity(Function):
+class Identity(function.Function):
 
     """Identity function."""
 

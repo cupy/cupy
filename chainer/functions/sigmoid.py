@@ -1,12 +1,15 @@
 import numpy
-from chainer import Function, cuda, cudnn
+
+from chainer import cuda
+from chainer import cudnn
+from chainer import function
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
     _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_SIGMOID']
 
 
-class Sigmoid(Function):
+class Sigmoid(function.Function):
 
     """Logistic sigmoid function."""
 

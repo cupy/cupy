@@ -1,11 +1,12 @@
 import numpy
-from chainer import Function, cuda, cudnn
-from chainer.functions.softmax import Softmax
+import six
 
-from six.moves import range
+from chainer import cuda
+from chainer import function
+from chainer.functions import softmax
 
 
-class SoftmaxCrossEntropy(Function):
+class SoftmaxCrossEntropy(function.Function):
 
     """Softmax activation followed by a cross entropy loss."""
 
@@ -14,22 +15,24 @@ class SoftmaxCrossEntropy(Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        self.y, = Softmax().forward_cpu((x,))
-        return -numpy.log(self.y[range(len(t)), t]).sum(keepdims=True) / t.size,
+        self.y, = softmax.Softmax().forward_cpu((x,))
+        p = self.y[six.moves.range(len(t)), t]
+        return -numpy.log(p).sum(keepdims=True) / t.size,
 
     def forward_gpu(self, inputs):
         x, t = inputs
-        self.y, = Softmax(self.use_cudnn).forward_gpu((x,))
+        self.y, = softmax.Softmax(self.use_cudnn).forward_gpu((x,))
         ret = cuda.reduce(
             'int* t, float* y, int n_channel', '-log(y[i * n_channel + t[i]])',
-            'a+b', '0', 'crossent_fwd', numpy.float32)(t, self.y, self.y.shape[1])
+            'a+b', '0', 'crossent_fwd', numpy.float32
+        )(t, self.y, self.y.shape[1])
         ret /= t.size
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
         gx = self.y.copy()
-        gx[range(len(t)), t] -= 1
+        gx[six.moves.range(len(t)), t] -= 1
         gx *= gloss[0] / t.size
         return gx, None
 
@@ -38,7 +41,10 @@ class SoftmaxCrossEntropy(Function):
         gx = cuda.empty_like(self.y)
         coeff = gloss / t.size
         cuda.elementwise(
-            'float* gx, const float* y, const int* t, const float* coeff, int n_channel',
+            '''
+               float* gx, const float* y, const int* t, const float* coeff,
+               int n_channel
+            ''',
             'gx[i] = *coeff * (y[i] - ((i % n_channel) == t[i / n_channel]))',
             'softmax_crossent_bwd')(gx, self.y, t, coeff, self.y.shape[1])
         return gx, None
@@ -49,8 +55,9 @@ def softmax_cross_entropy(x, t, use_cudnn=True):
     groundtruth label vector.
 
     Args:
-        x (Variable): Variable holding a matrix whose (i, j)-th element indicates
-            unnormalized log probability of the class j at the i-th example.
+        x (Variable): Variable holding a matrix whose (i, j)-th element
+            indicates unnormalized log probability of the class j at the i-th
+            example.
         t (Variable): Variable holding an int32 vector of groundtruth labels.
 
     Returns:

@@ -1,14 +1,16 @@
 import math
 
 import numpy
-from chainer import Function, cuda
+
+from chainer import cuda
+from chainer import function
 
 
 def _as_mat(x):
     return x.reshape(x.shape[0], x.size / x.shape[0])
 
 
-class Linear(Function):
+class Linear(function.Function):
 
     """Implementation of a linear function (a.k.a. fully-connected layer or affine
     transformation).
@@ -16,8 +18,8 @@ class Linear(Function):
     This function holds a weight matrix ``W`` and a bias vector ``b``.
 
     The weight matrix ``W`` has shape ``(out_size, in_size)``.
-    This matrix is initialized with i.i.d. Gaussian samples, each of which has zero
-    mean and deviation :math:`\sqrt{1/\\text{in_size}}`.
+    This matrix is initialized with i.i.d. Gaussian samples, each of which has
+    zero mean and deviation :math:`\sqrt{1/\\text{in_size}}`.
     The deviation is scaled by factor ``wscale`` if specified.
 
     The bias vector ``b`` is of size ``out_size``.

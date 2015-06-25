@@ -1,7 +1,8 @@
 import numpy
-from chainer import Function, cuda
+import six
 
-from six.moves import range
+from chainer import cuda
+from chainer import function
 
 
 def _fwd_kern():
@@ -11,7 +12,7 @@ def _fwd_kern():
         'y[i] = cond[i] >= 0 ? x[i] : x[i] * W[i / rdim % cdim]', 'prelu')
 
 
-class PReLU(Function):
+class PReLU(function.Function):
 
     """Parametric ReLU function.
 
@@ -28,8 +29,9 @@ class PReLU(Function):
         shape (tuple of ints): Shape of the parameter array.
         init (float): Initial parameter value.
 
-    See detail in paper: `Delving Deep into Rectifiers: Surpassing Human-Level \
-    Performance on ImageNet Classification <http://arxiv.org/abs/1502.01852>`_.
+    See detail in paper: `Delving Deep into Rectifiers: Surpassing \
+    Human-Level Performance on ImageNet Classification \
+    <http://arxiv.org/abs/1502.01852>`_.
 
     """
     parameter_names = 'W',
@@ -58,7 +60,7 @@ class PReLU(Function):
     def backward_cpu(self, x, gy):
         mask = x[0] >= 0
         masked_x_gy = numpy.ma.array(x[0] * gy[0], mask=mask)
-        axes = (0,) + tuple(range(1 + len(self.W.shape), gy[0].ndim))
+        axes = (0,) + tuple(six.moves.range(1 + len(self.W.shape), gy[0].ndim))
         self.gW += masked_x_gy.sum(axis=axes)
 
         gx = gy[0].copy()
@@ -91,7 +93,7 @@ class PReLU(Function):
     def _check_shape(self, x):
         if x.shape[1: 1 + len(self.W.shape)] != self.W.shape:
             raise ValueError(
-                'Shape mismatch: input shape is {} while PReLU weight shape is {}'
+                'Shape mismatch: input shape is {} while PReLU weight shape {}'
                 .format(x.shape, self.W.shape))
 
     def _get_extended_shape_W(self, x):

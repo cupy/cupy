@@ -1,9 +1,10 @@
 import numpy
-from chainer import Function, cuda
+
+from chainer import cuda
+from chainer import function
 
 
-class Accuracy(Function):
-
+class Accuracy(function.Function):
     def forward_cpu(self, inputs):
         y, t = inputs
         y = y.reshape(y.shape[0], y.size / y.shape[0])  # flatten

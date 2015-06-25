@@ -1,8 +1,9 @@
 import numpy
-from chainer import Function, cuda
+
+from chainer import function
 
 
-class Parameter(Function):
+class Parameter(function.Function):
 
     """Function that outputs its weight array.
 
