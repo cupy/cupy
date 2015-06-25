@@ -1,7 +1,7 @@
 import numpy
-from chainer import cuda
-
 from six.moves import range
+
+from chainer import cuda
 
 
 def get_conv_outsize(size, k, s, p, cover_all=False):
@@ -16,7 +16,8 @@ def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all)
     out_w = get_conv_outsize(w, kw, sx, pw, cover_all)
 
-    img = numpy.pad(img, ((0, 0), (0, 0), (ph, ph + sy - 1), (pw, pw + sx - 1)),
+    img = numpy.pad(img,
+                    ((0, 0), (0, 0), (ph, ph + sy - 1), (pw, pw + sx - 1)),
                     mode='constant', constant_values=(pval,))
     col = numpy.ndarray((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
 
@@ -95,7 +96,8 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
              int ky = y - out_y * sy;
              for (int out_x = out_x_0; out_x < out_x_1; ++out_x) {
                int kx = x - out_x * sx;
-               val += col[out_x + out_w * (out_y + out_h * (kx + kw * (ky + kh * c0)))];
+               int k = out_y + out_h * (kx + kw * (ky + kh * c0));
+               val += col[out_x + out_w * k];
              }
            }
            img[i] = val;

@@ -1,1 +1,1 @@
-from . import conv
+from chainer.utils import conv
