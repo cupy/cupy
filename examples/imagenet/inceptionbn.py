@@ -40,7 +40,8 @@ class InceptionBN(chainer.Function):
         if pooltype == 'max':
             self.f.pool = F.pooling_2d.MaxPooling2D(3, stride=stride, pad=1)
         elif pooltype == 'avg':
-            self.f.pool = F.pooling_2d.AveragePooling2D(3, stride=stride, pad=1)
+            self.f.pool = F.pooling_2d.AveragePooling2D(3, stride=stride,
+                                                        pad=1)
         else:
             raise NotImplementedError()
 
