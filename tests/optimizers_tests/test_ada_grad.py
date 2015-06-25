@@ -1,15 +1,15 @@
-from unittest import TestCase
+import unittest
 
-from chainer.optimizers import AdaGrad
+from chainer import optimizers
 from chainer.testing import attr
 
 from linear_model import LinearModel
 
 
-class TestAdaGrad(TestCase):
+class TestAdaGrad(unittest.TestCase):
 
     def setUp(self):
-        self.optimizer = AdaGrad(0.1)
+        self.optimizer = optimizers.AdaGrad(0.1)
         self.model = LinearModel(self.optimizer)
 
     def test_linear_model_cpu(self):

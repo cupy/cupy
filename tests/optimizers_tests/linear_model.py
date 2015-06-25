@@ -1,13 +1,9 @@
 import numpy as np
+import six
 
+import chainer
 from chainer import cuda
-from chainer.functions import accuracy
-from chainer.functions import Linear
-from chainer.functions import softmax_cross_entropy
-from chainer import FunctionSet
-from chainer import Variable
-
-from six.moves import range
+import chainer.functions as F
 
 if cuda.available:
     cuda.init()
@@ -19,8 +15,8 @@ class LinearModel(object):
     EPOCH = 100
 
     def __init__(self, optimizer):
-        self.model = FunctionSet(
-            l=Linear(self.UNIT_NUM, 2)
+        self.model = chainer.FunctionSet(
+            l=F.Linear(self.UNIT_NUM, 2)
         )
         self.optimizer = optimizer
         # true parameters
@@ -43,21 +39,21 @@ class LinearModel(object):
             if gpu:
                 x_data = cuda.to_gpu(x_data)
                 t_data = cuda.to_gpu(t_data)
-            x = Variable(x_data)
-            t = Variable(t_data)
+            x = chainer.Variable(x_data)
+            t = chainer.Variable(t_data)
             return x, t
 
-        for epoch in range(self.EPOCH):
+        for epoch in six.moves.range(self.EPOCH):
             x, t = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu)
             optimizer.zero_grads()
             y = model.l(x)
-            loss = softmax_cross_entropy(y, t)
+            loss = F.softmax_cross_entropy(y, t)
             loss.backward()
             optimizer.update()
 
         x_test, t_test = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu)
         y_test = model.l(x_test)
-        return accuracy(y_test, t_test)
+        return F.accuracy(y_test, t_test)
 
     def _accuracy_cpu(self):
         self.optimizer.setup(self.model.collect_parameters())

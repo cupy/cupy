@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy as np
 import six
@@ -24,7 +24,7 @@ class MockFunction(chainer.Function):
     gradient_names = ('gp', )
 
 
-class TestNestedFunctionSet(TestCase):
+class TestNestedFunctionSet(unittest.TestCase):
 
     def setUp(self):
         self.fs1 = chainer.FunctionSet(
@@ -68,7 +68,7 @@ class TestNestedFunctionSet(TestCase):
         self.assertTrue((self.fs2.fs1.a.p == fs2_loaded.fs1.a.p).all())
 
 
-class TestFunctionSet(TestCase):
+class TestFunctionSet(unittest.TestCase):
 
     def setUp(self):
         self.fs = chainer.FunctionSet(

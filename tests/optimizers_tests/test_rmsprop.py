@@ -1,15 +1,15 @@
-from unittest import TestCase
+import unittest
 
-from chainer.optimizers import RMSprop
+from chainer import optimizers
 from chainer.testing import attr
 
 from linear_model import LinearModel
 
 
-class TestRMSprop(TestCase):
+class TestRMSprop(unittest.TestCase):
 
     def setUp(self):
-        self.optimizer = RMSprop(0.1)
+        self.optimizer = optimizers.RMSprop(0.1)
         self.model = LinearModel(self.optimizer)
 
     def test_linear_model_cpu(self):

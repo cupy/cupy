@@ -1,15 +1,15 @@
-from unittest import TestCase
+import unittest
 
-from chainer.optimizers import SGD
+from chainer import optimizers
 from chainer.testing import attr
 
 from linear_model import LinearModel
 
 
-class TestSGD(TestCase):
+class TestSGD(unittest.TestCase):
 
     def setUp(self):
-        self.optimizer = SGD(0.1)
+        self.optimizer = optimizers.SGD(0.1)
         self.model = LinearModel(self.optimizer)
 
     def test_linear_model_cpu(self):

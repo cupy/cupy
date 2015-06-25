@@ -1,15 +1,15 @@
-from unittest import TestCase
+import unittest
 
-from chainer.optimizers import AdaDelta
+from chainer import optimizers
 from chainer.testing import attr
 
 from linear_model import LinearModel
 
 
-class TestAdaDelta(TestCase):
+class TestAdaDelta(unittest.TestCase):
 
     def setUp(self):
-        self.optimizer = AdaDelta(eps=1e-5)
+        self.optimizer = optimizers.AdaDelta(eps=1e-5)
         self.model = LinearModel(self.optimizer)
 
     def test_linear_model_cpu(self):

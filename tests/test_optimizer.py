@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 import numpy as np
 
@@ -10,7 +10,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestOptimizerUtility(TestCase):
+class TestOptimizerUtility(unittest.TestCase):
 
     def setUp(self):
         self.x = np.linspace(-1.0, 1.5, num=6).astype(np.float32).reshape(2, 3)
@@ -34,7 +34,7 @@ class TestOptimizerUtility(TestCase):
         self.assertAlmostEqual(_sqnorm(a), 4)
 
 
-class TestOptimizer(TestCase):
+class TestOptimizer(unittest.TestCase):
 
     def setUp(self):
         pass
