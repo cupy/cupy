@@ -262,7 +262,6 @@ def train_loop():
         if train:
             optimizer.zero_grads()
             loss, accuracy = model.forward(x, y)
-            print loss1.data, loss2.data, loss3.data, loss.data
             if not graph_generated:
                 from chainer.graph_builder import print_graph
                 with open(args.graph_file, 'w') as o:
