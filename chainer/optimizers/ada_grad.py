@@ -1,8 +1,10 @@
 import numpy
-from chainer import Optimizer, cuda
+
+from chainer import cuda
+from chainer import optimizer
 
 
-class AdaGrad(Optimizer):
+class AdaGrad(optimizer.Optimizer):
 
     """AdaGrad implementation.
 

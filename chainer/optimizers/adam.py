@@ -1,10 +1,12 @@
 import math
 
 import numpy
-from chainer import Optimizer, cuda
+
+from chainer import cuda
+from chainer import optimizer
 
 
-class Adam(Optimizer):
+class Adam(optimizer.Optimizer):
 
     """Adam optimization algorithm.
 
@@ -12,7 +14,8 @@ class Adam(Optimizer):
 
     """
 
-    def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999, lam=1 - 1e-8, eps=1e-8):
+    def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999,
+                 lam=1 - 1e-8, eps=1e-8):
         self.alpha = alpha
         self.beta1 = beta1
         self.beta2 = beta2

@@ -1,7 +1,8 @@
 from unittest import TestCase
 
 import numpy as np
-from chainer import Optimizer, cuda
+
+from chainer import cuda
 from chainer.optimizer import _sqnorm
 from chainer.testing import attr
 

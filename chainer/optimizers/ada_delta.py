@@ -1,8 +1,10 @@
 import numpy
-from chainer import Optimizer, cuda
+
+from chainer import cuda
+from chainer import optimizer
 
 
-class AdaDelta(Optimizer):
+class AdaDelta(optimizer.Optimizer):
 
     """Zeiler's ADADELTA.
 

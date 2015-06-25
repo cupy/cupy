@@ -1,8 +1,9 @@
 from unittest import TestCase
 
 import numpy
-from chainer import Variable
+
 from chainer.functions import identity
+from chainer import Variable
 
 
 class TestFunction(TestCase):
