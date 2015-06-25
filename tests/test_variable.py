@@ -1,9 +1,11 @@
 from unittest import TestCase
 
 import numpy as np
-from chainer import Function, Variable, cuda
-from chainer.gradient_check import assert_allclose
+
+from chainer import cuda
+from chainer import Function
 from chainer.testing import attr
+from chainer import Variable
 
 from six.moves import range
 
