@@ -3,20 +3,25 @@
 
 This is Socher's simple recursive model, not RTNN:
   R. Socher, C. Lin, A. Y. Ng, and C.D. Manning.
-  Parsing Natural Scenes and Natural Language with Recursive Neural Networks. in ICML2011.
+  Parsing Natural Scenes and Natural Language with Recursive Neural Networks.
+  in ICML2011.
 
 """
 
 import argparse
 import collections
-import os
 import random
 import re
 import time
 
-import chainer.functions as F
 import numpy as np
-from chainer import FunctionSet, Variable, cuda, optimizers
+
+from chainer import cuda
+import chainer.functions as F
+from chainer import FunctionSet
+from chainer import optimizers
+from chainer import Variable
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -183,7 +188,7 @@ for epoch in range(n_epoch):
     now = time.time()
     throuput = float(len(train_trees)) / (now - cur_at)
     print('{:.2f} iters/sec, {:.2f} sec'.format(throuput, now - cur_at))
-    print
+    print()
 
     if (epoch + 1) % epoch_per_eval == 0:
         print('Train data evaluation:')

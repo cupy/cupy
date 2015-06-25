@@ -1,11 +1,13 @@
 import chainer.functions as F
-from chainer import FunctionSet, Variable
+from chainer import FunctionSet
+from chainer import Variable
 
 
 class AlexBN(FunctionSet):
 
-    """Single-GPU AlexNet with Normalization layers replaced by
-    BatchNormalization."""
+    """Single-GPU AlexNet with Normalization layers replaced by BatchNormalization.
+
+    """
 
     insize = 227
 

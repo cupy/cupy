@@ -1,7 +1,8 @@
 import math
 
 import chainer.functions as F
-from chainer import FunctionSet, Variable
+from chainer import FunctionSet
+from chainer import Variable
 
 
 class NIN(FunctionSet):

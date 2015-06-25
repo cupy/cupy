@@ -10,9 +10,13 @@ import math
 import sys
 import time
 
-import chainer.functions as F
 import numpy as np
-from chainer import FunctionSet, Variable, cuda, optimizers
+
+from chainer import cuda
+import chainer.functions as F
+from chainer import FunctionSet
+from chainer import optimizers
+from chainer import Variable
 
 from six.moves import range
 
