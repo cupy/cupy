@@ -16,11 +16,10 @@ import time
 
 import numpy as np
 
+import chainer
 from chainer import cuda
 import chainer.functions as F
-from chainer import FunctionSet
 from chainer import optimizers
-from chainer import Variable
 
 
 parser = argparse.ArgumentParser()
@@ -93,7 +92,7 @@ def traverse(node, train=True, evaluate=None, root=True):
         if args.gpu >= 0:
             word = cuda.to_gpu(word)
         loss = 0
-        x = Variable(word, volatile=not train)
+        x = chainer.Variable(word, volatile=not train)
         v = model.embed(x)
     else:
         # internal node
@@ -111,7 +110,7 @@ def traverse(node, train=True, evaluate=None, root=True):
         label = np.array([node['label']], np.int32)
         if args.gpu >= 0:
             label = cuda.to_gpu(label)
-        t = Variable(label, volatile=not train)
+        t = chainer.Variable(label, volatile=not train)
         loss += F.softmax_cross_entropy(y, t)
 
     if evaluate is not None:
@@ -145,7 +144,7 @@ train_trees = read_corpus('trees/train.txt', vocab)
 test_trees = read_corpus('trees/test.txt', vocab)
 develop_trees = read_corpus('trees/dev.txt', vocab)
 
-model = FunctionSet(
+model = chainer.FunctionSet(
     embed=F.EmbedID(len(vocab), n_units),
     l=F.Linear(n_units * 2, n_units),
     w=F.Linear(n_units, n_label),
