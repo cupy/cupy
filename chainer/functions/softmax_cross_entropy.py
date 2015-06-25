@@ -51,8 +51,7 @@ class SoftmaxCrossEntropy(function.Function):
 
 
 def softmax_cross_entropy(x, t, use_cudnn=True):
-    """Computes cross entropy loss on softmax of the prediction using the
-    groundtruth label vector.
+    """Computes cross entropy loss for pre-softmax activations.
 
     Args:
         x (Variable): Variable holding a matrix whose (i, j)-th element
