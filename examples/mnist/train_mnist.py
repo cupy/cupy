@@ -10,6 +10,7 @@ import numpy as np
 from sklearn.datasets import fetch_mldata
 from chainer import cuda, Variable, FunctionSet, optimizers
 import chainer.functions  as F
+from chainer.graph_builder import print_graph, build_graph
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -70,6 +71,9 @@ for epoch in xrange(1, n_epoch+1):
         optimizer.zero_grads()
         loss, acc = forward(x_batch, y_batch)
         loss.backward()
+        if epoch == 1 and i == 0:
+            from sys import stderr
+            print >> stderr, print_graph((loss,))
         optimizer.update()
 
         sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize
