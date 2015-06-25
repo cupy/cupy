@@ -1,7 +1,9 @@
 import numpy
 from chainer import cuda, Function
 
+
 class EmbedID(Function):
+
     """Efficient linear function for one-hot input.
 
     This is a parameterized function to embed the given discrete identifier
@@ -21,10 +23,10 @@ class EmbedID(Function):
 
     """
     parameter_names = ('W',)
-    gradient_names  = ('gW',)
+    gradient_names = ('gW',)
 
     def __init__(self, in_size, out_size):
-        self.W  = numpy.random.randn(in_size, out_size).astype(numpy.float32)
+        self.W = numpy.random.randn(in_size, out_size).astype(numpy.float32)
         self.gW = numpy.empty_like(self.W)
 
     def forward_cpu(self, x):

@@ -4,7 +4,9 @@ from six import iteritems, itervalues
 from . import cuda
 from .function import Function
 
+
 class FunctionSet(object):
+
     """Set of objects with ``parameters`` and ``gradients`` properties.
 
     :class:`FunctionSet` is useful to collect parameters and gradients of
@@ -17,6 +19,7 @@ class FunctionSet(object):
     :class:`FunctionSet` object.
 
     """
+
     def __init__(self, **functions):
         """Initializes :class:`FunctionSet` by given key-value pairs of
         :class:`Function` objects.

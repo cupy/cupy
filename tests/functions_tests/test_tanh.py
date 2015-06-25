@@ -1,6 +1,6 @@
 from unittest import TestCase
 import numpy
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import tanh
@@ -9,9 +9,11 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestSigmoid(TestCase):
+
     def setUp(self):
-        self.x  = numpy.random.uniform(-.5, .5, (3, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-.5, .5, (3, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-.1, .1, (3, 2)).astype(numpy.float32)
 
     @attr.cudnn

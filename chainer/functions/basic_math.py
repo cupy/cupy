@@ -7,25 +7,31 @@ from chainer import cuda, Function, Variable
 # Arithmetic
 # ------------------------------------------------------------------------------
 
+
 class Neg(Function):
+
     def forward(self, x):
         return -x[0],
 
     def backward(self, x, gy):
         return -gy[0],
 
+
 def neg(x):  # -x
     return Neg()(x)
 
 
 class Add(Function):
+
     def forward(self, x):
         return x[0] + x[1],
 
     def backward(self, x, gy):
         return gy[0], gy[0]
 
+
 class AddConstant(Function):
+
     def __init__(self, value):
         self.value = value
 
@@ -35,6 +41,7 @@ class AddConstant(Function):
     def backward(self, x, gy):
         return gy[0],
 
+
 def add(lhs, rhs):  # lhs + rhs
     if isinstance(rhs, Variable):
         return Add()(lhs, rhs)
@@ -42,11 +49,13 @@ def add(lhs, rhs):  # lhs + rhs
 
 
 class Sub(Function):
+
     def forward(self, x):
         return x[0] - x[1],
 
     def backward(self, x, gy):
         return gy[0], -gy[0]
+
 
 def sub(lhs, rhs):  # lhs - rhs
     if isinstance(rhs, Variable):
@@ -55,6 +64,7 @@ def sub(lhs, rhs):  # lhs - rhs
 
 
 class SubFromConstant(Function):
+
     def __init__(self, value):
         self.value = value
 
@@ -64,6 +74,7 @@ class SubFromConstant(Function):
     def backward(self, x, gy):
         return -gy[0],
 
+
 def rsub(lhs, rhs):  # rhs - lhs
     if isinstance(rhs, Variable):
         return Sub()(rhs, lhs)
@@ -71,6 +82,7 @@ def rsub(lhs, rhs):  # rhs - lhs
 
 
 class Mul(Function):
+
     def forward(self, x):
         return x[0] * x[1],
 
@@ -87,7 +99,9 @@ class Mul(Function):
             'mul_bwd')(gx0, gx1, x[0], x[1], gy[0])
         return gx0, gx1
 
+
 class MulConstant(Function):
+
     def __init__(self, value):
         self.value = value
 
@@ -97,6 +111,7 @@ class MulConstant(Function):
     def backward(self, x, gy):
         return self.value * gy[0],
 
+
 def mul(lhs, rhs):  # lhs * rhs
     if isinstance(rhs, Variable):
         return Mul()(lhs, rhs)
@@ -104,6 +119,7 @@ def mul(lhs, rhs):  # lhs * rhs
 
 
 class Div(Function):
+
     def forward(self, x):
         return x[0] / x[1],
 
@@ -121,12 +137,15 @@ class Div(Function):
             'div_bwd')(gx0, gx1, x[0], x[1], gy[0])
         return gx0, gx1
 
+
 def div(lhs, rhs):  # lhs / rhs
     if isinstance(rhs, Variable):
         return Div()(lhs, rhs)
     return MulConstant(1. / rhs)(lhs)
 
+
 class DivFromConstant(Function):
+
     def __init__(self, value):
         self.value = value
 
@@ -150,6 +169,7 @@ class DivFromConstant(Function):
                 'div_from_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
+
 def rdiv(lhs, rhs):  # rhs / lhs
     if isinstance(rhs, Variable):
         return Div()(rhs, lhs)
@@ -157,6 +177,7 @@ def rdiv(lhs, rhs):  # rhs / lhs
 
 
 class PowVarVar(Function):
+
     def forward_cpu(self, x):
         self.y = x[0] ** x[1]
         return self.y,
@@ -179,7 +200,9 @@ class PowVarVar(Function):
             'pow_var_var_bwd')(gx0, gx1, x[0], x[1], gy[0])
         return gx0, gx1
 
+
 class PowVarConst(Function):
+
     def __init__(self, value):
         self.value = value
 
@@ -203,12 +226,15 @@ class PowVarConst(Function):
                 'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
+
 def pow(lhs, rhs):  # lhs ** rhs
     if isinstance(rhs, Variable):
         return PowVarVar()(lhs, rhs)
     return PowVarConst(rhs)(lhs)
 
+
 class PowConstVar(Function):
+
     def __init__(self, value):
         self.value = value
 
@@ -246,31 +272,34 @@ class PowConstVar(Function):
                 'pow_const_var_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
+
 def rpow(lhs, rhs):  # rhs ** lhs
     if isinstance(rhs, Variable):
         return PowVarVar()(rhs, lhs)
     return PowConstVar(rhs)(lhs)
 
 # Variable operators
-Variable.__neg__  = neg
-Variable.__add__  = add
+Variable.__neg__ = neg
+Variable.__add__ = add
 Variable.__radd__ = add
-Variable.__sub__  = sub
+Variable.__sub__ = sub
 Variable.__rsub__ = rsub
-Variable.__mul__  = mul
+Variable.__mul__ = mul
 Variable.__rmul__ = mul
-Variable.__div__  = div
-Variable.__truediv__  = div
+Variable.__div__ = div
+Variable.__truediv__ = div
 Variable.__rdiv__ = rdiv
 Variable.__rtruediv__ = rdiv
-Variable.__pow__  = pow
+Variable.__pow__ = pow
 Variable.__rpow__ = rpow
 
 # ------------------------------------------------------------------------------
 # Special functions
 # ------------------------------------------------------------------------------
 
+
 class Exp(Function):
+
     def forward_cpu(self, x):
         self.y = numpy.exp(x[0])
         return self.y,
@@ -282,12 +311,14 @@ class Exp(Function):
     def backward(self, x, gy):
         return self.y * gy[0],
 
+
 def exp(x):
     """Elementwise exponential function."""
     return Exp()(x)
 
 
 class Log(Function):
+
     def forward_cpu(self, x):
         return numpy.log(x[0]),
 
@@ -296,6 +327,7 @@ class Log(Function):
 
     def backward(self, x, gy):
         return gy[0] / x[0],
+
 
 def log(x):
     """Elementwise natural logarithm function."""

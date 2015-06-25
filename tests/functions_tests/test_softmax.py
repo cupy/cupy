@@ -1,7 +1,7 @@
 from unittest import TestCase
 import numpy
 from six.moves import range
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import softmax
@@ -10,9 +10,11 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestSoftmax(TestCase):
+
     def setUp(self):
-        self.x  = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):

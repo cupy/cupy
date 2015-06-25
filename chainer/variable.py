@@ -1,10 +1,13 @@
-import heapq, weakref
+import heapq
+import weakref
 import numpy
 
 from . import cuda
 
+
 class Variable(object):
-    """Array with a structure to keep track of computation
+
+    """Array with a structure to keep track of computation.
 
     Every variable holds a data array of type either :class:`~numpy.ndarray` or
     :class:`~pycuda.gpuarray.GPUArray`.
@@ -36,6 +39,7 @@ class Variable(object):
             any function applications.
 
     """
+
     def __init__(self, data, volatile=False):
         """Initializes a variable.
 
@@ -58,8 +62,8 @@ class Variable(object):
         self.volatile = volatile
 
         self.splitter = weakref.ref(lambda: 0)  # dead ref
-        self.grad     = None
-        self.creator  = None
+        self.grad = None
+        self.creator = None
 
     def __pos__(self):
         return self
@@ -139,7 +143,7 @@ class Variable(object):
             _, _, func = heapq.heappop(cand_funcs)
             outputs = tuple(y() for y in func.outputs)  # access via weak ref
 
-            in_data  = tuple(x.data for x in func.inputs)
+            in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(y and y.grad for y in outputs)
             with cuda.using_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)

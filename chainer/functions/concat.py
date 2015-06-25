@@ -11,10 +11,13 @@ _preamble = '''
     statement;
 '''
 
+
 class Concat(Function):
+
     """Concatenate multiple tensors towards specified axis."""
 
-    def __init__(self, axis=1):  # concat along the channel dimension by default
+    # concat along the channel dimension by default
+    def __init__(self, axis=1):
         self.axis = axis
 
     def forward_cpu(self, xs):
@@ -29,10 +32,10 @@ class Concat(Function):
 
         y = cuda.empty(shape, dtype=xs[0].dtype)
         self.cdimy = y.shape[self.axis]
-        self.rdim  = numpy.prod(shape[self.axis + 1:])
+        self.rdim = numpy.prod(shape[self.axis + 1:])
 
         coffset = 0
-        kernel  = cuda.elementwise(
+        kernel = cuda.elementwise(
             _args, 'COPY(y[idx] = x[i])', 'concat_fwd', preamble=_preamble)
         for x in xs:
             cdimx = x.shape[self.axis]
@@ -49,7 +52,7 @@ class Concat(Function):
         gxs = tuple(cuda.empty_like(x) for x in xs)
 
         coffset = 0
-        kernel  = cuda.elementwise(
+        kernel = cuda.elementwise(
             _args, 'COPY(x[i] = y[idx])', 'concat_bwd', preamble=_preamble)
         for gx in gxs:
             cdimx = gx.shape[self.axis]
@@ -57,6 +60,7 @@ class Concat(Function):
             coffset += cdimx
 
         return gxs
+
 
 def concat(xs, axis=1):
     """Concatenates given variables along an axis.

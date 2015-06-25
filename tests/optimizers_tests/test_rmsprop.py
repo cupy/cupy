@@ -3,7 +3,9 @@ from linear_model import LinearModel
 from chainer.optimizers import RMSprop
 from chainer.testing import attr
 
+
 class TestRMSprop(TestCase):
+
     def setUp(self):
         self.optimizer = RMSprop(0.1)
         self.model = LinearModel(self.optimizer)

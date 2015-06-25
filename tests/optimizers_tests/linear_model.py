@@ -6,6 +6,7 @@ from chainer.functions import Linear, softmax_cross_entropy, accuracy
 if cuda.available:
     cuda.init()
 
+
 class LinearModel(object):
     UNIT_NUM = 10
     BATCH_SIZE = 32
@@ -13,23 +14,25 @@ class LinearModel(object):
 
     def __init__(self, optimizer):
         self.model = FunctionSet(
-            l = Linear(self.UNIT_NUM, 2)
+            l=Linear(self.UNIT_NUM, 2)
         )
         self.optimizer = optimizer
         # true parameters
-        self.w      = np.random.uniform(-1, 1, (self.UNIT_NUM, 1)).astype(np.float32)
-        self.b      = np.random.uniform(-1, 1, (1, )).astype(np.float32)
+        self.w = np.random.uniform(-1, 1,
+                                   (self.UNIT_NUM, 1)).astype(np.float32)
+        self.b = np.random.uniform(-1, 1, (1, )).astype(np.float32)
 
     def _train_linear_classifier(self, model, optimizer, gpu):
         def _make_label(x):
             a = (np.dot(x, self.w) + self.b).reshape((self.BATCH_SIZE, ))
             t = np.empty_like(a).astype(np.int32)
-            t[a>=0] = 0
-            t[a< 0] = 1
+            t[a >= 0] = 0
+            t[a < 0] = 1
             return t
 
         def _make_dataset(batch_size, unit_num, gpu):
-            x_data = np.random.uniform(-1, 1, (batch_size, unit_num)).astype(np.float32)
+            x_data = np.random.uniform(-1, 1,
+                                       (batch_size, unit_num)).astype(np.float32)
             t_data = _make_label(x_data)
             if gpu:
                 x_data = cuda.to_gpu(x_data)

@@ -1,6 +1,8 @@
 from chainer import Function
 
+
 class Reshape(Function):
+
     """Reshapes an input array without copy."""
 
     def __init__(self, shape):
@@ -11,6 +13,7 @@ class Reshape(Function):
 
     def backward(self, x, gy):
         return gy[0].reshape(x[0].shape),
+
 
 def reshape(x, shape):
     """Reshapes an input variable without copy.

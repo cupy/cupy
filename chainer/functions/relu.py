@@ -5,7 +5,9 @@ if cudnn.available:
     from chainer.cudnn import libcudnn
     _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_RELU']
 
+
 class ReLU(Function):
+
     """Rectified Linear Unit."""
     # TODO(beam2d): Implement in-place version.
 
@@ -39,7 +41,8 @@ class ReLU(Function):
             desc = cudnn.get_tensor_desc(self.y, 1, 1)
             libcudnn.cudnnActivationBackward(
                 handle, _mode, 1, desc.value, cudnn.get_ptr(self.y),
-                desc.value, cudnn.get_ptr(gy[0]), desc.value, cudnn.get_ptr(x[0]),
+                desc.value, cudnn.get_ptr(
+                    gy[0]), desc.value, cudnn.get_ptr(x[0]),
                 0, desc.value, cudnn.get_ptr(gx))
         else:
             cuda.elementwise(
@@ -47,6 +50,7 @@ class ReLU(Function):
                 'gx[i] = x[i] > 0 ? gy[i] : 0',
                 'relu_bwd')(gx, x[0], gy[0])
         return gx,
+
 
 def relu(x, use_cudnn=True):
     """Rectified Linear Unit function :math:`f(x)=\\max(0, x)`.

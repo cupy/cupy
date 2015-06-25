@@ -24,7 +24,7 @@ import numpy as np
 from six.moves import range
 
 from chainer import cuda, Variable, FunctionSet, optimizers
-import chainer.functions  as F
+import chainer.functions as F
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from ILSVRC2012 dataset')
@@ -50,6 +50,8 @@ args = parser.parse_args()
 assert 50000 % args.val_batchsize == 0
 
 # Prepare dataset
+
+
 def load_image_list(path):
     tuples = []
     for line in open(path):
@@ -58,7 +60,7 @@ def load_image_list(path):
     return tuples
 
 train_list = load_image_list(args.train)
-val_list   = load_image_list(args.val)
+val_list = load_image_list(args.val)
 mean_image = pickle.load(open(args.mean, 'rb'))
 
 # Prepare model
@@ -90,21 +92,23 @@ optimizer.setup(model.collect_parameters())
 # This example consists of three threads: data feeder, logger and trainer. These
 # communicate with each other via Queue.
 data_q = Queue(maxsize=1)
-res_q  = Queue()
+res_q = Queue()
 
 # Data loading routine
 cropwidth = 256 - model.insize
+
+
 def read_image(path, center=False, flip=False):
     image = cv2.imread(path).transpose(2, 0, 1)
     if center:
         top = left = cropwidth / 2
     else:
-        top  = random.randint(0, cropwidth - 1)
+        top = random.randint(0, cropwidth - 1)
         left = random.randint(0, cropwidth - 1)
     bottom = model.insize + top
-    right  = model.insize + left
+    right = model.insize + left
 
-    image  = image[[2, 1, 0], top:bottom, left:right].astype(np.float32)
+    image = image[[2, 1, 0], top:bottom, left:right].astype(np.float32)
     image -= mean_image[:, top:bottom, left:right]
     image /= 255
     if flip and random.randint(0, 1) == 0:
@@ -113,8 +117,10 @@ def read_image(path, center=False, flip=False):
         return image
 
 # Data feeder
+
+
 def feed_data():
-    i     = 0
+    i = 0
     count = 0
 
     x_batch = np.ndarray(
@@ -124,9 +130,9 @@ def feed_data():
         (args.val_batchsize, 3, model.insize, model.insize), dtype=np.float32)
     val_y_batch = np.ndarray((args.val_batchsize,), dtype=np.int32)
 
-    batch_pool     = [None] * args.batchsize
+    batch_pool = [None] * args.batchsize
     val_batch_pool = [None] * args.val_batchsize
-    pool           = Pool(args.loaderjob)
+    pool = Pool(args.loaderjob)
     data_q.put('train')
     for epoch in range(1, 1 + args.epoch):
         print >> sys.stderr, 'epoch', epoch
@@ -167,6 +173,8 @@ def feed_data():
     data_q.put('end')
 
 # Logger
+
+
 def log_result():
     train_count = 0
     train_cur_loss = 0
@@ -195,8 +203,8 @@ def log_result():
         loss, accuracy = result
         if train:
             train_count += 1
-            duration     = time.time() - begin_at
-            throughput   = train_count * args.batchsize / duration
+            duration = time.time() - begin_at
+            throughput = train_count * args.batchsize / duration
             sys.stderr.write(
                 '\rtrain {} updates ({} samples) time: {} ({} images/sec)'
                 .format(train_count, train_count * args.batchsize,
@@ -205,7 +213,7 @@ def log_result():
             train_cur_loss += loss
             train_cur_accuracy += accuracy
             if train_count % 1000 == 0:
-                mean_loss  = train_cur_loss / 1000
+                mean_loss = train_cur_loss / 1000
                 mean_error = 1 - train_cur_accuracy / 1000
                 print >> sys.stderr, ''
                 print json.dumps({'type': 'train', 'iteration': train_count,
@@ -214,9 +222,9 @@ def log_result():
                 train_cur_loss = 0
                 train_cur_accuracy = 0
         else:
-            val_count  += args.val_batchsize
-            duration    = time.time() - val_begin_at
-            throughput  = val_count / duration
+            val_count += args.val_batchsize
+            duration = time.time() - val_begin_at
+            throughput = val_count / duration
             sys.stderr.write(
                 '\rval   {} batches ({} samples) time: {} ({} images/sec)'
                 .format(val_count / args.val_batchsize, val_count,
@@ -225,7 +233,7 @@ def log_result():
             val_loss += loss
             val_accuracy += accuracy
             if val_count == 50000:
-                mean_loss  = val_loss * args.val_batchsize / 50000
+                mean_loss = val_loss * args.val_batchsize / 50000
                 mean_error = 1 - val_accuracy * args.val_batchsize / 50000
                 print >> sys.stderr, ''
                 print json.dumps({'type': 'val', 'iteration': train_count,
@@ -233,6 +241,8 @@ def log_result():
                 sys.stdout.flush()
 
 # Trainer
+
+
 def train_loop():
     while True:
         while data_q.empty():

@@ -5,7 +5,9 @@ if cudnn.available:
     from chainer.cudnn import libcudnn
     _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_TANH']
 
+
 class Tanh(Function):
+
     """Hyperbolic tangent function."""
 
     def __init__(self, use_cudnn=True):
@@ -38,7 +40,8 @@ class Tanh(Function):
             desc = cudnn.get_tensor_desc(self.y, 1, 1)
             libcudnn.cudnnActivationBackward(
                 handle, _mode, 1, desc.value, cudnn.get_ptr(self.y),
-                desc.value, cudnn.get_ptr(gy[0]), desc.value, cudnn.get_ptr(x[0]),
+                desc.value, cudnn.get_ptr(
+                    gy[0]), desc.value, cudnn.get_ptr(x[0]),
                 0, desc.value, cudnn.get_ptr(gx))
         else:
             cuda.elementwise(
@@ -46,6 +49,7 @@ class Tanh(Function):
                 'gx[i] = gy[i] * (1 - y[i] * y[i])',
                 'tanh_bwd')(gx, self.y, gy[0])
         return gx,
+
 
 def tanh(x, use_cudnn=True):
     """Elementwise hyperbolic tangent function.

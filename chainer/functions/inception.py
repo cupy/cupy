@@ -1,7 +1,9 @@
 from chainer import Function, FunctionSet, Variable
 from chainer.functions import concat, Convolution2D, max_pooling_2d, relu
 
+
 class Inception(Function):
+
     """Inception module of GoogLeNet.
 
     It applies four different functions to the input array and concatenates
@@ -37,14 +39,15 @@ class Inception(Function):
        computation graph.
 
     """
+
     def __init__(self, in_channels, out1, proj3, out3, proj5, out5, proj_pool):
         self.f = FunctionSet(
-            conv1 = Convolution2D(in_channels, out1,      1),
-            proj3 = Convolution2D(in_channels, proj3,     1),
-            conv3 = Convolution2D(proj3,       out3,      3, pad=1),
-            proj5 = Convolution2D(in_channels, proj5,     1),
-            conv5 = Convolution2D(proj5,       out5,      5, pad=2),
-            projp = Convolution2D(in_channels, proj_pool, 1),
+            conv1=Convolution2D(in_channels, out1,      1),
+            proj3=Convolution2D(in_channels, proj3,     1),
+            conv3=Convolution2D(proj3,       out3,      3, pad=1),
+            proj5=Convolution2D(in_channels, proj5,     1),
+            conv5=Convolution2D(proj5,       out5,      5, pad=2),
+            projp=Convolution2D(in_channels, proj_pool, 1),
         )
 
     def forward(self, x):

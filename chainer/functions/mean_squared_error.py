@@ -1,8 +1,14 @@
 import numpy
 from chainer import cuda, Function
 
+
 class MeanSquaredError(Function):
-    """Mean squared error (a.k.a. Euclidean loss) function."""
+
+    """Mean squared error (a.k.a.
+
+    Euclidean loss) function.
+
+    """
 
     def forward_cpu(self, inputs):
         x0, x1 = inputs
@@ -36,6 +42,7 @@ class MeanSquaredError(Function):
                gx1[i] = -gx0[i];''',
             'mse_bwd')(gx0, gx1, x0, x1, coeff)
         return gx0, gx1
+
 
 def mean_squared_error(x0, x1):
     """Mean squared error function.

@@ -12,7 +12,7 @@ import time
 import numpy as np
 from six.moves import range
 from chainer import cuda, Variable, FunctionSet, optimizers
-import chainer.functions  as F
+import chainer.functions as F
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -20,17 +20,19 @@ parser.add_argument('--gpu', '-g', default=-1, type=int,
 args = parser.parse_args()
 mod = cuda if args.gpu >= 0 else np
 
-n_epoch   = 39   # number of epochs
-n_units   = 650  # number of units per layer
+n_epoch = 39   # number of epochs
+n_units = 650  # number of units per layer
 batchsize = 20   # minibatch size
 bprop_len = 35   # length of truncated BPTT
 grad_clip = 5    # gradient norm threshold to clip
 
 # Prepare dataset (preliminary download dataset by ./download.py)
-vocab   = {}
+vocab = {}
+
+
 def load_data(filename):
     global vocab, n_vocab
-    words   = open(filename).read().replace('\n', '<eos>').strip().split()
+    words = open(filename).read().replace('\n', '<eos>').strip().split()
     dataset = np.ndarray((len(words),), dtype=np.int32)
     for i, word in enumerate(words):
         if word not in vocab:
@@ -40,16 +42,16 @@ def load_data(filename):
 
 train_data = load_data('ptb.train.txt')
 valid_data = load_data('ptb.valid.txt')
-test_data  = load_data('ptb.test.txt')
+test_data = load_data('ptb.test.txt')
 print('#vocab =', len(vocab))
 
 # Prepare RNNLM model
 model = FunctionSet(embed=F.EmbedID(len(vocab), n_units),
-                    l1_x =F.Linear(n_units, 4 * n_units),
-                    l1_h =F.Linear(n_units, 4 * n_units),
-                    l2_x =F.Linear(n_units, 4 * n_units),
-                    l2_h =F.Linear(n_units, 4 * n_units),
-                    l3   =F.Linear(n_units, len(vocab)))
+                    l1_x=F.Linear(n_units, 4 * n_units),
+                    l1_h=F.Linear(n_units, 4 * n_units),
+                    l2_x=F.Linear(n_units, 4 * n_units),
+                    l2_h=F.Linear(n_units, 4 * n_units),
+                    l3=F.Linear(n_units, len(vocab)))
 for param in model.parameters:
     param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 if args.gpu >= 0:
@@ -57,20 +59,23 @@ if args.gpu >= 0:
     model.to_gpu()
 
 # Neural net architecture
+
+
 def forward_one_step(x_data, y_data, state, train=True):
     if args.gpu >= 0:
         x_data = cuda.to_gpu(x_data)
         y_data = cuda.to_gpu(y_data)
     x = Variable(x_data, volatile=not train)
     t = Variable(y_data, volatile=not train)
-    h0     = model.embed(x)
-    h1_in  = model.l1_x(F.dropout(h0, train=train)) + model.l1_h(state['h1'])
+    h0 = model.embed(x)
+    h1_in = model.l1_x(F.dropout(h0, train=train)) + model.l1_h(state['h1'])
     c1, h1 = F.lstm(state['c1'], h1_in)
-    h2_in  = model.l2_x(F.dropout(h1, train=train)) + model.l2_h(state['h2'])
+    h2_in = model.l2_x(F.dropout(h1, train=train)) + model.l2_h(state['h2'])
     c2, h2 = F.lstm(state['c2'], h2_in)
-    y      = model.l3(F.dropout(h2, train=train))
-    state  = {'c1': c1, 'h1': h1, 'c2': c2, 'h2': h2}
+    y = model.l3(F.dropout(h2, train=train))
+    state = {'c1': c1, 'h1': h1, 'c2': c2, 'h2': h2}
     return state, F.softmax_cross_entropy(y, t)
+
 
 def make_initial_state(batchsize=batchsize, train=True):
     return {name: Variable(mod.zeros((batchsize, n_units), dtype=np.float32),
@@ -82,26 +87,28 @@ optimizer = optimizers.SGD(lr=1.)
 optimizer.setup(model.collect_parameters())
 
 # Evaluation routine
+
+
 def evaluate(dataset):
     sum_log_perp = mod.zeros(())
-    state        = make_initial_state(batchsize=1, train=False)
+    state = make_initial_state(batchsize=1, train=False)
     for i in range(dataset.size - 1):
-        x_batch = dataset[i  :i+1]
-        y_batch = dataset[i+1:i+2]
-        state, loss   = forward_one_step(x_batch, y_batch, state, train=False)
+        x_batch = dataset[i:i + 1]
+        y_batch = dataset[i + 1:i + 2]
+        state, loss = forward_one_step(x_batch, y_batch, state, train=False)
         sum_log_perp += loss.data.reshape(())
 
     return math.exp(cuda.to_cpu(sum_log_perp) / (dataset.size - 1))
 
 # Learning loop
-whole_len    = train_data.shape[0]
-jump         = whole_len // batchsize
+whole_len = train_data.shape[0]
+jump = whole_len // batchsize
 cur_log_perp = mod.zeros(())
-epoch        = 0
-start_at     = time.time()
-cur_at       = start_at
-state        = make_initial_state()
-accum_loss   = Variable(mod.zeros(()))
+epoch = 0
+start_at = time.time()
+cur_at = start_at
+state = make_initial_state()
+accum_loss = Variable(mod.zeros(()))
 print('going to train {} iterations'.format(jump * n_epoch))
 for i in range(jump * n_epoch):
     x_batch = np.array([train_data[(jump * j + i) % whole_len]
@@ -109,7 +116,7 @@ for i in range(jump * n_epoch):
     y_batch = np.array([train_data[(jump * j + i + 1) % whole_len]
                         for j in range(batchsize)])
     state, loss_i = forward_one_step(x_batch, y_batch, state)
-    accum_loss   += loss_i
+    accum_loss += loss_i
     cur_log_perp += loss_i.data.reshape(())
 
     if (i + 1) % bprop_len == 0:  # Run truncated BPTT
@@ -122,18 +129,18 @@ for i in range(jump * n_epoch):
         optimizer.update()
 
     if (i + 1) % 10000 == 0:
-        now      = time.time()
+        now = time.time()
         throuput = 10000. / (now - cur_at)
-        perp     = math.exp(cuda.to_cpu(cur_log_perp) / 10000)
+        perp = math.exp(cuda.to_cpu(cur_log_perp) / 10000)
         print('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(
             i + 1, perp, throuput))
-        cur_at   = now
+        cur_at = now
         cur_log_perp.fill(0)
 
     if (i + 1) % jump == 0:
         epoch += 1
         print('evaluate')
-        now  = time.time()
+        now = time.time()
         perp = evaluate(valid_data)
         print('epoch {} validation perplexity: {:.2f}'.format(epoch, perp))
         cur_at += time.time() - now  # skip time of evaluation

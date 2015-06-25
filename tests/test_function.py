@@ -4,7 +4,9 @@ import numpy
 from chainer import Variable
 from chainer.functions import identity
 
+
 class TestFunction(TestCase):
+
     def test_forward(self):
         xs = (Variable(numpy.array([0])),
               Variable(numpy.array([0])),

@@ -2,11 +2,13 @@ import numpy
 from six.moves import range
 from chainer import cuda
 
+
 def get_conv_outsize(size, k, s, p, cover_all=False):
     if cover_all:
         return (size + p * 2 - k + s - 1) // s + 1
     else:
         return (size + p * 2 - k) // s + 1
+
 
 def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
     n, c, h, w = img.shape
@@ -24,6 +26,7 @@ def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
             col[:, :, i, j, :, :] = img[:, :, i:i_lim:sy, j:j_lim:sx]
 
     return col
+
 
 def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
     n, c, h, w = img.shape
@@ -53,6 +56,7 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
         'im2col')(col, img, h, w, out_h, out_w, kh, kw, sy, sx, ph, pw)
     return col
 
+
 def col2im_cpu(col, sy, sx, ph, pw, h, w):
     n, c, kh, kw, out_h, out_w = col.shape
 
@@ -64,7 +68,8 @@ def col2im_cpu(col, sy, sx, ph, pw, h, w):
             j_lim = j + sx * out_w
             img[:, :, i:i_lim:sy, j:j_lim:sx] += col[:, :, i, j, :, :]
 
-    return img[:, :, ph:h+ph, pw:w+pw]
+    return img[:, :, ph:h + ph, pw:w + pw]
+
 
 def col2im_gpu(col, sy, sx, ph, pw, h, w):
     n, c, kh, kw, out_h, out_w = col.shape

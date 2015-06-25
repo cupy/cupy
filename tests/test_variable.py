@@ -9,7 +9,9 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class Constant(Function):
+
     def __init__(self, outputs):
         self.outputs = outputs
 
@@ -25,10 +27,13 @@ class Constant(Function):
     def backward_gpu(self, inputs, grad_outputs):
         return tuple(map(cuda.zeros_like, inputs))
 
+
 def constant(xs, value):
     return Constant(value)(*xs)
 
+
 class TestVariable(TestCase):
+
     def setUp(self):
         self.x = np.random.uniform(-1, 1, 10).astype(np.float32)
         self.a = np.random.uniform(0.1, 10, 10).astype(np.float32)
@@ -40,9 +45,12 @@ class TestVariable(TestCase):
         x = Variable(x)
         self.assertEqual(len(x), 10)
 
-    def test_len_cpu(self): self.check_len(False)
+    def test_len_cpu(self):
+        self.check_len(False)
+
     @attr.gpu
-    def test_len_gpu(self): self.check_len(True)
+    def test_len_gpu(self):
+        self.check_len(True)
 
     def check_backward(self, inputs, intermediates, outputs, retain_grad):
         for o in outputs:
@@ -89,21 +97,20 @@ class TestVariable(TestCase):
         ret = self.create_linear_chain(3, False)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
-        
+
     @attr.gpu
     def test_unchain_backward_gpu(self):
         ret = self.create_linear_chain(3, True)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
-        
+
     def test_unchain_backward_cpu_retain_grad(self):
         ret = self.create_linear_chain(3, False)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
-        
+
     @attr.gpu
     def test_unchain_backward_gpu_retain_grad(self):
         ret = self.create_linear_chain(3, False)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
-        

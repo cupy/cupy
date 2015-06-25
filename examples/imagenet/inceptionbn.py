@@ -2,7 +2,9 @@ from chainer import Function, FunctionSet, Variable
 import chainer.functions as F
 from chainer.functions.pooling_2d import AveragePooling2D, MaxPooling2D
 
+
 class InceptionBN(Function):
+
     """Inception module in new GoogLeNet with BN."""
 
     def __init__(self, in_channels, out1, proj3, out3, proj33, out33,
@@ -12,24 +14,28 @@ class InceptionBN(Function):
             assert proj_pool is not None
 
         self.f = FunctionSet(
-            proj3    = F.Convolution2D(in_channels,  proj3, 1, nobias=True),
-            conv3    = F.Convolution2D(      proj3,   out3, 3, pad=1, stride=stride, nobias=True),
-            proj33   = F.Convolution2D(in_channels, proj33, 1, nobias=True),
-            conv33a  = F.Convolution2D(     proj33,  out33, 3, pad=1, nobias=True),
-            conv33b  = F.Convolution2D(      out33,  out33, 3, pad=1, stride=stride, nobias=True),
-            proj3n   = F.BatchNormalization(proj3),
-            conv3n   = F.BatchNormalization(out3),
-            proj33n  = F.BatchNormalization(proj33),
-            conv33an = F.BatchNormalization(out33),
-            conv33bn = F.BatchNormalization(out33),
+            proj3=F.Convolution2D(in_channels,  proj3, 1, nobias=True),
+            conv3=F.Convolution2D(
+                proj3,   out3, 3, pad=1, stride=stride, nobias=True),
+            proj33=F.Convolution2D(in_channels, proj33, 1, nobias=True),
+            conv33a=F.Convolution2D(proj33,  out33, 3, pad=1, nobias=True),
+            conv33b=F.Convolution2D(
+                out33,  out33, 3, pad=1, stride=stride, nobias=True),
+            proj3n=F.BatchNormalization(proj3),
+            conv3n=F.BatchNormalization(out3),
+            proj33n=F.BatchNormalization(proj33),
+            conv33an=F.BatchNormalization(out33),
+            conv33bn=F.BatchNormalization(out33),
         )
 
         if out1 > 0:
-            self.f.conv1  = F.Convolution2D(in_channels, out1, 1, stride=stride, nobias=True)
+            self.f.conv1 = F.Convolution2D(
+                in_channels, out1, 1, stride=stride, nobias=True)
             self.f.conv1n = F.BatchNormalization(out1)
 
         if proj_pool is not None:
-            self.f.poolp  = F.Convolution2D(in_channels, proj_pool, 1, nobias=True)
+            self.f.poolp = F.Convolution2D(
+                in_channels, proj_pool, 1, nobias=True)
             self.f.poolpn = F.BatchNormalization(proj_pool)
 
         if pooltype == 'max':
@@ -95,39 +101,40 @@ class InceptionBN(Function):
 
 
 class GoogLeNetBN(FunctionSet):
+
     """New GoogLeNet of BatchNormalization version."""
 
     insize = 224
 
     def __init__(self):
         super(GoogLeNetBN, self).__init__(
-            conv1 = F.Convolution2D( 3,  64, 7, stride=2, pad=3, nobias=True),
-            norm1 = F.BatchNormalization(64),
-            conv2 = F.Convolution2D(64, 192, 3, pad=1, nobias=True),
-            norm2 = F.BatchNormalization(192),
-            inc3a = InceptionBN( 192,  64,  64,  64,  64,  96, 'avg',  32),
-            inc3b = InceptionBN( 256,  64,  64,  96,  64,  96, 'avg',  64),
-            inc3c = InceptionBN( 320,   0, 128, 160,  64,  96, 'max', stride=2),
-            inc4a = InceptionBN( 576, 224,  64,  96,  96, 128, 'avg', 128),
-            inc4b = InceptionBN( 576, 192,  96, 128,  96, 128, 'avg', 128),
-            inc4c = InceptionBN( 576, 128, 128, 160, 128, 160, 'avg', 128),
-            inc4d = InceptionBN( 576,  64, 128, 192, 160, 192, 'avg', 128),
-            inc4e = InceptionBN( 576,   0, 128, 192, 192, 256, 'max', stride=2),
-            inc5a = InceptionBN(1024, 352, 192, 320, 160, 224, 'avg', 128),
-            inc5b = InceptionBN(1024, 352, 192, 320, 192, 224, 'max', 128),
-            out   = F.Linear(1024, 1000),
+            conv1=F.Convolution2D(3,  64, 7, stride=2, pad=3, nobias=True),
+            norm1=F.BatchNormalization(64),
+            conv2=F.Convolution2D(64, 192, 3, pad=1, nobias=True),
+            norm2=F.BatchNormalization(192),
+            inc3a=InceptionBN(192,  64,  64,  64,  64,  96, 'avg',  32),
+            inc3b=InceptionBN(256,  64,  64,  96,  64,  96, 'avg',  64),
+            inc3c=InceptionBN(320,   0, 128, 160,  64,  96, 'max', stride=2),
+            inc4a=InceptionBN(576, 224,  64,  96,  96, 128, 'avg', 128),
+            inc4b=InceptionBN(576, 192,  96, 128,  96, 128, 'avg', 128),
+            inc4c=InceptionBN(576, 128, 128, 160, 128, 160, 'avg', 128),
+            inc4d=InceptionBN(576,  64, 128, 192, 160, 192, 'avg', 128),
+            inc4e=InceptionBN(576,   0, 128, 192, 192, 256, 'max', stride=2),
+            inc5a=InceptionBN(1024, 352, 192, 320, 160, 224, 'avg', 128),
+            inc5b=InceptionBN(1024, 352, 192, 320, 192, 224, 'max', 128),
+            out=F.Linear(1024, 1000),
 
-            conva  = F.Convolution2D(576, 128, 1, nobias=True),
-            norma  = F.BatchNormalization(128),
-            lina   = F.Linear(2048, 1024, nobias=True),
-            norma2 = F.BatchNormalization(1024),
-            outa   = F.Linear(1024, 1000),
+            conva=F.Convolution2D(576, 128, 1, nobias=True),
+            norma=F.BatchNormalization(128),
+            lina=F.Linear(2048, 1024, nobias=True),
+            norma2=F.BatchNormalization(1024),
+            outa=F.Linear(1024, 1000),
 
-            convb  = F.Convolution2D(576, 128, 1, nobias=True),
-            normb  = F.BatchNormalization(128),
-            linb   = F.Linear(2048, 1024, nobias=True),
-            normb2 = F.BatchNormalization(1024),
-            outb   = F.Linear(1024, 1000),
+            convb=F.Convolution2D(576, 128, 1, nobias=True),
+            normb=F.BatchNormalization(128),
+            linb=F.Linear(2048, 1024, nobias=True),
+            normb2=F.BatchNormalization(1024),
+            outb=F.Linear(1024, 1000),
         )
 
     def forward(self, x_data, y_data, train=True):

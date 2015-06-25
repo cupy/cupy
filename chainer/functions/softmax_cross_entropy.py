@@ -3,7 +3,9 @@ from six.moves import range
 from chainer import cuda, cudnn, Function
 from chainer.functions.softmax import Softmax
 
+
 class SoftmaxCrossEntropy(Function):
+
     """Softmax activation followed by a cross entropy loss."""
 
     def __init__(self, use_cudnn=True):
@@ -40,9 +42,10 @@ class SoftmaxCrossEntropy(Function):
             'softmax_crossent_bwd')(gx, self.y, t, coeff, self.y.shape[1])
         return gx, None
 
+
 def softmax_cross_entropy(x, t, use_cudnn=True):
-    """Computes cross entropy loss on softmax of the prediction using
-    the groundtruth label vector.
+    """Computes cross entropy loss on softmax of the prediction using the
+    groundtruth label vector.
 
     Args:
         x (Variable): Variable holding a matrix whose (i, j)-th element indicates

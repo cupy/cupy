@@ -4,6 +4,7 @@
 This is Socher's simple recursive model, not RTNN:
   R. Socher, C. Lin, A. Y. Ng, and C.D. Manning.
   Parsing Natural Scenes and Natural Language with Recursive Neural Networks. in ICML2011.
+
 """
 
 import argparse
@@ -15,7 +16,7 @@ import time
 
 import numpy as np
 from chainer import cuda, Variable, FunctionSet, optimizers
-import chainer.functions  as F
+import chainer.functions as F
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -28,7 +29,9 @@ batchsize = 25      # minibatch size
 n_label = 5         # number of labels
 epoch_per_eval = 5  # number of epochs per evaluation
 
+
 class SexpParser(object):
+
     def __init__(self, line):
         self.tokens = re.findall(r'\(|\)|[^\(\) ]+', line)
         self.pos = 0
@@ -90,8 +93,10 @@ def traverse(node, train=True, evaluate=None, root=True):
     else:
         # internal node
         left_node, right_node = node['node']
-        left_loss, left = traverse(left_node, train=train, evaluate=evaluate, root=False)
-        right_loss, right = traverse(right_node, train=train, evaluate=evaluate, root=False)
+        left_loss, left = traverse(
+            left_node, train=train, evaluate=evaluate, root=False)
+        right_loss, right = traverse(
+            right_node, train=train, evaluate=evaluate, root=False)
         v = F.tanh(model.l(F.concat((left, right))))
         loss = left_loss + right_loss
 
@@ -134,7 +139,7 @@ vocab = {}
 train_trees = read_corpus('trees/train.txt', vocab)
 test_trees = read_corpus('trees/test.txt', vocab)
 develop_trees = read_corpus('trees/dev.txt', vocab)
-    
+
 model = FunctionSet(
     embed=F.EmbedID(len(vocab), n_units),
     l=F.Linear(n_units * 2, n_units),
@@ -150,9 +155,9 @@ optimizer = optimizers.AdaGrad(lr=0.1)
 optimizer.setup(model.collect_parameters())
 
 accum_loss = 0
-count      = 0
-start_at   = time.time()
-cur_at     = start_at
+count = 0
+start_at = time.time()
+cur_at = start_at
 for epoch in range(n_epoch):
     print('Epoch: {0:d}'.format(epoch))
     total_loss = 0
@@ -175,7 +180,7 @@ for epoch in range(n_epoch):
 
     print('loss: {:.2f}'.format(total_loss))
 
-    now      = time.time()
+    now = time.time()
     throuput = float(len(train_trees)) / (now - cur_at)
     print('{:.2f} iters/sec, {:.2f} sec'.format(throuput, now - cur_at))
     print

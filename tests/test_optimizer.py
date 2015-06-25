@@ -7,7 +7,9 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestOptimizerUtility(TestCase):
+
     def setUp(self):
         self.x = np.linspace(-1.0, 1.5, num=6).astype(np.float32).reshape(2, 3)
         self.a = np.array(2.0)
@@ -29,6 +31,8 @@ class TestOptimizerUtility(TestCase):
         a = cuda.to_gpu(self.a)
         self.assertAlmostEqual(_sqnorm(a), 4)
 
+
 class TestOptimizer(TestCase):
+
     def setUp(self):
         pass

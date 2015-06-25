@@ -1,6 +1,6 @@
 from unittest import TestCase
 import numpy
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import Linear
@@ -9,7 +9,9 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestLinear(TestCase):
+
     def setUp(self):
         self.func = Linear(3, 2)
         self.func.W = numpy.random.uniform(
@@ -19,12 +21,12 @@ class TestLinear(TestCase):
         self.func.gW.fill(0)
         self.func.gb.fill(0)
 
-        self.W  = self.func.W.copy()  # fixed on CPU
-        self.b  = self.func.b.copy()  # fixed on CPU
+        self.W = self.func.W.copy()  # fixed on CPU
+        self.b = self.func.b.copy()  # fixed on CPU
 
-        self.x  = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (4, 2)).astype(numpy.float32)
-        self.y  = self.x.dot(self.func.W.T) + self.func.b
+        self.y = self.x.dot(self.func.W.T) + self.func.b
 
     def check_forward(self, x_data):
         x = Variable(x_data)
@@ -48,7 +50,8 @@ class TestLinear(TestCase):
 
         func = y.creator
         f = lambda: func.forward((x.data,))
-        gx, gW, gb = numerical_grad(f, (x.data, func.W, func.b), (y.grad,), eps=1e-2)
+        gx, gW, gb = numerical_grad(
+            f, (x.data, func.W, func.b), (y.grad,), eps=1e-2)
 
         assert_allclose(gx, x.grad)
         assert_allclose(gW, func.gW)

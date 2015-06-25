@@ -1,7 +1,9 @@
 import numpy
 from chainer import cuda, Function
 
+
 class Dropout(Function):
+
     """Dropout regularization."""
 
     def __init__(self, dropout_ratio):
@@ -9,7 +11,8 @@ class Dropout(Function):
 
     def forward_cpu(self, x):
         scale = numpy.float32(1. / (1 - self.dropout_ratio))
-        self.mask = scale * (numpy.random.rand(*x[0].shape) >= self.dropout_ratio)
+        self.mask = scale * \
+            (numpy.random.rand(*x[0].shape) >= self.dropout_ratio)
         return x[0] * self.mask,
 
     def forward_gpu(self, x):

@@ -3,6 +3,8 @@ import numpy
 from . import cuda
 
 # TODO(delta2323): Make it public function and move it to common directory.
+
+
 def _sqnorm(x):
     if isinstance(x, cuda.GPUArray):
         with cuda.using_device(x):
@@ -10,7 +12,9 @@ def _sqnorm(x):
     x = x.ravel()
     return float(x.dot(x))
 
+
 class Optimizer(object):
+
     """Base class of all numerical optimizers.
 
     Optimizer is set up with references to parameters and gradients, and
@@ -27,6 +31,7 @@ class Optimizer(object):
             implementation, where :attr:`t` is incremented beforehand.
 
     """
+
     def setup(self, params_grads):
         """Prepares parameter/gradient/state tuples for all given
         parameter/gradient pairs.
@@ -109,8 +114,8 @@ class Optimizer(object):
     def zero_grads(self):
         """Fills all gradient arrays by zeros.
 
-        This method should be call before backprop takes place, since gradients
-        are accumulated on backprop.
+        This method should be call before backprop takes place, since
+        gradients are accumulated on backprop.
 
         """
         for _, g, _ in self.tuples:
@@ -196,7 +201,7 @@ class Optimizer(object):
 
             with cuda.using_device(g_dst):
                 if (isinstance(g_src, cuda.GPUArray) and
-                    g_dst.gpudata.device != g_src.gpudata.device):
+                        g_dst.gpudata.device != g_src.gpudata.device):
                     g_dst += cuda.copy(g_src, out_device=g_src.gpudata.device)
                 else:
                     g_dst += cuda.to_gpu(g_src)

@@ -1,6 +1,6 @@
 from unittest import TestCase
 import numpy
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose
 from chainer.functions import concat
@@ -9,7 +9,9 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class Concat(TestCase):
+
     def setUp(self):
         self.y0 = numpy.arange(42, dtype=numpy.float32).reshape(2, 7, 3)
         self.xs0 = [self.y0[:, :2], self.y0[:, 2:5], self.y0[:, 5:]]
@@ -19,7 +21,7 @@ class Concat(TestCase):
 
     def check_forward(self, xs_data, y_data, axis):
         xs = tuple(Variable(x_data) for x_data in xs_data)
-        y  = concat(xs, axis=axis)
+        y = concat(xs, axis=axis)
         assert_allclose(y_data, y.data, atol=0, rtol=0)
 
     def test_forward_cpu_0(self):
@@ -40,7 +42,7 @@ class Concat(TestCase):
 
     def check_backward(self, xs_data, axis):
         xs = tuple(Variable(x_data) for x_data in xs_data)
-        y  = concat(xs, axis=axis)
+        y = concat(xs, axis=axis)
         y.grad = y.data
         y.backward()
 

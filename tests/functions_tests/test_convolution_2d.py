@@ -2,7 +2,7 @@ from unittest import TestCase
 import numpy
 from six.moves import range
 import six.moves.cPickle as pickle
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import Convolution2D
@@ -14,15 +14,19 @@ if cuda.available:
 
 
 class TestConvolution2D(TestCase):
+
     def setUp(self, use_cudnn=True):
-        self.func = Convolution2D(3, 2, 3, stride=2, pad=1, use_cudnn=use_cudnn)
+        self.func = Convolution2D(
+            3, 2, 3, stride=2, pad=1, use_cudnn=use_cudnn)
         self.func.b = numpy.random.uniform(
             -1, 1, self.func.b.shape).astype(numpy.float32)
         self.func.gW.fill(0)
         self.func.gb.fill(0)
 
-        self.x  = numpy.random.uniform(-1, 1, (2, 3, 4, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (2, 2, 2, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1,
+                                      (2, 3, 4, 3)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1,
+                                       (2, 2, 2, 2)).astype(numpy.float32)
 
     @attr.gpu
     def test_im2col_consistency(self):
@@ -64,7 +68,8 @@ class TestConvolution2D(TestCase):
 
         func = y.creator
         f = lambda: func.forward((x.data,))
-        gx, gW, gb = numerical_grad(f, (x.data, func.W, func.b), (y.grad,), eps=1e-2)
+        gx, gW, gb = numerical_grad(
+            f, (x.data, func.W, func.b), (y.grad,), eps=1e-2)
 
         assert_allclose(gx, x.grad)
         assert_allclose(gW, func.gW)

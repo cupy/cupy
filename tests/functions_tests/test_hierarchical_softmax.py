@@ -7,7 +7,9 @@ from chainer.cuda import to_cpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import BinaryHierarchicalSoftmax, create_huffman_tree
 
+
 class TestHuffmanTree(TestCase):
+
     def test_empty(self):
         with self.assertRaises(ValueError):
             create_huffman_tree({})
@@ -17,7 +19,9 @@ class TestHuffmanTree(TestCase):
         expect = (('z', 'y'), (('v', 'w'), 'x'))
         self.assertEqual(expect, tree)
 
+
 class TestBinaryHierarchicalSoftmax(TestCase):
+
     def setUp(self):
         tree = ((0, 1), ((2, 3), 4))
         self.func = BinaryHierarchicalSoftmax(3, tree)
@@ -25,7 +29,7 @@ class TestBinaryHierarchicalSoftmax(TestCase):
         self.t = numpy.array([0, 2])
         self.gy = numpy.random.uniform(-1, 1, (1, 1)).astype(numpy.float32)
 
-        self.W  = self.func.W.copy()
+        self.W = self.func.W.copy()
 
     def test_sum(self):
         x = numpy.array([[1.0, 2.0, 3.0]])
@@ -45,7 +49,8 @@ class TestBinaryHierarchicalSoftmax(TestCase):
 
         func = y.creator
         f = lambda: func.forward((x.data, t.data))
-        gx, _, gW = numerical_grad(f, (x.data, t.data, func.W), (y.grad,), eps=1e-2)
+        gx, _, gW = numerical_grad(
+            f, (x.data, t.data, func.W), (y.grad,), eps=1e-2)
 
         assert_allclose(to_cpu(gx), to_cpu(x.grad))
         assert_allclose(to_cpu(gW), to_cpu(func.gW))

@@ -9,10 +9,14 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestLocalResponseNormalization(TestCase):
+
     def setUp(self):
-        self.x  = numpy.random.uniform(-1, 1, (2, 7, 3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (2, 7, 3, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1,
+                                      (2, 7, 3, 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1,
+                                       (2, 7, 3, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data):
         x = Variable(x_data)

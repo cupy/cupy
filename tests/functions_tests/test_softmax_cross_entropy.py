@@ -2,7 +2,7 @@ from unittest import TestCase
 import math
 import numpy
 from six.moves import range
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import softmax_cross_entropy
@@ -11,7 +11,9 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestSoftmaxCrossEntropy(TestCase):
+
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.t = numpy.random.randint(0, 3, (4,)).astype(numpy.int32)

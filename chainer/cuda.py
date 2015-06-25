@@ -30,7 +30,8 @@ the device that the memory is allocated on. Functions of :mod:`cuda` uses this
 attribute to select appropriate device on each manipulation routine.
 
 """
-import atexit, os
+import atexit
+import os
 import numpy
 from six import itervalues
 from six.moves import copyreg
@@ -38,7 +39,7 @@ from six.moves import copyreg
 try:
     import pycuda.driver as drv
     from pycuda.elementwise import ElementwiseKernel
-    from pycuda.reduction   import ReductionKernel
+    from pycuda.reduction import ReductionKernel
     from pycuda import gpuarray
     from pycuda import cumath
     from pycuda import curandom
@@ -55,26 +56,36 @@ except ImportError as e:
 # Basic types
 # ------------------------------------------------------------------------------
 if available:
-    from pycuda.driver   import Context, Device, Event, Stream
+    from pycuda.driver import Context, Device, Event, Stream
     from pycuda.gpuarray import GPUArray
 else:
     # Dummy classes
-    class Context(object): pass
-    class Device(object): pass
-    class Event(object): pass
-    class Stream(object): pass
-    class GPUArray(object): pass
+    class Context(object):
+        pass
+
+    class Device(object):
+        pass
+
+    class Event(object):
+        pass
+
+    class Stream(object):
+        pass
+
+    class GPUArray(object):
+        pass
 
 # ------------------------------------------------------------------------------
 # Global states
 # ------------------------------------------------------------------------------
 generator = None
 
-_contexts       = {}
-_pools          = {}
-_generators     = {}
+_contexts = {}
+_pools = {}
+_generators = {}
 _cublas_handles = {}
-_pid            = None
+_pid = None
+
 
 def init(device=None):
     """Initializes CUDA global state.
@@ -116,13 +127,13 @@ def init(device=None):
 
     if device is None:  # use default device
         context = cutools.make_default_context()
-        device  = Context.get_device()
+        device = Context.get_device()
     else:
-        device  = Device(device)
+        device = Device(device)
         context = device.make_context()
-    _contexts       = {device: context}
-    _generators     = {}
-    _pools          = {}
+    _contexts = {device: context}
+    _generators = {}
+    _pools = {}
     _cublas_handles = {}
     cumisc.init(mem_alloc)
 
@@ -156,11 +167,12 @@ def shutdown():
     for ctx in itervalues(_contexts):
         ctx.detach()
     _contexts = {}
-    _pid      = None  # mark as uninitialized
+    _pid = None  # mark as uninitialized
 
 
 def get_device(arg=None):
-    """Gets the device from ID ''arg'' or given chainer's
+    """Gets the device from ID ''arg'' or given chainer's.
+
     :class:`~pycuda.gpuarray.GPUArray`.
 
     Args:
@@ -218,6 +230,7 @@ def use_device(arg, pop=True):
 
 
 class DeviceUser(object):
+
     """RAII-style CUDA context swithcer.
 
     Args:
@@ -225,8 +238,9 @@ class DeviceUser(object):
 
     Attributes:
         device (~pycuda.driver.Device): Selected device.
-    
+
     """
+
     def __init__(self, arg):
         if arg is None:
             self.device = None
@@ -246,6 +260,7 @@ class DeviceUser(object):
     @property
     def is_active(self):
         return self.device is not None
+
 
 def using_device(*args):
     """Returns :class:`DeviceUser` object of the first
@@ -311,7 +326,7 @@ def mem_alloc(nbytes):
     global _pools
 
     device = Context.get_device()
-    pool   = _pools.get(device, None)
+    pool = _pools.get(device, None)
 
     if pool is None:
         pool = drv.DeviceMemoryPool()
@@ -355,7 +370,8 @@ def get_generator(device=None):
 
 
 def seed(s=None, device=None):
-    """Resets the random number generator of the specified device by the given seed.
+    """Resets the random number generator of the specified device by the given
+    seed.
 
     Args:
         s (int or None): Seed value. If it is ``None``, it initializes the
@@ -414,6 +430,8 @@ def to_gpu(array, device=None):
 # Pickle redefinition of GPUArray. Note that pickling and unpickling of GPUArray
 # do not preserve device information, i.e. the unpickled GPUArray may reside on
 # a GPU different from the GPU that the original has resided on.
+
+
 def _reconstruct(array, is_chainer_array):
     if is_chainer_array:
         return to_gpu(array)
@@ -575,7 +593,7 @@ def ones_like(array, stream=None):
 
     """
     return full_like(array, 1, stream=stream)
-    
+
 
 def copy(array, out=None, out_device=None):
     """Copies :class:`~pycuda.gpuarray.GPUArray` using default stream.
@@ -613,7 +631,8 @@ def copy(array, out=None, out_device=None):
         if in_device == out_device:
             drv.memcpy_dtod(out.ptr, array.ptr, out.nbytes)
         else:
-            drv.memcpy_peer(out.ptr, array.ptr, out.nbytes, out_device, in_device)
+            drv.memcpy_peer(
+                out.ptr, array.ptr, out.nbytes, out_device, in_device)
 
     return out
 
@@ -658,7 +677,8 @@ def copy_async(array, out=None, out_device=None, stream=None):
 
     with using_device(in_device):
         if in_device == out_device:
-            drv.memcpy_dtod_async(out.ptr, array.ptr, out.nbytes, stream=stream)
+            drv.memcpy_dtod_async(
+                out.ptr, array.ptr, out.nbytes, stream=stream)
         else:
             drv.memcpy_peer_async(out.ptr, array.ptr, out.nbytes, out_device,
                                   in_device, stream=stream)
@@ -668,15 +688,18 @@ def copy_async(array, out=None, out_device=None, stream=None):
 # ------------------------------------------------------------------------------
 # Add comparison of `__array_priority__` to GPUArray binary operator
 # ------------------------------------------------------------------------------
+
+
 def _wrap_operation(obj, op):
     op_name = '__{}__'.format(op)
     rop_name = '__r{}__'.format(op)
     raw_op = getattr(obj, op_name)
+
     def new_op(self, other):
-        rop =  getattr(other, rop_name, None)
+        rop = getattr(other, rop_name, None)
         if rop is None:
             return raw_op(self, other)
-        self_pri  = getattr(self,  '__array_priority__', 0.0)
+        self_pri = getattr(self,  '__array_priority__', 0.0)
         other_pri = getattr(other, '__array_priority__', 0.0)
         if self_pri >= other_pri:
             return raw_op(self, other)
@@ -690,7 +713,10 @@ if available:
 # ------------------------------------------------------------------------------
 # Interprocess communication
 # ------------------------------------------------------------------------------
+
+
 class IPCEvent(Event):
+
     """:class:`~pycuda.driver.Event` object for interprocess synchronization on
     GPU."""
 
@@ -700,6 +726,7 @@ class IPCEvent(Event):
 
 
 class IPCArrayHandle(object):
+
     """Converter between :class:`~pycuda.gpuarray.GPUArray` and its
     Inter-Process Communication handle.
 
@@ -710,6 +737,7 @@ class IPCArrayHandle(object):
     IPCArrayHandle.
 
     """
+
     def __init__(self, array):
         """Creates an IPC memory handle of the device array.
 
@@ -724,9 +752,9 @@ class IPCArrayHandle(object):
         else:
             self.handle = drv.mem_get_ipc_handle(array.ptr)
 
-        self.shape    = array.shape
-        self.dtype    = array.dtype
-        self.size     = array.size
+        self.shape = array.shape
+        self.dtype = array.dtype
+        self.size = array.size
         self.mem_size = array.mem_size
 
     def get(self):
@@ -744,8 +772,8 @@ class IPCArrayHandle(object):
         """
         mem = drv.IPCMemoryHandle(self.handle)
         array = gpuarray.GPUArray((0,), dtype=self.dtype)
-        array.shape    = self.shape
-        array.size     = self.size
+        array.shape = self.shape
+        array.size = self.size
         array.mem_size = self.mem_size
         setattr(array, 'ipc_handle', self.handle)
         return array
@@ -761,6 +789,7 @@ if available:
         return ElementwiseKernel(
             arguments, operation, name, keep, options,
             preamble=preamble, loop_prep=loop_prep, after_loop=after_loop)
+
 
 def elementwise(arguments, operation, name, keep=False, options=None,
                 preamble='', loop_prep='', after_loop=''):
@@ -785,6 +814,7 @@ if available:
         return ReductionKernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
                                name, keep, options, preamble)
 
+
 def reduce(arguments, map_expr, reduce_expr, neutral, name,
            dtype_out=numpy.float32, keep=False, options=None, preamble=''):
     """Creates a global reduction kernel function.
@@ -799,6 +829,7 @@ def reduce(arguments, map_expr, reduce_expr, neutral, name,
     """
     kern = _reduce_kernel(dtype_out, neutral, reduce_expr, map_expr, arguments,
                           name, keep, options, preamble)
+
     def call_kern(*args, **kwargs):
         kwargs['allocator'] = mem_alloc
         return kern(*args, **kwargs)
@@ -828,6 +859,7 @@ def get_cublas_handle():
 
 
 class CumiscUser(object):
+
     """RAII-style switcher of :mod:`scikits.cuda.misc` default CUBLAS handle.
     """
 

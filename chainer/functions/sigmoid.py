@@ -5,7 +5,9 @@ if cudnn.available:
     from chainer.cudnn import libcudnn
     _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_SIGMOID']
 
+
 class Sigmoid(Function):
+
     """Logistic sigmoid function."""
 
     def __init__(self, use_cudnn=True):
@@ -39,7 +41,8 @@ class Sigmoid(Function):
             desc = cudnn.get_tensor_desc(self.y, 1, 1)
             libcudnn.cudnnActivationBackward(
                 handle, _mode, 1, desc.value, cudnn.get_ptr(self.y),
-                desc.value, cudnn.get_ptr(gy[0]), desc.value, cudnn.get_ptr(x[0]),
+                desc.value, cudnn.get_ptr(
+                    gy[0]), desc.value, cudnn.get_ptr(x[0]),
                 0, desc.value, cudnn.get_ptr(gx))
         else:
             cuda.elementwise(
@@ -47,6 +50,7 @@ class Sigmoid(Function):
                 'gx[i] = gy[i] * y[i] * (1 - y[i])',
                 'sigmoid_bwd')(gx, self.y, gy[0])
         return gx,
+
 
 def sigmoid(x, use_cudnn=True):
     """Elementwise sigmoid logistic function :math:`f(x)=(1 + \\exp(-x))^{-1}`.

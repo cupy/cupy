@@ -1,6 +1,6 @@
 from unittest import TestCase
 import numpy
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import lstm
@@ -9,27 +9,31 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
 
+
 class TestLSTM(TestCase):
+
     def setUp(self):
-        self.c_prev = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
-        self.x      = numpy.random.uniform(-1, 1, (3, 8, 4)).astype(numpy.float32)
+        self.c_prev = numpy.random.uniform(-1,
+                                           1, (3, 2, 4)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (3, 8, 4)).astype(numpy.float32)
 
         self.gc = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
         self.gh = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
 
     def flat(self):
         self.c_prev = self.c_prev[:, :, 0].copy()
-        self.x      = self.x[:, :, 0].copy()
-        self.gc     = self.gc[:, :, 0].copy()
-        self.gh     = self.gh[:, :, 0].copy()
+        self.x = self.x[:, :, 0].copy()
+        self.gc = self.gc[:, :, 0].copy()
+        self.gh = self.gh[:, :, 0].copy()
 
     def check_forward(self, c_prev_data, x_data):
         c_prev = Variable(c_prev_data)
-        x      = Variable(x_data)
-        c, h   = lstm(c_prev, x)
+        x = Variable(x_data)
+        c, h = lstm(c_prev, x)
 
         # Compute expected out
         a_in = self.x[:, [0, 4]]
@@ -37,7 +41,8 @@ class TestLSTM(TestCase):
         f_in = self.x[:, [2, 6]]
         o_in = self.x[:, [3, 7]]
 
-        c_expect = _sigmoid(i_in) * numpy.tanh(a_in) + _sigmoid(f_in) * self.c_prev
+        c_expect = _sigmoid(i_in) * numpy.tanh(a_in) + \
+            _sigmoid(f_in) * self.c_prev
         h_expect = _sigmoid(o_in) * numpy.tanh(c_expect)
 
         assert_allclose(c_expect, c.data)
@@ -61,15 +66,16 @@ class TestLSTM(TestCase):
 
     def check_backward(self, c_prev_data, x_data, c_grad, h_grad):
         c_prev = Variable(c_prev_data)
-        x      = Variable(x_data)
-        c, h   = lstm(c_prev, x)
+        x = Variable(x_data)
+        c, h = lstm(c_prev, x)
         c.grad = c_grad
         h.grad = h_grad
         c.backward()
 
         func = c.creator
         f = lambda: func.forward((c_prev.data, x.data))
-        gc_prev, gx = numerical_grad(f, (c_prev.data, x.data), (c_grad, h_grad), eps=1e-2)
+        gc_prev, gx = numerical_grad(
+            f, (c_prev.data, x.data), (c_grad, h_grad), eps=1e-2)
 
         assert_allclose(gc_prev, c_prev.grad)
         assert_allclose(gx, x.grad)

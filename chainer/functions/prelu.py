@@ -2,13 +2,16 @@ import numpy
 from six.moves import range
 from chainer import cuda, Function
 
+
 def _fwd_kern():
     return cuda.elementwise(
         '''float* y, const float* x, const float* cond, const float* W,
            int cdim, int rdim''',
         'y[i] = cond[i] >= 0 ? x[i] : x[i] * W[i / rdim % cdim]', 'prelu')
 
+
 class PReLU(Function):
+
     """Parametric ReLU function.
 
     PReLU function is written in elementwise equation as
@@ -29,10 +32,10 @@ class PReLU(Function):
 
     """
     parameter_names = 'W',
-    gradient_names  = 'gW',
+    gradient_names = 'gW',
 
     def __init__(self, shape=(), init=0.25):
-        self.W  = numpy.full(shape, init, dtype=numpy.float32)
+        self.W = numpy.full(shape, init, dtype=numpy.float32)
         self.gW = numpy.empty_like(self.W)
 
     def forward_cpu(self, x):
@@ -47,7 +50,7 @@ class PReLU(Function):
         self._check_shape(x[0])
         cdim = self.W.size
         rdim = x[0].size // (x[0].shape[0] * cdim)
-        y    = cuda.empty_like(x[0])
+        y = cuda.empty_like(x[0])
         _fwd_kern()(y, x[0], x[0], self.W, cdim, rdim)
         return y,
 
@@ -59,7 +62,7 @@ class PReLU(Function):
 
         gx = gy[0].copy()
         masked = numpy.ma.array(gx, mask=mask)
-        shape  = self._get_extended_shape_W(gx)
+        shape = self._get_extended_shape_W(gx)
         masked *= self.W.reshape(shape)
 
         return gx,
@@ -76,7 +79,7 @@ class PReLU(Function):
 
         with cuda.using_cumisc():
             rsum = cuda.cumisc.sum(masked.reshape(ldim * cdim, rdim), axis=1)
-            gW   = cuda.cumisc.sum(rsum.reshape(ldim, cdim), axis=0)
+            gW = cuda.cumisc.sum(rsum.reshape(ldim, cdim), axis=0)
             self.gW += gW.reshape(self.gW.shape)
             del rsum, gW
 
@@ -85,7 +88,7 @@ class PReLU(Function):
         return gx,
 
     def _check_shape(self, x):
-        if x.shape[1 : 1 + len(self.W.shape)] != self.W.shape:
+        if x.shape[1: 1 + len(self.W.shape)] != self.W.shape:
             raise ValueError(
                 'Shape mismatch: input shape is {} while PReLU weight shape is {}'
                 .format(x.shape, self.W.shape))

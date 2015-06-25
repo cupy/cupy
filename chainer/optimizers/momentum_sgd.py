@@ -1,7 +1,9 @@
 import numpy
 from chainer import cuda, Optimizer
 
+
 class MomentumSGD(Optimizer):
+
     """Classical momentum SGD."""
 
     def __init__(self, lr=0.01, momentum=0.9):

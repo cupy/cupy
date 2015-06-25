@@ -9,12 +9,15 @@ if cudnn.available:
     _fwd_pref = libcudnn.cudnnConvolutionFwdPreference[
         'CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT']
 
+
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
     return (x, x)
 
+
 class Convolution2D(Function):
+
     """Two-dimensional convolution function.
 
     The details of this function are described below the arguments description.
@@ -71,11 +74,12 @@ class Convolution2D(Function):
        w_O &= (w + 2p_W - k_W) / s_X + 1.
 
     """
+
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True):
-        ksize  = _pair(ksize)
+        ksize = _pair(ksize)
         stride = _pair(stride)
-        pad    = _pair(pad)
+        pad = _pair(pad)
 
         self.kh, self.kw = ksize
         self.sy, self.sx = stride
@@ -87,10 +91,10 @@ class Convolution2D(Function):
         self.gW = numpy.empty_like(self.W)
 
         if nobias:
-            self.b  = None
+            self.b = None
             self.gb = None
         else:
-            self.b  = numpy.repeat(numpy.float32(bias), out_channels)
+            self.b = numpy.repeat(numpy.float32(bias), out_channels)
             self.gb = numpy.empty_like(self.b)
 
         self.use_cudnn = use_cudnn
@@ -148,7 +152,8 @@ class Convolution2D(Function):
             libcudnn.cudnnConvolutionForward(
                 handle, 1, x_desc.value, cudnn.get_ptr(x[0]),
                 self.filter_desc.value, cudnn.get_ptr(self.W),
-                self.conv_desc.value, algo, cudnn.get_ptr(workspace), workspace_size,
+                self.conv_desc.value, algo, cudnn.get_ptr(
+                    workspace), workspace_size,
                 0, y_desc.value, cudnn.get_ptr(y))
 
             # TODO(beam2d): Support unshared bias
@@ -163,10 +168,11 @@ class Convolution2D(Function):
                 x[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
 
             # TODO(beam2d): Use streams
-            handle   = cuda.get_cublas_handle()
-            W_mat    = self.W.reshape(out_c, c * self.kh * self.kw)
-            col_mats = self.col.reshape(n, c * self.kh * self.kw, out_h * out_w)
-            y_mats   = y.reshape(n, out_c, out_h * out_w)
+            handle = cuda.get_cublas_handle()
+            W_mat = self.W.reshape(out_c, c * self.kh * self.kw)
+            col_mats = self.col.reshape(
+                n, c * self.kh * self.kw, out_h * out_w)
+            y_mats = y.reshape(n, out_c, out_h * out_w)
             for i in range(n):
                 cuda.culinalg.dot(W_mat, col_mats[i], handle=handle,
                                   out=y_mats[i])
@@ -196,7 +202,7 @@ class Convolution2D(Function):
 
         if cudnn.enabled and self.use_cudnn:
             handle = cudnn.get_default_handle()
-            x_desc  = cudnn.get_tensor_desc(x[0], h, w)
+            x_desc = cudnn.get_tensor_desc(x[0], h, w)
             gy_desc = cudnn.get_tensor_desc(gy[0], out_h, out_w)
             if self.b is not None:
                 libcudnn.cudnnConvolutionBackwardBias(
@@ -224,20 +230,22 @@ class Convolution2D(Function):
                     self.gb += tmp
 
             # TODO(beam2d): Use streams
-            gW_mat   = self.gW.reshape(out_c, c * self.kh * self.kw)
-            col_mats = self.col.reshape(n, c * self.kh * self.kw, out_h * out_w)
-            gy_mats  = gy[0].reshape(n, out_c, out_h * out_w)
+            gW_mat = self.gW.reshape(out_c, c * self.kh * self.kw)
+            col_mats = self.col.reshape(
+                n, c * self.kh * self.kw, out_h * out_w)
+            gy_mats = gy[0].reshape(n, out_c, out_h * out_w)
             for i in range(n):
                 cuda.culinalg.add_dot(
                     gy_mats[i], col_mats[i], gW_mat, transb='T', handle=handle)
 
-            W_mat     = self.W.reshape(out_c, c * self.kh * self.kw)
-            gcol      = cuda.empty_like(self.col)
+            W_mat = self.W.reshape(out_c, c * self.kh * self.kw)
+            gcol = cuda.empty_like(self.col)
             gcol_mats = gcol.reshape(n, c * self.kh * self.kw, out_h * out_w)
             for i in range(n):
                 cuda.culinalg.dot(
                     W_mat, gy_mats[i], transa='T', handle=handle, out=gcol_mats[i])
 
-            gx = conv.col2im_gpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
-            
+            gx = conv.col2im_gpu(
+                gcol, self.sy, self.sx, self.ph, self.pw, h, w)
+
         return gx,

@@ -2,15 +2,19 @@ import numpy
 from six.moves import range
 from chainer import cuda, Function
 
+
 def _extract_gates(x):
     r = x.reshape((x.shape[0], x.shape[1] / 4, 4) + x.shape[2:])
     return (r[:, :, i] for i in range(4))
 
+
 def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
 
+
 def _grad_sigmoid(x):
     return x * (1 - x)
+
 
 def _grad_tanh(x):
     return 1 - x * x
@@ -30,13 +34,16 @@ __device__ float grad_tanh(float y)    { return 1 - y * y; }
     float ao = sigmoid(x_i[3*rsize + J]);
 '''
 
+
 class LSTM(Function):
+
     """Long short-term memory unit with forget gate.
 
     It has two inputs (c, x) and two outputs (c, h), where c indicates the cell
     state. x must have four times channels compared to the number of units.
 
     """
+
     def forward_cpu(self, inputs):
         c_prev, x = inputs
         n_unit = c_prev.shape[1]
@@ -56,12 +63,14 @@ class LSTM(Function):
         c_prev = inputs[0]
         gc, gh = grad_outputs
 
-        gx  = numpy.empty_like(inputs[1])
+        gx = numpy.empty_like(inputs[1])
         ga, gi, gf, go = _extract_gates(gx)
 
         # Consider the case that either gradient is not given
-        if gc is None: gc = 0
-        if gh is None: gh = 0
+        if gc is None:
+            gc = 0
+        if gh is None:
+            gh = 0
 
         co = numpy.tanh(self.c)
         gc_prev = gh * self.o * _grad_tanh(co) + gc  # multiply f later
@@ -79,7 +88,7 @@ class LSTM(Function):
         rsize = c_prev.size // lsize
 
         self.c = cuda.empty_like(c_prev)
-        h      = cuda.empty_like(c_prev)
+        h = cuda.empty_like(c_prev)
         cuda.elementwise(
             '''float* c, float* h, const float* c_prev, const float* x,
                int lsize, int rsize''',
@@ -92,16 +101,18 @@ class LSTM(Function):
 
     def backward_gpu(self, inputs, grad_outputs):
         c_prev, x = inputs
-        gc, gh    = grad_outputs
+        gc, gh = grad_outputs
         lsize = c_prev.shape[0] * c_prev.shape[1]
         rsize = c_prev.size // lsize
 
         # Odd rule to determine whether the gradient is given or not.
-        if gc is None: gc = self.c
-        if gh is None: gh = self.c
+        if gc is None:
+            gc = self.c
+        if gh is None:
+            gh = self.c
 
         gc_prev = cuda.empty_like(c_prev)
-        gx      = cuda.empty_like(x)
+        gx = cuda.empty_like(x)
         cuda.elementwise(
             '''float* gc_prev, float* gx, const float* c_prev, const float* x,
                const float* c, const float* gc, const float* gh, int lsize, int rsize''',
@@ -127,6 +138,7 @@ class LSTM(Function):
                 gc_prev, gx, c_prev, x, self.c, gc, gh, lsize, rsize)
 
         return gc_prev, gx
+
 
 def lstm(c_prev, x):
     """Long Short-Term Memory units as an activation function.

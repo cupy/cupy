@@ -1,6 +1,7 @@
 import numpy
 from chainer import cuda, Function
 
+
 def _kernel_with_I(args, expr, name):
     return cuda.elementwise(
         '{}, int cdim, int rdim'.format(args),
@@ -8,6 +9,7 @@ def _kernel_with_I(args, expr, name):
         name)
 
 _one = None
+
 
 def _partial_reduce(x):
     global _one
@@ -20,7 +22,8 @@ def _partial_reduce(x):
     handle = cuda.get_cublas_handle()
     ret = cuda.empty(out_axis)
     cuda.cublas.cublasSgemv(handle, 't', sum_axis, out_axis,
-                            numpy.float32(1.0), x.gpudata, sum_axis, one.gpudata,
+                            numpy.float32(
+                                1.0), x.gpudata, sum_axis, one.gpudata,
                             1, numpy.float32(0.0), ret.gpudata, 1)
     return ret
 
@@ -43,6 +46,7 @@ if cuda.available:
                 ret2[i] = sum2 * alpha;
             '''.format(shape0, expr1, expr2), 'bn_asix02')
 
+
 def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
     with cuda.using_cumisc():
         shape = x.shape
@@ -58,7 +62,7 @@ def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
         # Therefore, the kernel is compiled only once.
         # If shape[0] is small, Compiler will perform loop unrolling.
         _create_reduction_kernel(shape[0], expr1, expr2)(
-                ret1, ret2, x, y, alpha, shape[1] * shape[2])
+            ret1, ret2, x, y, alpha, shape[1] * shape[2])
 
         if shape[2] != 1:
             ret1 = _partial_reduce(ret1)
@@ -66,7 +70,9 @@ def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
         ret_shape = (1, shape[1], 1)
         return (ret1.reshape(ret_shape), ret2.reshape(ret_shape))
 
+
 class BatchNormalization(Function):
+
     """Batch normalization on outputs of linear or convolution functions.
 
     Args:
@@ -79,23 +85,23 @@ class BatchNormalization(Function):
           Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
 
     """
-    parameter_names = ( 'gamma',  'beta')
-    gradient_names  = ('ggamma', 'gbeta')
+    parameter_names = ('gamma',  'beta')
+    gradient_names = ('ggamma', 'gbeta')
 
     def __init__(self, size, decay=0.9, eps=1e-5):
         size = numpy.prod(size)
 
         self.avg_mean = numpy.zeros((1, size, 1), dtype=numpy.float32)
-        self.avg_var  = numpy.zeros_like(self.avg_mean)
+        self.avg_var = numpy.zeros_like(self.avg_mean)
 
-        self.gamma  = numpy.ones_like(self.avg_mean)
+        self.gamma = numpy.ones_like(self.avg_mean)
         self.ggamma = numpy.empty_like(self.gamma)
-        self.beta   = numpy.zeros_like(self.avg_mean)
-        self.gbeta  = numpy.empty_like(self.beta)
+        self.beta = numpy.zeros_like(self.avg_mean)
+        self.gbeta = numpy.empty_like(self.beta)
 
         self.decay = decay
-        self.N     = [0]  # as a reference
-        self.eps   = eps
+        self.N = [0]  # as a reference
+        self.eps = eps
 
     def __call__(self, x, test=False, finetune=False):
         """Invokes the forward propagation of BatchNormalization.
@@ -119,7 +125,7 @@ class BatchNormalization(Function):
 
         """
         self.use_batch_mean = not test or finetune
-        self.is_finetune    = finetune
+        self.is_finetune = finetune
         return Function.__call__(self, x)
 
     def start_finetuning(self):
@@ -131,13 +137,13 @@ class BatchNormalization(Function):
 
         if self.use_batch_mean:
             mean = x.mean(axis=(0, 2), keepdims=True)
-            var  = x.var(axis=(0, 2), keepdims=True) + self.eps
+            var = x.var(axis=(0, 2), keepdims=True) + self.eps
         else:
             mean = self.avg_mean
-            var  = self.avg_var
+            var = self.avg_var
 
-        self.std   = numpy.sqrt(var)
-        x_mu       = x - mean
+        self.std = numpy.sqrt(var)
+        x_mu = x - mean
         self.x_hat = x_mu / self.std
         y = self.gamma * self.x_hat + self.beta
 
@@ -153,8 +159,8 @@ class BatchNormalization(Function):
             adjust = m / max(m - 1., 1.)  # unbiased estimation
             self.avg_mean *= decay
             self.avg_mean += (1 - decay) * adjust * mean
-            self.avg_var  *= decay
-            self.avg_var  += (1 - decay) * adjust * var
+            self.avg_var *= decay
+            self.avg_var += (1 - decay) * adjust * var
 
         return y.reshape(x_orig[0].shape),
 
@@ -164,14 +170,14 @@ class BatchNormalization(Function):
 
         if self.use_batch_mean:
             mean, sqmean = _cusum_axis02(x, mean=True)
-            var    = sqmean  # reuse buffer
+            var = sqmean  # reuse buffer
             cuda.elementwise(
                 'float* var, const float* mean, float eps',
                 'var[i] = var[i] - mean[i] * mean[i] + eps',
                 'bn_var')(var, mean, self.eps)
         else:
             mean = self.avg_mean
-            var  = self.avg_var
+            var = self.avg_var
 
         y = cuda.empty_like(x_orig[0])
         _kernel_with_I(
@@ -197,7 +203,7 @@ class BatchNormalization(Function):
                     float* avg_mean, const float* mean,
                     float* avg_var, const float* var,
                     float decay, float adjust
-                ''','''
+                ''', '''
                     avg_mean[i] = decay * avg_mean[i] + (1 - decay) * adjust * mean[i];
                     avg_var[i]  = decay * avg_var[i]  + (1 - decay) * adjust * var[i];
                 ''', 'bn_moving_avg')(self.avg_mean, mean, self.avg_var, var, decay, adjust)
@@ -208,8 +214,8 @@ class BatchNormalization(Function):
         # TODO(beam2d): Support backprop on inference mode
         assert self.use_batch_mean and not self.is_finetune
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
-        x  = x_orig[0].reshape(ldim, cdim, rdim)
-        gy =     gy[0].reshape(ldim, cdim, rdim)
+        x = x_orig[0].reshape(ldim, cdim, rdim)
+        gy = gy[0].reshape(ldim, cdim, rdim)
         m = ldim * rdim
 
         gbeta = gy.sum(axis=(0, 2), keepdims=True)
@@ -219,7 +225,7 @@ class BatchNormalization(Function):
         self.ggamma += ggamma
 
         coeff = self.gamma / self.std
-        gbeta  /= m
+        gbeta /= m
         ggamma /= m
 
         gx = coeff * (gy - self.x_hat * ggamma - gbeta)
@@ -229,7 +235,7 @@ class BatchNormalization(Function):
         # TODO(beam2d): Support backprop on inference mode
         assert self.use_batch_mean and not self.is_finetune
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
-        x  = x_orig[0].reshape(ldim, cdim, rdim)
+        x = x_orig[0].reshape(ldim, cdim, rdim)
         gy = gy[0].reshape(ldim, cdim, rdim)
         m = ldim * rdim
 
@@ -241,7 +247,7 @@ class BatchNormalization(Function):
             'bn_stdinv')(stdinv, mean, self.eps)
 
         x_hat = cuda.empty_like(x)
-        gx    = cuda.empty_like(x)
+        gx = cuda.empty_like(x)
 
         _kernel_with_I(
             '''
@@ -256,10 +262,10 @@ class BatchNormalization(Function):
             '''
                 float* self_ggammma, const float* ggamma,
                 float* slef_gbeta, const float* gbeta
-            ''','''
+            ''', '''
                 self_ggammma[i] += ggamma[i];
                 slef_gbeta[i] += gbeta[i];
-            ''','bn_add')(
+            ''', 'bn_add')(
                 self.ggamma, ggamma,
                 self.gbeta, gbeta)
 
@@ -269,10 +275,10 @@ class BatchNormalization(Function):
                 const float* gy, const float* stdinv,
                 const float* ggamma, const float* gbeta,
                 const float* gamma, float inv_m
-            ''','''
+            ''', '''
                 gx[i] = gamma[I] * stdinv[I] *
                     (gy[i] - (x_hat[i] * ggamma[I] + gbeta[I]) * inv_m)
-            ''','bn_bwd')(
+            ''', 'bn_bwd')(
                 gx, x_hat, gy, stdinv, ggamma, gbeta,
                 self.gamma, 1. / m, cdim, rdim)
         return gx.reshape(x_orig[0].shape),

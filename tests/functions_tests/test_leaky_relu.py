@@ -9,10 +9,12 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestLeakyReLU(TestCase):
+
     def setUp(self):
         # Avoid unstability of numeraical grad
-        self.x  = numpy.random.uniform(.5, 1, (5, 4)).astype(numpy.float32)
+        self.x = numpy.random.uniform(.5, 1, (5, 4)).astype(numpy.float32)
         self.x *= numpy.random.randint(2, size=(5, 4)) * 2 - 1
         self.gy = numpy.random.uniform(-1, 1, (5, 4)).astype(numpy.float32)
         self.slope = random.random()

@@ -11,6 +11,7 @@ if cuda.available:
 
 
 class TestMeanSquaredError(TestCase):
+
     def setUp(self):
         self.x0 = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.x1 = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)

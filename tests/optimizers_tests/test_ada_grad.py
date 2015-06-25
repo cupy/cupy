@@ -3,7 +3,9 @@ from linear_model import LinearModel
 from chainer.optimizers import AdaGrad
 from chainer.testing import attr
 
+
 class TestAdaGrad(TestCase):
+
     def setUp(self):
         self.optimizer = AdaGrad(0.1)
         self.model = LinearModel(self.optimizer)

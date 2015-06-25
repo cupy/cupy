@@ -6,7 +6,9 @@ from six.moves import zip
 from six.moves.queue import PriorityQueue
 from chainer import Function
 
+
 class TreeParser(object):
+
     def __init__(self):
         self.next_id = 0
 
@@ -35,7 +37,8 @@ class TreeParser(object):
         if isinstance(node, tuple):
             # internal node
             if len(node) != 2:
-                raise ValueError('All internal nodes must have two child nodes')
+                raise ValueError(
+                    'All internal nodes must have two child nodes')
             left, right = node
             self.path.append(self.next_id)
             self.next_id += 1
@@ -55,6 +58,7 @@ class TreeParser(object):
 
 
 class BinaryHierarchicalSoftmax(Function):
+
     """Implementation of hierarchical softmax (HSM).
 
     In natural language applications, vocabulary size is too large to use
@@ -90,6 +94,7 @@ class BinaryHierarchicalSoftmax(Function):
         tree: A binary tree made with tuples like `((1, 2), 3)`.
 
     See: Hierarchical Probabilistic Neural Network Language Model [Morin+, AISTAT2005].
+
     """
 
     parameter_names = ('W',)
@@ -101,7 +106,8 @@ class BinaryHierarchicalSoftmax(Function):
         self.paths = parser.get_paths()
         self.codes = parser.get_codes()
 
-        self.W = numpy.random.uniform(-1, 1, (parser.size(), in_size)).astype(numpy.float32)
+        self.W = numpy.random.uniform(-1, 1,
+                                      (parser.size(), in_size)).astype(numpy.float32)
         self.gW = numpy.zeros(self.W.shape, numpy.float32)
 
     def forward_cpu(self, args):
@@ -151,11 +157,12 @@ def create_huffman_tree(word_counts):
     ``((3, 1), (2, 0))``.
 
     Args:
-        word_counts (``dict`` of ``int`` key and ``int`` or ``float`` values.): 
+        word_counts (``dict`` of ``int`` key and ``int`` or ``float`` values.):
             Dictionary representing counts of words.
 
     Returns:
         Binary huffman tree with tuples and keys of ``word_coutns``.
+
     """
     if len(word_counts) == 0:
         raise ValueError('Empty vocabulary')
@@ -172,4 +179,3 @@ def create_huffman_tree(word_counts):
         q.put((count, tree))
 
     return q.get()[1]
-

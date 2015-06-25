@@ -1,11 +1,14 @@
-import copy, weakref
+import copy
+import weakref
 import numpy
 from six import iteritems
 
 from . import cuda
 from .variable import Variable
 
+
 class Function(object):
+
     """Function of variable(s) to variable(s) that leaves footprint to the
     output variables on application.
 
@@ -57,7 +60,7 @@ class Function(object):
                                |--- x'  <--- f'  <--- y
            x <--- (splitter) <-+
                                |--- x'' <--- f'' <--- z
-    
+
        Note that the splitter is implicitly inserted and user does not need to
        take any special care of it; just remember that such branching is
        correctly managed by chainer.
@@ -93,13 +96,13 @@ class Function(object):
     gradient_names = ()
 
     def __init__(self):
-        self.inputs  = None
+        self.inputs = None
         self.outputs = None
-        self.rank    = None
+        self.rank = None
 
     def __call__(self, *inputs):
-        """Applies forward propagation on input variables with chaining backward
-        reference.
+        """Applies forward propagation on input variables with chaining
+        backward reference.
 
         Basic behavior is also expressed in documentation of :class:`Function`
         class. This function first copies itself to avoid conflict over multiple
@@ -126,7 +129,8 @@ class Function(object):
         self = copy.copy(self)
 
         if any(x.volatile for x in inputs):  # not build graph
-            assert all(x.volatile for x in inputs)  # do not mix multiple volatility
+            # do not mix multiple volatility
+            assert all(x.volatile for x in inputs)
 
             in_data = tuple(x.data for x in inputs)
             with cuda.using_device(*in_data):
@@ -384,16 +388,18 @@ class Function(object):
 
 
 class Split(Function):
+
     """Special function to branch the graph at variable node.
 
     Split does not implement forward: it is intended to implicitly used by
     Function.
 
     """
+
     def __init__(self, var):
-        self.inputs  = [var]
+        self.inputs = [var]
         self.outputs = []
-        self.rank    = var.rank
+        self.rank = var.rank
 
     def add_branch(self):
         x = self.inputs[0]
@@ -415,7 +421,8 @@ class Split(Function):
                 if gx is not None:
                     gx += gy
                 elif isinstance(gy, cuda.GPUArray):
-                    cuda.use_device(gy, pop=False)  # it affects to above +=, too
+                    # it affects to above +=, too
+                    cuda.use_device(gy, pop=False)
                     device_changed = True
                     gx = cuda.copy_async(gy)
                 else:
@@ -423,5 +430,5 @@ class Split(Function):
         finally:
             if device_changed:
                 cuda.Context.pop()
-            
+
         return gx,

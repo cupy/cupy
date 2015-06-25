@@ -1,6 +1,6 @@
 from unittest import TestCase
 import numpy
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import BatchNormalization
@@ -10,6 +10,8 @@ if cuda.available:
     cuda.init()
 
 # fully-connected usage
+
+
 class TestBatchNormalization(TestCase):
     aggr_axes = 0
 
@@ -23,9 +25,9 @@ class TestBatchNormalization(TestCase):
         self.func.gbeta.fill(0)
 
         self.gamma = self.func.gamma.copy().reshape(1, 3)  # fixed on CPU
-        self.beta  = self.func.beta.copy().reshape(1, 3)   # fixed on CPU
+        self.beta = self.func.beta.copy().reshape(1, 3)   # fixed on CPU
 
-        self.x  = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
 
     def check_forward(self, x_data):
@@ -33,7 +35,8 @@ class TestBatchNormalization(TestCase):
         y = self.func(x)
 
         mean = self.x.mean(axis=self.aggr_axes, keepdims=True)
-        std  = numpy.sqrt(self.x.var(axis=self.aggr_axes, keepdims=True) + self.func.eps)
+        std = numpy.sqrt(
+            self.x.var(axis=self.aggr_axes, keepdims=True) + self.func.eps)
         y_expect = self.gamma * (self.x - mean) / std + self.beta
 
         assert_allclose(y_expect, y.data)
@@ -54,7 +57,8 @@ class TestBatchNormalization(TestCase):
 
         func = y.creator
         f = lambda: func.forward((x.data,))
-        gx, ggamma, gbeta = numerical_grad(f, (x.data, func.gamma, func.beta), (y.grad,), eps=1e-2)
+        gx, ggamma, gbeta = numerical_grad(
+            f, (x.data, func.gamma, func.beta), (y.grad,), eps=1e-2)
 
         assert_allclose(gx, x.grad, rtol=1e-3, atol=1e-4)
         assert_allclose(ggamma, func.ggamma)
@@ -83,7 +87,9 @@ class TestBatchNormalization2D(TestBatchNormalization):
         self.func.gbeta.fill(0)
 
         self.gamma = self.func.gamma.copy().reshape(1, 3, 1, 1)  # fixed on CPU
-        self.beta  = self.func.beta.copy().reshape(1, 3, 1, 1)   # fixed on CPU
+        self.beta = self.func.beta.copy().reshape(1, 3, 1, 1)   # fixed on CPU
 
-        self.x  = numpy.random.uniform(-1, 1, (7, 3, 2, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (7, 3, 2, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1,
+                                      (7, 3, 2, 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1,
+                                       (7, 3, 2, 2)).astype(numpy.float32)

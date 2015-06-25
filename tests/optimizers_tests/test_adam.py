@@ -3,7 +3,9 @@ from linear_model import LinearModel
 from chainer.optimizers import Adam
 from chainer.testing import attr
 
+
 class TestAdam(TestCase):
+
     def setUp(self):
         self.optimizer = Adam(0.1)
         self.model = LinearModel(self.optimizer)

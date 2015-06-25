@@ -8,10 +8,13 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestParameter(TestCase):
+
     def setUp(self):
-        self.W  = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        self.gW = numpy.random.uniform(-1, 1, self.W.shape).astype(numpy.float32)
+        self.W = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        self.gW = numpy.random.uniform(-1, 1,
+                                       self.W.shape).astype(numpy.float32)
         self.func = Parameter(self.W)
 
     def tearDown(self):
@@ -37,7 +40,8 @@ class TestParameter(TestCase):
         y = self.func()
         y.grad = y_grad
         y.backward()
-        self.assertTrue((cuda.to_cpu(y_grad) == cuda.to_cpu(self.func.gW)).all())
+        self.assertTrue(
+            (cuda.to_cpu(y_grad) == cuda.to_cpu(self.func.gW)).all())
 
     def test_backward_cpu(self):
         self.check_backward(self.gW)

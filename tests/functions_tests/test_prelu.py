@@ -8,7 +8,9 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestPReLUSingle(TestCase):
+
     def setUp(self):
         self.func = PReLU()
         self.func.W = numpy.random.uniform(
@@ -18,7 +20,7 @@ class TestPReLUSingle(TestCase):
         self.W = self.func.W.copy()  # fixed on CPU
 
         # Avoid unstability of numerical gradient
-        self.x  = numpy.random.uniform(.5, 1, (4, 3, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(.5, 1, (4, 3, 2)).astype(numpy.float32)
         self.x *= numpy.random.randint(2, size=(4, 3, 2)) * 2 - 1
         self.gy = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
 
@@ -64,6 +66,7 @@ class TestPReLUSingle(TestCase):
 
 
 class TestPReLUMulti(TestPReLUSingle):
+
     def setUp(self):
         self.func = PReLU(shape=(3,))
         self.func.W = numpy.random.uniform(
@@ -73,7 +76,7 @@ class TestPReLUMulti(TestPReLUSingle):
         self.W = self.func.W.copy()  # fixed on CPU
 
         # Avoid unstability of numerical gradient
-        self.x  = numpy.random.uniform(.5, 1, (4, 3, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(.5, 1, (4, 3, 2)).astype(numpy.float32)
         self.x *= numpy.random.randint(2, size=(4, 3, 2)) * 2 - 1
         self.gy = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
 

@@ -1,7 +1,9 @@
 import numpy
 from chainer import cuda, Function
 
+
 class Copy(Function):
+
     """Copy an input GPUArray onto another device."""
 
     def __init__(self, out_device):
@@ -18,6 +20,7 @@ class Copy(Function):
 
     def backward_gpu(self, x, gy):
         return cuda.copy(gy[0], out_device=cuda.get_device(x[0])),
+
 
 def copy(x, dst):
     """Copies the input variable onto the specified device.

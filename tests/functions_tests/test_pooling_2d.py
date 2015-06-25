@@ -1,7 +1,7 @@
 from unittest import TestCase
 import numpy
 from six.moves import range
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_cpu, to_gpu, GPUArray
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import average_pooling_2d, max_pooling_2d
@@ -10,16 +10,19 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestMaxPooling2D(TestCase):
     cover_all = False
 
     def setUp(self):
         # Avoid unstability of numerical gradient
-        self.x  = numpy.arange(2*3*4*3, dtype=numpy.float32).reshape(2, 3, 4, 3)
+        self.x = numpy.arange(
+            2 * 3 * 4 * 3, dtype=numpy.float32).reshape(2, 3, 4, 3)
         numpy.random.shuffle(self.x)
-        self.x  = 2 * self.x / self.x.size - 1
+        self.x = 2 * self.x / self.x.size - 1
 
-        self.gy = numpy.random.uniform(-1, 1, (2, 3, 2, 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1,
+                                       (2, 3, 2, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):
         x = Variable(x_data)
@@ -32,12 +35,15 @@ class TestMaxPooling2D(TestCase):
             for c in range(3):
                 if self.cover_all:
                     expect = numpy.array([
-                        [self.x[k, c, 0:2, 0:2].max(), self.x[k, c, 0:2, 1:3].max()],
-                        [self.x[k, c, 1:4, 0:2].max(), self.x[k, c, 1:4, 1:3].max()],
+                        [self.x[k, c, 0:2, 0:2].max(), self.x[
+                            k, c, 0:2, 1:3].max()],
+                        [self.x[k, c, 1:4, 0:2].max(), self.x[
+                            k, c, 1:4, 1:3].max()],
                         [self.x[k, c, 3:4, 0:2].max(), self.x[k, c, 3:4, 1:3].max()]])
                 else:
                     expect = numpy.array([
-                        [self.x[k, c, 0:2, 0:2].max(), self.x[k, c, 0:2, 1:3].max()],
+                        [self.x[k, c, 0:2, 0:2].max(), self.x[
+                            k, c, 0:2, 1:3].max()],
                         [self.x[k, c, 1:4, 0:2].max(), self.x[k, c, 1:4, 1:3].max()]])
                 assert_allclose(expect, y_data[k, c])
 
@@ -82,13 +88,17 @@ class TestMaxPooling2DCoverAll(TestMaxPooling2D):
 
     def setUp(self):
         super(TestMaxPooling2DCoverAll, self).setUp()
-        self.gy = numpy.random.uniform(-1, 1, (2, 3, 3, 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1,
+                                       (2, 3, 3, 2)).astype(numpy.float32)
 
 
 class TestAveragePooling2D(TestCase):
+
     def setUp(self):
-        self.x  = numpy.random.uniform(-1, 1, (2, 3, 4, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (2, 3, 2, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1,
+                                      (2, 3, 4, 3)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1,
+                                       (2, 3, 2, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):
         x = Variable(x_data)
@@ -99,7 +109,8 @@ class TestAveragePooling2D(TestCase):
         for k in range(2):
             for c in range(3):
                 expect = numpy.array([
-                    [self.x[k, c, 0:2, 0:2].sum(), self.x[k, c, 0:2, 1:3].sum()],
+                    [self.x[k, c, 0:2, 0:2].sum(), self.x[
+                        k, c, 0:2, 1:3].sum()],
                     [self.x[k, c, 1:4, 0:2].sum(), self.x[k, c, 1:4, 1:3].sum()]]
                 ) / 9
                 assert_allclose(expect, y_data[k, c])

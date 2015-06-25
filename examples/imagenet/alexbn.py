@@ -1,7 +1,9 @@
 from chainer import FunctionSet, Variable
 import chainer.functions as F
 
+
 class AlexBN(FunctionSet):
+
     """Single-GPU AlexNet with Normalization layers replaced by
     BatchNormalization."""
 
@@ -9,16 +11,16 @@ class AlexBN(FunctionSet):
 
     def __init__(self):
         super(AlexBN, self).__init__(
-            conv1 = F.Convolution2D(  3,  96, 11, stride=4),
-            bn1   = F.BatchNormalization( 96),
-            conv2 = F.Convolution2D( 96, 256,  5, pad=2),
-            bn2   = F.BatchNormalization(256),
-            conv3 = F.Convolution2D(256, 384,  3, pad=1),
-            conv4 = F.Convolution2D(384, 384,  3, pad=1),
-            conv5 = F.Convolution2D(384, 256,  3, pad=1),
-            fc6   = F.Linear(9216, 4096),
-            fc7   = F.Linear(4096, 4096),
-            fc8   = F.Linear(4096, 1000),
+            conv1=F.Convolution2D(3,  96, 11, stride=4),
+            bn1=F.BatchNormalization(96),
+            conv2=F.Convolution2D(96, 256,  5, pad=2),
+            bn2=F.BatchNormalization(256),
+            conv3=F.Convolution2D(256, 384,  3, pad=1),
+            conv4=F.Convolution2D(384, 384,  3, pad=1),
+            conv5=F.Convolution2D(384, 256,  3, pad=1),
+            fc6=F.Linear(9216, 4096),
+            fc7=F.Linear(4096, 4096),
+            fc8=F.Linear(4096, 1000),
         )
 
     def forward(self, x_data, y_data, train=True):

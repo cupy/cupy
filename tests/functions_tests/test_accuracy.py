@@ -10,7 +10,9 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestAccuracy(TestCase):
+
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (10, 3)).astype(numpy.float32)
         self.t = numpy.random.randint(3, size=(10,)).astype(numpy.int32)

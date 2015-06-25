@@ -1,7 +1,7 @@
 from unittest import TestCase
 import numpy
 from six.moves import range
-from chainer      import cuda, Variable
+from chainer import cuda, Variable
 from chainer.cuda import to_gpu
 from chainer.gradient_check import assert_allclose, numerical_grad
 from chainer.functions import EmbedID
@@ -12,16 +12,17 @@ if cuda.available:
 
 
 class TestEmbedID(TestCase):
+
     def setUp(self):
         self.func = EmbedID(3, 2)
         self.func.gW.fill(0)
 
-        self.W  = self.func.W.copy()  # fixed on CPU
-        self.x  = numpy.array([0, 1, 0], dtype=numpy.int32)
+        self.W = self.func.W.copy()  # fixed on CPU
+        self.x = numpy.array([0, 1, 0], dtype=numpy.int32)
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
     def to_gpu(self):
-        self.func.W  = to_gpu(self.func.W)
+        self.func.W = to_gpu(self.func.W)
         self.func.gW = to_gpu(self.func.gW)
 
     def check_forward(self, x_data):
