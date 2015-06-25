@@ -2,7 +2,7 @@ import math
 
 import numpy
 
-from . import cuda
+from chainer import cuda
 
 
 # TODO(delta2323): Make it public function and move it to common directory.
@@ -58,8 +58,9 @@ class Optimizer(object):
         """Returns initial state corresponding to the given parameter and
         gradient.
 
-        Default implementation delegates the procedure to :meth:`init_state_cpu`
-        or :meth:`init_state_gpu` depending on the type of ``param``.
+        Default implementation delegates the procedure to
+        :meth:`init_state_cpu` or :meth:`init_state_gpu` depending on the type
+        of ``param``.
 
         Args:
             param: Parameter array.
@@ -132,14 +133,14 @@ class Optimizer(object):
         """Computes the norm of whole gradients.
 
         Returns:
-            float: L2 norm of whole gradients, i.e. square root of sum of square
-            of all gradient elements.
+            float: L2 norm of whole gradients, i.e. square root of sum of
+            square of all gradient elements.
 
         .. warning::
 
-            This method returns a CPU-computed value, which means that this method
-            synchronizes between CPU and GPU if at least one of the gradients
-            reside on the GPU.
+            This method returns a CPU-computed value, which means that this
+            method synchronizes between CPU and GPU if at least one of the
+            gradients reside on the GPU.
 
         """
         # TODO(beam2d): Make it asynchronous to CPU when gradients exist on GPU
