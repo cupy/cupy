@@ -9,8 +9,8 @@ and performs poorly on MNIST dataset.
 import math
 
 import numpy as np
+import pickle
 import six
-from sklearn import datasets
 
 import chainer
 from chainer import cuda
@@ -23,15 +23,17 @@ n_epoch = 50
 n_units = 2000
 
 # Prepare dataset
-print('fetch MNIST dataset')
-mnist = datasets.fetch_mldata('MNIST original')
-mnist.data = mnist.data.astype(np.float32)
-mnist.data /= 255
-mnist.target = mnist.target.astype(np.int32)
+print('load MNIST dataset')
+mnist_pickle = open('mnist.pkl', 'rb')
+mnist = pickle.load(mnist_pickle)
+mnist_pickle.close()
+mnist['data'] = mnist['data'].astype(np.float32)
+mnist['data'] /= 255
+mnist['target'] = mnist['target'].astype(np.int32)
 
 N = 60000
-x_train, x_test = np.split(mnist.data,   [N])
-y_train, y_test = np.split(mnist.target, [N])
+x_train, x_test = np.split(mnist['data'],   [N])
+y_train, y_test = np.split(mnist['target'], [N])
 N_test = y_test.size
 
 # Prepare the multi-layer perceptron model
