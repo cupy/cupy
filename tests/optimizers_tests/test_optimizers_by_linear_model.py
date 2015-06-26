@@ -1,9 +1,13 @@
+import unittest
+
 import numpy as np
 import six
 
 import chainer
 from chainer import cuda
 import chainer.functions as F
+from chainer import optimizers
+from chainer.testing import attr
 
 if cuda.available:
     cuda.init()
@@ -71,3 +75,48 @@ class LinearModel(object):
             return cuda.to_cpu(self._accuracy_gpu().data)
         else:
             return self._accuracy_cpu().data
+
+
+class OptimizerTestBase(object):
+    def create(self):
+        raise NotImplementedError()
+
+    def setUp(self):
+        self.model = LinearModel(self.create())
+
+    def test_linear_model_cpu(self):
+        self.assertGreater(self.model.accuracy(False), 0.7)
+
+    @attr.gpu
+    def test_linear_model_cpu(self):
+        self.assertGreater(self.model.accuracy(True), 0.7)
+
+
+class TestAdaDelta(OptimizerTestBase, unittest.TestCase):
+    def create(self):
+        return optimizers.AdaDelta(eps=1e-5)
+
+
+class TestAdaGrad(OptimizerTestBase, unittest.TestCase):
+    def create(self):
+        return optimizers.AdaGrad(0.1)
+
+
+class TestAdam(OptimizerTestBase, unittest.TestCase):
+    def create(self):
+        return optimizers.Adam(0.1)
+
+
+class TestMomentumSGD(OptimizerTestBase, unittest.TestCase):
+    def create(self):
+        return optimizers.MomentumSGD(0.1)
+
+
+class TestRMSprop(OptimizerTestBase, unittest.TestCase):
+    def create(self):
+        return optimizers.RMSprop(0.1)
+
+
+class TestSGD(OptimizerTestBase, unittest.TestCase):
+    def create(self):
+        return optimizers.SGD(0.1)
