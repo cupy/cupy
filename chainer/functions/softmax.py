@@ -1,12 +1,17 @@
 import numpy
-from chainer import cuda, cudnn, Function
+
+from chainer import cuda
+from chainer import cudnn
+from chainer import function
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
     _algorithm = libcudnn.cudnnSoftmaxAlgorithm['CUDNN_SOFTMAX_ACCURATE']
-    _mode      = libcudnn.cudnnSoftmaxMode['CUDNN_SOFTMAX_MODE_INSTANCE']
+    _mode = libcudnn.cudnnSoftmaxMode['CUDNN_SOFTMAX_MODE_INSTANCE']
 
-class Softmax(Function):
+
+class Softmax(function.Function):
+
     """Softmax activation function."""
 
     def __init__(self, use_cudnn=True):
@@ -77,8 +82,10 @@ class Softmax(Function):
             gx = cuda.empty_like(x[0])
             desc = cudnn.get_tensor_desc(x[0], 1, 1)
             libcudnn.cudnnSoftmaxBackward(
-                handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(self.y),
-                desc.value, cudnn.get_ptr(gy[0]), 0, desc.value, cudnn.get_ptr(gx))
+                handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(
+                    self.y),
+                desc.value, cudnn.get_ptr(gy[0]), 0, desc.value,
+                cudnn.get_ptr(gx))
         else:
             gx = self.y * gy[0]
             c = gx.shape[1]
@@ -99,6 +106,7 @@ class Softmax(Function):
                 'softmax_bwd_diff')(gx, self.y, sum_ydy, c)
 
         return gx,
+
 
 def softmax(x, use_cudnn=True):
     """Channelwise softmax function.

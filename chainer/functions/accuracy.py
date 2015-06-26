@@ -1,7 +1,10 @@
 import numpy
-from chainer import cuda, Function
 
-class Accuracy(Function):
+from chainer import cuda
+from chainer import function
+
+
+class Accuracy(function.Function):
     def forward_cpu(self, inputs):
         y, t = inputs
         y = y.reshape(y.shape[0], y.size / y.shape[0])  # flatten
@@ -28,6 +31,7 @@ class Accuracy(Function):
         y = cuda.gpuarray.sum(fragments, dtype=numpy.float32)
         y /= x.shape[0]
         return y,
+
 
 def accuracy(y, t):
     """Computes muticlass classification accuracy of the minibatch.

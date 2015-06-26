@@ -1,7 +1,11 @@
 import numpy
-from chainer import cuda, Function
 
-class Sum(Function):
+from chainer import cuda
+from chainer import function
+
+
+class Sum(function.Function):
+
     """Summation over all elements."""
 
     def forward_cpu(self, x):
@@ -16,6 +20,7 @@ class Sum(Function):
     def backward_gpu(self, x, gy):
         # TODO(beam2d): Make it async
         return cuda.full_like(x[0], gy[0].get()),
+
 
 def sum(x):
     """Computes sum of all elements."""

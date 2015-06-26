@@ -1,7 +1,10 @@
 import numpy
-from chainer import cuda, Function
 
-class Parameter(Function):
+from chainer import function
+
+
+class Parameter(function.Function):
+
     """Function that outputs its weight array.
 
     This is a parameterized function that takes no input and returns a variable
@@ -12,10 +15,10 @@ class Parameter(Function):
 
     """
     parameter_names = 'W',
-    gradient_names  = 'gW',
+    gradient_names = 'gW',
 
     def __init__(self, array):
-        self.W  = array
+        self.W = array
         self.gW = numpy.empty_like(array)
 
     def forward(self, x):
