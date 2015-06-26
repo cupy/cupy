@@ -90,6 +90,14 @@ Coding Guidelines
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <http://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
 
+Before checking your code, you can use automatic formatter to set appropriate spacing, etc.
+We recommend you to install the ``pyformat`` and ``isort`` packages, and run the following commands::
+
+  $ pyformat -i path/to/your/code.py
+  $ isort path/to/your/code.py
+
+Note that these formatters do not cover all part of the style guidelines.
+
 To check your code, use ``flake8`` command installed by ``hacking`` package::
 
   $ pip install hacking
@@ -123,10 +131,6 @@ Testing is one of the most important part of your code.
 You must test your code by unit tests following our testing guidelines.
 
 We are using ``nose`` package to run unit tests.
-It is installed by pip command::
-
-  $ pip install nose
-
 You can run unit tests simply by running ``nosetests`` command under the repository root.
 It requires CUDA by default.
 In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the nosetests command.
