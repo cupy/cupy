@@ -5,6 +5,7 @@ import numpy
 import six
 
 from chainer import cuda
+from chainer.utils import type_check
 from chainer import variable
 
 
@@ -133,6 +134,7 @@ class Function(object):
             assert all(x.volatile for x in inputs)
 
             in_data = tuple(x.data for x in inputs)
+            self._check_data_type_forward(in_data)
             with cuda.using_device(*in_data):
                 out_data = self.forward(in_data)
             assert type(out_data) == tuple
@@ -159,6 +161,7 @@ class Function(object):
             self.rank = 0
 
         in_data = tuple(x.data for x in self.inputs)
+        self._check_data_type_forward(in_data)
         with cuda.using_device(*in_data):
             outputs = self.forward(in_data)
         assert type(outputs) == tuple
@@ -173,6 +176,24 @@ class Function(object):
         if len(ret) == 1:
             return ret[0]
         return ret
+
+    def _check_data_type_forward(self, in_data):
+        in_type = tuple(type_check.get_type(i, x)
+                        for i, x in enumerate(in_data))
+        self.check_type_forward(in_type)
+
+    def _check_data_type_backward(self, in_data, out_data):
+        in_type = tuple(type_check.get_type(i, x)
+                        for i, x in enumerate(in_data))
+        out_type = tuple(type_check.get_type(i, x)
+                         for i, x in enumerate(out_data))
+        self.check_type_backward(in_type, out_type)
+
+    def check_type_forward(self, in_types):
+        pass
+
+    def check_type_backward(self, in_types, out_types):
+        pass
 
     def forward(self, inputs):
         """Applies forward propagation to input arrays.
