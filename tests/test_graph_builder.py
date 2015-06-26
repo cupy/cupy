@@ -34,105 +34,148 @@ class TestGraphBuilder(TestCase):
 
     # x
     def test_head_variable(self):
-        self.assertEqual(len(build_graph((self.x,))), 0)
+        self.assertEqual(len(build_graph((self.x,), False)), 0)
+        self.assertEqual(len(build_graph((self.x,), True )), 0)
 
-    # x-splitter-x'-f-y
     def test_intermediate_variable(self):
-        self.assertEqual(len(build_graph((self.y,))), 4)
+        # x-splitter-x'-f-y
+        self.assertEqual(len(build_graph((self.y,), False)), 4)
+        # x-f-y (splitter removed)
+        self.assertEqual(len(build_graph((self.y,), True )), 2)
 
-    # x-splitter-x'-f-y-splitter-y'-g-z
     def test_tail_variable(self):
-        self.assertEqual(len(build_graph((self.z,))), 8)
+        # x-splitter-x'-f-y-splitter-y'-g-z
+        self.assertEqual(len(build_graph((self.z,), False)), 8)
+        # x-f-y-g-z (splitter removed)
+        self.assertEqual(len(build_graph((self.z,), True )), 4)
 
     def test_multiple_outputs(self):
-        self.assertEqual(len(build_graph((self.x, self.y))), 4)
+        self.assertEqual(len(build_graph((self.x, self.y), False)), 4)
+        self.assertEqual(len(build_graph((self.x, self.y), True )), 2)
 
     def test_multiple_outputs2(self):
-        self.assertEqual(len(build_graph((self.x, self.z))), 8)
+        self.assertEqual(len(build_graph((self.x, self.z), False)), 8)
+        self.assertEqual(len(build_graph((self.x, self.z), True )), 4)
 
     def test_multiple_outputs3(self):
-        self.assertEqual(len(build_graph((self.y, self.z))), 8)
+        self.assertEqual(len(build_graph((self.y, self.z), False)), 8)
+        self.assertEqual(len(build_graph((self.y, self.z), True )), 4)
 
     def test_multiple_outputs4(self):
-        self.assertEqual(len(build_graph((self.x, self.y, self.z))), 8)
+        self.assertEqual(len(build_graph((self.x, self.y, self.z), False)), 8)
+        self.assertEqual(len(build_graph((self.x, self.y, self.z), True )), 4)
 
 class TestGraphBuilder2(TestCase):
+    # with splitter
     # x-splitter-x' -f-y1
     #           \
-    #            x''-f-y2
+    #            x''-g-y2
+    # without splitter
+    # x-f-y1
+    #  \
+    #   g-y2
     def setUp(self):
         self.x = Variable(np.zeros((1, 2)).astype(np.float32))
         self.y1 = mock_function((self.x,), 1)
         self.y2 = mock_function((self.x,), 1)
 
     def test_head_node(self):
-        self.assertEqual(len(build_graph((self.x,))), 0)
+        self.assertEqual(len(build_graph((self.x,), False)), 0)
+        self.assertEqual(len(build_graph((self.x,), True )), 0)
 
     def test_tail_node(self):
-        self.assertEqual(len(build_graph((self.y1,))), 4)
+        self.assertEqual(len(build_graph((self.y1,), False)), 4)
+        self.assertEqual(len(build_graph((self.y1,), True )), 2)
 
     def test_tail_node2(self):
-        self.assertEqual(len(build_graph((self.y2,))), 4)
+        self.assertEqual(len(build_graph((self.y2,), False)), 4)
+        self.assertEqual(len(build_graph((self.y2,), True )), 2)
 
     def test_multiple_tails(self):
-        self.assertEqual(len(build_graph((self.y1, self.y2))), 7)
+        self.assertEqual(len(build_graph((self.y1, self.y2), False)), 7)
+        self.assertEqual(len(build_graph((self.y1, self.y2), True )), 4)
 
 class TestGraphBuilder3(TestCase):
+    # with splitter
     # x-splitter-x'-f-y1
     #                \
     #                 y2
+    # without splitter
+    # x-f-y1
+    #    \
+    #     y2
     def setUp(self):
         self.x = Variable(np.zeros((1, 2)).astype(np.float32))
         self.y1, self.y2 = mock_function((self.x,), 2)
 
     def test_head_node(self):
-        self.assertEqual(len(build_graph((self.x,))), 0)
+        self.assertEqual(len(build_graph((self.x,), False)), 0)
+        self.assertEqual(len(build_graph((self.x,), True )), 0)
 
     def test_tail_node(self):
-        self.assertEqual(len(build_graph((self.y1,))), 4)
+        self.assertEqual(len(build_graph((self.y1,), False)), 4)
+        self.assertEqual(len(build_graph((self.y1,), True )), 2)
 
     def test_tail_node2(self):
-        self.assertEqual(len(build_graph((self.y2,))), 4)
+        self.assertEqual(len(build_graph((self.y2,), False)), 4)
+        self.assertEqual(len(build_graph((self.y2,), True )), 2)
 
     def test_multiple_tails(self):
-        self.assertEqual(len(build_graph((self.y1, self.y2))), 5)
+        self.assertEqual(len(build_graph((self.y1, self.y2), False)), 5)
+        self.assertEqual(len(build_graph((self.y1, self.y2), True )), 3)
 
 class TestGraphBuilder4(TestCase):
+    # with splitter
     # x1-splitter-x1'-f-y
     #                /
-    # x2-splitter-x2' 
+    # x2-splitter-x2'
+    # without splitter
+    # x1-f-y
+    #   /
+    # x2
     def setUp(self):
         self.x1 = Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = Variable(np.zeros((1, 2)).astype(np.float32))
         self.y  = mock_function((self.x1, self.x2), 1)
 
     def test_head_node(self):
-        self.assertEqual(len(build_graph((self.x1,))), 0)
+        self.assertEqual(len(build_graph((self.x1,), False)), 0)
+        self.assertEqual(len(build_graph((self.x1,), True )), 0)
 
     def test_head_node(self):
-        self.assertEqual(len(build_graph((self.x2,))), 0)
+        self.assertEqual(len(build_graph((self.x2,), False)), 0)
+        self.assertEqual(len(build_graph((self.x2,), True )), 0)
 
     def test_multiple_heads(self):
-        self.assertEqual(len(build_graph((self.x1, self.x2))), 0)
+        self.assertEqual(len(build_graph((self.x1, self.x2), False)), 0)
+        self.assertEqual(len(build_graph((self.x1, self.x2), True )), 0)
 
     def test_tail_node(self):
-        self.assertEqual(len(build_graph((self.y,))), 7)
+        self.assertEqual(len(build_graph((self.y,), False)), 7)
+        self.assertEqual(len(build_graph((self.y,), True )), 3)
 
 class TestGraphBuilder5(TestCase):
     def setUp(self):
         self.x = Variable(np.zeros((1, 2)).astype(np.float32))
         self.y = 2 * self.x
 
-    def test_tail_node(self):
-        x_splitter = self.x.splitter()
-        x_clone  = x_splitter.outputs[0]()
-        f = self.y.creator
+        self.x_splitter = self.x.splitter()
+        self.x_clone  = self.x_splitter.outputs[0]()
+        self.f = self.y.creator
 
-        edges = build_graph((self.y,))
+    def test_tail_node(self):
+        edges = build_graph((self.y,), False)
         self.assertEqual(len(edges), 4)
-        self.assertTrue((self.x, x_splitter) in edges)
-        self.assertTrue((x_splitter, x_clone) in edges)
-        self.assertTrue((f, self.y) in edges)
+        self.assertTrue((self.x, self.x_splitter) in edges)
+        self.assertTrue((self.x_splitter, self.x_clone) in edges)
+        self.assertTrue((self.x_clone, self.f) in edges)
+        self.assertTrue((self.f, self.y) in edges)
+
+    def test_tail_node_remove_edge(self):
+        edges = build_graph((self.y,), True)
+        self.assertEqual(len(edges), 2)
+        self.assertTrue((self.x, self.f) in edges)
+        self.assertTrue((self.f, self.y) in edges)
 
 class TestGraphBuilder6(TestCase):
     def setUp(self):
@@ -140,22 +183,29 @@ class TestGraphBuilder6(TestCase):
         self.x2 = Variable(np.zeros((1, 2)).astype(np.float32))
         self.y  = self.x1 + self.x2
 
-    def test_tail_node(self):
-        x1_splitter = self.x1.splitter()
-        x2_splitter = self.x2.splitter()
-        x1_clone = x1_splitter.outputs[0]()
-        x2_clone = x2_splitter.outputs[0]()
-        f = self.y.creator
+        self.x1_splitter = self.x1.splitter()
+        self.x2_splitter = self.x2.splitter()
+        self.x1_clone = self.x1_splitter.outputs[0]()
+        self.x2_clone = self.x2_splitter.outputs[0]()
+        self.f = self.y.creator
 
-        edges = build_graph((self.y,))
+    def test_tail_node(self):
+        edges = build_graph((self.y,), False)
         self.assertEqual(len(edges), 7)
-        self.assertTrue((self.x1, x1_splitter) in edges)
-        self.assertTrue((x1_splitter, x1_clone) in edges)
-        self.assertTrue((x1_clone, f) in edges)
-        self.assertTrue((self.x2, x2_splitter) in edges)
-        self.assertTrue((x2_splitter, x2_clone) in edges)
-        self.assertTrue((x2_clone, f) in edges)
-        self.assertTrue((f, self.y) in edges)
+        self.assertTrue((self.x1, self.x1_splitter) in edges)
+        self.assertTrue((self.x1_splitter, self.x1_clone) in edges)
+        self.assertTrue((self.x1_clone, self.f) in edges)
+        self.assertTrue((self.x2, self.x2_splitter) in edges)
+        self.assertTrue((self.x2_splitter, self.x2_clone) in edges)
+        self.assertTrue((self.x2_clone, self.f) in edges)
+        self.assertTrue((self.f, self.y) in edges)
+
+    def test_tail_node_remove_edge(self):
+        edges = build_graph((self.y,), True)
+        self.assertEqual(len(edges), 3)
+        self.assertTrue((self.x1, self.f) in edges)
+        self.assertTrue((self.x2, self.f) in edges)
+        self.assertTrue((self.f, self.y) in edges)
 
 class TestGraphBuilder7(TestCase):
     def setUp(self):
@@ -165,5 +215,9 @@ class TestGraphBuilder7(TestCase):
         self.y  = 0.3 * (self.x1 + self.x2) + self.x3
 
     def test_tail_node(self):
-        edges = build_graph((self.y,))
+        edges = build_graph((self.y,), False)
         self.assertEqual(len(edges), 18)
+
+    def test_tail_node_remove_edge(self):
+        edges = build_graph((self.y,), True)
+        self.assertEqual(len(edges), 8)
