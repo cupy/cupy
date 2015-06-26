@@ -34,29 +34,43 @@ def build_graph(outputs, remove_split=False):
                     seen_edges.add((input_, cand))
     return seen_edges
 
+class DotNode(object):
+    def _shape(self):
+        if isinstance(self.node, Variable):
+            return "oval"
+        elif isinstance(self.node, Split):
+            return "hexagon"
+        else:
+            return "box"
+
+    def _label(self):
+        if isinstance(self.node, Variable):
+            return str(self.node.data.shape)
+        else:
+            return str(type(self.node))
+
+    def __init__(self, node):
+        self.node = node
+        self.id_ = id(node)
+        self.attribute = {
+            "label" : self._label(),
+            "shape" : self._shape()
+        }
+
+    def __str__(self):
+        return "%s [%s];" % (self.id_, ",".join(["%s=\"%s\""%(k, v) for (k, v) in self.attribute.items()]))
+
 def generate_dot(edges):
     ret = "digraph graphname{"
     for edge in edges:
         head, tail = edge
         assert (isinstance(head, Variable) and isinstance(tail, Function)) or \
             (isinstance(head, Function) and isinstance(tail, Variable))
-        if isinstance(head, Variable):
-            ret += "v%d [shape=oval, label=\"%s\"];" % (id(head), str(head.data.shape))
-            if isinstance(tail, Split):
-                ret += "s%d [shape=hexagon];" % id(tail)
-                ret += "v%d -> s%d;" % (id(head), id(tail))
-            else:
-                ret += "f%d [shape=box];" % id(tail)
-                ret += "v%d -> f%d;" % (id(head), id(tail))
-        else:
-            ret += "v%d [shape=oval, label=\"%s\"];" % (id(tail), str(tail.data.shape))
-            if isinstance(head, Split):
-                ret += "s%d [shape=hexagon];" % (id(head))
-                ret += "s%d -> v%d;" % (id(head), id(tail))
-            else:
-                ret += "f%d [shape=box];" % (id(head))
-                ret += "f%d -> v%d;" % (id(head), id(tail))
-
+        head_node = DotNode(head)
+        tail_node = DotNode(tail)
+        ret += str(head_node)
+        ret += str(tail_node)
+        ret += "%s -> %s;" % (head_node.id_, tail_node.id_)
     ret += "}"
     return ret
             
