@@ -4,6 +4,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 def _as_mat(x):
@@ -70,6 +71,23 @@ class Linear(function.Function):
         if self.gb is None:
             return 'gW',
         return 'gW', 'gb'
+
+    def check_type_forward(self, in_types):
+        type_check.assert_argument_size_equals(in_types, 1)
+        x_type, = in_types
+        type_check.assert_type_equals(x_type, 'f')
+        type_check.assert_ndim_equals(x_type, 2)
+        type_check.assert_shape_equals(x_type, 1, self.W.shape[1])
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.assert_argument_size_equals(in_types, 1)
+        type_check.assert_argument_size_equals(out_types, 1)
+        x_type, = in_types
+        y_type, = out_types
+        type_check.assert_type_equals(y_type, 'f')
+        type_check.assert_ndim_equals(y_type, 2)
+        type_check.assert_shape_equals(y_type, 0, x_type.shape[0])
+        type_check.assert_shape_equals(y_type, 1, self.W.shape[0])
 
     def forward_cpu(self, x):
         x = _as_mat(x[0])
