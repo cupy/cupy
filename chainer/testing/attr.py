@@ -1,4 +1,4 @@
-from nose.plugins.attrib import attr
+from nose.plugins import attrib
 
-gpu = attr('gpu')
-cudnn = attr('gpu', 'cudnn')
+gpu = attrib.attr('gpu')
+cudnn = attrib.attr('gpu', 'cudnn')
