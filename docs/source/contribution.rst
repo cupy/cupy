@@ -88,7 +88,76 @@ If you write a precise explanation about the PR, core developers and other contr
 Coding Guidelines
 -----------------
 
-We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <http://docs.openstack.org/developer/hacking/>`_ as our basic style guidelines.
-We only use general rules of the latter guideline.
-TODO: write detail
-TODO: write aboud tests
+We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <http://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
+
+To check your code, use ``flake8`` command installed by ``hacking`` package::
+
+  $ pip install hacking
+  $ flake8 path/to/your/code.py
+
+The ``flake8`` command lets you know the part of your code not obeying our style guidelines.
+Before sending a pull request, be sure to check that your code passes the ``flake8`` checking.
+
+Note that ``flake8`` command is not perfect.
+It does not check some of the style guidelines.
+Here is a (not-complete) list of the rules that ``flake8`` cannot check.
+
+* Relative imports are prohibited. [H304]
+* Importing non-module symbols is prohibited.
+* Import statements must be organized into three parts: standard libraries, third-party libraries, and internal imports. [H306]
+
+In addition, we restrict the usage of *shortcut symbols* in our code base.
+They are symbols imported by packages and subpackages of ``chainer``.
+For example, ``chainer.Variable`` is a shortcut of ``chainer.variable.Variable``.
+**It is not allowed to use such shortcuts in the ``chainer`` library implementation**.
+Note that you can still use them in ``tests`` and ``examples`` directories.
+
+Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_.
+The reviewing process starts after the check passes.
+
+
+Testing Guidelines
+------------------
+
+Testing is one of the most important part of your code.
+You must test your code by unit tests following our testing guidelines.
+
+We are using ``nose`` package to run unit tests.
+It is installed by pip command::
+
+  $ pip install nose
+
+You can run unit tests simply by running ``nosetests`` command under the repository root.
+It requires CUDA by default.
+In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the nosetests command.
+
+Tests are put into the ``tests`` directory.
+This directory has the same structure as the ``chainer`` directory.
+In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
+
+* The name of each subdirectory of ``tests`` must end with the ``_tests`` suffix.
+* The name of each test script must start with the ``test_`` prefix.
+
+There are many examples of unit tests under the ``tests`` directory.
+They simply use the ``unittest`` package of the standard library.
+
+If your patch includes GPU-related code, your tests must run with and without GPU capability.
+Test functions that requires CUDA must be tagged by the ``chainer.testing.attr.gpu`` decorator::
+
+  import unittest
+  from chainer.testing import attr
+
+  class TestMyFunc(unittest.TestCase):
+      ...
+
+      @attr.gpu
+      def test_my_gpu_func(self):
+          ...
+
+The functions tagged by the ``chainer.testing.attr.gpu`` decorator are skipped if ``--attr='!gpu'`` is given.
+We also have the ``chainer.testing.attr.cudnn`` decorator to let nosetests know that the test depends on CuDNN.
+
+Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_ **with --attr='!gpu' option**.
+Since Travis-CI does not support CUDA, we cannot check you CUDA-related code automatically.
+The reviewing process starts after the test passes.
+Note that reviewers will test your code without the option to check CUDA-related code.
