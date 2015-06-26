@@ -1,6 +1,7 @@
 import heapq
 from chainer import Variable, Function
 from chainer.function import Split
+import chainer.functions.basic_math
 
 def build_graph(outputs, remove_split=False):
     cands = []
@@ -45,7 +46,71 @@ class DotNode(object):
 
     def _label(self):
         if isinstance(self.node, Variable):
-            return str(self.node.data.shape)
+            if self.node.data.shape == tuple():
+                return str(self.node.data.dtype)
+            return "%s, %s" % (str(self.node.data.shape), str(self.node.data.dtype))
+        elif isinstance(self.node, chainer.functions.basic_math.Add):
+            return "+"
+        elif isinstance(self.node, chainer.functions.basic_math.AddConstant):
+            value = self.node.value
+            if isinstance(value, float) or isinstance(value, np.ndarray):
+                return "+ %s" % str(value)
+            elif isinstance(value, Variable):
+                return "+ %s" % str(value.data)
+            else:
+                raise ValueError('value must be float, ndarray, or Variable')
+        elif isinstance(self.node, chainer.functions.basic_math.Sub):
+            return "-"
+        elif isinstance(self.node, chainer.functions.basic_math.SubFromConstant):
+            value = self.node.value
+            if isinstance(value, float) or isinstance(value, np.ndarray):
+                return "* (-1) + %s" % str(value)
+            elif isinstance(value, Variable):
+                return "* (-1) + %s" % str(value.data)
+            else:
+                raise ValueError('value must be float, ndarray, or Variable')
+        elif isinstance(self.node, chainer.functions.basic_math.Mul):
+            return "*"
+        elif isinstance(self.node, chainer.functions.basic_math.MulConstant):
+            value = self.node.value
+            if isinstance(value, float) or isinstance(value, np.ndarray):
+                return "* %s" % str(value)
+            elif isinstance(value, Variable):
+                return "* %s" % str(value.data)
+            else:
+                raise ValueError('value must be float, ndarray, or Variable')
+        elif isinstance(self.node, chainer.functions.basic_math.Div):
+            return "/"
+        elif isinstance(self.node, chainer.functions.basic_math.DivFromConstant):
+            value = self.node.value
+            if isinstance(value, float) or isinstance(value, np.ndarray):
+                return "/ %s" % str(value)
+            elif isinstance(value, Variable):
+                return "/ %s" % str(value.data)
+            else:
+                raise ValueError('value must be float, ndarray, or Variable')
+        elif isinstance(self.node, chainer.functions.basic_math.PowVarVar):
+            return "**"
+        elif isinstance(self.node, chainer.functions.basic_math.PowVarConst):
+            value = self.node.value
+            if isinstance(value, float) or isinstance(value, np.ndarray):
+                return "** %s" % str(value)
+            elif isinstance(value, Variable):
+                return "** %s" % str(value.data)
+            else:
+                raise ValueError('value must be float, ndarray, or Variable')
+        elif isinstance(self.node, chainer.functions.basic_math.PowConstVar):
+            value = self.node.value
+            if isinstance(value, float) or isinstance(value, np.ndarray):
+                return "%s **" % str(value)
+            elif isinstance(value, Variable):
+                return "%s **" % str(value.data)
+            else:
+                raise ValueError('value must be float, ndarray, or Variable')
+        elif isinstance(self.node, chainer.functions.basic_math.Exp):
+            return "exp"
+        elif isinstance(self.node, chainer.functions.basic_math.Log):
+            return "log"
         else:
             return str(type(self.node))
 
