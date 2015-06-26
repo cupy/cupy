@@ -88,7 +88,7 @@ class OptimizerTestBase(object):
         self.assertGreater(self.model.accuracy(False), 0.7)
 
     @attr.gpu
-    def test_linear_model_cpu(self):
+    def test_linear_model_gpu(self):
         self.assertGreater(self.model.accuracy(True), 0.7)
 
 
