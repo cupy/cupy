@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 class EmbedID(function.Function):
@@ -31,6 +32,24 @@ class EmbedID(function.Function):
     def __init__(self, in_size, out_size):
         self.W = numpy.random.randn(in_size, out_size).astype(numpy.float32)
         self.gW = numpy.empty_like(self.W)
+
+    def check_type_forward(self, in_types):
+        in_types.size().should_be(1)
+        x_type, = in_types
+        x_type.dtype.should_be(numpy.int32)
+        x_type.ndim.should_be(1)
+
+    def check_type_backward(self, in_types, out_types):
+        in_types.size().should_be(1)
+        out_types.size().should_be(1)
+        x_type, = in_types
+        y_type, = out_types
+
+        y_type.dtype.should_be(numpy.float32)
+        y_type.ndim.should_be(2)
+        y_type.shape[0].should_be(x_type.shape[0])
+        y_type.shape[1].should_be(
+            type_check.IntVariable(self.W.shape[1], 'W.shape[1]'))
 
     def forward_cpu(self, x):
         return self.W[x[0]],
