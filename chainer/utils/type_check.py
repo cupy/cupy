@@ -251,20 +251,23 @@ class DtypeExpr(object):
 
     def should_be(self, expect):
         if isinstance(expect, DtypeExpr):
-            expect_value = expect.dtype
+            expect_value = expect.eval()
         else:
             expect_value = expect
 
-        if not (self.dtype == expect):
+        if not (self.eval() == expect):
             raise InvalidType(
                 '{0} == {1}'.format(self, expect),
                 '{0} != {1}'.format(self.dtype, expect_value))
 
     def kind_should_be(self, expect):
-        if not (self.dtype.kind == expect):
+        if not (self.eval().kind == expect):
             raise InvalidType(
                 '{0}.kind == {1}'.format(self, expect),
                 '{0} != {1}'.format(self.dtype.kind, expect))
+
+    def eval(self):
+        return self.dtype
 
     def __str__(self):
         return '{0}.dtype'.format(self.name)
