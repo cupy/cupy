@@ -2,11 +2,12 @@ from itertools import izip
 
 import numpy
 
-from chainer import cuda, Function
-from chainer.utils import WalkerAlias
+from chainer import cuda
+from chainer import function
+from chainer.utils import walker_alias
 
 
-class NegativeSampling(Function):
+class NegativeSampling(function.Function):
     """Implementation of negative sampling.
 
     In natural language processing especially language modeling, a number of
@@ -14,8 +15,8 @@ class NegativeSampling(Function):
     So, you need to spend a lot of time to calculate gradient of an embedding
     matrix.
 
-    Instead, in negative sampling trick, you only need to calculate gradient for
-    a few sampled negative examples.
+    Instead, in negative sampling trick, you only need to calculate gradient
+    for a few sampled negative examples.
 
     Objective function is below:
 
@@ -56,11 +57,10 @@ class NegativeSampling(Function):
         self.sample_size = sample_size
         p = numpy.array(counts, numpy.float32)
         p = numpy.power(p, power)
-        self.sampler = WalkerAlias(p)
-        
+        self.sampler = walker_alias.WalkerAlias(p)
+
         vocab_size = len(counts)
         self.W = numpy.zeros((vocab_size, in_size)).astype(numpy.float32)
-        #self.W = numpy.random.uniform(-1, 1, (vocab_size, in_size)).astype(numpy.float32)
         self.gW = numpy.zeros_like(self.W)
 
     def _make_samples(self, t):
@@ -82,7 +82,7 @@ class NegativeSampling(Function):
         self.samples = samples
 
     def to_gpu(self, device=None):
-        Function.to_gpu(self, device)
+        function.Function.to_gpu(self, device)
         self.sampler.to_gpu()
 
     def forward_cpu(self, (x, t)):
@@ -102,7 +102,8 @@ class NegativeSampling(Function):
 
         wx = cuda.empty((x.shape[0], self.sample_size + 1))
         cuda.elementwise(
-            'float* wx, const float* W, const float* x, const int* k, int c, int m',
+            '''float* wx, const float* W, const float* x, const int* k, int c,
+            int m''',
             '''
             x = &x[(i / m) * c];
             W = &W[k[i] * c];
@@ -139,7 +140,6 @@ class NegativeSampling(Function):
 
     def backward_cpu(self, (x, t), (gloss,)):
         gloss = numpy.sum(gloss)
-        size = x.shape[0]
         gx = numpy.zeros_like(x)
 
         for i, (ix, k) in enumerate(izip(x, self.samples)):
@@ -157,7 +157,6 @@ class NegativeSampling(Function):
         return gx, None
 
     def backward_gpu(self, (x, t), (gloss,)):
-        size = x.shape[0]
         n_in = x.shape[1]
         g = cuda.empty_like(self.wx)
         cuda.elementwise(
@@ -176,7 +175,8 @@ class NegativeSampling(Function):
         )(g, self.wx, gloss, self.sample_size + 1)
         gx = cuda.zeros_like(x)
         cuda.elementwise(
-            'float* gx, const float* g, const float* W, const int* k, int c, int m',
+            '''float* gx, const float* g, const float* W, const int* k, int c,
+            int m''',
             '''
             int d = i / c;
             g = &g[d * m];
@@ -190,7 +190,8 @@ class NegativeSampling(Function):
             'negative_sampling_calculate_gx'
         )(gx, g, self.W, self.samples, n_in, self.sample_size + 1)
         cuda.elementwise(
-            'const float * g, const float* x, const int* k, float* gW, int c, int m',
+            '''const float * g, const float* x, const int* k, float* gW, int c,
+            int m''',
             '''
             x = &x[(i / m) * c];
             gW = &gW[k[i] * c];

@@ -1,24 +1,25 @@
-from unittest import TestCase
+import unittest
 
 import numpy
 
-from chainer.gradient_check import assert_allclose
-from chainer.utils import WalkerAlias
+from chainer import cuda
+from chainer import gradient_check
+from chainer import utils
 
 
-class TestWalkerAlias(TestCase):
+class TestWalkerAlias(unittest.TestCase):
     def setUp(self):
         self.ps = [5, 3, 4, 1, 2]
-        self.sampler = WalkerAlias(self.ps)
+        self.sampler = utils.WalkerAlias(self.ps)
 
     def check_sample(self):
         counts = numpy.zeros(len(self.ps), numpy.float32)
         for _ in range(1000):
             vs = self.sampler.sample((4, 3))
-            numpy.add.at(counts, to_cpu(vs), 1)
+            numpy.add.at(counts, cuda.to_cpu(vs), 1)
         counts /= (1000 * 12)
         counts *= sum(self.ps)
-        assert_allclose(self.ps, counts, atol=0.1, rtol=0.1)
+        gradient_check.assert_allclose(self.ps, counts, atol=0.1, rtol=0.1)
 
     def test_sample_cpu(self):
         self.check_sample()

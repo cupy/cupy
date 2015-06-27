@@ -1,8 +1,8 @@
 import numpy
 
-import chainer.walker_alias
+from chainer.utils import walker_alias
 
-WalkerAlias = chainer.walker_alias.WalkerAlias
+WalkerAlias = walker_alias.WalkerAlias
 
 
 def force_array(x):

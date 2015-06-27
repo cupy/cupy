@@ -47,6 +47,7 @@ class WalkerAlias(object):
 
     def to_gpu(self):
         """Make a sampler GPU mode.
+
         """
         if not self.use_gpu:
             self.threshold = cuda.to_gpu(self.threshold)
@@ -81,7 +82,8 @@ class WalkerAlias(object):
         cuda.get_generator().fill_uniform(ps)
         vs = cuda.empty(shape, numpy.int32)
         cuda.elementwise(
-            'int* vs, const float* ps, const float* threshold, const int* values, int b',
+            '''int* vs, const float* ps, const float* threshold,
+            const int* values, int b''',
             '''
             float pb = ps[i] * b;
             int index = __float2int_rd(pb);
