@@ -29,6 +29,18 @@ class TestIntVariable(unittest.TestCase):
         self.assertEqual(10, self.x.eval())
 
 
+class TestShape(unittest.TestCase):
+
+    def setUp(self):
+        self.x = T.Shape(10, 3, 'xxx')
+
+    def test_str(self):
+        self.assertEqual('xxx.shape[3]', str(self.x))
+
+    def test_eval(self):
+        self.assertEqual(10, self.x.eval())
+
+
 class TestMember(unittest.TestCase):
 
     def setUp(self):
