@@ -7,7 +7,6 @@ class TypeInfo(object):
 
     def __init__(self, name, index, shape, dtype):
         self.index = index
-        #name = '{0} argument'.format(_make_ordinal(index + 1))
         name = '{0}[{1}]'.format(name, index)
         self.name = name
         self.shape = tuple(Shape(x, i, name) for i, x in enumerate(shape))
