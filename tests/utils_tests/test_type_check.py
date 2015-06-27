@@ -165,3 +165,7 @@ class TestGetType(unittest.TestCase):
         self.assertEqual(3, t.shape[2].eval())
         self.assertEqual(3, t.ndim.eval())
         self.assertEqual(numpy.float32, t.dtype.eval())
+
+    def test_invalid_arg(self):
+        with self.assertRaises(Exception):
+            T.get_types(1, False)

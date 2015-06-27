@@ -34,6 +34,8 @@ class TypeInfoTuple(tuple):
 
 
 def get_types(data, is_grad):
+    assert(isinstance(data, tuple))
+
     if is_grad:
         name = 'out_types'
     else:
