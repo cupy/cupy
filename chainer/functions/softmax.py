@@ -17,6 +17,21 @@ class Softmax(function.Function):
     def __init__(self, use_cudnn=True):
         self.use_cudnn = use_cudnn
 
+    def check_type_forward(self, in_types):
+        in_types.size().should_be(1)
+        x_type, = in_types
+        x_type.dtype.should_be(numpy.float32)
+        x_type.ndim.should_be(2)
+
+    def check_type_backward(self, in_types, out_types):
+        in_types.size().should_be(1)
+        out_types.size().should_be(1)
+        x_type, = in_types
+        y_type, = out_types
+        y_type.ndim.should_be(2)
+        y_type.shape[0].should_be(x_type.shape[0])
+        y_type.shape[1].should_be(x_type.shape[1])
+
     def forward_cpu(self, x):
         assert x[0].ndim == 2
         self.y = x[0] - numpy.amax(x[0], axis=1, keepdims=True)
