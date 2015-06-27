@@ -4,7 +4,11 @@ import numpy
 
 from chainer import cuda
 from chainer import gradient_check
+from chainer.testing import attr
 from chainer import utils
+
+if cuda.available:
+    cuda.init()
 
 
 class TestWalkerAlias(unittest.TestCase):
@@ -24,6 +28,7 @@ class TestWalkerAlias(unittest.TestCase):
     def test_sample_cpu(self):
         self.check_sample()
 
+    @attr.gpu
     def test_sample_gpu(self):
         self.sampler.to_gpu()
         self.check_sample()
