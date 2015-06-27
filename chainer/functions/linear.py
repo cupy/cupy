@@ -73,21 +73,23 @@ class Linear(function.Function):
         return 'gW', 'gb'
 
     def check_type_forward(self, in_types):
-        type_check.assert_argument_size_equals(in_types, 1)
+        in_types.size().should_be(1)
         x_type, = in_types
-        type_check.assert_type_equals(x_type, 'f')
-        type_check.assert_ndim_equals(x_type, 2)
-        type_check.assert_shape_equals(x_type, 1, self.W.shape[1])
+        x_type.dtype.should_be(numpy.float32)
+        x_type.ndim.should_be(2)
+        x_type.shape[1].should_be(
+            type_check.IntVariable(self.W.shape[1], 'W.shape[1]'))
 
     def check_type_backward(self, in_types, out_types):
-        type_check.assert_argument_size_equals(in_types, 1)
-        type_check.assert_argument_size_equals(out_types, 1)
+        in_types.size().should_be(1)
+        out_types.size().should_be(1)
         x_type, = in_types
         y_type, = out_types
-        type_check.assert_type_equals(y_type, 'f')
-        type_check.assert_ndim_equals(y_type, 2)
-        type_check.assert_shape_equals(y_type, 0, x_type.shape[0])
-        type_check.assert_shape_equals(y_type, 1, self.W.shape[0])
+        y_type.dtype.should_be(numpy.float32)
+        y_type.ndim.should_be(2)
+        y_type.shape[0].should_be(x_type.shape[0])
+        y_type.shape[1].should_be(
+            type_check.IntVariable(self.W.shape[0], 'W.shape[0]'))
 
     def forward_cpu(self, x):
         x = _as_mat(x[0])
