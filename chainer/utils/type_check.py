@@ -22,9 +22,6 @@ class TypeInfo(object):
 
 class TypeInfoTuple(tuple):
 
-    def __init__(self, data):
-        super(TypeInfoTuple, self).__init__(data)
-
     def _set_name(self, name):
         self.name = name
 
