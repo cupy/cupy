@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import gzip
+
 import numpy as np
 import six
-import urllib
+from six.moves.urllib import request
 
 parent = 'http://yann.lecun.com/exdb/mnist'
 train_images = 'train-images-idx3-ubyte.gz'
@@ -19,8 +20,8 @@ def load_mnist(images, labels, num):
     data = np.zeros(num * dim, dtype=np.uint8).reshape((num, dim))
     target = np.zeros(num, dtype=np.uint8).reshape((num, ))
 
-    with gzip.open(images, "rb") as f_images,\
-            gzip.open(labels, "rb") as f_labels:
+    with gzip.open(images, 'rb') as f_images,\
+            gzip.open(labels, 'rb') as f_labels:
         f_images.read(16)
         f_labels.read(8)
         for i in six.moves.range(num):
@@ -30,29 +31,31 @@ def load_mnist(images, labels, num):
 
     return data, target
 
-print("Downloading %s..." % train_images)
-urllib.urlretrieve(
-    '%s/%s' % (parent, train_images), train_images)
-print("Done\r\nDownloading %s..." % train_labels)
-urllib.urlretrieve(
-    '%s/%s' % (parent, train_labels), train_labels)
-print("Done\r\nDownloading %s..." % test_images)
-urllib.urlretrieve(
-    '%s/%s' % (parent, test_images), test_images)
-print("Done\r\nDownloading %s..." % test_labels)
-urllib.urlretrieve(
-    '%s/%s' % (parent, test_labels), test_labels)
-print("Done")
+print('Downloading {:s}...'.format(train_images))
+request.urlretrieve('{:s}/{:s}'.format(parent, train_images), train_images)
+print('Done')
+print('Downloading {:s}...'.format(train_labels))
+request.urlretrieve('{:s}/{:s}'.format(parent, train_labels), train_labels)
+print('Done')
+print('Downloading {:s}...'.format(test_images))
+request.urlretrieve('{:s}/{:s}'.format(parent, test_images), test_images)
+print('Done')
+print('Downloading {:s}...'.format(test_labels))
+request.urlretrieve('{:s}/{:s}'.format(parent, test_labels), test_labels)
+print('Done')
 
-mnist = {}
-print("Converting training data...")
+print('Converting training data...')
 data_train, target_train = load_mnist(train_images, train_labels, num_train)
-print("Done\r\nConverting test data...")
+print('Done')
+print('Converting test data...')
 data_test, target_test = load_mnist(test_images, test_labels, num_test)
+mnist = {}
 mnist['data'] = np.append(data_train, data_test, axis=0)
 mnist['target'] = np.append(target_train, target_test, axis=0)
 
-print("Done\r\nSave output...")
+print('Done')
+print('Save output...')
 with open('mnist.pkl', 'wb') as output:
-    pickle.dump(mnist, output, -1)
-print("Done\r\nConvert completed")
+    six.moves.cPickle.dump(mnist, output, -1)
+print('Done')
+print('Convert completed')

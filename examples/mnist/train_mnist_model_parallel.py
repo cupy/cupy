@@ -9,7 +9,6 @@ and performs poorly on MNIST dataset.
 import math
 
 import numpy as np
-import pickle
 import six
 
 import chainer
@@ -24,9 +23,8 @@ n_units = 2000
 
 # Prepare dataset
 print('load MNIST dataset')
-mnist_pickle = open('mnist.pkl', 'rb')
-mnist = pickle.load(mnist_pickle)
-mnist_pickle.close()
+with open('mnist.pkl', 'rb') as mnist_pickle:
+    mnist = six.moves.cPickle.load(mnist_pickle)
 mnist['data'] = mnist['data'].astype(np.float32)
 mnist['data'] /= 255
 mnist['target'] = mnist['target'].astype(np.int32)
