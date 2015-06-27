@@ -46,6 +46,18 @@ class LSTM(function.Function):
 
     """
 
+    def check_type_forward(self, in_types):
+        in_types.size().should_be(2)
+        c_type, x_type = in_types
+        c_type.dtype.should_be(numpy.float32)
+        x_type.dtype.should_be(numpy.float32)
+
+        # c_type.ndim.should_be(2)
+        # x_type.ndim.should_be(2)
+
+        x_type.shape[0].should_be(c_type.shape[0])
+        x_type.shape[1].should_be(4 * c_type.shape[1])
+
     def forward_cpu(self, inputs):
         c_prev, x = inputs
         n_unit = c_prev.shape[1]
