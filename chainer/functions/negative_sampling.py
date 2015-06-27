@@ -1,6 +1,5 @@
-from itertools import izip
-
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -85,18 +84,20 @@ class NegativeSampling(function.Function):
         function.Function.to_gpu(self, device)
         self.sampler.to_gpu()
 
-    def forward_cpu(self, (x, t)):
+    def forward_cpu(self, inputs):
+        x, t = inputs
         self._make_samples(t)
 
         loss = 0
-        for i, (ix, k) in enumerate(izip(x, self.samples)):
+        for i, (ix, k) in enumerate(six.moves.zip(x, self.samples)):
             w = self.W[k]
             f = w.dot(ix)
             f[0] *= -1  # positive sample
             loss += numpy.sum(numpy.logaddexp(f, 0))
         return numpy.array([loss], numpy.float32),
 
-    def forward_gpu(self, (x, t)):
+    def forward_gpu(self, inputs):
+        x, t = inputs
         n_in = x.shape[1]
         self._make_samples(t)
 
@@ -138,11 +139,14 @@ class NegativeSampling(function.Function):
         loss = cuda.gpuarray.sum(y)
         return loss,
 
-    def backward_cpu(self, (x, t), (gloss,)):
+    def backward_cpu(self, inputs, grads):
+        x, t = inputs
+        gloss, = grads
+
         gloss = numpy.sum(gloss)
         gx = numpy.zeros_like(x)
 
-        for i, (ix, k) in enumerate(izip(x, self.samples)):
+        for i, (ix, k) in enumerate(six.moves.zip(x, self.samples)):
             w = self.W[k]
             f = w.dot(ix)
 
@@ -152,11 +156,14 @@ class NegativeSampling(function.Function):
             g[0] *= -1
 
             gx[i] = g.dot(w)
-            for ik, ig in izip(k, g):
+            for ik, ig in six.moves.zip(k, g):
                 self.gW[ik] += ig * ix
         return gx, None
 
-    def backward_gpu(self, (x, t), (gloss,)):
+    def backward_gpu(self, inputs, grads):
+        x, t = inputs
+        gloss, = grads
+
         n_in = x.shape[1]
         g = cuda.empty_like(self.wx)
         cuda.elementwise(

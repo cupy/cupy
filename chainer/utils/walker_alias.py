@@ -25,7 +25,7 @@ class WalkerAlias(object):
         threshold = numpy.ndarray(len(probs), numpy.float32)
         values = numpy.ndarray(len(probs) * 2, numpy.int32)
         il, ir = 0, 0
-        pairs = zip(prob, range(len(probs)))
+        pairs = list(zip(prob, range(len(probs))))
         pairs.sort()
         for prob, i in pairs:
             p = prob * len(probs)
