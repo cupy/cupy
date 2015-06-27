@@ -179,5 +179,5 @@ class TestGetType(unittest.TestCase):
         self.assertEqual(numpy.float32, t.dtype.eval())
 
     def test_invalid_arg(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(AssertionError):
             T.get_types(1, False)
