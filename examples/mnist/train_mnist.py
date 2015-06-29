@@ -73,7 +73,11 @@ for epoch in xrange(1, n_epoch+1):
         loss.backward()
         if epoch == 1 and i == 0:
             from sys import stderr
-            print >> stderr, print_graph((loss,))
+            with open("graph.dot", "w") as o:
+                o.write(print_graph((loss, )))
+            with open("graph.wo_split.dot", "w") as o:
+                o.write(print_graph((loss, ), remove_split=True))
+            print 'graph generated'
         optimizer.update()
 
         sum_loss     += float(cuda.to_cpu(loss.data)) * batchsize

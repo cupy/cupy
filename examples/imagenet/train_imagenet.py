@@ -47,6 +47,8 @@ parser.add_argument('--out', '-o', default='model',
                     help='Path to save model on each validation')
 parser.add_argument('--graph_file', '-G', default='graph.dot',
                     help='Path to model graph')
+parser.add_argument('--remove_split', '-r', action='store_true', dest="remove_split",
+                    help='If true, remove split function from generated graph')
 args = parser.parse_args()
 assert 50000 % args.val_batchsize == 0
 
@@ -265,7 +267,7 @@ def train_loop():
             if not graph_generated:
                 from chainer.graph_builder import print_graph
                 with open(args.graph_file, 'w') as o:
-                    o.write(print_graph((loss,)))
+                    o.write(print_graph((loss,), args.remove_split))
                 print 'graph generated'
                 graph_generated = True
             loss.backward()
