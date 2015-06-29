@@ -9,7 +9,7 @@ class Accuracy(function.Function):
         y, t = inputs
         y = y.reshape(y.shape[0], y.size / y.shape[0])  # flatten
         pred = y.argmax(axis=1)
-        return (pred == t).mean(dtype=numpy.float32),
+        return numpy.array((pred == t).mean(dtype=numpy.float32)),
 
     def forward_gpu(self, inputs):
         x, t = inputs
