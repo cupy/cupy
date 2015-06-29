@@ -1,7 +1,7 @@
 Chainer Contribution Guide
 ==========================
 
-This document is a guide for how to contribute to Chainer.
+This is a guide for all contributions to Chainer.
 The development of Chainer is running on `the official repository at GitHub <https://github.com/pfnet/chainer>`_.
 Anyone that wants to register an issue or to send a pull request should read through this document.
 
