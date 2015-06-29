@@ -48,8 +48,7 @@ class SigmoidCrossEntropy(function.Function):
 
 
 def sigmoid_cross_entropy(x, t, use_cudnn=True):
-    """Computes cross entropy loss on sigmoid of the prediction using
-    the groundtruth label vector.
+    """Computes cross entropy loss for sigmoid activations.
 
     Args:
         x (Variable): Variable holding a matrix whose (i, j)-th element
