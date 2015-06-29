@@ -1,26 +1,30 @@
-import heapq, weakref
+import heapq
+import weakref
+
 import numpy
 
-from . import cuda
+from chainer import cuda
+
 
 class Variable(object):
-    """Array with a structure to keep track of computation
+
+    """Array with a structure to keep track of computation.
 
     Every variable holds a data array of type either :class:`~numpy.ndarray` or
     :class:`~pycuda.gpuarray.GPUArray`.
 
-    A Variable object may be constructed in two ways: by the user or by some function.
-    When a variable is created by some function as one of its outputs, the variable
-    holds a reference to that function. This reference is used in error
-    backpropagation (a.k.a. backprop). It is also used in *backward unchaining*.
-    A variable that does not hold a reference to its creator is called a *root*
-    variable. A variable is root if it is created by the user, or if the reference is
-    deleted by :meth:`unchain_backward`.
+    A Variable object may be constructed in two ways: by the user or by some
+    function. When a variable is created by some function as one of its
+    outputs, the variable holds a reference to that function. This reference is
+    used in error backpropagation (a.k.a. backprop). It is also used in
+    *backward unchaining*. A variable that does not hold a reference to its
+    creator is called a *root* variable. A variable is root if it is created by
+    the user, or if the reference is deleted by :meth:`unchain_backward`.
 
-    Users can disable this chaining behavior by setting the volatile flag for the
-    initial variables. When a function gets volatile variables as its inputs,
-    the output variables do not hold references to the function. This acts like
-    unchaining on every function application.
+    Users can disable this chaining behavior by setting the volatile flag for
+    the initial variables. When a function gets volatile variables as its
+    inputs, the output variables do not hold references to the function. This
+    acts like unchaining on every function application.
 
     Attributes:
         data: Data array of type either :class:`~numpy.ndarray` or
@@ -36,11 +40,13 @@ class Variable(object):
             any function applications.
 
     """
+
     def __init__(self, data, volatile=False):
         """Initializes a variable.
 
         Args:
-            data (:class:`~numpy.ndarray` or :class:`~pycuda.gpuarray.GPUArray`):
+            data (:class:`~numpy.ndarray` or \
+                :class:`~pycuda.gpuarray.GPUArray`):
                 Data array that this variable holds.
             volatile (bool): Volatility flag. If it is True, the variable will
                 not keep track of any function applications.
@@ -58,8 +64,8 @@ class Variable(object):
         self.volatile = volatile
 
         self.splitter = weakref.ref(lambda: 0)  # dead ref
-        self.grad     = None
-        self.creator  = None
+        self.grad = None
+        self.creator = None
 
     def __pos__(self):
         return self
@@ -103,14 +109,14 @@ class Variable(object):
         loss value.
 
         Args:
-            retain_grad (bool): If True, the gradient arrays of all intermediate
-                variables are kept. Otherwise, :data:`grad` of the intermediate
-                variables are set to ``None`` on appropriate timing, which may
-                reduce the maximum memory consumption.
+            retain_grad (bool): If True, the gradient arrays of all
+                intermediate variables are kept. Otherwise, :data:`grad` of the
+                intermediate variables are set to ``None`` on appropriate
+                timing, which may reduce the maximum memory consumption.
 
-                In most cases of training some model, the purpose of backprop is
-                to compute gradients of parameters, not of variables, so it is
-                recommended to set this flag False.
+                In most cases of training some model, the purpose of backprop
+                is to compute gradients of parameters, not of variables, so it
+                is recommended to set this flag False.
 
         """
         if self.creator is None:
@@ -139,7 +145,7 @@ class Variable(object):
             _, _, func = heapq.heappop(cand_funcs)
             outputs = tuple(y() for y in func.outputs)  # access via weak ref
 
-            in_data  = tuple(x.data for x in func.inputs)
+            in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(y and y.grad for y in outputs)
             with cuda.using_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
@@ -155,15 +161,14 @@ class Variable(object):
                     add_cand(x.creator)
 
     def unchain_backward(self):
-        """Deletes backward references of variables and functions backward,
-        a.k.a. *backward unchaining*.
+        """Deletes references between variables and functions backward.
 
         After this method completes, intermediate variables and functions that
         are not referenced from anywhere are deallocated by reference
-        count GC. Also this variable itself deletes the reference to its creator
-        function, i.e. this variable becomes root in the computation graph. It
-        indicates that backprop after unchaining stops at this variable. This
-        behavior is useful to implement truncated BPTT.
+        count GC. Also this variable itself deletes the reference to its
+        creator function, i.e. this variable becomes root in the computation
+        graph. It indicates that backprop after unchaining stops at this
+        variable. This behavior is useful to implement truncated BPTT.
 
         """
         cand_funcs = []

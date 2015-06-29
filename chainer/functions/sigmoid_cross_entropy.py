@@ -1,8 +1,12 @@
 import numpy
-from chainer import cuda, cudnn, Function
-from chainer.functions.sigmoid import Sigmoid
 
-class SigmoidCrossEntropy(Function):
+from chainer import cuda
+from chainer import function
+from chainer.functions import sigmoid
+
+
+class SigmoidCrossEntropy(function.Function):
+
     """Sigmoid activation followed by a sigmoid cross entropy loss."""
 
     def __init__(self, use_cudnn=True):
@@ -11,7 +15,7 @@ class SigmoidCrossEntropy(Function):
     def forward_cpu(self, inputs):
         x, t = inputs
         assert x.shape == t.shape
-        self.y, = Sigmoid().forward_cpu((x,))
+        self.y, = sigmoid.Sigmoid().forward_cpu((x,))
         # stable computation of the cross entropy.
         loss = -numpy.sum(
             x * (t - (x >= 0)) - numpy.log(1 + numpy.exp(-numpy.abs(x))))
@@ -19,7 +23,7 @@ class SigmoidCrossEntropy(Function):
 
     def forward_gpu(self, inputs):
         x, t = inputs
-        self.y, = Sigmoid(self.use_cudnn).forward_gpu((x,))
+        self.y, = sigmoid.Sigmoid(self.use_cudnn).forward_gpu((x,))
         loss = -cuda.reduce(
             'int* t, float* x',
             'x[i] * (t[i] - (x[i] >= 0)) - log(1 + exp(x[i] - 2 * x[i] * (x[i] >= 0)))',

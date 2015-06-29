@@ -1,16 +1,22 @@
 import numpy
-from six.moves import range
-from chainer import cuda, Function
+import six
+
+from chainer import cuda
+from chainer import function
+
 
 def _extract_gates(x):
     r = x.reshape((x.shape[0], x.shape[1] / 4, 4) + x.shape[2:])
-    return (r[:, :, i] for i in range(4))
+    return (r[:, :, i] for i in six.moves.range(4))
+
 
 def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
 
+
 def _grad_sigmoid(x):
     return x * (1 - x)
+
 
 def _grad_tanh(x):
     return 1 - x * x
@@ -30,13 +36,16 @@ __device__ float grad_tanh(float y)    { return 1 - y * y; }
     float ao = sigmoid(x_i[3*rsize + J]);
 '''
 
-class LSTM(Function):
+
+class LSTM(function.Function):
+
     """Long short-term memory unit with forget gate.
 
     It has two inputs (c, x) and two outputs (c, h), where c indicates the cell
     state. x must have four times channels compared to the number of units.
 
     """
+
     def forward_cpu(self, inputs):
         c_prev, x = inputs
         n_unit = c_prev.shape[1]
@@ -56,12 +65,14 @@ class LSTM(Function):
         c_prev = inputs[0]
         gc, gh = grad_outputs
 
-        gx  = numpy.empty_like(inputs[1])
+        gx = numpy.empty_like(inputs[1])
         ga, gi, gf, go = _extract_gates(gx)
 
         # Consider the case that either gradient is not given
-        if gc is None: gc = 0
-        if gh is None: gh = 0
+        if gc is None:
+            gc = 0
+        if gh is None:
+            gh = 0
 
         co = numpy.tanh(self.c)
         gc_prev = gh * self.o * _grad_tanh(co) + gc  # multiply f later
@@ -79,7 +90,7 @@ class LSTM(Function):
         rsize = c_prev.size // lsize
 
         self.c = cuda.empty_like(c_prev)
-        h      = cuda.empty_like(c_prev)
+        h = cuda.empty_like(c_prev)
         cuda.elementwise(
             '''float* c, float* h, const float* c_prev, const float* x,
                int lsize, int rsize''',
@@ -92,20 +103,25 @@ class LSTM(Function):
 
     def backward_gpu(self, inputs, grad_outputs):
         c_prev, x = inputs
-        gc, gh    = grad_outputs
+        gc, gh = grad_outputs
         lsize = c_prev.shape[0] * c_prev.shape[1]
         rsize = c_prev.size // lsize
 
         # Odd rule to determine whether the gradient is given or not.
-        if gc is None: gc = self.c
-        if gh is None: gh = self.c
+        if gc is None:
+            gc = self.c
+        if gh is None:
+            gh = self.c
 
         gc_prev = cuda.empty_like(c_prev)
-        gx      = cuda.empty_like(x)
+        gx = cuda.empty_like(x)
         cuda.elementwise(
-            '''float* gc_prev, float* gx, const float* c_prev, const float* x,
-               const float* c, const float* gc, const float* gh, int lsize, int rsize''',
-            '''COMMON_ROUTINE;
+            '''
+               float* gc_prev, float* gx, const float* c_prev, const float* x,
+               const float* c, const float* gc, const float* gh, int lsize,
+               int rsize
+            ''', '''
+               COMMON_ROUTINE;
                float* gx_i = gx + I * 4 * rsize;
                float& ga = gx_i[          J];
                float& gi = gx_i[  rsize + J];
@@ -113,8 +129,9 @@ class LSTM(Function):
                float& go = gx_i[3*rsize + J];
 
                float co  = tanhf(c[i]);
-               // Odd rule: if gh == c [gc == c] then gh [gc] is not given, since we
-               // cannot pass null pointer to the kernel through PyCUDA.
+               // Odd rule: if gh == c [gc == c] then gh [gc] is not given,
+               // since we cannot pass null pointer to the kernel through
+               // PyCUDA.
                float gc1 = (gh == c ? 0 : gh[i] * ao * grad_tanh(co))
                          + (gc == c ? 0 : gc[i]);
                go        =  gh == c ? 0 : gh[i] * co * grad_sigmoid(ao);
@@ -122,20 +139,22 @@ class LSTM(Function):
                gc_prev[i] = gc1 * af;
                ga         = gc1 * ai        * grad_tanh(aa);
                gi         = gc1 * aa        * grad_sigmoid(ai);
-               gf         = gc1 * c_prev[i] * grad_sigmoid(af);''',
+               gf         = gc1 * c_prev[i] * grad_sigmoid(af);
+            ''',
             'lstm_bwd', preamble=_preamble)(
                 gc_prev, gx, c_prev, x, self.c, gc, gh, lsize, rsize)
 
         return gc_prev, gx
 
+
 def lstm(c_prev, x):
     """Long Short-Term Memory units as an activation function.
 
-    This function implements LSTM units with forget gates. Let the previous cell
-    state :math:`c_{\\text{prev}}` and the incoming signal :math:`x`. Then,
-    first the incoming signal :math:`x` is split along the second dimension into
-    four arrays :math:`a, i, f, o` of the same shapes. Second, it computes
-    outputs as:
+    This function implements LSTM units with forget gates. Let the previous
+    cell state :math:`c_{\\text{prev}}` and the incoming signal :math:`x`.
+    Then, first the incoming signal :math:`x` is split along the second
+    dimension into four arrays :math:`a, i, f, o` of the same shapes. Second,
+    it computes outputs as:
 
     .. math::
 
@@ -147,8 +166,8 @@ def lstm(c_prev, x):
 
     Args:
         c_prev (~chainer.Variable): Variable that holds the previous cell
-            state. The cell state should be a zero array or the output of the previous
-            call of LSTM.
+            state. The cell state should be a zero array or the output of the
+            previous call of LSTM.
         x (~chainer.Variable): Variable that holds the incoming signal. It must
             have the second dimension four times of that of the cell state,
 
