@@ -135,11 +135,18 @@ def computational_graph(outputs, remove_split=False):
     cands = []
     seen_edges = set()
 
-    def _add_cand(cand):
-        heapq.heappush(cands, (-cand.rank, len(seen_edges), cand))
+    def heap_with_push_counter():
+        table = []
+
+        def add(cand):
+            heapq.heappush(cands, (-cand.rank, len(table), cand))
+            table.append(cand)
+        return add
+
+    heap = heap_with_push_counter()
 
     for o in outputs:
-        heapq.heappush(cands, (-o.rank, len(seen_edges), o))
+        heap(o)
 
     while cands:
         _, _, cand = heapq.heappop(cands)
@@ -148,15 +155,15 @@ def computational_graph(outputs, remove_split=False):
             if remove_split and isinstance(creator, function.Split):
                 # assume that function.Split has only one input
                 next_cand = creator.inputs[0]
-                _add_cand(next_cand)
+                heap(next_cand)
                 continue
             if creator is not None and (creator, cand) not in seen_edges:
-                _add_cand(creator)
+                heap(creator)
                 seen_edges.add((creator, cand))
         elif isinstance(cand, function.Function):
             if remove_split and isinstance(cand, function.Split):
                 next_cand = creator.inputs[0]
-                _add_cand(next_cand)
+                heap(next_cand)
                 continue
             for input_ in cand.inputs:
                 if input_ != cand and (input_, cand) not in seen_edges:
@@ -165,6 +172,6 @@ def computational_graph(outputs, remove_split=False):
                        creator is not None and\
                        isinstance(creator, function.Split):
                         input_ = creator.inputs[0]
-                    _add_cand(input_)
+                    heap(input_)
                     seen_edges.add((input_, cand))
     return ComputationalGraph(seen_edges)
