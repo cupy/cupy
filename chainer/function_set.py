@@ -1,9 +1,11 @@
 import numpy
+import six
 
-import cuda
-from function import Function
+from chainer import cuda
+
 
 class FunctionSet(object):
+
     """Set of objects with ``parameters`` and ``gradients`` properties.
 
     :class:`FunctionSet` is useful to collect parameters and gradients of
@@ -16,9 +18,9 @@ class FunctionSet(object):
     :class:`FunctionSet` object.
 
     """
+
     def __init__(self, **functions):
-        """Initializes :class:`FunctionSet` by given key-value pairs of
-        :class:`Function` objects.
+        """Initializes the function set by given functions.
 
         Args:
             **functions: ``dict`` of ``str`` key and :class:`Function` values.
@@ -26,7 +28,7 @@ class FunctionSet(object):
                 object as attributes.
 
         """
-        for name, func in functions.iteritems():
+        for name, func in six.iteritems(functions):
             setattr(self, name, func)
 
     def collect_parameters(self):
@@ -52,7 +54,7 @@ class FunctionSet(object):
             self
 
         """
-        for func in self.__dict__.itervalues():
+        for func in six.itervalues(self.__dict__):
             func.to_gpu(device=device)
         return self
 
@@ -65,7 +67,7 @@ class FunctionSet(object):
             self
 
         """
-        for func in self.__dict__.itervalues():
+        for func in six.itervalues(self.__dict__):
             func.to_cpu()
         return self
 
@@ -94,7 +96,8 @@ class FunctionSet(object):
         The order of parameters is consistent with :meth:`gradients` property.
 
         """
-        return sum((func.parameters for _, func in self._get_sorted_funcs()), ())
+        return sum((func.parameters for _, func in self._get_sorted_funcs()),
+                   ())
 
     @parameters.setter
     def parameters(self, params):
@@ -109,7 +112,8 @@ class FunctionSet(object):
         The order of gradients is consistent with :meth:`parameters` property.
 
         """
-        return sum((func.gradients for _, func in self._get_sorted_funcs()), ())
+        return sum((func.gradients for _, func in self._get_sorted_funcs()),
+                   ())
 
     @gradients.setter
     def gradients(self, grads):
@@ -118,4 +122,4 @@ class FunctionSet(object):
             func.gradients = grad_iter
 
     def _get_sorted_funcs(self):
-        return sorted(self.__dict__.iteritems())
+        return sorted(six.iteritems(self.__dict__))

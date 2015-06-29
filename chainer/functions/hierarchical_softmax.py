@@ -1,11 +1,11 @@
-import collections
-from itertools import izip
-from Queue import PriorityQueue
-
 import numpy
-from chainer import Function
+import six
+
+from chainer import function
+
 
 class TreeParser(object):
+
     def __init__(self):
         self.next_id = 0
 
@@ -34,7 +34,8 @@ class TreeParser(object):
         if isinstance(node, tuple):
             # internal node
             if len(node) != 2:
-                raise ValueError('All internal nodes must have two child nodes')
+                raise ValueError(
+                    'All internal nodes must have two child nodes')
             left, right = node
             self.path.append(self.next_id)
             self.next_id += 1
@@ -53,7 +54,8 @@ class TreeParser(object):
             self.codes[node] = numpy.array(self.code).astype(numpy.float32)
 
 
-class BinaryHierarchicalSoftmax(Function):
+class BinaryHierarchicalSoftmax(function.Function):
+
     """Implementation of hierarchical softmax (HSM).
 
     In natural language applications, vocabulary size is too large to use
@@ -75,20 +77,23 @@ class BinaryHierarchicalSoftmax(Function):
     .. math::
 
        P(x) &= \prod_{(e_i, b_i) \in \mbox{path}(x)}P(b_i | e_i)  \\\\
-            &= \prod_{(e_i, b_i) \in \mbox{path}(x)}\sigma(b_i x^\\top w_{e_i}),
+            &= \prod_{(e_i, b_i) \in \mbox{path}(x)}\sigma(b_i x^\\top
+               w_{e_i}),
 
     where :math:`\sigma(\\cdot)` is a sigmoid function, and :math:`w` is a
     weight matrix.
 
-    This function costs :math:`O(\log(n))` time as an average length of paths is
-    :math:`O(\log(n))`, and :math:`O(n)` memory as the number of internal nodes
-    equals :math:`n - 1`.
+    This function costs :math:`O(\log(n))` time as an average length of paths
+    is :math:`O(\log(n))`, and :math:`O(n)` memory as the number of internal
+    nodes equals :math:`n - 1`.
 
     Args:
         in_size (int): Dimension of input vectors.
         tree: A binary tree made with tuples like `((1, 2), 3)`.
 
-    See: Hierarchical Probabilistic Neural Network Language Model [Morin+, AISTAT2005].
+    See: Hierarchical Probabilistic Neural Network Language Model [Morin+,
+    AISTAT2005].
+
     """
 
     parameter_names = ('W',)
@@ -100,16 +105,18 @@ class BinaryHierarchicalSoftmax(Function):
         self.paths = parser.get_paths()
         self.codes = parser.get_codes()
 
-        self.W = numpy.random.uniform(-1, 1, (parser.size(), in_size)).astype(numpy.float32)
+        self.W = numpy.random.uniform(
+            -1, 1, (parser.size(), in_size)).astype(numpy.float32)
         self.gW = numpy.zeros(self.W.shape, numpy.float32)
 
-    def forward_cpu(self, (x, t)):
+    def forward_cpu(self, args):
+        x, t = args
         assert x.ndim == 2 and x.dtype.kind == 'f'
         assert t.ndim == 1 and t.dtype.kind == 'i'
         assert len(x) == len(t)
 
         loss = 0.0
-        for ix, it in izip(x, t):
+        for ix, it in six.moves.zip(x, t):
             loss += self._forward_cpu_one(ix, it)
         return numpy.array([loss]),
 
@@ -121,9 +128,11 @@ class BinaryHierarchicalSoftmax(Function):
         loss = numpy.logaddexp(0, -wxy)  # == log(1 + exp(-wxy))
         return numpy.sum(loss)
 
-    def backward_cpu(self, (x, t), (gloss,)):
+    def backward_cpu(self, args, loss):
+        x, t = args
+        gloss, = loss
         gx = numpy.empty_like(x)
-        for i, (ix, it) in enumerate(izip(x, t)):
+        for i, (ix, it) in enumerate(six.moves.zip(x, t)):
             gx[i] = self._backward_cpu_one(ix, it, gloss[0])
         return gx, None
 
@@ -147,17 +156,18 @@ def create_huffman_tree(word_counts):
     ``((3, 1), (2, 0))``.
 
     Args:
-        word_counts (``dict`` of ``int`` key and ``int`` or ``float`` values.): 
+        word_counts (``dict`` of ``int`` key and ``int`` or ``float`` values.):
             Dictionary representing counts of words.
 
     Returns:
         Binary huffman tree with tuples and keys of ``word_coutns``.
+
     """
     if len(word_counts) == 0:
         raise ValueError('Empty vocabulary')
 
-    q = PriorityQueue()
-    for w, c in word_counts.iteritems():
+    q = six.moves.queue.PriorityQueue()
+    for w, c in six.iteritems(word_counts):
         q.put((c, w))
 
     while q.qsize() >= 2:
@@ -168,4 +178,3 @@ def create_huffman_tree(word_counts):
         q.put((count, tree))
 
     return q.get()[1]
-

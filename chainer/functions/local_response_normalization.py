@@ -1,10 +1,12 @@
-import numpy
-from chainer import cuda, Function
+from chainer import cuda
+from chainer import function
+import six
+
 
 def _cu_conv_sum(y, x, n):
     # Convolutional sum
     # TODO(beam2d): Use scan computation
-    rdim = x.size / (x.shape[0] * x.shape[1])
+    rdim = x.size // (x.shape[0] * x.shape[1])
     cuda.elementwise(
         'float* y, const float* x, int rdim, int N, int n_',
         '''
@@ -28,34 +30,36 @@ def _cu_conv_sum(y, x, n):
         ''', 'lrn_conv_sum')(y, x, rdim, x.shape[1], n,
                              range=slice(0, x.shape[0] * rdim, 1))
 
-class LocalResponseNormalization(Function):
+
+class LocalResponseNormalization(function.Function):
+
     """Cross-channel normalization function used in AlexNet."""
 
     def __init__(self, n=5, k=2, alpha=1e-4, beta=.75):
-        self.n     = n
-        self.k     = k
+        self.n = n
+        self.k = k
         self.alpha = alpha
-        self.beta  = beta
+        self.beta = beta
 
     def forward_cpu(self, x):
-        half_n = self.n / 2
+        half_n = self.n // 2
         x2 = x[0] * x[0]
         sum_part = x2.copy()
-        for i in xrange(1, half_n + 1):
-            sum_part[:, i:  ] += x2[:,  :-i]
-            sum_part[:,  :-i] += x2[:, i:  ]
+        for i in six.moves.range(1, half_n + 1):
+            sum_part[:, i:] += x2[:, :-i]
+            sum_part[:, :-i] += x2[:, i:]
         self.unit_scale = self.k + self.alpha * sum_part
-        self.scale      = self.unit_scale ** -self.beta
-        self.y          = x[0] * self.scale
+        self.scale = self.unit_scale ** -self.beta
+        self.y = x[0] * self.scale
         return self.y,
 
     def backward_cpu(self, x, gy):
-        half_n = self.n / 2
+        half_n = self.n // 2
         summand = self.y * gy[0] / self.unit_scale
         sum_part = summand.copy()
-        for i in xrange(1, half_n + 1):
-            sum_part[:, i:  ] += summand[:,  :-i]
-            sum_part[:,  :-i] += summand[:, i:  ]
+        for i in six.moves.range(1, half_n + 1):
+            sum_part[:, i:] += summand[:, :-i]
+            sum_part[:, :-i] += summand[:, i:]
 
         gx = gy[0] * self.scale - 2 * self.alpha * self.beta * x[0] * sum_part
         return gx,
@@ -112,8 +116,8 @@ def local_response_normalization(x, n=5, k=2, alpha=1e-4, beta=.75):
     Returns:
         Variable: Output variable.
 
-    See: SSec. 3.3 of `ImageNet Classification with Deep Convolutional Neural \\
-    Networks <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_
+    See: SSec. 3.3 of `ImageNet Classification with Deep Convolutional \\
+    Neural Networks <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_
 
     """
     return LocalResponseNormalization(n, k, alpha, beta)(x)

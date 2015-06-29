@@ -1,28 +1,34 @@
 import numpy
+import six
+
 from chainer import cuda
+
 
 def get_conv_outsize(size, k, s, p, cover_all=False):
     if cover_all:
-        return (size + p * 2 - k + s - 1) / s + 1
+        return (size + p * 2 - k + s - 1) // s + 1
     else:
-        return (size + p * 2 - k) / s + 1
+        return (size + p * 2 - k) // s + 1
+
 
 def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
     n, c, h, w = img.shape
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all)
     out_w = get_conv_outsize(w, kw, sx, pw, cover_all)
 
-    img = numpy.pad(img, ((0, 0), (0, 0), (ph, ph + sy - 1), (pw, pw + sx - 1)),
+    img = numpy.pad(img,
+                    ((0, 0), (0, 0), (ph, ph + sy - 1), (pw, pw + sx - 1)),
                     mode='constant', constant_values=(pval,))
     col = numpy.ndarray((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
 
-    for i in xrange(kh):
+    for i in six.moves.range(kh):
         i_lim = i + sy * out_h
-        for j in xrange(kw):
+        for j in six.moves.range(kw):
             j_lim = j + sx * out_w
             col[:, :, i, j, :, :] = img[:, :, i:i_lim:sy, j:j_lim:sx]
 
     return col
+
 
 def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
     n, c, h, w = img.shape
@@ -52,18 +58,20 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
         'im2col')(col, img, h, w, out_h, out_w, kh, kw, sy, sx, ph, pw)
     return col
 
+
 def col2im_cpu(col, sy, sx, ph, pw, h, w):
     n, c, kh, kw, out_h, out_w = col.shape
 
     img = numpy.zeros((n, c, h + 2 * ph + sy - 1, w + 2 * pw + sx - 1),
                       dtype=col.dtype)
-    for i in xrange(kh):
+    for i in six.moves.range(kh):
         i_lim = i + sy * out_h
-        for j in xrange(kw):
+        for j in six.moves.range(kw):
             j_lim = j + sx * out_w
             img[:, :, i:i_lim:sy, j:j_lim:sx] += col[:, :, i, j, :, :]
 
-    return img[:, :, ph:h+ph, pw:w+pw]
+    return img[:, :, ph:h + ph, pw:w + pw]
+
 
 def col2im_gpu(col, sy, sx, ph, pw, h, w):
     n, c, kh, kw, out_h, out_w = col.shape
@@ -88,7 +96,8 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
              int ky = y - out_y * sy;
              for (int out_x = out_x_0; out_x < out_x_1; ++out_x) {
                int kx = x - out_x * sx;
-               val += col[out_x + out_w * (out_y + out_h * (kx + kw * (ky + kh * c0)))];
+               int k = out_y + out_h * (kx + kw * (ky + kh * c0));
+               val += col[out_x + out_w * k];
              }
            }
            img[i] = val;

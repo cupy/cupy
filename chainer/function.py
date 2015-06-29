@@ -1,29 +1,34 @@
-import copy, weakref
-import numpy
+import copy
+import weakref
 
-import cuda
-from variable import Variable
+import numpy
+import six
+
+from chainer import cuda
+from chainer import variable
+
 
 class Function(object):
-    """Function of variable(s) to variable(s) that leaves footprint to the
-    output variables on application.
 
-    All function implementations defined in :mod:`chainer.functions` inherit this class.
+    """Function on variables with backpropagation ability.
+
+    All function implementations defined in :mod:`chainer.functions` inherit
+    this class.
 
     The main feature of this class is keeping track of function applications as
     a backward graph. When a function is applied to :class:`Variable` objects,
     the function is copied, and its :meth:`forward` method is called on
-    :data:`~Variable.data` fields of input variables, and at the same time it chains
-    references from output variables to the function and from the function to
-    its inputs.
+    :data:`~Variable.data` fields of input variables, and at the same time it
+    chains references from output variables to the function and from the
+    function to its inputs.
 
     .. note::
 
-       Strictly speaking, when a function is applied to some variable, a special
-       :class:`Function` object called *splitter* is inserted between the
-       variable and the function. The splitter is used to manipulate multiple
-       function applications on the same variable, where gradients from
-       different backward paths are accumulated at the variable.
+       Strictly speaking, when a function is applied to some variable, a
+       special :class:`Function` object called *splitter* is inserted between
+       the variable and the function. The splitter is used to manipulate
+       multiple function applications on the same variable, where gradients
+       from different backward paths are accumulated at the variable.
 
     .. note::
 
@@ -56,7 +61,7 @@ class Function(object):
                                |--- x'  <--- f'  <--- y
            x <--- (splitter) <-+
                                |--- x'' <--- f'' <--- z
-    
+
        Note that the splitter is implicitly inserted and user does not need to
        take any special care of it; just remember that such branching is
        correctly managed by chainer.
@@ -79,9 +84,9 @@ class Function(object):
         inputs: A tuple or list of input variables.
         outputs: A tuple or list of output variables.
         parameter_names: A tuple or list of names of parameter attributes.
-            It is set to an empty tuple by default. This attribute is used by the
-            default implementation of :meth:`parameters` property to gather the
-            collection of parameter arrays. Implementation of parameterized
+            It is set to an empty tuple by default. This attribute is used by
+            the default implementation of :meth:`parameters` property to gather
+            the collection of parameter arrays. Implementation of parameterized
             function should override this field as an attribute or a property,
             or otherwise it should override :meth:`parameters` property.
         gradient_names: A tuple or list of names of gradient attributes. The
@@ -92,24 +97,23 @@ class Function(object):
     gradient_names = ()
 
     def __init__(self):
-        self.inputs  = None
+        self.inputs = None
         self.outputs = None
-        self.rank    = None
+        self.rank = None
 
     def __call__(self, *inputs):
-        """Applies forward propagation on input variables with chaining backward
-        reference.
+        """Applies forward propagation with chaining backward references.
 
         Basic behavior is also expressed in documentation of :class:`Function`
-        class. This function first copies itself to avoid conflict over multiple
-        invokations.
+        class. This function first copies itself to avoid conflict over
+        multiple invokations.
 
         .. note::
 
            If the :data:`~Variable.data` attribute of input variables reside on
            GPU device, then, before it calls :meth:`forward` method, the
-           appropriate device is selected, so in most cases implementor does not
-           need to take care of device selection.
+           appropriate device is selected, so in most cases implementor does
+           not need to take care of device selection.
 
         Args:
             inputs: Tuple of input :class:`Variable` objects. All input
@@ -125,14 +129,16 @@ class Function(object):
         self = copy.copy(self)
 
         if any(x.volatile for x in inputs):  # not build graph
-            assert all(x.volatile for x in inputs)  # do not mix multiple volatility
+            # do not mix multiple volatility
+            assert all(x.volatile for x in inputs)
 
             in_data = tuple(x.data for x in inputs)
             with cuda.using_device(*in_data):
                 out_data = self.forward(in_data)
             assert type(out_data) == tuple
 
-            outputs = list(Variable(y, volatile=True) for y in out_data)
+            outputs = list(variable.Variable(y, volatile=True)
+                           for y in out_data)
             if len(outputs) == 1:
                 return outputs[0]
             return outputs
@@ -157,7 +163,7 @@ class Function(object):
             outputs = self.forward(in_data)
         assert type(outputs) == tuple
 
-        ret = tuple(Variable(y) for y in outputs)
+        ret = tuple(variable.Variable(y) for y in outputs)
         for y in ret:
             y.set_creator(self)
 
@@ -171,8 +177,9 @@ class Function(object):
     def forward(self, inputs):
         """Applies forward propagation to input arrays.
 
-        It delegates the procedure to :meth:`forward_cpu` or :meth:`forward_gpu`
-        by default. Which it selects is determined by the type of input arrays.
+        It delegates the procedure to :meth:`forward_cpu` or
+        :meth:`forward_gpu` by default. Which it selects is determined by the
+        type of input arrays.
         Implementations of :class:`Function` must implement either cpu/gpu
         methods or this method.
 
@@ -281,7 +288,8 @@ class Function(object):
         """Applies backprop to output gradient arrays on GPU.
 
         Args:
-            inputs: Tuple of input :class:`~pycuda.gpuarray.GPUArray` object(s).
+            inputs: Tuple of input :class:`~pycuda.gpuarray.GPUArray`
+                object(s).
             grad_outputs: Tuple of output gradient
                 :class:`~pycuda.gpuarray.GPUArray` object(s).
 
@@ -299,8 +307,7 @@ class Function(object):
         return tuple(None for _ in inputs)
 
     def unchain(self):
-        """Purges in/out variables and removes this function from the backward
-        graph.
+        """Purges in/out variables and this function itself from the graph.
 
         This method is called from :meth:`Variable.unchain_backward` method.
 
@@ -320,8 +327,8 @@ class Function(object):
         :class:`~numpy.ndarray` onto GPU.
 
         Args:
-            device (int or :class:`pycuda.driver.Device` or ``None``): Device ID
-                of GPU that the function will be migrated on. If this is
+            device (int or :class:`pycuda.driver.Device` or ``None``): Device
+                ID of GPU that the function will be migrated on. If this is
                 ``None``, the current device is used.
 
         Returns:
@@ -329,10 +336,11 @@ class Function(object):
 
         """
         with cuda.using_device(device):
-            for k, v in self.__dict__.iteritems():
+            for k, v in six.iteritems(self.__dict__):
                 if isinstance(v, numpy.ndarray):
                     setattr(self, k, cuda.to_gpu(v))
-                elif isinstance(v, cuda.GPUArray) and v.gpudata.device != device:
+                elif (isinstance(v, cuda.GPUArray) and
+                      v.gpudata.device != device):
                     setattr(self, k, cuda.copy(v, out_device=device))
         return self
 
@@ -346,7 +354,7 @@ class Function(object):
             self.
 
         """
-        for k, v in self.__dict__.iteritems():
+        for k, v in six.iteritems(self.__dict__):
             if isinstance(v, cuda.GPUArray):
                 setattr(self, k, cuda.to_cpu(v))
         return self
@@ -383,20 +391,22 @@ class Function(object):
 
 
 class Split(Function):
+
     """Special function to branch the graph at variable node.
 
     Split does not implement forward: it is intended to implicitly used by
     Function.
 
     """
+
     def __init__(self, var):
-        self.inputs  = [var]
+        self.inputs = [var]
         self.outputs = []
-        self.rank    = var.rank
+        self.rank = var.rank
 
     def add_branch(self):
         x = self.inputs[0]
-        output = Variable(x.data)
+        output = variable.Variable(x.data)
         output.set_creator(self)
         self.outputs.append(weakref.ref(output))
         return output
@@ -414,7 +424,8 @@ class Split(Function):
                 if gx is not None:
                     gx += gy
                 elif isinstance(gy, cuda.GPUArray):
-                    cuda.use_device(gy, pop=False)  # it affects to above +=, too
+                    # it affects to above +=, too
+                    cuda.use_device(gy, pop=False)
                     device_changed = True
                     gx = cuda.copy_async(gy)
                 else:
@@ -422,5 +433,5 @@ class Split(Function):
         finally:
             if device_changed:
                 cuda.Context.pop()
-            
+
         return gx,

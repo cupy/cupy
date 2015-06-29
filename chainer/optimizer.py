@@ -1,8 +1,13 @@
 import math
+
 import numpy
-import cuda
+
+from chainer import cuda
+
 
 # TODO(delta2323): Make it public function and move it to common directory.
+
+
 def _sqnorm(x):
     if isinstance(x, cuda.GPUArray):
         with cuda.using_device(x):
@@ -10,7 +15,9 @@ def _sqnorm(x):
     x = x.ravel()
     return float(x.dot(x))
 
+
 class Optimizer(object):
+
     """Base class of all numerical optimizers.
 
     Optimizer is set up with references to parameters and gradients, and
@@ -27,9 +34,9 @@ class Optimizer(object):
             implementation, where :attr:`t` is incremented beforehand.
 
     """
+
     def setup(self, params_grads):
-        """Prepares parameter/gradient/state tuples for all given
-        parameter/gradient pairs.
+        """Prepares states for all given parameter/gradient pairs.
 
         Args:
             params_grads: Tuple (pair) of two tuples. The first element is a
@@ -47,11 +54,11 @@ class Optimizer(object):
                 self.tuples.append((p, g, state))
 
     def init_state(self, param, grad):
-        """Returns initial state corresponding to the given parameter and
-        gradient.
+        """Returns the initial state for given parameter and gradient.
 
-        Default implementation delegates the procedure to :meth:`init_state_cpu`
-        or :meth:`init_state_gpu` depending on the type of ``param``.
+        Default implementation delegates the procedure to
+        :meth:`init_state_cpu` or :meth:`init_state_gpu` depending on the type
+        of ``param``.
 
         Args:
             param: Parameter array.
@@ -75,8 +82,7 @@ class Optimizer(object):
         return self.init_state_cpu(param, grad)
 
     def init_state_cpu(self, param, grad):
-        """Returns initial state corresponding to the given CPU parameter and
-        gradient.
+        """Returns the initial state for given parameter and gradient on GPU.
 
         Args:
             param (~numpy.ndarray): Parameter array.
@@ -91,8 +97,7 @@ class Optimizer(object):
         return None
 
     def init_state_gpu(self, param, grad):
-        """Returns initial state corresponding to the given GPU parameter and
-        gradient.
+        """Returns the initial state for given parameter and gradient on CPU.
 
         Args:
             param (~pycuda.gpuarray.GPUArray): Parameter array.
@@ -109,8 +114,8 @@ class Optimizer(object):
     def zero_grads(self):
         """Fills all gradient arrays by zeros.
 
-        This method should be call before backprop takes place, since gradients
-        are accumulated on backprop.
+        This method should be call before backprop takes place, since
+        gradients are accumulated on backprop.
 
         """
         for _, g, _ in self.tuples:
@@ -124,14 +129,14 @@ class Optimizer(object):
         """Computes the norm of whole gradients.
 
         Returns:
-            float: L2 norm of whole gradients, i.e. square root of sum of square
-            of all gradient elements.
+            float: L2 norm of whole gradients, i.e. square root of sum of
+            square of all gradient elements.
 
         .. warning::
 
-            This method returns a CPU-computed value, which means that this method
-            synchronizes between CPU and GPU if at least one of the gradients
-            reside on the GPU.
+            This method returns a CPU-computed value, which means that this
+            method synchronizes between CPU and GPU if at least one of the
+            gradients reside on the GPU.
 
         """
         # TODO(beam2d): Make it asynchronous to CPU when gradients exist on GPU
@@ -160,8 +165,7 @@ class Optimizer(object):
                     g *= ratio
 
     def weight_decay(self, decay):
-        """Applies weight decay (a.k.a. L2 or Tikonov regularization) of given
-        scale to the current gradients.
+        """Applies weight decay to the parameter/gradient pairs.
 
         Args:
             decay (float): Coefficient of weight decay
@@ -196,7 +200,7 @@ class Optimizer(object):
 
             with cuda.using_device(g_dst):
                 if (isinstance(g_src, cuda.GPUArray) and
-                    g_dst.gpudata.device != g_src.gpudata.device):
+                        g_dst.gpudata.device != g_src.gpudata.device):
                     g_dst += cuda.copy(g_src, out_device=g_src.gpudata.device)
                 else:
                     g_dst += cuda.to_gpu(g_src)
@@ -214,8 +218,7 @@ class Optimizer(object):
                 self.update_one(p, g, s)
 
     def update_one(self, param, grad, state):
-        """Updates one parameter array and its state using the corresponding
-        gradient array.
+        """Updates a parameter array and its state using given gradient.
 
         The default implementation delegates the procedure to
         :meth:`update_one_cpu` or :meth:`update_one_gpu` depending on the type
@@ -236,8 +239,7 @@ class Optimizer(object):
             self.update_one_cpu(param, grad, state)
 
     def update_one_cpu(self, param, grad, state):
-        """Updates one parameter array and its state using the corresponding
-        gradient array on CPU.
+        """Updates a parameter array and its state using given gradient on CPU.
 
         Args:
             param (~numpy.ndarray): Parameter array.
@@ -250,8 +252,7 @@ class Optimizer(object):
         raise NotImplementedError()
 
     def update_one_gpu(self, param, grad, state):
-        """Updates one parameter array and its state using the corresponding
-        gradient array on GPU.
+        """Updates a parameter array and its state using given gradient on GPU.
 
         Args:
             param (~pycuda.gpuarray.GPUArray): Parameter array.

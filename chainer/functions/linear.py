@@ -1,19 +1,24 @@
 import math
+
 import numpy
-from chainer import cuda, Function
+
+from chainer import cuda
+from chainer import function
+
 
 def _as_mat(x):
     return x.reshape(x.shape[0], x.size / x.shape[0])
 
-class Linear(Function):
-    """Implementation of a linear function (a.k.a. fully-connected layer or affine
-    transformation).
+
+class Linear(function.Function):
+
+    """Linear function (a.k.a. fully-connected layer or affine transformation).
 
     This function holds a weight matrix ``W`` and a bias vector ``b``.
 
     The weight matrix ``W`` has shape ``(out_size, in_size)``.
-    This matrix is initialized with i.i.d. Gaussian samples, each of which has zero
-    mean and deviation :math:`\sqrt{1/\\text{in_size}}`.
+    This matrix is initialized with i.i.d. Gaussian samples, each of which has
+    zero mean and deviation :math:`\sqrt{1/\\text{in_size}}`.
     The deviation is scaled by factor ``wscale`` if specified.
 
     The bias vector ``b`` is of size ``out_size``.
@@ -40,6 +45,7 @@ class Linear(Function):
        and the other dimensions are reduced to one dimension.
 
     """
+
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False):
         self.W = numpy.random.normal(
             0, wscale * math.sqrt(1. / in_size),
@@ -47,10 +53,10 @@ class Linear(Function):
         self.gW = numpy.empty_like(self.W)
 
         if nobias:
-            self.b  = None
+            self.b = None
             self.gb = None
         else:
-            self.b  = numpy.repeat(numpy.float32(bias), out_size)
+            self.b = numpy.repeat(numpy.float32(bias), out_size)
             self.gb = numpy.empty_like(self.b)
 
     @property

@@ -1,13 +1,17 @@
 import numpy
-from chainer import cuda, Optimizer
 
-class RMSprop(Optimizer):
+from chainer import cuda
+from chainer import optimizer
+
+
+class RMSprop(optimizer.Optimizer):
+
     """Hinton's RMSprop."""
 
     def __init__(self, lr=0.01, alpha=0.99, eps=1e-8):
-        self.lr    = lr
+        self.lr = lr
         self.alpha = alpha
-        self.eps   = eps
+        self.eps = eps
 
     def init_state_cpu(self, param, grad):
         return numpy.zeros_like(param)

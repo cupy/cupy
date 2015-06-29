@@ -1,18 +1,21 @@
-from unittest import TestCase
+import unittest
+
 import numpy
 
-from chainer import Variable
-from chainer.functions import identity
+import chainer
+import chainer.functions as F
 
-class TestFunction(TestCase):
+
+class TestFunction(unittest.TestCase):
+
     def test_forward(self):
-        xs = (Variable(numpy.array([0])),
-              Variable(numpy.array([0])),
-              Variable(numpy.array([0])))
+        xs = (chainer.Variable(numpy.array([0])),
+              chainer.Variable(numpy.array([0])),
+              chainer.Variable(numpy.array([0])))
         xs[0].rank = 1
         xs[1].rank = 3
         xs[2].rank = 2
-        ys = identity(*xs)
+        ys = F.identity(*xs)
 
         self.assertEqual(len(ys), len(xs))
         for y in ys:
@@ -21,9 +24,9 @@ class TestFunction(TestCase):
             self.assertEqual(y.rank, 5)
 
     def test_backward(self):
-        x = Variable(numpy.array([1]))
-        y1 = identity(x)
-        y2 = identity(x)
+        x = chainer.Variable(numpy.array([1]))
+        y1 = F.identity(x)
+        y2 = F.identity(x)
         z = y1 + y2
 
         z.grad = numpy.array([1])

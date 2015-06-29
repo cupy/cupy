@@ -1,14 +1,19 @@
-from unittest import TestCase
+import unittest
+
 import numpy as np
 
-from chainer import cuda, Variable, Function
-from chainer.gradient_check import assert_allclose
+import chainer
+from chainer import cuda
 from chainer.testing import attr
+
+import six
 
 if cuda.available:
     cuda.init()
 
-class Constant(Function):
+
+class Constant(chainer.Function):
+
     def __init__(self, outputs):
         self.outputs = outputs
 
@@ -24,10 +29,13 @@ class Constant(Function):
     def backward_gpu(self, inputs, grad_outputs):
         return tuple(map(cuda.zeros_like, inputs))
 
+
 def constant(xs, value):
     return Constant(value)(*xs)
 
-class TestVariable(TestCase):
+
+class TestVariable(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.uniform(-1, 1, 10).astype(np.float32)
         self.a = np.random.uniform(0.1, 10, 10).astype(np.float32)
@@ -36,12 +44,15 @@ class TestVariable(TestCase):
         x = self.x
         if gpu:
             x = cuda.to_gpu(x)
-        x = Variable(x)
+        x = chainer.Variable(x)
         self.assertEqual(len(x), 10)
 
-    def test_len_cpu(self): self.check_len(False)
+    def test_len_cpu(self):
+        self.check_len(False)
+
     @attr.gpu
-    def test_len_gpu(self): self.check_len(True)
+    def test_len_gpu(self):
+        self.check_len(True)
 
     def check_backward(self, inputs, intermediates, outputs, retain_grad):
         for o in outputs:
@@ -57,11 +68,11 @@ class TestVariable(TestCase):
     # length is number of edges. So, # of Variables created is length+1
     def create_linear_chain(self, length, gpu):
         if gpu:
-            x = Variable(cuda.to_gpu(self.x))
+            x = chainer.Variable(cuda.to_gpu(self.x))
         else:
-            x = Variable(self.x)
+            x = chainer.Variable(self.x)
         ret = [x]
-        for i in xrange(length):
+        for i in six.moves.range(length):
             ret.append(constant((ret[i], ), (self.a, )))
         ret[-1].grad = np.zeros_like(ret[-1].data)
         return ret
@@ -88,21 +99,20 @@ class TestVariable(TestCase):
         ret = self.create_linear_chain(3, False)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
-        
+
     @attr.gpu
     def test_unchain_backward_gpu(self):
         ret = self.create_linear_chain(3, True)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
-        
+
     def test_unchain_backward_cpu_retain_grad(self):
         ret = self.create_linear_chain(3, False)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
-        
+
     @attr.gpu
     def test_unchain_backward_gpu_retain_grad(self):
         ret = self.create_linear_chain(3, False)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
-        

@@ -303,14 +303,14 @@ Then, we can write a data-parallel learning loop as follows::
           optimizer.zero_grads()
           
           loss_0, accuracy_0 = forward(
-              cuda.to_gpu(x_batch[:batchsize/2], 0),
-              cuda.to_gpu(y_batch[:batchsize/2], 0),
+              cuda.to_gpu(x_batch[:batchsize//2], 0),
+              cuda.to_gpu(y_batch[:batchsize//2], 0),
               model_0)
           loss_0.backward()
           
           loss_1, accuracy_1 = forward(
-              cuda.to_gpu(x_batch[batchsize/2:], 1),
-              cuda.to_gpu(y_batch[batchsize/2:], 1),
+              cuda.to_gpu(x_batch[batchsize//2:], 1),
+              cuda.to_gpu(y_batch[batchsize//2:], 1),
               model_1)
           loss_1.backward()
           
