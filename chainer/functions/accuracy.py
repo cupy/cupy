@@ -5,6 +5,16 @@ from chainer import function
 
 
 class Accuracy(function.Function):
+
+    def check_type_forward(self, in_types):
+        in_types.size().should_be(2)
+        x_type, t_type = in_types
+        x_type.dtype.should_be(numpy.float32)
+        x_type.ndim.should_be(2)
+        t_type.dtype.should_be(numpy.int32)
+        t_type.ndim.should_be(1)
+        t_type.shape[0].should_be(x_type.shape[0])
+
     def forward_cpu(self, inputs):
         y, t = inputs
         y = y.reshape(y.shape[0], y.size / y.shape[0])  # flatten
