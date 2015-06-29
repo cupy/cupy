@@ -22,8 +22,8 @@ from chainer.functions import prelu
 from chainer.functions import relu
 from chainer.functions import reshape
 from chainer.functions import sigmoid
-from chainer.functions import softmax
 from chainer.functions import sigmoid_cross_entropy
+from chainer.functions import softmax
 from chainer.functions import softmax_cross_entropy
 from chainer.functions import sum as sum_
 from chainer.functions import tanh
