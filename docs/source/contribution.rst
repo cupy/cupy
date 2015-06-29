@@ -133,7 +133,9 @@ You must test your code by unit tests following our testing guidelines.
 We are using ``nose`` package to run unit tests.
 You can run unit tests simply by running ``nosetests`` command under the repository root.
 It requires CUDA by default.
-In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the nosetests command.
+In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the nosetests command::
+
+  $ nosetests path/to/your/test.py --attr='!gpu'
 
 Tests are put into the ``tests`` directory.
 This directory has the same structure as the ``chainer`` directory.
