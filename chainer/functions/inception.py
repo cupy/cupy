@@ -55,21 +55,14 @@ class Inception(function.Function):
             projp=convolution_2d.Convolution2D(in_channels, proj_pool, 1),
         )
 
-    def forward(self, x):
-        self.x = variable.Variable(x[0])
-        out1 = self.f.conv1(self.x)
-        out3 = self.f.conv3(relu.relu(self.f.proj3(self.x)))
-        out5 = self.f.conv5(relu.relu(self.f.proj5(self.x)))
+    def __call__(self, x):
+        out1 = self.f.conv1(x)
+        out3 = self.f.conv3(relu.relu(self.f.proj3(x)))
+        out5 = self.f.conv5(relu.relu(self.f.proj5(x)))
         pool = self.f.projp(pooling_2d.max_pooling_2d(
-            self.x, 3, stride=1, pad=1))
-        self.y = relu.relu(concat.concat((out1, out3, out5, pool), axis=1))
-
-        return self.y.data,
-
-    def backward(self, x, gy):
-        self.y.grad = gy[0]
-        self.y.backward()
-        return self.x.grad,
+            x, 3, stride=1, pad=1))
+        y = relu.relu(concat.concat((out1, out3, out5, pool), axis=1))
+        return y
 
     def to_gpu(self, device=None):
         return self.f.to_gpu(device)
