@@ -144,6 +144,12 @@ In order to enable test runner to find test scripts correctly, we are using spec
 * The name of each subdirectory of ``tests`` must end with the ``_tests`` suffix.
 * The name of each test script must start with the ``test_`` prefix.
 
+Following this naming convention, you can run all the tests by just typing ``nosetests`` at the repository root::
+
+  $ nosetests
+
+If you modify the code related to existing unit tests, you must run this command.
+
 There are many examples of unit tests under the ``tests`` directory.
 They simply use the ``unittest`` package of the standard library.
 
