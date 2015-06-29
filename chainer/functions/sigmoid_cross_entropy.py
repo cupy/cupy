@@ -18,7 +18,7 @@ class SigmoidCrossEntropy(function.Function):
         self.y, = sigmoid.Sigmoid().forward_cpu((x,))
         # stable computation of the cross entropy.
         loss = -numpy.sum(
-            x * (t - (x >= 0)) - numpy.log(1 + numpy.exp(-numpy.abs(x))))
+            x * (t - (x >= 0)) - numpy.log1p(numpy.exp(-numpy.abs(x))))
         return numpy.array((loss / t.shape[0],), dtype=numpy.float32),
 
     def forward_gpu(self, inputs):
@@ -27,7 +27,7 @@ class SigmoidCrossEntropy(function.Function):
         loss = -cuda.reduce(
             'int* t, float* x',
             'x[i] * (t[i] - (x[i] >= 0))'
-            ' - log(1 + exp(x[i] - 2 * x[i] * (x[i] >= 0)))',
+            ' - log1pf(expf(x[i] - 2 * x[i] * (x[i] >= 0)))',
             'a+b', '0', 'sigmoid_crossent_fwd', numpy.float32)(t, x)
         return loss / t.shape[0],
 
