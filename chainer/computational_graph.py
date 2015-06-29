@@ -102,7 +102,7 @@ class ComputationalGraph(object):
 
     def _to_dot(self):
         ret = "digraph graphname{"
-        for edge in edges:
+        for edge in self.edges:
             head, tail = edge
             assert (isinstance(head, variable.Variable) and isinstance(tail, function.Function)) or \
                 (isinstance(head, function.Function) and isinstance(tail, variable.Variable))
@@ -112,6 +112,7 @@ class ComputationalGraph(object):
             ret += str(tail_node)
             ret += "%s -> %s;" % (head_node.id_, tail_node.id_)
         ret += "}"
+        return ret
 
     def __str__(self):
         return self._to_dot()
