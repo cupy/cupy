@@ -59,6 +59,10 @@ class Variable(object):
            :mod:`cuda` automatically uses this allocator.
 
         """
+        assert(isinstance(data, numpy.ndarray) or
+               isinstance(data, cuda.GPUArray))
+        assert(isinstance(volatile, bool))
+
         self.data = data
         self.rank = 0
         self.volatile = volatile
