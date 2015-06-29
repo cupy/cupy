@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 import numpy as np
+import six
 
 from chainer import computational_graph as c
 from chainer import cuda
@@ -20,13 +21,13 @@ class MockFunction(function.Function):
     def forward_cpu(self, xs):
         assert len(xs) == self.n_in
         return tuple(np.zeros((1, 2)).astype(np.float32)
-                     for _ in xrange(self.n_out))
+                     for _ in six.moves.range(self.n_out))
 
     def backward_cpu(self, xs, gys):
         assert len(xs) == self.n_in
         assert len(gys) == self.n_out
         return tuple(np.zeros_like(xs).astype(np.float32)
-                     for _ in xrange(self.n_in))
+                     for _ in six.moves.range(self.n_in))
 
 
 def mock_function(xs, n_out):
