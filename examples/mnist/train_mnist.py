@@ -80,12 +80,12 @@ for epoch in six.moves.range(1, n_epoch + 1):
         loss, acc = forward(x_batch, y_batch)
         loss.backward()
         if epoch == 1 and i == 0:
-            from sys import stderr
             with open("graph.dot", "w") as o:
                 o.write(str(c.computational_graph((loss, ))))
             with open("graph.wo_split.dot", "w") as o:
-                o.write(str(c.computational_graph((loss, ), remove_split=True)))
-            print 'graph generated'
+                o.write(str(c.computational_graph((loss, ),
+                                                  remove_split=True)))
+            print('graph generated')
         optimizer.update()
 
         sum_loss += float(cuda.to_cpu(loss.data)) * batchsize

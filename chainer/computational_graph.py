@@ -1,8 +1,10 @@
 import heapq
 
-from chainer import variable
+import numpy as np
+
 from chainer import function
 from chainer.functions import basic_math
+from chainer import variable
 
 
 class DotNode(object):
@@ -18,7 +20,8 @@ class DotNode(object):
         if isinstance(self.node, variable.Variable):
             if self.node.data.shape == tuple():
                 return str(self.node.data.dtype)
-            return "%s, %s" % (str(self.node.data.shape), str(self.node.data.dtype))
+            return "%s, %s" % (str(self.node.data.shape),
+                               str(self.node.data.dtype))
         elif isinstance(self.node, basic_math.Add):
             return "+"
         elif isinstance(self.node, basic_math.AddConstant):
@@ -28,7 +31,7 @@ class DotNode(object):
             elif isinstance(value, variable.Variable):
                 return "+ %s" % str(value.data)
             else:
-                raise ValueError('value must be float, ndarray, or variable.Variable')
+                raise ValueError('value must be float, ndarray, or Variable')
         elif isinstance(self.node, basic_math.Sub):
             return "-"
         elif isinstance(self.node, basic_math.SubFromConstant):
@@ -38,7 +41,7 @@ class DotNode(object):
             elif isinstance(value, variable.Variable):
                 return "* (-1) + %s" % str(value.data)
             else:
-                raise ValueError('value must be float, ndarray, or variable.Variable')
+                raise ValueError('value must be float, ndarray, or Variable')
         elif isinstance(self.node, basic_math.Mul):
             return "*"
         elif isinstance(self.node, basic_math.MulConstant):
@@ -48,7 +51,7 @@ class DotNode(object):
             elif isinstance(value, variable.Variable):
                 return "* %s" % str(value.data)
             else:
-                raise ValueError('value must be float, ndarray, or variable.Variable')
+                raise ValueError('value must be float, ndarray, or Variable')
         elif isinstance(self.node, basic_math.Div):
             return "/"
         elif isinstance(self.node, basic_math.DivFromConstant):
@@ -58,7 +61,7 @@ class DotNode(object):
             elif isinstance(value, variable.Variable):
                 return "/ %s" % str(value.data)
             else:
-                raise ValueError('value must be float, ndarray, or variable.Variable')
+                raise ValueError('value must be float, ndarray, or Variable')
         elif isinstance(self.node, basic_math.PowVarVar):
             return "**"
         elif isinstance(self.node, basic_math.PowVarConst):
@@ -68,7 +71,7 @@ class DotNode(object):
             elif isinstance(value, variable.Variable):
                 return "** %s" % str(value.data)
             else:
-                raise ValueError('value must be float, ndarray, or variable.Variable')
+                raise ValueError('value must be float, ndarray, or Variable')
         elif isinstance(self.node, basic_math.PowConstVar):
             value = self.node.value
             if isinstance(value, float) or isinstance(value, np.ndarray):
@@ -76,7 +79,7 @@ class DotNode(object):
             elif isinstance(value, variable.Variable):
                 return "%s **" % str(value.data)
             else:
-                raise ValueError('value must be float, ndarray, or variable.Variable')
+                raise ValueError('value must be float, ndarray, or Variable')
         elif isinstance(self.node, basic_math.Exp):
             return "exp"
         elif isinstance(self.node, basic_math.Log):
@@ -88,13 +91,15 @@ class DotNode(object):
         self.node = node
         self.id_ = id(node)
         self.attribute = {
-            "label" : self._label(),
-            "shape" : self._shape()
+            "label": self._label(),
+            "shape": self._shape()
         }
 
     def __str__(self):
-        attributes = ["%s=\"%s\""%(k, v) for (k, v) in self.attribute.items()]
+        attributes = ["%s=\"%s\"" % (k, v) for (k, v)
+                      in self.attribute.items()]
         return "%s [%s];" % (self.id_, ",".join(attributes))
+
 
 class ComputationalGraph(object):
     def __init__(self, edges):
@@ -104,8 +109,10 @@ class ComputationalGraph(object):
         ret = "digraph graphname{"
         for edge in self.edges:
             head, tail = edge
-            assert (isinstance(head, variable.Variable) and isinstance(tail, function.Function)) or \
-                (isinstance(head, function.Function) and isinstance(tail, variable.Variable))
+            assert (isinstance(head, variable.Variable)
+                    and isinstance(tail, function.Function)) or \
+                   (isinstance(head, function.Function)
+                    and isinstance(tail, variable.Variable))
             head_node = DotNode(head)
             tail_node = DotNode(tail)
             ret += str(head_node)
@@ -123,9 +130,13 @@ class ComputationalGraph(object):
     def __contains__(self, e):
         return e in self.edges
 
+
 def computational_graph(outputs, remove_split=False):
     cands = []
     seen_edges = set()
+
+    def _add_cand(cand):
+        heapq.heappush(cands, (-cand.rank, len(seen_edges), cand))
 
     for o in outputs:
         heapq.heappush(cands, (-o.rank, len(seen_edges), o))
@@ -135,22 +146,25 @@ def computational_graph(outputs, remove_split=False):
         if isinstance(cand, variable.Variable):
             creator = cand.creator
             if remove_split and isinstance(creator, function.Split):
-                next_cand = creator.inputs[0] # assume that function.Split has only one input
-                heapq.heappush(cands, (-next_cand.rank, len(seen_edges), next_cand))
+                # assume that function.Split has only one input
+                next_cand = creator.inputs[0]
+                _add_cand(next_cand)
                 continue
             if creator is not None and (creator, cand) not in seen_edges:
-                heapq.heappush(cands, (-creator.rank, len(seen_edges), creator))
+                _add_cand(creator)
                 seen_edges.add((creator, cand))
         elif isinstance(cand, function.Function):
             if remove_split and isinstance(cand, function.Split):
                 next_cand = creator.inputs[0]
-                heapq.heappush(cands, (-next_cand.rank, len(seen_edges), next_cand))
+                _add_cand(next_cand)
                 continue
             for input_ in cand.inputs:
                 if input_ != cand and (input_, cand) not in seen_edges:
                     creator = input_.creator
-                    if creator is not None and remove_split and isinstance(creator, function.Split):
+                    if remove_split and\
+                       creator is not None and\
+                       isinstance(creator, function.Split):
                         input_ = creator.inputs[0]
-                    heapq.heappush(cands, (-input_.rank, len(seen_edges), input_))
+                    _add_cand(input_)
                     seen_edges.add((input_, cand))
     return ComputationalGraph(seen_edges)

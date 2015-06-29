@@ -2,14 +2,15 @@ from unittest import TestCase
 
 import numpy as np
 
-from chainer import cuda
-from chainer import variable
-from chainer import function
 from chainer import computational_graph as c
+from chainer import cuda
+from chainer import function
+from chainer import variable
 
 
 if cuda.available:
     cuda.init()
+
 
 class MockFunction(function.Function):
     def __init__(self, n_in, n_out):
@@ -19,16 +20,18 @@ class MockFunction(function.Function):
     def forward_cpu(self, xs):
         assert len(xs) == self.n_in
         return tuple(np.zeros((1, 2)).astype(np.float32)
-                for _ in xrange(self.n_out))
+                     for _ in xrange(self.n_out))
 
     def backward_cpu(self, xs, gys):
         assert len(xs) == self.n_in
         assert len(gys) == self.n_out
         return tuple(np.zeros_like(xs).astype(np.float32)
-                for _ in xrange(self.n_in))
+                     for _ in xrange(self.n_in))
+
 
 def mock_function(xs, n_out):
     return MockFunction(len(xs), n_out)(*xs)
+
 
 class TestGraphBuilder(TestCase):
     # x-splitter-x'-f-y-splitter-y'-g-z
@@ -40,35 +43,44 @@ class TestGraphBuilder(TestCase):
     # x
     def test_head_variable(self):
         self.assertEqual(len(c.computational_graph((self.x,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x,), True )), 0)
+        self.assertEqual(len(c.computational_graph((self.x,),  True)), 0)
 
     def test_intermediate_variable(self):
         # x-splitter-x'-f-y
         self.assertEqual(len(c.computational_graph((self.y,), False)), 4)
         # x-f-y (splitter removed)
-        self.assertEqual(len(c.computational_graph((self.y,), True )), 2)
+        self.assertEqual(len(c.computational_graph((self.y,),  True)), 2)
 
     def test_tail_variable(self):
         # x-splitter-x'-f-y-splitter-y'-g-z
         self.assertEqual(len(c.computational_graph((self.z,), False)), 8)
         # x-f-y-g-z (splitter removed)
-        self.assertEqual(len(c.computational_graph((self.z,), True )), 4)
+        self.assertEqual(len(c.computational_graph((self.z,),  True)), 4)
 
     def test_multiple_outputs(self):
-        self.assertEqual(len(c.computational_graph((self.x, self.y), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.x, self.y), True )), 2)
+        edges = c.computational_graph((self.x, self.y), False)
+        self.assertEqual(len(edges), 4)
+        edges = c.computational_graph((self.x, self.y),  True)
+        self.assertEqual(len(edges), 2)
 
     def test_multiple_outputs2(self):
-        self.assertEqual(len(c.computational_graph((self.x, self.z), False)), 8)
-        self.assertEqual(len(c.computational_graph((self.x, self.z), True )), 4)
+        edges = c.computational_graph((self.x, self.z), False)
+        self.assertEqual(len(edges), 8)
+        edges = c.computational_graph((self.x, self.z),  True)
+        self.assertEqual(len(edges), 4)
 
     def test_multiple_outputs3(self):
-        self.assertEqual(len(c.computational_graph((self.y, self.z), False)), 8)
-        self.assertEqual(len(c.computational_graph((self.y, self.z), True )), 4)
+        edges = c.computational_graph((self.y, self.z), False)
+        self.assertEqual(len(edges), 8)
+        edges = c.computational_graph((self.y, self.z),  True)
+        self.assertEqual(len(edges), 4)
 
     def test_multiple_outputs4(self):
-        self.assertEqual(len(c.computational_graph((self.x, self.y, self.z), False)), 8)
-        self.assertEqual(len(c.computational_graph((self.x, self.y, self.z), True )), 4)
+        edges = c.computational_graph((self.x, self.y, self.z), False)
+        self.assertEqual(len(edges), 8)
+        edges = c.computational_graph((self.x, self.y, self.z),  True)
+        self.assertEqual(len(edges), 4)
+
 
 class TestGraphBuilder2(TestCase):
     # with splitter
@@ -86,19 +98,22 @@ class TestGraphBuilder2(TestCase):
 
     def test_head_node(self):
         self.assertEqual(len(c.computational_graph((self.x,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x,), True )), 0)
+        self.assertEqual(len(c.computational_graph((self.x,),  True)), 0)
 
     def test_tail_node(self):
         self.assertEqual(len(c.computational_graph((self.y1,), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.y1,), True )), 2)
+        self.assertEqual(len(c.computational_graph((self.y1,),  True)), 2)
 
     def test_tail_node2(self):
         self.assertEqual(len(c.computational_graph((self.y2,), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.y2,), True )), 2)
+        self.assertEqual(len(c.computational_graph((self.y2,),  True)), 2)
 
     def test_multiple_tails(self):
-        self.assertEqual(len(c.computational_graph((self.y1, self.y2), False)), 7)
-        self.assertEqual(len(c.computational_graph((self.y1, self.y2), True )), 4)
+        edges = c.computational_graph((self.y1, self.y2), False)
+        self.assertEqual(len(edges), 7)
+        edges = c.computational_graph((self.y1, self.y2),  True)
+        self.assertEqual(len(edges), 4)
+
 
 class TestGraphBuilder3(TestCase):
     # with splitter
@@ -115,19 +130,22 @@ class TestGraphBuilder3(TestCase):
 
     def test_head_node(self):
         self.assertEqual(len(c.computational_graph((self.x,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x,), True )), 0)
+        self.assertEqual(len(c.computational_graph((self.x,), True)), 0)
 
     def test_tail_node(self):
         self.assertEqual(len(c.computational_graph((self.y1,), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.y1,), True )), 2)
+        self.assertEqual(len(c.computational_graph((self.y1,),  True)), 2)
 
     def test_tail_node2(self):
         self.assertEqual(len(c.computational_graph((self.y2,), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.y2,), True )), 2)
+        self.assertEqual(len(c.computational_graph((self.y2,),  True)), 2)
 
     def test_multiple_tails(self):
-        self.assertEqual(len(c.computational_graph((self.y1, self.y2), False)), 5)
-        self.assertEqual(len(c.computational_graph((self.y1, self.y2), True )), 3)
+        edges = c.computational_graph((self.y1, self.y2), False)
+        self.assertEqual(len(edges), 5)
+        edges = c.computational_graph((self.y1, self.y2),  True)
+        self.assertEqual(len(edges), 3)
+
 
 class TestGraphBuilder4(TestCase):
     # with splitter
@@ -141,23 +159,28 @@ class TestGraphBuilder4(TestCase):
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
-        self.y  = mock_function((self.x1, self.x2), 1)
+        self.y = mock_function((self.x1, self.x2), 1)
 
-    def test_head_node(self):
+    def test_head_node1(self):
         self.assertEqual(len(c.computational_graph((self.x1,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x1,), True )), 0)
+        self.assertEqual(len(c.computational_graph((self.x1,),  True)), 0)
 
-    def test_head_node(self):
+    def test_head_node2(self):
         self.assertEqual(len(c.computational_graph((self.x2,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x2,), True )), 0)
+        self.assertEqual(len(c.computational_graph((self.x2,),  True)), 0)
 
     def test_multiple_heads(self):
-        self.assertEqual(len(c.computational_graph((self.x1, self.x2), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x1, self.x2), True )), 0)
+        edges = c.computational_graph((self.x1, self.x2), False)
+        self.assertEqual(len(edges), 0)
+        edges = c.computational_graph((self.x1, self.x2),  True)
+        self.assertEqual(len(edges), 0)
 
     def test_tail_node(self):
-        self.assertEqual(len(c.computational_graph((self.y,), False)), 7)
-        self.assertEqual(len(c.computational_graph((self.y,), True )), 3)
+        edges = c.computational_graph((self.y,), False)
+        self.assertEqual(len(edges), 7)
+        edges = c.computational_graph((self.y,),  True)
+        self.assertEqual(len(edges), 3)
+
 
 class TestGraphBuilder5(TestCase):
     def setUp(self):
@@ -165,7 +188,7 @@ class TestGraphBuilder5(TestCase):
         self.y = 2 * self.x
 
         self.x_splitter = self.x.splitter()
-        self.x_clone  = self.x_splitter.outputs[0]()
+        self.x_clone = self.x_splitter.outputs[0]()
         self.f = self.y.creator
 
     def test_tail_node(self):
@@ -182,11 +205,12 @@ class TestGraphBuilder5(TestCase):
         self.assertTrue((self.x, self.f) in edges)
         self.assertTrue((self.f, self.y) in edges)
 
+
 class TestGraphBuilder6(TestCase):
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
-        self.y  = self.x1 + self.x2
+        self.y = self.x1 + self.x2
 
         self.x1_splitter = self.x1.splitter()
         self.x2_splitter = self.x2.splitter()
@@ -212,12 +236,13 @@ class TestGraphBuilder6(TestCase):
         self.assertTrue((self.x2, self.f) in edges)
         self.assertTrue((self.f, self.y) in edges)
 
+
 class TestGraphBuilder7(TestCase):
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x3 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
-        self.y  = 0.3 * (self.x1 + self.x2) + self.x3
+        self.y = 0.3 * (self.x1 + self.x2) + self.x3
 
     def test_tail_node(self):
         edges = c.computational_graph((self.y,), False)
