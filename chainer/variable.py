@@ -61,7 +61,7 @@ class Variable(object):
         """
         assert(isinstance(data, numpy.ndarray) or
                isinstance(data, cuda.GPUArray))
-        assert(isinstance(volatile, bool))
+        assert isinstance(volatile, bool)
 
         self.data = data
         self.rank = 0
