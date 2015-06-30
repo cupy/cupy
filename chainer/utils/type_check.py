@@ -22,9 +22,6 @@ class TypeInfo(object):
 
 class TypeInfoTuple(tuple):
 
-    def _set_name(self, name):
-        self.name = name
-
     def size(self):
         return Member(len(self), self.name, 'size')
 
@@ -39,7 +36,8 @@ def get_types(data, is_grad):
 
     info = TypeInfoTuple(
         _get_type(name, i, x, is_grad) for i, x in enumerate(data))
-    info._set_name(name)
+    # I don't know a method to set an atribute in an initializer of tuple.
+    info.name = name
     return info
 
 
