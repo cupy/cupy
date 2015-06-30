@@ -77,19 +77,6 @@ def _flip(f):
     return lambda x, y: f(y, x)
 
 
-_add = _make_bin_operator('+', 4, int.__add__)
-_sub = _make_bin_operator('-', 4, int.__sub__)
-_mul = _make_bin_operator('*', 5, int.__mul__)
-_floordiv = _make_bin_operator('//', 5, int.__floordiv__)
-_mod = _make_bin_operator('%', 5, int.__mod__)
-_pow = _make_bin_operator('**', 7, int.__mod__)
-_lshift = _make_bin_operator('<<', 3, int.__lshift__)
-_rshift = _make_bin_operator('>>', 3, int.__rshift__)
-_and = _make_bin_operator('&', 2, int.__and__)
-_xor = _make_bin_operator('^', 1, int.__xor__)
-_or = _make_bin_operator('|', 0, int.__or__)
-
-
 class IntExpr(object):
 
     def __init__(self, priority):
@@ -108,38 +95,33 @@ class IntExpr(object):
     def eval(self):
         pass
 
-    __add__ = _add
-    __radd__ = _flip(_add)
-    __sub__ = _sub
-    __rsub__ = _flip(_sub)
-    __mul__ = _mul
-    __rmul__ = _flip(_mul)
-    __floordiv__ = _floordiv
-    __rfloordiv__ = _flip(_floordiv)
-    __mod__ = _mod
-    __rmod__ = _flip(_mod)
-    __pow__ = _pow
+    __add__ = _make_bin_operator('+', 4, int.__add__)
+    __radd__ = _flip(__add__)
+    __sub__ = _make_bin_operator('-', 4, int.__sub__)
+    __rsub__ = _flip(__sub__)
+    __mul__ = _make_bin_operator('*', 5, int.__mul__)
+    __rmul__ = _flip(__mul__)
+    __floordiv__ = _make_bin_operator('//', 5, int.__floordiv__)
+    __rfloordiv__ = _flip(__floordiv__)
+    __mod__ = _make_bin_operator('%', 5, int.__mod__)
+    __rmod__ = _flip(__mod__)
+    __pow__ = _make_bin_operator('**', 7, int.__mod__)
 
-    __lshift__ = _lshift
-    __rshift__ = _rshift
+    __lshift__ = _make_bin_operator('<<', 3, int.__lshift__)
+    __rlshift__ = _flip(__lshift__)
+    __rshift__ = _make_bin_operator('>>', 3, int.__rshift__)
+    __rrshift__ = _flip(__rshift__)
 
-    __and__ = _and
-    __rand__ = _flip(_and)
-    __xor__ = _xor
-    __rxor__ = _flip(_xor)
-    __or__ = _or
-    __ror__ = _flip(_or)
+    __and__ = _make_bin_operator('&', 2, int.__and__)
+    __rand__ = _flip(__and__)
+    __xor__ = _make_bin_operator('^', 1, int.__xor__)
+    __rxor__ = _flip(__xor__)
+    __or__ = _make_bin_operator('|', 0, int.__or__)
+    __ror__ = _flip(__or__)
 
     __neg__ = _make_un_operator('-', 6, int.__neg__)
     __pos__ = _make_un_operator('+', 6, int.__pos__)
     __invert__ = _make_un_operator('~', 6, int.__invert__)
-
-    __lt__ = _make_bin_operator('<', -1, int.__lt__)
-    __le__ = _make_bin_operator('<=', -1, int.__le__)
-    __eq__ = _make_bin_operator('==', -1, int.__eq__)
-    __ne__ = _make_bin_operator('!=', -1, int.__ne__)
-    __gt__ = _make_bin_operator('>', -1, int.__gt__)
-    __ge__ = _make_bin_operator('>', -1, int.__ge__)
 
 
 class IntAtom(IntExpr):
