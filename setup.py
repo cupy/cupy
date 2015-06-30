@@ -9,6 +9,7 @@ setup(
     author_email='tokui@preferred.jp',
     url='http://chainer.org/',
     packages=['chainer',
+              'chainer.caffe',
               'chainer.cudnn',
               'chainer.functions',
               'chainer.optimizers',
@@ -16,7 +17,8 @@ setup(
               'chainer.utils'],
     package_data={'chainer.requirements': ['cuda-requirements.txt']},
     install_requires=['numpy',
-                      'six>=1.9.0'],
+                      'protobuf',
+                      'six>=1.9.0']
     scripts=['scripts/chainer-cuda-requirements'],
     tests_require=['nose'],
 )
