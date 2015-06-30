@@ -12,13 +12,13 @@ from chainer import variable
 # Arithmetic
 # ------------------------------------------------------------------------------
 
-def _vectorize(x, typ):
+def _vectorize(x):
     # numpy returns a float value (scalar) when a return value of an operator
     # is a 0-dimension array.
     # We need to convert such a value to a 0-dimension array because `Function`
     # object needs to return an `numpy.ndarray`.
     if numpy.isscalar(x):
-        return numpy.array(x, typ)
+        return numpy.array(x, x.dtype)
     else:
         return x
 
@@ -39,7 +39,7 @@ def neg(x):  # -x
 class Add(function.Function):
 
     def forward(self, x):
-        y = _vectorize(x[0] + x[1], x[0].dtype)
+        y = _vectorize(x[0] + x[1])
         return y,
 
     def backward(self, x, gy):
@@ -52,7 +52,7 @@ class AddConstant(function.Function):
         self.value = value
 
     def forward(self, x):
-        return _vectorize(x[0] + self.value, x[0].dtype),
+        return _vectorize(x[0] + self.value),
 
     def backward(self, x, gy):
         return gy[0],
@@ -67,10 +67,10 @@ def add(lhs, rhs):  # lhs + rhs
 class Sub(function.Function):
 
     def forward(self, x):
-        return _vectorize(x[0] - x[1], x[0].dtype),
+        return _vectorize(x[0] - x[1]),
 
     def backward(self, x, gy):
-        return gy[0], _vectorize(-gy[0], gy[0].dtype)
+        return gy[0], _vectorize(-gy[0])
 
 
 def sub(lhs, rhs):  # lhs - rhs
@@ -85,10 +85,10 @@ class SubFromConstant(function.Function):
         self.value = value
 
     def forward(self, x):
-        return _vectorize(self.value - x[0], x[0].dtype),
+        return _vectorize(self.value - x[0]),
 
     def backward(self, x, gy):
-        return _vectorize(-gy[0], gy[0].dtype),
+        return _vectorize(-gy[0]),
 
 
 def rsub(lhs, rhs):  # rhs - lhs
@@ -100,11 +100,10 @@ def rsub(lhs, rhs):  # rhs - lhs
 class Mul(function.Function):
 
     def forward(self, x):
-        return _vectorize(x[0] * x[1], x[0].dtype),
+        return _vectorize(x[0] * x[1]),
 
     def backward_cpu(self, x, gy):
-        return (_vectorize(gy[0] * x[1], x[0].dtype),
-                _vectorize(gy[0] * x[0], x[0].dtype))
+        return _vectorize(gy[0] * x[1]), _vectorize(gy[0] * x[0])
 
     def backward_gpu(self, x, gy):
         gx0 = cuda.empty_like(x[0])
@@ -126,10 +125,10 @@ class MulConstant(function.Function):
         self.value = value
 
     def forward(self, x):
-        return _vectorize(self.value * x[0], x[0].dtype),
+        return _vectorize(self.value * x[0]),
 
     def backward(self, x, gy):
-        return _vectorize(self.value * gy[0], gy[0].dtype),
+        return _vectorize(self.value * gy[0]),
 
 
 def mul(lhs, rhs):  # lhs * rhs
@@ -141,11 +140,11 @@ def mul(lhs, rhs):  # lhs * rhs
 class Div(function.Function):
 
     def forward(self, x):
-        return _vectorize(x[0] / x[1], x[0].dtype),
+        return _vectorize(x[0] / x[1]),
 
     def backward_cpu(self, x, gy):
-        gx0 = _vectorize(gy[0] / x[1], x[1].dtype)
-        return gx0, _vectorize(-gx0 * x[0] / x[1], x[0].dtype)
+        gx0 = _vectorize(gy[0] / x[1])
+        return gx0, _vectorize(-gx0 * x[0] / x[1])
 
     def backward_gpu(self, x, gy):
         gx0 = cuda.empty_like(x[0])
@@ -173,10 +172,10 @@ class DivFromConstant(function.Function):
         self.value = value
 
     def forward(self, x):
-        return _vectorize(self.value / x[0], x[0].dtype),
+        return _vectorize(self.value / x[0]),
 
     def backward_cpu(self, x, gy):
-        return _vectorize(-self.value * gy[0] / (x[0] ** 2), x[0].dtype),
+        return _vectorize(-self.value * gy[0] / (x[0] ** 2)),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
@@ -208,15 +207,15 @@ def rdiv(lhs, rhs):  # rhs / lhs
 class PowVarVar(function.Function):
 
     def forward_cpu(self, x):
-        self.y = _vectorize(x[0] ** x[1], x[0].dtype)
+        self.y = _vectorize(x[0] ** x[1])
         return self.y,
 
     def forward_gpu(self, x):
         return x[0] ** x[1],
 
     def backward_cpu(self, x, gy):
-        gx0 = _vectorize(x[1] * (x[0] ** (x[1] - 1)) * gy[0], x[0].dtype)
-        gx1 = _vectorize(numpy.log(x[0]) * self.y * gy[0], x[0].dtype)
+        gx0 = _vectorize(x[1] * (x[0] ** (x[1] - 1)) * gy[0])
+        gx1 = _vectorize(numpy.log(x[0]) * self.y * gy[0])
         return gx0, gx1
 
     def backward_gpu(self, x, gy):
@@ -239,11 +238,11 @@ class PowVarConst(function.Function):
         self.value = value
 
     def forward(self, x):
-        return _vectorize(x[0] ** self.value, x[0].dtype),
+        return _vectorize(x[0] ** self.value),
 
     def backward_cpu(self, x, gy):
         gx = self.value * (x[0] ** (self.value - 1)) * gy[0]
-        return _vectorize(gx, x[0].dtype),
+        return _vectorize(gx),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
@@ -278,7 +277,7 @@ class PowConstVar(function.Function):
         self.value = value
 
     def forward_cpu(self, x):
-        self.y = _vectorize(self.value ** x[0], x[0].dtype)
+        self.y = _vectorize(self.value ** x[0])
         return self.y,
 
     def forward_gpu(self, x):
@@ -294,7 +293,7 @@ class PowConstVar(function.Function):
         return y,
 
     def backward_cpu(self, x, gy):
-        return _vectorize(numpy.log(self.value) * self.y * gy[0], gy[0].dtype),
+        return _vectorize(numpy.log(self.value) * self.y * gy[0]),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
@@ -347,7 +346,7 @@ def install_variable_arithmetics():
 class Exp(function.Function):
 
     def forward_cpu(self, x):
-        self.y = _vectorize(numpy.exp(x[0]), x[0].dtype)
+        self.y = _vectorize(numpy.exp(x[0]))
         return self.y,
 
     def forward_gpu(self, x):
@@ -355,7 +354,7 @@ class Exp(function.Function):
         return self.y,
 
     def backward(self, x, gy):
-        return _vectorize(self.y * gy[0], gy[0].dtype),
+        return _vectorize(self.y * gy[0]),
 
 
 def exp(x):
@@ -366,13 +365,13 @@ def exp(x):
 class Log(function.Function):
 
     def forward_cpu(self, x):
-        return _vectorize(numpy.log(x[0]), x[0].dtype),
+        return _vectorize(numpy.log(x[0])),
 
     def forward_gpu(self, x):
         return cuda.cumath.log(x[0]),
 
     def backward(self, x, gy):
-        return _vectorize(gy[0] / x[0], x[0].dtype),
+        return _vectorize(gy[0] / x[0]),
 
 
 def log(x):
