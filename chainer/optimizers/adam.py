@@ -1,19 +1,26 @@
 import math
-import numpy
-from chainer import cuda, Optimizer
 
-class Adam(Optimizer):
+import numpy
+
+from chainer import cuda
+from chainer import optimizer
+
+
+class Adam(optimizer.Optimizer):
+
     """Adam optimization algorithm.
 
     See: http://arxiv.org/abs/1412.6980
 
     """
-    def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999, lam=1-1e-8, eps=1e-8):
+
+    def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999,
+                 lam=1 - 1e-8, eps=1e-8):
         self.alpha = alpha
         self.beta1 = beta1
         self.beta2 = beta2
-        self.lam   = lam
-        self.eps   = eps
+        self.lam = lam
+        self.eps = eps
 
     def init_state_cpu(self, param, grad):
         return numpy.zeros_like(param), numpy.zeros_like(param)
@@ -43,7 +50,7 @@ class Adam(Optimizer):
         fix1 = 1. - self.beta1 ** self.t
         fix2 = 1. - self.beta2 ** self.t
         return self.alpha * math.sqrt(fix2) / fix1
-        
+
     @property
     def beta1_t(self):
         return self.beta1 * (self.lam ** (self.t - 1))

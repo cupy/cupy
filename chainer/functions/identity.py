@@ -1,6 +1,8 @@
-from chainer import Function
+from chainer import function
 
-class Identity(Function):
+
+class Identity(function.Function):
+
     """Identity function."""
 
     def forward(self, xs):
@@ -8,6 +10,7 @@ class Identity(Function):
 
     def backward(self, xs, gys):
         return gys
+
 
 def identity(*inputs):
     """Just returns input variables."""

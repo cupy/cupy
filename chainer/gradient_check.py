@@ -1,12 +1,15 @@
 import numpy
-import cuda
+import six
+
+from chainer import cuda
+
 
 def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
     grads = tuple(numpy.zeros_like(x) for x in inputs)
     for x, gx in zip(inputs, grads):
-        flat_x  = x.ravel()
+        flat_x = x.ravel()
         flat_gx = gx.ravel()
-        for i in xrange(flat_x.size):
+        for i in six.moves.range(flat_x.size):
             orig = flat_x[i]
             flat_x[i] = orig + eps
             ys1 = f()
@@ -21,14 +24,15 @@ def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
 
     return grads
 
+
 def numerical_grad_gpu(f, inputs, grad_outputs, eps=1e-3):
     grads = tuple(cuda.zeros_like(x) for x in inputs)
     for x, gx in zip(inputs, grads):
-        x  = x.ravel()
+        x = x.ravel()
         gx = gx.ravel()
-        x_cpu  = x.get()
+        x_cpu = x.get()
         gx_cpu = gx.get()
-        for i in xrange(x_cpu.size):
+        for i in six.moves.range(x_cpu.size):
             orig = x_cpu[i]
             x_cpu[i] = orig + eps
             x.set(x_cpu)
@@ -46,6 +50,7 @@ def numerical_grad_gpu(f, inputs, grad_outputs, eps=1e-3):
         gx.set(gx_cpu)
 
     return grads
+
 
 def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     """Computes numerical gradient by finite differences.
@@ -71,6 +76,7 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
         return numerical_grad_gpu(f, inputs, grad_outputs, eps)
     return numerical_grad_cpu(f, inputs, grad_outputs, eps)
 
+
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
     """Asserts if some corresponding element of x and y differs too much.
 
@@ -87,7 +93,8 @@ def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
     x = cuda.to_cpu(x)
     y = cuda.to_cpu(y)
     try:
-        numpy.testing.assert_allclose(x, y, atol=atol, rtol=rtol, verbose=verbose)
-    except:
-        print 'error:', numpy.abs(x - y).max()
+        numpy.testing.assert_allclose(
+            x, y, atol=atol, rtol=rtol, verbose=verbose)
+    except Exception:
+        print('error:', numpy.abs(x - y).max())
         raise

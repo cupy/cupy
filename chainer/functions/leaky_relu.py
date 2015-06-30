@@ -1,12 +1,15 @@
-import numpy
-from chainer import cuda, Function
+from chainer import cuda
+from chainer import function
+
 
 def _kern():
     return cuda.elementwise(
         'float* y, const float* cond, const float* x, float slope',
         'y[i] = cond[i] >= 0 ? x[i] : slope * x[i]', 'lrelu')
 
-class LeakyReLU(Function):
+
+class LeakyReLU(function.Function):
+
     """Leaky rectifier unit."""
 
     def __init__(self, slope=0.2):
@@ -32,11 +35,12 @@ class LeakyReLU(Function):
         _kern()(gx, x[0], gy[0], self.slope)
         return gx,
 
+
 def leaky_relu(x, slope=0.2):
     """Leaky Rectified Linear Unit function.
 
-    This function is expressed as :math:`f(x) = \max(x, ax)`, where :math:`a` is
-    a configurable slope value.
+    This function is expressed as :math:`f(x) = \max(x, ax)`, where :math:`a`
+    is a configurable slope value.
 
     Args:
         x (~chainer.Variable): Input variable.

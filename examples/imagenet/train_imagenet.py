@@ -7,23 +7,25 @@ separated CSV whose first column is full path to image and second column is
 zero-origin label (this format is same as that used by Caffe's ImageDataLayer).
 
 """
+from __future__ import print_function
 import argparse
-import cPickle as pickle
-from datetime import timedelta
+import datetime
 import json
-import math
-from multiprocessing import Pool
-from Queue import Queue
+import multiprocessing
 import random
 import sys
-from threading import Thread
+import threading
 import time
 
 import cv2
 import numpy as np
+import six
+import six.moves.cPickle as pickle
+from six.moves import queue
 
-from chainer import cuda, Variable, FunctionSet, optimizers
-import chainer.functions  as F
+from chainer import cuda
+from chainer import optimizers
+
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from ILSVRC2012 dataset')
@@ -32,7 +34,8 @@ parser.add_argument('val', help='Path to validation image-label list file')
 parser.add_argument('--mean', '-m', default='mean.npy',
                     help='Path to the mean file (computed by compute_mean.py)')
 parser.add_argument('--arch', '-a', default='nin',
-                    help='Convnet architecture (nin, alexbn, googlenet, googlenetbn)')
+                    help='Convnet architecture \
+                    (nin, alexbn, googlenet, googlenetbn)')
 parser.add_argument('--batchsize', '-B', type=int, default=32,
                     help='Learning minibatch size')
 parser.add_argument('--val_batchsize', '-b', type=int, default=250,
@@ -49,6 +52,8 @@ args = parser.parse_args()
 assert 50000 % args.val_batchsize == 0
 
 # Prepare dataset
+
+
 def load_image_list(path):
     tuples = []
     for line in open(path):
@@ -57,7 +62,7 @@ def load_image_list(path):
     return tuples
 
 train_list = load_image_list(args.train)
-val_list   = load_image_list(args.val)
+val_list = load_image_list(args.val)
 mean_image = pickle.load(open(args.mean, 'rb'))
 
 # Prepare model
@@ -86,24 +91,26 @@ optimizer.setup(model.collect_parameters())
 
 
 # ------------------------------------------------------------------------------
-# This example consists of three threads: data feeder, logger and trainer. These
-# communicate with each other via Queue.
-data_q = Queue(maxsize=1)
-res_q  = Queue()
+# This example consists of three threads: data feeder, logger and trainer.
+# These communicate with each other via Queue.
+data_q = queue.Queue(maxsize=1)
+res_q = queue.Queue()
 
 # Data loading routine
 cropwidth = 256 - model.insize
+
+
 def read_image(path, center=False, flip=False):
     image = cv2.imread(path).transpose(2, 0, 1)
     if center:
         top = left = cropwidth / 2
     else:
-        top  = random.randint(0, cropwidth - 1)
+        top = random.randint(0, cropwidth - 1)
         left = random.randint(0, cropwidth - 1)
     bottom = model.insize + top
-    right  = model.insize + left
+    right = model.insize + left
 
-    image  = image[[2, 1, 0], top:bottom, left:right].astype(np.float32)
+    image = image[[2, 1, 0], top:bottom, left:right].astype(np.float32)
     image -= mean_image[:, top:bottom, left:right]
     image /= 255
     if flip and random.randint(0, 1) == 0:
@@ -112,8 +119,10 @@ def read_image(path, center=False, flip=False):
         return image
 
 # Data feeder
+
+
 def feed_data():
-    i     = 0
+    i = 0
     count = 0
 
     x_batch = np.ndarray(
@@ -123,13 +132,13 @@ def feed_data():
         (args.val_batchsize, 3, model.insize, model.insize), dtype=np.float32)
     val_y_batch = np.ndarray((args.val_batchsize,), dtype=np.int32)
 
-    batch_pool     = [None] * args.batchsize
+    batch_pool = [None] * args.batchsize
     val_batch_pool = [None] * args.val_batchsize
-    pool           = Pool(args.loaderjob)
+    pool = multiprocessing.Pool(args.loaderjob)
     data_q.put('train')
-    for epoch in xrange(1, 1 + args.epoch):
-        print >> sys.stderr, 'epoch', epoch
-        print >> sys.stderr, 'learning rate', optimizer.lr
+    for epoch in six.moves.range(1, 1 + args.epoch):
+        print('epoch', epoch, file=sys.stderr)
+        print('learning rate', optimizer.lr, file=sys.stderr)
         perm = np.random.permutation(len(train_list))
         for idx in perm:
             path, label = train_list[idx]
@@ -166,6 +175,8 @@ def feed_data():
     data_q.put('end')
 
 # Logger
+
+
 def log_result():
     train_count = 0
     train_cur_loss = 0
@@ -175,17 +186,17 @@ def log_result():
     while True:
         result = res_q.get()
         if result == 'end':
-            print >> sys.stderr, ''
+            print(file=sys.stderr)
             break
         elif result == 'train':
-            print >> sys.stderr, ''
+            print(file=sys.stderr)
             train = True
             if val_begin_at is not None:
                 begin_at += time.time() - val_begin_at
                 val_begin_at = None
             continue
         elif result == 'val':
-            print >> sys.stderr, ''
+            print(file=sys.stderr)
             train = False
             val_count = val_loss = val_accuracy = 0
             val_begin_at = time.time()
@@ -194,44 +205,46 @@ def log_result():
         loss, accuracy = result
         if train:
             train_count += 1
-            duration     = time.time() - begin_at
-            throughput   = train_count * args.batchsize / duration
+            duration = time.time() - begin_at
+            throughput = train_count * args.batchsize / duration
             sys.stderr.write(
                 '\rtrain {} updates ({} samples) time: {} ({} images/sec)'
                 .format(train_count, train_count * args.batchsize,
-                        timedelta(seconds=duration), throughput))
+                        datetime.timedelta(seconds=duration), throughput))
 
             train_cur_loss += loss
             train_cur_accuracy += accuracy
             if train_count % 1000 == 0:
-                mean_loss  = train_cur_loss / 1000
+                mean_loss = train_cur_loss / 1000
                 mean_error = 1 - train_cur_accuracy / 1000
-                print >> sys.stderr, ''
-                print json.dumps({'type': 'train', 'iteration': train_count,
-                                  'error': mean_error, 'loss': mean_loss})
+                print(file=sys.stderr)
+                print(json.dumps({'type': 'train', 'iteration': train_count,
+                                  'error': mean_error, 'loss': mean_loss}))
                 sys.stdout.flush()
                 train_cur_loss = 0
                 train_cur_accuracy = 0
         else:
-            val_count  += args.val_batchsize
-            duration    = time.time() - val_begin_at
-            throughput  = val_count / duration
+            val_count += args.val_batchsize
+            duration = time.time() - val_begin_at
+            throughput = val_count / duration
             sys.stderr.write(
                 '\rval   {} batches ({} samples) time: {} ({} images/sec)'
                 .format(val_count / args.val_batchsize, val_count,
-                        timedelta(seconds=duration), throughput))
+                        datetime.timedelta(seconds=duration), throughput))
 
             val_loss += loss
             val_accuracy += accuracy
             if val_count == 50000:
-                mean_loss  = val_loss * args.val_batchsize / 50000
+                mean_loss = val_loss * args.val_batchsize / 50000
                 mean_error = 1 - val_accuracy * args.val_batchsize / 50000
-                print >> sys.stderr, ''
-                print json.dumps({'type': 'val', 'iteration': train_count,
-                                  'error': mean_error, 'loss': mean_loss})
+                print(file=sys.stderr)
+                print(json.dumps({'type': 'val', 'iteration': train_count,
+                                  'error': mean_error, 'loss': mean_loss}))
                 sys.stdout.flush()
 
 # Trainer
+
+
 def train_loop():
     while True:
         while data_q.empty():
@@ -268,10 +281,10 @@ def train_loop():
         del loss, accuracy, x, y
 
 # Invoke threads
-feeder = Thread(target=feed_data)
+feeder = threading.Thread(target=feed_data)
 feeder.daemon = True
 feeder.start()
-logger = Thread(target=log_result)
+logger = threading.Thread(target=log_result)
 logger.daemon = True
 logger.start()
 

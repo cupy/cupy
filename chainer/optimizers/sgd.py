@@ -1,6 +1,9 @@
-from chainer import cuda, Optimizer
+from chainer import cuda
+from chainer import optimizer
 
-class SGD(Optimizer):
+
+class SGD(optimizer.Optimizer):
+
     """Vanilla Stochastic Gradient Descent."""
 
     def __init__(self, lr=0.01):

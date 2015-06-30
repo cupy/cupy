@@ -1,12 +1,17 @@
 import numpy
-from chainer import cuda, Optimizer
 
-class AdaDelta(Optimizer):
+from chainer import cuda
+from chainer import optimizer
+
+
+class AdaDelta(optimizer.Optimizer):
+
     """Zeiler's ADADELTA.
 
     See: http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf
 
     """
+
     def __init__(self, rho=0.95, eps=1e-6):
         self.rho = rho
         self.eps = eps
@@ -26,7 +31,8 @@ class AdaDelta(Optimizer):
         msdx += (1 - self.rho) * dx * dx
         param -= dx
 
-    def update_one_gpu(self, param, grad, ms):
+    def update_one_gpu(self, param, grad, state):
+        msg, msdx = state
         cuda.elementwise(
             '''float* param, const float* grad, float* msg, float* msdx,
                float one_minus_rho, float eps''',

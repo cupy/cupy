@@ -1,16 +1,23 @@
-from unittest import TestCase
+import unittest
+
 import numpy
-from chainer import cuda, Variable
-from chainer.gradient_check import assert_allclose, numerical_grad
-from chainer.functions import Parameter
 
-cuda.init()
+from chainer import cuda
+from chainer import functions
+from chainer.testing import attr
 
-class TestParameter(TestCase):
+
+if cuda.available:
+    cuda.init()
+
+
+class TestParameter(unittest.TestCase):
+
     def setUp(self):
-        self.W  = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        self.gW = numpy.random.uniform(-1, 1, self.W.shape).astype(numpy.float32)
-        self.func = Parameter(self.W)
+        self.W = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        self.gW = numpy.random.uniform(-1, 1,
+                                       self.W.shape).astype(numpy.float32)
+        self.func = functions.Parameter(self.W)
 
     def tearDown(self):
         del self.func
@@ -25,6 +32,7 @@ class TestParameter(TestCase):
     def test_forward_cpu(self):
         self.check_forward()
 
+    @attr.gpu
     def test_forward_gpu(self):
         self.to_gpu()
         self.check_forward()
@@ -34,11 +42,13 @@ class TestParameter(TestCase):
         y = self.func()
         y.grad = y_grad
         y.backward()
-        self.assertTrue((cuda.to_cpu(y_grad) == cuda.to_cpu(self.func.gW)).all())
+        self.assertTrue(
+            (cuda.to_cpu(y_grad) == cuda.to_cpu(self.func.gW)).all())
 
     def test_backward_cpu(self):
         self.check_backward(self.gW)
 
+    @attr.gpu
     def test_backward_gpu(self):
         self.to_gpu()
         self.check_backward(cuda.to_gpu(self.gW))

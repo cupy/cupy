@@ -1,20 +1,28 @@
-from collections import Iterable
+import collections
+
 import numpy
-from chainer import cuda, cudnn, Function
+
+from chainer import cuda
+from chainer import cudnn
+from chainer import function
 from chainer.utils import conv
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
 
+
 def _pair(x):
-    if isinstance(x, Iterable):
+    if isinstance(x, collections.Iterable):
         return x
     return (x, x)
 
-class Pooling2D(Function):
+
+class Pooling2D(function.Function):
+
     """Base class of pooling function over a set of 2d planes."""
 
-    def __init__(self, ksize, stride=None, pad=0, cover_all=True, use_cudnn=True):
+    def __init__(self, ksize, stride=None, pad=0, cover_all=True,
+                 use_cudnn=True):
         if stride is None:
             stride = ksize
 
@@ -28,8 +36,10 @@ class Pooling2D(Function):
     def forward_gpu(self, x):
         # Implementation using cudnn
         n, c, h, w = x[0].shape
-        y_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph, self.cover_all)
-        y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw, self.cover_all)
+        y_h = conv.get_conv_outsize(
+            h, self.kh, self.sy, self.ph, self.cover_all)
+        y_w = conv.get_conv_outsize(
+            w, self.kw, self.sx, self.pw, self.cover_all)
         y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
 
         handle = cudnn.get_default_handle()
@@ -49,13 +59,14 @@ class Pooling2D(Function):
         handle = cudnn.get_default_handle()
         pool_desc = self.create_pool_desc()
 
-        x_desc = cudnn.get_tensor_desc( x[0],  x[0].shape[2],  x[0].shape[3])
+        x_desc = cudnn.get_tensor_desc(x[0],  x[0].shape[2],  x[0].shape[3])
         y_desc = cudnn.get_tensor_desc(gy[0], gy[0].shape[2], gy[0].shape[3])
 
         gx = cuda.empty_like(x[0])
         libcudnn.cudnnPoolingBackward(
             handle, pool_desc.value, 1, y_desc.value, cudnn.get_ptr(self.y),
-            y_desc.value, cudnn.get_ptr(gy[0]), x_desc.value, cudnn.get_ptr(x[0]),
+            y_desc.value, cudnn.get_ptr(
+                gy[0]), x_desc.value, cudnn.get_ptr(x[0]),
             0, x_desc.value, cudnn.get_ptr(gx))
         return gx,
 
@@ -64,6 +75,7 @@ class Pooling2D(Function):
 
 
 class MaxPooling2D(Pooling2D):
+
     """Max pooling over a set of 2d planes."""
 
     def forward_cpu(self, x):
@@ -82,8 +94,10 @@ class MaxPooling2D(Pooling2D):
             return super(MaxPooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
-        y_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph, self.cover_all)
-        y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw, self.cover_all)
+        y_h = conv.get_conv_outsize(
+            h, self.kh, self.sy, self.ph, self.cover_all)
+        y_w = conv.get_conv_outsize(
+            w, self.kw, self.sx, self.pw, self.cover_all)
         y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
         self.indexes = cuda.empty((n, c, y_h, y_w), dtype=numpy.int32)
 
@@ -120,8 +134,9 @@ class MaxPooling2D(Pooling2D):
                int argmax_ky = argmax_y + ph - out_y * sy;
                int argmax_kx = argmax_x + pw - out_x * sx;
                indexes[i] = argmax_kx + kw * argmax_ky;
-            ''', 'max_pool_fwd')(y, self.indexes, x[0], h, w, y_h, y_w, self.kh,
-                                 self.kw, self.sy, self.sx, self.ph, self.pw)
+            ''', 'max_pool_fwd')(y, self.indexes, x[0], h, w, y_h, y_w,
+                                 self.kh, self.kw, self.sy, self.sx, self.ph,
+                                 self.pw)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -143,7 +158,7 @@ class MaxPooling2D(Pooling2D):
             return super(MaxPooling2D, self).backward_gpu(x, gy)
 
         n, c, h, w = x[0].shape
-        y_h, y_w   = gy[0].shape[2:]
+        y_h, y_w = gy[0].shape[2:]
         gx = cuda.empty_like(x[0])
 
         cuda.elementwise(
@@ -182,7 +197,9 @@ class MaxPooling2D(Pooling2D):
             (self.kh, self.kw), (self.sy, self.sx), (self.ph, self.pw),
             'CUDNN_POOLING_MAX')
 
-def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True, use_cudnn=True):
+
+def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True,
+                   use_cudnn=True):
     """Spatial max pooling function.
 
     This function acts similarly to :class:`~functions.Convolution2D`, but
@@ -211,6 +228,7 @@ def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True, use_cudnn=True)
 
 
 class AveragePooling2D(Pooling2D):
+
     """Average pooling over a set of 2d planes."""
     # TODO(beam2d): Support cover_all mode.
 
@@ -268,7 +286,7 @@ class AveragePooling2D(Pooling2D):
             return super(AveragePooling2D, self).backward_gpu(x, gy)
 
         n, c, h, w = x[0].shape
-        y_h, y_w   = gy[0].shape[2:]
+        y_h, y_w = gy[0].shape[2:]
         gx = cuda.empty_like(x[0])
         coeff = 1. / (self.kh * self.kw)
 
@@ -301,6 +319,7 @@ class AveragePooling2D(Pooling2D):
         return cudnn.get_pool2d_desc(
             (self.kh, self.kw), (self.sy, self.sx), (self.ph, self.pw),
             'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING')
+
 
 def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
     """Spatial average pooling function.

@@ -1,8 +1,11 @@
 import math
-from chainer import FunctionSet, Variable
+
+import chainer
 import chainer.functions as F
 
-class NIN(FunctionSet):
+
+class NIN(chainer.FunctionSet):
+
     """Network-in-Network example model."""
 
     insize = 227
@@ -10,23 +13,23 @@ class NIN(FunctionSet):
     def __init__(self):
         w = math.sqrt(2)  # MSRA scaling
         super(NIN, self).__init__(
-            conv1  = F.Convolution2D(   3,   96, 11, wscale=w, stride=4),
-            conv1a = F.Convolution2D(  96,   96,  1, wscale=w),
-            conv1b = F.Convolution2D(  96,   96,  1, wscale=w),
-            conv2  = F.Convolution2D(  96,  256,  5, wscale=w, pad=2),
-            conv2a = F.Convolution2D( 256,  256,  1, wscale=w),
-            conv2b = F.Convolution2D( 256,  256,  1, wscale=w),
-            conv3  = F.Convolution2D( 256,  384,  3, wscale=w, pad=1),
-            conv3a = F.Convolution2D( 384,  384,  1, wscale=w),
-            conv3b = F.Convolution2D( 384,  384,  1, wscale=w),
-            conv4  = F.Convolution2D( 384, 1024,  3, wscale=w, pad=1),
-            conv4a = F.Convolution2D(1024, 1024,  1, wscale=w),
-            conv4b = F.Convolution2D(1024, 1000,  1, wscale=w),
+            conv1=F.Convolution2D(3,   96, 11, wscale=w, stride=4),
+            conv1a=F.Convolution2D(96,   96,  1, wscale=w),
+            conv1b=F.Convolution2D(96,   96,  1, wscale=w),
+            conv2=F.Convolution2D(96,  256,  5, wscale=w, pad=2),
+            conv2a=F.Convolution2D(256,  256,  1, wscale=w),
+            conv2b=F.Convolution2D(256,  256,  1, wscale=w),
+            conv3=F.Convolution2D(256,  384,  3, wscale=w, pad=1),
+            conv3a=F.Convolution2D(384,  384,  1, wscale=w),
+            conv3b=F.Convolution2D(384,  384,  1, wscale=w),
+            conv4=F.Convolution2D(384, 1024,  3, wscale=w, pad=1),
+            conv4a=F.Convolution2D(1024, 1024,  1, wscale=w),
+            conv4b=F.Convolution2D(1024, 1000,  1, wscale=w),
         )
 
     def forward(self, x_data, y_data, train=True):
-        x = Variable(x_data, volatile=not train)
-        t = Variable(y_data, volatile=not train)
+        x = chainer.Variable(x_data, volatile=not train)
+        t = chainer.Variable(y_data, volatile=not train)
 
         h = F.relu(self.conv1(x))
         h = F.relu(self.conv1a(h))

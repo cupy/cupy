@@ -1,0 +1,14 @@
+language: python
+
+python:
+  - "2.7"
+  - "3.4"
+
+install:
+  - python setup.py install
+  - pip install nose flake8 hacking
+
+script:
+  - chainer-cuda-requirements
+  - nosetests -a '!gpu'
+  - flake8 chainer/**/*.py tests/**/*.py examples/**/*.py --exclude=libcudnn.py

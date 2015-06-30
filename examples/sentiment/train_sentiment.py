@@ -3,19 +3,24 @@
 
 This is Socher's simple recursive model, not RTNN:
   R. Socher, C. Lin, A. Y. Ng, and C.D. Manning.
-  Parsing Natural Scenes and Natural Language with Recursive Neural Networks. in ICML2011.
+  Parsing Natural Scenes and Natural Language with Recursive Neural Networks.
+  in ICML2011.
+
 """
 
 import argparse
 import collections
-import os
 import random
 import re
 import time
 
 import numpy as np
-from chainer import cuda, Variable, FunctionSet, optimizers
-import chainer.functions  as F
+
+import chainer
+from chainer import cuda
+import chainer.functions as F
+from chainer import optimizers
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -28,7 +33,9 @@ batchsize = 25      # minibatch size
 n_label = 5         # number of labels
 epoch_per_eval = 5  # number of epochs per evaluation
 
+
 class SexpParser(object):
+
     def __init__(self, line):
         self.tokens = re.findall(r'\(|\)|[^\(\) ]+', line)
         self.pos = 0
@@ -85,13 +92,15 @@ def traverse(node, train=True, evaluate=None, root=True):
         if args.gpu >= 0:
             word = cuda.to_gpu(word)
         loss = 0
-        x = Variable(word, volatile=not train)
+        x = chainer.Variable(word, volatile=not train)
         v = model.embed(x)
     else:
         # internal node
         left_node, right_node = node['node']
-        left_loss, left = traverse(left_node, train=train, evaluate=evaluate, root=False)
-        right_loss, right = traverse(right_node, train=train, evaluate=evaluate, root=False)
+        left_loss, left = traverse(
+            left_node, train=train, evaluate=evaluate, root=False)
+        right_loss, right = traverse(
+            right_node, train=train, evaluate=evaluate, root=False)
         v = F.tanh(model.l(F.concat((left, right))))
         loss = left_loss + right_loss
 
@@ -101,7 +110,7 @@ def traverse(node, train=True, evaluate=None, root=True):
         label = np.array([node['label']], np.int32)
         if args.gpu >= 0:
             label = cuda.to_gpu(label)
-        t = Variable(label, volatile=not train)
+        t = chainer.Variable(label, volatile=not train)
         loss += F.softmax_cross_entropy(y, t)
 
     if evaluate is not None:
@@ -134,8 +143,8 @@ vocab = {}
 train_trees = read_corpus('trees/train.txt', vocab)
 test_trees = read_corpus('trees/test.txt', vocab)
 develop_trees = read_corpus('trees/dev.txt', vocab)
-    
-model = FunctionSet(
+
+model = chainer.FunctionSet(
     embed=F.EmbedID(len(vocab), n_units),
     l=F.Linear(n_units * 2, n_units),
     w=F.Linear(n_units, n_label),
@@ -150,9 +159,9 @@ optimizer = optimizers.AdaGrad(lr=0.1)
 optimizer.setup(model.collect_parameters())
 
 accum_loss = 0
-count      = 0
-start_at   = time.time()
-cur_at     = start_at
+count = 0
+start_at = time.time()
+cur_at = start_at
 for epoch in range(n_epoch):
     print('Epoch: {0:d}'.format(epoch))
     total_loss = 0
@@ -175,17 +184,17 @@ for epoch in range(n_epoch):
 
     print('loss: {:.2f}'.format(total_loss))
 
-    now      = time.time()
+    now = time.time()
     throuput = float(len(train_trees)) / (now - cur_at)
     print('{:.2f} iters/sec, {:.2f} sec'.format(throuput, now - cur_at))
-    print
+    print()
 
     if (epoch + 1) % epoch_per_eval == 0:
         print('Train data evaluation:')
         evaluate(train_trees)
         print('Develop data evaluation:')
         evaluate(develop_trees)
-        print
+        print('')
 
-print ('Test evaluateion')
+print('Test evaluateion')
 evaluate(test_trees)

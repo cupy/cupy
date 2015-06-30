@@ -1,14 +1,19 @@
 import numpy
-from chainer import cuda, Optimizer
 
-class AdaGrad(Optimizer):
+from chainer import cuda
+from chainer import optimizer
+
+
+class AdaGrad(optimizer.Optimizer):
+
     """AdaGrad implementation.
 
     See: http://jmlr.org/papers/v12/duchi11a.html
 
     """
+
     def __init__(self, lr=0.001, eps=1e-8):
-        self.lr  = lr
+        self.lr = lr
         self.eps = eps
 
     def init_state_cpu(self, param, grad):
