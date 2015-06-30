@@ -1,11 +1,14 @@
 import collections
+import sys
 
 import numpy
 
 from chainer import function
 from chainer import function_set
 from chainer import functions
-from chainer.functions.caffe import caffe_pb2
+# caffe_pb2 does not support Py3
+if sys.version_info < (3, 0, 0):
+    from chainer.functions.caffe import caffe_pb2
 
 
 _type_to_method = {}
