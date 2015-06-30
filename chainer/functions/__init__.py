@@ -11,6 +11,7 @@ from chainer.functions import embed_id
 from chainer.functions import hierarchical_softmax
 from chainer.functions import identity
 from chainer.functions import inception
+from chainer.functions import inceptionbn
 from chainer.functions import leaky_relu
 from chainer.functions import linear
 from chainer.functions import local_response_normalization
@@ -50,6 +51,7 @@ MeanSquaredError = mean_squared_error.MeanSquaredError
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 Sum = sum_.Sum
 Inception = inception.Inception
+InceptionBN = inceptionbn.InceptionBN
 
 BatchNormalization = batch_normalization.BatchNormalization
 Convolution2D = convolution_2d.Convolution2D
