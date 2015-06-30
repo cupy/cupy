@@ -1,10 +1,10 @@
 import numpy
 
 from chainer import cuda
-from chainer import Optimizer
+from chainer import optimizer
 
 
-class RMSpropGraves(Optimizer):
+class RMSpropGraves(optimizer.Optimizer):
     """Alex Graves's RMSprop.
 
     See http://arxiv.org/abs/1308.0850
