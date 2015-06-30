@@ -10,18 +10,22 @@ from chainer import functions
 if sys.version_info < (3, 0, 0):
     from chainer.functions.caffe import caffe_pb2
 
+    _type_to_method = {}
+    _oldname_to_method = {}
 
-_type_to_method = {}
-_oldname_to_method = {}
-
-
-def _layer(typ, oldname):
-    def decorator(meth):
-        global _type_to_method
-        _type_to_method[typ] = meth
-        _oldname_to_method[getattr(caffe_pb2.V1LayerParameter, oldname)] = meth
-        return meth
-    return decorator
+    def _layer(typ, oldname):
+        def decorator(meth):
+            global _type_to_method
+            _type_to_method[typ] = meth
+            typevalue = getattr(caffe_pb2.V1LayerParameter, oldname)
+            _oldname_to_method[typevalue] = meth
+            return meth
+        return decorator
+else:
+    def _layer(typ, oldname):  # fallback
+        def decorator(meth):
+            return meth
+        return decorator
 
 
 class CaffeFunction(function.Function):
