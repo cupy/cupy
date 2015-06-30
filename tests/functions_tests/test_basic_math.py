@@ -591,6 +591,9 @@ class UnaryFunctionsTestBase(object):
     def forward_cpu(self, op, op_np):
         self.check_forward(op, op_np, self.x)
 
+    def test_neg_forward_cpu(self):
+        self.forward_cpu(lambda x: -x, lambda x: -x)
+
     def test_exp_forward_cpu(self):
         self.forward_cpu(F.exp, numpy.exp)
 
@@ -599,6 +602,10 @@ class UnaryFunctionsTestBase(object):
 
     def forward_gpu(self, op, op_np):
         self.check_forward(op, op_np, cuda.to_gpu(self.x))
+
+    @attr.gpu
+    def test_neg_forward_gpu(self):
+        self.forward_gpu(lambda x: -x, lambda x: -x)
 
     @attr.gpu
     def test_exp_forward_gpu(self):
@@ -623,6 +630,9 @@ class UnaryFunctionsTestBase(object):
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
 
+    def test_neg_backward_cpu(self):
+        self.backward_cpu(lambda x: -x)
+
     def test_exp_backward_cpu(self):
         self.backward_cpu(F.exp)
 
@@ -631,6 +641,10 @@ class UnaryFunctionsTestBase(object):
 
     def backward_gpu(self, op):
         self.check_backward(op, cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+    @attr.gpu
+    def test_neg_backward_gpu(self):
+        self.backward_gpu(lambda x: -x)
 
     @attr.gpu
     def test_exp_backward_gpu(self):

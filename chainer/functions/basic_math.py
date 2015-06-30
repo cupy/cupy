@@ -26,10 +26,10 @@ def _vectorize(x):
 class Neg(function.Function):
 
     def forward(self, x):
-        return -x[0],
+        return _vectorize(-x[0]),
 
     def backward(self, x, gy):
-        return -gy[0],
+        return _vectorize(-gy[0]),
 
 
 def neg(x):  # -x
