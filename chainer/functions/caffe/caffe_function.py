@@ -2,7 +2,7 @@ import collections
 
 import numpy
 
-from chainer.caffe import caffe_pb2
+from chainer.functions.caffe import caffe_pb2
 from chainer import function
 from chainer import function_set
 from chainer import functions
