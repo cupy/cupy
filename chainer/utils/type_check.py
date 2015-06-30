@@ -38,12 +38,12 @@ def get_types(data, is_grad):
         name = 'in_types'
 
     info = TypeInfoTuple(
-        get_type(name, i, x, is_grad) for i, x in enumerate(data))
+        _get_type(name, i, x, is_grad) for i, x in enumerate(data))
     info._set_name(name)
     return info
 
 
-def get_type(name, index, array, accept_none):
+def _get_type(name, index, array, accept_none):
     if accept_none and array is None:
         # case that gradient is not given
         return TypeInfo(name, index, (), None)
