@@ -649,7 +649,8 @@ class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
         return x, gy
 
 
-class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase, unittest.TestCase):
+class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
+                                      unittest.TestCase):
 
     def make_data(self):
         x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)

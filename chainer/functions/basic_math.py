@@ -13,8 +13,8 @@ from chainer import variable
 # ------------------------------------------------------------------------------
 
 def _vectorize(x, typ):
-    # numpy returns a float value (scalar) when a return value of an operator is
-    # a 0-dimension array.
+    # numpy returns a float value (scalar) when a return value of an operator
+    # is a 0-dimension array.
     # We need to convert such a value to a 0-dimension array because `Function`
     # object needs to return an `numpy.ndarray`.
     if numpy.isscalar(x):
@@ -103,7 +103,8 @@ class Mul(function.Function):
         return _vectorize(x[0] * x[1], x[0].dtype),
 
     def backward_cpu(self, x, gy):
-        return _vectorize(gy[0] * x[1], x[0].dtype), _vectorize(gy[0] * x[0], x[0].dtype)
+        return (_vectorize(gy[0] * x[1], x[0].dtype),
+                _vectorize(gy[0] * x[0], x[0].dtype))
 
     def backward_gpu(self, x, gy):
         gx0 = cuda.empty_like(x[0])
@@ -241,7 +242,8 @@ class PowVarConst(function.Function):
         return _vectorize(x[0] ** self.value, x[0].dtype),
 
     def backward_cpu(self, x, gy):
-        return _vectorize(self.value * (x[0] ** (self.value - 1)) * gy[0], x[0].dtype),
+        gx = self.value * (x[0] ** (self.value - 1)) * gy[0]
+        return _vectorize(gx, x[0].dtype),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
