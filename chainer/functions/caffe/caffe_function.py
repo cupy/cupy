@@ -2,10 +2,10 @@ import collections
 
 import numpy
 
-from chainer.functions.caffe import caffe_pb2
 from chainer import function
 from chainer import function_set
 from chainer import functions
+from chainer.functions.caffe import caffe_pb2
 
 
 _type_to_method = {}
