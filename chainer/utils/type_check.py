@@ -305,3 +305,9 @@ class InvalidType(Exception):
 
         self.expect = expect
         self.actual = actual
+
+
+def expect(*bool_exprs):
+    for expr in bool_exprs:
+        assert isinstance(expr, Bool)
+        expr.expect()
