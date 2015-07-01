@@ -23,6 +23,7 @@ from chainer.functions import prelu
 from chainer.functions import relu
 from chainer.functions import reshape
 from chainer.functions import sigmoid
+from chainer.functions import sigmoid_cross_entropy
 from chainer.functions import softmax
 from chainer.functions import softmax_cross_entropy
 from chainer.functions import sum as sum_
@@ -48,6 +49,7 @@ LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization
 Accuracy = accuracy.Accuracy
 MeanSquaredError = mean_squared_error.MeanSquaredError
+SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 Sum = sum_.Sum
 Inception = inception.Inception
@@ -84,5 +86,6 @@ local_response_normalization = \
 
 accuracy = accuracy.accuracy
 mean_squared_error = mean_squared_error.mean_squared_error
+sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 sum = sum_.sum
