@@ -25,6 +25,7 @@ class Neg(function.Function):
 def neg(x):  # -x
     return Neg()(x)
 
+
 class Abs(function.Function):
 
     def forward(self, x):
@@ -40,6 +41,7 @@ class Abs(function.Function):
             'gx0[i] = ((x0[i] > 0) - (x0[i] < 0)) * gy[i]',
             'back_abs')(gx0, x[0], gy[0])
         return gx0,
+
 
 def abs(x):
     return Abs()(x)
