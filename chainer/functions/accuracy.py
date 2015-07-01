@@ -2,18 +2,22 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 class Accuracy(function.Function):
 
     def check_type_forward(self, in_types):
-        in_types.size().should_be(2)
+        type_check.expect(in_types.size() == 2)
         x_type, t_type = in_types
-        x_type.dtype.should_be(numpy.float32)
-        x_type.ndim.should_be(2)
-        t_type.dtype.should_be(numpy.int32)
-        t_type.ndim.should_be(1)
-        t_type.shape[0].should_be(x_type.shape[0])
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim == 2,
+            t_type.dtype == numpy.int32,
+            t_type.ndim == 1,
+            t_type.shape[0] == x_type.shape[0],
+        )
 
     def forward_cpu(self, inputs):
         y, t = inputs

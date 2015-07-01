@@ -101,9 +101,6 @@ class Expr(object):
 
 class Int(object):
 
-    def should_be(self, expect):
-        (self == expect).expect()
-
     __add__ = _make_bin_operator('+', 4, int.__add__)
     __radd__ = _flip(__add__)
     __sub__ = _make_bin_operator('-', 4, int.__sub__)
@@ -289,9 +286,6 @@ class DtypeExpr(Atom):
     def __init__(self, dtype, name):
         Atom.__init__(self, dtype)
         self.name = name
-
-    def should_be(self, expect):
-        (self == expect).expect()
 
     def __str__(self):
         return '{0}.dtype'.format(self.name)

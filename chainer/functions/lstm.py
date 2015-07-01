@@ -3,6 +3,7 @@ import six
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 def _extract_gates(x):
@@ -47,16 +48,22 @@ class LSTM(function.Function):
     """
 
     def check_type_forward(self, in_types):
-        in_types.size().should_be(2)
+        type_check.expect(in_types.size() == 2)
         c_type, x_type = in_types
-        c_type.dtype.should_be(numpy.float32)
-        x_type.dtype.should_be(numpy.float32)
 
-        # c_type.ndim.should_be(2)
-        # x_type.ndim.should_be(2)
+        type_check.expect(
+            c_type.dtype == numpy.float32,
+            x_type.dtype == numpy.float32,
 
-        x_type.shape[0].should_be(c_type.shape[0])
-        x_type.shape[1].should_be(4 * c_type.shape[1])
+            c_type.ndim >= 2,
+            x_type.ndim >= 2,
+            c_type.ndim == x_type.ndim,
+
+            x_type.shape[0] == c_type.shape[0],
+            x_type.shape[1] == 4 * c_type.shape[1],
+        )
+        for i in range(2, c_type.ndim.eval()):
+            type_check.expect(x_type.shape[i] == c_type.shape[i])
 
     def forward_cpu(self, inputs):
         c_prev, x = inputs

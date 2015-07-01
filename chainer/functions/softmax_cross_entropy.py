@@ -4,6 +4,7 @@ import six
 from chainer import cuda
 from chainer import function
 from chainer.functions import softmax
+from chainer.utils import type_check
 
 
 class SoftmaxCrossEntropy(function.Function):
@@ -14,20 +15,25 @@ class SoftmaxCrossEntropy(function.Function):
         self.use_cudnn = use_cudnn
 
     def check_type_forward(self, in_types):
-        in_types.size().should_be(2)
+        type_check.expect(in_types.size() == 2)
         x_type, t_type = in_types
-        x_type.dtype.should_be(numpy.float32)
-        x_type.ndim.should_be(2)
-        t_type.dtype.should_be(numpy.int32)
-        t_type.ndim.should_be(1)
 
-        x_type.shape[0].should_be(t_type.shape[0])
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim == 2,
+            t_type.dtype == numpy.int32,
+            t_type.ndim == 1,
+
+            x_type.shape[0] == t_type.shape[0],
+        )
 
     def check_type_backward(self, in_types, out_types):
-        in_types.size().should_be(2)
-        out_types.size().should_be(1)
+        type_check.expect(
+            in_types.size() == 2,
+            out_types.size()== 1,
+        )
         y_type, = out_types
-        y_type.ndim.should_be(0)  # means scalar
+        type_check.expect(y_type.ndim == 0)  # means scalar
 
     def forward_cpu(self, inputs):
         x, t = inputs
