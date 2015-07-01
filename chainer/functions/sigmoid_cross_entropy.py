@@ -26,8 +26,7 @@ class SigmoidCrossEntropy(function.Function):
         self.y, = sigmoid.Sigmoid(self.use_cudnn).forward_gpu((x,))
         loss = -cuda.reduce(
             'int* t, float* x',
-            'x[i] * (t[i] - (x[i] >= 0))'
-            ' - log1pf(expf(x[i] - 2 * x[i] * (x[i] >= 0)))',
+            'x[i] * (t[i] - (x[i] >= 0)) - log1pf(expf(-fabsf(x[i])))',
             'a+b', '0', 'sigmoid_crossent_fwd', numpy.float32)(t, x)
         return loss / t.shape[0],
 
@@ -51,14 +50,15 @@ def sigmoid_cross_entropy(x, t, use_cudnn=True):
     """Computes cross entropy loss for sigmoid activations.
 
     Args:
-        x (Variable): Variable holding a matrix whose (i, j)-th element
-            indicates unnormalized log probability of the j-th unit at
-            the i-th example.
-        t (Variable): Variable holding an int32 vector of groundtruth
+        x (Variable): A variable object holding a matrix whose (i, j)-th
+            element indicates the unnormalized log probability of the j-th unit
+            at the i-th example.
+        t (Variable): A variable object holding an int32 vector of groundtruth
             binary labels.
 
     Returns:
-        Variable: A variable holding a scalar array of the cross entropy loss.
+        Variable: A variable object holding a scalar array of the cross entropy
+            loss.
 
     .. note::
 
