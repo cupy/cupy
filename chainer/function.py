@@ -187,9 +187,31 @@ class Function(object):
         self.check_type_backward(in_type, grad_type)
 
     def check_type_forward(self, in_types):
+        """Checks types of input data before forward propagation.
+
+        Before :meth:`forward` is called, this function is called.
+        You need to validate types of input data in this function
+        using type-check utilities.
+
+        Args:
+            in_types: :class:`TypeInfoTuple` object which contains type
+                information of input data for :meth:`forward`.
+        """
         pass
 
-    def check_type_backward(self, in_types, out_types):
+    def check_type_backward(self, in_types, grad_types):
+        """Checks types of gradient data before back propagation.
+
+        Before :meth:`backward` is called, this function is called.
+        You need to validate types of gradient data in this function
+        using type-check utilities.
+
+        Args:
+            in_types: :class:`TypeInfoTuple` object which contains type
+                information of input data for :meth:`backward`.
+            grad_types: :class:`TypeInfoTuple` object which contains type
+                information of gradient data for :meth:`backward`.
+        """
         pass
 
     def forward(self, inputs):
