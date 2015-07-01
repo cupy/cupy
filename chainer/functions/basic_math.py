@@ -25,6 +25,25 @@ class Neg(function.Function):
 def neg(x):  # -x
     return Neg()(x)
 
+class Abs(function.Function):
+
+    def forward(self, x):
+        return utils.force_array(x[0].__abs__()),
+
+    def backward_cpu(self, x, gy):
+        return utils.force_array(numpy.sign(x[0]) * gy[0]),
+
+    def backward_gpu(self, x, gy):
+        gx0 = cuda.empty_like(x[0])
+        cuda.elementwise(
+            'float* gx0, const float* x0, const float* gy',
+            'gx0[i] = ((x0[i] > 0) - (x0[i] < 0)) * gy[i]',
+            'back_abs')(gx0, x[0], gy[0])
+        return gx0,
+
+def abs(x):
+    return Abs()(x)
+
 
 class Add(function.Function):
 
@@ -315,6 +334,7 @@ def rpow(lhs, rhs):  # rhs ** lhs
 
 def install_variable_arithmetics():
     variable.Variable.__neg__ = neg
+    variable.Variable.__abs__ = abs
     variable.Variable.__add__ = add
     variable.Variable.__radd__ = add
     variable.Variable.__sub__ = sub
