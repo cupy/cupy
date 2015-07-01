@@ -1,3 +1,5 @@
+import operator
+
 import numpy
 
 from chainer import cuda
@@ -51,25 +53,21 @@ def _get_type(name, index, array, accept_none):
     return TypeInfo(name, index, array.shape, array.dtype)
 
 
-def _wrap(x):
-    if isinstance(x, IntExpr):
-        return x
-    elif isinstance(x, int):
-        return IntConstant(x)
-    else:
-        assert(False)
-
-
 def _make_un_operator(exp, priority, func):
     def f(x):
-        return UnaryOperator(_wrap(x), exp, priority, func)
+        return IntUnaryOperator(priority, x, exp, func)
     return f
 
 
 def _make_bin_operator(exp, priority, func):
     def f(x, y):
-        return BinaryOperator(_wrap(x), _wrap(y),
-                              exp, priority, func)
+        return IntBinaryOperator(priority, x, y, exp, func)
+    return f
+
+
+def _make_bool_operator(exp, inv, func):
+    def f(x, y):
+        return BoolBinaryOperator(x, y, exp, inv, func)
     return f
 
 
@@ -77,23 +75,34 @@ def _flip(f):
     return lambda x, y: f(y, x)
 
 
-class IntExpr(object):
+class Expr(object):
 
     def __init__(self, priority):
         self.priority = priority
 
-    def should_be(self, expect):
-        expect = _wrap(expect)
-
-        actual_value = self.eval()
-        expect_value = expect.eval()
-        if actual_value != expect_value:
-            raise InvalidType(
-                '{0} == {1}'.format(self, expect),
-                '{0} != {1}'.format(actual_value, expect_value))
-
     def eval(self):
-        pass
+        raise NotImplemented()
+
+    def __nonzero__(self):
+        msg = ('Don\'t convert Expr to bool. '
+               'Please call Expr.eval method to evaluate expression.')
+        raise RuntimeError(msg)
+
+    def __bool__(self):
+        self.__nonzero__()
+
+    __eq__ = _make_bool_operator('==', '!=', operator.__eq__)
+    __ne__ = _make_bool_operator('!=', '==', operator.__ne__)
+    __lt__ = _make_bool_operator('<', '>=', operator.__lt__)
+    __le__ = _make_bool_operator('<=', '>', operator.__le__)
+    __gt__ = _make_bool_operator('>', '<=', operator.__gt__)
+    __ge__ = _make_bool_operator('>=', '<', operator.__ge__)
+
+
+class Int(object):
+
+    def should_be(self, expect):
+        (self == expect).expect()
 
     __add__ = _make_bin_operator('+', 4, int.__add__)
     __radd__ = _flip(__add__)
@@ -124,14 +133,20 @@ class IntExpr(object):
     __invert__ = _make_un_operator('~', 6, int.__invert__)
 
 
-class IntAtom(IntExpr):
+class Atom(Expr):
 
     def __init__(self, value):
-        super(IntAtom, self).__init__(8)
+        super(Atom, self).__init__(8)
         self.value = value
 
     def eval(self):
         return self.value
+
+
+class IntAtom(Atom, Int):
+
+    def __init__(self, value):
+        Atom.__init__(self, value)
 
 
 class IntConstant(IntAtom):
@@ -175,9 +190,9 @@ class Member(IntAtom):
         return '{0}.{1}'.format(self.obj, self.name)
 
 
-class UnaryOperator(IntExpr):
+class UnaryOperator(Expr):
 
-    def __init__(self, term, exp, priority, func):
+    def __init__(self, priority, term, exp, func):
         super(UnaryOperator, self).__init__(priority)
         self.term = term
         self.exp = exp
@@ -188,15 +203,21 @@ class UnaryOperator(IntExpr):
 
     def __str__(self):
         exp = str(self.term)
-        if self.term.priority < self.priority:
+        if isinstance(self.term, Expr) and self.term.priority < self.priority:
             exp = '(' + exp + ')'
 
         return self.exp + exp
 
 
-class BinaryOperator(IntExpr):
+class IntUnaryOperator(UnaryOperator, Int):
 
-    def __init__(self, lhs, rhs, exp, priority, func):
+    def __init__(self, priority, term, exp, func):
+        UnaryOperator.__init__(self, priority, term, exp, func)
+
+
+class BinaryOperator(Expr):
+
+    def __init__(self, priority, lhs, rhs, exp, func):
         super(BinaryOperator, self).__init__(priority)
         self.lhs = lhs
         self.rhs = rhs
@@ -204,48 +225,73 @@ class BinaryOperator(IntExpr):
         self.func = func
 
     def eval(self):
-        return self.func(self.lhs.eval(), self.rhs.eval())
+        left = self.eval_left()
+        right = self.eval_right()
+        return self.func(left, right)
+
+    def eval_left(self):
+        if isinstance(self.lhs, Expr):
+            return self.lhs.eval()
+        else:
+            return self.lhs
+
+    def eval_right(self):
+        if isinstance(self.rhs, Expr):
+            return self.rhs.eval()
+        else:
+            return self.rhs
 
     def __str__(self):
         left = str(self.lhs)
-        if self.priority > self.lhs.priority:
+        if isinstance(self.lhs, Expr) and self.priority > self.lhs.priority:
             left = '(' + left + ')'
 
         right = str(self.rhs)
         # As infix operators are left-associative, we need to append parens
         # when rhs has the same priority
         #  e.g. x << (y << z) != x << y << z
-        if self.priority >= self.rhs.priority:
+        if isinstance(self.rhs, Expr) and self.priority >= self.rhs.priority:
             right = '(' + right + ')'
 
         return '{0} {2} {1}'.format(left, right, self.exp)
 
 
-class DtypeExpr(object):
+class IntBinaryOperator(BinaryOperator, Int):
+
+    def __init__(self, priority, lhs, rhs, exp, func):
+        BinaryOperator.__init__(self, priority, lhs, rhs, exp, func)
+
+
+class Bool(object):
+
+    def expect(self):
+        raise NotImplemented()
+
+
+class BoolBinaryOperator(BinaryOperator, Bool):
+
+    def __init__(self, lhs, rhs, exp, inv, func):
+        BinaryOperator.__init__(self, -1, lhs, rhs, exp, func)
+        self.inv = inv
+
+    def expect(self):
+        left = self.eval_left()
+        right = self.eval_right()
+
+        if not self.func(left, right):
+            raise InvalidType(
+                '{0} {1} {2}'.format(self.lhs, self.exp, self.rhs),
+                '{0} {1} {2}'.format(left, self.inv, right))
+
+
+class DtypeExpr(Atom):
 
     def __init__(self, dtype, name):
-        self.dtype = dtype
+        Atom.__init__(self, dtype)
         self.name = name
 
     def should_be(self, expect):
-        if isinstance(expect, DtypeExpr):
-            expect_value = expect.eval()
-        else:
-            expect_value = expect
-
-        if not (self.eval() == expect):
-            raise InvalidType(
-                '{0} == {1}'.format(self, expect),
-                '{0} != {1}'.format(self.dtype, expect_value))
-
-    def kind_should_be(self, expect):
-        if not (self.eval().kind == expect):
-            raise InvalidType(
-                '{0}.kind == {1}'.format(self, expect),
-                '{0} != {1}'.format(self.dtype.kind, expect))
-
-    def eval(self):
-        return self.dtype
+        (self == expect).expect()
 
     def __str__(self):
         return '{0}.dtype'.format(self.name)

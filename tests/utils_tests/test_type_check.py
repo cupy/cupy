@@ -59,9 +59,9 @@ class TestBinaryOperator(unittest.TestCase):
         x = T.IntVariable(1, 'x')
         y = T.IntVariable(1, 'y')
         f = lambda x, y: (x, y)
-        self.op1 = T.BinaryOperator(x, y, '+', 7, f)
-        self.op2 = T.BinaryOperator(x, y, '+', 8, f)
-        self.op3 = T.BinaryOperator(x, y, '+', 9, f)
+        self.op1 = T.IntBinaryOperator(7, x, y, '+', f)
+        self.op2 = T.IntBinaryOperator(8, x, y, '+', f)
+        self.op3 = T.IntBinaryOperator(9, x, y, '+', f)
 
     def test_str(self):
         self.assertEqual('x + y', str(self.op1))
@@ -77,8 +77,8 @@ class TestUnaryOperator(unittest.TestCase):
     def setUp(self):
         x = T.IntVariable(1, 'x')
         f = lambda x: (x,)
-        self.op1 = T.UnaryOperator(x, '-', 8, f)
-        self.op2 = T.UnaryOperator(x, '-', 9, f)
+        self.op1 = T.IntUnaryOperator(8, x, '-', f)
+        self.op2 = T.IntUnaryOperator(9, x, '-', f)
 
     def test_str(self):
         self.assertEqual('-x', str(self.op1))
@@ -183,3 +183,29 @@ class TestGetType(unittest.TestCase):
     def test_invalid_arg(self):
         with self.assertRaises(AssertionError):
             T.get_types(1, False)
+
+
+class TestBoolBinaryOperator(unittest.TestCase):
+
+    def setUp(self):
+        x = T.IntVariable(1, 'x')
+        y = T.IntVariable(1, 'y')
+        z = T.IntVariable(2, 'z')
+        f = lambda x, y: x == y
+        self.op1 = T.BoolBinaryOperator(x, y, '==', '!=', f)
+        self.op2 = T.BoolBinaryOperator(x, z, '==', '!=', f)
+
+    def test_eval(self):
+        self.assertTrue(self.op1.eval())
+
+    def test_expect(self):
+        with self.assertRaises(T.InvalidType):
+            self.op2.expect()
+
+    def test_bool(self):
+        with self.assertRaises(RuntimeError):
+            bool(self.op1)
+
+    def test_bool_operator(self):
+        with self.assertRaises(RuntimeError):
+            not self.op1
