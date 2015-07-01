@@ -26,10 +26,10 @@ def neg(x):  # -x
     return Neg()(x)
 
 
-class Abs(function.Function):
+class Absolute(function.Function):
 
     def forward(self, x):
-        return utils.force_array(x[0].__abs__()),
+        return utils.force_array(abs(x[0])),
 
     def backward_cpu(self, x, gy):
         return utils.force_array(numpy.sign(x[0]) * gy[0]),
@@ -39,12 +39,12 @@ class Abs(function.Function):
         cuda.elementwise(
             'float* gx0, const float* x0, const float* gy',
             'gx0[i] = ((x0[i] > 0) - (x0[i] < 0)) * gy[i]',
-            'back_abs')(gx0, x[0], gy[0])
+            'abs_bwd')(gx0, x[0], gy[0])
         return gx0,
 
 
-def abs(x):
-    return Abs()(x)
+def absolute(x):
+    return Absolute()(x)
 
 
 class Add(function.Function):
@@ -336,7 +336,7 @@ def rpow(lhs, rhs):  # rhs ** lhs
 
 def install_variable_arithmetics():
     variable.Variable.__neg__ = neg
-    variable.Variable.__abs__ = abs
+    variable.Variable.__abs__ = absolute
     variable.Variable.__add__ = add
     variable.Variable.__radd__ = add
     variable.Variable.__sub__ = sub

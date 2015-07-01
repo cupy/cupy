@@ -68,7 +68,7 @@ dropout = dropout.dropout
 identity = identity.identity
 reshape = reshape.reshape
 
-abs = basic_math.abs
+absolute = basic_math.absolute
 exp = basic_math.exp
 log = basic_math.log
 leaky_relu = leaky_relu.leaky_relu
