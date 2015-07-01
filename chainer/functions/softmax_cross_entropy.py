@@ -30,7 +30,7 @@ class SoftmaxCrossEntropy(function.Function):
     def check_type_backward(self, in_types, out_types):
         type_check.expect(
             in_types.size() == 2,
-            out_types.size()== 1,
+            out_types.size() == 1,
         )
         y_type, = out_types
         type_check.expect(y_type.ndim == 0)  # means scalar
