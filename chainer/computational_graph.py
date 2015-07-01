@@ -16,82 +16,11 @@ class DotNode(object):
         else:
             return "box"
 
-    def _label(self):
-        if isinstance(self.node, variable.Variable):
-            if self.node.data.shape == tuple():
-                return str(self.node.data.dtype)
-            return "%s, %s" % (str(self.node.data.shape),
-                               str(self.node.data.dtype))
-        elif isinstance(self.node, basic_math.Add):
-            return "+"
-        elif isinstance(self.node, basic_math.AddConstant):
-            value = self.node.value
-            if isinstance(value, float) or isinstance(value, np.ndarray):
-                return "+ %s" % str(value)
-            elif isinstance(value, variable.Variable):
-                return "+ %s" % str(value.data)
-            else:
-                raise ValueError('value must be float, ndarray, or Variable')
-        elif isinstance(self.node, basic_math.Sub):
-            return "-"
-        elif isinstance(self.node, basic_math.SubFromConstant):
-            value = self.node.value
-            if isinstance(value, float) or isinstance(value, np.ndarray):
-                return "* (-1) + %s" % str(value)
-            elif isinstance(value, variable.Variable):
-                return "* (-1) + %s" % str(value.data)
-            else:
-                raise ValueError('value must be float, ndarray, or Variable')
-        elif isinstance(self.node, basic_math.Mul):
-            return "*"
-        elif isinstance(self.node, basic_math.MulConstant):
-            value = self.node.value
-            if isinstance(value, float) or isinstance(value, np.ndarray):
-                return "* %s" % str(value)
-            elif isinstance(value, variable.Variable):
-                return "* %s" % str(value.data)
-            else:
-                raise ValueError('value must be float, ndarray, or Variable')
-        elif isinstance(self.node, basic_math.Div):
-            return "/"
-        elif isinstance(self.node, basic_math.DivFromConstant):
-            value = self.node.value
-            if isinstance(value, float) or isinstance(value, np.ndarray):
-                return "/ %s" % str(value)
-            elif isinstance(value, variable.Variable):
-                return "/ %s" % str(value.data)
-            else:
-                raise ValueError('value must be float, ndarray, or Variable')
-        elif isinstance(self.node, basic_math.PowVarVar):
-            return "**"
-        elif isinstance(self.node, basic_math.PowVarConst):
-            value = self.node.value
-            if isinstance(value, float) or isinstance(value, np.ndarray):
-                return "** %s" % str(value)
-            elif isinstance(value, variable.Variable):
-                return "** %s" % str(value.data)
-            else:
-                raise ValueError('value must be float, ndarray, or Variable')
-        elif isinstance(self.node, basic_math.PowConstVar):
-            value = self.node.value
-            if isinstance(value, float) or isinstance(value, np.ndarray):
-                return "%s **" % str(value)
-            elif isinstance(value, variable.Variable):
-                return "%s **" % str(value.data)
-            else:
-                raise ValueError('value must be float, ndarray, or Variable')
-        elif isinstance(self.node, basic_math.Exp):
-            return "exp"
-        elif isinstance(self.node, basic_math.Log):
-            return "log"
-        else:
-            return str(type(self.node))
-
     def __init__(self, node):
         self.node = node
         self.id_ = id(node)
         self.attribute = {
-            "label": self._label(),
+            "label": str(self.node),
             "shape": self._shape()
         }
 

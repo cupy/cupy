@@ -79,6 +79,12 @@ class Variable(object):
         """
         return self.data.size
 
+    def __str__(self):
+        if self.data.shape == tuple():
+            return str(self.data.dtype)
+        return '%s, %s' % (str(self.data.shape),
+                           str(self.data.dtype))
+
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.
 

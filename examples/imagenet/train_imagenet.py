@@ -246,6 +246,7 @@ def log_result():
 
 
 def train_loop():
+    graph_generated = False
     while True:
         while data_q.empty():
             time.sleep(0.1)
@@ -271,6 +272,12 @@ def train_loop():
         if train:
             optimizer.zero_grads()
             loss, accuracy = model.forward(x, y)
+            if not graph_generated:
+                from chainer import computational_graph as C
+                with open('graph.dot', 'w') as o:
+                    o.write(str(C.computational_graph((loss,), False)))
+                with open('graph.2.dot', 'w') as o:
+                    o.write(str(C.computational_graph((loss,), True)))
             loss.backward()
             optimizer.update()
         else:
