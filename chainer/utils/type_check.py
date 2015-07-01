@@ -7,6 +7,14 @@ from chainer import cuda
 
 class TypeInfo(object):
 
+    """Type information of an input/gradient array.
+
+    It contains type information of an array, such as shape of array and
+    number of dimension. All information is representend as :class:`Expr`.
+    So you can easily check its validity.
+    This information is independent on CPU or GPU array.
+    """
+
     def __init__(self, name, index, shape, dtype):
         self.index = index
         name = '{0}[{1}]'.format(name, index)
@@ -24,7 +32,18 @@ class TypeInfo(object):
 
 class TypeInfoTuple(tuple):
 
+    """Type information of input/gradient tuples.
+
+    It is a sub-class of tuple containing :class:`TypeInfo`. i-th element of
+    this object contains type information of i-th input data.
+    """
+
     def size(self):
+        """Returns an expression representing its length.
+
+        Returns:
+            :class:`Expr` object representig length of the tulple.
+        """
         return Member(len(self), self.name, 'size')
 
 
@@ -72,10 +91,52 @@ def _flip(f):
 
 class Expr(object):
 
+    """Abstract syntax tree of an expression.
+
+    It represents abstrat syntax tree, and isn't a value. You can get its
+    actual value with :meth:`eval` function, and can get syntax representation
+    with :meth:`__str__` method.
+    Comparison operators (e.g. `==`) generates a new :class:`Expr` object
+    which represent a result of comparison between two expression.
+
+    .. admonition:: Example
+
+       Let ``x`` and ``y`` are instances of :class:`Expr`, then
+
+       >>> c = (x == y)
+
+       is also an instance of :class:`Expr`. To evaluate and get its value,
+       call :meth:`eval` method::
+
+       >>> c.eval()
+       True   # when x.eval() == y.eval()
+
+       Call ``str` method to get representation of the original equaltion::
+
+       >>> str(c)
+       'x + y'   # when str(x) == 'x' and str(y) == 'y'
+
+       You can actually compare an expression with a value::
+
+       >>> (x == 1).eval()
+
+       Note that you can't use boolean operators such as ``and``, as they try
+       to cast expressions to a boolean values::
+
+       >>> x == y and y == z  # Raises an error
+
+    """
+
     def __init__(self, priority):
         self.priority = priority
 
     def eval(self):
+        """Evaluate the tree to get actual value.
+
+        Behavior of this functions is depends on an implementation class.
+        For example, a binary operator `+` calls `__add__` function with two
+        results of :meth:`eval` funciton.
+        """
         raise NotImplemented()
 
     def __nonzero__(self):
@@ -287,7 +348,9 @@ class DtypeExpr(Atom):
 
 
 class InvalidType(Exception):
+    """Raised when types of data for forward/backwar are invalid.
 
+    """
     def __init__(self, expect, actual):
         msg = 'Expect: {0}\nActual: {1}'.format(expect, actual)
         super(InvalidType, self).__init__(msg)
@@ -297,6 +360,16 @@ class InvalidType(Exception):
 
 
 def expect(*bool_exprs):
+    """Evaluate and test all given expressions.
+
+    This function evaluate given boolean expressions in order. When an
+    expression is evaluated as `False`, that means the given condition is not
+    satisfied.
+    You can check conditions with this function.
+
+    Args: bool_exprs (tuple of Bool expressions): Bool expressions you want to
+              evaluate.
+    """
     for expr in bool_exprs:
         assert isinstance(expr, Bool)
         expr.expect()
