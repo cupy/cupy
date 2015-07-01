@@ -178,13 +178,13 @@ class Function(object):
         return ret
 
     def _check_data_type_forward(self, in_data):
-        in_type = type_check.get_types(in_data, False)
+        in_type = type_check.get_types(in_data, 'in_types', False)
         self.check_type_forward(in_type)
 
-    def _check_data_type_backward(self, in_data, out_data):
-        in_type = type_check.get_types(in_data, False)
-        out_type = type_check.get_types(out_data, True)
-        self.check_type_backward(in_type, out_type)
+    def _check_data_type_backward(self, in_data, grad_data):
+        in_type = type_check.get_types(in_data, 'in_types', False)
+        grad_type = type_check.get_types(grad_data, 'grad_types', True)
+        self.check_type_backward(in_type, grad_type)
 
     def check_type_forward(self, in_types):
         pass

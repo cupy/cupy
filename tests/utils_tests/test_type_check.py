@@ -160,15 +160,17 @@ class TestOperators(unittest.TestCase):
 class TestGetType(unittest.TestCase):
 
     def test_empty(self):
-        ts = T.get_types((), False)
+        ts = T.get_types((), 'name', False)
         self.assertIsInstance(ts, T.TypeInfoTuple)
         self.assertEqual(0, len(ts))
+        self.assertEqual('name', ts.name)
 
     def test_simple(self):
         data = (numpy.zeros((1, 2, 3)).astype(numpy.float32),)
-        ts = T.get_types(data, False)
+        ts = T.get_types(data, 'name', False)
         self.assertIsInstance(ts, T.TypeInfoTuple)
         self.assertEqual(1, len(ts))
+        self.assertEqual('name', ts.name)
 
         t = ts[0]
         self.assertIsInstance(t, T.TypeInfo)
@@ -182,7 +184,7 @@ class TestGetType(unittest.TestCase):
 
     def test_invalid_arg(self):
         with self.assertRaises(AssertionError):
-            T.get_types(1, False)
+            T.get_types(1, 'name', False)
 
 
 class TestBoolBinaryOperator(unittest.TestCase):

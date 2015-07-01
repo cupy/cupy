@@ -28,16 +28,11 @@ class TypeInfoTuple(tuple):
         return Member(len(self), self.name, 'size')
 
 
-def get_types(data, is_grad):
+def get_types(data, name, accept_none):
     assert(isinstance(data, tuple))
 
-    if is_grad:
-        name = 'out_types'
-    else:
-        name = 'in_types'
-
     info = TypeInfoTuple(
-        _get_type(name, i, x, is_grad) for i, x in enumerate(data))
+        _get_type(name, i, x, accept_none) for i, x in enumerate(data))
     # I don't know a method to set an atribute in an initializer of tuple.
     info.name = name
     return info
