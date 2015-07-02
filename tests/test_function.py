@@ -37,5 +37,5 @@ class TestFunction(unittest.TestCase):
         self.assertEqual(x.grad[0], 2)
 
     def test_label(self):
-        self.assertEqual(chainer.Function().label(),
+        self.assertEqual(chainer.Function().label,
                          '<class \'chainer.function.Function\'>')

@@ -60,7 +60,7 @@ class TestVariable(unittest.TestCase):
         if gpu:
             c = cuda.to_gpu(c)
         c = chainer.Variable(c)
-        self.assertEqual(c.label(), expected)
+        self.assertEqual(c.label, expected)
 
     def test_label_cpu(self):
         self.check_label('(2, 5), float32', False)
