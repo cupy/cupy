@@ -21,11 +21,15 @@ if sys.version_info < (3, 0, 0):
             _oldname_to_method[typevalue] = meth
             return meth
         return decorator
+
+    available = True
 else:
     def _layer(typ, oldname):  # fallback
         def decorator(meth):
             return meth
         return decorator
+
+    available = False
 
 
 class CaffeFunction(function.Function):
@@ -38,7 +42,8 @@ class CaffeFunction(function.Function):
     .. note::
 
        This function only supports Python 2.7, since the compiled module for
-       protocol buffers only supports Python 2.
+       protocol buffers only supports Python 2. The ``__init__`` function
+       raises an exception in Python 3.
 
     .. note::
 
@@ -93,6 +98,9 @@ class CaffeFunction(function.Function):
 
     """
     def __init__(self, model_path):
+        if not available:
+            raise RuntimeError('CaffeFunction is not supported on Python 3')
+
         net = caffe_pb2.NetParameter()
         with open(model_path, 'rb') as model_file:
             net.MergeFromString(model_file.read())
