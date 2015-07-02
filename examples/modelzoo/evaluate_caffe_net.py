@@ -46,7 +46,9 @@ with open(args.dataset) as list_file:
 assert len(dataset) % args.batchsize == 0
 
 
+print('Loading Caffe model file %s...' % args.model, file=sys.stderr)
 func = caffe.CaffeFunction(args.model)
+print('Loaded', file=sys.stderr)
 if args.gpu >= 0:
     cuda.init(args.gpu)
     func.to_gpu()
