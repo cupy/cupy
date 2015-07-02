@@ -88,7 +88,7 @@ accum_accuracy = 0
 for path, label in dataset:
     # TODO(beam2d): Remove dependency on OpenCV
     image = cv2.imread(path).transpose(2, 0, 1)
-    image = image[[2, 1, 0], start:stop, start:stop].astype(np.float32)
+    image = image[:, start:stop, start:stop].astype(np.float32)
     image -= mean_image
 
     x_batch[i] = image
