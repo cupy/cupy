@@ -333,13 +333,13 @@ class IntBinaryOperator(BinaryOperator, Int):
                                 right_associative)
 
 
-class Bool(object):
+class Testable(object):
 
     def expect(self):
         raise NotImplementedError()
 
 
-class BoolBinaryOperator(BinaryOperator, Bool):
+class BoolBinaryOperator(BinaryOperator, Testable):
 
     def __init__(self, lhs, rhs, exp, inv, func):
         BinaryOperator.__init__(self, -1, lhs, rhs, exp, func)
@@ -389,5 +389,5 @@ def expect(*bool_exprs):
               evaluate.
     """
     for expr in bool_exprs:
-        assert isinstance(expr, Bool)
+        assert isinstance(expr, Testable)
         expr.expect()
