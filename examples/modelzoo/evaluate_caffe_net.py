@@ -10,6 +10,7 @@ ImageDataLayer).
 """
 from __future__ import print_function
 import argparse
+import os
 import sys
 
 import cv2
@@ -27,6 +28,8 @@ parser.add_argument('dataset', help='Path to validation image-label list file')
 parser.add_argument('model_type', choices=('alexnet', 'caffenet', 'googlenet'),
                     help='Model type (alexnet, caffenet, googlenet)')
 parser.add_argument('model', help='Path to the pretrained Caffe model')
+parser.add_argument('--basepath', '-b', default='/',
+                    help='Base path for images in the dataset')
 parser.add_argument('--mean', '-m', default='ilsvrc_2012_mean.npy',
                     help='Path to the mean file')
 parser.add_argument('--batchsize', '-B', type=int, default=100,
@@ -41,7 +44,8 @@ dataset = []
 with open(args.dataset) as list_file:
     for line in list_file:
         pair = line.strip().split()
-        dataset.append((pair[0], np.int32(pair[1])))
+        path = os.path.join(args.basepath, pair[0])
+        dataset.append((path, np.int32(pair[1])))
 
 assert len(dataset) % args.batchsize == 0
 
