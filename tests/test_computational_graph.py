@@ -43,43 +43,43 @@ class TestGraphBuilder(TestCase):
 
     # x
     def test_head_variable(self):
-        self.assertEqual(len(c.computational_graph((self.x,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x,),  True)), 0)
+        self.assertEqual(len(c.build_computational_graph((self.x,), False)), 0)
+        self.assertEqual(len(c.build_computational_graph((self.x,),  True)), 0)
 
     def test_intermediate_variable(self):
         # x-splitter-x'-f-y
-        self.assertEqual(len(c.computational_graph((self.y,), False)), 4)
+        self.assertEqual(len(c.build_computational_graph((self.y,), False)), 4)
         # x-f-y (splitter removed)
-        self.assertEqual(len(c.computational_graph((self.y,),  True)), 2)
+        self.assertEqual(len(c.build_computational_graph((self.y,),  True)), 2)
 
     def test_tail_variable(self):
         # x-splitter-x'-f-y-splitter-y'-g-z
-        self.assertEqual(len(c.computational_graph((self.z,), False)), 8)
+        self.assertEqual(len(c.build_computational_graph((self.z,), False)), 8)
         # x-f-y-g-z (splitter removed)
-        self.assertEqual(len(c.computational_graph((self.z,),  True)), 4)
+        self.assertEqual(len(c.build_computational_graph((self.z,),  True)), 4)
 
     def test_multiple_outputs(self):
-        edges = c.computational_graph((self.x, self.y), False)
+        edges = c.build_computational_graph((self.x, self.y), False)
         self.assertEqual(len(edges), 4)
-        edges = c.computational_graph((self.x, self.y),  True)
+        edges = c.build_computational_graph((self.x, self.y),  True)
         self.assertEqual(len(edges), 2)
 
     def test_multiple_outputs2(self):
-        edges = c.computational_graph((self.x, self.z), False)
+        edges = c.build_computational_graph((self.x, self.z), False)
         self.assertEqual(len(edges), 8)
-        edges = c.computational_graph((self.x, self.z),  True)
+        edges = c.build_computational_graph((self.x, self.z),  True)
         self.assertEqual(len(edges), 4)
 
     def test_multiple_outputs3(self):
-        edges = c.computational_graph((self.y, self.z), False)
+        edges = c.build_computational_graph((self.y, self.z), False)
         self.assertEqual(len(edges), 8)
-        edges = c.computational_graph((self.y, self.z),  True)
+        edges = c.build_computational_graph((self.y, self.z),  True)
         self.assertEqual(len(edges), 4)
 
     def test_multiple_outputs4(self):
-        edges = c.computational_graph((self.x, self.y, self.z), False)
+        edges = c.build_computational_graph((self.x, self.y, self.z), False)
         self.assertEqual(len(edges), 8)
-        edges = c.computational_graph((self.x, self.y, self.z),  True)
+        edges = c.build_computational_graph((self.x, self.y, self.z),  True)
         self.assertEqual(len(edges), 4)
 
 
@@ -98,21 +98,25 @@ class TestGraphBuilder2(TestCase):
         self.y2 = mock_function((self.x,), 1)
 
     def test_head_node(self):
-        self.assertEqual(len(c.computational_graph((self.x,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x,),  True)), 0)
+        self.assertEqual(len(c.build_computational_graph((self.x,), False)), 0)
+        self.assertEqual(len(c.build_computational_graph((self.x,),  True)), 0)
 
     def test_tail_node(self):
-        self.assertEqual(len(c.computational_graph((self.y1,), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.y1,),  True)), 2)
+        edges = c.build_computational_graph((self.y1,), False)
+        self.assertEqual(len(edges), 4)
+        edges = c.build_computational_graph((self.y1,),  True)
+        self.assertEqual(len(edges), 2)
 
     def test_tail_node2(self):
-        self.assertEqual(len(c.computational_graph((self.y2,), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.y2,),  True)), 2)
+        edges = c.build_computational_graph((self.y2,), False)
+        self.assertEqual(len(edges), 4)
+        edges = c.build_computational_graph((self.y2,),  True)
+        self.assertEqual(len(edges), 2)
 
     def test_multiple_tails(self):
-        edges = c.computational_graph((self.y1, self.y2), False)
+        edges = c.build_computational_graph((self.y1, self.y2), False)
         self.assertEqual(len(edges), 7)
-        edges = c.computational_graph((self.y1, self.y2),  True)
+        edges = c.build_computational_graph((self.y1, self.y2),  True)
         self.assertEqual(len(edges), 4)
 
 
@@ -130,21 +134,25 @@ class TestGraphBuilder3(TestCase):
         self.y1, self.y2 = mock_function((self.x,), 2)
 
     def test_head_node(self):
-        self.assertEqual(len(c.computational_graph((self.x,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x,), True)), 0)
+        self.assertEqual(len(c.build_computational_graph((self.x,), False)), 0)
+        self.assertEqual(len(c.build_computational_graph((self.x,),  True)), 0)
 
     def test_tail_node(self):
-        self.assertEqual(len(c.computational_graph((self.y1,), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.y1,),  True)), 2)
+        edges = c.build_computational_graph((self.y1,), False)
+        self.assertEqual(len(edges), 4)
+        edges = c.build_computational_graph((self.y1,),  True)
+        self.assertEqual(len(edges), 2)
 
     def test_tail_node2(self):
-        self.assertEqual(len(c.computational_graph((self.y2,), False)), 4)
-        self.assertEqual(len(c.computational_graph((self.y2,),  True)), 2)
+        edges = c.build_computational_graph((self.y2,), False)
+        self.assertEqual(len(edges), 4)
+        edges = c.build_computational_graph((self.y2,),  True)
+        self.assertEqual(len(edges), 2)
 
     def test_multiple_tails(self):
-        edges = c.computational_graph((self.y1, self.y2), False)
+        edges = c.build_computational_graph((self.y1, self.y2), False)
         self.assertEqual(len(edges), 5)
-        edges = c.computational_graph((self.y1, self.y2),  True)
+        edges = c.build_computational_graph((self.y1, self.y2),  True)
         self.assertEqual(len(edges), 3)
 
 
@@ -163,23 +171,27 @@ class TestGraphBuilder4(TestCase):
         self.y = mock_function((self.x1, self.x2), 1)
 
     def test_head_node1(self):
-        self.assertEqual(len(c.computational_graph((self.x1,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x1,),  True)), 0)
+        edges = c.build_computational_graph((self.x1,), False)
+        self.assertEqual(len(edges), 0)
+        edges = c.build_computational_graph((self.x1,),  True)
+        self.assertEqual(len(edges), 0)
 
     def test_head_node2(self):
-        self.assertEqual(len(c.computational_graph((self.x2,), False)), 0)
-        self.assertEqual(len(c.computational_graph((self.x2,),  True)), 0)
+        edges = c.build_computational_graph((self.x2,), False)
+        self.assertEqual(len(edges), 0)
+        edges = c.build_computational_graph((self.x2,),  True)
+        self.assertEqual(len(edges), 0)
 
     def test_multiple_heads(self):
-        edges = c.computational_graph((self.x1, self.x2), False)
+        edges = c.build_computational_graph((self.x1, self.x2), False)
         self.assertEqual(len(edges), 0)
-        edges = c.computational_graph((self.x1, self.x2),  True)
+        edges = c.build_computational_graph((self.x1, self.x2),  True)
         self.assertEqual(len(edges), 0)
 
     def test_tail_node(self):
-        edges = c.computational_graph((self.y,), False)
+        edges = c.build_computational_graph((self.y,), False)
         self.assertEqual(len(edges), 7)
-        edges = c.computational_graph((self.y,),  True)
+        edges = c.build_computational_graph((self.y,),  True)
         self.assertEqual(len(edges), 3)
 
 
@@ -193,7 +205,7 @@ class TestGraphBuilder5(TestCase):
         self.f = self.y.creator
 
     def test_tail_node(self):
-        edges = c.computational_graph((self.y,), False)
+        edges = c.build_computational_graph((self.y,), False)
         self.assertEqual(len(edges), 4)
         self.assertTrue((self.x, self.x_splitter) in edges)
         self.assertTrue((self.x_splitter, self.x_clone) in edges)
@@ -201,7 +213,7 @@ class TestGraphBuilder5(TestCase):
         self.assertTrue((self.f, self.y) in edges)
 
     def test_tail_node_remove_edge(self):
-        edges = c.computational_graph((self.y,), True)
+        edges = c.build_computational_graph((self.y,), True)
         self.assertEqual(len(edges), 2)
         self.assertTrue((self.x, self.f) in edges)
         self.assertTrue((self.f, self.y) in edges)
@@ -220,7 +232,7 @@ class TestGraphBuilder6(TestCase):
         self.f = self.y.creator
 
     def test_tail_node(self):
-        edges = c.computational_graph((self.y,), False)
+        edges = c.build_computational_graph((self.y,), False)
         self.assertEqual(len(edges), 7)
         self.assertTrue((self.x1, self.x1_splitter) in edges)
         self.assertTrue((self.x1_splitter, self.x1_clone) in edges)
@@ -231,7 +243,7 @@ class TestGraphBuilder6(TestCase):
         self.assertTrue((self.f, self.y) in edges)
 
     def test_tail_node_remove_edge(self):
-        edges = c.computational_graph((self.y,), True)
+        edges = c.build_computational_graph((self.y,), True)
         self.assertEqual(len(edges), 3)
         self.assertTrue((self.x1, self.f) in edges)
         self.assertTrue((self.x2, self.f) in edges)
@@ -246,9 +258,9 @@ class TestGraphBuilder7(TestCase):
         self.y = 0.3 * (self.x1 + self.x2) + self.x3
 
     def test_tail_node(self):
-        edges = c.computational_graph((self.y,), False)
+        edges = c.build_computational_graph((self.y,), False)
         self.assertEqual(len(edges), 18)
 
     def test_tail_node_remove_edge(self):
-        edges = c.computational_graph((self.y,), True)
+        edges = c.build_computational_graph((self.y,), True)
         self.assertEqual(len(edges), 8)

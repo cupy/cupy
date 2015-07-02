@@ -112,7 +112,7 @@ class ComputationalGraph(object):
         return e in self.edges
 
 
-def computational_graph(outputs, remove_split=False):
+def build_computational_graph(outputs, remove_split=False):
     """Walk back from outputs to get graph whose nodes are reachable from outputs
 
     Args:
