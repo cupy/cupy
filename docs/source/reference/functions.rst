@@ -27,6 +27,7 @@ Array manipulation functions
 .. autofunction:: dropout
 .. autofunction:: identity
 .. autofunction:: reshape
+.. autofunction:: split_axis
 
 Array computations
 ------------------
