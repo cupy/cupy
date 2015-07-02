@@ -39,6 +39,7 @@ class Convolution2D(function.Function):
         bias (float): Initial bias value.
         nobias (bool): If True, then this function does not use the bias term.
         use_cudnn (bool): If True, then this function uses CuDNN if available.
+        init_params (bool): If True, them this function initialize parameters.
 
     This function holds at most two parameter arrays: ``W`` and ``b``, which
     indicate the filter weight and the bias vector, respectively.
@@ -79,7 +80,8 @@ class Convolution2D(function.Function):
 
     """
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
-                 wscale=1, bias=0, nobias=False, use_cudnn=True):
+                 wscale=1, bias=0, nobias=False, use_cudnn=True,
+                 init_params=True):
         ksize = _pair(ksize)
         stride = _pair(stride)
         pad = _pair(pad)
@@ -88,18 +90,20 @@ class Convolution2D(function.Function):
         self.sy, self.sx = stride
         self.ph, self.pw = pad
 
-        self.W = numpy.random.normal(
-            0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
-            (out_channels, in_channels, self.kh, self.kw)
-        ).astype(numpy.float32)
-        self.gW = numpy.empty_like(self.W)
+        self.W = None
+        self.gW = None
+        self.b = None
+        self.gb = None
+        if init_params:
+            self.W = numpy.random.normal(
+                0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
+                (out_channels, in_channels, self.kh, self.kw)
+            ).astype(numpy.float32)
+            self.gW = numpy.empty_like(self.W)
 
-        if nobias:
-            self.b = None
-            self.gb = None
-        else:
-            self.b = numpy.repeat(numpy.float32(bias), out_channels)
-            self.gb = numpy.empty_like(self.b)
+            if not nobias:
+                self.b = numpy.repeat(numpy.float32(bias), out_channels)
+                self.gb = numpy.empty_like(self.b)
 
         self.use_cudnn = use_cudnn
         if cudnn.enabled and use_cudnn:
