@@ -23,7 +23,7 @@ class DotNode(object):
         self.node = node
         self.id_ = id(node)
         self.attribute = {
-            "label": str(self.node),
+            "label": self.node.label,
             "shape": self._shape()
         }
 
@@ -39,6 +39,7 @@ class DotNode(object):
         else:
             return "box"
 
+    @property
     def label(self):
         """Return label that represents its property
 
@@ -85,8 +86,8 @@ class ComputationalGraph(object):
                     and isinstance(tail, variable.Variable))
             head_node = DotNode(head)
             tail_node = DotNode(tail)
-            ret += head_node.label()
-            ret += tail_node.label()
+            ret += head_node.label
+            ret += tail_node.label
             ret += "%s -> %s;" % (head_node.id_, tail_node.id_)
         ret += "}"
         return ret

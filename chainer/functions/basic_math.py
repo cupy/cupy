@@ -12,11 +12,28 @@ from chainer import variable
 # Arithmetic
 # ------------------------------------------------------------------------------
 
+def _convert_value_to_string(value):
+    def get_value(value):
+        if isinstance(value, variable.Variable):
+            return value.data
+        else:
+            return value
+
+    data = get_value(value)
+    if isinstance(data, float):
+        return str(data)
+    elif isinstance(data, numpy.ndarray) or \
+         isinstance(data, cuda.GPUArray):
+        return 'constant array'
+    else:
+        raise ValueError(
+            'value must be float, ndarray, GPUArray, or Variable')
 
 class Neg(function.Function):
 
+    @property
     def label(self):
-        return '* (-1)'
+        return '__neg__'
 
     def forward(self, x):
         return -x[0],
@@ -31,8 +48,9 @@ def neg(x):  # -x
 
 class Add(function.Function):
 
+    @property
     def label(self):
-        return '+'
+        return '_ + _'
 
     def forward(self, x):
         return x[0] + x[1],
@@ -46,17 +64,9 @@ class AddConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
+    @property
     def label(self):
-        value = self.value
-        if isinstance(value, float) or\
-           isinstance(value, numpy.ndarray) or\
-           isinstance(value, cuda.GPUArray):
-            return "+ %s" % str(value)
-        elif isinstance(value, variable.Variable):
-            return "+ %s" % str(value.data)
-        else:
-            raise ValueError(
-                'value must be float, ndarray, GPUArray, or Variable')
+        return '_ + %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
         return x[0] + self.value,
@@ -73,8 +83,9 @@ def add(lhs, rhs):  # lhs + rhs
 
 class Sub(function.Function):
 
+    @property
     def label(self):
-        return '-'
+        return '_ - _'
 
     def forward(self, x):
         return x[0] - x[1],
@@ -94,17 +105,9 @@ class SubFromConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
+    @property
     def label(self):
-        value = self.value
-        if isinstance(value, float) or\
-           isinstance(value, numpy.ndarray) or\
-           isinstance(value, cuda.GPUArray):
-            return "* (-1) + %s" % str(value)
-        elif isinstance(value, variable.Variable):
-            return "* (-1) + %s" % str(value.data)
-        else:
-            raise ValueError(
-                'value must be float, ndarray, GPUArray, or Variable')
+        return '%s - _' % _convert_value_to_string(self.value)
 
     def forward(self, x):
         return self.value - x[0],
@@ -121,8 +124,9 @@ def rsub(lhs, rhs):  # rhs - lhs
 
 class Mul(function.Function):
 
+    @property
     def label(self):
-        return '*'
+        return '_ * _'
 
     def forward(self, x):
         return x[0] * x[1],
@@ -149,17 +153,9 @@ class MulConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
+    @property
     def label(self):
-        value = self.value
-        if isinstance(value, float) or\
-           isinstance(value, numpy.ndarray) or\
-           isinstance(value, cuda.GPUArray):
-            return '* %s' % str(value)
-        elif isinstance(value, variable.Variable):
-            return '* %s' % str(value.data)
-        else:
-            raise ValueError(
-                'value must be float, ndarray, GPUArray, or Variable')
+        return '_ * %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
         return self.value * x[0],
@@ -176,8 +172,9 @@ def mul(lhs, rhs):  # lhs * rhs
 
 class Div(function.Function):
 
+    @property
     def label(self):
-        return '/'
+        return '_ / _'
 
     def forward(self, x):
         return x[0] / x[1],
@@ -211,17 +208,9 @@ class DivFromConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
+    @property
     def label(self):
-        value = self.value
-        if isinstance(value, float) or\
-           isinstance(value, numpy.ndarray) or\
-           isinstance(value, cuda.GPUArray):
-            return '/ %s' % str(value)
-        elif isinstance(value, variable.Variable):
-            return '/ %s' % str(value.data)
-        else:
-            raise ValueError(
-                'value must be float, ndarray, GPUArray, or Variable')
+        return '_ / %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
         return self.value / x[0],
@@ -258,8 +247,9 @@ def rdiv(lhs, rhs):  # rhs / lhs
 
 class PowVarVar(function.Function):
 
+    @property
     def label(self):
-        return '**'
+        return '_ ** _'
 
     def forward_cpu(self, x):
         self.y = x[0] ** x[1]
@@ -292,17 +282,9 @@ class PowVarConst(function.Function):
     def __init__(self, value):
         self.value = value
 
+    @property
     def label(self):
-        value = self.value
-        if isinstance(value, float) or\
-           isinstance(value, numpy.ndarray) or\
-           isinstance(value, cuda.GPUArray):
-            return '** %s' % str(value)
-        elif isinstance(value, variable.Variable):
-            return '** %s' % str(value.data)
-        else:
-            raise ValueError(
-                'value must be float, ndarray, GPUArray, or Variable')
+        return '_ ** %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
         return x[0] ** self.value,
@@ -342,17 +324,9 @@ class PowConstVar(function.Function):
     def __init__(self, value):
         self.value = value
 
+    @property
     def label(self):
-        value = self.value
-        if isinstance(value, float) or\
-           isinstance(value, numpy.ndarray) or\
-           isinstance(value, cuda.GPUArray):
-            return '%s **' % str(value)
-        elif isinstance(value, variable.Variable):
-            return '%s **' % str(value.data)
-        else:
-            raise ValueError(
-                'value must be float, ndarray, GPUArray, or Variable')
+        return '%s ** _' % _convert_value_to_string(self.value)
 
     def forward_cpu(self, x):
         self.y = self.value ** x[0]
@@ -423,6 +397,7 @@ def install_variable_arithmetics():
 
 class Exp(function.Function):
 
+    @property
     def label(self):
         return 'exp'
 
@@ -445,6 +420,7 @@ def exp(x):
 
 class Log(function.Function):
 
+    @property
     def label(self):
         return 'log'
 

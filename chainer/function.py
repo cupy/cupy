@@ -174,6 +174,7 @@ class Function(object):
             return ret[0]
         return ret
 
+    @property
     def label(self):
         """Default implementation, which returns function's property
 
