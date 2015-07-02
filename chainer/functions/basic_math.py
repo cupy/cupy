@@ -22,12 +22,13 @@ def _convert_value_to_string(value):
     data = get_value(value)
     if isinstance(data, float):
         return str(data)
-    elif isinstance(data, numpy.ndarray) or \
-         isinstance(data, cuda.GPUArray):
+    elif (isinstance(data, numpy.ndarray) or
+          isinstance(data, cuda.GPUArray)):
         return 'constant array'
     else:
         raise ValueError(
             'value must be float, ndarray, GPUArray, or Variable')
+
 
 class Neg(function.Function):
 

@@ -1,16 +1,11 @@
-from unittest import TestCase
+import unittest
 
 import numpy as np
 import six
 
 from chainer import computational_graph as c
-from chainer import cuda
 from chainer import function
 from chainer import variable
-
-
-if cuda.available:
-    cuda.init()
 
 
 class MockFunction(function.Function):
@@ -34,7 +29,7 @@ def mock_function(xs, n_out):
     return MockFunction(len(xs), n_out)(*xs)
 
 
-class TestGraphBuilder(TestCase):
+class TestGraphBuilder(unittest.TestCase):
     # x-splitter-x'-f-y-splitter-y'-g-z
     def setUp(self):
         self.x = variable.Variable(np.zeros((1, 2)).astype(np.float32))
@@ -83,7 +78,7 @@ class TestGraphBuilder(TestCase):
         self.assertEqual(len(edges), 4)
 
 
-class TestGraphBuilder2(TestCase):
+class TestGraphBuilder2(unittest.TestCase):
     # with splitter
     # x-splitter-x' -f-y1
     #           \
@@ -120,7 +115,7 @@ class TestGraphBuilder2(TestCase):
         self.assertEqual(len(edges), 4)
 
 
-class TestGraphBuilder3(TestCase):
+class TestGraphBuilder3(unittest.TestCase):
     # with splitter
     # x-splitter-x'-f-y1
     #                \
@@ -156,7 +151,7 @@ class TestGraphBuilder3(TestCase):
         self.assertEqual(len(edges), 3)
 
 
-class TestGraphBuilder4(TestCase):
+class TestGraphBuilder4(unittest.TestCase):
     # with splitter
     # x1-splitter-x1'-f-y
     #                /
@@ -195,7 +190,7 @@ class TestGraphBuilder4(TestCase):
         self.assertEqual(len(edges), 3)
 
 
-class TestGraphBuilder5(TestCase):
+class TestGraphBuilder5(unittest.TestCase):
     def setUp(self):
         self.x = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.y = 2 * self.x
@@ -219,7 +214,7 @@ class TestGraphBuilder5(TestCase):
         self.assertTrue((self.f, self.y) in edges)
 
 
-class TestGraphBuilder6(TestCase):
+class TestGraphBuilder6(unittest.TestCase):
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
@@ -250,7 +245,7 @@ class TestGraphBuilder6(TestCase):
         self.assertTrue((self.f, self.y) in edges)
 
 
-class TestGraphBuilder7(TestCase):
+class TestGraphBuilder7(unittest.TestCase):
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
