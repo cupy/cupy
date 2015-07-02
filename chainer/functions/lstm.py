@@ -67,7 +67,6 @@ class LSTM(function.Function):
 
     def forward_cpu(self, inputs):
         c_prev, x = inputs
-        n_unit = c_prev.shape[1]
 
         a, i, f, o = _extract_gates(x)
         self.a = numpy.tanh(a)
