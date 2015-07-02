@@ -80,6 +80,11 @@ class Variable(object):
         return self.data.size
 
     def label(self):
+        """Returns string that represents its property
+
+        Returns:
+            string: represents its shape and dtype
+        """
         if self.data.shape == tuple():
             return str(self.data.dtype)
         return '%s, %s' % (str(self.data.shape),

@@ -175,6 +175,12 @@ class Function(object):
         return ret
 
     def label(self):
+        """Default implementation, which returns function's property
+
+        Returns:
+            string: represents its type
+        """
+
         return str(type(self))
 
     def forward(self, inputs):

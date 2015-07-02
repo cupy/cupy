@@ -5,15 +5,21 @@ from chainer import variable
 
 
 class DotNode(object):
-    def _shape(self):
-        if isinstance(self.node, variable.Variable):
-            return "oval"
-        elif isinstance(self.node, function.Split):
-            return "hexagon"
-        else:
-            return "box"
+    """Node of computational graph, with utilities for dot language
+
+    This class represents a node of computational graph,
+    with some utilities for dot language
+    """
 
     def __init__(self, node):
+        """Initialize DotNode
+
+        Args:
+            node: :class: `Variable` object or :class: `Function` object
+        """
+
+        assert isinstance(node, variable.Variable) or\
+            isinstance(node, function.Function)
         self.node = node
         self.id_ = id(node)
         self.attribute = {
@@ -21,17 +27,55 @@ class DotNode(object):
             "shape": self._shape()
         }
 
-    def __str__(self):
+    def _shape(self):
+        """Return shape type of node
+
+        """
+
+        if isinstance(self.node, variable.Variable):
+            return "oval"
+        elif isinstance(self.node, function.Split):
+            return "hexagon"
+        else:
+            return "box"
+
+    def label(self):
+        """Return label that represents its property
+
+        Returns:
+            string: label that represents its id and attributes
+        """
+
         attributes = ["%s=\"%s\"" % (k, v) for (k, v)
                       in self.attribute.items()]
         return "%s [%s];" % (self.id_, ",".join(attributes))
 
 
 class ComputationalGraph(object):
+    """Class that represents computational graph
+
+    .. note::
+
+      We assume that computational graph is directed and is a DAG.
+    """
+
     def __init__(self, edges):
+        """Initialize computational graph
+
+        Args:
+            edges: List of edges. Each edge consists of pair of nodes.
+            Nodes are either :class: `Variable` object or
+            :class: `Function` object.
+        """
         self.edges = edges
 
     def _to_dot(self):
+        """Returns graph in dot format
+
+        Returns:
+            string: graph in dot format
+        """
+
         ret = "digraph graphname{"
         for edge in self.edges:
             head, tail = edge
@@ -48,10 +92,18 @@ class ComputationalGraph(object):
         return ret
 
     def dump(self, format='dot'):
+        """Dump graph as a text
+
+        Args
+            format: specifies graph language to output
+
+        Returns
+            string: graph in specified format
+        """
         if format == 'dot':
             return self._to_dot()
         else:
-            NotImplementedError
+            NotImplementedError('Currently, only dot format is supported')
 
     def __len__(self):
         return len(self.edges)
@@ -61,6 +113,48 @@ class ComputationalGraph(object):
 
 
 def computational_graph(outputs, remove_split=False):
+    """Walk back from outputs to get graph whose nodes are reachable from outputs
+
+    Args:
+        outputs: List of nodes. Each node is either :class:`Variable` object
+        or :class:`Function` object.
+        remove_split : Boolean. If it is `True`, :class:`Split` functions
+        and cloned variables they created are skipped from resulting graph.
+
+    Returns:
+        :class:`ComputationalGraph`: consists of nodes and edges that
+        are reachable from `outputs`, with edges reversed.
+
+        For example, suppose that computational graph is as follows
+        (diagram is same as the one in the document of :class:`Function`):
+
+                               |--- x'  <--- f'  <--- y
+           x <--- (splitter) <-+
+                               |--- x'' <--- f'' <--- z
+
+        Let `outputs = [y, z]`.
+        If `remove_split` is `False`, this method generates the graph
+        itself with direction of edges reversed. If `remove_split` is `True`,
+        splitter and x' is removed from the graph and x is directly
+        connected to f'. After reversing the edges, reulting graph will be
+
+                     |---> y
+           x ---> f -+
+                     |---> z
+
+        Next, let `outputs = [y]`. Note that `z`, `f''`, and `x''`
+        is not reachable from `y`. If `remove_split` is `False`,
+        we remove these unreachable nodes to get
+
+           x ---> (splitter) ---> x'  ---> f'  ---> y
+
+        If `remove_split` is `True`, we further remove splitter and `x'` to get
+
+           x ---> f  ---> y
+
+        See `tests/test_computational_graph.py` for details.
+
+    """
     cands = []
     seen_edges = set()
 
