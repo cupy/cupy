@@ -79,14 +79,16 @@ for epoch in six.moves.range(1, n_epoch + 1):
         optimizer.zero_grads()
         loss, acc = forward(x_batch, y_batch)
         loss.backward()
+        optimizer.update()
+
         if epoch == 1 and i == 0:
             with open("graph.dot", "w") as o:
-                o.write(str(c.build_computational_graph((loss, ))))
+                o.write(c.build_computational_graph((loss, )).dump())
             with open("graph.wo_split.dot", "w") as o:
-                o.write(str(c.build_computational_graph((loss, ),
-                                                        remove_split=True)))
+                g = c.build_computational_graph((loss, ),
+                                                remove_split=True)
+                o.write(g.dump())
             print('graph generated')
-        optimizer.update()
 
         sum_loss += float(cuda.to_cpu(loss.data)) * batchsize
         sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
