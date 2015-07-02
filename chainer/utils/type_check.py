@@ -137,7 +137,7 @@ class Expr(object):
         For example, a binary operator `+` calls `__add__` function with two
         results of :meth:`eval` funciton.
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def __nonzero__(self):
         msg = ('Don\'t convert Expr to bool. '
@@ -331,7 +331,7 @@ class IntBinaryOperator(BinaryOperator, Int):
 class Bool(object):
 
     def expect(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 class BoolBinaryOperator(BinaryOperator, Bool):
