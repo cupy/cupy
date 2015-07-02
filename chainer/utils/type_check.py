@@ -288,17 +288,17 @@ class BinaryOperator(Expr):
         self.right_associative = right_associative
 
     def eval(self):
-        left = self.eval_left()
-        right = self.eval_right()
+        left = self._eval_left()
+        right = self._eval_right()
         return self.func(left, right)
 
-    def eval_left(self):
+    def _eval_left(self):
         if isinstance(self.lhs, Expr):
             return self.lhs.eval()
         else:
             return self.lhs
 
-    def eval_right(self):
+    def _eval_right(self):
         if isinstance(self.rhs, Expr):
             return self.rhs.eval()
         else:
@@ -346,8 +346,8 @@ class BoolBinaryOperator(BinaryOperator, Bool):
         self.inv = inv
 
     def expect(self):
-        left = self.eval_left()
-        right = self.eval_right()
+        left = self._eval_left()
+        right = self._eval_right()
 
         if not self.func(left, right):
             raise InvalidType(
