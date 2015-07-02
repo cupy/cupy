@@ -73,9 +73,9 @@ def _make_un_operator(exp, priority, func):
     return f
 
 
-def _make_bin_operator(exp, priority, func):
+def _make_bin_operator(exp, priority, func, right_associative=False):
     def f(x, y):
-        return IntBinaryOperator(priority, x, y, exp, func)
+        return IntBinaryOperator(priority, x, y, exp, func, right_associative)
     return f
 
 
@@ -157,6 +157,9 @@ class Expr(object):
 
 class Int(object):
 
+    # Please refer the Python document to know priority of operators.
+    # https://docs.python.org/3.4/reference/expressions.html
+
     __add__ = _make_bin_operator('+', 4, int.__add__)
     __radd__ = _flip(__add__)
     __sub__ = _make_bin_operator('-', 4, int.__sub__)
@@ -167,7 +170,8 @@ class Int(object):
     __rfloordiv__ = _flip(__floordiv__)
     __mod__ = _make_bin_operator('%', 5, int.__mod__)
     __rmod__ = _flip(__mod__)
-    __pow__ = _make_bin_operator('**', 7, int.__mod__)
+    # Only '**' operator is right-associative
+    __pow__ = _make_bin_operator('**', 7, int.__mod__, right_associative=True)
 
     __lshift__ = _make_bin_operator('<<', 3, int.__lshift__)
     __rlshift__ = _flip(__lshift__)
@@ -270,12 +274,13 @@ class IntUnaryOperator(UnaryOperator, Int):
 
 class BinaryOperator(Expr):
 
-    def __init__(self, priority, lhs, rhs, exp, func):
+    def __init__(self, priority, lhs, rhs, exp, func, right_associative=False):
         super(BinaryOperator, self).__init__(priority)
         self.lhs = lhs
         self.rhs = rhs
         self.exp = exp
         self.func = func
+        self.right_associative = right_associative
 
     def eval(self):
         left = self.eval_left()
@@ -295,15 +300,22 @@ class BinaryOperator(Expr):
             return self.rhs
 
     def __str__(self):
+        # When an infix operator is left-associative, we need to append parens
+        # when rhs has the same priority
+        #  e.g. x << (y << z) != x << y << z
+
         left = str(self.lhs)
-        if isinstance(self.lhs, Expr) and self.priority > self.lhs.priority:
+        if isinstance(self.lhs, Expr) and (
+                self.priority > self.lhs.priority or
+                (self.right_associative and
+                 self.priority == self.lhs.priority)):
             left = '(' + left + ')'
 
         right = str(self.rhs)
-        # As infix operators are left-associative, we need to append parens
-        # when rhs has the same priority
-        #  e.g. x << (y << z) != x << y << z
-        if isinstance(self.rhs, Expr) and self.priority >= self.rhs.priority:
+        if isinstance(self.rhs, Expr) and (
+                self.priority > self.rhs.priority or
+                (not self.right_associative and
+                 self.priority == self.rhs.priority)):
             right = '(' + right + ')'
 
         return '{0} {2} {1}'.format(left, right, self.exp)
@@ -311,8 +323,9 @@ class BinaryOperator(Expr):
 
 class IntBinaryOperator(BinaryOperator, Int):
 
-    def __init__(self, priority, lhs, rhs, exp, func):
-        BinaryOperator.__init__(self, priority, lhs, rhs, exp, func)
+    def __init__(self, priority, lhs, rhs, exp, func, right_associative=False):
+        BinaryOperator.__init__(self, priority, lhs, rhs, exp, func,
+                                right_associative)
 
 
 class Bool(object):

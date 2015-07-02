@@ -63,10 +63,18 @@ class TestBinaryOperator(unittest.TestCase):
         self.op2 = T.IntBinaryOperator(8, x, y, '+', f)
         self.op3 = T.IntBinaryOperator(9, x, y, '+', f)
 
+        self.op4 = T.IntBinaryOperator(7, x, y, '+', f, True)
+        self.op5 = T.IntBinaryOperator(8, x, y, '+', f, True)
+        self.op6 = T.IntBinaryOperator(9, x, y, '+', f, True)
+
     def test_str(self):
         self.assertEqual('x + y', str(self.op1))
         self.assertEqual('x + (y)', str(self.op2))
         self.assertEqual('(x) + (y)', str(self.op3))
+
+        self.assertEqual('x + y', str(self.op4))
+        self.assertEqual('(x) + y', str(self.op5))
+        self.assertEqual('(x) + (y)', str(self.op6))
 
     def test_eval(self):
         self.assertEqual((1, 1), self.op1.eval())
@@ -124,10 +132,15 @@ class TestOperators(unittest.TestCase):
         self.assertEqual('+x', str(+x))
         self.assertEqual('~x', str(~x))
 
-        # left-assosiative
+        # left-associative
         self.assertEqual('x + x - x', str(x + x - x))
         self.assertEqual('x + (x - x)', str(x + (x - x)))
         self.assertEqual('x << (x << x)', str(x << (x << x)))
+
+        # right-associative
+        self.assertEqual('x ** x ** x', str(x ** x ** x))
+        self.assertEqual('x ** x ** x', str(x ** (x ** x)))
+        self.assertEqual('(x ** x) ** x', str((x ** x) ** x))
 
         self.assertEqual('-(x + x)', str(-(x + x)))
 
