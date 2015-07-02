@@ -140,6 +140,11 @@ class Expr(object):
         raise NotImplementedError()
 
     def __nonzero__(self):
+        # When a user calls a boolean operator like `(x == y and z == w)`,
+        # `and` operator evaluate the both expressions and returns the last
+        # result `z == w`.
+        # So, `(x == y and z == w).expect()` only checks `z == w`. It is
+        # confusing.
         msg = ('Don\'t convert Expr to bool. '
                'Please call Expr.eval method to evaluate expression.')
         raise RuntimeError(msg)
