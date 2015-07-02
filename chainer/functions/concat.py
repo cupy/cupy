@@ -46,6 +46,7 @@ class Concat(function.Function):
         )
         y_type, = out_types
 
+        type_check.expect(y_type.dtype == in_types[0].dtype)
         ndim = in_types[0].ndim.eval()
         concat_size = sum(typ.shape[self.axis] for typ in in_types)
         type_check.expect(concat_size == y_type.shape[self.axis])
