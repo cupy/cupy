@@ -1,5 +1,6 @@
 import collections
 import sys
+import warnings
 
 import numpy
 
@@ -115,11 +116,19 @@ class CaffeFunction(function.Function):
                 meth = _type_to_method.get(layer.type)
                 if meth:
                     meth(self, layer)
+                else:
+                    warnings.warn(
+                        'Skip the layer "%s", since CaffeFunction does not'
+                        'support %s layer' % (layer.name, layer.type))
         else:  # v1 format
             for layer in net.layers:
                 meth = _oldname_to_method.get(layer.type)
                 if meth:
                     meth(self, layer)
+                else:
+                    warnings.warn(
+                        'Skip the layer "%s", since CaffeFunction does not'
+                        'support it' % layer.name)
 
     def __call__(self, inputs, outputs, disable=[], train=True):
         """Executes a subnetwork of the network.
@@ -235,6 +244,11 @@ class CaffeFunction(function.Function):
         setattr(self.fs, layer.name, func)
         self.forwards[layer.name] = func
         self._add_layer(layer)
+
+    @_layer('Data', 'DATA')
+    def _setup_data(self, layer):
+        # We silently skip the data layer.
+        pass
 
     @_layer('Dropout', 'DROPOUT')
     def _setup_dropout(self, layer):
