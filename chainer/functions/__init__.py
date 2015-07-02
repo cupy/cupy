@@ -11,17 +11,20 @@ from chainer.functions import embed_id
 from chainer.functions import hierarchical_softmax
 from chainer.functions import identity
 from chainer.functions import inception
+from chainer.functions import inceptionbn
 from chainer.functions import leaky_relu
 from chainer.functions import linear
 from chainer.functions import local_response_normalization
 from chainer.functions import lstm
 from chainer.functions import mean_squared_error
+from chainer.functions import negative_sampling
 from chainer.functions import parameter
 from chainer.functions import pooling_2d
 from chainer.functions import prelu
 from chainer.functions import relu
 from chainer.functions import reshape
 from chainer.functions import sigmoid
+from chainer.functions import sigmoid_cross_entropy
 from chainer.functions import softmax
 from chainer.functions import softmax_cross_entropy
 from chainer.functions import sum as sum_
@@ -47,9 +50,11 @@ LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization
 Accuracy = accuracy.Accuracy
 MeanSquaredError = mean_squared_error.MeanSquaredError
+SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 Sum = sum_.Sum
 Inception = inception.Inception
+InceptionBN = inceptionbn.InceptionBN
 
 BatchNormalization = batch_normalization.BatchNormalization
 Convolution2D = convolution_2d.Convolution2D
@@ -57,6 +62,7 @@ EmbedID = embed_id.EmbedID
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 create_huffman_tree = hierarchical_softmax.create_huffman_tree
 Linear = linear.Linear
+NegativeSampling = negative_sampling.NegativeSampling
 Parameter = parameter.Parameter
 PReLU = prelu.PReLU
 
@@ -66,6 +72,7 @@ dropout = dropout.dropout
 identity = identity.identity
 reshape = reshape.reshape
 
+absolute = basic_math.absolute
 exp = basic_math.exp
 log = basic_math.log
 leaky_relu = leaky_relu.leaky_relu
@@ -82,5 +89,6 @@ local_response_normalization = \
 
 accuracy = accuracy.accuracy
 mean_squared_error = mean_squared_error.mean_squared_error
+sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 sum = sum_.sum

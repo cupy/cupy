@@ -83,3 +83,11 @@ Gradient checking utilities
 
 .. autofunction:: assert_allclose
 .. autofunction:: numerical_grad
+
+
+Common algorithms
+-----------------
+.. automodule:: chainer.utils
+
+.. autoclass:: WalkerAlias
+   :members: sample, to_gpu

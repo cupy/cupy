@@ -73,11 +73,11 @@ elif args.arch == 'alexbn':
     import alexbn
     model = alexbn.AlexBN()
 elif args.arch == 'googlenet':
-    import inception
-    model = inception.GoogLeNet()
+    import googlenet
+    model = googlenet.GoogLeNet()
 elif args.arch == 'googlenetbn':
-    import inceptionbn
-    model = inceptionbn.GoogLeNetBN()
+    import googlenetbn
+    model = googlenetbn.GoogLeNetBN()
 else:
     raise ValueError('Invalid architecture name')
 

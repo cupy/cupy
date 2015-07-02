@@ -5,6 +5,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer import variable
 
 
@@ -37,14 +38,35 @@ class Neg(function.Function):
         return '__neg__'
 
     def forward(self, x):
-        return -x[0],
+        return utils.force_array(-x[0]),
 
     def backward(self, x, gy):
-        return -gy[0],
+        return utils.force_array(-gy[0]),
 
 
 def neg(x):  # -x
     return Neg()(x)
+
+
+class Absolute(function.Function):
+
+    def forward(self, x):
+        return utils.force_array(abs(x[0])),
+
+    def backward_cpu(self, x, gy):
+        return utils.force_array(numpy.sign(x[0]) * gy[0]),
+
+    def backward_gpu(self, x, gy):
+        gx0 = cuda.empty_like(x[0])
+        cuda.elementwise(
+            'float* gx0, const float* x0, const float* gy',
+            'gx0[i] = ((x0[i] > 0) - (x0[i] < 0)) * gy[i]',
+            'abs_bwd')(gx0, x[0], gy[0])
+        return gx0,
+
+
+def absolute(x):
+    return Absolute()(x)
 
 
 class Add(function.Function):
@@ -54,7 +76,8 @@ class Add(function.Function):
         return '_ + _'
 
     def forward(self, x):
-        return x[0] + x[1],
+        y = utils.force_array(x[0] + x[1])
+        return y,
 
     def backward(self, x, gy):
         return gy[0], gy[0]
@@ -70,7 +93,7 @@ class AddConstant(function.Function):
         return '_ + %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return x[0] + self.value,
+        return utils.force_array(x[0] + self.value),
 
     def backward(self, x, gy):
         return gy[0],
@@ -89,10 +112,10 @@ class Sub(function.Function):
         return '_ - _'
 
     def forward(self, x):
-        return x[0] - x[1],
+        return utils.force_array(x[0] - x[1]),
 
     def backward(self, x, gy):
-        return gy[0], -gy[0]
+        return gy[0], utils.force_array(-gy[0])
 
 
 def sub(lhs, rhs):  # lhs - rhs
@@ -111,10 +134,10 @@ class SubFromConstant(function.Function):
         return '%s - _' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return self.value - x[0],
+        return utils.force_array(self.value - x[0]),
 
     def backward(self, x, gy):
-        return -gy[0],
+        return utils.force_array(-gy[0]),
 
 
 def rsub(lhs, rhs):  # rhs - lhs
@@ -130,10 +153,10 @@ class Mul(function.Function):
         return '_ * _'
 
     def forward(self, x):
-        return x[0] * x[1],
+        return utils.force_array(x[0] * x[1]),
 
     def backward_cpu(self, x, gy):
-        return gy[0] * x[1], gy[0] * x[0]
+        return utils.force_array(gy[0] * x[1]), utils.force_array(gy[0] * x[0])
 
     def backward_gpu(self, x, gy):
         gx0 = cuda.empty_like(x[0])
@@ -159,10 +182,10 @@ class MulConstant(function.Function):
         return '_ * %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return self.value * x[0],
+        return utils.force_array(self.value * x[0]),
 
     def backward(self, x, gy):
-        return self.value * gy[0],
+        return utils.force_array(self.value * gy[0]),
 
 
 def mul(lhs, rhs):  # lhs * rhs
@@ -178,11 +201,11 @@ class Div(function.Function):
         return '_ / _'
 
     def forward(self, x):
-        return x[0] / x[1],
+        return utils.force_array(x[0] / x[1]),
 
     def backward_cpu(self, x, gy):
-        gx0 = gy[0] / x[1]
-        return gx0, -gx0 * x[0] / x[1]
+        gx0 = utils.force_array(gy[0] / x[1])
+        return gx0, utils.force_array(-gx0 * x[0] / x[1])
 
     def backward_gpu(self, x, gy):
         gx0 = cuda.empty_like(x[0])
@@ -214,10 +237,10 @@ class DivFromConstant(function.Function):
         return '_ / %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return self.value / x[0],
+        return utils.force_array(self.value / x[0]),
 
     def backward_cpu(self, x, gy):
-        return -self.value * gy[0] / (x[0] ** 2),
+        return utils.force_array(-self.value * gy[0] / (x[0] ** 2)),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
@@ -253,15 +276,15 @@ class PowVarVar(function.Function):
         return '_ ** _'
 
     def forward_cpu(self, x):
-        self.y = x[0] ** x[1]
+        self.y = utils.force_array(x[0] ** x[1])
         return self.y,
 
     def forward_gpu(self, x):
         return x[0] ** x[1],
 
     def backward_cpu(self, x, gy):
-        gx0 = x[1] * (x[0] ** (x[1] - 1)) * gy[0]
-        gx1 = numpy.log(x[0]) * self.y * gy[0]
+        gx0 = utils.force_array(x[1] * (x[0] ** (x[1] - 1)) * gy[0])
+        gx1 = utils.force_array(numpy.log(x[0]) * self.y * gy[0])
         return gx0, gx1
 
     def backward_gpu(self, x, gy):
@@ -288,10 +311,11 @@ class PowVarConst(function.Function):
         return '_ ** %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return x[0] ** self.value,
+        return utils.force_array(x[0] ** self.value),
 
     def backward_cpu(self, x, gy):
-        return self.value * (x[0] ** (self.value - 1)) * gy[0],
+        gx = self.value * (x[0] ** (self.value - 1)) * gy[0]
+        return utils.force_array(gx),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
@@ -330,7 +354,7 @@ class PowConstVar(function.Function):
         return '%s ** _' % _convert_value_to_string(self.value)
 
     def forward_cpu(self, x):
-        self.y = self.value ** x[0]
+        self.y = utils.force_array(self.value ** x[0])
         return self.y,
 
     def forward_gpu(self, x):
@@ -346,7 +370,7 @@ class PowConstVar(function.Function):
         return y,
 
     def backward_cpu(self, x, gy):
-        return numpy.log(self.value) * self.y * gy[0],
+        return utils.force_array(numpy.log(self.value) * self.y * gy[0]),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
@@ -378,6 +402,7 @@ def rpow(lhs, rhs):  # rhs ** lhs
 
 def install_variable_arithmetics():
     variable.Variable.__neg__ = neg
+    variable.Variable.__abs__ = absolute
     variable.Variable.__add__ = add
     variable.Variable.__radd__ = add
     variable.Variable.__sub__ = sub
@@ -403,7 +428,7 @@ class Exp(function.Function):
         return 'exp'
 
     def forward_cpu(self, x):
-        self.y = numpy.exp(x[0])
+        self.y = utils.force_array(numpy.exp(x[0]))
         return self.y,
 
     def forward_gpu(self, x):
@@ -411,7 +436,7 @@ class Exp(function.Function):
         return self.y,
 
     def backward(self, x, gy):
-        return self.y * gy[0],
+        return utils.force_array(self.y * gy[0]),
 
 
 def exp(x):
@@ -426,13 +451,13 @@ class Log(function.Function):
         return 'log'
 
     def forward_cpu(self, x):
-        return numpy.log(x[0]),
+        return utils.force_array(numpy.log(x[0])),
 
     def forward_gpu(self, x):
         return cuda.cumath.log(x[0]),
 
     def backward(self, x, gy):
-        return gy[0] / x[0],
+        return utils.force_array(gy[0] / x[0]),
 
 
 def log(x):

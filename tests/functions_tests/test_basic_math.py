@@ -13,12 +13,13 @@ if cuda.available:
     cuda.init()
 
 
-class TestBinaryOp(unittest.TestCase):
+class BinaryOpTestBase(object):
+
+    def make_data(self):
+        raise NotImplementedError()
 
     def setUp(self):
-        self.x1 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.x2 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.x1, self.x2, self.gy = self.make_data()
 
     def check_forward(self, op, x1_data, x2_data):
         x1 = chainer.Variable(x1_data)
@@ -170,12 +171,31 @@ class TestBinaryOp(unittest.TestCase):
         self.backward_gpu(lambda x, y: x ** y, atol=1e-4)
 
 
-class TestVariableConstantOp(unittest.TestCase):
+class TestBinaryOpSimple(BinaryOpTestBase, unittest.TestCase):
+
+    def make_data(self):
+        x1 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
+        x2 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        return x1, x2, gy
+
+
+class TestBinaryOpZeroDimension(BinaryOpTestBase, unittest.TestCase):
+
+    def make_data(self):
+        x1 = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
+        x2 = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        return x1, x2, gy
+
+
+class VariableConstantOpTestBase(object):
+
+    def make_date(self):
+        raise NotImplementedError()
 
     def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        self.value = .5
+        self.x, self.gy, self.value = self.make_data()
 
     def check_forward(self, op, x_data):
         x = chainer.Variable(x_data)
@@ -346,6 +366,26 @@ class TestVariableConstantOp(unittest.TestCase):
     @attr.gpu
     def test_rpow_backward_gpu(self):
         self.backward_gpu(lambda x, y: y ** x)
+
+
+class TestVariableConstantOpSimple(VariableConstantOpTestBase,
+                                   unittest.TestCase):
+
+    def make_data(self):
+        x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        value = .5
+        return x, gy, value
+
+
+class TestVariableConstantOpZeroDimension(VariableConstantOpTestBase,
+                                          unittest.TestCase):
+
+    def make_data(self):
+        x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        value = .5
+        return x, gy, value
 
 
 class TestVariableConstantArrayOp(unittest.TestCase):
@@ -534,11 +574,13 @@ class TestVariableConstantArrayOp(unittest.TestCase):
         self.backward_gpu(lambda x, y: y ** x, positive=True)
 
 
-class TestUnaryFunctions(unittest.TestCase):
+class UnaryFunctionsTestBase(object):
+
+    def make_data(self):
+        raise NotImplementedError()
 
     def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.x, self.gy = self.make_data()
 
     def check_forward(self, op, op_np, x_data):
         x = chainer.Variable(x_data)
@@ -549,6 +591,12 @@ class TestUnaryFunctions(unittest.TestCase):
     def forward_cpu(self, op, op_np):
         self.check_forward(op, op_np, self.x)
 
+    def test_neg_forward_cpu(self):
+        self.forward_cpu(lambda x: -x, lambda x: -x)
+
+    def test_abs_forward_cpu(self):
+        self.forward_cpu(lambda x: abs(x), lambda x: abs(x))
+
     def test_exp_forward_cpu(self):
         self.forward_cpu(F.exp, numpy.exp)
 
@@ -557,6 +605,14 @@ class TestUnaryFunctions(unittest.TestCase):
 
     def forward_gpu(self, op, op_np):
         self.check_forward(op, op_np, cuda.to_gpu(self.x))
+
+    @attr.gpu
+    def test_neg_forward_gpu(self):
+        self.forward_gpu(lambda x: -x, lambda x: -x)
+
+    @attr.gpu
+    def test_abs_forward_gpu(self):
+        self.forward_gpu(lambda x: abs(x), lambda x: abs(x))
 
     @attr.gpu
     def test_exp_forward_gpu(self):
@@ -581,6 +637,12 @@ class TestUnaryFunctions(unittest.TestCase):
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
 
+    def test_neg_backward_cpu(self):
+        self.backward_cpu(lambda x: -x)
+
+    def test_abs_backward_cpu(self):
+        self.backward_cpu(lambda x: abs(x))
+
     def test_exp_backward_cpu(self):
         self.backward_cpu(F.exp)
 
@@ -591,9 +653,34 @@ class TestUnaryFunctions(unittest.TestCase):
         self.check_backward(op, cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.gpu
+    def test_neg_backward_gpu(self):
+        self.backward_gpu(lambda x: -x)
+
+    @attr.gpu
+    def test_abs_backward_gpu(self):
+        self.backward_gpu(lambda x: abs(x))
+
+    @attr.gpu
     def test_exp_backward_gpu(self):
         self.backward_gpu(F.exp)
 
     @attr.gpu
     def test_log_backward_gpu(self):
         self.backward_gpu(F.log)
+
+
+class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
+
+    def make_data(self):
+        x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        return x, gy
+
+
+class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
+                                      unittest.TestCase):
+
+    def make_data(self):
+        x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        return x, gy

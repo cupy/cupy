@@ -152,9 +152,20 @@ def lstm(c_prev, x):
 
     This function implements LSTM units with forget gates. Let the previous
     cell state :math:`c_{\\text{prev}}` and the incoming signal :math:`x`.
-    Then, first the incoming signal :math:`x` is split along the second
-    dimension into four arrays :math:`a, i, f, o` of the same shapes. Second,
-    it computes outputs as:
+
+    First, the incoming signal :math:`x` is split into four arrays
+    :math:`a, i, f, o` of the same shapes along the second axis.
+    It means that :math:`x` 's second axis must have 4 times the length of
+    :math:`c_{\\text{prev}}`.
+
+    The splitted input signals are corresponding to:
+
+        - :math:`a` : sources of cell input
+        - :math:`i` : sources of input gate
+        - :math:`f` : sources of forget gate
+        - :math:`o` : sources of output gate
+
+    Second, it computes outputs as:
 
     .. math::
 
@@ -162,7 +173,7 @@ def lstm(c_prev, x):
            + c_{\\text{prev}} \\text{sigmoid}(f), \\\\
         h &= \\tanh(c) \\text{sigmoid}(o).
 
-    This function outputs these two arrays as a tuple of two variables.
+    These are returned as a tuple of two variables.
 
     Args:
         c_prev (~chainer.Variable): Variable that holds the previous cell
@@ -178,6 +189,23 @@ def lstm(c_prev, x):
     See the original paper proposing LSTM with forget gates:
     `Long Short-Term Memory in Recurrent Neural Networks \
     <http://www.felixgers.de/papers/phd.pdf>`_.
+
+    .. admonition:: Example
+
+        Assuming ``y`` is the current input signal, ``c`` is the previous cell
+        state, and ``h`` is the previous output signal from an ``lstm``
+        function. Each of ``y``, ``c`` and ``h`` has ``n_units`` channels.
+        Most typical preparation of ``x`` is:
+
+        >>> model = FunctionSet(w=F.Linear(n_units, 4 * n_units),
+        ...                     v=F.Linear(n_units, 4 * n_units),
+        ...                     ...)
+        >>> x = model.w(y) + model.v(h)
+        >>> c, h = F.lstm(c, x)
+
+        It corresponds to calculate the input sources :math:`a, i, f, o` from
+        the current input ``y`` and the previous output ``h``. Different
+        parameters are used for different kind of input sources.
 
     """
     return LSTM()(c_prev, x)

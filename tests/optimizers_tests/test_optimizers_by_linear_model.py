@@ -117,6 +117,11 @@ class TestRMSprop(OptimizerTestBase, unittest.TestCase):
         return optimizers.RMSprop(0.1)
 
 
+class TestRMSpropGraves(OptimizerTestBase, unittest.TestCase):
+    def create(self):
+        return optimizers.RMSpropGraves(0.1)
+
+
 class TestSGD(OptimizerTestBase, unittest.TestCase):
     def create(self):
         return optimizers.SGD(0.1)

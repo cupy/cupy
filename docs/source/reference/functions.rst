@@ -17,6 +17,7 @@ Learnable connections
 .. autoclass:: Convolution2D
 .. autoclass:: EmbedID
 .. autoclass:: Linear
+.. autoclass:: NegativeSampling
 .. autoclass:: Parameter
 
 Array manipulation functions
@@ -54,6 +55,7 @@ Loss, evaluation and aggregation
 --------------------------------
 .. autofunction:: accuracy
 .. autofunction:: mean_squared_error
+.. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: sum
 

@@ -131,3 +131,7 @@ class TestVariable(unittest.TestCase):
         ret = self.create_linear_chain(3, False)
         ret[1].unchain_backward()
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
+
+    def test_invalid_value_type(self):
+        with self.assertRaises(AssertionError):
+            chainer.Variable(1)
