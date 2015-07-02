@@ -79,7 +79,7 @@ class Variable(object):
         """
         return self.data.size
 
-    def __str__(self):
+    def label(self):
         if self.data.shape == tuple():
             return str(self.data.dtype)
         return '%s, %s' % (str(self.data.shape),

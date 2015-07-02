@@ -15,7 +15,7 @@ from chainer import variable
 
 class Neg(function.Function):
 
-    def __str__(self):
+    def label(self):
         return '* (-1)'
 
     def forward(self, x):
@@ -31,7 +31,7 @@ def neg(x):  # -x
 
 class Add(function.Function):
 
-    def __str__(self):
+    def label(self):
         return '+'
 
     def forward(self, x):
@@ -46,7 +46,7 @@ class AddConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
-    def __str__(self):
+    def label(self):
         value = self.value
         if isinstance(value, float) or\
            isinstance(value, numpy.ndarray) or\
@@ -73,7 +73,7 @@ def add(lhs, rhs):  # lhs + rhs
 
 class Sub(function.Function):
 
-    def __str__(self):
+    def label(self):
         return '-'
 
     def forward(self, x):
@@ -94,7 +94,7 @@ class SubFromConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
-    def __str__(self):
+    def label(self):
         value = self.value
         if isinstance(value, float) or\
            isinstance(value, numpy.ndarray) or\
@@ -121,7 +121,7 @@ def rsub(lhs, rhs):  # rhs - lhs
 
 class Mul(function.Function):
 
-    def __str__(self):
+    def label(self):
         return '*'
 
     def forward(self, x):
@@ -149,7 +149,7 @@ class MulConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
-    def __str__(self):
+    def label(self):
         value = self.value
         if isinstance(value, float) or\
            isinstance(value, numpy.ndarray) or\
@@ -176,7 +176,7 @@ def mul(lhs, rhs):  # lhs * rhs
 
 class Div(function.Function):
 
-    def __str__(self):
+    def label(self):
         return '/'
 
     def forward(self, x):
@@ -211,7 +211,7 @@ class DivFromConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
-    def __str__(self):
+    def label(self):
         value = self.value
         if isinstance(value, float) or\
            isinstance(value, numpy.ndarray) or\
@@ -258,7 +258,7 @@ def rdiv(lhs, rhs):  # rhs / lhs
 
 class PowVarVar(function.Function):
 
-    def __str__(self):
+    def label(self):
         return '**'
 
     def forward_cpu(self, x):
@@ -292,7 +292,7 @@ class PowVarConst(function.Function):
     def __init__(self, value):
         self.value = value
 
-    def __str__(self):
+    def label(self):
         value = self.value
         if isinstance(value, float) or\
            isinstance(value, numpy.ndarray) or\
@@ -342,7 +342,7 @@ class PowConstVar(function.Function):
     def __init__(self, value):
         self.value = value
 
-    def __str__(self):
+    def label(self):
         value = self.value
         if isinstance(value, float) or\
            isinstance(value, numpy.ndarray) or\
@@ -423,7 +423,7 @@ def install_variable_arithmetics():
 
 class Exp(function.Function):
 
-    def __str__(self):
+    def label(self):
         return 'exp'
 
     def forward_cpu(self, x):
@@ -445,7 +445,7 @@ def exp(x):
 
 class Log(function.Function):
 
-    def __str__(self):
+    def label(self):
         return 'log'
 
     def forward_cpu(self, x):

@@ -174,7 +174,7 @@ class Function(object):
             return ret[0]
         return ret
 
-    def __str__(self):
+    def label(self):
         return str(type(self))
 
     def forward(self, inputs):

@@ -41,14 +41,17 @@ class ComputationalGraph(object):
                     and isinstance(tail, variable.Variable))
             head_node = DotNode(head)
             tail_node = DotNode(tail)
-            ret += str(head_node)
-            ret += str(tail_node)
+            ret += head_node.label()
+            ret += tail_node.label()
             ret += "%s -> %s;" % (head_node.id_, tail_node.id_)
         ret += "}"
         return ret
 
-    def __str__(self):
-        return self._to_dot()
+    def dump(self, format='dot'):
+        if format == 'dot':
+            return self._to_dot()
+        else:
+            NotImplementedError
 
     def __len__(self):
         return len(self.edges)

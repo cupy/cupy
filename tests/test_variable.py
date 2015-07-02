@@ -55,19 +55,19 @@ class TestVariable(unittest.TestCase):
     def test_len_gpu(self):
         self.check_len(True)
 
-    def check_str(self, expected, gpu):
+    def check_label(self, expected, gpu):
         c = self.c
         if gpu:
             c = cuda.to_gpu(c)
         c = chainer.Variable(c)
-        self.assertEqual(str(c), expected)
+        self.assertEqual(c.label(), expected)
 
-    def test_str_cpu(self):
-        self.check_str('(2, 5), float32', False)
+    def test_label_cpu(self):
+        self.check_label('(2, 5), float32', False)
 
     @attr.gpu
-    def test_str_gpu(self):
-        self.check_str('(2, 5), float32', True)
+    def test_label_gpu(self):
+        self.check_label('(2, 5), float32', True)
 
     def check_backward(self, inputs, intermediates, outputs, retain_grad):
         for o in outputs:
