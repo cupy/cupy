@@ -46,7 +46,8 @@ def download_mnist_data():
     print('Done')
 
     print('Converting training data...')
-    data_train, target_train = load_mnist(train_images, train_labels, num_train)
+    data_train, target_train = load_mnist(train_images, train_labels,
+                                          num_train)
     print('Done')
     print('Converting test data...')
     data_test, target_test = load_mnist(test_images, test_labels, num_test)
