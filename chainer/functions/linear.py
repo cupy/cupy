@@ -38,6 +38,7 @@ class Linear(function.Function):
         wscale (float): Scaling factor of the weight matrix.
         bias (float): Initial bias value.
         nobias (bool): If True, then this function does not use the bias.
+        init_params (bool): If True, them this function initialize parameters.
 
     .. note::
 
@@ -47,18 +48,21 @@ class Linear(function.Function):
 
     """
 
-    def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False):
-        self.W = numpy.random.normal(
-            0, wscale * math.sqrt(1. / in_size),
-            (out_size, in_size)).astype(numpy.float32)
-        self.gW = numpy.empty_like(self.W)
+    def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
+                 init_params=True):
+        self.W = None
+        self.gW = None
+        self.b = None
+        self.gb = None
 
-        if nobias:
-            self.b = None
-            self.gb = None
-        else:
-            self.b = numpy.repeat(numpy.float32(bias), out_size)
-            self.gb = numpy.empty_like(self.b)
+        if init_params:
+            self.W = numpy.random.normal(
+                0, wscale * math.sqrt(1. / in_size),
+                (out_size, in_size)).astype(numpy.float32)
+            self.gW = numpy.empty_like(self.W)
+            if not nobias:
+                self.b = numpy.repeat(numpy.float32(bias), out_size)
+                self.gb = numpy.empty_like(self.b)
 
     @property
     def parameter_names(self):
