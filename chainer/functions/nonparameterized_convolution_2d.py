@@ -9,8 +9,6 @@ class NonparameterizedConvolution2D(function.Function):
 
     """Two-dimensional nonparameterized convolution function.
 
-    The details of this function are described below the arguments description.
-
     Args:
         stride (int or (int, int)): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
@@ -64,8 +62,6 @@ class NonparameterizedConvolution2D(function.Function):
 
 def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
     """Two-dimensional convolution function.
-
-    The details of this function are described below the arguments description.
 
     Args:
         x (~chainer.Variable): Input variable.
