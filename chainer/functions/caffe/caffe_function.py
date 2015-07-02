@@ -218,12 +218,12 @@ class CaffeFunction(function.Function):
                                        nobias=not param.bias_term)
         func.W.fill(0)
 
-        part_size = len(blobs[0].data) / param.group
+        part_size = len(blobs[0].data) // param.group
         for i in xrange(param.group):
-            in_slice = slice(i * n_in / param.group,
-                             (i+1) * n_in / param.group)
-            out_slice = slice(i * n_out / param.group,
-                              (i+1) * n_out / param.group)
+            in_slice = slice(i * n_in // param.group,
+                             (i+1) * n_in // param.group)
+            out_slice = slice(i * n_out // param.group,
+                              (i+1) * n_out // param.group)
             w = func.W[out_slice, in_slice]
 
             data = numpy.array(blobs[0].data[i*part_size:(i+1)*part_size])
