@@ -206,6 +206,10 @@ class Function(object):
         You need to validate types of gradient data in this function
         using type-check utilities.
 
+        :meth:`check_type_backward` is always called after
+        :meth:`check_type_forward`. So, each function does not need to check
+        the same condition here.
+
         Args:
             in_types: :class:`TypeInfoTuple` object which contains type
                 information of input data for :meth:`backward`.
