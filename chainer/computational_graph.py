@@ -1,9 +1,6 @@
 import heapq
 
-import numpy as np
-
 from chainer import function
-from chainer.functions import basic_math
 from chainer import variable
 
 

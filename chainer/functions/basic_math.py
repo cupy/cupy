@@ -49,13 +49,14 @@ class AddConstant(function.Function):
     def __str__(self):
         value = self.value
         if isinstance(value, float) or\
-           isinstance(value, np.ndarray) or\
+           isinstance(value, numpy.ndarray) or\
            isinstance(value, cuda.GPUArray):
             return "+ %s" % str(value)
         elif isinstance(value, variable.Variable):
             return "+ %s" % str(value.data)
         else:
-            raise ValueError('value must be float, ndarray, GPUArray, or Variable')
+            raise ValueError(
+                'value must be float, ndarray, GPUArray, or Variable')
 
     def forward(self, x):
         return x[0] + self.value,
@@ -96,13 +97,14 @@ class SubFromConstant(function.Function):
     def __str__(self):
         value = self.value
         if isinstance(value, float) or\
-           isinstance(value, np.ndarray) or\
+           isinstance(value, numpy.ndarray) or\
            isinstance(value, cuda.GPUArray):
             return "* (-1) + %s" % str(value)
         elif isinstance(value, variable.Variable):
             return "* (-1) + %s" % str(value.data)
         else:
-            raise ValueError('value must be float, ndarray, GPUArray, or Variable')
+            raise ValueError(
+                'value must be float, ndarray, GPUArray, or Variable')
 
     def forward(self, x):
         return self.value - x[0],
@@ -150,13 +152,14 @@ class MulConstant(function.Function):
     def __str__(self):
         value = self.value
         if isinstance(value, float) or\
-           isinstance(value, np.ndarray) or\
+           isinstance(value, numpy.ndarray) or\
            isinstance(value, cuda.GPUArray):
             return '* %s' % str(value)
         elif isinstance(value, variable.Variable):
             return '* %s' % str(value.data)
         else:
-            raise ValueError('value must be float, ndarray, GPUArray, or Variable')
+            raise ValueError(
+                'value must be float, ndarray, GPUArray, or Variable')
 
     def forward(self, x):
         return self.value * x[0],
@@ -211,13 +214,14 @@ class DivFromConstant(function.Function):
     def __str__(self):
         value = self.value
         if isinstance(value, float) or\
-           isinstance(value, np.ndarray) or\
+           isinstance(value, numpy.ndarray) or\
            isinstance(value, cuda.GPUArray):
             return '/ %s' % str(value)
         elif isinstance(value, variable.Variable):
             return '/ %s' % str(value.data)
         else:
-            raise ValueError('value must be float, ndarray, GPUArray, or Variable')
+            raise ValueError(
+                'value must be float, ndarray, GPUArray, or Variable')
 
     def forward(self, x):
         return self.value / x[0],
@@ -291,13 +295,14 @@ class PowVarConst(function.Function):
     def __str__(self):
         value = self.value
         if isinstance(value, float) or\
-           isinstance(value, np.ndarray) or\
+           isinstance(value, numpy.ndarray) or\
            isinstance(value, cuda.GPUArray):
             return '** %s' % str(value)
         elif isinstance(value, variable.Variable):
             return '** %s' % str(value.data)
         else:
-            raise ValueError('value must be float, ndarray, GPUArray, or Variable')
+            raise ValueError(
+                'value must be float, ndarray, GPUArray, or Variable')
 
     def forward(self, x):
         return x[0] ** self.value,
@@ -340,13 +345,14 @@ class PowConstVar(function.Function):
     def __str__(self):
         value = self.value
         if isinstance(value, float) or\
-           isinstance(value, np.ndarray) or\
+           isinstance(value, numpy.ndarray) or\
            isinstance(value, cuda.GPUArray):
             return '%s **' % str(value)
         elif isinstance(value, variable.Variable):
             return '%s **' % str(value.data)
         else:
-            raise ValueError('value must be float, ndarray, GPUArray, or Variable')
+            raise ValueError(
+                'value must be float, ndarray, GPUArray, or Variable')
 
     def forward_cpu(self, x):
         self.y = self.value ** x[0]
