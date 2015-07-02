@@ -42,7 +42,6 @@ class Softmax(function.Function):
         )
 
     def forward_cpu(self, x):
-        assert x[0].ndim == 2
         self.y = x[0] - numpy.amax(x[0], axis=1, keepdims=True)
         numpy.exp(self.y, out=self.y)
         self.y /= self.y.sum(axis=1, keepdims=True)
