@@ -56,7 +56,7 @@ if args.model_type == 'alexnet' or args.model_type == 'caffenet':
     mean_image = np.load(args.mean)
 
     def forward(x, t):
-        y, = func(inputs={'data': x}, outputs=['fc8'])
+        y, = func(inputs={'data': x}, outputs=['fc8'], train=False)
         return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
 elif args.model_type == 'googlenet':
     in_size = 224
@@ -68,7 +68,8 @@ elif args.model_type == 'googlenet':
 
     def forward(x, t):
         y, = func(inputs={'data': x}, outputs=['loss3/classifier'],
-                  disable=['loss1/ave_pool', 'loss2/ave_pool'])
+                  disable=['loss1/ave_pool', 'loss2/ave_pool'],
+                  train=False)
         return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
 
 
