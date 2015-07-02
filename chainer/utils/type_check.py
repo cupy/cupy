@@ -52,7 +52,7 @@ def get_types(data, name, accept_none):
 
     info = TypeInfoTuple(
         _get_type(name, i, x, accept_none) for i, x in enumerate(data))
-    # I don't know a method to set an atribute in an initializer of tuple.
+    # I don't know a method to set an attribute in an initializer of tuple.
     info.name = name
     return info
 
