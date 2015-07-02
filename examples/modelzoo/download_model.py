@@ -6,8 +6,8 @@ import six
 
 
 parser = argparse.ArgumentParser(
-    descriptor='Download a Caffe reference model')
-parser.add_argument('model_type',
+    description='Download a Caffe reference model')
+parser.add_argument('model_type', choices=('alexnet', 'caffenet', 'googlenet'),
                     help='Model type (alexnet, caffenet, googlenet)')
 args = parser.parse_args()
 
