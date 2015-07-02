@@ -159,17 +159,17 @@ def build_computational_graph(outputs, remove_split=True):
     seen_edges = set()
 
     def heap_with_push_counter():
-        table = []
+        push_count = [0]
 
         def add(cand):
-            heapq.heappush(cands, (-cand.rank, len(table), cand))
-            table.append(cand)
+            heapq.heappush(cands, (-cand.rank, push_count[0], cand))
+            push_count[0] += 1
         return add
 
-    heap = heap_with_push_counter()
+    add_cand = heap_with_push_counter()
 
     for o in outputs:
-        heap(o)
+        add_cand(o)
 
     while cands:
         _, _, cand = heapq.heappop(cands)
@@ -178,23 +178,23 @@ def build_computational_graph(outputs, remove_split=True):
             if remove_split and isinstance(creator, function.Split):
                 # assume that function.Split has only one input
                 next_cand = creator.inputs[0]
-                heap(next_cand)
+                add_cand(next_cand)
                 continue
             if creator is not None and (creator, cand) not in seen_edges:
-                heap(creator)
+                add_cand(creator)
                 seen_edges.add((creator, cand))
         elif isinstance(cand, function.Function):
             if remove_split and isinstance(cand, function.Split):
                 next_cand = creator.inputs[0]
-                heap(next_cand)
+                add_cand(next_cand)
                 continue
             for input_ in cand.inputs:
                 if input_ != cand and (input_, cand) not in seen_edges:
                     creator = input_.creator
-                    if remove_split and\
-                       creator is not None and\
+                    if remove_split and \
+                       creator is not None and \
                        isinstance(creator, function.Split):
                         input_ = creator.inputs[0]
-                    heap(input_)
+                    add_cand(input_)
                     seen_edges.add((input_, cand))
     return ComputationalGraph(seen_edges)
