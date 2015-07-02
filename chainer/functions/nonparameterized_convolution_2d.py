@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import cuda
 from chainer import function
 from chainer.functions import convolution_2d as conv2d_module
@@ -33,17 +31,17 @@ class NonparameterizedConvolution2D(function.Function):
         func = conv2d_module.Convolution2D(
             W.shape[0], W.shape[1], W.shape[2:],
             stride=self.stride, pad=self.pad, use_cudnn=self.use_cudnn,
-            init_params=False)
-        func.W = W
-        func.b = b
+            initialW=W, initial_bias=b)
         self.func = func
-        return func.forward(x[:1])
+        if any(isinstance(i, cuda.GPUArray) for i in x):
+            func.to_gpu()
+            return func.forward_gpu(x[:1])
+        else:
+            return func.forward_cpu(x[:1])
 
     def backward_cpu(self, x, gy):
         func = self.func
-        func.gW = numpy.zeros_like(x[1])
-        if func.b is not None:
-            func.gb = numpy.zeros_like(func.b)
+        func.zero_grads()
         gx = func.backward_cpu(x[:1], gy)
         if func.gb is None:
             return (gx[0], func.gW)
@@ -51,9 +49,7 @@ class NonparameterizedConvolution2D(function.Function):
 
     def backward_gpu(self, x, gy):
         func = self.func
-        func.gW = cuda.zeros_like(func.W)
-        if func.b is not None:
-            func.gb = cuda.zeros_like(func.b)
+        func.zero_grads()
         gx = func.backward_gpu(x[:1], gy)
         if func.gb is None:
             return (gx[0], func.gW)

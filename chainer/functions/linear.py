@@ -38,7 +38,8 @@ class Linear(function.Function):
         wscale (float): Scaling factor of the weight matrix.
         bias (float): Initial bias value.
         nobias (bool): If True, then this function does not use the bias.
-        init_params (bool): If True, them this function initialize parameters.
+        initialW (2-D array): Initial weight value.
+        initial_bias (1-D array): Initial bias value.
 
     .. note::
 
@@ -49,19 +50,32 @@ class Linear(function.Function):
     """
 
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
-                 init_params=True):
+                 initialW=None, initial_bias=None):
         self.W = None
         self.gW = None
         self.b = None
         self.gb = None
 
-        if init_params:
+        if initialW is not None:
+            self.W = initialW
+        else:
             self.W = numpy.random.normal(
                 0, wscale * math.sqrt(1. / in_size),
                 (out_size, in_size)).astype(numpy.float32)
+        if isinstance(self.W, cuda.GPUArray):
+            self.gW = cuda.empty_like(self.W)
+        else:
             self.gW = numpy.empty_like(self.W)
-            if not nobias:
-                self.b = numpy.repeat(numpy.float32(bias), out_size)
+
+        if initial_bias is not None:
+            self.b = numpy.repeat(numpy.float32(bias), out_size)
+        elif not nobias:
+            self.b = numpy.repeat(numpy.float32(bias), out_size)
+
+        if self.b is not None:
+            if isinstance(self.b, cuda.GPUArray):
+                self.gb = cuda.empty_like(self.b)
+            else:
                 self.gb = numpy.empty_like(self.b)
 
     @property
@@ -105,6 +119,11 @@ class Linear(function.Function):
             y_type.shape[1] == type_check.Variable(self.W.shape[0],
                                                    'W.shape[0]'),
         )
+
+    def zero_grads(self):
+        self.gW.fill(0)
+        if self.gb is not None:
+            self.gb.fill(0)
 
     def forward_cpu(self, x):
         x = _as_mat(x[0])
