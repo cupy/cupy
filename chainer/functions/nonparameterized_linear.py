@@ -16,7 +16,7 @@ class NonparameterizedLinear(function.Function):
         b = None
         if len(x) == 3:
             b = x[2]
-        out_size, in_size = W.data.shape
+        out_size, in_size = W.shape
         func = linear_module.Linear(
             in_size, out_size, initialW=W, initial_bias=b)
         self.func = func
@@ -58,5 +58,4 @@ def linear(x, W, b=None, stride=1, pad=0, use_cudnn=True):
 
     """
 
-    return NonparameterizedLinear(
-        stride=stride, pad=pad, use_cudnn=use_cudnn)(x, W, b)
+    return NonparameterizedLinear()(x, W, b)

@@ -68,7 +68,7 @@ class Linear(function.Function):
             self.gW = numpy.empty_like(self.W)
 
         if initial_bias is not None:
-            self.b = numpy.repeat(numpy.float32(bias), out_size)
+            self.b = initial_bias
         elif not nobias:
             self.b = numpy.repeat(numpy.float32(bias), out_size)
 
