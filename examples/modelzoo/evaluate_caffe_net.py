@@ -33,8 +33,6 @@ parser.add_argument('--batchsize', '-B', type=int, default=100,
                     help='Minibatch size')
 parser.add_argument('--gpu', '-g', type=int, default=-1,
                     help='Zero-origin GPU ID (nevative value indicates CPU)')
-parser.add_argument('--loaderjob', '-j', default=20, type=int,
-                    help='Number of parallel data loading processes')
 args = parser.parse_args()
 assert args.batchsize > 0
 
