@@ -54,8 +54,6 @@ class TestConvolution2D(unittest.TestCase):
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         y_gpu = self.func(x_gpu)
 
-        for i in six.moves.range(y_cpu.data.shape[0]):
-            print(i, numpy.abs(y_cpu.data[i] - y_gpu.data[i].get()).max())
         gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
 
     @attr.gpu
