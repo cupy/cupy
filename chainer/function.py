@@ -176,12 +176,11 @@ class Function(object):
 
     @property
     def label(self):
-        """Default implementation, which returns function's property
+        """Short text that represent the function.
 
-        Returns:
-            string: represents its type
+        The default implementation returns its type name.
+        Each function should override it to give more information.
         """
-
         return str(type(self))
 
     def forward(self, inputs):

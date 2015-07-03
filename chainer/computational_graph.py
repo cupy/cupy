@@ -5,17 +5,17 @@ from chainer import variable
 
 
 class DotNode(object):
-    """Node of computational graph, with utilities for dot language
+    """Node of computational graph, with utilities for dot language.
 
     This class represents a node of computational graph,
-    with some utilities for dot language
+    with some utilities for dot language.
     """
 
     def __init__(self, node):
-        """Initialize DotNode
+        """Initialize DotNode.
 
         Args:
-            node: :class: `Variable` object or :class: `Function` object
+            node: :class: `Variable` object or :class: `Function` object.
         """
 
         assert isinstance(node, variable.Variable) or\
@@ -28,9 +28,7 @@ class DotNode(object):
         }
 
     def _shape(self):
-        """Return shape type of node
-
-        """
+        """Return shape type of node."""
 
         if isinstance(self.node, variable.Variable):
             return "oval"
@@ -41,10 +39,10 @@ class DotNode(object):
 
     @property
     def label(self):
-        """Return label that represents its property
+        """Return a label that represents properties of the node.
 
         Returns:
-            string: label that represents its id and attributes
+            string: A label that represents the id and attributes of this node.
         """
 
         attributes = ["%s=\"%s\"" % (k, v) for (k, v)
@@ -53,28 +51,29 @@ class DotNode(object):
 
 
 class ComputationalGraph(object):
-    """Class that represents computational graph
+    """Class that represents computational graph.
 
     .. note::
 
-      We assume that computational graph is directed and is a DAG.
+      We assume that the computational graph is directed and acyclic.
     """
 
     def __init__(self, edges):
-        """Initialize computational graph
+        """Initializes computational graph.
 
         Args:
-            edges: List of edges. Each edge consists of pair of nodes.
-            Nodes are either :class: `Variable` object or
-            :class: `Function` object.
+            edges (list): List of edges. Each edge consists of pair of nodes.
+            Nodes are either :class:`Variable` object or
+            :class:`Function` object.
         """
         self.edges = edges
 
     def _to_dot(self):
-        """Returns graph in dot format
+        """Converts graph in dot format.
 
+        `label` property of is used as short description of each node.
         Returns:
-            string: graph in dot format
+            str: The graph in dot format.
         """
 
         ret = "digraph graphname{"
@@ -93,18 +92,19 @@ class ComputationalGraph(object):
         return ret
 
     def dump(self, format='dot'):
-        """Dump graph as a text
+        """Dumps graph as a text.
 
         Args
-            format: specifies graph language to output
+            format(str): The graph language name of the output.
+            Currently, it must be 'dot'
 
         Returns
-            string: graph in specified format
+            str: The graph in specified format.
         """
         if format == 'dot':
             return self._to_dot()
         else:
-            NotImplementedError('Currently, only dot format is supported')
+            NotImplementedError('Currently, only dot format is supported.')
 
     def __len__(self):
         return len(self.edges)
@@ -114,37 +114,38 @@ class ComputationalGraph(object):
 
 
 def build_computational_graph(outputs, remove_split=True):
-    """Walk back from outputs to get graph whose nodes are reachable from outputs
+    """Build a graph of function or variabls backward-reachable from outputs.
 
     Args:
-        outputs: List of nodes. Each node is either :class:`Variable` object
-        or :class:`Function` object.
-        remove_split : Boolean. If it is `True`, :class:`Split` functions
-        and cloned variables they created are skipped from resulting graph.
+        outputs(list): nodes from which the graph is constructed.
+        Each element of outputs must be either :class:`Variable`
+        object or :class:`Function` object.
+        remove_split(bool): If it is `True`, this function hides
+        :class:`Split` functions and related variables from the graph.
 
     Returns:
-        :class:`ComputationalGraph`: consists of nodes and edges that
-        are reachable from `outputs`, with edges reversed.
+        :class:`ComputationalGraph`: A graph consisting of nodes and edges that
+        are reachable from `outputs`.
 
         For example, suppose that computational graph is as follows
         (diagram is same as the one in the document of :class:`Function`):
 
-                               |--- x'  <--- f'  <--- y
-           x <--- (splitter) <-+
-                               |--- x'' <--- f'' <--- z
+                               |--> x'  ---> f'  ---> y
+           x ---> (splitter) --+
+                               |--> x'' ---> f'' ---> z
 
         Let `outputs = [y, z]`.
         If `remove_split` is `False`, this method generates the graph
-        itself with direction of edges reversed. If `remove_split` is `True`,
+        itself. If `remove_split` is `True`,
         splitter and x' is removed from the graph and x is directly
-        connected to f'. After reversing the edges, reulting graph will be
+        connected to f'. Resulting graph will be
 
                      |---> y
            x ---> f -+
                      |---> z
 
         Next, let `outputs = [y]`. Note that `z`, `f''`, and `x''`
-        is not reachable from `y`. If `remove_split` is `False`,
+        is not backward-reachable from `y`. If `remove_split` is `False`,
         we remove these unreachable nodes to get
 
            x ---> (splitter) ---> x'  ---> f'  ---> y
