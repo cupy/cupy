@@ -16,6 +16,7 @@ from chainer import cuda
 from chainer import functions as F
 from chainer import optimizers
 
+import data
 
 batchsize = 100
 n_epoch = 50
@@ -23,8 +24,7 @@ n_units = 2000
 
 # Prepare dataset
 print('load MNIST dataset')
-with open('mnist.pkl', 'rb') as mnist_pickle:
-    mnist = six.moves.cPickle.load(mnist_pickle)
+mnist = data.load_mnist_data()
 mnist['data'] = mnist['data'].astype(np.float32)
 mnist['data'] /= 255
 mnist['target'] = mnist['target'].astype(np.int32)

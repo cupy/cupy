@@ -158,6 +158,7 @@ class Variable(object):
 
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(y and y.grad for y in outputs)
+            func._check_data_type_backward(in_data, out_grad)
             with cuda.using_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)

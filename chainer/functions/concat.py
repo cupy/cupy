@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 _args = 'const float* x, float* y, int cdimx, int cdimy, int rdim, int coffset'
 _preamble = '''
@@ -21,6 +22,39 @@ class Concat(function.Function):
     # concat along the channel dimension by default
     def __init__(self, axis=1):
         self.axis = axis
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() > 0)
+        type_check.expect(in_types[0].ndim >
+                          type_check.IntVariable(self.axis, 'axis'))
+
+        ndim = in_types[0].ndim.eval()
+        for i in range(1, in_types.size().eval()):
+            type_check.expect(
+                in_types[0].dtype == in_types[i].dtype,
+                in_types[0].ndim == in_types[i].ndim,
+            )
+            for d in range(0, ndim):
+                if d == self.axis:
+                    continue
+                type_check.expect(in_types[0].shape[d] == in_types[i].shape[d])
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(
+            in_types.size() > 0,
+            out_types.size() == 1,
+        )
+        y_type, = out_types
+
+        type_check.expect(y_type.dtype == in_types[0].dtype)
+        ndim = in_types[0].ndim.eval()
+        concat_size = sum(typ.shape[self.axis] for typ in in_types)
+        type_check.expect(concat_size == y_type.shape[self.axis])
+
+        for d in range(0, ndim):
+            if d == self.axis:
+                continue
+            type_check.expect(y_type.shape[d] == in_types[0].shape[d])
 
     def forward_cpu(self, xs):
         return numpy.concatenate(xs, axis=self.axis),

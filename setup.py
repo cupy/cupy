@@ -13,12 +13,9 @@ setup(
               'chainer.functions',
               'chainer.functions.caffe',
               'chainer.optimizers',
-              'chainer.requirements',
               'chainer.utils'],
-    package_data={'chainer.requirements': ['cuda-requirements.txt']},
     install_requires=['numpy',
                       'protobuf',
                       'six>=1.9.0'],
-    scripts=['scripts/chainer-cuda-requirements'],
     tests_require=['nose'],
 )

@@ -16,6 +16,8 @@ from chainer import cuda
 import chainer.functions as F
 from chainer import optimizers
 
+import data
+
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -28,8 +30,7 @@ n_units = 1000
 
 # Prepare dataset
 print('load MNIST dataset')
-with open('mnist.pkl', 'rb') as mnist_pickle:
-    mnist = six.moves.cPickle.load(mnist_pickle)
+mnist = data.load_mnist_data()
 mnist['data'] = mnist['data'].astype(np.float32)
 mnist['data'] /= 255
 mnist['target'] = mnist['target'].astype(np.int32)

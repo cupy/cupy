@@ -3,6 +3,7 @@ import numpy
 from chainer import cuda
 from chainer import cudnn
 from chainer import function
+from chainer.utils import type_check
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
@@ -17,8 +18,30 @@ class Softmax(function.Function):
     def __init__(self, use_cudnn=True):
         self.use_cudnn = use_cudnn
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim == 2,
+        )
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(
+            in_types.size() == 1,
+            out_types.size() == 1,
+        )
+        x_type, = in_types
+        y_type, = out_types
+
+        type_check.expect(
+            y_type.ndim == 2,
+            y_type.shape[0] == x_type.shape[0],
+            y_type.shape[1] == x_type.shape[1],
+        )
+
     def forward_cpu(self, x):
-        assert x[0].ndim == 2
         self.y = x[0] - numpy.amax(x[0], axis=1, keepdims=True)
         numpy.exp(self.y, out=self.y)
         self.y /= self.y.sum(axis=1, keepdims=True)
