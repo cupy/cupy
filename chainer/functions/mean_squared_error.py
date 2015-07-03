@@ -12,7 +12,7 @@ class MeanSquaredError(function.Function):
         x0, x1 = inputs
         self.diff = x0 - x1
         diff = self.diff.ravel()
-        return numpy.array([diff.dot(diff) / diff.size]),
+        return numpy.array(diff.dot(diff) / diff.size, numpy.float32),
 
     def forward_gpu(self, inputs):
         x0, x1 = inputs

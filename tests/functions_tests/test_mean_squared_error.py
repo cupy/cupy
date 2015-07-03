@@ -23,7 +23,9 @@ class TestMeanSquaredError(unittest.TestCase):
         x0 = chainer.Variable(x0_data)
         x1 = chainer.Variable(x1_data)
         loss = functions.mean_squared_error(x0, x1)
-        loss_value = float(cuda.to_cpu(loss.data))
+        loss_value = cuda.to_cpu(loss.data)
+        self.assertEqual(loss_value.dtype, numpy.float32)
+        self.assertEqual(loss_value.shape, ())
 
         # Compute expected value
         loss_expect = 0.
@@ -53,6 +55,8 @@ class TestMeanSquaredError(unittest.TestCase):
 
         gradient_check.assert_allclose(gx0, x0.grad)
         gradient_check.assert_allclose(gx1, x1.grad)
+        self.assertEqual(x0.grad.dtype, numpy.float32)
+        self.assertEqual(x1.grad.dtype, numpy.float32)
 
     def test_backward_cpu(self):
         self.check_backward(self.x0, self.x1)
