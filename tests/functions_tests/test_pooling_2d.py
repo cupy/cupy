@@ -56,6 +56,11 @@ class TestMaxPooling2D(unittest.TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
+    def test_forward_cpu_wide(self):  # see #120
+        x_data = numpy.random.rand(2, 3, 15, 15).astype(numpy.float32)
+        x = chainer.Variable(x_data)
+        functions.max_pooling_2d(x, 6, stride=6, pad=0)
+
     @attr.cudnn
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
