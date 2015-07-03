@@ -5,6 +5,7 @@ import numpy
 import six
 
 from chainer import cuda
+from chainer.utils import type_check
 from chainer import variable
 
 
@@ -133,6 +134,7 @@ class Function(object):
             assert all(x.volatile for x in inputs)
 
             in_data = tuple(x.data for x in inputs)
+            self._check_data_type_forward(in_data)
             with cuda.using_device(*in_data):
                 out_data = self.forward(in_data)
             assert type(out_data) == tuple
@@ -159,6 +161,7 @@ class Function(object):
             self.rank = 0
 
         in_data = tuple(x.data for x in self.inputs)
+        self._check_data_type_forward(in_data)
         with cuda.using_device(*in_data):
             outputs = self.forward(in_data)
         assert type(outputs) == tuple
@@ -173,6 +176,47 @@ class Function(object):
         if len(ret) == 1:
             return ret[0]
         return ret
+
+    def _check_data_type_forward(self, in_data):
+        in_type = type_check.get_types(in_data, 'in_types', False)
+        self.check_type_forward(in_type)
+
+    def _check_data_type_backward(self, in_data, grad_data):
+        in_type = type_check.get_types(in_data, 'in_types', False)
+        grad_type = type_check.get_types(grad_data, 'grad_types', True)
+        self.check_type_backward(in_type, grad_type)
+
+    def check_type_forward(self, in_types):
+        """Checks types of input data before forward propagation.
+
+        Before :meth:`forward` is called, this function is called.
+        You need to validate types of input data in this function
+        using type-check utilities.
+
+        Args:
+            in_types: :class:`TypeInfoTuple` object which contains type
+                information of input data for :meth:`forward`.
+        """
+        pass
+
+    def check_type_backward(self, in_types, grad_types):
+        """Checks types of gradient data before back propagation.
+
+        Before :meth:`backward` is called, this function is called.
+        You need to validate types of gradient data in this function
+        using type-check utilities.
+
+        :meth:`check_type_backward` is always called after
+        :meth:`check_type_forward`. So, each function does not need to check
+        the same condition here.
+
+        Args:
+            in_types: :class:`TypeInfoTuple` object which contains type
+                information of input data for :meth:`backward`.
+            grad_types: :class:`TypeInfoTuple` object which contains type
+                information of gradient data for :meth:`backward`.
+        """
+        pass
 
     def forward(self, inputs):
         """Applies forward propagation to input arrays.
