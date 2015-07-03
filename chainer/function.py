@@ -179,7 +179,7 @@ class Function(object):
 
     @property
     def label(self):
-        """Short text that represent the function.
+        """Short text that represents the function.
 
         The default implementation returns its type name.
         Each function should override it to give more information.

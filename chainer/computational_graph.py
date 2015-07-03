@@ -12,7 +12,7 @@ class DotNode(object):
     """
 
     def __init__(self, node):
-        """Initialize DotNode.
+        """Initializes DotNode.
 
         Args:
             node: :class: `Variable` object or :class: `Function` object.
@@ -27,7 +27,7 @@ class DotNode(object):
         }
 
     def _shape(self):
-        """Return shape type of node."""
+        """Returns shape type of node."""
 
         if isinstance(self.node, variable.Variable):
             return "oval"
@@ -38,10 +38,10 @@ class DotNode(object):
 
     @property
     def label(self):
-        """Return a label that represents properties of the node.
+        """The text that represents properties of the node.
 
         Returns:
-            string: A label that represents the id and attributes of this node.
+            string: The text that represents the id and attributes of this node.
         """
 
         attributes = ["%s=\"%s\"" % (k, v) for (k, v)
@@ -113,7 +113,7 @@ class ComputationalGraph(object):
 
 
 def build_computational_graph(outputs, remove_split=True):
-    """Build a graph of function or variabls backward-reachable from outputs.
+    """Builds a graph of functions and variables backward-reachable from outputs.
 
     Args:
         outputs(list): nodes from which the graph is constructed.
