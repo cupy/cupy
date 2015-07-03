@@ -14,17 +14,12 @@ from chainer import variable
 # ------------------------------------------------------------------------------
 
 def _convert_value_to_string(value):
-    def get_value(value):
-        if isinstance(value, variable.Variable):
-            return value.data
-        else:
-            return value
+    if isinstance(value, variable.Variable):
+        value = value.data
 
-    data = get_value(value)
-    if isinstance(data, float):
-        return str(data)
-    elif (isinstance(data, numpy.ndarray) or
-          isinstance(data, cuda.GPUArray)):
+    if isinstance(value, float):
+        return str(value)
+    elif isinstance(value, (numpy.ndarray, cuda.GPUArray)):
         return 'constant array'
     else:
         raise ValueError(

@@ -18,8 +18,7 @@ class DotNode(object):
             node: :class: `Variable` object or :class: `Function` object.
         """
 
-        assert isinstance(node, variable.Variable) or\
-            isinstance(node, function.Function)
+        assert isinstance(node, (variable.Variable, function.Function))
         self.node = node
         self.id_ = id(node)
         self.attribute = {
@@ -157,18 +156,14 @@ def build_computational_graph(outputs, remove_split=True):
         See `tests/test_computational_graph.py` for details.
 
     """
+
     cands = []
     seen_edges = set()
+    push_count = [0]
 
-    def heap_with_push_counter():
-        push_count = [0]
-
-        def add(cand):
-            heapq.heappush(cands, (-cand.rank, push_count[0], cand))
-            push_count[0] += 1
-        return add
-
-    add_cand = heap_with_push_counter()
+    def add_cand(cand):
+        heapq.heappush(cands, (-cand.rank, push_count[0], cand))
+        push_count[0] += 1
 
     for o in outputs:
         add_cand(o)
