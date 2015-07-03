@@ -82,6 +82,14 @@ class Variable(object):
         """
         return self.data.size
 
+    @property
+    def label(self):
+        """Short text that represents the function."""
+        if self.data.shape == ():
+            return str(self.data.dtype)
+        return '%s, %s' % (str(self.data.shape),
+                           str(self.data.dtype))
+
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.
 

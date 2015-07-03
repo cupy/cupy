@@ -23,9 +23,9 @@ import six
 import six.moves.cPickle as pickle
 from six.moves import queue
 
+from chainer import computational_graph as c
 from chainer import cuda
 from chainer import optimizers
-
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from ILSVRC2012 dataset')
@@ -246,6 +246,7 @@ def log_result():
 
 
 def train_loop():
+    graph_generated = False
     while True:
         while data_q.empty():
             time.sleep(0.1)
@@ -273,6 +274,15 @@ def train_loop():
             loss, accuracy = model.forward(x, y)
             loss.backward()
             optimizer.update()
+
+            if not graph_generated:
+                with open('graph.dot', 'w') as o:
+                    o.write(c.build_computational_graph((loss,), False).dump())
+                with open('graph.wo_split.dot', 'w') as o:
+                    o.write(c.build_computational_graph((loss,), True).dump())
+                print('generated graph')
+                graph_generated = True
+
         else:
             loss, accuracy = model.forward(x, y, train=False)
 

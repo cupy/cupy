@@ -177,6 +177,15 @@ class Function(object):
             return ret[0]
         return ret
 
+    @property
+    def label(self):
+        """Short text that represents the function.
+
+        The default implementation returns its type name.
+        Each function should override it to give more information.
+        """
+        return str(type(self))
+
     def _check_data_type_forward(self, in_data):
         in_type = type_check.get_types(in_data, 'in_types', False)
         self.check_type_forward(in_type)

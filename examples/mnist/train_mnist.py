@@ -11,11 +11,13 @@ import numpy as np
 import six
 
 import chainer
+from chainer import computational_graph as c
 from chainer import cuda
 import chainer.functions as F
 from chainer import optimizers
 
 import data
+
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -79,6 +81,15 @@ for epoch in six.moves.range(1, n_epoch + 1):
         loss, acc = forward(x_batch, y_batch)
         loss.backward()
         optimizer.update()
+
+        if epoch == 1 and i == 0:
+            with open("graph.dot", "w") as o:
+                o.write(c.build_computational_graph((loss, )).dump())
+            with open("graph.wo_split.dot", "w") as o:
+                g = c.build_computational_graph((loss, ),
+                                                remove_split=True)
+                o.write(g.dump())
+            print('graph generated')
 
         sum_loss += float(cuda.to_cpu(loss.data)) * batchsize
         sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize

@@ -13,7 +13,24 @@ from chainer import variable
 # Arithmetic
 # ------------------------------------------------------------------------------
 
+def _convert_value_to_string(value):
+    if isinstance(value, variable.Variable):
+        value = value.data
+
+    if isinstance(value, float):
+        return str(value)
+    elif isinstance(value, (numpy.ndarray, cuda.GPUArray)):
+        return 'constant array'
+    else:
+        raise ValueError(
+            'value must be float, ndarray, GPUArray, or Variable')
+
+
 class Neg(function.Function):
+
+    @property
+    def label(self):
+        return '__neg__'
 
     def forward(self, x):
         return utils.force_array(-x[0]),
@@ -49,6 +66,10 @@ def absolute(x):
 
 class Add(function.Function):
 
+    @property
+    def label(self):
+        return '_ + _'
+
     def forward(self, x):
         y = utils.force_array(x[0] + x[1])
         return y,
@@ -61,6 +82,10 @@ class AddConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
+
+    @property
+    def label(self):
+        return '_ + %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
         return utils.force_array(x[0] + self.value),
@@ -76,6 +101,10 @@ def add(lhs, rhs):  # lhs + rhs
 
 
 class Sub(function.Function):
+
+    @property
+    def label(self):
+        return '_ - _'
 
     def forward(self, x):
         return utils.force_array(x[0] - x[1]),
@@ -95,6 +124,10 @@ class SubFromConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
+    @property
+    def label(self):
+        return '%s - _' % _convert_value_to_string(self.value)
+
     def forward(self, x):
         return utils.force_array(self.value - x[0]),
 
@@ -109,6 +142,10 @@ def rsub(lhs, rhs):  # rhs - lhs
 
 
 class Mul(function.Function):
+
+    @property
+    def label(self):
+        return '_ * _'
 
     def forward(self, x):
         return utils.force_array(x[0] * x[1]),
@@ -135,6 +172,10 @@ class MulConstant(function.Function):
     def __init__(self, value):
         self.value = value
 
+    @property
+    def label(self):
+        return '_ * %s' % _convert_value_to_string(self.value)
+
     def forward(self, x):
         return utils.force_array(self.value * x[0]),
 
@@ -149,6 +190,10 @@ def mul(lhs, rhs):  # lhs * rhs
 
 
 class Div(function.Function):
+
+    @property
+    def label(self):
+        return '_ / _'
 
     def forward(self, x):
         return utils.force_array(x[0] / x[1]),
@@ -181,6 +226,10 @@ class DivFromConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
+
+    @property
+    def label(self):
+        return '_ / %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
         return utils.force_array(self.value / x[0]),
@@ -217,6 +266,10 @@ def rdiv(lhs, rhs):  # rhs / lhs
 
 class PowVarVar(function.Function):
 
+    @property
+    def label(self):
+        return '_ ** _'
+
     def forward_cpu(self, x):
         self.y = utils.force_array(x[0] ** x[1])
         return self.y,
@@ -247,6 +300,10 @@ class PowVarConst(function.Function):
 
     def __init__(self, value):
         self.value = value
+
+    @property
+    def label(self):
+        return '_ ** %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
         return utils.force_array(x[0] ** self.value),
@@ -286,6 +343,10 @@ class PowConstVar(function.Function):
 
     def __init__(self, value):
         self.value = value
+
+    @property
+    def label(self):
+        return '%s ** _' % _convert_value_to_string(self.value)
 
     def forward_cpu(self, x):
         self.y = utils.force_array(self.value ** x[0])
@@ -357,6 +418,10 @@ def install_variable_arithmetics():
 
 class Exp(function.Function):
 
+    @property
+    def label(self):
+        return 'exp'
+
     def forward_cpu(self, x):
         self.y = utils.force_array(numpy.exp(x[0]))
         return self.y,
@@ -375,6 +440,10 @@ def exp(x):
 
 
 class Log(function.Function):
+
+    @property
+    def label(self):
+        return 'log'
 
     def forward_cpu(self, x):
         return utils.force_array(numpy.log(x[0])),
