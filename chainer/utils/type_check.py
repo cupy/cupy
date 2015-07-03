@@ -1,4 +1,5 @@
 import operator
+import sys
 
 import numpy
 
@@ -172,8 +173,14 @@ class Expr(object):
     __rsub__ = _flip(__sub__)
     __mul__ = _make_bin_operator('*', 5, operator.__mul__)
     __rmul__ = _flip(__mul__)
-    __truediv__ = _make_bin_operator('/', 5, operator.__truediv__)
-    __rtruediv__ = _flip(__truediv__)
+
+    if sys.version_info < (3, 0, 0):
+        __div__ = _make_bin_operator('/', 5, operator.__div__)
+        __rdiv__ = _flip(__div__)
+    else:
+        __truediv__ = _make_bin_operator('/', 5, operator.__truediv__)
+        __rtruediv__ = _flip(__truediv__)
+
     __floordiv__ = _make_bin_operator('//', 5, operator.__floordiv__)
     __rfloordiv__ = _flip(__floordiv__)
     __mod__ = _make_bin_operator('%', 5, operator.__mod__)

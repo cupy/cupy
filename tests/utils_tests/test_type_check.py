@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 import numpy
@@ -171,6 +172,20 @@ class TestOperators(unittest.TestCase):
                         (-x).priority <
                         (x ** y).priority <
                         x.priority)
+
+
+class TestDivOperator(unittest.TestCase):
+
+    def setUp(self):
+        self.x = T.Variable(1, 'x')
+        self.y = T.Variable(2, 'y')
+
+    def test_div(self):
+        # Behavior of '/' operator for int depends on the version of Python
+        if sys.version_info < (3, 0, 0):
+            self.assertEqual(0, (self.x / self.y).eval())
+        else:
+            self.assertEqual(0.5, (self.x / self.y).eval())
 
 
 class TestGetType(unittest.TestCase):
