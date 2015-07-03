@@ -141,10 +141,14 @@ class Expr(object):
 
     def __nonzero__(self):
         # When a user calls a boolean operator like `(x == y and z == w)`,
-        # `and` operator evaluate the both expressions and returns the last
-        # result `z == w`.
-        # So, `(x == y and z == w).expect()` only checks `z == w`. It is
-        # confusing.
+        # `and` operator evaluate the first expression.
+        # If it returns `True` (and it's default behavior), the `and` operator
+        # returns *the second expression*, not a boolean value.
+        # So, `(x == y and z == w)` returns the result of `z == w`, and
+        # `(x == y and z == w).expect()` raise no errors but only checks
+        # `z == w`. It is confusing.
+        # See also:
+        # https://docs.python.org/3/library/stdtypes.html
         msg = ('Don\'t convert Expr to bool. '
                'Please call Expr.eval method to evaluate expression.')
         raise RuntimeError(msg)
