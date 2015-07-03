@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 import numpy
@@ -5,10 +6,10 @@ import numpy
 from chainer.utils import type_check as T
 
 
-class TestIntConstant(unittest.TestCase):
+class TestConstant(unittest.TestCase):
 
     def setUp(self):
-        self.x = T.IntConstant(10)
+        self.x = T.Constant(10)
 
     def test_str(self):
         self.assertEqual('10', str(self.x))
@@ -17,10 +18,10 @@ class TestIntConstant(unittest.TestCase):
         self.assertEqual(10, self.x.eval())
 
 
-class TestIntVariable(unittest.TestCase):
+class TestVariable(unittest.TestCase):
 
     def setUp(self):
-        self.x = T.IntVariable(10, 'x')
+        self.x = T.Variable(10, 'x')
 
     def test_str(self):
         self.assertEqual('x', str(self.x))
@@ -56,16 +57,16 @@ class TestMember(unittest.TestCase):
 class TestBinaryOperator(unittest.TestCase):
 
     def setUp(self):
-        x = T.IntVariable(1, 'x')
-        y = T.IntVariable(1, 'y')
+        x = T.Variable(1, 'x')
+        y = T.Variable(1, 'y')
         f = lambda x, y: (x, y)
-        self.op1 = T.IntBinaryOperator(7, x, y, '+', f)
-        self.op2 = T.IntBinaryOperator(8, x, y, '+', f)
-        self.op3 = T.IntBinaryOperator(9, x, y, '+', f)
+        self.op1 = T.BinaryOperator(7, x, y, '+', f)
+        self.op2 = T.BinaryOperator(8, x, y, '+', f)
+        self.op3 = T.BinaryOperator(9, x, y, '+', f)
 
-        self.op4 = T.IntBinaryOperator(7, x, y, '+', f, True)
-        self.op5 = T.IntBinaryOperator(8, x, y, '+', f, True)
-        self.op6 = T.IntBinaryOperator(9, x, y, '+', f, True)
+        self.op4 = T.BinaryOperator(7, x, y, '+', f, True)
+        self.op5 = T.BinaryOperator(8, x, y, '+', f, True)
+        self.op6 = T.BinaryOperator(9, x, y, '+', f, True)
 
     def test_str(self):
         self.assertEqual('x + y', str(self.op1))
@@ -83,10 +84,10 @@ class TestBinaryOperator(unittest.TestCase):
 class TestUnaryOperator(unittest.TestCase):
 
     def setUp(self):
-        x = T.IntVariable(1, 'x')
+        x = T.Variable(1, 'x')
         f = lambda x: (x,)
-        self.op1 = T.IntUnaryOperator(8, x, '-', f)
-        self.op2 = T.IntUnaryOperator(9, x, '-', f)
+        self.op1 = T.UnaryOperator(8, x, '-', f)
+        self.op2 = T.UnaryOperator(9, x, '-', f)
 
     def test_str(self):
         self.assertEqual('-x', str(self.op1))
@@ -99,8 +100,8 @@ class TestUnaryOperator(unittest.TestCase):
 class TestOperators(unittest.TestCase):
 
     def setUp(self):
-        self.x = T.IntVariable(1, 'x')
-        self.y = T.IntVariable(1, 'y')
+        self.x = T.Variable(1, 'x')
+        self.y = T.Variable(1, 'y')
 
     def test_str(self):
         x = self.x
@@ -111,6 +112,8 @@ class TestOperators(unittest.TestCase):
         self.assertEqual('1 - x', str(1 - x))
         self.assertEqual('x * y', str(x * y))
         self.assertEqual('1 * x', str(1 * x))
+        self.assertEqual('x / y', str(x / y))
+        self.assertEqual('1 / x', str(1 / x))
         self.assertEqual('x // y', str(x // y))
         self.assertEqual('1 // x', str(1 // x))
         self.assertEqual('x % y', str(x % y))
@@ -155,6 +158,7 @@ class TestOperators(unittest.TestCase):
         self.assertTrue((x << y).priority == (x >> y).priority)
         self.assertTrue((x + y).priority == (x - y).priority)
         self.assertTrue((x * y).priority ==
+                        (x / y).priority ==
                         (x // y).priority ==
                         (x % y).priority)
         self.assertTrue((-x).priority == (+x).priority == (~x).priority)
@@ -168,6 +172,20 @@ class TestOperators(unittest.TestCase):
                         (-x).priority <
                         (x ** y).priority <
                         x.priority)
+
+
+class TestDivOperator(unittest.TestCase):
+
+    def setUp(self):
+        self.x = T.Variable(1, 'x')
+        self.y = T.Variable(2, 'y')
+
+    def test_div(self):
+        # Behavior of '/' operator for int depends on the version of Python
+        if sys.version_info < (3, 0, 0):
+            self.assertEqual(0, (self.x / self.y).eval())
+        else:
+            self.assertEqual(0.5, (self.x / self.y).eval())
 
 
 class TestGetType(unittest.TestCase):
@@ -203,9 +221,9 @@ class TestGetType(unittest.TestCase):
 class TestBoolBinaryOperator(unittest.TestCase):
 
     def setUp(self):
-        x = T.IntVariable(1, 'x')
-        y = T.IntVariable(1, 'y')
-        z = T.IntVariable(2, 'z')
+        x = T.Variable(1, 'x')
+        y = T.Variable(1, 'y')
+        z = T.Variable(2, 'z')
         f = lambda x, y: x == y
         self.op1 = T.BoolBinaryOperator(x, y, '==', '!=', f)
         self.op2 = T.BoolBinaryOperator(x, z, '==', '!=', f)

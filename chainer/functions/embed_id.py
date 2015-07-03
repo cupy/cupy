@@ -54,8 +54,8 @@ class EmbedID(function.Function):
             y_type.dtype == numpy.float32,
             y_type.ndim == 2,
             y_type.shape[0] == x_type.shape[0],
-            y_type.shape[1] == type_check.IntVariable(self.W.shape[1],
-                                                      'W.shape[1]'),
+            y_type.shape[1] == type_check.Variable(self.W.shape[1],
+                                                   'W.shape[1]'),
         )
 
     def forward_cpu(self, x):

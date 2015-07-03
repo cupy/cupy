@@ -26,7 +26,7 @@ class Concat(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() > 0)
         type_check.expect(in_types[0].ndim >
-                          type_check.IntVariable(self.axis, 'axis'))
+                          type_check.Variable(self.axis, 'axis'))
 
         ndim = in_types[0].ndim.eval()
         for i in range(1, in_types.size().eval()):
