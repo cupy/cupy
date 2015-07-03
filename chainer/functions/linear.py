@@ -81,7 +81,7 @@ class Linear(function.Function):
             x_type.ndim >= 2,
         )
         type_check.expect(
-            numpy.prod(x_type.shape[1:]) == type_check.IntVariable(
+            numpy.prod(x_type.shape[1:]) == type_check.Variable(
                 self.W.shape[1], 'W.shape[1]'))
 
     def check_type_backward(self, in_types, out_types):
@@ -98,8 +98,8 @@ class Linear(function.Function):
         )
         type_check.expect(
             y_type.shape[0] == x_type.shape[0],
-            y_type.shape[1] == type_check.IntVariable(self.W.shape[0],
-                                                      'W.shape[0]'),
+            y_type.shape[1] == type_check.Variable(self.W.shape[0],
+                                                   'W.shape[0]'),
         )
 
     def forward_cpu(self, x):

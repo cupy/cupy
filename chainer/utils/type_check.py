@@ -1,4 +1,5 @@
 import operator
+import sys
 
 import numpy
 
@@ -69,13 +70,13 @@ def _get_type(name, index, array, accept_none):
 
 def _make_un_operator(exp, priority, func):
     def f(x):
-        return IntUnaryOperator(priority, x, exp, func)
+        return UnaryOperator(priority, x, exp, func)
     return f
 
 
 def _make_bin_operator(exp, priority, func, right_associative=False):
     def f(x, y):
-        return IntBinaryOperator(priority, x, y, exp, func, right_associative)
+        return BinaryOperator(priority, x, y, exp, func, right_associative)
     return f
 
 
@@ -163,40 +164,46 @@ class Expr(object):
     __gt__ = _make_bool_operator('>', '<=', operator.__gt__)
     __ge__ = _make_bool_operator('>=', '<', operator.__ge__)
 
-
-class Int(object):
-
     # Please refer the Python document to know priority of operators.
     # https://docs.python.org/3.4/reference/expressions.html
 
-    __add__ = _make_bin_operator('+', 4, int.__add__)
+    __add__ = _make_bin_operator('+', 4, operator.__add__)
     __radd__ = _flip(__add__)
-    __sub__ = _make_bin_operator('-', 4, int.__sub__)
+    __sub__ = _make_bin_operator('-', 4, operator.__sub__)
     __rsub__ = _flip(__sub__)
-    __mul__ = _make_bin_operator('*', 5, int.__mul__)
+    __mul__ = _make_bin_operator('*', 5, operator.__mul__)
     __rmul__ = _flip(__mul__)
-    __floordiv__ = _make_bin_operator('//', 5, int.__floordiv__)
+
+    if sys.version_info < (3, 0, 0):
+        __div__ = _make_bin_operator('/', 5, operator.__div__)
+        __rdiv__ = _flip(__div__)
+    else:
+        __truediv__ = _make_bin_operator('/', 5, operator.__truediv__)
+        __rtruediv__ = _flip(__truediv__)
+
+    __floordiv__ = _make_bin_operator('//', 5, operator.__floordiv__)
     __rfloordiv__ = _flip(__floordiv__)
-    __mod__ = _make_bin_operator('%', 5, int.__mod__)
+    __mod__ = _make_bin_operator('%', 5, operator.__mod__)
     __rmod__ = _flip(__mod__)
     # Only '**' operator is right-associative
-    __pow__ = _make_bin_operator('**', 7, int.__mod__, right_associative=True)
+    __pow__ = _make_bin_operator('**', 7, operator.__mod__,
+                                 right_associative=True)
 
-    __lshift__ = _make_bin_operator('<<', 3, int.__lshift__)
+    __lshift__ = _make_bin_operator('<<', 3, operator.__lshift__)
     __rlshift__ = _flip(__lshift__)
-    __rshift__ = _make_bin_operator('>>', 3, int.__rshift__)
+    __rshift__ = _make_bin_operator('>>', 3, operator.__rshift__)
     __rrshift__ = _flip(__rshift__)
 
-    __and__ = _make_bin_operator('&', 2, int.__and__)
+    __and__ = _make_bin_operator('&', 2, operator.__and__)
     __rand__ = _flip(__and__)
-    __xor__ = _make_bin_operator('^', 1, int.__xor__)
+    __xor__ = _make_bin_operator('^', 1, operator.__xor__)
     __rxor__ = _flip(__xor__)
-    __or__ = _make_bin_operator('|', 0, int.__or__)
+    __or__ = _make_bin_operator('|', 0, operator.__or__)
     __ror__ = _flip(__or__)
 
-    __neg__ = _make_un_operator('-', 6, int.__neg__)
-    __pos__ = _make_un_operator('+', 6, int.__pos__)
-    __invert__ = _make_un_operator('~', 6, int.__invert__)
+    __neg__ = _make_un_operator('-', 6, operator.__neg__)
+    __pos__ = _make_un_operator('+', 6, operator.__pos__)
+    __invert__ = _make_un_operator('~', 6, operator.__invert__)
 
 
 class Atom(Expr):
@@ -209,32 +216,26 @@ class Atom(Expr):
         return self.value
 
 
-class IntAtom(Atom, Int):
+class Constant(Atom):
 
     def __init__(self, value):
-        Atom.__init__(self, value)
-
-
-class IntConstant(IntAtom):
-
-    def __init__(self, value):
-        super(IntConstant, self).__init__(value)
+        super(Constant, self).__init__(value)
 
     def __str__(self):
         return str(self.value)
 
 
-class IntVariable(IntAtom):
+class Variable(Atom):
 
     def __init__(self, value, name):
-        super(IntVariable, self).__init__(value)
+        super(Variable, self).__init__(value)
         self.name = name
 
     def __str__(self):
         return self.name
 
 
-class Shape(IntAtom):
+class Shape(Atom):
 
     def __init__(self, value, index, name):
         super(Shape, self).__init__(value)
@@ -245,7 +246,7 @@ class Shape(IntAtom):
         return '{0}.shape[{1}]'.format(self.name, self.index)
 
 
-class Member(IntAtom):
+class Member(Atom):
 
     def __init__(self, value, obj, name):
         super(Member, self).__init__(value)
@@ -273,12 +274,6 @@ class UnaryOperator(Expr):
             exp = '(' + exp + ')'
 
         return self.exp + exp
-
-
-class IntUnaryOperator(UnaryOperator, Int):
-
-    def __init__(self, priority, term, exp, func):
-        UnaryOperator.__init__(self, priority, term, exp, func)
 
 
 class BinaryOperator(Expr):
@@ -328,13 +323,6 @@ class BinaryOperator(Expr):
             right = '(' + right + ')'
 
         return '{0} {2} {1}'.format(left, right, self.exp)
-
-
-class IntBinaryOperator(BinaryOperator, Int):
-
-    def __init__(self, priority, lhs, rhs, exp, func, right_associative=False):
-        BinaryOperator.__init__(self, priority, lhs, rhs, exp, func,
-                                right_associative)
 
 
 class Testable(object):
