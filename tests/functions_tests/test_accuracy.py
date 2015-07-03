@@ -23,6 +23,7 @@ class TestAccuracy(unittest.TestCase):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
         y = chainer.functions.accuracy(x, t)
+        self.assertEqual((), y.data.shape)
 
         count = 0
         for i in six.moves.range(self.t.size):
