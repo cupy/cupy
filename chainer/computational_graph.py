@@ -139,9 +139,9 @@ def build_computational_graph(outputs, remove_split=True):
         and `x` is directly connected to `f` and `g`.
         Resulting graph will be
 
-                     |---> y
-           x ---> f -+
-                     |---> z
+              |--> f ---> y
+           x -+
+              |--> g ---> z
 
         Next, let `outputs = [y]`. Note that `z`, `g`, and `x''`
         are not backward-reachable from `y`. If `remove_split` is `False`,
