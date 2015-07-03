@@ -52,39 +52,31 @@ class InceptionBN(function.Function):
         else:
             raise NotImplementedError()
 
-    def forward(self, x):
-        f = self.f
-
-        self.x = variable.Variable(x[0])
+    def __call__(self, x):
         outs = []
 
-        if hasattr(f, 'conv1'):
-            h1 = f.conv1(self.x)
-            h1 = f.conv1n(h1)
+        if hasattr(self.f, 'conv1'):
+            h1 = self.f.conv1(x)
+            h1 = self.f.conv1n(h1)
             h1 = relu.relu(h1)
             outs.append(h1)
 
-        h3 = relu.relu(f.proj3n(f.proj3(self.x)))
-        h3 = relu.relu(f.conv3n(f.conv3(h3)))
+        h3 = relu.relu(self.f.proj3n(self.f.proj3(x)))
+        h3 = relu.relu(self.f.conv3n(self.f.conv3(h3)))
         outs.append(h3)
 
-        h33 = relu.relu(f.proj33n(f.proj33(self.x)))
-        h33 = relu.relu(f.conv33an(f.conv33a(h33)))
-        h33 = relu.relu(f.conv33bn(f.conv33b(h33)))
+        h33 = relu.relu(self.f.proj33n(self.f.proj33(x)))
+        h33 = relu.relu(self.f.conv33an(self.f.conv33a(h33)))
+        h33 = relu.relu(self.f.conv33bn(self.f.conv33b(h33)))
         outs.append(h33)
 
-        p = f.pool(self.x)
-        if hasattr(f, 'poolp'):
-            p = relu.relu(f.poolpn(f.poolp(p)))
+        p = self.f.pool(x)
+        if hasattr(self.f, 'poolp'):
+            p = relu.relu(self.f.poolpn(self.f.poolp(p)))
         outs.append(p)
 
-        self.y = concat.concat(outs, axis=1)
-        return self.y.data,
-
-    def backward(self, x, gy):
-        self.y.grad = gy[0]
-        self.y.backward()
-        return self.x.grad,
+        y = concat.concat(outs, axis=1)
+        return y
 
     def to_gpu(self, device=None):
         super(InceptionBN, self).to_gpu(device)
