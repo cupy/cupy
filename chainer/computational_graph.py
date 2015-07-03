@@ -95,7 +95,7 @@ class ComputationalGraph(object):
 
         Args
             format(str): The graph language name of the output.
-            Currently, it must be 'dot'
+            Currently, it must be 'dot'.
 
         Returns
             str: The graph in specified format.
@@ -119,39 +119,40 @@ def build_computational_graph(outputs, remove_split=True):
         outputs(list): nodes from which the graph is constructed.
         Each element of outputs must be either :class:`Variable`
         object or :class:`Function` object.
-        remove_split(bool): If it is `True`, this function hides
+        remove_split(bool): If it is ``True``, this function hides
         :class:`Split` functions and related variables from the graph.
 
     Returns:
         :class:`ComputationalGraph`: A graph consisting of nodes and edges that
-        are reachable from `outputs`.
+        are backward-reachable from `outputs`.
 
         For example, suppose that computational graph is as follows
-        (diagram is same as the one in the document of :class:`Function`):
 
-                               |--> x'  ---> f'  ---> y
+                               |--> x'  ---> f ---> y
            x ---> (splitter) --+
-                               |--> x'' ---> f'' ---> z
+                               |--> x'' ---> g ---> z
 
         Let `outputs = [y, z]`.
         If `remove_split` is `False`, this method generates the graph
-        itself. If `remove_split` is `True`,
-        splitter and x' is removed from the graph and x is directly
-        connected to f'. Resulting graph will be
+        itself. On the other hand, if `remove_split` is ``True``,
+        splitter, `x'` and `x''` are removed from the graph
+        and `x` is directly connected to `f` and `g`.
+        Resulting graph will be
 
                      |---> y
            x ---> f -+
                      |---> z
 
-        Next, let `outputs = [y]`. Note that `z`, `f''`, and `x''`
-        is not backward-reachable from `y`. If `remove_split` is `False`,
-        we remove these unreachable nodes to get
+        Next, let `outputs = [y]`. Note that `z`, `g`, and `x''`
+        are not backward-reachable from `y`. If `remove_split` is `False`,
+        this function removes these unreachable nodes to get
 
-           x ---> (splitter) ---> x'  ---> f'  ---> y
+           x ---> (splitter) ---> x' ---> f ---> y
 
-        If `remove_split` is `True`, we further remove splitter and `x'` to get
+        If `remove_split` is ``True``, we further remove splitter
+        and `x'` to get
 
-           x ---> f  ---> y
+           x ---> f ---> y
 
         See `tests/test_computational_graph.py` for details.
 
