@@ -5,7 +5,7 @@ from chainer import variable
 
 
 class DotNode(object):
-    """Node of computational graph, with utilities for dot language.
+    """Node of the computational graph, with utilities for dot language.
 
     This class represents a node of computational graph,
     with some utilities for dot language.
