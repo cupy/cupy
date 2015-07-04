@@ -42,9 +42,15 @@ class TestNegativeSampling(unittest.TestCase):
         self.func._make_samples(self.t)
         y = self.func(x, t)
 
+        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.shape, ())
+
         self.func.to_gpu()
         y_g = self.func(chainer.Variable(cuda.to_gpu(self.x)),
                         chainer.Variable(cuda.to_gpu(self.t)))
+
+        self.assertEqual(y_g.data.dtype, numpy.float32)
+        self.assertEqual(y_g.data.shape, ())
 
         gradient_check.assert_allclose(y.data, y_g.data, atol=1.e-4)
 
