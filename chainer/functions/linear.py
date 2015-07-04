@@ -81,8 +81,8 @@ class Linear(function.Function):
             x_type.ndim >= 2,
         )
         type_check.expect(
-            numpy.prod(x_type.shape[1:]) == type_check.Variable(
-                self.W.shape[1], 'W.shape[1]'))
+            (type_check.Variable(numpy.prod, 'prod')(x_type.shape[1:]) ==
+             type_check.Variable(self.W.shape[1], 'W.shape[1]')))
 
     def check_type_backward(self, in_types, out_types):
         type_check.expect(
