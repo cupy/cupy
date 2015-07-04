@@ -10,4 +10,4 @@ install:
 
 script:
   - nosetests -a '!gpu'
-  - flake8 chainer/**/*.py tests/**/*.py examples/**/*.py --exclude=libcudnn.py
+  - flake8 chainer tests examples --exclude=libcudnn.py,caffe_pb2.py
