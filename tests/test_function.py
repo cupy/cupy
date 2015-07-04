@@ -38,4 +38,4 @@ class TestFunction(unittest.TestCase):
 
     def test_label(self):
         self.assertEqual(chainer.Function().label,
-                         '<class \'chainer.function.Function\'>')
+                         'Function')
