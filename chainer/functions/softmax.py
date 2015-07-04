@@ -35,8 +35,8 @@ class Softmax(function.Function):
         x_type, = in_types
         y_type, = out_types
 
+        type_check.expect(y_type.ndim == 2)
         type_check.expect(
-            y_type.ndim == 2,
             y_type.shape[0] == x_type.shape[0],
             y_type.shape[1] == x_type.shape[1],
         )

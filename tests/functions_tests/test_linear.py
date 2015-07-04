@@ -15,8 +15,12 @@ if cuda.available:
 
 class TestLinear(unittest.TestCase):
 
+    in_shape = (3,)
+    out_size = 2
+
     def setUp(self):
-        self.func = functions.Linear(3, 2)
+        in_size = numpy.prod(self.in_shape)
+        self.func = functions.Linear(in_size, self.out_size)
         self.func.W = numpy.random.uniform(
             -1, 1, self.func.W.shape).astype(numpy.float32)
         self.func.b = numpy.random.uniform(
@@ -27,15 +31,16 @@ class TestLinear(unittest.TestCase):
         self.W = self.func.W.copy()  # fixed on CPU
         self.b = self.func.b.copy()  # fixed on CPU
 
-        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (4, 2)).astype(numpy.float32)
-        self.y = self.x.dot(self.func.W.T) + self.func.b
+        x_shape = (4,) + self.in_shape
+        self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (4, self.out_size)).astype(numpy.float32)
+        self.y = self.x.reshape(4, -1).dot(self.func.W.T) + self.func.b
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = self.func(x)
-        y_expect = self.x.dot(self.W.T) + self.b
-        gradient_check.assert_allclose(y_expect, y.data)
+        gradient_check.assert_allclose(self.y, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -67,3 +72,8 @@ class TestLinear(unittest.TestCase):
     def test_backward_gpu(self):
         self.func.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+
+class TestLinearWithSpatialDimensions(TestLinear):
+
+    in_shape = (3, 2, 2)
