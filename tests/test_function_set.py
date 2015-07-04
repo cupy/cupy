@@ -7,6 +7,7 @@ import six.moves.cPickle as pickle
 import chainer
 from chainer import cuda
 from chainer import functions as F
+from chainer import testing
 from chainer.testing import attr
 
 
@@ -100,3 +101,6 @@ class TestFunctionSet(unittest.TestCase):
         self.fs.to_cpu()
         fs2.to_cpu()
         self.check_equal_fs(self.fs, fs2)
+
+
+testing.run_module(__name__, __file__)

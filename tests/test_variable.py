@@ -4,6 +4,7 @@ import numpy as np
 
 import chainer
 from chainer import cuda
+from chainer import testing
 from chainer.testing import attr
 
 import six
@@ -135,3 +136,6 @@ class TestVariable(unittest.TestCase):
     def test_invalid_value_type(self):
         with self.assertRaises(AssertionError):
             chainer.Variable(1)
+
+
+testing.run_module(__name__, __file__)

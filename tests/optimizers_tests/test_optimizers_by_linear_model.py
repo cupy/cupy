@@ -7,6 +7,7 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 from chainer import optimizers
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -128,3 +129,6 @@ class TestRMSpropGraves(OptimizerTestBase, unittest.TestCase):
 class TestSGD(OptimizerTestBase, unittest.TestCase):
     def create(self):
         return optimizers.SGD(0.1)
+
+
+testing.run_module(__name__, __file__)

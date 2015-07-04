@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import type_check
@@ -95,3 +96,6 @@ class TestInvalidLinear(unittest.TestCase):
     def test_invalid_size(self):
         with self.assertRaises(type_check.InvalidType):
             self.func(chainer.Variable(self.x))
+
+
+testing.run_module(__name__, __file__)
