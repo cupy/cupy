@@ -5,7 +5,6 @@ from chainer.functions import concat
 from chainer.functions import convolution_2d
 from chainer.functions import pooling_2d
 from chainer.functions import relu
-from chainer import variable
 
 
 class InceptionBN(function.Function):
