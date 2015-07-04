@@ -41,7 +41,8 @@ class DotNode(object):
         """The text that represents properties of the node.
 
         Returns:
-            string: The text that represents the id and attributes of the node.
+            string: The text that represents the id and attributes of this
+                node.
         """
 
         attributes = ["%s=\"%s\"" % (k, v) for (k, v)
