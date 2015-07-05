@@ -69,15 +69,14 @@ def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
     if transa:
         m, k = k, m
     n = b.shape[1] if transb else b.shape[2]
-    with cuda.using_cumisc():
-        return cuda.cublas.cublasSgemmBatched(
-            cuda.get_cublas_handle(),
-            _as_trans_op(transb),
-            _as_trans_op(transa),
-            n, m, k, alpha,
-            _mat_ptrs(b).gpudata, k if transb else n,
-            _mat_ptrs(a).gpudata, m if transa else k,
-            beta, _mat_ptrs(out).gpudata, n, l)
+    return cuda.cublas.cublasSgemmBatched(
+        cuda.get_cublas_handle(),
+        _as_trans_op(transb),
+        _as_trans_op(transa),
+        n, m, k, alpha,
+        _mat_ptrs(b).gpudata, k if transb else n,
+        _mat_ptrs(a).gpudata, m if transa else k,
+        beta, _mat_ptrs(out).gpudata, n, l)
 
 
 class MatMul(function.Function):
@@ -103,14 +102,13 @@ class MatMul(function.Function):
         return gx0, gx1
 
     def backward_gpu(self, x, gy):
-        with cuda.using_cumisc():
-            gx0 = _matmul_gpu(
-                gy[0], x[1], transb=not self.transb, transout=self.transa
-                ).reshape(x[0].shape)
-            gx1 = _matmul_gpu(
-                x[0], gy[0], transa=not self.transa, transout=self.transb
-                ).reshape(x[1].shape)
-            return gx0, gx1
+        gx0 = _matmul_gpu(
+            gy[0], x[1], transb=not self.transb, transout=self.transa
+            ).reshape(x[0].shape)
+        gx1 = _matmul_gpu(
+            x[0], gy[0], transa=not self.transa, transout=self.transb
+            ).reshape(x[1].shape)
+        return gx0, gx1
 
 
 def matmul(a, b, transa=False, transb=False):
