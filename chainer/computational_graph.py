@@ -5,7 +5,7 @@ from chainer import variable
 
 
 class DotNode(object):
-    """Node of computational graph, with utilities for dot language.
+    """Node of the computational graph, with utilities for dot language.
 
     This class represents a node of computational graph,
     with some utilities for dot language.
@@ -41,7 +41,8 @@ class DotNode(object):
         """The text that represents properties of the node.
 
         Returns:
-            string: The text that represents the id and attributes of this node.
+            string: The text that represents the id and attributes of this
+                node.
         """
 
         attributes = ["%s=\"%s\"" % (k, v) for (k, v)
