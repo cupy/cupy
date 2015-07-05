@@ -1,3 +1,4 @@
+import ctypes
 import numpy
 import six
 
@@ -15,7 +16,7 @@ def _mat_ptrs(a):
     """
     return cuda.to_gpu(numpy.arange(
         a.ptr, a.ptr + a.shape[0] * a.strides[0], a.strides[0],
-        dtype=cuda.cublas.ctypes.c_void_p))
+        dtype=ctypes.c_void_p))
 
 
 def _as_mat(x):
