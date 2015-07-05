@@ -7,10 +7,10 @@ from chainer import function
 
 
 def _mat_ptrs(a):
-    """Create an array of pointers to matrices
+    """Creates an array of pointers to matrices
 
     Args:
-        a: batch of matrices in GPU
+        a: A batch of matrices on GPU
     Returns:
         GPU array of pointers to matrices
     """
@@ -112,17 +112,20 @@ class MatMul(function.Function):
 
 
 def matmul(a, b, transa=False, transb=False):
-    """Compute matrix multiplication of two arrays.
+    """Computes the matrix multiplication of two arrays.
 
     Args:
-        a, b: Variables of 2-D or 1-D arrays.
-            A 2-D array with shape (N, M) is considered as a NxM matrix.
-            A 1-D array with shape (N,) is considered as a Nx1 matrix.
+        a (Variable): The left operand of the matrix multiplication.
+            A 1-D array of shape (N,) is considered as an Nx1 matrix.
+            A 2-D array of shape (M, N) is considered as an MxN matrix.
+        b (Variable): The right operand of the matrix multiplication.
+            Its array is treated as a matrix in the same way as ``a``'s array.
         transa (bool): If true, transpose a.
         transb (bool): If true, transpose b.
 
     Returns:
-        ~chainer.Variable: Matrix multiplication as a 2-D array
+        ~chainer.Variable: The result of the matrix multiplication as a 2-D
+            array.
     """
     return MatMul(transa=transa, transb=transb)(a, b)
 
@@ -189,16 +192,19 @@ class BatchMatMul(function.Function):
 
 
 def batch_matmul(a, b, transa=False, transb=False):
-    """Compute matrix multiplication of two arrays in a batch manner.
+    """Computes the batch matrix multiplications of two sets of arrays.
 
     Args:
-        a, b: Variables of 3-D or 2-D arrays.
-            A 3-D array of shape (B, N, M) is considered as B NxM matrices.
+        a (Variable): The left operand of the batch matrix multiplications.
             A 2-D array of shape (B, N,) is considered as B Nx1 matrices.
+            A 3-D array of shape (B, M, N) is considered as B MxN matrices.
+        b (Variable): The right operand of the batch matrix multiplications.
+            Its array is treated as matrices in the same way as ``a``'s array.
         transa (bool): If true, transpose each matrix in a.
         transb (bool): If true, transpose each matrix in b.
 
     Returns:
-        ~chainer.Variable: Batch of matrix multiplications as a 3-D array.
+        ~chainer.Variable: The result of the batch matrix multiplications as a
+            3-D array.
     """
     return BatchMatMul(transa=transa, transb=transb)(a, b)
