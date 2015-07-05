@@ -8,6 +8,7 @@ from chainer import cuda
 import chainer.functions as F
 from chainer import optimizers
 from chainer.testing import attr
+from chainer.testing import condition
 
 if cuda.available:
     cuda.init()
@@ -84,12 +85,14 @@ class OptimizerTestBase(object):
     def setUp(self):
         self.model = LinearModel(self.create())
 
+    @condition.success_at_least(5, 1)
     def test_linear_model_cpu(self):
-        self.assertGreater(self.model.accuracy(False), 0.7)
+        self.assertGreater(self.model.accuracy(False), 0.9)
 
     @attr.gpu
+    @condition.success_at_least(5, 1)
     def test_linear_model_gpu(self):
-        self.assertGreater(self.model.accuracy(True), 0.7)
+        self.assertGreater(self.model.accuracy(True), 0.9)
 
 
 class TestAdaDelta(OptimizerTestBase, unittest.TestCase):

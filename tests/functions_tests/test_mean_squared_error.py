@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -35,10 +36,12 @@ class TestMeanSquaredError(unittest.TestCase):
 
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
+    @condition.success_at_least(3, 1)
     def test_forward_cpu(self):
         self.check_forward(self.x0, self.x1)
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_forwrad_gpu(self):
         self.check_forward(cuda.to_gpu(self.x0), cuda.to_gpu(self.x1))
 
@@ -58,9 +61,11 @@ class TestMeanSquaredError(unittest.TestCase):
         self.assertEqual(x0.grad.dtype, numpy.float32)
         self.assertEqual(x1.grad.dtype, numpy.float32)
 
+    @condition.success_at_least(3, 1)
     def test_backward_cpu(self):
         self.check_backward(self.x0, self.x1)
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x0), cuda.to_gpu(self.x1))

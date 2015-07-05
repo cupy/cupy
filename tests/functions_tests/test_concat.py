@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -27,19 +28,23 @@ class Concat(unittest.TestCase):
         y = functions.concat(xs, axis=axis)
         gradient_check.assert_allclose(y_data, y.data, atol=0, rtol=0)
 
+    @condition.success_at_least(3, 1)
     def test_forward_cpu_0(self):
         self.check_forward(self.xs0, self.y0, axis=1)
 
+    @condition.success_at_least(3, 1)
     def test_forward_cpu_1(self):
         self.check_forward(self.xs1, self.y1, axis=0)
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_forward_gpu_0(self):
         self.check_forward(
             [cuda.to_gpu(x.copy()) for x in self.xs0],
             cuda.to_gpu(self.y0), axis=1)
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_forward_gpu_1(self):
         self.check_forward(
             [cuda.to_gpu(x.copy()) for x in self.xs1],
@@ -54,16 +59,20 @@ class Concat(unittest.TestCase):
         for x in xs:
             gradient_check.assert_allclose(x.data, x.grad, atol=0, rtol=0)
 
+    @condition.success_at_least(3, 1)
     def test_backward_cpu_0(self):
         self.check_backward(self.xs0, axis=1)
 
+    @condition.success_at_least(3, 1)
     def test_backward_cpu_1(self):
         self.check_backward(self.xs1, axis=0)
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_backward_gpu_0(self):
         self.check_backward([cuda.to_gpu(x.copy()) for x in self.xs0], axis=1)
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_backward_gpu_1(self):
         self.check_backward([cuda.to_gpu(x.copy()) for x in self.xs1], axis=0)

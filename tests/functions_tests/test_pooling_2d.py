@@ -8,6 +8,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -53,14 +54,17 @@ class TestMaxPooling2D(unittest.TestCase):
                             k, c, 1:4, 1:3].max()]])
                 gradient_check.assert_allclose(expect, y_data[k, c])
 
+    @condition.success_at_least(3, 1)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.cudnn
+    @condition.success_at_least(3, 1)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), False)
 
@@ -78,14 +82,17 @@ class TestMaxPooling2D(unittest.TestCase):
 
         gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
 
+    @condition.success_at_least(3, 1)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.cudnn
+    @condition.success_at_least(3, 1)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
 
@@ -123,14 +130,17 @@ class TestAveragePooling2D(unittest.TestCase):
                         k, c, 1:4, 1:3].sum()]]) / 9
                 gradient_check.assert_allclose(expect, y_data[k, c])
 
+    @condition.success_at_least(3, 1)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.cudnn
+    @condition.success_at_least(3, 1)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), False)
 
@@ -147,13 +157,16 @@ class TestAveragePooling2D(unittest.TestCase):
 
         gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
 
+    @condition.success_at_least(3, 1)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.cudnn
+    @condition.success_at_least(3, 1)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)

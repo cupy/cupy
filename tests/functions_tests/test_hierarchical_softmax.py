@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer.testing import condition
 
 
 class TestHuffmanTree(unittest.TestCase):
@@ -56,5 +57,6 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
         gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
         gradient_check.assert_allclose(cuda.to_cpu(gW), cuda.to_cpu(func.gW))
 
+    @condition.success_at_least(3, 1)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t, self.gy)

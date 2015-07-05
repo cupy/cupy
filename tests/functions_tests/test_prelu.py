@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -39,10 +40,12 @@ class TestPReLUSingle(unittest.TestCase):
 
         gradient_check.assert_allclose(y_expect, y.data)
 
+    @condition.success_at_least(3, 1)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_forward_gpu(self):
         self.func.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
@@ -60,10 +63,12 @@ class TestPReLUSingle(unittest.TestCase):
         gradient_check.assert_allclose(gx, x.grad)
         gradient_check.assert_allclose(gW, func.gW, atol=1e-4)
 
+    @condition.success_at_least(3, 1)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.gpu
+    @condition.success_at_least(3, 1)
     def test_backward_gpu(self):
         self.func.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
