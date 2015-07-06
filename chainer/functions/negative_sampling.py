@@ -88,13 +88,13 @@ class NegativeSampling(function.Function):
         x, t = inputs
         self._make_samples(t)
 
-        loss = 0
+        loss = numpy.float32(0.0)
         for i, (ix, k) in enumerate(six.moves.zip(x, self.samples)):
             w = self.W[k]
             f = w.dot(ix)
             f[0] *= -1  # positive sample
             loss += numpy.sum(numpy.logaddexp(f, 0))
-        return numpy.array([loss], numpy.float32),
+        return numpy.array(loss, numpy.float32),
 
     def forward_gpu(self, inputs):
         x, t = inputs

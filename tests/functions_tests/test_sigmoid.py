@@ -23,6 +23,7 @@ class TestSigmoid(unittest.TestCase):
     def test_forward_gpu(self, use_cudnn=True):
         x = chainer.Variable(cuda.to_gpu(self.x))
         y = functions.sigmoid(x, use_cudnn=use_cudnn)
+        self.assertEqual(y.data.dtype, numpy.float32)
         y_expect = functions.sigmoid(chainer.Variable(self.x))
 
         gradient_check.assert_allclose(y_expect.data, y.data)

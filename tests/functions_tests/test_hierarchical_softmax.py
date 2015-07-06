@@ -33,11 +33,13 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
         self.W = self.func.W.copy()
 
     def test_sum(self):
-        x = numpy.array([[1.0, 2.0, 3.0]])
+        x = numpy.array([[1.0, 2.0, 3.0]], numpy.float32)
         total = 0
         for i in range(5):
             t = numpy.array([i])
             loss, = self.func.forward_cpu((x, t))
+            self.assertEqual(loss.dtype, numpy.float32)
+            self.assertEqual(loss.shape, ())
             total += numpy.exp(-loss)
         self.assertAlmostEqual(1.0, float(total))
 

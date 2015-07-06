@@ -27,6 +27,7 @@ class TestParameter(unittest.TestCase):
 
     def check_forward(self):
         y = self.func()
+        self.assertEqual(y.data.dtype, numpy.float32)
         self.assertTrue((self.W == cuda.to_cpu(y.data)).all())
 
     def test_forward_cpu(self):
