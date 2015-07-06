@@ -91,8 +91,8 @@ for epoch in six.moves.range(1, n_epoch + 1):
                 o.write(g.dump())
             print('graph generated')
 
-        sum_loss += float(cuda.to_cpu(loss.data)) * batchsize
-        sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
+        sum_loss += float(cuda.to_cpu(loss.data)) * len(y_batch)
+        sum_accuracy += float(cuda.to_cpu(acc.data)) * len(y_batch)
 
     print('train mean loss={}, accuracy={}'.format(
         sum_loss / N, sum_accuracy / N))
@@ -109,8 +109,8 @@ for epoch in six.moves.range(1, n_epoch + 1):
 
         loss, acc = forward(x_batch, y_batch, train=False)
 
-        sum_loss += float(cuda.to_cpu(loss.data)) * batchsize
-        sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
+        sum_loss += float(cuda.to_cpu(loss.data)) * len(y_batch)
+        sum_accuracy += float(cuda.to_cpu(acc.data)) * len(y_batch)
 
     print('test  mean loss={}, accuracy={}'.format(
         sum_loss / N_test, sum_accuracy / N_test))
