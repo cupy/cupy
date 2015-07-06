@@ -45,12 +45,12 @@ class TestBatchNormalization(unittest.TestCase):
 
         gradient_check.assert_allclose(y_expect, y.data)
 
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.gpu
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.func.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
@@ -70,12 +70,12 @@ class TestBatchNormalization(unittest.TestCase):
         gradient_check.assert_allclose(ggamma, func.ggamma)
         gradient_check.assert_allclose(gbeta, func.gbeta)
 
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.gpu
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.func.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))

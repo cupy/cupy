@@ -85,12 +85,12 @@ class OptimizerTestBase(object):
     def setUp(self):
         self.model = LinearModel(self.create())
 
-    @condition.success_at_least(5, 1)
+    @condition.retry(10)
     def test_linear_model_cpu(self):
         self.assertGreater(self.model.accuracy(False), 0.9)
 
     @attr.gpu
-    @condition.success_at_least(5, 1)
+    @condition.retry(10)
     def test_linear_model_gpu(self):
         self.assertGreater(self.model.accuracy(True), 0.9)
 

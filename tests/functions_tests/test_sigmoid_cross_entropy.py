@@ -38,17 +38,17 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         loss_expect /= self.t.shape[0]
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
 
     @attr.cudnn
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
     @attr.gpu
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
 
@@ -65,16 +65,16 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
 
         gradient_check.assert_allclose(gx, x.grad)
 
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t)
 
     @attr.cudnn
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
     @attr.gpu
-    @condition.success_at_least(3, 1)
+    @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)

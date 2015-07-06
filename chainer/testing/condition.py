@@ -41,3 +41,6 @@ def repeat_with_success_at_least(times, min_success):
 def repeat(times):
     return repeat_with_success_at_least(times, times)
 
+
+def retry(times):
+    return repeat_with_success_at_least(times, 1)
