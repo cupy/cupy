@@ -33,8 +33,8 @@ def repeat_with_success_at_least(times, min_success):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             assert len(args) > 0
-            cls = args[0]
-            assert isinstance(cls, unittest.TestCase)
+            instance = args[0]
+            assert isinstance(instance, unittest.TestCase)
             success_counter = 0
             failure_counter = 0
             for _ in six.moves.range(times):
@@ -42,19 +42,20 @@ def repeat_with_success_at_least(times, min_success):
                 suite.addTest(
                     unittest.FunctionTestCase(
                         lambda: f(*args, **kwargs),
-                        setUp=cls.setUp,
-                        tearDown=cls.tearDown))
+                        setUp=instance.setUp,
+                        tearDown=instance.tearDown))
 
                 if QuietTestRunner().run(suite).wasSuccessful():
                     success_counter += 1
-                    if success_counter >= min_success:
-                        cls.assertTrue(True)
-                        return
                 else:
                     failure_counter += 1
-                    if failure_counter > times - min_success:
-                        cls.fail()
-            cls.fail()
+                if success_counter >= min_success:
+                    instance.assertTrue(True)
+                    return
+                if failure_counter > times - min_success:
+                    instance.fail()
+                    return
+            instance.fail()
         return wrapper
     return _repeat_with_success_at_least
 
