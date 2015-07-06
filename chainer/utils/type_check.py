@@ -11,24 +11,14 @@ class TypeInfo(object):
     """Type information of an input/gradient array.
 
     It contains type information of an array, such as shape of array and
-    number of dimension. All information is representend as :class:`Expr`.
-    So you can easily check its validity.
+    number of dimension.
     This information is independent of CPU or GPU array.
     """
 
-    def __init__(self, name, index, shape, dtype):
-        self.index = index
-        name = '{0}[{1}]'.format(name, index)
-        self.name = name
-        self.shape = tuple(Shape(x, i, name) for i, x in enumerate(shape))
-        self.dtype = DtypeExpr(dtype, name)
-        self.ndim = Member(len(self.shape), name, 'ndim')
-
-    def is_none(self):
-        return self.dtype is None
-
-    def __str__(self):
-        return self.name
+    def __init__(self, shape, dtype):
+        self.shape = shape
+        self.dtype = dtype
+        self.ndim = len(shape)
 
 
 class TypeInfoTuple(tuple):
@@ -37,6 +27,7 @@ class TypeInfoTuple(tuple):
 
     It is a sub-class of tuple containing :class:`TypeInfo`. i-th element of
     this object contains type information of i-th input/gradinent data.
+    As each element is :class:`Expr`, you can easily check its validity.
     """
 
     def size(self):
@@ -45,7 +36,7 @@ class TypeInfoTuple(tuple):
         Returns:
             :class:`Expr` object representig length of the tuple.
         """
-        return Member(len(self), self.name, 'size')
+        return Variable(len(self), '{0}.size'.format(self.name))
 
 
 def get_types(data, name, accept_none):
@@ -59,13 +50,15 @@ def get_types(data, name, accept_none):
 
 
 def _get_type(name, index, array, accept_none):
+    var = '{0}[{1}]'.format(name, index)
+
     if accept_none and array is None:
         # case that gradient is not given
-        return TypeInfo(name, index, (), None)
+        return Variable(TypeInfo((), None), var)
 
     assert(isinstance(array, numpy.ndarray) or
            isinstance(array, cuda.GPUArray))
-    return TypeInfo(name, index, array.shape, array.dtype)
+    return Variable(TypeInfo(array.shape, array.dtype), var)
 
 
 def _make_un_operator(exp, priority, func):
@@ -140,6 +133,15 @@ class Expr(object):
         """
         raise NotImplementedError()
 
+    def __getattr__(self, name):
+        return GetAttr(self, name)
+
+    def __getitem__(self, key):
+        return GetItem(self, key)
+
+    def __call__(self, *args):
+        return Call(self, args)
+
     def __nonzero__(self):
         # When a user calls a boolean operator like `(x == y and z == w)`,
         # `and` operator evaluate the first expression.
@@ -206,55 +208,111 @@ class Expr(object):
     __invert__ = _make_un_operator('~', 6, operator.__invert__)
 
 
+def _eval_expr(v):
+    if isinstance(v, Expr):
+        return v.eval()
+    else:
+        return v
+
+
 class Atom(Expr):
 
-    def __init__(self, value):
+    def __init__(self):
         super(Atom, self).__init__(8)
-        self.value = value
-
-    def eval(self):
-        return self.value
 
 
 class Constant(Atom):
 
     def __init__(self, value):
-        super(Constant, self).__init__(value)
+        super(Constant, self).__init__()
+        self.value = value
 
     def __str__(self):
         return str(self.value)
+
+    def eval(self):
+        return self.value
 
 
 class Variable(Atom):
 
     def __init__(self, value, name):
-        super(Variable, self).__init__(value)
+        super(Variable, self).__init__()
+        self.value = value
         self.name = name
 
     def __str__(self):
         return self.name
 
-
-class Shape(Atom):
-
-    def __init__(self, value, index, name):
-        super(Shape, self).__init__(value)
-        self.name = name
-        self.index = index
-
-    def __str__(self):
-        return '{0}.shape[{1}]'.format(self.name, self.index)
+    def eval(self):
+        return self.value
 
 
-class Member(Atom):
+class GetAttr(Atom):
 
-    def __init__(self, value, obj, name):
-        super(Member, self).__init__(value)
+    def __init__(self, obj, name):
+        super(GetAttr, self).__init__()
         self.obj = obj
         self.name = name
 
     def __str__(self):
         return '{0}.{1}'.format(self.obj, self.name)
+
+    def eval(self):
+        return getattr(_eval_expr(self.obj), _eval_expr(self.name))
+
+
+def _str_subscript(exp):
+    if exp is Ellipsis:
+        return '...'
+    elif isinstance(exp, slice):
+        def key_str(v):
+            return '' if v is None else str(v)
+
+        if exp.step is None:
+            return '{0}:{1}'.format(key_str(exp.start),
+                                    key_str(exp.stop))
+        else:
+            return '{0}:{1}:{2}'.format(key_str(exp.start),
+                                        key_str(exp.stop),
+                                        key_str(exp.step))
+    elif isinstance(exp, tuple):
+        return ', '.join(map(_str_subscript, exp))
+
+    else:
+        return str(exp)
+
+
+class GetItem(Atom):
+
+    def __init__(self, obj, key):
+        super(GetItem, self).__init__()
+        self.obj = obj
+        self.key = key
+
+    def __str__(self):
+        key = _str_subscript(self.key)
+        return '{0}[{1}]'.format(self.obj, key)
+
+    def eval(self):
+        return _eval_expr(self.obj)[_eval_expr(self.key)]
+
+
+class Call(Atom):
+
+    def __init__(self, obj, args):
+        assert isinstance(args, tuple)
+        super(Call, self).__init__()
+        self.obj = obj
+        self.args = args
+
+    def __str__(self):
+        return '{0}({1})'.format(self.obj, ', '.join(map(str, self.args)))
+
+    def eval(self):
+        args = map(_eval_expr, self.args)
+        func = _eval_expr(self.obj)
+        return func(*args)
 
 
 class UnaryOperator(Expr):
@@ -266,7 +324,7 @@ class UnaryOperator(Expr):
         self.func = func
 
     def eval(self):
-        return self.func(self.term.eval())
+        return self.func(_eval_expr(self.term))
 
     def __str__(self):
         exp = str(self.term)
@@ -292,16 +350,10 @@ class BinaryOperator(Expr):
         return self.func(left, right)
 
     def _eval_left(self):
-        if isinstance(self.lhs, Expr):
-            return self.lhs.eval()
-        else:
-            return self.lhs
+        return _eval_expr(self.lhs)
 
     def _eval_right(self):
-        if isinstance(self.rhs, Expr):
-            return self.rhs.eval()
-        else:
-            return self.rhs
+        return _eval_expr(self.rhs)
 
     def __str__(self):
         # When an infix operator is left-associative, we need to append parens
@@ -345,16 +397,6 @@ class BoolBinaryOperator(BinaryOperator, Testable):
             raise InvalidType(
                 '{0} {1} {2}'.format(self.lhs, self.exp, self.rhs),
                 '{0} {1} {2}'.format(left, self.inv, right))
-
-
-class DtypeExpr(Atom):
-
-    def __init__(self, dtype, name):
-        Atom.__init__(self, dtype)
-        self.name = name
-
-    def __str__(self):
-        return '{0}.dtype'.format(self.name)
 
 
 class InvalidType(Exception):
