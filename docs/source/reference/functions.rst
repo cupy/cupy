@@ -28,6 +28,11 @@ Array manipulation functions
 .. autofunction:: identity
 .. autofunction:: reshape
 
+Array computations
+------------------
+.. autofunction:: matmul
+.. autofunction:: batch_matmul
+
 Activation functions
 --------------------
 .. autofunction:: exp
@@ -62,3 +67,4 @@ Loss, evaluation and aggregation
 Reusable subnetwork of complex architectures
 --------------------------------------------
 .. autoclass:: Inception
+.. autoclass:: InceptionBN
