@@ -182,33 +182,31 @@ class TestGraphBuilder5(unittest.TestCase):
 
     def test_edges(self):
         self.assertEqual(len(self.g1.edges), 4)
-
-        self.assertTrue((self.x, self.x_splitter) in self.g1.edges)
-        self.assertTrue((self.x_splitter, self.x_clone) in self.g1.edges)
-        self.assertTrue((self.x_clone, self.f) in self.g1.edges)
-        self.assertTrue((self.f, self.y) in self.g1.edges)
+        self.assertSetEqual(set(self.g1.edges),
+                            set([(self.x, self.x_splitter),
+                                 (self.x_splitter, self.x_clone),
+                                 (self.x_clone, self.f),
+                                 (self.f, self.y)]))
 
     def test_nodes(self):
         self.assertEqual(len(self.g1.nodes), 5)
-
-        self.assertTrue(self.x in self.g1.nodes)
-        self.assertTrue(self.x_splitter in self.g1.nodes)
-        self.assertTrue(self.x_clone in self.g1.nodes)
-        self.assertTrue(self.f in self.g1.nodes)
-        self.assertTrue(self.y in self.g1.nodes)
+        self.assertSetEqual(set(self.g1.nodes),
+                            set([self.x,
+                                 self.x_splitter,
+                                 self.x_clone,
+                                 self.f,
+                                 self.y]))
 
     def test_edges_remove_split(self):
         self.assertEqual(len(self.g2.edges), 2)
-
-        self.assertTrue((self.x, self.f) in self.g2.edges)
-        self.assertTrue((self.f, self.y) in self.g2.edges)
+        self.assertSetEqual(set(self.g2.edges),
+                            set([(self.x, self.f),
+                                 (self.f, self.y)]))
 
     def test_nodes_remove_split(self):
         self.assertEqual(len(self.g2.nodes), 3)
-
-        self.assertTrue(self.x in self.g2.nodes)
-        self.assertTrue(self.f in self.g2.nodes)
-        self.assertTrue(self.y in self.g2.nodes)
+        self.assertSetEqual(set(self.g2.nodes),
+                            set([self.x, self.f, self.y]))
 
 
 class TestGraphBuilder6(unittest.TestCase):
@@ -228,45 +226,41 @@ class TestGraphBuilder6(unittest.TestCase):
 
     def test_edges(self):
         self.assertEqual(len(self.g1.edges), 7)
-
-        self.assertTrue((self.x1, self.x1_splitter) in self.g1.edges)
-        self.assertTrue((self.x1_splitter, self.x1_clone) in self.g1.edges)
-        self.assertTrue((self.x1_clone, self.f) in self.g1.edges)
-
-        self.assertTrue((self.x2, self.x2_splitter) in self.g1.edges)
-        self.assertTrue((self.x2_splitter, self.x2_clone) in self.g1.edges)
-        self.assertTrue((self.x2_clone, self.f) in self.g1.edges)
-
-        self.assertTrue((self.f, self.y) in self.g1.edges)
+        self.assertSetEqual(set(self.g1.edges),
+                            set([(self.x1, self.x1_splitter),
+                                 (self.x1_splitter, self.x1_clone),
+                                 (self.x1_clone, self.f),
+                                 (self.x2, self.x2_splitter),
+                                 (self.x2_splitter, self.x2_clone),
+                                 (self.x2_clone, self.f),
+                                 (self.f, self.y)]))
 
     def test_nodes(self):
         self.assertEqual(len(self.g1.nodes), 8)
-
-        self.assertTrue(self.x1 in self.g1.nodes)
-        self.assertTrue(self.x1_splitter in self.g1.nodes)
-        self.assertTrue(self.x1_clone in self.g1.nodes)
-
-        self.assertTrue(self.x2 in self.g1.nodes)
-        self.assertTrue(self.x2_splitter in self.g1.nodes)
-        self.assertTrue(self.x2_clone in self.g1.nodes)
-
-        self.assertTrue(self.f in self.g1.nodes)
-        self.assertTrue(self.y in self.g1.nodes)
+        self.assertSetEqual(set(self.g1.nodes),
+                            set([self.x1,
+                                 self.x1_splitter,
+                                 self.x1_clone,
+                                 self.x2,
+                                 self.x2_splitter,
+                                 self.x2_clone,
+                                 self.f,
+                                 self.y]))
 
     def test_edges_remove_split(self):
         self.assertEqual(len(self.g2.edges), 3)
-
-        self.assertTrue((self.x1, self.f) in self.g2.edges)
-        self.assertTrue((self.x2, self.f) in self.g2.edges)
-        self.assertTrue((self.f, self.y) in self.g2.edges)
+        self.assertSetEqual(set(self.g2.edges),
+                            set([(self.x1, self.f),
+                                 (self.x2, self.f),
+                                 (self.f, self.y)]))
 
     def test_nodes_remove_split(self):
-        self.assertEqual(len(self.g2.edges), 3)
-
-        self.assertTrue(self.x1 in self.g2.nodes)
-        self.assertTrue(self.x2 in self.g2.nodes)
-        self.assertTrue(self.f in self.g2.nodes)
-        self.assertTrue(self.y in self.g2.nodes)
+        self.assertEqual(len(self.g2.nodes), 4)
+        self.assertSetEqual(set(self.g2.nodes),
+                            set([self.x1,
+                                 self.x2,
+                                 self.f,
+                                 self.y]))
 
 
 class TestGraphBuilder7(unittest.TestCase):
