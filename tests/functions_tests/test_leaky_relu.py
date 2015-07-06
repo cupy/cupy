@@ -27,6 +27,7 @@ class TestLeakyReLU(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.leaky_relu(x, slope=self.slope)
+        self.assertEqual(y.data.dtype, numpy.float32)
 
         expected = self.x.copy()
         for i in numpy.ndindex(self.x.shape):

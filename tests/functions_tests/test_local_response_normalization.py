@@ -26,6 +26,7 @@ class TestLocalResponseNormalization(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.local_response_normalization(x)
+        self.assertEqual(y.data.dtype, numpy.float32)
         y_data = cuda.to_cpu(y.data)
 
         # Naive implementation

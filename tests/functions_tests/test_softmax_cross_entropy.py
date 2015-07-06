@@ -26,6 +26,8 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
         loss = functions.softmax_cross_entropy(x, t, use_cudnn)
+        self.assertEqual(loss.data.shape, ())
+        self.assertEqual(loss.data.dtype, numpy.float32)
         loss_value = float(cuda.to_cpu(loss.data))
 
         # Compute expected value

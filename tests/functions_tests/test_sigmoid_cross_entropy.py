@@ -26,6 +26,8 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         x_val = chainer.Variable(x_data)
         t_val = chainer.Variable(t_data)
         loss = functions.sigmoid_cross_entropy(x_val, t_val, use_cudnn)
+        self.assertEqual(loss.data.shape, ())
+        self.assertEqual(loss.data.dtype, numpy.float32)
         loss_value = float(cuda.to_cpu(loss.data))
 
         # Compute expected value

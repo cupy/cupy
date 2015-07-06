@@ -83,10 +83,12 @@ class MaxPooling2D(Pooling2D):
             x[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
             pval=-float('inf'), cover_all=self.cover_all)
         n, c, kh, kw, out_h, out_w = col.shape
-        col = numpy.rollaxis(col.reshape(n, c, kh * kw, out_h, out_w), 2)
+        col = col.reshape(n, c, kh * kw, out_h, out_w)
 
-        self.indexes = col.argmax(axis=0)
-        y = self.indexes.choose(col)
+        # We select maximum twice, since the implementation using numpy.choose
+        # hits its bug when kh * kw >= 32.
+        self.indexes = col.argmax(axis=2)
+        y = col.max(axis=2)
         return y,
 
     def forward_gpu(self, x):

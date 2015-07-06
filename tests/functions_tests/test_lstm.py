@@ -38,6 +38,8 @@ class TestLSTM(unittest.TestCase):
         c_prev = chainer.Variable(c_prev_data)
         x = chainer.Variable(x_data)
         c, h = functions.lstm(c_prev, x)
+        self.assertEqual(c.data.dtype, numpy.float32)
+        self.assertEqual(h.data.dtype, numpy.float32)
 
         # Compute expected out
         a_in = self.x[:, [0, 4]]

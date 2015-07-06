@@ -32,6 +32,7 @@ class TestPReLUSingle(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = self.func(x)
+        self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = self.x.copy()
         for i in numpy.ndindex(self.x.shape):

@@ -8,7 +8,7 @@ from chainer.utils import type_check
 
 
 def _as_mat(x):
-    return x.reshape(x.shape[0], x.size / x.shape[0])
+    return x.reshape(x.shape[0], x.size // x.shape[0])
 
 
 class Linear(function.Function):
@@ -79,10 +79,9 @@ class Linear(function.Function):
         type_check.expect(
             x_type.dtype == numpy.float32,
             x_type.ndim >= 2,
+            (type_check.Variable(numpy.prod, 'prod')(x_type.shape[1:]) ==
+             type_check.Variable(self.W.shape[1], 'W.shape[1]')),
         )
-        type_check.expect(
-            numpy.prod(x_type.shape[1:]) == type_check.Variable(
-                self.W.shape[1], 'W.shape[1]'))
 
     def check_type_backward(self, in_types, out_types):
         type_check.expect(
@@ -95,8 +94,6 @@ class Linear(function.Function):
         type_check.expect(
             y_type.dtype == numpy.float32,
             y_type.ndim == 2,
-        )
-        type_check.expect(
             y_type.shape[0] == x_type.shape[0],
             y_type.shape[1] == type_check.Variable(self.W.shape[0],
                                                    'W.shape[0]'),

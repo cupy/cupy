@@ -25,6 +25,7 @@ class TestReLU(unittest.TestCase):
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         x = chainer.Variable(x_data)
         y = functions.relu(x, use_cudnn=use_cudnn)
+        self.assertEqual(y.data.dtype, numpy.float32)
         y.grad = y_grad
         y.backward()
 

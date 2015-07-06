@@ -19,7 +19,7 @@ class SigmoidCrossEntropy(function.Function):
         # stable computation of the cross entropy.
         loss = -numpy.sum(
             x * (t - (x >= 0)) - numpy.log1p(numpy.exp(-numpy.abs(x))))
-        return numpy.array((loss / t.shape[0],), dtype=numpy.float32),
+        return numpy.array(loss / t.shape[0], dtype=numpy.float32),
 
     def forward_gpu(self, inputs):
         x, t = inputs

@@ -33,6 +33,7 @@ class TestMaxPooling2D(unittest.TestCase):
         y = functions.max_pooling_2d(x, 3, stride=2, pad=1,
                                      cover_all=self.cover_all,
                                      use_cudnn=use_cudnn)
+        self.assertEqual(y.data.dtype, numpy.float32)
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
@@ -57,6 +58,11 @@ class TestMaxPooling2D(unittest.TestCase):
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
+
+    def test_forward_cpu_wide(self):  # see #120
+        x_data = numpy.random.rand(2, 3, 15, 15).astype(numpy.float32)
+        x = chainer.Variable(x_data)
+        functions.max_pooling_2d(x, 6, stride=6, pad=0)
 
     @attr.cudnn
     @condition.retry(3)

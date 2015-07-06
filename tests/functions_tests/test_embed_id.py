@@ -32,6 +32,7 @@ class TestEmbedID(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = self.func(x)
+        self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = numpy.empty_like(self.gy)
         for i in six.moves.range(self.x.size):

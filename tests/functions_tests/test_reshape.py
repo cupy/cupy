@@ -22,6 +22,7 @@ class TestReshape(unittest.TestCase):
         shape = self.gy.shape
         x = chainer.Variable(x_data)
         y = functions.reshape(x, shape)
+        self.assertEqual(y.data.dtype, numpy.float32)
         self.assertTrue((self.x.reshape(shape) == cuda.to_cpu(y.data)).all())
 
     def test_forward_cpu(self):

@@ -24,6 +24,7 @@ class TestSoftmax(unittest.TestCase):
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
         y = functions.softmax(x, use_cudnn)
+        self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = numpy.exp(self.x)
         for i in six.moves.range(y_expect.shape[0]):
