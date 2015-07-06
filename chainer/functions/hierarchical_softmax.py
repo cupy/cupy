@@ -115,17 +115,17 @@ class BinaryHierarchicalSoftmax(function.Function):
         assert t.ndim == 1 and t.dtype.kind == 'i'
         assert len(x) == len(t)
 
-        loss = 0.0
+        loss = numpy.float32(0.0)
         for ix, it in six.moves.zip(x, t):
             loss += self._forward_cpu_one(ix, it)
-        return numpy.array([loss]),
+        return numpy.array(loss),
 
     def _forward_cpu_one(self, x, t):
         assert t in self.paths
 
         w = self.W[self.paths[t]]
         wxy = w.dot(x) * self.codes[t]
-        loss = numpy.logaddexp(0, -wxy)  # == log(1 + exp(-wxy))
+        loss = numpy.logaddexp(0.0, -wxy)  # == log(1 + exp(-wxy))
         return numpy.sum(loss)
 
     def backward_cpu(self, args, loss):

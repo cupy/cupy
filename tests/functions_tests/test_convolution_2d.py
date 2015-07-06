@@ -49,10 +49,12 @@ class TestConvolution2D(unittest.TestCase):
     def test_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
         y_cpu = self.func(x_cpu)
+        self.assertEqual(y_cpu.data.dtype, numpy.float32)
 
         self.func.to_gpu()
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         y_gpu = self.func(x_gpu)
+        self.assertEqual(y_gpu.data.dtype, numpy.float32)
 
         for i in six.moves.range(y_cpu.data.shape[0]):
             print(i, numpy.abs(y_cpu.data[i] - y_gpu.data[i].get()).max())

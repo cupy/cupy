@@ -32,6 +32,7 @@ class TestMaxPooling2D(unittest.TestCase):
         y = functions.max_pooling_2d(x, 3, stride=2, pad=1,
                                      cover_all=self.cover_all,
                                      use_cudnn=use_cudnn)
+        self.assertEqual(y.data.dtype, numpy.float32)
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)

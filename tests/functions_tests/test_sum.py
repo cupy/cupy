@@ -22,6 +22,7 @@ class TestSum(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.sum(x)
+        self.assertEqual(y.data.dtype, numpy.float32)
         y_expect = self.x.sum()
         gradient_check.assert_allclose(y_expect, y.data)
 
