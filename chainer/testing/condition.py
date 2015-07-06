@@ -5,6 +5,7 @@ import six
 
 
 class QuietTestRunner(object):
+
     def run(self, suite):
         result = unittest.TestResult()
         suite(result)
