@@ -86,7 +86,7 @@ class MaxPooling2D(Pooling2D):
         col = col.reshape(n, c, kh * kw, out_h, out_w)
 
         # We select maximum twice, since the implementation using numpy.choose
-        # hits its bug when kh * kw >= 30.
+        # hits its bug when kh * kw >= 32.
         self.indexes = col.argmax(axis=2)
         y = col.max(axis=2)
         return y,
