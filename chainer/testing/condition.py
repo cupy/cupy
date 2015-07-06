@@ -12,6 +12,20 @@ class QuietTestRunner(object):
 
 
 def repeat_with_success_at_least(times, min_success):
+    """Decorator for multiple trial of the test case
+
+    Decorated test case is launched multiple times.
+    The case is judged as passed at least specified number of trials.
+    If the number of successful trials exceeds `min_success`,
+    the remaining trials are skipped.
+
+    Args:
+        times(int): The number of trials
+        min_success(int): Threshold that the decorated test
+            case is regarded as passed.
+
+    """
+
     assert times >= min_success
 
     def _repeat_with_success_at_least(f):
@@ -39,8 +53,26 @@ def repeat_with_success_at_least(times, min_success):
 
 
 def repeat(times):
+    """Decorator that imposes the test to be successful in a row.
+
+    Decorated test case is launched multiple times.
+    The case is regarded as passed only if it is successful
+    specified times in a row.
+
+    Args:
+        times(int): The number of trials.
+    """
     return repeat_with_success_at_least(times, times)
 
 
 def retry(times):
+    """Decorator that imposes the test to be successful at least once.
+
+    Decorated test case is launched multiple times.
+    The case is regarded as passed if it is successful
+    at least once.
+
+    Args:
+        times(int): The number of trials.
+    """
     return repeat_with_success_at_least(times, 1)
