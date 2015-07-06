@@ -5,7 +5,7 @@ from chainer.functions import linear as linear_module
 
 class NonparameterizedLinear(function.Function):
 
-    """Nonparameterized linear function.
+    """Nonparameterized linear class.
 
     .. seealso:: :meth:`Linear`
 

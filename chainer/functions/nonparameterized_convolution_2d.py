@@ -5,7 +5,7 @@ from chainer.functions import convolution_2d as conv2d_module
 
 class NonparameterizedConvolution2D(function.Function):
 
-    """Two-dimensional nonparameterized convolution function.
+    """Two-dimensional nonparameterized convolution class.
 
     Args:
         stride (int or (int, int)): Stride of filter applications.
