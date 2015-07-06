@@ -11,11 +11,10 @@ class QuietTestRunner(object):
         return result
 
 
-def success_at_least(times, min_success):
+def repeat_with_success_at_least(times, min_success):
     assert times >= min_success
 
-    def _multiple(f):
-
+    def _repeat_with_success_at_least(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             assert len(args) > 0
@@ -39,5 +38,6 @@ def success_at_least(times, min_success):
     return _repeat_with_success_at_least
 
 
-def all_success(times):
-    return success_at_least(times, times)
+def repeat(times):
+    return repeat_with_success_at_least(times, times)
+
