@@ -57,6 +57,7 @@ class Linear(function.Function):
         self.gb = None
 
         if initialW is not None:
+            assert initialW.shape == (out_size, in_size)
             self.W = initialW
         else:
             self.W = numpy.random.normal(
@@ -68,6 +69,7 @@ class Linear(function.Function):
             self.gW = numpy.empty_like(self.W)
 
         if initial_bias is not None:
+            assert initial_bias.shape == (out_size,)
             self.b = initial_bias
         elif not nobias:
             self.b = numpy.repeat(numpy.float32(bias), out_size)

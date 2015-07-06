@@ -97,6 +97,8 @@ class Convolution2D(function.Function):
         self.gb = None
 
         if initialW is not None:
+            assert initialW.shape == \
+                (out_channels, in_channels, self.kh, self.kw)
             self.W = initialW
         else:
             self.W = numpy.random.normal(
@@ -109,6 +111,7 @@ class Convolution2D(function.Function):
             self.gW = numpy.empty_like(self.W)
 
         if initial_bias is not None:
+            assert initial_bias.shape == (out_channels,)
             self.b = initial_bias
         elif not nobias:
             self.b = numpy.repeat(numpy.float32(bias), out_channels)

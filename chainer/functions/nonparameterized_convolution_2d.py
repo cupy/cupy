@@ -29,7 +29,7 @@ class NonparameterizedConvolution2D(function.Function):
         if len(x) == 3:
             b = x[2]
         func = conv2d_module.Convolution2D(
-            W.shape[0], W.shape[1], W.shape[2:],
+            W.shape[1], W.shape[0], W.shape[2:],
             stride=self.stride, pad=self.pad, use_cudnn=self.use_cudnn,
             initialW=W, initial_bias=b)
         self.func = func
