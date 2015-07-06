@@ -9,6 +9,7 @@ Chainer Reference Manual
 
    core
    util
+   check
    functions
    optimizers
    caffe

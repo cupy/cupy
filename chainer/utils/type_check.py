@@ -10,9 +10,9 @@ class TypeInfo(object):
 
     """Type information of an input/gradient array.
 
-    It contains type information of an array, such as shape of array and
-    number of dimension. All information is representend as :class:`Expr`.
-    So you can easily check its validity.
+    It contains the type information of an array, such as shape of array and
+    the number of dimensions. All information is representend as :class:`Expr`,
+    so you can easily check its validity.
     This information is independent of CPU or GPU array.
     """
 
@@ -35,8 +35,8 @@ class TypeInfoTuple(tuple):
 
     """Type information of input/gradient tuples.
 
-    It is a sub-class of tuple containing :class:`TypeInfo`. i-th element of
-    this object contains type information of i-th input/gradinent data.
+    It is a sub-class of tuple containing :class:`TypeInfo`. The i-th element
+    of this object contains type information of the i-th input/gradinent data.
     """
 
     def size(self):
@@ -95,36 +95,37 @@ class Expr(object):
     """Abstract syntax tree of an expression.
 
     It represents an abstract syntax tree, and isn't a value. You can get its
-    actual value with :meth:`eval` function, and can get syntax representation
-    with :meth:`__str__` method.
-    Comparison operators (e.g. `==`) generates a new :class:`Expr` object
-    which represent a result of comparison between two expression.
+    actual value with :meth:`eval` function, and get syntax representation with
+    the :meth:`__str__` method.
+    Each comparison operator (e.g. `==`) generates a new :class:`Expr` object
+    which represents the result of comparison between two expressions.
 
     .. admonition:: Example
 
-       Let ``x`` and ``y`` be instances of :class:`Expr`, then
+       Let ``x`` and ``y`` be instances of :class:`Expr`, then ::
 
-       >>> c = (x == y)
+          >>> c = (x == y)
 
        is also an instance of :class:`Expr`. To evaluate and get its value,
        call :meth:`eval` method::
 
-       >>> c.eval()
-       True   # when x.eval() == y.eval()
+          >>> c.eval()
+          True   # when x.eval() == y.eval()
 
-       Call ``str` method to get representation of the original equaltion::
+       Call ``str`` function to get a representation of the original
+       equaltion::
 
-       >>> str(c)
-       'x + y'   # when str(x) == 'x' and str(y) == 'y'
+          >>> str(c)
+          'x + y'   # when str(x) == 'x' and str(y) == 'y'
 
        You can actually compare an expression with a value::
 
-       >>> (x == 1).eval()
+          >>> (x == 1).eval()
 
        Note that you can't use boolean operators such as ``and``, as they try
-       to cast expressions to a boolean values::
+       to cast expressions to boolean values::
 
-       >>> x == y and y == z  # raises an error
+          >>> x == y and y == z  # raises an error
 
     """
 
@@ -132,11 +133,11 @@ class Expr(object):
         self.priority = priority
 
     def eval(self):
-        """Evaluate the tree to get actual value.
+        """Evaluates the tree to get actual value.
 
-        Behavior of this function is depends on an implementation class.
-        For example, a binary operator `+` calls `__add__` function with two
-        results of :meth:`eval` funciton.
+        Behavior of this function depends on an implementation class.
+        For example, a binary operator `+` calls the `__add__` function with
+        the two results of :meth:`eval` funciton.
         """
         raise NotImplementedError()
 
@@ -370,9 +371,9 @@ class InvalidType(Exception):
 
 
 def expect(*bool_exprs):
-    """Evaluate and test all given expressions.
+    """Evaluates and tests all given expressions.
 
-    This function evaluate given boolean expressions in order. When at least
+    This function evaluates given boolean expressions in order. When at least
     one expression is evaluated as `False`, that means the given condition is
     not satisfied.
     You can check conditions with this function.

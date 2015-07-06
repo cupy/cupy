@@ -77,14 +77,6 @@ Interprocess communication on GPU
 
    .. autofunction:: shutdown
 
-Gradient checking utilities
----------------------------
-.. automodule:: chainer.gradient_check
-
-.. autofunction:: assert_allclose
-.. autofunction:: numerical_grad
-
-
 Common algorithms
 -----------------
 .. automodule:: chainer.utils
