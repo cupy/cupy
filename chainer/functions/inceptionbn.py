@@ -9,8 +9,30 @@ from chainer import variable
 
 
 class InceptionBN(function.Function):
-    """Inception module in new GoogLeNet with BN."""
+    """Inception module of the new GoogLeNet with BatchNormalization.
 
+    This class acts like :class:`Inception`, while InceptionBN uses the
+    :class:`BatchNormalization` on top of each convolution, the 5x5 convolution
+    path is replaced by two consecutive 3x3 convolution applications, and the
+    pooling method is configurable.
+
+    See: `Batch Normalization: Accelerating Deep Network Training by Reducing \
+    Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_.
+
+    Args:
+        in_channels (int): Number of channels of input arrays.
+        out1 (int): Output size of the 1x1 convolution path.
+        proj3 (int): Projection size of the single 3x3 convolution path.
+        out3 (int): Output size of the single 3x3 convolution path.
+        proj33 (int): Projection size of the double 3x3 convolutions path.
+        out33 (int): Output size of the double 3x3 convolutions path.
+        pooltype (str): Pooling type. It must be either ``'max'`` or ``'avg'``.
+        proj_pool (bool): If True, do projection in the pooling path.
+        stride (int): Stride parameter of the last convolution of each path.
+
+    .. seealso:: :class:`Inception`
+
+    """
     def __init__(self, in_channels, out1, proj3, out3, proj33, out33,
                  pooltype, proj_pool=None, stride=1):
         if out1 > 0:
