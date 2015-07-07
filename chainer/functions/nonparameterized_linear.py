@@ -24,18 +24,10 @@ class NonparameterizedLinear(function.Function):
             func.to_gpu()
         return func.forward(x[:1])
 
-    def backward_cpu(self, x, gy):
+    def backward(self, x, gy):
         func = self.func
         func.zero_grads()
-        gx = func.backward_cpu(x[:1], gy)
-        if func.gb is None:
-            return (gx[0], func.gW)
-        return (gx[0], func.gW, func.gb)
-
-    def backward_gpu(self, x, gy):
-        func = self.func
-        func.zero_grads()
-        gx = func.backward_gpu(x[:1], gy)
+        gx = func.backward(x[:1], gy)
         if func.gb is None:
             return (gx[0], func.gW)
         return (gx[0], func.gW, func.gb)
