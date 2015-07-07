@@ -7,19 +7,19 @@ Minimum requirements:
 - NumPy
 - Six 1.9+
 
-- Requirements for some features:
-  - CUDA support
-    - CUDA 6.5+
-    - PyCUDA
-    - scikits.cuda (pip install scikits.cuda>=0.5.0b2,!=0.042)
-    - Mako (depending through PyCUDA)
-  - CuDNN support
-    - CuDNN v2
-  - Caffe model support
-    - Python 2.7+ (Py3 is not supported)
-    - Protocol Buffers (pip install protobuf)
-  - Testing utilities
-    - Nose
+Requirements for some features:
+- CUDA support
+  - CUDA 6.5+
+  - PyCUDA
+  - scikits.cuda (pip install scikits.cuda>=0.5.0b2,!=0.042)
+  - Mako (depending through PyCUDA)
+- CuDNN support
+  - CuDNN v2
+- Caffe model support
+  - Python 2.7+ (Py3 is not supported)
+  - Protocol Buffers (pip install protobuf)
+- Testing utilities
+  - Nose
 
 ## Installation
 
