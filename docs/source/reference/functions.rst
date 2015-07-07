@@ -23,6 +23,7 @@ Learnable connections
 Array commputation functions
 ----------------------------
 .. autofunction:: convolution_2d
+.. autofunction:: linear
 
 Array manipulation functions
 ----------------------------
