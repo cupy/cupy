@@ -34,7 +34,7 @@ class TypeInfoTuple(tuple):
         """Returns an expression representing its length.
 
         Returns:
-            :class:`Expr` object representig length of the tuple.
+            Expr: An expression object representig length of the tuple.
         """
         return Variable(len(self), '{0}.size'.format(self.name))
 
@@ -90,7 +90,7 @@ class Expr(object):
     It represents an abstract syntax tree, and isn't a value. You can get its
     actual value with :meth:`eval` function, and get syntax representation with
     the :meth:`__str__` method.
-    Each comparison operator (e.g. `==`) generates a new :class:`Expr` object
+    Each comparison operator (e.g. ``==``) generates a new :class:`Expr` object
     which represents the result of comparison between two expressions.
 
     .. admonition:: Example
@@ -129,8 +129,8 @@ class Expr(object):
         """Evaluates the tree to get actual value.
 
         Behavior of this function depends on an implementation class.
-        For example, a binary operator `+` calls the `__add__` function with
-        the two results of :meth:`eval` funciton.
+        For example, a binary operator ``+`` calls the ``__add__`` function
+        with the two results of :meth:`eval` funciton.
         """
         raise NotImplementedError()
 
@@ -420,8 +420,9 @@ def expect(*bool_exprs):
     not satisfied.
     You can check conditions with this function.
 
-    Args: bool_exprs (tuple of Bool expressions): Bool expressions you want to
-              evaluate.
+    Args:
+        bool_exprs (tuple of Bool expressions): Bool expressions you want to
+            evaluate.
     """
     for expr in bool_exprs:
         assert isinstance(expr, Testable)
