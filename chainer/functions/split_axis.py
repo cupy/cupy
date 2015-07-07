@@ -40,7 +40,7 @@ class SplitAxis(function.Function):
             if xshape[self.axis] % sec:
                 raise ValueError(
                     'array split does not result in an equal division')
-            ind = numpy.arange(1, sec + 1) * (xshape[self.axis] / sec)
+            ind = numpy.arange(1, sec + 1) * (xshape[self.axis] // sec)
         ys = []
         kernel = cuda.elementwise(
             _args, 'COPY(y[i] = x[idx])', 'split_fwd', preamble=_preamble)
