@@ -200,10 +200,10 @@ class Function(object):
 
         Before :meth:`forward` is called, this function is called.
         You need to validate types of input data in this function
-        using type-check utilities.
+        using :ref:`the type checking utilities <type-check-utils>`.
 
         Args:
-            in_types: :class:`TypeInfoTuple` object which contains type
+            in_types (~chainer.utils.type_check.TypeInfoTuple): The type
                 information of input data for :meth:`forward`.
         """
         pass
@@ -213,16 +213,16 @@ class Function(object):
 
         Before :meth:`backward` is called, this function is called.
         You need to validate types of gradient data in this function
-        using type-check utilities.
+        using :ref:`the type checking utilities <type-check-utils>`.
 
         :meth:`check_type_backward` is always called after
-        :meth:`check_type_forward`. So, each function does not need to check
+        :meth:`check_type_forward`, so each function does not need to check
         the same condition here.
 
         Args:
-            in_types: :class:`TypeInfoTuple` object which contains type
+            in_types (~chainer.utils.type_check.TypeInfoTuple): The type
                 information of input data for :meth:`backward`.
-            grad_types: :class:`TypeInfoTuple` object which contains type
+            grad_types (~chainer.utils.type_check.TypeInfoTuple): The type
                 information of gradient data for :meth:`backward`.
         """
         pass
