@@ -1,7 +1,6 @@
 import collections
 
 import numpy
-import six
 
 from chainer import cuda
 from chainer import function
@@ -33,21 +32,20 @@ class SplitAxis(function.Function):
         self.cdimx = xshape[self.axis]
         self.rdim = numpy.prod(xshape[self.axis + 1:])
 
-        indices = self.indices_or_sections
-        if isinstance(indices, collections.Iterable):
-            indices = list(indices)
-            indices.append(xshape[self.axis])
+        if isinstance(self.indices_or_sections, collections.Iterable):
+            ind = list(self.indices_or_sections)
+            ind.append(xshape[self.axis])
         else:
-            if xshape[self.axis] % indices:
+            sec = self.indices_or_sections
+            if xshape[self.axis] % sec:
                 raise ValueError(
                     'array split does not result in an equal division')
-            indices = six.moves.range(
-                indices, xshape[self.axis] + indices, indices)
+            ind = numpy.arange(1, sec + 1) * (xshape[self.axis] / sec)
         ys = []
         kernel = cuda.elementwise(
             _args, 'COPY(y[i] = x[idx])', 'split_fwd', preamble=_preamble)
         bi = 0
-        for i in indices:
+        for i in ind:
             i = min(i, xshape[self.axis])
             cdimy = max(0, i - bi)
             s = list(xshape)
