@@ -58,14 +58,15 @@ class ComputationalGraph(object):
       We assume that the computational graph is directed and acyclic.
     """
 
-    def __init__(self, edges):
+    def __init__(self, nodes, edges):
         """Initializes computational graph.
 
         Args:
+            nodes (list): List of nodes. Each node is either
+                 :class:`Variable` object or :class:`Function` object.
             edges (list): List of edges. Each edge consists of pair of nodes.
-            Nodes are either :class:`Variable` object or
-            :class:`Function` object.
         """
+        self.nodes = nodes
         self.edges = edges
 
     def _to_dot(self):
@@ -77,6 +78,9 @@ class ComputationalGraph(object):
         """
 
         ret = "digraph graphname{"
+        for node in self.nodes:
+            assert isinstance(node, (variable.Variable, function.Function))
+            ret += DotNode(node).label
         for edge in self.edges:
             head, tail = edge
             assert (isinstance(head, variable.Variable)
@@ -85,8 +89,6 @@ class ComputationalGraph(object):
                     and isinstance(tail, variable.Variable))
             head_node = DotNode(head)
             tail_node = DotNode(tail)
-            ret += head_node.label
-            ret += tail_node.label
             ret += "%s -> %s;" % (head_node.id_, tail_node.id_)
         ret += "}"
         return ret
@@ -105,12 +107,6 @@ class ComputationalGraph(object):
             return self._to_dot()
         else:
             NotImplementedError('Currently, only dot format is supported.')
-
-    def __len__(self):
-        return len(self.edges)
-
-    def __contains__(self, e):
-        return e in self.edges
 
 
 def build_computational_graph(outputs, remove_split=True):
@@ -161,6 +157,7 @@ def build_computational_graph(outputs, remove_split=True):
 
     cands = []
     seen_edges = set()
+    nodes = set()
     push_count = [0]
 
     def add_cand(cand):
@@ -169,6 +166,7 @@ def build_computational_graph(outputs, remove_split=True):
 
     for o in outputs:
         add_cand(o)
+        nodes.add(o)
 
     while cands:
         _, _, cand = heapq.heappop(cands)
@@ -182,6 +180,8 @@ def build_computational_graph(outputs, remove_split=True):
             if creator is not None and (creator, cand) not in seen_edges:
                 add_cand(creator)
                 seen_edges.add((creator, cand))
+                nodes.add(creator)
+                nodes.add(cand)
         elif isinstance(cand, function.Function):
             if remove_split and isinstance(cand, function.Split):
                 next_cand = creator.inputs[0]
@@ -196,4 +196,6 @@ def build_computational_graph(outputs, remove_split=True):
                         input_ = creator.inputs[0]
                     add_cand(input_)
                     seen_edges.add((input_, cand))
-    return ComputationalGraph(seen_edges)
+                    nodes.add(input_)
+                    nodes.add(cand)
+    return ComputationalGraph(list(nodes), list(seen_edges))
