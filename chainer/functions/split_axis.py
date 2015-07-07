@@ -80,11 +80,11 @@ def split_axis(x, indices_or_sections, axis):
 
     Args:
         x (tuple of Variables): Variables to be splitted.
-        indices_or_sections (int or 1-Darray): If input is an integer, N,
-            the array will be divided into N equal arrays along axis.
-            If input is a 1-D array of sorted integers, the entries indicate
-            where along axis the array is split.
-        axis (int): Axis that the input arrays are splitted along.
+        indices_or_sections (int or 1-Darray): If this argument is an integer,
+            N, the array will be divided into N equal arrays along axis.
+            If it is a 1-D array of sorted integers, the entries
+            indicate where along which axis the array is split.
+        axis (int): Axis that the input arrays are split along.
 
     Returns:
         ~chainer.Variable: Output variable.
