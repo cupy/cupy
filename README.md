@@ -3,19 +3,23 @@
 ## Requirements
 
 Minimum requirements:
-- Python 2.7+ (v2.7.9 is recommended)
+- Python 2.7+, 3.4+
 - NumPy
+- Six 1.9+
 
-Requirements to enable CUDA:
-- CUDA 6.5+
-- PyCUDA
-- scikits.cuda (pip install 'scikits.cuda>=0.5.0b2,!=0.042')
-- Mako (depending through PyCUDA)
-
-Recommended:
-- CuDNN v2
-- scikit-learn (to run some examples)
-- OpenCV 2.4 (to run some examples)
+Requirements for some features:
+- CUDA support
+  - CUDA 6.5+
+  - PyCUDA
+  - scikits.cuda (pip install scikits.cuda>=0.5.0b2,!=0.042)
+  - Mako (depending through PyCUDA)
+- CuDNN support
+  - CuDNN v2
+- Caffe model support
+  - Python 2.7+ (Py3 is not supported)
+  - Protocol Buffers (pip install protobuf)
+- Testing utilities
+  - Nose
 
 ## Installation
 
