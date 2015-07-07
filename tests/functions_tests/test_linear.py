@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.utils import type_check
 
 
 if cuda.available:
@@ -78,3 +79,14 @@ class TestLinear(unittest.TestCase):
 class TestLinearWithSpatialDimensions(TestLinear):
 
     in_shape = (3, 2, 2)
+
+
+class TestInvalidLinear(unittest.TestCase):
+
+    def setUp(self):
+        self.func = functions.Linear(3, 2)
+        self.x = numpy.random.uniform(-1, 1, (4, 1, 2)).astype(numpy.float32)
+
+    def test_invalid_size(self):
+        with self.assertRaises(type_check.InvalidType):
+            self.func(chainer.Variable(self.x))

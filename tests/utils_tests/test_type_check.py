@@ -30,28 +30,74 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(10, self.x.eval())
 
 
-class TestShape(unittest.TestCase):
+class Object(object):
+    def __init__(self):
+        self.value = 10
+
+
+class TestGetAttr(unittest.TestCase):
 
     def setUp(self):
-        self.x = T.Shape(10, 3, 'xxx')
+        x = Object()
+        self.value = T.GetAttr(T.Variable(x, 'x'), 'value')
 
     def test_str(self):
-        self.assertEqual('xxx.shape[3]', str(self.x))
+        self.assertEqual('x.value', str(self.value))
 
     def test_eval(self):
-        self.assertEqual(10, self.x.eval())
+        self.assertEqual(10, self.value.eval())
 
 
-class TestMember(unittest.TestCase):
+class TestGetItem(unittest.TestCase):
 
     def setUp(self):
-        self.x = T.Member(10, 'xxx', 'yyy')
+        x = T.Variable([1, 2, 3], 'x')
+        y = T.Variable({'a': 1, 'b': 2}, 'y')
+        self.x = x
+        self.v1 = T.GetItem(x, 1)
+        self.v2 = T.GetItem(y, 'a')
 
     def test_str(self):
-        self.assertEqual('xxx.yyy', str(self.x))
+        self.assertEqual('x[1]', str(self.v1))
+        self.assertEqual('y[a]', str(self.v2))
+
+        x = self.x
+        self.assertEqual('x[:]', str(x[:]))
+        self.assertEqual('x[:]', str(x[::]))
+        self.assertEqual('x[1:]', str(x[1:]))
+        self.assertEqual('x[:2]', str(x[:2]))
+        self.assertEqual('x[1:2]', str(x[1:2]))
+        self.assertEqual('x[1::1]', str(x[1::1]))
+        self.assertEqual('x[:2:1]', str(x[:2:1]))
+        self.assertEqual('x[1:2:1]', str(x[1:2:1]))
+        self.assertEqual('x[...]', str(x[...]))
+        self.assertEqual('x[0, 1]', str(x[0, 1]))
+        self.assertEqual('x[1:2, ...]', str(x[1:2:, ...]))
 
     def test_eval(self):
-        self.assertEqual(10, self.x.eval())
+        self.assertEqual(2, self.v1.eval())
+        self.assertEqual(1, self.v2.eval())
+
+
+class TestCall(unittest.TestCase):
+
+    def setUp(self):
+        f = T.Variable(sum, 'sum')
+        self.c1 = T.Call(f, ([1, 2, 3],))
+        self.c2 = f([1, 2, 3])
+        self.c3 = T.Call(f, (['', 1],))
+
+    def test_str(self):
+        self.assertEqual('sum([1, 2, 3])', str(self.c1))
+        self.assertEqual('sum([1, 2, 3])', str(self.c2))
+        self.assertEqual('sum([\'\', 1])', str(self.c3))
+
+    def test_eval(self):
+        self.assertEqual(6, self.c1.eval())
+        self.assertEqual(6, self.c2.eval())
+        # an error is occured in `eval`
+        with self.assertRaises(TypeError):
+            self.assertEqual(6, self.c3.eval())
 
 
 class TestBinaryOperator(unittest.TestCase):
@@ -204,9 +250,7 @@ class TestGetType(unittest.TestCase):
         self.assertEqual('name', ts.name)
 
         t = ts[0]
-        self.assertIsInstance(t, T.TypeInfo)
-        self.assertEqual(0, t.index)
-        self.assertEqual(3, len(t.shape))
+        self.assertIsInstance(t, T.Expr)
         self.assertEqual(1, t.shape[0].eval())
         self.assertEqual(2, t.shape[1].eval())
         self.assertEqual(3, t.shape[2].eval())
@@ -242,3 +286,24 @@ class TestBoolBinaryOperator(unittest.TestCase):
     def test_bool_operator(self):
         with self.assertRaises(RuntimeError):
             not self.op1
+
+
+class TestLazyGetItem(unittest.TestCase):
+
+    def setUp(self):
+        self.t = T.Constant(0)
+
+    def test_evaluate_size(self):
+        # __getitem__, __getattr__ and __call__ only make syntax trees, but
+        # they are not evalated yet
+        self.assertIsInstance(self.t[1], T.Expr)
+        self.assertIsInstance(self.t.x, T.Expr)
+        self.assertIsInstance(self.t(), T.Expr)
+
+        # an error is raised on evaluation time
+        with self.assertRaises(TypeError):
+            self.t[1].eval()
+        with self.assertRaises(AttributeError):
+            self.t.x.eval()
+        with self.assertRaises(TypeError):
+            self.t().eval()

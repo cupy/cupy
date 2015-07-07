@@ -221,9 +221,11 @@ class CaffeFunction(function.Function):
         ksize = _get_ksize(param)
         stride = _get_stride(param)
         pad = _get_pad(param)
+        num = _get_num(blobs[0])
+        channels = _get_channels(blobs[0])
 
-        n_in = blobs[0].channels * param.group
-        n_out = blobs[0].num
+        n_in = channels * param.group
+        n_out = num
         func = functions.Convolution2D(n_in, n_out, ksize, stride, pad,
                                        nobias=not param.bias_term)
         func.W.fill(0)
@@ -268,8 +270,8 @@ class CaffeFunction(function.Function):
                 'Non-default axis in InnerProduct is not supported')
 
         blobs = layer.blobs
-        func = functions.Linear(blobs[0].width, blobs[0].height,
-                                nobias=not bias_term)
+        width, height = _get_width(blobs[0]), _get_height(blobs[0])
+        func = functions.Linear(width, height, nobias=not bias_term)
         func.W.ravel()[:] = blobs[0].data
         if bias_term:
             func.b[:] = blobs[1].data
@@ -357,3 +359,43 @@ def _get_pad(param):
         return (param.pad_h, param.pad_w)
     else:
         return param.pad
+
+
+def _get_num(blob):
+    if blob.num > 0:
+        return blob.num
+    else:
+        return blob.shape.dim[0]
+
+
+def _get_channels(blob):
+    if blob.channels > 0:
+        return blob.channels
+    else:
+        return blob.shape.dim[1]
+
+
+def _get_height(blob):
+    if blob.height > 0:
+        return blob.height
+    elif len(blob.shape.dim) == 2:
+        return blob.shape.dim[0]
+    elif len(blob.shape.dim) == 4:
+        return blob.shape.dim[2]
+    else:
+        raise RuntimeError(
+            '{}-dimentional array is not supported'.format(
+                len(blob.shape.dim)))
+
+
+def _get_width(blob):
+    if blob.width > 0:
+        return blob.width
+    elif len(blob.shape.dim) == 2:
+        return blob.shape.dim[1]
+    elif len(blob.shape.dim) == 4:
+        return blob.shape.dim[3]
+    else:
+        raise RuntimeError(
+            '{}-dimentional array is not supported'.format(
+                len(blob.shape.dim)))

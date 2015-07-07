@@ -9,35 +9,35 @@ from chainer.utils import walker_alias
 class NegativeSampling(function.Function):
     """Implementation of negative sampling.
 
-    In natural language processing especially language modeling, a number of
-    vocabulraly is very large.
-    So, you need to spend a lot of time to calculate gradient of an embedding
-    matrix.
+    In natural language processing, especially language modeling, the number of
+    vocabulary is very large.
+    Therefore, you need to spend a lot of time to calculate the gradient of the
+    embedding matrix.
 
-    Instead, in negative sampling trick, you only need to calculate gradient
-    for a few sampled negative examples.
+    Instead, in negative sampling trick, you only need to calculate the
+    gradient for a few sampled negative examples.
 
-    Objective function is below:
+    The objective function is below:
 
     .. math::
 
        f(x, p) = \log\sigma(x^\\top w_p) + \\
        k E_{i \sim P(i)}[\log\sigma(- x^\\top w_i)],
 
-    where :math:`\sigma(\cdot)` is a sigmoid function, :math:`w_i` is a wegith
-    vector for a word :math:`i`, and :math:`p` is a positive example.
-    It is approximeted with :math:`k` examples :math:`N` sampled from probabity
-    :math:`P(i)`, like this:
+    where :math:`\sigma(\cdot)` is a sigmoid function, :math:`w_i` is the
+    weight vector for the word :math:`i`, and :math:`p` is a positive example.
+    It is approximeted with :math:`k` examples :math:`N` sampled from
+    probability :math:`P(i)`, like this:
 
     .. math::
 
        f(x, p) \\approx \log\sigma(x^\\top w_p) + \\
        \sum_{n \in N} \log\sigma(-x^\\top w_n).
 
-    These samples are drawn from probabilities of words :math:`P(w)`.
-    That is calculated as :math:`P(w) = \\frac{1}{Z} c(w)^\\alpha`, where
-    :math:`c(w)` is unigram count of a word :math:`w`, :math:`\\alpha` is a
-    hyper-parameter, and :math:`Z` is a normalization constant.
+    Each sample of :math:`N` is drawn from the word distribution :math:`P(w)`.
+    This is calculated as :math:`P(w) = \\frac{1}{Z} c(w)^\\alpha`, where
+    :math:`c(w)` is the unigram count of the word :math:`w`, :math:`\\alpha` is
+    a hyper-parameter, and :math:`Z` is the normalization constant.
 
     Args:
         in_size (int): Dimension of input vectors.

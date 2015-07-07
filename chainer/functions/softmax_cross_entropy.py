@@ -23,8 +23,7 @@ class SoftmaxCrossEntropy(function.Function):
             x_type.ndim == 2,
             t_type.dtype == numpy.int32,
             t_type.ndim == 1,
-        )
-        type_check.expect(
+
             x_type.shape[0] == t_type.shape[0],
         )
 

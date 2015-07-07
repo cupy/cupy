@@ -58,8 +58,7 @@ class LSTM(function.Function):
             c_type.ndim >= 2,
             x_type.ndim >= 2,
             c_type.ndim == x_type.ndim,
-        )
-        type_check.expect(
+
             x_type.shape[0] == c_type.shape[0],
             x_type.shape[1] == 4 * c_type.shape[1],
         )
