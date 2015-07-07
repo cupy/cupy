@@ -63,7 +63,7 @@ class ComputationalGraph(object):
 
         Args:
             nodes (list): List of nodes. Each node is either
-            :class:`Variable` object or :class:`Function` object.
+                 :class:`Variable` object or :class:`Function` object.
             edges (list): List of edges. Each edge consists of pair of nodes.
         """
         self.nodes = nodes
