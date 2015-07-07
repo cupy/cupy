@@ -140,7 +140,7 @@ def build_computational_graph(outputs, remove_split=True):
         Let ``outputs = [y, z]``.
         If ``remove_split`` is ``False``, this method generates the graph
         itself. On the other hand, if ``remove_split`` is ``True``,
-        splitter, ``x'`` and ``x''`` are removed from the graph
+        ``splitter``, ``x'`` and ``x''`` are removed from the graph
         and ``x`` is directly connected to ``f`` and ``g``.
         Resulting graph will be::
 
