@@ -14,7 +14,7 @@ class NonparameterizedConvolution2D(function.Function):
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         use_cudnn (bool): If True, then this function uses CuDNN if available.
 
-    .. seealso:: :meth:`Convolution2D`
+    .. seealso:: :class:`Convolution2D`
 
     """
     def __init__(self, stride=1, pad=0, use_cudnn=True):
@@ -70,7 +70,7 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
     Returns:
         ~chainer.Variable: Output variable.
 
-    .. seealso:: :meth:`Convolution2D`
+    .. seealso:: :class:`Convolution2D`
 
     """
     return NonparameterizedConvolution2D(

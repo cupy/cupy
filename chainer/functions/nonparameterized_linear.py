@@ -7,7 +7,7 @@ class NonparameterizedLinear(function.Function):
 
     """Nonparameterized linear class.
 
-    .. seealso:: :meth:`Linear`
+    .. seealso:: :class:`Linear`
 
     """
 
@@ -52,7 +52,7 @@ def linear(x, W, b=None, stride=1, pad=0, use_cudnn=True):
     Returns:
         ~chainer.Variable: Output variable.
 
-    .. seealso:: :meth:`Linear`
+    .. seealso:: :class:`Linear`
 
     """
 
