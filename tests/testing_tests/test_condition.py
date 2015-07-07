@@ -75,15 +75,19 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
         f = self._decorate(MockUnitTest.probabilistic_case, 10, 5)
         _should_pass(self, f)
         self.assertLessEqual(self.unit_test.probabilistic_case_counter, 10)
-        self.assertGreaterEqual(self.unit_test.probabilistic_case_success_counter, 5)
-        self.assertLessEqual(self.unit_test.probabilistic_case_failure_counter, 5)
+        self.assertGreaterEqual(
+            self.unit_test.probabilistic_case_success_counter, 5)
+        self.assertLessEqual(
+            self.unit_test.probabilistic_case_failure_counter, 5)
 
     def test_half_of_trials_succeed2(self):
         f = self._decorate(MockUnitTest.probabilistic_case, 10, 6)
         _should_fail(self, f)
         self.assertLessEqual(self.unit_test.probabilistic_case_counter, 10)
-        self.assertLess(self.unit_test.probabilistic_case_success_counter, 6)
-        self.assertGreaterEqual(self.unit_test.probabilistic_case_failure_counter, 5)
+        self.assertLess(
+            self.unit_test.probabilistic_case_success_counter, 6)
+        self.assertGreaterEqual(
+            self.unit_test.probabilistic_case_failure_counter, 5)
 
 
 class TestRepeat(unittest.TestCase):
@@ -109,7 +113,8 @@ class TestRepeat(unittest.TestCase):
         _should_fail(self, f)
         self.assertLessEqual(self.unit_test.probabilistic_case_counter, 10)
         self.assertLess(self.unit_test.probabilistic_case_success_counter, 10)
-        self.assertGreater(self.unit_test.probabilistic_case_failure_counter, 0)
+        self.assertGreater(
+            self.unit_test.probabilistic_case_failure_counter, 0)
 
 
 class TestRetry(unittest.TestCase):
@@ -133,6 +138,8 @@ class TestRetry(unittest.TestCase):
     def test_probabilistic_case(self):
         f = self._decorate(MockUnitTest.probabilistic_case, 10)
         _should_pass(self, f)
-        self.assertLessEqual(self.unit_test.probabilistic_case_counter, 10)
-        self.assertGreater(self.unit_test.probabilistic_case_success_counter, 0)
+        self.assertLessEqual(
+            self.unit_test.probabilistic_case_counter, 10)
+        self.assertGreater(
+            self.unit_test.probabilistic_case_success_counter, 0)
         self.assertLess(self.unit_test.probabilistic_case_failure_counter, 10)
