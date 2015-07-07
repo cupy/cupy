@@ -13,3 +13,4 @@ Chainer Reference Manual
    functions
    optimizers
    caffe
+   graph
