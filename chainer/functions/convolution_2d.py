@@ -39,6 +39,10 @@ class Convolution2D(function.Function):
         bias (float): Initial bias value.
         nobias (bool): If True, then this function does not use the bias term.
         use_cudnn (bool): If True, then this function uses CuDNN if available.
+        initialW (4-D array): Initial weight value. If ``None``, then this
+            function uses to initialize ``wscale``.
+        initial_bias (1-D array): Initial bias value. If ``None``, then this
+            function uses to initialize ``bias``.
 
     This function holds at most two parameter arrays: ``W`` and ``b``, which
     indicate the filter weight and the bias vector, respectively.
@@ -79,7 +83,8 @@ class Convolution2D(function.Function):
 
     """
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
-                 wscale=1, bias=0, nobias=False, use_cudnn=True):
+                 wscale=1, bias=0, nobias=False, use_cudnn=True,
+                 initialW=None, initial_bias=None):
         ksize = _pair(ksize)
         stride = _pair(stride)
         pad = _pair(pad)
@@ -88,18 +93,36 @@ class Convolution2D(function.Function):
         self.sy, self.sx = stride
         self.ph, self.pw = pad
 
-        self.W = numpy.random.normal(
-            0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
-            (out_channels, in_channels, self.kh, self.kw)
-        ).astype(numpy.float32)
-        self.gW = numpy.empty_like(self.W)
+        self.W = None
+        self.gW = None
+        self.b = None
+        self.gb = None
 
-        if nobias:
-            self.b = None
-            self.gb = None
+        if initialW is not None:
+            assert initialW.shape == \
+                (out_channels, in_channels, self.kh, self.kw)
+            self.W = initialW
         else:
+            self.W = numpy.random.normal(
+                0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
+                (out_channels, in_channels, self.kh, self.kw)
+            ).astype(numpy.float32)
+        if isinstance(self.W, cuda.GPUArray):
+            self.gW = cuda.empty_like(self.W)
+        else:
+            self.gW = numpy.empty_like(self.W)
+
+        if initial_bias is not None:
+            assert initial_bias.shape == (out_channels,)
+            self.b = initial_bias
+        elif not nobias:
             self.b = numpy.repeat(numpy.float32(bias), out_channels)
-            self.gb = numpy.empty_like(self.b)
+
+        if self.b is not None:
+            if isinstance(self.b, cuda.GPUArray):
+                self.gb = cuda.empty_like(self.b)
+            else:
+                self.gb = numpy.empty_like(self.b)
 
         self.use_cudnn = use_cudnn
         if cudnn.enabled and use_cudnn:
@@ -117,6 +140,11 @@ class Convolution2D(function.Function):
         if self.gb is None:
             return 'gW',
         return 'gW', 'gb'
+
+    def zero_grads(self):
+        self.gW.fill(0)
+        if self.gb is not None:
+            self.gb.fill(0)
 
     def forward_cpu(self, x):
         self.col = conv.im2col_cpu(

@@ -19,6 +19,8 @@ from chainer.functions import lstm
 from chainer.functions import matmul
 from chainer.functions import mean_squared_error
 from chainer.functions import negative_sampling
+from chainer.functions import nonparameterized_convolution_2d
+from chainer.functions import nonparameterized_linear
 from chainer.functions import parameter
 from chainer.functions import pooling_2d
 from chainer.functions import prelu
@@ -32,6 +34,10 @@ from chainer.functions import split_axis
 from chainer.functions import sum as sum_
 from chainer.functions import tanh
 
+NonparameterizedConvolution2D = \
+    nonparameterized_convolution_2d.NonparameterizedConvolution2D
+NonparameterizedLinear = \
+    nonparameterized_linear.NonparameterizedLinear
 Concat = concat.Concat
 Copy = copy.Copy
 Dropout = dropout.Dropout
@@ -70,6 +76,9 @@ Linear = linear.Linear
 NegativeSampling = negative_sampling.NegativeSampling
 Parameter = parameter.Parameter
 PReLU = prelu.PReLU
+
+convolution_2d = nonparameterized_convolution_2d.convolution_2d
+linear = nonparameterized_linear.linear
 
 concat = concat.concat
 copy = copy.copy

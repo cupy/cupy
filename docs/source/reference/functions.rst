@@ -20,6 +20,11 @@ Learnable connections
 .. autoclass:: NegativeSampling
 .. autoclass:: Parameter
 
+Array commputation functions
+----------------------------
+.. autofunction:: convolution_2d
+.. autofunction:: linear
+
 Array manipulation functions
 ----------------------------
 .. autofunction:: concat
