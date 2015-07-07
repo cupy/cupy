@@ -20,6 +20,12 @@ def repeat_with_success_at_least(times, min_success):
     If the number of successful trials exceeds `min_success`,
     the remaining trials are skipped.
 
+    .. note::
+        In current implementation, this decorator grasps the
+        failure information of each trial. This specification is not desirable
+        for debugging. We should as much failure information as possible.
+        This problem will be issued.
+
     Args:
         times(int): The number of trials.
         min_success(int): Threshold that the decorated test
@@ -67,6 +73,10 @@ def repeat(times):
     The case is regarded as passed only if it is successful
     specified times in a row.
 
+    .. note::
+        In current implementation, this decorator grasps the
+        failure information of each trial.
+
     Args:
         times(int): The number of trials.
     """
@@ -79,6 +89,10 @@ def retry(times):
     Decorated test case is launched multiple times.
     The case is regarded as passed if it is successful
     at least once.
+
+    .. note::
+        In current implementation, this decorator grasps the
+        failure information of each trial.
 
     Args:
         times(int): The number of trials.
