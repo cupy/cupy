@@ -19,7 +19,7 @@ _preamble = '''
 
 class SplitAxis(function.Function):
 
-    """Splite multiple tensors towards specified axis."""
+    """Function that splits multiple arrays towards the specified axis."""
 
     def __init__(self, indices_or_sections, axis):
         self.indices_or_sections = indices_or_sections
@@ -79,7 +79,7 @@ def split_axis(x, indices_or_sections, axis):
     """Splits given variables along an axis.
 
     Args:
-        x (tuple of Variables): Variables to be splitted.
+        x (tuple of Variables): Variables to be split.
         indices_or_sections (int or 1-Darray): If this argument is an integer,
             N, the array will be divided into N equal arrays along axis.
             If it is a 1-D array of sorted integers, the entries
