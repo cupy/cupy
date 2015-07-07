@@ -9,6 +9,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 from chainer.utils import conv
 
 
@@ -46,6 +47,7 @@ class TestConvolution2D(unittest.TestCase):
         gradient_check.assert_allclose(im_cpu, im_gpu.get())
 
     @attr.cudnn
+    @condition.retry(3)
     def test_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
         y_cpu = self.func(x_cpu)
@@ -80,15 +82,18 @@ class TestConvolution2D(unittest.TestCase):
         gradient_check.assert_allclose(gW, func.gW)
         gradient_check.assert_allclose(gb, func.gb)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.cudnn
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.func.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu_im2col(self):
         self.func.use_cudnn = False
         self.test_backward_gpu()

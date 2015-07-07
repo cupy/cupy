@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -53,18 +54,22 @@ class TestLSTM(unittest.TestCase):
         gradient_check.assert_allclose(c_expect, c.data)
         gradient_check.assert_allclose(h_expect, h.data)
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.c_prev, self.x)
 
+    @condition.retry(3)
     def test_flat_forward_cpu(self):
         self.flat()
         self.test_forward_cpu()
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.c_prev), cuda.to_gpu(self.x))
 
     @attr.gpu
+    @condition.retry(3)
     def test_flat_forward_gpu(self):
         self.flat()
         self.test_forward_gpu()
@@ -85,56 +90,68 @@ class TestLSTM(unittest.TestCase):
         gradient_check.assert_allclose(gc_prev, c_prev.grad)
         gradient_check.assert_allclose(gx, x.grad)
 
+    @condition.retry(3)
     def test_full_backward_cpu(self):
         self.check_backward(self.c_prev, self.x, self.gc, self.gh)
 
+    @condition.retry(3)
     def test_flat_full_backward_cpu(self):
         self.flat()
         self.test_full_backward_cpu()
 
+    @condition.retry(3)
     def test_no_gc_backward_cpu(self):
         self.check_backward(self.c_prev, self.x, None, self.gh)
 
+    @condition.retry(3)
     def test_flat_no_gc_backward_cpu(self):
         self.flat()
         self.test_no_gc_backward_cpu()
 
+    @condition.retry(3)
     def test_no_gh_backward_cpu(self):
         self.check_backward(self.c_prev, self.x, self.gc, None)
 
+    @condition.retry(3)
     def test_flat_no_gh_backward_cpu(self):
         self.flat()
         self.test_no_gh_backward_cpu()
 
     @attr.gpu
+    @condition.retry(3)
     def test_full_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.c_prev), cuda.to_gpu(self.x),
             cuda.to_gpu(self.gc), cuda.to_gpu(self.gh))
 
     @attr.gpu
+    @condition.retry(3)
     def test_flat_full_backward_gpu(self):
         self.flat()
         self.test_full_backward_gpu()
 
     @attr.gpu
+    @condition.retry(3)
     def test_no_gc_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.c_prev), cuda.to_gpu(self.x),
             None, cuda.to_gpu(self.gh))
 
     @attr.gpu
+    @condition.retry(3)
     def test_flat_no_gc_backward_gpu(self):
         self.flat()
         self.test_no_gc_backward_gpu()
 
     @attr.gpu
+    @condition.retry(3)
     def test_no_gh_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.c_prev), cuda.to_gpu(self.x),
             cuda.to_gpu(self.gc), None)
 
     @attr.gpu
+    @condition.retry(3)
     def test_flat_no_gh_backward_gpu(self):
         self.flat()
         self.test_no_gh_backward_gpu()

@@ -8,6 +8,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -35,10 +36,12 @@ class TestLeakyReLU(unittest.TestCase):
 
         gradient_check.assert_allclose(expected, y.data)
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
@@ -54,9 +57,11 @@ class TestLeakyReLU(unittest.TestCase):
 
         gradient_check.assert_allclose(gx, x.grad)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))

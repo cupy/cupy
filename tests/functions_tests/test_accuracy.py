@@ -7,6 +7,7 @@ import chainer
 from chainer import cuda
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -35,9 +36,11 @@ class TestAccuracy(unittest.TestCase):
         expected = float(count) / self.t.size
         gradient_check.assert_allclose(expected, cuda.to_cpu(y.data))
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))

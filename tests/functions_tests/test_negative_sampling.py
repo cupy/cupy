@@ -6,6 +6,8 @@ import chainer
 from chainer import cuda
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
+
 
 if cuda.available:
     cuda.init()
@@ -36,6 +38,7 @@ class TestNegativeSampling(unittest.TestCase):
                                        atol=1.e-4)
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         x = chainer.Variable(self.x)
         t = chainer.Variable(self.t)
@@ -54,10 +57,12 @@ class TestNegativeSampling(unittest.TestCase):
 
         gradient_check.assert_allclose(y.data, y_g.data, atol=1.e-4)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.func.to_gpu()
         self.check_backward(cuda.to_gpu(self.x),
