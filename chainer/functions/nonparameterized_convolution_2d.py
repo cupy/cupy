@@ -35,9 +35,7 @@ class NonparameterizedConvolution2D(function.Function):
         self.func = func
         if any(isinstance(i, cuda.GPUArray) for i in x):
             func.to_gpu()
-            return func.forward_gpu(x[:1])
-        else:
-            return func.forward_cpu(x[:1])
+        return func.forward(x[:1])
 
     def backward_cpu(self, x, gy):
         func = self.func
