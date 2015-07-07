@@ -125,7 +125,7 @@ def build_computational_graph(outputs, remove_split=True):
 
     Returns:
         ComputationalGraph: A graph consisting of nodes and edges that
-            are backward-reachable from at least one of ``outputs``.
+        are backward-reachable from at least one of ``outputs``.
 
         If ``unchain_backward`` was called in some variable in the
         computational graph before this function, backward step is
