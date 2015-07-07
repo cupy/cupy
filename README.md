@@ -9,7 +9,7 @@ Minimum requirements:
 Requirements to enable CUDA:
 - CUDA 6.5+
 - PyCUDA
-- scikits.cuda (pip install 'scikits.cuda>=0.5.0b1,!=0.042')
+- scikits.cuda (pip install 'scikits.cuda>=0.5.0b2,!=0.042')
 - Mako (depending through PyCUDA)
 
 Recommended:
