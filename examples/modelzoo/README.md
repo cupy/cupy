@@ -3,6 +3,7 @@
 ## Requirements
 
 - Caffe model support (Python 2.7+, Protocol Buffers)
+- Pillow
 
 ## Description
 

@@ -1,5 +1,9 @@
 # Large Scale ConvNets
 
+## Requirements
+
+- Pillow
+
 ## Description
 
 This is an experimental example of learning from the ILSVRC2012 classification dataset.
