@@ -36,26 +36,26 @@ class SplitAxis(function.Function):
 
         if isinstance(self.indices_or_sections, collections.Iterable):
             ind = list(self.indices_or_sections)
-            ind.append(xshape[self.axis])
+            ind.append(self.cdimx)
         else:
             sec = self.indices_or_sections
-            if xshape[self.axis] % sec:
+            if self.cdimx % sec:
                 raise ValueError(
                     'array split does not result in an equal division')
-            ind = numpy.arange(1, sec + 1) * (xshape[self.axis] // sec)
+            ind = numpy.arange(1, sec + 1) * (self.cdimx // sec)
         ys = []
         kernel = cuda.elementwise(
             _args, 'COPY(y[i] = x[idx])', 'split_fwd', preamble=_preamble)
-        bi = 0
+        prev_i = 0
         for i in ind:
-            i = min(i, xshape[self.axis])
-            cdimy = max(0, i - bi)
+            i = min(i, self.cdimx)
+            cdimy = max(0, i - prev_i)
             s = list(xshape)
             s[self.axis] = cdimy
             y = cuda.empty(s, dtype=x[0].dtype)
             if cdimy != 0:
-                kernel(y, x[0], cdimy, self.cdimx, self.rdim, bi)
-            bi = i
+                kernel(y, x[0], cdimy, self.cdimx, self.rdim, prev_i)
+            prev_i = i
             ys.append(y)
         return tuple(ys)
 
