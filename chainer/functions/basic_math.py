@@ -26,6 +26,13 @@ def _convert_value_to_string(value):
             'value must be float, ndarray, GPUArray, or Variable')
 
 
+def _force_type(dtype, value):
+    if isinstance(value, (int, float)):
+        return dtype.type(value)
+    else:
+        return value
+
+
 class Neg(function.Function):
 
     @property
@@ -88,7 +95,7 @@ class AddConstant(function.Function):
         return '_ + %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return utils.force_array(x[0] + self.value),
+        return utils.force_array(x[0] + _force_type(x[0].dtype, self.value)),
 
     def backward(self, x, gy):
         return gy[0],
@@ -129,7 +136,7 @@ class SubFromConstant(function.Function):
         return '%s - _' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return utils.force_array(self.value - x[0]),
+        return utils.force_array(_force_type(x[0].dtype, self.value) - x[0]),
 
     def backward(self, x, gy):
         return utils.force_array(-gy[0]),
@@ -177,10 +184,10 @@ class MulConstant(function.Function):
         return '_ * %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return utils.force_array(self.value * x[0]),
+        return utils.force_array(_force_type(x[0].dtype, self.value) * x[0]),
 
     def backward(self, x, gy):
-        return utils.force_array(self.value * gy[0]),
+        return utils.force_array(_force_type(gy[0].dtype, self.value) * gy[0]),
 
 
 def mul(lhs, rhs):  # lhs * rhs
@@ -232,10 +239,11 @@ class DivFromConstant(function.Function):
         return '_ / %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return utils.force_array(self.value / x[0]),
+        return utils.force_array(_force_type(x[0].dtype, self.value) / x[0]),
 
     def backward_cpu(self, x, gy):
-        return utils.force_array(-self.value * gy[0] / (x[0] ** 2)),
+        value = _force_type(gy[0].dtype, self.value)
+        return utils.force_array(-value * gy[0] / (x[0] ** 2)),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
@@ -306,10 +314,11 @@ class PowVarConst(function.Function):
         return '_ ** %s' % _convert_value_to_string(self.value)
 
     def forward(self, x):
-        return utils.force_array(x[0] ** self.value),
+        return utils.force_array(x[0] ** _force_type(x[0].dtype, self.value)),
 
     def backward_cpu(self, x, gy):
-        gx = self.value * (x[0] ** (self.value - 1)) * gy[0]
+        val_1 = _force_type(x[0].dtype, self.value - 1)
+        gx = _force_type(x[0].dtype, self.value) * (x[0] ** val_1) * gy[0]
         return utils.force_array(gx),
 
     def backward_gpu(self, x, gy):
@@ -349,7 +358,7 @@ class PowConstVar(function.Function):
         return '%s ** _' % _convert_value_to_string(self.value)
 
     def forward_cpu(self, x):
-        self.y = utils.force_array(self.value ** x[0])
+        self.y = utils.force_array(_force_type(x[0].dtype, self.value) ** x[0])
         return self.y,
 
     def forward_gpu(self, x):
@@ -365,7 +374,8 @@ class PowConstVar(function.Function):
         return y,
 
     def backward_cpu(self, x, gy):
-        return utils.force_array(numpy.log(self.value) * self.y * gy[0]),
+        value = _force_type(gy[0].dtype, self.value)
+        return utils.force_array(numpy.log(value) * self.y * gy[0]),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
