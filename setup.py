@@ -17,7 +17,7 @@ setup(
               'chainer.utils'],
     install_requires=['nose',
                       'numpy',
-                      'pillow'
+                      'pillow',
                       'protobuf',
                       'six>=1.9.0'],
     tests_require=['nose'],
