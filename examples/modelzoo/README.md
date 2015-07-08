@@ -3,7 +3,7 @@
 ## Requirements
 
 - Caffe model support (Python 2.7+, Protocol Buffers)
-- Pillow
+- Pillow (Pillow requires an external library that corresponds to the image format)
 
 ## Description
 
