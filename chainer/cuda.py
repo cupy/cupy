@@ -36,9 +36,17 @@ import atexit
 import os
 
 import numpy
+import pkg_resources
 import six
 
 try:
+    pkg_resources.require([
+        'pycuda>=2014.1',
+        'scikits.cuda>=0.5.0b2,!=0.042',
+        'Mako',
+        'six>=1.9.0',
+    ])
+
     import pycuda.cumath
     import pycuda.curandom
     import pycuda.driver as drv
@@ -59,6 +67,9 @@ try:
     cutools = pycuda.tools
     gpuarray = pycuda.gpuarray
 except ImportError as e:
+    available = False
+    _import_error = e
+except pkg_resources.DistributionNotFound as e:
     available = False
     _import_error = e
 
