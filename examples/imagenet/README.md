@@ -1,9 +1,5 @@
 # Large Scale ConvNets
 
-## Requirements
-
-- OpenCV 2.4
-
 ## Description
 
 This is an experimental example of learning from the ILSVRC2012 classification dataset.
