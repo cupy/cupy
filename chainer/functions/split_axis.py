@@ -80,7 +80,7 @@ def split_axis(x, indices_or_sections, axis):
 
     Args:
         x (tuple of Variables): Variables to be split.
-        indices_or_sections (int or 1-Darray): If this argument is an integer,
+        indices_or_sections (int or 1-D array): If this argument is an integer,
             N, the array will be divided into N equal arrays along axis.
             If it is a 1-D array of sorted integers, the entries
             indicate where along which axis the array is split.
