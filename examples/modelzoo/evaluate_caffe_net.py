@@ -13,8 +13,8 @@ import argparse
 import os
 import sys
 
-import cv2
 import numpy as np
+from PIL import Image
 
 import chainer
 from chainer import cuda
@@ -92,8 +92,7 @@ count = 0
 accum_loss = 0
 accum_accuracy = 0
 for path, label in dataset:
-    # TODO(beam2d): Remove dependency on OpenCV
-    image = cv2.imread(path).transpose(2, 0, 1)
+    image = np.asarray(Image.open(path)).transpose(2, 0, 1)[::-1]
     image = image[:, start:stop, start:stop].astype(np.float32)
     image -= mean_image
 

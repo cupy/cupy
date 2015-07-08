@@ -2,8 +2,8 @@
 import argparse
 import sys
 
-import cv2
 import numpy
+from PIL import Image
 import six.moves.cPickle as pickle
 
 
@@ -17,8 +17,7 @@ sum_image = None
 count = 0
 for line in open(args.dataset):
     filepath = line.strip().split()[0]
-    image = cv2.imread(filepath)
-    image = image[:, :, [2, 1, 0]].transpose(2, 0, 1)
+    image = numpy.asarray(Image.open(filepath)).transpose(2, 0, 1)
     if sum_image is None:
         sum_image = numpy.ndarray(image.shape, dtype=numpy.float32)
         sum_image[:] = image
