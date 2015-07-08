@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -76,15 +77,18 @@ class TestNonparameterizedConvolution2D(unittest.TestCase):
         gradient_check.assert_allclose(gW, W.grad)
         gradient_check.assert_allclose(gb, b.grad)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.W, self.b, self.gy)
 
     @attr.cudnn
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             cuda.to_gpu(self.b), cuda.to_gpu(self.gy))
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu_im2col(self):
         self.use_cudnn = False
         self.test_backward_gpu()

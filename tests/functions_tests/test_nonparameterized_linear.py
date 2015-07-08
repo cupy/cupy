@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -32,11 +33,13 @@ class TestNonparameterizedLinear(unittest.TestCase):
         y = functions.linear(x, W, b)
         gradient_check.assert_allclose(y_expect, y.data)
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.W, self.b,
                            self.x.dot(self.W.T) + self.b)
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.W), cuda.to_gpu(self.b),
@@ -59,10 +62,12 @@ class TestNonparameterizedLinear(unittest.TestCase):
         gradient_check.assert_allclose(gW, W.grad)
         gradient_check.assert_allclose(gb, b.grad)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.W, self.b, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             cuda.to_gpu(self.b), cuda.to_gpu(self.gy))

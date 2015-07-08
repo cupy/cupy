@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -27,10 +28,12 @@ class TestSplitAxis0(unittest.TestCase):
         for yd, y in zip(ys_data, ys):
             gradient_check.assert_allclose(yd, y.data, atol=0, rtol=0)
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.ys, self.ys_section, self.axis)
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(
             cuda.to_gpu(self.x),
@@ -46,10 +49,12 @@ class TestSplitAxis0(unittest.TestCase):
 
         gradient_check.assert_allclose(x.data, x.grad, atol=0, rtol=0)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.ys_section, axis=self.axis)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x), self.ys_section, axis=self.axis)

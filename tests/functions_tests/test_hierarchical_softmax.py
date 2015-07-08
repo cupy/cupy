@@ -33,6 +33,7 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
 
         self.W = self.func.W.copy()
 
+    @condition.retry(3)
     def test_sum(self):
         x = numpy.array([[1.0, 2.0, 3.0]], numpy.float32)
         total = 0

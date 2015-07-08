@@ -8,6 +8,7 @@ from chainer import cuda
 import chainer.functions as F
 from chainer import gradient_check
 from chainer.testing import attr
+from chainer.testing import condition
 
 
 if cuda.available:
@@ -24,10 +25,12 @@ class _TestMatMul(unittest.TestCase):
             self.assertTrue(hasattr(y.data.gpudata, 'device'))
         gradient_check.assert_allclose(self.forward_answer, y.data)
 
+    @condition.retry(3)
     def test_matmul_forward_cpu(self):
         self.check_forward(self.x1, self.x2)
 
     @attr.gpu
+    @condition.retry(3)
     def test_matmul_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
 
@@ -45,10 +48,12 @@ class _TestMatMul(unittest.TestCase):
         gradient_check.assert_allclose(gx1, x1.grad, atol=atol)
         gradient_check.assert_allclose(gx2, x2.grad, atol=atol)
 
+    @condition.retry(3)
     def test_matmul_backward_cpu(self):
         self.check_backward(self.x1, self.x2, self.gy, atol=1e-2)
 
     @attr.gpu
+    @condition.retry(3)
     def test_matmul_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x1), cuda.to_gpu(self.x2),
