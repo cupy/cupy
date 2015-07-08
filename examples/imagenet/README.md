@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- OpenCV 2.4
+- Pillow
 
 ## Description
 

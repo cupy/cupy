@@ -17,8 +17,8 @@ import sys
 import threading
 import time
 
-import cv2
 import numpy as np
+from PIL import Image
 import six
 import six.moves.cPickle as pickle
 from six.moves import queue
@@ -101,7 +101,7 @@ cropwidth = 256 - model.insize
 
 
 def read_image(path, center=False, flip=False):
-    image = cv2.imread(path).transpose(2, 0, 1)
+    image = np.asarray(Image.open(path)).transpose(2, 0, 1)
     if center:
         top = left = cropwidth / 2
     else:
@@ -110,7 +110,7 @@ def read_image(path, center=False, flip=False):
     bottom = model.insize + top
     right = model.insize + left
 
-    image = image[[2, 1, 0], top:bottom, left:right].astype(np.float32)
+    image = image[:, top:bottom, left:right].astype(np.float32)
     image -= mean_image[:, top:bottom, left:right]
     image /= 255
     if flip and random.randint(0, 1) == 0:

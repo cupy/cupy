@@ -3,7 +3,7 @@
 ## Requirements
 
 - Caffe model support (Python 2.7+, Protocol Buffers)
-- OpenCV 2.4
+- Pillow
 
 ## Description
 
