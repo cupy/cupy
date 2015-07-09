@@ -236,6 +236,18 @@ class TestBinaryOpConstant(unittest.TestCase):
         y2.backward()
         self.assertEqual(x2.grad.dtype, numpy.float32)
 
+        x3 = chainer.Variable(x_data)
+        y3 = func(x3, numpy.int64(1))
+        self.assertEqual(y3.data.dtype, numpy.float32)
+        y3.backward()
+        self.assertEqual(x3.grad.dtype, numpy.float32)
+
+        x4 = chainer.Variable(x_data)
+        y4 = func(x4, numpy.float64(1.0))
+        self.assertEqual(y4.data.dtype, numpy.float32)
+        y4.backward()
+        self.assertEqual(x4.grad.dtype, numpy.float32)
+
     def test_add_constnt(self):
         self._test_constant(lambda x, y: x + y)
 
