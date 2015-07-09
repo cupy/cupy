@@ -40,12 +40,13 @@ import pkg_resources
 import six
 
 try:
-    pkg_resources.require([
+    _requires = [
         'pycuda>=2014.1',
         'scikits.cuda>=0.5.0b2,!=0.042',
         'Mako',
         'six>=1.9.0',
-    ])
+    ]
+    pkg_resources.require(_requires)
 
     import pycuda.cumath
     import pycuda.curandom
