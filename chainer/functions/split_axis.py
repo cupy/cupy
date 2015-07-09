@@ -1,7 +1,6 @@
 import collections
 
 import numpy
-import six
 
 from chainer import cuda
 from chainer import function
@@ -22,6 +21,8 @@ class SplitAxis(function.Function):
     """Function that splits multiple arrays towards the specified axis."""
 
     def __init__(self, indices_or_sections, axis):
+        if not isinstance(indices_or_sections, (int, collections.Iterable)):
+            raise TypeError('indices_or_sections must be integer or 1-D array')
         self.indices_or_sections = indices_or_sections
         self.axis = axis
 
@@ -33,29 +34,27 @@ class SplitAxis(function.Function):
         self.cdimx = xshape[self.axis]
         self.rdim = numpy.prod(xshape[self.axis + 1:])
 
-        indices = self.indices_or_sections
-        if isinstance(indices, collections.Iterable):
-            indices = list(indices)
-            indices.append(xshape[self.axis])
+        if isinstance(self.indices_or_sections, collections.Iterable):
+            ind = list(self.indices_or_sections)
+            ind.append(self.cdimx)
         else:
-            if xshape[self.axis] % indices:
+            sec = self.indices_or_sections
+            if self.cdimx % sec:
                 raise ValueError(
                     'array split does not result in an equal division')
-            indices = six.moves.range(
-                indices, xshape[self.axis] + indices, indices)
+            ind = numpy.arange(1, sec + 1) * (self.cdimx // sec)
         ys = []
         kernel = cuda.elementwise(
             _args, 'COPY(y[i] = x[idx])', 'split_fwd', preamble=_preamble)
-        bi = 0
-        for i in indices:
-            i = min(i, xshape[self.axis])
-            cdimy = max(0, i - bi)
+        prev_i = 0
+        for i in ind:
+            cdimy = max(0, min(i, self.cdimx) - prev_i)
             s = list(xshape)
             s[self.axis] = cdimy
             y = cuda.empty(s, dtype=x[0].dtype)
             if cdimy != 0:
-                kernel(y, x[0], cdimy, self.cdimx, self.rdim, bi)
-            bi = i
+                kernel(y, x[0], cdimy, self.cdimx, self.rdim, prev_i)
+            prev_i = i
             ys.append(y)
         return tuple(ys)
 
@@ -80,7 +79,7 @@ def split_axis(x, indices_or_sections, axis):
 
     Args:
         x (tuple of Variables): Variables to be split.
-        indices_or_sections (int or 1-Darray): If this argument is an integer,
+        indices_or_sections (int or 1-D array): If this argument is an integer,
             N, the array will be divided into N equal arrays along axis.
             If it is a 1-D array of sorted integers, the entries
             indicate where along which axis the array is split.

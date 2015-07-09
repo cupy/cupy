@@ -71,3 +71,12 @@ class TestSplitAxis2(TestSplitAxis0):
         self.ys = [self.x[:, :3], self.x[:, 3:6], self.x[:, 6:]]
         self.ys_section = 3
         self.axis = 1
+
+
+class TestSplitAxis3(TestSplitAxis0):
+
+    def setUp(self):
+        self.x = numpy.arange(36, dtype=numpy.float32).reshape(2, 6, 3)
+        self.ys = [self.x[:, :2], self.x[:, 2:4], self.x[:, 4:]]
+        self.ys_section = 3
+        self.axis = 1
