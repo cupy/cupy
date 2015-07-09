@@ -27,17 +27,6 @@ class SplitAxis(function.Function):
         self.axis = axis
 
     def forward_cpu(self, x):
-        if isinstance(self.indices_or_sections, collections.Iterable):
-            cdimx = x[0].shape[self.axis]
-            ind = list(self.indices_or_sections)
-            ind.append(cdimx)
-            prev_i = 0
-            for i in ind:
-                cdimy = max(0, min(i, cdimx) - prev_i)
-                if cdimy == 0:
-                    raise ValueError('Not support if shape contains 0')
-                prev_i = i
-
         return tuple(numpy.split(x[0], self.indices_or_sections, self.axis))
 
     def forward_gpu(self, x):
@@ -63,9 +52,8 @@ class SplitAxis(function.Function):
             s = list(xshape)
             s[self.axis] = cdimy
             y = cuda.empty(s, dtype=x[0].dtype)
-            if cdimy == 0:
-                raise ValueError('Not support if shape contains 0')
-            kernel(y, x[0], cdimy, self.cdimx, self.rdim, prev_i)
+            if cdimy != 0:
+                kernel(y, x[0], cdimy, self.cdimx, self.rdim, prev_i)
             prev_i = i
             ys.append(y)
         return tuple(ys)
