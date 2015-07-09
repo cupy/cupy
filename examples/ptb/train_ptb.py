@@ -114,7 +114,7 @@ epoch = 0
 start_at = time.time()
 cur_at = start_at
 state = make_initial_state()
-accum_loss = chainer.Variable(mod.zeros(()))
+accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
 print('going to train {} iterations'.format(jump * n_epoch))
 for i in six.moves.range(jump * n_epoch):
     x_batch = np.array([train_data[(jump * j + i) % whole_len]
@@ -129,7 +129,7 @@ for i in six.moves.range(jump * n_epoch):
         optimizer.zero_grads()
         accum_loss.backward()
         accum_loss.unchain_backward()  # truncate
-        accum_loss = chainer.Variable(mod.zeros(()))
+        accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
 
         optimizer.clip_grads(grad_clip)
         optimizer.update()
