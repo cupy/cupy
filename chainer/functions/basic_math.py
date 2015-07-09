@@ -27,7 +27,7 @@ def _convert_value_to_string(value):
 
 
 def _force_type(dtype, value):
-    if isinstance(value, (int, float)):
+    if numpy.isscalar(value):
         return dtype.type(value)
     else:
         return value
