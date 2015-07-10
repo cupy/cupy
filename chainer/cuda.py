@@ -36,9 +36,18 @@ import atexit
 import os
 
 import numpy
+import pkg_resources
 import six
 
 try:
+    _requires = [
+        'pycuda>=2014.1',
+        'scikits.cuda>=0.5.0b2,!=0.042',
+        'Mako',
+        'six>=1.9.0',
+    ]
+    pkg_resources.require(_requires)
+
     import pycuda.cumath
     import pycuda.curandom
     import pycuda.driver as drv
@@ -58,9 +67,9 @@ try:
     cumisc = scikits.cuda.misc
     cutools = pycuda.tools
     gpuarray = pycuda.gpuarray
-except ImportError as e:
+except pkg_resources.ResolutionError as e:
     available = False
-    _import_error = e
+    _resolution_error = e
 
 # ------------------------------------------------------------------------------
 # Basic types
@@ -131,10 +140,20 @@ def init(device=None):
     global _contexts, _cublas_handles, _generators, _pid, _pools
 
     if not available:
-        global _import_error
-        raise RuntimeError(
-            'CUDA environment is not correctly set up. ' +
-            'The original import error said: ' + str(_import_error))
+        global _resolution_error
+        msg = '''CUDA environment is not correctly set up.
+Use `pip install -U chainer-cuda-deps` to install libraries.
+'''
+
+        # Note that error message depends on its type
+        if isinstance(_resolution_error, pkg_resources.DistributionNotFound):
+            msg += 'Required package is not found: ' + str(_resolution_error)
+        elif isinstance(_resolution_error, pkg_resources.VersionConflict):
+            msg += 'Version conflict: ' + str(_resolution_error)
+        else:
+            msg += 'Unknwon error: ' + str(_resolution_error)
+
+        raise RuntimeError(msg)
 
     pid = os.getpid()
     if _pid == pid:  # already initialized
