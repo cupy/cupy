@@ -19,7 +19,7 @@ def get_ptr(x):
 
 class Auto(object):
 
-    """Object to be destoryed automatically."""
+    """Object to be destroyed automatically."""
 
     def __init__(self, value, destroyer):
         self.value = value
