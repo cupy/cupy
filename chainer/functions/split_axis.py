@@ -92,12 +92,19 @@ def split_axis(x, indices_or_sections, axis):
         x (tuple of Variables): Variables to be split.
         indices_or_sections (int or 1-D array): If this argument is an integer,
             N, the array will be divided into N equal arrays along axis.
-            If it is a 1-D array of sorted integers, the entries
-            indicate where along which axis the array is split.
-        axis (int): Axis that the input arrays are split along.
+            If it is a 1-D array of sorted integers, it
+            indicates the positions where the array is split.
+        axis (int): Axis that the input array is split along.
 
     Returns:
-        ~chainer.Variable: Output variable.
+        ``tuple`` or ``Variable``: Tuple of :class:`~chainer.Variable` objects
+             if the number of outputs is more than 1 or
+             :class:`~chainer.Variable` otherwise.
+
+    .. note::
+        This function raises ``ValueError`` if at least
+        one of the outputs is splitted to zero-size
+        (i.e. `axis`-th value of its shape is zero).
 
     """
     return SplitAxis(indices_or_sections, axis)(x)
