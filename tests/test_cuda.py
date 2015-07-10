@@ -10,7 +10,7 @@ if cuda.available:
 
 class TestCuda(unittest.TestCase):
 
-    def test_requires(self):
+    def _get_cuda_deps_requires(self):
         cwd = os.path.dirname(__file__)
 
         cuda_deps_path = os.path.join(cwd, '..', 'cuda_deps', 'setup.py')
@@ -28,5 +28,9 @@ class TestCuda(unittest.TestCase):
                     if 'install_requires' in line:
                         in_require = True
 
-            self.assertSetEqual(set(['chainer'] + cuda._requires),
-                                set(requires))
+        return requires
+
+    def test_requires(self):
+        requires = self._get_cuda_deps_requires()
+        self.assertSetEqual(set(['chainer'] + cuda._requires),
+                            set(requires))
