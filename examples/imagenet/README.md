@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Pillow
+- Pillow (Pillow requires an external library that corresponds to the image format)
 
 ## Description
 
