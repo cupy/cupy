@@ -220,6 +220,65 @@ class TestBinaryOpZeroDimension(BinaryOpTestBase, unittest.TestCase):
         return x1, x2, gy
 
 
+class TestBinaryOpConstant(unittest.TestCase):
+
+    def _test_constant(self, func):
+        x_data = numpy.array(1, numpy.float32)
+        x1 = chainer.Variable(x_data)
+        y1 = func(x1, 1)
+        self.assertEqual(y1.data.dtype, numpy.float32)
+        y1.backward()
+        self.assertEqual(x1.grad.dtype, numpy.float32)
+
+        x2 = chainer.Variable(x_data)
+        y2 = func(x2, 1.0)
+        self.assertEqual(y2.data.dtype, numpy.float32)
+        y2.backward()
+        self.assertEqual(x2.grad.dtype, numpy.float32)
+
+        x3 = chainer.Variable(x_data)
+        y3 = func(x3, numpy.int64(1))
+        self.assertEqual(y3.data.dtype, numpy.float32)
+        y3.backward()
+        self.assertEqual(x3.grad.dtype, numpy.float32)
+
+        x4 = chainer.Variable(x_data)
+        y4 = func(x4, numpy.float64(1.0))
+        self.assertEqual(y4.data.dtype, numpy.float32)
+        y4.backward()
+        self.assertEqual(x4.grad.dtype, numpy.float32)
+
+    def test_add_constnt(self):
+        self._test_constant(lambda x, y: x + y)
+
+    def test_radd_constnt(self):
+        self._test_constant(lambda x, y: y + x)
+
+    def test_sub_constnt(self):
+        self._test_constant(lambda x, y: x - y)
+
+    def test_rsub_constnt(self):
+        self._test_constant(lambda x, y: y - x)
+
+    def test_mul_constnt(self):
+        self._test_constant(lambda x, y: x * y)
+
+    def test_rmul_constnt(self):
+        self._test_constant(lambda x, y: y * x)
+
+    def test_div_constnt(self):
+        self._test_constant(lambda x, y: x / y)
+
+    def test_rdiv_constnt(self):
+        self._test_constant(lambda x, y: y / x)
+
+    def test_pow_constnt(self):
+        self._test_constant(lambda x, y: x ** y)
+
+    def test_rpow_constnt(self):
+        self._test_constant(lambda x, y: y ** x)
+
+
 class VariableConstantOpTestBase(object):
 
     def make_date(self):
