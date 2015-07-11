@@ -4,7 +4,6 @@ import numpy
 
 from chainer import cuda
 
-
 # TODO(delta2323): Make it public function and move it to common directory.
 
 
@@ -39,16 +38,26 @@ class Optimizer(object):
         """Prepares states for all given parameter/gradient pairs.
 
         Args:
-            params_grads: Tuple (pair) of two tuples. The first element is a
-                tuple of parameter arrays, and the second is a tuple of
-                corresponding gradient arrays.
-                Return value of :meth:`FunctionSet.collect_parameters` method
-                can be used.
-
+            params_grads: FunctionSet or tuple (pair) of two tuples.
+                For tuple, the first element is a tuple of parameter arrays,
+                and the second is a tuple of corresponding gradient arrays.
         """
+        if hasattr(params_grads, 'parameters') and \
+           hasattr(params_grads, 'gradients'):
+            params = getattr(params_grads, 'parameters')
+            grads = getattr(params_grads, 'gradients')
+
+        elif isinstance(params_grads, tuple):
+            params = params_grads[0]
+            grads = params_grads[1]
+        else:
+            msg = ("'params_grads' must have 'parameters' and 'gradients'"
+                   " attributes or tuples, {0} is given")
+            raise ValueError(msg)
+
         self.t = 0
         self.tuples = []
-        for p, g in zip(*params_grads):
+        for p, g in zip(params, grads):
             with cuda.using_device(p):
                 state = self.init_state(p, g)
                 self.tuples.append((p, g, state))

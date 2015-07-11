@@ -129,9 +129,9 @@ Make sure to give parameters and gradients of the GPU version to the optimizer. 
       l2 = F.Linear(100, 100),
       l3 = F.Linear(100,  10),
   ).to_gpu()
-  
+
   optimizer = optimizers.SGD()
-  optimizer.setup(model.collect_parameters())
+  optimizer.setup(model)
 
 Note that this method returns the function set itself.
 The device specifier can be omitted, in which case it uses the current device.
@@ -145,7 +145,7 @@ Then, all we have to do is transferring each minibatch to the GPU::
       for i in xrange(0, 60000, batchsize):
           x_batch = cuda.to_gpu(x_train[indexes[i : i + batchsize]])
           y_batch = cuda.to_gpu(y_train[indexes[i : i + batchsize]])
-          
+
           optimizer.zero_grads()
           loss, accuracy = forward(x_batch, y_batch)
           loss.backward()
@@ -204,29 +204,29 @@ Now we can define the network architecture that we have shown in the diagram::
       x_0 = Variable(cuda.to_gpu(x_data, 0))
       x_1 = Variable(cuda.to_gpu(x_data, 1))
       t   = Variable(cuda.to_gpu(y_data, 0))
-  
+
       h1_0 = F.relu(model.gpu0.l1(x_0))
       h1_1 = F.relu(model.gpu1.l1(x_1))
-  
+
       h2_0 = F.relu(model.gpu0.l2(h1_0))
       h2_1 = F.relu(model.gpu1.l2(h1_1))
-  
+
       h3_0 = F.relu(model.gpu0.l3(h2_0))
       h3_1 = F.relu(model.gpu1.l3(h2_1))
-  
+
       # Synchronize
       h3_0 += F.copy(h3_1, 0)
       h3_1  = F.copy(h3_0, 1)
-  
+
       h4_0 = F.relu(model.gpu0.l4(h3_0))
       h4_1 = F.relu(model.gpu1.l4(h3_1))
-  
+
       h5_0 = F.relu(model.gpu0.l5(h4_0))
       h5_1 = F.relu(model.gpu1.l5(h4_1))
-  
+
       h6_0 = F.relu(model.gpu0.l6(h5_0))
       h6_1 = F.relu(model.gpu1.l6(h5_1))
-  
+
       # Synchronize
       y = h6_0 + F.copy(h6_1, 0)
       return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
@@ -273,7 +273,7 @@ This is done by using :func:`copy.deepcopy` and :meth:`FunctionSet.to_gpu` metho
 Then, set up optimizer as::
 
   optimizer = optimizers.SGD()
-  optimizer.setup(model_0.collect_parameters())
+  optimizer.setup(model_0)
 
 Here we use the first copy of the model as *the master model*.
 Before its update, gradients of ``model_1`` must be aggregated to those of ``model_0``.
@@ -287,7 +287,7 @@ Forward function is almost same as the original example::
       h2 = F.relu(model.l2(h1))
       y = model.l3(h2)
       return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
-  
+
 The only difference is that ``forward`` accepts ``model`` as an argument.
 We can feed it with a model and arrays on an appropriate device.
 Then, we can write a data-parallel learning loop as follows::
@@ -299,24 +299,24 @@ Then, we can write a data-parallel learning loop as follows::
       for i in xrange(0, 60000, batchsize):
           x_batch = x_train[indexes[i : i + batchsize]]
           y_batch = y_train[indexes[i : i + batchsize]]
-          
+
           optimizer.zero_grads()
-          
+
           loss_0, accuracy_0 = forward(
               cuda.to_gpu(x_batch[:batchsize//2], 0),
               cuda.to_gpu(y_batch[:batchsize//2], 0),
               model_0)
           loss_0.backward()
-          
+
           loss_1, accuracy_1 = forward(
               cuda.to_gpu(x_batch[batchsize//2:], 1),
               cuda.to_gpu(y_batch[batchsize//2:], 1),
               model_1)
           loss_1.backward()
-          
+
           optimizer.acumulate_grads(model_1.gradients)
           optimizer.update()
-          
+
           model_1.copy_parameters_from(model_0.parameters)
 
 One half of the minibatch is forwarded to GPU 0, the other half to GPU 1.

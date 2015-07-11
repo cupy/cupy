@@ -60,7 +60,7 @@ def forward(x_data, y_data, train=True):
 
 # Setup optimizer
 optimizer = optimizers.Adam()
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 # Learning loop
 for epoch in six.moves.range(1, n_epoch + 1):
