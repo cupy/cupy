@@ -10,6 +10,7 @@ This is the `Chainer <http://chainer.org>`_ documentation.
    tutorial/index
    reference/index
    contribution
+   tips
 
 
 Indices and tables
