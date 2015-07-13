@@ -33,11 +33,12 @@ You can also install Chainer from the source code:
 python setup.py install
 ```
 
-If you want to enable CUDA, first you have to install CUDA and set the environment variable `PATH` to enable `nvcc` command.
-For example, if you are using Ubuntu and CUDA is installed by the official distribution, then it exists at `/usr/local/cuda/bin`, so you have to add this path to the `PATH` environment.
-This is done by adding the following line to `.bashrc` or `.zshrc` (choose which you are using):
+If you want to enable CUDA, first you have to install CUDA and set the environment variable `PATH` and `LD_LIBRARY_PATH` for CUDA executables and libraries.
+For example, if you are using Ubuntu and CUDA is installed by the official distribution, then CUDA is installed at `/usr/local/cuda`.
+In this case, you have to add the following line to `.bashrc` or `.zshrc` (choose which you are using):
 ```
 export PATH=/usr/local/cuda/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ```
 Do not forget to restart your terminal session (or `source` it) to enable this change.
 Then, install CUDA-related dependent packages via pip:
