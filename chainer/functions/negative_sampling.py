@@ -3,6 +3,7 @@ import six
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 from chainer.utils import walker_alias
 
 
@@ -79,6 +80,25 @@ class NegativeSampling(function.Function):
             )(t, samples, self.sample_size + 1)
 
         self.samples = samples
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        x_type, t_type = in_types
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim == 2,
+            t_type.dtype == numpy.int32,
+            t_type.ndim == 1,
+            x_type.shape[0] == t_type.shape[0]
+        )
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(
+            out_types.size() == 1,
+            out_types[0].dtype == numpy.float32,
+            out_types[0].ndim == 0
+        )
 
     def to_gpu(self, device=None):
         function.Function.to_gpu(self, device)
