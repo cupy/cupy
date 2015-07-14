@@ -169,7 +169,6 @@ class NegativeSampling(function.Function):
             w = self.W[k]
             f = w.dot(ix)
 
-            # g == -y * gloss / (1 + exp(yf))
             f[0] *= -1
             g = gloss / (1 + numpy.exp(-f))
             g[0] *= -1
