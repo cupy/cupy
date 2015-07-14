@@ -193,7 +193,7 @@ def build_computational_graph(outputs, remove_split=True):
                 add_cand(next_cand)
                 continue
             for input_ in cand.inputs:
-                if input_ != cand and (input_, cand) not in seen_edges:
+                if input_ is not cand and (input_, cand) not in seen_edges:
                     creator = input_.creator
                     if remove_split and \
                        creator is not None and \
