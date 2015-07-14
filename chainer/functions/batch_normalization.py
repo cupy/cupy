@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 def _kernel_with_I(args, expr, name):
@@ -133,13 +134,20 @@ class BatchNormalization(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        x_type, = type_check
+        x_type, = in_types
 
-        size = type_check.Variable(self.size, 'size')
+        if isinstance(self.size, tuple):
+            feature_shape = type_check.Variable(self.size, 'feature_shape')
+            feature_ndim = len(self.size)
+        else:
+            feature_shape = type_check.Variable((self.size,), 'feature_shape')
+            feature_ndim = 1
+
         type_check.expect(
             x_type.dtype == numpy.float32,
-            x_type.ndim >= size + 1,
-            x_type[1:len(size)+1] == size
+            x_type.ndim >= type_check.Variable(
+                feature_ndim, 'feature_ndim') + 1,
+            x_type.shape[1:feature_ndim+1] == feature_shape
         )
 
     def check_type_backward(self, in_types, out_types):
