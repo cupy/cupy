@@ -29,8 +29,8 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
         tree = ((0, 1), ((2, 3), 4))
         self.func = functions.BinaryHierarchicalSoftmax(3, tree)
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.t = numpy.array([0, 2])
-        self.gy = numpy.random.uniform(-1, 1, (1, 1)).astype(numpy.float32)
+        self.t = numpy.array([0, 2]).astype(numpy.int32)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
 
         self.W = self.func.W.copy()
 
