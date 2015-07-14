@@ -41,7 +41,7 @@ def _should_fail(self, f):
     try:
         f(self.unit_test)
         self.fail(
-            'AssertionError is expected to be raised, but none is raises')
+            'AssertionError is expected to be raised, but none is raised')
     except AssertionError as e:
         # check if the detail is included in the error object
         self.assertIn('first error message:', str(e))
