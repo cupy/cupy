@@ -43,15 +43,17 @@ def repeat_with_success_at_least(times, min_success):
             assert isinstance(instance, unittest.TestCase)
             success_counter = 0
             failure_counter = 0
-            failures = []
+            results = []
 
             def fail():
                 msg = '\nFail: {0}, Success: {1}'.format(
                     failure_counter, success_counter)
-                if len(failures) > 0:
-                    first = failures[0]
-                    err_msg = '\n'.join(fail[1] for fail in first)
-                    msg += '\n\nThe first error message:\n' + err_msg
+                if len(results) > 0:
+                    first = results[0]
+                    errs = first.failures + first.errors
+                    if len(errs) > 0:
+                        err_msg = '\n'.join(fail[1] for fail in errs)
+                        msg += '\n\nThe first error message:\n' + err_msg
                 instance.fail(msg)
 
             for _ in six.moves.range(times):
@@ -66,7 +68,7 @@ def repeat_with_success_at_least(times, min_success):
                 if result.wasSuccessful():
                     success_counter += 1
                 else:
-                    failures.append(result.failures)
+                    results.append(result)
                     failure_counter += 1
                 if success_counter >= min_success:
                     instance.assertTrue(True)
