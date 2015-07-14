@@ -91,6 +91,7 @@ class BatchNormalization(function.Function):
     gradient_names = ('ggamma', 'gbeta')
 
     def __init__(self, size, decay=0.9, eps=1e-5):
+        self.size = size
         size = numpy.prod(size)
 
         self.avg_mean = numpy.zeros((1, size, 1), dtype=numpy.float32)
@@ -129,6 +130,28 @@ class BatchNormalization(function.Function):
         self.use_batch_mean = not test or finetune
         self.is_finetune = finetune
         return function.Function.__call__(self, x)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = type_check
+
+        size = type_check.Variable(self.size, 'size')
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim >= size + 1,
+            x_type[1:len(size)+1] == size
+        )
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(out_types.size() == 1)
+        x_type, = out_types
+        y_type, = out_types
+
+        type_check.expect(
+            x_type.dtype == y_type.dtype,
+            x_type.ndim == y_type.ndim,
+            x_type.shape == y_type.shape
+        )
 
     def start_finetuning(self):
         self.N[0] = numpy.array(0)
