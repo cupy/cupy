@@ -3,6 +3,8 @@ import re
 import unittest
 
 from chainer import cuda
+from chainer import testing
+
 
 if cuda.available:
     cuda.init()
@@ -34,3 +36,6 @@ class TestCuda(unittest.TestCase):
         requires = self._get_cuda_deps_requires()
         self.assertSetEqual(set(['chainer'] + cuda._requires),
                             set(requires))
+
+
+testing.run_module(__name__, __file__)

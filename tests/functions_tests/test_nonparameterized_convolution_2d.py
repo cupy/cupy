@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -92,3 +93,6 @@ class TestNonparameterizedConvolution2D(unittest.TestCase):
     def test_backward_gpu_im2col(self):
         self.use_cudnn = False
         self.test_backward_gpu()
+
+
+testing.run_module(__name__, __file__)

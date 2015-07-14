@@ -7,6 +7,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import conv
@@ -119,3 +120,6 @@ class TestConvolution2D(unittest.TestCase):
     def test_pickling_gpu(self):
         self.func.to_gpu()
         self.check_pickling(cuda.to_gpu(self.x))
+
+
+testing.run_module(__name__, __file__)

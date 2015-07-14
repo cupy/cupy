@@ -6,6 +6,7 @@ import six
 import chainer
 from chainer import cuda
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -44,3 +45,6 @@ class TestAccuracy(unittest.TestCase):
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
+
+
+testing.run_module(__name__, __file__)

@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -155,3 +156,6 @@ class TestLSTM(unittest.TestCase):
     def test_flat_no_gh_backward_gpu(self):
         self.flat()
         self.test_no_gh_backward_gpu()
+
+
+testing.run_module(__name__, __file__)

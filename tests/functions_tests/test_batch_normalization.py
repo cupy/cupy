@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -103,3 +104,6 @@ class TestBatchNormalization2D(TestBatchNormalization):
                                       (7, 3, 2, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1,
                                        (7, 3, 2, 2)).astype(numpy.float32)
+
+
+testing.run_module(__name__, __file__)
