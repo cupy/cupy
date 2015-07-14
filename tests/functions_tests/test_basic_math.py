@@ -904,9 +904,9 @@ class TestNotSupportOperation(unittest.TestCase):
         self.x = chainer.Variable(numpy.zeros(10))
         self.y = chainer.Variable(numpy.zeros(10))
 
-    #def test_lt(self):
-    #    with self.assertRaises(NotImplementedError):
-    #        self.x < self.y
+    def test_lt(self):
+        with self.assertRaises(NotImplementedError):
+            self.x < self.y
 
     def test_le(self):
         with self.assertRaises(NotImplementedError):
