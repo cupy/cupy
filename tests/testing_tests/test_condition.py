@@ -40,7 +40,8 @@ class MockUnitTest(unittest.TestCase):
 def _should_fail(self, f):
     try:
         f(self.unit_test)
-        self.fail('AssertionError is expected to be raised, but none is raises')
+        self.fail(
+            'AssertionError is expected to be raised, but none is raises')
     except AssertionError as e:
         # check if the detail is included in the error object
         self.assertIn('first error message:', str(e))
