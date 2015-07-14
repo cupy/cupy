@@ -18,8 +18,8 @@ class TestNegativeSampling(unittest.TestCase):
     def setUp(self):
         self.func = chainer.functions.NegativeSampling(3, [10, 5, 2, 5, 2], 2)
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.t = numpy.array([0, 2])
-        self.gy = numpy.random.uniform(-1, 1, (1, 1)).astype(numpy.float32)
+        self.t = numpy.array([0, 2]).astype(numpy.int32)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
 
     def check_backward(self, x_data, t_data, y_grad, use_cudnn=True):
         x = chainer.Variable(x_data)
