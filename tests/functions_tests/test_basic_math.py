@@ -893,5 +893,9 @@ class TestNegativePow(unittest.TestCase):
     def test_cpu(self):
         self.check_backward(self.x, self.gy)
 
+    @attr.gpu
+    def test_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
 
 testing.run_module(__name__, __file__)
