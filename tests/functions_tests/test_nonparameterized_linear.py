@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -71,3 +72,6 @@ class TestNonparameterizedLinear(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             cuda.to_gpu(self.b), cuda.to_gpu(self.gy))
+
+
+testing.run_module(__name__, __file__)

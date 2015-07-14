@@ -1,5 +1,6 @@
 import unittest
 
+from chainer import testing
 from chainer.testing import condition
 
 
@@ -143,3 +144,6 @@ class TestRetry(unittest.TestCase):
         self.assertGreater(
             self.unit_test.probabilistic_case_success_counter, 0)
         self.assertLess(self.unit_test.probabilistic_case_failure_counter, 10)
+
+
+testing.run_module(__name__, __file__)

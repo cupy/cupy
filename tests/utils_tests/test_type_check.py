@@ -3,6 +3,7 @@ import unittest
 
 import numpy
 
+from chainer import testing
 from chainer.utils import type_check as T
 
 
@@ -307,3 +308,6 @@ class TestLazyGetItem(unittest.TestCase):
             self.t.x.eval()
         with self.assertRaises(TypeError):
             self.t().eval()
+
+
+testing.run_module(__name__, __file__)

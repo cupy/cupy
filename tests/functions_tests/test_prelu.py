@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -100,3 +101,6 @@ class TestPReLUMulti(TestPReLUSingle):
                 y_expect[i] *= self.W[i[1]]
 
         gradient_check.assert_allclose(y_expect, y.data)
+
+
+testing.run_module(__name__, __file__)

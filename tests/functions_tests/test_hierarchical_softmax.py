@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import condition
 
 
@@ -63,3 +64,6 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
     @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t, self.gy)
+
+
+testing.run_module(__name__, __file__)
