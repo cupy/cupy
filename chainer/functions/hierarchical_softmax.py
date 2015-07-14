@@ -150,7 +150,7 @@ class BinaryHierarchicalSoftmax(function.Function):
         gloss, = loss
         gx = numpy.empty_like(x)
         for i, (ix, it) in enumerate(six.moves.zip(x, t)):
-            gx[i] = self._backward_cpu_one(ix, it, gloss[0])
+            gx[i] = self._backward_cpu_one(ix, it, gloss)
         return gx, None
 
     def _backward_cpu_one(self, x, t, gloss):
