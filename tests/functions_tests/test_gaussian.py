@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer import testing
+from chainer.testing import attr
 from chainer.testing import condition
 
 
@@ -40,6 +41,7 @@ class TestGaussian(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.m, self.v, self.gy)
 
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.m),
