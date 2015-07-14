@@ -163,7 +163,6 @@ class NegativeSampling(function.Function):
         x, t = inputs
         gloss, = grads
 
-        gloss = numpy.sum(gloss)
         gx = numpy.zeros_like(x)
 
         for i, (ix, k) in enumerate(six.moves.zip(x, self.samples)):
