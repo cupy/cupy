@@ -2,6 +2,7 @@ import numpy
 import six
 
 from chainer import function
+from chainer.utils import type_check
 
 
 class TreeParser(object):
@@ -109,11 +110,27 @@ class BinaryHierarchicalSoftmax(function.Function):
             -1, 1, (parser.size(), in_size)).astype(numpy.float32)
         self.gW = numpy.zeros(self.W.shape, numpy.float32)
 
+    def type_check_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        x_type, t_type = in_types
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim == 2,
+            t_type.dtype == numpy.float32,
+            t_type.ndim == 2,
+            x_type.shape[0] == t_type.shape[0]
+        )
+
+    def type_check_backward(self, in_types, out_types):
+        type_check.expect(
+            out_types.size() == 1,
+            out_types.dtype == numpy.float32,
+            out_types.shape[0] == type_check.Variable(1, 'loss')
+        )
+
     def forward_cpu(self, args):
         x, t = args
-        assert x.ndim == 2 and x.dtype.kind == 'f'
-        assert t.ndim == 1 and t.dtype.kind == 'i'
-        assert len(x) == len(t)
 
         loss = numpy.float32(0.0)
         for ix, it in six.moves.zip(x, t):
