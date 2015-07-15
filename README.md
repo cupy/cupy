@@ -11,7 +11,7 @@ Requirements for some features:
 - CUDA support
   - CUDA 6.5+
   - PyCUDA
-  - scikits.cuda (pip install scikits.cuda>=0.5.0b2,!=0.042)
+  - scikits.cuda (pip install scikit-cuda>=0.5.0)
   - Mako (depending through PyCUDA)
 - CuDNN support
   - CuDNN v2
