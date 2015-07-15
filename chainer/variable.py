@@ -217,4 +217,7 @@ class Variable(object):
     def __nonzero__(self):
         raise NotImplementedError()
 
+    def __bool__(self):
+        raise NotImplementedError()
+
     __array_priority__ = 200
