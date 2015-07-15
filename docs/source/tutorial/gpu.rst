@@ -38,7 +38,7 @@ At the same time, Chainer's wrapper functions and classes make it easy to handle
 
 .. note::
 
-   Chainer also uses `scikits.cuda <http://scikit-cuda.readthedocs.org/en/latest/>`_ for a wrapper of CUBLAS, and some functions use `CuDNN v2 <https://developer.nvidia.com/cuDNN>`_ if available.
+   Chainer also uses `scikit-cuda <http://scikit-cuda.readthedocs.org/en/latest/>`_ for a wrapper of CUBLAS, and some functions use `CuDNN v2 <https://developer.nvidia.com/cuDNN>`_ if available.
    We omit their usage in this tutorial.
 
 .. note::

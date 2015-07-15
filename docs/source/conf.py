@@ -313,6 +313,6 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/2/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'pycuda': ('http://documen.tician.de/pycuda/', None),
-    'scikits.cuda': ('http://scikit-cuda.readthedocs.org/en/latest/', None),
+    'skcuda': ('http://scikit-cuda.readthedocs.org/en/latest/', None),
     'sklearn': ('http://scikit-learn.org/stable/', None),
 }
