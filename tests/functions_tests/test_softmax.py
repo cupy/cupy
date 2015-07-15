@@ -19,8 +19,8 @@ if cuda.available:
 class TestSoftmax(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -29,7 +29,8 @@ class TestSoftmax(unittest.TestCase):
 
         y_expect = numpy.exp(self.x)
         for i in six.moves.range(y_expect.shape[0]):
-            y_expect[i] /= y_expect[i].sum()
+            for k in six.moves.range(y_expect.shape[2]):
+                y_expect[i, :, k] /= y_expect[i, :, k].sum()
 
         gradient_check.assert_allclose(y_expect, y.data)
 
@@ -44,7 +45,7 @@ class TestSoftmax(unittest.TestCase):
 
     @attr.gpu
     @condition.retry(3)
-    def test_forwrad_gpu_no_cudnn(self):
+    def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), False)
 
     def check_backward(self, x_data, gy_data, use_cudnn=True):

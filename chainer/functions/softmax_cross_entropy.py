@@ -20,11 +20,11 @@ class SoftmaxCrossEntropy(function.Function):
 
         type_check.expect(
             x_type.dtype == numpy.float32,
-            x_type.ndim == 2,
             t_type.dtype == numpy.int32,
-            t_type.ndim == 1,
+            t_type.ndim == x_type.ndim - 1,
 
             x_type.shape[0] == t_type.shape[0],
+            x_type.shape[2:] == t_type.shape[1:],
         )
 
     def check_type_backward(self, in_types, out_types):
@@ -38,38 +38,56 @@ class SoftmaxCrossEntropy(function.Function):
     def forward_cpu(self, inputs):
         x, t = inputs
         self.y, = softmax.Softmax().forward_cpu((x,))
-        p = self.y[six.moves.range(len(t)), t]
-        y = -numpy.log(p).sum(keepdims=True) / t.size
+        yd = self.y.transpose(
+            [0] + list(six.moves.range(2, self.y.ndim)) + [1])
+        yd = yd.reshape(numpy.prod(yd.shape[:-1]), -1)
+        p = yd[six.moves.range(t.size), t.flat]
+        y = -numpy.log(p).sum(keepdims=True) / t.shape[0]
         return y.reshape(()),
 
     def forward_gpu(self, inputs):
         x, t = inputs
         self.y, = softmax.Softmax(self.use_cudnn).forward_gpu((x,))
+        n_units = int(numpy.prod(self.y.shape[2:]))
+        # the map_expr is equivalent to the pseudo code -log(y[n, c, m]),
+        # where n = i / n_units, c = t[i], and m = i % n_units
         ret = cuda.reduce(
-            'int* t, float* y, int n_channel', '-log(y[i * n_channel + t[i]])',
+            'int* t, float* y, int n_channel, int n_units',
+            '-log(y[n_units * ((i / n_units) * n_channel + t[i])'
+            '       + (i % n_units)])',
             'a+b', '0', 'crossent_fwd', numpy.float32
-        )(t, self.y, self.y.shape[1])
-        ret /= t.size
+        )(t, self.y, self.y.shape[1], n_units)
+        ret /= t.shape[0]
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        gx = self.y.copy()
-        gx[six.moves.range(len(t)), t] -= 1
-        gx *= gloss / t.size
+        n_units = int(numpy.prod(self.y.shape[2:]))
+        gx = self.y.copy().reshape(self.y.shape[0], self.y.shape[1], -1)
+        fst_index = numpy.arange(t.size) // n_units
+        trd_index = numpy.arange(t.size) % n_units
+        gx[fst_index, t.flat, trd_index] -= 1
+        gx = (gloss / t.shape[0]) * gx.reshape(self.y.shape)
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
+        n_units = int(numpy.prod(self.y.shape[2:]))
         gx = cuda.empty_like(self.y)
-        coeff = gloss / t.size
+        coeff = gloss / t.shape[0]
         cuda.elementwise(
             '''
                float* gx, const float* y, const int* t, const float* coeff,
-               int n_channel
+               int n_channel, int n_units
             ''',
-            'gx[i] = *coeff * (y[i] - ((i % n_channel) == t[i / n_channel]))',
-            'softmax_crossent_bwd')(gx, self.y, t, coeff, self.y.shape[1])
+            '''
+               const int n = i / (n_channel * n_units);
+               const int c = (i % (n_channel * n_units)) / n_units;
+               const int m = (i % (n_channel * n_units)) % n_units;
+               gx[i] = *coeff * (y[i] - (c == t[n * n_units + m]));
+            ''',
+            'softmax_crossent_bwd')(
+                gx, self.y, t, coeff, self.y.shape[1], n_units)
         return gx, None
 
 

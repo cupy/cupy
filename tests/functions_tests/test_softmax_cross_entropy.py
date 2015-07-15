@@ -20,8 +20,8 @@ if cuda.available:
 class TestSoftmaxCrossEntropy(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        self.t = numpy.random.randint(0, 3, (4,)).astype(numpy.int32)
+        self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
+        self.t = numpy.random.randint(0, 3, (4, 2)).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -33,9 +33,11 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
 
         # Compute expected value
         y = numpy.exp(self.x)
-        loss_expect = 0
+        loss_expect = 0.0
         for i in six.moves.range(y.shape[0]):
-            loss_expect -= math.log(y[i, self.t[i]] / y[i].sum())
+            for k in six.moves.range(y.shape[2]):
+                loss_expect -= math.log(
+                    y[i, self.t[i, k], k] / y[i, :, k].sum())
         loss_expect /= y.shape[0]
 
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
