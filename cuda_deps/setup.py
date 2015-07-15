@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='chainer-cuda-deps',
-    version='1.1.0',
+    version='1.1.0.1',
     description='Install dependent packages to use Chainer on CUDA',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
