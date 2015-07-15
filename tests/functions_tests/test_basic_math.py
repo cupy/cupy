@@ -912,10 +912,6 @@ class TestNotSupportOperation(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             self.x <= self.y
 
-    def test_eq(self):
-        with self.assertRaises(NotImplementedError):
-            self.x == self.y
-
     def test_ne(self):
         with self.assertRaises(NotImplementedError):
             self.x != self.y
