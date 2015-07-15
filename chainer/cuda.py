@@ -42,7 +42,7 @@ import six
 try:
     _requires = [
         'pycuda>=2014.1',
-        'scikits.cuda>=0.5.0b2,!=0.042',
+        'scikit-cuda>=0.5.0',
         'Mako',
         'six>=1.9.0',
     ]
