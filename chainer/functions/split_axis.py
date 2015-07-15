@@ -4,6 +4,8 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
+
 
 _args = 'float* y, float* x, int cdimy, int cdimx, int rdim, int coffset'
 _preamble = '''
@@ -25,6 +27,52 @@ class SplitAxis(function.Function):
             raise TypeError('indices_or_sections must be integer or 1-D array')
         self.indices_or_sections = indices_or_sections
         self.axis = axis
+
+    def check_type_forward(self, in_types):
+        type_check.expect(
+            in_types.size() == 1,
+            in_types[0].ndim >= self.axis
+        )
+
+        if isinstance(self.indices_or_sections, collections.Iterable):
+            max_index = type_check.Variable(
+                self.indices_or_sections[-1], 'max_index')
+            type_check.expect(in_types[0].shape[self.axis] >= max_index)
+        else:
+            sections = type_check.Variable(
+                self.indices_or_sections, 'sections')
+            type_check.expect(in_types[0].shape[self.axis] % sections == 0)
+
+    def check_type_backward(self, in_types, out_types):
+        if isinstance(self.indices_or_sections, collections.Iterable):
+            num_indices = type_check.Variable(
+                len(self.indices_or_sections), 'len(indices)')
+            output_size = num_indices + 1
+        else:
+            output_size = type_check.Variable(
+                self.indices_or_sections, 'sections')
+
+        type_check.expect(out_types.size() == output_size.eval())
+
+        for out_type in out_types:
+            type_check.expect(
+                out_type.ndim == in_types[0].ndim,
+                out_type.dtype == out_types[0].dtype
+            )
+
+        for out_type in out_types:
+            for i in xrange(in_types[0].ndim.eval()):
+                if i == self.axis:
+                    continue
+                type_check.expect(out_type.shape[i] == in_types[0].shape[i])
+
+        total_output_dim = sum([out_type.shape[self.axis].eval()
+                                for out_type in out_types])
+        type_check.expect(
+            type_check.Variable(
+                total_output_dim, 'sum(outputs[:][axis])'
+            ) == in_types[0].shape[self.axis]
+        )
 
     def forward_cpu(self, x):
         if isinstance(self.indices_or_sections, collections.Iterable):
