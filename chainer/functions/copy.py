@@ -14,8 +14,7 @@ class Copy(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(
-            in_types.size() == 1,
-            in_types[0].dtype == numpy.float32
+            in_types.size() == 1
         )
 
     def check_type_backward(self, in_types, out_types):
