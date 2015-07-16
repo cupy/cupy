@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 
 
@@ -80,3 +81,6 @@ class TestSplitAxis3(TestSplitAxis0):
         self.ys = [self.x[:, :2], self.x[:, 2:4], self.x[:, 4:]]
         self.ys_section = 3
         self.axis = 1
+
+
+testing.run_module(__name__, __file__)

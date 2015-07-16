@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -869,3 +870,6 @@ class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
         x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
         gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         return x, gy
+
+
+testing.run_module(__name__, __file__)

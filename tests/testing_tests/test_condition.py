@@ -1,5 +1,6 @@
 import unittest
 
+from chainer import testing
 from chainer.testing import condition
 
 
@@ -21,6 +22,9 @@ class MockUnitTest(unittest.TestCase):
         self.success_case_counter += 1
         self.assertTrue(True)
 
+    def error_case(self):
+        raise Exception()
+
     def probabilistic_case(self):
         self.probabilistic_case_counter += 1
         if self.probabilistic_case_counter % 2 == 0:
@@ -35,7 +39,13 @@ class MockUnitTest(unittest.TestCase):
 
 
 def _should_fail(self, f):
-    self.assertRaises(AssertionError, f, self.unit_test)
+    try:
+        f(self.unit_test)
+        self.fail(
+            'AssertionError is expected to be raised, but none is raised')
+    except AssertionError as e:
+        # check if the detail is included in the error object
+        self.assertIn('first error message:', str(e))
 
 
 def _should_pass(self, f):
@@ -60,6 +70,10 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
         f = self._decorate(MockUnitTest.failure_case, 10, 0)
         _should_pass(self, f)
         self.assertLessEqual(self.unit_test.failure_case_counter, 10)
+
+    def test_all_trials_error(self):
+        f = self._decorate(MockUnitTest.error_case, 10, 1)
+        _should_fail(self, f)
 
     def test_all_trials_succeed(self):
         f = self._decorate(MockUnitTest.success_case, 10, 10)
@@ -143,3 +157,6 @@ class TestRetry(unittest.TestCase):
         self.assertGreater(
             self.unit_test.probabilistic_case_success_counter, 0)
         self.assertLess(self.unit_test.probabilistic_case_failure_counter, 10)
+
+
+testing.run_module(__name__, __file__)

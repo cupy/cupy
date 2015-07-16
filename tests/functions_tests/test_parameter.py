@@ -4,6 +4,7 @@ import numpy
 
 from chainer import cuda
 from chainer import functions
+from chainer import testing
 from chainer.testing import attr
 
 
@@ -53,3 +54,6 @@ class TestParameter(unittest.TestCase):
     def test_backward_gpu(self):
         self.to_gpu()
         self.check_backward(cuda.to_gpu(self.gW))
+
+
+testing.run_module(__name__, __file__)

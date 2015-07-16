@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 
 
@@ -67,3 +68,6 @@ class Concat(unittest.TestCase):
     @attr.gpu
     def test_backward_gpu_1(self):
         self.check_backward([cuda.to_gpu(x.copy()) for x in self.xs1], axis=0)
+
+
+testing.run_module(__name__, __file__)
