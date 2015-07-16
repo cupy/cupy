@@ -19,8 +19,8 @@ You need to set ``PATH`` to CUDA bin path if you get the error below when you us
 In ``setup.py`` of ``pycuda``, it checks the path of ``nvcc`` command and guesses the path of CUDA (https://github.com/inducer/pycuda/blob/v2015.1.2/setup.py#L30).
 If ``setup.py`` couldn't find CUDA, it causes an error like that.
 
-Please try to set ``PATH`` before ``pip install chainer-cuda-deps``::
+Please try to set ``PATH`` before ``pip install chainer-cuda-deps``.
+If you use NVIDIA's official installer, ``nvcc`` command is located at ``/usr/local/cuda/bin``::
 
-   export PATH=/path/to/cuda/bin:$PATH
-   pip install chainer-cuda-deps
-
+   $ export PATH=/usr/local/cuda/bin:$PATH
+   $ pip install chainer-cuda-deps
