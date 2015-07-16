@@ -1,4 +1,4 @@
-"""Device, context and memory management on PyCUDA and scikits.cuda.
+"""Device, context and memory management on PyCUDA and scikit-cuda.
 
 Chainer uses PyCUDA facilities (with very thin wrapper) to exploit the speed of
 GPU computation. Following modules and classes are imported to :mod:`cuda`
@@ -8,11 +8,11 @@ codes).
 ============================ =================================
  imported name                original name
 ============================ =================================
- ``chainer.cuda.cublas``      :mod:`scikits.cuda.cublas`
+ ``chainer.cuda.cublas``      :mod:`skcuda.cublas`
  ``chainer.cuda.cumath``      :mod:`pycuda.cumath`
  ``chainer.cuda.curandom``    :mod:`pycuda.curandom`
- ``chainer.cuda.culinalg``    :mod:`scikits.cuda.linalg`
- ``chainer.cuda.cumisc``      :mod:`scikits.cuda.misc`
+ ``chainer.cuda.culinalg``    :mod:`skcuda.linalg`
+ ``chainer.cuda.cumisc``      :mod:`skcuda.misc`
  ``chainer.cuda.gpuarray``    :mod:`pycuda.gpuarray`
 
  ``chainer.cuda.Context``     :mod:`pycuda.driver.Context`
@@ -71,16 +71,16 @@ $ pip install -U chainer-cuda-deps
     import pycuda.gpuarray
     import pycuda.reduction
     import pycuda.tools
-    import scikits.cuda.cublas
-    import scikits.cuda.linalg
-    import scikits.cuda.misc
+    import skcuda.cublas
+    import skcuda.linalg
+    import skcuda.misc
     available = True
 
-    cublas = scikits.cuda.cublas
+    cublas = skcuda.cublas
     cumath = pycuda.cumath
     curandom = pycuda.curandom
-    culinalg = scikits.cuda.linalg
-    cumisc = scikits.cuda.misc
+    culinalg = skcuda.linalg
+    cumisc = skcuda.misc
     cutools = pycuda.tools
     gpuarray = pycuda.gpuarray
 except pkg_resources.ResolutionError as e:
@@ -139,7 +139,7 @@ def init(device=None):
 
     .. warning::
 
-       This function also initializes PyCUDA and scikits.cuda. Since these
+       This function also initializes PyCUDA and scikit-cuda. Since these
        packages do not support forking after initialization, do not call this
        function before forking the process.
 
@@ -929,7 +929,7 @@ class CumiscUser(object):
 
 
 def using_cumisc(handle=None):
-    """Temporarily set chainer's CUBLAS handle to scikits.cuda.
+    """Temporarily set chainer's CUBLAS handle to scikit-cuda.
 
     The usage is similar to :func:`using_device`.
 
