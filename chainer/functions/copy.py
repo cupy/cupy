@@ -1,5 +1,6 @@
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 class Copy(function.Function):
@@ -8,6 +9,19 @@ class Copy(function.Function):
 
     def __init__(self, out_device):
         self.out_device = out_device
+
+    def check_type_forward(self, in_types):
+        type_check.expect(
+            in_types.size() == 1
+        )
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(
+            out_types.size() == 1,
+            in_types[0].dtype == out_types[0].dtype,
+            in_types[0].ndim == out_types[0].ndim,
+            in_types[0].shape == out_types[0].shape
+        )
 
     def forward_cpu(self, x):
         return x[0].copy(),
