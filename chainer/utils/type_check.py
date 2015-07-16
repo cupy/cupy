@@ -212,6 +212,10 @@ class Expr(object):
 def _eval_expr(v):
     if isinstance(v, Expr):
         return v.eval()
+    elif isinstance(v, list):
+        return list(map(_eval_expr, v))
+    elif isinstance(v, tuple):
+        return tuple(map(_eval_expr, v))
     else:
         return v
 
