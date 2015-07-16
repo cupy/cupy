@@ -34,12 +34,28 @@ manipulation routine.
 """
 import atexit
 import os
+import warnings
 
 import numpy
 import pkg_resources
 import six
 
 try:
+    try:
+        pkg_resources.require('scikits.cuda')
+    except pkg_resources.ResolutionError as e:
+        pass
+    else:
+        msg = '''
+`scikits.cuda` package is found. This is deprecated.
+Clean both the old and new `scikit-cuda` packages, and then re-install
+`chainer-cuda-deps`.
+
+$ pip uinstall scikits.cuda scikit-cuda
+$ pip install -U chainer-cuda-deps
+        '''
+        warnings.warn(msg)
+
     _requires = [
         'pycuda>=2014.1',
         'scikit-cuda>=0.5.0',
