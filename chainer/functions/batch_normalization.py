@@ -92,7 +92,13 @@ class BatchNormalization(function.Function):
     gradient_names = ('ggamma', 'gbeta')
 
     def __init__(self, size, decay=0.9, eps=1e-5):
-        self.size = size
+        if isinstance(size, tuple):
+            self.size = size
+        elif isinstance(size, int):
+            self.size = (size, )
+        else:
+            raise TypeError('size must be tuple or int')
+
         size = numpy.prod(size)
 
         self.avg_mean = numpy.zeros((1, size, 1), dtype=numpy.float32)
@@ -136,18 +142,11 @@ class BatchNormalization(function.Function):
         type_check.expect(in_types.size() == 1)
         x_type, = in_types
 
-        if isinstance(self.size, tuple):
-            feature_shape = type_check.Variable(self.size, 'feature_shape')
-            feature_ndim = len(self.size)
-        else:
-            feature_shape = type_check.Variable((self.size,), 'feature_shape')
-            feature_ndim = 1
-
+        self_ = type_check.Variable(self, 'self')
         type_check.expect(
             x_type.dtype == numpy.float32,
-            x_type.ndim >= type_check.Variable(
-                feature_ndim, 'feature_ndim') + 1,
-            x_type.shape[1:feature_ndim+1] == feature_shape
+            x_type.ndim >= self_.size.__len__() + 1,
+            x_type.shape[1:len(self.size)+1] == self_.size
         )
 
     def check_type_backward(self, in_types, out_types):
