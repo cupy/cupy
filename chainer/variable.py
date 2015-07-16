@@ -97,7 +97,7 @@ class Variable(object):
     @grad.setter
     def grad(self, g):
         if g is not None:
-            if type(g) != type(self.data):
+            if not isinstance(g, type(self.data)):
                 raise TypeError('Type of data and grad mismatch: %s != %s'
                                 % (type(self.data), type(g)))
             if g.dtype != self.data.dtype:
