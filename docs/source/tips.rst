@@ -7,7 +7,7 @@ Installation
 I cannot install pycuda
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-You need to set ``PATH`` to CUDA bin path if you get an error below when you use ``pip install chainer-cuda-deps``::
+You need to set ``PATH`` to CUDA bin path if you get the error below when you use ``pip install chainer-cuda-deps``::
 
    src/cpp/cuda.hpp:14:18: fatal error: cuda.h: No such file or directory
     #include <cuda.h>
