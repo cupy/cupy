@@ -4,6 +4,7 @@ import numpy
 
 import chainer
 import chainer.functions as F
+from chainer import testing
 
 
 class TestFunction(unittest.TestCase):
@@ -39,3 +40,6 @@ class TestFunction(unittest.TestCase):
     def test_label(self):
         self.assertEqual(chainer.Function().label,
                          'Function')
+
+
+testing.run_module(__name__, __file__)

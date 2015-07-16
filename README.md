@@ -11,7 +11,7 @@ Requirements for some features:
 - CUDA support
   - CUDA 6.5+
   - PyCUDA
-  - scikits.cuda (pip install scikits.cuda>=0.5.0b2,!=0.042)
+  - scikits.cuda (pip install scikit-cuda>=0.5.0)
   - Mako (depending through PyCUDA)
 - CuDNN support
   - CuDNN v2
@@ -33,13 +33,18 @@ You can also install Chainer from the source code:
 python setup.py install
 ```
 
-If you want to enable CUDA, first you have to install CUDA and set the environment variable `CUDA_DIR` to the installed path.
-You also have to set binary and library paths by appropriate environment variables like `PATH` and `LD_LIBRARY_PATH`.
-Then install CUDA-related packages by:
+If you want to enable CUDA, first you have to install CUDA and set the environment variable `PATH` and `LD_LIBRARY_PATH` for CUDA executables and libraries.
+For example, if you are using Ubuntu and CUDA is installed by the official distribution, then CUDA is installed at `/usr/local/cuda`.
+In this case, you have to add the following line to `.bashrc` or `.zshrc` (choose which you are using):
+```
+export PATH=/usr/local/cuda/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+```
+Do not forget to restart your terminal session (or `source` it) to enable this change.
+Then, install CUDA-related dependent packages via pip:
 ```
 pip install chainer-cuda-deps
 ```
-
 or, from the source:
 ```
 python cuda_deps/setup.py install

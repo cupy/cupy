@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import condition
 
 
@@ -28,8 +29,8 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
         tree = ((0, 1), ((2, 3), 4))
         self.func = functions.BinaryHierarchicalSoftmax(3, tree)
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.t = numpy.array([0, 2])
-        self.gy = numpy.random.uniform(-1, 1, (1, 1)).astype(numpy.float32)
+        self.t = numpy.array([0, 2]).astype(numpy.int32)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
 
         self.W = self.func.W.copy()
 
@@ -63,3 +64,6 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
     @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t, self.gy)
+
+
+testing.run_module(__name__, __file__)

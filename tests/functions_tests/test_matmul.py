@@ -7,6 +7,7 @@ import chainer
 from chainer import cuda
 import chainer.functions as F
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -215,3 +216,6 @@ class TestBatchMatMulVectorVectorT(_TestMatMul):
         self.forward_answer = numpy.array([
             numpy.dot(self.x1[i].reshape(m, 1), self.x2[i].reshape(1, m))
             for i in six.moves.range(batch_size)])
+
+
+testing.run_module(__name__, __file__)

@@ -4,6 +4,7 @@ import numpy
 
 from chainer import cuda
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer import utils
 
@@ -32,3 +33,6 @@ class TestWalkerAlias(unittest.TestCase):
     def test_sample_gpu(self):
         self.sampler.to_gpu()
         self.check_sample()
+
+
+testing.run_module(__name__, __file__)

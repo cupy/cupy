@@ -4,7 +4,9 @@ import numpy as np
 
 from chainer import cuda
 from chainer import optimizer
+from chainer import testing
 from chainer.testing import attr
+
 
 if cuda.available:
     cuda.init()
@@ -38,3 +40,6 @@ class TestOptimizer(unittest.TestCase):
 
     def setUp(self):
         pass
+
+
+testing.run_module(__name__, __file__)

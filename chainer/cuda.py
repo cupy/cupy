@@ -1,4 +1,4 @@
-"""Device, context and memory management on PyCUDA and scikits.cuda.
+"""Device, context and memory management on PyCUDA and scikit-cuda.
 
 Chainer uses PyCUDA facilities (with very thin wrapper) to exploit the speed of
 GPU computation. Following modules and classes are imported to :mod:`cuda`
@@ -8,11 +8,11 @@ codes).
 ============================ =================================
  imported name                original name
 ============================ =================================
- ``chainer.cuda.cublas``      :mod:`scikits.cuda.cublas`
+ ``chainer.cuda.cublas``      :mod:`skcuda.cublas`
  ``chainer.cuda.cumath``      :mod:`pycuda.cumath`
  ``chainer.cuda.curandom``    :mod:`pycuda.curandom`
- ``chainer.cuda.culinalg``    :mod:`scikits.cuda.linalg`
- ``chainer.cuda.cumisc``      :mod:`scikits.cuda.misc`
+ ``chainer.cuda.culinalg``    :mod:`skcuda.linalg`
+ ``chainer.cuda.cumisc``      :mod:`skcuda.misc`
  ``chainer.cuda.gpuarray``    :mod:`pycuda.gpuarray`
 
  ``chainer.cuda.Context``     :mod:`pycuda.driver.Context`
@@ -34,15 +34,31 @@ manipulation routine.
 """
 import atexit
 import os
+import warnings
 
 import numpy
 import pkg_resources
 import six
 
 try:
+    try:
+        pkg_resources.require('scikits.cuda')
+    except pkg_resources.ResolutionError as e:
+        pass
+    else:
+        msg = '''
+`scikits.cuda` package is found. This is deprecated.
+Clean both the old and new `scikit-cuda` packages, and then re-install
+`chainer-cuda-deps`.
+
+$ pip uninstall scikits.cuda scikit-cuda
+$ pip install -U chainer-cuda-deps
+        '''
+        warnings.warn(msg)
+
     _requires = [
         'pycuda>=2014.1',
-        'scikits.cuda>=0.5.0b2,!=0.042',
+        'scikit-cuda>=0.5.0',
         'Mako',
         'six>=1.9.0',
     ]
@@ -55,16 +71,16 @@ try:
     import pycuda.gpuarray
     import pycuda.reduction
     import pycuda.tools
-    import scikits.cuda.cublas
-    import scikits.cuda.linalg
-    import scikits.cuda.misc
+    import skcuda.cublas
+    import skcuda.linalg
+    import skcuda.misc
     available = True
 
-    cublas = scikits.cuda.cublas
+    cublas = skcuda.cublas
     cumath = pycuda.cumath
     curandom = pycuda.curandom
-    culinalg = scikits.cuda.linalg
-    cumisc = scikits.cuda.misc
+    culinalg = skcuda.linalg
+    cumisc = skcuda.misc
     cutools = pycuda.tools
     gpuarray = pycuda.gpuarray
 except pkg_resources.ResolutionError as e:
@@ -123,7 +139,7 @@ def init(device=None):
 
     .. warning::
 
-       This function also initializes PyCUDA and scikits.cuda. Since these
+       This function also initializes PyCUDA and scikit-cuda. Since these
        packages do not support forking after initialization, do not call this
        function before forking the process.
 
@@ -913,7 +929,7 @@ class CumiscUser(object):
 
 
 def using_cumisc(handle=None):
-    """Temporarily set chainer's CUBLAS handle to scikits.cuda.
+    """Temporarily set chainer's CUBLAS handle to scikit-cuda.
 
     The usage is similar to :func:`using_device`.
 

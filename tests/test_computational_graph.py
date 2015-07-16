@@ -5,6 +5,7 @@ import six
 
 from chainer import computational_graph as c
 from chainer import function
+from chainer import testing
 from chainer import variable
 
 
@@ -273,3 +274,6 @@ class TestGraphBuilder7(unittest.TestCase):
     def test_tail_node(self):
         _check(self, (self.y, ), False, 19, 18)
         _check(self, (self.y, ), True, 9, 8)
+
+
+testing.run_module(__name__, __file__)

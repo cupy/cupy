@@ -5,6 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -17,8 +18,8 @@ class TestNegativeSampling(unittest.TestCase):
     def setUp(self):
         self.func = chainer.functions.NegativeSampling(3, [10, 5, 2, 5, 2], 2)
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.t = numpy.array([0, 2])
-        self.gy = numpy.random.uniform(-1, 1, (1, 1)).astype(numpy.float32)
+        self.t = numpy.array([0, 2]).astype(numpy.int32)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
 
     def check_backward(self, x_data, t_data, y_grad, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -68,3 +69,6 @@ class TestNegativeSampling(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x),
                             cuda.to_gpu(self.t),
                             cuda.to_gpu(self.gy))
+
+
+testing.run_module(__name__, __file__)

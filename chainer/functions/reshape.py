@@ -1,4 +1,10 @@
+import numpy
+
 from chainer import function
+from chainer.utils import type_check
+
+
+_type_check_prod = type_check.Variable(numpy.prod, 'prod')
 
 
 class Reshape(function.Function):
@@ -7,6 +13,20 @@ class Reshape(function.Function):
 
     def __init__(self, shape):
         self.shape = shape
+
+    def check_type_forward(self, in_types):
+        type_check.expect(
+            in_types.size() == 1,
+            _type_check_prod(in_types[0].shape) ==
+            _type_check_prod(self.shape)
+        )
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(
+            out_types.size() == 1,
+            _type_check_prod(in_types[0].shape) ==
+            _type_check_prod(out_types[0].shape)
+        )
 
     def forward(self, x):
         return x[0].reshape(self.shape),
