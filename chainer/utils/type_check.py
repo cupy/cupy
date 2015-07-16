@@ -220,6 +220,22 @@ def _eval_expr(v):
         return v
 
 
+def _repr(v):
+    if isinstance(v, Expr):
+        return str(v)
+    elif isinstance(v, list):
+        return '[{0}]'.format(', '.join(map(_repr, v)))
+    elif isinstance(v, tuple):
+        if len(v) == 0:
+            return '()'
+        elif len(v) == 1:
+            return '({0},)'.format(_repr(v[0]))
+        else:
+            return '({0})'.format(', '.join(map(_repr, v)))
+    else:
+        return repr(v)
+
+
 class Atom(Expr):
 
     def __init__(self):
@@ -233,7 +249,7 @@ class Constant(Atom):
         self.value = value
 
     def __str__(self):
-        return str(self.value)
+        return _repr(self.value)
 
     def eval(self):
         return self.value
@@ -261,7 +277,14 @@ class GetAttr(Atom):
         self.name = name
 
     def __str__(self):
-        return '{0}.{1}'.format(self.obj, self.name)
+        if isinstance(self.name, str):
+            return '{0}.{1}'.format(_repr(self.obj), self.name)
+        elif (isinstance(self.name, Constant) and
+              isinstance(self.name.value, str)):
+            return '{0}.{1}'.format(_repr(self.obj), self.name.value)
+        else:
+            return 'getattr({0}, {1})'.format(_repr(self.obj),
+                                              _repr(self.name))
 
     def eval(self):
         return getattr(_eval_expr(self.obj), _eval_expr(self.name))
@@ -272,7 +295,7 @@ def _str_subscript(exp):
         return '...'
     elif isinstance(exp, slice):
         def key_str(v):
-            return '' if v is None else str(v)
+            return '' if v is None else _repr(v)
 
         if exp.step is None:
             return '{0}:{1}'.format(key_str(exp.start),
@@ -285,7 +308,7 @@ def _str_subscript(exp):
         return ', '.join(map(_str_subscript, exp))
 
     else:
-        return str(exp)
+        return _repr(exp)
 
 
 class GetItem(Atom):
@@ -297,7 +320,7 @@ class GetItem(Atom):
 
     def __str__(self):
         key = _str_subscript(self.key)
-        return '{0}[{1}]'.format(self.obj, key)
+        return '{0}[{1}]'.format(_repr(self.obj), key)
 
     def eval(self):
         return _eval_expr(self.obj)[_eval_expr(self.key)]
@@ -312,7 +335,8 @@ class Call(Atom):
         self.args = args
 
     def __str__(self):
-        return '{0}({1})'.format(self.obj, ', '.join(map(str, self.args)))
+        return '{0}({1})'.format(_repr(self.obj),
+                                 ', '.join(map(_repr, self.args)))
 
     def eval(self):
         args = map(_eval_expr, self.args)
@@ -332,7 +356,7 @@ class UnaryOperator(Expr):
         return self.func(_eval_expr(self.term))
 
     def __str__(self):
-        exp = str(self.term)
+        exp = _repr(self.term)
         if isinstance(self.term, Expr) and self.term.priority < self.priority:
             exp = '(' + exp + ')'
 
@@ -365,14 +389,14 @@ class BinaryOperator(Expr):
         # when rhs has the same priority
         #  e.g. x << (y << z) != x << y << z
 
-        left = str(self.lhs)
+        left = _repr(self.lhs)
         if isinstance(self.lhs, Expr) and (
                 self.priority > self.lhs.priority or
                 (self.right_associative and
                  self.priority == self.lhs.priority)):
             left = '(' + left + ')'
 
-        right = str(self.rhs)
+        right = _repr(self.rhs)
         if isinstance(self.rhs, Expr) and (
                 self.priority > self.rhs.priority or
                 (not self.right_associative and

@@ -41,9 +41,13 @@ class TestGetAttr(unittest.TestCase):
     def setUp(self):
         x = Object()
         self.value = T.GetAttr(T.Variable(x, 'x'), 'value')
+        self.value2 = T.GetAttr(T.Variable(x, 'x'), T.Constant('value'))
+        self.value3 = T.GetAttr(T.Variable(x, 'x'), 3)
 
     def test_str(self):
         self.assertEqual('x.value', str(self.value))
+        self.assertEqual('x.value', str(self.value2))
+        self.assertEqual('getattr(x, 3)', str(self.value3))
 
     def test_eval(self):
         self.assertEqual(10, self.value.eval())
@@ -60,7 +64,7 @@ class TestGetItem(unittest.TestCase):
 
     def test_str(self):
         self.assertEqual('x[1]', str(self.v1))
-        self.assertEqual('y[a]', str(self.v2))
+        self.assertEqual('y[\'a\']', str(self.v2))
 
         x = self.x
         self.assertEqual('x[:]', str(x[:]))
@@ -315,8 +319,22 @@ class TestListItem(unittest.TestCase):
     def test_eval_list_items(self):
         self.assertTrue((T.Constant([0]) == [T.Constant(0)]).eval())
 
+    def test_list_str(self):
+        self.assertEqual('[0]', T._repr([T.Constant(0)]))
+
     def test_eval_tuple_items(self):
         self.assertTrue((T.Constant((0,)) == (T.Constant(0),)).eval())
+
+    def test_tuple_str(self):
+        self.assertEqual('()', T._repr(()))
+        self.assertEqual('(0,)', T._repr((T.Constant(0),)))
+        self.assertEqual('(0, 0)', T._repr((T.Constant(0),T.Constant(0))))
+
+    def test_eval_nest_list(self):
+        self.assertTrue((T.Constant([[0]]) == [[T.Constant(0)]]).eval())
+
+    def test_nest_list_str(self):
+        self.assertEqual('[[0]]', T._repr([[T.Constant(0)]]))
 
 
 testing.run_module(__name__, __file__)
