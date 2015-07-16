@@ -328,7 +328,7 @@ class TestListItem(unittest.TestCase):
     def test_tuple_str(self):
         self.assertEqual('()', T._repr(()))
         self.assertEqual('(0,)', T._repr((T.Constant(0),)))
-        self.assertEqual('(0, 0)', T._repr((T.Constant(0),T.Constant(0))))
+        self.assertEqual('(0, 0)', T._repr((T.Constant(0), T.Constant(0))))
 
     def test_eval_nest_list(self):
         self.assertTrue((T.Constant([[0]]) == [[T.Constant(0)]]).eval())
