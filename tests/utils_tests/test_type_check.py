@@ -310,4 +310,13 @@ class TestLazyGetItem(unittest.TestCase):
             self.t().eval()
 
 
+class TestListItem(unittest.TestCase):
+
+    def test_eval_list_items(self):
+        self.assertTrue((T.Constant([0]) == [T.Constant(0)]).eval())
+
+    def test_eval_tuple_items(self):
+        self.assertTrue((T.Constant((0,)) == (T.Constant(0),)).eval())
+
+
 testing.run_module(__name__, __file__)
