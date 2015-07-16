@@ -151,7 +151,7 @@ class BatchNormalization(function.Function):
 
     def check_type_backward(self, in_types, out_types):
         type_check.expect(out_types.size() == 1)
-        x_type, = out_types
+        x_type, = in_types
         y_type, = out_types
 
         type_check.expect(
