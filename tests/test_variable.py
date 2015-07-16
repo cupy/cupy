@@ -90,7 +90,10 @@ class TestVariable(unittest.TestCase):
         ret = [x]
         for i in six.moves.range(length):
             ret.append(constant((ret[i], ), (self.a, )))
-        ret[-1].grad = np.zeros_like(ret[-1].data)
+        if gpu:
+            ret[-1].grad = cuda.zeros_like(ret[-1].data)
+        else:
+            ret[-1].grad = np.zeros_like(ret[-1].data)
         return ret
 
     def test_backward_cpu(self):

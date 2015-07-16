@@ -286,7 +286,8 @@ class PowVarVar(function.Function):
         return x[0] ** x[1],
 
     def backward_cpu(self, x, gy):
-        gx0 = utils.force_array(x[1] * (x[0] ** (x[1] - 1)) * gy[0])
+        one = x[1].dtype.type(1)
+        gx0 = utils.force_array(x[1] * (x[0] ** (x[1] - one)) * gy[0])
         gx1 = utils.force_array(numpy.log(x[0]) * self.y * gy[0])
         return gx0, gx1
 

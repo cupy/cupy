@@ -67,7 +67,7 @@ class Variable(object):
         self.volatile = volatile
 
         self.splitter = weakref.ref(lambda: 0)  # dead ref
-        self.grad = None
+        self._grad = None
         self.creator = None
 
     def __pos__(self):
@@ -89,6 +89,24 @@ class Variable(object):
             return str(self.data.dtype)
         return '%s, %s' % (str(self.data.shape),
                            str(self.data.dtype))
+
+    @property
+    def grad(self):
+        return self._grad
+
+    @grad.setter
+    def grad(self, g):
+        if g is not None:
+            if type(g) != type(self.data):
+                raise TypeError('Type of data and grad mismatch: %s != %s'
+                                % (type(self.data), type(g)))
+            if g.dtype != self.data.dtype:
+                raise TypeError('Dtype of data and grad mismatch: %s != %s'
+                                % (self.data.dtype, g.dtype))
+            if g.shape != self.data.shape:
+                raise ValueError('Shape of data and grad mismatch: %s != %s'
+                                 % (self.data.shape, g.shape))
+        self._grad = g
 
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.
