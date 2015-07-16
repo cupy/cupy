@@ -5,6 +5,7 @@ from chainer.utils import type_check
 
 
 class Reshape(function.Function):
+    type_check_prod = type_check.Variable(numpy.prod, 'prod')
 
     """Reshapes an input array without copy."""
 
@@ -14,15 +15,15 @@ class Reshape(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(
             in_types.size() == 1,
-            type_check.prod(in_types[0].shape) ==
-            type_check.prod(self.shape)
+            self.type_check_prod(in_types[0].shape) ==
+            self.type_check_prod(self.shape)
         )
 
     def check_type_backward(self, in_types, out_types):
         type_check.expect(
             out_types.size() == 1,
-            type_check.prod(in_types[0].shape) ==
-            type_check.prod(out_types[0].shape)
+            self.type_check_prod(in_types[0].shape) ==
+            self.type_check_prod(out_types[0].shape)
         )
 
     def forward(self, x):
