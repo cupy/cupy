@@ -1,6 +1,7 @@
 import collections
 
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -61,7 +62,7 @@ class SplitAxis(function.Function):
             )
 
         for out_type in out_types:
-            for i in xrange(in_types[0].ndim.eval()):
+            for i in six.moves.range(in_types[0].ndim.eval()):
                 if i == self.axis:
                     continue
                 type_check.expect(out_type.shape[i] == in_types[0].shape[i])
