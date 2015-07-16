@@ -67,12 +67,10 @@ class SplitAxis(function.Function):
                     continue
                 type_check.expect(out_type.shape[i] == in_types[0].shape[i])
 
-        total_output_dim = sum([out_type.shape[self.axis].eval()
-                                for out_type in out_types])
+        total_output_dim = sum(
+            out_type.shape[self.axis] for out_type in out_types)
         type_check.expect(
-            type_check.Variable(
-                total_output_dim, 'sum(outputs[:][axis])'
-            ) == in_types[0].shape[self.axis]
+            total_output_dim == in_types[0].shape[self.axis]
         )
 
     def forward_cpu(self, x):
