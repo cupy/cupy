@@ -140,5 +140,30 @@ class TestVariable(unittest.TestCase):
         with self.assertRaises(AssertionError):
             chainer.Variable(1)
 
+    def test_grad_type_check_pass(self):
+        a = chainer.Variable(np.empty((3,), dtype=np.float32))
+        a.grad = np.ndarray((3,), dtype=np.float32)
+
+    def test_grad_type_check_type(self):
+        a = chainer.Variable(np.empty((), dtype=np.float32))
+        with self.assertRaises(TypeError):
+            a.grad = np.float32()
+
+    @attr.gpu
+    def test_grad_type_check_type_cpu_gpu_mixture(self):
+        a = chainer.Variable(np.empty((3,), dtype=np.float32))
+        with self.assertRaises(TypeError):
+            a.grad = cuda.empty((3,), dtype=np.float32)
+
+    def test_grad_type_check_dtype(self):
+        a = chainer.Variable(np.empty((3,), dtype=np.float32))
+        with self.assertRaises(TypeError):
+            a.grad = np.empty((3,), dtype=np.float64)
+
+    def test_grad_type_check_shape(self):
+        a = chainer.Variable(np.empty((3,), dtype=np.float32))
+        with self.assertRaises(ValueError):
+            a.grad = np.empty((2,), dtype=np.float32)
+
 
 testing.run_module(__name__, __file__)
