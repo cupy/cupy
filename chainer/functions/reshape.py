@@ -11,26 +11,19 @@ class Reshape(function.Function):
     def __init__(self, shape):
         self.shape = shape
 
-    def check_type_forward(self, in_type):
-        type_check.expect(in_type.size() == 1)
-        x_type, = in_type
-
-        in_shape_size = type_check.Variable(
-            numpy.prod(x_type.shape.eval()), 'in_shape_size')
-        out_shape_size = type_check.Variable(
-            numpy.prod(self.shape), 'out_shape_size')
-        type_check.expect(in_shape_size == out_shape_size)
+    def check_type_forward(self, in_types):
+        type_check.expect(
+            in_types.size() == 1,
+            type_check.prod(in_types[0].shape) ==
+            type_check.prod(self.shape)
+        )
 
     def check_type_backward(self, in_types, out_types):
-        type_check.expect(out_types.size() == 1)
-        x_type, = in_types
-        y_type, = out_types
-
-        in_shape_size = type_check.Variable(
-            numpy.prod(x_type.shape.eval()), 'in_shape_size')
-        out_shape_size = type_check.Variable(
-            numpy.prod(y_type.shape.eval()), 'out_shape_size')
-        type_check.expect(in_shape_size == out_shape_size)
+        type_check.expect(
+            out_types.size() == 1,
+            type_check.prod(in_types[0].shape) ==
+            type_check.prod(out_types[0].shape)
+        )
 
     def forward(self, x):
         return x[0].reshape(self.shape),
