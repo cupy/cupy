@@ -51,7 +51,7 @@ try:
 Clean both the old and new `scikit-cuda` packages, and then re-install
 `chainer-cuda-deps`.
 
-$ pip uinstall scikits.cuda scikit-cuda
+$ pip uninstall scikits.cuda scikit-cuda
 $ pip install -U chainer-cuda-deps
         '''
         warnings.warn(msg)
