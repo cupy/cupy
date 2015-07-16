@@ -64,7 +64,7 @@ class TestGetItem(unittest.TestCase):
 
     def test_str(self):
         self.assertEqual('x[1]', str(self.v1))
-        self.assertEqual('y[\'a\']', str(self.v2))
+        self.assertEqual("y['a']", str(self.v2))
 
         x = self.x
         self.assertEqual('x[:]', str(x[:]))
