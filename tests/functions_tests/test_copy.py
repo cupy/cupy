@@ -5,6 +5,7 @@ import numpy
 import chainer
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 
 
 class Copy(unittest.TestCase):
@@ -25,3 +26,6 @@ class Copy(unittest.TestCase):
         y.grad = self.gy
         y.backward()
         gradient_check.assert_allclose(x.grad, self.gy, atol=0, rtol=0)
+
+
+testing.run_module(__name__, __file__)
