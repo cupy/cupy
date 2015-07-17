@@ -62,12 +62,20 @@ class SoftmaxCrossEntropy(function.Function):
 
     def backward_cpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        n_unit = int(numpy.prod(self.y.shape[2:]))
-        gx = self.y.copy().reshape(self.y.shape[0], self.y.shape[1], -1)
-        fst_index = numpy.arange(t.size) // n_unit
-        trd_index = numpy.arange(t.size) % n_unit
-        gx[fst_index, t.flat, trd_index] -= 1
-        gx = (gloss / t.shape[0]) * gx.reshape(self.y.shape)
+        if self.y.ndim == 2:
+            gx = self.y.copy()
+            gx[six.moves.xrange(len(t)), t] -= 1
+            gx *= gloss / t.size
+        else:
+            # in the case where y.ndim is higher than 2,
+            # we think that a current implementation is inefficient
+            # because it yields two provisional arrays for indexing.
+            n_unit = int(numpy.prod(self.y.shape[2:]))
+            gx = self.y.copy().reshape(self.y.shape[0], self.y.shape[1], -1)
+            fst_index = numpy.arange(t.size) // n_unit
+            trd_index = numpy.arange(t.size) % n_unit
+            gx[fst_index, t.flat, trd_index] -= 1
+            gx = (gloss / t.shape[0]) * gx.reshape(self.y.shape)
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):
