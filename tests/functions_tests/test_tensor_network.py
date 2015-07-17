@@ -92,6 +92,70 @@ class TestTensorNetwork(unittest.TestCase):
             (cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)),
             cuda.to_gpu(self.gy))
 
+class TestTensorNetworkWOBias(unittest.TestCase):
+
+    def setUp(self):
+        in_shape = (2, 3)
+        out_size = 4
+
+        self.f = functions.TensorNetwork(in_shape, out_size, True)
+        self.f.W = numpy.random.uniform(-1, 1, self.f.W.shape).astype(numpy.float32)
+        self.f.zero_grads()
+
+        self.W = self.f.W.copy()
+
+        batch_size = 10
+        self.e1 = numpy.random.uniform(-1, 1, (batch_size, in_shape[0])).astype(numpy.float32)
+        self.e2 = numpy.random.uniform(-1, 1, (batch_size, in_shape[1])).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, (batch_size, out_size)).astype(numpy.float32)
+
+        self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W)
+
+    def check_forward(self, x_data):
+        e1, e2 = x_data
+        e1 = chainer.Variable(e1)
+        e2 = chainer.Variable(e2)
+        y = self.f(e1, e2)
+        gradient_check.assert_allclose(self.y, y.data)
+
+    @condition.retry(3)
+    def test_forward_cpu(self):
+        self.check_forward((self.e1, self.e2))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.f.to_gpu()
+        self.check_forward((cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)))
+
+    def check_backward(self, x_data, y_grad):
+        e1, e2 = x_data
+        e1 = chainer.Variable(e1)
+        e2 = chainer.Variable(e2)
+        y = self.f(e1, e2)
+        y.grad = y_grad
+        y.backward()
+
+        func = y.creator
+        f = lambda: func.forward((e1.data, e2.data))
+        ge1, ge2, gW = gradient_check.numerical_grad(
+            f, (e1.data, e2.data, func.W), (y.grad,), eps=1e-2)
+
+        gradient_check.assert_allclose(ge1, e1.grad)
+        gradient_check.assert_allclose(ge2, e2.grad)
+        gradient_check.assert_allclose(gW, func.gW)
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
+        self.check_backward((self.e1, self.e2), self.gy)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.f.to_gpu()
+        self.check_backward(
+            (cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)),
+            cuda.to_gpu(self.gy))
 
 
 testing.run_module(__name__, __file__)
