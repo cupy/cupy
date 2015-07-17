@@ -54,11 +54,11 @@ class TestTensorNetwork(unittest.TestCase):
     def test_forward_cpu(self):
         self.check_forward((self.e1, self.e2))
 
-    # @attr.gpu
-    # @condition.retry(3)
-    # def test_forward_gpu(self):
-    #     self.f.to_gpu()
-    #     self.check_forward((cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)))
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.f.to_gpu()
+        self.check_forward((cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)))
 
     def check_backward(self, x_data, y_grad):
         e1, e2 = x_data
@@ -84,13 +84,14 @@ class TestTensorNetwork(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward((self.e1, self.e2), self.gy)
 
-    # @attr.gpu
-    # @condition.retry(3)
-    # def test_backward_gpu(self):
-    #     self.f.to_gpu()
-    #     self.check_backward(
-    #         (cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)),
-    #         cuda.to_gpu(self.gy))
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.f.to_gpu()
+        self.check_backward(
+            (cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)),
+            cuda.to_gpu(self.gy))
+
 
 
 testing.run_module(__name__, __file__)
