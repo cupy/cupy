@@ -10,14 +10,17 @@ from chainer.utils import type_check
 def _as_vec(x):
     return x.reshape(x.size)
 
+
 def _as_mat(x):
     return x.reshape(x.shape[0], x.size // x.shape[0])
+
 
 def _empty_like(x):
     if isinstance(x, cuda.GPUArray):
         return cuda.empty_like(x)
     else:
         return numpy.empty_like(x)
+
 
 class TensorNetwork(function.Function):
 
@@ -43,14 +46,17 @@ class TensorNetwork(function.Function):
             in_size = numpy.prod(self.in_shape)
             self.W = numpy.random.normal(
                 0, math.sqrt(1. / in_size),
-                (self.in_shape[0], self.in_shape[1], out_size)).astype(numpy.float32)
+                (self.in_shape[0], self.in_shape[1], out_size)
+            ).astype(numpy.float32)
 
         if initial_bias is not None:
             assert len(initial_bias) == 3
             self.V1, self.V2, self.b = initial_bias
         elif not nobias:
-            self.V1 = numpy.zeros((self.in_shape[0], out_size), dtype=numpy.float32)
-            self.V2 = numpy.zeros((self.in_shape[1], out_size), dtype=numpy.float32)
+            self.V1 = numpy.zeros(
+                (self.in_shape[0], out_size), dtype=numpy.float32)
+            self.V2 = numpy.zeros(
+                (self.in_shape[1], out_size), dtype=numpy.float32)
             self.b = numpy.zeros((out_size, ), dtype=numpy.float32)
 
         self.gW = _empty_like(self.W)
@@ -61,7 +67,8 @@ class TensorNetwork(function.Function):
 
     @property
     def parameter_names(self):
-        if self.b is None: # TODO: checking nobias by means of b is not smart?
+        # TODO(Kenta OONO): checking nobias by means of b is indirect
+        if self.b is None:
             return 'W',
         assert self.V1 is not None
         assert self.V2 is not None
@@ -113,9 +120,11 @@ class TensorNetwork(function.Function):
     def forward_gpu(self, x):
         e1 = _as_vec(x[0])
         e2 = _as_vec(x[1])
-        e1e2 = cuda.empty(x[0].shape[0]*x[0].shape[1]*x[1].shape[1], dtype=numpy.float32)
+        e1e2 = cuda.empty(
+            x[0].shape[0]*x[0].shape[1]*x[1].shape[1],
+            dtype=numpy.float32)
 
-        # 'ij,ik->ijk' with linealized array
+        # 'ij,ik->ijk'
         cuda.elementwise(
             'float* y, float* e1, float* e2, int e1c, int e2c',
             '''
@@ -124,13 +133,15 @@ class TensorNetwork(function.Function):
             int K = i % e2c;
             y[i] = e1[I*e1c+J] * e2[I*e2c+K];
             ''',
-            'row_wise_outer_product')(e1e2, e1, e2, x[0].shape[1], x[1].shape[1])
+            'row_wise_outer_product')(
+                e1e2, e1, e2, x[0].shape[1], x[1].shape[1])
 
         e1e2 = e1e2.reshape(x[0].shape[0], x[0].shape[1]*x[1].shape[1])
-        W_mat = self.W.reshape(self.W.shape[0]*self.W.shape[1], self.W.shape[2])
+        W_mat = self.W.reshape(
+            self.W.shape[0]*self.W.shape[1], self.W.shape[2])
         y = cuda.empty((x[0].shape[0], self.W.shape[2]), dtype=numpy.float32)
-        # 'i[jk],[jk]l->il'
         with cuda.using_cumisc():
+            # 'i[jk],[jk]l->il'
             cuda.culinalg.dot(e1e2, W_mat, out=y)
 
         if self.b is not None:
@@ -167,10 +178,15 @@ class TensorNetwork(function.Function):
         e2 = _as_vec(x[1])
         gy_vec = _as_vec(gy[0])
 
-        dgW = cuda.zeros((x[0].shape[1]*x[1].shape[1]*gy[0].shape[1],), dtype=numpy.float32)
+        dgW = cuda.zeros(
+            (x[0].shape[1]*x[1].shape[1]*gy[0].shape[1],),
+            dtype=numpy.float32)
         # 'ij,ik,il->jkl'
         ker = cuda.elementwise(
-            'float* y, float* e1, float* e2, float* gy, int r, int e1c, int e2c, int gyc',
+            '''
+            float* y, float* e1, float* e2, float* gy,
+            int r, int e1c, int e2c, int gyc
+            ''',
             '''
             int J = i / e2c / gyc;
             int K = (i-J*e2c*gyc) / gyc;
@@ -180,7 +196,8 @@ class TensorNetwork(function.Function):
             }
             ''',
             'sum_of_three_ary_tensor_product')
-        ker(dgW, e1, e2, gy_vec, x[0].shape[0], x[0].shape[1], x[1].shape[1], gy[0].shape[1])
+        ker(dgW, e1, e2, gy_vec,
+            x[0].shape[0], x[0].shape[1], x[1].shape[1], gy[0].shape[1])
         self.gW += dgW.reshape((x[0].shape[1], x[1].shape[1], gy[0].shape[1]))
 
         if self.b is not None:
@@ -198,7 +215,10 @@ class TensorNetwork(function.Function):
 
         # 'ik,jkl,il->ij'
         ge_kernel = cuda.elementwise(
-            'float* y, float* e, float* W, float* gy, int ec, int gyc, int gec',
+            '''
+            float* y, float* e, float* W, float* gy,
+            int ec, int gyc, int gec
+            ''',
             '''
             int I = i / gec;
             int J = i % gec;
@@ -211,12 +231,16 @@ class TensorNetwork(function.Function):
             ''',
             'ge_kernel')
         ge1 = cuda.zeros((x[0].size,), dtype=numpy.float32)
-        ge_kernel(ge1, e2, W_vec, gy_vec, x[1].shape[1], gy[0].shape[1], x[0].shape[1])
+        ge_kernel(ge1, e2, W_vec, gy_vec,
+                  x[1].shape[1], gy[0].shape[1], x[0].shape[1])
         ge1 = ge1.reshape(x[0].shape)
 
         # 'ij,jkl,il->ik'
         ge_kernel2 = cuda.elementwise(
-            'float* y, float* e, float* W, float* gy, int ec, int gyc, int gec',
+            '''
+            float* y, float* e, float* W, float* gy,
+            int ec, int gyc, int gec
+            ''',
             '''
             int I = i / gec;
             int K = i % gec;
@@ -229,7 +253,8 @@ class TensorNetwork(function.Function):
             ''',
             'ge_kernel2')
         ge2 = cuda.zeros((x[1].size,), dtype=numpy.float32)
-        ge_kernel2(ge2, e1, W_vec, gy_vec, x[0].shape[1], gy[0].shape[1], x[1].shape[1])
+        ge_kernel2(ge2, e1, W_vec, gy_vec,
+                   x[0].shape[1], gy[0].shape[1], x[1].shape[1])
         ge2 = ge2.reshape(x[1].shape)
 
         if self.b is not None:
