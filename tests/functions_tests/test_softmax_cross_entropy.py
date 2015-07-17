@@ -112,7 +112,8 @@ class TestReplicatedSoftmaxCrossEntropy1(TestSoftmaxCrossEntropy):
 class TestReplicatedSoftmaxCrossEntropy2(TestSoftmaxCrossEntropy):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 3, 2, 5)).astype(numpy.float32)
+        self.x = numpy.random.uniform(
+            -1, 1, (4, 3, 2, 5)).astype(numpy.float32)
         self.t = numpy.random.randint(0, 3, (4, 2, 5)).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data, use_cudnn=True):

@@ -96,8 +96,10 @@ class TestReplicatedSoftmax1(TestSoftmax):
 class TestReplicatedSoftmax2(TestSoftmax):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (2, 3, 4, 5)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (2, 3, 4, 5)).astype(numpy.float32)
+        self.x = numpy.random.uniform(
+            -1, 1, (2, 3, 4, 5)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (2, 3, 4, 5)).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
