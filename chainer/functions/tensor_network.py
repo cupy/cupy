@@ -163,5 +163,77 @@ class TensorNetwork(function.Function):
         return (ge1, ge2)
 
     def backward_gpu(self, x, gy):
-        pass
+        e1 = _as_vec(x[0])
+        e2 = _as_vec(x[1])
+        gy_vec = _as_vec(gy[0])
 
+        dgW = cuda.zeros((x[0].shape[1]*x[1].shape[1]*gy[0].shape[1],), dtype=numpy.float32)
+        # 'ij,ik,il->jkl'
+        ker = cuda.elementwise(
+            'float* y, float* e1, float* e2, float* gy, int r, int e1c, int e2c, int gyc',
+            '''
+            int J = i / e2c / gyc;
+            int K = (i-J*e2c*gyc) / gyc;
+            int L = i % gyc;
+            for (int I = 0; I < r; ++I){
+                y[i] += e1[I*e1c+J] * e2[I*e2c+K] * gy[I*gyc+L];
+            }
+            ''',
+            'sum_of_three_ary_tensor_product')
+        ker(dgW, e1, e2, gy_vec, x[0].shape[0], x[0].shape[1], x[1].shape[1], gy[0].shape[1])
+        self.gW += dgW.reshape((x[0].shape[1], x[1].shape[1], gy[0].shape[1]))
+
+        if self.b is not None:
+            e1 = _as_mat(x[0])
+            e2 = _as_mat(x[1])
+            with cuda.using_cumisc():
+                cuda.culinalg.add_dot(e1, gy[0], self.gV1, transa='T')
+                cuda.culinalg.add_dot(e2, gy[0], self.gV2, transa='T')
+                self.gb += cuda.cumisc.sum(gy[0], 0)
+
+        e1 = _as_vec(x[0])
+        e2 = _as_vec(x[1])
+        W_vec = _as_vec(self.W)
+        gy_vec = _as_vec(gy[0])
+
+        # 'ik,jkl,il->ij'
+        ge_kernel = cuda.elementwise(
+            'float* y, float* e, float* W, float* gy, int ec, int gyc, int gec',
+            '''
+            int I = i / gec;
+            int J = i % gec;
+            y[i] = 0;
+            for (int K = 0; K < ec; ++K) {
+                for (int L = 0; L < gyc; ++L) {
+                    y[i] += e[I*ec+K] * W[J*ec*gyc+K*gyc+L] * gy[I*gyc+L];
+                }
+            }
+            ''',
+            'ge_kernel')
+        ge1 = cuda.zeros((x[0].size,), dtype=numpy.float32)
+        ge_kernel(ge1, e2, W_vec, gy_vec, x[1].shape[1], gy[0].shape[1], x[0].shape[1])
+        ge1 = ge1.reshape(x[0].shape)
+
+        # 'ij,jkl,il->ik'
+        ge_kernel2 = cuda.elementwise(
+            'float* y, float* e, float* W, float* gy, int ec, int gyc, int gec',
+            '''
+            int I = i / gec;
+            int K = i % gec;
+            y[i] = 0;
+            for (int J = 0; J < ec; ++J) {
+                for (int L = 0; L < gyc; ++L) {
+                    y[i] += e[I*ec+J] * W[J*gec*gyc+K*gyc+L] * gy[I*gyc+L];
+                }
+            }
+            ''',
+            'ge_kernel2')
+        ge2 = cuda.zeros((x[1].size,), dtype=numpy.float32)
+        ge_kernel2(ge2, e1, W_vec, gy_vec, x[0].shape[1], gy[0].shape[1], x[1].shape[1])
+        ge2 = ge2.reshape(x[1].shape)
+
+        if self.b is not None:
+            with cuda.using_cumisc():
+                cuda.culinalg.add_dot(gy[0], self.V1, ge1, transb='T')
+                cuda.culinalg.add_dot(gy[0], self.V2, ge2, transb='T')
+        return (ge1, ge2)
