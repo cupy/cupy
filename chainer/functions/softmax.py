@@ -163,10 +163,12 @@ class Softmax(function.Function):
 def softmax(x, use_cudnn=True):
     """Channelwise softmax function.
 
-    This function only accepts a two dimensional input array, and computes its
-    softmax along the second axis. For each index :math:`i, j` of the input
-    matrix :math:`x`, it computes
-    :math:`f_{ij}(x)={\\exp(x_{ij}) \\over \\sum_j \\exp(x_{ij})}`.
+    This function computes its softmax along the second axis. Let
+    :math:`x = (x_1, x_2, \\dots, x_d)^{\\top}` be the d dimensional index
+    array and :math:`f(x)` be the d dimensional input array. For each index
+    :math:`x` of the input array :math:`f(x)`, it computes the probability
+    :math:`p(x)` defined as
+    :math:`p(x) = {\\exp(f(x)) \\over \\sum_{x_2} \\exp(f(x))}`.
 
     Args:
         x (~chainer.Variable): Input variable.

@@ -103,9 +103,13 @@ def softmax_cross_entropy(x, t, use_cudnn=True):
     """Computes cross entropy loss for pre-softmax activations.
 
     Args:
-        x (Variable): Variable holding a matrix whose (i, j)-th element
-            indicates unnormalized log probability of the class j at the i-th
-            example.
+        x (Variable): Variable holding a multidimensional array whose element
+            indicates unnormalized log probability: the first axis of the
+            variable represents the number of samples, and the second axis
+            represents the number of classes. While this function computes
+            a usual softmax cross entropy if the number of dimensions is equal
+            to 2, it computes a cross entropy of the replicated softmax if the
+            number of dimensions is greater than 2.
         t (Variable): Variable holding an int32 vector of groundtruth labels.
 
     Returns:
