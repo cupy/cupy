@@ -136,8 +136,8 @@ class Softmax(function.Function):
             cuda.elementwise(
                 'float* sum_ydy, const float* ydy, int n_channel, int n_unit',
                 '''
-                   int n = i / n_unit;
-                   int m = i % n_unit;
+                   const int n = i / n_unit;
+                   const int m = i % n_unit;
                    const float* row = ydy + n * n_channel * n_unit + m;
                    float sum = 0;
                    for (int c = 0; c < n_channel; ++c) {
