@@ -11,8 +11,9 @@ class SoftmaxCrossEntropy(function.Function):
 
     """Softmax activation followed by a cross entropy loss."""
 
-    def __init__(self, use_cudnn=True):
+    def __init__(self, use_cudnn=True, normalize=True):
         self.use_cudnn = use_cudnn
+        self.normalize = normalize
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -42,7 +43,14 @@ class SoftmaxCrossEntropy(function.Function):
             [0] + list(six.moves.range(2, self.y.ndim)) + [1])
         yd = yd.reshape(numpy.prod(yd.shape[:-1]), -1)
         p = yd[six.moves.range(t.size), t.flat]
-        y = -numpy.log(p).sum(keepdims=True) / t.shape[0]
+        # deal with the case where the SoftmaxCrossEntropy is
+        # unpickled from the old version
+        if getattr(self, "normalize", True):
+            n_unit = int(numpy.prod(self.y.shape[2:]))
+            count = t.shape[0] * n_unit
+        else:
+            count = t.shape[0]
+        y = -numpy.log(p).sum(keepdims=True) / count
         return y.reshape(()),
 
     def forward_gpu(self, inputs):
@@ -57,32 +65,46 @@ class SoftmaxCrossEntropy(function.Function):
             '       + (i % n_unit)])',
             'a+b', '0', 'crossent_fwd', numpy.float32
         )(t, self.y, self.y.shape[1], n_unit)
-        ret /= t.shape[0]
+        if getattr(self, "normalize", True):
+            n_unit = int(numpy.prod(self.y.shape[2:]))
+            count = t.shape[0] * n_unit
+        else:
+            count = t.shape[0]
+        ret /= count
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
+        n_unit = int(numpy.prod(self.y.shape[2:]))
         if self.y.ndim == 2:
             gx = self.y.copy()
             gx[six.moves.xrange(len(t)), t] -= 1
-            gx *= gloss / t.size
         else:
             # in the case where y.ndim is higher than 2,
             # we think that a current implementation is inefficient
             # because it yields two provisional arrays for indexing.
-            n_unit = int(numpy.prod(self.y.shape[2:]))
             gx = self.y.copy().reshape(self.y.shape[0], self.y.shape[1], -1)
             fst_index = numpy.arange(t.size) // n_unit
             trd_index = numpy.arange(t.size) % n_unit
             gx[fst_index, t.flat, trd_index] -= 1
-            gx = (gloss / t.shape[0]) * gx.reshape(self.y.shape)
+            gx = gx.reshape(self.y.shape)
+
+        if getattr(self, "normalize", True):
+            count = t.shape[0] * n_unit
+        else:
+            count = t.shape[0]
+        gx *= gloss / count
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
         n_unit = int(numpy.prod(self.y.shape[2:]))
         gx = cuda.empty_like(self.y)
-        coeff = gloss / t.shape[0]
+        if getattr(self, "normalize", True):
+            count = t.shape[0] * n_unit
+        else:
+            count = t.shape[0]
+        coeff = gloss / count
         cuda.elementwise(
             '''
                float* gx, const float* y, const int* t, const float* coeff,
@@ -99,7 +121,7 @@ class SoftmaxCrossEntropy(function.Function):
         return gx, None
 
 
-def softmax_cross_entropy(x, t, use_cudnn=True):
+def softmax_cross_entropy(x, t, use_cudnn=True, normalize=True):
     """Computes cross entropy loss for pre-softmax activations.
 
     Args:
@@ -111,6 +133,10 @@ def softmax_cross_entropy(x, t, use_cudnn=True):
             to 2, it computes a cross entropy of the replicated softmax if the
             number of dimensions is greater than 2.
         t (Variable): Variable holding an int32 vector of groundtruth labels.
+        normalize (Variable): Variable holding a boolean value which
+            determines the normalization constant. If true, this function
+            normalizes the cross entropy loss across all instances. If else,
+            it only normalizes along a batch size.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.
@@ -120,4 +146,4 @@ def softmax_cross_entropy(x, t, use_cudnn=True):
        This function is differentiable only by ``x``.
 
     """
-    return SoftmaxCrossEntropy(use_cudnn)(x, t)
+    return SoftmaxCrossEntropy(use_cudnn, normalize)(x, t)
