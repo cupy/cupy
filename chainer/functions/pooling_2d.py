@@ -1,10 +1,13 @@
 import collections
 
 import numpy
+import six
 
 from chainer import cuda
 from chainer import cudnn
 from chainer import function
+from chainer.functions import concat
+from chainer.functions import split_axis
 from chainer.utils import conv
 
 if cudnn.available:
@@ -352,3 +355,105 @@ def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
 
     """
     return AveragePooling2D(ksize, stride, pad, False, use_cudnn)(x)
+
+
+class SpatialPyramidPooling2D(function.Function):
+
+    """Spatial pyramid pooling over a set of 2d planes."""
+
+    def __init__(self, x, pyramid_height, pooling_class, use_cudnn=True):
+        bottom_c, bottom_h, bottom_w = x.data.shape[1:]
+        assert bottom_h > 3 and bottom_w > 3, \
+            'input feature map size should be larger than 3'
+        self.pyramid_height = pyramid_height
+
+        # create pooling functions for different pyramid levels
+        split_inds = []
+        self.out_dim = 0
+        self.poolers = []
+        for pyramid_level in six.moves.range(pyramid_height):
+            num_bins = int(2 ** pyramid_level)
+
+            ksize_h = numpy.ceil(bottom_h / (float(num_bins)))
+            remainder_h = ksize_h * num_bins - bottom_h
+            pad_h = remainder_h / 2
+
+            ksize_w = numpy.ceil(bottom_w / (float(num_bins)))
+            remainder_w = ksize_w * num_bins - bottom_w
+            pad_w = remainder_w / 2
+
+            ksize = map(int, [ksize_h, ksize_w])
+            stride = ksize
+            pad = map(int, [pad_h, pad_w])
+
+            if pooling_class == MaxPooling2D:
+                pooler = pooling_class(ksize, stride, pad, True, use_cudnn)
+                self.poolers.append(pooler)
+
+            if pooling_class == AveragePooling2D:
+                # cover_all mode is needed also for average pooling
+                raise NotImplementedError()
+
+            self.out_dim += bottom_c * (num_bins ** 2)
+            if pyramid_level < pyramid_height - 1:
+                split_inds.append(self.out_dim)
+
+        self.concat = concat.Concat(axis=1)
+        self.split = split_axis.SplitAxis(split_inds, axis=1)
+
+    def forward(self, x):
+        self.ys = []
+        for pooler in self.poolers:
+            y = pooler.forward(x)[0]
+            n, c, h, w = pooler.out_shape = y.shape
+            self.ys.append(y.reshape((n, c * h * w, 1, 1)))
+
+        return self.concat.forward(self.ys)
+
+    def backward_cpu(self, x, gy):
+        gx = numpy.zeros_like(x[0])
+        gys = self.split.forward(gy)
+        for pooler, gy in zip(self.poolers, gys):
+            gy = gy.reshape(pooler.out_shape)
+            gx += pooler.backward(x, (gy,))[0]
+
+        return gx,
+
+    def backward_gpu(self, x, gy):
+        gx = cuda.zeros_like(x[0])
+        gys = self.split.forward(gy)
+        for pooler, gy in zip(self.poolers, gys):
+            gy = gy.reshape(pooler.out_shape)
+            gx += pooler.backward(x, (gy,))[0]
+
+        return gx,
+
+
+def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
+                               use_cudnn=True):
+    """Spatial pyramid pooling function.
+
+    This function uses some pooling classes as components to perform spatial
+    pyramid pooling. Now it supports only :class:`~functions.MaxPooling2D` as
+    elemental pooling operator so far. It outputs a fixed-length vector
+    regardless of input feature map size.
+
+    See detail in paper: `Spatial Pyramid Pooling in Deep Convolutional \
+    Networks for Visual Recognition \
+    <http://arxiv.org/abs/1406.4729>`_.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+        pyramid_height (int): the number of pyramid levels
+        pooling_class (~functions.MaxPooling2D or ~functions.AveragePooling2D):
+            Only MaxPooling2D class can be available for now.
+        use_cudnn (bool): If True and CuDNN is enabled, then this function
+            uses CuDNN as the core implementation.
+
+    Returns:
+        ~chainer.Variable: Ouptut variable.
+
+    """
+
+    return SpatialPyramidPooling2D(x, pyramid_height, pooling_class,
+                                   use_cudnn=True)(x)

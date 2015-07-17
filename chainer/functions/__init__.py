@@ -56,6 +56,7 @@ Softmax = softmax.Softmax
 Tanh = tanh.Tanh
 AveragePooling2D = pooling_2d.AveragePooling2D
 MaxPooling2D = pooling_2d.MaxPooling2D
+SpatialPyramidPooling2D = pooling_2d.SpatialPyramidPooling2D
 Pooling2D = pooling_2d.Pooling2D
 LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization
@@ -101,6 +102,7 @@ tanh = tanh.tanh
 
 average_pooling_2d = pooling_2d.average_pooling_2d
 max_pooling_2d = pooling_2d.max_pooling_2d
+spatial_pyramid_pooling_2d = pooling_2d.spatial_pyramid_pooling_2d
 local_response_normalization = \
     local_response_normalization.local_response_normalization
 
