@@ -216,7 +216,7 @@ def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True,
         ksize (int or (int, int)): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k)`` are equivalent.
         stride (int or (int, int) or None): Stride of pooling applications.
-            ``ksize=k`` and ``ksize=(k, k)`` are equivalent. If None is
+            ``stride=s`` and ``stride=(s, s)`` are equivalent. If None is
             specified, then it uses same stride as the pooling window size.
         pad (int or (int, int)): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
@@ -338,7 +338,7 @@ def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
         ksize (int or (int, int)): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k)`` are equivalent.
         stride (int or (int, int) or None): Stride of pooling applications.
-            ``ksize=k`` and ``ksize=(k, k)`` are equivalent. If None is
+            ``stride=s`` and ``stride=(s, s)`` are equivalent. If None is
             specified, then it uses same stride as the pooling window size.
         pad (int or (int, int)): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
