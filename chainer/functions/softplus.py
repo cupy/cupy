@@ -39,8 +39,7 @@ class Softplus(function.Function):
         # y = log(1 + exp(beta * x)) / beta
         bx = self.beta * x
         self.y = (numpy.fmax(bx, numpy.float32(0.0)) +
-                  numpy.log1p(numpy.exp(-numpy.fabs(bx)))) \
-            * (numpy.float32(1.0) * self.beta_inv)
+                  numpy.log1p(numpy.exp(-numpy.fabs(bx)))) * self.beta_inv
         return self.y,
 
     def forward_gpu(self, inputs):
