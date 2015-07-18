@@ -38,9 +38,9 @@ class Softplus(function.Function):
         x, = inputs
         # y = log(1 + exp(beta * x)) / beta
         bx = self.beta * x
-        self.y = (numpy.fmax(bx, numpy.float32(0.0)) +
-                  numpy.log1p(numpy.exp(-numpy.fabs(bx)))) * self.beta_inv
-        return self.y,
+        y = (numpy.fmax(bx, numpy.float32(0.0)) +
+             numpy.log1p(numpy.exp(-numpy.fabs(bx)))) * self.beta_inv
+        return y,
 
     def forward_gpu(self, inputs):
         x, = inputs
@@ -58,7 +58,7 @@ class Softplus(function.Function):
     def backward_cpu(self, inputs, grads):
         x, = inputs
         g, = grads
-        return (1 - 1 / numpy.exp(self.beta * self.y)) * g,
+        return (1 - 1 / (1 + numpy.exp(self.beta * x))) * g,
 
     def backward_gpu(self, inputs, grads):
         x, = inputs
