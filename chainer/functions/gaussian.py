@@ -27,7 +27,7 @@ class Gaussian(function.Function):
             m_type.shape == v_type.shape,
         )
 
-    def check_type_fbackward(self, in_types, out_types):
+    def check_type_backward(self, in_types, out_types):
         type_check.expect(out_types.size() == 1)
         m_type, v_type = in_types
         g_type, = out_types
@@ -36,9 +36,6 @@ class Gaussian(function.Function):
             g_type.dtype == numpy.float32,
             g_type.shape == m_type.shape,
         )
-
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(out_types.size() == 1)
 
     def forward_cpu(self, inputs):
         mean, ln_var = inputs
