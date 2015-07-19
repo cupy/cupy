@@ -410,17 +410,11 @@ class SpatialPyramidPooling2D(function.Function):
 
         return self.concat.forward(self.ys)
 
-    def backward_cpu(self, x, gy):
-        gx = numpy.zeros_like(x[0])
-        gys = self.split.forward(gy)
-        for pooler, gy in zip(self.poolers, gys):
-            gy = gy.reshape(pooler.out_shape)
-            gx += pooler.backward(x, (gy,))[0]
-
-        return gx,
-
-    def backward_gpu(self, x, gy):
-        gx = cuda.zeros_like(x[0])
+    def backward(self, x, gy):
+        if isinstance(x[0], cuda.GPUArray):
+            gx = cuda.zeros_like(x[0])
+        else:
+            gx = numpy.zeros_like(x[0])
         gys = self.split.forward(gy)
         for pooler, gy in zip(self.poolers, gys):
             gy = gy.reshape(pooler.out_shape)
