@@ -376,11 +376,11 @@ class SpatialPyramidPooling2D(function.Function):
 
             ksize_h = numpy.ceil(bottom_h / (float(num_bins)))
             remainder_h = ksize_h * num_bins - bottom_h
-            pad_h = remainder_h / 2
+            pad_h = remainder_h // 2
 
             ksize_w = numpy.ceil(bottom_w / (float(num_bins)))
             remainder_w = ksize_w * num_bins - bottom_w
-            pad_w = remainder_w / 2
+            pad_w = remainder_w // 2
 
             ksize = (int(ksize_h), int(ksize_w))
             pad = (int(pad_h), int(pad_w))
