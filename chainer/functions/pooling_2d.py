@@ -398,7 +398,6 @@ class SpatialPyramidPooling2D(function.Function):
             if pyramid_level < pyramid_height - 1:
                 split_inds.append(self.out_dim)
 
-        self.concat = concat.Concat(axis=1)
         self.split = split_axis.SplitAxis(split_inds, axis=1)
 
     def forward(self, x):
@@ -408,7 +407,7 @@ class SpatialPyramidPooling2D(function.Function):
             n, c, h, w = pooler.out_shape = y.shape
             self.ys.append(y.reshape((n, c * h * w, 1, 1)))
 
-        return self.concat.forward(self.ys)
+        return concat.Concat(axis=1).forward(self.ys)
 
     def backward(self, x, gy):
         if isinstance(x[0], cuda.GPUArray):
