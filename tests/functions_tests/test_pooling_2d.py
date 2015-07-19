@@ -181,7 +181,7 @@ class TestAveragePooling2D(unittest.TestCase):
 
 class TestSpatialPyramidPooling2D(unittest.TestCase):
     pyramid_height = 3
-    output_dim = 63  # pyramid_height(=3) * (1 + 4 + 16) = 63
+    output_dim = 63  # channels(c=3) * (1 + 4 + 16) = 63
     n, c, h, w = 2, 3, 9, 8
     pooling_class = functions.MaxPooling2D
 
