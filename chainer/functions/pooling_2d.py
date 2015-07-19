@@ -427,17 +427,15 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
                                use_cudnn=True):
     """Spatial pyramid pooling function.
 
-    This function uses some pooling classes as components to perform spatial
-    pyramid pooling. Now it supports only :class:`~functions.MaxPooling2D` as
-    elemental pooling operator so far. It outputs a fixed-length vector
-    regardless of input feature map size.
+    It outputs a fixed-length vector regardless of input feature map size.
 
     See detail in paper: `Spatial Pyramid Pooling in Deep Convolutional \
     Networks for Visual Recognition \
     <http://arxiv.org/abs/1406.4729>`_.
 
     Args:
-        x (~chainer.Variable): Input variable.
+        x (~chainer.Variable): Input variable. The shape of `x` should be
+            (batchsize, # of channels, height, width).
         pyramid_height (int): the number of pyramid levels
         pooling_class (~functions.MaxPooling2D or ~functions.AveragePooling2D):
             Only MaxPooling2D class can be available for now.
@@ -446,6 +444,11 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
 
     Returns:
         ~chainer.Variable: Ouptut variable.
+
+    .. note:
+        This function uses some pooling classes as components to perform
+        spatial pyramid pooling. Now it supports only
+        :class:`~functions.MaxPooling2D` as elemental pooling operator so far.
 
     """
 
