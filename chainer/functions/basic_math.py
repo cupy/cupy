@@ -469,7 +469,9 @@ def log(x):
     """Elementwise natural logarithm function."""
     return Log()(x)
 
+
 class Sin(function.Function):
+
     @property
     def label(self):
         return 'sin'
@@ -488,11 +490,14 @@ class Sin(function.Function):
     def backward_gpu(self, x, gy):
         return utils.force_array(cuda.cumath.cos(x) * gy[0]),
 
+
 def sin(x):
     """Elementwise sin function."""
     return Sin()(x)
 
+
 class Cos(function.Function):
+
     @property
     def label(self):
         return 'cos'
@@ -510,6 +515,7 @@ class Cos(function.Function):
 
     def backward_gpu(self, x, gy):
         return utils.force_array(-cuda.cumath.sin(x) * gy[0]),
+
 
 def cos(x):
     """Elementwise cos function."""
