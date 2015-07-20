@@ -469,7 +469,7 @@ def log(x):
     """Elementwise natural logarithm function."""
     return Log()(x)
 
-class Sin(Function):
+class Sin(function.Function):
     @property
     def label(self):
         return 'sin'
@@ -492,7 +492,7 @@ def sin(x):
     """Elementwise sin function."""
     return Sin()(x)
 
-class Cos(Function):
+class Cos(function.Function):
     @property
     def label(self):
         return 'cos'
