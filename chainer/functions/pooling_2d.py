@@ -369,7 +369,7 @@ class SpatialPyramidPooling2D(function.Function):
 
         # create pooling functions for different pyramid levels
         split_inds = []
-        self.out_dim = 0
+        out_dim = 0
         self.poolers = []
         for pyramid_level in six.moves.range(pyramid_height):
             num_bins = int(2 ** pyramid_level)
@@ -393,9 +393,9 @@ class SpatialPyramidPooling2D(function.Function):
             else:
                 raise NotImplementedError()
 
-            self.out_dim += bottom_c * (num_bins ** 2)
+            out_dim += bottom_c * (num_bins ** 2)
             if pyramid_level < pyramid_height - 1:
-                split_inds.append(self.out_dim)
+                split_inds.append(out_dim)
 
         self.split = split_axis.SplitAxis(split_inds, axis=1)
 
