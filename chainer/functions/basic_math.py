@@ -506,6 +506,7 @@ class Exp(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward_cpu(self, x):
         self.y = utils.force_array(numpy.exp(x[0]))
@@ -532,6 +533,7 @@ class Log(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward_cpu(self, x):
         return utils.force_array(numpy.log(x[0])),
