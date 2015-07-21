@@ -2,11 +2,18 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 class Sum(function.Function):
 
     """Summation over all elements."""
+
+    def check_type_forward(self, in_types):
+        type_check.expect(
+            in_types.size() == 1,
+            in_types[0].dtype == numpy.float32
+        )
 
     def forward_cpu(self, x):
         return numpy.array(x[0].sum()),
