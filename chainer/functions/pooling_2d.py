@@ -6,6 +6,7 @@ from chainer import cuda
 from chainer import cudnn
 from chainer import function
 from chainer.utils import conv
+from chainer.utils import type_check
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
@@ -32,6 +33,13 @@ class Pooling2D(function.Function):
 
         self.cover_all = cover_all
         self.use_cudnn = use_cudnn
+
+    def check_type_forward(self, in_types):
+        type_check.expect(
+            in_types.size() == 1,
+            in_types[0].dtype == numpy.float32,
+            in_types[0].ndim == 4
+        )
 
     def forward_gpu(self, x):
         # Implementation using cudnn
