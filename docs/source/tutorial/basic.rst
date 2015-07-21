@@ -250,7 +250,7 @@ Now you can solve a multiclass classification task using a multi-layer perceptro
 Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is the long-standing de-facto "hello world" of machine learning.
 This MNIST example is also found in ``examples/mnist`` directory of the official repository.
 
-In order to use MNIST, we prepared :func:`data.load_mnist_data` function::
+In order to use MNIST, we prepared ``load_mnist_data`` function at ``examples/mnist/data.py``::
 
   >>> import data
   >>> mnist = data.load_mnist_data()
