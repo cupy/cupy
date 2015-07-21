@@ -62,6 +62,7 @@ class Absolute(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward(self, x):
         return utils.force_array(abs(x[0])),
@@ -260,6 +261,7 @@ class DivFromConstant(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward(self, x):
         return utils.force_array(_force_type(x[0].dtype, self.value) / x[0]),
@@ -339,6 +341,7 @@ class PowVarConst(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward(self, x):
         return utils.force_array(x[0] ** _force_type(x[0].dtype, self.value)),
@@ -386,6 +389,7 @@ class PowConstVar(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward_cpu(self, x):
         self.y = utils.force_array(_force_type(x[0].dtype, self.value) ** x[0])
