@@ -166,10 +166,13 @@ def build_computational_graph(outputs, remove_split=True):
     push_count = [0]
 
     class node_obj(object):
+
         def __init__(self, v):
             self.v = v
+
         def __hash__(self):
             return hash(self.v)
+
         def __eq__(self, r):
             return self.v is r.v
 
