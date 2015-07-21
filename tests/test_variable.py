@@ -90,7 +90,10 @@ class TestVariable(unittest.TestCase):
         ret = [x]
         for i in six.moves.range(length):
             ret.append(constant((ret[i], ), (self.a, )))
-        ret[-1].grad = np.zeros_like(ret[-1].data)
+        if gpu:
+            ret[-1].grad = cuda.zeros_like(ret[-1].data)
+        else:
+            ret[-1].grad = np.zeros_like(ret[-1].data)
         return ret
 
     def test_backward_cpu(self):
@@ -136,6 +139,31 @@ class TestVariable(unittest.TestCase):
     def test_invalid_value_type(self):
         with self.assertRaises(AssertionError):
             chainer.Variable(1)
+
+    def test_grad_type_check_pass(self):
+        a = chainer.Variable(np.empty((3,), dtype=np.float32))
+        a.grad = np.ndarray((3,), dtype=np.float32)
+
+    def test_grad_type_check_type(self):
+        a = chainer.Variable(np.empty((), dtype=np.float32))
+        with self.assertRaises(TypeError):
+            a.grad = np.float32()
+
+    @attr.gpu
+    def test_grad_type_check_type_cpu_gpu_mixture(self):
+        a = chainer.Variable(np.empty((3,), dtype=np.float32))
+        with self.assertRaises(TypeError):
+            a.grad = cuda.empty((3,), dtype=np.float32)
+
+    def test_grad_type_check_dtype(self):
+        a = chainer.Variable(np.empty((3,), dtype=np.float32))
+        with self.assertRaises(TypeError):
+            a.grad = np.empty((3,), dtype=np.float64)
+
+    def test_grad_type_check_shape(self):
+        a = chainer.Variable(np.empty((3,), dtype=np.float32))
+        with self.assertRaises(ValueError):
+            a.grad = np.empty((2,), dtype=np.float32)
 
 
 testing.run_module(__name__, __file__)

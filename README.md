@@ -50,6 +50,14 @@ or, from the source:
 python cuda_deps/setup.py install
 ```
 
+## More information
+
+- Official site: http://chainer.org/
+- Official document: http://docs.chainer.org/
+- github: https://github.com/pfnet/chainer
+- Forum: https://groups.google.com/forum/#!forum/chainer
+
+
 ## License
 
 MIT License (see `LICENSE` file).

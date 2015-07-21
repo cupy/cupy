@@ -1,6 +1,7 @@
 import numpy
 
 from chainer import function
+from chainer.utils import type_check
 
 
 class Parameter(function.Function):
@@ -20,6 +21,9 @@ class Parameter(function.Function):
     def __init__(self, array):
         self.W = array
         self.gW = numpy.empty_like(array)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 0)
 
     def forward(self, x):
         return self.W,

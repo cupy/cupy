@@ -5,6 +5,9 @@ class Identity(function.Function):
 
     """Identity function."""
 
+    def check_type_forward(self, in_types):
+        pass
+
     def forward(self, xs):
         return xs
 

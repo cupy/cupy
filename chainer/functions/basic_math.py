@@ -6,6 +6,7 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer import utils
+from chainer.utils import type_check
 from chainer import variable
 
 
@@ -39,6 +40,9 @@ class Neg(function.Function):
     def label(self):
         return '__neg__'
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+
     def forward(self, x):
         return utils.force_array(-x[0]),
 
@@ -51,6 +55,13 @@ def neg(x):  # -x
 
 
 class Absolute(function.Function):
+
+    @property
+    def label(self):
+        return '|_|'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(abs(x[0])),
@@ -77,6 +88,13 @@ class Add(function.Function):
     def label(self):
         return '_ + _'
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == in_types[1].dtype,
+            in_types[0].shape == in_types[1].shape
+        )
+
     def forward(self, x):
         y = utils.force_array(x[0] + x[1])
         return y,
@@ -93,6 +111,9 @@ class AddConstant(function.Function):
     @property
     def label(self):
         return '_ + %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(x[0] + _force_type(x[0].dtype, self.value)),
@@ -112,6 +133,13 @@ class Sub(function.Function):
     @property
     def label(self):
         return '_ - _'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == in_types[1].dtype,
+            in_types[0].shape == in_types[1].shape
+        )
 
     def forward(self, x):
         return utils.force_array(x[0] - x[1]),
@@ -135,6 +163,9 @@ class SubFromConstant(function.Function):
     def label(self):
         return '%s - _' % _convert_value_to_string(self.value)
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+
     def forward(self, x):
         return utils.force_array(_force_type(x[0].dtype, self.value) - x[0]),
 
@@ -153,6 +184,14 @@ class Mul(function.Function):
     @property
     def label(self):
         return '_ * _'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == numpy.float32,
+            in_types[1].dtype == numpy.float32,
+            in_types[0].shape == in_types[1].shape
+        )
 
     def forward(self, x):
         return utils.force_array(x[0] * x[1]),
@@ -183,6 +222,9 @@ class MulConstant(function.Function):
     def label(self):
         return '_ * %s' % _convert_value_to_string(self.value)
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+
     def forward(self, x):
         return utils.force_array(_force_type(x[0].dtype, self.value) * x[0]),
 
@@ -201,6 +243,14 @@ class Div(function.Function):
     @property
     def label(self):
         return '_ / _'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == numpy.float32,
+            in_types[1].dtype == numpy.float32,
+            in_types[0].shape == in_types[1].shape
+        )
 
     def forward(self, x):
         return utils.force_array(x[0] / x[1]),
@@ -237,6 +287,9 @@ class DivFromConstant(function.Function):
     @property
     def label(self):
         return '_ / %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(_force_type(x[0].dtype, self.value) / x[0]),
@@ -278,6 +331,14 @@ class PowVarVar(function.Function):
     def label(self):
         return '_ ** _'
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == numpy.float32,
+            in_types[1].dtype == numpy.float32,
+            in_types[0].shape == in_types[1].shape
+        )
+
     def forward_cpu(self, x):
         self.y = utils.force_array(x[0] ** x[1])
         return self.y,
@@ -286,7 +347,8 @@ class PowVarVar(function.Function):
         return x[0] ** x[1],
 
     def backward_cpu(self, x, gy):
-        gx0 = utils.force_array(x[1] * (x[0] ** (x[1] - 1)) * gy[0])
+        one = x[1].dtype.type(1)
+        gx0 = utils.force_array(x[1] * (x[0] ** (x[1] - one)) * gy[0])
         gx1 = utils.force_array(numpy.log(x[0]) * self.y * gy[0])
         return gx0, gx1
 
@@ -312,6 +374,9 @@ class PowVarConst(function.Function):
     @property
     def label(self):
         return '_ ** %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(x[0] ** _force_type(x[0].dtype, self.value)),
@@ -356,6 +421,9 @@ class PowConstVar(function.Function):
     @property
     def label(self):
         return '%s ** _' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward_cpu(self, x):
         self.y = utils.force_array(_force_type(x[0].dtype, self.value) ** x[0])
@@ -432,6 +500,9 @@ class Exp(function.Function):
     def label(self):
         return 'exp'
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+
     def forward_cpu(self, x):
         self.y = utils.force_array(numpy.exp(x[0]))
         return self.y,
@@ -454,6 +525,9 @@ class Log(function.Function):
     @property
     def label(self):
         return 'log'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward_cpu(self, x):
         return utils.force_array(numpy.log(x[0])),

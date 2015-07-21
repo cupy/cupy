@@ -3,6 +3,7 @@ import numpy
 from chainer import cuda
 from chainer import cudnn
 from chainer import function
+from chainer.utils import type_check
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
@@ -15,6 +16,10 @@ class Sigmoid(function.Function):
 
     def __init__(self, use_cudnn=True):
         self.use_cudnn = use_cudnn
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward_cpu(self, x):
         self.y = 1 / (1 + numpy.exp(-x[0]))

@@ -67,7 +67,7 @@ class Variable(object):
         self.volatile = volatile
 
         self.splitter = weakref.ref(lambda: 0)  # dead ref
-        self.grad = None
+        self._grad = None
         self.creator = None
 
     def __pos__(self):
@@ -89,6 +89,32 @@ class Variable(object):
             return str(self.data.dtype)
         return '%s, %s' % (str(self.data.shape),
                            str(self.data.dtype))
+
+    @property
+    def grad(self):
+        return self._grad
+
+    @grad.setter
+    def grad(self, g):
+        error_msg = '''
+This error is occured in two cases. The first case is when the user manually
+sets the Variable.grad incorrectly. The second case is when some Function
+implementation has a bug. If you do not manually set the Variable.grad in your
+script, please report this error to the issue tracker with the stack trace,
+the information of your environment, and your script:
+https://github.com/pfnet/chainer/issues/new.
+'''
+        if g is not None:
+            if not isinstance(g, type(self.data)):
+                raise TypeError('Type of data and grad mismatch: %s != %s%s'
+                                % (type(self.data), type(g), error_msg))
+            if g.dtype != self.data.dtype:
+                raise TypeError('Dtype of data and grad mismatch: %s != %s%s'
+                                % (self.data.dtype, g.dtype, error_msg))
+            if g.shape != self.data.shape:
+                raise ValueError('Shape of data and grad mismatch: %s != %s%s'
+                                 % (self.data.shape, g.shape, error_msg))
+        self._grad = g
 
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.
@@ -157,7 +183,7 @@ class Variable(object):
             outputs = tuple(y() for y in func.outputs)  # access via weak ref
 
             in_data = tuple(x.data for x in func.inputs)
-            out_grad = tuple(y and y.grad for y in outputs)
+            out_grad = tuple(None if y is None else y.grad for y in outputs)
             func._check_data_type_backward(in_data, out_grad)
             with cuda.using_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
@@ -165,7 +191,7 @@ class Variable(object):
 
             if not retain_grad:
                 for y in outputs:
-                    if y is not None and y != self:
+                    if y is not None and y is not self:
                         y.grad = None
             for x, gx in zip(func.inputs, gxs):
                 x.grad = gx
@@ -198,5 +224,32 @@ class Variable(object):
             for var in func.inputs:
                 add_cand(var.creator)
             func.unchain()
+
+    def __lt__(self, other):
+        raise NotImplementedError()
+
+    def __le__(self, other):
+        raise NotImplementedError()
+
+    def __eq__(self, other):
+        raise NotImplementedError()
+
+    def __ne__(self, other):
+        raise NotImplementedError()
+
+    def __gt__(self, other):
+        raise NotImplementedError()
+
+    def __ge__(self, other):
+        raise NotImplementedError()
+
+    def __nonzero__(self):
+        raise NotImplementedError()
+
+    def __bool__(self):
+        raise NotImplementedError()
+
+    def __hash__(self):
+        return super(Variable, self).__hash__()
 
     __array_priority__ = 200
