@@ -6,7 +6,7 @@ class ClippedReLU(function.Function):
 
     """clipped ReLU function. clipped ReLU is written as below,
 
-    :math:`CReLU(x, z) = min{max{0,x},z}`
+    :math:`ClippedReLU(x, z) = min{max{0,x},z}`
     z is a parameter to cap return value of ReLU.
 
     """
