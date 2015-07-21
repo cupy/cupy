@@ -62,8 +62,8 @@ class CrossCovariance(function.Function):
 
         # Calculate cross-covariance
         self.covariance = cuda.empty((y.shape[1], z.shape[1]))
-        cuda.culinalg.add_dot(self.y_centered, self.z_centered, self.covariance, transa='T',
-                              alpha=1./y.shape[0], beta=0.)
+        cuda.culinalg.add_dot(self.y_centered, self.z_centered, self.covariance,
+                              transa='T', alpha=1./y.shape[0], beta=0.)
 
         # Calculate cost
         cost = cuda.cumisc.sum(0.5 * self.covariance**2)
@@ -83,8 +83,10 @@ class CrossCovariance(function.Function):
         N = y.shape[0]
         gy = cuda.empty(y.shape)
         gz = cuda.empty(z.shape)
-        cuda.culinalg.add_dot(self.z_centered, self.covariance, gy, transb='T', alpha=1./N, beta=0.)
-        cuda.culinalg.add_dot(self.y_centered, self.covariance,gz, alpha=1./N, beta=0.)
+        cuda.culinalg.add_dot(self.z_centered, self.covariance, gy,
+                              transb='T', alpha=1./N, beta=0.)
+        cuda.culinalg.add_dot(self.y_centered, self.covariance,gz,
+                              alpha=1./N, beta=0.)
         return gy, gz
 
 

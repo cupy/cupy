@@ -1,4 +1,3 @@
-import math
 import unittest
 
 import numpy
@@ -38,11 +37,12 @@ class TestCrossCovariance(unittest.TestCase):
         N = y_data.shape[0]
 
         loss_expect = 0
-        for i in xrange(y_data.shape[1]):
-            for j in xrange(z_data.shape[1]):
+        for i in six.moves.xrange(y_data.shape[1]):
+            for j in six.moves.xrange(z_data.shape[1]):
                 ij_loss = 0.
-                for n in xrange(N):
-                    ij_loss += (y_data[n, i] - y_mean[i]) * (z_data[n, j] - z_mean[j])
+                for n in six.moves.xrange(N):
+                    ij_loss += (y_data[n, i] - y_mean[i])\
+                               * (z_data[n, j] - z_mean[j])
                 ij_loss /= N
                 loss_expect += ij_loss ** 2
         loss_expect *= 0.5
@@ -71,7 +71,8 @@ class TestCrossCovariance(unittest.TestCase):
 
         func = loss.creator
         f = lambda: func.forward((y.data, z.data))
-        gy, gz = gradient_check.numerical_grad(f, (y.data, z.data), (1, ), eps=0.02)
+        gy, gz = gradient_check.numerical_grad(f, (y.data, z.data),
+                                               (1, ), eps=0.02)
 
         gradient_check.assert_allclose(gy, y.grad)
         gradient_check.assert_allclose(gz, z.grad)
