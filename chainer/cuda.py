@@ -83,9 +83,6 @@ $ pip install -U chainer-cuda-deps
     cumisc = skcuda.misc
     cutools = pycuda.tools
     gpuarray = pycuda.gpuarray
-except ImportError as e:
-    available = False
-    warnings.warn('Could not import CUDA: {}'.format(e))
 except pkg_resources.ResolutionError as e:
     available = False
     _resolution_error = e
