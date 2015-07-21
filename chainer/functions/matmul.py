@@ -100,12 +100,10 @@ def _convert_type(in_type, vector_ndim=1):
 
 
 def _get_check_index(trans, right, row_idx=0, col_idx=1):
-    use_col_idx = True
-    if trans:
-        use_col_idx = not use_col_idx
-    if right:
-        use_col_idx = not use_col_idx
-    return col_idx if use_col_idx else row_idx
+    if trans ^ right:
+        return row_idx
+    else:
+        return col_idx
 
 
 class MatMul(function.Function):
