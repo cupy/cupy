@@ -128,6 +128,24 @@ _cublas_handles = {}
 _pid = None
 
 
+def _check_cuda_available():
+    if not available:
+        global _resolution_error
+        msg = '''CUDA environment is not correctly set up.
+Use `pip install -U chainer-cuda-deps` to install libraries.
+'''
+
+        # Note that error message depends on its type
+        if isinstance(_resolution_error, pkg_resources.DistributionNotFound):
+            msg += 'Required package is not found: ' + str(_resolution_error)
+        elif isinstance(_resolution_error, pkg_resources.VersionConflict):
+            msg += 'Version conflict: ' + str(_resolution_error)
+        else:
+            msg += 'Unknwon error: ' + str(_resolution_error)
+
+        raise RuntimeError(msg)
+
+
 def init(device=None):
     """Initializes CUDA global state.
 
@@ -155,21 +173,7 @@ def init(device=None):
     """
     global _contexts, _cublas_handles, _generators, _pid, _pools
 
-    if not available:
-        global _resolution_error
-        msg = '''CUDA environment is not correctly set up.
-Use `pip install -U chainer-cuda-deps` to install libraries.
-'''
-
-        # Note that error message depends on its type
-        if isinstance(_resolution_error, pkg_resources.DistributionNotFound):
-            msg += 'Required package is not found: ' + str(_resolution_error)
-        elif isinstance(_resolution_error, pkg_resources.VersionConflict):
-            msg += 'Version conflict: ' + str(_resolution_error)
-        else:
-            msg += 'Unknwon error: ' + str(_resolution_error)
-
-        raise RuntimeError(msg)
+    _check_cuda_available()
 
     pid = os.getpid()
     if _pid == pid:  # already initialized
@@ -203,6 +207,8 @@ def shutdown():
 
     """
     global _contexts, _cublas_handles, _pid, _pools
+
+    _check_cuda_available()
 
     pid = os.getpid()
     if _pid != pid:  # not initialized
@@ -473,6 +479,7 @@ def to_gpu(array, device=None):
         copy GPUArray into specified device.
 
     """
+    _check_cuda_available()
     if isinstance(array, GPUArray):
         return array
     with using_device(device):
@@ -509,6 +516,7 @@ def to_gpu_async(array, stream=None):
         ``array`` without performing any copy.
 
     """
+    _check_cuda_available()
     if isinstance(array, GPUArray):
         return array
     return gpuarray.to_gpu_async(array, allocator=mem_alloc, stream=stream)
@@ -563,6 +571,7 @@ def empty(shape, dtype=numpy.float32):
         pool.
 
     """
+    _check_cuda_available()
     return gpuarray.empty(shape, dtype, allocator=mem_alloc)
 
 
@@ -605,6 +614,7 @@ def ones(shape, dtype=numpy.float32, stream=None):
 
 def empty_like(array):
     """Alias to :func:`pycuda.gpuarray.empty_like`."""
+    _check_cuda_available()
     return gpuarray.empty_like(array)
 
 
