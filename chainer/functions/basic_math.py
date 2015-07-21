@@ -89,6 +89,13 @@ class Add(function.Function):
     def label(self):
         return '_ + _'
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == in_types[1].dtype,
+            in_types[0].shape == in_types[1].shape
+        )
+
     def forward(self, x):
         y = utils.force_array(x[0] + x[1])
         return y,
@@ -127,6 +134,13 @@ class Sub(function.Function):
     @property
     def label(self):
         return '_ - _'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == in_types[1].dtype,
+            in_types[0].shape == in_types[1].shape
+        )
 
     def forward(self, x):
         return utils.force_array(x[0] - x[1]),
@@ -171,6 +185,14 @@ class Mul(function.Function):
     @property
     def label(self):
         return '_ * _'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == numpy.float32,
+            in_types[1].dtype == numpy.float32,
+            in_types[0].shape == in_types[1].shape
+        )
 
     def forward(self, x):
         return utils.force_array(x[0] * x[1]),
@@ -222,6 +244,14 @@ class Div(function.Function):
     @property
     def label(self):
         return '_ / _'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == numpy.float32,
+            in_types[1].dtype == numpy.float32,
+            in_types[0].shape == in_types[1].shape
+        )
 
     def forward(self, x):
         return utils.force_array(x[0] / x[1]),
@@ -302,6 +332,14 @@ class PowVarVar(function.Function):
     @property
     def label(self):
         return '_ ** _'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        type_check.expect(
+            in_types[0].dtype == numpy.float32,
+            in_types[1].dtype == numpy.float32,
+            in_types[0].shape == in_types[1].shape
+        )
 
     def forward_cpu(self, x):
         self.y = utils.force_array(x[0] ** x[1])
