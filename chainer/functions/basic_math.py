@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import function
 from chainer import utils
 from chainer import variable
+from chainer.utils import type_check
 
 
 # ------------------------------------------------------------------------------
@@ -33,7 +34,13 @@ def _force_type(dtype, value):
         return value
 
 
-class Neg(function.Function):
+class UnaryOperator(function.Function):
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+
+
+class Neg(UnaryOperator):
 
     @property
     def label(self):
@@ -50,7 +57,7 @@ def neg(x):  # -x
     return Neg()(x)
 
 
-class Absolute(function.Function):
+class Absolute(UnaryOperator):
 
     def forward(self, x):
         return utils.force_array(abs(x[0])),
@@ -85,7 +92,7 @@ class Add(function.Function):
         return gy[0], gy[0]
 
 
-class AddConstant(function.Function):
+class AddConstant(UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -126,7 +133,7 @@ def sub(lhs, rhs):  # lhs - rhs
     return AddConstant(-rhs)(lhs)
 
 
-class SubFromConstant(function.Function):
+class SubFromConstant(UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -174,7 +181,7 @@ class Mul(function.Function):
         return gx0, gx1
 
 
-class MulConstant(function.Function):
+class MulConstant(UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -229,7 +236,7 @@ def div(lhs, rhs):  # lhs / rhs
     return MulConstant(1. / rhs)(lhs)
 
 
-class DivFromConstant(function.Function):
+class DivFromConstant(UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -304,7 +311,7 @@ class PowVarVar(function.Function):
         return gx0, gx1
 
 
-class PowVarConst(function.Function):
+class PowVarConst(UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -348,7 +355,7 @@ def pow(lhs, rhs):  # lhs ** rhs
     return PowVarConst(rhs)(lhs)
 
 
-class PowConstVar(function.Function):
+class PowConstVar(UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -426,7 +433,7 @@ def install_variable_arithmetics():
 # ------------------------------------------------------------------------------
 
 
-class Exp(function.Function):
+class Exp(UnaryOperator):
 
     @property
     def label(self):
@@ -449,7 +456,7 @@ def exp(x):
     return Exp()(x)
 
 
-class Log(function.Function):
+class Log(UnaryOperator):
 
     @property
     def label(self):
