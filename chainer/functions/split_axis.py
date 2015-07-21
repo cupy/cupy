@@ -51,7 +51,7 @@ class SplitAxis(function.Function):
             output_size = type_check.Variable(
                 self.indices_or_sections, 'sections')
 
-        type_check.expect(out_types.size() == output_size.eval())
+        type_check.expect(out_types.size() == output_size)
 
         for out_type in out_types:
             type_check.expect(
