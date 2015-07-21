@@ -4,6 +4,8 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
+
 
 _args = 'float* y, float* x, int cdimy, int cdimx, int rdim, int coffset'
 _preamble = '''
@@ -25,6 +27,19 @@ class SplitAxis(function.Function):
             raise TypeError('indices_or_sections must be integer or 1-D array')
         self.indices_or_sections = indices_or_sections
         self.axis = axis
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].ndim >= self.axis)
+
+        if isinstance(self.indices_or_sections, collections.Iterable):
+            max_index = type_check.Variable(
+                self.indices_or_sections[-1], 'max_index')
+            type_check.expect(in_types[0].shape[self.axis] > max_index)
+        else:
+            sections = type_check.Variable(
+                self.indices_or_sections, 'sections')
+            type_check.expect(in_types[0].shape[self.axis] % sections == 0)
 
     def forward_cpu(self, x):
         if isinstance(self.indices_or_sections, collections.Iterable):
