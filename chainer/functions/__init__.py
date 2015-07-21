@@ -6,6 +6,7 @@ from chainer.functions import batch_normalization
 from chainer.functions import concat
 from chainer.functions import convolution_2d
 from chainer.functions import copy
+from chainer.functions import clipped_relu
 from chainer.functions import dropout
 from chainer.functions import embed_id
 from chainer.functions import hierarchical_softmax
@@ -40,6 +41,7 @@ NonparameterizedLinear = \
     nonparameterized_linear.NonparameterizedLinear
 Concat = concat.Concat
 Copy = copy.Copy
+ClippedReLU = clipped_relu.ClippedReLU
 Dropout = dropout.Dropout
 Identity = identity.Identity
 Reshape = reshape.Reshape
@@ -82,6 +84,7 @@ linear = nonparameterized_linear.linear
 
 concat = concat.concat
 copy = copy.copy
+clipped_relu = clipped_relu.clipped_relu
 dropout = dropout.dropout
 identity = identity.identity
 reshape = reshape.reshape
