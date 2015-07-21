@@ -5,6 +5,7 @@ import six
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 def _mat_ptrs(a):
@@ -80,17 +81,62 @@ def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
         beta, _mat_ptrs(out).gpudata, n, l)
 
 
+def _check_ndim(in_type, lower=1, upper=2):
+    type_check.expect(
+        in_type.ndim >= lower,
+        in_type.ndim <= upper
+    )
+
+
+def _convert_type(in_type, vector_ndim=1):
+    if in_type.ndim.eval() == vector_ndim:
+        in_type = type_check.Variable(
+            type_check.TypeInfo(in_type.shape.eval() + (1,),
+                                in_type.dtype),
+            '%s(1-D array)' % in_type.name)
+    else:
+        in_type.name = '%s(2-D array)' % in_type.name
+    return in_type
+
+
+def _get_check_index(trans, right, row_idx=0, col_idx=1):
+    use_col_idx = True
+    if trans:
+        use_col_idx = not use_col_idx
+    if right:
+        use_col_idx = not use_col_idx
+    return col_idx if use_col_idx else row_idx
+
+
 class MatMul(function.Function):
     def __init__(self, transa=False, transb=False):
         self.transa = transa
         self.transb = transb
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        a_type, b_type = in_types
+
+        type_check.expect(
+            a_type.dtype == numpy.float32,
+            b_type.dtype == numpy.float32
+        )
+
+        _check_ndim(a_type)
+        _check_ndim(b_type)
+
+        a_type = _convert_type(a_type)
+        b_type = _convert_type(b_type)
+        a_idx = _get_check_index(self.transa, False)
+        b_idx = _get_check_index(self.transb, True)
+        type_check.expect(
+            a_type.shape[a_idx] == b_type.shape[b_idx]
+        )
+
     def forward_cpu(self, x):
-        assert len(x[0].shape) == len(x[1].shape)
         return _matmul_cpu(x[0], x[1], transa=self.transa, transb=self.transb),
 
     def forward_gpu(self, x):
-        assert len(x[0].shape) == len(x[1].shape)
         return _matmul_gpu(x[0], x[1], transa=self.transa, transb=self.transb),
 
     def backward_cpu(self, x, gy):
@@ -144,9 +190,28 @@ class BatchMatMul(function.Function):
         n = b_mat_shape[0] if self.transb else b_mat_shape[1]
         return (batch_size, m, n)
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+        a_type, b_type = in_types
+
+        type_check.expect(
+            a_type.dtype == numpy.float32,
+            b_type.dtype == numpy.float32
+        )
+
+        _check_ndim(a_type, lower=2, upper=3)
+        _check_ndim(b_type, lower=2, upper=3)
+
+        a_type = _convert_type(a_type, vector_ndim=2)
+        b_type = _convert_type(b_type, vector_ndim=2)
+        a_idx = _get_check_index(self.transa, False, row_idx=1, col_idx=2)
+        b_idx = _get_check_index(self.transb, True, row_idx=1, col_idx=2)
+        type_check.expect(
+            a_type.shape[a_idx] == b_type.shape[b_idx]
+        )
+
     def forward_cpu(self, x):
         a, b = x
-        assert a.shape[0] == b.shape[0]
         batch_size = a.shape[0]
         shape = self._output_shape(a, b)
         ret = numpy.empty(shape)
@@ -171,7 +236,6 @@ class BatchMatMul(function.Function):
 
     def forward_gpu(self, x):
         a, b = x
-        assert a.shape[0] == b.shape[0]
         shape = self._output_shape(a, b)
         ret = cuda.empty(shape)
         _batch_matmul_gpu(a, b,
