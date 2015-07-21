@@ -42,35 +42,6 @@ class SplitAxis(function.Function):
                 self.indices_or_sections, 'sections')
             type_check.expect(in_types[0].shape[self.axis] % sections == 0)
 
-    def check_type_backward(self, in_types, out_types):
-        if isinstance(self.indices_or_sections, collections.Iterable):
-            num_indices = type_check.Variable(
-                len(self.indices_or_sections), 'len(indices)')
-            output_size = num_indices + 1
-        else:
-            output_size = type_check.Variable(
-                self.indices_or_sections, 'sections')
-
-        type_check.expect(out_types.size() == output_size)
-
-        for out_type in out_types:
-            type_check.expect(
-                out_type.ndim == in_types[0].ndim,
-                out_type.dtype == out_types[0].dtype
-            )
-
-        for out_type in out_types:
-            for i in six.moves.range(in_types[0].ndim.eval()):
-                if i == self.axis:
-                    continue
-                type_check.expect(out_type.shape[i] == in_types[0].shape[i])
-
-        total_output_dim = sum(
-            out_type.shape[self.axis] for out_type in out_types)
-        type_check.expect(
-            total_output_dim == in_types[0].shape[self.axis]
-        )
-
     def forward_cpu(self, x):
         if isinstance(self.indices_or_sections, collections.Iterable):
             cdimx = x[0].shape[self.axis]
