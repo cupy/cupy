@@ -171,7 +171,7 @@ def build_computational_graph(outputs, remove_split=True):
             self.v = v
 
         def __hash__(self):
-            return hash(self.v)
+            return self.v.__hash__
 
         def __eq__(self, r):
             return self.v is r.v
