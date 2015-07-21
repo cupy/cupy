@@ -41,6 +41,7 @@ NonparameterizedLinear = \
     nonparameterized_linear.NonparameterizedLinear
 Concat = concat.Concat
 Copy = copy.Copy
+CrossCovariance = cross_covariance.CrossCovariance
 Dropout = dropout.Dropout
 Identity = identity.Identity
 Reshape = reshape.Reshape
@@ -67,7 +68,6 @@ SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 Sum = sum_.Sum
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN
-CrossCovariance = cross_covariance.CrossCovariance
 
 BatchNormalization = batch_normalization.BatchNormalization
 Convolution2D = convolution_2d.Convolution2D
@@ -107,8 +107,8 @@ local_response_normalization = \
     local_response_normalization.local_response_normalization
 
 accuracy = accuracy.accuracy
+cross_covariance = cross_covariance.cross_covariance
 mean_squared_error = mean_squared_error.mean_squared_error
 sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 sum = sum_.sum
-cross_covariance = cross_covariance.cross_covariance
