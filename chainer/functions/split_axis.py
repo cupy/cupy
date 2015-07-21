@@ -1,7 +1,6 @@
 import collections
 
 import numpy
-import six
 
 from chainer import cuda
 from chainer import function
