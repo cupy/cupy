@@ -28,7 +28,6 @@ class NonparameterizedLinear(function.Function):
             w_type.dtype == numpy.float32,
             x_type.ndim >= 2,
             w_type.ndim == 2,
-            x_type.shape[1] == w_type.shape[1],
             prod(x_type.shape[1:]) == w_type.shape[1],
         )
         if in_types.size().eval() == 3:
