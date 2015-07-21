@@ -1,9 +1,7 @@
 import numpy
-import six
 
 from chainer import cuda
 from chainer import function
-from chainer.functions import softmax
 from chainer.utils import type_check
 
 
@@ -72,10 +70,16 @@ class CrossCovariance(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         y, z = inputs
         N = y.shape[0]
+        # TODO: Dirty hack. Sometimes type(y.shape) is list which causes an error in scikit-cuda because it checks if
+        #   c_gpu.shape == (m, n) which is a tuple.
+        y.shape = tuple(y.shape)
+        z.shape = tuple(z.shape)
         gy = cuda.empty(y.shape)
         gz = cuda.empty(z.shape)
         cuda.culinalg.add_dot(self.z_centered, self.covariance, gy, transb='T', alpha=1./N, beta=0.)
         cuda.culinalg.add_dot(self.y_centered, self.covariance,gz, alpha=1./N, beta=0.)
+        gy.shape = list(gy.shape)
+        gz.shape = list(gz.shape)
         return gy, gz
 
 
