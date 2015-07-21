@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import cudnn
 from chainer import function
 from chainer.utils import conv
+from chainer.utils import type_check
 
 if cudnn.available:
     from chainer.cudnn import libcudnn
@@ -93,6 +94,9 @@ class Convolution2D(function.Function):
         self.sy, self.sx = stride
         self.ph, self.pw = pad
 
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
         self.W = None
         self.gW = None
         self.b = None
@@ -128,6 +132,39 @@ class Convolution2D(function.Function):
         if cudnn.enabled and use_cudnn:
             # chance to choose implicit-precomp-gemm algorithm
             self.max_workspace_size = in_channels * self.kh * self.kw * 4
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim == 4,
+            x_type.shape[1] == self.in_channels
+        )
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(out_types.size() == 1)
+        x_type, = in_types
+        y_type, = out_types
+
+        in_h = x_type.shape[2].eval()
+        out_h = type_check.Variable(
+            conv.get_conv_outsize(in_h, self.kh, self.sy, self.ph),
+            'out_h')
+        in_w = x_type.shape[3].eval()
+        out_w = type_check.Variable(
+            conv.get_conv_outsize(in_w, self.kw, self.sx, self.pw),
+            'out_w')
+
+        type_check.expect(
+            y_type.dtype == numpy.float32,
+            y_type.ndim == 4,
+            y_type.shape[0] == x_type.shape[0],
+            y_type.shape[1] == self.out_channels,
+            y_type.shape[2] == out_h,
+            y_type.shape[3] == out_w
+        )
 
     @property
     def parameter_names(self):

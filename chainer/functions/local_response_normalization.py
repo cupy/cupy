@@ -72,7 +72,7 @@ class LocalResponseNormalization(function.Function):
             '''float* y, float* scale, const float* x,
                float k, float alpha, float beta''',
             '''scale[i] = k + alpha * scale[i];
-               y[i] = x[i] * __powf(scale[i], -beta);''',
+               y[i] = x[i] * powf(scale[i], -beta);''',
             'lrn_fwd')(self.y, self.scale, x[0], self.k, self.alpha, self.beta)
         return self.y,
 
@@ -88,7 +88,7 @@ class LocalResponseNormalization(function.Function):
         cuda.elementwise(
             '''float* gx, const float* x, const float* gy, const float* scale,
                float beta, float coeff''',
-            'gx[i] = __powf(scale[i], -beta) * gy[i] - coeff * x[i] * gx[i]',
+            'gx[i] = powf(scale[i], -beta) * gy[i] - coeff * x[i] * gx[i]',
             'lrn_bwd')(gx, x[0], gy[0], self.scale, self.beta,
                        2 * self.alpha * self.beta)
         return gx,

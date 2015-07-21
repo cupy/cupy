@@ -299,8 +299,8 @@ class PowVarVar(function.Function):
                float* gx0, float* gx1, const float* x0, const float* x1,
                const float* gy
             ''', '''
-               gx0[i] = x1[i] * __powf(x0[i], x1[i] - 1) * gy[i];
-               gx1[i] = __logf(x0[i]) * __powf(x0[i], x1[i]) * gy[i];
+               gx0[i] = x1[i] * powf(x0[i], x1[i] - 1) * gy[i];
+               gx1[i] = __logf(x0[i]) * powf(x0[i], x1[i]) * gy[i];
             ''', 'pow_var_var_bwd')(gx0, gx1, x[0], x[1], gy[0])
         return gx0, gx1
 
@@ -330,7 +330,7 @@ class PowVarConst(function.Function):
                    float* gx, const float* x, const float* gy,
                    const float value
                 ''',
-                'gx[i] = value * __powf(x[i], value - 1) * gy[i]',
+                'gx[i] = value * powf(x[i], value - 1) * gy[i]',
                 'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         else:
             cuda.elementwise(
@@ -338,7 +338,7 @@ class PowVarConst(function.Function):
                    float* gx, const float* x, const float* gy,
                    const float* value
                 ''',
-                'gx[i] = value[i] * __powf(x[i], value[i] - 1) * gy[i]',
+                'gx[i] = value[i] * powf(x[i], value[i] - 1) * gy[i]',
                 'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
@@ -366,11 +366,11 @@ class PowConstVar(function.Function):
         y = cuda.empty_like(x[0])
         if isinstance(self.value, Number):
             cuda.elementwise('float* y, const float* x, const float value',
-                             'y[i] = __powf(value, x[i])',
+                             'y[i] = powf(value, x[i])',
                              'pow_const_var_fwd')(y, x[0], self.value)
         else:
             cuda.elementwise('float* y, const float* x, const float *value',
-                             'y[i] = __powf(value[i], x[i])',
+                             'y[i] = powf(value[i], x[i])',
                              'pow_const_var_fwd')(y, x[0], self.value)
         return y,
 
@@ -387,7 +387,7 @@ class PowConstVar(function.Function):
                    float* gx, const float* x, const float* gy,
                    const float value, const float logv
                 ''',
-                'gx[i] = logv * __powf(value, x[i]) * gy[i]',
+                'gx[i] = logv * powf(value, x[i]) * gy[i]',
                 'pow_const_var_bwd')(gx, x[0], gy[0], self.value, logv)
         else:
             cuda.elementwise(
@@ -395,7 +395,7 @@ class PowConstVar(function.Function):
                    float* gx, const float* x, const float* gy,
                    const float* value
                 ''',
-                'gx[i] = __logf(value[i]) * __powf(value[i], x[i]) * gy[i]',
+                'gx[i] = __logf(value[i]) * powf(value[i], x[i]) * gy[i]',
                 'pow_const_var_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 

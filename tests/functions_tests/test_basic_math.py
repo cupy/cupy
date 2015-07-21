@@ -872,4 +872,30 @@ class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
         return x, gy
 
 
+class TestNegativePow(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 0, (3, 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+
+    def check_backward(self, x_data, y_grad):
+        x = chainer.Variable(x_data)
+        y = x ** 2
+        y.grad = y_grad
+        y.backward()
+
+        func = y.creator
+        f = lambda: func.forward((x.data,))
+        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
+
+        gradient_check.assert_allclose(gx, x.grad, atol=1e-4, rtol=1e-4)
+
+    def test_cpu(self):
+        self.check_backward(self.x, self.gy)
+
+    @attr.gpu
+    def test_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+
 testing.run_module(__name__, __file__)
