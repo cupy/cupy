@@ -33,6 +33,7 @@ from chainer.functions import softmax_cross_entropy
 from chainer.functions import split_axis
 from chainer.functions import sum as sum_
 from chainer.functions import tanh
+from chainer.functions import cross_covariance
 
 NonparameterizedConvolution2D = \
     nonparameterized_convolution_2d.NonparameterizedConvolution2D
@@ -66,6 +67,7 @@ SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 Sum = sum_.Sum
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN
+CrossCovariance = cross_covariance.CrossCovariance
 
 BatchNormalization = batch_normalization.BatchNormalization
 Convolution2D = convolution_2d.Convolution2D
@@ -109,3 +111,4 @@ mean_squared_error = mean_squared_error.mean_squared_error
 sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 sum = sum_.sum
+cross_covariance = cross_covariance.cross_covariance
