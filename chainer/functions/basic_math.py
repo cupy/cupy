@@ -6,6 +6,7 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer import utils
+from chainer.utils import type_check
 from chainer import variable
 
 
@@ -33,11 +34,14 @@ def _force_type(dtype, value):
         return value
 
 
-class Neg(function.UnaryOperator):
+class Neg(function.Function):
 
     @property
     def label(self):
         return '__neg__'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(-x[0]),
@@ -50,11 +54,14 @@ def neg(x):  # -x
     return Neg()(x)
 
 
-class Absolute(function.UnaryOperator):
+class Absolute(function.Function):
 
     @property
     def label(self):
         return '|_|'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(abs(x[0])),
@@ -89,7 +96,7 @@ class Add(function.Function):
         return gy[0], gy[0]
 
 
-class AddConstant(function.UnaryOperator):
+class AddConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -97,6 +104,9 @@ class AddConstant(function.UnaryOperator):
     @property
     def label(self):
         return '_ + %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(x[0] + _force_type(x[0].dtype, self.value)),
@@ -130,7 +140,7 @@ def sub(lhs, rhs):  # lhs - rhs
     return AddConstant(-rhs)(lhs)
 
 
-class SubFromConstant(function.UnaryOperator):
+class SubFromConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -138,6 +148,9 @@ class SubFromConstant(function.UnaryOperator):
     @property
     def label(self):
         return '%s - _' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(_force_type(x[0].dtype, self.value) - x[0]),
@@ -178,7 +191,7 @@ class Mul(function.Function):
         return gx0, gx1
 
 
-class MulConstant(function.UnaryOperator):
+class MulConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -186,6 +199,9 @@ class MulConstant(function.UnaryOperator):
     @property
     def label(self):
         return '_ * %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(_force_type(x[0].dtype, self.value) * x[0]),
@@ -233,7 +249,7 @@ def div(lhs, rhs):  # lhs / rhs
     return MulConstant(1. / rhs)(lhs)
 
 
-class DivFromConstant(function.UnaryOperator):
+class DivFromConstant(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -241,6 +257,9 @@ class DivFromConstant(function.UnaryOperator):
     @property
     def label(self):
         return '_ / %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(_force_type(x[0].dtype, self.value) / x[0]),
@@ -308,7 +327,7 @@ class PowVarVar(function.Function):
         return gx0, gx1
 
 
-class PowVarConst(function.UnaryOperator):
+class PowVarConst(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -316,6 +335,9 @@ class PowVarConst(function.UnaryOperator):
     @property
     def label(self):
         return '_ ** %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
         return utils.force_array(x[0] ** _force_type(x[0].dtype, self.value)),
@@ -352,7 +374,7 @@ def pow(lhs, rhs):  # lhs ** rhs
     return PowVarConst(rhs)(lhs)
 
 
-class PowConstVar(function.UnaryOperator):
+class PowConstVar(function.Function):
 
     def __init__(self, value):
         self.value = value
@@ -360,6 +382,9 @@ class PowConstVar(function.UnaryOperator):
     @property
     def label(self):
         return '%s ** _' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward_cpu(self, x):
         self.y = utils.force_array(_force_type(x[0].dtype, self.value) ** x[0])
@@ -430,11 +455,14 @@ def install_variable_arithmetics():
 # ------------------------------------------------------------------------------
 
 
-class Exp(function.UnaryOperator):
+class Exp(function.Function):
 
     @property
     def label(self):
         return 'exp'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward_cpu(self, x):
         self.y = utils.force_array(numpy.exp(x[0]))
@@ -453,11 +481,14 @@ def exp(x):
     return Exp()(x)
 
 
-class Log(function.UnaryOperator):
+class Log(function.Function):
 
     @property
     def label(self):
         return 'log'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
 
     def forward_cpu(self, x):
         return utils.force_array(numpy.log(x[0])),
