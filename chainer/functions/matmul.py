@@ -212,7 +212,8 @@ class BatchMatMul(function.Function):
         a, b = x
         batch_size = a.shape[0]
         shape = self._output_shape(a, b)
-        ret = numpy.empty(shape)
+        ret_dtype = numpy.find_common_type([a.dtype, b.dtype], [])
+        ret = numpy.empty(shape, dtype=ret_dtype)
         for i in six.moves.range(batch_size):
             ret[i] = _matmul_cpu(
                 a[i], b[i], transa=self.transa, transb=self.transb)
@@ -221,8 +222,8 @@ class BatchMatMul(function.Function):
     def backward_cpu(self, x, gy):
         a, b = x
         batch_size = a.shape[0]
-        ga = numpy.empty(a.shape)
-        gb = numpy.empty(b.shape)
+        ga = numpy.empty_like(a)
+        gb = numpy.empty_like(b)
         for i in six.moves.range(batch_size):
             ga[i] = _matmul_cpu(gy[0][i], b[i],
                                 transb=not self.transb, transout=self.transa

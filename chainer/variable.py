@@ -67,7 +67,7 @@ class Variable(object):
         self.volatile = volatile
 
         self.splitter = weakref.ref(lambda: 0)  # dead ref
-        self.grad = None
+        self._grad = None
         self.creator = None
 
     def __pos__(self):
@@ -89,6 +89,32 @@ class Variable(object):
             return str(self.data.dtype)
         return '%s, %s' % (str(self.data.shape),
                            str(self.data.dtype))
+
+    @property
+    def grad(self):
+        return self._grad
+
+    @grad.setter
+    def grad(self, g):
+        error_msg = '''
+This error is occured in two cases. The first case is when the user manually
+sets the Variable.grad incorrectly. The second case is when some Function
+implementation has a bug. If you do not manually set the Variable.grad in your
+script, please report this error to the issue tracker with the stack trace,
+the information of your environment, and your script:
+https://github.com/pfnet/chainer/issues/new.
+'''
+        if g is not None:
+            if not isinstance(g, type(self.data)):
+                raise TypeError('Type of data and grad mismatch: %s != %s%s'
+                                % (type(self.data), type(g), error_msg))
+            if g.dtype != self.data.dtype:
+                raise TypeError('Dtype of data and grad mismatch: %s != %s%s'
+                                % (self.data.dtype, g.dtype, error_msg))
+            if g.shape != self.data.shape:
+                raise ValueError('Shape of data and grad mismatch: %s != %s%s'
+                                 % (self.data.shape, g.shape, error_msg))
+        self._grad = g
 
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.
