@@ -3,6 +3,7 @@ import six
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 def _fwd_kern():
@@ -41,8 +42,19 @@ class PReLU(function.Function):
         self.W = numpy.full(shape, init, dtype=numpy.float32)
         self.gW = numpy.empty_like(self.W)
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+
+        x_type, = in_types
+        W = type_check.Variable(self.W, 'W')
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim >= W.shape.__len__() + 1,
+            x_type.shape[1: 1 + len(self.W.shape)] == W.shape
+        )
+
     def forward_cpu(self, x):
-        self._check_shape(x[0])
         y = x[0].copy()
         masked = numpy.ma.masked_greater_equal(y, 0, copy=False)
         shape = self._get_extended_shape_W(y)
@@ -50,7 +62,6 @@ class PReLU(function.Function):
         return y,
 
     def forward_gpu(self, x):
-        self._check_shape(x[0])
         cdim = self.W.size
         rdim = x[0].size // (x[0].shape[0] * cdim)
         y = cuda.empty_like(x[0])
@@ -89,12 +100,6 @@ class PReLU(function.Function):
         gx = masked  # reuse buffer
         _fwd_kern()(gx, gy[0], x[0], self.W, cdim, rdim)
         return gx,
-
-    def _check_shape(self, x):
-        if x.shape[1: 1 + len(self.W.shape)] != self.W.shape:
-            raise ValueError(
-                'Shape mismatch: input shape is {} while PReLU weight shape {}'
-                .format(x.shape, self.W.shape))
 
     def _get_extended_shape_W(self, x):
         return (1,) + self.W.shape + (1,) * (x.ndim - self.W.ndim - 1)
