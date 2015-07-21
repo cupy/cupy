@@ -43,8 +43,7 @@ class PReLU(function.Function):
         self.gW = numpy.empty_like(self.W)
 
     def check_type_forward(self, in_types):
-        type_check.expect(
-            in_types.size() == 1)
+        type_check.expect(in_types.size() == 1)
 
         x_type, = in_types
         W = type_check.Variable(self.W, 'W')
