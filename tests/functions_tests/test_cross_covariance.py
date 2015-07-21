@@ -38,10 +38,10 @@ class TestCrossCovariance(unittest.TestCase):
         N = y_data.shape[0]
 
         loss_expect = 0
-        for i in xrange(y_data.shape[1]):
-            for j in xrange(z_data.shape[1]):
+        for i in six.moves.xrange(y_data.shape[1]):
+            for j in six.moves.xrange(z_data.shape[1]):
                 ij_loss = 0.
-                for n in xrange(N):
+                for n in six.moves.xrange(N):
                     ij_loss += (y_data[n, i] - y_mean[i]) * (z_data[n, j] - z_mean[j])
                 ij_loss /= N
                 loss_expect += ij_loss ** 2
