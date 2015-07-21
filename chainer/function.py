@@ -490,7 +490,7 @@ class Split(Function):
         return gx,
 
 
-class UnaryOperator(function.Function):
+class UnaryOperator(Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)

@@ -7,7 +7,6 @@ from chainer import cuda
 from chainer import function
 from chainer import utils
 from chainer import variable
-from chainer.utils import type_check
 
 
 # ------------------------------------------------------------------------------
