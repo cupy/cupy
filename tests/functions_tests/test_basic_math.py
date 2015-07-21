@@ -897,7 +897,7 @@ class TestNegativePow(unittest.TestCase):
     def test_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
-        
+
 class TestNotSupportOperation(unittest.TestCase):
 
     def setUp(self):
@@ -911,6 +911,10 @@ class TestNotSupportOperation(unittest.TestCase):
     def test_le(self):
         with self.assertRaises(NotImplementedError):
             self.x <= self.y
+
+    def test_eq(self):
+        with self.assertRaises(NotImplementedError):
+            self.x == self.y
 
     def test_ne(self):
         with self.assertRaises(NotImplementedError):

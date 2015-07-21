@@ -165,13 +165,21 @@ def build_computational_graph(outputs, remove_split=True):
     nodes = set()
     push_count = [0]
 
+    class node_obj(object):
+        def __init__(self, v):
+            self.v = v
+        def __hash__(self):
+            return hash(self.v)
+        def __eq__(self, r):
+            return self.v is r.v
+
     def add_cand(cand):
         heapq.heappush(cands, (-cand.rank, push_count[0], cand))
         push_count[0] += 1
 
     for o in outputs:
         add_cand(o)
-        nodes.add(o)
+        nodes.add(node_obj(o))
 
     while cands:
         _, _, cand = heapq.heappop(cands)
@@ -185,8 +193,8 @@ def build_computational_graph(outputs, remove_split=True):
             if creator is not None and (creator, cand) not in seen_edges:
                 add_cand(creator)
                 seen_edges.add((creator, cand))
-                nodes.add(creator)
-                nodes.add(cand)
+                nodes.add(node_obj(creator))
+                nodes.add(node_obj(cand))
         elif isinstance(cand, function.Function):
             if remove_split and isinstance(cand, function.Split):
                 next_cand = creator.inputs[0]
@@ -201,6 +209,6 @@ def build_computational_graph(outputs, remove_split=True):
                         input_ = creator.inputs[0]
                     add_cand(input_)
                     seen_edges.add((input_, cand))
-                    nodes.add(input_)
-                    nodes.add(cand)
-    return ComputationalGraph(list(nodes), list(seen_edges))
+                    nodes.add(node_obj(input_))
+                    nodes.add(node_obj(cand))
+    return ComputationalGraph(list(i.v for i in nodes), list(seen_edges))

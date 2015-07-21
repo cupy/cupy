@@ -205,6 +205,9 @@ class Variable(object):
     def __le__(self, other):
         raise NotImplementedError()
 
+    def __eq__(self, other):
+        raise NotImplementedError()
+
     def __ne__(self, other):
         raise NotImplementedError()
 
