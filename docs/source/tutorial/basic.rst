@@ -250,16 +250,16 @@ Now you can solve a multiclass classification task using a multi-layer perceptro
 Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is the long-standing de-facto "hello world" of machine learning.
 This MNIST example is also found in ``examples/mnist`` directory of the official repository.
 
-In order to use MNIST, :func:`sklearn.datasets.fetch_mldata` function of `scikit-learn <http://scikit-learn.org/>`_ is useful::
+In order to use MNIST, we prepared ``load_mnist_data`` function at ``examples/mnist/data.py``::
 
-  >>> from sklearn.datasets import fetch_mldata
-  >>> mnist = fetch_mldata('MNIST original')
+  >>> import data
+  >>> mnist = data.load_mnist_data()
 
 The mnist dataset consists of 70,000 grayscale images of size 28x28 (i.e. 784 pixels) and corresponding digit labels.
 First, we scale pixels to [0, 1] values, and divide the dataset into 60,000 training samples and 10,000 test samples.
 
-  >>> x_all = mnist.data.astype(np.float32) / 255
-  >>> y_all = mnist.target.astype(np.int32)
+  >>> x_all = mnist['data'].astype(np.float32) / 255
+  >>> y_all = mnist['target'].astype(np.int32)
   >>> x_train, x_test = np.split(x_all, [60000])
   >>> y_train, y_test = np.split(y_all, [60000])
 
