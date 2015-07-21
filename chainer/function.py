@@ -488,3 +488,9 @@ class Split(Function):
                 cuda.Context.pop()
 
         return gx,
+
+
+class UnaryOperator(function.Function):
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)

@@ -9,7 +9,7 @@ if cudnn.available:
     _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_SIGMOID']
 
 
-class Sigmoid(function.Function):
+class Sigmoid(function.UnaryOperator):
 
     """Logistic sigmoid function."""
 

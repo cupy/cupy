@@ -9,7 +9,7 @@ if cudnn.available:
     _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_TANH']
 
 
-class Tanh(function.Function):
+class Tanh(function.UnaryOperator):
 
     """Hyperbolic tangent function."""
 

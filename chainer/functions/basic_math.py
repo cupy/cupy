@@ -34,13 +34,7 @@ def _force_type(dtype, value):
         return value
 
 
-class UnaryOperator(function.Function):
-
-    def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() == 1)
-
-
-class Neg(UnaryOperator):
+class Neg(function.UnaryOperator):
 
     @property
     def label(self):
@@ -57,7 +51,11 @@ def neg(x):  # -x
     return Neg()(x)
 
 
-class Absolute(UnaryOperator):
+class Absolute(function.UnaryOperator):
+
+    @property
+    def label(self):
+        return '|_|'
 
     def forward(self, x):
         return utils.force_array(abs(x[0])),
@@ -92,7 +90,7 @@ class Add(function.Function):
         return gy[0], gy[0]
 
 
-class AddConstant(UnaryOperator):
+class AddConstant(function.UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -133,7 +131,7 @@ def sub(lhs, rhs):  # lhs - rhs
     return AddConstant(-rhs)(lhs)
 
 
-class SubFromConstant(UnaryOperator):
+class SubFromConstant(function.UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -181,7 +179,7 @@ class Mul(function.Function):
         return gx0, gx1
 
 
-class MulConstant(UnaryOperator):
+class MulConstant(function.UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -236,7 +234,7 @@ def div(lhs, rhs):  # lhs / rhs
     return MulConstant(1. / rhs)(lhs)
 
 
-class DivFromConstant(UnaryOperator):
+class DivFromConstant(function.UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -311,7 +309,7 @@ class PowVarVar(function.Function):
         return gx0, gx1
 
 
-class PowVarConst(UnaryOperator):
+class PowVarConst(function.UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -355,7 +353,7 @@ def pow(lhs, rhs):  # lhs ** rhs
     return PowVarConst(rhs)(lhs)
 
 
-class PowConstVar(UnaryOperator):
+class PowConstVar(function.UnaryOperator):
 
     def __init__(self, value):
         self.value = value
@@ -433,7 +431,7 @@ def install_variable_arithmetics():
 # ------------------------------------------------------------------------------
 
 
-class Exp(UnaryOperator):
+class Exp(function.UnaryOperator):
 
     @property
     def label(self):
@@ -456,7 +454,7 @@ def exp(x):
     return Exp()(x)
 
 
-class Log(UnaryOperator):
+class Log(function.UnaryOperator):
 
     @property
     def label(self):
