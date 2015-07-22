@@ -65,7 +65,7 @@ The forward computation is simply written with a for loop::
           loss += new_loss
       return loss
 
-Note that the first dimention of ``h`` and ``x_list`` is always the mini-batch size.
+Note that the first dimension of ``h`` and ``x_list`` is always the mini-batch size.
 The mini-batch size is assumed to be ``1`` here.
 We implemented the one-step-forward computation as a separate function, which is a best practice of writing recurrent nets for higher extensibility.
 Ignore the argument ``volatile`` for now, we will review it in the next subsection.
