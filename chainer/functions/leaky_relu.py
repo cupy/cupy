@@ -1,5 +1,8 @@
+import numpy
+
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 def _kern():
@@ -14,6 +17,13 @@ class LeakyReLU(function.Function):
 
     def __init__(self, slope=0.2):
         self.slope = slope
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+        )
 
     def forward_cpu(self, x):
         y = x[0].copy()
