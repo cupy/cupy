@@ -12,6 +12,7 @@ from chainer.testing import attr
 if cuda.available:
     cuda.init()
 
+
 class TestCReLU(unittest.TestCase):
 
     def setUp(self):
@@ -40,4 +41,3 @@ class TestCReLU(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 testing.run_module(__name__, __file__)
-
