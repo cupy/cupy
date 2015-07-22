@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import testing
+from chainer.testing import attr
 
 
 if cuda.available:
@@ -27,6 +28,7 @@ class TestDropout(unittest.TestCase):
     def test_type_forward_cpu(self):
         self.check_type_forward(self.x)
 
+    @attr.gpu
     def test_type_forward_gpu(self):
         self.check_type_forward(cuda.to_gpu(self.x))
 
