@@ -13,10 +13,8 @@ class Dropout(function.Function):
         self.dropout_ratio = dropout_ratio
 
     def check_type_forwrad(self, in_types):
-        type_check.expect(
-            in_types.size() == 1,
-            in_types[0].dtype == numpy.float32
-        )
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward_cpu(self, x):
         scale = numpy.float32(1. / (1 - self.dropout_ratio))
