@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='chainer',
-    version='1.1.0',
+    version='1.1.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
