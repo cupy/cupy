@@ -50,7 +50,7 @@ class LocalResponseNormalization(function.Function):
 
         type_check.expect(
             x_type.dtype == numpy.float32,
-            x_type.ndim >= 3,
+            x_type.ndim >= 2,
         )
 
     def forward_cpu(self, x):
