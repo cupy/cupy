@@ -20,10 +20,7 @@ class TestDropout(unittest.TestCase):
 
     def check_type_forward(self, x_data):
         x = chainer.Variable(x_data)
-        try:
-            functions.dropout(x)
-        except Exception:
-            self.fail()
+        functions.dropout(x)
 
     def test_type_forward_cpu(self):
         self.check_type_forward(self.x)
