@@ -1,5 +1,6 @@
 import numpy
-from chainer import cuda, function
+from chainer import cuda
+from chainer import function
 
 
 class ClippedReLU(function.Function):
@@ -42,4 +43,5 @@ def clipped_relu(x, z=20):
         ~chainer.Variable: Output variable.
 
     """
+
     return ClippedReLU(z)(x)
