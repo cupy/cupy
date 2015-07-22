@@ -1,6 +1,6 @@
-import numpy
 from chainer import cuda
 from chainer import function
+import numpy
 
 
 class ClippedReLU(function.Function):
@@ -35,6 +35,7 @@ class ClippedReLU(function.Function):
 
 def clipped_relu(x, z=20):
     """Clipped Rectifier Unit function :math:`CReLU(x, z) = min{max{0,x},z}`
+
     Args:
         x (~chainer.Variable): Input variable.
         z (integer): clipping value. (default = 20)
@@ -43,5 +44,4 @@ def clipped_relu(x, z=20):
         ~chainer.Variable: Output variable.
 
     """
-
     return ClippedReLU(z)(x)
