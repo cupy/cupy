@@ -39,6 +39,7 @@ class TestDropout(unittest.TestCase):
     def test_type_backward_cpu(self):
         self.check_type_backward(self.x, self.gy)
 
+    @attr.gpu
     def test_type_backward_gpu(self):
         self.check_type_backward(
             cuda.to_gpu(self.x),
