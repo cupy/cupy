@@ -83,4 +83,13 @@ class TestSplitAxis3(TestSplitAxis0):
         self.axis = 1
 
 
+class TestSplitAxis4(TestSplitAxis0):
+
+    def setUp(self):
+        self.x = numpy.arange(2, dtype=numpy.float32)
+        self.ys = [self.x[:1], self.x[1:]]
+        self.ys_section = [1]
+        self.axis = 0
+
+
 testing.run_module(__name__, __file__)

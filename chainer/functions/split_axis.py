@@ -57,7 +57,7 @@ class SplitAxis(function.Function):
     def forward_gpu(self, x):
         xshape = x[0].shape
         self.cdimx = xshape[self.axis]
-        self.rdim = numpy.prod(xshape[self.axis + 1:])
+        self.rdim = int(numpy.prod(xshape[self.axis + 1:]))
 
         if isinstance(self.indices_or_sections, collections.Iterable):
             ind = list(self.indices_or_sections)
