@@ -68,7 +68,7 @@ class Concat(function.Function):
 
         y = cuda.empty(shape, dtype=xs[0].dtype)
         self.cdimy = y.shape[self.axis]
-        self.rdim = numpy.prod(shape[self.axis + 1:])
+        self.rdim = numpy.prod(shape[self.axis + 1:], dtype=int)
 
         coffset = 0
         kernel = cuda.elementwise(
