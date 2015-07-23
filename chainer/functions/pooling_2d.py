@@ -363,8 +363,6 @@ class SpatialPyramidPooling2D(function.Function):
 
     def __init__(self, x_shape, pyramid_height, pooling_class, use_cudnn=True):
         bottom_c, bottom_h, bottom_w = x_shape
-        assert bottom_h > 3 and bottom_w > 3, \
-            'input feature map size should be larger than 3'
         self.pyramid_height = pyramid_height
 
         # create pooling functions for different pyramid levels
