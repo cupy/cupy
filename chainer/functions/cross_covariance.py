@@ -9,8 +9,7 @@ class CrossCovariance(function.Function):
 
     """Cross-covariance loss."""
 
-    def __init__(self, use_cudnn=True):
-        self.use_cudnn = use_cudnn
+    def __init__(self):
         self.y_centered = None
         self.z_centered = None
         self.covariance = None
@@ -62,8 +61,9 @@ class CrossCovariance(function.Function):
 
         # Calculate cross-covariance
         self.covariance = cuda.empty((y.shape[1], z.shape[1]))
-        cuda.culinalg.add_dot(self.y_centered, self.z_centered, self.covariance,
-                              transa='T', alpha=1./y.shape[0], beta=0.)
+        cuda.culinalg.add_dot(self.y_centered, self.z_centered,
+                              self.covariance, transa='T', alpha=1./y.shape[0],
+                              beta=0.)
 
         # Calculate cost
         cost = cuda.cumisc.sum(0.5 * self.covariance**2)
@@ -71,31 +71,37 @@ class CrossCovariance(function.Function):
 
     def backward_cpu(self, inputs, grad_outputs):
         y, z = inputs
+        gcost, = grad_outputs
         N = numpy.asarray(y.shape[0], dtype=numpy.float32)
         gy = self.covariance[None, :, :] * 1/N * self.z_centered
-        gy = gy.sum(axis=-1)
+        gy = gy.sum(axis=-1) * gcost
         gz = self.covariance[None, :, :] * 1/N * self.y_centered
-        gz = gz.sum(axis=-2)
+        gz = gz.sum(axis=-2) * gcost
         return gy, gz
 
     def backward_gpu(self, inputs, grad_outputs):
         y, z = inputs
+        gcost, = grad_outputs
         N = y.shape[0]
         gy = cuda.empty(y.shape)
         gz = cuda.empty(z.shape)
         cuda.culinalg.add_dot(self.z_centered, self.covariance, gy,
                               transb='T', alpha=1./N, beta=0.)
-        cuda.culinalg.add_dot(self.y_centered, self.covariance,gz,
+        cuda.culinalg.add_dot(self.y_centered, self.covariance, gz,
                               alpha=1./N, beta=0.)
+        gy = cuda.cumisc.multiply(gy, gcost)
+        gz = cuda.cumisc.multiply(gz, gcost)
         return gy, gz
 
 
-def cross_covariance(y, z, use_cudnn=True):
+def cross_covariance(y, z):
     """Computes the sum-squared cross-covariance penalty between ``y`` and ``z``
 
     Args:
-        y (Variable): Variable holding a matrix with rows as trails
-        z (Variable): Variable holding a matrix with rows as trails
+        y (Variable): Variable holding a matrix where the first dimension
+            corresponds to the batches
+        z (Variable): Variable holding a matrix where the first dimension
+            corresponds to the batches
 
     Returns:
         Variable: A variable holding a scalar of the cross covariance loss.
@@ -106,4 +112,4 @@ def cross_covariance(y, z, use_cudnn=True):
        See http://arxiv.org/abs/1412.6583v3 for details.
 
     """
-    return CrossCovariance(use_cudnn)(y, z)
+    return CrossCovariance()(y, z)

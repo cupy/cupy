@@ -22,10 +22,10 @@ class TestCrossCovariance(unittest.TestCase):
         self.y = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.z = numpy.random.uniform(-1, 1, (4, 2)).astype(numpy.float32)
 
-    def check_forward(self, y_data, z_data, use_cudnn=True):
+    def check_forward(self, y_data, z_data):
         y = chainer.Variable(y_data)
         z = chainer.Variable(z_data)
-        loss = functions.cross_covariance(y, z, use_cudnn)
+        loss = functions.cross_covariance(y, z)
         self.assertEqual(loss.data.shape, ())
         self.assertEqual(loss.data.dtype, numpy.float32)
         loss_value = float(cuda.to_cpu(loss.data))
@@ -53,26 +53,22 @@ class TestCrossCovariance(unittest.TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.y, self.z)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.y), cuda.to_gpu(self.z))
 
-    @attr.gpu
-    @condition.retry(3)
-    def test_forward_gpu_no_cudnn(self):
-        self.check_forward(cuda.to_gpu(self.y), cuda.to_gpu(self.z), False)
-
-    def check_backward(self, y_data, z_data, use_cudnn=True):
+    def check_backward(self, y_data, z_data):
         y = chainer.Variable(y_data)
         z = chainer.Variable(z_data)
-        loss = functions.cross_covariance(y, z, use_cudnn)
-        loss.backward()
+        loss = functions.cross_covariance(y, z)
+        scaled_loss = 0.5 * loss
+        scaled_loss.backward()
 
         func = loss.creator
         f = lambda: func.forward((y.data, z.data))
         gy, gz = gradient_check.numerical_grad(f, (y.data, z.data),
-                                               (1, ), eps=0.02)
+                                               (0.5, ), eps=0.02)
 
         gradient_check.assert_allclose(gy, y.grad)
         gradient_check.assert_allclose(gz, z.grad)
@@ -95,15 +91,10 @@ class TestCrossCovariance(unittest.TestCase):
     def test_backward_type_gpu(self):
         self.check_type(cuda.to_gpu(self.y), cuda.to_gpu(self.z))
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.y), cuda.to_gpu(self.z))
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_backward_gpu_no_cudnn(self):
-        self.check_backward(cuda.to_gpu(self.y), cuda.to_gpu(self.z), False)
 
 
 testing.run_module(__name__, __file__)
