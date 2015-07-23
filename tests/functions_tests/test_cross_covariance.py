@@ -11,13 +11,11 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
-
 if cuda.available:
     cuda.init()
 
 
 class TestCrossCovariance(unittest.TestCase):
-
     def setUp(self):
         self.y = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.z = numpy.random.uniform(-1, 1, (4, 2)).astype(numpy.float32)
@@ -41,8 +39,8 @@ class TestCrossCovariance(unittest.TestCase):
             for j in six.moves.xrange(z_data.shape[1]):
                 ij_loss = 0.
                 for n in six.moves.xrange(N):
-                    ij_loss += (y_data[n, i] - y_mean[i])\
-                               * (z_data[n, j] - z_mean[j])
+                    ij_loss += (y_data[n, i] - y_mean[i]) * (
+                        z_data[n, j] - z_mean[j])
                 ij_loss /= N
                 loss_expect += ij_loss ** 2
         loss_expect *= 0.5
@@ -68,7 +66,7 @@ class TestCrossCovariance(unittest.TestCase):
         func = loss.creator
         f = lambda: func.forward((y.data, z.data))
         gy, gz = gradient_check.numerical_grad(f, (y.data, z.data),
-                                               (0.5, ), eps=0.02)
+                                               (0.5,), eps=0.02)
 
         gradient_check.assert_allclose(gy, y.grad)
         gradient_check.assert_allclose(gz, z.grad)

@@ -6,6 +6,7 @@ from chainer.functions import batch_normalization
 from chainer.functions import concat
 from chainer.functions import convolution_2d
 from chainer.functions import copy
+from chainer.functions import cross_covariance
 from chainer.functions import dropout
 from chainer.functions import embed_id
 from chainer.functions import hierarchical_softmax
@@ -33,7 +34,6 @@ from chainer.functions import softmax_cross_entropy
 from chainer.functions import split_axis
 from chainer.functions import sum as sum_
 from chainer.functions import tanh
-from chainer.functions import cross_covariance
 
 NonparameterizedConvolution2D = \
     nonparameterized_convolution_2d.NonparameterizedConvolution2D
