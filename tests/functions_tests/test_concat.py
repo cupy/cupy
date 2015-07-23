@@ -64,4 +64,12 @@ class TestConcat2(unittest.TestCase, ConcatTestBase):
         self.axis = 0
 
 
+class TestConcatLastAxis(unittest.TestCase, ConcatTestBase):
+
+    def setUp(self):
+        self.y = numpy.arange(2, dtype=numpy.float32)
+        self.xs = [self.y[:1], self.y[1:]]
+        self.axis = 0
+
+
 testing.run_module(__name__, __file__)
