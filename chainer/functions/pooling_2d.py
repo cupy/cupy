@@ -383,8 +383,7 @@ class SpatialPyramidPooling2D(function.Function):
             ksize = (ksize_h, ksize_w)
             pad = (pad_h, pad_w)
 
-            if ((pooling_class == MaxPooling2D) or
-                    (pooling_class == AveragePooling2D)):
+            if pooling_class == MaxPooling2D:
                 pooler = pooling_class(ksize=ksize, stride=None, pad=pad,
                                        cover_all=True, use_cudnn=use_cudnn)
                 self.poolers.append(pooler)
