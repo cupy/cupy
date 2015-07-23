@@ -366,8 +366,8 @@ class SpatialPyramidPooling2D(function.Function):
         self.pyramid_height = pyramid_height
 
         # create pooling functions for different pyramid levels
-        split_inds = []
         out_dim = 0
+        self.split_inds = []
         self.poolers = []
         for pyramid_level in six.moves.range(pyramid_height):
             num_bins = int(2 ** pyramid_level)
@@ -392,9 +392,7 @@ class SpatialPyramidPooling2D(function.Function):
 
             out_dim += bottom_c * (num_bins ** 2)
             if pyramid_level < pyramid_height - 1:
-                split_inds.append(out_dim)
-
-        self.split = split_axis.SplitAxis(split_inds, axis=1)
+                self.split_inds.append(out_dim)
 
     def forward(self, x):
         self.ys = []
@@ -410,7 +408,7 @@ class SpatialPyramidPooling2D(function.Function):
             gx = cuda.zeros_like(x[0])
         else:
             gx = numpy.zeros_like(x[0])
-        gys = self.split.forward(gy)
+        gys = split_axis.SplitAxis(self.split_inds, axis=1).forward(gy)
         for pooler, gy in zip(self.poolers, gys):
             gy = gy.reshape(pooler.out_shape)
             gx += pooler.backward(x, (gy,))[0]
