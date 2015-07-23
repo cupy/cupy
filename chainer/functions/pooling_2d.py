@@ -372,16 +372,16 @@ class SpatialPyramidPooling2D(function.Function):
         for pyramid_level in six.moves.range(pyramid_height):
             num_bins = int(2 ** pyramid_level)
 
-            ksize_h = numpy.ceil(bottom_h / (float(num_bins)))
+            ksize_h = int(numpy.ceil(bottom_h / (float(num_bins))))
             remainder_h = ksize_h * num_bins - bottom_h
             pad_h = remainder_h // 2
 
-            ksize_w = numpy.ceil(bottom_w / (float(num_bins)))
+            ksize_w = int(numpy.ceil(bottom_w / (float(num_bins))))
             remainder_w = ksize_w * num_bins - bottom_w
             pad_w = remainder_w // 2
 
-            ksize = (int(ksize_h), int(ksize_w))
-            pad = (int(pad_h), int(pad_w))
+            ksize = (ksize_h, ksize_w)
+            pad = (pad_h, pad_w)
 
             if ((pooling_class == MaxPooling2D) or
                     (pooling_class == AveragePooling2D)):
