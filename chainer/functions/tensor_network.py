@@ -5,21 +5,7 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
-
-
-def _as_vec(x):
-    return x.reshape(x.size)
-
-
-def _as_mat(x):
-    return x.reshape(x.shape[0], x.size // x.shape[0])
-
-
-def _empty_like(x):
-    if isinstance(x, cuda.GPUArray):
-        return cuda.empty_like(x)
-    else:
-        return numpy.empty_like(x)
+from chainer.utils import array
 
 
 class TensorNetwork(function.Function):
@@ -59,11 +45,11 @@ class TensorNetwork(function.Function):
                 (self.in_shape[1], out_size), dtype=numpy.float32)
             self.b = numpy.zeros((out_size, ), dtype=numpy.float32)
 
-        self.gW = _empty_like(self.W)
-        if not nobias:
-            self.gV1 = _empty_like(self.V1)
-            self.gV2 = _empty_like(self.V2)
-            self.gb = _empty_like(self.b)
+        self.gW = array.empty_like(self.W)
+        if not self.nobias:
+            self.gV1 = array.empty_like(self.V1)
+            self.gV2 = array.empty_like(self.V2)
+            self.gb = array.empty_like(self.b)
 
     @property
     def parameter_names(self):
@@ -108,8 +94,8 @@ class TensorNetwork(function.Function):
             self.gb.fill(0)
 
     def forward_cpu(self, x):
-        e1 = _as_mat(x[0])
-        e2 = _as_mat(x[1])
+        e1 = array.as_mat(x[0])
+        e2 = array.as_mat(x[1])
         y = numpy.einsum('ij,ik,jkl->il', e1, e2, self.W)
         if self.b is not None:
             y += e1.dot(self.V1)
@@ -144,9 +130,9 @@ class TensorNetwork(function.Function):
             # 'i[jk],[jk]l->il'
             cuda.culinalg.dot(e1e2, W_mat, out=y)
 
-        if self.b is not None:
-            e1 = _as_mat(x[0])
-            e2 = _as_mat(x[1])
+        if self.nobias:
+            e1 = array.as_mat(x[0])
+            e2 = array.as_mat(x[1])
             with cuda.using_cumisc():
                 cuda.culinalg.add_dot(e1, self.V1, y)
                 cuda.culinalg.add_dot(e2, self.V2, y)
@@ -157,8 +143,8 @@ class TensorNetwork(function.Function):
         return y,
 
     def backward_cpu(self, x, gy):
-        e1 = _as_mat(x[0])
-        e2 = _as_mat(x[1])
+        e1 = array.as_mat(x[0])
+        e2 = array.as_mat(x[1])
 
         self.gW += numpy.einsum('ij,ik,il->jkl', e1, e2, gy[0])
         if self.b is not None:
@@ -174,9 +160,9 @@ class TensorNetwork(function.Function):
         return (ge1, ge2)
 
     def backward_gpu(self, x, gy):
-        e1 = _as_vec(x[0])
-        e2 = _as_vec(x[1])
-        gy_vec = _as_vec(gy[0])
+        e1 = array.as_vec(x[0])
+        e2 = array.as_vec(x[1])
+        gy_vec = array.as_vec(gy[0])
 
         dgW = cuda.zeros(
             (x[0].shape[1]*x[1].shape[1]*gy[0].shape[1],),
@@ -200,18 +186,18 @@ class TensorNetwork(function.Function):
             x[0].shape[0], x[0].shape[1], x[1].shape[1], gy[0].shape[1])
         self.gW += dgW.reshape((x[0].shape[1], x[1].shape[1], gy[0].shape[1]))
 
-        if self.b is not None:
-            e1 = _as_mat(x[0])
-            e2 = _as_mat(x[1])
+        if self.nobias:
+            e1 = array.as_mat(x[0])
+            e2 = array.as_mat(x[1])
             with cuda.using_cumisc():
                 cuda.culinalg.add_dot(e1, gy[0], self.gV1, transa='T')
                 cuda.culinalg.add_dot(e2, gy[0], self.gV2, transa='T')
                 self.gb += cuda.cumisc.sum(gy[0], 0)
 
-        e1 = _as_vec(x[0])
-        e2 = _as_vec(x[1])
-        W_vec = _as_vec(self.W)
-        gy_vec = _as_vec(gy[0])
+        e1 = array.as_vec(x[0])
+        e2 = array.as_vec(x[1])
+        W_vec = array.as_vec(self.W)
+        gy_vec = array.as_vec(gy[0])
 
         # 'ik,jkl,il->ij'
         ge_kernel = cuda.elementwise(
