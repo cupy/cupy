@@ -21,7 +21,10 @@ class ClippedReLU(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         x_type, = in_types
-        type_check.expect(x_type.dtype == numpy.float32)
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim > 0
+        )
 
     def check_type_backward(self, in_types, out_types):
         type_check.expect(
@@ -56,7 +59,7 @@ def clipped_relu(x, z=20.0):
     """Clipped Rectifier Unit function :math:`CReLU(x, z) = \min(\max(0, x), z)`
 
     Args:
-        x (~chainer.Variable): Input variable.
+        x (~chainer.Variable): Input variable, which is n(>0)-dimentional array
         z (float): clipping value. (default = 20.0)
 
     Returns:
