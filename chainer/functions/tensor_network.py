@@ -10,7 +10,7 @@ from chainer.utils import array
 
 class TensorNetwork(function.Function):
 
-    def __init__(self, in_shape, out_size, nobias=False,
+    def __init__(self, left_size, right_size, out_size, nobias=False,
                  initialW=None, initial_bias=None):
 
         self.W = None
@@ -22,18 +22,17 @@ class TensorNetwork(function.Function):
         self.b = None
         self.gb = None
 
-        assert len(in_shape) == 2
-        self.in_shape = in_shape
+        self.in_sizes = (left_size, right_size)
         self.nobias = nobias
 
         if initialW is not None:
-            assert initialW.shape == (in_shape[0], in_shape[1], out_size)
+            assert initialW.shape == (self.in_sizes[0], self.in_sizes[1], out_size)
             self.W = initialW
         else:
-            in_size = numpy.prod(self.in_shape)
+            in_size = numpy.prod(self.in_sizes)
             self.W = numpy.random.normal(
                 0, math.sqrt(1. / in_size),
-                (self.in_shape[0], self.in_shape[1], out_size)
+                (self.in_sizes[0], self.in_sizes[1], out_size)
             ).astype(numpy.float32)
 
         if not self.nobias:
@@ -82,7 +81,7 @@ class TensorNetwork(function.Function):
             e1_type.shape[0] == e2_type.shape[0]
         )
 
-        in_shape = type_check.Variable(self.in_shape, 'in_shape')
+        in_sizes = type_check.Variable(self.in_sizes, 'in_sizes')
         type_check_prod = type_check.Variable(numpy.prod, 'prod')
         type_check.expect(
             type_check_prod(e1_type.shape[1:]) == in_sizes[0],
