@@ -29,6 +29,10 @@ class TensorNetwork(function.Function):
             assert initialW.shape == (self.in_sizes[0], self.in_sizes[1], out_size)
             self.W = initialW
         else:
+            # TODO(Kenta OONO): I do not know appropriate way of
+            # initializing weights in tensor network.
+            # This initialization is a modification of
+            # that of Linear function.
             in_size = numpy.prod(self.in_sizes)
             self.W = numpy.random.normal(
                 0, math.sqrt(1. / in_size),
