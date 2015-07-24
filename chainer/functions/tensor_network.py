@@ -89,9 +89,6 @@ class TensorNetwork(function.Function):
             type_check_prod(e2_type.shape[1:]) == in_sizes[1]
         )
 
-    def check_type_backward(self, in_types, out_types):
-        pass
-
     def zero_grads(self):
         self.gW.fill(0)
         if self.nobias:
