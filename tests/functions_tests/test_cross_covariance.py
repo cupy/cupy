@@ -85,7 +85,8 @@ class TestCrossCovariance(unittest.TestCase):
 
     def test_backward_type_cpu(self):
         self.check_type(self.y, self.z)
-
+    
+    @attr.gpu
     def test_backward_type_gpu(self):
         self.check_type(cuda.to_gpu(self.y), cuda.to_gpu(self.z))
 
