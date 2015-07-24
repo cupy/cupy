@@ -113,8 +113,8 @@ class TensorNetwork(function.Function):
         return y,
 
     def forward_gpu(self, x):
-        i_len, j_len = x[0].shape
-        k_len = x[1].shape[1]
+        i_len, j_len = array.as_mat(x[0]).shape
+        k_len = array.as_mat(x[1]).shape[1]
         l_len = self.W.shape[2]
 
         # When indices are enclosed with [], they are 'flatten'
@@ -178,11 +178,11 @@ class TensorNetwork(function.Function):
         if not self.nobias:
             ge1 += gy.dot(self.V1.T)
             ge2 += gy.dot(self.V2.T)
-        return (ge1, ge2)
+        return (ge1.reshape(x[0].shape), ge2.reshape(x[1].shape))
 
     def backward_gpu(self, x, gy):
-        i_len, j_len = x[0].shape
-        k_len = x[1].shape[1]
+        i_len, j_len = array.as_mat(x[0]).shape
+        k_len = array.as_mat(x[1]).shape[1]
         l_len = gy[0].shape[1]
 
         # ij->[ij]
@@ -228,7 +228,7 @@ class TensorNetwork(function.Function):
                 cuda.culinalg.add_dot(e2, gy, self.gV2, transa='T')
                 self.gb += cuda.cumisc.sum(gy, 0)
 
-        ge1 = cuda.zeros((x[0].size,), dtype=numpy.float32)
+        ge1 = cuda.zeros((i_len * j_len,), dtype=numpy.float32)
         # '[ik],[jkl],[il]->[ij]'
         cuda.elementwise(
             '''
@@ -250,9 +250,9 @@ class TensorNetwork(function.Function):
             ''',
             'ge_kernel')(ge1, e2, W_vec, gy_vec, k_len, l_len, j_len)
         # [ij]->ij
-        ge1 = ge1.reshape(x[0].shape)
+        ge1 = ge1.reshape(i_len, j_len)
 
-        ge2 = cuda.zeros((x[1].size,), dtype=numpy.float32)
+        ge2 = cuda.zeros((i_len* k_len,), dtype=numpy.float32)
         # '[ij],[jkl],[il]->[ik]'
         cuda.elementwise(
             '''
@@ -274,7 +274,7 @@ class TensorNetwork(function.Function):
             ''',
             'ge_kernel2')(ge2, e1, W_vec, gy_vec, j_len, l_len, k_len)
         # [ik]->ik
-        ge2 = ge2.reshape(x[1].shape)
+        ge2 = ge2.reshape(i_len, k_len)
 
         if not self.nobias:
             with cuda.using_cumisc():
@@ -282,4 +282,4 @@ class TensorNetwork(function.Function):
                 cuda.culinalg.add_dot(gy, self.V1, ge1, transb='T')
                 # il,kl->ik
                 cuda.culinalg.add_dot(gy, self.V2, ge2, transb='T')
-        return (ge1, ge2)
+        return (ge1.reshape(x[0].shape), ge2.reshape(x[1].shape))
