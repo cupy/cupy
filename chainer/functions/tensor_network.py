@@ -110,28 +110,37 @@ class TensorNetwork(function.Function):
         return y,
 
     def forward_gpu(self, x):
-        e1 = _as_vec(x[0])
-        e2 = _as_vec(x[1])
-        e1e2 = cuda.empty(
-            x[0].shape[0]*x[0].shape[1]*x[1].shape[1],
-            dtype=numpy.float32)
+        i_len, j_len = x[0].shape
+        k_len = x[1].shape[1]
+        l_len = self.W.shape[2]
 
-        # 'ij,ik->ijk'
+        # When indices are enclosed with [], they are 'flatten'
+        # (i.e. linealized as 1-D array)
+        # ij->[ij]
+        e1 = array.as_vec(x[0])
+        # ik->[ik]
+        e2 = array.as_vec(x[1])
+        e1e2 = cuda.empty(i_len * j_len * k_len, dtype=numpy.float32)
+        # '[ij],[ik]->[ijk]'
         cuda.elementwise(
             'float* y, float* e1, float* e2, int e1c, int e2c',
             '''
             int I = i / e1c / e2c;
-            int J = (i-I*e1c*e2c) / e2c;
+            int J = (i-I * e1c * e2c) / e2c;
             int K = i % e2c;
-            y[i] = e1[I*e1c+J] * e2[I*e2c+K];
+            y[i] = e1[I * e1c + J] * e2[I * e2c + K];
             ''',
             'row_wise_outer_product')(
-                e1e2, e1, e2, x[0].shape[1], x[1].shape[1])
+                e1e2, e1, e2, j_len, k_len)
 
-        e1e2 = e1e2.reshape(x[0].shape[0], x[0].shape[1]*x[1].shape[1])
+        # [ijk]->i[jk]
+        e1e2 = e1e2.reshape(i_len, j_len * k_len)
+
+        # jkl->[jk]l
         W_mat = self.W.reshape(
             self.W.shape[0]*self.W.shape[1], self.W.shape[2])
-        y = cuda.empty((x[0].shape[0], self.W.shape[2]), dtype=numpy.float32)
+
+        y = cuda.empty((i_len, l_len), dtype=numpy.float32)
         with cuda.using_cumisc():
             # 'i[jk],[jk]l->il'
             cuda.culinalg.dot(e1e2, W_mat, out=y)
@@ -140,7 +149,9 @@ class TensorNetwork(function.Function):
             e1 = array.as_mat(x[0])
             e2 = array.as_mat(x[1])
             with cuda.using_cumisc():
+                # ij,jl->il
                 cuda.culinalg.add_dot(e1, self.V1, y)
+                # ik,kl->il
                 cuda.culinalg.add_dot(e2, self.V2, y)
             cuda.elementwise(
                 'float* y, float* b, int n_channel',
