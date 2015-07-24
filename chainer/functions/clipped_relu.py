@@ -1,5 +1,6 @@
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 import numpy
 
 
@@ -13,8 +14,27 @@ class ClippedReLU(function.Function):
     """
 
     def __init__(self, z):
+        if not isinstance(z, float):
+            raise TypeError('z must be float value')
         self.cap = z
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+        type_check.expect(x_type.dtype == numpy.float32)
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(
+            in_types.size() == 1,
+            out_types.size() == 1
+        )
+        x_type, = in_types
+        y_type, = out_types
+        print type(y_type.dtype == numpy.float32)
+        type_check.expect(
+            y_type.dtype == numpy.float32,
+            y_type.ndim == x_type.ndim)
+        
     def forward_cpu(self, x):
         return numpy.minimum(numpy.maximum(0, x[0]), self.cap),
 
@@ -33,12 +53,12 @@ class ClippedReLU(function.Function):
         return gx,
 
 
-def clipped_relu(x, z=20):
+def clipped_relu(x, z=20.0):
     """Clipped Rectifier Unit function :math:`CReLU(x, z) = min{max{0,x},z}`
 
     Args:
         x (~chainer.Variable): Input variable.
-        z (integer): clipping value. (default = 20)
+        z (float): clipping value. (default = 20.0)
 
     Returns:
         ~chainer.Variable: Output variable.
