@@ -9,6 +9,7 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import array
 
 
 if cuda.available:
@@ -54,7 +55,7 @@ def _batch_to_gpu(*xs):
 
 class TestTensorNetwork(unittest.TestCase):
 
-    in_shape = (2, 3)
+    in_shape = (3, 4)
     out_size = 4
     batch_size = 10
 
@@ -71,10 +72,10 @@ class TestTensorNetwork(unittest.TestCase):
             -1, 1, self.f.b.shape).astype(numpy.float32)
         self.f.zero_grads()
 
-        W = self.f.W.copy()
-        V1 = self.f.V1.copy()
-        V2 = self.f.V2.copy()
-        b = self.f.b.copy()
+        self.W = self.f.W.copy()
+        self.V1 = self.f.V1.copy()
+        self.V2 = self.f.V2.copy()
+        self.b = self.f.b.copy()
 
         self.e1 = numpy.random.uniform(
             -1, 1, (self.batch_size, self.in_shape[0])).astype(numpy.float32)
@@ -84,8 +85,8 @@ class TestTensorNetwork(unittest.TestCase):
             -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
 
         self.y = (
-            numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, W) +
-            self.e1.dot(V1) + self.e2.dot(V2) + b)
+            numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W) +
+            self.e1.dot(self.V1) + self.e2.dot(self.V2) + self.b)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -113,9 +114,30 @@ class TestTensorNetwork(unittest.TestCase):
                         self.f, True)
 
 
+class TestTensorNetwork2(TestTensorNetwork):
+
+    def setUp(self):
+        super(TestTensorNetwork2, self).setUp()
+
+        assert self.in_shape[1] % 2 == 0
+        self.e1 = numpy.random.uniform(
+            -1, 1, (self.batch_size, 1, self.in_shape[0])).astype(numpy.float32)
+        self.e2 = numpy.random.uniform(
+            -1, 1, (self.batch_size, self.in_shape[1] // 2, 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
+
+        e1 = array.as_mat(self.e1)
+        e2 = array.as_mat(self.e2)
+
+        self.y = (
+            numpy.einsum('ij,ik,jkl->il', e1, e2, self.W) +
+            e1.dot(self.V1) + e2.dot(self.V2) + self.b)
+
+
 class TestTensorNetworkWOBias(unittest.TestCase):
 
-    in_shape = (2, 3)
+    in_shape = (3, 4)
     out_size = 4
     batch_size = 10
 
@@ -126,7 +148,7 @@ class TestTensorNetworkWOBias(unittest.TestCase):
             -1, 1, self.f.W.shape).astype(numpy.float32)
         self.f.zero_grads()
 
-        W = self.f.W.copy()
+        self.W = self.f.W.copy()
 
         self.e1 = numpy.random.uniform(
             -1, 1, (self.batch_size, self.in_shape[0])).astype(numpy.float32)
@@ -135,7 +157,7 @@ class TestTensorNetworkWOBias(unittest.TestCase):
         self.gy = numpy.random.uniform(
             -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
 
-        self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, W)
+        self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -160,6 +182,24 @@ class TestTensorNetworkWOBias(unittest.TestCase):
         _check_backward(cuda.to_gpu(self.e1), cuda.to_gpu(self.e2),
                         cuda.to_gpu(self.gy), self.f, False)
 
+
+class TestTensorNetworkWOBias2(TestTensorNetworkWOBias):
+
+    def setUp(self):
+        super(TestTensorNetworkWOBias2, self).setUp()
+
+        assert self.in_shape[1] % 2 == 0
+        self.e1 = numpy.random.uniform(
+            -1, 1, (self.batch_size, 1, self.in_shape[0])).astype(numpy.float32)
+        self.e2 = numpy.random.uniform(
+            -1, 1, (self.batch_size, 2, self.in_shape[1] // 2)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
+
+        e1 = array.as_mat(self.e1)
+        e2 = array.as_mat(self.e2)
+
+        self.y = numpy.einsum('ij,ik,jkl->il', e1, e2, self.W)
 
 class InitByInitialParameter(unittest.TestCase):
 
