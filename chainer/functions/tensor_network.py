@@ -68,7 +68,7 @@ class TensorNetwork(function.Function):
 
     @property
     def gradient_names(self):
-        if self.nobias is None:
+        if self.nobias:
             return 'gW',
         assert self.gV1 is not None
         assert self.gV2 is not None
@@ -94,7 +94,7 @@ class TensorNetwork(function.Function):
 
     def zero_grads(self):
         self.gW.fill(0)
-        if self.nobias:
+        if not self.nobias:
             self.gV1.fill(0)
             self.gV2.fill(0)
             self.gb.fill(0)
@@ -103,7 +103,7 @@ class TensorNetwork(function.Function):
         e1 = array.as_mat(x[0])
         e2 = array.as_mat(x[1])
         y = numpy.einsum('ij,ik,jkl->il', e1, e2, self.W)
-        if self.nobias:
+        if not self.nobias:
             y += e1.dot(self.V1)
             y += e2.dot(self.V2)
             y += self.b
@@ -145,7 +145,7 @@ class TensorNetwork(function.Function):
             # 'i[jk],[jk]l->il'
             cuda.culinalg.dot(e1e2, W_mat, out=y)
 
-        if self.nobias:
+        if not self.nobias:
             e1 = array.as_mat(x[0])
             e2 = array.as_mat(x[1])
             with cuda.using_cumisc():
@@ -164,14 +164,14 @@ class TensorNetwork(function.Function):
         e2 = array.as_mat(x[1])
 
         self.gW += numpy.einsum('ij,ik,il->jkl', e1, e2, gy[0])
-        if self.nobias:
+        if not self.nobias:
             self.gV1 += e1.T.dot(gy[0])
             self.gV2 += e2.T.dot(gy[0])
             self.gb += gy[0].sum(0)
 
         ge1 = numpy.einsum('ik,jkl,il->ij', e2, self.W, gy[0])
         ge2 = numpy.einsum('ij,jkl,il->ik', e1, self.W, gy[0])
-        if self.nobias:
+        if not self.nobias:
             ge1 += gy[0].dot(self.V1.T)
             ge2 += gy[0].dot(self.V2.T)
         return (ge1, ge2)
@@ -202,7 +202,7 @@ class TensorNetwork(function.Function):
             x[0].shape[0], x[0].shape[1], x[1].shape[1], gy[0].shape[1])
         self.gW += dgW.reshape((x[0].shape[1], x[1].shape[1], gy[0].shape[1]))
 
-        if self.nobias:
+        if not self.nobias:
             e1 = array.as_mat(x[0])
             e2 = array.as_mat(x[1])
             with cuda.using_cumisc():
@@ -257,7 +257,7 @@ class TensorNetwork(function.Function):
                    x[0].shape[1], gy[0].shape[1], x[1].shape[1])
         ge2 = ge2.reshape(x[1].shape)
 
-        if self.nobias:
+        if not self.nobias:
             with cuda.using_cumisc():
                 cuda.culinalg.add_dot(gy[0], self.V1, ge1, transb='T')
                 cuda.culinalg.add_dot(gy[0], self.V2, ge2, transb='T')
