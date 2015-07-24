@@ -252,7 +252,7 @@ class TensorNetwork(function.Function):
         # [ij]->ij
         ge1 = ge1.reshape(i_len, j_len)
 
-        ge2 = cuda.zeros((i_len* k_len,), dtype=numpy.float32)
+        ge2 = cuda.zeros((i_len * k_len,), dtype=numpy.float32)
         # '[ij],[jkl],[il]->[ik]'
         cuda.elementwise(
             '''

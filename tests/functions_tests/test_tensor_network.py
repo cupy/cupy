@@ -56,6 +56,7 @@ def _batch_to_gpu(*xs):
 def _uniform(*shape):
     return numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
 
+
 class TestTensorNetwork(unittest.TestCase):
 
     in_shape = (3, 4)
@@ -171,6 +172,7 @@ class TestTensorNetworkWOBias2(TestTensorNetworkWOBias):
         e2 = array.as_mat(self.e2)
 
         self.y = numpy.einsum('ij,ik,jkl->il', e1, e2, self.W)
+
 
 class InitByInitialParameter(unittest.TestCase):
 
