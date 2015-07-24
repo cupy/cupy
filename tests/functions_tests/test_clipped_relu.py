@@ -16,9 +16,7 @@ if cuda.available:
 class TestCReLU(unittest.TestCase):
 
     def setUp(self):
-        # Avoid unstability of numerical grad
-        self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.x *= numpy.random.randint(2, size=(3, 2)) * 2 - 1
+        self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
     def check_backward(self, x_data, y_grad):
