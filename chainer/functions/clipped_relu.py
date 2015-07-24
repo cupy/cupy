@@ -59,7 +59,7 @@ def clipped_relu(x, z=20.0):
     """Clipped Rectifier Unit function :math:`CReLU(x, z) = \min(\max(0, x), z)`
 
     Args:
-        x (~chainer.Variable): Input variable, which is n(>0)-dimentional array
+        x (~chainer.Variable): Input variable, which is n(>0)-dimensional array
         z (float): clipping value. (default = 20.0)
 
     Returns:
