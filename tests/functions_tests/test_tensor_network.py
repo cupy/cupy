@@ -50,11 +50,13 @@ def _check_backward(e1, e2, y_grad, f, bias):
 
 class TestTensorNetwork(unittest.TestCase):
 
-    def setUp(self):
-        in_shape = (2, 3)
-        out_size = 4
+    in_shape = (2, 3)
+    out_size = 4
+    batch_size = 10
 
-        self.f = functions.TensorNetwork(in_shape[0], in_shape[1], out_size)
+    def setUp(self):
+        self.f = functions.TensorNetwork(
+            self.in_shape[0], self.in_shape[1], self.out_size)
         self.f.W = numpy.random.uniform(
             -1, 1, self.f.W.shape).astype(numpy.float32)
         self.f.V1 = numpy.random.uniform(
@@ -70,13 +72,12 @@ class TestTensorNetwork(unittest.TestCase):
         self.V2 = self.f.V2.copy()
         self.b = self.f.b.copy()
 
-        batch_size = 10
         self.e1 = numpy.random.uniform(
-            -1, 1, (batch_size, in_shape[0])).astype(numpy.float32)
+            -1, 1, (self.batch_size, self.in_shape[0])).astype(numpy.float32)
         self.e2 = numpy.random.uniform(
-            -1, 1, (batch_size, in_shape[1])).astype(numpy.float32)
+            -1, 1, (self.batch_size, self.in_shape[1])).astype(numpy.float32)
         self.gy = numpy.random.uniform(
-            -1, 1, (batch_size, out_size)).astype(numpy.float32)
+            -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
 
         self.y = (
             numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W) +
@@ -112,25 +113,25 @@ class TestTensorNetwork(unittest.TestCase):
 
 class TestTensorNetworkWOBias(unittest.TestCase):
 
-    def setUp(self):
-        in_shape = (2, 3)
-        out_size = 4
+    in_shape = (2, 3)
+    out_size = 4
+    batch_size = 10
 
+    def setUp(self):
         self.f = functions.TensorNetwork(
-            in_shape[0], in_shape[1], out_size, True)
+            self.in_shape[0], self.in_shape[1], self.out_size, True)
         self.f.W = numpy.random.uniform(
             -1, 1, self.f.W.shape).astype(numpy.float32)
         self.f.zero_grads()
 
         self.W = self.f.W.copy()
 
-        batch_size = 10
         self.e1 = numpy.random.uniform(
-            -1, 1, (batch_size, in_shape[0])).astype(numpy.float32)
+            -1, 1, (self.batch_size, self.in_shape[0])).astype(numpy.float32)
         self.e2 = numpy.random.uniform(
-            -1, 1, (batch_size, in_shape[1])).astype(numpy.float32)
+            -1, 1, (self.batch_size, self.in_shape[1])).astype(numpy.float32)
         self.gy = numpy.random.uniform(
-            -1, 1, (batch_size, out_size)).astype(numpy.float32)
+            -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
 
         self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W)
 
