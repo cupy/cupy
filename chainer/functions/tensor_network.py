@@ -129,7 +129,7 @@ class TensorNetwork(function.Function):
             'float* y, float* e1, float* e2, int e1c, int e2c',
             '''
             int I = i / e1c / e2c;
-            int J = (i-I * e1c * e2c) / e2c;
+            int J = (i - I * e1c * e2c) / e2c;
             int K = i % e2c;
             y[i] = e1[I * e1c + J] * e2[I * e2c + K];
             ''',
@@ -206,7 +206,7 @@ class TensorNetwork(function.Function):
             int J = i / e2c / gyc;
             int K = (i - J * e2c * gyc) / gyc;
             int L = i % gyc;
-            for (int I = 0; I < r; ++I){
+            for (int I = 0; I < r; ++I) {
                 int e1idx = I * e1c + J;
                 int e2idx = I * e2c + K;
                 int gyidx = I * gyc + L;
