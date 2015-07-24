@@ -13,7 +13,7 @@ if cuda.available:
     cuda.init()
 
 
-class TestCReLU(unittest.TestCase):
+class TestClippedReLU(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
