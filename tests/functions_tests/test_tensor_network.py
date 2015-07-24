@@ -158,5 +158,124 @@ class TestTensorNetworkWOBias(unittest.TestCase):
                         cuda.to_gpu(self.gy),
                         self.f, False)
 
+class InitByInitialParameter(unittest.TestCase):
+
+    in_shape = (2, 3)
+    out_size = 4
+    batch_size = 10
+
+    def setUp(self):
+        self.W = numpy.random.uniform(
+            -1, 1, (self.in_shape[0], self.in_shape[1], self.out_size)).astype(numpy.float32)
+        self.V1 = numpy.random.uniform(
+            -1, 1, (self.in_shape[0], self.out_size)).astype(numpy.float32)
+        self.V2 = numpy.random.uniform(
+            -1, 1, (self.in_shape[1], self.out_size)).astype(numpy.float32)
+        self.b = numpy.random.uniform(
+            -1, 1, (self.out_size,)).astype(numpy.float32)
+
+
+class NormalInitialParameter(InitByInitialParameter):
+
+    def check_normal(self, initialW, initial_bias, nobias):
+        functions.TensorNetwork(
+            self.in_shape[0], self.in_shape[1], self.out_size, nobias,
+            initialW, initial_bias)
+
+    def test_normal_cpu_bias(self):
+        self.check_normal(self.W, (self.V1, self.V2, self.b), False)
+
+    def test_normal_cpu_nobias(self):
+        self.check_normal(self.W, None, False)
+
+    @attr.gpu
+    def test_normal_gpu_bias(self):
+        initial_bias = (
+            cuda.to_gpu(self.V1),
+            cuda.to_gpu(self.V2),
+            cuda.to_gpu(self.b))
+        self.check_normal(cuda.to_gpu(self.W),
+                          initial_bias, False)
+    
+    @attr.gpu
+    def test_normal_gpu_nobias(self):
+        self.check_normal(cuda.to_gpu(self.W),
+                          None, False)
+
+
+class InvalidInitialParameter(InitByInitialParameter):
+
+    def check_invalid(self, initialW, initial_bias, nobias):
+        with self.assertRaises(AssertionError):
+            functions.TensorNetwork(
+                self.in_shape[0], self.in_shape[1], self.out_size, nobias,
+                initialW, initial_bias)
+
+    def test_invalidW_cpu(self):
+        W = numpy.random.uniform(
+            -1, 1, (self.in_shape[0]+1, self.in_shape[1], self.out_size)).astype(numpy.float32)
+        self.check_invalid(W, (self.V1, self.V2, self.b), False)
+        self.check_invalid(W, None, True)
+
+    @attr.gpu
+    def test_invalidW_gpu(self):
+        W = cuda.to_gpu(numpy.random.uniform(
+            -1, 1, (self.in_shape[0]+1, self.in_shape[1], self.out_size)).astype(numpy.float32))
+        initial_bias = (
+            cuda.to_gpu(self.V1),
+            cuda.to_gpu(self.V2),
+            cuda.to_gpu(self.b))
+
+        self.check_invalid(W, initial_bias, False)
+        self.check_invalid(W, None, True)
+
+    def test_invalidV1_cpu(self):
+        V1 = numpy.random.uniform(
+            -1, 1, (self.in_shape[0]+1, self.out_size)).astype(numpy.float32)
+        self.check_invalid(self.W, (V1, self.V2, self.b), False)
+    
+    @attr.gpu
+    def test_invaliV1_gpu(self):
+        V1 = numpy.random.uniform(
+            -1, 1, (self.in_shape[0]+1, self.out_size)).astype(numpy.float32)
+        initial_bias = (
+            cuda.to_gpu(V1),
+            cuda.to_gpu(self.V2),
+            cuda.to_gpu(self.b))
+
+        self.check_invalid(self.W, initial_bias, False)
+
+    def test_invalidV2_cpu(self):
+        V2 = numpy.random.uniform(
+            -1, 1, (self.in_shape[1]+1, self.out_size)).astype(numpy.float32)
+        self.check_invalid(self.W, (self.V1, V2, self.b), False)
+
+    @attr.gpu
+    def test_invaliV2_gpu(self):
+        V2 = numpy.random.uniform(
+            -1, 1, (self.in_shape[1]+1, self.out_size)).astype(numpy.float32)
+        initial_bias = (
+            cuda.to_gpu(self.V1),
+            cuda.to_gpu(V2),
+            cuda.to_gpu(self.b))
+
+        self.check_invalid(self.W, initial_bias, False)
+
+    def test_invalidb_cpu(self):
+        b = numpy.random.uniform(
+            -1, 1, (self.out_size+1,)).astype(numpy.float32)
+        self.check_invalid(self.W, (self.V1, self.V2, b), False)
+
+    @attr.gpu
+    def test_invalib_gpu(self):
+        b = numpy.random.uniform(
+            -1, 1, (self.out_size+1,)).astype(numpy.float32)
+        initial_bias = (
+            cuda.to_gpu(self.V1),
+            cuda.to_gpu(self.V2),
+            cuda.to_gpu(b))
+
+        self.check_invalid(self.W, initial_bias, False)
+
 
 testing.run_module(__name__, __file__)
