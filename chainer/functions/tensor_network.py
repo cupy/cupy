@@ -177,10 +177,10 @@ class TensorNetwork(function.Function):
             ''',
             '''
             int J = i / e2c / gyc;
-            int K = (i-J*e2c*gyc) / gyc;
+            int K = (i - J * e2c * gyc) / gyc;
             int L = i % gyc;
             for (int I = 0; I < r; ++I){
-                y[i] += e1[I*e1c+J] * e2[I*e2c+K] * gy[I*gyc+L];
+                y[i] += e1[I * e1c + J] * e2[I * e2c + K] * gy[I * gyc + L];
             }
             ''',
             'sum_of_three_ary_tensor_product')(dgW, e1, e2, gy_vec,
@@ -213,7 +213,7 @@ class TensorNetwork(function.Function):
             y[i] = 0;
             for (int K = 0; K < ec; ++K) {
                 for (int L = 0; L < gyc; ++L) {
-                    y[i] += e[I*ec+K] * W[J*ec*gyc+K*gyc+L] * gy[I*gyc+L];
+                    y[i] += e[I * ec + K] * W[J * ec * gyc + K * gyc + L] * gy[I * gyc + L];
                 }
             }
             ''',
@@ -234,7 +234,7 @@ class TensorNetwork(function.Function):
             y[i] = 0;
             for (int J = 0; J < ec; ++J) {
                 for (int L = 0; L < gyc; ++L) {
-                    y[i] += e[I*ec+J] * W[J*gec*gyc+K*gyc+L] * gy[I*gyc+L];
+                    y[i] += e[I * ec + J] * W[J * gec * gyc + K * gyc + L] * gy[I * gyc + L];
                 }
             }
             ''',
