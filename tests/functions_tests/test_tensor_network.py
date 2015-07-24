@@ -51,8 +51,7 @@ class TestTensorNetwork(unittest.TestCase):
             self.e2.dot(self.V2) +
             self.b)
 
-    def check_forward(self, x_data):
-        e1, e2 = x_data
+    def check_forward(self, e1, e2):
         e1 = chainer.Variable(e1)
         e2 = chainer.Variable(e2)
         y = self.f(e1, e2)
@@ -60,16 +59,15 @@ class TestTensorNetwork(unittest.TestCase):
 
     @condition.retry(3)
     def test_forward_cpu(self):
-        self.check_forward((self.e1, self.e2))
+        self.check_forward(self.e1, self.e2)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.f.to_gpu()
-        self.check_forward((cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)))
+        self.check_forward(cuda.to_gpu(self.e1), cuda.to_gpu(self.e2))
 
-    def check_backward(self, x_data, y_grad):
-        e1, e2 = x_data
+    def check_backward(self, e1, e2, y_grad):
         e1 = chainer.Variable(e1)
         e2 = chainer.Variable(e2)
         y = self.f(e1, e2)
@@ -91,15 +89,15 @@ class TestTensorNetwork(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward((self.e1, self.e2), self.gy)
+        self.check_backward(self.e1, self.e2, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.f.to_gpu()
-        self.check_backward(
-            (cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)),
-            cuda.to_gpu(self.gy))
+        self.check_backward(cuda.to_gpu(self.e1),
+                            cuda.to_gpu(self.e2),
+                            cuda.to_gpu(self.gy))
 
 
 class TestTensorNetworkWOBias(unittest.TestCase):
@@ -126,8 +124,7 @@ class TestTensorNetworkWOBias(unittest.TestCase):
 
         self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W)
 
-    def check_forward(self, x_data):
-        e1, e2 = x_data
+    def check_forward(self, e1, e2):
         e1 = chainer.Variable(e1)
         e2 = chainer.Variable(e2)
         y = self.f(e1, e2)
@@ -135,16 +132,15 @@ class TestTensorNetworkWOBias(unittest.TestCase):
 
     @condition.retry(3)
     def test_forward_cpu(self):
-        self.check_forward((self.e1, self.e2))
+        self.check_forward(self.e1, self.e2)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.f.to_gpu()
-        self.check_forward((cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)))
+        self.check_forward(cuda.to_gpu(self.e1), cuda.to_gpu(self.e2))
 
-    def check_backward(self, x_data, y_grad):
-        e1, e2 = x_data
+    def check_backward(self, e1, e2, y_grad):
         e1 = chainer.Variable(e1)
         e2 = chainer.Variable(e2)
         y = self.f(e1, e2)
@@ -162,15 +158,15 @@ class TestTensorNetworkWOBias(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward((self.e1, self.e2), self.gy)
+        self.check_backward(self.e1, self.e2, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.f.to_gpu()
-        self.check_backward(
-            (cuda.to_gpu(self.e1), cuda.to_gpu(self.e2)),
-            cuda.to_gpu(self.gy))
+        self.check_backward(cuda.to_gpu(self.e1),
+                            cuda.to_gpu(self.e2),
+                            cuda.to_gpu(self.gy))
 
 
 testing.run_module(__name__, __file__)
