@@ -244,7 +244,7 @@ class InvalidInitialParameter(InitByInitialParameter):
 
     @attr.gpu
     def test_invaliV1_gpu(self):
-        self.check_invalid(self.W,
+        self.check_invalid(cuda.to_gpu(self.W),
                            _batch_to_gpu(self.invalidV1, self.V2, self.b),
                            False)
 
@@ -253,7 +253,7 @@ class InvalidInitialParameter(InitByInitialParameter):
 
     @attr.gpu
     def test_invaliV2_gpu(self):
-        self.check_invalid(self.W,
+        self.check_invalid(cuda.to_gpu(self.W),
                            _batch_to_gpu(self.V1, self.invalidV2, self.b),
                            False)
 
@@ -262,7 +262,7 @@ class InvalidInitialParameter(InitByInitialParameter):
 
     @attr.gpu
     def test_invalib_gpu(self):
-        self.check_invalid(self.W,
+        self.check_invalid(cuda.to_gpu(self.W),
                            _batch_to_gpu(self.V1, self.V2, self.invalidb),
                            False)
 
