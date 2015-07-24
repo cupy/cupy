@@ -170,7 +170,7 @@ class TensorNetwork(function.Function):
             (x[0].shape[1]*x[1].shape[1]*gy[0].shape[1],),
             dtype=numpy.float32)
         # 'ij,ik,il->jkl'
-        ker = cuda.elementwise(
+        cuda.elementwise(
             '''
             float* y, float* e1, float* e2, float* gy,
             int r, int e1c, int e2c, int gyc
@@ -183,8 +183,7 @@ class TensorNetwork(function.Function):
                 y[i] += e1[I*e1c+J] * e2[I*e2c+K] * gy[I*gyc+L];
             }
             ''',
-            'sum_of_three_ary_tensor_product')
-        ker(dgW, e1, e2, gy_vec,
+            'sum_of_three_ary_tensor_product')(dgW, e1, e2, gy_vec,
             x[0].shape[0], x[0].shape[1], x[1].shape[1], gy[0].shape[1])
         self.gW += dgW.reshape((x[0].shape[1], x[1].shape[1], gy[0].shape[1]))
 
@@ -202,7 +201,8 @@ class TensorNetwork(function.Function):
         gy_vec = array.as_vec(gy[0])
 
         # 'ik,jkl,il->ij'
-        ge_kernel = cuda.elementwise(
+        ge1 = cuda.zeros((x[0].size,), dtype=numpy.float32)
+        cuda.elementwise(
             '''
             float* y, float* e, float* W, float* gy,
             int ec, int gyc, int gec
@@ -217,14 +217,13 @@ class TensorNetwork(function.Function):
                 }
             }
             ''',
-            'ge_kernel')
-        ge1 = cuda.zeros((x[0].size,), dtype=numpy.float32)
-        ge_kernel(ge1, e2, W_vec, gy_vec,
+            'ge_kernel')(ge1, e2, W_vec, gy_vec,
                   x[1].shape[1], gy[0].shape[1], x[0].shape[1])
         ge1 = ge1.reshape(x[0].shape)
 
         # 'ij,jkl,il->ik'
-        ge_kernel2 = cuda.elementwise(
+        ge2 = cuda.zeros((x[1].size,), dtype=numpy.float32)
+        cuda.elementwise(
             '''
             float* y, float* e, float* W, float* gy,
             int ec, int gyc, int gec
@@ -239,9 +238,7 @@ class TensorNetwork(function.Function):
                 }
             }
             ''',
-            'ge_kernel2')
-        ge2 = cuda.zeros((x[1].size,), dtype=numpy.float32)
-        ge_kernel2(ge2, e1, W_vec, gy_vec,
+            'ge_kernel2')(ge2, e1, W_vec, gy_vec,
                    x[0].shape[1], gy[0].shape[1], x[1].shape[1])
         ge2 = ge2.reshape(x[1].shape)
 
