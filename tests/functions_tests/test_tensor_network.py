@@ -21,7 +21,7 @@ class TestTensorNetwork(unittest.TestCase):
         in_shape = (2, 3)
         out_size = 4
 
-        self.f = functions.TensorNetwork(in_shape, out_size)
+        self.f = functions.TensorNetwork(in_shape[0], in_shape[1], out_size)
         self.f.W = numpy.random.uniform(
             -1, 1, self.f.W.shape).astype(numpy.float32)
         self.f.V1 = numpy.random.uniform(
@@ -108,7 +108,7 @@ class TestTensorNetworkWOBias(unittest.TestCase):
         in_shape = (2, 3)
         out_size = 4
 
-        self.f = functions.TensorNetwork(in_shape, out_size, True)
+        self.f = functions.TensorNetwork(in_shape[0], in_shape[1], out_size, True)
         self.f.W = numpy.random.uniform(
             -1, 1, self.f.W.shape).astype(numpy.float32)
         self.f.zero_grads()
