@@ -157,10 +157,8 @@ class TestTensorNetworkWOBias(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu(self):
         self.f.to_gpu()
-        _check_backward(cuda.to_gpu(self.e1),
-                        cuda.to_gpu(self.e2),
-                        cuda.to_gpu(self.gy),
-                        self.f, False)
+        _check_backward(cuda.to_gpu(self.e1), cuda.to_gpu(self.e2),
+                        cuda.to_gpu(self.gy), self.f, False)
 
 
 class InitByInitialParameter(unittest.TestCase):
@@ -198,8 +196,7 @@ class NormalInitialParameter(InitByInitialParameter):
     @attr.gpu
     def test_normal_gpu_bias(self):
         self.check_normal(cuda.to_gpu(self.W),
-                          _batch_to_gpu(self.V1, self.V2, self.b),
-                          False)
+                          _batch_to_gpu(self.V1, self.V2, self.b), False)
 
     @attr.gpu
     def test_normal_gpu_nobias(self):
@@ -235,8 +232,7 @@ class InvalidInitialParameter(InitByInitialParameter):
     def test_invalidW_gpu(self):
         invalidW = cuda.to_gpu(self.invalidW)
         self.check_invalid(invalidW,
-                           _batch_to_gpu(self.V1, self.V2, self.b),
-                           False)
+                           _batch_to_gpu(self.V1, self.V2, self.b), False)
         self.check_invalid(invalidW, None, True)
 
     def test_invalidV1_cpu(self):
