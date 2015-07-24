@@ -53,6 +53,9 @@ def _batch_to_gpu(*xs):
     return tuple(cuda.to_gpu(x) for x in xs)
 
 
+def _uniform(*shape):
+    return numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
+
 class TestTensorNetwork(unittest.TestCase):
 
     in_shape = (3, 4)
@@ -62,14 +65,10 @@ class TestTensorNetwork(unittest.TestCase):
     def setUp(self):
         self.f = functions.TensorNetwork(
             self.in_shape[0], self.in_shape[1], self.out_size)
-        self.f.W = numpy.random.uniform(
-            -1, 1, self.f.W.shape).astype(numpy.float32)
-        self.f.V1 = numpy.random.uniform(
-            -1, 1, self.f.V1.shape).astype(numpy.float32)
-        self.f.V2 = numpy.random.uniform(
-            -1, 1, self.f.V2.shape).astype(numpy.float32)
-        self.f.b = numpy.random.uniform(
-            -1, 1, self.f.b.shape).astype(numpy.float32)
+        self.f.W = _uniform(*self.f.W.shape)
+        self.f.V1 = _uniform(*self.f.V1.shape)
+        self.f.V2 = _uniform(*self.f.V2.shape)
+        self.f.b = _uniform(*self.f.b.shape)
         self.f.zero_grads()
 
         self.W = self.f.W.copy()
@@ -77,12 +76,9 @@ class TestTensorNetwork(unittest.TestCase):
         self.V2 = self.f.V2.copy()
         self.b = self.f.b.copy()
 
-        self.e1 = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.in_shape[0])).astype(numpy.float32)
-        self.e2 = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.in_shape[1])).astype(numpy.float32)
-        self.gy = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
+        self.e1 = _uniform(self.batch_size, self.in_shape[0])
+        self.e2 = _uniform(self.batch_size, self.in_shape[1])
+        self.gy = _uniform(self.batch_size, self.out_size)
 
         self.y = (
             numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W) +
@@ -120,12 +116,9 @@ class TestTensorNetwork2(TestTensorNetwork):
         super(TestTensorNetwork2, self).setUp()
 
         assert self.in_shape[1] % 2 == 0
-        self.e1 = numpy.random.uniform(
-            -1, 1, (self.batch_size, 1, self.in_shape[0])).astype(numpy.float32)
-        self.e2 = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.in_shape[1] // 2, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
+        self.e1 = _uniform(self.batch_size, 1, self.in_shape[0])
+        self.e2 = _uniform(self.batch_size, self.in_shape[1] // 2, 2)
+        self.gy = _uniform(self.batch_size, self.out_size)
 
         e1 = array.as_mat(self.e1)
         e2 = array.as_mat(self.e2)
@@ -146,12 +139,9 @@ class TestTensorNetworkWOBias(TestTensorNetwork):
 
         self.W = self.f.W.copy()
 
-        self.e1 = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.in_shape[0])).astype(numpy.float32)
-        self.e2 = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.in_shape[1])).astype(numpy.float32)
-        self.gy = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
+        self.e1 = _uniform(self.batch_size, self.in_shape[0])
+        self.e2 = _uniform(self.batch_size, self.in_shape[1])
+        self.gy = _uniform(self.batch_size, self.out_size)
 
         self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W)
 
@@ -173,12 +163,9 @@ class TestTensorNetworkWOBias2(TestTensorNetworkWOBias):
         super(TestTensorNetworkWOBias2, self).setUp()
 
         assert self.in_shape[1] % 2 == 0
-        self.e1 = numpy.random.uniform(
-            -1, 1, (self.batch_size, 1, self.in_shape[0])).astype(numpy.float32)
-        self.e2 = numpy.random.uniform(
-            -1, 1, (self.batch_size, 2, self.in_shape[1] // 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(
-            -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
+        self.e1 = _uniform(self.batch_size, 1, self.in_shape[0])
+        self.e2 = _uniform(self.batch_size, 2, self.in_shape[1] // 2)
+        self.gy = _uniform(self.batch_size, self.out_size)
 
         e1 = array.as_mat(self.e1)
         e2 = array.as_mat(self.e2)
@@ -192,16 +179,10 @@ class InitByInitialParameter(unittest.TestCase):
     batch_size = 10
 
     def setUp(self):
-        self.W = numpy.random.uniform(
-            -1, 1,
-            (self.in_shape[0], self.in_shape[1], self.out_size)
-        ).astype(numpy.float32)
-        self.V1 = numpy.random.uniform(
-            -1, 1, (self.in_shape[0], self.out_size)).astype(numpy.float32)
-        self.V2 = numpy.random.uniform(
-            -1, 1, (self.in_shape[1], self.out_size)).astype(numpy.float32)
-        self.b = numpy.random.uniform(
-            -1, 1, (self.out_size,)).astype(numpy.float32)
+        self.W = _uniform(self.in_shape[0], self.in_shape[1], self.out_size)
+        self.V1 = _uniform(self.in_shape[0], self.out_size)
+        self.V2 = _uniform(self.in_shape[1], self.out_size)
+        self.b = _uniform(self.out_size,)
 
 
 class NormalInitialParameter(InitByInitialParameter):
@@ -231,16 +212,11 @@ class InvalidInitialParameter(InitByInitialParameter):
 
     def setUp(self):
         super(InvalidInitialParameter, self).setUp()
-        self.invalidW = numpy.random.uniform(
-            -1, 1,
-            (self.in_shape[0]+1, self.in_shape[1], self.out_size)
-        ).astype(numpy.float32)
-        self.invalidV1 = numpy.random.uniform(
-            -1, 1, (self.in_shape[0]+1, self.out_size)).astype(numpy.float32)
-        self.invalidV2 = numpy.random.uniform(
-            -1, 1, (self.in_shape[1]+1, self.out_size)).astype(numpy.float32)
-        self.invalidb = numpy.random.uniform(
-            -1, 1, (self.out_size+1,)).astype(numpy.float32)
+        self.invalidW = _uniform(self.in_shape[0] + 1, self.in_shape[1],
+                                 self.out_size)
+        self.invalidV1 = _uniform(self.in_shape[0] + 1, self.out_size)
+        self.invalidV2 = _uniform(self.in_shape[1] + 1, self.out_size)
+        self.invalidb = _uniform(self.out_size + 1,)
 
     def check_invalid(self, initialW, initial_bias, nobias):
         with self.assertRaises(AssertionError):
