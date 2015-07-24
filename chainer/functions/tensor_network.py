@@ -43,6 +43,9 @@ class TensorNetwork(function.Function):
         if not self.nobias:
             if initial_bias is not None:
                 assert len(initial_bias) == 3
+                assert initial_bias[0].shape == (in_size[0], out_size)
+                assert initial_bias[1].shape == (in_size[1], out_size)
+                assert initial_bias[2].shape == (out_size,)
                 # TODO(Kenta OONO): Add size check of each biases
                 self.V1, self.V2, self.b = initial_bias
             else:
