@@ -162,29 +162,38 @@ class TensorNetwork(function.Function):
     def backward_cpu(self, x, gy):
         e1 = array.as_mat(x[0])
         e2 = array.as_mat(x[1])
+        gy, = gy
 
-        self.gW += numpy.einsum('ij,ik,il->jkl', e1, e2, gy[0])
+        self.gW += numpy.einsum('ij,ik,il->jkl', e1, e2, gy)
         if not self.nobias:
-            self.gV1 += e1.T.dot(gy[0])
-            self.gV2 += e2.T.dot(gy[0])
-            self.gb += gy[0].sum(0)
+            self.gV1 += e1.T.dot(gy)
+            self.gV2 += e2.T.dot(gy)
+            self.gb += gy.sum(0)
 
-        ge1 = numpy.einsum('ik,jkl,il->ij', e2, self.W, gy[0])
-        ge2 = numpy.einsum('ij,jkl,il->ik', e1, self.W, gy[0])
+        ge1 = numpy.einsum('ik,jkl,il->ij', e2, self.W, gy)
+        ge2 = numpy.einsum('ij,jkl,il->ik', e1, self.W, gy)
         if not self.nobias:
-            ge1 += gy[0].dot(self.V1.T)
-            ge2 += gy[0].dot(self.V2.T)
+            ge1 += gy.dot(self.V1.T)
+            ge2 += gy.dot(self.V2.T)
         return (ge1, ge2)
 
     def backward_gpu(self, x, gy):
-        e1 = array.as_vec(x[0])
-        e2 = array.as_vec(x[1])
-        gy_vec = array.as_vec(gy[0])
+        i_len, j_len = x[0].shape
+        k_len = x[1].shape[1]
+        l_len = gy[0].shape[1]
 
-        dgW = cuda.zeros(
-            (x[0].shape[1]*x[1].shape[1]*gy[0].shape[1],),
-            dtype=numpy.float32)
-        # 'ij,ik,il->jkl'
+        # ij->[ij]
+        e1 = array.as_vec(x[0])
+        # ik->[ik]
+        e2 = array.as_vec(x[1])
+        gy, = gy
+        # il->[il]
+        gy_vec = array.as_vec(gy)
+        # jkl->[jkl]
+        W_vec = array.as_vec(self.W)
+
+        dgW = cuda.zeros((j_len * k_len * l_len,), dtype=numpy.float32)
+        # '[ij],[ik],[il]->[jkl]'
         cuda.elementwise(
             '''
             float* y, float* e1, float* e2, float* gy,
@@ -195,28 +204,29 @@ class TensorNetwork(function.Function):
             int K = (i - J * e2c * gyc) / gyc;
             int L = i % gyc;
             for (int I = 0; I < r; ++I){
-                y[i] += e1[I * e1c + J] * e2[I * e2c + K] * gy[I * gyc + L];
+                int e1idx = I * e1c + J;
+                int e2idx = I * e2c + K;
+                int gyidx = I * gyc + L;
+                y[i] += e1[e1idx] * e2[e2idx] * gy[gyidx];
             }
             ''',
-            'sum_of_three_ary_tensor_product')(dgW, e1, e2, gy_vec,
-            x[0].shape[0], x[0].shape[1], x[1].shape[1], gy[0].shape[1])
-        self.gW += dgW.reshape((x[0].shape[1], x[1].shape[1], gy[0].shape[1]))
+            'sum_of_three_ary_tensor_product')(
+                dgW, e1, e2, gy_vec, i_len, j_len, k_len, l_len)
+        # [jkl]->jkl
+        self.gW += dgW.reshape((j_len, k_len, l_len))
 
         if not self.nobias:
             e1 = array.as_mat(x[0])
             e2 = array.as_mat(x[1])
             with cuda.using_cumisc():
-                cuda.culinalg.add_dot(e1, gy[0], self.gV1, transa='T')
-                cuda.culinalg.add_dot(e2, gy[0], self.gV2, transa='T')
-                self.gb += cuda.cumisc.sum(gy[0], 0)
+                # ij,il->jl
+                cuda.culinalg.add_dot(e1, gy, self.gV1, transa='T')
+                # ik,il->kl
+                cuda.culinalg.add_dot(e2, gy, self.gV2, transa='T')
+                self.gb += cuda.cumisc.sum(gy, 0)
 
-        e1 = array.as_vec(x[0])
-        e2 = array.as_vec(x[1])
-        W_vec = array.as_vec(self.W)
-        gy_vec = array.as_vec(gy[0])
-
-        # 'ik,jkl,il->ij'
         ge1 = cuda.zeros((x[0].size,), dtype=numpy.float32)
+        # '[ik],[jkl],[il]->[ij]'
         cuda.elementwise(
             '''
             float* y, float* e, float* W, float* gy,
@@ -228,16 +238,19 @@ class TensorNetwork(function.Function):
             y[i] = 0;
             for (int K = 0; K < ec; ++K) {
                 for (int L = 0; L < gyc; ++L) {
-                    y[i] += e[I * ec + K] * W[J * ec * gyc + K * gyc + L] * gy[I * gyc + L];
+                    int eidx = I * ec + K;
+                    int Widx = J * ec * gyc + K * gyc + L;
+                    int gyidx = I * gyc + L;
+                    y[i] += e[eidx] * W[Widx] * gy[gyidx];
                 }
             }
             ''',
-            'ge_kernel')(ge1, e2, W_vec, gy_vec,
-                  x[1].shape[1], gy[0].shape[1], x[0].shape[1])
+            'ge_kernel')(ge1, e2, W_vec, gy_vec, k_len, l_len, j_len)
+        # [ij]->ij
         ge1 = ge1.reshape(x[0].shape)
 
-        # 'ij,jkl,il->ik'
         ge2 = cuda.zeros((x[1].size,), dtype=numpy.float32)
+        # '[ij],[jkl],[il]->[ik]'
         cuda.elementwise(
             '''
             float* y, float* e, float* W, float* gy,
@@ -249,16 +262,21 @@ class TensorNetwork(function.Function):
             y[i] = 0;
             for (int J = 0; J < ec; ++J) {
                 for (int L = 0; L < gyc; ++L) {
-                    y[i] += e[I * ec + J] * W[J * gec * gyc + K * gyc + L] * gy[I * gyc + L];
+                    int eidx = I * ec + J;
+                    int Widx = J * gec * gyc + K * gyc + L;
+                    int gyidx = I * gyc + L;
+                    y[i] += e[eidx] * W[Widx] * gy[gyidx];
                 }
             }
             ''',
-            'ge_kernel2')(ge2, e1, W_vec, gy_vec,
-                   x[0].shape[1], gy[0].shape[1], x[1].shape[1])
+            'ge_kernel2')(ge2, e1, W_vec, gy_vec, j_len, l_len, k_len)
+        # [ik]->ik
         ge2 = ge2.reshape(x[1].shape)
 
         if not self.nobias:
             with cuda.using_cumisc():
-                cuda.culinalg.add_dot(gy[0], self.V1, ge1, transb='T')
-                cuda.culinalg.add_dot(gy[0], self.V2, ge2, transb='T')
+                # il,jl->ij
+                cuda.culinalg.add_dot(gy, self.V1, ge1, transb='T')
+                # il,kl->ik
+                cuda.culinalg.add_dot(gy, self.V2, ge2, transb='T')
         return (ge1, ge2)
