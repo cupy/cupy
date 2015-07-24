@@ -73,18 +73,20 @@ class TensorNetwork(function.Function):
         return 'gW', 'gV1', 'gV2', 'gb'
 
     def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
+
+        e1_type, e2_type = in_types
         type_check.expect(
-            in_types.size() == 2,
-            in_types[0].ndim >= 2,
-            in_types[1].ndim >= 2,
-            in_types[0].shape[0] == in_types[1].shape[0]
+            e1_type.ndim >= 2,
+            e2_type.ndim >= 2,
+            e1_type.shape[0] == e2_type.shape[0]
         )
 
         in_shape = type_check.Variable(self.in_shape, 'in_shape')
         type_check_prod = type_check.Variable(numpy.prod, 'prod')
         type_check.expect(
-            type_check_prod(in_types[0].shape[1:]) == in_shape[0],
-            type_check_prod(in_types[1].shape[1:]) == in_shape[1]
+            type_check_prod(e1_type.shape[1:]) == in_sizes[0],
+            type_check_prod(e2_type.shape[1:]) == in_sizes[1]
         )
 
     def check_type_backward(self, in_types, out_types):
