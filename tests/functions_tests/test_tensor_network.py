@@ -67,10 +67,10 @@ class TestTensorNetwork(unittest.TestCase):
             -1, 1, self.f.b.shape).astype(numpy.float32)
         self.f.zero_grads()
 
-        self.W = self.f.W.copy()
-        self.V1 = self.f.V1.copy()
-        self.V2 = self.f.V2.copy()
-        self.b = self.f.b.copy()
+        W = self.f.W.copy()
+        V1 = self.f.V1.copy()
+        V2 = self.f.V2.copy()
+        b = self.f.b.copy()
 
         self.e1 = numpy.random.uniform(
             -1, 1, (self.batch_size, self.in_shape[0])).astype(numpy.float32)
@@ -80,10 +80,8 @@ class TestTensorNetwork(unittest.TestCase):
             -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
 
         self.y = (
-            numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W) +
-            self.e1.dot(self.V1) +
-            self.e2.dot(self.V2) +
-            self.b)
+            numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, W) +
+            self.e1.dot(V1) + self.e2.dot(V2) + b)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -124,7 +122,7 @@ class TestTensorNetworkWOBias(unittest.TestCase):
             -1, 1, self.f.W.shape).astype(numpy.float32)
         self.f.zero_grads()
 
-        self.W = self.f.W.copy()
+        W = self.f.W.copy()
 
         self.e1 = numpy.random.uniform(
             -1, 1, (self.batch_size, self.in_shape[0])).astype(numpy.float32)
@@ -133,7 +131,7 @@ class TestTensorNetworkWOBias(unittest.TestCase):
         self.gy = numpy.random.uniform(
             -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
 
-        self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W)
+        self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, W)
 
     @condition.retry(3)
     def test_forward_cpu(self):
