@@ -8,7 +8,7 @@ class ClippedReLU(function.Function):
 
     """clipped ReLU function. clipped ReLU is written as below,
 
-    :math:`ClippedReLU(x, z) = min{max{0,x},z}`
+    :math:`ClippedReLU(x, z) = \min(\max(0, x) ,z)`
     z is a parameter to cap return value of ReLU.
 
     """
@@ -30,11 +30,10 @@ class ClippedReLU(function.Function):
         )
         x_type, = in_types
         y_type, = out_types
-        print type(y_type.dtype == numpy.float32)
         type_check.expect(
             y_type.dtype == numpy.float32,
             y_type.ndim == x_type.ndim)
-        
+
     def forward_cpu(self, x):
         return numpy.minimum(numpy.maximum(0, x[0]), self.cap),
 
