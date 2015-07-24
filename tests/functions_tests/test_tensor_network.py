@@ -135,11 +135,7 @@ class TestTensorNetwork2(TestTensorNetwork):
             e1.dot(self.V1) + e2.dot(self.V2) + self.b)
 
 
-class TestTensorNetworkWOBias(unittest.TestCase):
-
-    in_shape = (3, 4)
-    out_size = 4
-    batch_size = 10
+class TestTensorNetworkWOBias(TestTensorNetwork):
 
     def setUp(self):
         self.f = functions.TensorNetwork(
@@ -158,18 +154,6 @@ class TestTensorNetworkWOBias(unittest.TestCase):
             -1, 1, (self.batch_size, self.out_size)).astype(numpy.float32)
 
         self.y = numpy.einsum('ij,ik,jkl->il', self.e1, self.e2, self.W)
-
-    @condition.retry(3)
-    def test_forward_cpu(self):
-        _check_forward(self.e1, self.e2, self.f, self.y)
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_forward_gpu(self):
-        self.f.to_gpu()
-        _check_forward(cuda.to_gpu(self.e1),
-                       cuda.to_gpu(self.e2),
-                       self.f, self.y)
 
     @condition.retry(3)
     def test_backward_cpu(self):
