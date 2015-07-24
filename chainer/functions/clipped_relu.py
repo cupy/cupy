@@ -54,7 +54,7 @@ class ClippedReLU(function.Function):
 
 
 def clipped_relu(x, z=20.0):
-    """Clipped Rectifier Unit function :math:`CReLU(x, z) = min{max{0,x},z}`
+    """Clipped Rectifier Unit function :math:`CReLU(x, z) = \min(\max(0, x), z)`
 
     Args:
         x (~chainer.Variable): Input variable.
