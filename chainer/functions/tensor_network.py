@@ -56,19 +56,20 @@ class TensorNetwork(function.Function):
 
     @property
     def parameter_names(self):
-        # TODO(Kenta OONO): checking nobias by means of b is indirect
-        if self.b is None:
+        if self.nobias:
             return 'W',
         assert self.V1 is not None
         assert self.V2 is not None
+        assert self.b is not None
         return 'W', 'V1', 'V2', 'b'
 
     @property
     def gradient_names(self):
-        if self.gb is None:
+        if self.nobias is None:
             return 'gW',
         assert self.gV1 is not None
         assert self.gV2 is not None
+        assert self.gb is not None
         return 'gW', 'gV1', 'gV2', 'gb'
 
     def check_type_forward(self, in_types):
@@ -91,7 +92,7 @@ class TensorNetwork(function.Function):
 
     def zero_grads(self):
         self.gW.fill(0)
-        if self.gb is not None:
+        if self.nobias:
             self.gV1.fill(0)
             self.gV2.fill(0)
             self.gb.fill(0)
@@ -100,7 +101,7 @@ class TensorNetwork(function.Function):
         e1 = array.as_mat(x[0])
         e2 = array.as_mat(x[1])
         y = numpy.einsum('ij,ik,jkl->il', e1, e2, self.W)
-        if self.b is not None:
+        if self.nobias:
             y += e1.dot(self.V1)
             y += e2.dot(self.V2)
             y += self.b
@@ -150,14 +151,14 @@ class TensorNetwork(function.Function):
         e2 = array.as_mat(x[1])
 
         self.gW += numpy.einsum('ij,ik,il->jkl', e1, e2, gy[0])
-        if self.b is not None:
+        if self.nobias:
             self.gV1 += e1.T.dot(gy[0])
             self.gV2 += e2.T.dot(gy[0])
             self.gb += gy[0].sum(0)
 
         ge1 = numpy.einsum('ik,jkl,il->ij', e2, self.W, gy[0])
         ge2 = numpy.einsum('ij,jkl,il->ik', e1, self.W, gy[0])
-        if self.b is not None:
+        if self.nobias:
             ge1 += gy[0].dot(self.V1.T)
             ge2 += gy[0].dot(self.V2.T)
         return (ge1, ge2)
@@ -246,7 +247,7 @@ class TensorNetwork(function.Function):
                    x[0].shape[1], gy[0].shape[1], x[1].shape[1])
         ge2 = ge2.reshape(x[1].shape)
 
-        if self.b is not None:
+        if self.nobias:
             with cuda.using_cumisc():
                 cuda.culinalg.add_dot(gy[0], self.V1, ge1, transb='T')
                 cuda.culinalg.add_dot(gy[0], self.V2, ge2, transb='T')
