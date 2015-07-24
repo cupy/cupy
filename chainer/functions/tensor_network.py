@@ -24,6 +24,7 @@ class TensorNetwork(function.Function):
 
         assert len(in_shape) == 2
         self.in_shape = in_shape
+        self.nobias = nobias
 
         if initialW is not None:
             assert initialW.shape == (in_shape[0], in_shape[1], out_size)
@@ -35,15 +36,17 @@ class TensorNetwork(function.Function):
                 (self.in_shape[0], self.in_shape[1], out_size)
             ).astype(numpy.float32)
 
-        if initial_bias is not None:
-            assert len(initial_bias) == 3
-            self.V1, self.V2, self.b = initial_bias
-        elif not nobias:
-            self.V1 = numpy.zeros(
-                (self.in_shape[0], out_size), dtype=numpy.float32)
-            self.V2 = numpy.zeros(
-                (self.in_shape[1], out_size), dtype=numpy.float32)
-            self.b = numpy.zeros((out_size, ), dtype=numpy.float32)
+        if not self.nobias:
+            if initial_bias is not None:
+                assert len(initial_bias) == 3
+                # TODO(Kenta OONO): Add size check of each biases
+                self.V1, self.V2, self.b = initial_bias
+            else:
+                self.V1 = numpy.zeros(
+                    (self.in_sizes[0], out_size), dtype=numpy.float32)
+                self.V2 = numpy.zeros(
+                    (self.in_sizes[1], out_size), dtype=numpy.float32)
+                self.b = numpy.zeros((out_size, ), dtype=numpy.float32)
 
         self.gW = array.empty_like(self.W)
         if not self.nobias:
