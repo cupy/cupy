@@ -16,4 +16,3 @@ def empty_like(x):
         return cuda.empty_like(x)
     else:
         return numpy.empty_like(x)
-

@@ -4,8 +4,8 @@ import numpy
 
 from chainer import cuda
 from chainer import function
-from chainer.utils import type_check
 from chainer.utils import array
+from chainer.utils import type_check
 
 
 class TensorNetwork(function.Function):
@@ -26,7 +26,8 @@ class TensorNetwork(function.Function):
         self.nobias = nobias
 
         if initialW is not None:
-            assert initialW.shape == (self.in_sizes[0], self.in_sizes[1], out_size)
+            assert initialW.shape == (
+                self.in_sizes[0], self.in_sizes[1], out_size)
             self.W = initialW
         else:
             # TODO(Kenta OONO): I do not know appropriate way of
