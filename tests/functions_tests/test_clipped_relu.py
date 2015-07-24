@@ -18,10 +18,31 @@ class TestClippedReLU(unittest.TestCase):
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.z = 0.75
+
+    def check_forward(self, x_data):
+        x = chainer.Variable(x_data)
+        y = functions.clipped_relu(x, self.z)
+
+        y_expect = self.x.copy()
+        for i in numpy.ndindex(self.x.shape):
+            if self.x[i] < 0:
+                y_expect[i] = 0
+            elif self.x[i] > self.z:
+                y_expect[i] = self.z
+
+        gradient_check.assert_allclose(y_expect, y.data)
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x)
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
         x = chainer.Variable(x_data)
-        y = functions.clipped_relu(x, 0.75)
+        y = functions.clipped_relu(x, self.z)
         y.grad = y_grad
         y.backward()
 
