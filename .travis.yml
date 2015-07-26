@@ -9,5 +9,5 @@ install:
   - pip install nose flake8 hacking
 
 script:
-  - nosetests -a '!gpu'
+  - nosetests -a '!gpu' tests/chainer_tests tests/functions_tests tests/optimizers_tests tests/testing_tests tests/utils_tests
   - flake8 chainer tests examples --exclude=libcudnn.py,caffe_pb2.py
