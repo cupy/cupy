@@ -4,6 +4,7 @@ import unittest
 from cupy.cuda import memory
 from cupy import testing
 
+
 class MockMemory(object):
     cur_ptr = 1
 
