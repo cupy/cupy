@@ -5,6 +5,7 @@ import numpy
 from cupy import testing
 
 
+@testing.gpu
 class TestArrayCopyAndView(unittest.TestCase):
 
     _multiprocess_can_split_ = True
