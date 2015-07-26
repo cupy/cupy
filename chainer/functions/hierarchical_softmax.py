@@ -164,53 +164,72 @@ class BinaryHierarchicalSoftmax(function.Function):
         self.gW[path] += gw
         return gx
 
+    def to_gpu(self, device=None):
+        function.Function.to_gpu(self, device)
+
+        n_vocab = max(self.paths.keys()) + 1
+        paths = cuda.to_gpu(numpy.concatenate(
+            [self.paths[i] for i in range(n_vocab) if i in self.paths]))
+        codes = cuda.to_gpu(numpy.concatenate(
+            [self.codes[i] for i in range(n_vocab) if i in self.codes]))
+
+        begins = numpy.empty((n_vocab + 1,), dtype=numpy.int32)
+        begins[0] = 0
+        for i in range(0, n_vocab):
+            length = len(self.paths[i]) if i in self.paths else 0
+            begins[i + 1] = begins[i] + length
+
+        self.paths = paths
+        self.codes = codes
+        self.begins = cuda.to_gpu(begins)
+
     def forward_gpu(self, inputs):
         x, t = inputs
 
-        t = cuda.to_cpu(t)
-        path = numpy.concatenate([self.paths[it] for it in t])
-        code = numpy.concatenate([self.codes[it] for it in t])
+        max_length = cuda.reduce(
+            'int* t, int* begins', 'begins[t[i] + 1] - begins[t[i]]',
+            'max(a,b)', '0', 'binary_hierarchical_softmax_max_length',
+            numpy.int32
+        )(t, self.begins)
+        max_length = cuda.to_cpu(max_length)[()]
 
-        path = cuda.to_gpu(path)
-        code = cuda.to_gpu(code)
-
-        length = code.shape[0]
-        #length = sum(len(self.paths[it]) for it in t)
-        #path = cuda.zeros((length,), dtype=numpy.int32)
-        #code = cuda.zeros((length,), dtype=numpy.float32)
-
-        ids = numpy.empty((length,), dtype=numpy.int32)
-        pos = 0
-        for i, it in enumerate(t):
-            l = self.paths[it].shape[0]
-            ids[pos:pos+l] = i
-            pos += l
-
-        ids = cuda.to_gpu(ids)
+        length = max_length * x.shape[0]
         ls = cuda.empty((length,), dtype=numpy.float32)
         n_in = x.shape[1]
         wxy = cuda.empty((length,), dtype=numpy.float32)
         cuda.elementwise(
             '''float* ls, float* wxy, const float* x, const float* w,
-            const int* ids, const int* paths, const float* codes, int c''',
+            const int* ts, const int* paths, const float* codes,
+            const int* begins, int c, int max_length''',
             '''
-            int ind = ids[i];
-            int node = paths[i];
-            x = &x[ind * c];
+            int ind = i / max_length;
+            int offset = i - ind * max_length;
+            int t = ts[ind];
 
-            float wx = 0;
-            for (int j = 0; j < c; ++j) {
-              wx += w[node * c + j] * x[j];
+            int begin = begins[t];
+            int length = begins[t + 1] - begins[t];
+
+            if (offset < length) {
+              int p = begin + offset;
+              int node = paths[p];
+
+              x = &x[ind * c];
+
+              float wx = 0;
+              for (int j = 0; j < c; ++j) {
+                wx += w[node * c + j] * x[j];
+              }
+              wxy[i] = wx * codes[p];
+              ls[i] = log(1 + exp(-wxy[i]));
+            } else {
+              ls[i] = 0;
             }
-            wxy[i] = wx * codes[i];
-            ls[i] = log(1 + exp(-wxy[i]));
             ''',
             'binary_hierarchical_softmax_forward'
-        )(ls, wxy, x, self.W, ids, path, code, n_in)
+        )(ls, wxy, x, self.W, t, self.paths, self.codes, self.begins,
+          n_in, max_length)
+        self.max_length = max_length
         self.wxy = wxy
-        self.ids = ids
-        self.path = path
-        self.code = code
         return cuda.gpuarray.sum(ls),
 
     def backward_gpu(self, inputs, loss):
@@ -221,23 +240,34 @@ class BinaryHierarchicalSoftmax(function.Function):
         gx = cuda.zeros_like(x)
         cuda.elementwise(
             '''const float* wxy, float* gx, float* gw, const float* x,
-            const float* w, const int* ids, const int* paths,
-            const float* codes, const float* gloss, int c''',
+            const float* w, const int* ts, const int* paths,
+            const float* codes, const int* begins,
+            const float* gloss, int c, int max_length''',
             '''
-            int node = paths[i];
-            float code = codes[i];
-            gx = &gx[ids[i] * c];
-            x = &x[ids[i] * c];
+            int ind = i / max_length;
+            int offset = i - ind * max_length;
+            int t = ts[ind];
 
-            float g = -*gloss * code / (1.0 + exp(wxy[i]));
-            for (int j = 0; j < c; ++j) {
-              atomicAdd(gx + j, g * w[node * c + j]);
-              atomicAdd(gw + node * c + j, g * x[j]);
+            int begin = begins[t];
+            int length = begins[t + 1] - begins[t];
+
+            if (offset < length) {
+              int p = begin + offset;
+              int node = paths[p];
+              float code = codes[p];
+              gx = &gx[ind * c];
+              x = &x[ind * c];
+
+              float g = -*gloss * code / (1.0 + exp(wxy[i]));
+              for (int j = 0; j < c; ++j) {
+                atomicAdd(gx + j, g * w[node * c + j]);
+                atomicAdd(gw + node * c + j, g * x[j]);
+              }
             }
             ''',
             'binary_hierarchical_softmax_bwd'
-        )(self.wxy, gx, self.gW, x, self.W, self.ids, self.path, self.code,
-          gloss, n_in)
+        )(self.wxy, gx, self.gW, x, self.W, t, self.paths, self.codes,
+          self.begins, gloss, n_in, self.max_length)
         return gx, None
 
 
