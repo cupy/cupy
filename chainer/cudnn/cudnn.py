@@ -1,7 +1,6 @@
 """Common routines to use CuDNN."""
 
 import atexit
-import ctypes
 import os
 
 import numpy
@@ -14,7 +13,7 @@ available = True
 
 
 def get_ptr(x):
-    return ctypes.c_void_p(x.ptr)
+    return x.data.ptr
 
 
 class Auto(object):
@@ -46,7 +45,7 @@ def get_default_handle():
         atexit.register(shutdown)
         _pid = pid
 
-    device = cuda.Context.get_device()
+    device = cuda.get_device()
     if device in _handles:
         return _handles[device]
 

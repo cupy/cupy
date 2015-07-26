@@ -63,7 +63,7 @@ class WalkerAlias(object):
         Returns:
             Returns a generated array with the given shape. If a sampler is in
             CPU mode the return value is :class:`~numpy.ndarray`, and if it is
-            in GPU mode the return value is :class:`~pycuda.gpuarray.GPUArray`.
+            in GPU mode the return value is :class:`~cupy.ndarray`.
         """
         if self.use_gpu:
             return self.sample_gpu(shape)

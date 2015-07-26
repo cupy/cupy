@@ -11,7 +11,7 @@ class Variable(object):
     """Array with a structure to keep track of computation.
 
     Every variable holds a data array of type either :class:`~numpy.ndarray` or
-    :class:`~pycuda.gpuarray.GPUArray`.
+    :class:`~cupy.ndarray`.
 
     A Variable object may be constructed in two ways: by the user or by some
     function. When a variable is created by some function as one of its
@@ -28,7 +28,7 @@ class Variable(object):
 
     Attributes:
         data: Data array of type either :class:`~numpy.ndarray` or
-            :class:`~pycuda.gpuarray.GPUArray`.
+            :class:`~cupy.ndarray`.
 
         grad: Gradient array. It is ``None`` until backprop reaches this
             variable.
@@ -46,20 +46,20 @@ class Variable(object):
 
         Args:
             data (:class:`~numpy.ndarray` or \
-                :class:`~pycuda.gpuarray.GPUArray`):
+                :class:`~cupy.ndarray`):
                 Data array that this variable holds.
             volatile (bool): Volatility flag. If it is True, the variable will
                 not keep track of any function applications.
 
         .. warning::
 
-           If the data array is of type :class:`~pycuda.gpuarray.GPUArray`, its
+           If the data array is of type :class:`~cupy.ndarray`, its
            allocator must be :func:`chainer.cuda.mem_alloc`, which allocates
            device memory using device-wise memory pool. All functions of
            :mod:`cuda` automatically uses this allocator.
 
         """
-        assert isinstance(data, (numpy.ndarray, cuda.GPUArray))
+        assert isinstance(data, (numpy.ndarray, cuda.ndarray))
         assert isinstance(volatile, bool)
 
         self.data = data

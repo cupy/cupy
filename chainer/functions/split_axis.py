@@ -7,17 +7,6 @@ from chainer import function
 from chainer.utils import type_check
 
 
-_args = 'float* y, float* x, int cdimy, int cdimx, int rdim, int coffset'
-_preamble = '''
-#define COPY(statement) \
-    int l   = i / (rdim * cdimy);  \
-    int c   = i / rdim % cdimy + coffset;  \
-    int r   = i % rdim;  \
-    int idx = r + rdim * (c + cdimx * l);  \
-    statement;
-'''
-
-
 class SplitAxis(function.Function):
 
     """Function that splits multiple arrays towards the specified axis."""
@@ -55,49 +44,24 @@ class SplitAxis(function.Function):
         return tuple(numpy.split(x[0], self.indices_or_sections, self.axis))
 
     def forward_gpu(self, x):
-        xshape = x[0].shape
-        self.cdimx = xshape[self.axis]
-        self.rdim = numpy.prod(xshape[self.axis + 1:], dtype=int)
-
         if isinstance(self.indices_or_sections, collections.Iterable):
+            cdimx = x[0].shape[self.axis]
             ind = list(self.indices_or_sections)
-            ind.append(self.cdimx)
-        else:
-            sec = self.indices_or_sections
-            if self.cdimx % sec:
-                raise ValueError(
-                    'array split does not result in an equal division')
-            ind = numpy.arange(1, sec + 1) * (self.cdimx // sec)
-        ys = []
-        kernel = cuda.elementwise(
-            _args, 'COPY(y[i] = x[idx])', 'split_fwd', preamble=_preamble)
-        prev_i = 0
-        for i in ind:
-            cdimy = max(0, min(i, self.cdimx) - prev_i)
-            s = list(xshape)
-            s[self.axis] = cdimy
-            y = cuda.empty(s, dtype=x[0].dtype)
-            if cdimy == 0:
-                raise ValueError('Not support if shape contains 0')
-            kernel(y, x[0], cdimy, self.cdimx, self.rdim, prev_i)
-            prev_i = i
-            ys.append(y)
-        return tuple(ys)
+            ind.append(cdimx)
+            prev_i = 0
+            for i in ind:
+                cdimy = max(0, min(i, cdimx) - prev_i)
+                if cdimy == 0:
+                    raise ValueError('Not support if shape contains 0')
+                prev_i = i
+        return tuple(
+            cuda.cupy.split(x[0], self.indices_or_sections, self.axis))
 
     def backward_cpu(self, x, gys):
         return numpy.concatenate(gys, axis=self.axis),
 
     def backward_gpu(self, x, gys):
-        gx = cuda.empty_like(x[0])
-        coffset = 0
-        kernel = cuda.elementwise(
-            _args, 'COPY(x[idx] = y[i])', 'split_bwd', preamble=_preamble)
-        for gy in gys:
-            cdimy = gy.shape[self.axis]
-            if cdimy != 0:
-                kernel(gy, gx, cdimy, self.cdimx, self.rdim, coffset)
-            coffset += cdimy
-        return gx,
+        return cuda.cupy.concatenate(gys, axis=self.axis),
 
 
 def split_axis(x, indices_or_sections, axis):

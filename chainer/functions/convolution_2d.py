@@ -111,7 +111,7 @@ class Convolution2D(function.Function):
                 0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
                 (out_channels, in_channels, self.kh, self.kw)
             ).astype(numpy.float32)
-        if isinstance(self.W, cuda.GPUArray):
+        if isinstance(self.W, cuda.ndarray):
             self.gW = cuda.empty_like(self.W)
         else:
             self.gW = numpy.empty_like(self.W)
@@ -123,7 +123,7 @@ class Convolution2D(function.Function):
             self.b = numpy.repeat(numpy.float32(bias), out_channels)
 
         if self.b is not None:
-            if isinstance(self.b, cuda.GPUArray):
+            if isinstance(self.b, cuda.ndarray):
                 self.gb = cuda.empty_like(self.b)
             else:
                 self.gb = numpy.empty_like(self.b)

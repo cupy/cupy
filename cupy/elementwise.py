@@ -160,6 +160,7 @@ class ufunc(object):
 
         brod = cupy.broadcast(*args)
         in_args = brod.values[:self.nin]
+        assert all(i is not None for i in in_args)
         out_args = brod.values[self.nin:]
         out = kwargs.get('out', None)
         if out is not None:
