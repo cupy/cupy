@@ -13,7 +13,7 @@ class TestCuda(unittest.TestCase):
     def _get_cuda_deps_requires(self):
         cwd = os.path.dirname(__file__)
 
-        cuda_deps_path = os.path.join(cwd, '..', 'cuda_deps', 'setup.py')
+        cuda_deps_path = os.path.join(cwd, '../..', 'cuda_deps', 'setup.py')
         with open(cuda_deps_path) as f:
             in_require = False
             requires = []
