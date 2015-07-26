@@ -20,12 +20,6 @@ def repeat_with_success_at_least(times, min_success):
     If the number of successful trials exceeds `min_success`,
     the remaining trials are skipped.
 
-    .. note::
-        In current implementation, this decorator grasps the
-        failure information of each trial. This specification is not desirable
-        for debugging. Tests should inform users with as much failure
-        information as possible. See issue #150.
-
     Args:
         times(int): The number of trials.
         min_success(int): Threshold that the decorated test
