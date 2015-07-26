@@ -1,6 +1,7 @@
 import numpy
 import six
 
+from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 
@@ -162,6 +163,82 @@ class BinaryHierarchicalSoftmax(function.Function):
         gw = g.reshape((g.shape[0], 1)).dot(x.reshape(1, x.shape[0]))
         self.gW[path] += gw
         return gx
+
+    def forward_gpu(self, inputs):
+        x, t = inputs
+
+        t = cuda.to_cpu(t)
+        path = numpy.concatenate([self.paths[it] for it in t])
+        code = numpy.concatenate([self.codes[it] for it in t])
+
+        path = cuda.to_gpu(path)
+        code = cuda.to_gpu(code)
+
+        length = code.shape[0]
+        #length = sum(len(self.paths[it]) for it in t)
+        #path = cuda.zeros((length,), dtype=numpy.int32)
+        #code = cuda.zeros((length,), dtype=numpy.float32)
+
+        ids = numpy.empty((length,), dtype=numpy.int32)
+        pos = 0
+        for i, it in enumerate(t):
+            l = self.paths[it].shape[0]
+            ids[pos:pos+l] = i
+            pos += l
+
+        ids = cuda.to_gpu(ids)
+        ls = cuda.empty((length,), dtype=numpy.float32)
+        n_in = x.shape[1]
+        wxy = cuda.empty((length,), dtype=numpy.float32)
+        cuda.elementwise(
+            '''float* ls, float* wxy, const float* x, const float* w,
+            const int* ids, const int* paths, const float* codes, int c''',
+            '''
+            int ind = ids[i];
+            int node = paths[i];
+            x = &x[ind * c];
+
+            float wx = 0;
+            for (int j = 0; j < c; ++j) {
+              wx += w[node * c + j] * x[j];
+            }
+            wxy[i] = wx * codes[i];
+            ls[i] = log(1 + exp(-wxy[i]));
+            ''',
+            'binary_hierarchical_softmax_forward'
+        )(ls, wxy, x, self.W, ids, path, code, n_in)
+        self.wxy = wxy
+        self.ids = ids
+        self.path = path
+        self.code = code
+        return cuda.gpuarray.sum(ls),
+
+    def backward_gpu(self, inputs, loss):
+        x, t = inputs
+        gloss, = loss
+
+        n_in = x.shape[1]
+        gx = cuda.zeros_like(x)
+        cuda.elementwise(
+            '''const float* wxy, float* gx, float* gw, const float* x,
+            const float* w, const int* ids, const int* paths,
+            const float* codes, const float* gloss, int c''',
+            '''
+            int node = paths[i];
+            float code = codes[i];
+            gx = &gx[ids[i] * c];
+            x = &x[ids[i] * c];
+
+            float g = -*gloss * code / (1.0 + exp(wxy[i]));
+            for (int j = 0; j < c; ++j) {
+              atomicAdd(gx + j, g * w[node * c + j]);
+              atomicAdd(gw + node * c + j, g * x[j]);
+            }
+            ''',
+            'binary_hierarchical_softmax_bwd'
+        )(self.wxy, gx, self.gW, x, self.W, self.ids, self.path, self.code,
+          gloss, n_in)
+        return gx, None
 
 
 def create_huffman_tree(word_counts):
