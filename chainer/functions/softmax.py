@@ -61,9 +61,9 @@ class Softmax(function.Function):
             maxes = cuda.empty((x[0].shape[0],), dtype=numpy.float32)
             c = x[0].shape[1]
             cuda.elementwise(
-                'float* maxes, const float* x, int c',
+                ['maxes', 'x', 'c'],
                 '''
-                   const float* row = x + i * c;
+                   const float* row = &x[i * c];
                    float maxval = row[0];
                    for (int j = 1; j < c; ++j) {
                      if (maxval < row[j]) {
@@ -73,14 +73,14 @@ class Softmax(function.Function):
                    maxes[i] = maxval;
                 ''', 'softmax_rowmax')(maxes, x[0], c)
             cuda.elementwise(
-                'float* y, const float* x, const float* maxes, int c',
+                ['y', 'x', 'maxes', 'c'],
                 'y[i] = __expf(x[i] - maxes[i / c])',
                 'softmax_exp')(y, x[0], maxes, c)
             coeff = maxes  # reuse memory
             cuda.elementwise(
-                'float* coeff, const float* y, int c',
+                ['coeff', 'y', 'c'],
                 '''
-                   const float* row = y + i * c;
+                   const float* row = &y[i * c];
                    float sum = 0;
                    for (int j = 0; j < c; ++j) {
                      sum += row[j];
@@ -88,7 +88,7 @@ class Softmax(function.Function):
                    coeff[i] = 1 / sum;
                 ''', 'softmax_invrowsum')(coeff, y, c)
             cuda.elementwise(
-                'float* y, const float* coeff, int c', 'y[i] *= coeff[i / c]',
+                ['y', 'coeff', 'c'], 'y[i] *= coeff[i / c]',
                 'softmax_rowmul')(y, coeff, c)
             self.y = y
 
@@ -115,9 +115,9 @@ class Softmax(function.Function):
             c = gx.shape[1]
             sum_ydy = cuda.empty((gx.shape[0],), dtype=numpy.float32)
             cuda.elementwise(
-                'float* sum_ydy, const float* ydy, int c',
+                ['sum_ydy', 'ydy', 'c'],
                 '''
-                   const float* row = ydy + i * c;
+                   const float* row = &ydy[i * c];
                    float sum = 0;
                    for (int j = 0; j < c; ++j) {
                      sum += row[j];
@@ -125,7 +125,7 @@ class Softmax(function.Function):
                    sum_ydy[i] = sum;
                 ''', 'softmax_bwd_sum_ydy')(sum_ydy, gx, c)
             cuda.elementwise(
-                'float* gx, const float* y, const float* sum_ydy, int c',
+                ['gx', 'y', 'sum_ydy', 'c'],
                 'gx[i] -= y[i] * sum_ydy[i / c]',
                 'softmax_bwd_diff')(gx, self.y, sum_ydy, c)
 

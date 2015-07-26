@@ -72,7 +72,7 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
         tuple: Numerical gradient arrays corresponding to ``inputs``.
 
     """
-    if any(isinstance(x, cuda.GPUArray) for x in inputs):
+    if any(isinstance(x, cuda.ndarray) for x in inputs):
         return numerical_grad_gpu(f, inputs, grad_outputs, eps)
     return numerical_grad_cpu(f, inputs, grad_outputs, eps)
 

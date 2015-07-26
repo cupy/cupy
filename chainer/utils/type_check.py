@@ -57,7 +57,7 @@ def _get_type(name, index, array, accept_none):
         return Variable(TypeInfo((), None), var)
 
     assert(isinstance(array, numpy.ndarray) or
-           isinstance(array, cuda.GPUArray))
+           isinstance(array, cuda.ndarray))
     return Variable(TypeInfo(array.shape, array.dtype), var)
 
 

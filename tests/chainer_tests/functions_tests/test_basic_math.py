@@ -11,10 +11,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 class BinaryOpTestBase(object):
 
     def make_data(self):
@@ -27,8 +23,6 @@ class BinaryOpTestBase(object):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = op(x1, x2)
-        if isinstance(y.data, cuda.GPUArray):
-            self.assertTrue(hasattr(y.data.gpudata, 'device'))
         gradient_check.assert_allclose(op(self.x1, self.x2), y.data)
 
     def forward_cpu(self, op):
@@ -133,7 +127,6 @@ class BinaryOpTestBase(object):
         y = chainer.Variable(cuda.ones((1,)))
         z = y + x
         self.assertEqual(1, z.data.get()[0])
-        self.assertTrue(hasattr(z.data.gpudata, 'device'))
 
     def check_backward(self, op, x1_data, x2_data, y_grad, atol):
         x1 = chainer.Variable(x1_data)

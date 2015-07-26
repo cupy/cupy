@@ -35,7 +35,7 @@ class SigmoidCrossEntropy(function.Function):
         x, t = inputs
         self.y, = sigmoid.Sigmoid(self.use_cudnn).forward_gpu((x,))
         loss = -cuda.reduce(
-            'int* t, float* x',
+            ['t', 'x'],
             'x[i] * (t[i] - (x[i] >= 0)) - log1pf(expf(-fabsf(x[i])))',
             'a+b', '0', 'sigmoid_crossent_fwd', numpy.float32)(t, x)
         return loss / t.shape[0],
@@ -50,7 +50,7 @@ class SigmoidCrossEntropy(function.Function):
         gx = cuda.empty_like(self.y)
         coeff = gloss / t.shape[0]
         cuda.elementwise(
-            'float* gx, const float* y, const int* t, const float* coeff',
+            ['gx', 'y', 't', 'coeff'],
             'gx[i] = *coeff * (y[i] - t[i])',
             'sigmoid_crossent_bwd')(gx, self.y, t, coeff)
         return gx, None

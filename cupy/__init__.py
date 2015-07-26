@@ -491,6 +491,8 @@ class ndarray(object):
             return subtract(other, self)
 
     def __rmul__(self, other):
+        if not isinstance(other, ndarray):
+            return multiply(other, self)
         return multiply(other, self)
 
     def __rdiv__(self, other):
@@ -815,6 +817,33 @@ class ndarray(object):
         self._update_c_contiguity()
         self._update_f_contiguity()
 
+# -----------------------------------------------------------------------------
+# Add comparison of `__array_priority__` to ndarray binary operator
+# -----------------------------------------------------------------------------
+
+# TODO(okuta): Fix this
+
+
+def _wrap_operation(obj, op):
+    op_name = '__{}__'.format(op)
+    rop_name = '__r{}__'.format(op)
+    raw_op = getattr(obj, op_name)
+
+    def new_op(self, other):
+        rop = getattr(other, rop_name, None)
+        if rop is None:
+            return raw_op(self, other)
+        self_pri = getattr(self,  '__array_priority__', 0.0)
+        other_pri = getattr(other, '__array_priority__', 0.0)
+        if self_pri >= other_pri:
+            return raw_op(self, other)
+        return rop(self)
+    setattr(obj, op_name, new_op)
+
+
+for op in ('add', 'sub', 'mul', 'div', 'pow', 'truediv', 'floordiv',
+           'mod', 'divmod', 'lshift', 'rshift', 'and', 'or', 'xor'):
+    _wrap_operation(ndarray, op)
 
 ufunc = elementwise.ufunc
 newaxis = numpy.newaxis  # == None

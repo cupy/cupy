@@ -5,7 +5,7 @@ from chainer.utils import type_check
 
 class Copy(function.Function):
 
-    """Copy an input GPUArray onto another device."""
+    """Copy an input cupy.ndarray onto another device."""
 
     def __init__(self, out_device):
         self.out_device = out_device

@@ -34,8 +34,7 @@ class Tanh(function.Function):
                 handle, _mode, 1, desc.value, cudnn.get_ptr(x[0]),
                 0, desc.value, cudnn.get_ptr(self.y))
         else:
-            cuda.elementwise('float* y, const float* x', 'y[i] = tanhf(x[i])',
-                             'tanh_fwd')(self.y, x[0])
+            cuda.cupy.tanh(x[0], out=self.y)
         return self.y,
 
     def backward_cpu(self, x, gy):
@@ -53,7 +52,7 @@ class Tanh(function.Function):
                 0, desc.value, cudnn.get_ptr(gx))
         else:
             cuda.elementwise(
-                'float* gx, const float* y, const float* gy',
+                ['gx', 'y', 'gy'],
                 'gx[i] = gy[i] * (1 - y[i] * y[i])',
                 'tanh_bwd')(gx, self.y, gy[0])
         return gx,

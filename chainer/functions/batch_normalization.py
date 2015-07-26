@@ -31,14 +31,11 @@ def _partial_reduce(x):
     return ret
 
 if cuda.available:
-    @cuda.cutools.context_dependent_memoize
+    @cuda.cupy.cuda.memoize
     def _create_reduction_kernel(shape0, expr1, expr2):
         return cuda.elementwise(
+            ['ret1', 'ret2', 'x', 'y', 'alpha', 'shape12'],
             '''
-                float* ret1, float* ret2,
-                const float* x, const float* y,
-                float alpha, int shape12
-            ''', '''
                 float sum1 = 0, sum2 = 0;
                 for (int j = 0; j < {0}; j++) {{
                     int I = j * shape12 + i;
@@ -51,27 +48,26 @@ if cuda.available:
 
 
 def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
-    with cuda.using_cumisc():
-        shape = x.shape
-        ret1 = cuda.empty_like(x[0])
-        ret2 = cuda.empty_like(x[0])
-        if y is None:
-            y = x
-        alpha = 1.0
-        if mean:
-            alpha = 1.0 / (shape[0] * shape[2])
+    shape = x.shape
+    ret1 = cuda.empty_like(x[0])
+    ret2 = cuda.empty_like(x[0])
+    if y is None:
+        y = x
+    alpha = 1.0
+    if mean:
+        alpha = 1.0 / (shape[0] * shape[2])
 
-        # In most cases shape[0] is constant.
-        # Therefore, the kernel is compiled only once.
-        # If shape[0] is small, Compiler will perform loop unrolling.
-        _create_reduction_kernel(shape[0], expr1, expr2)(
-            ret1, ret2, x, y, alpha, shape[1] * shape[2])
+    # In most cases shape[0] is constant.
+    # Therefore, the kernel is compiled only once.
+    # If shape[0] is small, Compiler will perform loop unrolling.
+    _create_reduction_kernel(shape[0], expr1, expr2)(
+        ret1, ret2, x, y, alpha, shape[1] * shape[2])
 
-        if shape[2] != 1:
-            ret1 = _partial_reduce(ret1)
-            ret2 = _partial_reduce(ret2)
-        ret_shape = (1, shape[1], 1)
-        return (ret1.reshape(ret_shape), ret2.reshape(ret_shape))
+    if shape[2] != 1:
+        ret1 = _partial_reduce(ret1)
+        ret2 = _partial_reduce(ret2)
+    ret_shape = (1, shape[1], 1)
+    return (ret1.reshape(ret_shape), ret2.reshape(ret_shape))
 
 
 class BatchNormalization(function.Function):
@@ -204,7 +200,7 @@ class BatchNormalization(function.Function):
             mean, sqmean = _cusum_axis02(x, mean=True)
             var = sqmean  # reuse buffer
             cuda.elementwise(
-                'float* var, const float* mean, float eps',
+                ['var', 'mean', 'eps'],
                 'var[i] = var[i] - mean[i] * mean[i] + eps',
                 'bn_var')(var, mean, self.eps)
         else:
@@ -213,11 +209,7 @@ class BatchNormalization(function.Function):
 
         y = cuda.empty_like(x_orig[0])
         _kernel_with_I(
-            '''
-                float* y, const float* x,
-                const float* mean, const float* var,
-                const float* gamma, const float* beta
-            ''',
+            ['y', 'x', 'mean', 'var', 'gamma', 'beta'],
             'y[i] = (x[i] - mean[I]) * rsqrtf(var[I]) * gamma[I] + beta[I];',
             'bn_fwd')(y, x, mean, var, self.gamma, self.beta, cdim, rdim)
 
@@ -232,11 +224,8 @@ class BatchNormalization(function.Function):
             m = ldim * rdim
             adjust = m / max(m - 1., 1.)  # unbiased estimation
             cuda.elementwise(
+                ['avg_mean', 'mean', 'avg_var', 'var', 'decay', 'adjust'],
                 '''
-                   float* avg_mean, const float* mean,
-                   float* avg_var, const float* var,
-                   float decay, float adjust
-                ''', '''
                    avg_mean[i] = decay * avg_mean[i]
                                  + (1 - decay) * adjust * mean[i];
                    avg_var[i]  = decay * avg_var[i]

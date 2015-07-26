@@ -11,7 +11,7 @@ from cupy import elementwise
 
 @cuda.memoize
 def _make_reduction_function_kernel(name, block_size,
-                                    dtype, temp_type, args,
+                                    dtype, temp_type, params,
                                     identity,
                                     reduce_expr,
                                     pre_map_expr='in[j]',
@@ -26,8 +26,8 @@ def _make_reduction_function_kernel(name, block_size,
     #define POST_MAP(a) (${post_map_expr})
     ${preamble}
     typedef ${temp_type} temp_type;
-    extern "C" __global__ void ${name}(${args}) {
-      if (out_clp2_size > 256) {
+    extern "C" __global__ void ${name}(${params}) {
+      if (_out_clp2_size > 256) {
         CUPY_FOR(i, out_size) {
           temp_type _s = temp_type(${identity});
           for (int j = i, J = 0;
@@ -43,12 +43,12 @@ def _make_reduction_function_kernel(name, block_size,
         temp_type *_sdata = _sdata_raw;//[${block_size}];
         int _tid = threadIdx.x;
         _sdata[_tid] = temp_type(${identity});
-        unsigned int i = _tid % out_clp2_size;
+        unsigned int i = _tid % _out_clp2_size;
         if (i >= out_size) return;
         temp_type _s = temp_type(${identity});
-        int _J_offset = _tid / out_clp2_size;
+        int _J_offset = _tid / _out_clp2_size;
         int _j_offset = _J_offset * out_size;
-        int _J_stride = ${block_size} / out_clp2_size;
+        int _J_stride = ${block_size} / _out_clp2_size;
         int _j_stride = _J_stride * out_size;
         for (int j = i + _j_offset, J = _J_offset;
              j < in_size;
@@ -61,23 +61,23 @@ def _make_reduction_function_kernel(name, block_size,
         if (_tid >= 256) return;
         _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 256]);
         __syncthreads();
-        if (out_clp2_size <= 128) {
+        if (_out_clp2_size <= 128) {
           _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 128]);
           __syncthreads();
-          if (out_clp2_size <= 64) {
+          if (_out_clp2_size <= 64) {
             _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 64]);
             __syncthreads();
-            if (out_clp2_size <= 32) {
+            if (_out_clp2_size <= 32) {
               _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 32]);
-              if (out_clp2_size <= 16) {
+              if (_out_clp2_size <= 16) {
                 _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 16]);
-                if (out_clp2_size <= 8) {
+                if (_out_clp2_size <= 8) {
                   _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 8]);
-                  if (out_clp2_size <= 4) {
+                  if (_out_clp2_size <= 4) {
                     _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 4]);
-                    if (out_clp2_size <= 2) {
+                    if (_out_clp2_size <= 2) {
                       _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 2]);
-                      if (out_clp2_size <= 1) {
+                      if (_out_clp2_size <= 1) {
                         _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 1]);
                       }
                     }
@@ -96,7 +96,7 @@ def _make_reduction_function_kernel(name, block_size,
         block_size=block_size,
         dtype=dtype,
         temp_type=temp_type,
-        args=args,
+        params=params,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -117,7 +117,7 @@ class simple_reduction_function(object):
         self._temp_type = temp_type
         self.nout = nout
         self._param_names = [
-            'in', 'out', 'in_size', 'out_size', 'out_clp2_size']
+            'in', 'out', 'in_size', 'out_size', '_out_clp2_size']
 
     def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False,
                  allocator=None):
@@ -211,6 +211,42 @@ class simple_reduction_function(object):
                 if all(numpy.dtype(t) == dtype for t in out_types):
                     return in_types, out_types, routine
         raise TypeError('Wrong type of arguments for %s' % self.name)
+
+
+class ReductionKernel(object):
+
+    def __init__(self, out_dtype, param_names, identity, reduce_expr, map_expr,
+                 name="reduce_kernel", options=[], preamble=""):
+        self.out_dtype = out_dtype
+        self.param_names = ('out',) + tuple(param_names) + (
+            'in_size', 'out_size', '_out_clp2_size')
+        self.identity = identity
+        self.reduce_expr = reduce_expr
+        self.map_expr = map_expr
+        self.name = name
+        self.options = []
+        self.preamble = preamble
+
+    def __call__(self, *args):
+        in_size = None
+        for i in args:
+            if isinstance(i, cupy.ndarray):
+                in_size = i.size
+                break
+        assert in_size is not None
+
+        out = cupy.empty((), dtype=self.out_dtype)
+        args = (out,) + args + (
+            numpy.int32(in_size), numpy.int32(1), numpy.int32(1))
+        params, kernel_args = elementwise._get_kernel_params_args(
+            self.param_names, args)
+        block_size = 512
+        dtype = elementwise._get_typename(args[0].dtype)
+        kernel = _make_reduction_function_kernel(
+            self.name, block_size, dtype, dtype, params, self.identity,
+            self.reduce_expr, self.map_expr, 'out[i] = a', self.preamble)
+        kernel.linear_launch(in_size, kernel_args)
+        return out
 
 
 def create_reduction_func(name, ops, routine=None, identity=None,

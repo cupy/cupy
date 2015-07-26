@@ -35,7 +35,7 @@ class Sigmoid(function.Function):
                 0, desc.value, cudnn.get_ptr(self.y))
         else:
             cuda.elementwise(
-                'float* y, const float* x', 'y[i] = 1 / (1 + __expf(-x[i]))',
+                ['y', 'x'], 'y[i] = 1 / (1 + __expf(-x[i]))',
                 'sigmoid_fwd')(self.y, x[0])
         return self.y,
 
@@ -54,7 +54,7 @@ class Sigmoid(function.Function):
                 0, desc.value, cudnn.get_ptr(gx))
         else:
             cuda.elementwise(
-                'float* gx, const float* y, const float* gy',
+                ['gx', 'y', 'gy'],
                 'gx[i] = gy[i] * y[i] * (1 - y[i])',
                 'sigmoid_bwd')(gx, self.y, gy[0])
         return gx,

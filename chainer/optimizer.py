@@ -9,7 +9,7 @@ from chainer import cuda
 
 
 def _sqnorm(x):
-    if isinstance(x, cuda.GPUArray):
+    if isinstance(x, cuda.ndarray):
         with cuda.using_device(x):
             return float(cuda.gpuarray.dot(x, x).get())
     x = x.ravel()
@@ -77,7 +77,7 @@ class Optimizer(object):
                 :class:`~numpy.ndarray` with shape ``()``.
 
         """
-        if isinstance(param, cuda.GPUArray):
+        if isinstance(param, cuda.ndarray):
             return self.init_state_gpu(param, grad)
         return self.init_state_cpu(param, grad)
 
@@ -100,8 +100,8 @@ class Optimizer(object):
         """Returns the initial state for given parameter and gradient on CPU.
 
         Args:
-            param (~pycuda.gpuarray.GPUArray): Parameter array.
-            grad  (~pycuda.gpuarray.GPUArray): Gradient array.
+            param (~cupy.ndarray): Parameter array.
+            grad  (~cupy.ndarray): Gradient array.
 
         Returns:
             Initial state value.
@@ -119,7 +119,7 @@ class Optimizer(object):
 
         """
         for _, g, _ in self.tuples:
-            if isinstance(g, cuda.GPUArray):
+            if isinstance(g, cuda.ndarray):
                 with cuda.using_device(g):
                     g.fill(0)
             else:
@@ -172,7 +172,7 @@ class Optimizer(object):
 
         """
         for p, g, _ in self.tuples:
-            if isinstance(p, cuda.GPUArray):
+            if isinstance(p, cuda.ndarray):
                 with cuda.using_device(p):
                     cuda.elementwise('float* g, const float* p, float decay',
                                      'g[i] += decay * p[i]',
@@ -199,7 +199,7 @@ class Optimizer(object):
                 continue
 
             with cuda.using_device(g_dst):
-                if (isinstance(g_src, cuda.GPUArray) and
+                if (isinstance(g_src, cuda.ndarray) and
                         g_dst.gpudata.device != g_src.gpudata.device):
                     g_dst += cuda.copy(g_src, out_device=g_src.gpudata.device)
                 else:
@@ -233,7 +233,7 @@ class Optimizer(object):
         .. seealso:: :meth:`update_one_cpu`, :meth:`update_one_gpu`
 
         """
-        if isinstance(param, cuda.GPUArray):
+        if isinstance(param, cuda.ndarray):
             self.update_one_gpu(param, grad, state)
         else:
             self.update_one_cpu(param, grad, state)
@@ -255,8 +255,8 @@ class Optimizer(object):
         """Updates a parameter array and its state using given gradient on GPU.
 
         Args:
-            param (~pycuda.gpuarray.GPUArray): Parameter array.
-            grad  (~pycuda.gpuarray.GPUArray): Gradient array.
+            param (~cupy.ndarray): Parameter array.
+            grad  (~cupy.ndarray): Gradient array.
             state: State value.
 
         .. seealso:: :meth:`update_one`, :meth:`update_one_cpu`
