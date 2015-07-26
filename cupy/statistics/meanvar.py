@@ -1,8 +1,8 @@
 import numpy
 
 import cupy
-from cupy import reduction
 from cupy import math
+from cupy import reduction
 
 
 def median(a, axis=None, out=None, overwrite_input=False, keepdims=False,
