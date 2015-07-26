@@ -30,6 +30,9 @@ setup(
               'cupy.sorting',
               'cupy.statistics',
               'cupy.testing'],
+    package_data={
+        'cupy': ['carray.cuh'],
+    },
     install_requires=['nose',
                       'numpy',
                       'protobuf',
