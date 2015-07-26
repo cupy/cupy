@@ -2,7 +2,7 @@ import ctypes
 import unittest
 
 from cupy.cuda import memory
-
+from cupy import testing
 
 class MockMemory(object):
     cur_ptr = 1
@@ -24,6 +24,7 @@ def mock_alloc(size):
 # -----------------------------------------------------------------------------
 # Memory pointer
 
+@testing.gpu
 class TestMemoryPointer(unittest.TestCase):
 
     def test_int(self):
@@ -109,6 +110,7 @@ class TestMemoryPointer(unittest.TestCase):
 # Memory pool
 
 
+@testing.gpu
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):
