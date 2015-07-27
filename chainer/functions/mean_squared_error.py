@@ -1,6 +1,5 @@
 import numpy
 
-from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 
@@ -17,11 +16,17 @@ class MeanSquaredError(function.Function):
             in_types[0].shape == in_types[1].shape
         )
 
-    def forward(self, inputs):
+    def forward_cpu(self, inputs):
         x0, x1 = inputs
         self.diff = x0 - x1
         diff = self.diff.ravel()
-        return numpy.array(diff.dot(diff) / diff.size, numpy.float32),
+        return numpy.array(diff.dot(diff) / diff.size, dtype=diff.dtype),
+
+    def forward_gpu(self, inputs):
+        x0, x1 = inputs
+        self.diff = x0 - x1
+        diff = self.diff.ravel()
+        return diff.dot(diff) / diff.dtype.type(diff.size),
 
     def backward(self, inputs, gy):
         coeff = gy[0] * (2. / self.diff.size)

@@ -22,8 +22,6 @@ class _TestMatMul(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = self.op(x1, x2)
-        if isinstance(y.data, cuda.ndarray):
-            self.assertTrue(hasattr(y.data.gpudata, 'device'))
         gradient_check.assert_allclose(self.forward_answer, y.data)
 
     @condition.retry(3)

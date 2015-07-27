@@ -31,20 +31,19 @@ class Accuracy(function.Function):
         x, t = inputs
         fragments = cuda.empty((x.shape[0],), dtype=numpy.int8)
         cuda.elementwise(
-            'char* fragments, const float* x, const int* t, int c',
+            ['fragments', 'x', 't', 'c'],
             '''
-               x += i * c;
-               float maxval = x[0];
-               int   argmax = 0;
+               float maxval = x[i * c];
+               int   amax = 0;
                for (int j = 1; j < c; ++j) {
-                 if (maxval < x[j]) {
-                   maxval = x[j];
-                   argmax = j;
+                 if (maxval < x[i * c + j]) {
+                   maxval = x[i * c + j];
+                   amax = j;
                  }
                }
-               fragments[i] = argmax == t[i];
-            ''', 'accuracy_fwd_map')(fragments, x, t, x.shape[1])
-        y = cuda.gpuarray.sum(fragments, dtype=numpy.float32)
+               fragments[i] = amax == t[i];
+            ''', 'accuracy_fwd_map')(fragments, x, t, numpy.int32(x.shape[1]))
+        y = cuda.cupy.sum(fragments, dtype=numpy.float32)
         y /= x.shape[0]
         return y,
 

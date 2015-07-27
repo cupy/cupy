@@ -32,6 +32,7 @@ _requires = []
 try:
     import cupy
     import cupy.cuda
+    from cupy import random
     from cupy.cuda import cublas
     available = True
 except Exception as e:

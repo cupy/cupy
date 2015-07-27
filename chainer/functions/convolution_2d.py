@@ -238,21 +238,21 @@ class Convolution2D(function.Function):
                 x[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
 
             # TODO(beam2d): Use streams
-            handle = cuda.get_cublas_handle()
             W_mat = self.W.reshape(out_c, c * self.kh * self.kw)
             col_mats = self.col.reshape(
                 n, c * self.kh * self.kw, out_h * out_w)
             y_mats = y.reshape(n, out_c, out_h * out_w)
             for i in moves.range(n):
-                cuda.culinalg.dot(W_mat, col_mats[i], handle=handle,
-                                  out=y_mats[i])
+                y_mats[i] = W_mat.dot(col_mats[i])
 
             # TODO(beam2d): Support unshared bias
             if self.b is not None:
                 cuda.elementwise(
-                    'float* y, const float* b, int c, int hw',
+                    ['y', 'b', 'c', 'hw'],
                     'y[i] += b[i / hw % c]',
-                    'conv_bias_fwd')(y, self.b, out_c, out_h * out_w)
+                    'conv_bias_fwd')(y, self.b,
+                                     numpy.int32(out_c),
+                                     numpy.int32(out_h * out_w))
 
         return y,
 

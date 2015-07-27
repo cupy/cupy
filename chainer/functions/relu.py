@@ -39,7 +39,7 @@ class ReLU(function.Function):
             self.y = y
         else:
             cuda.elementwise(
-                'float* y, const float* x', 'y[i] = max(0.f, x[i])',
+                ['y', 'x'], 'y[i] = max(0.f, x[i])',
                 'relu_fwd')(y, x[0])
         return y,
 
@@ -58,7 +58,7 @@ class ReLU(function.Function):
                 0, desc.value, cudnn.get_ptr(gx))
         else:
             cuda.elementwise(
-                'float* gx, const float* x, const float* gy',
+                ['gx', 'x', 'gy'],
                 'gx[i] = x[i] > 0 ? gy[i] : 0',
                 'relu_bwd')(gx, x[0], gy[0])
         return gx,

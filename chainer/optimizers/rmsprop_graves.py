@@ -43,9 +43,8 @@ class RMSpropGraves(optimizer.Optimizer):
     def update_one_gpu(self, param, grad, state):
         n, g, delta = state
         cuda.elementwise(
-            '''float* param, const float* grad, float* avg_n, float* avg_g,
-               float* delta, float lr, float alpha, float momentum,
-               float eps''',
+            ['param', 'grad', 'avg_n', 'avg_g',
+             'delta', 'lr', 'alpha', 'momentum', 'float eps'],
             '''avg_n[i] = alpha * avg_n[i] + (1 - alpha) * grad[i] * grad[i];
                avg_g[i] = alpha * avg_g[i] + (1 - alpha) * grad[i];
                delta[i] = delta[i] * momentum -

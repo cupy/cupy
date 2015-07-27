@@ -17,7 +17,8 @@ def _mat_ptrs(a):
         GPU array of pointers to matrices
     """
     return cuda.to_gpu(numpy.arange(
-        a.ptr, a.ptr + a.shape[0] * a.strides[0], a.strides[0],
+        a.data.ptr.value,
+        a.data.ptr.value + a.shape[0] * a.strides[0], a.strides[0],
         dtype=ctypes.c_void_p))
 
 
@@ -43,7 +44,7 @@ def _matmul(a, b, transa=False, transb=False, transout=False):
         a = a.T
     if transb:
         b = b.T
-    return numpy.dot(a, b)
+    return a.dot(b)
 
 
 def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
@@ -63,9 +64,9 @@ def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
         _as_trans_op(transb),
         _as_trans_op(transa),
         n, m, k, alpha,
-        _mat_ptrs(b).gpudata, k if transb else n,
-        _mat_ptrs(a).gpudata, m if transa else k,
-        beta, _mat_ptrs(out).gpudata, n, l)
+        _mat_ptrs(b).data.ptr, k if transb else n,
+        _mat_ptrs(a).data.ptr, m if transa else k,
+        beta, _mat_ptrs(out).data.ptr, n, l)
 
 
 def _check_ndim(in_type, lower=1, upper=2):
