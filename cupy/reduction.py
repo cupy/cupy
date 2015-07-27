@@ -241,6 +241,7 @@ class ReductionKernel(object):
         out = cupy.empty((), dtype=self.out_dtype)
         args = (out,) + args + (
             numpy.int32(in_size), numpy.int32(1), numpy.int32(1))
+        assert len(self.param_names) == len(args)
         params, kernel_args = elementwise._get_kernel_params_args(
             self.param_names, args)
         block_size = 512

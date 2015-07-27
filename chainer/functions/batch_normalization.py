@@ -11,25 +11,6 @@ def _kernel_with_I(args, expr, name):
         'int I = i / rdim % cdim; {};'.format(expr),
         name)
 
-_one = None
-
-
-def _partial_reduce(x):
-    global _one
-    out_axis, sum_axis = x.shape
-    one = _one
-    if one is None or one.size < sum_axis:
-        one = cuda.ones(sum_axis)
-        _one = one
-    one = one[:sum_axis]
-    handle = cuda.get_cublas_handle()
-    ret = cuda.empty(out_axis)
-    cuda.cublas.cublasSgemv(handle, 't', sum_axis, out_axis,
-                            numpy.float32(
-                                1.0), x.gpudata, sum_axis, one.gpudata,
-                            1, numpy.float32(0.0), ret.gpudata, 1)
-    return ret
-
 if cuda.available:
     @cuda.cupy.cuda.memoize
     def _create_reduction_kernel(shape0, expr1, expr2):
@@ -53,9 +34,9 @@ def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
     ret2 = cuda.empty_like(x[0])
     if y is None:
         y = x
-    alpha = 1.0
+    alpha = x.dtype.type(1.0)
     if mean:
-        alpha = 1.0 / (shape[0] * shape[2])
+        alpha = x.dtype.type(1.0 / (shape[0] * shape[2]))
 
     # In most cases shape[0] is constant.
     # Therefore, the kernel is compiled only once.
@@ -64,8 +45,8 @@ def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
         ret1, ret2, x, y, alpha, shape[1] * shape[2])
 
     if shape[2] != 1:
-        ret1 = _partial_reduce(ret1)
-        ret2 = _partial_reduce(ret2)
+        ret1 = ret1.sum(axis=1)
+        ret2 = ret2.sum(axis=1)
     ret_shape = (1, shape[1], 1)
     return (ret1.reshape(ret_shape), ret2.reshape(ret_shape))
 
