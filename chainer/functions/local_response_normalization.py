@@ -15,23 +15,21 @@ def _cu_conv_sum(y, x, n):
         '''
           int half_n = n_ / 2;
           int offset = i / rdim * N * rdim + i % rdim;
-          float* xi = x + offset;
-          float* yi = y + offset;
 
           float sum_part = 0;
           for (int j = 0; j < N + half_n; ++j) {
             if (j < N) {
-              sum_part += xi[j * rdim];
+              sum_part += x[offset + j * rdim];
             }
             if (j >= n_) {
-              sum_part -= xi[(j - n_) * rdim];
+              sum_part -= x[offset + (j - n_) * rdim];
             }
             if (j >= half_n) {
-              yi[(j - half_n) * rdim] = sum_part;
+              y[offset + (j - half_n) * rdim] = sum_part;
             }
           }
         ''', 'lrn_conv_sum')(y, x, rdim, x.shape[1], n,
-                             range=slice(0, x.shape[0] * rdim, 1))
+                             size=x.shape[0] * rdim)
 
 
 class LocalResponseNormalization(function.Function):

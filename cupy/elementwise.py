@@ -88,12 +88,13 @@ class ElementwiseKernel(object):
         self.options = []
         self.kwargs = kwargs
 
-    def __call__(self, *args):
-        n = None
-        for i in args:
-            if isinstance(i, cupy.ndarray):
-                n = i.size
-                break
+    def __call__(self, *args, **kwargs):
+        n = kwargs.pop('size', None)
+        if n is None:
+            for i in args:
+                if isinstance(i, cupy.ndarray):
+                    n = i.size
+                    break
 
         assert n is not None
         internal.check_args_device(args)
