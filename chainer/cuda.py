@@ -32,9 +32,12 @@ _requires = []
 try:
     import cupy
     import cupy.cuda
-    from cupy import random
-    from cupy.cuda import cublas
+    import cupy.cuda.cublas
+    import cupy.random
+
     available = True
+    cublas = cupy.cuda.cublas
+    random = cupy.random
 except Exception as e:
     available = False
     _resolution_error = e
@@ -129,15 +132,18 @@ def use_device(arg):
         return
     device.use()
 
+
 class DeviceUser(object):
 
     """RAII-style CUDA context swithcer.
+
     Args:
         arg: Argument of :func:`get_device`.
+
     Attributes:
         device (~pycuda.driver.Device): Selected device.
-    """
 
+    """
     def __init__(self, arg):
         if arg is None:
             self.device = None
@@ -205,55 +211,6 @@ def mem_alloc(nbytes):
 
     """
     return cuda.alloc(nbytes)
-
-
-#def _get_seed_getter(s=None):
-#    if s is None:
-#        return curandom.seed_getter_uniform
-#    else:
-#        return lambda N: full((N,), s, numpy.int32)
-#
-#
-#def get_generator(device=None):
-#    """Gets the random number generator for the given device.
-#
-#    Args:
-#        device: Device specifier (an arugment of :func:`get_device`)
-#
-#    Returns:
-#        pycuda.curandom.XORWOWRandomNumberGenerator: Random number generator.
-#
-#    """
-#    global _generators
-#
-#    device = get_device(device)
-#    gen = _generators.get(device)
-#    if gen is not None:
-#        return gen
-#
-#    with using_device(device):
-#        s = os.environ.get('CHAINER_SEED')
-#        seed_getter = _get_seed_getter(s)
-#        gen = curandom.XORWOWRandomNumberGenerator(seed_getter=seed_getter)
-#        _generators[device] = gen
-#        return gen
-#
-#
-#def seed(s=None, device=None):
-#    """Resets the random number generator of the specified device.
-#
-#    Args:
-#        s (int or None): Seed value. If it is ``None``, it initializes the
-#            generator without fixed seed.
-#        device: Device specifier (i.e. argument of :func:`get_device`).
-#
-#    """
-#    global _generators
-#
-#    with DeviceUser(device) as user:
-#        seed_getter = _get_seed_getter(s)
-#        gen = curandom.XORWOWRandomNumberGenerator(seed_getter=seed_getter)
-#        _generators[user.device] = gen
 
 
 # ------------------------------------------------------------------------------
@@ -372,6 +329,7 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
     _check_cuda_available()
     assert stream is None
     return cupy.full(shape, fill_value, dtype=dtype)
+
 
 def zeros(shape, dtype=numpy.float32, stream=None):
     """Creates a zero-filled cupy.ndarray object.
@@ -532,72 +490,6 @@ def copy_async(array, out=None, out_device=None, stream=None):
 
     return out
 
-## -----------------------------------------------------------------------------#-
-## Interprocess communication
-## -----------------------------------------------------------------------------#-
-#
-#
-#class IPCEvent(Event):
-#
-#    """Event object for interprocess synchronization on GPU."""
-#
-#    def __init__(self):
-#        super(IPCEvent, self).__init__(
-#            drv.event_flags.INTERPROCESS | drv.event_flags.DISABLE_TIMING)
-#
-#
-#class IPCArrayHandle(object):
-#
-#    """Converter between cupy.ndarray and its Inter-Process Communication handle.
-#
-#    It holds IPC memory handle with shape and dtype information. The instance
-#    can be pickled, which means it can be passed through IPC path way, e.g.
-#    Pipe and Queue. The other process can extract shared cupy.ndarray by calling
-#    :meth:`get`. Also, the extracted array can be re-converted into another
-#    IPCArrayHandle.
-#
-#    """
-#
-#    def __init__(self, array):
-#        """Creates an IPC memory handle of the device array.
-#
-#        Args:
-#            array (~cupy.ndarray): GPU array to be shared
-#                accross processes.
-#
-#        """
-#        if isinstance(array, drv.IPCMemoryHandle):
-#            # do not doubly extract IPC memory handle
-#            self.handle = array.ipc_handle
-#        else:
-#            self.handle = drv.mem_get_ipc_handle(array.ptr)
-#
-#        self.shape = array.shape
-#        self.dtype = array.dtype
-#        self.size = array.size
-#        self.mem_size = array.mem_size
-#
-#    def get(self):
-#        """Creates a cupy.ndarray object from the IPC memory handle.
-#
-#        Returns:
-#            ~cupy.ndarray: Recovered GPU array with memory shared
-#            accross processes.
-#
-#        .. note::
-#
-#           Note that :mod:`cuda` does not take care of data race between
-#           multiple processes.
-#
-#        """
-#        drv.IPCMemoryHandle(self.handle)
-#        array = cupy.ndarray((0,), dtype=self.dtype)
-#        array.shape = self.shape
-#        array.size = self.size
-#        array.mem_size = self.mem_size
-#        setattr(array, 'ipc_handle', self.handle)
-#        return array
-
 
 # ------------------------------------------------------------------------------
 # Kernel definition utility
@@ -617,12 +509,13 @@ def elementwise(param_names, operation, name, options=None,
     """
     _check_cuda_available()
     return cupy.elementwise.ElementwiseKernel(
-            param_names, operation, name, options,
-            preamble=preamble, loop_prep=loop_prep, after_loop=after_loop)
+        param_names, operation, name, options,
+        preamble=preamble, loop_prep=loop_prep, after_loop=after_loop)
 
 
 def reduce(param_names, map_expr, reduce_expr, identity, name,
-           dtype_out=numpy.float32, keep=False, options=None, preamble=''):
+           dtype_out=numpy.float32, options=None,
+           post_map_expr='a', preamble=''):
     """Creates a global reduction kernel function.
 
     This function uses :func:`cupy.cuda.memoize` to cache
@@ -636,7 +529,7 @@ def reduce(param_names, map_expr, reduce_expr, identity, name,
     """
     _check_cuda_available()
     return cupy.reduction.ReductionKernel(
-        dtype_out, param_names, identity, reduce_expr, map_expr,
+        dtype_out, param_names, identity, reduce_expr, map_expr, post_map_expr,
         name, options, preamble)
 
 

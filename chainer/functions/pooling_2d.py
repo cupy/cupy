@@ -281,7 +281,7 @@ class AveragePooling2D(Pooling2D):
                  }
                }
                out[i] = val * coeff;
-            ''', 'avg_pool_fwd')(y, x[0], 
+            ''', 'avg_pool_fwd')(y, x[0],
                                  numpy.int32(h), numpy.int32(w),
                                  numpy.int32(y_h), numpy.int32(y_w),
                                  numpy.int32(self.kh), numpy.int32(self.kw),

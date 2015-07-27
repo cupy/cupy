@@ -4,14 +4,14 @@ sum = reduction.create_reduction_func(
     'cupy_sum',
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('a + b', 'in[j]', 'out[i] = a'), 0)
+    ('a + b', 'in[i]', 'a'), 0)
 
 
 prod = reduction.create_reduction_func(
     'cupy_prod',
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('a * b', 'in[j]', 'out[i] = a'), 1)
+    ('a * b', 'in[i]', 'a'), 1)
 
 
 def nansum(a, axis=None, dtype=None, out=None, keepdims=0, allocator=None):

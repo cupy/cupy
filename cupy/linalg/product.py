@@ -1,5 +1,3 @@
-import ctypes
-
 import numpy
 import six
 
@@ -60,14 +58,10 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
     b = b.astype(dtype, copy=False)
 
     if a.dtype.type == numpy.float32:
-        zero = ctypes.c_float(0)
-        one = ctypes.c_float(1)
         dot = cublas.sdot
         gemv = cublas.sgemv
         gemm = cublas.sgemm
     elif a.dtype.type == numpy.float64:
-        zero = ctypes.c_double(0)
-        one = ctypes.c_double(1)
         dot = cublas.ddot
         gemv = cublas.dgemv
         gemm = cublas.dgemm
@@ -168,8 +162,8 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
             # than the transposed dimensions.
             if transb:
                 m, k = k, m
-            gemv(handle, transb, m, k, one, b._fptr, ldb, a._fptr, lda,
-                 zero, c._fptr, 1)
+            gemv(handle, transb, m, k, 1, b._fptr, ldb, a._fptr, lda,
+                 0, c._fptr, 1)
     elif b.shape[0] == 1:
         # A * B
         ldb = b.strides[1] // b.itemsize
@@ -177,12 +171,12 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
         # than the transposed dimensions.
         if not transa:
             n, k = k, n
-        gemv(handle, 1 - transa, n, k, one, a._fptr, lda, b._fptr, ldb,
-             zero, c._fptr, 1)
+        gemv(handle, 1 - transa, n, k, 1, a._fptr, lda, b._fptr, ldb,
+             0, c._fptr, 1)
     else:
         # B^T * A^T
-        gemm(handle, transb, transa, m, n, k, one, b._fptr, ldb, a._fptr,
-             lda, zero, c._fptr, ldc)
+        gemm(handle, transb, transa, m, n, k, 1, b._fptr, ldb, a._fptr,
+             lda, 0, c._fptr, ldc)
 
     if dtype != ret_dtype:
         elementwise.copy(out, ret)
