@@ -1,6 +1,6 @@
-"""Device, context and memory management on PyCUDA and scikit-cuda.
+"""Device, context and memory management on CuPy.
 
-Chainer uses PyCUDA facilities (with very thin wrapper) to exploit the speed of
+Chainer uses CuPy facilities (with very thin wrapper) to exploit the speed of
 GPU computation. Following modules and classes are imported to :mod:`cuda`
 module for convenience (refer to this table when reading chainer's source
 codes).
