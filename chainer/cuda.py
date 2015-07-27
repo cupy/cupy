@@ -638,3 +638,28 @@ def reduce(param_names, map_expr, reduce_expr, identity, name,
     return cupy.reduction.ReductionKernel(
         dtype_out, param_names, identity, reduce_expr, map_expr,
         name, options, preamble)
+
+
+# ------------------------------------------------------------------------------
+# numpy/cupy compatible coding
+# ------------------------------------------------------------------------------
+def get_xpy(a):
+    """Gets an appropriate one from :mod:`numpy` or :mod:`cupy`.
+
+    This function can be used to write a common ``forward`` and ``backward``
+    running on both CPU and GPU.
+
+    Args:
+        a: An array of NumPy or CuPy.
+
+    Returns:
+        :mod:`numpy` module or :mod:`cupy` module corresponding to the type of
+        ``a``.
+    """
+    if isinstance(a, numpy.ndarray):
+        return numpy
+    elif available and isinstance(a, ndarray):
+        return cupy
+    else:
+        raise TypeError(
+            'Cannot choose a NumPy-compatible module for {}'.format(type(a))
