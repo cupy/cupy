@@ -20,6 +20,12 @@ After reading this section, you will be able to:
 Basic usage of type check
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
+When you call a function with an invalid type of array, you sometimes receive no error, but get an unexpected result by broadcasting.
+When you use CUDA with an illegal type of array, it causes memory corruption, and you get a serious error.
+These bugs are hard to fix.
+Chainer can check precondition of each function, and helps to prevent such problems.
+These conditions may help a user to understand specification of functions.
+
 Each implementation of :class:`Function` has a method for type check, :meth:`check_type_forward`.
 This function is called just before the :meth:`forward` method of the :class:`Function` class.
 You can override this method to check the condition on types and shapes of arguments.
