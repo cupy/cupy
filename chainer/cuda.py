@@ -663,4 +663,4 @@ def get_xpy(a):
         return cupy
     else:
         raise TypeError(
-            'Cannot choose a NumPy-compatible module for {}'.format(type(a))
+            'Cannot choose a NumPy-compatible module for {}'.format(type(a)))
