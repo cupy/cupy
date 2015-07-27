@@ -59,4 +59,12 @@ class TestClippedReLU(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
+
+class TestClippedReLUZeroDim(TestClippedReLU):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.z = 0.75
+
 testing.run_module(__name__, __file__)

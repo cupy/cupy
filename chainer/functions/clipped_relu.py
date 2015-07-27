@@ -16,15 +16,14 @@ class ClippedReLU(function.Function):
     def __init__(self, z):
         if not isinstance(z, float):
             raise TypeError('z must be float value')
+        # z must be positive.
+        assert(z > 0)
         self.cap = z
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         x_type, = in_types
-        type_check.expect(
-            x_type.dtype == numpy.float32,
-            x_type.ndim > 0
-        )
+        type_check.expect(x_type.dtype == numpy.float32)
 
     def check_type_backward(self, in_types, out_types):
         type_check.expect(
@@ -38,10 +37,11 @@ class ClippedReLU(function.Function):
             y_type.ndim == x_type.ndim)
 
     def forward_cpu(self, x):
-        return numpy.minimum(numpy.maximum(0, x[0]), self.cap),
+        return numpy.array(numpy.minimum(numpy.maximum(0, x[0]), self.cap),
+                           dtype=numpy.float32),
 
     def backward_cpu(self, x, gy):
-        return gy[0] * (0 < x[0]) * (x[0] < self.cap),
+        return numpy.array(gy[0] * (0 < x[0]) * (x[0] < self.cap)),
 
     def forward_gpu(self, x):
         return cuda.gpuarray.minimum(cuda.gpuarray.maximum(0, x[0]), self.cap),
@@ -58,7 +58,8 @@ class ClippedReLU(function.Function):
 def clipped_relu(x, z=20.0):
     """Clipped Rectifier Unit function.
 
-    This function is expressed as :math:`CReLU(x, z) = \min(\max(0, x), z), where :math:`z(>0)` is a clipping value.
+    This function is expressed as :math:`CReLU(x, z) = \min(\max(0, x), z),
+    where :math:`z(>0)` is a clipping value.
 
     Args:
         x (~chainer.Variable): Input variable, which is n(>0)-dimensional array
