@@ -37,7 +37,10 @@ def get_strides_for_nocopy_reshape(array, new_shape):
 
     dim = 0
     ndim = len(shape)
-    last_stride = array.itemsize
+    if len(array.shape) == 0:
+        last_stride = array.itemsize
+    else:
+        last_stride = array.strides[0] * array.shape[0]
     for size in new_shape:
         if size <= 1:
             new_strides.append(last_stride)
