@@ -6,6 +6,7 @@ from chainer.functions import batch_normalization
 from chainer.functions import concat
 from chainer.functions import convolution_2d
 from chainer.functions import copy
+from chainer.functions import ctc
 from chainer.functions import dropout
 from chainer.functions import embed_id
 from chainer.functions import hierarchical_softmax
@@ -39,6 +40,7 @@ NonparameterizedConvolution2D = \
 NonparameterizedLinear = \
     nonparameterized_linear.NonparameterizedLinear
 Concat = concat.Concat
+ConnectionistTemporalClassificationCost = ctc.connectionist_temporal_classification_cost
 Copy = copy.Copy
 Dropout = dropout.Dropout
 Identity = identity.Identity
@@ -81,6 +83,7 @@ convolution_2d = nonparameterized_convolution_2d.convolution_2d
 linear = nonparameterized_linear.linear
 
 concat = concat.concat
+connectionist_temporal_classification_cost = ctc.connectionist_temporal_classification_cost
 copy = copy.copy
 dropout = dropout.dropout
 identity = identity.identity
