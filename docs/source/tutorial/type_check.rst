@@ -20,7 +20,7 @@ After reading this section, you will be able to:
 Basic usage of type check
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Each implementations of :class:`Function` has a method for type check, :meth:`check_type_forward`.
+Each implementation of :class:`Function` has a method for type check, :meth:`check_type_forward`.
 This function is called just before the :meth:`forward` method of the :class:`Function` class.
 You can override this method to check the condition on types and shapes of arguments.
 
