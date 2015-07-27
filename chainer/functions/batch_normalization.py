@@ -7,7 +7,7 @@ from chainer.utils import type_check
 
 def _kernel_with_I(args, expr, name):
     return cuda.elementwise(
-        '{}, int cdim, int rdim'.format(args),
+        args + ['cdim', 'rdim'],
         'int I = i / rdim % cdim; {};'.format(expr),
         name)
 
@@ -267,7 +267,7 @@ class BatchNormalization(function.Function):
         mean, sqmean = _cusum_axis02(x, mean=True)
         stdinv = sqmean  # reuse buffer
         cuda.elementwise(
-            'float* stdinv, const float* mean, float eps',
+            ['stdinv', 'mean', 'eps'],
             'stdinv[i] = rsqrtf(stdinv[i] - mean[i] * mean[i] + eps)',
             'bn_stdinv')(stdinv, mean, self.eps)
 
@@ -275,19 +275,15 @@ class BatchNormalization(function.Function):
         gx = cuda.empty_like(x)
 
         _kernel_with_I(
-            '''
-                float* x_hat, const float* x,
-                const float* mean, const float* stdinv
-            ''', 'x_hat[i] = (x[i] - mean[I]) * stdinv[I]',
+            ['x_hat', 'x', 'mean', 'stdinv'],
+            'x_hat[i] = (x[i] - mean[I]) * stdinv[I]',
             'bn_x_hat')(x_hat, x, mean, stdinv, cdim, rdim)
         mean = None
 
         gbeta, ggamma = _cusum_axis02(gy, x_hat, expr2='x[I] * y[I]')
         cuda.elementwise(
+            ['self_ggammma', 'ggamma', 'slef_gbeta', 'gbeta'],
             '''
-                float* self_ggammma, const float* ggamma,
-                float* slef_gbeta, const float* gbeta
-            ''', '''
                 self_ggammma[i] += ggamma[i];
                 slef_gbeta[i] += gbeta[i];
             ''', 'bn_add')(
@@ -295,12 +291,9 @@ class BatchNormalization(function.Function):
                 self.gbeta, gbeta)
 
         _kernel_with_I(
+            ['gx', 'x_hat', 'gy', 'stdinv',
+             'ggamma', 'gbeta', 'gamma', 'inv_m'],
             '''
-                float* gx, const float* x_hat,
-                const float* gy, const float* stdinv,
-                const float* ggamma, const float* gbeta,
-                const float* gamma, float inv_m
-            ''', '''
                 gx[i] = gamma[I] * stdinv[I] *
                     (gy[i] - (x_hat[i] * ggamma[I] + gbeta[I]) * inv_m)
             ''', 'bn_bwd')(

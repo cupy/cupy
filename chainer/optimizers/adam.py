@@ -37,8 +37,8 @@ class Adam(optimizer.Optimizer):
     def update_one_gpu(self, param, grad, state):
         m, v = state
         cuda.elementwise(
-            '''float* param, const float* grad, float* m, float* v, float lr,
-               float one_minus_beta1_t, float one_minus_beta2, float eps''',
+            ['param', 'grad', 'm', 'v', 'lr',
+             'one_minus_beta1_t', 'one_minus_beta2', 'float eps'],
             '''m[i] += one_minus_beta1_t * (grad[i] - m[i]);
                v[i] += one_minus_beta2 * (grad[i] * grad[i] - v[i]);
                param[i] -= lr * m[i] / (sqrtf(v[i]) + eps);''',

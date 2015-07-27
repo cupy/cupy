@@ -78,12 +78,10 @@ class WalkerAlias(object):
         return self.values[index * 2 + left_right]
 
     def sample_gpu(self, shape):
-        ps = cuda.empty(shape, numpy.float32)
-        cuda.get_generator().fill_uniform(ps)
+        ps = cuda.random.uniform(size=shape).astype(dtype=numpy.float32)
         vs = cuda.empty(shape, numpy.int32)
         cuda.elementwise(
-            '''int* vs, const float* ps, const float* threshold,
-            const int* values, int b''',
+            ['vs', 'ps', 'threshold', 'values', 'b'],
             '''
             float pb = ps[i] * b;
             int index = __float2int_rd(pb);

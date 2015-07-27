@@ -30,11 +30,11 @@ __device__ float grad_tanh(float y)    { return 1 - y * y; }
 #define COMMON_ROUTINE \
     int I = i / rsize; \
     int J = i % rsize; \
-    const float* x_i = x + I * 4 * rsize; \
-    float aa =   tanhf(x_i[          J]); \
-    float ai = sigmoid(x_i[  rsize + J]); \
-    float af = sigmoid(x_i[2*rsize + J]); \
-    float ao = sigmoid(x_i[3*rsize + J]);
+    int xi = I * 4 * rsize; \
+    float aa =   tanhf(x[xi +           J]); \
+    float ai = sigmoid(x[xi +   rsize + J]); \
+    float af = sigmoid(x[xi + 2*rsize + J]); \
+    float ao = sigmoid(x[xi + 3*rsize + J]);
 '''
 
 
@@ -109,8 +109,7 @@ class LSTM(function.Function):
         self.c = cuda.empty_like(c_prev)
         h = cuda.empty_like(c_prev)
         cuda.elementwise(
-            '''float* c, float* h, const float* c_prev, const float* x,
-               int lsize, int rsize''',
+            ['c', 'h', 'c_prev', 'x', 'lsize', 'rsize'],
             '''COMMON_ROUTINE;
                c[i] = aa * ai + af * c_prev[i];
                h[i] = ao * tanhf(c[i]);''',
@@ -126,32 +125,30 @@ class LSTM(function.Function):
 
         # Odd rule to determine whether the gradient is given or not.
         if gc is None:
-            gc = self.c
+            gc = cuda.empty((0, 0, 0))
         if gh is None:
-            gh = self.c
+            gh = cuda.empty((0, 0, 0))
 
         gc_prev = cuda.empty_like(c_prev)
         gx = cuda.empty_like(x)
         cuda.elementwise(
+            ['gc_prev', 'gx', 'c_prev', 'x', 'c',
+             'gc', 'gh', 'lsize', 'rsize'],
             '''
-               float* gc_prev, float* gx, const float* c_prev, const float* x,
-               const float* c, const float* gc, const float* gh, int lsize,
-               int rsize
-            ''', '''
                COMMON_ROUTINE;
-               float* gx_i = gx + I * 4 * rsize;
-               float& ga = gx_i[          J];
-               float& gi = gx_i[  rsize + J];
-               float& gf = gx_i[2*rsize + J];
-               float& go = gx_i[3*rsize + J];
+               int gxi = I * 4 * rsize;
+               float& ga = gx[gxi +           J];
+               float& gi = gx[gxi +   rsize + J];
+               float& gf = gx[gxi + 2*rsize + J];
+               float& go = gx[gxi + 3*rsize + J];
 
                float co  = tanhf(c[i]);
                // Odd rule: if gh == c [gc == c] then gh [gc] is not given,
                // since we cannot pass null pointer to the kernel through
                // PyCUDA.
-               float gc1 = (gh == c ? 0 : gh[i] * ao * grad_tanh(co))
-                         + (gc == c ? 0 : gc[i]);
-               go        =  gh == c ? 0 : gh[i] * co * grad_sigmoid(ao);
+               float gc1 = (gh.size() == 0 ? 0 : gh[i] * ao * grad_tanh(co))
+                         + (gc.size() == 0 ? 0 : gc[i]);
+               go        =  gh.size() == 0 ? 0 : gh[i] * co * grad_sigmoid(ao);
 
                gc_prev[i] = gc1 * af;
                ga         = gc1 * ai        * grad_tanh(aa);

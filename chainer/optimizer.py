@@ -174,7 +174,7 @@ class Optimizer(object):
         for p, g, _ in self.tuples:
             if isinstance(p, cuda.ndarray):
                 with cuda.using_device(p):
-                    cuda.elementwise('float* g, const float* p, float decay',
+                    cuda.elementwise(['g', 'p', 'decay'],
                                      'g[i] += decay * p[i]',
                                      'weight_decay')(g, p, decay)
             else:

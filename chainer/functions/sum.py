@@ -19,7 +19,7 @@ class Sum(function.Function):
         return numpy.array(x[0].sum()),
 
     def forward_gpu(self, x):
-        return cuda.cupy.sum(x[0]),
+        return x[0].sum(),
 
     def backward_cpu(self, x, gy):
         return numpy.full_like(x[0], gy[0]),

@@ -37,10 +37,9 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
 
     col = cuda.empty((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
     cuda.elementwise(
+        ['col', 'img', 'h', 'w',
+         'out_h', 'out_w', 'kh', 'kw', 'sy', 'sx', 'ph', 'pw'],
         '''
-           float* col, const float* img, int h, int w,
-           int out_h, int out_w, int kh, int kw, int sy, int sx, int ph, int pw
-        ''', '''
            int c0 = i / (kh * kw * out_h * out_w);
            int ky = i / (kw * out_h * out_w) % kh;
            int kx = i / (out_h * out_w) % kw;
@@ -55,7 +54,11 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
              col[i] = 0;
            }
         ''',
-        'im2col')(col, img, h, w, out_h, out_w, kh, kw, sy, sx, ph, pw)
+        'im2col')(col, img, numpy.int32(h), numpy.int32(w),
+                  numpy.int32(out_h), numpy.int32(out_w),
+                  numpy.int32(kh), numpy.int32(kw),
+                  numpy.int32(sy), numpy.int32(sx),
+                  numpy.int32(ph), numpy.int32(pw))
     return col
 
 
@@ -78,10 +81,9 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
 
     img = cuda.empty((n, c, h, w), dtype=col.dtype)
     cuda.elementwise(
+        ['img', 'col', 'h', 'w',
+         'out_h', 'out_w', 'kh', 'kw', 'sy', 'sx', 'ph', 'pw'],
         '''
-           float* img, const float* col, int h, int w,
-           int out_h, int out_w, int kh, int kw, int sy, int sx, int ph, int pw
-        ''', '''
            int c0 = i / (h * w);
            int y  = i / w % h + ph;
            int x  = i % w + pw;
@@ -102,5 +104,9 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
            }
            img[i] = val;
         ''',
-        'col2im')(img, col, h, w, out_h, out_w, kh, kw, sy, sx, ph, pw)
+        'col2im')(img, col, numpy.int32(h), numpy.int32(w),
+                  numpy.int32(out_h), numpy.int32(out_w),
+                  numpy.int32(kh), numpy.int32(kw),
+                  numpy.int32(sy), numpy.int32(sx),
+                  numpy.int32(ph), numpy.int32(pw))
     return img

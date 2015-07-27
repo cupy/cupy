@@ -7,7 +7,7 @@ from chainer.utils import type_check
 
 def _kern():
     return cuda.elementwise(
-        'float* y, const float* cond, const float* x, float slope',
+        ['y', 'cond', 'x', 'slope'],
         'y[i] = cond[i] >= 0 ? x[i] : slope * x[i]', 'lrelu')
 
 
