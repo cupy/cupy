@@ -8,6 +8,16 @@ class TestShape(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
+    @testing.numpy_cupy_array_equal()
+    def test_reshape_strides(self, xpy):
+        a = testing.shaped_arange((1, 1, 1, 2, 2))
+        return a.strides
+
+    @testing.numpy_cupy_array_equal()
+    def test_reshape2(self, xpy):
+        a = xpy.zeros((8,), dtype=xpy.float32)
+        return a.reshape((1, 1, 1, 4, 1, 2)).strides
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_nocopy_reshape(self, xpy, dtype):
