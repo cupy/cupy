@@ -6,6 +6,7 @@ import six
 import cupy
 from cupy import carray
 from cupy import cuda
+from cupy import internal
 
 
 def _get_allocator(in_arg):
@@ -95,6 +96,7 @@ class ElementwiseKernel(object):
                 break
 
         assert n is not None
+        internal.check_args_device(args)
 
         args = args + (numpy.int32(n),)
         params, kernel_args = _get_kernel_params_args(self.param_names, args)
@@ -157,6 +159,7 @@ class ufunc(object):
     def __call__(self, *args, **kwargs):
         if not (len(args) == self.nin or len(args) == self.nargs):
             raise TypeError('Wrong number of arguments for %s' % self.name)
+        internal.check_args_device(args)
 
         brod = cupy.broadcast(*args)
         in_args = brod.values[:self.nin]
@@ -165,6 +168,7 @@ class ufunc(object):
         out = kwargs.get('out', None)
         if out is not None:
             assert len(out_args) == 0
+            internal.check_args_device((out,))
             out_args = [out]
 
         dtype = kwargs.get('dtype', None)

@@ -139,3 +139,14 @@ def infer_unknown_dimension(shape, size):
         return tuple(dim if dim >= 0 else size // -prod for dim in shape)
     else:
         return shape
+
+
+def check_args_device(args):
+    dev = cuda.Device()
+    for arg in args:
+        if isinstance(arg, cupy.ndarray):
+            arg_dev = arg.data.device
+            if arg_dev != dev:
+                raise ValueError('Array device must be same as the current '
+                                 'device: array device = %d while current = %d'
+                                 % (arg_dev.id, dev.id))
