@@ -51,7 +51,7 @@ class ClippedReLU(function.Function):
         cuda.elementwise(
             'float* gx, const float* x, const float* gy, const float z',
             'gx[i] = ((x[i] > 0) and (x[i] < z))? gy[i] : 0',
-            'relu_bwd')(gx, x[0], gy[0], self.cap)
+            'clipped_relu_bwd')(gx, x[0], gy[0], self.cap)
         return gx,
 
 
