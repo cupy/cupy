@@ -63,6 +63,7 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
         self.func.to_gpu()
         self.check_sum(cuda.to_gpu(x), gpu=True)
 
+    @attr.gpu
     def test_forwrd(self):
         cpu_loss, = self.func.forward((self.x, self.t))
         self.func.to_gpu()
