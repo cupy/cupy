@@ -21,24 +21,24 @@ Basic usage of type check
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each implementations of :class:`Function` has a method for type check, :meth:`check_type_forward`.
-This function is called just before :meth:`forward` method of the :class:`Function`.
-You can override this method to check the condition about types of arguments.
+This function is called just before the :meth:`forward` method of the :class:`Function` class.
+You can override this method to check the condition on types and shapes of arguments.
 
 :meth:`check_type_forward` gets an argument ``in_types``::
 
    def check_type_forward(self, in_types):
      ...
 
-``in_types`` is an instance of :class:`utils.type_check.TypeInfoTuple`, that is a sub-class of ``tuple``.
+``in_types`` is an instance of :class:`utils.type_check.TypeInfoTuple`, which is a sub-class of ``tuple``.
 To get type information about the first argument, use ``in_types[0]``.
 If the function gets multiple arguments, we recommend to use new variables for readability::
 
   x_type, y_type = in_types
 
-``x_type`` represents the type of the first argument, and ``y_type`` represents the second one in this case.
+In this case, ``x_type`` represents the type of the first argument, and ``y_type`` represents the second one.
 
 We describe usage of ``in_types`` with an example.
-When you want to check if the number of dimention of ``x_type`` equals to ``2``, write this code::
+When you want to check if the number of dimension of ``x_type`` equals to ``2``, write this code::
 
   utils.type_check.expect(x_type.ndim == 2)
 
@@ -56,12 +56,12 @@ Detail of type information
 
 You can access three information of ``x_type``.
 
-s- ``.shape`` is a ``tuple`` of ``int``. Each value is size of each dimension.
+- ``.shape`` is a tuple of ints. Each value is size of each dimension.
 - ``.ndim`` is ``int`` value representing the number of dimensions. Note that ``ndim == len(shape)``
 - ``.dtype`` is ``numpy.dtype`` representing data type of the value.
 
 You can check all members.
-For exaple, size of first dimension must to be positive, you can write like this::
+For example, the size of the first dimension must be positive, you can write like this::
 
   utils.type_check.expect(x_type.shape[0] > 0)
 
@@ -80,7 +80,7 @@ This code checks if the type is floating point::
   utils.type_check.expect(x_type.dtype.kind == 'f')
 
 You can compare between variables.
-For exaple, first argument and second arguments need to have the same length::
+For example, the following code checks if the first argument and the second argument have the same length::
 
   utils.type_check.expect(x_type.shape[0] == y_type.shape[0])
 
@@ -89,21 +89,21 @@ Internal mechanism of type check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 How does it show an error message like ``"in_types[0].ndim == 2"``?
-If ``x_type`` is an object containtnig ``ndim`` member variable, we cannot show such an error message because this equation is evaluated as an boolean value by Python interpreter.
+If ``x_type`` is an object containtnig ``ndim`` member variable, we cannot show such an error message because this equation is evaluated as a boolean value by Python interpreter.
 
-Actually ``x_type`` is an :class:`utils.type_check.Expr` objects, and doesn't have a ``ndim`` member variable itself.
+Actually ``x_type`` is a :class:`utils.type_check.Expr` objects, and doesn't have a ``ndim`` member variable itself.
 :class:`utils.type_check.Expr` represents a syntax tree.
 ``x_type.ndim`` makes a :class:`utils.type_check.Expr` object representing ``(getattr, x_type, 'ndim')``.
 ``x_type.ndim == 2`` makes an object like ``(eq, (getattr, x_type, 'ndim'), 2)``.
-:meth:`tyep_check.expect` gets a :class:`utils.type_check.Expr` object and evaluate it.
-When it ``True``, it causes nothing.
-And, when it returns ``False``, this method shows a readable error message.
+:meth:`type_check.expect` gets a :class:`utils.type_check.Expr` object and evaluate it.
+When it is ``True``, it causes no error and shows nothing.
+Otherwise, this method shows a readable error message.
 
 If you want to evaluate a :class:`utils.type_check.Expr` object, call :meth:`eval` method::
 
   actual_type = x_type.eval()
 
-``actual_type`` is an instance of :class:`TypeInfo` though ``x_type`` is an instance of :class:`utils.type_check.Expr`.
+``actual_type`` is an instance of :class:`TypeInfo`, while ``x_type`` is an instance of :class:`utils.type_check.Expr`.
 In the same way, ``x_type.shape[0].eval()`` returns an int value.
 
 
@@ -111,7 +111,7 @@ More powerfull methods
 ~~~~~~~~~~~~~~~~~~~~~~
 
 :class:`utils.type_check.Expr` class is more powerfull.
-It supports all mathmatical operators such as ``+`` and ``*``.
+It supports all mathematical operators such as ``+`` and ``*``.
 You can write a condition that the first dimension of ``x_type`` is the first dimension of ``y_type`` times four::
 
   x_type.shape[0] == y_type.shape[0] * 4
@@ -130,8 +130,8 @@ This code can check the equivalent condition below::
 
   x_type.shape[0] == self.in_size
 
-However, the later condition doesn't know meanig of this value.
-When this condition is not satisfied, the later shows unreadable error message::
+However, the latter condition doesn't know meanig of this value.
+When this condition is not satisfied, the latter code shows unreadable error message::
 
   Expect: in_types[0].shape[0] == 4  # what does '4' mean?
   Actual: 3 != 4
@@ -155,7 +155,7 @@ How to check summation of all values of shape?
    utils.type_check.expect(sum(x_type.shape) == 10)
 
 Why do we need to wrap the function ``numpy.sum`` with :class:`utils.type_check.Variable`?
-``x_type.shape`` is not a tuple but an object of :class:`utils.type_check.Expr` as I wrote before.
+``x_type.shape`` is not a tuple but an object of :class:`utils.type_check.Expr` as we have seen before.
 Therefore, ``numpy.sum(x_type.shape)`` fails.
 We need to evaluate this function lazily.
 
@@ -168,7 +168,7 @@ The above example makes an error message like this::
 More complicated cases
 ~~~~~~~~~~~~~~~~~~~~~~
 
-How to write a more complicated condition that can't be written these operators?
+How to write a more complicated condition that can't be written with these operators?
 You can evaluate :class:`utils.type_check.Expr` and get its result value with :meth:`eval` method.
 And, check the condition and show warning message by your hand::
 
@@ -195,7 +195,7 @@ First check the number of arguments::
 
   utils.type_check.expect(in_types.size() == 2)
 
-``in_types.size()`` returns a :class:`Expr` object representing a number of arguments.
+``in_types.size()`` returns a :class:`utils.type_check.Expr` object representing a number of arguments.
 You can check it in the same way.
 
 And then, get each type::
