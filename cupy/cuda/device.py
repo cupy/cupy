@@ -40,6 +40,9 @@ class Device(object):
             return False
         return self.id == other.id
 
+    def __ne__(self, other):
+        return not (self == other)
+
 
 def from_pointer(ptr):
     attrs = runtime.pointerGetAttributes(ptr)

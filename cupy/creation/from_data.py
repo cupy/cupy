@@ -68,13 +68,26 @@ def asmatrix(data, dtype=None, allocator=None):
 
 
 def copy(a, allocator=None):
+    # If the current device is different from the device of ``a``, then this
+    # function allocates a new array on the current device, and copies the
+    # contents over the devices.
     # TODO(beam2d): Support ordering option
     if allocator is None:
         allocator = a.allocator
 
+    if a.size == 0:
+        return cupy.empty_like(a, allocator=allocator)
+
+    if a.data.device != cuda.Device():
+        # peer copy
+        a = ascontiguousarray(a)
+        newarray = cupy.empty_like(a, allocator=allocator)
+        newarray.data.copy_from_peer(a.data, a.nbytes)
+        return newarray
+
+    # in-device copy
     newarray = cupy.empty_like(a, allocator=allocator)
-    f = a.flags
-    if f.c_contiguous:
+    if a.flags.c_contiguous:
         newarray.data.copy_from(a.data, a.nbytes)
     else:
         elementwise.copy(a, newarray)

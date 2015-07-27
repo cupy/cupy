@@ -50,7 +50,10 @@ class MemoryPointer(object):
 
     @property
     def device(self):
-        return device.from_pointer(self.ptr)
+        if self.ptr:
+            return device.from_pointer(self.ptr)
+        else:
+            return device.Device()
 
     def copy_from_device(self, src, size):
         if size > 0:

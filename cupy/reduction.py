@@ -7,6 +7,7 @@ import cupy
 from cupy import carray
 from cupy import cuda
 from cupy import elementwise
+from cupy import internal
 
 
 @cuda.memoize
@@ -123,6 +124,8 @@ class simple_reduction_function(object):
                  allocator=None):
         if not isinstance(a, cupy.ndarray):
             raise TypeError('')
+        internal.check_args_device((a, out))
+
         if self.identity is None:
             assert a.size != 0
 
