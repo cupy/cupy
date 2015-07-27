@@ -1,7 +1,5 @@
 import collections
 
-import numpy
-
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -30,7 +28,7 @@ class SplitAxis(function.Function):
                 self.indices_or_sections, 'sections')
             type_check.expect(in_types[0].shape[self.axis] % sections == 0)
 
-    def forward_cpu(self, x):
+    def forward(self, x):
         if isinstance(self.indices_or_sections, collections.Iterable):
             cdimx = x[0].shape[self.axis]
             ind = list(self.indices_or_sections)
@@ -41,27 +39,11 @@ class SplitAxis(function.Function):
                 if cdimy == 0:
                     raise ValueError('Not support if shape contains 0')
                 prev_i = i
-        return tuple(numpy.split(x[0], self.indices_or_sections, self.axis))
+        return tuple(cuda.get_xpy(x[0]).split(
+            x[0], self.indices_or_sections, self.axis))
 
-    def forward_gpu(self, x):
-        if isinstance(self.indices_or_sections, collections.Iterable):
-            cdimx = x[0].shape[self.axis]
-            ind = list(self.indices_or_sections)
-            ind.append(cdimx)
-            prev_i = 0
-            for i in ind:
-                cdimy = max(0, min(i, cdimx) - prev_i)
-                if cdimy == 0:
-                    raise ValueError('Not support if shape contains 0')
-                prev_i = i
-        return tuple(
-            cuda.cupy.split(x[0], self.indices_or_sections, self.axis))
-
-    def backward_cpu(self, x, gys):
-        return numpy.concatenate(gys, axis=self.axis),
-
-    def backward_gpu(self, x, gys):
-        return cuda.cupy.concatenate(gys, axis=self.axis),
+    def backward(self, x, gys):
+        return cuda.get_xpy(x[0]).concatenate(gys, axis=self.axis),
 
 
 def split_axis(x, indices_or_sections, axis):

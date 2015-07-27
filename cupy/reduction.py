@@ -15,8 +15,8 @@ def _make_reduction_function_kernel(name, block_size,
                                     dtype, temp_type, params,
                                     identity,
                                     reduce_expr,
-                                    pre_map_expr='in[j]',
-                                    post_map_expr='out[i] = a',
+                                    pre_map_expr='in[i]',
+                                    post_map_expr='a',
                                     preamble=''):
     if identity is None:
         identity = ''
@@ -29,31 +29,31 @@ def _make_reduction_function_kernel(name, block_size,
     typedef ${temp_type} temp_type;
     extern "C" __global__ void ${name}(${params}) {
       if (_out_clp2_size > 256) {
-        CUPY_FOR(i, out_size) {
+        CUPY_FOR(_i, out_size) {
           temp_type _s = temp_type(${identity});
-          for (int j = i, J = 0;
-               j < in_size;
-               j += out_size, J++) {
+          for (int i = _i, I = 0;
+               i < in_size;
+               i += out_size, I++) {
               temp_type _a = ${pre_map_expr};
               _s = REDUCE(_s, _a);
           }
-          POST_MAP(_s);
+          out[_i] = POST_MAP(_s);
         }
       } else {
         extern __shared__ temp_type _sdata_raw[];
         temp_type *_sdata = _sdata_raw;//[${block_size}];
         int _tid = threadIdx.x;
         _sdata[_tid] = temp_type(${identity});
-        unsigned int i = _tid % _out_clp2_size;
-        if (i >= out_size) return;
+        unsigned int _i = _tid % _out_clp2_size;
+        if (_i >= out_size) return;
         temp_type _s = temp_type(${identity});
-        int _J_offset = _tid / _out_clp2_size;
-        int _j_offset = _J_offset * out_size;
-        int _J_stride = ${block_size} / _out_clp2_size;
-        int _j_stride = _J_stride * out_size;
-        for (int j = i + _j_offset, J = _J_offset;
-             j < in_size;
-             j += _j_stride, J += _J_stride) {
+        int _I_offset = _tid / _out_clp2_size;
+        int _i_offset = _I_offset * out_size;
+        int _I_stride = ${block_size} / _out_clp2_size;
+        int _i_stride = _I_stride * out_size;
+        for (int i = _i + _i_offset, I = _I_offset;
+             i < in_size;
+             i += _i_stride, I += _I_stride) {
           temp_type _a = ${pre_map_expr};
           _s = REDUCE(_s, _a);
         }
@@ -90,7 +90,7 @@ def _make_reduction_function_kernel(name, block_size,
         }
         _s = _sdata[_tid];
         if (_tid >= out_size) return;
-        POST_MAP(_s);
+        out[_i] = POST_MAP(_s);
       }
     }''').substitute(
         name=name,
@@ -218,8 +218,9 @@ class simple_reduction_function(object):
 
 class ReductionKernel(object):
 
-    def __init__(self, out_dtype, param_names, identity, reduce_expr, map_expr,
-                 name="reduce_kernel", options=[], preamble=""):
+    def __init__(self, out_dtype, param_names, identity, reduce_expr,
+                 map_expr, post_map_expr='a', name='reduce_kernel',
+                 options=[], preamble=''):
         self.out_dtype = out_dtype
         self.param_names = ('out',) + tuple(param_names) + (
             'in_size', 'out_size', '_out_clp2_size')
@@ -248,8 +249,13 @@ class ReductionKernel(object):
         dtype = elementwise._get_typename(args[0].dtype)
         kernel = _make_reduction_function_kernel(
             self.name, block_size, dtype, dtype, params, self.identity,
-            self.reduce_expr, self.map_expr, 'out[i] = a', self.preamble)
-        kernel.linear_launch(in_size, kernel_args)
+            self.reduce_expr, self.map_expr, 'a', self.preamble)
+        shared_mem = 32 * block_size
+        # TODO(okuta) set actual size
+        kernel.linear_launch(block_size, kernel_args,
+                             shared_mem=shared_mem,
+                             block_max_size=block_size)
+
         return out
 
 
@@ -312,26 +318,26 @@ amin = create_reduction_func(
     'cupy_min',
     ['?->?', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('my_min(a, b)', 'my_struct((dtype)in[j])', 'out[i] = a.value'),
+    ('my_min(a, b)', 'my_struct((dtype)in[i])', 'a.value'),
     None, _min_max_preamble, temp_type='my_struct')
 
 amax = create_reduction_func(
     'cupy_max',
     ['?->?', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('my_max(a, b)', 'my_struct((dtype)in[j])', 'out[i] = a.value'),
+    ('my_max(a, b)', 'my_struct((dtype)in[i])', 'a.value'),
     None, _min_max_preamble, temp_type='my_struct')
 
 argmin = create_reduction_func(
     'cupy_argmin',
     ['?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'],
-    ('my_argmin(a, b)', 'my_struct((dtype)in[j], J)', 'out[i] = a.index'),
+    ('my_argmin(a, b)', 'my_struct((dtype)in[i], I)', 'a.index'),
     None, _min_max_preamble, temp_type='my_struct')
 
 argmax = create_reduction_func(
     'cupy_argmax',
     ['?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'],
-    ('my_argmax(a, b)', 'my_struct((dtype)in[j], J)', 'out[i] = a.index'),
+    ('my_argmax(a, b)', 'my_struct((dtype)in[i], I)', 'a.index'),
     None, _min_max_preamble, temp_type='my_struct')

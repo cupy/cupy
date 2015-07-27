@@ -21,7 +21,7 @@ mean = reduction.create_reduction_func(
     'cupy_mean',
     ['?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('a + b', 'in[j]', 'out[i] = a / (in_size / out_size)'))
+    ('a + b', 'in[i]', 'a / (in_size / out_size)'))
 
 
 def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,

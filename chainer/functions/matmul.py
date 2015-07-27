@@ -31,7 +31,7 @@ def _as_batch_mat(x):
 
 
 def _as_trans_op(trans):
-    return 't' if trans else 'n'
+    return 1 if trans else 0
 
 
 def _matmul(a, b, transa=False, transb=False, transout=False):
@@ -53,8 +53,8 @@ def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
         a, b, transa, transb = b, a, not transb, not transa
     a = _as_batch_mat(a)
     b = _as_batch_mat(b)
-    alpha = numpy.float32(1.0)
-    beta = numpy.float32(0.0)
+    alpha = 1
+    beta = 0
     l, m, k = a.shape
     if transa:
         m, k = k, m

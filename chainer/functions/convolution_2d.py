@@ -249,7 +249,7 @@ class Convolution2D(function.Function):
             if self.b is not None:
                 cuda.elementwise(
                     ['y', 'b', 'c', 'hw'],
-                     'y[i] += b[i / hw % c]',
+                    'y[i] += b[i / hw % c]',
                     'conv_bias_fwd')(y, self.b,
                                      numpy.int32(out_c),
                                      numpy.int32(out_h * out_w))
