@@ -23,6 +23,7 @@ class TestClippedReLU(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.clipped_relu(x, self.z)
+        self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = self.x.copy()
         for i in numpy.ndindex(self.x.shape):
@@ -43,6 +44,7 @@ class TestClippedReLU(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         x = chainer.Variable(x_data)
         y = functions.clipped_relu(x, self.z)
+        self.assertEqual(y.data.dtype, numpy.float32)
         y.grad = y_grad
         y.backward()
 
