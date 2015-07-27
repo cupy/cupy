@@ -117,13 +117,11 @@ def get_device(arg=None):
         return Device(arg)
 
 
-def use_device(arg, pop=True):
+def use_device(arg):
     """Switches the CUDA context to use given device.
 
     Args:
         arg: Argument of :func:`get_device`.
-        pop (bool): If True, pop the current context from context
-            stack.
 
     """
     device = get_device(arg)
@@ -162,6 +160,7 @@ class DeviceUser(object):
     @property
     def is_active(self):
         return self.device is not None
+
 
 def using_device(*args):
     """Returns a DeviceUser object of the first cupy.ndarray argument.

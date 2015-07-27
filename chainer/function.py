@@ -471,20 +471,18 @@ class Split(Function):
 
         gx = None
         grad_outputs = [gy for gy in grad_outputs if gy is not None]
-        device_changed = False
+        device = cuda.Device()
         try:
             for gy in grad_outputs:
                 if gx is not None:
                     gx += gy
                 elif isinstance(gy, cuda.ndarray):
                     # it affects to above +=, too
-                    cuda.use_device(gy, pop=False)
-                    device_changed = True
+                    cuda.use_device(gy)
                     gx = cuda.copy_async(gy)
                 else:
                     gx = gy.copy()
         finally:
-            if device_changed:
-                cuda.Context.pop()
+            cuda.use_device(device)
 
         return gx,
