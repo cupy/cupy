@@ -17,6 +17,41 @@ class TestProduct(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_dot2(self, xpy, dtype):
+        a = testing.shaped_arange((2, 1), xpy, dtype)
+        b = testing.shaped_arange((1, 2), xpy, dtype)
+        return xpy.dot(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dot3(self, xpy, dtype):
+        a = testing.shaped_arange((2, 1), xpy, dtype).T
+        b = testing.shaped_arange((2, 1), xpy, dtype)
+        return xpy.dot(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dot4(self, xpy, dtype):
+        a = testing.shaped_arange((1, 2), xpy, dtype)
+        b = testing.shaped_arange((1, 2), xpy, dtype).T
+        return xpy.dot(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dot5(self, xpy, dtype):
+        a = testing.shaped_arange((2, 1), xpy, dtype).T
+        b = testing.shaped_arange((1, 2), xpy, dtype).T
+        return xpy.dot(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dot6(self, xpy, dtype):
+        a = testing.shaped_arange((10, 2), xpy, dtype)
+        b = testing.shaped_arange((2, 10), xpy, dtype)
+        return xpy.dot(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_dot_with_out(self, xpy, dtype):
         a = testing.shaped_arange((2, 3, 4), xpy, dtype)
         b = testing.shaped_arange((3, 4, 2), xpy, dtype)
