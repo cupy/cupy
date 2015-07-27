@@ -6,10 +6,10 @@ import numpy
 
 class ClippedReLU(function.Function):
 
-    """clipped ReLU function. clipped ReLU is written as below,
+    """Clipped Rectifier Unit function.
 
-    :math:`ClippedReLU(x, z) = \min(\max(0, x) ,z)`
-    z is a parameter to cap return value of ReLU.
+    Clipped ReLU is written as :math:`ClippedReLU(x, z) = \min(\max(0, x) ,z)`,
+    where :math:`z(>0)` is a parameter to cap return value of ReLU.
 
     """
 
@@ -56,7 +56,9 @@ class ClippedReLU(function.Function):
 
 
 def clipped_relu(x, z=20.0):
-    """Clipped Rectifier Unit function :math:`CReLU(x, z) = \min(\max(0, x), z)`
+    """Clipped Rectifier Unit function.
+
+    This function is expressed as :math:`CReLU(x, z) = \min(\max(0, x), z), where :math:`z(>0)` is a clipping value.
 
     Args:
         x (~chainer.Variable): Input variable, which is n(>0)-dimensional array
