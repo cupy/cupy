@@ -43,8 +43,15 @@ def inner(a, b):
 
 
 def outer(a, b, out=None, allocator=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+    a = a.reshape(a.size, 1)
+    b = b.reshape(1, b.size)
+    if out is None:
+        return dot(a, b, allocator=allocator)
+    elif out.flags.c_contiguous:
+        return dot(a, b, out=out)
+    else:
+        out[:] = dot(a, b, allocator=allocator)
+        return out
 
 
 def tensordot(a, b, axes=2, allocator=None, out=None):

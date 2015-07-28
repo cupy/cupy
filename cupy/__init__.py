@@ -987,6 +987,7 @@ base_repr = numpy.base_repr
 dot = linalg.product.dot
 vdot = linalg.product.vdot
 inner = linalg.product.inner
+outer = linalg.product.outer
 tensordot = linalg.product.tensordot
 
 trace = linalg.norm.trace

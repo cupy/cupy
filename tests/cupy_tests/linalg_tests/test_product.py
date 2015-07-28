@@ -134,6 +134,27 @@ class TestProduct(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_outer(self, xpy, dtype):
+        a = testing.shaped_arange((5,), xpy, dtype)
+        b = testing.shaped_arange((4,), xpy, dtype)
+        return xpy.outer(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_reversed_outer(self, xpy, dtype):
+        a = testing.shaped_arange((5,), xpy, dtype)
+        b = testing.shaped_arange((4,), xpy, dtype)
+        return xpy.outer(a[::-1], b[::-1])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_multidim_outer(self, xpy, dtype):
+        a = testing.shaped_arange((2, 3), xpy, dtype)
+        b = testing.shaped_arange((4, 5), xpy, dtype)
+        return xpy.outer(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_tensordot(self, xpy, dtype):
         a = testing.shaped_arange((2, 3, 4), xpy, dtype)
         b = testing.shaped_arange((3, 4, 5), xpy, dtype)
