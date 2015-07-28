@@ -63,7 +63,7 @@ class ndarray(object):
 
     """Multi-dimensional array on a CUDA device."""
 
-    def __init__(self, shape, dtype=numpy.float32, memptr=None, offset=0,
+    def __init__(self, shape, dtype=numpy.float64, memptr=None, offset=0,
                  strides=None, allocator=cuda.alloc):
         self._shape = tuple(shape)
         self._dtype = numpy.dtype(dtype)
