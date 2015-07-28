@@ -1,5 +1,6 @@
 from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer.utils import type_check
 import numpy
 
@@ -17,7 +18,7 @@ class ClippedReLU(function.Function):
         if not isinstance(z, float):
             raise TypeError('z must be float value')
         # z must be positive.
-        assert(z > 0)
+        assert z > 0
         self.cap = z
 
     def check_type_forward(self, in_types):
@@ -37,11 +38,12 @@ class ClippedReLU(function.Function):
             y_type.ndim == x_type.ndim)
 
     def forward_cpu(self, x):
-        return numpy.array(numpy.minimum(numpy.maximum(0, x[0]), self.cap),
-                           dtype=numpy.float32),
+        return utils.force_array(numpy.minimum(
+            numpy.maximum(0, x[0]), self.cap)).astype(numpy.float32),
 
     def backward_cpu(self, x, gy):
-        return numpy.array(gy[0] * (0 < x[0]) * (x[0] < self.cap)),
+        return utils.force_array(
+            gy[0] * (0 < x[0]) * (x[0] < self.cap)).astype(numpy.float32),
 
     def forward_gpu(self, x):
         return cuda.gpuarray.minimum(cuda.gpuarray.maximum(0, x[0]), self.cap),
