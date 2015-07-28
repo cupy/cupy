@@ -20,9 +20,12 @@ def dot(a, b, out=None, allocator=None):
                   allocator=allocator, out=out)
     if out is None:
         if a_is_vec:
-            c = c.reshape(c.shape[1:])
-        if b_is_vec:
-            c = c.reshape(c.shape[:-1])
+            if b_is_vec:
+                c.shape = ()
+            else:
+                c.shape = c.shape[1:]
+        elif b_is_vec:
+            c.shape = c.shape[:-1]
     return c
 
 
@@ -60,10 +63,12 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
     if a.dtype.type == numpy.float32:
         dot = cublas.sdot
         gemv = cublas.sgemv
+        ger = cublas.sger
         gemm = cublas.sgemm
     elif a.dtype.type == numpy.float64:
         dot = cublas.ddot
         gemv = cublas.dgemv
+        ger = cublas.dger
         gemm = cublas.dgemm
 
     if numpy.isscalar(axes):
@@ -173,6 +178,13 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
             n, k = k, n
         gemv(handle, 1 - transa, n, k, 1, a._fptr, lda, b._fptr, ldb,
              0, c._fptr, 1)
+    elif a.shape[0] == 1:
+        # B^T * A (outer product)
+        assert b.shape[1] == 1
+        c.fill(0)
+        inca = a.strides[1] // a.itemsize
+        incb = b.strides[0] // b.itemsize
+        ger(handle, m, n, 1, b._fptr, incb, a._fptr, inca, c._fptr, ldc)
     else:
         # B^T * A^T
         gemm(handle, transb, transa, m, n, k, 1, b._fptr, ldb, a._fptr,

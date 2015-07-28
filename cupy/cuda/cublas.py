@@ -238,7 +238,18 @@ _cublas.cublasSger_v2.argtypes = [
 
 def sger(handle, m, n, alpha, x, incx, y, incy, A, lda):
     status = _cublas.cublasSger_v2(
-        handle, m, n, ctypes.byref(alpha), x, incx, y, incy, A, lda)
+        handle, m, n, ctypes.byref(ctypes.c_float(alpha)), x, incx, y, incy, A,
+        lda)
+    check_status(status)
+
+_cublas.cublasDger_v2.argtypes = [
+    Handle, _I, _I, _DP, _DP, _I, _DP, _I, _DP, _I]
+
+
+def dger(handle, m, n, alpha, x, incx, y, incy, A, lda):
+    status = _cublas.cublasDger_v2(
+        handle, m, n, ctypes.byref(ctypes.c_double(alpha)), x, incx, y, incy,
+        A, lda)
     check_status(status)
 
 ###############################################################################
