@@ -27,8 +27,8 @@ def dot(a, b, out=None, allocator=None):
 
 
 def vdot(a, b):
-    a = a.flatten()
-    b = b.flatten()
+    a = a.ravel()
+    b = b.ravel()
     return a.dot(b)
 
 
