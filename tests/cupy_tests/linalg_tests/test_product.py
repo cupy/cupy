@@ -18,8 +18,8 @@ class TestProduct(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_dot2(self, xpy, dtype):
-        a = testing.shaped_arange((2, 1), xpy, dtype)
-        b = testing.shaped_arange((1, 2), xpy, dtype)
+        a = testing.shaped_arange((4, 1), xpy, dtype)
+        b = testing.shaped_arange((1, 3), xpy, dtype)
         return xpy.dot(a, b)
 
     @testing.for_all_dtypes()
