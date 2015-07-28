@@ -63,6 +63,8 @@ class Inception(function.Function):
         y = relu.relu(concat.concat((out1, out3, out5, pool), axis=1))
         return y
 
+    # forward of Inception is a series of forward operations
+    # of existing functions. So we do not need additional type checks.
     def check_type_forward(self, in_types):
         pass
 

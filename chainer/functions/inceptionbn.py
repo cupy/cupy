@@ -99,6 +99,8 @@ class InceptionBN(function.Function):
         y = concat.concat(outs, axis=1)
         return y
 
+    # forward of InceptionBN is a series of forward operations
+    # of existing functions. So we do not need additional type checks.
     def check_type_forward(self, in_types):
         pass
 
