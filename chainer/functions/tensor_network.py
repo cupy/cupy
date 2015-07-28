@@ -20,12 +20,14 @@ class TensorNetwork(function.Function):
     :math:`W\in \mathbb{R}^{J \cdot K \cdot L}`,
     :math:`V^1\in \mathbb{R}^{J \cdot L}`,
     :math:`V^2\in \mathbb{R}^{K \cdot L}`, and :math:`b\in \mathbb{R}^{L}`.
-    In this document, we call :math:`V^1`, :math:`V^2`, and :math:`b` linear parameters.
+    In this document, we call :math:`V^1`, :math:`V^2`,
+    and :math:`b` linear parameters.
 
     .. note::
 
-       In the original paper, :math:`J` and `K` must be equal and 
-       the author denotes :math:`[V^1 V^2]` (concatenation of matrices) by :math:`V`.
+       In the original paper, :math:`J` and `K` must be equal and
+       the author denotes :math:`[V^1 V^2]` (concatenation of matrices)
+       by :math:`V`.
 
     Given two input vectors (in a mini-batch manner)
     :math:`e^1\in \mathbb{R}^{I\cdot L}` and :math:`e^2\in \mathbb{R}^{J\cdot L}`
@@ -38,8 +40,9 @@ class TensorNetwork(function.Function):
 
     in forward propagation.
 
-    If ``nobias`` option is set ``True``, ``TensorNetwork`` does not have linear parameters, that is, 
-    the last three term is omitted and only :math:`W` works as the parameter.
+    If ``nobias`` option is set ``True``, ``TensorNetwork`` does
+    not have linear parameters, that is, the last three term is omitted
+    and only :math:`W` works as the parameter.
 
     .. note::
 
@@ -52,13 +55,17 @@ class TensorNetwork(function.Function):
         right_size (int): Dimension of input vectors :math:`e2` (:math:`K`)
         out_size (int): Dimension of output vectors :math:`y` (:math:`L`)
         nobias (bool): If ``True``, linear parameters are omitted.
-        initialW (3-D Array): Initial value of :math:`W`. Shape of this argument must be
-            ``(left_size, right_size, output_size)``. If ``None``, :math:`W` is initialized
-            by Gaussian distribution properly scaled according to the dimension of inputs and outputs.
-        initial_bias (tuple): Intial values of :math:`V^1`, :math:`V^2` and :math:`b`.
-            The length this argument must be 3. Each element of this tuple must have shapes of
-            ``(left_size, output_size)``, ``(right_size, output_size)``, and ``(output_size,)``, respectively.
-            If ``None``, :math:`V^1` and :math:`V^2` is initialized by scaled Gaussians
+        initialW (3-D Array): Initial value of :math:`W`.
+            Shape of this argument must be
+            ``(left_size, right_size, output_size)``. If ``None``,
+            :math:`W` is initialized by Gaussian distribution properly
+            scaled according to the dimension of inputs and outputs.
+        initial_bias (tuple): Intial values of :math:`V^1`, :math:`V^2`
+            and :math:`b`. The length this argument must be 3.
+            Each element of this tuple must have shapes of
+            ``(left_size, output_size)``, ``(right_size, output_size)``,
+            and ``(output_size,)``, respectively. If ``None``, :math:`V^1`
+            and :math:`V^2` is initialized by scaled Gaussians
             and :math:`b` is set to :math:`0`.
 
     See:
