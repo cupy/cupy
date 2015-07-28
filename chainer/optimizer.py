@@ -175,10 +175,10 @@ class Optimizer(object):
             if isinstance(p, cuda.GPUArray):
                 with cuda.using_device(p):
                     cuda.elementwise('float* g, const float* p, float decay',
-                                     'g[i] -= decay * p[i]',
+                                     'g[i] += decay * p[i]',
                                      'weight_decay')(g, p, decay)
             else:
-                g -= decay * p
+                g += decay * p
 
     def accumulate_grads(self, grads):
         """Accumulates gradients from other source.

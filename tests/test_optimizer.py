@@ -3,7 +3,9 @@ import unittest
 import numpy as np
 
 from chainer import cuda
+from chainer import gradient_check
 from chainer import optimizer
+from chainer import optimizers
 from chainer import testing
 from chainer.testing import attr
 
@@ -39,7 +41,26 @@ class TestOptimizerUtility(unittest.TestCase):
 class TestOptimizer(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.w = np.arange(6, dtype=np.float32).reshape(2, 3)
+        self.g = np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3)
+
+    def check_weight_decay(self, w, g):
+        decay = 0.2
+        expect = w - g - decay * w
+
+        opt = optimizers.SGD(lr=1)
+        opt.setup((w, g))
+        opt.weight_decay(decay)
+        opt.update()
+
+        gradient_check.assert_allclose(expect, w)
+
+    def test_weight_decay_cpu(self):
+        self.check_weight_decay(self.w, self.g)
+
+    @attr.gpu
+    def test_weight_decay_gpu(self):
+        self.check_weight_decay(cuda.to_gpu(self.w), cuda.to_gpu(self.g))
 
 
 testing.run_module(__name__, __file__)
