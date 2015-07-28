@@ -39,9 +39,9 @@ NonparameterizedConvolution2D = \
     nonparameterized_convolution_2d.NonparameterizedConvolution2D
 NonparameterizedLinear = \
     nonparameterized_linear.NonparameterizedLinear
+ClippedReLU = clipped_relu.ClippedReLU
 Concat = concat.Concat
 Copy = copy.Copy
-ClippedReLU = clipped_relu.ClippedReLU
 Dropout = dropout.Dropout
 Identity = identity.Identity
 Reshape = reshape.Reshape
@@ -82,9 +82,9 @@ PReLU = prelu.PReLU
 convolution_2d = nonparameterized_convolution_2d.convolution_2d
 linear = nonparameterized_linear.linear
 
+clipped_relu = clipped_relu.clipped_relu
 concat = concat.concat
 copy = copy.copy
-clipped_relu = clipped_relu.clipped_relu
 dropout = dropout.dropout
 identity = identity.identity
 reshape = reshape.reshape
