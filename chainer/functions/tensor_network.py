@@ -48,10 +48,12 @@ class TensorNetwork(function.Function):
                 assert initial_bias[2].shape == (out_size,)
                 self.V1, self.V2, self.b = initial_bias
             else:
-                self.V1 = numpy.zeros(
-                    (self.in_sizes[0], out_size), dtype=numpy.float32)
-                self.V2 = numpy.zeros(
-                    (self.in_sizes[1], out_size), dtype=numpy.float32)
+                self.V1 = numpy.random.normal(
+                    0, math.sqrt(1. / self.in_sizes[0]),
+                    (self.in_sizes[0], out_size)).astype(numpy.float32)
+                self.V2 = numpy.random.normal(
+                    0, math.sqrt(1. / self.in_sizes[1]),
+                    (self.in_sizes[1], out_size)).astype(numpy.float32)
                 self.b = numpy.zeros((out_size, ), dtype=numpy.float32)
 
         self.gW = array.empty_like(self.W)
