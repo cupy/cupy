@@ -141,7 +141,7 @@ class TensorNetwork(function.Function):
 
         # jkl->[jk]l
         W_mat = self.W.reshape(
-            self.W.shape[0]*self.W.shape[1], self.W.shape[2])
+            self.W.shape[0] * self.W.shape[1], self.W.shape[2])
 
         y = cuda.empty((i_len, l_len), dtype=numpy.float32)
         with cuda.using_cumisc():
