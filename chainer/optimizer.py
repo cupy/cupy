@@ -9,11 +9,9 @@ from chainer import cuda
 
 
 def _sqnorm(x):
-    if isinstance(x, cuda.ndarray):
-        with cuda.using_device(x):
-            return float(cuda.gpuarray.dot(x, x).get())
-    x = x.ravel()
-    return float(x.dot(x))
+    with cuda.using_device(x):
+        x = x.ravel()
+        return float(x.dot(x))
 
 
 class Optimizer(object):
