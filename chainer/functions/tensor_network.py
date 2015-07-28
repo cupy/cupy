@@ -195,7 +195,7 @@ class TensorNetwork(function.Function):
         # jkl->[jkl]
         W_vec = array.as_vec(self.W)
 
-        dgW = cuda.zeros((j_len * k_len * l_len,), dtype=numpy.float32)
+        dgW = cuda.empty((j_len * k_len * l_len,), dtype=numpy.float32)
         # '[ij],[ik],[il]->[jkl]'
         cuda.elementwise(
             '''
@@ -206,12 +206,14 @@ class TensorNetwork(function.Function):
             int J = i / e2c / gyc;
             int K = (i - J * e2c * gyc) / gyc;
             int L = i % gyc;
+            float yval = 0;
             for (int I = 0; I < r; ++I) {
                 int e1idx = I * e1c + J;
                 int e2idx = I * e2c + K;
                 int gyidx = I * gyc + L;
-                y[i] += e1[e1idx] * e2[e2idx] * gy[gyidx];
+                yval += e1[e1idx] * e2[e2idx] * gy[gyidx];
             }
+            y[i] = yval;
             ''',
             'sum_of_three_ary_tensor_product')(
                 dgW, e1, e2, gy_vec, i_len, j_len, k_len, l_len)
@@ -228,7 +230,7 @@ class TensorNetwork(function.Function):
                 cuda.culinalg.add_dot(e2, gy, self.gV2, transa='T')
                 self.gb += cuda.cumisc.sum(gy, 0)
 
-        ge1 = cuda.zeros((i_len * j_len,), dtype=numpy.float32)
+        ge1 = cuda.empty((i_len * j_len,), dtype=numpy.float32)
         # '[ik],[jkl],[il]->[ij]'
         cuda.elementwise(
             '''
@@ -238,21 +240,22 @@ class TensorNetwork(function.Function):
             '''
             int I = i / gec;
             int J = i % gec;
-            y[i] = 0;
+            float yval = 0;
             for (int K = 0; K < ec; ++K) {
                 for (int L = 0; L < gyc; ++L) {
                     int eidx = I * ec + K;
                     int Widx = J * ec * gyc + K * gyc + L;
                     int gyidx = I * gyc + L;
-                    y[i] += e[eidx] * W[Widx] * gy[gyidx];
+                    yval += e[eidx] * W[Widx] * gy[gyidx];
                 }
             }
+            y[i] = yval;
             ''',
             'ge_kernel')(ge1, e2, W_vec, gy_vec, k_len, l_len, j_len)
         # [ij]->ij
         ge1 = ge1.reshape(i_len, j_len)
 
-        ge2 = cuda.zeros((i_len * k_len,), dtype=numpy.float32)
+        ge2 = cuda.empty((i_len * k_len,), dtype=numpy.float32)
         # '[ij],[jkl],[il]->[ik]'
         cuda.elementwise(
             '''
@@ -262,15 +265,16 @@ class TensorNetwork(function.Function):
             '''
             int I = i / gec;
             int K = i % gec;
-            y[i] = 0;
+            float yval = 0;
             for (int J = 0; J < ec; ++J) {
                 for (int L = 0; L < gyc; ++L) {
                     int eidx = I * ec + J;
                     int Widx = J * gec * gyc + K * gyc + L;
                     int gyidx = I * gyc + L;
-                    y[i] += e[eidx] * W[Widx] * gy[gyidx];
+                    yval += e[eidx] * W[Widx] * gy[gyidx];
                 }
             }
+            y[i] = yval;
             ''',
             'ge_kernel2')(ge2, e1, W_vec, gy_vec, j_len, l_len, k_len)
         # [ik]->ik
