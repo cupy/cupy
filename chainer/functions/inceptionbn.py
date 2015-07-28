@@ -99,6 +99,9 @@ class InceptionBN(function.Function):
         y = concat.concat(outs, axis=1)
         return y
 
+    def check_type_forward(self, in_types):
+        pass
+
     def to_gpu(self, device=None):
         super(InceptionBN, self).to_gpu(device)
         self.f.to_gpu(device)
