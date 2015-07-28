@@ -8,3 +8,4 @@ Chainer Tutorial
    recurrentnet
    gpu
    function
+   type_check
