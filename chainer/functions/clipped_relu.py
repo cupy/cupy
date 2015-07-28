@@ -8,7 +8,7 @@ class ClippedReLU(function.Function):
 
     """Clipped Rectifier Unit function.
 
-    Clipped ReLU is written as :math:`ClippedReLU(x, z) = \min(\max(0, x) ,z)`,
+    Clipped ReLU is written as :math:`ClippedReLU(x, z) = \min(\max(0, x), z)`,
     where :math:`z(>0)` is a parameter to cap return value of ReLU.
 
     """
@@ -58,12 +58,12 @@ class ClippedReLU(function.Function):
 def clipped_relu(x, z=20.0):
     """Clipped Rectifier Unit function.
 
-    This function is expressed as :math:`CReLU(x, z) = \min(\max(0, x), z),
-    where :math:`z(>0)` is a clipping value.
+    This function is expressed as :math:`ClippedReLU(x, z)
+    = \min(\max(0, x), z)`, where :math:`z(>0)` is a clipping value.
 
     Args:
-        x (~chainer.Variable): Input variable, which is n(>0)-dimensional array
-        z (float): clipping value. (default = 20.0)
+        x (~chainer.Variable): Input variable.
+        z (float): Clipping value. (default = 20.0)
 
     Returns:
         ~chainer.Variable: Output variable.
