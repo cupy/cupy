@@ -28,5 +28,8 @@ class RMSprop(optimizer.Optimizer):
         cuda.elementwise(
             ['param', 'grad', 'ms', 'lr', 'alpha', 'eps'],
             '''ms[i] = alpha * ms[i] + (1 - alpha) * grad[i] * grad[i];
-               param[i] -= lr * grad[i] / (sqrtf(ms[i]) + eps);''',
-            'rmsprop')(param, grad, ms, self.lr, self.alpha, self.eps)
+               param[i] -= lr * grad[i] / (sqrt(ms[i]) + eps);''',
+            'rmsprop')(param, grad, ms,
+                       param.dtype.type(self.lr),
+                       param.dtype.type(self.alpha),
+                       param.dtype.type(self.eps))

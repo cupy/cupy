@@ -38,12 +38,15 @@ class Adam(optimizer.Optimizer):
         m, v = state
         cuda.elementwise(
             ['param', 'grad', 'm', 'v', 'lr',
-             'one_minus_beta1_t', 'one_minus_beta2', 'float eps'],
+             'one_minus_beta1_t', 'one_minus_beta2', 'eps'],
             '''m[i] += one_minus_beta1_t * (grad[i] - m[i]);
                v[i] += one_minus_beta2 * (grad[i] * grad[i] - v[i]);
-               param[i] -= lr * m[i] / (sqrtf(v[i]) + eps);''',
-            'adam')(param, grad, m, v, self.lr,
-                    1 - self.beta1_t, 1 - self.beta2, self.eps)
+               param[i] -= lr * m[i] / (sqrt(v[i]) + eps);''',
+            'adam')(param, grad, m, v,
+                    param.dtype.type(self.lr),
+                    param.dtype.type(1 - self.beta1_t),
+                    param.dtype.type(1 - self.beta2),
+                    param.dtype.type(self.eps))
 
     @property
     def lr(self):

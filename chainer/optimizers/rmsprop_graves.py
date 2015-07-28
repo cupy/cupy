@@ -44,11 +44,14 @@ class RMSpropGraves(optimizer.Optimizer):
         n, g, delta = state
         cuda.elementwise(
             ['param', 'grad', 'avg_n', 'avg_g',
-             'delta', 'lr', 'alpha', 'momentum', 'float eps'],
+             'delta', 'lr', 'alpha', 'momentum', 'eps'],
             '''avg_n[i] = alpha * avg_n[i] + (1 - alpha) * grad[i] * grad[i];
                avg_g[i] = alpha * avg_g[i] + (1 - alpha) * grad[i];
                delta[i] = delta[i] * momentum -
-                   lr * grad[i] * rsqrtf(avg_n[i] - avg_g[i] * avg_g[i] + eps);
+                   lr * grad[i] * rsqrt(avg_n[i] - avg_g[i] * avg_g[i] + eps);
                param[i] += delta[i];''',
-            'rmsprop_graves')(param, grad, n, g, delta, self.lr, self.alpha,
-                              self.momentum, self.eps)
+            'rmsprop_graves')(param, grad, n, g, delta,
+                              param.dtype.type(self.lr),
+                              param.dtype.type(self.alpha),
+                              param.dtype.type(self.momentum),
+                              param.dtype.type(self.eps))
