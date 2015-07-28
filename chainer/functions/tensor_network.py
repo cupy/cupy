@@ -37,7 +37,7 @@ class TensorNetwork(function.Function):
     .. math::
 
       y_{il} = \sum_{jk} e^1_{ij} e^2_{ik} W_{jkl} + \
-        \sum_{j} e^1_{ij} V^1_{jl} + \sum_{k} e^2_{ik} V_{kl} + b_{l}
+        \sum_{j} e^1_{ij} V^1_{jl} + \sum_{k} e^2_{ik} V^2_{kl} + b_{l}
 
     in forward propagation.
 
