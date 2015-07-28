@@ -158,18 +158,14 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
             # c is C-contiguous while cuBLAS requires F-contiguous arrays, so
             # we compute C^T = B^T * A here.
             c.fill(0)
-            a = cupy.ascontiguousarray(a)
-            b = cupy.ascontiguousarray(b)
-            inca = a.strides[1] // a.itemsize
-            incb = b.strides[1] // b.itemsize
+            a, inca = _to_cublas_vector(a, 1)
+            b, incb = _to_cublas_vector(b, 1)
             ger(handle, m, n, 1, b._fptr, incb, a._fptr, inca, c._fptr, m)
     elif n == 1:
         if m == 1:
             # Inner product
-            a = cupy.ascontiguousarray(a)
-            b = cupy.ascontiguousarray(b)
-            inca = a.strides[0] // a.itemsize
-            incb = b.strides[0] // b.itemsize
+            a, inca = _to_cublas_vector(a, 0)
+            b, incb = _to_cublas_vector(b, 0)
             mode = cublas.getPointerMode(handle)
             cublas.setPointerMode(handle,
                                   cublas.CUBLAS_POINTER_MODE_DEVICE)
@@ -179,8 +175,7 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
                 cublas.setPointerMode(handle, mode)
         else:
             # Matrix-vector product B^T * A
-            a = cupy.ascontiguousarray(a)
-            inca = a.strides[1] // a.itemsize
+            a, inca = _to_cublas_vector(a, 1)
             b, transb, ldb = _mat_to_cublas_contiguous(b.T)
             if transb:
                 # gemv requires (m, k) as the original matrix dimensions
@@ -191,13 +186,12 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
     elif m == 1:
         # Matrix-vector product A^T * B
         a, transa, lda = _mat_to_cublas_contiguous(a.T)
-        b = cupy.ascontiguousarray(b)
-        incb = b.strides[1] // b.itemsize
+        b, incb = _to_cublas_vector(b, 1)
         if not transa:
             # gemv requires (n, k) as the original matrix dimensions rather
             # than the transposed dimensions.
             n, k = k, n
-        gemv(handle, transa, n, k, 1, a._fptr, lda, b._fptr, ldb, 0, c._fptr,
+        gemv(handle, transa, n, k, 1, a._fptr, lda, b._fptr, incb, 0, c._fptr,
              1)
     else:
         # Matrix-Matrix product A^T * B
@@ -243,3 +237,10 @@ def _mat_to_cublas_contiguous(a):
     if not f.c_contiguous:
         a = a.copy()
     return a, cublas.CUBLAS_OP_T, a.strides[0] // a.itemsize
+
+
+def _to_cublas_vector(a, rundim):
+    if a.strides[rundim] < 0:
+        return a.copy(), 1
+    else:
+        return a, a.strides[rundim] // a.itemsize
