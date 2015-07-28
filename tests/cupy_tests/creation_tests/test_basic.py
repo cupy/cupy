@@ -1,5 +1,8 @@
 import unittest
 
+import numpy
+
+import cupy
 from cupy import testing
 
 
@@ -22,6 +25,11 @@ class TestBasic(unittest.TestCase):
         b = xpy.empty_like(a)
         b.fill(0)
         return b
+
+    def test_empty_zero_sized_array_strides(self):
+        a = numpy.empty((1, 0, 2), dtype='d')
+        b = cupy.empty((1, 0, 2), dtype='d')
+        self.assertEqual(b.strides, a.strides)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
