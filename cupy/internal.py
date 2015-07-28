@@ -61,7 +61,7 @@ def get_contiguous_strides(shape, itemsize):
         return ()
     else:
         s = numpy.array(shape[1:])
-        strides = s[::-1].cumprod()[::-1] * itemsize
+        strides = numpy.maximum(1, s[::-1]).cumprod()[::-1] * itemsize
         return tuple(strides) + (itemsize,)
 
 
