@@ -143,59 +143,70 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
 
     # It copies the operands if needed
     a = a.reshape(k, n)
-    b = b.reshape(k, m).T
-
-    a, transa = _mat_to_cublas_contiguous(a)
-    b, transb = _mat_to_cublas_contiguous(b)
-
-    lda = _get_leading_dim(a, transa)
-    ldb = _get_leading_dim(b, transb)
-
+    b = b.reshape(k, m)
     c = out.view()
-    c.shape = (a.shape[1], b.shape[0])
-    ldc = c.shape[1]
+    c.shape = (n, m)
 
+    # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     handle = cuda.Device().cublas_handle
-    if a.shape[1] == 1:
-        lda = a.strides[0] // a.itemsize
-        if b.shape[0] == 1:
-            # inner product of vectors
-            ldb = b.strides[1] // b.itemsize
+    if k == 1:
+        if n == 1 or m == 1:
+            # Scalar-vector product
+            cupy.multiply(a.T, b, c)
+        else:
+            # Outer product A^T * B
+            # c is C-contiguous while cuBLAS requires F-contiguous arrays, so
+            # we compute C^T = B^T * A here.
+            c.fill(0)
+            a = cupy.ascontiguousarray(a)
+            b = cupy.ascontiguousarray(b)
+            inca = a.strides[1] // a.itemsize
+            incb = b.strides[1] // b.itemsize
+            ger(handle, m, n, 1, b._fptr, incb, a._fptr, inca, c._fptr, m)
+    elif n == 1:
+        if m == 1:
+            # Inner product
+            a = cupy.ascontiguousarray(a)
+            b = cupy.ascontiguousarray(b)
+            inca = a.strides[0] // a.itemsize
+            incb = b.strides[0] // b.itemsize
             mode = cublas.getPointerMode(handle)
             cublas.setPointerMode(handle,
                                   cublas.CUBLAS_POINTER_MODE_DEVICE)
             try:
-                dot(handle, k, a._fptr, lda, b._fptr, ldb, c._fptr)
+                dot(handle, k, a._fptr, inca, b._fptr, incb, c._fptr)
             finally:
                 cublas.setPointerMode(handle, mode)
         else:
-            # B^T * A
-            # sgemv requires (m, k) as the original matrix dimensions rather
-            # than the transposed dimensions.
+            # Matrix-vector product B^T * A
+            a = cupy.ascontiguousarray(a)
+            inca = a.strides[1] // a.itemsize
+            b, transb, ldb = _mat_to_cublas_contiguous(b.T)
             if transb:
+                # gemv requires (m, k) as the original matrix dimensions
+                # rather than the transposed dimensions.
                 m, k = k, m
-            gemv(handle, transb, m, k, 1, b._fptr, ldb, a._fptr, lda,
+            gemv(handle, transb, m, k, 1, b._fptr, ldb, a._fptr, inca,
                  0, c._fptr, 1)
-    elif b.shape[0] == 1:
-        # A * B
-        ldb = b.strides[1] // b.itemsize
-        # sgemv requires (n, k) as the original matrix dimensions rather
-        # than the transposed dimensions.
+    elif m == 1:
+        # Matrix-vector product A^T * B
+        a, transa, lda = _mat_to_cublas_contiguous(a.T)
+        b = cupy.ascontiguousarray(b)
+        incb = b.strides[1] // b.itemsize
         if not transa:
+            # gemv requires (n, k) as the original matrix dimensions rather
+            # than the transposed dimensions.
             n, k = k, n
-        gemv(handle, 1 - transa, n, k, 1, a._fptr, lda, b._fptr, ldb,
-             0, c._fptr, 1)
-    elif a.shape[0] == 1:
-        # B^T * A (outer product)
-        assert b.shape[1] == 1
-        c.fill(0)
-        inca = a.strides[1] // a.itemsize
-        incb = b.strides[0] // b.itemsize
-        ger(handle, m, n, 1, b._fptr, incb, a._fptr, inca, c._fptr, ldc)
+        gemv(handle, transa, n, k, 1, a._fptr, lda, b._fptr, ldb, 0, c._fptr,
+             1)
     else:
-        # B^T * A^T
+        # Matrix-Matrix product A^T * B
+        # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
+        # compute C^T = B^T * A here.
+        a, transa, lda = _mat_to_cublas_contiguous(a)
+        b, transb, ldb = _mat_to_cublas_contiguous(b.T)
         gemm(handle, transb, transa, m, n, k, 1, b._fptr, ldb, a._fptr,
-             lda, 0, c._fptr, ldc)
+             lda, 0, c._fptr, m)
 
     if dtype != ret_dtype:
         elementwise.copy(out, ret)
@@ -227,18 +238,8 @@ def _move_axes_to_head(a, axes):
 def _mat_to_cublas_contiguous(a):
     assert a.ndim == 2
     f = a.flags
-    if f.c_contiguous:
-        trans = cublas.CUBLAS_OP_T
-    elif f.f_contiguous:
-        trans = cublas.CUBLAS_OP_N
-    else:
+    if f.f_contiguous:
+        return a, cublas.CUBLAS_OP_N, a.strides[1] // a.itemsize
+    if not f.c_contiguous:
         a = a.copy()
-        trans = cublas.CUBLAS_OP_T
-    return a, trans
-
-
-def _get_leading_dim(a, op):
-    if op == cublas.CUBLAS_OP_N:
-        return a.strides[1] // a.itemsize
-    else:
-        return a.strides[0] // a.itemsize
+    return a, cublas.CUBLAS_OP_T, a.strides[0] // a.itemsize
