@@ -1,15 +1,16 @@
 import collections
+import ctypes
 
 import numpy
 
 from chainer import cuda
-from chainer import cudnn
+from chainer.cuda import cudnn
 from chainer import function
 from chainer.utils import conv
 from chainer.utils import type_check
 
 if cudnn.available:
-    from chainer.cudnn import libcudnn
+    libcudnn = cudnn.cudnn
 
 
 def _pair(x):
@@ -50,32 +51,31 @@ class Pooling2D(function.Function):
             w, self.kw, self.sx, self.pw, self.cover_all)
         y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
 
-        handle = cudnn.get_default_handle()
+        handle = cudnn.get_handle()
         pool_desc = self.create_pool_desc()
-        x_desc = cudnn.get_tensor_desc(x[0], x[0].shape[2], x[0].shape[3])
-        y_desc = cudnn.get_tensor_desc(y, y_h, y_w)
+        x_desc = cudnn.create_tensor_descriptor(x[0])
+        y_desc = cudnn.create_tensor_descriptor(y)
 
-        libcudnn.cudnnPoolingForward(
-            handle, pool_desc.value, 1, x_desc.value, cudnn.get_ptr(x[0]),
-            0, y_desc.value, cudnn.get_ptr(y))
+        libcudnn.poolingForward(
+            handle, pool_desc.value, ctypes.c_float(1), x_desc.value,
+            x[0].data.ptr, ctypes.c_float(0), y_desc.value, y.data.ptr)
         self.y = y
 
         return y,
 
     def backward_gpu(self, x, gy):
         # Implementation using cudnn
-        handle = cudnn.get_default_handle()
+        handle = cudnn.get_handle()
         pool_desc = self.create_pool_desc()
 
-        x_desc = cudnn.get_tensor_desc(x[0],  x[0].shape[2],  x[0].shape[3])
-        y_desc = cudnn.get_tensor_desc(gy[0], gy[0].shape[2], gy[0].shape[3])
+        x_desc = cudnn.create_tensor_descriptor(x[0])
+        y_desc = cudnn.create_tensor_descriptor(gy[0])
 
         gx = cuda.empty_like(x[0])
-        libcudnn.cudnnPoolingBackward(
-            handle, pool_desc.value, 1, y_desc.value, cudnn.get_ptr(self.y),
-            y_desc.value, cudnn.get_ptr(
-                gy[0]), x_desc.value, cudnn.get_ptr(x[0]),
-            0, x_desc.value, cudnn.get_ptr(gx))
+        libcudnn.poolingBackward(
+            handle, pool_desc.value, ctypes.c_float(1), y_desc.value,
+            self.y.data.ptr, y_desc.value, gy[0].data.ptr, x_desc.value,
+            x[0].data.ptr, ctypes.c_float(0), x_desc.value, gx.data.ptr)
         return gx,
 
     def create_pool_desc(self):
@@ -100,7 +100,7 @@ class MaxPooling2D(Pooling2D):
         return y,
 
     def forward_gpu(self, x):
-        if cudnn.enabled and self.use_cudnn:
+        if cuda.cudnn_enabled and self.use_cudnn:
             return super(MaxPooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
@@ -165,7 +165,7 @@ class MaxPooling2D(Pooling2D):
         return gx,
 
     def backward_gpu(self, x, gy):
-        if cudnn.enabled and self.use_cudnn:
+        if cuda.cudnn_enabled and self.use_cudnn:
             return super(MaxPooling2D, self).backward_gpu(x, gy)
 
         n, c, h, w = x[0].shape
@@ -206,9 +206,9 @@ class MaxPooling2D(Pooling2D):
         return gx,
 
     def create_pool_desc(self):
-        return cudnn.get_pool2d_desc(
+        return cudnn.create_pooling_descriptor(
             (self.kh, self.kw), (self.sy, self.sx), (self.ph, self.pw),
-            'CUDNN_POOLING_MAX')
+            libcudnn.CUDNN_POOLING_MAX)
 
 
 def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True,
@@ -252,7 +252,7 @@ class AveragePooling2D(Pooling2D):
         return y,
 
     def forward_gpu(self, x):
-        if cudnn.enabled and self.use_cudnn:
+        if cuda.cudnn_enabled and self.use_cudnn:
             return super(AveragePooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
@@ -299,7 +299,7 @@ class AveragePooling2D(Pooling2D):
         return gx,
 
     def backward_gpu(self, x, gy):
-        if cudnn.enabled and self.use_cudnn:
+        if cuda.cudnn_enabled and self.use_cudnn:
             return super(AveragePooling2D, self).backward_gpu(x, gy)
 
         n, c, h, w = x[0].shape
@@ -337,9 +337,9 @@ class AveragePooling2D(Pooling2D):
         return gx,
 
     def create_pool_desc(self):
-        return cudnn.get_pool2d_desc(
+        return cudnn.create_pooling_descriptor(
             (self.kh, self.kw), (self.sy, self.sx), (self.ph, self.pw),
-            'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING')
+            libcudnn.CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING)
 
 
 def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):

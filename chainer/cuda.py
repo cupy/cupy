@@ -26,6 +26,8 @@ which indicates the device that the memory is allocated on. Functions of
 manipulation routine.
 
 """
+import os
+
 import numpy
 
 _requires = []
@@ -33,13 +35,18 @@ try:
     import cupy
     import cupy.cuda
     import cupy.cuda.cublas
+    import cupy.cudnn
     import cupy.random
 
     available = True
     cublas = cupy.cuda.cublas
+    cudnn = cupy.cudnn
     random = cupy.random
+
+    cudnn_enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
 except Exception as e:
     available = False
+    cudnn_enabled = False
     _resolution_error = e
 
 # ------------------------------------------------------------------------------

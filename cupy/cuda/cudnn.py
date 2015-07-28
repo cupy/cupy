@@ -300,7 +300,8 @@ def getConvolutionForwardAlgorithm(handle, srcDesc, filterDesc, convDesc,
 
 
 _cudnn.cudnnGetConvolutionForwardWorkspaceSize.argtypes = [
-    Handle, TensorDescriptor, FilterDescriptor, ConvolutionDescriptor, _I, _SP]
+    Handle, TensorDescriptor, FilterDescriptor, ConvolutionDescriptor,
+    TensorDescriptor, _I, _SP]
 
 
 def getConvolutionForwardWorkspaceSize(handle, srcDesc, filterDesc, convDesc,

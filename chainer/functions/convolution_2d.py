@@ -1,18 +1,18 @@
+import ctypes
 import math
 
 import numpy
 from six import moves
 
 from chainer import cuda
-from chainer import cudnn
+from chainer.cuda import cudnn
 from chainer import function
 from chainer.utils import conv
 from chainer.utils import type_check
 
 if cudnn.available:
-    from chainer.cudnn import libcudnn
-    _fwd_pref = libcudnn.cudnnConvolutionFwdPreference[
-        'CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT']
+    libcudnn = cudnn.cudnn
+    _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
 
 
 def _pair(x):
@@ -129,7 +129,7 @@ class Convolution2D(function.Function):
                 self.gb = numpy.empty_like(self.b)
 
         self.use_cudnn = use_cudnn
-        if cudnn.enabled and use_cudnn:
+        if cuda.cudnn_enabled and use_cudnn:
             # chance to choose implicit-precomp-gemm algorithm
             self.max_workspace_size = in_channels * self.kh * self.kw * 4
 
@@ -198,40 +198,42 @@ class Convolution2D(function.Function):
         out_c = self.W.shape[0]
         y = cuda.empty((n, out_c, out_h, out_w), dtype=numpy.float32)
 
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            x_desc = cudnn.get_tensor_desc(x[0], h, w)
-            y_desc = cudnn.get_tensor_desc(y, out_h, out_w)
+        if cuda.cudnn_enabled and self.use_cudnn:
+            handle = cudnn.get_handle()
+            x_desc = cudnn.create_tensor_descriptor(x[0])
+            y_desc = cudnn.create_tensor_descriptor(y)
 
-            self.filter_desc = cudnn.get_filter4d_desc(self.W)
-            self.conv_desc = cudnn.get_conv2d_desc(
+            self.filter_desc = cudnn.create_filter_descriptor(self.W)
+            self.conv_desc = cudnn.create_convolution_descriptor(
                 (self.ph, self.pw), (self.sy, self.sx))
             if self.b is not None:
-                self.bias_desc = cudnn.get_conv_bias_desc(self.b)
+                self.bias_desc = cudnn.create_tensor_descriptor(
+                    self.b[None, :, None, None])
 
-            algo = libcudnn.cudnnGetConvolutionForwardAlgorithm(
+            algo = libcudnn.getConvolutionForwardAlgorithm(
                 handle, x_desc.value, self.filter_desc.value,
                 self.conv_desc.value, y_desc.value, _fwd_pref,
                 self.max_workspace_size)
-            workspace_size = libcudnn.cudnnGetConvolutionForwardWorkspaceSize(
+            workspace_size = libcudnn.getConvolutionForwardWorkspaceSize(
                 handle, x_desc.value, self.filter_desc.value,
-                self.conv_desc.value, y_desc.value, algo).value
+                self.conv_desc.value, y_desc.value, algo)
             workspace = cuda.empty(
                 (max(workspace_size // 4, 1),), dtype=numpy.float32)
 
-            libcudnn.cudnnConvolutionForward(
-                handle, 1, x_desc.value, cudnn.get_ptr(x[0]),
-                self.filter_desc.value, cudnn.get_ptr(self.W),
-                self.conv_desc.value, algo, cudnn.get_ptr(
-                    workspace), workspace_size,
-                0, y_desc.value, cudnn.get_ptr(y))
+            one = ctypes.c_float(1)
+            zero = ctypes.c_float(0)
+            libcudnn.convolutionForward(
+                handle, one, x_desc.value, x[0].data.ptr,
+                self.filter_desc.value, self.W.data.ptr, self.conv_desc.value,
+                algo, workspace.data.ptr, workspace_size, zero, y_desc.value,
+                y.data.ptr)
 
             # TODO(beam2d): Support unshared bias
             if self.b is not None:
-                libcudnn.cudnnAddTensor(
-                    handle, libcudnn.cudnnAddMode['CUDNN_ADD_SAME_C'],
-                    1, self.bias_desc.value, cudnn.get_ptr(self.b),
-                    1, y_desc.value, cudnn.get_ptr(y))
+                libcudnn.addTensor(
+                    handle, libcudnn.CUDNN_ADD_SAME_C, one,
+                    self.bias_desc.value, self.b.data.ptr, one, y_desc.value,
+                    y.data.ptr)
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(
@@ -270,25 +272,27 @@ class Convolution2D(function.Function):
         out_c, out_h, out_w = gy[0].shape[1:]
         n, c, h, w = x[0].shape
 
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            x_desc = cudnn.get_tensor_desc(x[0], h, w)
-            gy_desc = cudnn.get_tensor_desc(gy[0], out_h, out_w)
+        if cuda.cudnn_enabled and self.use_cudnn:
+            handle = cudnn.get_handle()
+            x_desc = cudnn.create_tensor_descriptor(x[0])
+            gy_desc = cudnn.create_tensor_descriptor(gy[0])
+            one = ctypes.c_float(1)
+            zero = ctypes.c_float(0)
             if self.b is not None:
-                libcudnn.cudnnConvolutionBackwardBias(
-                    handle, 1, gy_desc.value, cudnn.get_ptr(gy[0]),
-                    1, self.bias_desc.value, cudnn.get_ptr(self.gb))
+                libcudnn.convolutionBackwardBias(
+                    handle, one, gy_desc.value, gy[0].data.ptr,
+                    one, self.bias_desc.value, self.gb.data.ptr)
 
-            libcudnn.cudnnConvolutionBackwardFilter(
-                handle, 1, x_desc.value, cudnn.get_ptr(x[0]),
-                gy_desc.value, cudnn.get_ptr(gy[0]), self.conv_desc.value,
-                1, self.filter_desc.value, cudnn.get_ptr(self.gW))
+            libcudnn.convolutionBackwardFilter(
+                handle, one, x_desc.value, x[0].data.ptr,
+                gy_desc.value, gy[0].data.ptr, self.conv_desc.value,
+                one, self.filter_desc.value, self.gW.data.ptr)
 
             gx = cuda.empty_like(x[0])
-            libcudnn.cudnnConvolutionBackwardData(
-                handle, 1, self.filter_desc.value, cudnn.get_ptr(self.W),
-                gy_desc.value, cudnn.get_ptr(gy[0]), self.conv_desc.value,
-                0, x_desc.value, cudnn.get_ptr(gx))
+            libcudnn.convolutionBackwardData(
+                handle, one, self.filter_desc.value, self.W.data.ptr,
+                gy_desc.value, gy[0].data.ptr, self.conv_desc.value,
+                zero, x_desc.value, gx.data.ptr)
         else:
             handle = cuda.get_cublas_handle()
             if self.gb is not None:
