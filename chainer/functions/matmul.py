@@ -1,5 +1,3 @@
-import ctypes
-
 import numpy
 import six
 
@@ -16,10 +14,15 @@ def _mat_ptrs(a):
     Returns:
         GPU array of pointers to matrices
     """
-    return cuda.to_gpu(numpy.arange(
-        a.data.ptr.value,
-        a.data.ptr.value + a.shape[0] * a.strides[0], a.strides[0],
-        dtype=ctypes.c_void_p))
+    if a.shape[0] == 1:
+        return cuda.cupy.full((1,), a[0].data.ptr.value, dtype=numpy.intp)
+    else:
+        stride = a[1].data.ptr.value - a[0].data.ptr.value
+        return cuda.cupy.arange(
+            a[0].data.ptr.value,
+            a[0].data.ptr.value + stride * a.shape[0],
+            stride,
+            dtype=numpy.intp)
 
 
 def _as_mat(x):
@@ -30,43 +33,65 @@ def _as_batch_mat(x):
     return x.reshape((x.shape[0], x.shape[1], 1)) if len(x.shape) == 2 else x
 
 
-def _as_trans_op(trans):
-    return 1 if trans else 0
-
-
 def _matmul(a, b, transa=False, transb=False, transout=False):
-    if transout:
-        # (A B)^T = B^T A^T
-        a, b, transa, transb = b, a, not transb, not transa
     a = _as_mat(a)
     b = _as_mat(b)
     if transa:
         a = a.T
     if transb:
         b = b.T
+    if transout:
+        # (A B)^T = B^T A^T
+        a, b = b.T, a.T
     return a.dot(b)
 
 
+def _get_ld(a):
+    shape = a.shape[-2:]
+    strides = a.strides[-2:]
+    trans = numpy.argmin(strides)
+    return trans, max(
+        strides[0] / a.itemsize, strides[1] / a.itemsize, shape[trans])
+
+
 def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
-    if transout:
-        # (A B)^T = B^T A^T
-        a, b, transa, transb = b, a, not transb, not transa
     a = _as_batch_mat(a)
     b = _as_batch_mat(b)
-    alpha = 1
-    beta = 0
-    l, m, k = a.shape
+    trans_axis = (0, 2, 1)
+    if transout:
+        out = out.transpose(trans_axis)
+    needtrans, _ = _get_ld(out)
+    if needtrans == 1:
+        # (A B)^T = B^T A^T
+        a, b = b, a
+        transa, transb = not transb, not transa
+        out = out.transpose(trans_axis)
     if transa:
-        m, k = k, m
-    n = b.shape[1] if transb else b.shape[2]
-    return cuda.cublas.sgemmBatched(
+        a = a.transpose(trans_axis)
+    if transb:
+        b = b.transpose(trans_axis)
+
+    transa, lda = _get_ld(a)
+    transb, ldb = _get_ld(b)
+    transout, ldout = _get_ld(out)
+    la, n, ka = a.shape
+    lb, kb, m = b.shape
+
+    assert ka == kb
+    assert transout == 0 or ldout == 1
+    assert out.shape == (la, n, m)
+
+    ap = _mat_ptrs(a)
+    bp = _mat_ptrs(b)
+    outp = _mat_ptrs(out)
+    cuda.cublas.sgemmBatched(
         cuda.Device().cublas_handle,
-        _as_trans_op(transb),
-        _as_trans_op(transa),
-        n, m, k, alpha,
-        _mat_ptrs(b).data.ptr, k if transb else n,
-        _mat_ptrs(a).data.ptr, m if transa else k,
-        beta, _mat_ptrs(out).data.ptr, n, l)
+        transa,
+        transb,
+        n, m, ka, 1,
+        ap.data.ptr, lda,
+        bp.data.ptr, ldb,
+        0, outp.data.ptr, ldout, la)
 
 
 def _check_ndim(in_type, lower=1, upper=2):
@@ -160,8 +185,8 @@ class BatchMatMul(function.Function):
         batch_size = a.shape[0]
         a_mat_shape = _as_mat(a[0]).shape
         b_mat_shape = _as_mat(b[0]).shape
-        m = a_mat_shape[1] if self.transa else a_mat_shape[0]
-        n = b_mat_shape[0] if self.transb else b_mat_shape[1]
+        m = a_mat_shape[1 if self.transa else 0]
+        n = b_mat_shape[0 if self.transb else 1]
         return (batch_size, m, n)
 
     def check_type_forward(self, in_types):
@@ -212,9 +237,9 @@ class BatchMatMul(function.Function):
     def forward_gpu(self, x):
         a, b = x
         shape = self._output_shape(a, b)
-        ret = cuda.empty(shape)
-        _batch_matmul_gpu(a, b,
-                          transa=self.transa, transb=self.transb, out=ret)
+        ret = cuda.zeros(shape)
+        _batch_matmul_gpu(
+            a, b, transa=self.transa, transb=self.transb, out=ret)
         return ret,
 
     def backward_gpu(self, x, gy):
@@ -222,10 +247,10 @@ class BatchMatMul(function.Function):
         batch_size = a.shape[0]
         ga = cuda.empty((batch_size,) + _as_mat(a[0]).shape)
         gb = cuda.empty((batch_size,) + _as_mat(b[0]).shape)
-        _batch_matmul_gpu(gy[0], b,
-                          transb=not self.transb, transout=self.transa, out=ga)
-        _batch_matmul_gpu(a, gy[0],
-                          transa=not self.transa, transout=self.transb, out=gb)
+        _batch_matmul_gpu(
+            gy[0], b, transb=not self.transb, transout=self.transa, out=ga)
+        _batch_matmul_gpu(
+            a, gy[0], transa=not self.transa, transout=self.transb, out=gb)
         ga = ga.reshape(a.shape)
         gb = gb.reshape(b.shape)
         return ga, gb

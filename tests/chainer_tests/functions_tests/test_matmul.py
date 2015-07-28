@@ -216,4 +216,19 @@ class TestBatchMatMulVectorVectorT(_TestMatMul):
             for i in six.moves.range(batch_size)])
 
 
+class TestBatchMatMulMatrixMatrixBatchSize1(_TestMatMul):
+
+    def setUp(self):
+        self.x1 = numpy.random.uniform(
+            .5, 1, (1, m, k)).astype(numpy.float32)
+        self.x2 = numpy.random.uniform(
+            .5, 1, (1, k, n)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (1, m, n)).astype(numpy.float32)
+        self.op = lambda x, y: F.batch_matmul(x, y)
+        self.forward_answer = numpy.array([
+            numpy.dot(self.x1[i], self.x2[i])
+            for i in six.moves.range(1)])
+
+
 testing.run_module(__name__, __file__)

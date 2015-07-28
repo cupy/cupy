@@ -346,7 +346,7 @@ def zeros(shape, dtype=numpy.float32, stream=None):
     """
     _check_cuda_available()
     assert stream is None
-    return zeros(shape, dtype=dtype)
+    return cupy.zeros(shape, dtype=dtype)
 
 
 def ones(shape, dtype=numpy.float32, stream=None):
