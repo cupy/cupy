@@ -10,6 +10,62 @@ from chainer.utils import type_check
 
 class TensorNetwork(function.Function):
 
+    """Bilinear tensor layer in Neural Tensor Network
+
+    This function accepts two input vectors and outputs one vector.
+    If one of the input vectors is fixed, the this function works
+    as an affine transform of the other input vector.
+
+    To be precise, this function as four parameters,
+    :math:`W\in \mathbb{R}^{J \cdot K \cdot L}`,
+    :math:`V^1\in \mathbb{R}^{J \cdot L}`,
+    :math:`V^2\in \mathbb{R}^{K \cdot L}`, and :math:`b\in \mathbb{R}^{L}`.
+    In this document, we call :math:`V^1`, :math:`V^2`, and :math:`b` linear parameters.
+
+    .. note::
+
+       In the original paper, :math:`J` and `K` must be equal and 
+       the author denotes :math:`[V^1 V^2]` (concatenation of matrices) by :math:`V`.
+
+    Given two input vectors (in a mini-batch manner)
+    :math:`e^1\in \mathbb{R}^{I\cdot L}` and :math:`e^2\in \mathbb{R}^{J\cdot L}`
+    where :math:`I` is mini-batch size, this function computes
+
+    .. math::
+
+      y_{il} = \sum_{jk} e^1_{ij} e^2_{ik} W_{jkl} + \
+        \sum_{j} e^1_{ij} V^1_{jl} + \sum_{k} e^2_{ik} V_{kl} + b_{l}
+
+    in forward propagation.
+
+    If ``nobias`` option is set ``True``, ``TensorNetwork`` does not have linear parameters, that is, 
+    the last three term is omitted and only :math:`W` works as the parameter.
+
+    .. note::
+
+       This function accepts an input variable of a non-matrix array.
+       In this case, the leading dimension is treated as the batch dimension,
+       and the other dimensions are reduced to one dimension.
+
+    Args:
+        left_size (int): Dimension of input vectors :math:`e1` (:math:`J`)
+        right_size (int): Dimension of input vectors :math:`e2` (:math:`K`)
+        out_size (int): Dimension of output vectors :math:`y` (:math:`L`)
+        nobias (bool): If ``True``, linear parameters are omitted.
+        initialW (3-D Array): Initial value of :math:`W`. Shape of this argument must be
+            ``(left_size, right_size, output_size)``. If ``None``, :math:`W` is initialized
+            by Gaussian distribution properly scaled according to the dimension of inputs and outputs.
+        initial_bias (tuple): Intial values of :math:`V^1`, :math:`V^2` and :math:`b`.
+            The length this argument must be 3. Each element of this tuple must have shapes of
+            ``(left_size, output_size)``, ``(right_size, output_size)``, and ``(output_size,)``, respectively.
+            If ``None``, :math:`V^1` and :math:`V^2` is initialized by scaled Gaussians
+            and :math:`b` is set to :math:`0`.
+
+    See:
+        `Reasoning With Neural Tensor Networks for Knowledge Base Completion
+        <http://nlp.stanford.edu/pubs/SocherChenManningNg_NIPS2013.pdf>`_.
+    """
+
     def __init__(self, left_size, right_size, out_size, nobias=False,
                  initialW=None, initial_bias=None):
 

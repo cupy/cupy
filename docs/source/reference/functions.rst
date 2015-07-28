@@ -19,6 +19,7 @@ Learnable connections
 .. autoclass:: Linear
 .. autoclass:: NegativeSampling
 .. autoclass:: Parameter
+.. autoclass:: TensorNetwork
 
 Array commputation functions
 ----------------------------
