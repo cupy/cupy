@@ -30,7 +30,8 @@ class TensorNetwork(function.Function):
        by :math:`V`.
 
     Given two input vectors (in a mini-batch manner)
-    :math:`e^1\in \mathbb{R}^{I\cdot L}` and :math:`e^2\in \mathbb{R}^{J\cdot L}`
+    :math:`e^1\in \mathbb{R}^{I\cdot J}` and
+    :math:`e^2\in \mathbb{R}^{I\cdot K}`
     where :math:`I` is mini-batch size, this function computes
 
     .. math::
