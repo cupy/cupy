@@ -4,7 +4,7 @@ import cupy
 from cupy import cuda
 
 
-def empty(shape, dtype=numpy.float32, allocator=cuda.alloc):
+def empty(shape, dtype=numpy.float64, allocator=cuda.alloc):
     # TODO(beam2d): Support ordering option
     return cupy.ndarray(shape, dtype=dtype, allocator=allocator)
 
@@ -30,7 +30,7 @@ def identity(n, dtype=float, allocator=cuda.alloc):
     return eye(n, dtype=dtype, allocator=allocator)
 
 
-def ones(shape, dtype=numpy.float32, allocator=cuda.alloc):
+def ones(shape, dtype=numpy.float64, allocator=cuda.alloc):
     # TODO(beam2d): Support ordering option
     return full(shape, 1, dtype, allocator)
 
@@ -44,7 +44,7 @@ def ones_like(a, dtype=None, allocator=None):
     return ones(a.shape, dtype, allocator)
 
 
-def zeros(shape, dtype=numpy.float32, allocator=cuda.alloc):
+def zeros(shape, dtype=numpy.float64, allocator=cuda.alloc):
     # TODO(beam2d): Support ordering option
     a = empty(shape, dtype, allocator)
     a.data.memset(0, a.nbytes)

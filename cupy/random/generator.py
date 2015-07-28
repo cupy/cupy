@@ -14,7 +14,7 @@ from cupy.cuda import curand
 class RandomState(object):
 
     def __init__(self, seed=None, method=curand.CURAND_RNG_PSEUDO_DEFAULT,
-                 dtype=numpy.float32, allocator=cuda.alloc):
+                 dtype=numpy.float64, allocator=cuda.alloc):
         self.float_type = numpy.dtype(dtype)
         self.allocator = allocator
 
@@ -101,7 +101,7 @@ class RandomState(object):
 
 # CuPy specific functions
 
-_float_type = numpy.float32
+_float_type = numpy.float64
 _random_states = {}
 
 
