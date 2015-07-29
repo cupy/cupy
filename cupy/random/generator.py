@@ -99,6 +99,10 @@ class RandomState(object):
         return low + rand * (high - low)
 
 
+def seed(seed=None):
+    get_random_state().seed(seed)
+
+
 # CuPy specific functions
 
 _float_type = numpy.float64
