@@ -8,11 +8,6 @@ from chainer import testing
 
 class TestCuda(unittest.TestCase):
 
-    def test_requires(self):
-        requires = self._get_cuda_deps_requires()
-        self.assertSetEqual(set(['chainer'] + cuda._requires),
-                            set(requires))
-
     def test_init_unavailable(self):
         if not cuda.available:
             with self.assertRaises(RuntimeError):
