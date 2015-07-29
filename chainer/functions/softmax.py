@@ -1,14 +1,15 @@
+import ctypes
 import numpy
 
 from chainer import cuda
-from chainer import cudnn
+from chainer.cuda import cudnn
 from chainer import function
 from chainer.utils import type_check
 
 if cudnn.available:
-    from chainer.cudnn import libcudnn
-    _algorithm = libcudnn.cudnnSoftmaxAlgorithm['CUDNN_SOFTMAX_ACCURATE']
-    _mode = libcudnn.cudnnSoftmaxMode['CUDNN_SOFTMAX_MODE_INSTANCE']
+    libcudnn = cudnn.cudnn
+    _algorithm = libcudnn.CUDNN_SOFTMAX_ACCURATE
+    _mode = libcudnn.CUDNN_SOFTMAX_MODE_INSTANCE
 
 
 class Softmax(function.Function):
@@ -50,12 +51,13 @@ class Softmax(function.Function):
 
     def forward_gpu(self, x):
         y = cuda.empty_like(x[0])
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            desc = cudnn.get_tensor_desc(x[0], 1, 1)
-            libcudnn.cudnnSoftmaxForward(
-                handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(x[0]),
-                0, desc.value, cudnn.get_ptr(y))
+        if cuda.cudnn_enabled and self.use_cudnn:
+            handle = cudnn.get_handle()
+            x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
+            desc = cudnn.create_tensor_descriptor(x_mat)
+            libcudnn.softmaxForward(
+                handle, _algorithm, _mode, ctypes.c_float(1), desc.value,
+                x[0].data.ptr, ctypes.c_float(0), desc.value, y.data.ptr)
             self.y = y
         else:
             maxes = cuda.empty((x[0].shape[0],), dtype=numpy.float32)
@@ -101,15 +103,15 @@ class Softmax(function.Function):
         return gx,
 
     def backward_gpu(self, x, gy):
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
+        if cuda.cudnn_enabled and self.use_cudnn:
+            handle = cudnn.get_handle()
             gx = cuda.empty_like(x[0])
-            desc = cudnn.get_tensor_desc(x[0], 1, 1)
-            libcudnn.cudnnSoftmaxBackward(
-                handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(
-                    self.y),
-                desc.value, cudnn.get_ptr(gy[0]), 0, desc.value,
-                cudnn.get_ptr(gx))
+            x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
+            desc = cudnn.create_tensor_descriptor(x_mat)
+            libcudnn.softmaxBackward(
+                handle, _algorithm, _mode, ctypes.c_float(1), desc.value,
+                self.y.data.ptr, desc.value, gy[0].data.ptr, ctypes.c_float(0),
+                desc.value, gx.data.ptr)
         else:
             gx = self.y * gy[0]
             c = gx.shape[1]
