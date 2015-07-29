@@ -82,6 +82,18 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((20, 30, 40, 50), xpy, dtype)
         return a.sum(axis=(1, 3))
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_sum_axes3(self, xpy, dtype):
+        a = testing.shaped_arange((2, 3, 4, 5), xpy, dtype)
+        return a.sum(axis=(0, 2, 3))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_sum_axes4(self, xpy, dtype):
+        a = testing.shaped_arange((20, 30, 40, 50), xpy, dtype)
+        return a.sum(axis=(0, 2, 3))
+
     @testing.numpy_cupy_allclose()
     def test_sum_keepdims(self, xpy):
         a = testing.shaped_arange((2, 3, 4), xpy)

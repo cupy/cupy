@@ -53,7 +53,7 @@ class LocalResponseNormalization(function.Function):
 
     def forward_cpu(self, x):
         half_n = self.n // 2
-        x2 = x[0] * x[0]
+        x2 = numpy.square(x[0])
         sum_part = x2.copy()
         for i in six.moves.range(1, half_n + 1):
             sum_part[:, i:] += x2[:, :-i]
@@ -75,14 +75,17 @@ class LocalResponseNormalization(function.Function):
         return gx,
 
     def forward_gpu(self, x):
-        self.y = x[0] * x[0]  # temporary
+        self.y = cuda.cupy.square(x[0])  # temporary
         self.scale = cuda.empty_like(self.y)
         _cu_conv_sum(self.scale, self.y, self.n)
         cuda.elementwise(
             ['y', 'scale', 'x', 'k', 'alpha', 'beta'],
             '''scale[i] = k + alpha * scale[i];
-               y[i] = x[i] * powf(scale[i], -beta);''',
-            'lrn_fwd')(self.y, self.scale, x[0], self.k, self.alpha, self.beta)
+               y[i] = x[i] * pow(scale[i], -beta);''',
+            'lrn_fwd')(self.y, self.scale, x[0],
+                       numpy.int32(self.k),
+                       x[0].dtype.type(self.alpha),
+                       x[0].dtype.type(self.beta))
         return self.y,
 
     def backward_gpu(self, x, gy):
@@ -95,9 +98,10 @@ class LocalResponseNormalization(function.Function):
         _cu_conv_sum(gx, summand, self.n)
         cuda.elementwise(
             ['gx', 'x', 'gy', 'scale', 'beta', 'coeff'],
-            'gx[i] = powf(scale[i], -beta) * gy[i] - coeff * x[i] * gx[i]',
-            'lrn_bwd')(gx, x[0], gy[0], self.scale, self.beta,
-                       2 * self.alpha * self.beta)
+            'gx[i] = pow(scale[i], -beta) * gy[i] - coeff * x[i] * gx[i]',
+            'lrn_bwd')(gx, x[0], gy[0], self.scale,
+                       x[0].dtype.type(self.beta),
+                       x[0].dtype.type(2 * self.alpha * self.beta))
         return gx,
 
 

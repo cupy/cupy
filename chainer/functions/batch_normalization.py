@@ -42,7 +42,7 @@ def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
     # Therefore, the kernel is compiled only once.
     # If shape[0] is small, Compiler will perform loop unrolling.
     _create_reduction_kernel(shape[0], expr1, expr2)(
-        ret1, ret2, x, y, alpha, shape[1] * shape[2])
+        ret1, ret2, x, y, alpha, numpy.int32(shape[1] * shape[2]))
 
     if shape[2] != 1:
         ret1 = ret1.sum(axis=1)
@@ -60,6 +60,7 @@ class BatchNormalization(function.Function):
             dimensions.
         decay (float): Decay rate of moving average.
         eps (float): Epsilon value for numerical stability.
+        dtype (numpy.dtype): Type to use in computing.
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
           Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
@@ -68,7 +69,7 @@ class BatchNormalization(function.Function):
     parameter_names = ('gamma',  'beta')
     gradient_names = ('ggamma', 'gbeta')
 
-    def __init__(self, size, decay=0.9, eps=1e-5):
+    def __init__(self, size, decay=0.9, eps=1e-5, dtype=numpy.float32):
         if isinstance(size, tuple):
             self.size = size
         elif isinstance(size, int):
@@ -76,9 +77,10 @@ class BatchNormalization(function.Function):
         else:
             raise TypeError('size must be tuple or int')
 
-        size = numpy.prod(size)
+        size = numpy.prod(size, dtype=int)
+        self.dtype = numpy.dtype(dtype)
 
-        self.avg_mean = numpy.zeros((1, size, 1), dtype=numpy.float32)
+        self.avg_mean = numpy.zeros((1, size, 1), dtype=self.dtype)
         self.avg_var = numpy.zeros_like(self.avg_mean)
 
         self.gamma = numpy.ones_like(self.avg_mean)
@@ -132,7 +134,8 @@ class BatchNormalization(function.Function):
         y_type, = out_types
 
         type_check.expect(
-            x_type.dtype == y_type.dtype,
+            x_type.dtype == self.dtype,
+            y_type.dtype == self.dtype,
             x_type.ndim == y_type.ndim,
             x_type.shape == y_type.shape
         )
@@ -183,7 +186,7 @@ class BatchNormalization(function.Function):
             cuda.elementwise(
                 ['var', 'mean', 'eps'],
                 'var[i] = var[i] - mean[i] * mean[i] + eps',
-                'bn_var')(var, mean, self.eps)
+                'bn_var')(var, mean, self.dtype.type(self.eps))
         else:
             mean = self.avg_mean
             var = self.avg_var
@@ -191,7 +194,7 @@ class BatchNormalization(function.Function):
         y = cuda.empty_like(x_orig[0])
         _kernel_with_I(
             ['y', 'x', 'mean', 'var', 'gamma', 'beta'],
-            'y[i] = (x[i] - mean[I]) * rsqrtf(var[I]) * gamma[I] + beta[I];',
+            'y[i] = (x[i] - mean[I]) * rsqrt(var[I]) * gamma[I] + beta[I];',
             'bn_fwd')(y, x, mean, var, self.gamma, self.beta, cdim, rdim)
 
         # Compute exponential moving average
@@ -213,7 +216,9 @@ class BatchNormalization(function.Function):
                                  + (1 - decay) * adjust * var[i];
                 ''',
                 'bn_moving_avg')(
-                    self.avg_mean, mean, self.avg_var, var, decay, adjust)
+                    self.avg_mean, mean, self.avg_var, var,
+                    self.dtype.type(decay),
+                    self.dtype.type(adjust))
 
         return y,
 
@@ -249,8 +254,8 @@ class BatchNormalization(function.Function):
         stdinv = sqmean  # reuse buffer
         cuda.elementwise(
             ['stdinv', 'mean', 'eps'],
-            'stdinv[i] = rsqrtf(stdinv[i] - mean[i] * mean[i] + eps)',
-            'bn_stdinv')(stdinv, mean, self.eps)
+            'stdinv[i] = rsqrt(stdinv[i] - mean[i] * mean[i] + eps)',
+            'bn_stdinv')(stdinv, mean, self.dtype.type(self.eps))
 
         x_hat = cuda.empty_like(x)
         gx = cuda.empty_like(x)
@@ -262,14 +267,8 @@ class BatchNormalization(function.Function):
         mean = None
 
         gbeta, ggamma = _cusum_axis02(gy, x_hat, expr2='x[I] * y[I]')
-        cuda.elementwise(
-            ['self_ggammma', 'ggamma', 'slef_gbeta', 'gbeta'],
-            '''
-                self_ggammma[i] += ggamma[i];
-                slef_gbeta[i] += gbeta[i];
-            ''', 'bn_add')(
-                self.ggamma, ggamma,
-                self.gbeta, gbeta)
+        self.ggamma += ggamma
+        self.gbeta += gbeta
 
         _kernel_with_I(
             ['gx', 'x_hat', 'gy', 'stdinv',
@@ -279,7 +278,7 @@ class BatchNormalization(function.Function):
                     (gy[i] - (x_hat[i] * ggamma[I] + gbeta[I]) * inv_m)
             ''', 'bn_bwd')(
                 gx, x_hat, gy, stdinv, ggamma, gbeta,
-                self.gamma, 1. / m, cdim, rdim)
+                self.gamma, self.dtype.type(1. / m), cdim, rdim)
         return gx.reshape(x_orig[0].shape),
 
     def _internal_shape(self, x):
@@ -287,4 +286,4 @@ class BatchNormalization(function.Function):
         cdim = self.gamma.size
         rdim = x.size // (ldim * cdim)
         assert ldim * cdim * rdim == x.size
-        return ldim, cdim, rdim
+        return map(numpy.int32, (ldim, cdim, rdim))

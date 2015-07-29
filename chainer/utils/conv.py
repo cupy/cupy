@@ -54,11 +54,8 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
              col[i] = 0;
            }
         ''',
-        'im2col')(col, img, numpy.int32(h), numpy.int32(w),
-                  numpy.int32(out_h), numpy.int32(out_w),
-                  numpy.int32(kh), numpy.int32(kw),
-                  numpy.int32(sy), numpy.int32(sx),
-                  numpy.int32(ph), numpy.int32(pw))
+        'im2col')(col, img, *map(numpy.int32, (h, w, out_h, out_w,
+                                               kh, kw, sy, sx, ph, pw)))
     return col
 
 
@@ -104,9 +101,6 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
            }
            img[i] = val;
         ''',
-        'col2im')(img, col, numpy.int32(h), numpy.int32(w),
-                  numpy.int32(out_h), numpy.int32(out_w),
-                  numpy.int32(kh), numpy.int32(kw),
-                  numpy.int32(sy), numpy.int32(sx),
-                  numpy.int32(ph), numpy.int32(pw))
+        'col2im')(img, col, *map(numpy.int32, (h, w, out_h, out_w,
+                                               kh, kw, sy, sx, ph, pw)))
     return img

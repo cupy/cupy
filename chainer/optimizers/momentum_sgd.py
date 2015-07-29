@@ -28,4 +28,6 @@ class MomentumSGD(optimizer.Optimizer):
             ['param', 'grad', 'v', 'lr', 'momentum'],
             '''v[i] = momentum * v[i] - lr * grad[i];
                param[i] += v[i];''',
-            'momentum_sgd')(param, grad, v, self.lr, self.momentum)
+            'momentum_sgd')(param, grad, v,
+                            param.dtype.type(self.lr),
+                            param.dtype.type(self.momentum))

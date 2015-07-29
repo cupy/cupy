@@ -68,7 +68,7 @@ class Broadcast(object):
                             shape[i + offset] = dim
 
         self.shape = tuple(shape)
-        self.size = numpy.prod(self.shape, dtype=numpy.int64)
+        self.size = numpy.prod(self.shape, dtype=int)
         self.nd = len(shape)
 
         broadcasted = []

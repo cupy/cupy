@@ -90,16 +90,21 @@ class ElementwiseKernel(object):
 
     def __call__(self, *args, **kwargs):
         n = kwargs.pop('size', None)
+        reduce_dims = kwargs.pop('reduce_dims', True)
         if n is None:
             for i in args:
                 if isinstance(i, cupy.ndarray):
                     n = i.size
                     break
-
         assert n is not None
-        internal.check_args_device(args)
 
-        args = args + (numpy.int32(n),)
+        args = list(args)
+        for i, x in enumerate(args):
+            if isinstance(x, cupy.ndarray):
+                if reduce_dims:
+                    args[i] = x.reduced_view()
+        internal.check_args_device(args)
+        args.append(numpy.int32(n))
         params, kernel_args = _get_kernel_params_args(self.param_names, args)
         kernel = _get_elementwise_kernel(params, self.operation, self.name,
                                          **self.kwargs)
