@@ -9,7 +9,6 @@ setup(
     author_email='tokui@preferred.jp',
     url='http://chainer.org/',
     packages=['chainer',
-              'chainer.cudnn',
               'chainer.functions',
               'chainer.functions.caffe',
               'chainer.optimizers',
