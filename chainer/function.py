@@ -101,19 +101,19 @@ class Function(object):
         self.inputs = None
         self.outputs = None
         self.rank = None
-
+        
     def __call__(self, *inputs):
         """Applies forward propagation with chaining backward references.
 
         Basic behavior is also expressed in documentation of :class:`Function`
         class. This function first copies itself to avoid conflict over
-        multiple invokations.
+        multiple invocations.
 
         .. note::
 
            If the :data:`~Variable.data` attribute of input variables reside on
            GPU device, then, before it calls :meth:`forward` method, the
-           appropriate device is selected, so in most cases implementor does
+           appropriate device is selected, so in most cases implementers do
            not need to take care of device selection.
 
         Args:
@@ -257,10 +257,10 @@ class Function(object):
         """Applies forward propagation to input arrays on CPU.
 
         Args:
-            inputs: Tuple of :class:`~numpy.ndarray` object(s).
+            inputs: Tuple of :class:`numpy.ndarray` object(s).
 
         Returns:
-            tuple: Tuple of :class:`~numpy.ndarray` object(s).
+            tuple: Tuple of :class:`numpy.ndarray` object(s).
 
         .. warning::
 
@@ -274,10 +274,10 @@ class Function(object):
         """Applies forward propagation to input arrays on GPU.
 
         Args:
-            inputs: Tuple of :class:`~cupy.ndarray` object(s).
+            inputs: Tuple of :class:`cupy.ndarray` object(s).
 
         Returns:
-            tuple: Tuple of :class:`~cupy.ndarray` object(s).
+            tuple: Tuple of :class:`cupy.ndarray` object(s).
 
         .. warning::
 
@@ -320,12 +320,12 @@ class Function(object):
         """Applies backprop to output gradient arrays on CPU.
 
         Args:
-            inputs: Tuple of input :class:`~numpy.ndarray` object(s).
-            grad_outputs: Tuple of output gradient :class:`~numpy.ndarray`
+            inputs: Tuple of input :class:`numpy.ndarray` object(s).
+            grad_outputs: Tuple of output gradient :class:`numpy.ndarray`
                 object(s).
 
         Returns:
-            tuple: Tuple of input gradient :class:`~numpy.ndarray` object(s).
+            tuple: Tuple of input gradient :class:`numpy.ndarray` object(s).
             Some or all of them can be ``None``, if the function is not
             differentiable on corresponding inputs.
 
@@ -341,13 +341,13 @@ class Function(object):
         """Applies backprop to output gradient arrays on GPU.
 
         Args:
-            inputs: Tuple of input :class:`~cupy.ndarray`
+            inputs: Tuple of input :class:`cupy.ndarray`
                 object(s).
             grad_outputs: Tuple of output gradient
-                :class:`~cupy.ndarray` object(s).
+                :class:`cupy.ndarray` object(s).
 
         Returns:
-            tuple: Tuple of input gradient :class:`~cupy.ndarray`
+            tuple: Tuple of input gradient :class:`cupy.ndarray`
             object(s). Some or all of them can be ``None``, if the function is
             not differentiable on corresponding inputs.
 
@@ -377,10 +377,10 @@ class Function(object):
         """Migrates the function to GPU and returns self.
 
         The default implementation moves all fields of type
-        :class:`~numpy.ndarray` onto GPU.
+        :class:`numpy.ndarray` onto GPU.
 
         Args:
-            device (int or :class:`pycuda.driver.Device` or ``None``): Device
+            device (int or :class:`cupy.cuda.Device` or ``None``): Device
                 ID of GPU that the function will be migrated on. If this is
                 ``None``, the current device is used.
 
