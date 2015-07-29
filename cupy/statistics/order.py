@@ -2,11 +2,15 @@ from cupy import reduction
 
 
 def amin(a, axis=None, out=None, keepdims=False, dtype=None, allocator=None):
-    return reduction.amin(a, axis, dtype, out, keepdims, allocator)
+    return reduction.amin(
+        a, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+        allocator=allocator)
 
 
 def amax(a, axis=None, out=None, keepdims=False, dtype=None, allocator=None):
-    return reduction.amax(a, axis, dtype, out, keepdims, allocator)
+    return reduction.amax(
+        a, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+        allocator=allocator)
 
 
 def nanmin(a, axis=None, out=None, keepdims=False, allocator=None):

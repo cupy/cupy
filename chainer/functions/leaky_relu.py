@@ -32,7 +32,7 @@ class LeakyReLU(function.Function):
 
     def forward_gpu(self, x):
         y = cuda.empty_like(x[0])
-        _kern()(y, x[0], x[0], self.slope)
+        _kern()(y, x[0], x[0], x[0].dtype.type(self.slope))
         return y,
 
     def backward_cpu(self, x, gy):
@@ -42,7 +42,7 @@ class LeakyReLU(function.Function):
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
-        _kern()(gx, x[0], gy[0], self.slope)
+        _kern()(gx, x[0], gy[0], x[0].dtype.type(self.slope))
         return gx,
 
 

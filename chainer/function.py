@@ -101,7 +101,7 @@ class Function(object):
         self.inputs = None
         self.outputs = None
         self.rank = None
-        
+
     def __call__(self, *inputs):
         """Applies forward propagation with chaining backward references.
 

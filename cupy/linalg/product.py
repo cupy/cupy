@@ -107,8 +107,8 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
     a = _move_axes_to_head(a, axes[0])
     b = _move_axes_to_head(b, axes[1])
 
-    m = numpy.prod(b.shape[sum_ndim:], dtype=numpy.int32)
-    n = numpy.prod(a.shape[sum_ndim:], dtype=numpy.int32)
+    m = numpy.prod(b.shape[sum_ndim:], dtype=int)
+    n = numpy.prod(a.shape[sum_ndim:], dtype=int)
     ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
     if out is not None:

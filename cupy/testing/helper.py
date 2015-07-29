@@ -172,6 +172,6 @@ def shaped_arange(shape, xpy=cupy, dtype=numpy.float32):
 
 
 def shaped_reverse_arange(shape, xpy=cupy, dtype=numpy.float32):
-    size = numpy.prod(shape, dtype=numpy.int32)
+    size = numpy.prod(shape, dtype=int)
     a = numpy.arange(size, 0, -1)
     return xpy.array(a.astype(dtype).reshape(shape))

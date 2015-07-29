@@ -143,7 +143,7 @@ class ndarray(object):
 
     @property
     def size(self):
-        return numpy.prod(self.shape, dtype=numpy.int64)
+        return numpy.prod(self.shape, dtype=int)
 
     @property
     def itemsize(self):
@@ -308,19 +308,27 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     def max(self, axis=None, out=None, dtype=None, keepdims=False,
             allocator=None):
-        return amax(self, axis, out, keepdims, dtype, allocator)
+        return amax(
+            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
+            allocator=allocator)
 
     def argmax(self, axis=None, out=None, dtype=None, keepdims=False,
                allocator=None):
-        return argmax(self, axis, dtype, out, keepdims, allocator)
+        return argmax(
+            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
+            allocator=allocator)
 
     def min(self, axis=None, out=None, dtype=None, keepdims=False,
             allocator=None):
-        return amin(self, axis, out, keepdims, dtype, allocator)
+        return amin(
+            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
+            allocator=allocator)
 
     def argmin(self, axis=None, out=None, dtype=None, keepdims=False,
                allocator=None):
-        return argmin(self, axis, dtype, out, keepdims, allocator)
+        return argmin(
+            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
+            allocator=allocator)
 
     # TODO(beam2d): Implement it
     # def ptp(self, axis=None, out=None, allocator=None):
