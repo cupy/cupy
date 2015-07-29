@@ -65,6 +65,7 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
 
     @attr.gpu
     def test_forward(self):
+        # TODO(unno): We need to test return values of forward function.
         cpu_loss, = self.func.forward((self.x, self.t))
         self.func.to_gpu()
         gpu_loss, = self.func.forward((cuda.to_gpu(self.x),
