@@ -10,8 +10,8 @@ class Variable(object):
 
     """Array with a structure to keep track of computation.
 
-    Every variable holds a data array of type either :class:`~numpy.ndarray` or
-    :class:`~cupy.ndarray`.
+    Every variable holds a data array of type either :class:`numpy.ndarray` or
+    :class:`cupy.ndarray`.
 
     A Variable object may be constructed in two ways: by the user or by some
     function. When a variable is created by some function as one of its
@@ -27,8 +27,8 @@ class Variable(object):
     acts like unchaining on every function application.
 
     Attributes:
-        data: Data array of type either :class:`~numpy.ndarray` or
-            :class:`~cupy.ndarray`.
+        data: Data array of type either :class:`numpy.ndarray` or
+            :class:`cupy.ndarray`.
 
         grad: Gradient array. It is ``None`` until backprop reaches this
             variable.
@@ -45,18 +45,10 @@ class Variable(object):
         """Initializes a variable.
 
         Args:
-            data (:class:`~numpy.ndarray` or \
-                :class:`~cupy.ndarray`):
+            data (:class:`numpy.ndarray` or :class:`cupy.ndarray`):
                 Data array that this variable holds.
             volatile (bool): Volatility flag. If it is True, the variable will
                 not keep track of any function applications.
-
-        .. warning::
-
-           If the data array is of type :class:`~cupy.ndarray`, its
-           allocator must be :func:`chainer.cuda.mem_alloc`, which allocates
-           device memory using device-wise memory pool. All functions of
-           :mod:`cuda` automatically uses this allocator.
 
         """
         assert isinstance(data, (numpy.ndarray, cuda.ndarray))
@@ -141,7 +133,7 @@ https://github.com/pfnet/chainer/issues/new.
         This method uses :data:`grad` as the initial error array. User can
         manually set a gradient array before calling this method. If
         :data:`data` contains only one element (i.e., it is scalar) and
-        :data:`grad` is None, then this method automatically complement 1.0 as
+        :data:`grad` is None, then this method automatically complements 1.0 as
         the initial error. This is useful on starting backprop from some scalar
         loss value.
 

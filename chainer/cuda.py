@@ -1,7 +1,7 @@
 """Device, context and memory management on CuPy.
 
-Chainer uses CuPy facilities (with very thin wrapper) to exploit the speed of
-GPU computation. Following modules and classes are imported to :mod:`cuda`
+Chainer uses CuPy (with very thin wrapper) to exploit the speed of GPU
+computation. Following modules and classes are imported to :mod:`cuda`
 module for convenience (refer to this table when reading chainer's source
 codes).
 
@@ -16,16 +16,12 @@ codes).
  ``chainer.cuda.Stream``      :mod:`cupy.cuda.Stream`
 ============================ =================================
 
-Chainer provides thin wrappers of cupy.ndarray allocation routines, which use
-:func:`mem_alloc` as the allocator. This allocator uses device-wise instance of
-:class:`~pycuda.tools.DeviceMemoryPool`, which enables the reuse of device
-memory over multiple forward/backward computations. :func:`mem_alloc` also
-inserts an additional attribute to the allocated memory called ``device``,
-which indicates the device that the memory is allocated on. Functions of
-:mod:`cuda` uses this attribute to select appropriate device on each
-manipulation routine.
-
+Chainer replaces the default allocator of CuPy by its memory pool
+implementation. It enables us to reuse the device memory over multiple
+forward/backward computations, and temporary arrays for consecutive elementwise
+operations.
 """
+
 import os
 
 import numpy
@@ -80,7 +76,13 @@ if available:
 
 
 def init(arg=None):
-    pass
+    """Obsolete function.
+
+    Use :func:`~chainer.cuda.use_device` instead.
+
+    """
+    _check_cuda_available()
+    use_device(arg)
 
 
 def _check_cuda_available():
@@ -92,9 +94,7 @@ def _check_cuda_available():
 
 
 def get_device(arg=None):
-    """Gets the device from ID arg or given chainer's.
-
-    :class:`~cupy.ndarray`.
+    """Gets the device from an ID integer or an array object.
 
     Args:
         arg: Value to specify a GPU device.
@@ -109,9 +109,9 @@ def get_device(arg=None):
 ==================================== =====================================
  ``None``                             Current device
  ``int``                              Device of ID ``arg``
- :class:`~cupy.cuda.Device`           ``arg``
- :class:`~cupy.ndarray`               Device given array was allocated on
- :class:`~numpy.ndarray`              ``None``
+ :class:`cupy.cuda.Device`            ``arg``
+ :class:`cupy.ndarray`                Device given array was allocated on
+ :class:`numpy.ndarray`               ``None``
 ==================================== =====================================
 
     """
@@ -148,7 +148,7 @@ class DeviceUser(object):
         arg: Argument of :func:`get_device`.
 
     Attributes:
-        device (~pycuda.driver.Device): Selected device.
+        device (cupy.cuda.Device): Selected device.
 
     """
     def __init__(self, arg):
@@ -190,9 +190,8 @@ def using_device(*args):
     .. admonition:: Example
 
         Suppose ``arrays`` is a list of arrays of type either
-        :class:`~numpy.ndarray` or :class:`~cupy.ndarray`. Then,
-        the following code invokes ``do_something_on`` with an appropriate
-        context::
+        :class:`numpy.ndarray` or :class:`cupy.ndarray`. Then, the following
+        code invokes ``do_something_on`` on an appropriate device::
 
             with using_device(*arrays):
                 do_something_on(arrays)
@@ -203,21 +202,6 @@ def using_device(*args):
         if dev is not None:
             return DeviceUser(dev)
     return DeviceUser(None)
-
-
-def mem_alloc(nbytes):
-    """Allocates device memory of given size from memory pool.
-
-    This function chooses memory pool corresponding to the current device.
-
-    Args:
-        nbytes (int): The size of memory in bytes.
-
-    Returns:
-        cupy.cuda.MemoryPointer: Allocated memory
-
-    """
-    return cuda.alloc(nbytes)
 
 
 # ------------------------------------------------------------------------------
@@ -232,7 +216,7 @@ def to_gpu(array, device=None):
         device: Device specifier.
 
     Returns:
-        ~cupy.ndarray: Array on GPU.
+        cupy.ndarray: Array on GPU.
 
         If ``array`` is already on GPU, then this function just returns
         ``array`` without performing any copy. Note that this function does not
@@ -250,12 +234,12 @@ def to_gpu_async(array, stream=None):
     """Copies the given CPU array asynchronously to the current device.
 
     Args:
-        array: Array to be sent to GPU. If it is :class:`~numpy.ndarray`, then
+        array: Array to be sent to GPU. If it is :class:`numpy.ndarray`, then
             its memory must be pagelocked.
-        stream (~cupy.cuda.Stream): CUDA stream.
+        stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
-        ~pycuda.cupy.ndarray: Array on GPU.
+        cupy.ndarray: Array on GPU.
 
         If given ``array`` is already on GPU, then this function just returns
         ``array`` without performing any copy.
@@ -275,7 +259,7 @@ def to_cpu(array):
         array: Array to be sent to GPU.
 
     Returns:
-        ~numpy.ndarray: Array on CPU.
+        numpy.ndarray: Array on CPU.
 
         If given ``array`` is already on CPU, then this function just returns
         ``array`` without performing any copy.
@@ -290,10 +274,10 @@ def to_cpu_async(array, stream=None):
 
     Args:
         array: Array to be sent to GPU.
-        stream (~cupy.cuda.Stream): CUDA stream.
+        stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
-        ~numpy.ndarray: Array on CPU.
+        numpy.ndarray: Array on CPU.
 
         If given ``array`` is already on CPU, then this function just returns
         ``array`` without performing any copy.
@@ -311,8 +295,7 @@ def empty(shape, dtype=numpy.float32):
         dtype (numpy.dtype): Element type.
 
     Returns:
-        ~cupy.ndarray: Uninitialized GPU array allocated by memory
-        pool.
+        cupy.ndarray: Uninitialized GPU array allocated by the memory pool.
 
     """
     _check_cuda_available()
@@ -326,11 +309,10 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
         shape (tuple of ints): The shape of array.
         fill_value: Constant to fill the array by.
         dtype (numpy.dtype): Element type.
-        stream (~cupy.cuda.Stream): CUDA stream.
+        stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
-        ~pycuda.ndarray: Constant-filled GPU array allocated by
-        memory pool.
+        cupy.ndarray: Constant-filled GPU array allocated by the memory pool.
 
     """
     _check_cuda_available()
@@ -361,7 +343,15 @@ def ones(shape, dtype=numpy.float32, stream=None):
 
 
 def empty_like(array):
-    """Alias to :func:`cupy.empty_like`."""
+    """Creates an uninitialized GPU array like the given one.
+
+    Args:
+        array (cupy.ndarray or numpy.ndarray): Base array.
+
+    Returns:
+        cupy.ndarray: GPU array of the same shape and dtype as `array`.
+
+    """
     _check_cuda_available()
     if isinstance(array, cupy.ndarray):
         return cupy.empty_like(array)
@@ -372,12 +362,12 @@ def full_like(array, fill_value, stream=None):
     """Creates a constant-filled cupy.ndarray object like the given array.
 
     Args:
-        array (~cupy.ndarray): Base array.
+        array (cupy.ndarray or numpy.ndarray): Base array.
         fill_value: Constant value to fill the array by.
-        stream (~cupy.cuda.Stream): CUDA stream.
+        stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
-        ~cupy.ndarray: Constant-filled array.
+        cupy.ndarray: Constant-filled array.
 
     """
     _check_cuda_available()
@@ -390,7 +380,12 @@ def full_like(array, fill_value, stream=None):
 def zeros_like(array, stream=None):
     """Creates a zero-filled cupy.ndarray object like the given array.
 
-    This function is equivalent to ``full_like(array, 0, stream)``.
+    Args:
+        array (cupy.ndarray or numpy.ndarray): Base array.
+        stream (cupy.cuda.Stream): CUDA stream.
+
+    Returns:
+        cupy.ndarray: Zero-filled array.
 
     """
     _check_cuda_available()
@@ -403,7 +398,12 @@ def zeros_like(array, stream=None):
 def ones_like(array, stream=None):
     """Creates a one-filled cupy.ndarray object like the given array.
 
-    This function is equivalent to ``full_like(array, 1, stream)``.
+    Args:
+        array (cupy.ndarray or numpy.ndarray): Base array.
+        stream (cupy.cuda.Stream): CUDA stream.
+
+    Returns:
+        cupy.ndarray: One-filled array.
 
     """
     _check_cuda_available()
@@ -420,14 +420,14 @@ def copy(array, out=None, out_device=None):
     device.
 
     Args:
-        array (~cupy.ndarray): Array to be copied.
-        out (~cupy.ndarray): Destination array.
+        array (cupy.ndarray): Array to be copied.
+        out (cupy.ndarray): Destination array.
             If it is not ``None``, then ``out_device`` argument is ignored.
         out_device: Destination device specifier. Actual device object is
             obtained by passing this value to :func:`get_device`.
 
     Returns:
-        ~cupy.ndarray: Copied array.
+        cupy.ndarray: Copied array.
 
         If ``out`` is not specified, then the array is allocated on the device
         specified by ``out_device`` argument.
@@ -459,23 +459,18 @@ def copy_async(array, out=None, out_device=None, stream=None):
     device.
 
     Args:
-        array (~cupy.ndarray): Array to be copied.
-        out (~cupy.ndarray): Destination array.
+        array (cupy.ndarray): Array to be copied.
+        out (cupy.ndarray): Destination array.
             If it is not ``None``, then ``out_device`` argument is ignored.
         out_device: Destination device specifier. Actual device object is
             obtained by passing this value to :func:`get_device`.
-        stream (~cupy.cuda.Stream): CUDA stream.
+        stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
-        ~cupy.ndarray: Copied array.
+        cupy.ndarray: Copied array.
 
         If ``out`` is not specified, then the array is allocated on the device
         specified by ``out_device`` argument.
-
-    .. warning::
-
-       Currently, copy_async over different devices raises exception, since
-       PyCUDA drops the definition of :func:`pycuda.driver.memcopy_peer_async`.
 
     """
     _check_cuda_available()

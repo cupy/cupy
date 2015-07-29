@@ -71,8 +71,8 @@ class Optimizer(object):
                 is passed by value and then the method updates its content, so
                 the state must be a reference. Especiallly, one cannot use a
                 value of built-in numeric type. If the state is one scalar
-                value, it is recommended to use scalar array, i.e.
-                :class:`~numpy.ndarray` with shape ``()``.
+                value, it is recommended to use a zero-dimensional array, i.e.
+                :class:`numpy.ndarray` with shape ``()``.
 
         """
         if isinstance(param, cuda.ndarray):
@@ -83,8 +83,8 @@ class Optimizer(object):
         """Returns the initial state for given parameter and gradient on GPU.
 
         Args:
-            param (~numpy.ndarray): Parameter array.
-            grad  (~numpy.ndarray): Gradient array.
+            param (numpy.ndarray): Parameter array.
+            grad  (numpy.ndarray): Gradient array.
 
         Returns:
             Initial state value.
@@ -98,8 +98,8 @@ class Optimizer(object):
         """Returns the initial state for given parameter and gradient on CPU.
 
         Args:
-            param (~cupy.ndarray): Parameter array.
-            grad  (~cupy.ndarray): Gradient array.
+            param (cupy.ndarray): Parameter array.
+            grad  (cupy.ndarray): Gradient array.
 
         Returns:
             Initial state value.
@@ -240,8 +240,8 @@ class Optimizer(object):
         """Updates a parameter array and its state using given gradient on CPU.
 
         Args:
-            param (~numpy.ndarray): Parameter array.
-            grad  (~numpy.ndarray): Gradient array.
+            param (numpy.ndarray): Parameter array.
+            grad  (numpy.ndarray): Gradient array.
             state: State value.
 
         .. seealso:: :meth:`update_one`, :meth:`update_one_gpu`
@@ -253,8 +253,8 @@ class Optimizer(object):
         """Updates a parameter array and its state using given gradient on GPU.
 
         Args:
-            param (~cupy.ndarray): Parameter array.
-            grad  (~cupy.ndarray): Gradient array.
+            param (cupy.ndarray): Parameter array.
+            grad  (cupy.ndarray): Gradient array.
             state: State value.
 
         .. seealso:: :meth:`update_one`, :meth:`update_one_cpu`

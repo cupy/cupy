@@ -24,6 +24,8 @@ Array commputation functions
 ----------------------------
 .. autofunction:: convolution_2d
 .. autofunction:: linear
+.. autofunction:: matmul
+.. autofunction:: batch_matmul
 
 Array manipulation functions
 ----------------------------
@@ -33,11 +35,6 @@ Array manipulation functions
 .. autofunction:: identity
 .. autofunction:: reshape
 .. autofunction:: split_axis
-
-Array computations
-------------------
-.. autofunction:: matmul
-.. autofunction:: batch_matmul
 
 Activation functions
 --------------------
