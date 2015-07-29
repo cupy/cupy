@@ -61,8 +61,26 @@ float64 = numpy.float64
 
 class ndarray(object):
 
-    """Multi-dimensional array on a CUDA device."""
+    """Multi-dimensional array on a CUDA device.
 
+    This class implements a subset of methods of :class:`numpy.ndarray`.
+    The difference is that this class allocates the array content on the
+    current GPU device.
+
+    Args:
+        shape (tuple of ints): Length of axes.
+        dtype: Data type. It must be an argument of :class:`numpy.dtype`.
+        memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
+        offset (int): Offset from the given memptr.
+        strides (tuple of ints): The strides for axes.
+        allocator (function): GPU memory allocator function.
+
+    Attributes:
+        data (cupy.cuda.MemoryPointer): Pointer to the array content head.
+        base (None or cupy.ndarray): Base array from which this array is
+            created as a view.
+
+    """
     def __init__(self, shape, dtype=numpy.float64, memptr=None, offset=0,
                  strides=None, allocator=cuda.alloc):
         self._shape = tuple(shape)
