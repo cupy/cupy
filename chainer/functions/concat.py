@@ -46,19 +46,12 @@ class Concat(function.Function):
                 continue
             type_check.expect(y_type.shape[d] == in_types[0].shape[d])
 
-    def forward_cpu(self, xs):
-        return numpy.concatenate(xs, axis=self.axis),
+    def forward(self, xs):
+        return cuda.get_xpy(xs[0]).concatenate(xs, axis=self.axis),
 
-    def forward_gpu(self, xs):
-        return cuda.cupy.concatenate(xs, axis=self.axis),
-
-    def backward_cpu(self, xs, gy):
+    def backward(self, xs, gy):
         sizes = numpy.array([x.shape[self.axis] for x in xs[:-1]]).cumsum()
-        return numpy.split(gy[0], sizes, axis=self.axis)
-
-    def backward_gpu(self, xs, gy):
-        sizes = numpy.array([x.shape[self.axis] for x in xs[:-1]]).cumsum()
-        return cuda.cupy.split(gy[0], sizes, axis=self.axis)
+        return cuda.get_xpy(xs[0]).split(gy[0], sizes, axis=self.axis)
 
 
 def concat(xs, axis=1):
