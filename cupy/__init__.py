@@ -155,7 +155,7 @@ class ndarray(object):
         """Strides of axes in bytes.
 
         See: :attr:`numpy.ndarray.strides`
-        
+
         """
         return self._strides
 
