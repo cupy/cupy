@@ -58,7 +58,7 @@ else:
     # Dummy classes
     class Device(object):
 
-        def use():
+        def use(self):
             pass
 
     class Event(object):
