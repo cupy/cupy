@@ -2,7 +2,6 @@ import unittest
 
 import numpy
 
-import chainer
 from chainer import cuda
 from chainer import gradient_check
 from chainer.testing import attr
@@ -40,7 +39,8 @@ class NumeraicalGradientTest(unittest.TestCase):
     @condition.retry(3)
     @attr.gpu
     def test_numerical_grad_gpu(self):
-        self.check_numerical_grad(self.f, self.df, cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+        self.check_numerical_grad(self.f, self.df,
+                                  cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
 class NumericalGradientTest2(NumeraicalGradientTest):
