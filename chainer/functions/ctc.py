@@ -1,32 +1,17 @@
-"""
-Alex Graves, Santiago Fernandez, Faustino Gomez, Jurgen Schmidhuber
-Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
-with Recurrent Neural Networks
-ftp://ftp.idsia.ch/pub/juergen/icml2006.pdf
-
-See also,
-Alex Graves
-Supervised Sequence Labelling with Recurrent Neural Networks
-http://www.cs.toronto.edu/~graves/preprint.pdf
-"""
-
 from chainer import cuda
 from chainer import function
-# import jisx
-import math
+from chainer import utils
 import numpy
 import sets
 
 
-class ConnectionistTemporalClassificationCost(function.Function):
-    "Connectionist Temporal Classification cost function."
+class ConnectionistTemporalClassification(function.Function):
 
-    def __init__(self):
-        # self.charsets = jisx.JISX0208()
-
-        # Todo: need to parameterize,
-        # or define last of index of input as blank_symbol
-        self.blank_symbol = 2
+    def __init__(self, blank_symbol):
+        if not isinstance(blank_symbol, int):
+            raise TypeError('blank_symbol must be non-negative integer.')
+        assert blank_symbol >= 0
+        self.blank_symbol = blank_symbol
 
     '''
     Transtion in forword and backword algorithms is represented as matrix.
@@ -57,24 +42,29 @@ class ConnectionistTemporalClassificationCost(function.Function):
         forward_prob = numpy.eye(path.shape[0])[0]
         for y in yseq:
             forward_prob = self.path_probs_cpu(y, path, forward_prob, rr)
-        return numpy.array(- numpy.sum(
-            numpy.log((forward_prob[-2], forward_prob[-1])))),
+        return utils.force_array(- numpy.log(
+            numpy.sum((forward_prob[-2],
+                       forward_prob[-1])))).astype(numpy.float32),
 
     def calc_trans(self, path, yseq, rr):
         forward_prob = numpy.eye(path.shape[0])[0]
         backward_prob = numpy.eye(path.shape[0])[0]
 
-        alpha = (numpy.zeros(path.shape[0]),)
-        beta = (numpy.zeros(path.shape[0]),)
+        alpha = ()
+        beta = ()
 
-        for t in range(1, len(yseq)):
+        for t in range(len(yseq)):
+            # calc forward probability
             y = yseq[t]
-            forward_prob = self.path_probs_cpu(y, path, forward_prob, rr)
-            backward_prob = self.path_probs_cpu(y, path[::-1],
-                                                backward_prob, rr)
+            forward_prob = y[path] * numpy.dot(forward_prob, rr)
             alpha += forward_prob,
-            beta += backward_prob,
-        return alpha, beta
+
+            # calc backward probability
+            y_inv = yseq[len(yseq) - t - 1]
+            backward_prob = numpy.dot(backward_prob, rr)
+            beta += backward_prob[::-1],
+            backward_prob = y_inv[path[::-1]] * backward_prob
+        return alpha, beta[::-1]
 
     # path probablity to label probability
     def label_probability(self, label_size, path, multiply):
@@ -91,13 +81,13 @@ class ConnectionistTemporalClassificationCost(function.Function):
         path = self.label_to_path(labels)
         rr = self.recurrence_relation(path.shape[0])
         result = (None,)
-        forward_prob_trans, backward_prob_trans = self.calc_trans(path,
-                                                                  yseq, rr)
-        p = numpy.sum((forward_prob_trans[-1][-2], forward_prob_trans[-1][-1]))
+        forward_prob_trans, backward_prob_trans \
+            = self.calc_trans(path, yseq, rr)
         for t in range(len(yseq)):
             multiply = forward_prob_trans[t] * backward_prob_trans[t]
             label_prob = self.label_probability(yseq[t].shape[0],
                                                 path, multiply)
+            p = numpy.sum(multiply)
             result += (yseq[t] - label_prob / p) * grad_output[0],
         return result
 
@@ -114,8 +104,9 @@ class ConnectionistTemporalClassificationCost(function.Function):
         for y in yseq:
             forward_prob = self.path_probs_gpu(y, path, forward_prob, rr)
         forward_prob = cuda.to_cpu(forward_prob)
-        return numpy.array(- math.log(forward_prob[-2])
-                           - math.log(forward_prob[-1])),
+        return utils.force_array(
+            - numpy.log(forward_prob[-2]
+                        + forward_prob[-1])).astype(numpy.float32),
 
     def calc_trans_gpu(self, path, yseq, rr):
         forward_prob = cuda.to_gpu(numpy.eye(path.shape[0])[0])
@@ -153,20 +144,36 @@ class ConnectionistTemporalClassificationCost(function.Function):
         return result
 
 
-def connectionist_temporal_classification_cost(t, x):
-    """Computes Connectionist Temporal Classification(CTC) cost.
+def connectionist_temporal_classification(blank_symbol, t, x):
+    """Connectionist Temporal Classification loss function.
+
+    Connectionist Temporal Classification(CTC) [Graves2006]_ is a loss function
+    of sequence labeling where where the alignment between the inputs
+    and target is unknown. See also [Graves2012]_
 
     Args:
-        blank_symbol (int): spesify blank_symbol.
-        t (Variable): Expected labels sequence.
+        blank_symbol (int): Index of blank_symbol.
+                            This value must be non-negative.
+        t (Variable): Expected label sequence.
         x (Variable): RNN output as probability of
-                      each charactor at each time. (ex. (y_1, y_2,...,y_T))
+                      each charactor at each time.
+                      (ex. :math:`(y_1, y_2,...,y_T)`)
 
     Returns:
-        Variable: A variable holding a scalar value of the CTC cost.
+        Variable: A variable holding a scalar value of the CTC loss.
 
     .. note::
        This function is differentiable only by ``x``.
 
+    .. [Graves2006] Alex Graves, Santiago Fernandez,\
+    Faustino Gomez, Jurgen Schmidhuber,\
+    `Connectionist Temporal Classification: Labelling Unsegmented\
+    Sequence Data with Recurrent Neural Networks\
+    <ftp://ftp.idsia.ch/pub/juergen/icml2006.pdf>`_
+
+    .. [Graves2012] Alex Graves,\
+    `Supervised Sequence Labelling with Recurrent Neural Networks\
+    <http://www.cs.toronto.edu/~graves/preprint.pdf>`_
+
     """
-    return ConnectionistTemporalClassificationCost()(t, *x)
+    return ConnectionistTemporalClassification(blank_symbol)(t, *x)

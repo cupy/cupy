@@ -1,6 +1,6 @@
-import unittest
-
+import math
 import numpy
+import unittest
 
 import chainer
 from chainer import cuda
@@ -15,33 +15,43 @@ if cuda.available:
 class TestCTC(unittest.TestCase):
 
     def setUp(self):
-        """# initialize x as actual value
-
-        self.x = numpy.array([[0.76071646,  0.28901242, 0.89631007],
-                              [0.86875586,  0.79419921, 0.98096017],
-                              [0.94204353,  0.63607605, 0.90673191],
-                              [0.88267389,  0.03590736, 0.71339421]])
-        self.t = numpy.array([0,1]) #initialize t as expected label
-        self.x = numpy.array([[0.99,0.,0.01], [0.99,0., 0.01],
-                              [0.99,0., 0.01], [0.99,0., 0.01]])
-        self.t = numpy.array([0])
-        """
         self.x = numpy.array([[0.99, 0., 0.01],
                               [0.45, 0.45, 0.1],
                               [0.1, 0.7, 0.2],
                               [0.1, 0.78, 0.12]])
         self.t = numpy.array([0, 1])
+        self.l = numpy.array([2, 0, 2, 1, 2])
+        self.blank_symbol = 2
 
-    # compute actual value from x_data,
-    # expected value(via numerical differentiation) from t_data
+    # recursive forward computation.
+    def alpha(self, t, u):
+        if t == 0:
+            if u == 0:
+                return self.x[0][self.blank_symbol]
+            elif u == 1:
+                return self.x[0][self.l[1]]
+            else:
+                return 0.0
+        if self.l[u] == self.blank_symbol or self.l[u] == self.l[u-2]:
+            return self.x[t][self.l[u]] * \
+                (self.alpha(t-1, u-1) + self.alpha(t-1, u))
+        else:
+            return self.x[t][self.l[u]] * \
+                (self.alpha(t-1, u-2)
+                 + self.alpha(t-1, u-1)
+                 + self.alpha(t-1, u))
+
     def check_forward(self, t_data, xs_data):
         x = tuple(chainer.Variable(x_data) for x_data in xs_data)
         t = chainer.Variable(t_data)
-        loss = functions.connectionist_temporal_classification_cost(t, x)
+        loss = functions.connectionist_temporal_classification(2, t, x)
         loss_value = float(loss.data)
 
-        # Todo: compute expected value
-        loss_expect = 1.0
+        # compute expected value by recursive computation.
+        loss_expect = - math.log(self.alpha(self.x.shape[0]-1,
+                                            self.l.shape[0]-1)
+                                 + self.alpha(self.x.shape[0]-1,
+                                              self.l.shape[0]-2))
 
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
@@ -53,17 +63,18 @@ class TestCTC(unittest.TestCase):
         self.check_forward(self.t,
                            tuple(cuda.to_gpu(x_data) for x_data in self.x))
 
+    # expected value(via numerical differentiation) from t_data
     def check_backward(self, t_data, xs_data):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
         t = chainer.Variable(t_data)
-        loss = functions.connectionist_temporal_classification_cost(t, xs)
+        loss = functions.connectionist_temporal_classification(2, t, xs)
         loss.backward()
 
         func = loss.creator
         xs_data = tuple(x.data for x in xs)
         f = lambda: func.forward((t.data,) + xs_data)
         gl_0, gx_0, gx_1, gx_2, gx_3 = gradient_check.numerical_grad(
-            f, ((t.data,) + xs_data), (1, ), eps=0.0001)
+            f, ((t.data,) + xs_data), (0.01, ), eps=0.01)
         gradient_check.assert_allclose(xs[0].grad, gx_0)
         gradient_check.assert_allclose(xs[1].grad, gx_1)
         gradient_check.assert_allclose(xs[2].grad, gx_2)

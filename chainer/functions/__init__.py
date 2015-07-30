@@ -40,7 +40,7 @@ NonparameterizedConvolution2D = \
 NonparameterizedLinear = \
     nonparameterized_linear.NonparameterizedLinear
 Concat = concat.Concat
-ConnectionistTemporalClassificationCost = ctc.connectionist_temporal_classification_cost
+ConnectionistTemporalClassification = ctc.connectionist_temporal_classification
 Copy = copy.Copy
 Dropout = dropout.Dropout
 Identity = identity.Identity
@@ -83,7 +83,8 @@ convolution_2d = nonparameterized_convolution_2d.convolution_2d
 linear = nonparameterized_linear.linear
 
 concat = concat.concat
-connectionist_temporal_classification_cost = ctc.connectionist_temporal_classification_cost
+connectionist_temporal_classification \
+    = ctc.connectionist_temporal_classification
 copy = copy.copy
 dropout = dropout.dropout
 identity = identity.identity
