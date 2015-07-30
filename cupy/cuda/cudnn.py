@@ -1,11 +1,11 @@
 """Thin wrapper of CuDNN."""
 # NOTE: This wrapper does not cover all APIs of CuDNN v2.
 import ctypes
-import ctypes.util
 
+from cupy.cuda import internal
 from cupy.cuda import runtime
 
-_cudnn = ctypes.cdll.LoadLibrary(ctypes.util.find_library('cudnn'))
+_cudnn = internal.load_library('cudnn')
 
 _I = ctypes.c_int
 _S = ctypes.c_size_t

@@ -1,10 +1,10 @@
 """Thin wrapper of cuRAND."""
 import ctypes
-import ctypes.util
 
 from cupy.cuda import runtime
+from cupy.cuda import internal
 
-_curand = ctypes.cdll.LoadLibrary(ctypes.util.find_library('curand'))
+_curand = internal.load_library('curand')
 
 _I = ctypes.c_int
 _U = ctypes.c_uint
