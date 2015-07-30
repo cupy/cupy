@@ -1232,7 +1232,6 @@ transpose = manipulation.transpose.transpose
 atleast_1d = manipulation.dims.atleast_1d
 atleast_2d = manipulation.dims.atleast_2d
 atleast_3d = manipulation.dims.atleast_3d
-Broadcast = manipulation.dims.Broadcast
 broadcast = manipulation.dims.broadcast
 broadcast_arrays = manipulation.dims.broadcast_arrays
 squeeze = manipulation.dims.squeeze
