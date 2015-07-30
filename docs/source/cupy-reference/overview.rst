@@ -1,5 +1,5 @@
-CuPy - an array library on CUDA with NumPy-subset interface
-===========================================================
+CuPy Overview
+=============
 
 .. module:: cupy
 

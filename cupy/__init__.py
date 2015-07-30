@@ -117,10 +117,27 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     @property
     def flags(self):
+        """Object containing memory-layout information.
+
+        It only contains ``c_contiguous``, ``f_contiguous``, and ``owndata``
+        attributes. All of these are read-only. Accessing by indexes is also
+        supported.
+
+        See: :attr:`numpy.ndarray.flags`
+
+        """
         return flags.Flags(self._flags)
 
     @property
     def shape(self):
+        """Lengths of axes.
+
+        Setter of this property involves reshaping without copy. If the array
+        cannot be reshaped without copy, it rases an exception.
+
+        See: :attr:`numpy.ndarray.shape`
+
+        """
         return self._shape
 
     @shape.setter
@@ -135,22 +152,53 @@ class ndarray(object):
 
     @property
     def strides(self):
+        """Strides of axes in bytes.
+
+        See: :attr:`numpy.ndarray.strides`
+        
+        """
         return self._strides
 
     @property
     def ndim(self):
+        """Number of dimensions.
+
+        ``a.ndim`` is equivalent to ``len(a.shape)``.
+
+        See: :attr:`numpy.ndarray.ndim`
+
+        """
         return len(self.shape)
 
     @property
     def size(self):
+        """Number of elements this array holds.
+
+        This is equivalent to product over the shape tuple.
+
+        See: :attr:`numpy.ndarray.size`
+
+        """
         return numpy.prod(self.shape, dtype=int)
 
     @property
     def itemsize(self):
+        """Size of each element in bytes.
+
+        See: :attr:`numpy.ndarray.itemsize`
+
+        """
         return self._dtype.itemsize
 
     @property
     def nbytes(self):
+        """Size of whole elements in bytes.
+
+        It does not count skips between elements.
+
+        See: :attr:`numpy.ndarray.nbytes`
+
+        """
         return self.size * self.itemsize
 
     # -------------------------------------------------------------------------
@@ -158,6 +206,12 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     @property
     def dtype(self):
+        """Dtype object of element type.
+
+        See: `Data type objects (dtype) \
+        <http://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
+
+        """
         return self._dtype
 
     # -------------------------------------------------------------------------
@@ -165,6 +219,11 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     @property
     def T(self):
+        """Shape-reversed version of the array.
+
+        If ndim < 2, then this is just a reference to the array itself.
+
+        """
         if self.ndim < 2:
             return self
         else:
@@ -183,6 +242,18 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     @property
     def ctypes(self):
+        """C representation of the array.
+
+        This property is used for sending an array to CUDA kernels. The type of
+        returned C structure is different for different dtypes and ndims. The
+        definition of C type is written in ``cupy/carray.cuh``.
+
+        .. note::
+
+           The returned value does not have compatibility with
+           :meth:`numpy.ndarray.ctypes`.
+
+        """
         return carray.to_carray(self.data.ptr, self.size, self.shape,
                                 self.strides)
 
