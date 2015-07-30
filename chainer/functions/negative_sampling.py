@@ -104,6 +104,10 @@ class NegativeSampling(function.Function):
         function.Function.to_gpu(self, device)
         self.sampler.to_gpu()
 
+    def to_cpu(self):
+        function.Function.to_cpu(self)
+        self.sampler.to_cpu()
+
     def forward_cpu(self, inputs):
         x, t = inputs
         self._make_samples(t)
