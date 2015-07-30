@@ -81,8 +81,8 @@ class ndarray(object):
             created as a view.
 
     """
-    def __init__(self, shape, dtype=numpy.float64, memptr=None, offset=0,
-                 strides=None, allocator=cuda.alloc):
+    def __init__(self, shape, dtype=float, memptr=None, offset=0, strides=None,
+                 allocator=cuda.alloc):
         self._shape = tuple(shape)
         self._dtype = numpy.dtype(dtype)
         self._allocator = allocator
