@@ -46,7 +46,7 @@ Joining arrays along axis
 Splitting arrays along axis
 ---------------------------
 
-.. autofunction:: cupy.array_slpit
+.. autofunction:: cupy.array_split
 .. autofunction:: cupy.split
 .. autofunction:: cupy.vsplit
 .. autofunction:: cupy.hsplit
