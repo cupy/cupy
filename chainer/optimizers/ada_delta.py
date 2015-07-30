@@ -36,7 +36,7 @@ class AdaDelta(optimizer.Optimizer):
         cuda.elementwise(
             ['param', 'grad', 'msg', 'msdx', 'one_minus_rho', 'eps'],
             '''msg[i]   += one_minus_rho * (grad[i] * grad[i] - msg[i]);
-               auto dx  = sqrt((msdx[i] + eps) / (msg[i] + eps)) * grad[i];
+               float dx  = sqrt((msdx[i] + eps) / (msg[i] + eps)) * grad[i];
                msdx[i]  += one_minus_rho * (dx * dx - msdx[i]);
                param[i] -= dx;''',
             'adadelta')(param, grad, msg, msdx,
