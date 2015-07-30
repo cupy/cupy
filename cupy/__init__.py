@@ -591,7 +591,8 @@ class ndarray(object):
            :meth:`numpy.ndarray.sum`
 
         """
-        return sum(self, axis, dtype, out, keepdims, allocator)
+        return sum(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+                   allocator=allocator)
 
     # TODO(beam2d): Implement it
     # def cumsum(self, axis=None, dtype=None, out=None, allocator=None):
@@ -605,7 +606,8 @@ class ndarray(object):
            :meth:`numpy.ndarray.mean`
 
         """
-        return mean(self, axis, dtype, out, keepdims, allocator)
+        return mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+                    allocator=allocator)
 
     def var(self, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
             allocator=None):
@@ -616,7 +618,8 @@ class ndarray(object):
            :meth:`numpy.ndarray.var`
 
         """
-        return var(self, axis, dtype, out, ddof, keepdims, allocator)
+        return var(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+                   allocator=allocator)
 
     def std(self, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
             allocator=None):
@@ -627,7 +630,8 @@ class ndarray(object):
            :meth:`numpy.ndarray.std`
 
         """
-        return std(self, axis, dtype, out, ddof, keepdims, allocator)
+        return std(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+                   allocator=allocator)
 
     def prod(self, axis=None, dtype=None, out=None, keepdims=None,
              allocator=None):
@@ -638,8 +642,8 @@ class ndarray(object):
            :meth:`numpy.ndarray.prod`
 
         """
-        return prod(self, axis, dtype, out, keepdims, allocator)
-
+        return prod(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+                    allocator=allocator)
     # TODO(beam2d): Implement these
     # def cumprod(self, axis=None, dtype=None, out=None, allocator=None):
     # def all(self, axis=None, out=None, allocator=None):
