@@ -265,9 +265,9 @@ def to_cpu(array):
         ``array`` without performing any copy.
 
     """
-    if isinstance(array, numpy.ndarray):
-        return array
-    return cupy.asnumpy(array)
+    if isinstance(array, ndarray):
+        return array.get()
+    return array
 
 
 def to_cpu_async(array, stream=None):
@@ -284,9 +284,9 @@ def to_cpu_async(array, stream=None):
         ``array`` without performing any copy.
 
     """
-    if isinstance(array, numpy.ndarray):
-        return array
-    return cupy.asnumpy(array, stream)
+    if isinstance(array, ndarray):
+        return array.get(stream=stream)
+    return array
 
 
 def empty(shape, dtype=numpy.float32):
