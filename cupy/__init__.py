@@ -123,7 +123,7 @@ class ndarray(object):
         attributes. All of these are read-only. Accessing by indexes is also
         supported.
 
-        See: :attr:`numpy.ndarray.flags`
+        .. seealso:: :attr:`numpy.ndarray.flags`
 
         """
         return flags.Flags(self._flags)
@@ -135,7 +135,7 @@ class ndarray(object):
         Setter of this property involves reshaping without copy. If the array
         cannot be reshaped without copy, it rases an exception.
 
-        See: :attr:`numpy.ndarray.shape`
+        .. seealso: :attr:`numpy.ndarray.shape`
 
         """
         return self._shape
@@ -154,7 +154,7 @@ class ndarray(object):
     def strides(self):
         """Strides of axes in bytes.
 
-        See: :attr:`numpy.ndarray.strides`
+        .. seealso:: :attr:`numpy.ndarray.strides`
         
         """
         return self._strides
@@ -165,7 +165,7 @@ class ndarray(object):
 
         ``a.ndim`` is equivalent to ``len(a.shape)``.
 
-        See: :attr:`numpy.ndarray.ndim`
+        .. seealso:: :attr:`numpy.ndarray.ndim`
 
         """
         return len(self.shape)
@@ -176,7 +176,7 @@ class ndarray(object):
 
         This is equivalent to product over the shape tuple.
 
-        See: :attr:`numpy.ndarray.size`
+        .. seealso:: :attr:`numpy.ndarray.size`
 
         """
         return numpy.prod(self.shape, dtype=int)
@@ -185,7 +185,7 @@ class ndarray(object):
     def itemsize(self):
         """Size of each element in bytes.
 
-        See: :attr:`numpy.ndarray.itemsize`
+        .. seealso:: :attr:`numpy.ndarray.itemsize`
 
         """
         return self._dtype.itemsize
@@ -196,7 +196,7 @@ class ndarray(object):
 
         It does not count skips between elements.
 
-        See: :attr:`numpy.ndarray.nbytes`
+        .. seealso:: :attr:`numpy.ndarray.nbytes`
 
         """
         return self.size * self.itemsize
@@ -208,8 +208,9 @@ class ndarray(object):
     def dtype(self):
         """Dtype object of element type.
 
-        See: `Data type objects (dtype) \
-        <http://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
+        .. seealso::
+           `Data type objects (dtype) \
+           <http://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
 
         """
         return self._dtype
@@ -219,7 +220,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     @property
     def T(self):
-        """Shape-reversed version of the array.
+        """Shape-reversed view of the array.
 
         If ndim < 2, then this is just a reference to the array itself.
 
@@ -249,7 +250,6 @@ class ndarray(object):
         definition of C type is written in ``cupy/carray.cuh``.
 
         .. note::
-
            The returned value does not have compatibility with
            :meth:`numpy.ndarray.ctypes`.
 
@@ -264,6 +264,14 @@ class ndarray(object):
     # def item(self, *args):
 
     def tolist(self):
+        """Converts the array to a (possibly nested) Python list.
+
+        Returns:
+            list: The possibly nested Python list of array elements.
+
+        .. seealso:: :meth:`numpy.ndarray.tolist`
+
+        """
         return self.get().tolist()
 
     # TODO(beam2d): Implement these
@@ -272,6 +280,11 @@ class ndarray(object):
     # def tobytes(self, order='C'):
 
     def tofile(self, fid, sep='', format='%s'):
+        """Writes the array to a file.
+
+        .. seealso:: :meth:`numpy.ndarray.tolist`
+
+        """
         self.get().tofile(fid, sep, format)
 
     # TODO(beam2d): Implement these
@@ -279,13 +292,34 @@ class ndarray(object):
     # def dumps(self):
 
     def astype(self, dtype, copy=True, allocator=None):
+        """Casts the array to given data type.
+
+        Args:
+            dtype: Type specifier.
+            copy (bool): If it is False and no cast happens, then this method
+                returns the array itself. Otherwise, a copy is returned.
+            allocator (function): CuPy memory allocator. The allocator of the
+                array is used by default.
+
+        Returns:
+            If ``copy`` is False and no cast is required, then the array itself
+            is returned. Otherwise, it returns a (possibly casted) copy of the
+            array.
+
+        .. note::
+           This method currently does not support ``order``, ``casting``, and
+           ``subok`` arguments.
+
+        .. seealso:: :meth:`numpy.ndarray.astype`
+
+        """
         # TODO(beam2d): Support ordering, casting, and subok option
         dtype = numpy.dtype(dtype)
         if dtype == self.dtype:
             if copy:
                 return self.copy(allocator)
             else:
-                return self.view()
+                return self
         else:
             newarray = empty_like(self, dtype=dtype, allocator=allocator)
             elementwise.copy(self, newarray)
@@ -295,10 +329,31 @@ class ndarray(object):
     # def byteswap(self, inplace=False):
 
     def copy(self, allocator=None):
+        """Returns a copy of the array.
+
+        .. seealso::
+           :func:`cupy.copy` for full documentation,
+           :meth:`numpy.ndarray.copy`
+
+        """
         # TODO(beam2d): Support ordering option
         return copy(self, allocator)
 
     def view(self, dtype=None):
+        """Returns a view of the array.
+
+        Args:
+            dtype: If this is different from the data type of the array, the
+                returned view reinterpret the memory sequence as an array of
+                this type.
+
+        Returns:
+            cupy.ndarray: A view of the array. A reference to the original
+            array is stored at the :attr:`cupy.ndarray.base` attribute.
+
+        .. seealso:: :meth:`numpy.ndarray.view`
+        
+        """
         v = ndarray.__new__(ndarray)
         v._shape = self._shape
         v._dtype = dtype or self._dtype
@@ -314,12 +369,27 @@ class ndarray(object):
     # def setflags(self, write=None, align=None, uic=None):
 
     def fill(self, value):
+        """Fills the array with a scalar value.
+
+        Args:
+            value: A scalar value to fill the array content.
+
+        .. seealso:: :meth:`numpy.ndarray.fill`
+
+        """
         elementwise.copy(value, self, dtype=self.dtype)
 
     # -------------------------------------------------------------------------
     # Shape manipulation
     # -------------------------------------------------------------------------
     def reshape(self, *newshape):
+        """Returns an array of a different shape and the same content.
+
+        .. seealso::
+           :func:`cupy.reshape` for full documentation,
+           :meth:`numpy.ndarray.reshape`
+
+        """
         # TODO(beam2d): Support ordering option
         return reshape(self, newshape)
 
@@ -327,12 +397,40 @@ class ndarray(object):
     # def resize(self, new_shape, refcheck=True):
 
     def transpose(self, *axes):
+        """Returns a view of the array with axes permuted.
+
+        .. seealso::
+           :func:`cupy.transpose` for full documentation,
+           :meth:`numpy.ndarray.reshape`
+
+        """
         return transpose(self, axes)
 
     def swapaxes(self, axis1, axis2):
+        """Returns a view of the array with two axes swapped.
+
+        .. seealso::
+           :func:`cupy.swapaxes` for full documentation,
+           :meth:`numpy.ndarray.swapaxes`
+
+        """
         return swapaxes(self, axis1, axis2)
 
     def flatten(self, allocator=None):
+        """Returns a copy of the array flatten into one dimension.
+
+        It currently supports C-order only.
+
+        Args:
+            allocator (function): CuPy memory allocator. The allocator of the
+                source array is used by default.
+
+        Returns:
+            cupy.ndarray: A copy of the array with one dimension.
+
+        .. seealso:: :meth:`numpy.ndarray.flatten`
+
+        """
         # TODO(beam2d): Support ordering option
         if self.flags.c_contiguous:
             newarray = self.copy()
@@ -346,16 +444,37 @@ class ndarray(object):
         return newarray
 
     def ravel(self):
+        """Returns a array flattend into one dimension.
+
+        .. seealso::
+           :func:`cupy.ravel` for full documentation,
+           :meth:`numpy.ndarray.ravel`
+
+        """
         # TODO(beam2d): Support ordering option
         return ravel(self)
 
     def squeeze(self, axis=None):
+        """Returns a view with single-dimensional axes removed.
+
+        .. seealso::
+           :func:`cupy.squeeze` for full documentation,
+           :meth:`numpy.ndarray.squeeze`
+
+        """
         return squeeze(self, axis)
 
     # -------------------------------------------------------------------------
     # Item selection and manipulation
     # -------------------------------------------------------------------------
     def take(self, indices, axis=None, out=None, allocator=None):
+        """Returns an array of elements at given indices along the axis.
+
+        .. seealso::
+           :func:`cupy.take` for full documentation,
+           :meth:`numpy.ndarray.take`
+
+        """
         return take(self, indices, axis, out, allocator)
 
     # TODO(beam2d): Implement these
@@ -372,6 +491,13 @@ class ndarray(object):
     # def compress(self, condition, axis=None, out=None, allocator=None):
 
     def diagonal(self, offset=0, axis1=0, axis2=1):
+        """Returns a view of the specified diagonals.
+
+        .. seealso::
+           :func:`cupy.diagonal` for full documentation,
+           :meth:`numpy.ndarray.diagonal`
+
+        """
         return diagonal(self, offset, axis1, axis2)
 
     # -------------------------------------------------------------------------
@@ -379,24 +505,52 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     def max(self, axis=None, out=None, dtype=None, keepdims=False,
             allocator=None):
+        """Returns the maximum along a given axis.
+
+        .. seealso::
+           :func:`cupy.amax` for full documentation,
+           :meth:`numpy.ndarray.max`
+
+        """
         return amax(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
             allocator=allocator)
 
     def argmax(self, axis=None, out=None, dtype=None, keepdims=False,
                allocator=None):
+        """Returns the indices of the maximum along a given axis.
+
+        .. seealso::
+           :data:`cupy.argmax` for full documentation,
+           :meth:`numpy.ndarray.argmax`
+
+        """
         return argmax(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
             allocator=allocator)
 
     def min(self, axis=None, out=None, dtype=None, keepdims=False,
             allocator=None):
+        """Returns the minimum along a given axis.
+
+        .. seealso::
+           :func:`cupy.amin` for full documentation,
+           :meth:`numpy.ndarray.min`
+
+        """
         return amin(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
             allocator=allocator)
 
     def argmin(self, axis=None, out=None, dtype=None, keepdims=False,
                allocator=None):
+        """Returns the indices of the minimum along a given axis.
+
+        .. seealso::
+           :data:`cupy.argmin` for full documentation,
+           :meth:`numpy.ndarray.argmin`
+
+        """
         return argmin(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
             allocator=allocator)
@@ -405,6 +559,13 @@ class ndarray(object):
     # def ptp(self, axis=None, out=None, allocator=None):
 
     def clip(self, a_min, a_max, out=None, allocator=None):
+        """Returns an array with values limited to [a_min, a_max].
+
+        .. seealso::
+           :func:`cupy.clip` for full documentation,
+           :meth:`numpy.ndarray.clip`
+
+        """
         return clip(self, a_min, a_max, out=out, allocator=allocator)
 
     # TODO(beam2d): Implement it
@@ -412,10 +573,24 @@ class ndarray(object):
 
     def trace(self, offset=0, axis1=0, axis2=1, dtype=None, out=None,
               allocator=None):
+        """Returns the sum along diagonals of the array.
+
+        .. seealso::
+           :func:`cupy.trace` for full documentation,
+           :meth:`numpy.ndarray.trace`
+
+        """
         return trace(self, offset, axis1, axis2, dtype, out, allocator)
 
     def sum(self, axis=None, dtype=None, out=None, keepdims=False,
             allocator=None):
+        """Returns the sum along a given axis.
+
+        .. seealso::
+           :data:`cupy.sum` for full documentation,
+           :meth:`numpy.ndarray.sum`
+
+        """
         return sum(self, axis, dtype, out, keepdims, allocator)
 
     # TODO(beam2d): Implement it
@@ -423,18 +598,46 @@ class ndarray(object):
 
     def mean(self, axis=None, dtype=None, out=None, keepdims=False,
              allocator=None):
+        """Returns the mean along a given axis.
+
+        .. seealso::
+           :data:`cupy.mean` for full documentation,
+           :meth:`numpy.ndarray.mean`
+
+        """
         return mean(self, axis, dtype, out, keepdims, allocator)
 
     def var(self, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
             allocator=None):
+        """Returns the variance along a given axis.
+
+        .. seealso::
+           :func:`cupy.var` for full documentation,
+           :meth:`numpy.ndarray.var`
+
+        """
         return var(self, axis, dtype, out, ddof, keepdims, allocator)
 
     def std(self, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
             allocator=None):
+        """Returns the standard deviation along a given axis.
+
+        .. seealso::
+           :func:`cupy.std` for full documentation,
+           :meth:`numpy.ndarray.std`
+
+        """
         return std(self, axis, dtype, out, ddof, keepdims, allocator)
 
     def prod(self, axis=None, dtype=None, out=None, keepdims=None,
              allocator=None):
+        """Returns the product along a given axis.
+
+        .. seealso::
+           :data:`cupy.prod` for full documentation,
+           :meth:`numpy.ndarray.prod`
+
+        """
         return prod(self, axis, dtype, out, keepdims, allocator)
 
     # TODO(beam2d): Implement these
@@ -846,6 +1049,13 @@ class ndarray(object):
     # Methods outside of the ndarray main documentation
     # -------------------------------------------------------------------------
     def dot(self, b, out=None, allocator=None):
+        """Returns the dot product with given array.
+
+        .. seealso::
+           :func:`cupy.dot` for full documentation,
+           :meth:`numpy.ndarray.dot`
+
+        """
         return dot(self, b, out, allocator)
 
     # -------------------------------------------------------------------------
@@ -853,6 +1063,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     @property
     def allocator(self):
+        """CUDA Memory allocator used for this array."""
         return self._allocator
 
     @property
@@ -863,6 +1074,16 @@ class ndarray(object):
             return ctypes.cast(self.data.ptr, ctypes.POINTER(ctypes.c_float))
 
     def get(self, stream=None):
+        """Returns a copy of the array on host memory.
+
+        Args:
+            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
+                copy runs asynchronously. Otherwise, the copy is synchronous.
+
+        Returns:
+            numpy.ndarray: Copy of the array on host memory.
+
+        """
         a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self.shape, dtype=self.dtype)
         ptr = internal.get_ndarray_ptr(a_cpu)
@@ -873,6 +1094,14 @@ class ndarray(object):
         return a_cpu
 
     def set(self, arr, stream=None):
+        """Copies an array on the host memory to cuda.ndarray.
+
+        Args:
+            arr (numpy.ndarray): The source array on the host memory.
+            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
+                copy runs asynchronously. Otherwise, the copy is synchronous.
+
+        """
         if not isinstance(arr, numpy.ndarray):
             raise TypeError('Only numpy.ndarray can be set to cupy.ndarray')
         if self.dtype != arr.dtype:
@@ -891,6 +1120,16 @@ class ndarray(object):
             self.data.copy_from_host_async(ptr, self.nbytes, stream)
 
     def reduced_view(self, dtype=None):
+        """Returns a view of the array with minimum number of dimensions.
+
+        Args:
+            dtype: Data type specifier. If it is given, then the memory
+                sequence is reinterpreted as the new type.
+
+        Returns:
+            cupy.ndarray: A view of the array with reduced dimensions.
+
+        """
         view = self.view(dtype=dtype)
         shape, strides = internal.get_reduced_dims_from_array(self)
         view._shape = shape
