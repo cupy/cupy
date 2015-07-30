@@ -76,7 +76,7 @@ class SplitAxis(function.Function):
             cdimy = max(0, min(i, self.cdimx) - prev_i)
             s = list(xshape)
             s[self.axis] = cdimy
-            y = cuda.empty(s, dtype=x[0].dtype)
+            y = cuda.empty(tuple(s), dtype=x[0].dtype)
             if cdimy == 0:
                 raise ValueError('Not support if shape contains 0')
             kernel(y, x[0], cdimy, self.cdimx, self.rdim, prev_i)
