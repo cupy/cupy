@@ -2,12 +2,12 @@ import ctypes
 import numpy
 
 from chainer import cuda
-from chainer.cuda import cudnn
 from chainer import function
 from chainer.utils import type_check
 
 
-if cudnn.available:
+if cuda.cudnn_enabled:
+    cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
     _mode = libcudnn.CUDNN_ACTIVATION_RELU
 

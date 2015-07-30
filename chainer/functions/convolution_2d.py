@@ -5,13 +5,13 @@ import numpy
 from six import moves
 
 from chainer import cuda
-from chainer.cuda import cudnn
 from chainer import function
 from chainer.utils import conv
 from chainer.utils import type_check
 
-if cudnn.available:
-    libcudnn = cudnn.cudnn
+if cuda.cudnn_enabled:
+    cudnn = cuda.cudnn
+    libcudnn = cuda.cudnn.cudnn
     _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
 
 
