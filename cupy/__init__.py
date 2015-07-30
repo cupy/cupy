@@ -352,7 +352,7 @@ class ndarray(object):
             array is stored at the :attr:`cupy.ndarray.base` attribute.
 
         .. seealso:: :meth:`numpy.ndarray.view`
-        
+
         """
         v = ndarray.__new__(ndarray)
         v._shape = self._shape

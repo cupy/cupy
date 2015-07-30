@@ -1,8 +1,8 @@
 """Thin wrapper of cuRAND."""
 import ctypes
 
-from cupy.cuda import runtime
 from cupy.cuda import internal
+from cupy.cuda import runtime
 
 _curand = internal.load_library('curand')
 

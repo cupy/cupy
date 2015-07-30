@@ -50,7 +50,7 @@ def concatenate(tup, axis=0, allocator=None):
         cupy.ndarray: Joined array.
 
     .. seealso:: :func:`numpy.concatenate`
-    
+
     """
     ndim = None
     shape = None
