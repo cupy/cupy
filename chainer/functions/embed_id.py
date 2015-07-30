@@ -61,17 +61,6 @@ class EmbedID(function.Function):
     def forward(self, x):
         return self.W.take(x[0], axis=0),
 
-    # TODO(okuta): Remove it
-    """
-    def forward_gpu(self, x):
-        y = cuda.empty((x[0].size, self.W.shape[1]), dtype=numpy.float32)
-        cuda.elementwise(
-            ['y', 'W', 'x', 'n_out'],
-            'y[i] = W[x[i / n_out] * n_out + i % n_out]',
-            'embed_id_fwd')(y, self.W, x[0], self.W.shape[1])
-        return y,
-    """
-
     def backward_cpu(self, x, gy):
         numpy.add.at(self.gW, x[0], gy[0])
         return None,
