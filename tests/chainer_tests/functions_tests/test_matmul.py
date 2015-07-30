@@ -12,10 +12,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 class _TestMatMul(unittest.TestCase):
 
     def check_forward(self, x1_data, x2_data):

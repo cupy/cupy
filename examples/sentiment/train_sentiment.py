@@ -151,7 +151,6 @@ model = chainer.FunctionSet(
 )
 
 if args.gpu >= 0:
-    cuda.init()
     model.to_gpu()
 
 # Setup optimizer

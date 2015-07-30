@@ -8,11 +8,6 @@ from chainer import testing
 
 class TestCuda(unittest.TestCase):
 
-    def test_init_unavailable(self):
-        if not cuda.available:
-            with self.assertRaises(RuntimeError):
-                cuda.init()
-
     def test_to_gpu_unavailable(self):
         x = numpy.array([1])
         if not cuda.available:

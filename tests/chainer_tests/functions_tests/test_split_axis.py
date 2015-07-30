@@ -10,10 +10,6 @@ from chainer import testing
 from chainer.testing import attr
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestSplitAxis0(unittest.TestCase):
 
     def setUp(self):

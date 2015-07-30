@@ -10,10 +10,6 @@ from chainer import testing
 from chainer.testing import attr
 
 
-if cuda.available:
-    cuda.init()
-
-
 class ConcatTestBase(object):
 
     def check_forward(self, xs_data, y_data, axis):

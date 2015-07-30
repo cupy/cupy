@@ -11,10 +11,6 @@ from chainer import testing
 from chainer.testing import attr
 
 
-if cuda.available:
-    cuda.init()
-
-
 class MockFunction(chainer.Function):
 
     def __init__(self, shape):

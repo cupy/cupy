@@ -9,9 +9,6 @@ from chainer.testing import attr
 
 import six
 
-if cuda.available:
-    cuda.init()
-
 
 class Constant(chainer.Function):
 

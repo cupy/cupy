@@ -12,10 +12,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestSoftmax(unittest.TestCase):
 
     def setUp(self):
