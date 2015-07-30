@@ -4,7 +4,6 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
-import cupy
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -46,7 +45,7 @@ class Softmax(function.Function):
 
     def forward(self, x):
         xpy = cuda.get_xpy(x[0])
-        if xpy == cupy and cuda.cudnn_enabled and self.use_cudnn:
+        if xpy == cuda.cupy and cuda.cudnn_enabled and self.use_cudnn:
             self.y = cuda.empty_like(x[0])
             handle = cudnn.get_handle()
             x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
@@ -62,7 +61,7 @@ class Softmax(function.Function):
 
     def backward(self, x, gy):
         xpy = cuda.get_xpy(x[0])
-        if xpy == cupy and cuda.cudnn_enabled and self.use_cudnn:
+        if xpy == cuda.cupy and cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             gx = cuda.empty_like(x[0])
             x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
