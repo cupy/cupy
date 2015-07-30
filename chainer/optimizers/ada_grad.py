@@ -30,5 +30,7 @@ class AdaGrad(optimizer.Optimizer):
         cuda.elementwise(
             ['param', 'grad', 'h', 'lr', 'eps'],
             '''h[i] += grad[i] * grad[i];
-               param[i] -= lr * grad[i] / (sqrtf(h[i]) + eps);''',
-            'adagrad')(param, grad, h, self.lr, self.eps)
+               param[i] -= lr * grad[i] / (sqrt(h[i]) + eps);''',
+            'adagrad')(param, grad, h,
+                       param.dtype.type(self.lr),
+                       param.dtype.type(self.eps))

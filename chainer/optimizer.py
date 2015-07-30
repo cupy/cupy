@@ -174,7 +174,8 @@ class Optimizer(object):
                 with cuda.using_device(p):
                     cuda.elementwise(['g', 'p', 'decay'],
                                      'g[i] += decay * p[i]',
-                                     'weight_decay')(g, p, decay)
+                                     'weight_decay')(g, p,
+                                                     p.dtype.type(decay))
             else:
                 g += decay * p
 

@@ -15,4 +15,4 @@ class SGD(optimizer.Optimizer):
     def update_one_gpu(self, param, grad, _):
         cuda.elementwise(['param', 'grad', 'lr'],
                          'param[i] -= lr * grad[i]',
-                         'sgd')(param, grad, self.lr)
+                         'sgd')(param, grad, param.dtype.type(self.lr))

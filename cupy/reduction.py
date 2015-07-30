@@ -231,18 +231,25 @@ class ReductionKernel(object):
         self.options = []
         self.preamble = preamble
 
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
+        reduce_dims = kwargs.pop('reduce_dims', True)
         in_size = None
         for i in args:
             if isinstance(i, cupy.ndarray):
                 in_size = i.size
                 break
         assert in_size is not None
+        args = list(args)
+        for i, x in enumerate(args):
+            if isinstance(x, cupy.ndarray):
+                if reduce_dims:
+                    args[i] = x.reduced_view()
 
         out = cupy.empty((), dtype=self.out_dtype)
-        args = (out,) + args + (
-            numpy.int32(in_size), numpy.int32(1), numpy.int32(1))
+        args = [out] + args + [
+            numpy.int32(in_size), numpy.int32(1), numpy.int32(1)]
         assert len(self.param_names) == len(args)
+        internal.check_args_device(args)
         params, kernel_args = elementwise._get_kernel_params_args(
             self.param_names, args)
         block_size = 512

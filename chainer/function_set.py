@@ -83,7 +83,7 @@ class FunctionSet(object):
                 if isinstance(src, numpy.ndarray):
                     numpy.copyto(dst, src)
                 else:
-                    src.get(dst)
+                    dst[:] = src.get()
             elif isinstance(src, numpy.ndarray):
                 dst.set(src)
             else:

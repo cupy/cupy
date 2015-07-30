@@ -44,6 +44,7 @@ class Convolution2D(function.Function):
             function uses to initialize ``wscale``.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``.
+        dtype (numpy.dtype): Type to use in computing.
 
     This function holds at most two parameter arrays: ``W`` and ``b``, which
     indicate the filter weight and the bias vector, respectively.
@@ -85,7 +86,10 @@ class Convolution2D(function.Function):
     """
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
-                 initialW=None, initial_bias=None):
+                 initialW=None, initial_bias=None,
+                 dtype=numpy.float32):
+        self.dtype = numpy.dtype(dtype)
+
         ksize = _pair(ksize)
         stride = _pair(stride)
         pad = _pair(pad)
@@ -110,7 +114,7 @@ class Convolution2D(function.Function):
             self.W = numpy.random.normal(
                 0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
                 (out_channels, in_channels, self.kh, self.kw)
-            ).astype(numpy.float32)
+            ).astype(self.dtype)
         if isinstance(self.W, cuda.ndarray):
             self.gW = cuda.empty_like(self.W)
         else:
@@ -120,7 +124,7 @@ class Convolution2D(function.Function):
             assert initial_bias.shape == (out_channels,)
             self.b = initial_bias
         elif not nobias:
-            self.b = numpy.repeat(numpy.float32(bias), out_channels)
+            self.b = numpy.repeat(self.dtype.type(bias), out_channels)
 
         if self.b is not None:
             if isinstance(self.b, cuda.ndarray):
@@ -138,7 +142,7 @@ class Convolution2D(function.Function):
         x_type, = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype == self.dtype,
             x_type.ndim == 4,
             x_type.shape[1] == self.in_channels
         )
@@ -158,7 +162,7 @@ class Convolution2D(function.Function):
             'out_w')
 
         type_check.expect(
-            y_type.dtype == numpy.float32,
+            y_type.dtype == self.dtype,
             y_type.ndim == 4,
             y_type.shape[0] == x_type.shape[0],
             y_type.shape[1] == self.out_channels,
@@ -196,8 +200,7 @@ class Convolution2D(function.Function):
         out_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph)
         out_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw)
         out_c = self.W.shape[0]
-        y = cuda.empty((n, out_c, out_h, out_w), dtype=numpy.float32)
-
+        y = cuda.empty((n, out_c, out_h, out_w), dtype=self.dtype)
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x[0])
@@ -218,7 +221,7 @@ class Convolution2D(function.Function):
                 handle, x_desc.value, self.filter_desc.value,
                 self.conv_desc.value, y_desc.value, algo)
             workspace = cuda.empty(
-                (max(workspace_size // 4, 1),), dtype=numpy.float32)
+                (max(workspace_size // 4, 1),), dtype=self.dtype)
 
             one = ctypes.c_float(1)
             zero = ctypes.c_float(0)
@@ -249,12 +252,7 @@ class Convolution2D(function.Function):
 
             # TODO(beam2d): Support unshared bias
             if self.b is not None:
-                cuda.elementwise(
-                    ['y', 'b', 'c', 'hw'],
-                    'y[i] += b[i / hw % c]',
-                    'conv_bias_fwd')(y, self.b,
-                                     numpy.int32(out_c),
-                                     numpy.int32(out_h * out_w))
+                y += self.b.reshape((1, out_c, 1, 1))
 
         return y,
 
@@ -296,12 +294,7 @@ class Convolution2D(function.Function):
         else:
             handle = cuda.get_cublas_handle()
             if self.gb is not None:
-                # TODO(beam2d): Unify kernels
-                with cuda.using_cumisc(handle):
-                    tmp = cuda.cumisc.sum(
-                        gy[0].reshape(n * out_c, out_h * out_w), axis=1)
-                    tmp = cuda.cumisc.sum(tmp.reshape(n, out_c), axis=0)
-                    self.gb += tmp
+                self.gb += gy[0].sum(axis=(0, 2, 3))
 
             # TODO(beam2d): Use streams
             gW_mat = self.gW.reshape(out_c, c * self.kh * self.kw)

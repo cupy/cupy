@@ -323,8 +323,8 @@ class PowVarVar(function.Function):
         cuda.elementwise(
             ['gx0', 'gx1', 'x0', 'x1', 'gy'],
             '''
-               gx0[i] = x1[i] * powf(x0[i], x1[i] - 1) * gy[i];
-               gx1[i] = __logf(x0[i]) * powf(x0[i], x1[i]) * gy[i];
+               gx0[i] = x1[i] * pow(x0[i], x1[i] - 1) * gy[i];
+               gx1[i] = log(x0[i]) * pow(x0[i], x1[i]) * gy[i];
             ''', 'pow_var_var_bwd')(gx0, gx1, x[0], x[1], gy[0])
         return gx0, gx1
 
@@ -342,11 +342,12 @@ class PowVarConst(function.Function):
         type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
-        return utils.force_array(x[0] ** _force_type(x[0].dtype, self.value)),
+        self.value = _force_type(x[0].dtype, self.value)
+        return utils.force_array(x[0] ** self.value),
 
     def backward_cpu(self, x, gy):
         val_1 = _force_type(x[0].dtype, self.value - 1)
-        gx = _force_type(x[0].dtype, self.value) * (x[0] ** val_1) * gy[0]
+        gx = self.value * (x[0] ** val_1) * gy[0]
         return utils.force_array(gx),
 
     def backward_gpu(self, x, gy):
@@ -354,12 +355,12 @@ class PowVarConst(function.Function):
         if isinstance(self.value, Number):
             cuda.elementwise(
                 ['gx', 'x', 'gy', 'value'],
-                'gx[i] = value * powf(x[i], value - 1) * gy[i]',
+                'gx[i] = value * pow(x[i], value - 1) * gy[i]',
                 'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         else:
             cuda.elementwise(
                 ['gx', 'x', 'gy', 'value'],
-                'gx[i] = value[i] * powf(x[i], value[i] - 1) * gy[i]',
+                'gx[i] = value[i] * pow(x[i], value[i] - 1) * gy[i]',
                 'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 
@@ -383,26 +384,26 @@ class PowConstVar(function.Function):
         type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
-        y = utils.force_array(_force_type(x[0].dtype, self.value) ** x[0])
+        self.value = _force_type(x[0].dtype, self.value)
+        y = utils.force_array(self.value ** x[0])
         return y,
 
     def backward_cpu(self, x, gy):
-        y = utils.force_array(_force_type(x[0].dtype, self.value) ** x[0])
-        value = _force_type(gy[0].dtype, self.value)
-        return utils.force_array(numpy.log(value) * y * gy[0]),
+        y = utils.force_array(self.value ** x[0])
+        return utils.force_array(numpy.log(self.value) * y * gy[0]),
 
     def backward_gpu(self, x, gy):
         gx = cuda.empty_like(x[0])
         if isinstance(self.value, Number):
-            logv = math.log(self.value)
+            logv = _force_type(x[0].dtype, math.log(self.value))
             cuda.elementwise(
                 ['gx', 'x', 'gy', 'value', 'logv'],
-                'gx[i] = logv * powf(value, x[i]) * gy[i]',
+                'gx[i] = logv * pow(value, x[i]) * gy[i]',
                 'pow_const_var_bwd')(gx, x[0], gy[0], self.value, logv)
         else:
             cuda.elementwise(
                 ['gx', 'x', 'gy', 'value'],
-                'gx[i] = __logf(value[i]) * powf(value[i], x[i]) * gy[i]',
+                'gx[i] = log(value[i]) * pow(value[i], x[i]) * gy[i]',
                 'pow_const_var_bwd')(gx, x[0], gy[0], self.value)
         return gx,
 

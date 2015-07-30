@@ -25,11 +25,12 @@ class RMSprop(optimizer.Optimizer):
         param -= self.lr * grad / (numpy.sqrt(ms) + self.eps)
 
     def update_one_gpu(self, param, grad, ms):
+        ftype = param.dtype.type
         cuda.elementwise(
             ['param', 'grad', 'ms', 'lr', 'alpha', 'eps'],
             '''ms[i] = alpha * ms[i] + (1 - alpha) * grad[i] * grad[i];
                param[i] -= lr * grad[i] / (sqrt(ms[i]) + eps);''',
             'rmsprop')(param, grad, ms,
-                       param.dtype.type(self.lr),
-                       param.dtype.type(self.alpha),
-                       param.dtype.type(self.eps))
+                       ftype(self.lr),
+                       ftype(self.alpha),
+                       ftype(self.eps))

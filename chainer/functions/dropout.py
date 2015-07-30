@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -14,33 +12,15 @@ class Dropout(function.Function):
 
     def check_type_forwrad(self, in_types):
         type_check.expect(in_types.size() == 1)
-        type_check.expect(in_types[0].dtype == numpy.float32)
+        # TODO(okuta): float type check
+        # type_check.expect(in_types[0].dtype == numpy.float32)
 
-    def forward_cpu(self, x):
-        scale = numpy.float32(1. / (1 - self.dropout_ratio))
+    def forward(self, x):
+        scale = x[0].dtype.type(1. / (1 - self.dropout_ratio))
+        xpy = cuda.get_xpy(x[0])
         self.mask = scale * \
-            (numpy.random.rand(*x[0].shape) >= self.dropout_ratio)
+            (xpy.random.rand(*x[0].shape) >= self.dropout_ratio)
         return x[0] * self.mask,
-
-    def forward_gpu(self, x):
-        scale = numpy.float32(1. / (1 - self.dropout_ratio))
-        self.mask = scale * \
-            (cuda.random.rand(*x[0].shape) >= self.dropout_ratio)
-        return x[0] * self.mask,
-        """
-        self.rand = cuda.empty_like(x[0])
-        y = cuda.empty_like(x[0])
-
-        cuda.get_generator().fill_uniform(self.rand)
-        self.scale = 1. / (1 - self.dropout_ratio)
-
-        self.kernel = cuda.elementwise(
-            ['y', 'x', 'rand', 'dropout_ratio', 'scale'],
-            'y[i] = rand[i] < dropout_ratio ? 0 : scale * x[i]',
-            'dropout')
-        self.kernel(y, x[0], self.rand, self.dropout_ratio, self.scale)
-        return y,
-        """
 
     def backward(self, x, gy):
         return gy[0] * self.mask,
