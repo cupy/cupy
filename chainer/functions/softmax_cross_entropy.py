@@ -37,14 +37,14 @@ class SoftmaxCrossEntropy(function.Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        self.y, = softmax.Softmax().forward_cpu((x,))
+        self.y, = softmax.Softmax().forward((x,))
         p = self.y[six.moves.range(len(t)), t]
         y = -numpy.log(p).sum(keepdims=True) / t.size
         return y.reshape(()),
 
     def forward_gpu(self, inputs):
         x, t = inputs
-        self.y, = softmax.Softmax(self.use_cudnn).forward_gpu((x,))
+        self.y, = softmax.Softmax(self.use_cudnn).forward((x,))
         ret = cuda.reduce(
             ['t', 'y', 'n_channel'], '-log(y[i * n_channel + t[i]])',
             'a+b', 0, 'crossent_fwd', numpy.float32
