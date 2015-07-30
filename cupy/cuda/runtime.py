@@ -10,9 +10,10 @@ There are four differences compared to the original C API.
 
 """
 import ctypes
-import ctypes.util
 
-_cudart = ctypes.cdll.LoadLibrary(ctypes.util.find_library('cudart'))
+from cupy.cuda import internal
+
+_cudart = internal.load_library('cudart')
 
 ###############################################################################
 # Types
