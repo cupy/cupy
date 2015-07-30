@@ -265,7 +265,8 @@ def to_cpu(array):
         ``array`` without performing any copy.
 
     """
-    _check_cuda_available()
+    if isinstance(array, numpy.ndarray):
+        return array
     return cupy.asnumpy(array)
 
 
@@ -283,7 +284,8 @@ def to_cpu_async(array, stream=None):
         ``array`` without performing any copy.
 
     """
-    _check_cuda_available()
+    if isinstance(array, numpy.ndarray):
+        return array
     return cupy.asnumpy(array, stream)
 
 
