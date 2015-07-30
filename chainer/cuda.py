@@ -57,7 +57,9 @@ if available:
 else:
     # Dummy classes
     class Device(object):
-        pass
+
+        def use():
+            pass
 
     class Event(object):
         pass
