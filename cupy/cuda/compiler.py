@@ -5,6 +5,8 @@ import re
 import subprocess
 import tempfile
 
+import six
+
 from cupy.cuda import device
 from cupy.cuda import module
 
@@ -59,6 +61,8 @@ def preprocess(source, options=[]):
 
         cmd.append(cu_path)
         pp_src = subprocess.check_output(cmd, cwd=root_dir)
+        if isinstance(pp_src, six.binary_type):
+            pp_src = pp_src.decode('utf-8')
         return re.sub('(?m)^#.*$', '', pp_src)
 
 
@@ -74,6 +78,8 @@ def compile_with_cache(source, options=[], arch=None, cache_dir=None):
         cache_dir = get_cache_dir()
 
     pp_src = preprocess(source, options)
+    if isinstance(pp_src, six.text_type):
+        pp_src = pp_src.encode('utf-8')
     name = '%s.cubin' % hashlib.md5(pp_src).hexdigest()
 
     mod = module.Module()
