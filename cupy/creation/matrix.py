@@ -10,7 +10,7 @@ def diag(v, k=0, allocator=None):
     Args:
         v (array-like): Array or array-like object.
         k (int): Index of diagonals. Zero indicates the main diagonal, a
-            positive value an upper diagonal, and negative value a lower
+            positive value an upper diagonal, and a negative value a lower
             diagonal.
         allocator (function): CuPy memory allocator. If ``v`` is a cupy.ndarray
             object, its allocator is used by default. Otherwise,

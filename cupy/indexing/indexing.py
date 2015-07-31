@@ -6,6 +6,29 @@ from cupy import elementwise
 
 
 def take(a, indices, axis=None, out=None, allocator=None):
+    """Takes elements of an array at specified indices along an axis.
+
+    This is an implementation of "fancy indexing" at single axis.
+
+    This function does not support ``mode`` option.
+
+    Args:
+        a (cupy.ndarray): Array to extract elements.
+        indices (int or array-like): Indices of elements that this function
+            takes.
+        axis (int): The axis along which to select indices. The flattened input
+            is used by default.
+        out (cupy.ndarray): Output array. If provided, it should be of
+            appropriate shape and dtype.
+        allocator (function): CuPy memory allocator. The allocator of ``a`` is
+            used by default.
+
+    Returns:
+        cupy.ndarray: The result of fancy indexing.
+
+    .. seealso:: :func:`numpy.take`
+
+    """
     if axis is None:
         a = a.ravel()
         aarg = a
@@ -18,6 +41,9 @@ def take(a, indices, axis=None, out=None, allocator=None):
         rshape = a.shape[axis + 1:]
         aarg = a.reduced_view()
 
+    if allocator is None:
+        allocator = a.allocator
+
     if numpy.isscalar(indices):
         a = cupy.rollaxis(a, axis)
         if out is None:
@@ -25,11 +51,11 @@ def take(a, indices, axis=None, out=None, allocator=None):
         else:
             out[:] = a[indices]
             return out
+    elif not isinstance(indices, cupy.ndarray):
+        indices = cupy.array(indices, dtype=int, allocator=allocator)
 
     out_shape = lshape + indices.shape + rshape
     if out is None:
-        if allocator is None:
-            allocator = a.allocator
         out = cupy.empty(out_shape, dtype=a.dtype, allocator=allocator)
         outarg = out.ravel()
     else:
@@ -56,6 +82,26 @@ def compress(condition, a, axis=None, out=None, allocator=None):
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
+    """Returns specified diagonals.
+
+    This function extracts the diagonals along two specified axes. The other
+    axes are not changed. This function returns a writable view of this array
+    as NumPy 1.10 will do.
+
+    Args:
+        a (cupy.ndarray): Array from which the diagonals are taken.
+        offset (int): Index of the diagonals. Zero indicates the main
+            diagonals, positive value upper diagonals, and negative value lower
+            diagonals.
+        axis1 (int): The first axis to take diagonals from.
+        axis2 (int): The second axis to take diagonals from.
+
+    Returns:
+        cupy.ndarray: A view of the diagonals of ``a``.
+
+    .. seealso:: :func:`numpy.diagonal`
+
+    """
     if axis1 < axis2:
         min_axis, max_axis = axis1, axis2
     else:
