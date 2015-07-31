@@ -170,7 +170,7 @@ class simple_reduction_function(object):
 
         in_size = a.size
         out_size = kernel_out_args[0].size
-        out_clp2_size = numpy.uint32(2 ** int.bit_length(out_size - 1))
+        out_clp2_size = numpy.uint32(2 ** int.bit_length(int(out_size - 1)))
 
         inout_args = [a] + kernel_out_args + [in_size, out_size, out_clp2_size]
         for i, x in enumerate(inout_args):

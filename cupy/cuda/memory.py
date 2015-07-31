@@ -20,14 +20,14 @@ class Memory(object):
         runtime.free(self.ptr)
 
     def __int__(self):
-        return self.ptr.value or 0
+        return self.ptr.value
 
 
 class MemoryPointer(object):
 
     def __init__(self, mem, offset):
         self.mem = mem
-        self.ptr = ctypes.c_void_p(int(mem) + offset)
+        self.ptr = ctypes.c_void_p(int(mem) + int(offset))
 
     def __int__(self):
         return self.ptr.value or 0
