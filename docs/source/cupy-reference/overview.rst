@@ -264,7 +264,7 @@ Array manipulation routines
  :func:`cupy.atleast_1d`          :func:`numpy.atleast_1d`
  :func:`cupy.atleast_2d`          :func:`numpy.atleast_2d`
  :func:`cupy.atleast_3d`          :func:`numpy.atleast_3d`
- :func:`cupy.broadcast`           :func:`numpy.broadcast`
+ :class:`cupy.broadcast`          :class:`numpy.broadcast`
  :func:`cupy.broadcast_arrays`    :func:`numpy.broadcast_arrays`
  :func:`cupy.squeeze`             :func:`numpy.squeeze`
 
@@ -428,7 +428,7 @@ Mathematical functions
  :data:`cupy.modf`                :data:`numpy.modf`
  :data:`cupy.remainder`           :data:`numpy.remainder`
 
- :data:`cupy.clip`                :func:`numpy.clip`
+ :func:`cupy.clip`                :func:`numpy.clip`
  :data:`cupy.sqrt`                :data:`numpy.sqrt`
  :data:`cupy.square`              :data:`numpy.square`
  :data:`cupy.absolute`            :data:`numpy.absolute`

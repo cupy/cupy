@@ -138,9 +138,16 @@ def _get_ufunc_kernel(in_types, out_types, raw_out_types, is_ndarray, routine,
 
 class ufunc(object):
 
-    """Universal function."""
+    """Universal function.
 
-    def __init__(self, name, nin, nout, ops, preamble=''):
+    Attributes:
+        name (str): The name of the universal function.
+        nin (int): Number of input arguments.
+        nout (int): Number of output arguments.
+        nargs (int): Number of all arguments.
+
+    """
+    def __init__(self, name, nin, nout, ops, preamble='', doc=''):
         self.name = name
         self.nin = nin
         self.nout = nout
@@ -149,12 +156,19 @@ class ufunc(object):
         self._preamble = preamble
         self._params = ['_x{}'.format(i)
                         for i in six.moves.range(self.nargs)] + ['n']
+        self.__doc__ = doc
 
     def __repr__(self):
         return "<ufunc '%s'>" % self.name
 
     @property
     def types(self):
+        """A list of type signatures.
+
+        Each type signature is represented by type character codes of inputs
+        and outputs separated by '->'.
+
+        """
         types = []
         for in_types, out_types, _ in self._ops:
             in_str = ''.join(numpy.dtype(t).char for t in in_types)
@@ -163,6 +177,22 @@ class ufunc(object):
         return types
 
     def __call__(self, *args, **kwargs):
+        """Applies the universal function to arguments elementwise.
+
+        Args:
+            args: Input arguments. Each of them can be a cupy.ndarray object or
+                a scalar. The output arguments can be omitted or be specified
+                by the ``out`` argument.
+            out (cupy.ndarray): Output array. It outputs to new arrays
+                default.
+            dtype: Data type specifier.
+            allocator (function): CuPy memory allocator. The allocator of the
+                first cupy.ndarray argument is used by default.
+
+        Returns:
+            Output array or a tuple of output arrays.
+
+        """
         if not (len(args) == self.nin or len(args) == self.nargs):
             raise TypeError('Wrong number of arguments for %s' % self.name)
         internal.check_args_device(args)
@@ -233,7 +263,7 @@ class ufunc(object):
         raise TypeError('Wrong type of arguments for %s' % self.name)
 
 
-def create_ufunc(name, ops, routine=None, preamble=''):
+def create_ufunc(name, ops, routine=None, preamble='', doc=''):
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
@@ -251,7 +281,7 @@ def create_ufunc(name, ops, routine=None, preamble=''):
         out_types = [numpy.dtype(t).type for t in out_types]
         _ops.append((in_types, out_types, rt))
 
-    return ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble)
+    return ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble, doc)
 
 
 _id = 'out0 = in0'

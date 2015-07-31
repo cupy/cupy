@@ -1,17 +1,48 @@
 from cupy import reduction
 
-sum = reduction.create_reduction_func(
-    'cupy_sum',
-    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('a + b', 'in[i]', 'a'), 0)
+
+def sum(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
+    '''Returns the sum of an array along given axes.
+
+    Args:
+        a (cupy.ndarray): Array to take sum.
+        axis (int or sequence of ints): Axes along which the sum is taken.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If True, the specified axes are remained as axes of
+            length one.
+        allocator (function): CuPy memory allocator. The allocator of ``a`` is
+            used by default.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.sum`
+
+    '''
+    return _sum(a, axis, dtype, out, keepdims, allocator)
 
 
-prod = reduction.create_reduction_func(
-    'cupy_prod',
-    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('a * b', 'in[i]', 'a'), 1)
+def prod(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
+    '''Returns the product of an array along given axes.
+
+    Args:
+        a (cupy.ndarray): Array to take product.
+        axis (int or sequence of ints): Axes along which the product is taken.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+        keepdims (bool): If True, the specified axes are remained as axes of
+            length one.
+        allocator (function): CuPy memory allocator. The allocator of ``a`` is
+            used by default.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.prod`
+
+    '''
+    return _prod(a, axis, dtype, out, keepdims, allocator)
 
 
 def nansum(a, axis=None, dtype=None, out=None, keepdims=0, allocator=None):
@@ -52,3 +83,17 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None, allocator=None):
 def trapz(y, x=None, dx=1.0, axis=-1):
     # TODO(beam2d): Implement it
     raise NotImplementedError
+
+
+_sum = reduction.create_reduction_func(
+    'cupy_sum',
+    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
+    ('a + b', 'in[i]', 'a'), 0)
+
+
+_prod = reduction.create_reduction_func(
+    'cupy_prod',
+    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
+    ('a * b', 'in[i]', 'a'), 1)

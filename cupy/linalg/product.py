@@ -8,6 +8,26 @@ from cupy import elementwise
 
 
 def dot(a, b, out=None, allocator=None):
+    """Returns a dot product of two arrays.
+
+    For arrays with more than one axis, it computes the dot product along the
+    last axis of ``a`` and the second-to-last axis of ``b``. This is just a
+    matrix product if the both arrays are 2-D. For 1-D arrays, it uses their
+    unique axis as an axis to take dot product over.
+
+    Args:
+        a (cupy.ndarray): The left argument.
+        b (cupy.ndarray): The right argument.
+        out (cupy.ndarray): Output array.
+        allocator (function): CuPy memory allocator. The allocator of ``a`` is
+            used by default.
+
+    Returns:
+        cupy.ndarray: The dot product of ``a`` and ``b``.
+
+    .. seealso:: :func:`numpy.dot`
+
+    """
     assert a.ndim > 0 and b.ndim > 0
     a_is_vec = a.ndim == 1
     b_is_vec = b.ndim == 1
@@ -29,13 +49,44 @@ def dot(a, b, out=None, allocator=None):
     return c
 
 
-def vdot(a, b):
+def vdot(a, b, allocator=None):
+    """Returns the dot product of two vectors.
+
+    The input arrays are flattened into 1-D vectors and then it performs inner
+    product of these vectors.
+
+    Args:
+        a (cupy.ndarray): The first argument.
+        b (cupy.ndarray): The second argument.
+        allocator (function): CuPy memory allocator. The allocator of ``a`` is
+            used by default.
+
+    Returns:
+        cupy.ndarray: Zero-dimensional array of the dot product result.
+
+    .. seealso:: :func:`numpy.vdot`
+
+    """
     a = a.ravel()
     b = b.ravel()
-    return a.dot(b)
+    return a.dot(b, allocator=allocator)
 
 
 def inner(a, b):
+    """Returns the inner product of two arrays.
+
+    It uses the last axis of each argument to take sum product.
+
+    Args:
+        a (cupy.ndarray): The first argument.
+        b (cupy.ndarray): The second argument.
+
+    Returns:
+        cupy.ndarray: The inner product of ``a`` and ``b``.
+
+    .. seealso:: :func:`numpy.inner`
+
+    """
     if a.ndim == 0 or b.ndim == 0:
         return a * b
     else:
@@ -43,6 +94,24 @@ def inner(a, b):
 
 
 def outer(a, b, out=None, allocator=None):
+    """Returns the outer product of two vectors.
+
+    The input arrays are flattened into 1-D vectors and then it performs outer
+    product of these vectors.
+
+    Args:
+        a (cupy.ndarray): The first argument.
+        b (cupy.ndarray): The second argument.
+        out (cupy.ndarray): Output array.
+        allocator (function): CuPy memory allocator. The allocator of ``a`` is
+            used by default.
+
+    Returns:
+        cupy.ndarray: 2-D array of the outer product of ``a`` and ``b``.
+
+    .. seealso:: :func:`numpy.outer`
+
+    """
     a = a.reshape(a.size, 1)
     b = b.reshape(1, b.size)
     if out is None:
@@ -55,9 +124,34 @@ def outer(a, b, out=None, allocator=None):
 
 
 def tensordot(a, b, axes=2, allocator=None, out=None):
+    """Returns the tensor dot product of two arrays along specified axes.
+
+    This is equivalent to compute dot product along the specified axes which
+    are treated as one axis by reshaping.
+
+    Args:
+        a (cupy.ndarray): The first argument.
+        b (cupy.ndarray): The second argument.
+        axes:
+            - If it is an integer, then ``axes`` axes at the last of ``a`` and
+              the first of ``b`` are used.
+            - If it is a pair of sequences of integers, then these two
+              sequences specify the list of axes for ``a`` and ``b``. The
+              corresponding axes are paired for sum-product.
+        allocator (function): CuPy memory allocator. The allocator of ``a`` is
+            used by default.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: The tensor dot product of ``a`` and ``b`` along the
+        axes specified by ``axes``.
+
+    .. seealso:: :func:`numpy.tensordot`
+
+    """
     if a.ndim == 0 or b.ndim == 0:
-        if axes != 0:
-            raise ValueError('An input is zero-dim while axes > 0')
+        if axes != ((), ()):
+            raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b, out=out, allocator=allocator)
 
     ret_dtype = numpy.find_common_type([a.dtype, b.dtype], [])
