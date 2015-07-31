@@ -267,14 +267,9 @@ def to_cpu(array):
         ``array`` without performing any copy.
 
     """
-<<<<<<< HEAD
-    _check_cuda_available()
-    return cupy.asnumpy(array)
-=======
     if isinstance(array, ndarray):
         return array.get()
     return array
->>>>>>> 54f157eda0730fcae809d8dcddf5dd8bbc0660bc
 
 
 def to_cpu_async(array, stream=None):
@@ -291,14 +286,9 @@ def to_cpu_async(array, stream=None):
         ``array`` without performing any copy.
 
     """
-<<<<<<< HEAD
-    _check_cuda_available()
-    return cupy.asnumpy(array, stream)
-=======
     if isinstance(array, ndarray):
         return array.get(stream=stream)
     return array
->>>>>>> 54f157eda0730fcae809d8dcddf5dd8bbc0660bc
 
 
 def empty(shape, dtype=numpy.float32):
@@ -393,19 +383,11 @@ def full_like(array, fill_value, stream=None):
 
 def zeros_like(array, stream=None):
     """Creates a zero-filled cupy.ndarray object like the given array.
-<<<<<<< HEAD
 
     Args:
         array (cupy.ndarray or numpy.ndarray): Base array.
         stream (cupy.cuda.Stream): CUDA stream.
 
-=======
-
-    Args:
-        array (cupy.ndarray or numpy.ndarray): Base array.
-        stream (cupy.cuda.Stream): CUDA stream.
-
->>>>>>> 54f157eda0730fcae809d8dcddf5dd8bbc0660bc
     Returns:
         cupy.ndarray: Zero-filled array.
 
@@ -419,19 +401,11 @@ def zeros_like(array, stream=None):
 
 def ones_like(array, stream=None):
     """Creates a one-filled cupy.ndarray object like the given array.
-<<<<<<< HEAD
 
     Args:
         array (cupy.ndarray or numpy.ndarray): Base array.
         stream (cupy.cuda.Stream): CUDA stream.
 
-=======
-
-    Args:
-        array (cupy.ndarray or numpy.ndarray): Base array.
-        stream (cupy.cuda.Stream): CUDA stream.
-
->>>>>>> 54f157eda0730fcae809d8dcddf5dd8bbc0660bc
     Returns:
         cupy.ndarray: One-filled array.
 
