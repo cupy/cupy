@@ -1,6 +1,8 @@
 import atexit
 import collections
 
+import six
+
 from cupy.cuda import cublas
 from cupy.cuda import runtime
 
@@ -64,7 +66,7 @@ class DeviceUser(object):
 
 @atexit.register
 def destroy_cublas_handles():
-    for handle in Device._cublas_handles.itervalues():
+    for handle in six.itervalues(Device._cublas_handles):
         cublas.destroy(handle)
     Device._cublas_handles = {}
 

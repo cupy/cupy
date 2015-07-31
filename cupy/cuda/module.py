@@ -1,5 +1,4 @@
 import ctypes
-import types
 
 import numpy
 
@@ -10,7 +9,7 @@ _native_ctypes = {
     int: ctypes.c_int,
     float: ctypes.c_float,
     bool: ctypes.c_bool,
-    types.NoneType: lambda x: ctypes.c_void_p()
+    type(None): lambda x: ctypes.c_void_p()
 }
 
 
