@@ -66,7 +66,6 @@ equal = ufunc.create_comparison(
     ''')
 
 
-
 not_equal = ufunc.create_comparison(
     'not_equal', '!=',
     '''Tests elementwise if ``x1 != x2``.
