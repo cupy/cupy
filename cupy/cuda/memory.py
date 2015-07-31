@@ -120,14 +120,14 @@ class MemoryPointer(object):
             if isinstance(value, float):
                 value = ctypes.cast((ctypes.c_float * 1)(value),
                                     ctypes.POINTER(ctypes.c_uint))[0]
-            driver.memsetD32(self.ptr, value, size / 4)
+            driver.memsetD32(self.ptr, value, size // 4)
 
     def memset32_async(self, value, size, stream):
         if size > 0:
             if isinstance(value, float):
                 value = ctypes.cast((ctypes.c_float * 1)(value),
                                     ctypes.POINTER(ctypes.c_uint))[0]
-            driver.memsetD32Async(self.ptr, value, size / 4)
+            driver.memsetD32Async(self.ptr, value, size // 4)
 
 
 def _malloc(size):
