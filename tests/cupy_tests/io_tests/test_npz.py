@@ -14,12 +14,12 @@ class TestNpz(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_save_load(self, dtype):
         a = testing.shaped_arange((2, 3, 4), dtype=dtype)
-        sio = six.StringIO()
+        sio = six.BytesIO()
         cupy.save(sio, a)
         s = sio.getvalue()
         sio.close()
 
-        sio = six.StringIO(s)
+        sio = six.BytesIO(s)
         b = cupy.load(sio)
         sio.close()
 
@@ -30,12 +30,12 @@ class TestNpz(unittest.TestCase):
         a1 = testing.shaped_arange((2, 3, 4), dtype=dtype)
         a2 = testing.shaped_arange((3, 4, 5), dtype=dtype)
 
-        sio = six.StringIO()
+        sio = six.BytesIO()
         savez(sio, a1, a2)
         s = sio.getvalue()
         sio.close()
 
-        sio = six.StringIO(s)
+        sio = six.BytesIO(s)
         with cupy.load(sio) as d:
             b1 = d['arr_0']
             b2 = d['arr_1']
