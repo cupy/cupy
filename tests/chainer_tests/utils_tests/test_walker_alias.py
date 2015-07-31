@@ -8,9 +8,6 @@ from chainer import testing
 from chainer.testing import attr
 from chainer import utils
 
-if cuda.available:
-    cuda.init()
-
 
 class TestWalkerAlias(unittest.TestCase):
     def setUp(self):

@@ -60,6 +60,7 @@ class EmbedID(function.Function):
 
     def forward(self, x):
         return self.W.take(x[0], axis=0),
+<<<<<<< HEAD
 
     # TODO(okuta): Remove it
     """
@@ -71,6 +72,8 @@ class EmbedID(function.Function):
             'embed_id_fwd')(y, self.W, x[0], self.W.shape[1])
         return y,
     """
+=======
+>>>>>>> 54f157eda0730fcae809d8dcddf5dd8bbc0660bc
 
     def backward_cpu(self, x, gy):
         numpy.add.at(self.gW, x[0], gy[0])

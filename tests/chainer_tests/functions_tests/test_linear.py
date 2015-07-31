@@ -12,10 +12,6 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestLinear(unittest.TestCase):
 
     in_shape = (3,)

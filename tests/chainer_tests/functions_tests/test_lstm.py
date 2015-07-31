@@ -11,10 +11,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
 

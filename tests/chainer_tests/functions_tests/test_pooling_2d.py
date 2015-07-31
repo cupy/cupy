@@ -12,10 +12,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestMaxPooling2D(unittest.TestCase):
     cover_all = False
 

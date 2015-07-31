@@ -11,9 +11,6 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
-if cuda.available:
-    cuda.init()
-
 
 class LinearModel(object):
     UNIT_NUM = 10

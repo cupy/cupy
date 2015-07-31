@@ -10,10 +10,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestNegativeSampling(unittest.TestCase):
     def setUp(self):
         self.func = chainer.functions.NegativeSampling(3, [10, 5, 2, 5, 2], 2)

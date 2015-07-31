@@ -43,6 +43,7 @@ class Softmax(function.Function):
             y_type.shape[1] == x_type.shape[1],
         )
 
+<<<<<<< HEAD
     def forward_cpu(self, x):
         self.y = x[0] - numpy.amax(x[0], axis=1, keepdims=True)
         numpy.exp(self.y, out=self.y)
@@ -52,11 +53,18 @@ class Softmax(function.Function):
     def forward_gpu(self, x):
         y = cuda.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
+=======
+    def forward(self, x):
+        xpy = cuda.get_xpy(x[0])
+        if xpy != numpy and cuda.cudnn_enabled and self.use_cudnn:
+            self.y = cuda.empty_like(x[0])
+>>>>>>> 54f157eda0730fcae809d8dcddf5dd8bbc0660bc
             handle = cudnn.get_handle()
             x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
             desc = cudnn.create_tensor_descriptor(x_mat)
             libcudnn.softmaxForward(
                 handle, _algorithm, _mode, ctypes.c_float(1), desc.value,
+<<<<<<< HEAD
                 x[0].data.ptr, ctypes.c_float(0), desc.value, y.data.ptr)
             self.y = y
         else:
@@ -75,6 +83,18 @@ class Softmax(function.Function):
 
     def backward_gpu(self, x, gy):
         if cuda.cudnn_enabled and self.use_cudnn:
+=======
+                x[0].data.ptr, ctypes.c_float(0), desc.value, self.y.data.ptr)
+        else:
+            self.y = x[0] - x[0].max(axis=1, keepdims=True)
+            xpy.exp(self.y, out=self.y)
+            self.y /= self.y.sum(axis=1, keepdims=True)
+        return self.y,
+
+    def backward(self, x, gy):
+        xpy = cuda.get_xpy(x[0])
+        if xpy != numpy and cuda.cudnn_enabled and self.use_cudnn:
+>>>>>>> 54f157eda0730fcae809d8dcddf5dd8bbc0660bc
             handle = cudnn.get_handle()
             gx = cuda.empty_like(x[0])
             x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
@@ -85,9 +105,13 @@ class Softmax(function.Function):
                 desc.value, gx.data.ptr)
         else:
             gx = self.y * gy[0]
+<<<<<<< HEAD
             sumdx = gx.sum(axis=1, keepdims=True)
             gx -= self.y * sumdx
             gx = self.y * gy[0]
+=======
+            gx -= self.y * gx.sum(axis=1, keepdims=True)
+>>>>>>> 54f157eda0730fcae809d8dcddf5dd8bbc0660bc
 
         return gx,
 

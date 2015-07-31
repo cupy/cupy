@@ -10,10 +10,6 @@ from chainer import testing
 from chainer.testing import attr
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestSplitAxis0(unittest.TestCase):
 
     def setUp(self):
@@ -26,6 +22,7 @@ class TestSplitAxis0(unittest.TestCase):
         x = chainer.Variable(x_data)
         ys = functions.split_axis(x, indices_or_sections, axis)
         for yd, y in zip(ys_data, ys):
+            self.assertIsInstance(y.data.shape, tuple)
             gradient_check.assert_allclose(yd, y.data, atol=0, rtol=0)
 
     def test_forward_cpu(self):

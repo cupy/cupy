@@ -13,10 +13,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestSigmoidCrossEntropy(unittest.TestCase):
 
     def setUp(self):

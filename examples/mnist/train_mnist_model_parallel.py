@@ -37,7 +37,6 @@ N_test = y_test.size
 # Prepare the multi-layer perceptron model
 # Note that the model splits into two GPUs at the first layer,
 # and share their activations only at third and sixth layers.
-cuda.init()
 wscale = math.sqrt(2)
 model = chainer.FunctionSet(
     gpu0=chainer.FunctionSet(

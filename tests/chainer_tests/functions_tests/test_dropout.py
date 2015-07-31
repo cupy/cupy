@@ -9,10 +9,6 @@ from chainer import testing
 from chainer.testing import attr
 
 
-if cuda.available:
-    cuda.init()
-
-
 # TODO(Kenta OONO): This test fixture check types only. Add more detailed test.
 class TestDropout(unittest.TestCase):
 

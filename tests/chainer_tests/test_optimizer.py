@@ -10,10 +10,6 @@ from chainer import testing
 from chainer.testing import attr
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestOptimizerUtility(unittest.TestCase):
 
     def setUp(self):

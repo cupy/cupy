@@ -13,10 +13,6 @@ from chainer.testing import condition
 from chainer.utils import conv
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestConvolution2D(unittest.TestCase):
 
     def setUp(self, use_cudnn=True):
