@@ -2,6 +2,6 @@
 # http://docs.scipy.org/doc/numpy/reference/routines.indexing.html
 
 # "NOQA" to suppress flake8 warning
-import generate  # NOQA
-import indexing  # NOQA
-import insert  # NOQA
+from cupy.indexing import generate  # NOQA
+from cupy.indexing import indexing  # NOQA
+from cupy.indexing import insert  # NOQA

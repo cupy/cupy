@@ -2,8 +2,8 @@
 # http://docs.scipy.org/doc/numpy/reference/routines.linalg.html
 
 # "NOQA" to suppress flake8 warning
-import decomposition  # NOQA
-import eigenvalue  # NOQA
-import norm  # NOQA
-import product  # NOQA
-import solve  # NOQA
+from cupy.linalg import decomposition  # NOQA
+from cupy.linalg import eigenvalue  # NOQA
+from cupy.linalg import norm  # NOQA
+from cupy.linalg import product  # NOQA
+from cupy.linalg import solve  # NOQA

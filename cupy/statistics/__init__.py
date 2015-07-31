@@ -2,7 +2,7 @@
 # http://docs.scipy.org/doc/numpy/reference/routines.statistics.html
 
 # "NOQA" to suppress flake8 warning
-import correlation  # NOQA
-import histogram  # NOQA
-import meanvar  # NOQA
-import order  # NOQA
+from cupy.statistics import correlation  # NOQA
+from cupy.statistics import histogram  # NOQA
+from cupy.statistics import meanvar  # NOQA
+from cupy.statistics import order  # NOQA

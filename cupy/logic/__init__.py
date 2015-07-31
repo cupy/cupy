@@ -2,8 +2,8 @@
 # http://docs.scipy.org/doc/numpy/reference/routines.logic.html
 
 # "NOQA" to suppress flake8 warning
-import comparison  # NOQA
-import content  # NOQA
-import ops  # NOQA
-import truth  # NOQA
-import type_test  # NOQA
+from cupy.logic import comparison  # NOQA
+from cupy.logic import content  # NOQA
+from cupy.logic import ops  # NOQA
+from cupy.logic import truth  # NOQA
+from cupy.logic import type_test  # NOQA

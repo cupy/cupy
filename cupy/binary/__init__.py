@@ -2,5 +2,5 @@
 # http://docs.scipy.org/doc/numpy/reference/routines.bitwise.html
 
 # "NOQA" to suppress flake8 warning
-import elementwise  # NOQA
-import packing  # NOQA
+from cupy.binary import elementwise  # NOQA
+from cupy.binary import packing  # NOQA
