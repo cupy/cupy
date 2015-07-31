@@ -19,6 +19,6 @@ setup(
                       'numpy',
                       'protobuf',
                       'six>=1.9.0'],
-    tests_require=['nose',
-                   'mock'],
+    tests_require=['mock',
+                   'nose'],
 )
