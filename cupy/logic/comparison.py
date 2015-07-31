@@ -40,7 +40,7 @@ greater_equal = ufunc.create_comparison(
 
 
 less = ufunc.create_comparison(
-    'less', '<'
+    'less', '<',
     '''Tests elementwise if ``x1 < x2``.
 
     .. seealso:: :data:`numpy.less`
