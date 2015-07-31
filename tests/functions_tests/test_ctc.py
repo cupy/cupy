@@ -25,6 +25,8 @@ class TestCTC(unittest.TestCase):
 
     # recursive forward computation.
     def alpha(self, t, u):
+        if u < 0:
+            return 0.0
         if t == 0:
             if u == 0:
                 return self.x[0][self.blank_symbol]
@@ -32,7 +34,7 @@ class TestCTC(unittest.TestCase):
                 return self.x[0][self.l[1]]
             else:
                 return 0.0
-        if self.l[u] == self.blank_symbol or self.l[u] == self.l[u-2]:
+        elif self.l[u] == self.blank_symbol or self.l[u] == self.l[u-2]:
             return self.x[t][self.l[u]] * \
                 (self.alpha(t-1, u-1) + self.alpha(t-1, u))
         else:
@@ -52,7 +54,6 @@ class TestCTC(unittest.TestCase):
                                             self.l.shape[0]-1)
                                  + self.alpha(self.x.shape[0]-1,
                                               self.l.shape[0]-2))
-
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
     def test_forward_cpu(self):
@@ -68,13 +69,14 @@ class TestCTC(unittest.TestCase):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
         t = chainer.Variable(t_data)
         loss = functions.connectionist_temporal_classification(2, t, xs)
+        loss.grad = numpy.array(0.1, dtype=numpy.float32)
         loss.backward()
 
         func = loss.creator
         xs_data = tuple(x.data for x in xs)
         f = lambda: func.forward((t.data,) + xs_data)
         gl_0, gx_0, gx_1, gx_2, gx_3 = gradient_check.numerical_grad(
-            f, ((t.data,) + xs_data), (0.01, ), eps=0.01)
+            f, ((t.data,) + xs_data), (loss.grad, ), eps=0.01)
         gradient_check.assert_allclose(xs[0].grad, gx_0)
         gradient_check.assert_allclose(xs[1].grad, gx_1)
         gradient_check.assert_allclose(xs[2].grad, gx_2)

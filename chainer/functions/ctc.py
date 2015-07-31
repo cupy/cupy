@@ -23,9 +23,6 @@ class ConnectionistTemporalClassification(function.Function):
         return (numpy.eye(size) + big_I[2:, 1:-1] +
                 big_I[2:, :-2] * (numpy.arange(size) % 2))
 
-    def path_probs_cpu(self, inputs, path, path_probability, rr):
-        return inputs[path] * numpy.dot(path_probability, rr)
-
     def label_to_path(self, labels):
         label_length = labels.shape[0]
         path = numpy.full((label_length * 2 + 1,),
@@ -39,12 +36,11 @@ class ConnectionistTemporalClassification(function.Function):
         yseq = inputs[1::]
         path = self.label_to_path(t)
         rr = self.recurrence_relation(path.shape[0])
-        forward_prob = numpy.eye(path.shape[0])[0]
-        for y in yseq:
-            forward_prob = self.path_probs_cpu(y, path, forward_prob, rr)
+        forward_prob_trans, backward_prob_trans \
+            = self.calc_trans(path, yseq, rr)
         return utils.force_array(- numpy.log(
-            numpy.sum((forward_prob[-2],
-                       forward_prob[-1])))).astype(numpy.float32),
+            numpy.sum(forward_prob_trans[-1]
+                      * backward_prob_trans[-1]))).astype(numpy.float32),
 
     def calc_trans(self, path, yseq, rr):
         forward_prob = numpy.eye(path.shape[0])[0]
