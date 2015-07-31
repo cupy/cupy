@@ -2,6 +2,7 @@ import operator
 import unittest
 
 import numpy
+import six
 
 from cupy import testing
 
@@ -60,14 +61,20 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_scalar_op(operator.itruediv)
 
     def test_div_scalar(self):
+        if six.PY3:
+            return
         numpy.seterr(divide='ignore')
         self.check_array_scalar_op(operator.div)
 
     def test_rdiv_scalar(self):
+        if six.PY3:
+            return
         numpy.seterr(divide='ignore')
         self.check_array_scalar_op(operator.div, swap=True)
 
     def test_idiv_scalar(self):
+        if six.PY3:
+            return
         numpy.seterr(divide='ignore')
         self.check_array_scalar_op(operator.idiv)
 
