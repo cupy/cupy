@@ -20,7 +20,7 @@ class Memory(object):
         runtime.free(self.ptr)
 
     def __int__(self):
-        return self.ptr.value
+        return self.ptr.value or 0
 
 
 class MemoryPointer(object):
