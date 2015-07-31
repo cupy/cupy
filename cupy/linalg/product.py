@@ -150,7 +150,7 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
 
     """
     if a.ndim == 0 or b.ndim == 0:
-        if axes != ((), ()):
+        if axes != 0 and axes != ((), ()):
             raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b, out=out, allocator=allocator)
 
