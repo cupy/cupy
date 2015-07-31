@@ -133,10 +133,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_scalar_op(operator.itruediv)
 
     def test_div_array(self):
+        if six.PY3:
+            return
         numpy.seterr(divide='ignore')
         self.check_array_scalar_op(operator.div)
 
     def test_idiv_array(self):
+        if six.PY3:
+            return
         numpy.seterr(divide='ignore')
         self.check_array_scalar_op(operator.idiv)
 
@@ -188,10 +192,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_broadcasted_op(operator.itruediv)
 
     def test_broadcasted_div(self):
+        if six.PY3:
+            return
         numpy.seterr(divide='ignore')
         self.check_array_broadcasted_op(operator.div)
 
     def test_broadcasted_idiv(self):
+        if six.PY3:
+            return
         numpy.seterr(divide='ignore')
         self.check_array_broadcasted_op(operator.idiv)
 
@@ -234,6 +242,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_doubly_broadcasted_op(operator.floordiv)
 
     def test_doubly_broadcasted_div(self):
+        if six.PY3:
+            return
         numpy.seterr(divide='ignore')
         self.check_array_doubly_broadcasted_op(operator.div)
 
