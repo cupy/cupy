@@ -131,10 +131,10 @@ class simple_reduction_function(object):
 
         if axis is None:
             axis = tuple(numpy.arange(len(a.shape)))
-        elif isinstance(axis, collections.Sequence):
+        elif isinstance(axis, collections.Iterable):
             axis = tuple(axis)
         else:
-            axis = (axis,)
+            axis = axis,
 
         if any(ax < -a.ndim or ax >= a.ndim for ax in axis):
             raise ValueError('Axis overrun')
