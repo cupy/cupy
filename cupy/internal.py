@@ -97,19 +97,17 @@ def can_axpy(a, b):
 def axpy(a, x, y):
     if x.dtype.type == numpy.float32:
         taxpy = cublas.saxpy
-        a = ctypes.c_float(a)
     elif x.dtype.type == numpy.float64:
         taxpy = cublas.daxpy
-        a = ctypes.c_double(a)
     else:
         raise TypeError('Cannot saxpy on a array of type %s' % x.dtype)
     if x.dtype != y.dtype:
         raise TypeError('Type mismatch')
 
-    incx = x._strides[-1] / x.itemsize
-    incy = y._strides[-1] / y.itemsize
+    incx = x._strides[-1] // x.itemsize
+    incy = y._strides[-1] // y.itemsize
     handle = cuda.Device().cublas_handle
-    taxpy(handle, y.size, ctypes.byref(a), x._fptr, incx, y._fptr, incy)
+    taxpy(handle, y.size, a, x._fptr, incx, y._fptr, incy)
 
 
 def complete_slice(slc, dim):
