@@ -1,3 +1,5 @@
+import six
+
 from cupy import elementwise
 from cupy.math import ufunc
 
@@ -96,6 +98,10 @@ true_divide = elementwise.create_ufunc(
     .. seealso:: :data:`numpy.true_divide`
 
     ''')
+
+
+if six.PY3:
+    divide = true_divide
 
 
 floor_divide = elementwise.create_ufunc(
