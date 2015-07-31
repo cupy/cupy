@@ -383,7 +383,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     # Shape manipulation
     # -------------------------------------------------------------------------
-    def reshape(self, *newshape):
+    def reshape(self, shape):
         """Returns an array of a different shape and the same content.
 
         .. seealso::
@@ -392,7 +392,7 @@ class ndarray(object):
 
         """
         # TODO(beam2d): Support ordering option
-        return reshape(self, newshape)
+        return reshape(self, shape)
 
     # TODO(beam2d0: Implement it
     # def resize(self, new_shape, refcheck=True):
