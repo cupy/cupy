@@ -1,5 +1,6 @@
 from __future__ import division
 import ctypes
+import sys
 
 import numpy
 
@@ -1030,8 +1031,10 @@ class ndarray(object):
     def __int__(self):
         return int(self.get())
 
-    def __long__(self):
-        return long(self.get())
+    if sys.version_info < (3,):
+        def __long__(self):
+            # Avoid using long() for flake8
+            return self.get().__long__()
 
     def __float__(self):
         return float(self.get())
