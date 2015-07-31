@@ -11,6 +11,8 @@ There are four differences compared to the original C API.
 """
 import ctypes
 
+import six
+
 from cupy.cuda import internal
 
 _cuda = internal.load_library('cuda')
@@ -232,6 +234,8 @@ _cuda.cuModuleGetFunction.argtypes = [ctypes.c_void_p, Module, ctypes.c_char_p]
 
 def moduleGetFunction(module, funcname):
     func = Function()
+    if isinstance(funcname, six.text_type):
+        funcname = funcname.encode('utf-8')
     status = _cuda.cuModuleGetFunction(ctypes.byref(func), module, funcname)
     check_status(status)
     return func
