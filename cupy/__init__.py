@@ -1,4 +1,5 @@
 from __future__ import division
+import collections
 import ctypes
 import sys
 
@@ -383,7 +384,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     # Shape manipulation
     # -------------------------------------------------------------------------
-    def reshape(self, shape):
+    def reshape(self, *shape):
         """Returns an array of a different shape and the same content.
 
         .. seealso::
@@ -392,6 +393,8 @@ class ndarray(object):
 
         """
         # TODO(beam2d): Support ordering option
+        if len(shape) == 1 and isinstance(shape[0], collections.Iterable):
+            shape = tuple(shape[0])
         return reshape(self, shape)
 
     # TODO(beam2d0: Implement it
