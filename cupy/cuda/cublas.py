@@ -8,9 +8,11 @@ _cublas = internal.load_library('cublas')
 
 _I = ctypes.c_int
 _P = ctypes.c_void_p
-_IP = ctypes.POINTER(ctypes.c_int)
-_FP = ctypes.POINTER(ctypes.c_float)
-_DP = ctypes.POINTER(ctypes.c_double)
+_F = ctypes.c_float
+_D = ctypes.c_double
+_IP = ctypes.POINTER(_I)
+_FP = ctypes.POINTER(_F)
+_DP = ctypes.POINTER(_D)
 
 Handle = _P
 
@@ -131,7 +133,8 @@ _cublas.cublasIsamax_v2.argtypes = [Handle, _I, _FP, _I, _IP]
 
 def isamax(handle, n, x, incx):
     result = ctypes.c_int()
-    status = _cublas.cublasIsamax_v2(handle, n, x, incx, ctypes.byref(result))
+    status = _cublas.cublasIsamax_v2(
+        handle, n, x, incx, ctypes.byref(result))
     check_status(status)
     return result.value
 
@@ -141,7 +144,8 @@ _cublas.cublasIsamin_v2.argtypes = [Handle, _I, _FP, _I, _IP]
 
 def isamin(handle, n, x, incx):
     result = ctypes.c_int()
-    status = _cublas.cublasIsamin_v2(handle, n, x, incx, ctypes.byref(result))
+    status = _cublas.cublasIsamin_v2(
+        handle, n, x, incx, ctypes.byref(result))
     check_status(status)
     return result.value
 
@@ -151,7 +155,8 @@ _cublas.cublasSasum_v2.argtypes = [Handle, _I, _FP, _I, _FP]
 
 def sasum(handle, n, x, incx):
     result = ctypes.c_float()
-    status = _cublas.cublasSasum_v2(handle, n, x, incx, ctypes.byref(result))
+    status = _cublas.cublasSasum_v2(
+        handle, n, x, incx, ctypes.byref(result))
     check_status(status)
     return result.value
 
@@ -160,7 +165,8 @@ _cublas.cublasSaxpy_v2.argtypes = [Handle, _I, _FP, _FP, _I, _FP, _I]
 
 
 def saxpy(handle, n, alpha, x, incx, y, incy):
-    status = _cublas.cublasSaxpy_v2(handle, n, alpha, x, incx, y, incy)
+    status = _cublas.cublasSaxpy_v2(
+        handle, n, ctypes.byref(_F(alpha)), x, incx, y, incy)
     check_status(status)
 
 
@@ -168,7 +174,8 @@ _cublas.cublasDaxpy_v2.argtypes = [Handle, _I, _DP, _DP, _I, _DP, _I]
 
 
 def daxpy(handle, n, alpha, x, incx, y, incy):
-    status = _cublas.cublasDaxpy_v2(handle, n, alpha, x, incx, y, incy)
+    status = _cublas.cublasDaxpy_v2(
+        handle, n, ctypes.byref(_D(alpha)), x, incx, y, incy)
     check_status(status)
 
 
@@ -176,7 +183,8 @@ _cublas.cublasSdot_v2.argtypes = [Handle, _I, _FP, _I, _FP, _I, _FP]
 
 
 def sdot(handle, n, x, incx, y, incy, result):
-    status = _cublas.cublasSdot_v2(handle, n, x, incx, y, incy, result)
+    status = _cublas.cublasSdot_v2(
+        handle, n, x, incx, y, incy, result)
     check_status(status)
 
 
@@ -184,7 +192,8 @@ _cublas.cublasDdot_v2.argtypes = [Handle, _I, _DP, _I, _DP, _I, _DP]
 
 
 def ddot(handle, n, x, incx, y, incy, result):
-    status = _cublas.cublasDdot_v2(handle, n, x, incx, y, incy, result)
+    status = _cublas.cublasDdot_v2(
+        handle, n, x, incx, y, incy, result)
     check_status(status)
 
 
@@ -193,7 +202,8 @@ _cublas.cublasSnrm2_v2.argtypes = [Handle, _I, _FP, _I, _FP]
 
 def snrm2(handle, n, x, incx):
     result = ctypes.c_float()
-    status = _cublas.cublasSnrm2_v2(handle, n, x, incx, ctypes.vyref(result))
+    status = _cublas.cublasSnrm2_v2(
+        handle, n, x, incx, ctypes.byref(result))
     check_status(status)
     return result.value
 
@@ -203,7 +213,7 @@ _cublas.cublasSscal_v2.argtypes = [Handle, _I, _FP, _FP, _I]
 
 def sscal(handle, n, alpha, x, incx):
     status = _cublas.cublasSscal_v2(
-        handle, n, ctypes.byref(ctypes.c_float(alpha)), x, incx)
+        handle, n, ctypes.byref(_F(alpha)), x, incx)
     check_status(status)
 
 ###############################################################################
@@ -216,8 +226,8 @@ _cublas.cublasSgemv_v2.argtypes = [Handle, _I, _I, _I, _FP, _FP, _I, _FP, _I,
 
 def sgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
     status = _cublas.cublasSgemv_v2(
-        handle, trans, m, n, ctypes.byref(ctypes.c_float(alpha)),
-        A, lda, x, incx, ctypes.byref(ctypes.c_float(beta)), y, incy)
+        handle, trans, m, n, ctypes.byref(_F(alpha)),
+        A, lda, x, incx, ctypes.byref(_F(beta)), y, incy)
     check_status(status)
 
 
@@ -227,8 +237,8 @@ _cublas.cublasDgemv_v2.argtypes = [Handle, _I, _I, _I, _DP, _DP, _I, _DP, _I,
 
 def dgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
     status = _cublas.cublasDgemv_v2(
-        handle, trans, m, n, ctypes.byref(ctypes.c_double(alpha)),
-        A, lda, x, incx, ctypes.byref(ctypes.c_double(beta)), y, incy)
+        handle, trans, m, n, ctypes.byref(_D(alpha)),
+        A, lda, x, incx, ctypes.byref(_D(beta)), y, incy)
     check_status(status)
 
 
@@ -238,8 +248,7 @@ _cublas.cublasSger_v2.argtypes = [
 
 def sger(handle, m, n, alpha, x, incx, y, incy, A, lda):
     status = _cublas.cublasSger_v2(
-        handle, m, n, ctypes.byref(ctypes.c_float(alpha)), x, incx, y, incy, A,
-        lda)
+        handle, m, n, ctypes.byref(_F(alpha)), x, incx, y, incy, A, lda)
     check_status(status)
 
 _cublas.cublasDger_v2.argtypes = [
@@ -248,8 +257,7 @@ _cublas.cublasDger_v2.argtypes = [
 
 def dger(handle, m, n, alpha, x, incx, y, incy, A, lda):
     status = _cublas.cublasDger_v2(
-        handle, m, n, ctypes.byref(ctypes.c_double(alpha)), x, incx, y, incy,
-        A, lda)
+        handle, m, n, ctypes.byref(_D(alpha)), x, incx, y, incy, A, lda)
     check_status(status)
 
 ###############################################################################
@@ -263,8 +271,8 @@ _cublas.cublasSgemm_v2.argtypes = [Handle, _I, _I, _I, _I, _I, _FP, _FP, _I,
 def sgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C,
           ldc):
     status = _cublas.cublasSgemm_v2(
-        handle, transa, transb, m, n, k, ctypes.byref(ctypes.c_float(alpha)),
-        A, lda, B, ldb, ctypes.byref(ctypes.c_float(beta)), C, ldc)
+        handle, transa, transb, m, n, k, ctypes.byref(_F(alpha)),
+        A, lda, B, ldb, ctypes.byref(_F(beta)), C, ldc)
     check_status(status)
 
 
@@ -275,8 +283,8 @@ _cublas.cublasDgemm_v2.argtypes = [Handle, _I, _I, _I, _I, _I, _DP, _DP, _I,
 def dgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C,
           ldc):
     status = _cublas.cublasDgemm_v2(
-        handle, transa, transb, m, n, k, ctypes.byref(ctypes.c_double(alpha)),
-        A, lda, B, ldb, ctypes.byref(ctypes.c_double(beta)), C, ldc)
+        handle, transa, transb, m, n, k, ctypes.byref(_D(alpha)),
+        A, lda, B, ldb, ctypes.byref(_D(beta)), C, ldc)
     check_status(status)
 
 
@@ -287,8 +295,8 @@ _cublas.cublasSgemmBatched.argtypes = [
 def sgemmBatched(handle, transa, transb, m, n, k, alpha, Aarray, lda, Barray,
                  ldb, beta, Carray, ldc, batchCount):
     status = _cublas.cublasSgemmBatched(
-        handle, transa, transb, m, n, k, ctypes.byref(ctypes.c_float(alpha)),
-        Aarray, lda, Barray, ldb, ctypes.byref(ctypes.c_float(beta)),
+        handle, transa, transb, m, n, k, ctypes.byref(_F(alpha)),
+        Aarray, lda, Barray, ldb, ctypes.byref(_F(beta)),
         Carray, ldc, batchCount)
     check_status(status)
 
