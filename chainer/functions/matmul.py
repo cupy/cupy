@@ -50,8 +50,7 @@ def _get_ld(a):
     shape = a.shape[-2:]
     strides = a.strides[-2:]
     trans = numpy.argmin(strides)
-    return trans, max(
-        strides[0] / a.itemsize, strides[1] / a.itemsize, shape[trans])
+    return trans, int(max(shape[trans], max(strides) // a.itemsize))
 
 
 def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
@@ -88,10 +87,10 @@ def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
         cuda.Device().cublas_handle,
         transa,
         transb,
-        n, m, ka, 1,
+        n, m, ka, 1.0,
         ap.data.ptr, lda,
         bp.data.ptr, ldb,
-        0, outp.data.ptr, ldout, la)
+        0.0, outp.data.ptr, ldout, la)
 
 
 def _check_ndim(in_type, lower=1, upper=2):
