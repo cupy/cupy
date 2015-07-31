@@ -1,4 +1,5 @@
 import atexit
+import binascii
 import collections
 import os
 import time
@@ -81,8 +82,8 @@ class RandomState(object):
     def seed(self, seed=None):
         if seed is None:
             try:
-                seed_str = os.urandom(8)
-                seed = numpy.uint64(int(seed_str.encode('hex'), 16))
+                seed_str = binascii.hexlify(os.urandom(8))
+                seed = numpy.uint64(int(seed_str, 16))
             except NotImplementedError:
                 seed = numpy.uint64(time.clock() * 1000000)
         else:
