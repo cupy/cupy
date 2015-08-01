@@ -12,52 +12,97 @@ if cuda.available:
     cuda.init()
 
 
+def _uniform(*shapes):
+    return map(lambda s: numpy.random.uniform(-1, 1, s).astype(numpy.float32), shapes)
+
 class NumeraicalGradientTest(unittest.TestCase):
 
-    def _f(self, x):
-        return x**2
+    def f(self, xs):
+        return (xs[0] ** 2,)
 
-    def _df(self, x):
-        return 2*x
+    def df(self, xs):
+        return ((2 * xs[0],),)
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (2, 1)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (2, 1)).astype(numpy.float32)
-        self.f = lambda x: (self._f(x),)
-        self.df = lambda x: (self._df(x),)
+        self.xs = _uniform((2, 1))
+        self.gys = _uniform((2, 1))
 
-    def check_numerical_grad(self, f, df, x, dy):
-        dx_expect, = tuple(d*dy for d in df(x))
-        func = lambda: f(x)
-        dx_actual, = gradient_check.numerical_grad(func, (x,), (dy,))
-        gradient_check.assert_allclose(dx_expect, dx_actual)
+    def check_numerical_grad(self, f, df, xs, dys):
+        dfxs = df(xs)
+
+        # matrix-vector multiplication of dfxs and dys
+        dx_expect = map(lambda dfx: sum(map(lambda (a, b): a*b, zip(dfx, dys))), dfxs)
+
+        func = lambda: f(xs)
+        dx_actual = gradient_check.numerical_grad(func, xs, dys)
+
+        self.assertEqual(len(dx_expect), len(dx_actual))
+        for e, a in zip(dx_expect, dx_actual):
+            gradient_check.assert_allclose(e, a)
 
     @condition.retry(3)
     def test_numerical_grad_cpu(self):
-        self.check_numerical_grad(self.f, self.df, self.x, self.gy)
+        self.check_numerical_grad(self.f, self.df, self.xs, self.gys)
 
     @condition.retry(3)
     @attr.gpu
     def test_numerical_grad_gpu(self):
         self.check_numerical_grad(self.f, self.df,
-                                  cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+                                  map(cuda.to_gpu, self.xs),
+                                  map(cuda.to_gpu, self.gys))
 
 
 class NumericalGradientTest2(NumeraicalGradientTest):
 
-    _f = lambda self, x: 1
-    _df = lambda self, x: 0
+    f = lambda self, xs: (1,)
+    df = lambda self, xs: ((0,),)
+
+
+def _exp(x):
+    if isinstance(x, numpy.ndarray):
+        return numpy.exp(x)
+    else:
+        return cuda.cumath.exp(x)
 
 
 class NumericalGradientTest3(NumeraicalGradientTest):
 
-    def _exp(self, x):
-        if isinstance(x, numpy.ndarray):
-            return numpy.exp(x)
-        else:
-            return cuda.cumath.exp(x)
+    def f(self, xs):
+        return (_exp(xs[0]),)
 
-    _f = _df = _exp
+    def df(self, xs):
+        return ((_exp(xs[0]),),)
+
+    def setUp(self):
+        self.xs = _uniform((2, 1))
+        self.gys = _uniform((2, 1))
+
+
+def _full_like(x, val):
+    if isinstance(x, numpy.ndarray):
+        return numpy.full_like(x, val)
+    else:
+        return cuda.full_like(x, val)
+
+
+class NumericalGradientTest4(NumeraicalGradientTest):
+
+    def f(self, xs):
+        assert len(xs) == 2
+        return (2 * xs[0] + 3 * xs[1], 4 * xs[0] + 5 * xs[1], 6 * xs[0] + 7 * xs[1])
+
+
+    def df(self, xs):
+        assert len(xs) == 2
+        return ((_full_like(xs[0], 2), _full_like(xs[0], 4), _full_like(xs[0], 6)),
+                (_full_like(xs[1], 3), _full_like(xs[1], 5), _full_like(xs[1], 7)))
+
+    def setUp(self):
+        self.xs = _uniform((2, 1), (2, 1))
+        self.gys = _uniform((2, 1), (2, 1), (2, 1))
+
+
+
 
 
 class AssertAllCloseTest(unittest.TestCase):
