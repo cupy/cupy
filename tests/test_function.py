@@ -8,6 +8,7 @@ from chainer import cuda
 import chainer.functions as F
 from chainer import testing
 from chainer.utils import type_check
+from chainer.testing import attr
 
 
 if cuda.available:
@@ -31,10 +32,9 @@ class TestFunction(unittest.TestCase):
         f = chainer.Function()
         f.check_type_forward = mock.MagicMock()
         f.forward_cpu = mock.MagicMock(return_value=(y1, y2))
-        f.forward_gpu = mock.MagicMock(
-            return_value=(cuda.to_gpu(y1), cuda.to_gpu(y2)))
+        f.forward_gpu = mock.MagicMock()
         f.backward_cpu = mock.MagicMock(return_value=(gx1, gx2))
-        f.backward_gpu = mock.MagicMock(return_value=(gx1, gx2))
+        f.backward_gpu = mock.MagicMock()
         self.f = f
 
         self.x1 = numpy.arange(3).astype(numpy.float32)
@@ -49,12 +49,21 @@ class TestFunction(unittest.TestCase):
     def tearDown(self):
         # Set None to delete cuda array
         self.f = None
+        self.y1 = None
+        self.y2 = None
+        self.gx1 = None
 
     def setup_gpu(self):
         self.x1 = cuda.to_gpu(self.x1)
         self.x2 = cuda.to_gpu(self.x2)
+        self.y1 = cuda.to_gpu(self.y1)
+        self.y2 = cuda.to_gpu(self.y2)
         self.gx1 = cuda.to_gpu(self.gx1)
         self.gx2 = None
+        self.gy1 = cuda.to_gpu(self.gy1)
+        self.gy2 = cuda.to_gpu(self.gy2)
+        self.f.forward_gpu = mock.MagicMock(return_value=(self.y1, self.y2))
+        self.f.backward_gpu = mock.MagicMock(return_value=(self.gx1, self.gx2))
 
     def check_forward(self, gpu):
         y1, y2 = self.f.forward((self.x1, self.x2))
@@ -68,6 +77,7 @@ class TestFunction(unittest.TestCase):
     def test_forward_cpu(self):
         self.check_forward(False)
 
+    @attr.gpu
     def test_forward_gpu(self):
         self.setup_gpu()
         self.check_forward(True)
@@ -83,6 +93,7 @@ class TestFunction(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(False)
 
+    @attr.gpu
     def test_backward_gpu(self):
         self.setup_gpu()
         self.check_backward(True)
@@ -128,6 +139,7 @@ class TestFunction(unittest.TestCase):
     def test_call_cpu(self):
         self.check_call()
 
+    @attr.gpu
     def test_call_gpu(self):
         self.setup_gpu()
         self.check_call()
@@ -153,6 +165,7 @@ class TestFunction(unittest.TestCase):
     def test_call_volatile_cpu(self):
         self.check_call_volatile()
 
+    @attr.gpu
     def test_call_volatile_gpu(self):
         self.setup_gpu()
         self.check_call_volatile()
@@ -168,6 +181,7 @@ class TestFunction(unittest.TestCase):
     def test_call_sigle_return_value_cpu(self):
         self.check_call_single_return_value(False)
 
+    @attr.gpu
     def test_call_sigle_return_value_gpu(self):
         self.setup_gpu()
         self.check_call_single_return_value(False)
@@ -175,6 +189,7 @@ class TestFunction(unittest.TestCase):
     def test_call_sigle_return_value_volatile_cpu(self):
         self.check_call_single_return_value(True)
 
+    @attr.gpu
     def test_call_sigle_return_value_volatile_gpu(self):
         self.setup_gpu()
         self.check_call_single_return_value(True)
@@ -188,6 +203,7 @@ class TestFunction(unittest.TestCase):
     def test_call_mixed_volatile_cpu(self):
         self.check_call_mixed_volatile()
 
+    @attr.gpu
     def test_call_mixed_volatile_gpu(self):
         self.setup_gpu()
         self.check_call_mixed_volatile()
