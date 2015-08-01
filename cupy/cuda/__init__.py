@@ -7,8 +7,9 @@ from cupy.cuda import stream
 compile_with_cache = compiler.compile_with_cache
 
 Device = device.Device
-DeviceUser = device.DeviceUser
+clear_device_dependent_memo = device.clear_device_dependent_memo
 memoize = device.memoize
+using_device = device.using_device
 
 alloc = memory.alloc
 Memory = memory.Memory

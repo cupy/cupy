@@ -1,5 +1,6 @@
 import atexit
 import collections
+import contextlib
 
 import six
 
@@ -8,64 +9,127 @@ from cupy.cuda import runtime
 
 
 class Device(object):
+
+    """Object that represents a CUDA device.
+
+    This class provides some basic manipulations on CUDA devices.
+
+    Args:
+        device (int or cupy.cuda.Device): Index of the device to manipulate. Be
+            careful that the device ID (a.k.a. GPU ID) is zero origin. If it is
+            a Device object, then its ID is used. The current device is
+            selected by default.
+
+    Attributes:
+        id (int): ID of this device.
+
+    """
     _cublas_handles = {}
 
-    def __init__(self, device_id=-1):
-        if device_id < 0:
-            device_id = runtime.getDevice()
-        self.id = device_id
+    def __init__(self, device=-1):
+        if isinstance(device, Device):
+            self.id = device.id
+        elif device < 0:
+            self.id = runtime.getDevice()
+        else:
+            self.id = device
 
     def use(self):
+        """Makes this device current.
+
+        If you want to switch a device temporarily, use the
+        :func:`using_device` function with ``with`` statement, instead.
+
+        """
         runtime.setDevice(self.id)
 
     @staticmethod
     def synchronize():
+        """Synchronizes the current thread to the current device."""
         runtime.deviceSynchronize()
 
     @property
     def compute_capability(self):
+        """Compute capability of this device.
+
+        The capability is represented by a string containing the major index
+        and the minor index. For example, compute capability 3.5 is represented
+        by the string '35'.
+
+        """
         major = runtime.deviceGetAttribute(75, self.id)
         minor = runtime.deviceGetAttribute(76, self.id)
         return '%d%d' % (major, minor)
 
     @property
     def cublas_handle(self):
+        """The cuBLAS handle for this device.
+
+        The same handle is used for the same device even if the Device instance
+        itself is different.
+
+        """
         handle = self._cublas_handles.get(self.id, None)
         if handle is None:
-            with DeviceUser(self):
+            with using_device(self):
                 handle = cublas.create()
                 self._cublas_handles[self.id] = handle
         return handle
 
     def __eq__(self, other):
+        """Returns True if ``other`` refers to the same device."""
         if not isinstance(other, Device):
             return False
         return self.id == other.id
 
     def __ne__(self, other):
+        """Returns True if ``other`` refers to a different device."""
         return not (self == other)
 
 
 def from_pointer(ptr):
+    """Extracts a Device object from a device pointer.
+
+    Args:
+        ptr (ctypes.c_void_p): Pointer to the device memory.
+
+    Returns:
+        Device: The device whose memory the pointer refers to.
+
+    """
     attrs = runtime.pointerGetAttributes(ptr)
     return Device(attrs.device)
 
 
-class DeviceUser(object):
+@contextlib.contextmanager
+def using_device(dev):
+    """Switches to a given device temporarily.
 
-    def __init__(self, device):
-        self.prev_device = Device()
-        self.cur_device = device
+    This function should be used with the context protocol. It enables us to
+    easily switch the device and reset it to the original one. The following
+    example code clarifies the usage::
 
-    def __enter__(self):
-        self.cur_device.use()
+        Device(0).use()
+        with using_device(1):
+            do_something_on_device_1()
+        do_something_on_device_0()
 
-    def __exit__(self, typ, val, trace):
-        self.prev_device.use()
+    Args:
+        dev (int or cupy.cuda.Device): Device specifier (an argument of the
+            Device initializer).
+
+    """
+    prev_device = Device()
+    Device(dev).use()
+    try:
+        yield
+    finally:
+        prev_device.use()
 
 
 @atexit.register
 def destroy_cublas_handles():
+    """Destroys the cuBLAS handles for all devices."""
     for handle in six.itervalues(Device._cublas_handles):
         cublas.destroy(handle)
     Device._cublas_handles = {}
@@ -75,6 +139,11 @@ _memoized_funcs = []
 
 
 def memoize(f):
+    """Makes a function memoizing the result for each argument and device.
+
+    This function provides per-device memoizing of the function result.
+
+    """
     def func(*args, **kwargs):
         # TODO(okuta): Improve keyword arguments.
         global _memoized_funcs
@@ -96,6 +165,7 @@ def memoize(f):
 
 @atexit.register
 def clear_device_dependent_memo():
+    """Clears the memoized results for all functions decorated by memoize."""
     global _memoized_funcs
     for func in _memoized_funcs:
         del func._cupy_dev_memo

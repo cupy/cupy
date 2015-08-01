@@ -23,3 +23,4 @@ This is the official documentation of CuPy, a multi-dimensional array on CUDA wi
    random
    sorting
    statistics
+   cuda
