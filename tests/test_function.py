@@ -171,27 +171,29 @@ class TestFunction(unittest.TestCase):
         self.check_call_volatile()
 
     def check_call_single_return_value(self, volatile):
-        self.f.forward_cpu.return_value = (cuda.to_cpu(self.y1),)
-        self.f.forward_gpu.return_value = (cuda.to_gpu(self.y1),)
         x1 = chainer.Variable(self.x1, volatile=volatile)
         x2 = chainer.Variable(self.x2, volatile=volatile)
         ret = self.f(x1, x2)
         self.assertIsInstance(ret, chainer.Variable)
 
     def test_call_sigle_return_value_cpu(self):
+        self.f.forward_cpu.return_value = (cuda.to_cpu(self.y1),)
         self.check_call_single_return_value(False)
 
     @attr.gpu
     def test_call_sigle_return_value_gpu(self):
         self.setup_gpu()
+        self.f.forward_gpu.return_value = (cuda.to_gpu(self.y1),)
         self.check_call_single_return_value(False)
 
     def test_call_sigle_return_value_volatile_cpu(self):
+        self.f.forward_cpu.return_value = (cuda.to_cpu(self.y1),)
         self.check_call_single_return_value(True)
 
     @attr.gpu
     def test_call_sigle_return_value_volatile_gpu(self):
         self.setup_gpu()
+        self.f.forward_gpu.return_value = (cuda.to_gpu(self.y1),)
         self.check_call_single_return_value(True)
 
     def check_call_mixed_volatile(self):
@@ -254,6 +256,7 @@ class TestParameterizedFunction(unittest.TestCase):
         f.gradient_names = ('g1', 'g2')
         self.f = f
 
+    @attr.gpu
     def test_to_gpu(self):
         self.f.to_gpu()
         self.assertIsInstance(self.f.p1, cuda.GPUArray)
