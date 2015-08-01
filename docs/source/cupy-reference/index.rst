@@ -20,5 +20,6 @@ This is the official documentation of CuPy, a multi-dimensional array on CUDA wi
    linalg
    logic
    math
+   random
    sorting
    statistics

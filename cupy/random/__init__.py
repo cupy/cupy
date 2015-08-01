@@ -19,6 +19,6 @@ standard_normal = distributions.standard_normal
 uniform = distributions.uniform
 
 RandomState = generator.RandomState
+get_random_state = generator.get_random_state
 seed = generator.seed
-set_float_type = generator.set_float_type
 reset_states = generator.reset_states
