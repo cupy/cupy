@@ -262,6 +262,7 @@ class TestParameterizedFunction(unittest.TestCase):
         self.assertIsInstance(self.f.p1, cuda.GPUArray)
         self.assertIsInstance(self.f.p2, cuda.GPUArray)
 
+    @attr.gpu
     def test_to_cpu(self):
         self.f.to_gpu()
         self.f.to_cpu()
