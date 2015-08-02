@@ -6,6 +6,7 @@ import numpy
 import chainer
 from chainer import cuda
 import chainer.functions as F
+from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.utils import type_check
@@ -320,6 +321,76 @@ class TestFunctionBackwardIntegration(unittest.TestCase):
         self.assertEqual(y1.grad[0], 1)
         self.assertEqual(y2.grad[0], 1)
         self.assertEqual(x.grad[0], 2)
+
+
+class TestSplit(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.g1 = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.g2 = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+
+    def _make_split(self, x):
+        v = chainer.Variable(x)
+        v.rank = 1
+        return chainer.function.Split(v)
+
+    def check_init(self, x):
+        split = self._make_split(x)
+        self.assertEqual(split.rank, 1)
+
+    def test_init_cpu(self):
+        self.check_init(self.x)
+
+    @attr.gpu
+    def test_init_gpu(self):
+        self.check_init(cuda.to_gpu(self.x))
+
+    def check_add_branch(self, x):
+        split = self._make_split(x)
+
+        out = split.add_branch()
+        self.assertIsInstance(out, chainer.Variable)
+        self.assertIs(out.creator, split)
+        self.assertEqual(len(split.outputs), 1)
+
+    def test_add_branch_cpu(self):
+        self.check_add_branch(self.x)
+
+    @attr.gpu
+    def test_add_branch_gpu(self):
+        self.check_add_branch(cuda.to_gpu(self.x))
+
+    def check_backward(self, x, g1, g2):
+        split = self._make_split(x)
+
+        grads = (g1, g2, None)
+        gx, = split.backward((x,), grads)
+        gradient_check.assert_allclose(g1 + g2, gx)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.g1, self.g2)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x),
+                            cuda.to_gpu(self.g1),
+                            cuda.to_gpu(self.g2))
+
+    def check_backward_one(self, x, g1):
+        split = self._make_split(x)
+
+        grads = (g1,)
+        gx, = split.backward((x,), grads)
+        gradient_check.assert_allclose(g1, gx)
+
+    def test_backward_one_cpu(self):
+        self.check_backward_one(self.x, self.g1)
+
+    @attr.gpu
+    def test_backward_one_gpu(self):
+        self.check_backward_one(cuda.to_gpu(self.x),
+                                cuda.to_cpu(self.g1))
 
 
 testing.run_module(__name__, __file__)
