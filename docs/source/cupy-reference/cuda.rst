@@ -23,3 +23,13 @@ Memory management
 .. autoclass:: cupy.cuda.MemoryPool
    :members:
 
+
+Streams and events
+------------------
+
+.. autoclass:: cupy.cuda.Stream
+   :members:
+.. autoclass:: cupy.cuda.Event
+   :members:
+
+.. autofunction:: cupy.cuda.get_elapsed_time

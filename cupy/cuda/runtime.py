@@ -258,12 +258,25 @@ def pointerGetAttributes(ptr):
 # Stream and Event
 ###############################################################################
 
-_cudart.cudaStreamCreate.argtypes = [ctypes.POINTER(Stream), ctypes.c_uint]
+_cudart.cudaStreamCreate.argtypes = [ctypes.POINTER(Stream)]
 
 
-def streamCreate(flag=0):
+def streamCreate():
     stream = Stream()
-    status = _cudart.cudaStreamCreate(ctypes.byref(stream), flag)
+    status = _cudart.cudaStreamCreate(ctypes.byref(stream))
+    check_status(status)
+    return stream
+
+
+streamDefault = 0
+streamNonBlocking = 1
+_cudart.cudaStreamCreateWithFlags.argtypes = [ctypes.POINTER(Stream),
+                                              ctypes.c_int]
+
+
+def streamCreateWithFlags(flags):
+    stream = Stream()
+    status = _cudart.cudaStreamCreateWithFlags(ctypes.byref(stream), flags)
     check_status(status)
     return stream
 
@@ -295,16 +308,42 @@ def streamAddCallback(stream, callback, arg, flags=0):
     check_status(status)
 
 
-EVENT_DEFAULT = 0
-EVENT_BLOCKING_SYNC = 1
-EVENT_DISABLE_TIMING = 2
-EVENT_INTERPROCESS = 4
-_cudart.cudaEventCreate.argtypes = [ctypes.POINTER(Event), ctypes.c_uint]
+_cudart.cudaStreamQuery.argtypes = [Stream]
 
 
-def eventCreate(flag):
+def streamQuery(stream):
+    return _cudart.cudaStreamQuery(stream)
+
+
+_cudart.cudaStreamWaitEvent.argtypes = [Stream, Event, ctypes.c_uint]
+
+
+def streamWaitEvent(stream, event, flags=0):
+    status = _cudart.cudaStreamWaitEvent(stream, event, flags)
+    check_status(status)
+
+
+_cudart.cudaEventCreate.argtypes = [ctypes.POINTER(Event)]
+
+
+def eventCreate():
     event = Event()
-    status = _cudart.cudaEventCreate(ctypes.byref(event), flag)
+    status = _cudart.cudaEventCreate(ctypes.byref(event))
+    check_status(status)
+    return event
+
+
+eventDefault = 0
+eventBlockingSync = 1
+eventDisableTiming = 2
+eventInterprocess = 4
+_cudart.cudaEventCreateWithFlags.argtypes = [ctypes.POINTER(Event),
+                                             ctypes.c_int]
+
+
+def eventCreateWithFlags(flags):
+    event = Event()
+    status = _cudart.cudaEventCreateWithFlags(ctypes.byref(event), flags)
     check_status(status)
     return event
 
@@ -315,6 +354,24 @@ _cudart.cudaEventDestroy.argtypes = [Event]
 def eventDestroy(event):
     status = _cudart.cudaEventDestroy(event)
     check_status(status)
+
+
+_cudart.cudaEventElapsedTime.argtypes = [ctypes.POINTER(ctypes.c_float),
+                                         Event, Event]
+
+
+def eventElapsedTime(start, end):
+    ms = ctypes.c_float()
+    status = _cudart.cudaEventElapsedTime(ctypes.byref(ms), start, end)
+    check_status(status)
+    return ms.value
+
+
+_cudart.cudaEventQuery.argtypes = [Event]
+
+
+def eventQuery(event):
+    return _cudart.cudaEventQuery(event)
 
 
 _cudart.cudaEventRecord.argtypes = [Event, Stream]

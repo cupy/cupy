@@ -22,3 +22,4 @@ Module = module.Module
 
 Event = stream.Event
 Stream = stream.Stream
+get_elapsed_time = stream.get_elapsed_time
