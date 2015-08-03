@@ -8,7 +8,6 @@ Device management
    :members:
 .. autofunction:: cupy.cuda.clear_device_dependent_memo
 .. autofunction:: cupy.cuda.memoize
-.. autofunction:: cupy.cuda.using_device
 
 
 Memory management

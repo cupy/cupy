@@ -1,6 +1,5 @@
 import atexit
 import collections
-import contextlib
 
 import six
 
@@ -13,6 +12,15 @@ class Device(object):
     """Object that represents a CUDA device.
 
     This class provides some basic manipulations on CUDA devices.
+
+    It supports the context protocol. For example, the following code is an
+    example of temporarily switching the current device::
+
+       with Device(0):
+           do_something_on_device_0()
+
+    After the *with* statement gets done, the current device is reset to the
+    original one.
 
     Args:
         device (int or cupy.cuda.Device): Index of the device to manipulate. Be
@@ -33,6 +41,16 @@ class Device(object):
             self.id = runtime.getDevice()
         else:
             self.id = device
+
+        self._device_stack = []
+
+    def __enter__(self):
+        self._device_stack.append(Device())
+        self.use()
+
+    def __exit__(self, *args):
+        device = self._device_stack.pop()
+        device.use()
 
     def use(self):
         """Makes this device current.
@@ -101,32 +119,6 @@ def from_pointer(ptr):
     return Device(attrs.device)
 
 
-@contextlib.contextmanager
-def using_device(dev):
-    """Switches to a given device temporarily.
-
-    This function should be used with the context protocol. It enables us to
-    easily switch the device and reset it to the original one. The following
-    example code clarifies the usage::
-
-        Device(0).use()
-        with using_device(1):
-            do_something_on_device_1()
-        do_something_on_device_0()
-
-    Args:
-        dev (int or cupy.cuda.Device): Device specifier (an argument of the
-            Device initializer).
-
-    """
-    prev_device = Device()
-    Device(dev).use()
-    try:
-        yield
-    finally:
-        prev_device.use()
-
-
 @atexit.register
 def destroy_cublas_handles():
     """Destroys the cuBLAS handles for all devices."""
@@ -141,7 +133,7 @@ _memoized_funcs = []
 def memoize(f):
     """Makes a function memoizing the result for each argument and device.
 
-    This function provides per-device memoizing of the function result.
+    This decorator provides per-device memoizing of the function result.
 
     """
     def func(*args, **kwargs):
