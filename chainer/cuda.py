@@ -23,6 +23,7 @@ operations.
 """
 
 import os
+import warnings
 
 import numpy
 
@@ -192,6 +193,9 @@ def empty(shape, dtype=numpy.float32):
         cupy.ndarray: Uninitialized GPU array allocated by the memory pool.
 
     """
+    warnings.warn(
+        'chainer.cuda.empty is deprecated. Use cupy.empty instead.',
+        DeprecationWarning)
     _check_cuda_available()
     return cupy.empty(shape, dtype)
 
@@ -209,6 +213,9 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
         cupy.ndarray: Constant-filled GPU array allocated by the memory pool.
 
     """
+    warnings.warn(
+        'chainer.cuda.full is deprecated. Use cupy.full instead.',
+        DeprecationWarning)
     _check_cuda_available()
     assert stream is None
     return cupy.full(shape, fill_value, dtype=dtype)
@@ -220,6 +227,9 @@ def zeros(shape, dtype=numpy.float32, stream=None):
     This function is equivalent to ``full(shape, 0, dtype, stream)``.
 
     """
+    warnings.warn(
+        'chainer.cuda.zeros is deprecated. Use cupy.zeros instead.',
+        DeprecationWarning)
     _check_cuda_available()
     assert stream is None
     return cupy.zeros(shape, dtype=dtype)
@@ -231,6 +241,9 @@ def ones(shape, dtype=numpy.float32, stream=None):
     This function is equivalent to ``full(shape, 1, dtype, stream)``.
 
     """
+    warnings.warn(
+        'chainer.cuda.ones is deprecated. Use cupy.ones instead.',
+        DeprecationWarning)
     _check_cuda_available()
     assert stream is None
     return cupy.ones(shape, dtype=dtype)
@@ -246,6 +259,9 @@ def empty_like(array):
         cupy.ndarray: GPU array of the same shape and dtype as `array`.
 
     """
+    warnings.warn(
+        'chainer.cuda.empty_like is deprecated. Use cupy.empty_like instead.',
+        DeprecationWarning)
     _check_cuda_available()
     if isinstance(array, cupy.ndarray):
         return cupy.empty_like(array)
@@ -264,6 +280,9 @@ def full_like(array, fill_value, stream=None):
         cupy.ndarray: Constant-filled array.
 
     """
+    warnings.warn(
+        'chainer.cuda.full_like is deprecated. Use cupy.full_like instead.',
+        DeprecationWarning)
     _check_cuda_available()
     assert stream is None
     if isinstance(array, cupy.ndarray):
@@ -282,6 +301,9 @@ def zeros_like(array, stream=None):
         cupy.ndarray: Zero-filled array.
 
     """
+    warnings.warn(
+        'chainer.cuda.zeros_like is deprecated. Use cupy.zeros_like instead.',
+        DeprecationWarning)
     _check_cuda_available()
     assert stream is None
     if isinstance(array, cupy.ndarray):
@@ -300,6 +322,9 @@ def ones_like(array, stream=None):
         cupy.ndarray: One-filled array.
 
     """
+    warnings.warn(
+        'chainer.cuda.ones_like is deprecated. Use cupy.ones_like instead.',
+        DeprecationWarning)
     _check_cuda_available()
     assert stream is None
     if isinstance(array, cupy.ndarray):
