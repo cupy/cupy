@@ -5,35 +5,35 @@ CUDA utilities
 --------------
 .. automodule:: chainer.cuda
 
-Initialization and global states
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autofunction:: init
-
-Devices and contexts
-~~~~~~~~~~~~~~~~~~~~
+Devices
+~~~~~~~
 .. autofunction:: get_device
-.. autofunction:: use_device
-.. autofunction:: using_device
-.. autoclass:: DeviceUser
 
-GPUArray allocation and copy
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CuPy array allocation and copy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+   As of v1.3.0, the following array construction wrappers are marked as
+   deprecated. Use the corresponding functions of the :mod:`cupy` module
+   instead. The main difference of them is the default dtype is changed from
+   float32 to float64.
+
+   ============================= =========================
+    Deprecated functions          Recommended functions
+   ============================= =========================
+    ``chainer.cuda.empty``        :func:`cupy.empty`
+    ``chainer.cuda.empty_like``   :func:`cupy.empty_like`
+    ``chainer.cuda.zeros``        :func:`cupy.zeros`
+    ``chainer.cuda.zeros_like``   :func:`cupy.zeros_like`
+    ``chainer.cuda.ones``         :func:`cupy.ones`
+    ``chainer.cuda.ones_like``    :func:`cupy.ones_like`
+    ``chainer.cuda.full``         :func:`cupy.full`
+    ``chainer.cuda.full_like``    :func:`cupy.full_like`
+   ============================= =========================
+
 .. autofunction:: copy
-.. autofunction:: copy_async
-
-.. autofunction:: empty
-.. autofunction:: empty_like
-.. autofunction:: full
-.. autofunction:: full_like
-.. autofunction:: zeros
-.. autofunction:: zeros_like
-.. autofunction:: ones
-.. autofunction:: ones_like
-
 .. autofunction:: to_cpu
-.. autofunction:: to_cpu_async
 .. autofunction:: to_gpu
-.. autofunction:: to_gpu_async
 
 Kernel definition utilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
