@@ -62,7 +62,7 @@ class Device(object):
         """
         runtime.setDevice(self.id)
 
-    def synchronize():
+    def synchronize(self):
         """Synchronizes the current thread to the device."""
         with self:
             runtime.deviceSynchronize()
