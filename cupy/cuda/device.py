@@ -34,15 +34,16 @@ class Device(object):
     """
     _cublas_handles = {}
 
-    def __init__(self, device=-1):
-        if isinstance(device, Device):
-            self.id = device.id
-        elif device < 0:
+    def __init__(self, device=None):
+        if device is None:
             self.id = runtime.getDevice()
         else:
-            self.id = device
+            self.id = int(device)
 
         self._device_stack = []
+
+    def __int__(self):
+        return self.id
 
     def __enter__(self):
         self._device_stack.append(Device())
@@ -61,10 +62,10 @@ class Device(object):
         """
         runtime.setDevice(self.id)
 
-    @staticmethod
     def synchronize():
-        """Synchronizes the current thread to the current device."""
-        runtime.deviceSynchronize()
+        """Synchronizes the current thread to the device."""
+        with self:
+            runtime.deviceSynchronize()
 
     @property
     def compute_capability(self):
