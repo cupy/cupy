@@ -378,8 +378,8 @@ def elementwise(param_names, operation, name, options=None,
     each arguments and CUDA context.
 
     The arguments are the same as those for
-    :func:`cupy.elementwise.ElementwiseKernel`, except that ``name`` argument
-    is mandatory.
+    :func:`cupy.elementwise.ElementwiseKernel`, except that the ``name``
+    argument is mandatory.
 
     """
     _check_cuda_available()
@@ -398,8 +398,8 @@ def reduce(param_names, map_expr, reduce_expr, identity, name,
     each argument and CUDA context.
 
     The arguments are the same as those for
-    :func:`cupy.reduction.ReductionKernel`, except that their order is
-    different and ``name`` argument is mandatory.
+    :func:`cupy.reduction.ReductionKernel`, except that the ``name`` argument
+    is mandatory.
 
     """
     _check_cuda_available()
