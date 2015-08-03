@@ -48,6 +48,7 @@ class Device(object):
     def __enter__(self):
         self._device_stack.append(Device())
         self.use()
+        return self
 
     def __exit__(self, *args):
         device = self._device_stack.pop()
