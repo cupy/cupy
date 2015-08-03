@@ -135,7 +135,7 @@ class Function(object):
 
             in_data = tuple(x.data for x in inputs)
             self._check_data_type_forward(in_data)
-            with cuda.using_device(*in_data):
+            with cuda.get_device(*in_data):
                 out_data = self.forward(in_data)
             assert type(out_data) == tuple
 
@@ -162,7 +162,7 @@ class Function(object):
 
         in_data = tuple(x.data for x in self.inputs)
         self._check_data_type_forward(in_data)
-        with cuda.using_device(*in_data):
+        with cuda.get_device(*in_data):
             outputs = self.forward(in_data)
         assert type(outputs) == tuple
 
@@ -388,13 +388,10 @@ class Function(object):
             self.
 
         """
-        with cuda.using_device(device):
+        with cuda.get_device(device):
             for k, v in six.iteritems(self.__dict__):
                 if isinstance(v, numpy.ndarray):
-                    setattr(self, k, cuda.to_gpu(v))
-                elif (isinstance(v, cuda.ndarray) and
-                      v.data.device != device):
-                    setattr(self, k, cuda.copy(v, out_device=device))
+                    setattr(self, k, cuda.cupy.array(v))
         return self
 
     def to_cpu(self):
@@ -408,8 +405,9 @@ class Function(object):
 
         """
         for k, v in six.iteritems(self.__dict__):
-            if isinstance(v, cuda.ndarray):
-                setattr(self, k, cuda.to_cpu(v))
+            with cuda.get_device(v) as device:
+                if device is not cuda.DummyDevice:
+                    setattr(self, k, v.get())
         return self
 
     @property
@@ -471,18 +469,11 @@ class Split(Function):
 
         gx = None
         grad_outputs = [gy for gy in grad_outputs if gy is not None]
-        device = cuda.Device()
-        try:
+        with cuda.get_device(*grad_outputs):
             for gy in grad_outputs:
-                if gx is not None:
-                    gx += gy
-                elif isinstance(gy, cuda.ndarray):
-                    # it affects to above +=, too
-                    cuda.use_device(gy)
-                    gx = cuda.copy_async(gy)
-                else:
+                if gx is None:
                     gx = gy.copy()
-        finally:
-            cuda.use_device(device)
+                else:
+                    gx += gy
 
         return gx,

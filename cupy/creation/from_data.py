@@ -40,7 +40,6 @@ def array(obj, dtype=None, copy=True, ndmin=0, allocator=None):
             a.shape = (1,) * (ndmin - ndim) + a.shape
         return a
     else:
-        assert copy
         if allocator is None:
             allocator = cuda.alloc
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, ndmin=ndmin)

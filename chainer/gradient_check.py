@@ -2,6 +2,7 @@ import numpy
 import six
 
 from chainer import cuda
+from chainer import utils
 
 
 def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
@@ -90,8 +91,8 @@ def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
         verbose (bool): If True, it outputs verbose messages on error.
 
     """
-    x = cuda.to_cpu(x)
-    y = cuda.to_cpu(y)
+    x = cuda.to_cpu(utils.force_array(x))
+    y = cuda.to_cpu(utils.force_array(y))
     try:
         numpy.testing.assert_allclose(
             x, y, atol=atol, rtol=rtol, verbose=verbose)

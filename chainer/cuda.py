@@ -29,62 +29,24 @@ import numpy
 _requires = []
 try:
     import cupy
-    import cupy.cuda
-    import cupy.cuda.cublas
-    import cupy.cudnn
-    import cupy.random
+    from cupy import cuda
+    from cupy.cuda import cublas
+    from cupy import cudnn
+    from cupy import random
+
+    ndarray = cupy.ndarray
+    Device = cuda.Device
+    Event = cuda.Event
+    Stream = cuda.Stream
 
     available = True
-    cublas = cupy.cuda.cublas
-    cudnn = cupy.cudnn
-    random = cupy.random
-
     cudnn_enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
 except Exception as e:
     available = False
     cudnn_enabled = False
     _resolution_error = e
 
-# ------------------------------------------------------------------------------
-# Basic types
-# ------------------------------------------------------------------------------
-if available:
-    from cupy import cuda
-    Device = cuda.Device
-    Event = cuda.Event
-    Stream = cuda.Stream
-    ndarray = cupy.ndarray
-else:
-    # Dummy classes
-    class Device(object):
-
-        def use(self):
-            pass
-
-    class Event(object):
-        pass
-
-    class Stream(object):
-        pass
-
-    class ndarray(object):
-        pass
-
-# ------------------------------------------------------------------------------
-# Global states
-# ------------------------------------------------------------------------------
-if available:
-    cuda.set_default_allocator(cuda.MemoryPool().malloc)
-
-
-def init(arg=None):
-    """Obsolete function.
-
-    Use :func:`~chainer.cuda.use_device` instead.
-
-    """
-    _check_cuda_available()
-    use_device(arg)
+    class ndarray(object): pass  # for type testing
 
 
 def _check_cuda_available():
@@ -95,127 +57,93 @@ def _check_cuda_available():
         raise RuntimeError(msg)
 
 
-def get_device(arg=None):
-    """Gets the device from an ID integer or an array object.
+class DummyDeviceType(object):
 
-    Args:
-        arg: Value to specify a GPU device.
+    """Dummy device class that does nothing with cupy.cuda.Device interface.
 
-    Returns:
-        Device object specified by given ``arg``.
-
-        The rule of device selection is following.
-
-==================================== =====================================
- Type of ``arg``                      Return value
-==================================== =====================================
- ``None``                             Current device
- ``int``                              Device of ID ``arg``
- :class:`cupy.cuda.Device`            ``arg``
- :class:`cupy.ndarray`                Device given array was allocated on
- :class:`numpy.ndarray`               ``None``
-==================================== =====================================
+    This class is used to represent CPU device.
 
     """
-    if arg is None:
-        return Device()
-    elif isinstance(arg, Device):
-        return arg
-    elif isinstance(arg, numpy.ndarray):
-        return None
-    elif isinstance(arg, cupy.ndarray):
-        return arg.data.device
-    else:
-        return Device(arg)
-
-
-def use_device(arg):
-    """Switches the CUDA context to use given device.
-
-    Args:
-        arg: Argument of :func:`get_device`.
-
-    """
-    device = get_device(arg)
-    if device is None:
-        return
-    device.use()
-
-
-class DeviceUser(object):
-
-    """RAII-style CUDA context swithcer.
-
-    Args:
-        arg: Argument of :func:`get_device`.
-
-    Attributes:
-        device (cupy.cuda.Device): Selected device.
-
-    """
-    def __init__(self, arg):
-        if arg is None:
-            self.device = None
-        else:
-            self.device = get_device(arg)
-        if self.is_active:
-            self.prev_device = Device()
-        else:
-            self.prev_device = None
+    def __int__(self):
+        return -1
 
     def __enter__(self):
-        if self.is_active:
-            self.device.use()
         return self
 
-    def __exit__(self, typ, value, traceback):
-        if self.prev_device is not None:
-            self.prev_device.use()
+    def __exit__(self, *args):
+        pass
 
-    @property
-    def is_active(self):
-        return self.device is not None
+    def use(self):
+        pass
+
+    def synchronize(self):
+        pass
+
+    def __eq__(self, other):
+        return isinstance(other, DummyDevice)
+
+    def __ne__(self, other):
+        return not (self == other)
 
 
-def using_device(*args):
-    """Returns a DeviceUser object of the first cupy.ndarray argument.
+DummyDevice = DummyDeviceType()
 
-    If none of the arguments specifies a GPU device, then it returns a dummy
-    :class:`DeviceUser` object which is inactive.
+
+# ------------------------------------------------------------------------------
+# Global states
+# ------------------------------------------------------------------------------
+if available:
+    cuda.set_default_allocator(cuda.MemoryPool().malloc)
+
+
+# ------------------------------------------------------------------------------
+# Global states
+# ------------------------------------------------------------------------------
+def get_device(*args):
+    """Gets the device from an ID integer or an array object.
+
+    This is a convenient utility to select a correct device if the type of
+    ``arg`` is unknown (i.e., one can use this function on arrays that may be
+    on CPU or GPU). The returned device object supports the context management
+    protocol of Python for the *with* statement.
 
     Args:
-        *args: Objects based on which an appropriate device should be selected.
+        args: Values to specify a GPU device. :class:`numpy.ndarray` objects
+            are skipped. If all arguments are numpy.ndarray objects, it returns
+            a dummy device object. Otherwise, the first non-numpy object is
+            used to select a device. If it is a :class:`cupy.ndarray` object,
+            its device is returned. Otherwise, the argument is passed to the
+            initializer of :class:`~cupy.cuda.Device` and it is returned.
 
     Returns:
-        DeviceUser: Device user instance of selected argument.
+        Device object specified by given ``args``.
 
-    .. admonition:: Example
-
-        Suppose ``arrays`` is a list of arrays of type either
-        :class:`numpy.ndarray` or :class:`cupy.ndarray`. Then, the following
-        code invokes ``do_something_on`` on an appropriate device::
-
-            with using_device(*arrays):
-                do_something_on(arrays)
+    .. seealso::
+       See :class:`cupy.cuda.Device` for the device selection not by arrays.
 
     """
     for arg in args:
-        dev = get_device(arg)
-        if dev is not None:
-            return DeviceUser(dev)
-    return DeviceUser(None)
+        if not isinstance(arg, numpy.ndarray):
+            _check_cuda_available()
+            if isinstance(arg, cupy.ndarray):
+                return arg.data.device
+            else:
+                return Device(arg)
+
+    return DummyDevice
 
 
 # ------------------------------------------------------------------------------
 # cupy.ndarray allocation and copy
 # ------------------------------------------------------------------------------
 
-def to_gpu(array, device=None):
+def to_gpu(array, device=None, stream=None):
     """Copies the given CPU array to specified device.
 
     Args:
         array: Array to be sent to GPU.
         device: Device specifier.
+        stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
         cupy.ndarray: Array on GPU.
@@ -226,57 +154,16 @@ def to_gpu(array, device=None):
 
     """
     _check_cuda_available()
-    if isinstance(array, cupy.ndarray):
-        return array
-    with using_device(device):
-        return cupy.array(array)
+    assert stream is None  # TODO(beam2d): FIX IT
+    with get_device(device):
+        return cupy.asarray(array)
 
 
-def to_gpu_async(array, stream=None):
-    """Copies the given CPU array asynchronously to the current device.
-
-    Args:
-        array: Array to be sent to GPU. If it is :class:`numpy.ndarray`, then
-            its memory must be pagelocked.
-        stream (cupy.cuda.Stream): CUDA stream.
-
-    Returns:
-        cupy.ndarray: Array on GPU.
-
-        If given ``array`` is already on GPU, then this function just returns
-        ``array`` without performing any copy.
-
-    """
-    _check_cuda_available()
-    if isinstance(array, cupy.ndarray):
-        return array
-    assert stream is None
-    return cupy.array(array)
-
-
-def to_cpu(array):
+def to_cpu(array, stream=None):
     """Copies the given GPU array to host CPU.
 
     Args:
         array: Array to be sent to GPU.
-
-    Returns:
-        numpy.ndarray: Array on CPU.
-
-        If given ``array`` is already on CPU, then this function just returns
-        ``array`` without performing any copy.
-
-    """
-    if isinstance(array, ndarray):
-        return array.get()
-    return array
-
-
-def to_cpu_async(array, stream=None):
-    """Copies the given GPU array asynchronously to host CPU.
-
-    Args:
-        array: Array to be sent to GPU.
         stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
@@ -286,9 +173,12 @@ def to_cpu_async(array, stream=None):
         ``array`` without performing any copy.
 
     """
-    if isinstance(array, ndarray):
-        return array.get(stream=stream)
-    return array
+    assert stream is None  # TODO(beam2d): FIX IT
+    with get_device(array) as device:
+        if device is DummyDevice:
+            return array
+        else:
+            return array.get()
 
 
 def empty(shape, dtype=numpy.float32):
@@ -417,47 +307,8 @@ def ones_like(array, stream=None):
     return cupy.ones(array.shape, dtype=array.dtype)
 
 
-def copy(array, out=None, out_device=None):
+def copy(array, out=None, out_device=None, stream=None):
     """Copies a cupy.ndarray object using the default stream.
-
-    This function can copy the device array to the destination array on another
-    device.
-
-    Args:
-        array (cupy.ndarray): Array to be copied.
-        out (cupy.ndarray): Destination array.
-            If it is not ``None``, then ``out_device`` argument is ignored.
-        out_device: Destination device specifier. Actual device object is
-            obtained by passing this value to :func:`get_device`.
-
-    Returns:
-        cupy.ndarray: Copied array.
-
-        If ``out`` is not specified, then the array is allocated on the device
-        specified by ``out_device`` argument.
-
-    """
-    _check_cuda_available()
-    in_device = get_device(array)
-    if out is None:
-        if out_device is None:
-            out_device = in_device
-        else:
-            out_device = get_device(out_device)
-
-        with using_device(out_device):
-            out = empty_like(array)
-    else:
-        out_device = get_device(out)
-
-    with using_device(in_device):
-        cupy.copyto(out, array)
-
-    return out
-
-
-def copy_async(array, out=None, out_device=None, stream=None):
-    """Copies a cupy.ndarray object using the given stream.
 
     This function can copy the device array to the destination array on another
     device.
@@ -478,20 +329,13 @@ def copy_async(array, out=None, out_device=None, stream=None):
 
     """
     _check_cuda_available()
-    in_device = get_device(array)
+    assert stream is None  # TODO(beam2d): FIX IT
+
     if out is None:
-        if out_device is None:
-            out_device = in_device
-        else:
-            out_device = get_device(out_device)
+        with get_device(out_device or array):
+            out = cupy.empty_like(array)
 
-        with using_device(out_device):
-            out = empty_like(array)
-    else:
-        out_device = get_device(out)
-
-    with using_device(in_device):
-        assert stream is None
+    with get_device(array):
         cupy.copyto(out, array)
 
     return out
@@ -557,7 +401,7 @@ def get_xpy(a):
     """
     if isinstance(a, numpy.ndarray):
         return numpy
-    elif available and isinstance(a, ndarray):
+    elif available and isinstance(a, cupy.ndarray):
         return cupy
     else:
         raise TypeError(

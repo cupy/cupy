@@ -57,8 +57,7 @@ class Device(object):
     def use(self):
         """Makes this device current.
 
-        If you want to switch a device temporarily, use the
-        :func:`using_device` function with ``with`` statement, instead.
+        If you want to switch a device temporarily, use the *with* statement.
 
         """
         runtime.setDevice(self.id)
@@ -91,7 +90,7 @@ class Device(object):
         """
         handle = self._cublas_handles.get(self.id, None)
         if handle is None:
-            with using_device(self):
+            with self:
                 handle = cublas.create()
                 self._cublas_handles[self.id] = handle
         return handle

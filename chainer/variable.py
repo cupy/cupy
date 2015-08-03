@@ -156,11 +156,11 @@ https://github.com/pfnet/chainer/issues/new.
 
         # Initilize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
-            with cuda.using_device(self.data) as user:
-                if user.is_active:
-                    self.grad = cuda.ones_like(self.data)
-                else:
+            with cuda.get_device(self.data) as device:
+                if device is cuda.DummyDevice:
                     self.grad = numpy.ones_like(self.data)
+                else:
+                    self.grad = cuda.cupy.ones_like(self.data)
 
         def add_cand(cand):
             if cand is not None and cand not in seen_set:
@@ -177,7 +177,7 @@ https://github.com/pfnet/chainer/issues/new.
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
             func._check_data_type_backward(in_data, out_grad)
-            with cuda.using_device(*(in_data + out_grad)):
+            with cuda.get_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
 
