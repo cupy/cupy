@@ -80,8 +80,8 @@ def _get_elementwise_kernel(
 
 class ElementwiseKernel(object):
 
-    def __init__(self, param_names, operation,
-                 name='kernel', options=[], **kwargs):
+    def __init__(self, param_names, operation, name='kernel', options=[],
+                 **kwargs):
         self.param_names = param_names + ['n']
         self.operation = operation
         self.name = name

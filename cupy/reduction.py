@@ -218,9 +218,9 @@ class simple_reduction_function(object):
 
 class ReductionKernel(object):
 
-    def __init__(self, out_dtype, param_names, identity, reduce_expr,
-                 map_expr, post_map_expr='a', name='reduce_kernel',
-                 options=[], preamble=''):
+    def __init__(self, param_names, map_expr, reduce_expr, identity,
+                 name='reduce_kernel', out_dtype=numpy.float32, options=[],
+                 post_map_expr='a', preamble=''):
         self.out_dtype = out_dtype
         self.param_names = ('out',) + tuple(param_names) + (
             'in_size', 'out_size', '_out_clp2_size')
@@ -228,7 +228,7 @@ class ReductionKernel(object):
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
         self.name = name
-        self.options = []
+        self.options = list(options)
         self.preamble = preamble
 
     def __call__(self, *args, **kwargs):
@@ -254,6 +254,7 @@ class ReductionKernel(object):
             self.param_names, args)
         block_size = 512
         dtype = elementwise._get_typename(args[0].dtype)
+        # TODO(beam2d): Support customized options
         kernel = _make_reduction_function_kernel(
             self.name, block_size, dtype, dtype, params, self.identity,
             self.reduce_expr, self.map_expr, 'a', self.preamble)
