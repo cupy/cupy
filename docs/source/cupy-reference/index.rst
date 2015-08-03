@@ -1,3 +1,5 @@
+.. _cupy_reference:
+
 ***********************
  CuPy Reference Manual
 ***********************
@@ -24,3 +26,4 @@ This is the official documentation of CuPy, a multi-dimensional array on CUDA wi
    sorting
    statistics
    cuda
+   kernel

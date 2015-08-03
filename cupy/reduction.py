@@ -218,6 +218,65 @@ class simple_reduction_function(object):
 
 class ReductionKernel(object):
 
+    """User-defined full reduction kernel.
+
+    This class can be used to define a PyCUDA-style full reduction kernel. It
+    can accept an arbitrary number of arguments of either scalars or arrays.
+    User just have to define the *map* and *reduce* operations in CUDA-C/C++.
+    The map operation is defined with the special variable ``i`` that refers to
+    the indices running through all the elements of the first array argument.
+
+    The kernel is compiled at an invocation of the
+    :meth:`ReductionKernel.__call__` method, which is cached for each device.
+    The compiled binary is also cached into a file under the
+    ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
+    binary is reused by other processes.
+
+    Args:
+        param_names (list): List of argument names. Note that the type of the
+            arguments are automatically determined at invocations.
+        map_expr (str): The map operation definition in CUDA-C/C++. The index
+            can be referred by the variable ``i``.
+        reduce_expr (str): The reduce operation definition in CUDA-C/C++. The
+            special variable ``a`` and ``b`` can be used for the pairwise
+            reduction.
+        identity (str): Initial value of the reduction in CUDA-C/C++.
+        name (str): Name of the kernel function. It should be set for
+            readability of the performance profiling.
+        out_dtype: Data type specifier of the output.
+        options (list): Options passed to the nvcc command.
+        post_map_expr (str):  Fragment of the CUDA-C/C++ code that is inserted
+            below the reduction code. The reduced value can be referred by the
+            special variable ``a``.
+        preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
+            top of the cu file.
+
+    .. admonition:: Example
+
+       Suppose that we want to compute the Euclidean distance between two
+       arrays. It can be done as a combination of vector computations, which
+       needs four kernels (subtraction, square, sum, and sqrt). We can use the
+       ReductionKernel class to unify the kernels as follows::
+
+           >>> x = cupy.array([1, 2, 3, 4, 5], dtype='f')
+           >>> y = cupy.array([5, 4, 3, 2, 1], dtype='f')
+           >>> kernel = cupy.reduction.ReductionKernel(
+           ...     ['x', 'y'],
+           ...     'squared_diff(x[i], y[i])',
+           ...     'a+b',
+           ...     '0',
+           ...     'euclidean_distance',
+           ...     post_map_expr='sqrt(a)',
+           ...     preamble='''
+           ...         __device__ float squared_diff(float x, float y) {
+           ...             return (x - y) * (x - y);
+           ...         }
+           ...     ''')
+           >>> z = kernel(x, y)
+           >>> z
+           array(6.324555397033691, dtype=float32)
+
+    """
     def __init__(self, param_names, map_expr, reduce_expr, identity,
                  name='reduce_kernel', out_dtype=numpy.float32, options=[],
                  post_map_expr='a', preamble=''):
@@ -229,9 +288,29 @@ class ReductionKernel(object):
         self.map_expr = map_expr
         self.name = name
         self.options = list(options)
+        self.post_map_expr = post_map_expr
         self.preamble = preamble
 
     def __call__(self, *args, **kwargs):
+        """Compiles and invokes the full reduction kernel.
+
+        The compilation runs only if the kernel is not cached. Note that the
+        kernels with different argument dtypes or ndims are not compatible. It
+        means that single ReductionKernel object may be compiled into multiple
+        kernel binaries.
+
+        Args:
+            args: Arguments of the kernel.
+            reduce_dims (bool): If False, the shapes of array arguments are
+                kept within the kernel invocation. THe shapes are reduced
+                (i.e., the arrays are reshaped without copy to the minimum
+                ndims) by default. It may make the kernel fast by reducing the
+                index calculations.
+
+        Returns:
+            cupy.ndarray: The result in zero-dimensional array.
+
+        """
         reduce_dims = kwargs.pop('reduce_dims', True)
         in_size = None
         for i in args:
@@ -257,7 +336,7 @@ class ReductionKernel(object):
         # TODO(beam2d): Support customized options
         kernel = _make_reduction_function_kernel(
             self.name, block_size, dtype, dtype, params, self.identity,
-            self.reduce_expr, self.map_expr, 'a', self.preamble)
+            self.reduce_expr, self.map_expr, self.post_map_expr, self.preamble)
         shared_mem = 32 * block_size
         # TODO(okuta) set actual size
         kernel.linear_launch(block_size, kernel_args,

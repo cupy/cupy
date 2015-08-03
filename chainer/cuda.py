@@ -389,8 +389,8 @@ def elementwise(param_names, operation, name, options=None,
 
 
 def reduce(param_names, map_expr, reduce_expr, identity, name,
-           dtype_out=numpy.float32, options=None,
-           post_map_expr='a', preamble=''):
+           out_dtype=numpy.float32, options=[], post_map_expr='a',
+           preamble=''):
     """Creates a global reduction kernel function.
 
     This function uses :func:`cupy.cuda.memoize` to cache
@@ -404,8 +404,8 @@ def reduce(param_names, map_expr, reduce_expr, identity, name,
     """
     _check_cuda_available()
     return cupy.reduction.ReductionKernel(
-        dtype_out, param_names, identity, reduce_expr, map_expr, post_map_expr,
-        name, options, preamble)
+        param_names, map_expr, reduce_expr, identity, name, out_dtype, options,
+        post_map_expr, preamble)
 
 
 # ------------------------------------------------------------------------------
