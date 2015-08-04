@@ -48,8 +48,8 @@ class NumericalGradientTest(unittest.TestCase):
 
         gys = tuple(0 if gy is None else gy for gy in gys)
         # matrix-vector multiplication of dfxs and dys
-        dx_expect = map(lambda dfx:
-                        sum(map(lambda (a, b): a * b, zip(dfx, gys))), dfxs)
+        dx_expect = map(
+            lambda dfx: sum(map(lambda (a, b): a * b, zip(dfx, gys))), dfxs)
 
         func = lambda: f(xs)
         dx_actual = gradient_check.numerical_grad(func, xs, gys, eps)
