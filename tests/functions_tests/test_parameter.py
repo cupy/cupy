@@ -56,4 +56,34 @@ class TestParameter(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.gW))
 
 
+class TestVolatile(unittest.TestCase):
+
+    def setUp(self):
+        self.W = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        self.func = functions.Parameter(self.W)
+
+    def tearDown(self):
+        del self.func
+
+    def check_volatile(self, volatile):
+        y = self.func(volatile=volatile)
+        self.assertEqual(y.volatile, volatile)
+
+    def test_volatile_cpu_volatile(self):
+        self.check_volatile(True)
+
+    def test_volatile_cpu_not_volatile(self):
+        self.check_volatile(False)
+
+    @attr.gpu
+    def test_volatile_gpu_volatile(self):
+        self.func.to_gpu()
+        self.check_volatile(True)
+
+    @attr.gpu
+    def test_volatile_gpu_not_volatile(self):
+        self.func.to_gpu()
+        self.check_volatile(False)
+
+
 testing.run_module(__name__, __file__)

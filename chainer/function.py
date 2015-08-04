@@ -129,7 +129,10 @@ class Function(object):
         # First copy itself to avoid duplication within the graph.
         self = copy.copy(self)
 
-        if any(x.volatile for x in inputs):  # not build graph
+        if not hasattr(self, 'volatile'):
+            self.volatile = any(x.volatile for x in inputs)
+
+        if self.volatile:
             # do not mix multiple volatility
             assert all(x.volatile for x in inputs)
 

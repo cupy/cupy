@@ -22,6 +22,13 @@ class Parameter(function.Function):
         self.W = array
         self.gW = numpy.empty_like(array)
 
+    def __call__(self, *inputs, **kwargs):
+        if 'volatile' in kwargs:
+            self.volatile = kwargs['volatile']
+        else:
+            self.volatile = False
+        return super(Parameter, self).__call__(*inputs)
+
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 0)
 
