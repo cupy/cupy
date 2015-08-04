@@ -127,7 +127,7 @@ def get_device(*args):
         if not isinstance(arg, numpy.ndarray):
             _check_cuda_available()
             if isinstance(arg, cupy.ndarray):
-                return arg.data.device
+                return arg.device
             else:
                 return Device(arg)
 

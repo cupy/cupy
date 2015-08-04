@@ -1078,6 +1078,11 @@ class ndarray(object):
         return self._allocator
 
     @property
+    def device(self):
+        """CUDA device on which this array resides."""
+        return self.data.device
+
+    @property
     def _fptr(self):
         if self.dtype.type == numpy.float64:
             return ctypes.cast(self.data.ptr, ctypes.POINTER(ctypes.c_double))
