@@ -41,6 +41,9 @@ Or, install as a root user::
   % export PATH=/usr/local/cuda/bin:$PATH
   % pip install chainer-cuda-deps
 
-We recommend to install Chainer in your local environment with `--user` option or with `pyenv <https://github.com/yyuu/pyenv>`_ if possible::
+We recommend to install Chainer in your local environment with ``--user`` option if possible.
+You don't need to use ``sudo`` in this case::
 
   $ pip install --user chainer-cuda-deps
+
+You can also use `pyenv <https://github.com/yyuu/pyenv>`_ to create your local environment.
