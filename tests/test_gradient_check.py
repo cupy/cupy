@@ -31,7 +31,7 @@ def _zeros_like(x):
         return cuda.zeros_like(x)
 
 
-class NumeraicalGradientTest(unittest.TestCase):
+class NumericalGradientTest(unittest.TestCase):
 
     def f(self, xs):
         return (xs[0] ** 2,)
@@ -72,7 +72,7 @@ class NumeraicalGradientTest(unittest.TestCase):
                                   map(cuda.to_gpu, self.xs), gys)
 
 
-class NumericalGradientTest2(NumeraicalGradientTest):
+class NumericalGradientTest2(NumericalGradientTest):
 
     f = lambda self, xs: (1,)
     df = lambda self, xs: ((0,),)
@@ -85,7 +85,7 @@ def _exp(x):
         return cuda.cumath.exp(x)
 
 
-class NumericalGradientTest3(NumeraicalGradientTest):
+class NumericalGradientTest3(NumericalGradientTest):
 
     def f(self, xs):
         return (_exp(xs[0]),)
@@ -98,7 +98,7 @@ class NumericalGradientTest3(NumeraicalGradientTest):
         self.gys = (_uniform(2, 1),)
 
 
-class NumericalGradientTest4(NumeraicalGradientTest):
+class NumericalGradientTest4(NumericalGradientTest):
 
     def f(self, xs):
         assert len(xs) == 2
@@ -136,7 +136,7 @@ class NumericalGradientTest5(NumericalGradientTest4):
         self.gys = (_uniform(2, 1), None, _uniform(2, 1))
 
 
-class NumericalGradientTest6(NumeraicalGradientTest):
+class NumericalGradientTest6(NumericalGradientTest):
 
     def setUp(self):
         self.xs = (_uniform(2, 1),)
