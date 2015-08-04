@@ -20,6 +20,7 @@ class ConcatTestBase(object):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
         y = functions.concat(xs, axis=axis)
         gradient_check.assert_allclose(y_data, y.data, atol=0, rtol=0)
+        self.assertIsInstance(y.data.shape, tuple)
 
     def test_forward_cpu(self):
         self.check_forward(self.xs, self.y, axis=self.axis)

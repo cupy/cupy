@@ -64,6 +64,7 @@ class Concat(function.Function):
         shape = list(xs[0].shape)
         for x in xs[1:]:
             shape[self.axis] += x.shape[self.axis]
+        shape = tuple(shape)
         self.shape = shape
 
         y = cuda.empty(shape, dtype=xs[0].dtype)
