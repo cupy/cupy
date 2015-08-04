@@ -43,7 +43,7 @@ class NumericalGradientTest(unittest.TestCase):
         self.xs = (_uniform(2, 1),)
         self.gys = (_uniform(2, 1),)
 
-    def check_numerical_grad(self, f, df, xs, gys):
+    def check_numerical_grad(self, f, df, xs, gys, eps=1e-3):
         dfxs = df(xs)
 
         gys = tuple(0 if gy is None else gy for gy in gys)
@@ -52,7 +52,7 @@ class NumericalGradientTest(unittest.TestCase):
                         sum(map(lambda (a, b): a*b, zip(dfx, gys))), dfxs)
 
         func = lambda: f(xs)
-        dx_actual = gradient_check.numerical_grad(func, xs, gys)
+        dx_actual = gradient_check.numerical_grad(func, xs, gys, eps)
 
         self.assertEqual(len(dx_expect), len(dx_actual))
         for e, a in zip(dx_expect, dx_actual):
@@ -141,6 +141,26 @@ class NumericalGradientTest6(NumericalGradientTest):
     def setUp(self):
         self.xs = (_uniform(2, 1),)
         self.gys = (None,)
+
+
+class NumericalGradientInvalidEps(NumericalGradientTest):
+
+    @condition.retry(3)
+    def test_numerical_grad_cpu(self):
+        with self.assertRaises(AssertionError):
+            self.check_numerical_grad(self.f, self.df,
+                                      self.xs, self.gys, 0)
+
+    @condition.retry(3)
+    @attr.gpu
+    def test_numerical_grad_gpu(self):
+        gys = tuple(None if gy is None else cuda.to_gpu(gy)
+                    for gy in self.gys)
+
+        with self.assertRaises(AssertionError):
+            self.check_numerical_grad(
+                self.f, self.df,
+                map(cuda.to_gpu, self.xs), gys, 0)
 
 
 class AssertAllCloseTest(unittest.TestCase):
