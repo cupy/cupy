@@ -11,7 +11,7 @@ We hope it helps you to choose an appropriate framework for the demand.
 
    This chart may be out-dated, since the developers of Chainer do not perfectly follow the latest development status of each framework.
    Please report us if you find an out-dated cell.
-   Also we appreciate requests of comparisons along new axes.
+   Requests for new comparison axes are also welcome.
 
 
 +-------+-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
