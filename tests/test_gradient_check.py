@@ -27,14 +27,15 @@ class NumeraicalGradientTest(unittest.TestCase):
         self.xs = _uniform((2, 1))
         self.gys = _uniform((2, 1))
 
-    def check_numerical_grad(self, f, df, xs, dys):
+    def check_numerical_grad(self, f, df, xs, gys):
         dfxs = df(xs)
 
+        gys = tuple(0 if gy is None else gy for gy in gys)
         # matrix-vector multiplication of dfxs and dys
-        dx_expect = map(lambda dfx: sum(map(lambda (a, b): a*b, zip(dfx, dys))), dfxs)
+        dx_expect = map(lambda dfx: sum(map(lambda (a, b): a*b, zip(dfx, gys))), dfxs)
 
         func = lambda: f(xs)
-        dx_actual = gradient_check.numerical_grad(func, xs, dys)
+        dx_actual = gradient_check.numerical_grad(func, xs, gys)
 
         self.assertEqual(len(dx_expect), len(dx_actual))
         for e, a in zip(dx_expect, dx_actual):
@@ -47,9 +48,10 @@ class NumeraicalGradientTest(unittest.TestCase):
     @condition.retry(3)
     @attr.gpu
     def test_numerical_grad_gpu(self):
+        gys = tuple(None if gy is None else cuda.to_gpu(gy) for gy in self.gys)
+
         self.check_numerical_grad(self.f, self.df,
-                                  map(cuda.to_gpu, self.xs),
-                                  map(cuda.to_gpu, self.gys))
+                                  map(cuda.to_gpu, self.xs), gys)
 
 
 class NumericalGradientTest2(NumeraicalGradientTest):
@@ -85,21 +87,6 @@ def _full_like(x, val):
         return cuda.full_like(x, val)
 
 
-# def _dot(x, y):
-#     if isinstance(x, numpy.ndarray):
-#         assert isinstance(y, numpy.ndarray)
-#         return numpy.dot(x, y)
-#     else:
-#         return cuda.gpuarray.dot(x, y)
-
-
-# def _transpose(x):
-#     if isinstance(x, numpy.ndarray):
-#         return x.T
-#     else:
-#         return cuda.culinalg.transpose(x)
-
-
 class NumericalGradientTest4(NumeraicalGradientTest):
 
     def f(self, xs):
@@ -117,21 +104,11 @@ class NumericalGradientTest4(NumeraicalGradientTest):
         self.gys = _uniform((2, 1), (2, 1), (2, 1))
 
 
-# class NumericalGradientTest5(NumeraicalGradientTest):
+class NumericalGradientTest5(NumeraicalGradientTest):
 
-#     def f(self, xs):
-#         assert len(xs) == 2
-#         return (2 * xs[0], 5 * xs[1], _dot(xs[0], xs[1]))
-
-
-#     def df(self, xs):
-#         assert len(xs) == 2
-#         return ((_full_like(xs[0], 2), _full_like(xs[0], 0), _transpose(xs[1])),
-#                 (_full_like(xs[1], 0), _full_like(xs[1], 5), xs[0]))
-
-#     def setUp(self):
-#         self.xs = _uniform((3, 2), (2, 1))
-#         self.gys = _uniform((3, 2), (2, 1), (3, 1))
+    def setUp(self):
+        self.xs = _uniform((2, 1))
+        self.gys = (None,)
 
 
 class AssertAllCloseTest(unittest.TestCase):
