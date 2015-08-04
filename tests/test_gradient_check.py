@@ -17,6 +17,20 @@ def _uniform(*shape):
     return numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
 
 
+def _full_like(x, val):
+    if isinstance(x, numpy.ndarray):
+        return numpy.full_like(x, val)
+    else:
+        return cuda.full_like(x, val)
+
+
+def _zeros_like(x):
+    if isinstance(x, numpy.ndarray):
+        return numpy.zeros_like(x)
+    else:
+        return cuda.zeros_like(x)
+
+
 class NumeraicalGradientTest(unittest.TestCase):
 
     def f(self, xs):
@@ -84,13 +98,6 @@ class NumericalGradientTest3(NumeraicalGradientTest):
         self.gys = (_uniform(2, 1),)
 
 
-def _full_like(x, val):
-    if isinstance(x, numpy.ndarray):
-        return numpy.full_like(x, val)
-    else:
-        return cuda.full_like(x, val)
-
-
 class NumericalGradientTest4(NumeraicalGradientTest):
 
     def f(self, xs):
@@ -110,7 +117,26 @@ class NumericalGradientTest4(NumeraicalGradientTest):
         self.gys = tuple(_uniform(2, 1) for _ in six.moves.range(3))
 
 
-class NumericalGradientTest5(NumeraicalGradientTest):
+class NumericalGradientTest5(NumericalGradientTest4):
+
+    def f(self, xs):
+        assert len(xs) == 2
+        return (2 * xs[0] + 3 * xs[1],
+                4 * xs[0] + 5 * xs[1],
+                6 * xs[0] + 7 * xs[1])
+
+    def df(self, xs):
+        assert len(xs) == 2
+        return (
+            (_full_like(xs[0], 2), _zeros_like(xs[0]), _full_like(xs[0], 6)),
+            (_full_like(xs[1], 3), _zeros_like(xs[1]), _full_like(xs[1], 7)))
+
+    def setUp(self):
+        super(NumericalGradientTest5, self).setUp()
+        self.gys = (_uniform(2, 1), None, _uniform(2, 1))
+
+
+class NumericalGradientTest6(NumeraicalGradientTest):
 
     def setUp(self):
         self.xs = (_uniform(2, 1),)
