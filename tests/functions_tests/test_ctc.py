@@ -22,6 +22,8 @@ class TestCTC(unittest.TestCase):
         self.t = numpy.array([0, 1])
         self.l = numpy.array([2, 0, 2, 1, 2])
         self.blank_symbol = 2
+        self.g = numpy.array(0.1, dtype=numpy.float32)
+        self.gx = self.g
 
     # recursive forward computation.
     def alpha(self, t, u):
@@ -61,7 +63,7 @@ class TestCTC(unittest.TestCase):
 
     @attr.gpu
     def test_forward_gpu(self):
-        self.check_forward(self.t,
+        self.check_forward(cuda.to_gpu(self.t),
                            tuple(cuda.to_gpu(x_data) for x_data in self.x))
 
     # expected value(via numerical differentiation) from t_data
@@ -69,14 +71,14 @@ class TestCTC(unittest.TestCase):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
         t = chainer.Variable(t_data)
         loss = functions.connectionist_temporal_classification(2, t, xs)
-        loss.grad = numpy.array(0.1, dtype=numpy.float32)
+        loss.grad = self.g
         loss.backward()
 
         func = loss.creator
         xs_data = tuple(x.data for x in xs)
         f = lambda: func.forward((t.data,) + xs_data)
         gl_0, gx_0, gx_1, gx_2, gx_3 = gradient_check.numerical_grad(
-            f, ((t.data,) + xs_data), (loss.grad, ), eps=0.01)
+            f, ((t.data,) + xs_data), (self.gx,))
         gradient_check.assert_allclose(xs[0].grad, gx_0)
         gradient_check.assert_allclose(xs[1].grad, gx_1)
         gradient_check.assert_allclose(xs[2].grad, gx_2)
@@ -87,5 +89,6 @@ class TestCTC(unittest.TestCase):
 
     @attr.gpu
     def test_backward_gpu(self):
-        self.check_backward(self.t,
+        self.gx = cuda.to_gpu(self.g)
+        self.check_backward(cuda.to_gpu(self.t),
                             tuple(cuda.to_gpu(x_data) for x_data in self.x))
