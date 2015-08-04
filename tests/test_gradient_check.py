@@ -31,6 +31,10 @@ def _zeros_like(x):
         return cuda.zeros_like(x)
 
 
+def _dot(x, y):
+    return sum(map(lambda a: a[0] * a[1], zip(x, y)))
+
+
 class NumericalGradientTest(unittest.TestCase):
 
     def f(self, xs):
@@ -48,8 +52,7 @@ class NumericalGradientTest(unittest.TestCase):
 
         gys = tuple(0 if gy is None else gy for gy in gys)
         # matrix-vector multiplication of dfxs and dys
-        dx_expect = map(
-            lambda dfx: sum(map(lambda (a, b): a * b, zip(dfx, gys))), dfxs)
+        dx_expect = tuple(map(lambda dfx: _dot(dfx, gys), dfxs))
 
         func = lambda: f(xs)
         dx_actual = gradient_check.numerical_grad(func, xs, gys, eps)
