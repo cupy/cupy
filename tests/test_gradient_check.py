@@ -162,7 +162,7 @@ class AssertAllCloseTest2(unittest.TestCase):
     def check_rtol(self, x, y):
         x_cpu = cuda.to_cpu(x)
         y_cpu = cuda.to_cpu(y)
-        max_ratio = numpy.max(numpy.abs(x_cpu-y_cpu)/y_cpu)
+        max_ratio = numpy.max(numpy.abs(x_cpu - y_cpu) / y_cpu)
         with self.assertRaises(AssertionError):
             gradient_check.assert_allclose(x, y, atol=0, rtol=max_ratio - 1)
         gradient_check.assert_allclose(x, y, atol=0, rtol=max_ratio + 1)
