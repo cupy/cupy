@@ -1,5 +1,4 @@
 from chainer import cuda
-from chainer.cuda import cumisc
 from chainer import function
 from chainer import utils
 import numpy
@@ -136,8 +135,9 @@ class ConnectionistTemporalClassification(function.Function):
         result = (None,)
         forward_prob_trans, backward_prob_trans\
             = self.calc_trans_gpu(path, yseq, rr)
-        total_probability = cuda.to_cpu(cumisc.sum(
-            forward_prob_trans[0] * backward_prob_trans[0]))
+        with cuda.using_cumisc():
+            total_probability = cuda.to_cpu(cuda.cumisc.sum(
+                forward_prob_trans[0] * backward_prob_trans[0]))
         for t in range(len(yseq)):
             y = cuda.to_cpu(yseq[t])
             multiply = cuda.to_cpu(
