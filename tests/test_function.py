@@ -382,7 +382,9 @@ class TestSplit(unittest.TestCase):
 
         grads = (g1,)
         gx, = split.backward((x,), grads)
-        gradient_check.assert_allclose(g1, gx)
+        # Note that when only one argument is given, its return value
+        # is a grad itself, and not a copy of it.
+        self.assertIs(g1, gx)
 
     def test_backward_one_cpu(self):
         self.check_backward_one(self.x, self.g1)
