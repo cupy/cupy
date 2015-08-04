@@ -138,7 +138,7 @@ class AssertAllCloseTest(unittest.TestCase):
     def check_atol(self, x, y):
         x_cpu = cuda.to_cpu(x)
         y_cpu = cuda.to_cpu(y)
-        max_abs_diff = numpy.max(numpy.abs(x_cpu-y_cpu))
+        max_abs_diff = numpy.max(numpy.abs(x_cpu - y_cpu))
         with self.assertRaises(AssertionError):
             gradient_check.assert_allclose(x, y, atol=max_abs_diff - 1, rtol=0)
         gradient_check.assert_allclose(x, y, atol=max_abs_diff + 1, rtol=0)
