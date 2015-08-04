@@ -2,7 +2,6 @@ from chainer import cuda
 from chainer import function
 from chainer import utils
 import numpy
-import sets
 
 
 class ConnectionistTemporalClassification(function.Function):
@@ -63,7 +62,7 @@ class ConnectionistTemporalClassification(function.Function):
     # path probablity to label probability
     def label_probability(self, label_size, path, multiply):
         labels_prob = numpy.zeros(label_size)
-        chars = sets.Set([c for c in path])
+        chars = set([c for c in path])
         for c in chars:
             pos = numpy.where(path == c)[0]
             labels_prob[c] = numpy.sum(multiply[pos, ])
