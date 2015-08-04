@@ -16,6 +16,7 @@ if cuda.available:
 def _uniform(*shape):
     return numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
 
+
 class NumeraicalGradientTest(unittest.TestCase):
 
     def f(self, xs):
@@ -33,7 +34,8 @@ class NumeraicalGradientTest(unittest.TestCase):
 
         gys = tuple(0 if gy is None else gy for gy in gys)
         # matrix-vector multiplication of dfxs and dys
-        dx_expect = map(lambda dfx: sum(map(lambda (a, b): a*b, zip(dfx, gys))), dfxs)
+        dx_expect = map(lambda dfx:
+                        sum(map(lambda (a, b): a*b, zip(dfx, gys))), dfxs)
 
         func = lambda: f(xs)
         dx_actual = gradient_check.numerical_grad(func, xs, gys)
@@ -49,7 +51,8 @@ class NumeraicalGradientTest(unittest.TestCase):
     @condition.retry(3)
     @attr.gpu
     def test_numerical_grad_gpu(self):
-        gys = tuple(None if gy is None else cuda.to_gpu(gy) for gy in self.gys)
+        gys = tuple(None if gy is None else cuda.to_gpu(gy)
+                    for gy in self.gys)
 
         self.check_numerical_grad(self.f, self.df,
                                   map(cuda.to_gpu, self.xs), gys)
@@ -92,13 +95,15 @@ class NumericalGradientTest4(NumeraicalGradientTest):
 
     def f(self, xs):
         assert len(xs) == 2
-        return (2 * xs[0] + 3 * xs[1], 4 * xs[0] + 5 * xs[1], 6 * xs[0] + 7 * xs[1])
-
+        return (2 * xs[0] + 3 * xs[1],
+                4 * xs[0] + 5 * xs[1],
+                6 * xs[0] + 7 * xs[1])
 
     def df(self, xs):
         assert len(xs) == 2
-        return ((_full_like(xs[0], 2), _full_like(xs[0], 4), _full_like(xs[0], 6)),
-                (_full_like(xs[1], 3), _full_like(xs[1], 5), _full_like(xs[1], 7)))
+        return (
+            (_full_like(xs[0], 2), _full_like(xs[0], 4), _full_like(xs[0], 6)),
+            (_full_like(xs[1], 3), _full_like(xs[1], 5), _full_like(xs[1], 7)))
 
     def setUp(self):
         self.xs = tuple(_uniform(2, 1) for _ in six.moves.range(2))
