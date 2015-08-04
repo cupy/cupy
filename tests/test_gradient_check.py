@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 from chainer import cuda
 from chainer import gradient_check
@@ -12,8 +13,8 @@ if cuda.available:
     cuda.init()
 
 
-def _uniform(*shapes):
-    return map(lambda s: numpy.random.uniform(-1, 1, s).astype(numpy.float32), shapes)
+def _uniform(*shape):
+    return numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
 
 class NumeraicalGradientTest(unittest.TestCase):
 
@@ -24,8 +25,8 @@ class NumeraicalGradientTest(unittest.TestCase):
         return ((2 * xs[0],),)
 
     def setUp(self):
-        self.xs = _uniform((2, 1))
-        self.gys = _uniform((2, 1))
+        self.xs = (_uniform(2, 1),)
+        self.gys = (_uniform(2, 1),)
 
     def check_numerical_grad(self, f, df, xs, gys):
         dfxs = df(xs)
@@ -76,8 +77,8 @@ class NumericalGradientTest3(NumeraicalGradientTest):
         return ((_exp(xs[0]),),)
 
     def setUp(self):
-        self.xs = _uniform((2, 1))
-        self.gys = _uniform((2, 1))
+        self.xs = (_uniform(2, 1),)
+        self.gys = (_uniform(2, 1),)
 
 
 def _full_like(x, val):
@@ -100,14 +101,14 @@ class NumericalGradientTest4(NumeraicalGradientTest):
                 (_full_like(xs[1], 3), _full_like(xs[1], 5), _full_like(xs[1], 7)))
 
     def setUp(self):
-        self.xs = _uniform((2, 1), (2, 1))
-        self.gys = _uniform((2, 1), (2, 1), (2, 1))
+        self.xs = tuple(_uniform(2, 1) for _ in six.moves.range(2))
+        self.gys = tuple(_uniform(2, 1) for _ in six.moves.range(3))
 
 
 class NumericalGradientTest5(NumeraicalGradientTest):
 
     def setUp(self):
-        self.xs = _uniform((2, 1))
+        self.xs = (_uniform(2, 1),)
         self.gys = (None,)
 
 
