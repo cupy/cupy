@@ -99,7 +99,7 @@ if args.gpu >= 0:
 
 index2word = {}
 word2index = {}
-counts = collections.defaultdict(lambda: 0)
+counts = collections.Counter()
 dataset = []
 with open('ptb.train.txt') as f:
     for line in f:
