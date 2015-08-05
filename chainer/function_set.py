@@ -41,6 +41,23 @@ class FunctionSet(object):
         """
         return self.parameters, self.gradients
 
+    def __getitem__(self, key):
+        """Returns the :class:`Function` objects by name
+
+        Args:
+            key (str)
+                Name of the function.
+
+        Returns:
+            :class:`Function` object
+
+        Example:
+        >>> model = FunctionSet(l1=F.Linear(100, 100), l2=F.Linear(100, 100))
+        >>> l1 = model['l1']
+        """
+
+        return getattr(self, key)
+
     def to_gpu(self, device=None):
         """Migrates all parameters and gradients onto GPU.
 
