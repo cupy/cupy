@@ -49,6 +49,7 @@ Activation functions
 .. autofunction:: relu
 .. autofunction:: sigmoid
 .. autofunction:: softmax
+.. autofunction:: softplus
 .. autofunction:: tanh
 
 Pooling functions
