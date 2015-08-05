@@ -39,11 +39,12 @@ class SplitAxis(function.Function):
                 if cdimy == 0:
                     raise ValueError('Not support if shape contains 0')
                 prev_i = i
-        return tuple(cuda.get_xpy(x[0]).split(
-            x[0], self.indices_or_sections, self.axis))
+        xp = cuda.get_array_module(*x)
+        return tuple(xp.split(x[0], self.indices_or_sections, self.axis))
 
     def backward(self, x, gys):
-        return cuda.get_xpy(x[0]).concatenate(gys, axis=self.axis),
+        xp = cuda.get_array_module(*x)
+        return xp.concatenate(gys, axis=self.axis),
 
 
 def split_axis(x, indices_or_sections, axis):

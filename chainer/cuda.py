@@ -411,23 +411,21 @@ def reduce(param_names, map_expr, reduce_expr, identity, name,
 # ------------------------------------------------------------------------------
 # numpy/cupy compatible coding
 # ------------------------------------------------------------------------------
-def get_xpy(a):
+def get_array_module(*args):
     """Gets an appropriate one from :mod:`numpy` or :mod:`cupy`.
 
-    This function can be used to write a common ``forward`` and ``backward``
-    running on both CPU and GPU.
+    This is almost equivalent to :func:`cupy.get_array_module`. The only
+    difference is that this function can be used even if CUDA is not available.
 
     Args:
-        a: An array of NumPy or CuPy.
+        args: Values to determine whether NumPy or CuPy should be used.
 
     Returns:
-        :mod:`numpy` module or :mod:`cupy` module corresponding to the type of
-        ``a``.
+        module: :mod:`cupy` or :mod:`numpy` is returned based on the types of
+        the arguments.
+
     """
-    if isinstance(a, numpy.ndarray):
-        return numpy
-    elif available and isinstance(a, cupy.ndarray):
-        return cupy
+    if available:
+        return cupy.get_array_module(*args)
     else:
-        raise TypeError(
-            'Cannot choose a NumPy-compatible module for {}'.format(type(a)))
+        return numpy

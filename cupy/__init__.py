@@ -1472,3 +1472,35 @@ def asnumpy(a, stream=None):
         return a.get(stream=stream)
     else:
         return numpy.asarray(a)
+
+
+_cupy = sys.modules[__name__]
+
+
+def get_array_module(*args):
+    """Returns the array module for arguments.
+
+    This function is used to implement CPU/GPU generic code. If at least one of
+    the arguments is a :class:`cupy.ndarray` object, the :mod:`cupy` module is
+    returned.
+
+    Args:
+        args: Values to determine whether NumPy or CuPy should be used.
+
+    Returns:
+        module: :mod:`cupy` or :mod:`numpy` is returned based on the types of
+        the arguments.
+
+    .. admonition:: Example
+
+       A NumPy/CuPy generic function can be written as follows::
+
+           def softplus(x):
+               xp = cupy.get_array_module(x)
+               return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
+
+    """
+    if any(isinstance(arg, ndarray) for arg in args):
+        return _cupy
+    else:
+        return numpy

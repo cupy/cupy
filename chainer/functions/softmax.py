@@ -44,8 +44,8 @@ class Softmax(function.Function):
         )
 
     def forward(self, x):
-        xpy = cuda.get_xpy(x[0])
-        if xpy != numpy and cuda.cudnn_enabled and self.use_cudnn:
+        xp = cuda.get_array_module(*x)
+        if xp != numpy and cuda.cudnn_enabled and self.use_cudnn:
             self.y = cuda.empty_like(x[0])
             handle = cudnn.get_handle()
             x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
@@ -55,13 +55,13 @@ class Softmax(function.Function):
                 x[0].data.ptr, ctypes.c_float(0), desc.value, self.y.data.ptr)
         else:
             self.y = x[0] - x[0].max(axis=1, keepdims=True)
-            xpy.exp(self.y, out=self.y)
+            xp.exp(self.y, out=self.y)
             self.y /= self.y.sum(axis=1, keepdims=True)
         return self.y,
 
     def backward(self, x, gy):
-        xpy = cuda.get_xpy(x[0])
-        if xpy != numpy and cuda.cudnn_enabled and self.use_cudnn:
+        xp = cuda.get_array_module(*x)
+        if xp != numpy and cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             gx = cuda.empty_like(x[0])
             x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)

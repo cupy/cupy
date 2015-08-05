@@ -17,9 +17,9 @@ class Dropout(function.Function):
 
     def forward(self, x):
         scale = x[0].dtype.type(1. / (1 - self.dropout_ratio))
-        xpy = cuda.get_xpy(x[0])
+        xp = cuda.get_array_module(*x)
         self.mask = scale * \
-            (xpy.random.rand(*x[0].shape) >= self.dropout_ratio)
+            (xp.random.rand(*x[0].shape) >= self.dropout_ratio)
         return x[0] * self.mask,
 
     def backward(self, x, gy):
