@@ -5,8 +5,8 @@ Using GPU(s) in Chainer
 
 In this section, you will learn about the following things:
 
-* Relationship between Chainer and PyCUDA
-* Basics of GPUArray
+* Relationship between Chainer and CuPy
+* Basics of CuPy
 * Single-GPU usage of Chainer
 * Multi-GPU usage of model-parallel computing
 * Multi-GPU usage of data-parallel computing
@@ -18,100 +18,114 @@ After reading this section, you will be able to:
 * Write data-parallel computing in Chainer
 
 
-Relationship between Chainer and PyCUDA
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Chainer uses `PyCUDA <http://mathema.tician.de/software/pycuda/>`_ as its backend for GPU computation and the :class:`pycuda.gpuarray.GPUArray` class as the GPU array implementation.
-GPUArray has far less features compared to :class:`numpy.ndarray`, though it is still enough to implement the required features for Chainer.
+Relationship between Chainer and CuPy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
-   :mod:`chainer.cuda` module imports many important symbols from PyCUDA.
-   For example, the GPUArray class is referred as ``cuda.GPUArray`` in the Chainer code.
+   As of the release of v1.3.0, Chainer changes its GPU backend from `PyCUDA <http://mathema.tician.de/software/pycuda/>`_ to CuPy.
+   CuPy covers all features of PyCUDA used by Chainer, though their interfaces are not compatible.
 
-Chainer provides wrappers of many PyCUDA functions and classes, mainly in order to support customized default allocation mechanism.
+Chainer uses :ref:`CuPy <cupy_reference>` as its backend for GPU computation.
+In particular, the :class:`cupy.ndarray` class is the GPU array implementation for Chainer.
+CuPy supports a subset of features of NumPy with a compatible interface.
+It enables us to write a common code for CPU and GPU.
+It also supports PyCUDA-like user-defined kernel generation, which enables us to write fast implementations dedicated to GPU.
+
+.. note::
+
+   The :mod:`chainer.cuda` module imports many important symbols from CuPy.
+   For example, the cupy namespace is referred as ``cuda.cupy`` in the Chainer code.
+   Note that the :mod:`chainer.cuda` module can be imported even if CUDA is not installed.
+
+Chainer uses a memory pool for GPU memory allocation.
 As shown in the previous sections, Chainer constructs and destructs many arrays during learning and evaluating iterations.
-It is not well suited for CUDA architecture, since memory allocation and release in CUDA (i.e. ``cuMemAlloc`` and ``cuMemFree`` functions) synchronize CPU and GPU computations, which hurts performance.
-In order to avoid memory allocation and deallocation during the computation, Chainer uses PyCUDA's memory pool utilities as the standard memory allocator.
-Since memory pool is not the default allocator in PyCUDA, Chainer provides many wrapper functions and classes to use memory pools in a simple way.
-At the same time, Chainer's wrapper functions and classes make it easy to handle multiple GPUs.
+It is not well suited for CUDA architecture, since memory allocation and release in CUDA (i.e. ``cudaMalloc`` and ``cudaFree`` functions) synchronize CPU and GPU computations, which hurts performance.
+In order to avoid memory allocation and deallocation during the computation, Chainer uses CuPy's memory pool as the standard memory allocator.
+Chainer changes the default allocator of CuPy to the memory pool, so user can use functions of CuPy directly without dealing with the memory allocator.
+
+
+Basics of cupy.ndarray
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
-   Chainer also uses `scikit-cuda <http://scikit-cuda.readthedocs.org/en/latest/>`_ for a wrapper of CUBLAS, and some functions use `CuDNN v2 <https://developer.nvidia.com/cuDNN>`_ if available.
-   We omit their usage in this tutorial.
+   CuPy does not require explicit initialization, so ``cuda.init()`` function is removed as of v1.3.0.
 
-.. note::
+CuPy is a GPU array backend that implements a subset of NumPy interface.
+The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
+CuPy implements many functions on cupy.ndarray objects.
+:ref:`See the reference for the supported subset of NumPy API <cupy_reference>`.
+Understanding NumPy might help utilizing most features of CuPy.
+`See the NumPy documentation for learning it <http://docs.scipy.org/doc/numpy/index.html>`_.
 
-   We also do not touch the detail of PyCUDA.
-   See `PyCUDA's documentation <http://documen.tician.de/pycuda/>`_ instead.
+The main difference of cupy.ndarray from numpy.ndarray is that the content is allocated on the device memory.
+The allocation takes place on the current device by default.
+The current device can be changed by :class:`cupy.cuda.Device` object as follows::
 
+  with cupy.cuda.Device(1):
+      x_on_gpu1 = cupy.array([1, 2, 3, 4, 5])
 
-Basics of GPUArray in Chainer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Most operations of CuPy is done on the current device.
+Be careful that it causes an error to process an array on a non-current device.
 
-In order to use GPU in Chainer, we must initialize :mod:`chainer.cuda` module before any GPU-related operations::
-
-  cuda.init()
-
-The :func:`cuda.init` function initializes global state and PyCUDA.
-This function accepts an optional argument ``device``, which indicates the GPU device ID to select initially.
-
-.. warning::
-
-   If you are using :mod:`multiprocessing`, the initialization must take place for each process *after* the fork.
-   The main process is no exception, i.e., :func:`cuda.init` should not be called before all the children that use GPU have been forked.
-
-Then we can create a GPUArray object using functions of the :mod:`~chainer.cuda` module.
-Chainer provides many constructor functions resembling the ones of NumPy: :func:`~cuda.empty`, :func:`~cuda.empty_like`, :func:`~cuda.full`, :func:`~cuda.full_like`, :func:`~cuda.zeros`, :func:`~cuda.zeros_like`, :func:`~cuda.ones`, :func:`~cuda.ones_like`.
-
-Another useful function to create a GPUArray object is :func:`~cuda.to_gpu`.
-This function copies a :class:`numpy.ndarray` object to a newly allocated GPUArray object.
-For example, the following code ::
+Chainer provides some convenient functions to automatically switch and choose the device.
+For example, the :func:`chainer.cuda.to_gpu` function copies a numpy.ndarray object to a specified device::
 
   x_cpu = np.ones((5, 4, 3), dtype=np.float32)
-  x_gpu = cuda.to_gpu(x_cpu)
+  x_gpu = cuda.to_gpu(x_cpu, device=1)
 
-generates the same ``x_gpu`` as the following code::
+It is equivalent to the following code using CuPy::
 
-  x_gpu = cuda.ones((5, 4, 3))
+  x_cpu = np.ones((5, 4, 3), dtype=np.float32)
+  with cupy.cuda.Device(1):
+      x_gpu = cupy.array(x_cpu)
 
-.. note::
-
-   Allocation functions of the :mod:`~chainer.cuda` module use :class:`numpy.float32` as the default element type.
-
-The :mod:`~chainer.cuda` module also has :func:`~cuda.to_cpu` function to copy a GPUArray object to an ndarray object::
+Moving a device array to the host can be done by :func:`chainer.cuda.to_cpu` as follows::
 
   x_cpu = cuda.to_cpu(x_gpu)
 
-All GPUArray constructors allocate memory on the current device.
-In order to allocate memory on a different device, we can use device switching utilities.
-:func:`cuda.use_device` function changes the current device::
+It is equivalent to the following code using CuPy::
 
-  cuda.use_device(1)
-  x_gpu1 = cuda.empty((4, 3))
+  with x_gpu.device:
+      x_cpu = x_gpu.get()
 
-There are many situations in which we want to temporarily switch the device, where the :func:`cuda.using_device` function is useful.
-It returns an resource object that can be combinated with the ``with`` statement::
+.. note::
 
-  with cuda.using_device(1):
-      x_gpu1 = cuda.empty((4, 3))
+   The *with* statements in these codes are required to select the appropriate CUDA device.
+   If user uses only one device, these device switching is not needed.
+   :func:`chainer.cuda.to_cpu` and :func:`chainer.cuda.to_gpu` functions automatically switch the current device correctly.
 
-These device switching utilities also accepts a GPUArray object as a device specifier.
-In this case, Chainer switches the current device to one that the array is allocated on::
+Chainer also provides a convenient function :func:`chainer.cuda.get_device` to select a device.
+It accepts an integer, CuPy array, NumPy array, or None (indicating the current device), and returns an appropriate device object.
+If the argument is a NumPy array, then *a dummy device object* is returned.
+The dummy device object supports *with* statements like above which does nothing.
+Here are some examples::
 
-  with cuda.using_device(x_gpu1):
-      y_gpu1 = x_gpu1 + 1
+  cuda.get_device(1).use()
+  x_gpu1 = cupy.empty((4, 3), dtype='f')  # 'f' indicates float32
 
-.. warning::
+  with cuda.get_device(1):
+      x_gpu1 = cuda.empty((4, 3), dtype='f')
 
-   An array that is not allocated by Chainer's allocator cannot be used as a device specifier.
+  with cuda.get_device(x_gpu1):
+      y_gpu1 = x_gpu + 1
 
-A GPUArray object allocated by Chainer can be copied between GPUs by :func:`cuda.copy` function::
+Since it accepts NumPy arrays, we can write a function that accepts both NumPy and CuPy arrays with correct device switching::
 
-  cuda.use_device(0)
-  x0 = cuda.ones((4, 3))
-  x1 = cuda.copy(x0, out_device=1)
+  def add1(x):
+      with cuda.get_device(x):
+          return x + 1
+
+The compatibility of CuPy with NumPy enables us to write CPU/GPU generic code.
+It can be made easy by the :func:`chainer.cuda.get_array_module` function.
+This function returns the :mod:`numpy` or :mod:`cupy` module based on arguments.
+A CPU/GPU generic function is defined using it like follows::
+
+  # Stable implementation of log(1 + exp(x))
+  def softplus(x):
+      xp = cuda.get_array_module(x)
+      return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
 
 Run Neural Networks on a Single GPU
@@ -129,7 +143,7 @@ Make sure to give parameters and gradients of the GPU version to the optimizer. 
       l2 = F.Linear(100, 100),
       l3 = F.Linear(100,  10),
   ).to_gpu()
-  
+
   optimizer = optimizers.SGD()
   optimizer.setup(model.collect_parameters())
 
@@ -145,7 +159,7 @@ Then, all we have to do is transferring each minibatch to the GPU::
       for i in xrange(0, 60000, batchsize):
           x_batch = cuda.to_gpu(x_train[indexes[i : i + batchsize]])
           y_batch = cuda.to_gpu(y_train[indexes[i : i + batchsize]])
-          
+
           optimizer.zero_grads()
           loss, accuracy = forward(x_batch, y_batch)
           loss.backward()
