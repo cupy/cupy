@@ -44,10 +44,13 @@ class TestConv(unittest.TestCase):
 class TestIm2Col(unittest.TestCase):
 
     def setUp(self):
-        self.img = numpy.random.uniform(-1, 1, (2, 3, 4, 3)).astype(
+        self.w = 10
+        self.h = 8
+        shape = (2, 3, self.h, self.w)
+        self.img = numpy.random.uniform(-1, 1, shape).astype(
             numpy.float32)
 
-    def check_im2col(self, ph, pw, gpu):
+    def check_im2col(self, kh, kw, sy, sx, ph, pw, gpu):
         if gpu:
             im2col = conv.im2col_gpu
             img = cuda.to_gpu(self.img)
@@ -55,10 +58,10 @@ class TestIm2Col(unittest.TestCase):
             im2col = conv.im2col_cpu
             img = self.img
 
-        col = im2col(img, 1, 1, 1, 1, ph, pw)
-        col_h = 4 + ph * 2
-        col_w = 3 + pw * 2
-        self.assertEqual(col.shape, (2, 3, 1, 1, col_h, col_w))
+        col = im2col(img, kh, kw, sy, sx, ph, pw)
+        col_h = conv.get_conv_outsize(self.h, kh, sy, ph)
+        col_w = conv.get_conv_outsize(self.w, kw, sx, pw)
+        self.assertEqual(col.shape, (2, 3, kh, kw, col_h, col_w))
 
         col = cuda.to_cpu(col)
 
@@ -66,57 +69,98 @@ class TestIm2Col(unittest.TestCase):
             for c in range(3):
                 for y in range(col_h):
                     for x in range(col_w):
-                        if 0 <= y - ph < 4 and 0 <= x - pw < 3:
-                            self.assertEqual(
-                                col[n, c, 0, 0, y, x],
-                                self.img[n, c, y - ph, x - pw])
-                        else:
-                            self.assertEqual(col[n, c, 0, 0, y, x], 0)
+                        for dy in range(kh):
+                            for dx in range(kw):
+                                oy = y * sy - ph + dy
+                                ox = x * sx - pw + dx
+                                if 0 <= oy < self.h and 0 <= ox < self.w:
+                                    self.assertEqual(
+                                        col[n, c, dy, dx, y, x],
+                                        self.img[n, c, oy, ox])
+                                else:
+                                    self.assertEqual(col[n, c, dy, dx, y, x],
+                                                     0)
 
-    def test_im2col_cpu(self):
-        self.check_im2col(1, 1, gpu=False)
+    def test_im2col_1_cpu(self):
+        self.check_im2col(1, 1, 1, 1, 1, 1, gpu=False)
+
+    def test_im2col_2_cpu(self):
+        self.check_im2col(2, 2, 2, 2, 2, 2, gpu=False)
+
+    def test_im2col_3_cpu(self):
+        self.check_im2col(1, 2, 2, 1, 1, 2, gpu=False)
 
     @attr.gpu
-    def test_im2col_gpu(self):
-        self.check_im2col(1, 1, gpu=True)
+    def test_im2col_1_gpu(self):
+        self.check_im2col(1, 1, 1, 1, 1, 1, gpu=True)
+
+    @attr.gpu
+    def test_im2col_2_gpu(self):
+        self.check_im2col(2, 2, 2, 2, 2, 2, gpu=True)
+
+    @attr.gpu
+    def test_im2col_3_gpu(self):
+        self.check_im2col(1, 2, 2, 1, 1, 2, gpu=True)
 
 
 class TestCol2Im(unittest.TestCase):
 
     def setUp(self):
-        self.col = numpy.random.uniform(-1, 1, (2, 3, 1, 1, 4, 3)).astype(
-            numpy.float32)
+        self.w = 10
+        self.h = 8
 
-    def check_col2im(self, ph, pw, gpu):
+    def check_col2im(self, kh, kw, sy, sx, ph, pw, gpu):
+        col_h = conv.get_conv_outsize(self.h, kh, sy, ph)
+        col_w = conv.get_conv_outsize(self.w, kw, sx, pw)
+        shape = (2, 3, kh, kw, col_h, col_w)
+        col = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
+
         if gpu:
             col2im = conv.col2im_gpu
-            col = cuda.to_gpu(self.col)
+            col_data = cuda.to_gpu(col)
         else:
             col2im = conv.col2im_cpu
-            col = self.col
+            col_data = col
 
-        img_h = 4 - ph * 2
-        img_w = 3 - pw * 2
-        img = col2im(col, 1, 1, ph, pw, img_h, img_w)
+        img = col2im(col_data, sy, sx, ph, pw, self.h, self.w)
         img = cuda.to_cpu(img)
-        self.assertEqual(img.shape, (2, 3, img_h, img_w))
+        self.assertEqual(img.shape, (2, 3, self.h, self.w))
         for n in range(2):
             for c in range(3):
-                for y in range(img_h):
-                    for x in range(img_w):
-                        if 0 <= y + ph < 4 and 0 <= x + pw < 3:
-                            self.assertEqual(
-                                img[n, c, y, x],
-                                self.col[n, c, 0, 0, y + ph, x + pw])
-                        else:
-                            self.assertEqual(img[n, c, y, x], 0)
+                for y in range(self.h):
+                    for x in range(self.w):
+                        v = numpy.float32(0.0)
+                        for dy in range(kh):
+                            for dx in range(kw):
+                                oy = (y + ph - dy) / sy
+                                ox = (x + pw - dx) / sx
+                                if (y + ph - dy) % sy == 0 and \
+                                   (x + pw - dx) % sx == 0 and \
+                                   0 <= oy < col_h and \
+                                   0 <= ox < col_w:
+                                    v += col[n, c, dy, dx, oy, ox]
+                        self.assertAlmostEqual(img[n, c, y, x], v)
 
-    def test_col2im_cpu(self):
-        self.check_col2im(1, 1, gpu=False)
+    def test_col2im_1_cpu(self):
+        self.check_col2im(1, 1, 1, 1, 1, 1, gpu=False)
+
+    def test_col2im_2_cpu(self):
+        self.check_col2im(2, 2, 2, 2, 2, 2, gpu=False)
+
+    def test_col2im_3_cpu(self):
+        self.check_col2im(1, 2, 2, 1, 1, 2, gpu=False)
 
     @attr.gpu
-    def test_col2im_gpu(self):
-        self.check_col2im(1, 1, gpu=True)
+    def test_col2im_1_gpu(self):
+        self.check_col2im(1, 1, 1, 1, 1, 1, gpu=True)
+
+    @attr.gpu
+    def test_col2im_2_gpu(self):
+        self.check_col2im(2, 2, 2, 2, 2, 2, gpu=True)
+
+    @attr.gpu
+    def test_col2im_3_gpu(self):
+        self.check_col2im(1, 2, 2, 1, 1, 2, gpu=True)
 
 
 testing.run_module(__name__, __file__)
