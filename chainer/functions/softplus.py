@@ -76,8 +76,8 @@ def softplus(x, beta=1.0):
     """Elementwise softplus function.
 
     This function is expressed as
-    :math:`f(x) = \\frac{1}{\\beta}\\log(1 + \\exp(\\beta x))`, where 
-    :math:`\\beta` is a parameter.
+    :math:`f(x) = \\frac{1}{\\beta}\\log(1 + \\exp(\\beta x))`,
+    where :math:`\\beta` is a parameter.
 
     Args:
         x (~chainer.Variable): Input variable.
