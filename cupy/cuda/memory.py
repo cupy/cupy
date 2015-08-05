@@ -421,7 +421,7 @@ class MemoryPool(object):
         allocator (function): The base CuPy memory allocator. It is used for
             allocating new blocks when the blocks of the required size are all
             in use.
-    
+
     """
     def __init__(self, allocator=_malloc):
         self._pools = {}

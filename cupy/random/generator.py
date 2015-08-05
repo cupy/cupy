@@ -5,12 +5,11 @@ import os
 import time
 
 import numpy
-import six
 
 import cupy
 from cupy import cuda
-from cupy import elementwise
 from cupy.cuda import curand
+from cupy import elementwise
 
 
 class RandomState(object):
