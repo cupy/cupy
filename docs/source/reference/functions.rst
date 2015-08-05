@@ -41,6 +41,7 @@ Array computations
 
 Activation functions
 --------------------
+.. autofunction:: cos
 .. autofunction:: exp
 .. autofunction:: leaky_relu
 .. autofunction:: log
@@ -48,6 +49,7 @@ Activation functions
 .. autoclass:: PReLU
 .. autofunction:: relu
 .. autofunction:: sigmoid
+.. autofunction:: sin
 .. autofunction:: softmax
 .. autofunction:: tanh
 
