@@ -136,7 +136,7 @@ elif args.out_type == 'ns':
     model.l = F.NegativeSampling(args.unit, cs, 20)
     loss_func = model.l
 elif args.out_type == 'original':
-    model.l = F.Linear(args.unit, n_vocab),
+    model.l = F.Linear(args.unit, n_vocab)
     loss_func = lambda h, t: F.softmax_cross_entropy(model.l(h), t)
 else:
     raise Exception('Unknown output type: {}'.format(args.out_type))
