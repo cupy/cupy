@@ -14,16 +14,7 @@ This is the official documentation of CuPy, a multi-dimensional array on CUDA wi
    overview
    ndarray
    ufunc
-   creation
-   manipulation
-   binary
-   indexing
-   io
-   linalg
-   logic
-   math
-   random
-   sorting
-   statistics
+   routines
+   generic
    cuda
    kernel

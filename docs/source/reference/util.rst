@@ -40,6 +40,10 @@ Kernel definition utilities
 .. autofunction:: elementwise
 .. autofunction:: reduce
 
+CPU/GPU generic code support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: get_array_module
+
 Common algorithms
 -----------------
 .. automodule:: chainer.utils
