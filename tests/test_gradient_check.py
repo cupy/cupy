@@ -177,6 +177,32 @@ class NumericalGradientInvalidEps(NumericalGradientTest):
         self.check_invalid_eps(xs, gys, -1.0)
 
 
+class NumericalGradientInvalidType(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.array(0)
+        self.y = numpy.array(0)
+        self.f = lambda: None
+
+    @attr.gpu
+    def test_invalid_inputs(self):
+        y = cuda.to_gpu(self.y)
+        with self.assertRaises(RuntimeError):
+            gradient_check.numerical_grad(self.f, (self.x, y), ())
+
+    @attr.gpu
+    def test_invalid_outputs(self):
+        y = cuda.to_gpu(self.y)
+        with self.assertRaises(RuntimeError):
+            gradient_check.numerical_grad(self.f, (), (self.x, y))
+
+    @attr.gpu
+    def test_invalid_mixed(self):
+        y = cuda.to_gpu(self.y)
+        with self.assertRaises(RuntimeError):
+            gradient_check.numerical_grad(self.f, (self.x,), (y,))
+
+
 class AssertAllCloseTest(unittest.TestCase):
 
     def setUp(self):
