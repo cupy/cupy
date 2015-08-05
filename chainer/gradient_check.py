@@ -73,7 +73,10 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
 
     """
     assert eps > 0
+    inputs = tuple(inputs)
+    grad_outputs = tuple(grad_outputs)
     gpu = any(isinstance(x, cuda.GPUArray) for x in inputs + grad_outputs)
+
     cpu = any(isinstance(x, numpy.ndarray) for x in inputs + grad_outputs)
 
     if gpu and cpu:
