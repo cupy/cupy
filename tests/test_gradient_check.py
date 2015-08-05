@@ -157,22 +157,24 @@ class NumericalGradientTest6(NumericalGradientTest):
 
 class NumericalGradientInvalidEps(NumericalGradientTest):
 
+    def check_invalid_eps(self, xs, gys, eps):
+        with self.assertRaises(AssertionError):
+            self.check_numerical_grad(self.f, self.df, xs, gys, eps)
+
     @condition.retry(3)
     def test_numerical_grad_cpu(self):
-        with self.assertRaises(AssertionError):
-            self.check_numerical_grad(self.f, self.df,
-                                      self.xs, self.gys, 0)
+        self.check_invalid_eps(self.xs, self.gys, 0)
+        self.check_invalid_eps(self.xs, self.gys, -1.0)
 
     @condition.retry(3)
     @attr.gpu
     def test_numerical_grad_gpu(self):
+        xs = tuple(map(cuda.to_gpu, self.xs))
         gys = tuple(None if gy is None else cuda.to_gpu(gy)
                     for gy in self.gys)
 
-        with self.assertRaises(AssertionError):
-            self.check_numerical_grad(
-                self.f, self.df,
-                map(cuda.to_gpu, self.xs), gys, 0)
+        self.check_invalid_eps(xs, gys, 0)
+        self.check_invalid_eps(xs, gys, -1.0)
 
 
 class AssertAllCloseTest(unittest.TestCase):
