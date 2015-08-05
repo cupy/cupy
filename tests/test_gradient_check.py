@@ -43,7 +43,7 @@ class NumericalGradientTest(unittest.TestCase):
         self.xs = (_uniform(2, 1),)
         self.gys = (_uniform(2, 1),)
 
-    def check_numerical_grad(self, f, df, xs, gys, eps=1e-3):
+    def check_numerical_grad_one(self, f, df, xs, gys, eps):
         dfxs = df(xs)
 
         gys = tuple(0 if gy is None else gy for gy in gys)
@@ -56,7 +56,16 @@ class NumericalGradientTest(unittest.TestCase):
 
         self.assertEqual(len(dx_expect), len(dx_actual))
         for e, a in zip(dx_expect, dx_actual):
-            gradient_check.assert_allclose(e, a)
+            gradient_check.assert_allclose(e, a, atol=1e-3, rtol=1e-3)
+
+    def check_numerical_grad(self, f, df, xs, gys, eps=None):
+        if eps is None:
+            eps = tuple(10**(-i) for i in six.moves.range(1, 5))
+        elif not isinstance(eps, tuple):
+            eps = (eps, )
+
+        for e in eps:
+            self.check_numerical_grad_one(f, df, xs, gys, e)
 
     @condition.retry(3)
     def test_numerical_grad_cpu(self):
