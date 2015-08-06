@@ -9,6 +9,7 @@ from chainer.functions import copy
 from chainer.functions import cross_covariance
 from chainer.functions import dropout
 from chainer.functions import embed_id
+from chainer.functions import gaussian
 from chainer.functions import hierarchical_softmax
 from chainer.functions import identity
 from chainer.functions import inception
@@ -45,6 +46,7 @@ Copy = copy.Copy
 Cos = basic_math.Cos
 CrossCovariance = cross_covariance.CrossCovariance
 Dropout = dropout.Dropout
+Gaussian = gaussian.Gaussian
 Identity = identity.Identity
 Reshape = reshape.Reshape
 BatchMatMul = matmul.BatchMatMul
@@ -89,6 +91,7 @@ linear = nonparameterized_linear.linear
 concat = concat.concat
 copy = copy.copy
 dropout = dropout.dropout
+gaussian = gaussian.gaussian
 identity = identity.identity
 reshape = reshape.reshape
 split_axis = split_axis.split_axis
