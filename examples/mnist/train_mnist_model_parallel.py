@@ -59,10 +59,9 @@ model = chainer.FunctionSet(
 optimizer = optimizers.SGD(lr=0.1)
 optimizer.setup(model.collect_parameters())
 
-# Neural net architecture
-
 
 def forward(x_data, y_data, train=True):
+    # Neural net architecture
     x_0 = chainer.Variable(cuda.to_gpu(x_data, 0), volatile=not train)
     x_1 = chainer.Variable(cuda.to_gpu(x_data, 1), volatile=not train)
     t = chainer.Variable(cuda.to_gpu(y_data, 0), volatile=not train)
@@ -112,8 +111,8 @@ for epoch in six.moves.range(1, n_epoch + 1):
         loss.backward()
         optimizer.update()
 
-        sum_loss += float(cuda.to_cpu(loss.data)) * batchsize
-        sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
+        sum_loss += float(loss.data) * batchsize
+        sum_accuracy += float(acc.data) * batchsize
 
     print('train mean loss={}, accuracy={}'.format(
         sum_loss / N, sum_accuracy / N))
@@ -125,8 +124,8 @@ for epoch in six.moves.range(1, n_epoch + 1):
         loss, acc = forward(x_test[i:i + batchsize], y_test[i:i + batchsize],
                             train=False)
 
-        sum_loss += float(cuda.to_cpu(loss.data)) * batchsize
-        sum_accuracy += float(cuda.to_cpu(acc.data)) * batchsize
+        sum_loss += float(loss.data) * batchsize
+        sum_accuracy += float(acc.data) * batchsize
 
     print('test  mean loss={}, accuracy={}'.format(
         sum_loss / N_test, sum_accuracy / N_test))
