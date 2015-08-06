@@ -26,6 +26,7 @@ class TestSplitAxis0(unittest.TestCase):
         x = chainer.Variable(x_data)
         ys = functions.split_axis(x, indices_or_sections, axis)
         for yd, y in zip(ys_data, ys):
+            self.assertIsInstance(y.data.shape, tuple)
             gradient_check.assert_allclose(yd, y.data, atol=0, rtol=0)
 
     def test_forward_cpu(self):
@@ -81,6 +82,15 @@ class TestSplitAxis3(TestSplitAxis0):
         self.ys = [self.x[:, :2], self.x[:, 2:4], self.x[:, 4:]]
         self.ys_section = 3
         self.axis = 1
+
+
+class TestSplitAxis4(TestSplitAxis0):
+
+    def setUp(self):
+        self.x = numpy.arange(2, dtype=numpy.float32)
+        self.ys = [self.x[:1], self.x[1:]]
+        self.ys_section = [1]
+        self.axis = 0
 
 
 testing.run_module(__name__, __file__)

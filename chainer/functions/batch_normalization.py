@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 def _kernel_with_I(args, expr, name):
@@ -91,6 +92,13 @@ class BatchNormalization(function.Function):
     gradient_names = ('ggamma', 'gbeta')
 
     def __init__(self, size, decay=0.9, eps=1e-5):
+        if isinstance(size, tuple):
+            self.size = size
+        elif isinstance(size, int):
+            self.size = (size, )
+        else:
+            raise TypeError('size must be tuple or int')
+
         size = numpy.prod(size)
 
         self.avg_mean = numpy.zeros((1, size, 1), dtype=numpy.float32)
@@ -129,6 +137,28 @@ class BatchNormalization(function.Function):
         self.use_batch_mean = not test or finetune
         self.is_finetune = finetune
         return function.Function.__call__(self, x)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+
+        self_ = type_check.Variable(self, 'self')
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim >= self_.size.__len__() + 1,
+            x_type.shape[1:len(self.size)+1] == self_.size
+        )
+
+    def check_type_backward(self, in_types, out_types):
+        type_check.expect(out_types.size() == 1)
+        x_type, = in_types
+        y_type, = out_types
+
+        type_check.expect(
+            x_type.dtype == y_type.dtype,
+            x_type.ndim == y_type.ndim,
+            x_type.shape == y_type.shape
+        )
 
     def start_finetuning(self):
         self.N[0] = numpy.array(0)

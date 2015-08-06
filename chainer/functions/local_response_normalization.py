@@ -1,6 +1,9 @@
+import numpy
+import six
+
 from chainer import cuda
 from chainer import function
-import six
+from chainer.utils import type_check
 
 
 def _cu_conv_sum(y, x, n):
@@ -41,6 +44,15 @@ class LocalResponseNormalization(function.Function):
         self.alpha = alpha
         self.beta = beta
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim >= 2,
+        )
+
     def forward_cpu(self, x):
         half_n = self.n // 2
         x2 = x[0] * x[0]
@@ -72,7 +84,7 @@ class LocalResponseNormalization(function.Function):
             '''float* y, float* scale, const float* x,
                float k, float alpha, float beta''',
             '''scale[i] = k + alpha * scale[i];
-               y[i] = x[i] * __powf(scale[i], -beta);''',
+               y[i] = x[i] * powf(scale[i], -beta);''',
             'lrn_fwd')(self.y, self.scale, x[0], self.k, self.alpha, self.beta)
         return self.y,
 
@@ -88,7 +100,7 @@ class LocalResponseNormalization(function.Function):
         cuda.elementwise(
             '''float* gx, const float* x, const float* gy, const float* scale,
                float beta, float coeff''',
-            'gx[i] = __powf(scale[i], -beta) * gy[i] - coeff * x[i] * gx[i]',
+            'gx[i] = powf(scale[i], -beta) * gy[i] - coeff * x[i] * gx[i]',
             'lrn_bwd')(gx, x[0], gy[0], self.scale, self.beta,
                        2 * self.alpha * self.beta)
         return gx,

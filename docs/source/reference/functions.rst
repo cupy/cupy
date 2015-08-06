@@ -41,6 +41,7 @@ Array computations
 
 Activation functions
 --------------------
+.. autofunction:: cos
 .. autofunction:: exp
 .. autofunction:: leaky_relu
 .. autofunction:: log
@@ -48,6 +49,7 @@ Activation functions
 .. autoclass:: PReLU
 .. autofunction:: relu
 .. autofunction:: sigmoid
+.. autofunction:: sin
 .. autofunction:: softmax
 .. autofunction:: tanh
 
@@ -69,6 +71,7 @@ Loss, evaluation and aggregation
 .. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: sum
+.. autofunction:: cross_covariance
 
 Reusable subnetwork of complex architectures
 --------------------------------------------

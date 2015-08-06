@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 class Dropout(function.Function):
@@ -10,6 +11,10 @@ class Dropout(function.Function):
 
     def __init__(self, dropout_ratio):
         self.dropout_ratio = dropout_ratio
+
+    def check_type_forwrad(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward_cpu(self, x):
         scale = numpy.float32(1. / (1 - self.dropout_ratio))

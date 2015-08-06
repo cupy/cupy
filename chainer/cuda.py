@@ -1,4 +1,4 @@
-"""Device, context and memory management on PyCUDA and scikits.cuda.
+"""Device, context and memory management on PyCUDA and scikit-cuda.
 
 Chainer uses PyCUDA facilities (with very thin wrapper) to exploit the speed of
 GPU computation. Following modules and classes are imported to :mod:`cuda`
@@ -8,11 +8,11 @@ codes).
 ============================ =================================
  imported name                original name
 ============================ =================================
- ``chainer.cuda.cublas``      :mod:`scikits.cuda.cublas`
+ ``chainer.cuda.cublas``      :mod:`skcuda.cublas`
  ``chainer.cuda.cumath``      :mod:`pycuda.cumath`
  ``chainer.cuda.curandom``    :mod:`pycuda.curandom`
- ``chainer.cuda.culinalg``    :mod:`scikits.cuda.linalg`
- ``chainer.cuda.cumisc``      :mod:`scikits.cuda.misc`
+ ``chainer.cuda.culinalg``    :mod:`skcuda.linalg`
+ ``chainer.cuda.cumisc``      :mod:`skcuda.misc`
  ``chainer.cuda.gpuarray``    :mod:`pycuda.gpuarray`
 
  ``chainer.cuda.Context``     :mod:`pycuda.driver.Context`
@@ -34,12 +34,28 @@ manipulation routine.
 """
 import atexit
 import os
+import warnings
 
 import numpy
 import pkg_resources
 import six
 
 try:
+    try:
+        pkg_resources.require('scikits.cuda')
+    except pkg_resources.ResolutionError as e:
+        pass
+    else:
+        msg = '''
+`scikits.cuda` package is found. This is deprecated.
+Clean both the old and new `scikit-cuda` packages, and then re-install
+`chainer-cuda-deps`.
+
+$ pip uninstall scikits.cuda scikit-cuda
+$ pip install -U chainer-cuda-deps
+        '''
+        warnings.warn(msg)
+
     _requires = [
         'pycuda>=2014.1',
         'scikit-cuda>=0.5.0',
@@ -55,16 +71,16 @@ try:
     import pycuda.gpuarray
     import pycuda.reduction
     import pycuda.tools
-    import scikits.cuda.cublas
-    import scikits.cuda.linalg
-    import scikits.cuda.misc
+    import skcuda.cublas
+    import skcuda.linalg
+    import skcuda.misc
     available = True
 
-    cublas = scikits.cuda.cublas
+    cublas = skcuda.cublas
     cumath = pycuda.cumath
     curandom = pycuda.curandom
-    culinalg = scikits.cuda.linalg
-    cumisc = scikits.cuda.misc
+    culinalg = skcuda.linalg
+    cumisc = skcuda.misc
     cutools = pycuda.tools
     gpuarray = pycuda.gpuarray
 except pkg_resources.ResolutionError as e:
@@ -112,33 +128,7 @@ _cublas_handles = {}
 _pid = None
 
 
-def init(device=None):
-    """Initializes CUDA global state.
-
-    Chainer maintains CUDA context, CUBLAS context, random number generator and
-    device memory pool for each GPU device and for each process (the main
-    process or a process forked by :mod:`multiprocessing`) as global states.
-    When called for the first time on the process, this function initializes
-    these global states.
-
-    .. warning::
-
-       This function also initializes PyCUDA and scikits.cuda. Since these
-       packages do not support forking after initialization, do not call this
-       function before forking the process.
-
-    This function also registers :func:`shutdown` to :mod:`atexit` slot.
-
-    It also initializes random number generator. User can set fixed seed with
-    ``CHAINER_SEED`` environment variable.
-
-    Args:
-        device (``int`` or :class:`~pycuda.driver.Device` or ``None``): Device
-            ID to initialize on.
-
-    """
-    global _contexts, _cublas_handles, _generators, _pid, _pools
-
+def _check_cuda_available():
     if not available:
         global _resolution_error
         msg = '''CUDA environment is not correctly set up.
@@ -154,6 +144,36 @@ Use `pip install -U chainer-cuda-deps` to install libraries.
             msg += 'Unknwon error: ' + str(_resolution_error)
 
         raise RuntimeError(msg)
+
+
+def init(device=None):
+    """Initializes CUDA global state.
+
+    Chainer maintains CUDA context, CUBLAS context, random number generator and
+    device memory pool for each GPU device and for each process (the main
+    process or a process forked by :mod:`multiprocessing`) as global states.
+    When called for the first time on the process, this function initializes
+    these global states.
+
+    .. warning::
+
+       This function also initializes PyCUDA and scikit-cuda. Since these
+       packages do not support forking after initialization, do not call this
+       function before forking the process.
+
+    This function also registers :func:`shutdown` to :mod:`atexit` slot.
+
+    It also initializes random number generator. User can set fixed seed with
+    ``CHAINER_SEED`` environment variable.
+
+    Args:
+        device (``int`` or :class:`~pycuda.driver.Device` or ``None``): Device
+            ID to initialize on.
+
+    """
+    global _contexts, _cublas_handles, _generators, _pid, _pools
+
+    _check_cuda_available()
 
     pid = os.getpid()
     if _pid == pid:  # already initialized
@@ -187,6 +207,8 @@ def shutdown():
 
     """
     global _contexts, _cublas_handles, _pid, _pools
+
+    _check_cuda_available()
 
     pid = os.getpid()
     if _pid != pid:  # not initialized
@@ -457,6 +479,7 @@ def to_gpu(array, device=None):
         copy GPUArray into specified device.
 
     """
+    _check_cuda_available()
     if isinstance(array, GPUArray):
         return array
     with using_device(device):
@@ -493,6 +516,7 @@ def to_gpu_async(array, stream=None):
         ``array`` without performing any copy.
 
     """
+    _check_cuda_available()
     if isinstance(array, GPUArray):
         return array
     return gpuarray.to_gpu_async(array, allocator=mem_alloc, stream=stream)
@@ -547,6 +571,7 @@ def empty(shape, dtype=numpy.float32):
         pool.
 
     """
+    _check_cuda_available()
     return gpuarray.empty(shape, dtype, allocator=mem_alloc)
 
 
@@ -589,6 +614,7 @@ def ones(shape, dtype=numpy.float32, stream=None):
 
 def empty_like(array):
     """Alias to :func:`pycuda.gpuarray.empty_like`."""
+    _check_cuda_available()
     return gpuarray.empty_like(array)
 
 
@@ -913,7 +939,7 @@ class CumiscUser(object):
 
 
 def using_cumisc(handle=None):
-    """Temporarily set chainer's CUBLAS handle to scikits.cuda.
+    """Temporarily set chainer's CUBLAS handle to scikit-cuda.
 
     The usage is similar to :func:`using_device`.
 

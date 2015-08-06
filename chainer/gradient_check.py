@@ -72,9 +72,19 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
         tuple: Numerical gradient arrays corresponding to ``inputs``.
 
     """
-    if any(isinstance(x, cuda.GPUArray) for x in inputs):
+    assert eps > 0
+    inputs = tuple(inputs)
+    grad_outputs = tuple(grad_outputs)
+    gpu = any(isinstance(x, cuda.GPUArray) for x in inputs + grad_outputs)
+
+    cpu = any(isinstance(x, numpy.ndarray) for x in inputs + grad_outputs)
+
+    if gpu and cpu:
+        raise RuntimeError('Do not mix GPU and CPU arrays in `numerical_grad`')
+    elif gpu:
         return numerical_grad_gpu(f, inputs, grad_outputs, eps)
-    return numerical_grad_cpu(f, inputs, grad_outputs, eps)
+    else:
+        return numerical_grad_cpu(f, inputs, grad_outputs, eps)
 
 
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):

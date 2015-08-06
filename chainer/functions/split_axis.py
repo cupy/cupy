@@ -4,6 +4,8 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
+
 
 _args = 'float* y, float* x, int cdimy, int cdimx, int rdim, int coffset'
 _preamble = '''
@@ -26,6 +28,19 @@ class SplitAxis(function.Function):
         self.indices_or_sections = indices_or_sections
         self.axis = axis
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].ndim >= self.axis)
+
+        if isinstance(self.indices_or_sections, collections.Iterable):
+            max_index = type_check.Variable(
+                self.indices_or_sections[-1], 'max_index')
+            type_check.expect(in_types[0].shape[self.axis] > max_index)
+        else:
+            sections = type_check.Variable(
+                self.indices_or_sections, 'sections')
+            type_check.expect(in_types[0].shape[self.axis] % sections == 0)
+
     def forward_cpu(self, x):
         if isinstance(self.indices_or_sections, collections.Iterable):
             cdimx = x[0].shape[self.axis]
@@ -42,7 +57,7 @@ class SplitAxis(function.Function):
     def forward_gpu(self, x):
         xshape = x[0].shape
         self.cdimx = xshape[self.axis]
-        self.rdim = numpy.prod(xshape[self.axis + 1:])
+        self.rdim = numpy.prod(xshape[self.axis + 1:], dtype=int)
 
         if isinstance(self.indices_or_sections, collections.Iterable):
             ind = list(self.indices_or_sections)
@@ -61,7 +76,7 @@ class SplitAxis(function.Function):
             cdimy = max(0, min(i, self.cdimx) - prev_i)
             s = list(xshape)
             s[self.axis] = cdimy
-            y = cuda.empty(s, dtype=x[0].dtype)
+            y = cuda.empty(tuple(s), dtype=x[0].dtype)
             if cdimy == 0:
                 raise ValueError('Not support if shape contains 0')
             kernel(y, x[0], cdimy, self.cdimx, self.rdim, prev_i)

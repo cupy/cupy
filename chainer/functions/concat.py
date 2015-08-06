@@ -64,11 +64,12 @@ class Concat(function.Function):
         shape = list(xs[0].shape)
         for x in xs[1:]:
             shape[self.axis] += x.shape[self.axis]
+        shape = tuple(shape)
         self.shape = shape
 
         y = cuda.empty(shape, dtype=xs[0].dtype)
         self.cdimy = y.shape[self.axis]
-        self.rdim = numpy.prod(shape[self.axis + 1:])
+        self.rdim = numpy.prod(shape[self.axis + 1:], dtype=int)
 
         coffset = 0
         kernel = cuda.elementwise(
