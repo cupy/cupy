@@ -33,7 +33,7 @@ We hope it helps you to choose an appropriate framework for the demand.
 |       +-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
 |       | Variable-length loops       | Y                 | Y (scan)               |                   |                                                    |
 |       +-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
-|       | Stateful RNNs [3]_          | Y                 |                        |                   |                                                    |
+|       | Stateful RNNs [3]_          | Y                 |                        | Y [7]_            |                                                    |
 |       +-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
 |       | Per-batch architectures     | Y                 |                        |                   |                                                    |
 +-------+-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
@@ -49,7 +49,7 @@ We hope it helps you to choose an appropriate framework for the demand.
 |       +-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
 |       | Multi GPU (model parallel)  | Y                 |                        | Y (fbcunn)        |                                                    |
 +-------+-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
-| Misc  | Type checking               | Y                 | Y                      |                   | N/A                                                |
+| Misc  | Type checking               | Y                 | Y                      | Y                 | N/A                                                |
 |       +-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
 |       | Model serialization         | Y (pickle)        | Y (pickle)             | Y                 | Y                                                  |
 |       +-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
@@ -62,6 +62,7 @@ We hope it helps you to choose an appropriate framework for the demand.
 .. [4] This row shows whether each array API supports unified codes for CPU and GPU.
 .. [5] The array backend of Theano does not have compatible interface with NumPy, though most users write code on theano variables, which is generic for CPU and GPU.
 .. [6] Depending on the frameworks.
+.. [7] Also available in the `Torch RNN package <https://github.com/Element-Research/rnn>`
 
 
 Benchmarks
