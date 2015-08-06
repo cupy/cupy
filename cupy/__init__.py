@@ -1017,7 +1017,7 @@ class ndarray(object):
             if y._shape == x._shape and y._strides == x._strides:
                 if int(y.data) == int(x.data):
                     return  # Skip since x and y are the same array
-                elif y.flags.c_contiguous:
+                elif y.flags.c_contiguous and x.dtype == y.dtype:
                     y.data.copy_from(x.data, x.nbytes)
                     return
             elementwise.copy(x, y)
