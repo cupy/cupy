@@ -1,5 +1,4 @@
 import math
-from numbers import Number
 
 import numpy
 
@@ -279,9 +278,23 @@ class DivFromConstant(function.Function):
     def forward(self, x):
         return utils.force_array(_force_type(x[0].dtype, self.value) / x[0]),
 
-    def backward(self, x, gy):
+    def backward_cpu(self, x, gy):
         value = _force_type(gy[0].dtype, self.value)
-        return utils.force_array(-value * gy[0] / (x[0] ** 2)),
+        return utils.force_array(-value * gy[0] / (numpy.square(x[0]))),
+
+    def backward_gpu(self, x, gy):
+        cupy = cuda.cupy
+        gx = cupy.empty_like(x[0])
+        value = _force_type(gy[0].dtype, self.value)
+        if numpy.isscalar(value):
+            cuda.elementwise(['gx', 'x', 'gy', 'value'],
+                             'gx[i] = -value * gy[i] / (x[i] * x[i])',
+                             'div_from_const_bwd')(gx, x[0], gy[0], value)
+        else:
+            cuda.elementwise(['gx', 'x', 'gy', 'value'],
+                             'gx[i] = -value[i] * gy[i] / (x[i] * x[i])',
+                             'div_from_const_array_bwd')(gx, x[0], gy[0], value)
+        return gx,
 
 
 def rdiv(lhs, rhs):  # rhs / lhs
@@ -318,8 +331,9 @@ class PowVarVar(function.Function):
         return gx0, gx1
 
     def backward_gpu(self, x, gy):
-        gx0 = cuda.empty_like(x[0])
-        gx1 = cuda.empty_like(x[1])
+        cupy = cuda.cupy
+        gx0 = cupy.empty_like(x[0])
+        gx1 = cupy.empty_like(x[1])
         cuda.elementwise(
             ['gx0', 'gx1', 'x0', 'x1', 'gy'],
             '''
@@ -351,8 +365,9 @@ class PowVarConst(function.Function):
         return utils.force_array(gx),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        if isinstance(self.value, Number):
+        cupy = cuda.cupy
+        gx = cupy.empty_like(x[0])
+        if numpy.isscalar(self.value):
             cuda.elementwise(
                 ['gx', 'x', 'gy', 'value'],
                 'gx[i] = value * pow(x[i], value - 1) * gy[i]',
@@ -393,8 +408,9 @@ class PowConstVar(function.Function):
         return utils.force_array(numpy.log(self.value) * y * gy[0]),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        if isinstance(self.value, Number):
+        cupy = cuda.cupy
+        gx = cupy.empty_like(x[0])
+        if numpy.isscalar(self.value):
             logv = _force_type(x[0].dtype, math.log(self.value))
             cuda.elementwise(
                 ['gx', 'x', 'gy', 'value', 'logv'],
