@@ -33,7 +33,6 @@ def copyto(dst, src, casting='same_kind', where=None):
         else:
             elementwise.copy(src, dst)
     else:
-        # Copy with where does not support peer copy.
         elementwise.copy_where(src, where, dst)
 
 
