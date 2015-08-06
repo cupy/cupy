@@ -14,7 +14,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         dst (cupy.ndarray): Target array.
         src (cupy.ndarray): Source array.
         casting (str): Casting rule. See :func:`numpy.can_cast` for detail.
-        where (cupy.ndarray of bool): If specified, this array acts as a mast,
+        where (cupy.ndarray of bool): If specified, this array acts as a mask,
             and an element is copied only if the corresponding element of
             ``where``` is True.
 
@@ -36,7 +36,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         else:
             # peer copy
             if _can_memcopy(dst, src):
-                dst.data.copy_peer_from(src.data, src.nbytes)
+                dst.data.copy_from_peer(src.data, src.nbytes)
             else:
                 raise ValueError('Only contiguous arrays can be copied over '
                                  'devices')
