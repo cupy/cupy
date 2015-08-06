@@ -29,7 +29,6 @@ Array manipulation functions
 ----------------------------
 .. autofunction:: concat
 .. autofunction:: copy
-.. autofunction:: dropout
 .. autofunction:: identity
 .. autofunction:: reshape
 .. autofunction:: split_axis
@@ -64,6 +63,11 @@ Normalization functions
 .. autoclass:: BatchNormalization
    :members: __call__
 .. autofunction:: local_response_normalization
+
+Noise injecting functions 
+-------------------------
+.. autofunction:: dropout
+.. autofunction:: gaussian
 
 Loss, evaluation and aggregation
 --------------------------------
