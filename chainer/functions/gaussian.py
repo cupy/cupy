@@ -68,13 +68,15 @@ class Gaussian(function.Function):
 def gaussian(mean, ln_var):
     """Gaussian sampling function.
 
-    It takes :math:`\\mu` and :math:`\\log(\\sigma)` as input and output sample
-    drawn from gaussian :math:`N(\\mu, \\sigma)`.
+    It takes mean :math:`\\mu` and logarithm of variance
+    :math:`\\log(\\sigma^2)` as input and output a sample drawn from gaussian
+    :math:`N(\\mu, \\sigma)`.
 
     Args:
-        mean (~chainer.Variable): Input variable representing mean :math:`\\mu`.
+        mean (~chainer.Variable): Input variable representing mean
+            :math:`\\mu`.
         ln_var (~chainer.Variable): Input variable representing logarithm of
-            variance :math:`\\sigma`.
+            variance :math:`\\log(\\sigma^2)`.
 
     Returns:
         ~chainer.Variable: Output variable.
