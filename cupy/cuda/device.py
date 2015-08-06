@@ -54,6 +54,9 @@ class Device(object):
         device = self._device_stack.pop()
         device.use()
 
+    def __repr__(self):
+        return '<CUDA Device %d>' % self.id
+
     def use(self):
         """Makes this device current.
 
