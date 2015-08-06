@@ -40,6 +40,7 @@ NonparameterizedLinear = \
     nonparameterized_linear.NonparameterizedLinear
 Concat = concat.Concat
 Copy = copy.Copy
+Cos = basic_math.Cos
 Dropout = dropout.Dropout
 Identity = identity.Identity
 Reshape = reshape.Reshape
@@ -52,6 +53,7 @@ LSTM = lstm.LSTM
 MatMul = matmul.MatMul
 ReLU = relu.ReLU
 Sigmoid = sigmoid.Sigmoid
+Sin = basic_math.Sin
 Softmax = softmax.Softmax
 Tanh = tanh.Tanh
 AveragePooling2D = pooling_2d.AveragePooling2D
@@ -89,6 +91,7 @@ split_axis = split_axis.split_axis
 
 absolute = basic_math.absolute
 batch_matmul = matmul.batch_matmul
+cos = basic_math.cos
 exp = basic_math.exp
 log = basic_math.log
 leaky_relu = leaky_relu.leaky_relu
@@ -96,6 +99,7 @@ lstm = lstm.lstm
 matmul = matmul.matmul
 relu = relu.relu
 sigmoid = sigmoid.sigmoid
+sin = basic_math.sin
 softmax = softmax.softmax
 tanh = tanh.tanh
 
