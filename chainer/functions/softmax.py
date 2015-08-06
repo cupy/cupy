@@ -82,7 +82,7 @@ class Softmax(function.Function):
                 ''',
                 '''
                    const int n = i / (n_channel * n_unit);
-                   const int m = (i % (n_channel * n_unit)) % n_unit;
+                   const int m = i % n_unit;
                    y[i] = __expf(x[i] - maxes[n * n_unit + m]);
                 ''',
                 'softmax_exp')(y, x[0], maxes, c, n_unit)
@@ -103,7 +103,7 @@ class Softmax(function.Function):
                 'float* y, const float* coeff, int n_channel, int n_unit',
                 '''
                    const int n = i / (n_channel * n_unit);
-                   const int m = (i % (n_channel * n_unit)) % n_unit;
+                   const int m = i % n_unit;
                    y[i] *= coeff[n * n_unit + m];
                 ''',
                 'softmax_rowmul')(y, coeff, c, n_unit)
@@ -152,7 +152,7 @@ class Softmax(function.Function):
                 ''',
                 '''
                    const int n = i / (n_channel * n_unit);
-                   const int m = (i % (n_channel * n_unit)) % n_unit;
+                   const int m = i % n_unit;
                    gx[i] -= y[i] * sum_ydy[n * n_unit + m];
                 ''',
                 'softmax_bwd_diff')(gx, self.y, sum_ydy, c, n_unit)

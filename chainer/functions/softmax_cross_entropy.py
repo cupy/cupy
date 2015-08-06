@@ -39,13 +39,13 @@ class SoftmaxCrossEntropy(function.Function):
     def forward_cpu(self, inputs):
         x, t = inputs
         self.y, = softmax.Softmax().forward_cpu((x,))
-        yd = self.y.transpose(
-            [0] + list(six.moves.range(2, self.y.ndim)) + [1])
-        yd = yd.reshape(numpy.prod(yd.shape[:-1]), -1)
+        yd = numpy.rollaxis(self.y, 1)
+        yd = yd.reshape(len(yd), -1).T
+
         p = yd[six.moves.range(t.size), t.flat]
         # deal with the case where the SoftmaxCrossEntropy is
         # unpickled from the old version
-        if getattr(self, "normalize", True):
+        if getattr(self, 'normalize', True):
             n_unit = int(numpy.prod(self.y.shape[2:]))
             count = t.shape[0] * n_unit
         else:
@@ -65,7 +65,7 @@ class SoftmaxCrossEntropy(function.Function):
             '       + (i % n_unit)])',
             'a+b', '0', 'crossent_fwd', numpy.float32
         )(t, self.y, self.y.shape[1], n_unit)
-        if getattr(self, "normalize", True):
+        if getattr(self, 'normalize', True):
             n_unit = int(numpy.prod(self.y.shape[2:]))
             count = t.shape[0] * n_unit
         else:
@@ -89,7 +89,7 @@ class SoftmaxCrossEntropy(function.Function):
             gx[fst_index, t.flat, trd_index] -= 1
             gx = gx.reshape(self.y.shape)
 
-        if getattr(self, "normalize", True):
+        if getattr(self, 'normalize', True):
             count = t.shape[0] * n_unit
         else:
             count = t.shape[0]
@@ -100,7 +100,7 @@ class SoftmaxCrossEntropy(function.Function):
         t, gloss = inputs[1], grad_outputs[0]
         n_unit = int(numpy.prod(self.y.shape[2:]))
         gx = cuda.empty_like(self.y)
-        if getattr(self, "normalize", True):
+        if getattr(self, 'normalize', True):
             count = t.shape[0] * n_unit
         else:
             count = t.shape[0]
@@ -113,7 +113,7 @@ class SoftmaxCrossEntropy(function.Function):
             '''
                const int n = i / (n_channel * n_unit);
                const int c = (i % (n_channel * n_unit)) / n_unit;
-               const int m = (i % (n_channel * n_unit)) % n_unit;
+               const int m = i % n_unit;
                gx[i] = *coeff * (y[i] - (c == t[n * n_unit + m]));
             ''',
             'softmax_crossent_bwd')(
