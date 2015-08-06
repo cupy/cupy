@@ -169,30 +169,6 @@ def memcpyAsync(dst, src, size, kind, stream):
     check_status(status)
 
 
-def memcpyDtoD(dst, src, size):
-    memcpy(dst, src, size, memcpyDeviceToDevice)
-
-
-def memcpyDtoDAsync(dst, src, size, stream):
-    memcpyAsync(dst, src, size, memcpyDeviceToDevice, stream)
-
-
-def memcpyDtoH(dst, src, size):
-    memcpy(dst, src, size, memcpyDeviceToHost)
-
-
-def memcpyDtoHAsync(dst, src, size, stream):
-    memcpyAsync(dst, src, size, memcpyDeviceToHost, stream)
-
-
-def memcpyHtoD(dst, src, size):
-    memcpy(dst, src, size, memcpyHostToDevice)
-
-
-def memcpyHtoDAsync(dst, src, size, stream):
-    memcpyAsync(dst, src, size, memcpyHostToDevice, stream)
-
-
 _cudart.cudaMemcpyPeer.argtypes = [ctypes.c_void_p, Device,
                                    ctypes.c_void_p, Device, ctypes.c_size_t]
 

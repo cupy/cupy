@@ -95,7 +95,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyDtoD(self.ptr, src.ptr, size)
+            runtime.memcpy(self.ptr, src.ptr, size,
+                           runtime.memcpyDeviceToDevice)
 
     def copy_from_device_async(self, src, size, stream):
         """Copies a memory sequence from the same device asynchronously.
@@ -107,7 +108,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyDtoDAsync(self.ptr, src.ptr, size, stream)
+            runtime.memcpyAsync(self.ptr, src.ptr, size, stream,
+                                runtime.memcpyDeviceToDevice)
 
     def copy_from_host(self, mem, size):
         """Copies a memory sequence from the host memory.
@@ -118,7 +120,7 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyHtoD(self.ptr, mem, size)
+            runtime.memcpy(self.ptr, mem, size, runtime.memcpyHostToDevice)
 
     def copy_from_host_async(self, mem, size, stream):
         """Copies a memory sequence from the host memory asynchronously.
@@ -130,40 +132,15 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyHtoDAsync(self.ptr, mem, size, stream)
-
-    def copy_from_peer(self, src, size):
-        """Copies a memory sequence from another device.
-
-        Args:
-            src (cupy.cuda.MemoryPointer): Source memory pointer.
-            size (int): Size of the sequence in bytes.
-
-        """
-        if size > 0:
-            runtime.memcpyPeer(self.ptr, self.device, src.ptr, src.device,
-                               size)
-
-    def copy_from_peer_async(self, src, size, stream):
-        """Copies a memory sequence from another device asynchronously.
-
-        Args:
-            src (cupy.cuda.MemoryPointer): Source memory pointer.
-            size (int): Size of the sequence in bytes.
-            stream (cupy.cuda.Stream): CUDA stream.
-
-        """
-        if size > 0:
-            runtime.memcpyPeerAsync(self.ptr, self.device, src.ptr, src.device,
-                                    size, stream)
+            runtime.memcpyAsync(self.ptr, mem, size, stream,
+                                runtime.memcpyHostToDevice)
 
     def copy_from(self, mem, size):
         """Copies a memory sequence from a (possibly different) device or host.
 
         This function is a useful interface that selects appropriate one from
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_device`,
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_host`, and
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_peer`.
+        :meth:`~cupy.cuda.MemoryPointer.copy_from_device` and
+        :meth:`~cupy.cuda.MemoryPointer.copy_from_host`.
 
         Args:
             mem (ctypes.c_void_p or cupy.cuda.MemoryPointer): Source memory
@@ -172,10 +149,7 @@ class MemoryPointer(object):
 
         """
         if isinstance(mem, MemoryPointer):
-            if self.device == mem.device:
-                self.copy_from_device(mem, size)
-            else:
-                self.copy_from_peer(mem, size)
+            self.copy_from_device(mem, size)
         else:
             self.copy_from_host(mem, size)
 
@@ -183,9 +157,8 @@ class MemoryPointer(object):
         """Copies a memory sequence from an arbitrary place asynchronously.
 
         This function is a useful interface that selects appropriate one from
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_device_async`,
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_host_async`, and
-        :meth:`~cupy.cuda.MemoryPointer.copy_from_peer_async`.
+        :meth:`~cupy.cuda.MemoryPointer.copy_from_device_async` and
+        :meth:`~cupy.cuda.MemoryPointer.copy_from_host_async`.
 
         Args:
             mem (ctypes.c_void_p or cupy.cuda.MemoryPointer): Source memory
@@ -195,10 +168,7 @@ class MemoryPointer(object):
 
         """
         if isinstance(mem, MemoryPointer):
-            if self.device == mem.device:
-                self.copy_from_device_async(mem, size, stream)
-            else:
-                self.copy_from_peer_async(mem, size, stream)
+            self.copy_from_device_async(mem, size, stream)
         else:
             self.copy_from_host_async(mem, size, stream)
 
@@ -211,7 +181,7 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyDtoH(mem, self.ptr, size)
+            runtime.memcpy(mem, self.ptr, size, runtime.memcpyDeviceToHost)
 
     def copy_to_host_async(self, mem, size, stream):
         """Copies a memory sequence to the host memory asynchronously.
@@ -224,7 +194,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyDtoHAsync(mem, self.ptr, size, stream)
+            runtime.memcpyAsync(mem, self.ptr, size, stream,
+                                runtime.memcpyDeviceToHost)
 
     def memset(self, value, size):
         """Fills a memory sequence by constant byte value.
