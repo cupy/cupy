@@ -357,7 +357,9 @@ def copy(array, out=None, out_device=None, stream=None):
     assert stream is None  # TODO(beam2d): FIX IT
 
     if out is None:
-        with get_device(out_device or array):
+        if out_device is None:
+            out_device = array
+        with get_device(out_device):
             out = cupy.empty_like(array)
 
     with get_device(array):
