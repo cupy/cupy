@@ -5,52 +5,6 @@ from chainer import function
 from chainer.utils import type_check
 
 
-def _kernel_with_I(args, expr, name):
-    return cuda.elementwise(
-        args + ['cdim', 'rdim'],
-        'int I = i / rdim % cdim; {};'.format(expr),
-        name)
-
-if cuda.available:
-    @cuda.cupy.cuda.memoize
-    def _create_reduction_kernel(shape0, expr1, expr2):
-        return cuda.elementwise(
-            ['ret1', 'ret2', 'x', 'y', 'alpha', 'shape12'],
-            '''
-                float sum1 = 0, sum2 = 0;
-                for (int j = 0; j < {0}; j++) {{
-                    int I = j * shape12 + i;
-                    sum1 += {1};
-                    sum2 += {2};
-                }}
-                ret1[i] = sum1 * alpha;
-                ret2[i] = sum2 * alpha;
-            '''.format(shape0, expr1, expr2), 'bn_asix02')
-
-
-def _cusum_axis02(x, y=None, expr1='x[I]', expr2='x[I] * x[I]', mean=False):
-    shape = x.shape
-    ret1 = cuda.empty_like(x[0])
-    ret2 = cuda.empty_like(x[0])
-    if y is None:
-        y = x
-    alpha = x.dtype.type(1.0)
-    if mean:
-        alpha = x.dtype.type(1.0 / (shape[0] * shape[2]))
-
-    # In most cases shape[0] is constant.
-    # Therefore, the kernel is compiled only once.
-    # If shape[0] is small, Compiler will perform loop unrolling.
-    _create_reduction_kernel(shape[0], expr1, expr2)(
-        ret1, ret2, x, y, alpha, numpy.int32(shape[1] * shape[2]))
-
-    if shape[2] != 1:
-        ret1 = ret1.sum(axis=1)
-        ret2 = ret2.sum(axis=1)
-    ret_shape = (1, shape[1], 1)
-    return (ret1.reshape(ret_shape), ret2.reshape(ret_shape))
-
-
 class BatchNormalization(function.Function):
 
     """Batch normalization on outputs of linear or convolution functions.
@@ -143,21 +97,24 @@ class BatchNormalization(function.Function):
     def start_finetuning(self):
         self.N[0] = numpy.array(0)
 
-    def forward_cpu(self, x_orig):
+    def forward(self, x_orig):
+        xp = cuda.get_array_module(*x_orig)
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
         x = x_orig[0].reshape(ldim, cdim, rdim)
 
         if self.use_batch_mean:
             mean = x.mean(axis=(0, 2), keepdims=True)
-            var = x.var(axis=(0, 2), keepdims=True) + self.eps
+            var = x.var(axis=(0, 2), keepdims=True)
+            var += self.eps
         else:
             mean = self.avg_mean
             var = self.avg_var
 
-        self.std = numpy.sqrt(var)
+        self.std = xp.sqrt(var, dtype=var.dtype)
         x_mu = x - mean
         self.x_hat = x_mu / self.std
-        y = self.gamma * self.x_hat + self.beta
+        y = self.gamma * self.x_hat
+        y += self.beta
 
         # Compute exponential moving average
         if self.use_batch_mean:
@@ -176,55 +133,10 @@ class BatchNormalization(function.Function):
 
         return y.reshape(x_orig[0].shape),
 
-    def forward_gpu(self, x_orig):
-        ldim, cdim, rdim = self._internal_shape(x_orig[0])
-        x = x_orig[0].reshape(ldim, cdim, rdim)
-
-        if self.use_batch_mean:
-            mean, sqmean = _cusum_axis02(x, mean=True)
-            var = sqmean  # reuse buffer
-            cuda.elementwise(
-                ['var', 'mean', 'eps'],
-                'var[i] = var[i] - mean[i] * mean[i] + eps',
-                'bn_var')(var, mean, self.dtype.type(self.eps))
-        else:
-            mean = self.avg_mean
-            var = self.avg_var
-
-        y = cuda.empty_like(x_orig[0])
-        _kernel_with_I(
-            ['y', 'x', 'mean', 'var', 'gamma', 'beta'],
-            'y[i] = (x[i] - mean[I]) * rsqrt(var[I]) * gamma[I] + beta[I];',
-            'bn_fwd')(y, x, mean, var, self.gamma, self.beta, cdim, rdim)
-
-        # Compute exponential moving average
-        if self.use_batch_mean:
-            if self.is_finetune:
-                self.N[0] += 1
-                decay = 1. / self.N[0]
-            else:
-                decay = self.decay
-
-            m = ldim * rdim
-            adjust = m / max(m - 1., 1.)  # unbiased estimation
-            cuda.elementwise(
-                ['avg_mean', 'mean', 'avg_var', 'var', 'decay', 'adjust'],
-                '''
-                   avg_mean[i] = decay * avg_mean[i]
-                                 + (1 - decay) * adjust * mean[i];
-                   avg_var[i]  = decay * avg_var[i]
-                                 + (1 - decay) * adjust * var[i];
-                ''',
-                'bn_moving_avg')(
-                    self.avg_mean, mean, self.avg_var, var,
-                    self.dtype.type(decay),
-                    self.dtype.type(adjust))
-
-        return y,
-
-    def backward_cpu(self, x_orig, gy):
+    def backward(self, x_orig, gy):
         # TODO(beam2d): Support backprop on inference mode
         assert self.use_batch_mean and not self.is_finetune
+
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
         gy = gy[0].reshape(ldim, cdim, rdim)
         m = ldim * rdim
@@ -240,45 +152,6 @@ class BatchNormalization(function.Function):
         ggamma /= m
 
         gx = coeff * (gy - self.x_hat * ggamma - gbeta)
-        return gx.reshape(x_orig[0].shape),
-
-    def backward_gpu(self, x_orig, gy):
-        # TODO(beam2d): Support backprop on inference mode
-        assert self.use_batch_mean and not self.is_finetune
-        ldim, cdim, rdim = self._internal_shape(x_orig[0])
-        x = x_orig[0].reshape(ldim, cdim, rdim)
-        gy = gy[0].reshape(ldim, cdim, rdim)
-        m = ldim * rdim
-
-        mean, sqmean = _cusum_axis02(x, mean=True)
-        stdinv = sqmean  # reuse buffer
-        cuda.elementwise(
-            ['stdinv', 'mean', 'eps'],
-            'stdinv[i] = rsqrt(stdinv[i] - mean[i] * mean[i] + eps)',
-            'bn_stdinv')(stdinv, mean, self.dtype.type(self.eps))
-
-        x_hat = cuda.empty_like(x)
-        gx = cuda.empty_like(x)
-
-        _kernel_with_I(
-            ['x_hat', 'x', 'mean', 'stdinv'],
-            'x_hat[i] = (x[i] - mean[I]) * stdinv[I]',
-            'bn_x_hat')(x_hat, x, mean, stdinv, cdim, rdim)
-        mean = None
-
-        gbeta, ggamma = _cusum_axis02(gy, x_hat, expr2='x[I] * y[I]')
-        self.ggamma += ggamma
-        self.gbeta += gbeta
-
-        _kernel_with_I(
-            ['gx', 'x_hat', 'gy', 'stdinv',
-             'ggamma', 'gbeta', 'gamma', 'inv_m'],
-            '''
-                gx[i] = gamma[I] * stdinv[I] *
-                    (gy[i] - (x_hat[i] * ggamma[I] + gbeta[I]) * inv_m)
-            ''', 'bn_bwd')(
-                gx, x_hat, gy, stdinv, ggamma, gbeta,
-                self.gamma, self.dtype.type(1. / m), cdim, rdim)
         return gx.reshape(x_orig[0].shape),
 
     def _internal_shape(self, x):
