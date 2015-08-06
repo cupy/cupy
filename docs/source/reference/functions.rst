@@ -51,6 +51,7 @@ Activation functions
 .. autofunction:: sigmoid
 .. autofunction:: sin
 .. autofunction:: softmax
+.. autofunction:: softplus
 .. autofunction:: tanh
 
 Pooling functions

@@ -31,6 +31,7 @@ from chainer.functions import sigmoid
 from chainer.functions import sigmoid_cross_entropy
 from chainer.functions import softmax
 from chainer.functions import softmax_cross_entropy
+from chainer.functions import softplus
 from chainer.functions import split_axis
 from chainer.functions import sum as sum_
 from chainer.functions import tanh
@@ -57,6 +58,7 @@ ReLU = relu.ReLU
 Sigmoid = sigmoid.Sigmoid
 Sin = basic_math.Sin
 Softmax = softmax.Softmax
+Softplus = softplus.Softplus
 Tanh = tanh.Tanh
 AveragePooling2D = pooling_2d.AveragePooling2D
 MaxPooling2D = pooling_2d.MaxPooling2D
@@ -103,6 +105,7 @@ relu = relu.relu
 sigmoid = sigmoid.sigmoid
 sin = basic_math.sin
 softmax = softmax.softmax
+softplus = softplus.softplus
 tanh = tanh.tanh
 
 average_pooling_2d = pooling_2d.average_pooling_2d
