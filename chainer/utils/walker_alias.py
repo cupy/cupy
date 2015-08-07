@@ -54,6 +54,15 @@ class WalkerAlias(object):
             self.values = cuda.to_gpu(self.values)
             self.use_gpu = True
 
+    def to_cpu(self):
+        """Make a sampler CPU mode.
+
+        """
+        if self.use_gpu:
+            self.threshold = cuda.to_cpu(self.threshold)
+            self.values = cuda.to_cpu(self.values)
+            self.use_gpu = False
+
     def sample(self, shape):
         """Generates a random sample based on given probabilities.
 

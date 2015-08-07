@@ -24,3 +24,26 @@ If you use NVIDIA's official installer, ``nvcc`` command is located at ``/usr/lo
 
    $ export PATH=/usr/local/cuda/bin:$PATH
    $ pip install chainer-cuda-deps
+
+
+I cannot install pycuda with ``sudo``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``sudo`` changes ``PATH`` environment variable for security.
+You need to set ``PATH`` inside ``sudo``.
+For example use ``sh`` command::
+
+  $ sudo sh -c "PATH=/usr/local/cuda/bin:\$PATH pip install chainer-cuda-deps"
+
+Or, install as a root user::
+
+  $ su - root
+  % export PATH=/usr/local/cuda/bin:$PATH
+  % pip install chainer-cuda-deps
+
+We recommend to install Chainer in your local environment with ``--user`` option if possible.
+You don't need to use ``sudo`` in this case::
+
+  $ pip install --user chainer-cuda-deps
+
+You can also use `pyenv <https://github.com/yyuu/pyenv>`_ to create your local environment.

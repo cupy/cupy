@@ -770,6 +770,14 @@ class UnaryFunctionsTestBase(object):
     def test_log_forward_cpu(self):
         self.forward_cpu(F.log, numpy.log)
 
+    @condition.retry(3)
+    def test_sin_forward_cpu(self):
+        self.forward_cpu(F.sin, numpy.sin)
+
+    @condition.retry(3)
+    def test_cos_forward_cpu(self):
+        self.forward_cpu(F.cos, numpy.cos)
+
     def forward_gpu(self, op, op_np):
         self.check_forward(op, op_np, cuda.to_gpu(self.x))
 
@@ -792,6 +800,16 @@ class UnaryFunctionsTestBase(object):
     @condition.retry(3)
     def test_log_forward_gpu(self):
         self.forward_gpu(F.log, numpy.log)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_sin_forward_gpu(self):
+        self.forward_gpu(F.sin, numpy.sin)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_cos_forward_gpu(self):
+        self.forward_gpu(F.cos, numpy.cos)
 
     def check_backward(self, op, x_data, y_grad):
         x = chainer.Variable(x_data)
@@ -824,6 +842,14 @@ class UnaryFunctionsTestBase(object):
     def test_log_backward_cpu(self):
         self.backward_cpu(F.log)
 
+    @condition.retry(3)
+    def test_sin_backward_cpu(self):
+        self.backward_cpu(F.sin)
+
+    @condition.retry(3)
+    def test_cos_backward_cpu(self):
+        self.backward_cpu(F.cos)
+
     def backward_gpu(self, op):
         self.check_backward(op, cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
@@ -846,6 +872,16 @@ class UnaryFunctionsTestBase(object):
     @condition.retry(3)
     def test_log_backward_gpu(self):
         self.backward_gpu(F.log)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_sin_backward_gpu(self):
+        self.backward_gpu(F.sin)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_cos_backward_gpu(self):
+        self.backward_gpu(F.cos)
 
 
 class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):

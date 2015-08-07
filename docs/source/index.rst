@@ -12,6 +12,7 @@ This is the `Chainer <http://chainer.org>`_ documentation.
    cupy-reference/index
    contribution
    tips
+   comparison
 
 
 Indices and tables

@@ -31,13 +31,13 @@ Array manipulation functions
 ----------------------------
 .. autofunction:: concat
 .. autofunction:: copy
-.. autofunction:: dropout
 .. autofunction:: identity
 .. autofunction:: reshape
 .. autofunction:: split_axis
 
 Activation functions
 --------------------
+.. autofunction:: cos
 .. autofunction:: exp
 .. autofunction:: leaky_relu
 .. autofunction:: log
@@ -45,7 +45,9 @@ Activation functions
 .. autoclass:: PReLU
 .. autofunction:: relu
 .. autofunction:: sigmoid
+.. autofunction:: sin
 .. autofunction:: softmax
+.. autofunction:: softplus
 .. autofunction:: tanh
 
 Pooling functions
@@ -59,6 +61,11 @@ Normalization functions
    :members: __call__
 .. autofunction:: local_response_normalization
 
+Noise injecting functions 
+-------------------------
+.. autofunction:: dropout
+.. autofunction:: gaussian
+
 Loss, evaluation and aggregation
 --------------------------------
 .. autofunction:: accuracy
@@ -66,6 +73,7 @@ Loss, evaluation and aggregation
 .. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: sum
+.. autofunction:: cross_covariance
 
 Reusable subnetwork of complex architectures
 --------------------------------------------

@@ -422,6 +422,7 @@ class Function(object):
 
     @parameters.setter
     def parameters(self, values):
+        assert len(self.parameter_names) == len(values)
         for name, value in zip(self.parameter_names, values):
             setattr(self, name, value)
 
@@ -437,6 +438,7 @@ class Function(object):
 
     @gradients.setter
     def gradients(self, values):
+        assert len(self.gradient_names) == len(values)
         for name, value in zip(self.gradient_names, values):
             setattr(self, name, value)
 
