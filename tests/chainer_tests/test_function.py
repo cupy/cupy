@@ -12,10 +12,6 @@ from chainer.testing import attr
 from chainer.utils import type_check
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestFunction(unittest.TestCase):
 
     def _get_method(self, prefix, gpu):
@@ -260,8 +256,8 @@ class TestParameterizedFunction(unittest.TestCase):
     @attr.gpu
     def test_to_gpu(self):
         self.f.to_gpu()
-        self.assertIsInstance(self.f.p1, cuda.GPUArray)
-        self.assertIsInstance(self.f.p2, cuda.GPUArray)
+        self.assertIsInstance(self.f.p1, cuda.cupy.ndarray)
+        self.assertIsInstance(self.f.p2, cuda.cupy.ndarray)
 
     @attr.gpu
     def test_to_cpu(self):

@@ -507,19 +507,22 @@ class Sin(function.Function):
     def label(self):
         return 'sin'
 
-    def forward_cpu(self, x):
-        self.y = utils.force_array(numpy.sin(x[0]))
-        return self.y,
-
-    def forward_gpu(self, x):
-        y = cuda.cumath.sin(x[0])
-        return y,
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.sin(x[0])),
 
     def backward_cpu(self, x, gy):
-        return utils.force_array(numpy.cos(x[0]) * gy[0]),
+        gx = utils.force_array(numpy.cos(x[0]))
+        gx *= gy[0]
+        return gx,
 
     def backward_gpu(self, x, gy):
-        return utils.force_array(cuda.cumath.cos(x[0]) * gy[0]),
+        cupy = cuda.cupy
+        gx = cupy.empty_like(x[0])
+        cuda.elementwise(
+            ['gx', 'x', 'gy'], 'gx[i] = cos(x[i]) * gy[i]', 'sin_bwd'
+        )(gx, x[0], gy[0])
+        return gx,
 
 
 def sin(x):
@@ -533,19 +536,23 @@ class Cos(function.Function):
     def label(self):
         return 'cos'
 
-    def forward_cpu(self, x):
-        self.y = utils.force_array(numpy.cos(x[0]))
-        return self.y,
-
-    def forward_gpu(self, x):
-        y = cuda.cumath.cos(x[0])
-        return y,
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.cos(x[0])),
 
     def backward_cpu(self, x, gy):
-        return utils.force_array(-numpy.sin(x[0]) * gy[0]),
+        gx = utils.force_array(numpy.sin(x[0]))
+        numpy.negative(gx, out=gx)
+        gx *= gy[0]
+        return gx,
 
     def backward_gpu(self, x, gy):
-        return utils.force_array(-cuda.cumath.sin(x[0]) * gy[0]),
+        cupy = cuda.cupy
+        gx = cupy.empty_like(x[0])
+        cuda.elementwise(
+            ['gx', 'x', 'gy'], 'gx[i] = -sin(x[i]) * gy[i]', 'cos_bwd'
+        )(gx, x[0], gy[0])
+        return gx,
 
 
 def cos(x):

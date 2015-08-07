@@ -38,7 +38,7 @@ class SoftmaxCrossEntropy(function.Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        self.y, = softmax.Softmax().forward_cpu((x,))
+        self.y, = softmax.Softmax().forward((x,))
         yd = numpy.rollaxis(self.y, 1)
         yd = yd.reshape(len(yd), -1).T
 
@@ -55,22 +55,22 @@ class SoftmaxCrossEntropy(function.Function):
 
     def forward_gpu(self, inputs):
         x, t = inputs
-        self.y, = softmax.Softmax(self.use_cudnn).forward_gpu((x,))
+        self.y, = softmax.Softmax(self.use_cudnn).forward((x,))
         n_unit = int(numpy.prod(self.y.shape[2:]))
-        # the map_expr is equivalent to the pseudo code -log(y[n, c, m]),
-        # where n = i / n_unit, c = t[i], and m = i % n_unit
-        ret = cuda.reduce(
-            ['t', 'y', 'n_channel', 'n_unit'],
-            '-log(y[n_unit * ((i / n_unit) * n_channel + t[i])'
-            '       + (i % n_unit)])',
-            'a+b', '0', 'crossent_fwd', numpy.float32
-        )(t, self.y, self.y.shape[1], n_unit)
         if getattr(self, 'normalize', True):
             n_unit = int(numpy.prod(self.y.shape[2:]))
             count = t.shape[0] * n_unit
         else:
             count = t.shape[0]
-        ret /= count
+        # the map_expr is equivalent to the pseudo code -log(y[n, c, m]),
+        # where n = i / n_unit, c = t[i], and m = i % n_unit
+        ret = cuda.reduce(
+            ['t', 'y', 'n_channel', 'n_unit', 'count'],
+            '-log(y[n_unit * ((i / n_unit) * n_channel + t[i])'
+            '       + (i % n_unit)])',
+            'a+b', '0', 'crossent_fwd', numpy.float32,
+            post_map_expr='a / count'
+        )(t, self.y, self.y.shape[1], n_unit, count)
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
@@ -98,8 +98,8 @@ class SoftmaxCrossEntropy(function.Function):
 
     def backward_gpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        n_unit = int(numpy.prod(self.y.shape[2:]))
-        gx = cuda.empty_like(self.y)
+        n_unit = numpy.prod(self.y.shape[2:], dtype=int)
+        gx = cuda.cupy.empty_like(self.y)
         if getattr(self, 'normalize', True):
             count = t.shape[0] * n_unit
         else:
@@ -111,7 +111,7 @@ class SoftmaxCrossEntropy(function.Function):
                const int n = i / (n_channel * n_unit);
                const int c = (i % (n_channel * n_unit)) / n_unit;
                const int m = i % n_unit;
-               gx[i] = *coeff * (y[i] - (c == t[n * n_unit + m]));
+               gx[i] = coeff[0] * (y[i] - (c == t[n * n_unit + m]));
             ''',
             'softmax_crossent_bwd')(
                 gx, self.y, t, coeff, self.y.shape[1], n_unit)

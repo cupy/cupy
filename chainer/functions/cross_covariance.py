@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer.utils import type_check
 
 
@@ -38,59 +39,27 @@ class CrossCovariance(function.Function):
         type_check.expect(out_type.dtype == y_in_type.dtype)
         type_check.expect(out_type.dtype == z_in_type.dtype)
 
-    def forward_cpu(self, inputs):
-        y, z = inputs
-        y_mean = y.mean(axis=0, keepdims=True)
-        z_mean = z.mean(axis=0, keepdims=True)
-        self.y_centered = (y - y_mean)[:, :, None]
-        self.z_centered = (z - z_mean)[:, None, :]
-        self.covariance = (self.y_centered * self.z_centered).mean(axis=0)
-        cost = 0.5 * (self.covariance**2).sum(keepdims=True)
-        return cost.reshape(()),
-
-    def forward_gpu(self, inputs):
+    def forward(self, inputs):
+        xp = cuda.get_array_module(*inputs)
         y, z = inputs
 
-        # Center inputs
-        y_mean = cuda.empty((1, y.shape[1]))
-        z_mean = cuda.empty((1, z.shape[1]))
-        cuda.cumisc.mean(y, axis=0, out=y_mean, keepdims=True)
-        cuda.cumisc.mean(z, axis=0, out=z_mean, keepdims=True)
-        self.y_centered = cuda.cumisc.subtract(y, y_mean)
-        self.z_centered = cuda.cumisc.subtract(z, z_mean)
+        self.y_centered = y - y.mean(axis=0, keepdims=True)
+        self.z_centered = z - z.mean(axis=0, keepdims=True)
+        self.covariance = self.y_centered.T.dot(self.z_centered)
+        self.covariance /= len(y)
+        cost = xp.vdot(self.covariance, self.covariance) * y.dtype.type(0.5)
+        return utils.force_array(cost),
 
-        # Calculate cross-covariance
-        self.covariance = cuda.empty((y.shape[1], z.shape[1]))
-        cuda.culinalg.add_dot(self.y_centered, self.z_centered,
-                              self.covariance, transa='T', alpha=1./y.shape[0],
-                              beta=0.)
-
-        # Calculate cost
-        cost = cuda.cumisc.sum(0.5 * self.covariance**2)
-        return cost,
-
-    def backward_cpu(self, inputs, grad_outputs):
+    def backward(self, inputs, grad_outputs):
+        xp = cuda.get_array_module(*inputs)
         y, z = inputs
         gcost, = grad_outputs
-        N = numpy.asarray(y.shape[0], dtype=numpy.float32)
-        gy = self.covariance[None, :, :] * 1/N * self.z_centered
-        gy = gy.sum(axis=-1) * gcost
-        gz = self.covariance[None, :, :] * 1/N * self.y_centered
-        gz = gz.sum(axis=-2) * gcost
-        return gy, gz
+        gcost_div_n = gcost / gcost.dtype.type(len(y))
 
-    def backward_gpu(self, inputs, grad_outputs):
-        y, z = inputs
-        gcost, = grad_outputs
-        N = y.shape[0]
-        gy = cuda.empty(y.shape)
-        gz = cuda.empty(z.shape)
-        cuda.culinalg.add_dot(self.z_centered, self.covariance, gy,
-                              transb='T', alpha=1./N, beta=0.)
-        cuda.culinalg.add_dot(self.y_centered, self.covariance, gz,
-                              alpha=1./N, beta=0.)
-        gy = cuda.cumisc.multiply(gy, gcost)
-        gz = cuda.cumisc.multiply(gz, gcost)
+        gy = self.z_centered.dot(self.covariance.T)
+        gz = self.y_centered.dot(self.covariance)
+        gy *= gcost_div_n
+        gz *= gcost_div_n
         return gy, gz
 
 

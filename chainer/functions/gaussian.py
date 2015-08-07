@@ -39,30 +39,30 @@ class Gaussian(function.Function):
     def forward_cpu(self, inputs):
         mean, ln_var = inputs
         if self.eps is None:
-            self.eps = numpy.random.normal(0, 1, ln_var.shape) \
+            self.eps = numpy.random.standard_normal(ln_var.shape) \
                                    .astype(numpy.float32)
 
         self.noise = numpy.exp(ln_var * 0.5) * self.eps
         return mean + self.noise,
 
     def forward_gpu(self, inputs):
+        cupy = cuda.cupy
         mean, ln_var = inputs
         if self.eps is None:
-            self.eps = cuda.empty(ln_var.shape, numpy.float32)
-            cuda.get_generator().fill_normal(self.eps)
+            self.eps = cupy.random.standard_normal(
+                ln_var.shape, dtype=mean.dtype)
 
-        noise = cuda.empty_like(ln_var)
+        self.noise = cupy.empty_like(mean)
         cuda.elementwise(
-            'float* noise, const float* v, const float* e',
-            'noise[i] = __expf(v[i] * 0.5f) * e[i];',
+            ['noise', 'v', 'e'],
+            'noise[i] = exp(v[i] / 2) * e[i]',
             'gaussian_forward'
-        )(noise, ln_var, self.eps)
-        self.noise = noise
+        )(self.noise, ln_var, self.eps)
         return mean + self.noise,
 
     def backward(self, inputs, grad_output):
         g, = grad_output
-        return g, g * self.noise * 0.5,
+        return g, g * self.noise * g.dtype.type(0.5),
 
 
 def gaussian(mean, ln_var):

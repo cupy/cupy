@@ -100,11 +100,11 @@ class NegativeSampling(function.Function):
         )
 
     def to_gpu(self, device=None):
-        function.Function.to_gpu(self, device)
+        super(NegativeSampling, self).to_gpu(device)
         self.sampler.to_gpu()
 
     def to_cpu(self):
-        function.Function.to_cpu(self)
+        super(NegativeSampling, self).to_cpu()
         self.sampler.to_cpu()
 
     def forward_cpu(self, inputs):

@@ -175,11 +175,10 @@ def to_cpu(array, stream=None):
 
     """
     assert stream is None  # TODO(beam2d): FIX IT
-    with get_device(array) as device:
-        if device is DummyDevice:
-            return array
-        else:
-            return array.get()
+    if isinstance(array, ndarray):
+        return array.get()
+    else:
+        return array
 
 
 def empty(shape, dtype=numpy.float32):

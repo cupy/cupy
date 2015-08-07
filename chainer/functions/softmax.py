@@ -41,122 +41,39 @@ class Softmax(function.Function):
             y_type.shape == x_type.shape,
         )
 
-    def forward_cpu(self, x):
-        self.y = x[0] - numpy.amax(x[0], axis=1, keepdims=True)
-        numpy.exp(self.y, out=self.y)
-        self.y /= self.y.sum(axis=1, keepdims=True)
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        if xp != numpy and cuda.cudnn_enabled and self.use_cudnn:
+            handle = cudnn.get_handle()
+            x_cube = x[0].reshape(x[0].shape[:2] + (-1, 1))
+            desc = cudnn.create_tensor_descriptor(x_cube)
+            self.y = xp.empty_like(x[0])
+            libcudnn.softmaxForward(
+                handle, _algorithm, _mode, ctypes.c_float(1), desc.value,
+                x_cube.data.ptr, ctypes.c_float(0), desc.value,
+                self.y.data.ptr)
+        else:
+            self.y = x[0] - x[0].max(axis=1, keepdims=True)
+            xp.exp(self.y, out=self.y)
+            self.y /= self.y.sum(axis=1, keepdims=True)
+
         return self.y,
 
-    def forward_gpu(self, x):
-        y = cuda.empty_like(x[0])
-        n_unit = int(numpy.prod(x[0].shape[2:]))
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            desc = cudnn.get_tensor_desc(x[0], n_unit, 1)
-            libcudnn.cudnnSoftmaxForward(
-                handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(x[0]),
-                0, desc.value, cudnn.get_ptr(y))
-            self.y = y
-        else:
-            maxes_shape = (x[0].shape[0],) + x[0].shape[2:]
-            maxes = cuda.empty(maxes_shape, dtype=numpy.float32)
-            c = x[0].shape[1]
-            cuda.elementwise(
-                'float* maxes, const float* x, int n_channel, int n_unit',
-                '''
-                   const int n = i / n_unit;
-                   const int m = i % n_unit;
-                   const float* row = x + n * n_channel * n_unit + m;
-                   float maxval = row[0];
-                   for (int c = 1; c < n_channel; ++c) {
-                     const int v = c * n_unit;
-                     if (maxval < row[v]) {
-                       maxval = row[v];
-                     }
-                   }
-                   maxes[i] = maxval;
-                ''', 'softmax_rowmax')(maxes, x[0], c, n_unit)
-            cuda.elementwise(
-                '''
-                   float* y, const float* x, const float* maxes,
-                   int n_channel, int n_unit
-                ''',
-                '''
-                   const int n = i / (n_channel * n_unit);
-                   const int m = i % n_unit;
-                   y[i] = __expf(x[i] - maxes[n * n_unit + m]);
-                ''',
-                'softmax_exp')(y, x[0], maxes, c, n_unit)
-            coeff = maxes  # reuse memory
-            cuda.elementwise(
-                'float* coeff, const float* y, int n_channel, int n_unit',
-                '''
-                   const int n = i / n_unit;
-                   const int m = i % n_unit;
-                   const float* row = y + n * n_channel * n_unit + m;
-                   float sum = 0;
-                   for (int c = 0; c < n_channel; ++c) {
-                     sum += row[c * n_unit];
-                   }
-                   coeff[i] = 1 / sum;
-                ''', 'softmax_invrowsum')(coeff, y, c, n_unit)
-            cuda.elementwise(
-                'float* y, const float* coeff, int n_channel, int n_unit',
-                '''
-                   const int n = i / (n_channel * n_unit);
-                   const int m = i % n_unit;
-                   y[i] *= coeff[n * n_unit + m];
-                ''',
-                'softmax_rowmul')(y, coeff, c, n_unit)
-            self.y = y
-
-        return y,
-
-    def backward_cpu(self, x, gy):
-        gx = self.y * gy[0]
-        sumdx = gx.sum(axis=1, keepdims=True)
-        gx -= self.y * sumdx
-        return gx,
-
-    def backward_gpu(self, x, gy):
-        n_unit = int(numpy.prod(x[0].shape[2:]))
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            gx = cuda.empty_like(x[0])
-            desc = cudnn.get_tensor_desc(x[0], n_unit, 1)
-            libcudnn.cudnnSoftmaxBackward(
-                handle, _algorithm, _mode, 1, desc.value, cudnn.get_ptr(
-                    self.y),
-                desc.value, cudnn.get_ptr(gy[0]), 0, desc.value,
-                cudnn.get_ptr(gx))
+    def backward(self, x, gy):
+        xp = cuda.get_array_module(*x)
+        if xp != numpy and cuda.cudnn_enabled and self.use_cudnn:
+            handle = cudnn.get_handle()
+            gx = xp.empty_like(x[0])
+            gx_cube = gx.reshape(gx.shape[:2] + (-1, 1))
+            desc = cudnn.create_tensor_descriptor(gx_cube)
+            libcudnn.softmaxBackward(
+                handle, _algorithm, _mode, ctypes.c_float(1), desc.value,
+                self.y.data.ptr, desc.value, gy[0].data.ptr, ctypes.c_float(0),
+                desc.value, gx.data.ptr)
         else:
             gx = self.y * gy[0]
-            c = gx.shape[1]
-            sum_ydy_shape = (gx.shape[0],) + gx.shape[2:]
-            sum_ydy = cuda.empty(sum_ydy_shape, dtype=numpy.float32)
-            cuda.elementwise(
-                'float* sum_ydy, const float* ydy, int n_channel, int n_unit',
-                '''
-                   const int n = i / n_unit;
-                   const int m = i % n_unit;
-                   const float* row = ydy + n * n_channel * n_unit + m;
-                   float sum = 0;
-                   for (int c = 0; c < n_channel; ++c) {
-                     sum += row[c * n_unit];
-                   }
-                   sum_ydy[i] = sum;
-                ''', 'softmax_bwd_sum_ydy')(sum_ydy, gx, c, n_unit)
-            cuda.elementwise(
-                '''
-                   float* gx, const float* y, const float* sum_ydy,
-                   int n_channel, int n_unit
-                ''',
-                '''
-                   const int n = i / (n_channel * n_unit);
-                   const int m = i % n_unit;
-                   gx[i] -= y[i] * sum_ydy[n * n_unit + m];
-                ''',
-                'softmax_bwd_diff')(gx, self.y, sum_ydy, c, n_unit)
+            sumdx = gx.sum(axis=1, keepdims=True)
+            gx -= self.y * sumdx
 
         return gx,
 

@@ -405,9 +405,8 @@ class Function(object):
 
         """
         for k, v in six.iteritems(self.__dict__):
-            with cuda.get_device(v) as device:
-                if device is not cuda.DummyDevice:
-                    setattr(self, k, v.get())
+            if isinstance(v, cuda.ndarray):
+                setattr(self, k, v.get())
         return self
 
     @property

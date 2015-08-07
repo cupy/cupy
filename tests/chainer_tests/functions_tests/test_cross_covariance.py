@@ -11,9 +11,6 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
-if cuda.available:
-    cuda.init()
-
 
 class TestCrossCovariance(unittest.TestCase):
     def setUp(self):
@@ -26,7 +23,7 @@ class TestCrossCovariance(unittest.TestCase):
         loss = functions.cross_covariance(y, z)
         self.assertEqual(loss.data.shape, ())
         self.assertEqual(loss.data.dtype, numpy.float32)
-        loss_value = float(cuda.to_cpu(loss.data))
+        loss_value = float(loss.data)
 
         # Compute expected value
         y_data, z_data = cuda.to_cpu(y_data), cuda.to_cpu(z_data)

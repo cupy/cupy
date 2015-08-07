@@ -8,10 +8,6 @@ from chainer.testing import attr
 from chainer.utils import conv
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestConv(unittest.TestCase):
 
     def check_conv_outsize(self, size, k, s, p):
