@@ -422,23 +422,47 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
 
     It outputs a fixed-length vector regardless of input feature map size.
 
+    It performs pooling operation to the input 4D-array ``x`` with different
+    kernel sizes and padding sizes, and then flattens all dimensions except
+    first dimension of all pooling results, and finally concatenates them along
+    2nd dimension.
+
+    At :math:`i`-th pyramid level, the kernel size
+    :math:`(k_h^{(i)}, k_w^{(i)})` and padding size
+    :math:`(p_h^{(i)}, p_w^{(i)})` of pooling operation are calculated as
+    below:
+
+    .. math::
+        k_h^{(i)} &= \\lceil b_h / 2^i \\rceil, \\\\
+        k_w^{(i)} &= \\lceil b_w / 2^i \\rceil, \\\\
+        p_h^{(i)} &= (2^i k_h^{(i)} - b_h) / 2, \\\\
+        p_w^{(i)} &= (2^i k_w^{(i)} - b_w) / 2,
+
+    where :math:`\\lceil \\cdot \\rceil` denotes the ceiling function, and
+    :math:`b_h, b_w` are height and width of input variable ``x``,
+    respectively. Note that index of pyramid level :math:`i` is zero-based.
+
     See detail in paper: `Spatial Pyramid Pooling in Deep Convolutional \
     Networks for Visual Recognition \
     <http://arxiv.org/abs/1406.4729>`_.
 
     Args:
-        x (~chainer.Variable): Input variable. The shape of `x` should be
+        x (~chainer.Variable): Input variable. The shape of ``x`` should be
             (batchsize, # of channels, height, width).
         pyramid_height (int): the number of pyramid levels
-        pooling_class (~functions.MaxPooling2D or ~functions.AveragePooling2D):
+        pooling_class (MaxPooling2D or AveragePooling2D):
             Only MaxPooling2D class can be available for now.
         use_cudnn (bool): If True and CuDNN is enabled, then this function
             uses CuDNN as the core implementation.
 
     Returns:
-        ~chainer.Variable: Ouptut variable.
+        ~chainer.Variable: Ouptut variable. The shape of the output variable
+            will be (batchsize, :math:`c \\sum_{h=0}^{H-1} 2^{2h}`, 1, 1),
+            where :math:`c` is the number of channels of input variable ``x``
+            and :math:`H` is the number of pyramid levels.
 
-    .. note:
+    .. note::
+
         This function uses some pooling classes as components to perform
         spatial pyramid pooling. Now it supports only
         :class:`~functions.MaxPooling2D` as elemental pooling operator so far.
