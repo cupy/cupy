@@ -9,26 +9,18 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 def _uniform(*shape):
     return numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
 
 
 def _full_like(x, val):
-    if isinstance(x, numpy.ndarray):
-        return numpy.full_like(x, val)
-    else:
-        return cuda.full_like(x, val)
+    xp = cuda.get_array_module(x)
+    return xp.full_like(x, val)
 
 
 def _zeros_like(x):
-    if isinstance(x, numpy.ndarray):
-        return numpy.zeros_like(x)
-    else:
-        return cuda.zeros_like(x)
+    xp = cuda.get_array_module(x)
+    return xp.zeros_like(x)
 
 
 def _dot(x, y):
@@ -90,20 +82,15 @@ class NumericalGradientTest2(NumericalGradientTest):
     df = lambda self, xs: ((0,),)
 
 
-def _exp(x):
-    if isinstance(x, numpy.ndarray):
-        return numpy.exp(x)
-    else:
-        return cuda.cumath.exp(x)
-
-
 class NumericalGradientTest3(NumericalGradientTest):
 
     def f(self, xs):
-        return (_exp(xs[0]),)
+        xp = cuda.get_array_module(*xs)
+        return xp.exp(xs[0]),
 
     def df(self, xs):
-        return ((_exp(xs[0]),),)
+        xp = cuda.get_array_module(*xs)
+        return (xp.exp(xs[0]),),
 
     def setUp(self):
         self.xs = (_uniform(2, 1),)
