@@ -37,8 +37,9 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
 
     col = cuda.empty((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
     cuda.elementwise(
-        ['col', 'img', 'h', 'w',
-         'out_h', 'out_w', 'kh', 'kw', 'sy', 'sx', 'ph', 'pw'],
+        'raw T img, int32 h, int32 w, int32 out_h, int32 out_w,'
+        'int32 kh, int32 kw, int32 sy, int32 sx, int32 ph, int32 pw',
+        'T col',
         '''
            int c0 = i / (kh * kw * out_h * out_w);
            int ky = i / (kw * out_h * out_w) % kh;
@@ -49,13 +50,12 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
            int in_y = ky + out_y * sy - ph;
            int in_x = kx + out_x * sx - pw;
            if (in_y >= 0 && in_y < h && in_x >= 0 && in_x < w) {
-             col[i] = img[in_x + w * (in_y + h * c0)];
+             col = img[in_x + w * (in_y + h * c0)];
            } else {
-             col[i] = 0;
+             col = 0;
            }
         ''',
-        'im2col')(col, img, *map(numpy.int32, (h, w, out_h, out_w,
-                                               kh, kw, sy, sx, ph, pw)))
+        'im2col')(img, h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, col)
     return col
 
 
@@ -78,8 +78,9 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
 
     img = cuda.empty((n, c, h, w), dtype=col.dtype)
     cuda.elementwise(
-        ['img', 'col', 'h', 'w',
-         'out_h', 'out_w', 'kh', 'kw', 'sy', 'sx', 'ph', 'pw'],
+        'raw T col, int32 h, int32 w, int32 out_h, int32 out_w,'
+        'int32 kh, int32 kw, int32 sy, int32 sx, int32 ph, int32 pw',
+        'T img',
         '''
            int c0 = i / (h * w);
            int y  = i / w % h + ph;
@@ -90,7 +91,7 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
            int out_x_0 = max(0,     (x - kw + sx) / sx);
            int out_x_1 = min(out_w, (x      + sx) / sx);
 
-           float val = 0;
+           T val = 0;
            for (int out_y = out_y_0; out_y < out_y_1; ++out_y) {
              int ky = y - out_y * sy;
              for (int out_x = out_x_0; out_x < out_x_1; ++out_x) {
@@ -99,8 +100,7 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
                val += col[out_x + out_w * k];
              }
            }
-           img[i] = val;
+           img = val;
         ''',
-        'col2im')(img, col, *map(numpy.int32, (h, w, out_h, out_w,
-                                               kh, kw, sy, sx, ph, pw)))
+        'col2im')(col, h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, img)
     return img

@@ -27,8 +27,8 @@ class Sigmoid(function.Function):
         return self.y,
 
     def forward_gpu(self, x):
-        self.y = cuda.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
+            self.y = cuda.empty_like(x[0])
             handle = cudnn.get_handle()
             x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
             desc = cudnn.create_tensor_descriptor(x_mat)
@@ -36,17 +36,17 @@ class Sigmoid(function.Function):
                 handle, _mode, ctypes.c_float(1), desc.value, x_mat.data.ptr,
                 ctypes.c_float(0), desc.value, self.y.data.ptr)
         else:
-            cuda.elementwise(
-                ['y', 'x'], 'y[i] = 1 / (1 + __expf(-x[i]))',
-                'sigmoid_fwd')(self.y, x[0])
+            self.y = cuda.elementwise(
+                'T x', 'T y', 'y = 1 / (1 + exp(-x))',
+                'sigmoid_fwd')(x[0])
         return self.y,
 
     def backward_cpu(self, x, gy):
         return gy[0] * self.y * (1 - self.y),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
+            gx = cuda.empty_like(x[0])
             handle = cudnn.get_handle()
             y_mat = self.y.reshape(self.y.shape[0], -1, 1, 1)
             desc = cudnn.create_tensor_descriptor(y_mat)
@@ -55,10 +55,10 @@ class Sigmoid(function.Function):
                 desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
                 ctypes.c_float(0), desc.value, gx.data.ptr)
         else:
-            cuda.elementwise(
-                ['gx', 'y', 'gy'],
-                'gx[i] = gy[i] * y[i] * (1 - y[i])',
-                'sigmoid_bwd')(gx, self.y, gy[0])
+            gx = cuda.elementwise(
+                'T y, T gy', 'T gx',
+                'gx = gy * y * (1 - y)',
+                'sigmoid_bwd')(self.y, gy[0])
         return gx,
 
 

@@ -11,7 +11,7 @@ def _cu_conv_sum(y, x, n):
     # TODO(beam2d): Use scan computation
     rdim = x.size // (x.shape[0] * x.shape[1])
     cuda.elementwise(
-        ['y', 'x', 'rdim', 'N', 'n_'],
+        'raw T x, int32 rdim, int32 N, int32 n_', 'raw T y',
         '''
           int half_n = n_ / 2;
           int offset = i / rdim * N * rdim + i % rdim;
@@ -28,7 +28,7 @@ def _cu_conv_sum(y, x, n):
               y[offset + (j - half_n) * rdim] = sum_part;
             }
           }
-        ''', 'lrn_conv_sum')(y, x, rdim, x.shape[1], n,
+        ''', 'lrn_conv_sum')(x, rdim, x.shape[1], n, y,
                              size=x.shape[0] * rdim)
 
 
@@ -79,29 +79,26 @@ class LocalResponseNormalization(function.Function):
         self.scale = cuda.empty_like(self.y)
         _cu_conv_sum(self.scale, self.y, self.n)
         cuda.elementwise(
-            ['y', 'scale', 'x', 'k', 'alpha', 'beta'],
-            '''scale[i] = k + alpha * scale[i];
-               y[i] = x[i] * pow(scale[i], -beta);''',
-            'lrn_fwd')(self.y, self.scale, x[0],
-                       numpy.int32(self.k),
-                       x[0].dtype.type(self.alpha),
-                       x[0].dtype.type(self.beta))
+            'T x, T k, T alpha, T beta',
+            'T y, T scale',
+            '''scale = k + alpha * scale;
+               y = x * pow(scale, -beta);''',
+            'lrn_fwd')(x[0], self.k, self.alpha, self.beta,
+                       self.y, self.scale)
         return self.y,
 
     def backward_gpu(self, x, gy):
-        summand = cuda.empty_like(x[0])
-        cuda.elementwise(
-            ['summand', 'scale', 'y', 'gy'],
-            'summand[i] = y[i] * gy[i] / scale[i]',
-            'lrn_bwd_summand')(summand, self.scale, self.y, gy[0])
+        summand = cuda.elementwise(
+            'T scale, T y, T gy', 'T summand',
+            'summand = y * gy / scale',
+            'lrn_bwd_summand')(self.scale, self.y, gy[0])
         gx = cuda.empty_like(x[0])
         _cu_conv_sum(gx, summand, self.n)
         cuda.elementwise(
-            ['gx', 'x', 'gy', 'scale', 'beta', 'coeff'],
-            'gx[i] = pow(scale[i], -beta) * gy[i] - coeff * x[i] * gx[i]',
-            'lrn_bwd')(gx, x[0], gy[0], self.scale,
-                       x[0].dtype.type(self.beta),
-                       x[0].dtype.type(2 * self.alpha * self.beta))
+            ' T x, T gy, T scale, T beta, T coeff', 'T gx',
+            'gx = pow(scale, -beta) * gy - coeff * x * gx',
+            'lrn_bwd')(x[0], gy[0], self.scale,
+                       self.beta, 2 * self.alpha * self.beta, gx)
         return gx,
 
 

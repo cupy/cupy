@@ -29,15 +29,15 @@ class SigmoidCrossEntropy(function.Function):
         # stable computation of the cross entropy.
         loss = -numpy.sum(
             x * (t - (x >= 0)) - numpy.log1p(numpy.exp(-numpy.abs(x))))
-        return numpy.array(loss / t.shape[0], dtype=numpy.float32),
+        return numpy.array(loss / t.shape[0], dtype=x.dtype),
 
     def forward_gpu(self, inputs):
         x, t = inputs
         self.y, = sigmoid.Sigmoid(self.use_cudnn).forward_gpu((x,))
         loss = -cuda.reduce(
             ['t', 'x'],
-            'x[i] * (t[i] - (x[i] >= 0)) - log1pf(expf(-fabs(x[i])))',
-            'a + b', 0, 'sigmoid_crossent_fwd', numpy.float32)(t, x)
+            'x[i] * (t[i] - (x[i] >= 0)) - log1p(exp(-fabs(x[i])))',
+            'a + b', 0, 'sigmoid_crossent_fwd', x.dtype)(t, x)
         """
         loss = -cuda.cupy.sum(
             x * (t - (x >= 0)) - cuda.cupy.log1p(cuda.cupy.exp(-abs(x))),
@@ -56,12 +56,11 @@ class SigmoidCrossEntropy(function.Function):
 
     def backward_gpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        gx = cuda.empty_like(self.y)
         coeff = gloss / t.shape[0]
-        cuda.elementwise(
-            ['gx', 'y', 't', 'coeff'],
-            'gx[i] = coeff[0] * (y[i] - t[i])',
-            'sigmoid_crossent_bwd')(gx, self.y, t, coeff)
+        gx = cuda.elementwise(
+            'T y, S t, raw T coeff', 'T gx',
+            'gx = coeff[0] * (y - t)',
+            'sigmoid_crossent_bwd')(self.y, t, coeff)
         return gx, None
 
 

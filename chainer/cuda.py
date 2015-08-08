@@ -30,10 +30,14 @@ import numpy
 _requires = []
 try:
     import cupy
-    from cupy import cuda
-    from cupy.cuda import cublas
-    from cupy import cudnn
-    from cupy import random
+    import cupy.cuda
+    import cupy.cuda.cublas
+    import cupy.cudnn
+    import cupy.random
+
+    cuda = cupy.cuda
+    cublas = cuda.cublas
+    cudnn = cupy.cudnn
 
     ndarray = cupy.ndarray
     Device = cuda.Device
@@ -47,7 +51,8 @@ except Exception as e:
     cudnn_enabled = False
     _resolution_error = e
 
-    class ndarray(object): pass  # for type testing
+    class ndarray(object):
+        pass  # for type testing
 
 
 def _check_cuda_available():
@@ -370,7 +375,7 @@ def copy(array, out=None, out_device=None, stream=None):
 # ------------------------------------------------------------------------------
 # Kernel definition utility
 # ------------------------------------------------------------------------------
-def elementwise(param_names, operation, name, options=None,
+def elementwise(in_params, out_params, operation, name, options=(),
                 preamble='', loop_prep='', after_loop=''):
     """Creates an elementwise kernel function.
 
@@ -385,12 +390,12 @@ def elementwise(param_names, operation, name, options=None,
     """
     _check_cuda_available()
     return cupy.elementwise.ElementwiseKernel(
-        param_names, operation, name, options,
+        in_params, out_params, operation, name, options,
         preamble=preamble, loop_prep=loop_prep, after_loop=after_loop)
 
 
 def reduce(param_names, map_expr, reduce_expr, identity, name,
-           out_dtype=numpy.float32, options=[], post_map_expr='a',
+           out_dtype=numpy.float32, options=(), post_map_expr='a',
            preamble=''):
     """Creates a global reduction kernel function.
 

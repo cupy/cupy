@@ -108,14 +108,13 @@ class MaxPooling2D(Pooling2D):
             h, self.kh, self.sy, self.ph, self.cover_all)
         y_w = conv.get_conv_outsize(
             w, self.kw, self.sx, self.pw, self.cover_all)
-        y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
+        y = cuda.empty((n, c, y_h, y_w), dtype=x[0].dtype)
         self.indexes = cuda.empty((n, c, y_h, y_w), dtype=numpy.int32)
 
-        args = tuple(map(numpy.int32, (h, w, y_h, y_w, self.kh, self.kw,
-                                       self.sy, self.sx, self.ph, self.pw)))
         cuda.elementwise(
-            ['out', 'indexes', 'in', 'h', 'w', 'out_h', 'out_w',
-             'kh', 'kw', 'sy', 'sx', 'ph', 'pw'],
+            'raw T in, int32 h, int32 w, int32 out_h, int32 out_w,'
+            'int32 kh, int32 kw, int32 sy, int32 sx, int32 ph, int32 pw',
+            'T out, S indexes',
             '''
                int c0    = i / (out_h * out_w);
                int out_y = i / out_w % out_h;
@@ -139,12 +138,15 @@ class MaxPooling2D(Pooling2D):
                    }
                  }
                }
-               out[i] = maxval;
+               out = maxval;
 
                int argmax_ky = argmax_y + ph - out_y * sy;
                int argmax_kx = argmax_x + pw - out_x * sx;
-               indexes[i] = argmax_kx + kw * argmax_ky;
-            ''', 'max_pool_fwd')(y, self.indexes, x[0], *args)
+               indexes = argmax_kx + kw * argmax_ky;
+            ''', 'max_pool_fwd')(x[0],
+                                 h, w, y_h, y_w, self.kh, self.kw,
+                                 self.sy, self.sx, self.ph, self.pw,
+                                 y, self.indexes)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -169,11 +171,11 @@ class MaxPooling2D(Pooling2D):
         y_h, y_w = gy[0].shape[2:]
         gx = cuda.empty_like(x[0])
 
-        args = tuple(map(numpy.int32, (h, w, y_h, y_w, self.kh, self.kw,
-                                       self.sy, self.sx, self.ph, self.pw)))
         cuda.elementwise(
-            ['gx', 'indexes', 'gy', 'h', 'w', 'out_h', 'out_w',
-             'kh', 'kw', 'sy', 'sx', 'ph', 'pw'],
+            'raw T gy, raw S indexes, int32 h, int32 w,'
+            'int32 out_h, int32 out_w, int32 kh, int32 kw,'
+            'int32 sy, int32 sx, int32 ph, int32 pw',
+            'T gx',
             '''
                int c0 = i / (h * w);
                int y  = i / w % h + ph;
@@ -194,9 +196,12 @@ class MaxPooling2D(Pooling2D):
                    }
                  }
                }
-               gx[i] = val;
+               gx = val;
             ''',
-            'max_pool_bwd')(gx, self.indexes, gy[0], *args)
+            'max_pool_bwd')(gy[0], self.indexes,
+                            h, w, y_h, y_w, self.kh, self.kw,
+                            self.sy, self.sx, self.ph, self.pw,
+                            gx)
         return gx,
 
     def create_pool_desc(self):
@@ -254,12 +259,11 @@ class AveragePooling2D(Pooling2D):
         y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw)
         y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
         coeff = 1. / (self.kh * self.kw)
-        args = list(map(numpy.int32, (h, w, y_h, y_w, self.kh, self.kw,
-                                      self.sy, self.sx, self.ph, self.pw)))
-        args = [y, x[0]] + args + [x[0].dtype.type(coeff)]
         cuda.elementwise(
-            ['out', 'in', 'h', 'w', 'out_h', 'out_w',
-             'kh', 'kw', 'sy', 'sx', 'ph', 'pw', 'coeff'],
+            'raw T in, int32 h, int32 w,'
+            'int32 out_h, int32 out_w, int32 kh, int32 kw,'
+            'int32 sy, int32 sx, int32 ph, int32 pw, T coeff',
+            'T out',
             '''
                int c0    = i / (out_h * out_w);
                int out_y = i / out_w % out_h;
@@ -276,8 +280,10 @@ class AveragePooling2D(Pooling2D):
                    val += in[x + offset_y];
                  }
                }
-               out[i] = val * coeff;
-            ''', 'avg_pool_fwd')(*args)
+               out = val * coeff;
+            ''', 'avg_pool_fwd')(x[0], h, w, y_h, y_w, self.kh, self.kw,
+                                 self.sy, self.sx, self.ph, self.pw, coeff,
+                                 y)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -296,12 +302,11 @@ class AveragePooling2D(Pooling2D):
         y_h, y_w = gy[0].shape[2:]
         gx = cuda.empty_like(x[0])
         coeff = 1. / (self.kh * self.kw)
-        args = list(map(numpy.int32, (h, w, y_h, y_w, self.kh, self.kw,
-                                      self.sy, self.sx, self.ph, self.pw)))
-        args = [gx, gy[0]] + args + [x[0].dtype.type(coeff)]
         cuda.elementwise(
-            ['gx', 'gy', 'h', 'w', 'out_h', 'out_w',
-             'kh', 'kw', 'sy', 'sx', 'ph', 'pw', 'coeff'],
+            'raw T gy, int32 h, int32 w,'
+            'int32 out_h, int32 out_w, int32 kh, int32 kw,'
+            'int32 sy, int32 sx, int32 ph, int32 pw, T coeff',
+            'T gx',
             '''
                int c0 = i / (h * w);
                int y  = i / w % h + ph;
@@ -318,8 +323,10 @@ class AveragePooling2D(Pooling2D):
                    val += gy[out_x + out_w * (out_y + hc0)];
                  }
                }
-               gx[i] = val * coeff;
-            ''', 'avg_pool_bwd')(*args)
+               gx = val * coeff;
+            ''', 'avg_pool_bwd')(gy[0], h, w, y_h, y_w, self.kh, self.kw,
+                                 self.sy, self.sx, self.ph, self.pw, coeff,
+                                 gx)
         return gx,
 
     def create_pool_desc(self):

@@ -99,22 +99,22 @@ class SoftmaxCrossEntropy(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
         n_unit = numpy.prod(self.y.shape[2:], dtype=int)
-        gx = cuda.cupy.empty_like(self.y)
         if getattr(self, 'normalize', True):
             count = t.shape[0] * n_unit
         else:
             count = t.shape[0]
         coeff = gloss / count
-        cuda.elementwise(
-            ['gx', 'y', 't', 'coeff', 'n_channel', 'n_unit'],
+        gx = cuda.elementwise(
+            'T y, raw S t, raw T coeff, S n_channel, S n_unit',
+            'T gx',
             '''
                const int n = i / (n_channel * n_unit);
                const int c = (i % (n_channel * n_unit)) / n_unit;
                const int m = i % n_unit;
-               gx[i] = coeff[0] * (y[i] - (c == t[n * n_unit + m]));
+               gx = coeff[0] * (y - (c == t[n * n_unit + m]));
             ''',
             'softmax_crossent_bwd')(
-                gx, self.y, t, coeff, self.y.shape[1], n_unit)
+                self.y, t, coeff, self.y.shape[1], n_unit)
         return gx, None
 
 

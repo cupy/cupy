@@ -51,7 +51,6 @@ class CrossCovariance(function.Function):
         return utils.force_array(cost),
 
     def backward(self, inputs, grad_outputs):
-        xp = cuda.get_array_module(*inputs)
         y, z = inputs
         gcost, = grad_outputs
         gcost_div_n = gcost / gcost.dtype.type(len(y))

@@ -13,6 +13,6 @@ class SGD(optimizer.Optimizer):
         param -= self.lr * grad
 
     def update_one_gpu(self, param, grad, _):
-        cuda.elementwise(['param', 'grad', 'lr'],
-                         'param[i] -= lr * grad[i]',
-                         'sgd')(param, grad, param.dtype.type(self.lr))
+        cuda.elementwise('T grad, T lr', 'T param',
+                         'param -= lr * grad',
+                         'sgd')(grad, self.lr, param)

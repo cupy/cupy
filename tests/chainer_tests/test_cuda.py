@@ -8,22 +8,15 @@ from chainer import testing
 
 class TestCuda(unittest.TestCase):
 
-    def test_get_device_unavailable(self):
+    def test_get_dummy_device(self):
         if not cuda.available:
-            with self.assertRaises(RuntimeError):
-                cuda.get_device()
+            self.assertIs(cuda.get_device(), cuda.DummyDevice)
 
     def test_to_gpu_unavailable(self):
         x = numpy.array([1])
         if not cuda.available:
             with self.assertRaises(RuntimeError):
                 cuda.to_gpu(x)
-
-    def test_to_gpu_async_unavailable(self):
-        x = numpy.array([1])
-        if not cuda.available:
-            with self.assertRaises(RuntimeError):
-                cuda.to_gpu_async(x)
 
     def test_empy_unavailable(self):
         if not cuda.available:

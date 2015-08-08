@@ -8,8 +8,8 @@ from chainer.utils import type_check
 
 def _fwd_kern():
     return cuda.elementwise(
-        ['y', 'x', 'cond', 'W', 'cdim', 'rdim'],
-        'y[i] = cond[i] >= 0 ? x[i] : x[i] * W[i / rdim % cdim]', 'prelu')
+        'T x, T cond, raw T W, int32 cdim, int32 rdim', 'T y',
+        'y = cond >= 0 ? x : x * W[i / rdim % cdim]', 'prelu')
 
 
 class PReLU(function.Function):
@@ -63,8 +63,7 @@ class PReLU(function.Function):
     def forward_gpu(self, x):
         cdim = self.W.size
         rdim = x[0].size // (x[0].shape[0] * cdim)
-        y = cuda.empty_like(x[0])
-        _fwd_kern()(y, x[0], x[0], self.W, cdim, rdim)
+        y = _fwd_kern()(x[0], x[0], self.W, cdim, rdim)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -85,10 +84,10 @@ class PReLU(function.Function):
         cdim = self.W.size
         rdim = x[0].size // (ldim * cdim)
 
-        masked = cuda.empty_like(x[0])
-        cuda.elementwise(['masked', 'x', 'gy'],
-                         'masked[i] = x[i] >= 0 ? 0 : x[i] * gy[i]',
-                         'prelu_masked')(masked, x[0], gy[0])
+        masked = cuda.elementwise(
+            'T x, T gy', 'T masked',
+            'masked = x >= 0 ? 0 : x * gy',
+            'prelu_masked')(x[0], gy[0])
 
         rsum = cuda.cupy.sum(masked.reshape(ldim * cdim, rdim), axis=1)
         gW = cuda.cupy.sum(rsum.reshape(ldim, cdim), axis=0)
@@ -96,7 +95,7 @@ class PReLU(function.Function):
         del rsum, gW
 
         gx = masked  # reuse buffer
-        _fwd_kern()(gx, gy[0], x[0], self.W, cdim, rdim)
+        _fwd_kern()(gy[0], x[0], self.W, cdim, rdim, gx)
         return gx,
 
     def _get_extended_shape_W(self, x):

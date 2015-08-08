@@ -50,8 +50,10 @@ def nvcc(source, options=None, arch=None):
             return bin_file.read()
 
 
-def preprocess(source, options=[]):
-    cmd = ['nvcc', '--preprocess'] + options
+def preprocess(source, options=()):
+    cmd = ['nvcc', '--preprocess']
+    if options is not None:
+        cmd += list(options)
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cu' % path

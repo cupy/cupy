@@ -53,11 +53,11 @@ class Gaussian(function.Function):
                 ln_var.shape, dtype=mean.dtype)
 
         self.noise = cupy.empty_like(mean)
-        cuda.elementwise(
-            ['noise', 'v', 'e'],
-            'noise[i] = exp(v[i] / 2) * e[i]',
+        self.noise = cuda.elementwise(
+            'T v, T e', 'T noise',
+            'noise = exp(v / 2) * e',
             'gaussian_forward'
-        )(self.noise, ln_var, self.eps)
+        )(ln_var, self.eps)
         return mean + self.noise,
 
     def backward(self, inputs, grad_output):

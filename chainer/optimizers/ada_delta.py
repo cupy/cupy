@@ -34,11 +34,11 @@ class AdaDelta(optimizer.Optimizer):
     def update_one_gpu(self, param, grad, state):
         msg, msdx = state
         cuda.elementwise(
-            ['param', 'grad', 'msg', 'msdx', 'one_minus_rho', 'eps'],
-            '''msg[i]   += one_minus_rho * (grad[i] * grad[i] - msg[i]);
-               float dx  = sqrt((msdx[i] + eps) / (msg[i] + eps)) * grad[i];
-               msdx[i]  += one_minus_rho * (dx * dx - msdx[i]);
-               param[i] -= dx;''',
-            'adadelta')(param, grad, msg, msdx,
-                        param.dtype.type(1 - self.rho),
-                        param.dtype.type(self.eps))
+            'T grad, T one_minus_rho, T eps',
+            'T param, T msg, T msdx',
+            '''msg   = msg + one_minus_rho * (grad * grad - msg);
+               T dx  = sqrt((msdx + eps) / (msg + eps)) * grad;
+               msdx  += one_minus_rho * (dx * dx - msdx);
+               param -= dx;''',
+            'adadelta')(grad, 1 - self.rho, self.eps,
+                        param, msg, msdx)

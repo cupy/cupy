@@ -74,9 +74,9 @@ class NegativeSampling(function.Function):
             samples.T[0] = t
         else:
             cuda.elementwise(
-                ['t', 's', 'm'], 's[i * m] = t[i];',
+                'T t, int32 m', 'raw T s', 's[i * m] = t;',
                 'negative_sampling_assign'
-            )(t, samples, self.sample_size + 1)
+            )(t, self.sample_size + 1, samples)
 
         self.samples = samples
 
@@ -124,38 +124,36 @@ class NegativeSampling(function.Function):
         n_in = x.shape[1]
         self._make_samples(t)
 
-        wx = cuda.empty((x.shape[0], self.sample_size + 1))
-        cuda.elementwise(
-            ['wx', 'W', 'x', 'k', 'c', 'm'],
+        self.wx = cuda.elementwise(
+            'raw T W, raw T x, S k, int32 c, int32 m', 'T wx',
             '''
-            float f = 0;
+            T f = 0;
             for (int j = 0; j < c; ++j) {
-              f += x[(i / m) * c + j] * W[k[i] * c + j];
+              f += x[(i / m) * c + j] * W[k * c + j];
             }
-            wx[i] = f;
+            wx = f;
             ''',
             'negative_sampling_wx'
-        )(wx, self.W, x, self.samples, n_in, self.sample_size + 1)
-        self.wx = wx
+        )(self.W, x, self.samples, n_in, self.sample_size + 1)
 
-        y = cuda.zeros_like(wx)
-        cuda.elementwise(
-            ['y', 'wx', 'c', 'm'],
+        y = cuda.elementwise(
+            'T wx, int32 c, int32 m', 'T y',
             '''
-            float f = wx[i];
+            T f = wx;
             if (i % m == 0) {
               f = -f;
             }
-            float loss;
+            T loss;
             if (f < 0) {
               loss = __logf(1 + __expf(f));
             } else {
               loss = f + __logf(1 + __expf(-f));
             }
-            y[i] = loss;
+            y = loss;
             ''',
             'negative_sampling_forward'
-        )(y, wx, n_in, self.sample_size + 1)
+        )(self.wx, n_in, self.sample_size + 1)
+        # TODO(okuta): merge elementwise
         loss = cuda.cupy.sum(y)
         return loss,
 
@@ -184,42 +182,41 @@ class NegativeSampling(function.Function):
         gloss, = grads
 
         n_in = x.shape[1]
-        g = cuda.empty_like(self.wx)
-        cuda.elementwise(
-            ['g', 'wx', 'gloss', 'm'],
+        g = cuda.elementwise(
+            'T wx, raw T gloss, int32 m', 'T g',
             '''
-            float y;
+            T y;
             if (i % m == 0) {
               y = 1;
             } else {
               y = -1;
             }
 
-            g[i] = -y * gloss[0] / (1.0f + __expf(wx[i] * y));
+            g = -y * gloss[0] / (1.0f + __expf(wx * y));
             ''',
             'negative_sampling_calculate_g'
-        )(g, self.wx, gloss, self.sample_size + 1)
+        )(self.wx, gloss, self.sample_size + 1)
         gx = cuda.zeros_like(x)
         cuda.elementwise(
-            ['gx', 'g', 'W', 'k', 'c', 'm'],
+            'raw T g, raw T W, raw S k, int32 c, int32 m', 'T gx',
             '''
             int d = i / c;
-            float w = 0;
+            T w = 0;
             for (int j = 0; j < m; ++j) {
               w += g[d * m + j] * W[k[d * m + j] * c + i % c];
             }
-            gx[i] = w;
+            gx = w;
             ''',
             'negative_sampling_calculate_gx'
-        )(gx, g, self.W, self.samples, n_in, self.sample_size + 1)
+        )(g, self.W, self.samples, n_in, self.sample_size + 1, gx)
         cuda.elementwise(
-            ['g', 'x', 'k', 'gW', 'c', 'm'],
+            'T g, raw T x, S k, int32 c, int32 m', 'raw T gW',
             '''
-            float gi = g[i];
+            T gi = g;
             for (int j = 0; j < c; ++j) {
-              atomicAdd(&gW[k[i] * c + j], gi * x[(i / m) * c + j]);
+              atomicAdd(&gW[k * c + j], gi * x[(i / m) * c + j]);
             }
             ''',
             'negative_sampling_calculate_gw'
-        )(g, x, self.samples, self.gW, n_in, self.sample_size + 1)
+        )(g, x, self.samples, n_in, self.sample_size + 1, self.gW)
         return gx, None

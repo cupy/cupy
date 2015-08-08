@@ -44,15 +44,14 @@ class Softplus(function.Function):
 
     def forward_gpu(self, inputs):
         x, = inputs
-        y = cuda.cupy.empty_like(x)
-        cuda.elementwise(
-            ['y', 'x', 'beta', 'beta_inv'],
+        y = cuda.elementwise(
+            'T x, T beta, T beta_inv', 'T y',
             '''
-              float bx = beta * x[i];
-              y[i] = (max(bx, 0.f) + log1p(exp(-fabs(bx)))) * beta_inv;
+              T bx = beta * x;
+              y = (max(bx, (T)0) + log1p(exp(-fabs(bx)))) * beta_inv;
             ''',
             'softplus_fwd'
-        )(y, x, x.dtype.type(self.beta), x.dtype.type(self.beta_inv))
+        )(x, self.beta, self.beta_inv)
         return y,
 
     def backward_cpu(self, inputs, grads):
@@ -63,12 +62,11 @@ class Softplus(function.Function):
     def backward_gpu(self, inputs, grads):
         x, = inputs
         g, = grads
-        gx = cuda.cupy.empty_like(x)
-        cuda.elementwise(
-            ['gx', 'x', 'g', 'beta'],
-            'gx[i] = (1 - 1 / (1 + exp(beta * x[i]))) * g[i]',
+        gx = cuda.elementwise(
+            'T x, T g, T beta', 'T gx',
+            'gx = (1 - 1 / (1 + exp(beta * x))) * g',
             'softplus_bwd'
-        )(gx, x, g, x.dtype.type(self.beta))
+        )(x, g, self.beta)
         return gx,
 
 

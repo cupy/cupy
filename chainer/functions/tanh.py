@@ -43,8 +43,8 @@ class Tanh(function.Function):
         return gy[0] * (1 - self.y * self.y),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(self.y)
         if cuda.cudnn_enabled and self.use_cudnn:
+            gx = cuda.empty_like(self.y)
             handle = cudnn.get_handle()
             y_mat = self.y.reshape(self.y.shape[0], -1, 1, 1)
             desc = cudnn.create_tensor_descriptor(y_mat)
@@ -53,10 +53,10 @@ class Tanh(function.Function):
                 desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
                 ctypes.c_float(0), desc.value, gx.data.ptr)
         else:
-            cuda.elementwise(
-                ['gx', 'y', 'gy'],
-                'gx[i] = gy[i] * (1 - y[i] * y[i])',
-                'tanh_bwd')(gx, self.y, gy[0])
+            gx = cuda.elementwise(
+                'T y, T gy', 'T gx',
+                'gx = gy * (1 - y * y)',
+                'tanh_bwd')(self.y, gy[0])
         return gx,
 
 

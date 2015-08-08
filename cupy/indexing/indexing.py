@@ -31,7 +31,6 @@ def take(a, indices, axis=None, out=None, allocator=None):
     """
     if axis is None:
         a = a.ravel()
-        aarg = a
         lshape = ()
         rshape = ()
     else:
@@ -39,7 +38,6 @@ def take(a, indices, axis=None, out=None, allocator=None):
             raise ValueError('Axis overrun')
         lshape = a.shape[:axis]
         rshape = a.shape[axis + 1:]
-        aarg = a.reduced_view()
 
     if allocator is None:
         allocator = a.allocator
@@ -57,18 +55,15 @@ def take(a, indices, axis=None, out=None, allocator=None):
     out_shape = lshape + indices.shape + rshape
     if out is None:
         out = cupy.empty(out_shape, dtype=a.dtype, allocator=allocator)
-        outarg = out.ravel()
     else:
         if out.dtype != a.dtype:
             raise TypeError('Output dtype mismatch')
         if out.shape != out_shape:
             raise ValueError('Output shape mismatch')
-        outarg = out.reduced_view()
 
     cdim = indices.size
     rdim = numpy.prod(rshape, dtype=int)
-    _take_kernel(outarg, aarg, indices.reduced_view(), cdim, rdim)
-    return out
+    return _take_kernel(a, indices, cdim, rdim, out)
 
 
 def choose(a, choices, out=None, mode='raise', allocator=None):
@@ -136,11 +131,12 @@ def select(condlist, choicelist, default=0, allocator=None):
 
 
 _take_kernel = elementwise.ElementwiseKernel(
-    ['out', 'a', 'indices', 'cdim', 'rdim'],
+    'raw T a, raw S indices, int64 cdim, int64 rdim',
+    'T out',
     '''
       long long li = i / (rdim * cdim);
       long long ci = indices[i / rdim % cdim];
       long long ri = i % rdim;
-      out[i] = a[(li * cdim + ci) * rdim + ri];
+      out = a[(li * cdim + ci) * rdim + ri];
     ''',
     'cupy_take')

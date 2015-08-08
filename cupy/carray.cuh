@@ -27,26 +27,27 @@ public:
     data_ = __float2half_rn(static_cast<float>(v));
   }
 
-  __device__ operator float() {return __half2float(data_);}
+  __device__ operator float() const {return __half2float(data_);}
+
   static const unsigned short nan = 0x7e00u;
 
-  __device__ int iszero() {
+  __device__ int iszero() const {
     return (data_ & 0x7fff) == 0;
   }
 
-  __device__ int isnan() {
+  __device__ int isnan() const {
     return (data_ & 0x7c00u) == 0x7c00u && (data_ & 0x03ffu) != 0x0000u;
   }
 
-  __device__ int isinf() {
+  __device__ int isinf() const {
     return (data_ & 0x7fffu) == 0x7c00u;
   }
 
-  __device__ int isfinite() {
+  __device__ int isfinite() const {
     return (data_ & 0x7c00u) != 0x7c00u;
   }
 
-  __device__ int signbit()
+  __device__ int signbit() const
   {
     return (data_ & 0x8000u) != 0;
   }
@@ -57,7 +58,7 @@ public:
     return ret;
   }
 
-  static __device__ int eq_nonan(float16 x, float16 y) {
+  static __device__ int eq_nonan(const float16 x, const float16 y) {
     return (x.data_ == y.data_ || ((x.data_ | y.data_) & 0x7fff) == 0);
   }
 

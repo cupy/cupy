@@ -124,7 +124,7 @@ class RandomState(object):
         return self.normal(size=size, dtype=dtype, allocator=allocator)
 
     _1m_kernel = elementwise.ElementwiseKernel(
-        ['x'], 'x[i] = 1 - x[i]', 'cupy_random_1_minus_x')
+        '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
 
     def random_sample(self, size=None, dtype=float, allocator=cuda.alloc):
         """Returns an array of random values over the interval ``[0, 1)``.

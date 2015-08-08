@@ -106,14 +106,12 @@ class LSTM(function.Function):
         lsize = c_prev.shape[0] * c_prev.shape[1]
         rsize = c_prev.size // lsize
 
-        self.c = cuda.empty_like(c_prev)
-        h = cuda.empty_like(c_prev)
-        cuda.elementwise(
-            ['c', 'h', 'c_prev', 'x', 'lsize', 'rsize'],
+        self.c, h = cuda.elementwise(
+            'T c_prev, raw T x, int32 lsize, int32 rsize', 'T c, T h',
             '''COMMON_ROUTINE;
-               c[i] = aa * ai + af * c_prev[i];
-               h[i] = ao * tanhf(c[i]);''',
-            'lstm_fwd', preamble=_preamble)(self.c, h, c_prev, x, lsize, rsize)
+               c = aa * ai + af * c_prev;
+               h = ao * tanhf(c);''',
+            'lstm_fwd', preamble=_preamble)(c_prev, x, lsize, rsize)
 
         return self.c, h
 
@@ -132,8 +130,9 @@ class LSTM(function.Function):
         gc_prev = cuda.empty_like(c_prev)
         gx = cuda.empty_like(x)
         cuda.elementwise(
-            ['gc_prev', 'gx', 'c_prev', 'x', 'c',
-             'gc', 'gh', 'lsize', 'rsize'],
+            'T c_prev, raw T x, T c, raw T gc, raw T gh,'
+            'int32 lsize, int32 rsize',
+            'T gc_prev, raw T gx',
             '''
                COMMON_ROUTINE;
                int gxi = I * 4 * rsize;
@@ -142,21 +141,19 @@ class LSTM(function.Function):
                float& gf = gx[gxi + 2*rsize + J];
                float& go = gx[gxi + 3*rsize + J];
 
-               float co  = tanhf(c[i]);
-               // Odd rule: if gh == c [gc == c] then gh [gc] is not given,
-               // since we cannot pass null pointer to the kernel through
-               // PyCUDA.
+               float co  = tanhf(c);
                float gc1 = (gh.size() == 0 ? 0 : gh[i] * ao * grad_tanh(co))
                          + (gc.size() == 0 ? 0 : gc[i]);
                go        =  gh.size() == 0 ? 0 : gh[i] * co * grad_sigmoid(ao);
 
-               gc_prev[i] = gc1 * af;
-               ga         = gc1 * ai        * grad_tanh(aa);
-               gi         = gc1 * aa        * grad_sigmoid(ai);
-               gf         = gc1 * c_prev[i] * grad_sigmoid(af);
+               gc_prev = gc1 * af;
+               ga      = gc1 * ai     * grad_tanh(aa);
+               gi      = gc1 * aa     * grad_sigmoid(ai);
+               gf      = gc1 * c_prev * grad_sigmoid(af);
             ''',
             'lstm_bwd', preamble=_preamble)(
-                gc_prev, gx, c_prev, x, self.c, gc, gh, lsize, rsize)
+                c_prev, x, self.c, gc, gh, lsize, rsize,
+                gc_prev, gx)
 
         return gc_prev, gx
 

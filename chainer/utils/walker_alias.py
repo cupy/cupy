@@ -87,20 +87,20 @@ class WalkerAlias(object):
         return self.values[index * 2 + left_right]
 
     def sample_gpu(self, shape):
-        ps = cuda.random.uniform(size=shape).astype(dtype=numpy.float32)
-        vs = cuda.empty(shape, numpy.int32)
-        cuda.elementwise(
-            ['vs', 'ps', 'threshold', 'values', 'b'],
+        ps = cuda.cupy.random.uniform(size=shape, dtype=numpy.float32)
+        vs = cuda.elementwise(
+            'T ps, raw T threshold , raw S values, int32 b',
+            'int32 vs',
             '''
-            float pb = ps[i] * b;
+            T pb = ps * b;
             int index = __float2int_rd(pb);
             // fill_uniform sometimes returns 1.0, so we need to check index
             if (index >= b) {
               index = 0;
             }
             int lr = threshold[index] < pb - index;
-            vs[i] = values[index * 2 + lr];
+            vs = values[index * 2 + lr];
             ''',
             'walker_alias_sample'
-        )(vs, ps, self.threshold, self.values, len(self.threshold))
+        )(ps, self.threshold, self.values, len(self.threshold))
         return vs

@@ -28,9 +28,9 @@ class AdaGrad(optimizer.Optimizer):
 
     def update_one_gpu(self, param, grad, h):
         cuda.elementwise(
-            ['param', 'grad', 'h', 'lr', 'eps'],
-            '''h[i] += grad[i] * grad[i];
-               param[i] -= lr * grad[i] / (sqrt(h[i]) + eps);''',
-            'adagrad')(param, grad, h,
-                       param.dtype.type(self.lr),
-                       param.dtype.type(self.eps))
+            'T grad, T lr, T eps',
+            'T param, T h',
+            '''h += grad * grad;
+               param -= lr * grad / (sqrt(h) + eps);''',
+            'adagrad')(grad, self.lr, self.eps,
+                       param, h)

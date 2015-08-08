@@ -47,8 +47,8 @@ class ReLU(function.Function):
         return gy[0] * (x[0] > 0),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
+            gx = cuda.empty_like(x[0])
             handle = cudnn.get_handle()
             y_mat = self.y.reshape(self.y.shape[0], -1, 1, 1)
             desc = cudnn.create_tensor_descriptor(y_mat)
@@ -57,10 +57,10 @@ class ReLU(function.Function):
                 desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
                 ctypes.c_float(0), desc.value, gx.data.ptr)
         else:
-            cuda.elementwise(
-                ['gx', 'x', 'gy'],
-                'gx[i] = x[i] > 0 ? gy[i] : 0',
-                'relu_bwd')(gx, x[0], gy[0])
+            gx = cuda.elementwise(
+                'T x, T gy', 'T gx',
+                'gx = x > 0 ? gy : 0',
+                'relu_bwd')(x[0], gy[0])
         return gx,
 
 
