@@ -22,11 +22,11 @@ class Accuracy(function.Function):
             type_check.expect(x_type.shape[i] == 1)
 
     def forward(self, inputs):
-        xpy = cuda.get_array_module(*inputs)
+        xp = cuda.get_array_module(*inputs)
         y, t = inputs
         y = y.reshape(len(y), -1)  # flatten
         pred = y.argmax(axis=1)
-        return xpy.asarray((pred == t).mean(dtype='f')),
+        return xp.asarray((pred == t).mean(dtype='f')),
 
 
 def accuracy(y, t):
