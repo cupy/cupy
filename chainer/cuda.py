@@ -129,6 +129,8 @@ def get_device(*args):
 
     """
     for arg in args:
+        if arg is None:
+            continue
         if not isinstance(arg, numpy.ndarray):
             _check_cuda_available()
             if isinstance(arg, cupy.ndarray):
