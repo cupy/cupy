@@ -416,7 +416,7 @@ class SpatialPyramidPooling2D(function.Function):
         return concat.Concat(axis=1).forward(self.ys)
 
     def backward(self, x, gy):
-        xp = cuda.get_array_module(x)
+        xp = cuda.get_array_module(*x)
         gx = xp.zeros_like(x[0])
         gys = split_axis.SplitAxis(self.split_inds, axis=1).forward(gy)
         for pooler, gy in zip(self.poolers, gys):
