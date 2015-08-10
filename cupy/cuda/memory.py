@@ -18,10 +18,10 @@ class Memory(object):
 
     """
     def __init__(self, size):
+        self.size = size
         self.ptr = ctypes.c_void_p()
         if size > 0:
             self.ptr = runtime.malloc(size)
-        self.size = size
 
     def __del__(self):
         if self.ptr:

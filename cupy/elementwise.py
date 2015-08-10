@@ -255,6 +255,9 @@ class ElementwiseKernel(object):
 
         brod = cupy.broadcast(
             *[None if p.raw else a for p, a in zip(self.params, args)])
+        if all(i is None for i in brod.values) and 'size' not in kwargs:
+            raise TypeErrpr('Loop size is Undecided')
+
         brod_value = [b if a is None else a for a, b in zip(brod.values, args)]
         in_args = brod_value[:len(self.in_params)]
         out_args = brod_value[len(self.in_params):]
