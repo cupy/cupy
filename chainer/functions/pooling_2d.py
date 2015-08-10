@@ -71,13 +71,16 @@ class Pooling2D(function.Function):
         handle = cudnn.get_handle()
         pool_desc = self.create_pool_desc()
 
+        # Pooling of cuDNNv2 does not seem to support non-contiguous gradients
+        gy = cuda.cupy.ascontiguousarray(gy[0])
+
         x_desc = cudnn.create_tensor_descriptor(x[0])
-        y_desc = cudnn.create_tensor_descriptor(gy[0])
+        y_desc = cudnn.create_tensor_descriptor(gy)
 
         gx = cuda.empty_like(x[0])
         libcudnn.poolingBackward(
             handle, pool_desc.value, ctypes.c_float(1), y_desc.value,
-            self.y.data.ptr, y_desc.value, gy[0].data.ptr, x_desc.value,
+            self.y.data.ptr, y_desc.value, gy.data.ptr, x_desc.value,
             x[0].data.ptr, ctypes.c_float(0), x_desc.value, gx.data.ptr)
         return gx,
 
@@ -418,7 +421,7 @@ class SpatialPyramidPooling2D(function.Function):
     def backward(self, x, gy):
         xp = cuda.get_array_module(*x)
         gx = xp.zeros_like(x[0])
-        gys = split_axis.SplitAxis(self.split_inds, axis=1).forward(gy)
+        gys = xp.split(gy[0], self.split_inds, axis=1)
         for pooler, gy in zip(self.poolers, gys):
             gy = gy.reshape(pooler.out_shape)
             gx += pooler.backward(x, (gy,))[0]
