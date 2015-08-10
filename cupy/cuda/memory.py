@@ -18,14 +18,14 @@ class Memory(object):
 
     """
     def __init__(self, size):
+        self.ptr = ctypes.c_void_p()
         if size > 0:
             self.ptr = runtime.malloc(size)
-        else:
-            self.ptr = ctypes.c_void_p()
         self.size = size
 
     def __del__(self):
-        runtime.free(self.ptr)
+        if self.ptr:
+            runtime.free(self.ptr)
 
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
