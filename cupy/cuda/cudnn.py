@@ -159,14 +159,13 @@ def setTensor4dDescriptor(tensorDesc, format, dataType, n, c, h, w):
 
 
 _cudnn.cudnnSetTensor4dDescriptorEx.argtypes = [
-    TensorDescriptor, _I, _I, _I, _I, _I, _I, _I, _I, _I, _I]
+    TensorDescriptor, _I, _I, _I, _I, _I, _I, _I, _I, _I]
 
 
-def setTensor4dDescriptorEx(tensorDesc, format, dataType, n, c, h, w,
+def setTensor4dDescriptorEx(tensorDesc, dataType, n, c, h, w,
                             nStride, cStride, hStride, wStride):
     status = _cudnn.cudnnSetTensor4dDescriptorEx(
-        tensorDesc, format, dataType, n, c, h, w,
-        nStride, cStride, hStride, wStride)
+        tensorDesc, dataType, n, c, h, w, nStride, cStride, hStride, wStride)
     check_status(status)
 
 

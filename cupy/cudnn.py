@@ -78,7 +78,7 @@ def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
             strides = _get_strides(arr)
             shape_strides = arr.shape + strides
             cudnn.setTensor4dDescriptorEx(
-                desc.value, format, data_type, *shape_strides)
+                desc.value, data_type, *shape_strides)
     else:
         strides = _get_strides(arr)
         cudnn.setTensorNdDescriptor(
