@@ -174,9 +174,9 @@ def _get_elementwise_kernel(
     for x, f in zip(params, is_ndarray):
         if not f or x.raw:
             continue
-        fmt = '{t} &{n} = {n}_raw[i];'
+        fmt = '{t} &{n} = _raw_{n}[i];'
         if x.const:
-            fmt = 'const {t} {n} = {n}_raw[i];'
+            fmt = 'const {t} {n} = _raw_{n}[i];'
         op.append(fmt.format(t=x.ctype, n=x.name))
     op.append(operation)
     operation = '\n'.join(op)
@@ -294,7 +294,7 @@ class ElementwiseKernel(object):
             name = self.params[i].name
             if isinstance(x, cupy.ndarray):
                 if not self.params[i].raw:
-                    name += "_raw"
+                    name = "_raw_" + name
                 if self.reduce_dims:
                     inout_args[i] = x.reduced_view()
             elif i < len(in_args):
