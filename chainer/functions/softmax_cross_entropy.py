@@ -103,7 +103,7 @@ class SoftmaxCrossEntropy(function.Function):
             count = t.shape[0] * n_unit
         else:
             count = t.shape[0]
-        coeff = gloss / count
+        coeff = cuda.cupy.divide(gloss, count, dtype=gloss.dtype)
         gx = cuda.elementwise(
             'T y, raw S t, raw T coeff, S n_channel, S n_unit',
             'T gx',
