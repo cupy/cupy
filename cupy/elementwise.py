@@ -85,7 +85,6 @@ class ParameterInfo(object):
                 raise Exception('Unknown keyward "%s"' % i)
 
 
-@cuda.memoize
 def _get_param_info_tuple(str, const=False):
     if len(str) == 0:
         return ()
