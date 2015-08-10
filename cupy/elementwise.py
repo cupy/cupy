@@ -189,10 +189,8 @@ class ElementwiseKernel(object):
 
     """User-defined elementwise kernel.
 
-    This class can be used to define a PyCUDA-style elementwise kernel. It can
-    accept an arbitrary number of arguments of either scalars or arrays. User
-    just define the body in the loop using the variable ``i`` that refers to
-    the indices running through all the elements of the first array argument.
+    This class can be used to define an elementwise kernel with or without
+    broadcasting.
 
     The kernel is compiled at an invocation of the
     :meth:`ElementwiseKernel.__call__` method, which is cached for each device.
@@ -201,11 +199,9 @@ class ElementwiseKernel(object):
     binary is reused by other processes.
 
     Args:
-        param_names (list): List of argument names. Note that the type of the
-            arguments are automatically determined at invocations.
-        operation (str): The body in the loop written in CUDA-C/C++. The code
-            can refer the variables of names given by ``param_names`` and the
-            special variable ``i`` that refers to the loop index.
+        in_params (str): Input argument list.
+        out_params (str): Output argument list.
+        operation (str): The body in the loop written in CUDA-C/C++.
         name (str): Name of the kernel function. It should be set for
             readability of the performance profiling.
         options (list): Options passed to the nvcc command.
@@ -221,27 +217,6 @@ class ElementwiseKernel(object):
             loop.
         after_loop (str): Fragment of the CUDA-C/C++ code that is inserted at
             the bottom of the kernel function definition.
-
-    .. admonition:: Example
-
-       Suppose that we want to compute ``(x-y) * (x-y)`` elementwise. It can be
-       done as a combination of vector computations, which needs two kernels.
-       We can use the ElementwiseKernel class to unify the kernels as
-       folllows::
-
-           >>> x = cupy.array([1, 2, 3, 4, 5], dtype='f')
-           >>> y = cupy.array([5, 4, 3, 2, 1], dtype='f')
-           >>> kernel = cupy.elementwise.ElementwiseKernel(
-           ...     ['x', 'y', 'z'],
-           ...     '''
-           ...         float diff = x[i] - y[i];
-           ...         z[i] = diff * diff;
-           ...     ''',
-           ...     'squared_diff')
-           >>> z = cupy.empty_like(x)
-           >>> kernel(x, y, z)
-           >>> z
-           array([ 16.,   4.,   0.,   4.,  16.], dtype=float32)
 
     """
     def __init__(self, in_params, out_params, operation,
@@ -267,9 +242,9 @@ class ElementwiseKernel(object):
 
         Args:
             args: Argumens of the kernel.
-            size (int): Range size of the indices. The variable ``i`` runs
-                through the range from 0 to size - 1. The size of the first
-                array argument is used by default.
+            size (int): Range size of the indices. If specified, the variable
+                ``n`` is set to this value. Otherwise, the result of
+                broadcasting is used to determine the value of ``n``.
 
         """
         if not (len(args) == len(self.in_params) or
