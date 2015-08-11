@@ -16,6 +16,9 @@ class Bilinear(function.Function):
     If one of the input vectors is fixed, this function works
     as an affine transform of the other input vector.
 
+    ``Bilinear`` function is a building block of Neural Tensor Network
+    (See the reference paper below).
+
     To be precise, ``Bilinear`` function has four parameters,
     :math:`W\in \mathbb{R}^{J \cdot K \cdot L}`,
     :math:`V^1\in \mathbb{R}^{J \cdot L}`,
