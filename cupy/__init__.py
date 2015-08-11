@@ -709,60 +709,89 @@ class ndarray(object):
     # Arithmetic:
 
     def __add__(self, other):
-        # TODO(okuta): Support `__array_priority__`
-        return add(self, other)
+        if self._should_use_rop(other):
+            return other.__radd__(self)
+        else:
+            return add(self, other)
 
     def __sub__(self, other):
-        return subtract(self, other)
+        if self._should_use_rop(other):
+            return other.__rsub__(self)
+        else:
+            return subtract(self, other)
 
     def __mul__(self, other):
-        # TODO(okuta): Support `__array_priority__`
-        return multiply(self, other)
+        if self._should_use_rop(other):
+            return other.__rmul__(self)
+        else:
+            return multiply(self, other)
 
     def __div__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return divide(self, other)
+        if self._should_use_rop(other):
+            return other.__rdiv__(self)
+        else:
+            return divide(self, other)
 
     def __truediv__(self, other):
-        # TODO(okuta): Support `__array_priority__`
-        return true_divide(self, other)
+        if self._should_use_rop(other):
+            return other.__rtruediv__(self)
+        else:
+            return true_divide(self, other)
 
     def __floordiv__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return floor_divide(self, other)
+        if self._should_use_rop(other):
+            return other.__rfloordiv__(self)
+        else:
+            return floor_divide(self, other)
 
     def __mod__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return remainder(self, other)
+        if self._should_use_rop(other):
+            return other.__rmod__(self)
+        else:
+            return remainder(self, other)
 
     def __divmod__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return elementwise._ivmod(self, other)
+        if self._should_use_rop(other):
+            return other.__rdivmod__(self)
+        else:
+            return elementwise._divmod(self, other)
 
     def __pow__(self, other, modulo=None):
-        # TODO(okuta): Support `__array_priority__`
         # Note that we ignore the modulo argument as well as NumPy.
-        return power(self, other)
+        if self._should_use_rop(other):
+            return other.__rpow__(self)
+        else:
+            return power(self, other)
 
     def __lshift__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return left_shift(self, other)
+        if self._should_use_rop(other):
+            return other.__rlshift__(self)
+        else:
+            return left_shift(self, other)
 
     def __rshift__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return right_shift(self, other)
+        if self._should_use_rop(other):
+            return other.__rrshift__(self)
+        else:
+            return right_shift(self, other)
 
     def __and__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return bitwise_and(self, other)
+        if self._should_use_rop(other):
+            return other.__rand__(self)
+        else:
+            return bitwise_and(self, other)
 
     def __or__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return bitwise_or(self, other)
+        if self._should_use_rop(other):
+            return other.__ror__(self)
+        else:
+            return bitwise_or(self, other)
 
     def __xor__(self, other):
-        # TODO(beam2d): Support `__array_priority__`
-        return bitwise_xor(self, other)
+        if self._should_use_rop(other):
+            return other.__rxor__(self)
+        else:
+            return bitwise_xor(self, other)
 
     # Arithmetic __r{op}__ (CuPy specific):
 
@@ -1126,11 +1155,8 @@ class ndarray(object):
         self._update_c_contiguity()
         self._update_f_contiguity()
 
-# -----------------------------------------------------------------------------
-# Add comparison of `__array_priority__` to ndarray binary operator
-# -----------------------------------------------------------------------------
-
-# TODO(okuta): Fix this
+    def _should_use_rop(self, a):
+        return getattr(a, '__array_priority__', 0) > self.__array_priority__
 
 
 def _wrap_operation(obj, op):
