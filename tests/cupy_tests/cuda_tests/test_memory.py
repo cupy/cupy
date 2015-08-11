@@ -89,23 +89,6 @@ class TestMemoryPointer(unittest.TestCase):
             self.assertEqual(a_cpu.value, 1)
             a_gpu += 1
 
-    def check_memset32(self, values, ctype):
-        a_gpu = memory.alloc(8)
-        a_gpu.memset32(values[1], 8)
-        a_gpu.memset32(values[0], 4)
-
-        a_cpu = ctype()
-        for i, value in enumerate(values):
-            a_gpu.copy_to_host(ctypes.byref(a_cpu), 4)
-            self.assertEqual(value, a_cpu.value)
-            a_gpu += 4
-
-    def test_memset32_int(self):
-        self.check_memset32([100, 200], ctypes.c_uint)
-
-    def test_memset32_float(self):
-        self.check_memset32([1.5, 2.5], ctypes.c_float)
-
 
 # -----------------------------------------------------------------------------
 # Memory pool

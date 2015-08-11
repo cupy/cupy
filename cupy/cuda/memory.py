@@ -220,37 +220,6 @@ class MemoryPointer(object):
         if size > 0:
             runtime.memsetAsync(self.ptr, value, size, stream)
 
-    def memset32(self, value, size):
-        """Fills a memory sequence by constant four bytes value.
-
-        Args:
-            value (int or float): Value to fill. An int [float] value is
-                converted to int32 [float32] value.
-            size (int): Size of the sequence in bytes.
-
-        """
-        if size > 0:
-            if isinstance(value, float):
-                value = ctypes.cast((ctypes.c_float * 1)(value),
-                                    ctypes.POINTER(ctypes.c_uint))[0]
-            driver.memsetD32(self.ptr, value, size // 4)
-
-    def memset32_async(self, value, size, stream):
-        """Fills a memory sequence by constant four bytes value asynchronously.
-
-        Args:
-            value (int or float): Value to fill. An int [float] value is
-                converted to int32 [float32] value.
-            size (int): Size of the sequence in bytes.
-            stream (cupy.cuda.Stream): CUDA stream.
-
-        """
-        if size > 0:
-            if isinstance(value, float):
-                value = ctypes.cast((ctypes.c_float * 1)(value),
-                                    ctypes.POINTER(ctypes.c_uint))[0]
-            driver.memsetD32Async(self.ptr, value, size // 4)
-
 
 def _malloc(size):
     mem = Memory(size)
