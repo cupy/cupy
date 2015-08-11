@@ -700,29 +700,10 @@ class ndarray(object):
 
     def __add__(self, other):
         # TODO(okuta): Support `__array_priority__`
-        if not isinstance(other, ndarray):
-            return add(self, other)
-        x = other.squeeze()
-        y = self.squeeze()
-        if internal.can_axpy(x, y):
-            ret = y.copy()
-            internal.axpy(1, x, ret)
-            return ret.reshape(self.shape)
-        else:
-            return add(self, other)
+        return add(self, other)
 
     def __sub__(self, other):
-        # TODO(okuta): Support `__array_priority__`
-        if not isinstance(other, ndarray):
-            return subtract(self, other)
-        x = other.squeeze()
-        y = self.squeeze()
-        if internal.can_axpy(x, y):
-            ret = y.copy()
-            internal.axpy(-1, x, ret)
-            return ret.reshape(self.shape)
-        else:
-            return subtract(self, other)
+        return subtract(self, other)
 
     def __mul__(self, other):
         # TODO(okuta): Support `__array_priority__`
@@ -776,28 +757,10 @@ class ndarray(object):
     # Arithmetic __r{op}__ (CuPy specific):
 
     def __radd__(self, other):
-        if not isinstance(other, ndarray):
-            return add(self, other)
-        x = self.squeeze()
-        y = other.squeeze()
-        if internal.can_axpy(x, y):
-            ret = y.copy()
-            internal.axpy(1, x, ret)
-            return ret.reshape(self.shape)
-        else:
-            return add(self, other)
+        return add(other, self)
 
     def __rsub__(self, other):
-        if not isinstance(other, ndarray):
-            return subtract(other, self)
-        x = self.squeeze()
-        y = other.squeeze()
-        if internal.can_axpy(x, y):
-            ret = y.copy()
-            internal.axpy(-1, x, ret)
-            return ret.reshape(self.shape)
-        else:
-            return subtract(other, self)
+        return subtract(other, self)
 
     def __rmul__(self, other):
         if not isinstance(other, ndarray):
@@ -840,26 +803,10 @@ class ndarray(object):
     # Arithmetic, in-place:
 
     def __iadd__(self, other):
-        if not isinstance(other, ndarray):
-            return add(self, other, self)
-        x = other.squeeze()
-        y = self.squeeze()
-        if internal.can_axpy(x, y):
-            internal.axpy(1, x, y)
-            return self
-        else:
-            return add(self, other, self)
+        return add(self, other, self)
 
     def __isub__(self, other):
-        if not isinstance(other, ndarray):
-            return subtract(self, other, self)
-        x = other.squeeze()
-        y = self.squeeze()
-        if internal.can_axpy(x, y):
-            internal.axpy(-1, x, y)
-            return self
-        else:
-            return subtract(self, other, self)
+        return subtract(self, other, self)
 
     def __imul__(self, other):
         return multiply(self, other, self)

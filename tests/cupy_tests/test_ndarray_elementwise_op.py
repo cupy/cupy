@@ -249,3 +249,18 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_doubly_broadcasted_pow(self):
         self.check_array_doubly_broadcasted_op(operator.pow)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_array_reversed_op(self, op, xpy, dtype):
+        a = testing.shaped_arange((5,), xpy, dtype)
+        return op(a, a[::-1])
+
+    def test_array_reversed_add(self):
+        self.check_array_reversed_op(operator.add)
+
+    def test_array_reversed_sub(self):
+        self.check_array_reversed_op(operator.sub)
+
+    def test_array_reversed_mul(self):
+        self.check_array_reversed_op(operator.mul)
