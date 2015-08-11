@@ -70,8 +70,8 @@ class Bilinear(function.Function):
 
     See:
         `Reasoning With Neural Tensor Networks for Knowledge Base Completion
-        <http://nlp.stanford.edu/pubs/SocherChenManningNg_NIPS2013.pdf>`_
-        [Socher+, NIPS2013].
+        <http://papers.nips.cc/paper/5028-reasoning-with-neural-tensor-
+        networks-for-knowledge-base-completion>`_ [Socher+, NIPS2013].
     """
 
     def __init__(self, left_size, right_size, out_size, nobias=False,
