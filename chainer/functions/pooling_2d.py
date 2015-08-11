@@ -478,4 +478,4 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
     """
 
     return SpatialPyramidPooling2D(x.data.shape[1:], pyramid_height,
-                                   pooling_class, use_cudnn=True)(x)
+                                   pooling_class, use_cudnn=use_cudnn)(x)
