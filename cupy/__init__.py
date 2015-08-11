@@ -891,22 +891,8 @@ class ndarray(object):
     def __deepcopy__(self, memo):
         return self.copy()
 
-    # cupy.ndarray uses __getstate__ instead of __reduce__ for pickling
-    def __getstate__(self):
-        return (self.get(),)
-
-    def __setstate__(self, arr):
-        arr = arr[0]
-        self._shape = arr.shape
-        self._dtype = arr.dtype
-        self._allocator = cuda.alloc
-        self.data = self._allocator(self.nbytes)
-        self._strides = arr.strides
-        self.base = None
-        self._flags = flags.OWNDATA
-        self._update_contiguity()
-
-        self.set(arr)
+    def __reduce__(self):
+        return array, (self.get(),)
 
     # Basic customization:
 
