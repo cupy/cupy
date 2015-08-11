@@ -50,8 +50,10 @@ def load(file, mmap_mode=None, allocator=cuda.alloc):
     obj = numpy.load(file, mmap_mode)
     if isinstance(obj, numpy.ndarray):
         return cupy.array(obj, allocator=allocator)
-    else:
+    elif isinstance(obj, numpy.lib.npyio.NpzFile):
         return NpzFile(obj, allocator)
+    else:
+        return obj
 
 
 def save(file, arr):

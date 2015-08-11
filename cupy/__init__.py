@@ -4,6 +4,7 @@ import ctypes
 import sys
 
 import numpy
+import six
 
 from cupy import binary
 from cupy import carray
@@ -289,9 +290,18 @@ class ndarray(object):
         """
         self.get().tofile(fid, sep, format)
 
-    # TODO(beam2d): Implement these
-    # def dump(self, file):
-    # def dumps(self):
+    def dump(self, file):
+        """Dumps a pickle of the array to a file.
+
+        Dumped file can be read back to cupy.ndarray by
+        :func:`cupy.load`.
+
+        """
+        six.moves.cPickle.dump(self, file, -1)
+
+    def dumps(self):
+        """Dumps a pickle of the array to a string."""
+        return six.moves.cPickle.dumps(self, -1)
 
     def astype(self, dtype, copy=True, allocator=None):
         """Casts the array to given data type.

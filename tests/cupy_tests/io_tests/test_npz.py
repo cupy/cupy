@@ -56,3 +56,18 @@ class TestNpz(unittest.TestCase):
         s = six.moves.cPickle.dumps(a)
         b = six.moves.cPickle.loads(s)
         testing.assert_array_equal(a, b)
+
+    @testing.for_all_dtypes()
+    def test_dump(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), dtype=dtype)
+
+        sio = six.BytesIO()
+        a.dump(sio)
+        s = sio.getvalue()
+        sio.close()
+
+        sio = six.BytesIO(s)
+        b = cupy.load(sio)
+        sio.close()
+
+        testing.assert_array_equal(a, b)
