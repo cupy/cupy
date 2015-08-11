@@ -12,7 +12,7 @@ class Bilinear(function.Function):
 
     """Bilinear function, an extension of Linear function.
 
-    ``Bilinear`` takes two input vectors and outputs one vector.
+    ``Bilinear`` function takes two input vectors and outputs one vector.
     If one of the input vectors is fixed, this function works
     as an affine transform of the other input vector.
 
@@ -25,9 +25,9 @@ class Bilinear(function.Function):
 
     .. note::
 
-       In the original paper referenced below, :math:`J` and `K` must be equal
-       nd the author denotes :math:`[V^1 V^2]` (concatenation of matrices)
-       by :math:`V`.
+       In the original paper referenced below, :math:`J` and :math:`K`
+       must be equal and the author denotes :math:`[V^1 V^2]`
+       (concatenation of matrices) by :math:`V`.
 
     Given two inputs (in a mini-batch manner)
     :math:`e^1\in \mathbb{R}^{I\cdot J}` and
@@ -40,7 +40,7 @@ class Bilinear(function.Function):
       y_{il} = \sum_{jk} e^1_{ij} e^2_{ik} W_{jkl} + \
         \sum_{j} e^1_{ij} V^1_{jl} + \sum_{k} e^2_{ik} V^2_{kl} + b_{l}.
 
-    If ``nobias`` option is set ``True``, ``Bilinear`` does
+    If ``nobias`` option is set ``True``, ``Bilinear`` function does
     not have linear parameters, that is, the last three term is omitted
     and only :math:`W` works as the parameter.
 
