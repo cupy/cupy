@@ -23,12 +23,6 @@ class Bilinear(function.Function):
     In this document, we call :math:`V^1`, :math:`V^2`,
     and :math:`b` linear parameters.
 
-    .. note::
-
-       In the original paper referenced below, :math:`J` and :math:`K`
-       must be equal and the author denotes :math:`[V^1 V^2]`
-       (concatenation of matrices) by :math:`V`.
-
     Given two inputs (in a mini-batch manner)
     :math:`e^1\in \mathbb{R}^{I\cdot J}` and
     :math:`e^2\in \mathbb{R}^{I\cdot K}`
@@ -49,6 +43,12 @@ class Bilinear(function.Function):
        ``Bilinear`` function accepts an input variable of a non-matrix array.
        In this case, the leading dimension is treated as the batch dimension,
        and the other dimensions are reduced to one dimension.
+
+    .. note::
+
+       In the original paper, :math:`J` and :math:`K`
+       must be equal and the author denotes :math:`[V^1 V^2]`
+       (concatenation of matrices) by :math:`V`.
 
     Args:
         left_size (int): Dimension of input vector :math:`e^1` (:math:`J`)
