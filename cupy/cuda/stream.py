@@ -1,3 +1,5 @@
+import ctypes
+
 from cupy.cuda import runtime
 
 
@@ -22,30 +24,37 @@ class Event(object):
 
     """
     def __init__(self, block=False, disable_timing=False, interprocess=False):
+        self.ptr = runtime.Event()
+
         if interprocess and not disable_timing:
             raise ValueError('Timing must be disabled for interprocess events')
-        flag = ((block or runtime.EVENT_BLOCKING_SYNC) |
-                (disable_timing or runtime.EVENT_DISABLE_TIMING) |
-                (interprocess or runtime.EVENT_INTERPROCESS))
-        self.ptr = runtime.eventCreate(flag)
+        flag = ((block and runtime.eventBlockingSync) |
+                (disable_timing and runtime.eventDisableTiming) |
+                (interprocess and runtime.eventInterprocess))
+        self.ptr = runtime.eventCreateWithFlags(flag)
 
     def __del__(self):
-        runtime.eventDestroy(self.ptr)
+        if self.ptr:
+            runtime.eventDestroy(self.ptr)
+            self.ptr = runtime.Event()
 
     @property
     def done(self):
         """True if the event is done."""
         return bool(runtime.eventQuery(self.ptr))
 
-    def record(self, stream):
+    def record(self, stream=None):
         """Records the event to a stream.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream to record event.
+            stream (cupy.cuda.Stream): CUDA stream to record event. The null
+                stream is used by default.
 
         .. seealso:: :meth:`cupy.cuda.Stream.record`
 
         """
+        if stream is None:
+            stream = Stream(null=True)
         runtime.eventRecord(self.ptr, stream.ptr)
 
     def synchronize(self):
