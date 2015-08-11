@@ -138,5 +138,12 @@ class TestFunctionSet(unittest.TestCase):
     def test_copy_parameters_from_gpu_to_gpu(self):
         self.check_copy_parameters_from(True, True)
 
+    def test_getitem(self):
+        self.assertIs(self.fs['a'], self.fs.a)
+
+    def test_getitem_notfoud(self):
+        with self.assertRaises(AttributeError):
+            self.fs['not_found']
+
 
 testing.run_module(__name__, __file__)
