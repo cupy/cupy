@@ -8,7 +8,7 @@ from chainer.utils import array
 from chainer.utils import type_check
 
 
-class TensorNetwork(function.Function):
+class Bilinear(function.Function):
 
     """Bilinear tensor layer in Neural Tensor Network
 

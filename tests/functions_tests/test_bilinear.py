@@ -57,14 +57,14 @@ def _uniform(*shape):
     return numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
 
 
-class TestTensorNetwork(unittest.TestCase):
+class TestBilinear(unittest.TestCase):
 
     in_shape = (3, 4)
     out_size = 4
     batch_size = 10
 
     def setUp(self):
-        self.f = functions.TensorNetwork(
+        self.f = functions.Bilinear(
             self.in_shape[0], self.in_shape[1], self.out_size)
         self.f.W = _uniform(*self.f.W.shape)
         self.f.V1 = _uniform(*self.f.V1.shape)
@@ -111,10 +111,10 @@ class TestTensorNetwork(unittest.TestCase):
                         self.f, True)
 
 
-class TestTensorNetwork2(TestTensorNetwork):
+class TestBilinear2(TestBilinear):
 
     def setUp(self):
-        super(TestTensorNetwork2, self).setUp()
+        super(TestBilinear2, self).setUp()
 
         assert self.in_shape[1] % 2 == 0
         self.e1 = _uniform(self.batch_size, 1, self.in_shape[0])
@@ -129,10 +129,10 @@ class TestTensorNetwork2(TestTensorNetwork):
             e1.dot(self.V1) + e2.dot(self.V2) + self.b)
 
 
-class TestTensorNetworkWOBias(TestTensorNetwork):
+class TestBilinearWOBias(TestBilinear):
 
     def setUp(self):
-        self.f = functions.TensorNetwork(
+        self.f = functions.Bilinear(
             self.in_shape[0], self.in_shape[1], self.out_size, True)
         self.f.W = numpy.random.uniform(
             -1, 1, self.f.W.shape).astype(numpy.float32)
@@ -158,10 +158,10 @@ class TestTensorNetworkWOBias(TestTensorNetwork):
                         cuda.to_gpu(self.gy), self.f, False)
 
 
-class TestTensorNetworkWOBias2(TestTensorNetworkWOBias):
+class TestBilinearWOBias2(TestBilinearWOBias):
 
     def setUp(self):
-        super(TestTensorNetworkWOBias2, self).setUp()
+        super(TestBilinearWOBias2, self).setUp()
 
         assert self.in_shape[1] % 2 == 0
         self.e1 = _uniform(self.batch_size, 1, self.in_shape[0])
@@ -190,7 +190,7 @@ class InitByInitialParameter(unittest.TestCase):
 class NormalInitialParameter(InitByInitialParameter):
 
     def check_normal(self, initialW, initial_bias, nobias):
-        functions.TensorNetwork(
+        functions.Bilinear(
             self.in_shape[0], self.in_shape[1], self.out_size, nobias,
             initialW, initial_bias)
 
@@ -222,7 +222,7 @@ class InvalidInitialParameter(InitByInitialParameter):
 
     def check_invalid(self, initialW, initial_bias, nobias):
         with self.assertRaises(AssertionError):
-            functions.TensorNetwork(
+            functions.Bilinear(
                 self.in_shape[0], self.in_shape[1], self.out_size, nobias,
                 initialW, initial_bias)
 
