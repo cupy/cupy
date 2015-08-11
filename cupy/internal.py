@@ -79,37 +79,6 @@ def get_ndarray_ptr(a_cpu):
                            ctypes.c_void_p)
 
 
-def can_axpy(a, b):
-    if (isinstance(a, cupy.ndarray) and
-            isinstance(b, cupy.ndarray) and
-            a._dtype == b._dtype and
-            a._dtype.type in (numpy.float32, numpy.float64) and
-            a.size == b.size and
-            a.size > 1):
-        s_skip = a._strides[-1]
-        o_skip = b._strides[-1]
-        return (get_c_contiguity(a.shape, a.strides, s_skip) and
-                get_c_contiguity(b.shape, b.strides, o_skip))
-    else:
-        return False
-
-
-def axpy(a, x, y):
-    if x.dtype.type == numpy.float32:
-        taxpy = cublas.saxpy
-    elif x.dtype.type == numpy.float64:
-        taxpy = cublas.daxpy
-    else:
-        raise TypeError('Cannot saxpy on a array of type %s' % x.dtype)
-    if x.dtype != y.dtype:
-        raise TypeError('Type mismatch')
-
-    incx = x._strides[-1] // x.itemsize
-    incy = y._strides[-1] // y.itemsize
-    handle = cuda.Device().cublas_handle
-    taxpy(handle, y.size, a, x._fptr, incx, y._fptr, incy)
-
-
 def complete_slice(slc, dim):
     step = 1 if slc.step is None else slc.step
     if step == 0:
