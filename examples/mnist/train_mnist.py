@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
+xp = cuda.cupy if args.gpu >= 0 else np
 
 batchsize = 100
 n_epoch = 20
@@ -45,11 +46,8 @@ model = chainer.FunctionSet(l1=F.Linear(784, n_units),
                             l2=F.Linear(n_units, n_units),
                             l3=F.Linear(n_units, 10))
 if args.gpu >= 0:
-    xp = cuda.cupy
     cuda.get_device(args.gpu).use()
     model.to_gpu()
-else:
-    xp = np
 
 
 def forward(x_data, y_data, train=True):

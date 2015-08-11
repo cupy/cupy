@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
+xp = cuda.cupy if args.gpu >= 0 else np
 
 n_epoch = 400       # number of epochs
 n_units = 30        # number of units per layer
@@ -88,9 +89,7 @@ def read_corpus(path, vocab):
 def traverse(node, train=True, evaluate=None, root=True):
     if isinstance(node['node'], int):
         # leaf node
-        word = np.array([node['node']], np.int32)
-        if args.gpu >= 0:
-            word = cuda.to_gpu(word)
+        word = xp.array([node['node']], np.int32)
         loss = 0
         x = chainer.Variable(word, volatile=not train)
         v = model.embed(x)
@@ -107,14 +106,12 @@ def traverse(node, train=True, evaluate=None, root=True):
     y = model.w(v)
 
     if train:
-        label = np.array([node['label']], np.int32)
-        if args.gpu >= 0:
-            label = cuda.to_gpu(label)
+        label = xp.array([node['label']], np.int32)
         t = chainer.Variable(label, volatile=not train)
         loss += F.softmax_cross_entropy(y, t)
 
     if evaluate is not None:
-        predict = cuda.to_cpu(y.data).argmax(1)
+        predict = cuda.to_cpu(y.data.argmax(1))
         if predict[0] == node['label']:
             evaluate['correct_node'] += 1
         evaluate['total_node'] += 1
@@ -176,7 +173,7 @@ for epoch in range(n_epoch):
             accum_loss.backward()
             optimizer.weight_decay(0.0001)
             optimizer.update()
-            total_loss += float(cuda.to_cpu(accum_loss.data))
+            total_loss += float(accum_loss.data)
 
             accum_loss = 0
             count = 0

@@ -49,9 +49,9 @@ parser.add_argument('--loaderjob', '-j', default=20, type=int,
 parser.add_argument('--out', '-o', default='model',
                     help='Path to save model on each validation')
 args = parser.parse_args()
-assert 50000 % args.val_batchsize == 0
+xp = cuda.cupy if args.gpu >= 0 else np
 
-# Prepare dataset
+assert 50000 % args.val_batchsize == 0
 
 
 def load_image_list(path):
@@ -61,6 +61,7 @@ def load_image_list(path):
         tuples.append((pair[0], np.int32(pair[1])))
     return tuples
 
+# Prepare dataset
 train_list = load_image_list(args.train)
 val_list = load_image_list(args.val)
 mean_image = pickle.load(open(args.mean, 'rb'))
@@ -96,11 +97,11 @@ optimizer.setup(model.collect_parameters())
 data_q = queue.Queue(maxsize=1)
 res_q = queue.Queue()
 
-# Data loading routine
 cropwidth = 256 - model.insize
 
 
 def read_image(path, center=False, flip=False):
+    # Data loading routine
     image = np.asarray(Image.open(path)).transpose(2, 0, 1)
     if center:
         top = left = cropwidth / 2
@@ -118,10 +119,9 @@ def read_image(path, center=False, flip=False):
     else:
         return image
 
-# Data feeder
-
 
 def feed_data():
+    # Data feeder
     i = 0
     count = 0
 
@@ -174,10 +174,9 @@ def feed_data():
     pool.join()
     data_q.put('end')
 
-# Logger
-
 
 def log_result():
+    # Logger
     train_count = 0
     train_cur_loss = 0
     train_cur_accuracy = 0
@@ -242,10 +241,9 @@ def log_result():
                                   'error': mean_error, 'loss': mean_loss}))
                 sys.stdout.flush()
 
-# Trainer
-
 
 def train_loop():
+    # Trainer
     graph_generated = False
     while True:
         while data_q.empty():
@@ -264,10 +262,8 @@ def train_loop():
             train = False
             continue
 
-        x, y = inp
-        if args.gpu >= 0:
-            x = cuda.to_gpu(x)
-            y = cuda.to_gpu(y)
+        x = xp.asarray(inp[0])
+        y = xp.asarray(inp[1])
 
         if train:
             optimizer.zero_grads()
@@ -286,8 +282,8 @@ def train_loop():
         else:
             loss, accuracy = model.forward(x, y, train=False)
 
-        res_q.put((float(cuda.to_cpu(loss.data)),
-                   float(cuda.to_cpu(accuracy.data))))
+        res_q.put((float(loss.data),
+                   float(accuracy.data)))
         del loss, accuracy, x, y
 
 # Invoke threads

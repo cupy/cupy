@@ -35,6 +35,7 @@ parser.add_argument('--out-type', '-o', choices=['hsm', 'ns', 'original'],
                     help='output model type ("hsm": hierarchical softmax, '
                     '"ns": negative sampling, "original": no approximation)')
 args = parser.parse_args()
+xp = cuda.cupy if args.gpu >= 0 else np
 
 print('GPU: {}'.format(args.gpu))
 print('# unit: {}'.format(args.unit))
@@ -55,24 +56,18 @@ def continuous_bow(dataset, position):
     for offset in range(-w, w + 1):
         if offset == 0:
             continue
-        d = dataset[position + offset]
-        if args.gpu >= 0:
-            d = cuda.to_gpu(d)
+        d = xp.asarray(dataset[position + offset])
         x = chainer.Variable(d)
         e = model.embed(x)
         h = h + e if h is not None else e
 
-    d = dataset[position]
-    if args.gpu >= 0:
-        d = cuda.to_gpu(d)
+    d = xp.asarray(dataset[position])
     t = chainer.Variable(d)
     return loss_func(h, t)
 
 
 def skip_gram(dataset, position):
-    d = dataset[position]
-    if args.gpu >= 0:
-        d = cuda.to_gpu(d)
+    d = xp.asarray(dataset[position])
     t = chainer.Variable(d)
 
     # use random window size in the same way as the original word2vec
@@ -82,9 +77,7 @@ def skip_gram(dataset, position):
     for offset in range(-w, w + 1):
         if offset == 0:
             continue
-        d = dataset[position + offset]
-        if args.gpu >= 0:
-            d = cuda.to_gpu(d)
+        d = xp.asarray(dataset[position + offset])
         x = chainer.Variable(d)
         e = model.embed(x)
 
@@ -95,7 +88,7 @@ def skip_gram(dataset, position):
 
 
 if args.gpu >= 0:
-    cuda.init(args.gpu)
+    cuda.get_device(args.gpu).use()
 
 index2word = {}
 word2index = {}
