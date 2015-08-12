@@ -365,13 +365,8 @@ class ndarray(object):
         .. seealso:: :meth:`numpy.ndarray.view`
 
         """
-        v = ndarray.__new__(ndarray)
-        v._shape = self._shape
-        v._dtype = dtype or self._dtype
-        v._allocator = self._allocator
-        v.data = self.data
-        v._strides = self._strides
-        v._flags = self._flags & ~flags.OWNDATA
+        v = ndarray(self.shape, self.dtype, self.data, self.strides,
+                    self.allocator)
         v.base = self.base if self.base is not None else self
         return v
 
