@@ -36,17 +36,17 @@ def _check_backward(e1, e2, y_grad, f, bias):
     ge1, ge2, gW = gradient_check.numerical_grad(
         f, (e1.data, e2.data, func.W), (y.grad,), eps=1e-2)
 
-    gradient_check.assert_allclose(ge1, e1.grad)
-    gradient_check.assert_allclose(ge2, e2.grad)
-    gradient_check.assert_allclose(gW, func.gW)
+    gradient_check.assert_allclose(ge1, e1.grad, rtol=1e-3)
+    gradient_check.assert_allclose(ge2, e2.grad, rtol=1e-3)
+    gradient_check.assert_allclose(gW, func.gW, rtol=1e-3)
 
     if bias:
         gV1, gV2, gb = gradient_check.numerical_grad(
             f, (func.V1, func.V2, func.b),
             (y.grad,), eps=1e-2)
-        gradient_check.assert_allclose(gV1, func.gV1)
-        gradient_check.assert_allclose(gV2, func.gV2)
-        gradient_check.assert_allclose(gb, func.gb)
+        gradient_check.assert_allclose(gV1, func.gV1, rtol=1e-3)
+        gradient_check.assert_allclose(gV2, func.gV2, rtol=1e-3)
+        gradient_check.assert_allclose(gb, func.gb, rtol=1e-3)
 
 
 def _batch_to_gpu(*xs):
