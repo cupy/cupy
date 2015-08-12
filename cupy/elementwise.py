@@ -20,7 +20,6 @@ def _get_allocator(in_arg):
 def _get_ndarray_dtype(args):
     return tuple(a.dtype if isinstance(a, cupy.ndarray) else None
                  for a in args)
-
 _typenames = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
@@ -39,6 +38,8 @@ _typenames = {
 
 def _get_typename(dtype):
     global _typenames
+    if dtype is None:
+        raise ValueError('dtype is None')
     return _typenames[numpy.dtype(dtype)]
 
 
@@ -76,6 +77,8 @@ class ParameterInfo(object):
             self.ctype = t
         else:
             self.dtype = numpy.dtype(t)
+            if self.dtype.name != t:
+                raise ValueError('Wrong type %s' % t)
             self.ctype = _get_typename(self.dtype)
 
         for i in s[:-2]:
@@ -247,6 +250,10 @@ class ElementwiseKernel(object):
                 broadcasting is used to determine the value of ``n``.
 
         """
+
+        allocator = kwargs.get('allocator', None)
+        n = kwargs.pop('size', None)
+
         if not (len(args) == len(self.in_params) or
                 len(args) == len(self.in_params) + len(self.out_params)):
             raise TypeError('Wrong number of arguments for %s' % self.name)
@@ -255,8 +262,9 @@ class ElementwiseKernel(object):
 
         brod = cupy.broadcast(
             *[None if p.raw else a for p, a in zip(self.params, args)])
-        if all(i is None for i in brod.values) and 'size' not in kwargs:
-            raise TypeError('Loop size is Undecided')
+        if n is None and all(not isinstance(i, cupy.ndarray)
+                             for i in brod.values):
+            raise ValueError('Loop size is Undecided')
 
         brod_value = [b if a is None else a for a, b in zip(brod.values, args)]
         in_args = brod_value[:len(self.in_params)]
@@ -265,16 +273,18 @@ class ElementwiseKernel(object):
             self.in_params, self.out_params,
             _get_ndarray_dtype(in_args), _get_ndarray_dtype(out_args))
 
-        allocator = kwargs.get('allocator', None)
-        if allocator is None:
-            allocator = _get_allocator(in_args)
-
         if len(out_args) == len(self.out_params):
             for a, p in zip(out_args, self.out_params):
-                assert isinstance(a, cupy.ndarray)
-                assert p.raw or a.shape == brod.shape
+                if not isinstance(a, cupy.ndarray):
+                    raise TypeError(
+                        'Output arguments type must be cupy.ndarray')
+                if not p.raw and a.shape != brod.shape:
+                    raise ValueError(
+                        'Output shape error')
         else:
             assert all(not p.raw for p in self.out_params)
+            if allocator is None:
+                allocator = _get_allocator(in_args)
             out_args = [
                 cupy.empty(shape=brod.shape, dtype=t, allocator=allocator)
                 for t in out_types]
@@ -284,11 +294,12 @@ class ElementwiseKernel(object):
         else:
             ret = tuple(out_args)
 
-        n = kwargs.pop('size', brod.size)
+        if n is None:
+            n = brod.size
         if n == 0:
             return ret
 
-        inout_args = in_args + out_args + [n]
+        inout_args = in_args + out_args + [numpy.int32(n)]
         param_names = []
         for i, x in enumerate(inout_args):
             name = self.params[i].name
@@ -433,7 +444,7 @@ class ufunc(object):
 
         # TODO(okuta): reorder dimension
 
-        inout_args = in_args + out_args + [brod.size]
+        inout_args = in_args + out_args + [numpy.int32(brod.size)]
         for i, x in enumerate(inout_args):
             if isinstance(x, cupy.ndarray):
                 inout_args[i] = x.reduced_view()

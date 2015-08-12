@@ -88,12 +88,16 @@ def trapz(y, x=None, dx=1.0, axis=-1):
 _sum = reduction.create_reduction_func(
     'cupy_sum',
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('a + b', 'in[i]', 'a'), 0)
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d'],
+    ('a + b', 'in', 'a', 'T'), 0)
 
 
 _prod = reduction.create_reduction_func(
     'cupy_prod',
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('a * b', 'in[i]', 'a'), 1)
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'e->e', 'f->f', 'd->d'],
+    ('a * b', 'in', 'a', 'T'), 1)

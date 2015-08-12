@@ -377,8 +377,7 @@ def copy(array, out=None, out_device=None, stream=None):
 # ------------------------------------------------------------------------------
 # Kernel definition utility
 # ------------------------------------------------------------------------------
-def elementwise(in_params, out_params, operation, name, options=(),
-                preamble='', loop_prep='', after_loop=''):
+def elementwise(in_params, out_params, operation, name, **kwargs):
     """Creates an elementwise kernel function.
 
     This function uses :func:`cupy.cuda.memoize` to cache
@@ -392,13 +391,11 @@ def elementwise(in_params, out_params, operation, name, options=(),
     """
     _check_cuda_available()
     return cupy.elementwise.ElementwiseKernel(
-        in_params, out_params, operation, name, options,
-        preamble=preamble, loop_prep=loop_prep, after_loop=after_loop)
+        in_params, out_params, operation, name, **kwargs)
 
 
-def reduce(param_names, map_expr, reduce_expr, identity, name,
-           out_dtype=numpy.float32, options=(), post_map_expr='a',
-           preamble=''):
+def reduce(in_params, out_type, map_expr, reduce_expr, identity, name,
+           **kwargs):
     """Creates a global reduction kernel function.
 
     This function uses :func:`cupy.cuda.memoize` to cache
@@ -412,8 +409,7 @@ def reduce(param_names, map_expr, reduce_expr, identity, name,
     """
     _check_cuda_available()
     return cupy.reduction.ReductionKernel(
-        param_names, map_expr, reduce_expr, identity, name, out_dtype, options,
-        post_map_expr, preamble)
+        in_params, out_type, map_expr, reduce_expr, identity, name, ** kwargs)
 
 
 # ------------------------------------------------------------------------------

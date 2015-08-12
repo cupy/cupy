@@ -50,27 +50,36 @@ class SoftmaxCrossEntropy(function.Function):
             count = t.shape[0] * n_unit
         else:
             count = t.shape[0]
-        y = -numpy.log(p).sum(keepdims=True) / count
+        y = numpy.log(p).sum(keepdims=True) * (-1.0 / count)
         return y.reshape(()),
 
     def forward_gpu(self, inputs):
+        cupy = cuda.cupy
         x, t = inputs
         self.y, = softmax.Softmax(self.use_cudnn).forward((x,))
         n_unit = int(numpy.prod(self.y.shape[2:]))
         if getattr(self, 'normalize', True):
-            n_unit = int(numpy.prod(self.y.shape[2:]))
             count = t.shape[0] * n_unit
         else:
             count = t.shape[0]
-        # the map_expr is equivalent to the pseudo code -log(y[n, c, m]),
-        # where n = i / n_unit, c = t[i], and m = i % n_unit
+        """
+        p = cuda.elementwise(
+            'S t, raw T y, int32 n_channel', 'T out', '''
+            out = log(y[i * n_channel + t])
+            ''', 'crossent_fwd_elem')(
+                t, cupy.rollaxis(self.y, 1, len(self.y)), self.y.shape[1])
+        p = cuda.elementwise(
+            'S t, T y, int32 t_size', 'T out', '''
+            out = t == (i / t_size) ? log(y) : 0
+            ''', 'crossent_fwd_elem')(t, cuda.cupy.rollaxis(self.y, 1), t.size)
+        """
+        y = cupy.rollaxis(self.y, 1, len(self.y))
         ret = cuda.reduce(
-            ['t', 'y', 'n_channel', 'n_unit', 'count'],
-            '-log(y[n_unit * ((i / n_unit) * n_channel + t[i])'
-            '       + (i % n_unit)])',
-            'a+b', '0', 'crossent_fwd', numpy.float32,
-            post_map_expr='a / count'
-        )(t, self.y, self.y.shape[1], n_unit, count)
+            'S t, raw T y, int32 n_channel, T inv_count', 'T',
+            'log(y[_j * n_channel + t])',
+            'a+b', '0', 'crossent_fwd',
+            post_map_expr='a * inv_count'
+        )(t, y, y.shape[-1], -1.0 / count)
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
