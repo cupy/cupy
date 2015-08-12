@@ -3,6 +3,7 @@
 from chainer.functions import accuracy
 from chainer.functions import basic_math
 from chainer.functions import batch_normalization
+from chainer.functions import bilinear
 from chainer.functions import concat
 from chainer.functions import convolution_2d
 from chainer.functions import copy
@@ -85,6 +86,7 @@ Linear = linear.Linear
 NegativeSampling = negative_sampling.NegativeSampling
 Parameter = parameter.Parameter
 PReLU = prelu.PReLU
+Bilinear = bilinear.Bilinear
 
 convolution_2d = nonparameterized_convolution_2d.convolution_2d
 linear = nonparameterized_linear.linear
