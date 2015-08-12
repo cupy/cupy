@@ -74,7 +74,6 @@ class ndarray(object):
         shape (tuple of ints): Length of axes.
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
-        offset (int): Offset from the given memptr.
         strides (tuple of ints): The strides for axes.
         allocator (function): GPU memory allocator function.
 
@@ -84,7 +83,7 @@ class ndarray(object):
             created as a view.
 
     """
-    def __init__(self, shape, dtype=float, memptr=None, offset=0, strides=None,
+    def __init__(self, shape, dtype=float, memptr=None, strides=None,
                  allocator=cuda.alloc):
         self._shape = tuple(shape)
         self._dtype = numpy.dtype(dtype)
@@ -96,7 +95,7 @@ class ndarray(object):
         if memptr is None:
             self.data = allocator(nbytes)
         else:
-            self.data = memptr + offset
+            self.data = memptr
 
         if strides is None:
             self._strides = internal.get_contiguous_strides(
