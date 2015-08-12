@@ -22,6 +22,7 @@ Creation from other data
 .. autofunction:: cupy.array
 .. autofunction:: cupy.asarray
 .. autofunction:: cupy.asanyarray
+.. autofunction:: cupy.ascontiguousarray
 .. autofunction:: cupy.copy
 
 

@@ -85,6 +85,8 @@ Array conversion
 ================================== ================================================
  :meth:`cupy.ndarray.tolist`        :meth:`numpy.ndarray.tolist`
  :meth:`cupy.ndarray.tofile`        :meth:`numpy.ndarray.tofile`
+ :meth:`cupy.ndarray.dump`          :meth:`numpy.ndarray.dump`
+ :meth:`cupy.ndarray.dumps`         :meth:`numpy.ndarray.dumps`
  :meth:`cupy.ndarray.astype`        :meth:`numpy.ndarray.astype`
  :meth:`cupy.ndarray.copy`          :meth:`numpy.ndarray.copy`
  :meth:`cupy.ndarray.view`          :meth:`numpy.ndarray.view`
@@ -188,8 +190,7 @@ Special methods
 =================================== =================================================
  :meth:`cupy.ndarray.__copy__`       :meth:`numpy.ndarray.__copy__`
  :meth:`cupy.ndarray.__deepcopy__`   :meth:`numpy.ndarray.__deepcopy__`
- :meth:`cupy.ndarray.__getstate__`
- :meth:`cupy.ndarray.__setstate__`   :meth:`numpy.ndarray.__setstate__`
+ :meth:`cupy.ndarray.__reduce__`     :meth:`numpy.ndarray.__reduce__`
  :meth:`cupy.ndarray.__array__`      :meth:`numpy.ndarray.__array__`
  :meth:`cupy.ndarray.__len__`        :meth:`numpy.ndarray.__len__`
  :meth:`cupy.ndarray.__getitem__`    :meth:`numpy.ndarray.__getitem__`
