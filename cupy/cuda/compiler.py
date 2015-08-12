@@ -11,6 +11,11 @@ from cupy.cuda import device
 from cupy.cuda import module
 
 
+def _get_arch():
+    cc = device.Device().compute_capability
+    return 'sm_%s' % cc
+
+
 class TemporaryDirectory(object):
 
     def __enter__(self):
@@ -31,8 +36,7 @@ def nvcc(source, options=None, arch=None):
     if options:
         cmd += options
     if not arch:
-        cc = device.Device().compute_capability
-        arch = 'sm_%s' % cc
+        arch = _get_arch()
     cmd += ['-arch', arch]
 
     with TemporaryDirectory() as root_dir:
@@ -78,8 +82,10 @@ def get_cache_dir():
 def compile_with_cache(source, options=[], arch=None, cache_dir=None):
     if cache_dir is None:
         cache_dir = get_cache_dir()
+    if arch is None:
+        arch = _get_arch()
 
-    pp_src = preprocess(source, options)
+    pp_src = '%s %s' % (arch, preprocess(source, options))
     if isinstance(pp_src, six.text_type):
         pp_src = pp_src.encode('utf-8')
     name = '%s.cubin' % hashlib.md5(pp_src).hexdigest()
