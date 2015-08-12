@@ -44,7 +44,7 @@ class TestSumprod(unittest.TestCase):
     # float16 is omitted, since NumPy's sum on float16 arrays has more error
     # than CuPy's.
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5)
+    @testing.numpy_cupy_allclose()
     def test_sum_axis2(self, xpy, dtype):
         a = testing.shaped_arange((20, 30, 40), xpy, dtype)
         return a.sum(axis=1)
