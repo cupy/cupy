@@ -79,9 +79,9 @@ class TestInception2(unittest.TestCase):
             self.in_channels, self.out1,
             self.proj3, self.out3,
             self.proj5, self.out5, self.proj_pool)
-        self.f.f = mock.MagicMock()
 
     def setup_mock(self, gpu):
+        self.f.f = mock.MagicMock()
         self.f.f.conv1.return_value = _ones(gpu,
                                             self.batchsize, self.out1,
                                             self.insize, self.insize)
@@ -107,9 +107,6 @@ class TestInception2(unittest.TestCase):
         expected = [mock.call.conv1(mock.ANY), mock.call.proj3(mock.ANY),
                     mock.call.conv3(mock.ANY), mock.call.proj5(mock.ANY),
                     mock.call.conv5(mock.ANY), mock.call.projp(mock.ANY)]
-
-        if gpu:
-            expected.insert(0, mock.call.to_gpu(None))
 
         # Variable.__eq__ raises NotImplementedError,
         # so we cannot check arguments
