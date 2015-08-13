@@ -418,7 +418,7 @@ class ReductionKernel(object):
         for a, p in zip(out_args, self.out_params):
             if not p.raw and isinstance(a, cupy.ndarray):
                 output_expr.append(
-                    '{t} &{n} = _raw_{n}[_j];'.format(
+                    '{t} &{n} = _raw_{n}[_i];'.format(
                         t=p.ctype, n=p.name))
         output_expr = '\n'.join(output_expr)
 
