@@ -155,21 +155,12 @@ def _ones(gpu, *shape):
     return chainer.Variable(numpy.ones(shape).astype(numpy.float32))
 
 
-class TestInceptionForward(unittest.TestCase):
+class TestInceptionForward(TestInceptionBNBase):
 
     in_channels = 3
     out1, proj3, out3, proj33, out33, proj_pool = 3, 2, 3, 2, 3, 3
     batchsize = 10
     insize = 10
-
-    def setUp(self):
-        self.x = numpy.random.uniform(
-            -1, 1, (10, self.in_channels, 5, 5)
-        ).astype(numpy.float32)
-        self.f = functions.InceptionBN(
-            self.in_channels, self.out1,
-            self.proj3, self.out3,
-            self.proj33, self.out33, 'max', self.proj_pool)
 
     def _ones(self, gpu, out_channels):
         return _ones(gpu, self.batchsize, out_channels, self.insize, self.insize)
@@ -196,16 +187,22 @@ class TestInceptionForward(unittest.TestCase):
         self.setup_mock(gpu)
         f(chainer.Variable(x))
 
+        expected = []
+
         # Variable.__eq__ raises NotImplementedError,
         # so we cannot check arguments
-        expected = [mock.call.conv1(mock.ANY), mock.call.conv1n(mock.ANY),
-                    mock.call.proj3(mock.ANY), mock.call.proj3n(mock.ANY),
-                    mock.call.conv3(mock.ANY), mock.call.conv3n(mock.ANY),
-                    mock.call.proj33(mock.ANY), mock.call.proj33n(mock.ANY),
-                    mock.call.conv33a(mock.ANY), mock.call.conv33an(mock.ANY),
-                    mock.call.conv33b(mock.ANY), mock.call.conv33bn(mock.ANY),
-                    mock.call.pool(mock.ANY), mock.call.poolp(mock.ANY),
-                    mock.call.poolpn(mock.ANY)]
+        if self.out1 > 0:
+            expected.extend([mock.call.conv1(mock.ANY), mock.call.conv1n(mock.ANY)])
+
+        expected.extend([mock.call.proj3(mock.ANY), mock.call.proj3n(mock.ANY),
+                         mock.call.conv3(mock.ANY), mock.call.conv3n(mock.ANY),
+                         mock.call.proj33(mock.ANY), mock.call.proj33n(mock.ANY),
+                         mock.call.conv33a(mock.ANY), mock.call.conv33an(mock.ANY),
+                         mock.call.conv33b(mock.ANY), mock.call.conv33bn(mock.ANY),
+                         mock.call.pool(mock.ANY)])
+
+        if self.proj_pool is not None:
+            expected.extend([mock.call.poolp(mock.ANY), mock.call.poolpn(mock.ANY)])
 
         self.assertListEqual(self.f.f.mock_calls, expected)
 
