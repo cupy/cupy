@@ -40,7 +40,7 @@ def _make_reduction_function_kernel(name, block_size, reduce_type, params,
         }
       } else {
         extern __shared__ reduce_type _sdata_raw[];
-        reduce_type *_sdata = _sdata_raw;//[${block_size}];
+        reduce_type *_sdata = _sdata_raw;
         int _tid = threadIdx.x;
         _sdata[_tid] = reduce_type(${identity});
         unsigned int _i = _tid % _out_clp2_size;
@@ -484,29 +484,29 @@ def create_reduction_func(name, ops, routine=None, identity=None,
 
 
 _min_max_preamble = '''
-struct my_struct{
-    T value;
+struct min_max_st{
+    in_raw_type value;
     int index;
-    __device__ my_struct() : index(-1) { }
-    __device__ my_struct(T v) : value(v), index(0) { }
-    __device__ my_struct(T v, int i) : value(v), index(i) { }
+    __device__ min_max_st() : index(-1) { }
+    __device__ min_max_st(in_raw_type v) : value(v), index(0) { }
+    __device__ min_max_st(in_raw_type v, int i) : value(v), index(i) { }
 };
-__device__ my_struct my_min(my_struct& a, my_struct& b) {
+__device__ min_max_st my_min(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    return my_struct(min(a.value, b.value));
+    return min_max_st(min(a.value, b.value));
 }
-__device__ my_struct my_max(my_struct& a, my_struct& b) {
+__device__ min_max_st my_max(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    return my_struct(max(a.value, b.value));
+    return min_max_st(max(a.value, b.value));
 }
-__device__ my_struct my_argmin(my_struct& a, my_struct& b) {
+__device__ min_max_st my_argmin(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
     return (a.value <= b.value) ? a : b;
 }
-__device__ my_struct my_argmax(my_struct& a, my_struct& b) {
+__device__ min_max_st my_argmax(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
     return (a.value >= b.value) ? a : b;
@@ -517,26 +517,26 @@ amin = create_reduction_func(
     'cupy_min',
     ['?->?', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('my_min(a, b)', 'my_struct((T)in)', 'a.value', 'my_struct'),
+    ('my_min(a, b)', 'min_max_st(in)', 'a.value', 'min_max_st'),
     None, _min_max_preamble)
 
 amax = create_reduction_func(
     'cupy_max',
     ['?->?', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('my_max(a, b)', 'my_struct((T)in)', 'a.value', 'my_struct'),
+    ('my_max(a, b)', 'min_max_st(in)', 'a.value', 'min_max_st'),
     None, _min_max_preamble)
 
 argmin = create_reduction_func(
     'cupy_argmin',
     ['?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'],
-    ('my_argmin(a, b)', 'my_struct((T)in, _J)', 'a.index', 'my_struct'),
+    ('my_argmin(a, b)', 'min_max_st(in, _J)', 'a.index', 'min_max_st'),
     None, _min_max_preamble)
 
 argmax = create_reduction_func(
     'cupy_argmax',
     ['?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'],
-    ('my_argmax(a, b)', 'my_struct((T)in, _J)', 'a.index', 'my_struct'),
+    ('my_argmax(a, b)', 'min_max_st(in, _J)', 'a.index', 'min_max_st'),
     None, _min_max_preamble)
