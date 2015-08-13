@@ -1,6 +1,5 @@
 import collections
 
-import numpy
 import six
 
 from chainer import cuda
@@ -47,8 +46,16 @@ class SplitAxis(function.Function):
 
     def backward(self, x, gys):
         xp = cuda.get_array_module(*x)
-        return xp.concatenate(gys, axis=self.axis),
-
+        if any(gy is None for gy in gys):
+            gx = xp.zeros_like(x[0])
+            gxs = xp.split(gx, self.indices_or_sections, self.axis)
+            for gxi, gy in six.moves.zip(gxs, gys):
+                if gy is None:
+                    continue
+                gxi[:] = gy
+            return gx,
+        else:
+            return xp.concatenate(gys, axis=self.axis),
 
 def split_axis(x, indices_or_sections, axis):
     """Splits given variables along an axis.
