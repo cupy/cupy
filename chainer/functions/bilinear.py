@@ -192,10 +192,10 @@ class Bilinear(function.Function):
         e1 = array.as_vec(x[0])
         # ik->[ik]
         e2 = array.as_vec(x[1])
-        e1e2 = cuda.empty(i_len * j_len * k_len, dtype=numpy.float32)
+        e1e2 = cuda.empty((i_len * j_len * k_len,), dtype=numpy.float32)
         # '[ij],[ik]->[ijk]'
         cuda.elementwise(
-            'raw T e1, raw T e2, int e1c, int e2c', 'T y',
+            'raw T e1, raw T e2, int32 e1c, int32 e2c', 'T y',
             '''
             int I = i / e1c / e2c;
             int J = (i - I * e1c * e2c) / e2c;
@@ -212,10 +212,8 @@ class Bilinear(function.Function):
         W_mat = self.W.reshape(
             self.W.shape[0] * self.W.shape[1], self.W.shape[2])
 
-        y = cuda.empty((i_len, l_len), dtype=numpy.float32)
-        with cuda.using_cumisc():
-            # 'i[jk],[jk]l->il'
-            cuda.culinalg.dot(e1e2, W_mat, out=y)
+        # 'i[jk],[jk]l->il'
+        y = e1e2.dot(W_mat)
 
         if not self.nobias:
             e1 = array.as_mat(x[0])
