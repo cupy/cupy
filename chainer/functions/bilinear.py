@@ -195,15 +195,15 @@ class Bilinear(function.Function):
         e1e2 = cuda.empty(i_len * j_len * k_len, dtype=numpy.float32)
         # '[ij],[ik]->[ijk]'
         cuda.elementwise(
-            'float* y, float* e1, float* e2, int e1c, int e2c',
+            'raw T e1, raw T e2, int e1c, int e2c', 'T y',
             '''
             int I = i / e1c / e2c;
             int J = (i - I * e1c * e2c) / e2c;
             int K = i % e2c;
-            y[i] = e1[I * e1c + J] * e2[I * e2c + K];
+            y = e1[I * e1c + J] * e2[I * e2c + K];
             ''',
             'row_wise_outer_product')(
-                e1e2, e1, e2, j_len, k_len)
+                e1, e2, j_len, k_len, e1e2)
 
         # [ijk]->i[jk]
         e1e2 = e1e2.reshape(i_len, j_len * k_len)
@@ -220,15 +220,9 @@ class Bilinear(function.Function):
         if not self.nobias:
             e1 = array.as_mat(x[0])
             e2 = array.as_mat(x[1])
-            with cuda.using_cumisc():
-                # ij,jl->il
-                cuda.culinalg.add_dot(e1, self.V1, y)
-                # ik,kl->il
-                cuda.culinalg.add_dot(e2, self.V2, y)
-            cuda.elementwise(
-                'float* y, float* b, int n_channel',
-                'y[i] += b[i % n_channel]',
-                'linear_bias')(y, self.b, self.b.size)
+            y += e1.dot(self.V1)
+            y += e2.dot(self.V2)
+            y += self.b
         return y,
 
     def backward_cpu(self, x, gy):
@@ -267,45 +261,38 @@ class Bilinear(function.Function):
         dgW = cuda.empty((j_len * k_len * l_len,), dtype=numpy.float32)
         # '[ij],[ik],[il]->[jkl]'
         cuda.elementwise(
-            '''
-            float* y, float* e1, float* e2, float* gy,
-            int r, int e1c, int e2c, int gyc
-            ''',
+            '''raw T e1, raw T e2, raw T gy,
+            int32 r, int32 e1c, int32 e2c, int32 gyc''', 'T y',
             '''
             int J = i / e2c / gyc;
             int K = (i - J * e2c * gyc) / gyc;
             int L = i % gyc;
-            float yval = 0;
+            T yval = 0;
             for (int I = 0; I < r; ++I) {
                 int e1idx = I * e1c + J;
                 int e2idx = I * e2c + K;
                 int gyidx = I * gyc + L;
                 yval += e1[e1idx] * e2[e2idx] * gy[gyidx];
             }
-            y[i] = yval;
+            y = yval;
             ''',
             'sum_of_three_ary_tensor_product')(
-                dgW, e1, e2, gy_vec, i_len, j_len, k_len, l_len)
+                e1, e2, gy_vec, i_len, j_len, k_len, l_len, dgW)
         # [jkl]->jkl
         self.gW += dgW.reshape((j_len, k_len, l_len))
 
         if not self.nobias:
             e1 = array.as_mat(x[0])
             e2 = array.as_mat(x[1])
-            with cuda.using_cumisc():
-                # ij,il->jl
-                cuda.culinalg.add_dot(e1, gy, self.gV1, transa='T')
-                # ik,il->kl
-                cuda.culinalg.add_dot(e2, gy, self.gV2, transa='T')
-                self.gb += cuda.cumisc.sum(gy, 0)
+            self.gV1 += e1.T.dot(gy)
+            self.gV2 += e2.T.dot(gy)
+            self.gb += gy.sum(axis=0)
 
         ge1 = cuda.empty((i_len * j_len,), dtype=numpy.float32)
         # '[ik],[jkl],[il]->[ij]'
         cuda.elementwise(
-            '''
-            float* y, float* e, float* W, float* gy,
-            int ec, int gyc, int gec
-            ''',
+            'raw T e, raw T W, raw T gy, int32 ec, int32 gyc, int32 gec',
+            'T y',
             '''
             int I = i / gec;
             int J = i % gec;
@@ -318,19 +305,17 @@ class Bilinear(function.Function):
                     yval += e[eidx] * W[Widx] * gy[gyidx];
                 }
             }
-            y[i] = yval;
+            y = yval;
             ''',
-            'ge_kernel')(ge1, e2, W_vec, gy_vec, k_len, l_len, j_len)
+            'ge_kernel')(e2, W_vec, gy_vec, k_len, l_len, j_len, ge1)
         # [ij]->ij
         ge1 = ge1.reshape(i_len, j_len)
 
         ge2 = cuda.empty((i_len * k_len,), dtype=numpy.float32)
         # '[ij],[jkl],[il]->[ik]'
         cuda.elementwise(
-            '''
-            float* y, float* e, float* W, float* gy,
-            int ec, int gyc, int gec
-            ''',
+            'raw T e, raw T W, raw T gy, int32 ec, int32 gyc, int32 gec',
+            'T y',
             '''
             int I = i / gec;
             int K = i % gec;
@@ -343,16 +328,13 @@ class Bilinear(function.Function):
                     yval += e[eidx] * W[Widx] * gy[gyidx];
                 }
             }
-            y[i] = yval;
+            y = yval;
             ''',
-            'ge_kernel2')(ge2, e1, W_vec, gy_vec, j_len, l_len, k_len)
+            'ge_kernel2')(e1, W_vec, gy_vec, j_len, l_len, k_len, ge2)
         # [ik]->ik
         ge2 = ge2.reshape(i_len, k_len)
 
         if not self.nobias:
-            with cuda.using_cumisc():
-                # il,jl->ij
-                cuda.culinalg.add_dot(gy, self.V1, ge1, transb='T')
-                # il,kl->ik
-                cuda.culinalg.add_dot(gy, self.V2, ge2, transb='T')
+            ge1 += gy.dot(self.V1.T)
+            ge2 += gy.dot(self.V2.T)
         return (ge1.reshape(x[0].shape), ge2.reshape(x[1].shape))

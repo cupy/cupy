@@ -12,10 +12,6 @@ from chainer.testing import condition
 from chainer.utils import array
 
 
-if cuda.available:
-    cuda.init()
-
-
 def _check_forward(e1, e2, f, y_expect):
     e1 = chainer.Variable(e1)
     e2 = chainer.Variable(e2)
