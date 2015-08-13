@@ -4,66 +4,66 @@ from cupy import testing
 
 
 @testing.gpu
-class TestSearch(unittest.TestCase):
+class TestArrayReduction(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmax_all(self, xpy, dtype):
+    def test_max_all(self, xpy, dtype):
         a = testing.shaped_random((2, 3), xpy, dtype)
-        return a.argmax()
+        return a.max()
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmax_axis_large(self, xpy, dtype):
+    def test_max_axis_large(self, xpy, dtype):
         a = testing.shaped_random((3, 1000), xpy, dtype)
-        return a.argmax(axis=0)
+        return a.max(axis=0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmax_axis0(self, xpy, dtype):
+    def test_max_axis0(self, xpy, dtype):
         a = testing.shaped_random((2, 3, 4), xpy, dtype)
-        return a.argmax(axis=0)
+        return a.max(axis=0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmax_axis1(self, xpy, dtype):
+    def test_max_axis1(self, xpy, dtype):
         a = testing.shaped_random((2, 3, 4), xpy, dtype)
-        return a.argmax(axis=1)
+        return a.max(axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmax_axis2(self, xpy, dtype):
+    def test_max_axis2(self, xpy, dtype):
         a = testing.shaped_random((2, 3, 4), xpy, dtype)
-        return a.argmax(axis=2)
+        return a.max(axis=2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmin_all(self, xpy, dtype):
+    def test_min_all(self, xpy, dtype):
         a = testing.shaped_random((2, 3), xpy, dtype)
-        return a.argmin()
+        return a.min()
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmin_axis_large(self, xpy, dtype):
+    def test_min_axis_large(self, xpy, dtype):
         a = testing.shaped_random((3, 1000), xpy, dtype)
-        return a.argmin(axis=0)
+        return a.min(axis=0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmin_axis0(self, xpy, dtype):
+    def test_min_axis0(self, xpy, dtype):
         a = testing.shaped_random((2, 3, 4), xpy, dtype)
-        return a.argmin(axis=0)
+        return a.min(axis=0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmin_axis1(self, xpy, dtype):
+    def test_min_axis1(self, xpy, dtype):
         a = testing.shaped_random((2, 3, 4), xpy, dtype)
-        return a.argmin(axis=1)
+        return a.min(axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_argmin_axis2(self, xpy, dtype):
+    def test_min_axis2(self, xpy, dtype):
         a = testing.shaped_random((2, 3, 4), xpy, dtype)
-        return a.argmin(axis=2)
+        return a.min(axis=2)

@@ -28,4 +28,6 @@ for_int_dtypes = helper.for_int_dtypes
 shaped_arange = helper.shaped_arange
 shaped_reverse_arange = helper.shaped_reverse_arange
 
+shaped_random = helper.shaped_random
+
 gpu = attr.gpu

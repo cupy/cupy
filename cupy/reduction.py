@@ -160,8 +160,9 @@ class simple_reduction_function(object):
                 for t in out_types]
 
         # TODO(okuta) sort dimension
-        a = a.transpose(
-            axis + tuple(numpy.delete(numpy.arange(len(a.shape)), axis)))
+        trans = axis + tuple(numpy.delete(numpy.arange(len(a.shape)), axis))
+        a = a.transpose(trans)
+
         kernel_out_args = [i.view() for i in out_args]
         for x in kernel_out_args:
             x.shape = kernel_out_shape
@@ -360,7 +361,7 @@ class ReductionKernel(object):
 
         if any(ax < -brod.nd or ax >= brod.nd for ax in axis):
             raise ValueError('Axis overrun')
-        axis = tuple(ax if ax >= 0 else ax + brod.nd for ax in axis)
+        axis = tuple([ax if ax >= 0 else ax + brod.nd for ax in axis].sort())
 
         in_args = [b if a is None else a for a, b in zip(brod.values, args)]
         kernel_out_shape = tuple(numpy.delete(brod.shape, axis))
@@ -389,10 +390,15 @@ class ReductionKernel(object):
                 raise ValueError('Output shape error')
 
         # TODO(okuta) sort dimension
-        trans = axis + tuple(numpy.delete(numpy.arange(len(brod.shape)), axis))
-        for i, x in enumerate(in_args):
-            if not self.in_params[i].raw and isinstance(x, cupy.ndarray):
-                in_args[i] = x.transpose(trans)
+        raw_axis = numpy.arange(len(brod.shape))
+        trans = axis + tuple(numpy.delete(raw_axis, axis))
+
+        if not all(i == j for i, j in zip(trans, raw_axis)):
+            if any(p.raw for i in self.in_params):
+                raise NotImplementedError()
+            for i, x in enumerate(in_args):
+                if not self.in_params[i].raw and isinstance(x, cupy.ndarray):
+                    in_args[i] = x.transpose(trans)
 
         kernel_out_args = [i.view() for i in out_args]
         for x in kernel_out_args:
