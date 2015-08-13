@@ -97,7 +97,6 @@ class TestSplitAxisNone(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.array([1, 2], dtype=numpy.float32)
-        self.ys = [self.x[:1], self.x[1:]]
         self.ys_section = [1]
         self.axis = 0
 
