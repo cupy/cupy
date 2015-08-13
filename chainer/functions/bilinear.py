@@ -182,30 +182,15 @@ class Bilinear(function.Function):
         return y,
 
     def forward_gpu(self, x):
-        i_len, j_len = array.as_mat(x[0]).shape
-        k_len = array.as_mat(x[1]).shape[1]
-        l_len = self.W.shape[2]
+        e1 = array.as_mat(x[0])
+        e2 = array.as_mat(x[1])
+        i_len, j_len = e1.shape
+        k_len = e2.shape[1]
 
-        # When indices are enclosed with [], they are 'flatten'
-        # (i.e. linealized as 1-D array)
-        # ij->[ij]
-        e1 = array.as_vec(x[0])
-        # ik->[ik]
-        e2 = array.as_vec(x[1])
-        e1e2 = cuda.empty((i_len * j_len * k_len,), dtype=numpy.float32)
-        # '[ij],[ik]->[ijk]'
-        cuda.elementwise(
-            'raw T e1, raw T e2, int32 e1c, int32 e2c', 'T y',
-            '''
-            int I = i / e1c / e2c;
-            int J = (i - I * e1c * e2c) / e2c;
-            int K = i % e2c;
-            y = e1[I * e1c + J] * e2[I * e2c + K];
-            ''',
-            'row_wise_outer_product')(
-                e1, e2, j_len, k_len, e1e2)
+        # 'ij,ik->ijk'
+        e1e2 = e1[:, :, numpy.newaxis] * e2[:, numpy.newaxis, :]
 
-        # [ijk]->i[jk]
+        # ijk->i[jk]
         e1e2 = e1e2.reshape(i_len, j_len * k_len)
 
         # jkl->[jk]l
@@ -216,8 +201,6 @@ class Bilinear(function.Function):
         y = e1e2.dot(W_mat)
 
         if not self.nobias:
-            e1 = array.as_mat(x[0])
-            e2 = array.as_mat(x[1])
             y += e1.dot(self.V1)
             y += e2.dot(self.V2)
             y += self.b
