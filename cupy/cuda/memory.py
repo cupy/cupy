@@ -3,7 +3,6 @@ import ctypes
 import weakref
 
 from cupy.cuda import device
-from cupy.cuda import driver
 from cupy.cuda import runtime
 
 

@@ -1,5 +1,3 @@
-import ctypes
-
 from cupy.cuda import runtime
 
 

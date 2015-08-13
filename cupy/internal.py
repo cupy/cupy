@@ -5,7 +5,6 @@ import six
 
 import cupy
 from cupy import cuda
-from cupy.cuda import cublas
 
 
 def get_reduced_dims(shape, strides, itemsize):

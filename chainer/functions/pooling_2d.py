@@ -7,7 +7,6 @@ import six
 from chainer import cuda
 from chainer import function
 from chainer.functions import concat
-from chainer.functions import split_axis
 from chainer.utils import conv
 from chainer.utils import type_check
 
