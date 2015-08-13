@@ -35,10 +35,10 @@ class SigmoidCrossEntropy(function.Function):
         x, t = inputs
         self.y, = sigmoid.Sigmoid(self.use_cudnn).forward_gpu((x,))
         loss = cuda.reduce(
-            'T x, S t, T inv_cnt', 'T',
+            'T x, S t, T inv_cnt', 'T out',
             'x * (t - (x >= 0)) - log1p(exp(-fabs(x)))',
-            'a + b', 0, 'sigmoid_crossent_fwd',
-            post_map_expr='a * inv_cnt')(x, t, -1.0 / t.shape[0])
+            'a + b', 'out = a * inv_cnt', 0,
+            'sigmoid_crossent_fwd')(x, t, -1.0 / t.shape[0])
         return loss,
 
     def backward_cpu(self, inputs, grad_outputs):

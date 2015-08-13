@@ -11,41 +11,42 @@ from cupy import internal
 
 
 @cuda.memoize
-def _make_reduction_function_kernel(name, block_size, reduce_type, params,
-                                    identity, pre_map_expr,
-                                    reduce_expr,
-                                    post_map_expr='a',
-                                    preamble='',
-                                    input_expr=''):
+def _make_reduction_function_kernel(name, block_size,
+                                    reduce_type, params, identity,
+                                    pre_map_expr, reduce_expr, post_map_expr,
+                                    type_preamble, input_expr, output_expr,
+                                    preamble):
     if identity is None:
         identity = ''
     module_code = string.Template('''
+    ${type_preamble}
     ${preamble}
     #define REDUCE(a, b) (${reduce_expr})
     #define POST_MAP(a) (${post_map_expr})
 
-    typedef ${reduce_type} reduce_type;
+    typedef ${reduce_type} _type_reduce;
     extern "C" __global__ void ${name}(${params}) {
       if (_out_clp2_size > 256) {
         CUPY_FOR(_i, _out_size) {
-          reduce_type _s = reduce_type(${identity});
+          _type_reduce _s = _type_reduce(${identity});
           for (int _j = _i, _J = 0;
                _j < _in_size;
                _j += _out_size, _J++) {
             ${input_expr}
-            reduce_type _a = ${pre_map_expr};
+            _type_reduce _a = ${pre_map_expr};
             _s = REDUCE(_s, _a);
           }
-          _raw_out[_i] = POST_MAP(_s);
+          ${output_expr}
+          POST_MAP(_s);
         }
       } else {
-        extern __shared__ reduce_type _sdata_raw[];
-        reduce_type *_sdata = _sdata_raw;
+        extern __shared__ _type_reduce _sdata_raw[];
+        _type_reduce *_sdata = _sdata_raw;
         int _tid = threadIdx.x;
-        _sdata[_tid] = reduce_type(${identity});
+        _sdata[_tid] = _type_reduce(${identity});
         unsigned int _i = _tid % _out_clp2_size;
         if (_i >= _out_size) return;
-        reduce_type _s = reduce_type(${identity});
+        _type_reduce _s = _type_reduce(${identity});
         int _J_offset = _tid / _out_clp2_size;
         int _j_offset = _J_offset * _out_size;
         int _J_stride = ${block_size} / _out_clp2_size;
@@ -54,7 +55,7 @@ def _make_reduction_function_kernel(name, block_size, reduce_type, params,
              _j < _in_size;
              _j += _j_stride, _J += _J_stride) {
           ${input_expr}
-          reduce_type _a = ${pre_map_expr};
+          _type_reduce _a = ${pre_map_expr};
           _s = REDUCE(_s, _a);
         }
         _sdata[_tid] = _s;
@@ -90,7 +91,8 @@ def _make_reduction_function_kernel(name, block_size, reduce_type, params,
         }
         _s = _sdata[_tid];
         if (_tid >= _out_size) return;
-        _raw_out[_i] = POST_MAP(_s);
+         ${output_expr}
+        POST_MAP(_s);
       }
     }''').substitute(
         name=name,
@@ -101,77 +103,93 @@ def _make_reduction_function_kernel(name, block_size, reduce_type, params,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        preamble=preamble,
-        input_expr=input_expr)
+        type_preamble=type_preamble,
+        input_expr=input_expr,
+        output_expr=output_expr,
+        preamble=preamble)
     module = carray.compile_with_cache(module_code)
     return module.get_function(name)
 
 
+def _get_axis(axis, ndim):
+    if axis is None:
+        axis = tuple(numpy.arange(ndim, dtype=int))
+    elif isinstance(axis, collections.Iterable):
+        axis = tuple(axis)
+    else:
+        axis = axis,
+
+    if any(ax < -ndim or ax >= ndim for ax in axis):
+        raise ValueError('Axis overrun')
+
+    axis = tuple(sorted([ax if ax >= 0 else ax + ndim for ax in axis]))
+    return axis
+
+
+def _get_out_shape(shape, axis, keepdims):
+    if keepdims:
+        out_shape = list(shape)
+        for i in axis:
+            out_shape[i] = 1
+        out_shape = tuple(out_shape)
+    else:
+        out_shape = tuple(numpy.delete(shape, axis))
+    return out_shape
+
+
+def _get_trans_args(args, axis, ndim, params=None):
+    raw_axis = numpy.arange(ndim, dtype=int)
+    trans = axis + tuple(numpy.delete(raw_axis, axis))
+
+    if all(i == j for i, j in zip(trans, raw_axis)):
+        return args
+    if params is not None and any(p.raw for p in params):
+        raise NotImplementedError('Illegal conditions')
+    return [a.transpose(trans) if isinstance(a, cupy.ndarray) else a
+            for a in args]
+
+
 class simple_reduction_function(object):
 
-    def __init__(self, name, ops, identity=None, preamble='', nout=1):
+    def __init__(self, name, ops, identity=None, preamble=''):
         self.name = name
         self._ops = ops
         self.identity = identity
         self._preamble = preamble
-        self.nout = nout
-        self._param_names = [
-            '_raw_in', '_raw_out', '_in_size', '_out_size', '_out_clp2_size']
+        self.nin = 1
+        self.nout = 1
+        self._param_names = (
+            '_raw_in0', '_raw_out0', '_in_size', '_out_size', '_out_clp2_size')
+        self._input_expr = 'const _type_raw_in0 in0 = _raw_in0[_j];'
+        self._output_expr = '_type_raw_out0 &out0 = _raw_out0[_i];'
 
     def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False,
                  allocator=None):
         if not isinstance(a, cupy.ndarray):
             raise TypeError('Input type must be cupy.ndarray')
-        internal.check_args_device((a, out))
 
         if self.identity is None:
             assert a.size != 0
-
-        if axis is None:
-            axis = tuple(numpy.arange(len(a.shape)))
-        elif isinstance(axis, collections.Iterable):
-            axis = tuple(axis)
+        in_args = [a]
+        if out is None:
+            out_args = []
         else:
-            axis = axis,
-
-        if any(ax < -a.ndim or ax >= a.ndim for ax in axis):
-            raise ValueError('Axis overrun')
-        axis = tuple(ax if ax >= 0 else ax + a.ndim for ax in axis)
-
-        kernel_out_shape = tuple(numpy.delete(a.shape, axis))
-        if keepdims:
-            out_shape = tuple(1 if i in axis else s
-                              for i, s in enumerate(a.shape))
-        else:
-            out_shape = kernel_out_shape
-
-        in_types, out_types, routine = self._guess_routine([a], dtype)
-
-        if out is not None:
-            assert self.nout == 1
-            if out.shape != out_shape:
-                raise ValueError('Out shape is mismatched')
             out_args = [out]
-        else:
-            if allocator is None:
-                allocator = a.allocator
-            out_args = [
-                cupy.empty(shape=out_shape, dtype=t, allocator=allocator)
-                for t in out_types]
+        internal.check_args_device(in_args + out_args)
 
-        # TODO(okuta) sort dimension
-        trans = axis + tuple(numpy.delete(numpy.arange(len(a.shape)), axis))
-        a = a.transpose(trans)
+        in_types, out_types, routine = self._guess_routine(in_args, dtype)
 
-        kernel_out_args = [i.view() for i in out_args]
-        for x in kernel_out_args:
-            x.shape = kernel_out_shape
+        axis = _get_axis(axis, a.ndim)
+        out_shape = _get_out_shape(a.shape, axis, keepdims)
+        out_args = elementwise._get_out_args(
+            in_args, out_args, out_types, allocator, out_shape)
+        in_args = _get_trans_args(in_args, axis, in_args[0].ndim)
 
         in_size = numpy.int32(a.size)
-        out_size = numpy.int32(kernel_out_args[0].size)
+        out_size = numpy.int32(numpy.prod(out_shape, dtype=int))
         out_clp2_size = numpy.int32(2 ** int.bit_length(int(out_size - 1)))
 
-        inout_args = [a] + kernel_out_args + [in_size, out_size, out_clp2_size]
+        inout_args = in_args + out_args + [in_size, out_size, out_clp2_size]
         for i, x in enumerate(inout_args):
             if isinstance(x, cupy.ndarray):
                 inout_args[i] = x.reduced_view()
@@ -179,25 +197,24 @@ class simple_reduction_function(object):
         params, kernel_args = elementwise._get_kernel_params_args(
             self._param_names, inout_args)
         block_size = 512
-        preamble = '''
-            typedef {} T; typedef {} in_type;typedef {} in_raw_type;
-            {}'''.format(
-            elementwise._get_typename(out_types[0]),
-            elementwise._get_typename(in_types[0]),
-            elementwise._get_typename(a.dtype),
-            self._preamble)
-        input_expr = 'const in_raw_type in = _raw_in[_j];'
+        reduce_type = routine[3]
+        if reduce_type is None:
+            reduce_type = elementwise._get_typename(out_types[0])
+
+        type_preamble = '''
+            typedef {} _type_raw_in0;
+            typedef {} _type_raw_out0;
+            '''.format(elementwise._get_typename(in_args[0].dtype),
+                       elementwise._get_typename(out_args[0].dtype))
+
         kern = _make_reduction_function_kernel(
             self.name,
             block_size,
-            routine[3],
+            reduce_type,
             params,
             self.identity,
-            routine[1],
-            routine[0],
-            routine[2],
-            preamble=preamble,
-            input_expr=input_expr)
+            routine[0], routine[1], routine[2],
+            type_preamble, self._input_expr, self._output_expr, self._preamble)
         shared_mem = 32 * block_size
         if out_clp2_size > 256:
             shared_mem = 0
@@ -289,12 +306,14 @@ class ReductionKernel(object):
            array(6.324555397033691, dtype=float32)
 
     """
-    def __init__(self, in_params, out_type, map_expr, reduce_expr, identity,
-                 name='reduce_kernel', options=(), reduce_dims=True,
-                 post_map_expr='a', preamble=''):
+    def __init__(self, in_params, out_params,
+                 map_expr, reduce_expr, post_map_expr,
+                 identity, name='reduce_kernel', reduce_type=None,
+                 options=(), reduce_dims=True, preamble=''):
         self.in_params = elementwise._get_param_info_tuple(in_params, True)
-        self.out_params = elementwise._get_param_info_tuple(
-            '{} out'.format(out_type))
+        self.out_params = elementwise._get_param_info_tuple(out_params)
+        self.nin = len(self.in_params)
+        self.nout = len(self.out_params)
         self.params = self.in_params + self.out_params + \
             elementwise._get_param_info_tuple(
                 'int32 _in_size, int32 _out_size, int32 _out_clp2_size')
@@ -305,6 +324,10 @@ class ReductionKernel(object):
         self.options = options
         self.reduce_dims = reduce_dims
         self.post_map_expr = post_map_expr
+        if reduce_type is None:
+            self.reduce_type = self.out_params[0].ctype
+        else:
+            self.reduce_type = reduce_type
         self.preamble = preamble
 
     def __call__(self, *args, **kwargs):
@@ -323,94 +346,49 @@ class ReductionKernel(object):
 
         """
 
-        allocator = kwargs.get('allocator', None)
+        out = kwargs.pop('out', None)
         axis = kwargs.get('axis', None)
         keepdims = kwargs.get('keepdims', False)
+        allocator = kwargs.get('allocator', None)
 
-        if not (len(args) == len(self.in_params) or
-                len(args) == len(self.in_params) + len(self.out_params)):
+        if not (len(args) == self.nin or
+                len(args) == self.nin + self.nout):
             raise TypeError('Wrong number of arguments for %s' % self.name)
         assert all(i is not None for i in args)
-        internal.check_args_device(args)
 
-        out_args = args[len(self.in_params):]
-        out = kwargs.pop('out', None)
+        out_args = list(args[self.nin:])
         if out is not None:
-            if len(out_args) == 1:
-                raise ValueError('')
+            if self.nout != 1:
+                raise NotImplementedError('')
+            if len(out_args) != 0:
+                raise ValueError("cannot specify 'out' as both "
+                                 "a positional and keyword argument")
             out_args = [out]
 
-        brod = cupy.broadcast(
-            *[None if p.raw else a for p, a in zip(self.in_params, args)])
-        if all(not isinstance(i, cupy.ndarray) for i in brod.values):
-            raise ValueError('Loop size is Undecided')
+        brod, in_args = elementwise._broadcast(args, self.in_params)
+
+        internal.check_args_device(in_args + out_args)
 
         if self.identity is None:
             assert brod.size != 0
-
-        if axis is None:
-            axis = tuple(numpy.arange(len(brod.shape)))
-        elif isinstance(axis, collections.Iterable):
-            if any(p.raw for i in self.in_params):
-                raise NotImplementedError()
-            axis = tuple(axis)
-        else:
-            if any(p.raw for i in self.in_params):
-                raise NotImplementedError()
-            axis = axis,
-
-        if any(ax < -brod.nd or ax >= brod.nd for ax in axis):
-            raise ValueError('Axis overrun')
-        axis = tuple(sorted([ax if ax >= 0 else ax + brod.nd for ax in axis]))
-
-        in_args = [b if a is None else a for a, b in zip(brod.values, args)]
-        kernel_out_shape = tuple(numpy.delete(brod.shape, axis))
-        if keepdims:
-            out_shape = tuple(1 if i in axis else s
-                              for i, s in enumerate(brod.shape))
-        else:
-            out_shape = kernel_out_shape
 
         in_types, out_types, types = elementwise._decide_params_type(
             self.in_params, self.out_params,
             elementwise._get_ndarray_dtype(in_args),
             elementwise._get_ndarray_dtype(out_args))
 
-        if len(out_args) == 0:
-            if allocator is None:
-                allocator = elementwise._get_allocator(in_args)
-            out_args = [
-                cupy.empty(shape=out_shape, dtype=t, allocator=allocator)
-                for t in out_types]
-        else:
-            if not isinstance(out_args[0], cupy.ndarray):
-                raise TypeError(
-                    'Output argument type must be cupy.ndarray')
-            if out_args[0].shape != out_shape:
-                raise ValueError('Output shape error')
-
-        # TODO(okuta) sort dimension
-        raw_axis = numpy.arange(len(brod.shape))
-        trans = axis + tuple(numpy.delete(raw_axis, axis))
-
-        if not all(i == j for i, j in zip(trans, raw_axis)):
-            if any(p.raw for i in self.in_params):
-                raise NotImplementedError()
-            for i, x in enumerate(in_args):
-                if not self.in_params[i].raw and isinstance(x, cupy.ndarray):
-                    in_args[i] = x.transpose(trans)
-
-        kernel_out_args = [i.view() for i in out_args]
-        for x in kernel_out_args:
-            x.shape = kernel_out_shape
+        axis = _get_axis(axis, brod.nd)
+        out_shape = _get_out_shape(brod.shape, axis, keepdims)
+        out_args = elementwise._get_out_args(
+            in_args, out_args, out_types, allocator, out_shape,
+            self.out_params)
+        in_args = _get_trans_args(in_args, axis, brod.nd, self.in_params)
 
         in_size = numpy.int32(brod.size)
-        out_size = numpy.int32(kernel_out_args[0].size)
+        out_size = numpy.int32(numpy.prod(out_shape, dtype=int))
         out_clp2_size = numpy.int32(2 ** int.bit_length(int(out_size - 1)))
 
-        inout_args = in_args + kernel_out_args + [
-            numpy.int32(in_size), numpy.int32(out_size),
-            numpy.int32(out_clp2_size)]
+        inout_args = in_args + out_args + [in_size, out_size, out_clp2_size]
         param_names = []
         for i, x in enumerate(inout_args):
             name = self.params[i].name
@@ -426,10 +404,9 @@ class ReductionKernel(object):
             param_names, inout_args)
         block_size = 512
 
-        types_preamble = '\n'.join(
+        type_preamble = '\n'.join(
             'typedef {} {};'.format(elementwise._get_typename(v), k)
             for k, v in types)
-        preamble = types_preamble + '\n' + self.preamble
         input_expr = []
         for a, p in zip(in_args, self.in_params):
             if not p.raw and isinstance(a, cupy.ndarray):
@@ -437,18 +414,19 @@ class ReductionKernel(object):
                     'const {t} {n} = _raw_{n}[_j];'.format(
                         t=p.ctype, n=p.name))
         input_expr = '\n'.join(input_expr)
+        output_expr = []
+        for a, p in zip(out_args, self.out_params):
+            if not p.raw and isinstance(a, cupy.ndarray):
+                output_expr.append(
+                    '{t} &{n} = _raw_{n}[_j];'.format(
+                        t=p.ctype, n=p.name))
+        output_expr = '\n'.join(output_expr)
 
         kern = _make_reduction_function_kernel(
-            self.name,
-            block_size,
-            self.out_params[0].ctype,
-            params,
-            self.identity,
-            self.map_expr,
-            self.reduce_expr,
-            self.post_map_expr,
-            preamble,
-            input_expr)
+            self.name, block_size, self.reduce_type, params, self.identity,
+            self.map_expr, self.reduce_expr, self.post_map_expr,
+            type_preamble, input_expr, output_expr,
+            self.preamble)
         shared_mem = 32 * block_size
         if out_clp2_size > 256:
             shared_mem = 0
@@ -480,16 +458,16 @@ def create_reduction_func(name, ops, routine=None, identity=None,
         _ops.append((in_types, out_types, rt))
 
     return simple_reduction_function(
-        name, _ops, identity=identity, preamble=preamble, nout=len(_ops[0][1]))
+        name, _ops, identity=identity, preamble=preamble)
 
 
 _min_max_preamble = '''
 struct min_max_st{
-    in_raw_type value;
+    _type_raw_in0 value;
     int index;
     __device__ min_max_st() : index(-1) { }
-    __device__ min_max_st(in_raw_type v) : value(v), index(0) { }
-    __device__ min_max_st(in_raw_type v, int i) : value(v), index(i) { }
+    __device__ min_max_st(_type_raw_in0 v) : value(v), index(0) { }
+    __device__ min_max_st(_type_raw_in0 v, int i) : value(v), index(i) { }
 };
 __device__ min_max_st my_min(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
@@ -517,26 +495,26 @@ amin = create_reduction_func(
     'cupy_min',
     ['?->?', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('my_min(a, b)', 'min_max_st(in)', 'a.value', 'min_max_st'),
+    ('min_max_st(in0)', 'my_min(a, b)', 'out0 = a.value', 'min_max_st'),
     None, _min_max_preamble)
 
 amax = create_reduction_func(
     'cupy_max',
     ['?->?', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'],
-    ('my_max(a, b)', 'min_max_st(in)', 'a.value', 'min_max_st'),
+    ('min_max_st(in0)', 'my_max(a, b)', 'out0 = a.value', 'min_max_st'),
     None, _min_max_preamble)
 
 argmin = create_reduction_func(
     'cupy_argmin',
     ['?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'],
-    ('my_argmin(a, b)', 'min_max_st(in, _J)', 'a.index', 'min_max_st'),
+    ('min_max_st(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index', 'min_max_st'),
     None, _min_max_preamble)
 
 argmax = create_reduction_func(
     'cupy_argmax',
     ['?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'],
-    ('my_argmax(a, b)', 'min_max_st(in, _J)', 'a.index', 'min_max_st'),
+    ('min_max_st(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index', 'min_max_st'),
     None, _min_max_preamble)

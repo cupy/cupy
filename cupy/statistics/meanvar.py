@@ -136,4 +136,4 @@ _mean = reduction.create_reduction_func(
      'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d'],
-    ('a + b', 'in', 'a / (_in_size / _out_size)', 'T'))
+    ('in0', 'a + b', 'out0 = a / (_in_size / _out_size)', None))

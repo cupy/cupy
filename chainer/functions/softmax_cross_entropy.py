@@ -62,23 +62,11 @@ class SoftmaxCrossEntropy(function.Function):
             count = t.shape[0] * n_unit
         else:
             count = t.shape[0]
-        """
-        p = cuda.elementwise(
-            'S t, raw T y, int32 n_channel', 'T out', '''
-            out = log(y[i * n_channel + t])
-            ''', 'crossent_fwd_elem')(
-                t, cupy.rollaxis(self.y, 1, len(self.y)), self.y.shape[1])
-        p = cuda.elementwise(
-            'S t, T y, int32 t_size', 'T out', '''
-            out = t == (i / t_size) ? log(y) : 0
-            ''', 'crossent_fwd_elem')(t, cuda.cupy.rollaxis(self.y, 1), t.size)
-        """
         y = cupy.rollaxis(self.y, 1, len(self.y))
         ret = cuda.reduce(
-            'S t, raw T y, int32 n_channel, T inv_count', 'T',
+            'S t, raw T y, int32 n_channel, T inv_count', 'T out',
             'log(y[_j * n_channel + t])',
-            'a+b', '0', 'crossent_fwd',
-            post_map_expr='a * inv_count'
+            'a + b', 'out = a * inv_count', '0', 'crossent_fwd'
         )(t, y, y.shape[-1], -1.0 / count)
         return ret,
 

@@ -91,7 +91,7 @@ _sum = reduction.create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d'],
-    ('a + b', 'in', 'a', 'T'), 0)
+    ('in0', 'a + b', 'out0 = a', None), 0)
 
 
 _prod = reduction.create_reduction_func(
@@ -99,5 +99,5 @@ _prod = reduction.create_reduction_func(
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'e->e', 'f->f', 'd->d'],
-    ('a * b', 'in', 'a', 'T'), 1)
+     'f->f', 'd->d'],
+    ('in0', 'a * b', 'out0 = a', None), 1)

@@ -88,11 +88,8 @@ class PReLU(function.Function):
             'T x, T gy', 'T masked',
             'masked = x >= 0 ? 0 : x * gy',
             'prelu_masked')(x[0], gy[0])
-
-        rsum = cuda.cupy.sum(masked.reshape(ldim * cdim, rdim), axis=1)
-        gW = cuda.cupy.sum(rsum.reshape(ldim, cdim), axis=0)
-        self.gW += gW.reshape(self.gW.shape)
-        del rsum, gW
+        axes = (0,) + tuple(six.moves.range(1 + len(self.W.shape), gy[0].ndim))
+        self.gW += masked.sum(axis=axes)
 
         gx = masked  # reuse buffer
         _fwd_kern()(gy[0], x[0], self.W, cdim, rdim, gx)

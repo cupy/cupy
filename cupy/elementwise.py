@@ -88,10 +88,10 @@ class ParameterInfo(object):
                 raise Exception('Unknown keyward "%s"' % i)
 
 
-def _get_param_info_tuple(str, const=False):
-    if len(str) == 0:
+def _get_param_info_tuple(s, const=False):
+    if len(s) == 0:
         return ()
-    return tuple(ParameterInfo(i, const) for i in str.strip().split(','))
+    return tuple(ParameterInfo(i, const) for i in s.strip().split(','))
 
 
 @cuda.memoize
@@ -188,6 +188,37 @@ def _get_elementwise_kernel(
         options=options, preamble=preamble, **kwargs)
 
 
+def _broadcast(args, params, size_error=True):
+    brod = cupy.broadcast(
+        *[None if p.raw else a for p, a in zip(params, args)])
+    if size_error and all(not isinstance(i, cupy.ndarray)
+                          for i in brod.values):
+        raise ValueError('Loop size is Undecided')
+    return brod, [b if a is None else a for a, b in zip(brod.values, args)]
+
+
+def _get_out_args(in_args, out_args, out_types,
+                  allocator, out_shape, out_params=None):
+    if len(out_args) == 0:
+        if out_params is not None and any(p.raw for p in out_params):
+            raise ValueError('Output array size is Undecided')
+        if allocator is None:
+            allocator = _get_allocator(in_args)
+        out_args = [cupy.empty(shape=out_shape, dtype=t, allocator=allocator)
+                    for t in out_types]
+    else:
+        assert len(out_args) == len(out_types)
+        for i, a in enumerate(out_args):
+            if not isinstance(a, cupy.ndarray):
+                raise TypeError(
+                    'Output arguments type must be cupy.ndarray')
+            if a.shape != out_shape:
+                if out_params is None or not out_params[i].raw:
+                    raise ValueError('Out shape is mismatched')
+
+    return out_args
+
+
 class ElementwiseKernel(object):
 
     """User-defined elementwise kernel.
@@ -224,9 +255,10 @@ class ElementwiseKernel(object):
     """
     def __init__(self, in_params, out_params, operation,
                  name='kernel', options=(), reduce_dims=True, **kwargs):
-        # TODO(okuta): Fix document
         self.in_params = _get_param_info_tuple(in_params, True)
         self.out_params = _get_param_info_tuple(out_params)
+        self.nin = len(self.in_params)
+        self.nout = len(self.out_params)
         self.params = \
             self.in_params + self.out_params + _get_param_info_tuple('int32 n')
         self.operation = operation
@@ -234,6 +266,9 @@ class ElementwiseKernel(object):
         self.options = options
         self.reduce_dims = reduce_dims
         self.kwargs = kwargs
+        names = [p.name for p in self.in_params + self.out_params]
+        if 'n' in names or 'i' in names:
+            raise ValueError("Can not use 'i' and 'n' as a parameter name")
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
@@ -251,43 +286,25 @@ class ElementwiseKernel(object):
 
         """
 
-        allocator = kwargs.get('allocator', None)
         n = kwargs.pop('size', None)
+        allocator = kwargs.get('allocator', None)
 
-        if not (len(args) == len(self.in_params) or
-                len(args) == len(self.in_params) + len(self.out_params)):
+        if not (len(args) == self.nin or
+                len(args) == self.nin + self.nout):
             raise TypeError('Wrong number of arguments for %s' % self.name)
         assert all(i is not None for i in args)
         internal.check_args_device(args)
 
-        brod = cupy.broadcast(
-            *[None if p.raw else a for p, a in zip(self.params, args)])
-        if n is None and all(not isinstance(i, cupy.ndarray)
-                             for i in brod.values):
-            raise ValueError('Loop size is Undecided')
-
-        brod_value = [b if a is None else a for a, b in zip(brod.values, args)]
-        in_args = brod_value[:len(self.in_params)]
-        out_args = brod_value[len(self.in_params):]
+        brod, value = _broadcast(args, self.params, n is None)
+        in_args = value[:self.nin]
+        out_args = value[self.nin:]
         in_types, out_types, types = _decide_params_type(
             self.in_params, self.out_params,
             _get_ndarray_dtype(in_args), _get_ndarray_dtype(out_args))
 
-        if len(out_args) == len(self.out_params):
-            for a, p in zip(out_args, self.out_params):
-                if not isinstance(a, cupy.ndarray):
-                    raise TypeError(
-                        'Output arguments type must be cupy.ndarray')
-                if not p.raw and a.shape != brod.shape:
-                    raise ValueError(
-                        'Output shape error')
-        else:
-            assert all(not p.raw for p in self.out_params)
-            if allocator is None:
-                allocator = _get_allocator(in_args)
-            out_args = [
-                cupy.empty(shape=brod.shape, dtype=t, allocator=allocator)
-                for t in out_types]
+        out_args = _get_out_args(
+            in_args, out_args, out_types, allocator, brod.shape,
+            self.out_params)
 
         if len(out_args) == 1:
             ret = out_args[0]
@@ -405,34 +422,27 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
+        out = kwargs.get('out', None)
+        dtype = kwargs.get('dtype', None)
+        allocator = kwargs.get('allocator', None)
+
         if not (len(args) == self.nin or len(args) == self.nargs):
             raise TypeError('Wrong number of arguments for %s' % self.name)
         assert all(i is not None for i in args)
-        internal.check_args_device(args)
 
         brod = cupy.broadcast(*args)
         in_args = brod.values[:self.nin]
         out_args = list(args[self.nin:])
-        out = kwargs.get('out', None)
         if out is not None:
             assert len(out_args) == 0
             internal.check_args_device((out,))
             out_args = [out]
+        internal.check_args_device(in_args + out_args)
 
-        dtype = kwargs.get('dtype', None)
-        allocator = kwargs.get('allocator', None)
-        if allocator is None:
-            allocator = _get_allocator(in_args)
         in_types, out_types, routine = self._guess_routine(in_args, dtype)
 
-        if len(out_args) == self.nout:
-            for i in out_args:
-                assert isinstance(i, cupy.ndarray)
-                assert i.shape == brod.shape
-        else:
-            out_args = [
-                cupy.empty(shape=brod.shape, dtype=t, allocator=allocator)
-                for t in out_types]
+        out_args = _get_out_args(
+            in_args, out_args, out_types, allocator, brod.shape)
 
         if len(out_args) == 1:
             ret = out_args[0]
