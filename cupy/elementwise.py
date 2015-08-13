@@ -7,6 +7,7 @@ import cupy
 from cupy import carray
 from cupy import cuda
 from cupy import internal
+from cupy import util
 
 
 def _get_allocator(in_arg):
@@ -88,6 +89,7 @@ class ParameterInfo(object):
                 raise Exception('Unknown keyward "%s"' % i)
 
 
+@util.memoize
 def _get_param_info_tuple(s, const=False):
     if len(s) == 0:
         return ()
