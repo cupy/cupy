@@ -361,7 +361,7 @@ class ReductionKernel(object):
 
         if any(ax < -brod.nd or ax >= brod.nd for ax in axis):
             raise ValueError('Axis overrun')
-        axis = tuple([ax if ax >= 0 else ax + brod.nd for ax in axis].sort())
+        axis = tuple(sorted([ax if ax >= 0 else ax + brod.nd for ax in axis]))
 
         in_args = [b if a is None else a for a, b in zip(brod.values, args)]
         kernel_out_shape = tuple(numpy.delete(brod.shape, axis))
