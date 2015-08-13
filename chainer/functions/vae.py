@@ -4,31 +4,38 @@ import chainer.functions as F
 from chainer import variable
 
 
-def gaussian_kl_divergence(z_mean, z_ln_var):
-    """Calculate KL-divergence between a given gaussian and the normal one.
+def gaussian_kl_divergence(mean, ln_var):
+    """Calculate KL-divergence between given gaussian and the standard one.
 
-    Given two variable ``z_mean`` representing :math:`\\mu` and ``z_ln_var``
+    Given two variable ``mean`` representing :math:`\\mu` and ``ln_var``
     representing :math:`\\log(\\sigma^2)`, this function returns a variable
-    representing KL-divergence between :math:`N(\\mu, \\sigma^2)` and
-    the normal Gaussian :math:`N(0, 1)`.
+    representing KL-divergence between given multi-dimensional gaussian
+    :math:`N(\\mu, S)` and the standard Gaussian :math:`N(0, I)`
+
+    .. math::
+
+       D_{\\mathbf{KL}}(N(\\mu, S) \\| N(0, I)),
+
+    where :math:`S` is a diagonal matrix such that :math:`S_{ii} = \\sigma_i^2`
+    and :math:`I` is an identity matrix.
 
     Args:
-        z_mean (~chainer.Variable): A variable representing mean of the given
-            gaussian distribution.
-        z_ln_var (~chainer.Variable): A variable representing logarithm of
-            variance of the given gaussian distribution.
+        mean (~chainer.Variable): A variable representing mean of given
+            gaussian distribution, :math:`\\mu`.
+        ln_var (~chainer.Variable): A variable representing logarithm of
+            variance of given gaussian distribution, :math:`\\log(\\sigma^2)`.
 
     Returns:
-        ~chainer.Variable: A variable representing KL-divergence between the
-            given gaussian distribution and the normal gaussian.
+        ~chainer.Variable: A variable representing KL-divergence between
+            given gaussian distribution and the standard gaussian.
 
     """
-    assert isinstance(z_mean, variable.Variable)
-    assert isinstance(z_ln_var, variable.Variable)
+    assert isinstance(mean, variable.Variable)
+    assert isinstance(ln_var, variable.Variable)
 
-    J = z_mean.data.size
-    z_var = F.exp(z_ln_var)
-    return (F.sum(z_mean * z_mean) + F.sum(z_var) - F.sum(z_ln_var) - J) * 0.5
+    J = mean.data.size
+    var = F.exp(ln_var)
+    return (F.sum(mean * mean) + F.sum(var) - F.sum(ln_var) - J) * 0.5
 
 
 def bernoulli_nll(x, y):
@@ -44,13 +51,10 @@ def bernoulli_nll(x, y):
     where :math:`p = \\sigma(y)`, and :math:`\\sigma(\\cdot)` is a sigmoid
     funciton.
 
-    When :math:`x \\in \\{0, 1\\}`, the return value is equal to negative
-    log-likelihoood on a Bernoulli distribution.
-
     .. note::
 
        As this funtion uses a sigmoid function, you can pass a result of
-       full-connect layer (that means :class:`Linear`) to this function
+       fully-connected layer (that means :class:`Linear`) to this function
        directly.
 
     Args:
@@ -78,8 +82,8 @@ def gaussian_nll(x, mean, ln_var):
     .. math::
 
         -\\log N(x; \\mu, \\sigma^2) =
-        \\log((\\sqrt{2\\pi})^D \\sqrt{|S|}) +
-        \\frac{1}{2}(x - \\mu)S^{-1}(x - \\mu)
+        \\log\\left(\\sqrt{(2\\pi)^D |S|}\\right) +
+        \\frac{1}{2}(x - \\mu)^\\top S^{-1}(x - \\mu)
 
     where :math:`D` is a dimention of :math:`x` and :math:`S` is a diagonal
     matrix where :math:`S_{ii} = \\sigma_i^2`.
