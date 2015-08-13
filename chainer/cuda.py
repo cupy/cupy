@@ -27,13 +27,11 @@ import warnings
 
 import numpy
 
-_requires = []
 try:
     import cupy
     import cupy.cuda
     import cupy.cuda.cublas
     import cupy.cudnn
-    import cupy.random
 
     cuda = cupy.cuda
     cublas = cuda.cublas
