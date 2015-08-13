@@ -8,7 +8,6 @@ from chainer import cuda
 from chainer import functions
 from chainer import testing
 from chainer.testing import attr
-from chainer.testing import condition
 
 
 if cuda.available:
@@ -90,14 +89,14 @@ class TestInceptionForward(unittest.TestCase):
 
     def check_call(self, x, f, gpu):
         self.setup_mock(gpu)
-        y = f(chainer.Variable(x))
+        f(chainer.Variable(x))
 
+        # Variable.__eq__ raises NotImplementedError,
+        # so we cannot check arguments
         expected = [mock.call.conv1(mock.ANY), mock.call.proj3(mock.ANY),
                     mock.call.conv3(mock.ANY), mock.call.proj5(mock.ANY),
                     mock.call.conv5(mock.ANY), mock.call.projp(mock.ANY)]
 
-        # Variable.__eq__ raises NotImplementedError,
-        # so we cannot check arguments
         self.assertListEqual(self.f.f.mock_calls, expected)
 
     def test_call_cpu(self):
