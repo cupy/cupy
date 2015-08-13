@@ -81,7 +81,7 @@ class NumericalGradientTest(unittest.TestCase):
                     for gy in self.gys)
 
         self.check_numerical_grad(self.f, self.df,
-                                  map(cuda.to_gpu, self.xs), gys)
+                                  tuple(map(cuda.to_gpu, self.xs)), gys)
 
 
 class NumericalGradientTest2(NumericalGradientTest):
