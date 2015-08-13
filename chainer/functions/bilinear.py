@@ -229,91 +229,40 @@ class Bilinear(function.Function):
         k_len = array.as_mat(x[1]).shape[1]
         l_len = gy[0].shape[1]
 
-        # ij->[ij]
-        e1 = array.as_vec(x[0])
-        # ik->[ik]
-        e2 = array.as_vec(x[1])
         gy, = gy
-        # il->[il]
-        gy_vec = array.as_vec(gy)
-        # jkl->[jkl]
-        W_vec = array.as_vec(self.W)
+        # ij
+        e1 = array.as_mat(x[0])
+        e1_b = e1[:, :, numpy.newaxis, numpy.newaxis]
+        # ik
+        e2 = array.as_mat(x[1])
+        e2_b = e2[:, numpy.newaxis, :, numpy.newaxis]
+        # il
+        gy_b = gy[:, numpy.newaxis, numpy.newaxis, :]
+        # jkl
+        W_b = self.W[numpy.newaxis, :, :, :]
 
-        dgW = cuda.empty((j_len * k_len * l_len,), dtype=numpy.float32)
-        # '[ij],[ik],[il]->[jkl]'
-        cuda.elementwise(
-            '''raw T e1, raw T e2, raw T gy,
-            int32 r, int32 e1c, int32 e2c, int32 gyc''', 'T y',
-            '''
-            int J = i / e2c / gyc;
-            int K = (i - J * e2c * gyc) / gyc;
-            int L = i % gyc;
-            T yval = 0;
-            for (int I = 0; I < r; ++I) {
-                int e1idx = I * e1c + J;
-                int e2idx = I * e2c + K;
-                int gyidx = I * gyc + L;
-                yval += e1[e1idx] * e2[e2idx] * gy[gyidx];
-            }
-            y = yval;
-            ''',
-            'sum_of_three_ary_tensor_product')(
-                e1, e2, gy_vec, i_len, j_len, k_len, l_len, dgW)
-        # [jkl]->jkl
-        self.gW += dgW.reshape((j_len, k_len, l_len))
+        kern_add = cuda.reduce(
+            'T x, T y, T z', 'T out',
+            'x * y * z', 'a + b', 'out += a', 0,
+            'sum_of_three_ary_tensor_product_add')
+
+        kern = cuda.reduce(
+            'T x, T y, T z', 'T out',
+            'x * y * z', 'a + b', 'out = a', 0,
+            'sum_of_three_ary_tensor_product_add')
+
+        # 'ij,ik,il->jkl'
+        kern_add(e1_b, e2_b, gy_b, self.gW, axis = 0)
 
         if not self.nobias:
-            e1 = array.as_mat(x[0])
-            e2 = array.as_mat(x[1])
             self.gV1 += e1.T.dot(gy)
             self.gV2 += e2.T.dot(gy)
             self.gb += gy.sum(axis=0)
 
-        ge1 = cuda.empty((i_len * j_len,), dtype=numpy.float32)
-        # '[ik],[jkl],[il]->[ij]'
-        cuda.elementwise(
-            'raw T e, raw T W, raw T gy, int32 ec, int32 gyc, int32 gec',
-            'T y',
-            '''
-            int I = i / gec;
-            int J = i % gec;
-            float yval = 0;
-            for (int K = 0; K < ec; ++K) {
-                for (int L = 0; L < gyc; ++L) {
-                    int eidx = I * ec + K;
-                    int Widx = J * ec * gyc + K * gyc + L;
-                    int gyidx = I * gyc + L;
-                    yval += e[eidx] * W[Widx] * gy[gyidx];
-                }
-            }
-            y = yval;
-            ''',
-            'ge_kernel')(e2, W_vec, gy_vec, k_len, l_len, j_len, ge1)
-        # [ij]->ij
-        ge1 = ge1.reshape(i_len, j_len)
-
-        ge2 = cuda.empty((i_len * k_len,), dtype=numpy.float32)
-        # '[ij],[jkl],[il]->[ik]'
-        cuda.elementwise(
-            'raw T e, raw T W, raw T gy, int32 ec, int32 gyc, int32 gec',
-            'T y',
-            '''
-            int I = i / gec;
-            int K = i % gec;
-            float yval = 0;
-            for (int J = 0; J < ec; ++J) {
-                for (int L = 0; L < gyc; ++L) {
-                    int eidx = I * ec + J;
-                    int Widx = J * gec * gyc + K * gyc + L;
-                    int gyidx = I * gyc + L;
-                    yval += e[eidx] * W[Widx] * gy[gyidx];
-                }
-            }
-            y = yval;
-            ''',
-            'ge_kernel2')(e1, W_vec, gy_vec, j_len, l_len, k_len, ge2)
-        # [ik]->ik
-        ge2 = ge2.reshape(i_len, k_len)
+        # 'ik,jkl,il->ij'
+        ge1 = kern(e2_b, W_b, gy_b, axis=(2, 3))
+        # 'ij,jkl,il->ik'
+        ge2 = kern(e1_b, W_b, gy_b, axis=(1, 3))
 
         if not self.nobias:
             ge1 += gy.dot(self.V1.T)
