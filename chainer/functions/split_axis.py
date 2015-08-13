@@ -57,6 +57,7 @@ class SplitAxis(function.Function):
         else:
             return xp.concatenate(gys, axis=self.axis),
 
+
 def split_axis(x, indices_or_sections, axis):
     """Splits given variables along an axis.
 
