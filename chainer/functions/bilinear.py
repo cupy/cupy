@@ -225,10 +225,6 @@ class Bilinear(function.Function):
         return (ge1.reshape(x[0].shape), ge2.reshape(x[1].shape))
 
     def backward_gpu(self, x, gy):
-        i_len, j_len = array.as_mat(x[0]).shape
-        k_len = array.as_mat(x[1]).shape[1]
-        l_len = gy[0].shape[1]
-
         gy, = gy
         # ij
         e1 = array.as_mat(x[0])
@@ -252,7 +248,7 @@ class Bilinear(function.Function):
             'sum_of_three_ary_tensor_product_add')
 
         # 'ij,ik,il->jkl'
-        kern_add(e1_b, e2_b, gy_b, self.gW, axis = 0)
+        kern_add(e1_b, e2_b, gy_b, self.gW, axis=0)
 
         if not self.nobias:
             self.gV1 += e1.T.dot(gy)
