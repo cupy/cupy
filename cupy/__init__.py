@@ -19,9 +19,11 @@ from cupy import linalg
 from cupy import logic
 from cupy import manipulation
 from cupy import math
+import cupy.random
 from cupy import sorting
 from cupy import statistics
 
+random = cupy.random
 
 # dtype short cut
 number = numpy.number
