@@ -31,20 +31,5 @@ class TestDropout(unittest.TestCase):
     def test_type_forward_gpu(self):
         self.check_type_forward(cuda.to_gpu(self.x))
 
-    def check_type_backward(self, x_data, gy_data):
-        x = chainer.Variable(x_data)
-        y = functions.dropout(x)
-        y.grad = gy_data
-        y.backward()
-
-    def test_type_backward_cpu(self):
-        self.check_type_backward(self.x, self.gy)
-
-    @attr.gpu
-    def test_type_backward_gpu(self):
-        self.check_type_backward(
-            cuda.to_gpu(self.x),
-            cuda.to_gpu(self.gy))
-
 
 testing.run_module(__name__, __file__)

@@ -28,14 +28,6 @@ class SoftmaxCrossEntropy(function.Function):
             x_type.shape[2:] == t_type.shape[1:],
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            in_types.size() == 2,
-            out_types.size() == 1,
-        )
-        y_type, = out_types
-        type_check.expect(y_type.ndim == 0)  # means scalar
-
     def forward_cpu(self, inputs):
         x, t = inputs
         self.y, = softmax.Softmax().forward_cpu((x,))

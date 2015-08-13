@@ -21,19 +21,6 @@ class Softplus(function.Function):
             x_type.dtype == numpy.float32,
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            in_types.size() == 1,
-            out_types.size() == 1,
-        )
-        x_type, = in_types
-        g_type, = out_types
-
-        type_check.expect(
-            g_type.dtype == numpy.float32,
-            x_type.shape == g_type.shape,
-        )
-
     def forward_cpu(self, inputs):
         x, = inputs
         # y = log(1 + exp(beta * x)) / beta

@@ -93,13 +93,6 @@ class NegativeSampling(function.Function):
             x_type.shape[0] == t_type.shape[0]
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            out_types.size() == 1,
-            out_types[0].dtype == numpy.float32,
-            out_types[0].ndim == 0
-        )
-
     def to_gpu(self, device=None):
         function.Function.to_gpu(self, device)
         self.sampler.to_gpu()
