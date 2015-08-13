@@ -133,7 +133,7 @@ def _count_reduce_items(arr, axis):
 _mean = reduction.create_reduction_func(
     'cupy_mean',
     ['?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
-     'q->q', 'Q->Q',
+     'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d'],
     ('a + b', 'in', 'a / (_in_size / _out_size)', 'T'))
