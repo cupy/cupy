@@ -21,14 +21,19 @@ class TestInception(unittest.TestCase):
     out1, proj3, out3, proj5, out5, proj_pool = 3, 2, 3, 2, 3, 3
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (10, self.in_channels, 5, 5)).astype(numpy.float32)
+        self.x = numpy.random.uniform(
+            -1, 1, (10, self.in_channels, 5, 5)
+        ).astype(numpy.float32)
         out = self.out1 + self.out3 + self.out5 + self.proj_pool
-        self.gy = numpy.random.uniform(-1, 1, (10, out, 5, 5)).astype(numpy.float32)
-        self.f = functions.Inception(self.in_channels, self.out1, self.proj3, self.out3, self.proj5, self.out5, self.proj_pool)
+        self.gy = numpy.random.uniform(
+            -1, 1, (10, out, 5, 5)).astype(numpy.float32)
+        self.f = functions.Inception(
+            self.in_channels, self.out1, self.proj3, self.out3,
+            self.proj5, self.out5, self.proj_pool)
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = self.f(x)
+        self.f(x)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -101,7 +106,7 @@ class TestInception2(unittest.TestCase):
 
     def check_call(self, x, f, gpu):
         self.setup_mock(gpu)
-        f(chainer.Variable(x))
+        y = f(chainer.Variable(x))
 
         expected = [mock.call.conv1(mock.ANY), mock.call.proj3(mock.ANY),
                     mock.call.conv3(mock.ANY), mock.call.proj5(mock.ANY),
