@@ -35,11 +35,9 @@ class TestInception(unittest.TestCase):
         x = chainer.Variable(x_data)
         self.f(x)
 
-    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
-    @condition.retry(3)
     @attr.gpu
     def test_forward_gpu(self):
         self.f.to_gpu()
@@ -51,11 +49,9 @@ class TestInception(unittest.TestCase):
         y.grad = y_grad
         y.backward()
 
-    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
-    @condition.retry(3)
     @attr.gpu
     def test_backward_gpu(self):
         self.f.to_gpu()
