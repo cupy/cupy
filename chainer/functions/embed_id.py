@@ -70,5 +70,5 @@ class EmbedID(function.Function):
             'T gy, int32 x, int32 n_out', 'raw T gW',
             'atomicAdd(&gW[x * n_out + i % n_out], gy)',
             'embed_id_bwd')(
-                gy[0], x[0], self.gW.shape[1], self.gW)
+                gy[0], x[0][:, numpy.newaxis], self.gW.shape[1], self.gW)
         return None,
