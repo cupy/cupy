@@ -22,6 +22,7 @@ forward/backward computations, and temporary arrays for consecutive elementwise
 operations.
 """
 
+import functools
 import os
 import warnings
 
@@ -373,14 +374,42 @@ def copy(array, out=None, out_device=None, stream=None):
 
 
 # ------------------------------------------------------------------------------
+# Function result memoization
+# ------------------------------------------------------------------------------
+def memoize(for_each_device=False):
+    """Makes a function memoizing the result for each argument and device.
+
+    This is a similar version of :func:`cupy.memoize`. The difference is that
+    this function can be used in the global scope even if CUDA is not
+    available. In such case, this function does nothing.
+
+    .. note::
+       This decorator acts as a dummy if CUDA is not available. It cannot be
+       used for general purpose memoization even if ``for_each_device`` is set
+       to False.
+
+    """
+    if available:
+        return cupy.memoize(for_each_device)
+
+    def dummy_decorator(f):
+        @functools.wraps(f)
+        def ret(*args, **kwargs):
+            return f(*args, **kwargs)
+        return ret
+    return dummy_decorator
+
+
+# ------------------------------------------------------------------------------
 # Kernel definition utility
 # ------------------------------------------------------------------------------
+@memoize(for_each_device=True)
 def elementwise(in_params, out_params, operation, name, **kwargs):
     """Creates an elementwise kernel function.
 
-    This function uses :func:`cupy.memoize` to cache the resulting kernel
-    object, i.e. the resulting kernel object is cached for each arguments and
-    CUDA device.
+    This function uses :func:`~chainer.cuda.memoize` to cache the
+    kernel object, i.e. the resulting kernel object is cached for each argument
+    combination and CUDA device.
 
     The arguments are the same as those for
     :func:`cupy.elementwise.ElementwiseKernel`, except that the ``name``
@@ -392,13 +421,14 @@ def elementwise(in_params, out_params, operation, name, **kwargs):
         in_params, out_params, operation, name, **kwargs)
 
 
+@memoize(for_each_device=True)
 def reduce(in_params, out_params, map_expr, reduce_expr, post_map_expr,
            identity, name,  **kwargs):
     """Creates a global reduction kernel function.
 
-    This function uses :func:`cupy.memoize` to cache the resulting kernel
-    object, i.e. the resulting kernel object is cached for each argument and
-    CUDA device.
+    This function uses :func:`~chainer.cuda.memoize` to cache the resulting
+    kernel object, i.e. the resulting kernel object is cached for each argument
+    combination and CUDA device.
 
     The arguments are the same as those for
     :func:`cupy.reduction.ReductionKernel`, except that the ``name`` argument
@@ -409,6 +439,8 @@ def reduce(in_params, out_params, map_expr, reduce_expr, post_map_expr,
     return cupy.reduction.ReductionKernel(
         in_params, out_params, map_expr, reduce_expr, post_map_expr,
         identity, name, **kwargs)
+
+        
 
 
 # ------------------------------------------------------------------------------
