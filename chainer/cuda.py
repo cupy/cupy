@@ -440,8 +440,6 @@ def reduce(in_params, out_params, map_expr, reduce_expr, post_map_expr,
         in_params, out_params, map_expr, reduce_expr, post_map_expr,
         identity, name, **kwargs)
 
-        
-
 
 # ------------------------------------------------------------------------------
 # numpy/cupy compatible coding

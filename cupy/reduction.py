@@ -5,7 +5,6 @@ import numpy
 
 import cupy
 from cupy import carray
-from cupy import cuda
 from cupy import elementwise
 from cupy import internal
 from cupy import util
