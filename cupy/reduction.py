@@ -8,9 +8,10 @@ from cupy import carray
 from cupy import cuda
 from cupy import elementwise
 from cupy import internal
+from cupy import util
 
 
-@cuda.memoize
+@util.memoize(for_each_device=True)
 def _make_reduction_function_kernel(name, block_size,
                                     reduce_type, params, identity,
                                     pre_map_expr, reduce_expr, post_map_expr,

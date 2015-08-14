@@ -89,14 +89,14 @@ class ParameterInfo(object):
                 raise Exception('Unknown keyward "%s"' % i)
 
 
-@util.memoize
+@util.memoize()
 def _get_param_info_tuple(s, const=False):
     if len(s) == 0:
         return ()
     return tuple(ParameterInfo(i, const) for i in s.strip().split(','))
 
 
-@cuda.memoize
+@util.memoize(for_each_device=True)
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     type_dict = {}
     if out_args_dtype:
@@ -142,7 +142,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return in_types, out_types, tuple(type_dict.items())
 
 
-@cuda.memoize
+@util.memoize(for_each_device=True)
 def _get_simple_elementwise_kernel(
         params, operation, name='kernel', options=(), preamble='',
         loop_prep='', after_loop=''):
@@ -166,7 +166,7 @@ def _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-@cuda.memoize
+@util.memoize(for_each_device=True)
 def _get_elementwise_kernel(
         params, is_ndarray, types,
         kernel_params, operation, name, options=(),
@@ -342,7 +342,7 @@ class ElementwiseKernel(object):
         return ret
 
 
-@cuda.memoize
+@util.memoize(for_each_device=True)
 def _get_ufunc_kernel(in_types, out_types, raw_out_types, is_ndarray, params,
                       routine, name, preamble):
     op = []

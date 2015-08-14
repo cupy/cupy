@@ -378,9 +378,9 @@ def copy(array, out=None, out_device=None, stream=None):
 def elementwise(in_params, out_params, operation, name, **kwargs):
     """Creates an elementwise kernel function.
 
-    This function uses :func:`cupy.cuda.memoize` to cache
-    the resulting kernel object, i.e. the resulting kernel object is cached for
-    each arguments and CUDA context.
+    This function uses :func:`cupy.memoize` to cache the resulting kernel
+    object, i.e. the resulting kernel object is cached for each arguments and
+    CUDA device.
 
     The arguments are the same as those for
     :func:`cupy.elementwise.ElementwiseKernel`, except that the ``name``
@@ -396,9 +396,9 @@ def reduce(in_params, out_params, map_expr, reduce_expr, post_map_expr,
            identity, name,  **kwargs):
     """Creates a global reduction kernel function.
 
-    This function uses :func:`cupy.cuda.memoize` to cache
-    the resulting kernel object, i.e. the resulting kernel object is cached for
-    each argument and CUDA context.
+    This function uses :func:`cupy.memoize` to cache the resulting kernel
+    object, i.e. the resulting kernel object is cached for each argument and
+    CUDA device.
 
     The arguments are the same as those for
     :func:`cupy.reduction.ReductionKernel`, except that the ``name`` argument

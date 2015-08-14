@@ -1450,4 +1450,5 @@ def get_array_module(*args):
     else:
         return numpy
 
+
 memoize = util.memoize
