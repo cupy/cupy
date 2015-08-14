@@ -36,6 +36,8 @@ _typenames = {
     numpy.dtype('bool'): 'bool',
 }
 
+_scaler_type = tuple(t.type for t in _typenames.keys())
+
 
 def _get_typename(dtype):
     global _typenames
@@ -44,21 +46,40 @@ def _get_typename(dtype):
     return _typenames[numpy.dtype(dtype)]
 
 
-def _get_kernel_params_args(param_names, args):
-    params = []
-    kernel_args = []
-    for p, a in zip(param_names, args):
+def _check_kernel_args(args):
+    global _scaler_type
+    for a in args:
+        assert isinstance(a, cupy.ndarray) or isinstance(a, _scaler_type)
+
+
+def _get_kernel_param_types(args):
+    _check_kernel_args(args)
+    ret = []
+    for a in args:
+        t = _get_typename(a.dtype)
         if isinstance(a, cupy.ndarray):
-            t = 'CArray<{0}, {1}>'.format(_get_typename(a.dtype), a.ndim)
-        elif numpy.isscalar(a):
-            if not isinstance(a, numpy.generic):
-                a = numpy.dtype(type(a)).type(a)
-            t = _get_typename(a.dtype)
-        else:
-            raise ValueError('{}'.format((p, type(a))))
-        kernel_args.append(a)
-        params.append('{} {}'.format(t, p))
-    return (', '.join(params), kernel_args)
+            t = 'CArray<{0}, {1}>'.format(t, a.ndim)
+        ret.append(t)
+    return tuple(ret)
+
+
+def _get_kernel_params(params, is_ndarray, param_types):
+    return ', '.join(
+        '{}{} {}{}'.format(
+            'const ' if p.const else '',
+            t,
+            '_raw_' if f and not p.raw else '',
+            p.name)
+        for p, f, t in zip(params, is_ndarray, param_types))
+
+
+def _get_inout_args(args, size, reduce_dims=True):
+    args = args + [numpy.int32(size)]
+    is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in args)
+    if reduce_dims:
+        args = [x.reduced_view() if f else x
+                for x, f in zip(args, is_ndarray)]
+    return args, is_ndarray
 
 
 class ParameterInfo(object):
@@ -90,7 +111,7 @@ class ParameterInfo(object):
 
 
 @util.memoize()
-def _get_param_info_tuple(s, const=False):
+def _get_param_info(s, const=False):
     if len(s) == 0:
         return ()
     return tuple(ParameterInfo(i, const) for i in s.strip().split(','))
@@ -142,54 +163,6 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return in_types, out_types, tuple(type_dict.items())
 
 
-@util.memoize(for_each_device=True)
-def _get_simple_elementwise_kernel(
-        params, operation, name='kernel', options=(), preamble='',
-        loop_prep='', after_loop=''):
-    module_code = string.Template('''
-    ${preamble}
-    extern "C" __global__ void ${name}(${params}) {
-      ${loop_prep};
-      CUPY_FOR(i, n) {
-        ${operation};
-      }
-      ${after_loop};
-    }
-    ''').substitute(
-        params=params,
-        operation=operation,
-        name=name,
-        preamble=preamble,
-        loop_prep=loop_prep,
-        after_loop=after_loop)
-    module = carray.compile_with_cache(module_code, options)
-    return module.get_function(name)
-
-
-@util.memoize(for_each_device=True)
-def _get_elementwise_kernel(
-        params, is_ndarray, types,
-        kernel_params, operation, name, options=(),
-        preamble='', **kwargs):
-    types_preamble = '\n'.join(
-        'typedef {} {};'.format(_get_typename(v), k) for k, v in types)
-    preamble = types_preamble + '\n' + preamble
-
-    op = []
-    for x, f in zip(params, is_ndarray):
-        if not f or x.raw:
-            continue
-        fmt = '{t} &{n} = _raw_{n}[i];'
-        if x.const:
-            fmt = 'const {t} {n} = _raw_{n}[i];'
-        op.append(fmt.format(t=x.ctype, n=x.name))
-    op.append(operation)
-    operation = '\n'.join(op)
-    return _get_simple_elementwise_kernel(
-        kernel_params, operation, name,
-        options=options, preamble=preamble, **kwargs)
-
-
 def _broadcast(args, params, size_error=True):
     brod = cupy.broadcast(
         *[None if p.raw else a for p, a in zip(params, args)])
@@ -217,8 +190,56 @@ def _get_out_args(in_args, out_args, out_types,
             if a.shape != out_shape:
                 if out_params is None or not out_params[i].raw:
                     raise ValueError('Out shape is mismatched')
-
     return out_args
+
+
+@util.memoize(for_each_device=True)
+def _get_simple_elementwise_kernel(
+        params, operation, name='kernel', options=(), preamble='',
+        loop_prep='', after_loop=''):
+    module_code = string.Template('''
+    ${preamble}
+    extern "C" __global__ void ${name}(${params}) {
+      ${loop_prep};
+      CUPY_FOR(i, n) {
+        ${operation};
+      }
+      ${after_loop};
+    }
+    ''').substitute(
+        params=params,
+        operation=operation,
+        name=name,
+        preamble=preamble,
+        loop_prep=loop_prep,
+        after_loop=after_loop)
+    module = carray.compile_with_cache(module_code, options)
+    return module.get_function(name)
+
+
+@util.memoize(for_each_device=True)
+def _get_elementwise_kernel(
+        params, is_ndarray, param_types, types, operation, name,
+        options=(), preamble='', **kwargs):
+    kernel_params = _get_kernel_params(params, is_ndarray, param_types)
+    types_preamble = '\n'.join(
+        'typedef {} {};'.format(_get_typename(v), k) for k, v in types)
+    preamble = types_preamble + '\n' + preamble
+
+    op = []
+    for p, f in zip(params, is_ndarray):
+        if not f or p.raw:
+            continue
+        if p.const:
+            fmt = 'const {t} {n} = _raw_{n}[i];'
+        else:
+            fmt = '{t} &{n} = _raw_{n}[i];'
+        op.append(fmt.format(t=p.ctype, n=p.name))
+    op.append(operation)
+    operation = '\n'.join(op)
+    return _get_simple_elementwise_kernel(
+        kernel_params, operation, name,
+        options=options, preamble=preamble, **kwargs)
 
 
 class ElementwiseKernel(object):
@@ -257,12 +278,12 @@ class ElementwiseKernel(object):
     """
     def __init__(self, in_params, out_params, operation,
                  name='kernel', options=(), reduce_dims=True, **kwargs):
-        self.in_params = _get_param_info_tuple(in_params, True)
-        self.out_params = _get_param_info_tuple(out_params)
+        self.in_params = _get_param_info(in_params, True)
+        self.out_params = _get_param_info(out_params)
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
         self.params = \
-            self.in_params + self.out_params + _get_param_info_tuple('int32 n')
+            self.in_params + self.out_params + _get_param_info('int32 n')
         self.operation = operation
         self.name = name
         self.options = options
@@ -304,6 +325,8 @@ class ElementwiseKernel(object):
             self.in_params, self.out_params,
             _get_ndarray_dtype(in_args), _get_ndarray_dtype(out_args))
 
+        in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
+                   for x, t in zip(in_args, in_types)]
         out_args = _get_out_args(
             in_args, out_args, out_types, allocator, brod.shape,
             self.out_params)
@@ -318,53 +341,41 @@ class ElementwiseKernel(object):
         if n == 0:
             return ret
 
-        inout_args = in_args + out_args + [numpy.int32(n)]
-        param_names = []
-        for i, x in enumerate(inout_args):
-            name = self.params[i].name
-            if isinstance(x, cupy.ndarray):
-                if not self.params[i].raw:
-                    name = "_raw_" + name
-                if self.reduce_dims:
-                    inout_args[i] = x.reduced_view()
-            elif i < len(in_args):
-                inout_args[i] = in_types[i].type(x)
-            param_names.append(name)
-
-        kernel_params, kernel_args = _get_kernel_params_args(param_names,
-                                                             inout_args)
-        is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in inout_args)
+        inout_args, is_ndarray = _get_inout_args(
+            in_args + out_args, n, self.reduce_dims)
+        param_types = _get_kernel_param_types(inout_args)
         kern = _get_elementwise_kernel(
-            self.params, is_ndarray, types,
-            kernel_params, self.operation, self.name, self.options,
-            **self.kwargs)
-        kern.linear_launch(n, kernel_args)
+            self.params, is_ndarray, param_types, types, self.operation,
+            self.name, self.options, **self.kwargs)
+        kern.linear_launch(n, inout_args)
         return ret
 
 
 @util.memoize(for_each_device=True)
-def _get_ufunc_kernel(in_types, out_types, raw_out_types, is_ndarray, params,
-                      routine, name, preamble):
+def _get_ufunc_kernel(in_types, out_types, out_raw_types, is_ndarray,
+                      param_types, params, routine, name, preamble):
+    kernel_params = _get_kernel_params(params, is_ndarray, param_types)
+
+    types = []
     op = []
     for i, x in enumerate(in_types):
-        a = '[i]' if is_ndarray[i] else ''
-        op.append('''
-                  typedef {dtype} in{i}_type;
-                  const in{i}_type in{i} = _x{i}{a};
-                  '''.format(dtype=_get_typename(x), i=i, a=a))
+        types.append('typedef {} in{}_type;'.format(_get_typename(x), i))
+        if is_ndarray[i]:
+            op.append('const in{0}_type in{0} = _raw_in{0}[i];'.format(i))
 
     for i, x in enumerate(out_types):
-        op.append('''
-                  typedef {dtype} out{i}_type;
-                  {raw_dtype} &out{i} = _x{j}[i];
-                  '''.format(dtype=_get_typename(x),
-                             raw_dtype=_get_typename(raw_out_types[i]),
-                             i=i, j=i + len(in_types)))
+        types.append('typedef {} out{}_type;'.format(_get_typename(x), i))
+        op.append('{1} &out{0} = _raw_out{0}[i];'.format(
+            i, _get_typename(out_raw_types[i])))
 
     op.append(routine)
     operation = '\n'.join(op)
+
+    types.append(preamble)
+    preamble = '\n'.join(types)
+
     return _get_simple_elementwise_kernel(
-        params, operation, name, preamble=preamble)
+        kernel_params, operation, name, preamble=preamble)
 
 
 class ufunc(object):
@@ -385,9 +396,15 @@ class ufunc(object):
         self.nargs = nin + nout
         self._ops = ops
         self._preamble = preamble
-        self._params = ['_x{}'.format(i)
-                        for i in six.moves.range(self.nargs)] + ['n']
         self.__doc__ = doc
+        _in_params = tuple(
+            ParameterInfo('T in{}'.format(i), True)
+            for i in six.moves.range(nin))
+        _out_params = tuple(
+            ParameterInfo('T out{}'.format(i), False)
+            for i in six.moves.range(nout))
+        self._params = _in_params + _out_params + (
+            ParameterInfo('int32 n', True),)
 
     def __repr__(self):
         return "<ufunc '%s'>" % self.name
@@ -443,6 +460,8 @@ class ufunc(object):
 
         in_types, out_types, routine = self._guess_routine(in_args, dtype)
 
+        in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
+                   for x, t in zip(in_args, in_types)]
         out_args = _get_out_args(
             in_args, out_args, out_types, allocator, brod.shape)
 
@@ -454,24 +473,16 @@ class ufunc(object):
         if 0 in brod.shape:
             return ret
 
-        # TODO(okuta): reorder dimension
-
-        inout_args = in_args + out_args + [numpy.int32(brod.size)]
-        for i, x in enumerate(inout_args):
-            if isinstance(x, cupy.ndarray):
-                inout_args[i] = x.reduced_view()
-            elif i < len(in_args):
-                inout_args[i] = in_types[i].type(x)
-
-        params, kernel_args = _get_kernel_params_args(self._params, inout_args)
-        is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in in_args)
-        raw_out_types = tuple(x.dtype for x in out_args)
-
+        inout_args, is_ndarray = _get_inout_args(
+            in_args + out_args, brod.size)
+        param_types = _get_kernel_param_types(inout_args)
+        out_raw_types = tuple(x.dtype for x in out_args)
         kern = _get_ufunc_kernel(
-            in_types, out_types, tuple(raw_out_types),
-            is_ndarray, params, routine, self.name, self._preamble)
+            in_types, out_types, out_raw_types,
+            is_ndarray, param_types, self._params,
+            routine, self.name, self._preamble)
 
-        kern.linear_launch(brod.size, kernel_args)
+        kern.linear_launch(brod.size, inout_args)
         return ret
 
     def _guess_routine(self, in_args, dtype):
