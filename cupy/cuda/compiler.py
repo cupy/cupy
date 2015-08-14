@@ -31,13 +31,10 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
-def nvcc(source, options=None, arch=None):
-    cmd = ['nvcc', '--cubin']
-    if options:
-        cmd += options
+def nvcc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
-    cmd += ['-arch', arch]
+    cmd = ['nvcc', '--cubin', '-arch', arch] + list(options)
 
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -55,9 +52,7 @@ def nvcc(source, options=None, arch=None):
 
 
 def preprocess(source, options=()):
-    cmd = ['nvcc', '--preprocess']
-    if options is not None:
-        cmd += list(options)
+    cmd = ['nvcc', '--preprocess'] + list(options)
     with TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cu' % path
@@ -79,13 +74,25 @@ def get_cache_dir():
     return os.environ.get('CUPY_CACHE_DIR', _default_cache_dir)
 
 
-def compile_with_cache(source, options=[], arch=None, cache_dir=None):
+_empty_file_preprocess_cache = {}
+
+
+def compile_with_cache(source, options=(), arch=None, cache_dir=None):
+    global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
     if arch is None:
         arch = _get_arch()
+    env = (arch, options)
+    if '#include' in source:
+        pp_src = '%s %s' % (env, preprocess(source, options))
+    else:
+        base = _empty_file_preprocess_cache.pop(env, None)
+        if base is None:
+            base = preprocess('', options)
+            _empty_file_preprocess_cache[env] = base
+        pp_src = '%s %s %s' % (env, base, source)
 
-    pp_src = '%s %s' % (arch, preprocess(source, options))
     if isinstance(pp_src, six.text_type):
         pp_src = pp_src.encode('utf-8')
     name = '%s.cubin' % hashlib.md5(pp_src).hexdigest()

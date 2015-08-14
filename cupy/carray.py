@@ -36,6 +36,6 @@ def _get_header_source():
     return _header_source
 
 
-def compile_with_cache(source, options=[], arch=None, cachd_dir=None):
+def compile_with_cache(source, options=(), arch=None, cachd_dir=None):
     source = _get_header_source() + source
     return cuda.compile_with_cache(source, options, arch, cachd_dir)
