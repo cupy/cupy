@@ -262,7 +262,7 @@ def _get_reduction_kernel(
         'const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
         for f, p in zip(is_ndarray, params) if f and p.const and not p.raw)
     output_expr = '\n'.join(
-        '{0} &{1} = _raw_{1}[_j];'.format(p.ctype, p.name)
+        '{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
         for f, p in zip(is_ndarray, params) if f and not p.const and not p.raw)
     return kernel_params, type_preamble, input_expr, output_expr
 
