@@ -5,9 +5,35 @@ import six
 
 import cupy
 from cupy import carray
+from cupy import cindexer
 from cupy import cuda
 from cupy import internal
 from cupy import util
+
+
+@util.memoize(for_each_device=True)
+def _get_simple_elementwise_kernel(
+        params, operation, name='kernel', options=(), preamble='',
+        loop_prep='', after_loop=''):
+    module_code = string.Template('''
+    ${preamble}
+    extern "C" __global__ void ${name}(${params}) {
+      ${loop_prep};
+      CUPY_FOR(i, _ind.size()) {
+        _ind.set(i);
+        ${operation};
+      }
+      ${after_loop};
+    }
+    ''').substitute(
+        params=params,
+        operation=operation,
+        name=name,
+        preamble=preamble,
+        loop_prep=loop_prep,
+        after_loop=after_loop)
+    module = carray.compile_with_cache(module_code, options)
+    return module.get_function(name)
 
 
 def _get_allocator(in_arg):
@@ -36,29 +62,32 @@ _typenames = {
     numpy.dtype('bool'): 'bool',
 }
 
+
 _scaler_type = tuple(t.type for t in _typenames.keys())
 
 
 def _get_typename(dtype):
-    global _typenames
     if dtype is None:
         raise ValueError('dtype is None')
     return _typenames[numpy.dtype(dtype)]
 
 
 def _check_kernel_args(args):
-    global _scaler_type
     for a in args:
-        assert isinstance(a, cupy.ndarray) or isinstance(a, _scaler_type)
+        assert isinstance(a, _scaler_type) or isinstance(
+            a, (cupy.ndarray, cindexer.Indexer))
 
 
 def _get_kernel_param_types(args):
     _check_kernel_args(args)
     ret = []
     for a in args:
-        t = _get_typename(a.dtype)
-        if isinstance(a, cupy.ndarray):
-            t = 'CArray<{0}, {1}>'.format(t, a.ndim)
+        if isinstance(a, cindexer.Indexer):
+            t = 'CIndexer<{}>'.format(a.ndim)
+        else:
+            t = _get_typename(a.dtype)
+            if isinstance(a, cupy.ndarray):
+                t = 'CArray<{}, {}>'.format(t, a.ndim)
         ret.append(t)
     return tuple(ret)
 
@@ -73,12 +102,31 @@ def _get_kernel_params(params, is_ndarray, param_types):
         for p, f, t in zip(params, is_ndarray, param_types))
 
 
-def _get_inout_args(args, size, reduce_dims=True):
-    args = args + [numpy.int32(size)]
-    is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in args)
+def _reduce_dims(args, params, indexer):
+    red = [a.reduced_view()
+           if isinstance(a, cupy.ndarray) and not p.raw else None
+           for a, p in zip(args, params)]
+    max_arr = max(red, key=lambda x: 0 if x is None else x.ndim)
+    if max_arr is None:
+        return args, indexer
+    try:
+        for i, x in enumerate(red):
+            if x is not None:
+                x.shape = max_arr.shape
+    except AttributeError:
+        pass
+    else:
+        assert max_arr.size == indexer.size
+        args = [a if r is None else r for a, r in zip(args, red)]
+        indexer.shape = max_arr.shape
+    return args, indexer
+
+
+def _get_inout_args(args, indexer, params, reduce_dims):
     if reduce_dims:
-        args = [x.reduced_view() if f else x
-                for x, f in zip(args, is_ndarray)]
+        args, indexer = _reduce_dims(args, params, indexer)
+    args += [indexer]
+    is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in args)
     return args, is_ndarray
 
 
@@ -95,7 +143,9 @@ class ParameterInfo(object):
             raise Exception('Syntax error: %s' % str)
 
         t, self.name = s[-2:]
-        if len(t) == 1:
+        if t == 'CIndexer':
+            pass
+        elif len(t) == 1:
             self.ctype = t
         else:
             self.dtype = numpy.dtype(t)
@@ -194,30 +244,6 @@ def _get_out_args(in_args, out_args, out_types,
 
 
 @util.memoize(for_each_device=True)
-def _get_simple_elementwise_kernel(
-        params, operation, name='kernel', options=(), preamble='',
-        loop_prep='', after_loop=''):
-    module_code = string.Template('''
-    ${preamble}
-    extern "C" __global__ void ${name}(${params}) {
-      ${loop_prep};
-      CUPY_FOR(i, n) {
-        ${operation};
-      }
-      ${after_loop};
-    }
-    ''').substitute(
-        params=params,
-        operation=operation,
-        name=name,
-        preamble=preamble,
-        loop_prep=loop_prep,
-        after_loop=after_loop)
-    module = carray.compile_with_cache(module_code, options)
-    return module.get_function(name)
-
-
-@util.memoize(for_each_device=True)
 def _get_elementwise_kernel(
         params, is_ndarray, param_types, types, operation, name,
         options=(), preamble='', **kwargs):
@@ -231,9 +257,9 @@ def _get_elementwise_kernel(
         if not f or p.raw:
             continue
         if p.const:
-            fmt = 'const {t} {n} = _raw_{n}[i];'
+            fmt = 'const {t} {n} = _raw_{n}[_ind.get()];'
         else:
-            fmt = '{t} &{n} = _raw_{n}[i];'
+            fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
         op.append(fmt.format(t=p.ctype, n=p.name))
     op.append(operation)
     operation = '\n'.join(op)
@@ -282,16 +308,16 @@ class ElementwiseKernel(object):
         self.out_params = _get_param_info(out_params)
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
-        self.params = \
-            self.in_params + self.out_params + _get_param_info('int32 n')
+        param_rest = _get_param_info('CIndexer _ind')
+        self.params = self.in_params + self.out_params + param_rest
         self.operation = operation
         self.name = name
         self.options = options
         self.reduce_dims = reduce_dims
         self.kwargs = kwargs
         names = [p.name for p in self.in_params + self.out_params]
-        if 'n' in names or 'i' in names:
-            raise ValueError("Can not use 'i' and 'n' as a parameter name")
+        if 'i' in names:
+            raise ValueError("Can not use 'i' as a parameter name")
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
@@ -337,17 +363,20 @@ class ElementwiseKernel(object):
             ret = tuple(out_args)
 
         if n is None:
-            n = brod.size
-        if n == 0:
+            indexer = cindexer.Indexer(brod.shape)
+        else:
+            indexer = cindexer.Indexer((n,))
+
+        if brod.size == 0:
             return ret
 
         inout_args, is_ndarray = _get_inout_args(
-            in_args + out_args, n, self.reduce_dims)
+            in_args + out_args, indexer, self.params, self.reduce_dims)
         param_types = _get_kernel_param_types(inout_args)
         kern = _get_elementwise_kernel(
             self.params, is_ndarray, param_types, types, self.operation,
             self.name, self.options, **self.kwargs)
-        kern.linear_launch(n, inout_args)
+        kern.linear_launch(indexer.size, inout_args)
         return ret
 
 
@@ -360,12 +389,14 @@ def _get_ufunc_kernel(in_types, out_types, out_raw_types, is_ndarray,
     op = []
     for i, x in enumerate(in_types):
         types.append('typedef {} in{}_type;'.format(_get_typename(x), i))
-        if is_ndarray[i]:
-            op.append('const in{0}_type in{0} = _raw_in{0}[i];'.format(i))
+        if not is_ndarray[i]:
+            continue
+        op.append(
+            'const in{0}_type in{0} = _raw_in{0}[_ind.get()];'.format(i))
 
     for i, x in enumerate(out_types):
         types.append('typedef {} out{}_type;'.format(_get_typename(x), i))
-        op.append('{1} &out{0} = _raw_out{0}[i];'.format(
+        op.append('{1} &out{0} = _raw_out{0}[_ind.get()];'.format(
             i, _get_typename(out_raw_types[i])))
 
     op.append(routine)
@@ -404,7 +435,7 @@ class ufunc(object):
             ParameterInfo('T out{}'.format(i), False)
             for i in six.moves.range(nout))
         self._params = _in_params + _out_params + (
-            ParameterInfo('int32 n', True),)
+            ParameterInfo('CIndexer _ind', False),)
 
     def __repr__(self):
         return "<ufunc '%s'>" % self.name
@@ -473,8 +504,9 @@ class ufunc(object):
         if 0 in brod.shape:
             return ret
 
+        indexer = cindexer.Indexer(brod.shape)
         inout_args, is_ndarray = _get_inout_args(
-            in_args + out_args, brod.size)
+            in_args + out_args, indexer, self._params, True)
         param_types = _get_kernel_param_types(inout_args)
         out_raw_types = tuple(x.dtype for x in out_args)
         kern = _get_ufunc_kernel(
@@ -482,7 +514,7 @@ class ufunc(object):
             is_ndarray, param_types, self._params,
             routine, self.name, self._preamble)
 
-        kern.linear_launch(brod.size, inout_args)
+        kern.linear_launch(indexer.size, inout_args)
         return ret
 
     def _guess_routine(self, in_args, dtype):

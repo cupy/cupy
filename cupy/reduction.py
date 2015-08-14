@@ -5,6 +5,7 @@ import numpy
 
 import cupy
 from cupy import carray
+from cupy import cindexer
 from cupy import elementwise
 from cupy import internal
 from cupy import util
@@ -26,15 +27,17 @@ def _make_reduction_function_kernel(
     typedef ${reduce_type} _type_reduce;
     extern "C" __global__ void ${name}(${params}) {
       if (_out_clp2_size > 256) {
-        CUPY_FOR(_i, _out_size) {
+        CUPY_FOR(_i, _out_ind.size()) {
           _type_reduce _s = _type_reduce(${identity});
           for (int _j = _i, _J = 0;
-               _j < _in_size;
-               _j += _out_size, _J++) {
+               _j < _in_ind.size();
+               _j += _out_ind.size(), _J++) {
+            _in_ind.set(_j);
             ${input_expr}
             _type_reduce _a = ${pre_map_expr};
             _s = REDUCE(_s, _a);
           }
+          _out_ind.set(_i);
           ${output_expr}
           POST_MAP(_s);
         }
@@ -44,15 +47,16 @@ def _make_reduction_function_kernel(
         int _tid = threadIdx.x;
         _sdata[_tid] = _type_reduce(${identity});
         unsigned int _i = _tid % _out_clp2_size;
-        if (_i >= _out_size) return;
+        if (_i >= _out_ind.size()) return;
         _type_reduce _s = _type_reduce(${identity});
         int _J_offset = _tid / _out_clp2_size;
-        int _j_offset = _J_offset * _out_size;
+        int _j_offset = _J_offset * _out_ind.size();
         int _J_stride = ${block_size} / _out_clp2_size;
-        int _j_stride = _J_stride * _out_size;
+        int _j_stride = _J_stride * _out_ind.size();
         for (int _j = _i + _j_offset, _J = _J_offset;
-             _j < _in_size;
+             _j < _in_ind.size();
              _j += _j_stride, _J += _J_stride) {
+          _in_ind.set(_j);
           ${input_expr}
           _type_reduce _a = ${pre_map_expr};
           _s = REDUCE(_s, _a);
@@ -89,7 +93,8 @@ def _make_reduction_function_kernel(
           }
         }
         _s = _sdata[_tid];
-        if (_tid >= _out_size) return;
+        if (_tid >= _out_ind.size()) return;
+        _out_ind.set(_i);
          ${output_expr}
         POST_MAP(_s);
       }
@@ -148,14 +153,16 @@ def _get_trans_args(args, axis, ndim, params=None):
             for a in args]
 
 
-def _get_inout_args(args, in_size, out_size, out_clp2_size,
-                    reduce_dims=True):
-    args = args + [numpy.int32(in_size), numpy.int32(out_size),
-                   numpy.int32(out_clp2_size)]
-    is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in args)
+def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+                    params, reduce_dims):
     if reduce_dims:
-        args = [x.reduced_view() if f else x
-                for x, f in zip(args, is_ndarray)]
+        in_args, in_indexer = elementwise._reduce_dims(
+            in_args, params, in_indexer)
+        out_args, out_indexer = elementwise._reduce_dims(
+            out_args, params[len(in_args):], out_indexer)
+    args = in_args + out_args + [in_indexer, out_indexer,
+                                 numpy.int32(out_clp2_size)]
+    is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in args)
     return args, is_ndarray
 
 
@@ -171,9 +178,9 @@ class simple_reduction_function(object):
         in_params = elementwise._get_param_info('T in0', True)
         out_params = elementwise._get_param_info('T out0')
         self._params = in_params + out_params + elementwise._get_param_info(
-            'int32 _in_size, int32 _out_size, int32 _out_clp2_size')
-        self._input_expr = 'const type_in0_raw in0 = _raw_in0[_j];'
-        self._output_expr = 'type_out0_raw &out0 = _raw_out0[_i];'
+            'CIndexer _in_ind, CIndexer _out_ind, int32 _out_clp2_size')
+        self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
+        self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
 
     def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False,
                  allocator=None):
@@ -197,12 +204,13 @@ class simple_reduction_function(object):
             in_args, out_args, out_types, allocator, out_shape)
         in_args = _get_trans_args(in_args, axis, in_args[0].ndim)
 
-        in_size = a.size
-        out_size = numpy.prod(out_shape, dtype=int)
-        out_clp2_size = 2 ** int.bit_length(int(out_size - 1))
+        in_indexer = cindexer.Indexer(in_args[0].shape)
+        out_indexer = cindexer.Indexer(out_shape)
+        out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
 
         inout_args, is_ndarray = _get_inout_args(
-            in_args + out_args, in_size, out_size, out_clp2_size)
+            in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+            self._params, True)
         param_types = elementwise._get_kernel_param_types(inout_args)
         params = elementwise._get_kernel_params(
             self._params, is_ndarray, param_types)
@@ -229,7 +237,7 @@ class simple_reduction_function(object):
         if out_clp2_size > 256:
             shared_mem = 0
         # TODO(okuta) set actual size
-        kern.linear_launch(max(out_size, block_size), inout_args,
+        kern.linear_launch(max(out_indexer.size, block_size), inout_args,
                            shared_mem=shared_mem,
                            block_max_size=block_size)
 
@@ -343,7 +351,7 @@ class ReductionKernel(object):
         self.nout = len(self.out_params)
         self.params = self.in_params + self.out_params + \
             elementwise._get_param_info(
-                'int32 _in_size, int32 _out_size, int32 _out_clp2_size')
+                'CIndexer _in_ind, CIndexer _out_ind, int32 _out_clp2_size')
         self.identity = identity
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
@@ -413,13 +421,13 @@ class ReductionKernel(object):
             in_args, out_args, out_types, allocator, out_shape,
             self.out_params)
 
-        in_size = brod.size
-        out_size = numpy.prod(out_shape, dtype=int)
-        out_clp2_size = 2 ** int.bit_length(int(out_size - 1))
+        in_indexer = cindexer.Indexer(brod.shape)
+        out_indexer = cindexer.Indexer(out_shape)
+        out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
 
         inout_args, is_ndarray = _get_inout_args(
-            in_args + out_args, in_size, out_size, out_clp2_size,
-            self.reduce_dims)
+            in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+            self.params, self.reduce_dims)
         param_types = elementwise._get_kernel_param_types(inout_args)
 
         exprs = _get_reduction_kernel(
@@ -433,7 +441,7 @@ class ReductionKernel(object):
         if out_clp2_size > 256:
             shared_mem = 0
         # TODO(okuta) set actual size
-        kern.linear_launch(max(out_size, block_size), inout_args,
+        kern.linear_launch(max(out_indexer.size, block_size), inout_args,
                            shared_mem=shared_mem,
                            block_max_size=block_size)
         return out_args[0]

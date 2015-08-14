@@ -8,7 +8,7 @@ from cupy import cuda
 MAX_NDIM = 25
 
 
-def _make_array(n):
+def _make_carray(n):
     class CArray(ctypes.Structure):
         _fields_ = [('data', ctypes.c_void_p),
                     ('size', ctypes.c_int),
@@ -17,10 +17,11 @@ def _make_array(n):
     return CArray
 
 
-_carrays = [_make_array(i) for i in six.moves.range(MAX_NDIM)]
+_carrays = [_make_carray(i) for i in six.moves.range(MAX_NDIM)]
 
 
 def to_carray(data, size, shape, strides):
+    global _carrays
     return _carrays[len(shape)](data, size, shape, strides)
 
 
