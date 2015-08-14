@@ -64,10 +64,10 @@ class TestInceptionBNBase(unittest.TestCase):
         ).astype(numpy.float32)
 
 
-class TestInceptionBNBackward(TestInceptionBNBase):
+class TestInceptionBN(TestInceptionBNBase):
 
     def setUp(self):
-        super(TestInceptionBNBackward, self).setUp()
+        super(TestInceptionBN, self).setUp()
         self.f = self._setup_inceptionbn()
 
     def check_backward(self, x_data, gpu):
@@ -129,56 +129,56 @@ class TestInceptionBNBackward(TestInceptionBNBase):
         self.check_call(x, self.f, True)
 
 
-class TestInceptionBNBackward2(TestInceptionBNBackward):
+class TestInceptionBN2(TestInceptionBN):
 
     pooltype = 'avg'
 
 
-class TestInceptionBNBackward3(TestInceptionBNBackward):
+class TestInceptionBN3(TestInceptionBN):
 
     out1 = 0
 
 
-class TestInceptionBNBackward4(TestInceptionBNBackward):
+class TestInceptionBN4(TestInceptionBN):
 
     out1 = 0
     pooltype = 'avg'
 
 
-class TestInceptionBNBackward5(TestInceptionBNBackward):
+class TestInceptionBN5(TestInceptionBN):
 
     out1 = 0
     proj_pool = None
 
 
-class TestInceptionBNBackward6(TestInceptionBNBackward):
+class TestInceptionBN6(TestInceptionBN):
 
     out1 = 0
     pooltype = 'avg'
     proj_pool = None
 
 
-class TestInceptionBNBackward7(TestInceptionBNBackward):
+class TestInceptionBN7(TestInceptionBN):
 
     out1 = 0
     stride = 2
 
 
-class TestInceptionBNBackward8(TestInceptionBNBackward):
+class TestInceptionBN8(TestInceptionBN):
 
     out1 = 0
     stride = 2
     proj_pool = None
 
 
-class TestInceptionBNBackward9(TestInceptionBNBackward):
+class TestInceptionBN9(TestInceptionBN):
 
     out1 = 0
     stride = 2
     pooltype = 'avg'
 
 
-class TestInceptionBNBackward10(TestInceptionBNBackward):
+class TestInceptionBN10(TestInceptionBN):
 
     out1 = 0
     stride = 2
@@ -186,7 +186,7 @@ class TestInceptionBNBackward10(TestInceptionBNBackward):
     proj_pool = None
 
 
-class TestInceptionBNInvalidForward(TestInceptionBNBase):
+class TestInceptionBNInvalidCall(TestInceptionBNBase):
 
     proj_pool = None
 
@@ -195,18 +195,18 @@ class TestInceptionBNInvalidForward(TestInceptionBNBase):
             self.f = self._setup_inceptionbn()
 
 
-class TestInceptionBNInvalidForward2(TestInceptionBNInvalidForward):
+class TestInceptionBNInvalidCall2(TestInceptionBNInvalidCall):
 
     pooltype = 'avg'
     proj_pool = None
 
 
-class TestInceptionBNInvalidForward3(TestInceptionBNInvalidForward):
+class TestInceptionBNInvalidCall3(TestInceptionBNInvalidCall):
 
     stride = 2
 
 
-class TestInceptionBNInvalidForward4(TestInceptionBNInvalidForward):
+class TestInceptionBNInvalidCall4(TestInceptionBNInvalidCall):
 
     stride = 2
     pooltype = 'avg'
