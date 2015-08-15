@@ -24,4 +24,22 @@ class TestForceArray(unittest.TestCase):
         self.assertEqual(x.dtype, numpy.float32)
 
 
+class TestForceType(unittest.TestCase):
+
+    def test_force_type_scalar(self):
+        x = numpy.int32(1)
+        y = utils.force_type(numpy.dtype(numpy.float32), x)
+        self.assertEqual(y.dtype, numpy.float32)
+
+    def test_force_type_array(self):
+        x = numpy.array([1], dtype=numpy.int32)
+        y = utils.force_type(numpy.dtype(numpy.float32), x)
+        self.assertEqual(y.dtype, numpy.float32)
+
+    def test_force_type_array_no_change(self):
+        x = numpy.array([1], dtype=numpy.float32)
+        y = utils.force_type(numpy.dtype(numpy.float32), x)
+        self.assertEqual(y.dtype, numpy.float32)
+
+
 testing.run_module(__name__, __file__)
