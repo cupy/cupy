@@ -22,6 +22,13 @@ class TestHuffmanTree(unittest.TestCase):
         expect = (('z', 'y'), (('v', 'w'), 'x'))
         self.assertEqual(expect, tree)
 
+    def test_same_count(self):
+        tree = functions.create_huffman_tree(
+            {'x': 1, 'y': 2, 'z': 3})
+        # Order of the same items are not defined.
+        self.assertTrue((('x', 'y'), 'z') == tree or
+                        ('z', ('x', 'y')) == tree)
+
 
 class TestBinaryHierarchicalSoftmax(unittest.TestCase):
 

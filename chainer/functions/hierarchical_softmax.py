@@ -184,14 +184,16 @@ def create_huffman_tree(word_counts):
         raise ValueError('Empty vocabulary')
 
     q = six.moves.queue.PriorityQueue()
-    for w, c in six.iteritems(word_counts):
-        q.put((c, w))
+    # Use unique id when two entries have the same count.
+    # Note that `iteritem` is randomly ordered.
+    for i, (w, c) in enumerate(six.iteritems(word_counts)):
+        q.put((c, i, w))
 
     while q.qsize() >= 2:
-        (count1, word1) = q.get()
-        (count2, word2) = q.get()
+        (count1, id1, word1) = q.get()
+        (count2, id2, word2) = q.get()
         count = count1 + count2
         tree = (word1, word2)
-        q.put((count, tree))
+        q.put((count, min(id1, id2), tree))
 
-    return q.get()[1]
+    return q.get()[2]
