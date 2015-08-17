@@ -1,6 +1,9 @@
+import numpy
+import six
+
 from chainer import cuda
 from chainer import function
-import six
+from chainer.utils import type_check
 
 
 def _cu_conv_sum(y, x, n):
@@ -40,6 +43,15 @@ class LocalResponseNormalization(function.Function):
         self.k = k
         self.alpha = alpha
         self.beta = beta
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim >= 2,
+        )
 
     def forward_cpu(self, x):
         half_n = self.n // 2

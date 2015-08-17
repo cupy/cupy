@@ -1,6 +1,9 @@
+import numpy
+
 from chainer import cuda
 from chainer import function
 from chainer.functions import convolution_2d as conv2d_module
+from chainer.utils import type_check
 
 
 class NonparameterizedConvolution2D(function.Function):
@@ -22,6 +25,30 @@ class NonparameterizedConvolution2D(function.Function):
         self.pad = pad
 
         self.use_cudnn = use_cudnn
+
+    def check_type_forward(self, in_types):
+        type_check.expect(
+            2 <= in_types.size(),
+            in_types.size() <= 3,
+        )
+
+        x_type = in_types[0]
+        w_type = in_types[1]
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            w_type.dtype == numpy.float32,
+            x_type.ndim == 4,
+            w_type.ndim == 4,
+            x_type.shape[1] == w_type.shape[1],
+        )
+
+        if in_types.size().eval() == 3:
+            b_type = in_types[2]
+            type_check.expect(
+                b_type.dtype == numpy.float32,
+                b_type.ndim == 1,
+                b_type.shape[0] == w_type.shape[0],
+            )
 
     def forward(self, x):
         W = x[1]

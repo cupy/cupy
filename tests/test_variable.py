@@ -166,4 +166,27 @@ class TestVariable(unittest.TestCase):
             a.grad = np.empty((2,), dtype=np.float32)
 
 
+class TestVariableSetCreator(unittest.TestCase):
+    class MockFunction(object):
+        pass
+
+    def setUp(self):
+        self.x = np.random.uniform(-1, 1, (2, 5)).astype(np.float32)
+        self.f = self.MockFunction()
+        self.f.rank = 10
+
+    def check_set_creator(self, x):
+        x = chainer.Variable(x)
+        x.set_creator(self.f)
+        self.assertEqual(x.creator, self.f)
+        self.assertEqual(x.rank, 11)
+
+    def test_set_creator_cpu(self):
+        self.check_set_creator(self.x)
+
+    @attr.gpu
+    def test_set_creator_gpu(self):
+        self.check_set_creator(cuda.to_gpu(self.x))
+
+
 testing.run_module(__name__, __file__)

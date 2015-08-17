@@ -105,22 +105,6 @@ class Linear(function.Function):
              type_check.Variable(self.W.shape[1], 'W.shape[1]')),
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            in_types.size() == 1,
-            out_types.size() == 1,
-        )
-        x_type, = in_types
-        y_type, = out_types
-
-        type_check.expect(
-            y_type.dtype == numpy.float32,
-            y_type.ndim == 2,
-            y_type.shape[0] == x_type.shape[0],
-            y_type.shape[1] == type_check.Variable(self.W.shape[0],
-                                                   'W.shape[0]'),
-        )
-
     def zero_grads(self):
         self.gW.fill(0)
         if self.gb is not None:

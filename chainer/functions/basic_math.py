@@ -27,13 +27,6 @@ def _convert_value_to_string(value):
             'value must be float, ndarray, GPUArray, or Variable')
 
 
-def _force_type(dtype, value):
-    if numpy.isscalar(value):
-        return dtype.type(value)
-    else:
-        return value
-
-
 class Neg(function.Function):
 
     @property
@@ -117,7 +110,8 @@ class AddConstant(function.Function):
         type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
-        return utils.force_array(x[0] + _force_type(x[0].dtype, self.value)),
+        value = utils.force_type(x[0].dtype, self.value)
+        return utils.force_array(x[0] + value),
 
     def backward(self, x, gy):
         return gy[0],
@@ -168,7 +162,8 @@ class SubFromConstant(function.Function):
         type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
-        return utils.force_array(_force_type(x[0].dtype, self.value) - x[0]),
+        value = utils.force_type(x[0].dtype, self.value)
+        return utils.force_array(value - x[0]),
 
     def backward(self, x, gy):
         return utils.force_array(-gy[0]),
@@ -227,10 +222,12 @@ class MulConstant(function.Function):
         type_check.expect(in_types.size() == 1)
 
     def forward(self, x):
-        return utils.force_array(_force_type(x[0].dtype, self.value) * x[0]),
+        value = utils.force_type(x[0].dtype, self.value)
+        return utils.force_array(value * x[0]),
 
     def backward(self, x, gy):
-        return utils.force_array(_force_type(gy[0].dtype, self.value) * gy[0]),
+        value = utils.force_type(gy[0].dtype, self.value)
+        return utils.force_array(value * gy[0]),
 
 
 def mul(lhs, rhs):  # lhs * rhs
@@ -294,10 +291,11 @@ class DivFromConstant(function.Function):
         type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward(self, x):
-        return utils.force_array(_force_type(x[0].dtype, self.value) / x[0]),
+        value = utils.force_type(x[0].dtype, self.value)
+        return utils.force_array(value / x[0]),
 
     def backward_cpu(self, x, gy):
-        value = _force_type(gy[0].dtype, self.value)
+        value = utils.force_type(gy[0].dtype, self.value)
         return utils.force_array(-value * gy[0] / (x[0] ** 2)),
 
     def backward_gpu(self, x, gy):
@@ -382,11 +380,12 @@ class PowVarConst(function.Function):
         type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward(self, x):
-        return utils.force_array(x[0] ** _force_type(x[0].dtype, self.value)),
+        value = utils.force_type(x[0].dtype, self.value)
+        return utils.force_array(x[0] ** value),
 
     def backward_cpu(self, x, gy):
-        val_1 = _force_type(x[0].dtype, self.value - 1)
-        gx = _force_type(x[0].dtype, self.value) * (x[0] ** val_1) * gy[0]
+        val_1 = utils.force_type(x[0].dtype, self.value - 1)
+        gx = utils.force_type(x[0].dtype, self.value) * (x[0] ** val_1) * gy[0]
         return utils.force_array(gx),
 
     def backward_gpu(self, x, gy):
@@ -430,7 +429,8 @@ class PowConstVar(function.Function):
         type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward_cpu(self, x):
-        self.y = utils.force_array(_force_type(x[0].dtype, self.value) ** x[0])
+        value = utils.force_type(x[0].dtype, self.value)
+        self.y = utils.force_array(value ** x[0])
         return self.y,
 
     def forward_gpu(self, x):
@@ -446,7 +446,7 @@ class PowConstVar(function.Function):
         return y,
 
     def backward_cpu(self, x, gy):
-        value = _force_type(gy[0].dtype, self.value)
+        value = utils.force_type(gy[0].dtype, self.value)
         return utils.force_array(numpy.log(value) * self.y * gy[0]),
 
     def backward_gpu(self, x, gy):
@@ -548,3 +548,55 @@ class Log(function.Function):
 def log(x):
     """Elementwise natural logarithm function."""
     return Log()(x)
+
+
+class Sin(function.Function):
+
+    @property
+    def label(self):
+        return 'sin'
+
+    def forward_cpu(self, x):
+        self.y = utils.force_array(numpy.sin(x[0]))
+        return self.y,
+
+    def forward_gpu(self, x):
+        y = cuda.cumath.sin(x[0])
+        return y,
+
+    def backward_cpu(self, x, gy):
+        return utils.force_array(numpy.cos(x[0]) * gy[0]),
+
+    def backward_gpu(self, x, gy):
+        return utils.force_array(cuda.cumath.cos(x[0]) * gy[0]),
+
+
+def sin(x):
+    """Elementwise sin function."""
+    return Sin()(x)
+
+
+class Cos(function.Function):
+
+    @property
+    def label(self):
+        return 'cos'
+
+    def forward_cpu(self, x):
+        self.y = utils.force_array(numpy.cos(x[0]))
+        return self.y,
+
+    def forward_gpu(self, x):
+        y = cuda.cumath.cos(x[0])
+        return y,
+
+    def backward_cpu(self, x, gy):
+        return utils.force_array(-numpy.sin(x[0]) * gy[0]),
+
+    def backward_gpu(self, x, gy):
+        return utils.force_array(-cuda.cumath.sin(x[0]) * gy[0]),
+
+
+def cos(x):
+    """Elementwise cos function."""
+    return Cos()(x)

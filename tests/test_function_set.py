@@ -102,5 +102,41 @@ class TestFunctionSet(unittest.TestCase):
         fs2.to_cpu()
         self.check_equal_fs(self.fs, fs2)
 
+    def check_copy_parameters_from(self, src_gpu=False, dst_gpu=False):
+        aW = np.random.uniform(-1, 1, (2, 3)).astype(np.float32)
+        ab = np.random.uniform(-1, 1, (2,)).astype(np.float32)
+        bW = np.random.uniform(-1, 1, (2, 3)).astype(np.float32)
+        bb = np.random.uniform(-1, 1, (2,)).astype(np.float32)
+        params = [aW.copy(), ab.copy(), bW.copy(), bb.copy()]
+
+        if dst_gpu:
+            self.fs.to_gpu()
+
+        if src_gpu:
+            params = map(cuda.to_gpu, params)
+
+        self.fs.copy_parameters_from(params)
+        self.fs.to_cpu()
+
+        self.assertTrue((self.fs.a.W == aW).all())
+        self.assertTrue((self.fs.a.b == ab).all())
+        self.assertTrue((self.fs.b.W == bW).all())
+        self.assertTrue((self.fs.b.b == bb).all())
+
+    def test_copy_parameters_from_cpu_to_cpu(self):
+        self.check_copy_parameters_from(False, False)
+
+    @attr.gpu
+    def test_copy_parameters_from_cpu_to_gpu(self):
+        self.check_copy_parameters_from(False, True)
+
+    @attr.gpu
+    def test_copy_parameters_from_gpu_to_cpu(self):
+        self.check_copy_parameters_from(True, False)
+
+    @attr.gpu
+    def test_copy_parameters_from_gpu_to_gpu(self):
+        self.check_copy_parameters_from(True, True)
+
 
 testing.run_module(__name__, __file__)

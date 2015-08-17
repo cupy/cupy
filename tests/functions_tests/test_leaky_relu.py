@@ -68,4 +68,14 @@ class TestLeakyReLU(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
+class TestLeakyReLUZeroDim(TestLeakyReLU):
+
+    def setUp(self):
+        # Avoid unstability of numeraical grad
+        self.x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
+        self.x *= numpy.random.randint(2, size=()) * 2 - 1
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.slope = random.random()
+
+
 testing.run_module(__name__, __file__)
