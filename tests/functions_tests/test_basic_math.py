@@ -249,35 +249,98 @@ class TestBinaryOpConstant(unittest.TestCase):
         y4.backward()
         self.assertEqual(x4.grad.dtype, numpy.float32)
 
-    def test_add_constnt(self):
+    def _test_constant_array_one(self, func, lhs, rhs):
+        x = chainer.Variable(lhs)
+        y = func(x, rhs)
+        self.assertEqual(y.data.dtype, numpy.float32)
+        y.grad = numpy.ones_like(y.data, numpy.float32)
+        y.backward()
+        self.assertEqual(x.grad.dtype, numpy.float32)
+
+    def _test_constant_array(self, func):
+        x_data = numpy.array([1.0, 2.0], numpy.float32)
+
+        self._test_constant_array_one(
+            func, x_data, numpy.array([3.0, 4.0], numpy.int32))
+        self._test_constant_array_one(
+            func, x_data, numpy.array([3.0, 4.0], numpy.int64))
+        self._test_constant_array_one(
+            func, x_data, numpy.array([3.0, 4.0], numpy.float32))
+        self._test_constant_array_one(
+            func, x_data, numpy.array([3.0, 4.0], numpy.float64))
+
+        with self.assertRaises(ValueError):
+            self._test_constant_array_one(func, x_data, [3.0, 4.0])
+        with self.assertRaises(ValueError):
+            self._test_constant_array_one(func, x_data, (3.0, 4.0))
+
+        with self.assertRaises(ValueError):
+            self._test_constant_array_one(func, x_data, [3.0, 4.0, 5.0])
+        with self.assertRaises(ValueError):
+            self._test_constant_array_one(func, x_data, (3.0, 4.0, 5.0))
+        with self.assertRaises(ValueError):
+            self._test_constant_array_one(
+                func, x_data, numpy.array([3.0, 4.0, 5.0], numpy.float32))
+
+    def test_add_constant(self):
         self._test_constant(lambda x, y: x + y)
 
-    def test_radd_constnt(self):
+    def test_add_constant_array(self):
+        self._test_constant_array(lambda x, y: x + y)
+
+    def test_radd_constant(self):
         self._test_constant(lambda x, y: y + x)
 
-    def test_sub_constnt(self):
+    def test_radd_constant_array(self):
+        self._test_constant_array(lambda x, y: y + x)
+
+    def test_sub_constant(self):
         self._test_constant(lambda x, y: x - y)
 
-    def test_rsub_constnt(self):
+    def test_sub_constant_array(self):
+        self._test_constant_array(lambda x, y: x - y)
+
+    def test_rsub_constant(self):
         self._test_constant(lambda x, y: y - x)
 
-    def test_mul_constnt(self):
+    def test_rsub_constant_array(self):
+        self._test_constant_array(lambda x, y: y - x)
+
+    def test_mul_constant(self):
         self._test_constant(lambda x, y: x * y)
 
-    def test_rmul_constnt(self):
+    def test_mul_constant_array(self):
+        self._test_constant_array(lambda x, y: x * y)
+
+    def test_rmul_constant(self):
         self._test_constant(lambda x, y: y * x)
 
-    def test_div_constnt(self):
+    def test_rmul_constant_array(self):
+        self._test_constant_array(lambda x, y: y * x)
+
+    def test_div_constant(self):
         self._test_constant(lambda x, y: x / y)
 
-    def test_rdiv_constnt(self):
+    def test_div_constant_array(self):
+        self._test_constant_array(lambda x, y: x / y)
+
+    def test_rdiv_constant(self):
         self._test_constant(lambda x, y: y / x)
 
-    def test_pow_constnt(self):
+    def test_rdiv_constant_array(self):
+        self._test_constant_array(lambda x, y: y / x)
+
+    def test_pow_constant(self):
         self._test_constant(lambda x, y: x ** y)
 
-    def test_rpow_constnt(self):
+    def test_pow_constant_array(self):
+        self._test_constant_array(lambda x, y: x ** y)
+
+    def test_rpow_constant(self):
         self._test_constant(lambda x, y: y ** x)
+
+    def test_rpow_constant_array(self):
+        self._test_constant_array(lambda x, y: y ** x)
 
 
 class VariableConstantOpTestBase(object):

@@ -27,6 +27,16 @@ def _convert_value_to_string(value):
             'value must be float, ndarray, GPUArray, or Variable')
 
 
+def _check_constant_type(value):
+    if numpy.isscalar(value):
+        return
+    elif isinstance(value, (numpy.ndarray, cuda.GPUArray)):
+        return
+    else:
+        raise ValueError(
+            'value must be float, ndarray, GPUArray, or Variable')
+
+
 class Neg(function.Function):
 
     @property
@@ -120,6 +130,7 @@ class AddConstant(function.Function):
 def add(lhs, rhs):  # lhs + rhs
     if isinstance(rhs, variable.Variable):
         return Add()(lhs, rhs)
+    _check_constant_type(rhs)
     return AddConstant(rhs)(lhs)
 
 
@@ -146,6 +157,7 @@ class Sub(function.Function):
 def sub(lhs, rhs):  # lhs - rhs
     if isinstance(rhs, variable.Variable):
         return Sub()(lhs, rhs)
+    _check_constant_type(rhs)
     return AddConstant(-rhs)(lhs)
 
 
@@ -172,6 +184,7 @@ class SubFromConstant(function.Function):
 def rsub(lhs, rhs):  # rhs - lhs
     if isinstance(rhs, variable.Variable):
         return Sub()(rhs, lhs)
+    _check_constant_type(rhs)
     return SubFromConstant(rhs)(lhs)
 
 
@@ -233,6 +246,7 @@ class MulConstant(function.Function):
 def mul(lhs, rhs):  # lhs * rhs
     if isinstance(rhs, variable.Variable):
         return Mul()(lhs, rhs)
+    _check_constant_type(rhs)
     return MulConstant(rhs)(lhs)
 
 
@@ -274,6 +288,7 @@ class Div(function.Function):
 def div(lhs, rhs):  # lhs / rhs
     if isinstance(rhs, variable.Variable):
         return Div()(lhs, rhs)
+    _check_constant_type(rhs)
     return MulConstant(1. / rhs)(lhs)
 
 
@@ -322,6 +337,7 @@ class DivFromConstant(function.Function):
 def rdiv(lhs, rhs):  # rhs / lhs
     if isinstance(rhs, variable.Variable):
         return Div()(rhs, lhs)
+    _check_constant_type(rhs)
     return DivFromConstant(rhs)(lhs)
 
 
@@ -412,6 +428,7 @@ class PowVarConst(function.Function):
 def pow(lhs, rhs):  # lhs ** rhs
     if isinstance(rhs, variable.Variable):
         return PowVarVar()(lhs, rhs)
+    _check_constant_type(rhs)
     return PowVarConst(rhs)(lhs)
 
 
@@ -474,6 +491,7 @@ class PowConstVar(function.Function):
 def rpow(lhs, rhs):  # rhs ** lhs
     if isinstance(rhs, variable.Variable):
         return PowVarVar()(rhs, lhs)
+    _check_constant_type(rhs)
     return PowConstVar(rhs)(lhs)
 
 
