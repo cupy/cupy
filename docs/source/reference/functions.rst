@@ -41,6 +41,7 @@ Array computations
 
 Activation functions
 --------------------
+.. autofunction:: clipped_relu
 .. autofunction:: exp
 .. autofunction:: leaky_relu
 .. autofunction:: log
