@@ -13,6 +13,13 @@ if cuda.cudnn_enabled:
     _mode = libcudnn.CUDNN_ACTIVATION_RELU
 
 
+def _as4darray(arr):
+    if arr.ndim == 0:
+        return arr.reshape(1, 1, 1, 1)
+    else:
+        return arr.reshape(arr.shape[0], -1, 1, 1)
+
+
 class ReLU(function.Function):
 
     """Rectified Linear Unit."""
@@ -35,10 +42,9 @@ class ReLU(function.Function):
         y = cuda.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
-            x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
-            desc = cudnn.create_tensor_descriptor(x_mat)
+            desc = cudnn.create_tensor_descriptor(_as4darray(x[0]))
             libcudnn.activationForward(
-                handle, _mode, ctypes.c_float(1), desc.value, x_mat.data.ptr,
+                handle, _mode, ctypes.c_float(1), desc.value, x[0].data.ptr,
                 ctypes.c_float(0), desc.value, y.data.ptr)
             self.y = y
         else:
@@ -52,10 +58,9 @@ class ReLU(function.Function):
         if cuda.cudnn_enabled and self.use_cudnn:
             gx = cuda.empty_like(x[0])
             handle = cudnn.get_handle()
-            y_mat = self.y.reshape(self.y.shape[0], -1, 1, 1)
-            desc = cudnn.create_tensor_descriptor(y_mat)
+            desc = cudnn.create_tensor_descriptor(_as4darray(self.y))
             libcudnn.activationBackward(
-                handle, _mode, ctypes.c_float(1), desc.value, y_mat.data.ptr,
+                handle, _mode, ctypes.c_float(1), desc.value, self.y.data.ptr,
                 desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
                 ctypes.c_float(0), desc.value, gx.data.ptr)
         else:

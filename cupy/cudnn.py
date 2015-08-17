@@ -69,21 +69,13 @@ def _to_ctypes_array(tup, typ=ctypes.c_int):
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
+    if arr.ndim != 4:
+        raise ValueError('Supports 4-dimensional array only')
+    if not arr.flags.c_contiguous:
+        raise ValueError('Supoorts c-contigous array only')
     data_type = get_data_type(arr.dtype)
-    if arr.ndim == 4:
-        if arr.flags.c_contiguous:
-            cudnn.setTensor4dDescriptor(desc.value, format, data_type,
-                                        *arr.shape)
-        else:
-            strides = _get_strides(arr)
-            shape_strides = arr.shape + strides
-            cudnn.setTensor4dDescriptorEx(
-                desc.value, data_type, *shape_strides)
-    else:
-        strides = _get_strides(arr)
-        cudnn.setTensorNdDescriptor(
-            desc.value, data_type, _to_ctypes_array(arr.shape),
-            _to_ctypes_array(strides))
+    cudnn.setTensor4dDescriptor(desc.value, format, data_type,
+                                *arr.shape)
 
     return desc
 
