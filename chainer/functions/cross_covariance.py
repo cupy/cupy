@@ -27,17 +27,6 @@ class CrossCovariance(function.Function):
             z_type.shape[0] == y_type.shape[0]
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            in_types.size() == 2,
-            out_types.size() == 1,
-        )
-        y_in_type, z_in_type = in_types
-        out_type, = out_types
-
-        type_check.expect(out_type.dtype == y_in_type.dtype)
-        type_check.expect(out_type.dtype == z_in_type.dtype)
-
     def forward_cpu(self, inputs):
         y, z = inputs
         y_mean = y.mean(axis=0, keepdims=True)

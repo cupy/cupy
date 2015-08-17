@@ -27,19 +27,6 @@ class Softmax(function.Function):
             x_type.ndim > 1,
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            in_types.size() == 1,
-            out_types.size() == 1,
-        )
-        x_type, = in_types
-        y_type, = out_types
-
-        type_check.expect(
-            y_type.ndim > 1,
-            y_type.shape == x_type.shape,
-        )
-
     def forward_cpu(self, x):
         self.y = x[0] - numpy.amax(x[0], axis=1, keepdims=True)
         numpy.exp(self.y, out=self.y)
