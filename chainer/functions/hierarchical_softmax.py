@@ -188,8 +188,8 @@ def create_huffman_tree(word_counts):
     # counts.
     # Note that itreitems randomly order the entries. (iteritems itself is not
     # ordered)
-    for i, (w, c) in enumerate(six.iteritems(word_counts)):
-        q.put((c, i, w))
+    for uid, (w, c) in enumerate(six.iteritems(word_counts)):
+        q.put((c, uid, w))
 
     while q.qsize() >= 2:
         (count1, id1, word1) = q.get()
