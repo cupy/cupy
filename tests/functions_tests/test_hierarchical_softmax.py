@@ -1,3 +1,4 @@
+import copy
 import unittest
 
 import numpy
@@ -106,6 +107,16 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x),
                             cuda.to_gpu(self.t),
                             cuda.to_gpu(self.gy))
+
+    @attr.gpu
+    def test_to_cpu(self):
+        f = copy.deepcopy(self.func)
+        self.func.to_gpu()
+        self.func.to_cpu()
+
+        self.assertTrue((f.begins == self.func.begins).all())
+        self.assertTrue((f.paths == self.func.paths).all())
+        self.assertTrue((f.codes == self.func.codes).all())
 
 
 testing.run_module(__name__, __file__)
