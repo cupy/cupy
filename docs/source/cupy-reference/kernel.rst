@@ -1,7 +1,7 @@
 User-Defined Kernels
 ====================
 
-CuPy provides easy ways to define two types of CUDA kernels: elementwise kernels and full-reduction kernels.
+CuPy provides easy ways to define two types of CUDA kernels: elementwise kernels and reduction kernels.
 We first describe how to define and call elementwise kernels, and then describe how to define and call reduction kernels.
 
 
@@ -116,11 +116,46 @@ If you want to mark all arguments as ``raw``, you must specify the ``size`` argu
 Reduction kernels
 -----------------
 
-TODO(beam2d): Write this
+Reduction kernels can be defined by the :class:`~cupy.reduction.ReductionKernel` class.
+We can use it by defining four parts of the kernel code:
+
+1. Identity value: This value is used for the initial value of reduction.
+2. Mapping expression: It is used for the preprocessing of each element to be reduced.
+3. Reduction expression: It is an operator to reduce the multiple mapped values.
+   The special variables ``a`` and ``b`` are used for its operands.
+4. Post mapping expression: It is used to transform the resulting reduced values.
+   The special variable ``a`` is used as its input.
+   Output should be written to the output parameter.
+
+ReductionKernel class automatically inserts other code fragments that are required for an efficient and flexible reduction implementation.
+
+For example, L2 norm along specified axes can be written as follows::
+
+  >>> l2norm_kernel = cupy.reduction.ReductionKernel(
+  ...     'T x',  # input params
+  ...     'T y',  # output param
+  ...     'x * x',  # map
+  ...     'a + b',  # reduce
+  ...     'y = sqrt(a)',  # post map
+  ...     '0',  # identity value
+  ...     'l2norm'  # kernel name
+  ... )
+  >>> x = cupy.arange(10, dtype='f').reshape(2, 5)
+  >>> l2norm_kernel(x, axis=1)
+  array([  5.47722578,  15.96871948], dtype=float32)
+
+.. note::
+   ``raw`` specifier is restricted for usages that the axes to be reduced are put at the head of the shape.
+   It means, if you want to use ``raw`` specifier for at least one argument, the ``axis`` argument must be ``0`` or a contiguous increasing sequence of integers starting from ``0``, like ``(0, 1)``, ``(0, 1, 2)``, etc.
 
 
 Reference
 ---------
 
+.. module:: cupy.elementwise
 .. autoclass:: cupy.elementwise.ElementwiseKernel
+   :members:
+
+.. module:: cupy.reduction
 .. autoclass:: cupy.reduction.ReductionKernel
+   :members:

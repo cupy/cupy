@@ -229,7 +229,7 @@ class ElementwiseKernel(object):
     broadcasting.
 
     The kernel is compiled at an invocation of the
-    :meth:`ElementwiseKernel.__call__` method, which is cached for each device.
+    :meth:`~ElementwiseKernel.__call__` method, which is cached for each device.
     The compiled binary is also cached into a file under the
     ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
     binary is reused by other processes.
@@ -286,8 +286,11 @@ class ElementwiseKernel(object):
                 ``n`` is set to this value. Otherwise, the result of
                 broadcasting is used to determine the value of ``n``.
 
-        """
+        Returns:
+            Arrays are returned according to the ``out_params`` argument of the
+            ``__init__`` method.
 
+        """
         n = kwargs.pop('size', None)
         allocator = kwargs.get('allocator', None)
 
