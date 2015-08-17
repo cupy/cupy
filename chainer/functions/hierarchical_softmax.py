@@ -184,8 +184,10 @@ def create_huffman_tree(word_counts):
         raise ValueError('Empty vocabulary')
 
     q = six.moves.queue.PriorityQueue()
-    # Use unique id when two entries have the same count.
-    # Note that `iteritem` is randomly ordered.
+    # Add unique id to each entry so that we can compare two entries with same
+    # counts.
+    # Note that itreitems randomly order the entries. (iteritems itself is not
+    # ordered)
     for i, (w, c) in enumerate(six.iteritems(word_counts)):
         q.put((c, i, w))
 
