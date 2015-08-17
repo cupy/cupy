@@ -186,8 +186,7 @@ def create_huffman_tree(word_counts):
     q = six.moves.queue.PriorityQueue()
     # Add unique id to each entry so that we can compare two entries with same
     # counts.
-    # Note that itreitems randomly order the entries. (iteritems itself is not
-    # ordered)
+    # Note that itreitems randomly order the entries.
     for uid, (w, c) in enumerate(six.iteritems(word_counts)):
         q.put((c, uid, w))
 
