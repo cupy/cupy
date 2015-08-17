@@ -47,4 +47,11 @@ class TestReLU(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
 
 
+class TestReLUZeroDim(TestReLU):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+
+
 testing.run_module(__name__, __file__)

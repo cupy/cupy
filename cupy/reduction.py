@@ -5,18 +5,17 @@ import numpy
 
 import cupy
 from cupy import carray
-from cupy import cuda
+from cupy import cindexer
 from cupy import elementwise
 from cupy import internal
 from cupy import util
 
 
 @util.memoize(for_each_device=True)
-def _make_reduction_function_kernel(name, block_size,
-                                    reduce_type, params, identity,
-                                    pre_map_expr, reduce_expr, post_map_expr,
-                                    type_preamble, input_expr, output_expr,
-                                    preamble):
+def _make_reduction_function_kernel(
+        name, block_size, reduce_type, params, identity,
+        pre_map_expr, reduce_expr, post_map_expr,
+        type_preamble, input_expr, output_expr, preamble):
     if identity is None:
         identity = ''
     module_code = string.Template('''
@@ -28,15 +27,17 @@ def _make_reduction_function_kernel(name, block_size,
     typedef ${reduce_type} _type_reduce;
     extern "C" __global__ void ${name}(${params}) {
       if (_out_clp2_size > 256) {
-        CUPY_FOR(_i, _out_size) {
+        CUPY_FOR(_i, _out_ind.size()) {
           _type_reduce _s = _type_reduce(${identity});
           for (int _j = _i, _J = 0;
-               _j < _in_size;
-               _j += _out_size, _J++) {
+               _j < _in_ind.size();
+               _j += _out_ind.size(), _J++) {
+            _in_ind.set(_j);
             ${input_expr}
             _type_reduce _a = ${pre_map_expr};
             _s = REDUCE(_s, _a);
           }
+          _out_ind.set(_i);
           ${output_expr}
           POST_MAP(_s);
         }
@@ -46,15 +47,16 @@ def _make_reduction_function_kernel(name, block_size,
         int _tid = threadIdx.x;
         _sdata[_tid] = _type_reduce(${identity});
         unsigned int _i = _tid % _out_clp2_size;
-        if (_i >= _out_size) return;
+        if (_i >= _out_ind.size()) return;
         _type_reduce _s = _type_reduce(${identity});
         int _J_offset = _tid / _out_clp2_size;
-        int _j_offset = _J_offset * _out_size;
+        int _j_offset = _J_offset * _out_ind.size();
         int _J_stride = ${block_size} / _out_clp2_size;
-        int _j_stride = _J_stride * _out_size;
+        int _j_stride = _J_stride * _out_ind.size();
         for (int _j = _i + _j_offset, _J = _J_offset;
-             _j < _in_size;
+             _j < _in_ind.size();
              _j += _j_stride, _J += _J_stride) {
+          _in_ind.set(_j);
           ${input_expr}
           _type_reduce _a = ${pre_map_expr};
           _s = REDUCE(_s, _a);
@@ -91,7 +93,8 @@ def _make_reduction_function_kernel(name, block_size,
           }
         }
         _s = _sdata[_tid];
-        if (_tid >= _out_size) return;
+        if (_tid >= _out_ind.size()) return;
+        _out_ind.set(_i);
          ${output_expr}
         POST_MAP(_s);
       }
@@ -150,6 +153,19 @@ def _get_trans_args(args, axis, ndim, params=None):
             for a in args]
 
 
+def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+                    params, reduce_dims):
+    if reduce_dims:
+        in_args, in_indexer = elementwise._reduce_dims(
+            in_args, params, in_indexer)
+        out_args, out_indexer = elementwise._reduce_dims(
+            out_args, params[len(in_args):], out_indexer)
+    args = in_args + out_args + [in_indexer, out_indexer,
+                                 numpy.int32(out_clp2_size)]
+    is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in args)
+    return args, is_ndarray
+
+
 class simple_reduction_function(object):
 
     def __init__(self, name, ops, identity=None, preamble=''):
@@ -159,10 +175,12 @@ class simple_reduction_function(object):
         self._preamble = preamble
         self.nin = 1
         self.nout = 1
-        self._param_names = (
-            '_raw_in0', '_raw_out0', '_in_size', '_out_size', '_out_clp2_size')
-        self._input_expr = 'const _type_raw_in0 in0 = _raw_in0[_j];'
-        self._output_expr = '_type_raw_out0 &out0 = _raw_out0[_i];'
+        in_params = elementwise._get_param_info('T in0', True)
+        out_params = elementwise._get_param_info('T out0')
+        self._params = in_params + out_params + elementwise._get_param_info(
+            'CIndexer _in_ind, CIndexer _out_ind, int32 _out_clp2_size')
+        self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
+        self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
 
     def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False,
                  allocator=None):
@@ -186,27 +204,26 @@ class simple_reduction_function(object):
             in_args, out_args, out_types, allocator, out_shape)
         in_args = _get_trans_args(in_args, axis, in_args[0].ndim)
 
-        in_size = numpy.int32(a.size)
-        out_size = numpy.int32(numpy.prod(out_shape, dtype=int))
-        out_clp2_size = numpy.int32(2 ** int.bit_length(int(out_size - 1)))
+        in_indexer = cindexer.Indexer(in_args[0].shape)
+        out_indexer = cindexer.Indexer(out_shape)
+        out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
 
-        inout_args = in_args + out_args + [in_size, out_size, out_clp2_size]
-        for i, x in enumerate(inout_args):
-            if isinstance(x, cupy.ndarray):
-                inout_args[i] = x.reduced_view()
+        inout_args, is_ndarray = _get_inout_args(
+            in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+            self._params, True)
+        param_types = elementwise._get_kernel_param_types(inout_args)
+        params = elementwise._get_kernel_params(
+            self._params, is_ndarray, param_types)
 
-        params, kernel_args = elementwise._get_kernel_params_args(
-            self._param_names, inout_args)
         block_size = 512
         reduce_type = routine[3]
         if reduce_type is None:
             reduce_type = elementwise._get_typename(out_types[0])
 
-        type_preamble = '''
-            typedef {} _type_raw_in0;
-            typedef {} _type_raw_out0;
-            '''.format(elementwise._get_typename(in_args[0].dtype),
-                       elementwise._get_typename(out_args[0].dtype))
+        type_preamble = (
+            'typedef {} type_in0_raw; typedef {} type_out0_raw;'.format(
+                elementwise._get_typename(in_args[0].dtype),
+                elementwise._get_typename(out_args[0].dtype)))
 
         kern = _make_reduction_function_kernel(
             self.name,
@@ -220,7 +237,7 @@ class simple_reduction_function(object):
         if out_clp2_size > 256:
             shared_mem = 0
         # TODO(okuta) set actual size
-        kern.linear_launch(max(out_size, block_size), kernel_args,
+        kern.linear_launch(max(out_indexer.size, block_size), inout_args,
                            shared_mem=shared_mem,
                            block_max_size=block_size)
 
@@ -239,6 +256,23 @@ class simple_reduction_function(object):
                 if all(t == dtype for t in out_types):
                     return in_types, out_types, routine
         raise TypeError('Wrong type of arguments for %s' % self.name)
+
+
+@util.memoize(for_each_device=True)
+def _get_reduction_kernel(
+        params, is_ndarray, param_types, types):
+    kernel_params = elementwise._get_kernel_params(
+        params, is_ndarray, param_types)
+    type_preamble = '\n'.join(
+        'typedef {} {};'.format(elementwise._get_typename(v), k)
+        for k, v in types)
+    input_expr = '\n'.join(
+        'const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
+        for f, p in zip(is_ndarray, params) if f and p.const and not p.raw)
+    output_expr = '\n'.join(
+        '{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
+        for f, p in zip(is_ndarray, params) if f and not p.const and not p.raw)
+    return kernel_params, type_preamble, input_expr, output_expr
 
 
 class ReductionKernel(object):
@@ -276,13 +310,13 @@ class ReductionKernel(object):
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
                  options=(), reduce_dims=True, preamble=''):
-        self.in_params = elementwise._get_param_info_tuple(in_params, True)
-        self.out_params = elementwise._get_param_info_tuple(out_params)
+        self.in_params = elementwise._get_param_info(in_params, True)
+        self.out_params = elementwise._get_param_info(out_params)
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
         self.params = self.in_params + self.out_params + \
-            elementwise._get_param_info_tuple(
-                'int32 _in_size, int32 _out_size, int32 _out_clp2_size')
+            elementwise._get_param_info(
+                'CIndexer _in_ind, CIndexer _out_ind, int32 _out_clp2_size')
         self.identity = identity
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
@@ -345,60 +379,35 @@ class ReductionKernel(object):
             elementwise._get_ndarray_dtype(out_args))
 
         axis = _get_axis(axis, brod.nd)
+        in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
+                   for x, t in zip(in_args, in_types)]
+        in_args = _get_trans_args(in_args, axis, brod.nd, self.in_params)
         out_shape = _get_out_shape(brod.shape, axis, keepdims)
         out_args = elementwise._get_out_args(
             in_args, out_args, out_types, allocator, out_shape,
             self.out_params)
-        in_args = _get_trans_args(in_args, axis, brod.nd, self.in_params)
 
-        in_size = numpy.int32(brod.size)
-        out_size = numpy.int32(numpy.prod(out_shape, dtype=int))
-        out_clp2_size = numpy.int32(2 ** int.bit_length(int(out_size - 1)))
+        in_indexer = cindexer.Indexer(brod.shape)
+        out_indexer = cindexer.Indexer(out_shape)
+        out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
 
-        inout_args = in_args + out_args + [in_size, out_size, out_clp2_size]
-        param_names = []
-        for i, x in enumerate(inout_args):
-            name = self.params[i].name
-            if isinstance(x, cupy.ndarray):
-                inout_args[i] = x.reduced_view()
-                if not self.params[i].raw:
-                    name = "_raw_" + name
-            elif i < len(in_args):
-                inout_args[i] = in_types[i].type(x)
-            param_names.append(name)
+        inout_args, is_ndarray = _get_inout_args(
+            in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+            self.params, self.reduce_dims)
+        param_types = elementwise._get_kernel_param_types(inout_args)
 
-        params, kernel_args = elementwise._get_kernel_params_args(
-            param_names, inout_args)
+        exprs = _get_reduction_kernel(
+            self.params, is_ndarray, param_types, types)
         block_size = 512
-
-        type_preamble = '\n'.join(
-            'typedef {} {};'.format(elementwise._get_typename(v), k)
-            for k, v in types)
-        input_expr = []
-        for a, p in zip(in_args, self.in_params):
-            if not p.raw and isinstance(a, cupy.ndarray):
-                input_expr.append(
-                    'const {t} {n} = _raw_{n}[_j];'.format(
-                        t=p.ctype, n=p.name))
-        input_expr = '\n'.join(input_expr)
-        output_expr = []
-        for a, p in zip(out_args, self.out_params):
-            if not p.raw and isinstance(a, cupy.ndarray):
-                output_expr.append(
-                    '{t} &{n} = _raw_{n}[_i];'.format(
-                        t=p.ctype, n=p.name))
-        output_expr = '\n'.join(output_expr)
-
         kern = _make_reduction_function_kernel(
-            self.name, block_size, self.reduce_type, params, self.identity,
+            self.name, block_size, self.reduce_type, exprs[0], self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
-            type_preamble, input_expr, output_expr,
-            self.preamble)
+            exprs[1], exprs[2], exprs[3], self.preamble)
         shared_mem = 32 * block_size
         if out_clp2_size > 256:
             shared_mem = 0
         # TODO(okuta) set actual size
-        kern.linear_launch(max(out_size, block_size), kernel_args,
+        kern.linear_launch(max(out_indexer.size, block_size), inout_args,
                            shared_mem=shared_mem,
                            block_max_size=block_size)
         return out_args[0]
@@ -430,11 +439,11 @@ def create_reduction_func(name, ops, routine=None, identity=None,
 
 _min_max_preamble = '''
 struct min_max_st{
-    _type_raw_in0 value;
+    type_in0_raw value;
     int index;
     __device__ min_max_st() : index(-1) { }
-    __device__ min_max_st(_type_raw_in0 v) : value(v), index(0) { }
-    __device__ min_max_st(_type_raw_in0 v, int i) : value(v), index(i) { }
+    __device__ min_max_st(type_in0_raw v) : value(v), index(0) { }
+    __device__ min_max_st(type_in0_raw v, int i) : value(v), index(i) { }
 };
 __device__ min_max_st my_min(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;

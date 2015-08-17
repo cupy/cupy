@@ -115,7 +115,7 @@ private:
   int strides_[ndim];
 
 public:
-  __device__ int size() {
+  __device__ int size() const {
     return size_;
   }
 
@@ -146,6 +146,36 @@ public:
 
   __device__ T operator[](int i) const {
     return (*const_cast<CArray<T, ndim>*>(this))[i];
+  }
+};
+
+
+template <int ndim>
+class CIndexer {
+private:
+  int size_;
+  int shape_[ndim];
+  int index_[ndim];
+
+public:
+  __device__ int size() const {
+    return size_;
+  }
+
+  __device__ void set(int i) {
+    unsigned int a = i;
+    for (int dim = ndim; --dim > 0; ) {
+      unsigned int s = shape_[dim];
+      index_[dim] = (a % s);
+      a /= s;
+    }
+    if (ndim > 0) {
+      index_[0] = a;
+    }
+  }
+
+  __device__ const int* get() const {
+    return index_;
   }
 };
 
