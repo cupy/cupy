@@ -75,15 +75,15 @@ def bernoulli_nll(x, y):
 def gaussian_nll(x, mean, ln_var):
     """Calculate negative log-likelihood of Gaussian distribution.
 
-    It returns negative log-likelihood of :math:`x` on a Gaussian distribution
-    :math:`N(\\mu, \\sigma^2)`, where :math:`\\mu` is given as ``mean`` and
-    :math:`\\log(\\sigma^2)` is given as ``ln_var``.
+    Given two variable ``mean`` representing :math:`\\mu` and ``ln_var``
+    representing :math:`\\log(\\sigma^2)`, this function returns negative
+    log-likelihood of :math:`x` on a Gaussian distribution :math:`N(\\mu, S)`,
 
     .. math::
 
         -\\log N(x; \\mu, \\sigma^2) =
         \\log\\left(\\sqrt{(2\\pi)^D |S|}\\right) +
-        \\frac{1}{2}(x - \\mu)^\\top S^{-1}(x - \\mu)
+        \\frac{1}{2}(x - \\mu)^\\top S^{-1}(x - \\mu),
 
     where :math:`D` is a dimention of :math:`x` and :math:`S` is a diagonal
     matrix where :math:`S_{ii} = \\sigma_i^2`.
