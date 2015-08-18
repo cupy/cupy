@@ -103,23 +103,34 @@ def _get_kernel_params(params, is_ndarray, param_types):
 
 
 def _reduce_dims(args, params, indexer):
-    red = [a.reduced_view()
-           if isinstance(a, cupy.ndarray) and not p.raw else None
-           for a, p in zip(args, params)]
-    max_arr = max(red, key=lambda x: 0 if x is None else x.ndim)
-    if max_arr is None:
-        return args, indexer
-    try:
-        for i, x in enumerate(red):
-            if x is not None:
-                x.shape = max_arr.shape
-    except AttributeError:
-        pass
-    else:
-        assert max_arr.size == indexer.size
-        args = [a if r is None else r for a, r in zip(args, red)]
-        indexer.shape = max_arr.shape
-    return args, indexer
+    shape = list(indexer.shape)
+    is_array_flags = tuple(not p.raw and isinstance(a, cupy.ndarray)
+                           for a, p in six.moves.zip(args, params))
+
+    for i in six.moves.range(1, len(shape)):
+        for arg, is_array in six.moves.zip(args, is_array_flags):
+            if is_array:
+                strides = arg.strides
+                if strides[i] * shape[i] != strides[i - 1]:
+                    break
+        else:
+            shape[i] *= shape[i - 1]
+            shape[i - 1] = 1
+
+    new_shape = tuple(dim for dim in shape if dim != 1)
+
+    new_args = list(args)
+    for i in six.moves.range(len(args)):
+        if is_array_flags[i]:
+            arg = args[i].view()
+            new_strides = tuple(s for i, s in enumerate(arg.strides)
+                                if shape[i] != 1)
+            arg._shape = new_shape
+            arg._strides = new_strides
+            new_args[i] = arg
+
+    indexer.shape = new_shape
+    return new_args, indexer
 
 
 def _get_inout_args(args, indexer, params, reduce_dims):

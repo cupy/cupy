@@ -47,7 +47,7 @@ def reshape(a, newshape):
             newarray, newshape)
     newarray._shape = newshape
     newarray._strides = newstrides
-    newarray._update_f_contiguity()
+    newarray._mark_f_dirty()
     return newarray
 
 

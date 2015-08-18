@@ -76,5 +76,5 @@ def transpose(a, axes=None):
     newarray = a.view()
     newarray._shape = tuple(a._shape[axis] for axis in axes)
     newarray._strides = tuple(a._strides[axis] for axis in axes)
-    newarray._update_contiguity()
+    newarray._mark_dirty()
     return newarray
