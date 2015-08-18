@@ -104,8 +104,20 @@ class BinaryHierarchicalSoftmax(function.Function):
     def __init__(self, in_size, tree):
         parser = TreeParser()
         parser.parse(tree)
-        self.paths = parser.get_paths()
-        self.codes = parser.get_codes()
+        paths = parser.get_paths()
+        codes = parser.get_codes()
+        n_vocab = max(paths.keys()) + 1
+
+        self.paths = numpy.concatenate(
+            [paths[i] for i in range(n_vocab) if i in paths])
+        self.codes = numpy.concatenate(
+            [codes[i] for i in range(n_vocab) if i in codes])
+        begins = numpy.empty((n_vocab + 1,), dtype=numpy.int32)
+        begins[0] = 0
+        for i in range(0, n_vocab):
+            length = len(paths[i]) if i in paths else 0
+            begins[i + 1] = begins[i] + length
+        self.begins = begins
 
         self.W = numpy.random.uniform(
             -1, 1, (parser.size(), in_size)).astype(numpy.float32)
@@ -132,10 +144,11 @@ class BinaryHierarchicalSoftmax(function.Function):
         return numpy.array(loss),
 
     def _forward_cpu_one(self, x, t):
-        assert t in self.paths
+        begin = self.begins[t]
+        end = self.begins[t + 1]
 
-        w = self.W[self.paths[t]]
-        wxy = w.dot(x) * self.codes[t]
+        w = self.W[self.paths[begin:end]]
+        wxy = w.dot(x) * self.codes[begin:end]
         loss = numpy.logaddexp(0.0, -wxy)  # == log(1 + exp(-wxy))
         return numpy.sum(loss)
 
@@ -148,10 +161,13 @@ class BinaryHierarchicalSoftmax(function.Function):
         return gx, None
 
     def _backward_cpu_one(self, x, t, gloss):
-        path = self.paths[t]
+        begin = self.begins[t]
+        end = self.begins[t + 1]
+
+        path = self.paths[begin:end]
         w = self.W[path]
-        wxy = w.dot(x) * self.codes[t]
-        g = -gloss * self.codes[t] / (1.0 + numpy.exp(wxy))
+        wxy = w.dot(x) * self.codes[begin:end]
+        g = -gloss * self.codes[begin:end] / (1.0 + numpy.exp(wxy))
         gx = g.dot(w)
         gw = g.reshape((g.shape[0], 1)).dot(x.reshape(1, x.shape[0]))
         self.gW[path] += gw
@@ -160,21 +176,16 @@ class BinaryHierarchicalSoftmax(function.Function):
     def to_gpu(self, device=None):
         function.Function.to_gpu(self, device)
 
-        n_vocab = max(self.paths.keys()) + 1
-        paths = cuda.to_gpu(numpy.concatenate(
-            [self.paths[i] for i in range(n_vocab) if i in self.paths]))
-        codes = cuda.to_gpu(numpy.concatenate(
-            [self.codes[i] for i in range(n_vocab) if i in self.codes]))
+        self.paths = cuda.to_gpu(self.paths, device)
+        self.codes = cuda.to_gpu(self.codes, device)
+        self.begins = cuda.to_gpu(self.begins, device)
 
-        begins = numpy.empty((n_vocab + 1,), dtype=numpy.int32)
-        begins[0] = 0
-        for i in range(0, n_vocab):
-            length = len(self.paths[i]) if i in self.paths else 0
-            begins[i + 1] = begins[i] + length
+    def to_cpu(self):
+        function.Function.to_cpu(self)
 
-        self.paths = paths
-        self.codes = codes
-        self.begins = cuda.to_gpu(begins)
+        self.paths = cuda.to_cpu(self.paths)
+        self.codes = cuda.to_cpu(self.codes)
+        self.begins = cuda.to_cpu(self.begins)
 
     def forward_gpu(self, inputs):
         x, t = inputs
