@@ -19,7 +19,9 @@ class Memory(object):
     def __init__(self, size):
         self.size = size
         self.ptr = ctypes.c_void_p()
+        self._device = None
         if size > 0:
+            self._device = device.Device()
             self.ptr = runtime.malloc(size)
 
     def __del__(self):
@@ -29,6 +31,14 @@ class Memory(object):
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
         return self.ptr.value or 0
+
+    @property
+    def device(self):
+        """Device whose memory the pointer refers to."""
+        if self._device is None:
+            return device.Device()
+        else:
+            return self._device
 
 
 class MemoryPointer(object):
@@ -80,10 +90,7 @@ class MemoryPointer(object):
     @property
     def device(self):
         """Device whose memory the pointer refers to."""
-        if self.ptr:
-            return device.from_pointer(self.ptr)
-        else:
-            return device.Device()
+        return self.mem.device
 
     def copy_from_device(self, src, size):
         """Copies a memory sequence from the same device.
@@ -270,6 +277,7 @@ class PooledMemory(Memory):
     def __init__(self, memptr, pool):
         self.ptr = memptr.mem.ptr
         self.size = memptr.mem.size
+        self._device = memptr.mem._device
         self.pool = weakref.ref(pool)
 
     def __del__(self):
@@ -288,6 +296,7 @@ class PooledMemory(Memory):
             pool.free(self.ptr, self.size)
         self.ptr = None
         self.size = 0
+        self._device = None
         self.pool = None
 
 

@@ -12,6 +12,7 @@ class MockMemory(object):
         self.ptr = ctypes.c_void_p(MockMemory.cur_ptr)
         MockMemory.cur_ptr += size
         self.size = size
+        self._device = None
 
     def __int__(self):
         return self.ptr.value or 0
