@@ -62,14 +62,14 @@ class LinearModel(object):
         return F.accuracy(y_test, t_test)
 
     def _accuracy_cpu(self):
-        self.optimizer.setup(self.model.collect_parameters())
+        self.optimizer.setup(self.model)
         return self._train_linear_classifier(self.model, self.optimizer, False)
 
     def _accuracy_gpu(self):
         model = self.model
         optimizer = self.optimizer
         model.to_gpu()
-        optimizer.setup(model.collect_parameters())
+        optimizer.setup(model)
         return self._train_linear_classifier(model, optimizer, True)
 
     def accuracy(self, gpu):
@@ -94,6 +94,18 @@ class OptimizerTestBase(object):
     @condition.retry(10)
     def test_linear_model_gpu(self):
         self.assertGreater(self.model.accuracy(True), 0.9)
+
+    def test_initialize(self):
+        model = self.model.model
+        assert isinstance(model, chainer.FunctionSet)
+        optimizer = self.create()
+        optimizer.setup(model)
+
+        self.assertEqual(len(optimizer.tuples), len(model.parameters))
+
+        msg = "'params_grads' must have 'parameters' and 'gradients'"
+        with self.assertRaisesRegexp(ValueError, msg):
+            optimizer.setup('xxx')
 
 
 class TestAdaDelta(OptimizerTestBase, unittest.TestCase):

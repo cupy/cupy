@@ -1,5 +1,6 @@
 import numpy
 import six
+import warnings
 
 from chainer import cuda
 
@@ -39,7 +40,11 @@ class FunctionSet(object):
             parameter arrays, and the second is a tuple of gradient arrays.
 
         """
-        return self.parameters, self.gradients
+
+        msg = ("'collect_parameters' is deprecated. "
+               "You can pass FunctionSet itself to 'optimizer.setup'")
+        warnings.warn(msg, FutureWarning)
+        return self
 
     def __getitem__(self, key):
         """Returns the :class:`Function` objects by name.

@@ -156,7 +156,7 @@ if args.gpu >= 0:
 
 # Setup optimizer
 optimizer = optimizers.AdaGrad(lr=0.1)
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 accum_loss = 0
 count = 0

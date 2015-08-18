@@ -147,7 +147,7 @@ if args.gpu >= 0:
 dataset = np.array(dataset, dtype=np.int32)
 
 optimizer = O.Adam()
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 begin_time = time.time()
 cur_at = begin_time
