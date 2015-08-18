@@ -58,7 +58,7 @@ model = chainer.FunctionSet(
     ).to_gpu(1)
 )
 optimizer = optimizers.SGD(lr=0.1)
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 # Neural net architecture
 

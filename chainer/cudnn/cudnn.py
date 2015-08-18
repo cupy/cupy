@@ -75,7 +75,7 @@ _dtypes = {numpy.dtype('float32'): libcudnn.cudnnDataType['CUDNN_DATA_FLOAT'],
 
 def get_tensor_desc(x, h, w, form='CUDNN_TENSOR_NCHW'):
     """Create a tensor descriptor for given settings."""
-    n = x.shape[0]
+    n = x.shape[0] if len(x.shape) >= 1 else 1
     c = x.size // (n * h * w)
     desc = libcudnn.cudnnCreateTensorDescriptor()
     libcudnn.cudnnSetTensor4dDescriptor(

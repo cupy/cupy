@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='chainer',
-    version='1.1.1',
+    version='1.1.2',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -19,5 +19,6 @@ setup(
                       'numpy',
                       'protobuf',
                       'six>=1.9.0'],
-    tests_require=['nose'],
+    tests_require=['mock',
+                   'nose'],
 )

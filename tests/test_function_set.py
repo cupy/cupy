@@ -44,7 +44,7 @@ class TestNestedFunctionSet(unittest.TestCase):
         gp_b = np.ones((3, 4)).astype(np.float32)
         gp_a = np.ones((1, 2)).astype(np.float32)
 
-        actual = self.fs2.collect_parameters()
+        actual = (self.fs2.parameters, self.fs2.gradients)
         self.assertTrue(list(map(len, actual)) == [2, 2])
         self.assertTrue((actual[0][0] == p_b).all())
         self.assertTrue((actual[0][1] == p_a).all())
@@ -137,6 +137,13 @@ class TestFunctionSet(unittest.TestCase):
     @attr.gpu
     def test_copy_parameters_from_gpu_to_gpu(self):
         self.check_copy_parameters_from(True, True)
+
+    def test_getitem(self):
+        self.assertIs(self.fs['a'], self.fs.a)
+
+    def test_getitem_notfoud(self):
+        with self.assertRaises(AttributeError):
+            self.fs['not_found']
 
 
 testing.run_module(__name__, __file__)

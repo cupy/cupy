@@ -87,7 +87,7 @@ if args.gpu >= 0:
 
 # Setup optimizer
 optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 
 # ------------------------------------------------------------------------------

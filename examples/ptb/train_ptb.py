@@ -90,7 +90,7 @@ def make_initial_state(batchsize=batchsize, train=True):
 
 # Setup optimizer
 optimizer = optimizers.SGD(lr=1.)
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 # Evaluation routine
 

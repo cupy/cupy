@@ -13,6 +13,7 @@ should be used with explicit handling of :class:`~chainer.Function` objects.
 
 Learnable connections
 ---------------------
+.. autoclass:: Bilinear
 .. autoclass:: BinaryHierarchicalSoftmax
 .. autoclass:: Convolution2D
 .. autoclass:: EmbedID
@@ -29,7 +30,6 @@ Array manipulation functions
 ----------------------------
 .. autofunction:: concat
 .. autofunction:: copy
-.. autofunction:: dropout
 .. autofunction:: identity
 .. autofunction:: reshape
 .. autofunction:: split_axis
@@ -41,6 +41,8 @@ Array computations
 
 Activation functions
 --------------------
+.. autofunction:: clipped_relu
+.. autofunction:: cos
 .. autofunction:: exp
 .. autofunction:: leaky_relu
 .. autofunction:: log
@@ -48,19 +50,27 @@ Activation functions
 .. autoclass:: PReLU
 .. autofunction:: relu
 .. autofunction:: sigmoid
+.. autofunction:: sin
 .. autofunction:: softmax
+.. autofunction:: softplus
 .. autofunction:: tanh
 
 Pooling functions
 -----------------
 .. autofunction:: average_pooling_2d
 .. autofunction:: max_pooling_2d
+.. autofunction:: spatial_pyramid_pooling_2d
 
 Normalization functions
 -----------------------
 .. autoclass:: BatchNormalization
    :members: __call__
 .. autofunction:: local_response_normalization
+
+Noise injecting functions 
+-------------------------
+.. autofunction:: dropout
+.. autofunction:: gaussian
 
 Loss, evaluation and aggregation
 --------------------------------
@@ -69,8 +79,16 @@ Loss, evaluation and aggregation
 .. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: sum
+.. autofunction:: cross_covariance
 
 Reusable subnetwork of complex architectures
 --------------------------------------------
 .. autoclass:: Inception
 .. autoclass:: InceptionBN
+
+Variational Auto-Encoder (VAE)
+------------------------------
+.. module:: chainer.functions.vae
+.. autofunction:: gaussian_kl_divergence
+.. autofunction:: bernoulli_nll
+.. autofunction:: gaussian_nll

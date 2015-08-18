@@ -39,23 +39,6 @@ class Concat(function.Function):
                     continue
                 type_check.expect(in_types[0].shape[d] == in_types[i].shape[d])
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            in_types.size() > 0,
-            out_types.size() == 1,
-        )
-        y_type, = out_types
-
-        type_check.expect(y_type.dtype == in_types[0].dtype)
-        ndim = in_types[0].ndim.eval()
-        concat_size = sum(typ.shape[self.axis] for typ in in_types)
-        type_check.expect(concat_size == y_type.shape[self.axis])
-
-        for d in range(0, ndim):
-            if d == self.axis:
-                continue
-            type_check.expect(y_type.shape[d] == in_types[0].shape[d])
-
     def forward_cpu(self, xs):
         return numpy.concatenate(xs, axis=self.axis),
 

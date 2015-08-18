@@ -93,4 +93,30 @@ class TestSplitAxis4(TestSplitAxis0):
         self.axis = 0
 
 
+class TestSplitAxisNone(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.array([1, 2], dtype=numpy.float32)
+        self.ys_section = [1]
+        self.axis = 0
+
+    def check_backward(self, x_data, indices_or_sections, axis):
+        x = chainer.Variable(x_data)
+        ys = functions.split_axis(x, indices_or_sections, axis)
+        # Only set ys[0]
+        ys[0].grad = ys[0].data
+        ys[0].backward()
+
+        gx = numpy.array([1, 0])
+        gradient_check.assert_allclose(gx, x.grad, atol=0, rtol=0)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.ys_section, axis=self.axis)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(
+            cuda.to_gpu(self.x), self.ys_section, axis=self.axis)
+
+
 testing.run_module(__name__, __file__)
