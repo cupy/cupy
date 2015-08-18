@@ -28,19 +28,6 @@ class Softmax(function.Function):
             x_type.ndim > 1,
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            in_types.size() == 1,
-            out_types.size() == 1,
-        )
-        x_type, = in_types
-        y_type, = out_types
-
-        type_check.expect(
-            y_type.ndim > 1,
-            y_type.shape == x_type.shape,
-        )
-
     def forward(self, x):
         xp = cuda.get_array_module(*x)
         if xp != numpy and cuda.cudnn_enabled and self.use_cudnn:

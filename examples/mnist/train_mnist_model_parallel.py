@@ -57,7 +57,7 @@ model = chainer.FunctionSet(
     ).to_gpu(1)
 )
 optimizer = optimizers.SGD(lr=0.1)
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 
 def forward(x_data, y_data, train=True):

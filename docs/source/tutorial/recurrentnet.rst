@@ -37,7 +37,7 @@ Before writing the forward computation, we have to define parameterized function
       h_to_y = F.Linear( 50, 1000),
   )
   optimizer = optimizers.SGD()
-  optimizer.setup(model.collect_parameters())
+  optimizer.setup(model)
 
 Here :class:`~functions.EmbedID` is a parameterized function class for word embedding.
 It converts input integers into corresponding fixed-dimensional embedding vectors.
@@ -108,7 +108,7 @@ We can write truncated backprop using the ``forward_one_step`` function that we 
   loss   = 0
   count  = 0
   seqlen = len(x_list[1:])
-  
+
   for cur_word, next_word in zip(x_list, x_list[1:]):
       h, new_loss = forward_one_step(h, cur_word, next_word)
       loss  += new_loss
