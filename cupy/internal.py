@@ -62,12 +62,10 @@ def get_strides_for_nocopy_reshape(array, new_shape):
 
 
 def get_contiguous_strides(shape, itemsize):
-    if not shape:
-        return ()
-    else:
-        s = numpy.array(shape[1:])
-        strides = numpy.maximum(1, s[::-1]).cumprod()[::-1] * itemsize
-        return tuple(strides) + (itemsize,)
+    strides = [itemsize for _ in shape]
+    for i in six.moves.range(len(strides) - 1, 0, -1):
+        strides[i - 1] = strides[i] * shape[i]
+    return tuple(strides)
 
 
 def get_ndarray_ptr(a_cpu):
