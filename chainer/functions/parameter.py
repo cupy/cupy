@@ -22,6 +22,13 @@ class Parameter(function.Function):
         self.W = array
         self.gW = numpy.empty_like(array)
 
+    def __call__(self, volatile=False):
+        ret = super(Parameter, self).__call__()
+        if volatile:
+            ret.unchain_backward()
+        ret.volatile = volatile
+        return ret
+
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 0)
 
