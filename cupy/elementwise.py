@@ -276,7 +276,8 @@ class ElementwiseKernel(object):
     broadcasting.
 
     The kernel is compiled at an invocation of the
-    :meth:`~ElementwiseKernel.__call__` method, which is cached for each device.
+    :meth:`~ElementwiseKernel.__call__` method,
+    which is cached for each device.
     The compiled binary is also cached into a file under the
     ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
     binary is reused by other processes.

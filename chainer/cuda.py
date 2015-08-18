@@ -28,15 +28,16 @@ import warnings
 
 import numpy
 
+available = False
+cudnn_enabled = False
+
 try:
     import cupy
     import cupy.cuda
     import cupy.cuda.cublas
-    import cupy.cudnn
 
     cuda = cupy.cuda
     cublas = cuda.cublas
-    cudnn = cupy.cudnn
 
     ndarray = cupy.ndarray
     Device = cuda.Device
@@ -44,14 +45,19 @@ try:
     Stream = cuda.Stream
 
     available = True
-    cudnn_enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
 except Exception as e:
-    available = False
-    cudnn_enabled = False
     _resolution_error = e
 
     class ndarray(object):
         pass  # for type testing
+
+if available:
+    try:
+        import cupy.cudnn
+        cudnn = cupy.cudnn
+        cudnn_enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
+    except Exception as e:
+        _resolution_error = e
 
 
 def _check_cuda_available():
