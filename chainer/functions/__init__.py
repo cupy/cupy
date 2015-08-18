@@ -4,6 +4,7 @@ from chainer.functions import accuracy
 from chainer.functions import basic_math
 from chainer.functions import batch_normalization
 from chainer.functions import bilinear
+from chainer.functions import clipped_relu
 from chainer.functions import concat
 from chainer.functions import convolution_2d
 from chainer.functions import copy
@@ -42,6 +43,7 @@ NonparameterizedConvolution2D = \
     nonparameterized_convolution_2d.NonparameterizedConvolution2D
 NonparameterizedLinear = \
     nonparameterized_linear.NonparameterizedLinear
+ClippedReLU = clipped_relu.ClippedReLU
 Concat = concat.Concat
 Copy = copy.Copy
 Cos = basic_math.Cos
@@ -91,6 +93,7 @@ Bilinear = bilinear.Bilinear
 convolution_2d = nonparameterized_convolution_2d.convolution_2d
 linear = nonparameterized_linear.linear
 
+clipped_relu = clipped_relu.clipped_relu
 concat = concat.concat
 copy = copy.copy
 dropout = dropout.dropout
