@@ -145,7 +145,6 @@ def _get_out_shape(shape, axis, keepdims):
 def _get_trans_args(args, axis, shape, params=None):
     raw_axis = list(six.moves.range(len(shape)))
     trans = axis + tuple(numpy.delete(raw_axis, axis))
-    print trans
 
     if all(i == j for i, j in zip(trans, raw_axis)):
         return args, shape
