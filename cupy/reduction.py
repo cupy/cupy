@@ -2,6 +2,7 @@ import collections
 import string
 
 import numpy
+import six
 
 import cupy
 from cupy import carray
@@ -141,16 +142,18 @@ def _get_out_shape(shape, axis, keepdims):
     return out_shape
 
 
-def _get_trans_args(args, axis, ndim, params=None):
-    raw_axis = numpy.arange(ndim, dtype=int)
+def _get_trans_args(args, axis, shape, params=None):
+    raw_axis = list(six.moves.range(len(shape)))
     trans = axis + tuple(numpy.delete(raw_axis, axis))
+    print trans
 
     if all(i == j for i, j in zip(trans, raw_axis)):
-        return args
+        return args, shape
     if params is not None and any(p.raw for p in params):
         raise NotImplementedError('Illegal conditions')
+    shape = tuple(shape[i] for i in trans)
     return [a.transpose(trans) if isinstance(a, cupy.ndarray) else a
-            for a in args]
+            for a in args], shape
 
 
 def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
@@ -202,9 +205,10 @@ class simple_reduction_function(object):
         out_shape = _get_out_shape(a.shape, axis, keepdims)
         out_args = elementwise._get_out_args(
             in_args, out_args, out_types, allocator, out_shape)
-        in_args = _get_trans_args(in_args, axis, in_args[0].ndim)
+        in_args, in_shape = _get_trans_args(
+            in_args, axis, in_args[0].shape)
 
-        in_indexer = cindexer.Indexer(in_args[0].shape)
+        in_indexer = cindexer.Indexer(in_shape)
         out_indexer = cindexer.Indexer(out_shape)
         out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
 
@@ -378,15 +382,16 @@ class ReductionKernel(object):
             elementwise._get_ndarray_dtype(out_args))
 
         axis = _get_axis(axis, brod.nd)
+        out_shape = _get_out_shape(brod.shape, axis, keepdims)
         in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
                    for x, t in zip(in_args, in_types)]
-        in_args = _get_trans_args(in_args, axis, brod.nd, self.in_params)
-        out_shape = _get_out_shape(brod.shape, axis, keepdims)
+        in_args, in_shape = _get_trans_args(
+            in_args, axis, brod.shape, self.in_params)
         out_args = elementwise._get_out_args(
             in_args, out_args, out_types, allocator, out_shape,
             self.out_params)
 
-        in_indexer = cindexer.Indexer(brod.shape)
+        in_indexer = cindexer.Indexer(in_shape)
         out_indexer = cindexer.Indexer(out_shape)
         out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
 
