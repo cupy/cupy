@@ -138,7 +138,7 @@ class ndarray(object):
         """Lengths of axes.
 
         Setter of this property involves reshaping without copy. If the array
-        cannot be reshaped without copy, it rases an exception.
+        cannot be reshaped without copy, it raises an exception.
 
         .. seealso: :attr:`numpy.ndarray.shape`
 
