@@ -83,12 +83,12 @@ else:
     raise ValueError('Invalid architecture name')
 
 if args.gpu >= 0:
-    cuda.init(args.gpu)
+    cuda.get_device(args.gpu).use()
     model.to_gpu()
 
 # Setup optimizer
 optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
-optimizer.setup(model.collect_parameters())
+optimizer.setup(model)
 
 
 # ------------------------------------------------------------------------------

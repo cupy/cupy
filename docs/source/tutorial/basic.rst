@@ -125,7 +125,7 @@ As noted above, functions are predefined in :mod:`functions` module, which also 
 One of the most fundamental parameterized functions is the :class:`~functions.Linear` function (a.k.a. *fully-connected layer* or *affine transformation*).
 It represents a mathematical function :math:`f(x) = Wx + b`, where the matrix :math:`W` and the vector :math:`b` are parameters.
 A linear function from three-dimensional space to two-dimensional space is defined by::
-  
+
   >>> f = F.Linear(3, 2)
 
 .. note::
@@ -214,10 +214,9 @@ Many algorithms are implemented in :mod:`optimizers` module.
 Here we use the simplest one, called Stochastic Gradient Descent::
 
   >>> optimizer = optimizers.SGD()
-  >>> optimizer.setup(model.collect_parameters())
+  >>> optimizer.setup(model)
 
-The method :meth:`~Optimizer.setup` prepares for the optimization given parameters and gradients.
-The interface is designed to match the return values of the :meth:`FunctionSet.collect_parameters` method.
+The method :meth:`~Optimizer.setup` prepares for the optimization given parameters and gradients based on passed ``FunctionSet``.
 
 .. note::
 
@@ -273,7 +272,7 @@ Before defining the forward routine, we have to prepare our parameterized functi
   ...     l3 = F.Linear(100,  10),
   ... )
   >>> optimizer = optimizers.SGD()
-  >>> optimizer.setup(model.collect_parameters())
+  >>> optimizer.setup(model)
 
 Note that ``model.l3`` is the final linear layer whose output corresponds to the ten digits.
 We also set up the optimizer here.
@@ -303,7 +302,7 @@ Finally, we can write a learning loop as following::
   ...     for i in xrange(0, 60000, batchsize):
   ...         x_batch = x_train[indexes[i : i + batchsize]]
   ...         y_batch = y_train[indexes[i : i + batchsize]]
-  ...         
+  ...
   ...         optimizer.zero_grads()
   ...         loss, accuracy = forward(x_batch, y_batch)
   ...         loss.backward()

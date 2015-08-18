@@ -190,11 +190,6 @@ class Function(object):
         in_type = type_check.get_types(in_data, 'in_types', False)
         self.check_type_forward(in_type)
 
-    def _check_data_type_backward(self, in_data, grad_data):
-        in_type = type_check.get_types(in_data, 'in_types', False)
-        grad_type = type_check.get_types(grad_data, 'grad_types', True)
-        self.check_type_backward(in_type, grad_type)
-
     def check_type_forward(self, in_types):
         """Checks types of input data before forward propagation.
 
@@ -205,25 +200,6 @@ class Function(object):
         Args:
             in_types (~chainer.utils.type_check.TypeInfoTuple): The type
                 information of input data for :meth:`forward`.
-        """
-        pass
-
-    def check_type_backward(self, in_types, grad_types):
-        """Checks types of gradient data before back propagation.
-
-        Before :meth:`backward` is called, this function is called.
-        You need to validate types of gradient data in this function
-        using :ref:`the type checking utilities <type-check-utils>`.
-
-        :meth:`check_type_backward` is always called after
-        :meth:`check_type_forward`, so each function does not need to check
-        the same condition here.
-
-        Args:
-            in_types (~chainer.utils.type_check.TypeInfoTuple): The type
-                information of input data for :meth:`backward`.
-            grad_types (~chainer.utils.type_check.TypeInfoTuple): The type
-                information of gradient data for :meth:`backward`.
         """
         pass
 

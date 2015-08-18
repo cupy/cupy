@@ -1,6 +1,7 @@
 import numpy
 import six
 
+from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 
@@ -103,8 +104,20 @@ class BinaryHierarchicalSoftmax(function.Function):
     def __init__(self, in_size, tree):
         parser = TreeParser()
         parser.parse(tree)
-        self.paths = parser.get_paths()
-        self.codes = parser.get_codes()
+        paths = parser.get_paths()
+        codes = parser.get_codes()
+        n_vocab = max(paths.keys()) + 1
+
+        self.paths = numpy.concatenate(
+            [paths[i] for i in range(n_vocab) if i in paths])
+        self.codes = numpy.concatenate(
+            [codes[i] for i in range(n_vocab) if i in codes])
+        begins = numpy.empty((n_vocab + 1,), dtype=numpy.int32)
+        begins[0] = 0
+        for i in range(0, n_vocab):
+            length = len(paths[i]) if i in paths else 0
+            begins[i + 1] = begins[i] + length
+        self.begins = begins
 
         self.W = numpy.random.uniform(
             -1, 1, (parser.size(), in_size)).astype(numpy.float32)
@@ -122,13 +135,6 @@ class BinaryHierarchicalSoftmax(function.Function):
             x_type.shape[0] == t_type.shape[0]
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            out_types.size() == 1,
-            out_types[0].dtype == numpy.float32,
-            out_types[0].ndim == 0
-        )
-
     def forward_cpu(self, args):
         x, t = args
 
@@ -138,10 +144,11 @@ class BinaryHierarchicalSoftmax(function.Function):
         return numpy.array(loss),
 
     def _forward_cpu_one(self, x, t):
-        assert t in self.paths
+        begin = self.begins[t]
+        end = self.begins[t + 1]
 
-        w = self.W[self.paths[t]]
-        wxy = w.dot(x) * self.codes[t]
+        w = self.W[self.paths[begin:end]]
+        wxy = w.dot(x) * self.codes[begin:end]
         loss = numpy.logaddexp(0.0, -wxy)  # == log(1 + exp(-wxy))
         return numpy.sum(loss)
 
@@ -154,14 +161,112 @@ class BinaryHierarchicalSoftmax(function.Function):
         return gx, None
 
     def _backward_cpu_one(self, x, t, gloss):
-        path = self.paths[t]
+        begin = self.begins[t]
+        end = self.begins[t + 1]
+
+        path = self.paths[begin:end]
         w = self.W[path]
-        wxy = w.dot(x) * self.codes[t]
-        g = -gloss * self.codes[t] / (1.0 + numpy.exp(wxy))
+        wxy = w.dot(x) * self.codes[begin:end]
+        g = -gloss * self.codes[begin:end] / (1.0 + numpy.exp(wxy))
         gx = g.dot(w)
         gw = g.reshape((g.shape[0], 1)).dot(x.reshape(1, x.shape[0]))
         self.gW[path] += gw
         return gx
+
+    def to_gpu(self, device=None):
+        function.Function.to_gpu(self, device)
+
+        self.paths = cuda.to_gpu(self.paths, device)
+        self.codes = cuda.to_gpu(self.codes, device)
+        self.begins = cuda.to_gpu(self.begins, device)
+
+    def to_cpu(self):
+        function.Function.to_cpu(self)
+
+        self.paths = cuda.to_cpu(self.paths)
+        self.codes = cuda.to_cpu(self.codes)
+        self.begins = cuda.to_cpu(self.begins)
+
+    def forward_gpu(self, inputs):
+        x, t = inputs
+        max_length = cuda.reduce(
+            'T t, raw T begins', 'T out', 'begins[t + 1] - begins[t]',
+            'max(a, b)', 'out = a', '0',
+            'binary_hierarchical_softmax_max_length')(t, self.begins)
+        max_length = cuda.to_cpu(max_length)[()]
+
+        length = max_length * x.shape[0]
+        ls = cuda.empty((length,), dtype=numpy.float32)
+        n_in = x.shape[1]
+        wxy = cuda.empty((length,), dtype=numpy.float32)
+        cuda.elementwise(
+            '''raw T x, raw T w, raw int32 ts, raw int32 paths,
+            raw T codes, raw int32 begins, int32 c, int32 max_length''',
+            'T ls, T wxy',
+            '''
+            int ind = i / max_length;
+            int offset = i - ind * max_length;
+            int t = ts[ind];
+
+            int begin = begins[t];
+            int length = begins[t + 1] - begins[t];
+
+            if (offset < length) {
+              int p = begin + offset;
+              int node = paths[p];
+
+              T wx = 0;
+              for (int j = 0; j < c; ++j) {
+                wx += w[node * c + j] * x[ind * c + j];
+              }
+              wxy = wx * codes[p];
+              ls = log(1 + exp(-wxy));
+            } else {
+              ls = 0;
+            }
+            ''',
+            'binary_hierarchical_softmax_forward'
+        )(x, self.W, t, self.paths, self.codes, self.begins, n_in, max_length,
+          ls, wxy)
+        self.max_length = max_length
+        self.wxy = wxy
+        return ls.sum(),
+
+    def backward_gpu(self, inputs, loss):
+        x, t = inputs
+        gloss, = loss
+
+        n_in = x.shape[1]
+        gx = cuda.zeros_like(x)
+        cuda.elementwise(
+            '''T wxy, raw T x, raw T w, raw int32 ts, raw int32 paths,
+            raw T codes, raw int32 begins, raw T gloss,
+            int32 c, int32 max_length''',
+            'raw T gx, raw T gw',
+            '''
+            int ind = i / max_length;
+            int offset = i - ind * max_length;
+            int t = ts[ind];
+
+            int begin = begins[t];
+            int length = begins[t + 1] - begins[t];
+
+            if (offset < length) {
+              int p = begin + offset;
+              int node = paths[p];
+              T code = codes[p];
+
+              T g = -gloss[0] * code / (1.0 + exp(wxy));
+              for (int j = 0; j < c; ++j) {
+                atomicAdd(&gx[ind * c + j], g * w[node * c + j]);
+                atomicAdd(&gw[node * c + j], g * x[ind * c + j]);
+              }
+            }
+            ''',
+            'binary_hierarchical_softmax_bwd'
+        )(self.wxy, x, self.W, t, self.paths, self.codes,
+          self.begins, gloss, n_in, self.max_length, gx, self.gW)
+        return gx, None
 
 
 def create_huffman_tree(word_counts):

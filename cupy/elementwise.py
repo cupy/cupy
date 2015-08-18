@@ -213,7 +213,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
                 t = type_dict[p.ctype]
                 if t != a:
                     raise TypeError(
-                        'Type is mismatched %s', (p.name, a, t))
+                        'Type is mismatched %s', (p.name, a, t, p.ctype))
             else:
                 type_dict[p.ctype] = a
 
