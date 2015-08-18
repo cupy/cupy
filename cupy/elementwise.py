@@ -424,6 +424,20 @@ def _get_ufunc_kernel(in_types, out_types, out_raw_types, is_ndarray,
         kernel_params, operation, name, preamble=preamble)
 
 
+@util.memoize()
+def _castable(src, tgt):
+    return numpy.can_cast(src, tgt)
+
+
+def _can_cast(arg, totype):
+    dtype = getattr(arg, 'dtype', None)
+    totype = numpy.dtype(totype).char
+    if dtype is None:
+        return _castable(numpy.dtype(type(arg)).char, totype)
+    else:
+        return _castable(dtype.char, totype)
+
+
 class ufunc(object):
 
     """Universal function.
@@ -535,8 +549,8 @@ class ufunc(object):
     def _guess_routine(self, in_args, dtype):
         if dtype is None:
             for in_types, out_types, routine in self._ops:
-                if all(numpy.can_cast(in_arg, in_type)
-                       for in_arg, in_type in zip(in_args, in_types)):
+                if all(_can_cast(in_arg, in_type)
+                       for in_arg, in_type in six.moves.zip(in_args, in_types)):
                     return in_types, out_types, routine
         else:
             for in_types, out_types, routine in self._ops:
