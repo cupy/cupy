@@ -574,6 +574,10 @@ class Sin(function.Function):
     def label(self):
         return 'sin'
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
+
     def forward_cpu(self, x):
         self.y = utils.force_array(numpy.sin(x[0]))
         return self.y,
@@ -599,6 +603,10 @@ class Cos(function.Function):
     @property
     def label(self):
         return 'cos'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward_cpu(self, x):
         self.y = utils.force_array(numpy.cos(x[0]))
