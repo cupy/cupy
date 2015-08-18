@@ -56,7 +56,7 @@ if available:
         import cupy.cudnn
         cudnn = cupy.cudnn
         cudnn_enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
-    except:
+    except Exception as e:
         _resolution_error = e
 
 
