@@ -1,6 +1,7 @@
 import collections
 
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -57,7 +58,7 @@ class SplitAxis(function.Function):
     def forward_gpu(self, x):
         xshape = x[0].shape
         self.cdimx = xshape[self.axis]
-        self.rdim = numpy.prod(xshape[self.axis + 1:])
+        self.rdim = numpy.prod(xshape[self.axis + 1:], dtype=int)
 
         if isinstance(self.indices_or_sections, collections.Iterable):
             ind = list(self.indices_or_sections)
@@ -76,7 +77,7 @@ class SplitAxis(function.Function):
             cdimy = max(0, min(i, self.cdimx) - prev_i)
             s = list(xshape)
             s[self.axis] = cdimy
-            y = cuda.empty(s, dtype=x[0].dtype)
+            y = cuda.empty(tuple(s), dtype=x[0].dtype)
             if cdimy == 0:
                 raise ValueError('Not support if shape contains 0')
             kernel(y, x[0], cdimy, self.cdimx, self.rdim, prev_i)
@@ -85,14 +86,25 @@ class SplitAxis(function.Function):
         return tuple(ys)
 
     def backward_cpu(self, x, gys):
-        return numpy.concatenate(gys, axis=self.axis),
+        if any(gy is None for gy in gys):
+            gx = numpy.zeros_like(x[0])
+            gxs = numpy.split(gx, self.indices_or_sections, self.axis)
+            for gxi, gy in six.moves.zip(gxs, gys):
+                if gy is None:
+                    continue
+                gxi[:] = gy
+            return gx,
+        else:
+            return numpy.concatenate(gys, axis=self.axis),
 
     def backward_gpu(self, x, gys):
-        gx = cuda.empty_like(x[0])
+        gx = cuda.zeros_like(x[0])
         coffset = 0
         kernel = cuda.elementwise(
             _args, 'COPY(x[idx] = y[i])', 'split_bwd', preamble=_preamble)
         for gy in gys:
+            if gy is None:
+                continue
             cdimy = gy.shape[self.axis]
             if cdimy != 0:
                 kernel(gy, gx, cdimy, self.cdimx, self.rdim, coffset)

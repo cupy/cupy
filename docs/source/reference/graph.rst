@@ -3,7 +3,7 @@ Visualization of Computational Graph
 
 .. module:: chainer.computational_graph
 
-As neural networks get larger and complicated, it gets much harger to confirm if their architectures are constructed properly.
+As neural networks get larger and complicated, it gets much harder to confirm if their architectures are constructed properly.
 Chainer supports visualization of computational graphs.
 Users can generate computational graphs by invoking :meth:`build_computational_graph`. Generated computational graphs are dumped to specified format (Currently `Dot Language <https://en.wikipedia.org/wiki/DOT_(graph_description_language)>`_ is supported).
 

@@ -14,3 +14,12 @@ def force_array(x):
         return numpy.array(x, x.dtype)
     else:
         return x
+
+
+def force_type(dtype, value):
+    if numpy.isscalar(value):
+        return dtype.type(value)
+    elif value.dtype != dtype:
+        return value.astype(dtype)
+    else:
+        return value

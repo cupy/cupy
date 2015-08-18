@@ -58,13 +58,15 @@ The forward computation is simply written with a for loop::
       return h, loss
 
   def forward(x_list, volatile=False):
-      h = Variable(np.zeros((50,), dtype=np.float32), volatile=volatile)
+      h = Variable(np.zeros((1, 50), dtype=np.float32), volatile=volatile)
       loss = 0
       for cur_word, next_word in zip(x_list, x_list[1:]):
           h, new_loss = forward_one_step(h, cur_word, next_word, volatile=volatile)
           loss += new_loss
       return loss
 
+Note that the first dimension of ``h`` and ``x_list`` is always the mini-batch size.
+The mini-batch size is assumed to be ``1`` here.
 We implemented the one-step-forward computation as a separate function, which is a best practice of writing recurrent nets for higher extensibility.
 Ignore the argument ``volatile`` for now, we will review it in the next subsection.
 The ``forward`` function is very simple and no special care needs to be taken with respect to the length of the input sequence.
@@ -102,7 +104,7 @@ Here we use the same network as the one used in the previous subsection.
 Suppose that we are given a very long sequence, and we want to run backprop truncated at every 30 time steps.
 We can write truncated backprop using the ``forward_one_step`` function that we wrote above. ::
 
-  h = Variable(np.zeros((50,), dtype=np.float32))
+  h = Variable(np.zeros((1, 50), dtype=np.float32))
   loss   = 0
   count  = 0
   seqlen = len(x_list[1:])

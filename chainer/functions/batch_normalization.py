@@ -149,17 +149,6 @@ class BatchNormalization(function.Function):
             x_type.shape[1:len(self.size)+1] == self_.size
         )
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(out_types.size() == 1)
-        x_type, = in_types
-        y_type, = out_types
-
-        type_check.expect(
-            x_type.dtype == y_type.dtype,
-            x_type.ndim == y_type.ndim,
-            x_type.shape == y_type.shape
-        )
-
     def start_finetuning(self):
         self.N[0] = numpy.array(0)
 

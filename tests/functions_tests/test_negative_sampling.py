@@ -70,5 +70,12 @@ class TestNegativeSampling(unittest.TestCase):
                             cuda.to_gpu(self.t),
                             cuda.to_gpu(self.gy))
 
+    @attr.gpu
+    def test_to_cpu(self):
+        self.func.to_gpu()
+        self.assertTrue(self.func.sampler.use_gpu)
+        self.func.to_cpu()
+        self.assertFalse(self.func.sampler.use_gpu)
+
 
 testing.run_module(__name__, __file__)
