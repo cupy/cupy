@@ -40,6 +40,7 @@ class Memory(object):
         else:
             return self._device
 
+
 class MemoryPointer(object):
 
     """Pointer to a point on a device memory.
