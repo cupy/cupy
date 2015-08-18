@@ -223,7 +223,9 @@ class TestBinaryOpZeroDimension(BinaryOpTestBase, unittest.TestCase):
 
 class TestBinaryOpConstant(unittest.TestCase):
 
-    def _test_constant_one(self, func, lhs, rhs):
+    def _test_constant_one(self, func, lhs, rhs, gpu=False):
+        if gpu:
+            lhs = cuda.to_gpu(lhs)
         x = chainer.Variable(lhs)
         y = func(x, rhs)
         self.assertEqual(y.data.dtype, numpy.float32)
@@ -237,6 +239,14 @@ class TestBinaryOpConstant(unittest.TestCase):
         self._test_constant_one(func, x_data, 1.0)
         self._test_constant_one(func, x_data, numpy.int64(1))
         self._test_constant_one(func, x_data, numpy.float64(1.0))
+
+    def _test_constant_gpu(self, func):
+        x_data = numpy.array(1, numpy.float32)
+
+        self._test_constant_one(func, x_data, 1)
+        self._test_constant_one(func, x_data, 1.0)
+        self._test_constant_one(func, x_data, numpy.int64(1), True)
+        self._test_constant_one(func, x_data, numpy.float64(1), True)
 
     def _test_constant_array_one(self, func, lhs, rhs):
         x = chainer.Variable(lhs)
@@ -304,6 +314,10 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_add_constant(self):
         self._test_constant(lambda x, y: x + y)
 
+    @attr.gpu
+    def test_add_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: x + y)
+
     def test_add_constant_array(self):
         self._test_constant_array(lambda x, y: x + y)
 
@@ -313,6 +327,10 @@ class TestBinaryOpConstant(unittest.TestCase):
 
     def test_radd_constant(self):
         self._test_constant(lambda x, y: y + x)
+
+    @attr.gpu
+    def test_radd_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: y + x)
 
     def test_radd_constant_array(self):
         self._test_constant_array(lambda x, y: y + x)
@@ -324,6 +342,10 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_sub_constant(self):
         self._test_constant(lambda x, y: x - y)
 
+    @attr.gpu
+    def test_sub_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: x - y)
+
     def test_sub_constant_array(self):
         self._test_constant_array(lambda x, y: x - y)
 
@@ -333,6 +355,10 @@ class TestBinaryOpConstant(unittest.TestCase):
 
     def test_rsub_constant(self):
         self._test_constant(lambda x, y: y - x)
+
+    @attr.gpu
+    def test_rsub_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: y - x)
 
     def test_rsub_constant_array(self):
         self._test_constant_array(lambda x, y: y - x)
@@ -344,6 +370,10 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_mul_constant(self):
         self._test_constant(lambda x, y: x * y)
 
+    @attr.gpu
+    def test_mul_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: x * y)
+
     def test_mul_constant_array(self):
         self._test_constant_array(lambda x, y: x * y)
 
@@ -353,6 +383,10 @@ class TestBinaryOpConstant(unittest.TestCase):
 
     def test_rmul_constant(self):
         self._test_constant(lambda x, y: y * x)
+
+    @attr.gpu
+    def test_rmul_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: y * x)
 
     def test_rmul_constant_array(self):
         self._test_constant_array(lambda x, y: y * x)
@@ -365,6 +399,10 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_div_constant(self):
         self._test_constant(lambda x, y: x / y)
 
+    @attr.gpu
+    def test_div_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: x / y)
+
     def test_div_constant_array(self):
         self._test_constant_array(lambda x, y: x / y)
 
@@ -376,6 +414,10 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_rdiv_constant(self):
         self._test_constant(lambda x, y: y / x)
 
+    @attr.gpu
+    def test_rdiv_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: y / x)
+
     def test_rdiv_constant_array(self):
         self._test_constant_array(lambda x, y: y / x)
 
@@ -386,6 +428,10 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_pow_constant(self):
         self._test_constant(lambda x, y: x ** y)
 
+    @attr.gpu
+    def test_pow_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: x ** y)
+
     def test_pow_constant_array(self):
         self._test_constant_array(lambda x, y: x ** y)
 
@@ -395,6 +441,10 @@ class TestBinaryOpConstant(unittest.TestCase):
 
     def test_rpow_constant(self):
         self._test_constant(lambda x, y: y ** x)
+
+    @attr.gpu
+    def test_rpow_constant_gpu(self):
+        self._test_constant_gpu(lambda x, y: y ** x)
 
     def test_rpow_constant_array(self):
         self._test_constant_array(lambda x, y: y ** x)
