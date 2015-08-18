@@ -91,8 +91,6 @@ class ndarray(object):
         self._shape = tuple(shape)
         self._dtype = numpy.dtype(dtype)
         self._allocator = allocator
-        if self.ndim > carray.MAX_NDIM:
-            raise RuntimeError('cupy.ndarray does not support ndim > 25.')
 
         nbytes = self.nbytes
         if memptr is None:
@@ -177,7 +175,7 @@ class ndarray(object):
         .. seealso:: :attr:`numpy.ndarray.ndim`
 
         """
-        return len(self.shape)
+        return len(self._shape)
 
     @property
     def size(self):
@@ -188,7 +186,7 @@ class ndarray(object):
         .. seealso:: :attr:`numpy.ndarray.size`
 
         """
-        return internal.prod(self.shape)
+        return internal.prod(self._shape)
 
     @property
     def itemsize(self):
@@ -263,8 +261,8 @@ class ndarray(object):
            :meth:`numpy.ndarray.ctypes`.
 
         """
-        return carray.to_carray(self.data.ptr, self.size, self.shape,
-                                self.strides)
+        return carray.to_carray(self.data.ptr, self.size, self._shape,
+                                self._strides)
 
     # -------------------------------------------------------------------------
     # Array conversion
@@ -333,7 +331,7 @@ class ndarray(object):
         """
         # TODO(beam2d): Support ordering, casting, and subok option
         dtype = numpy.dtype(dtype)
-        if dtype == self.dtype:
+        if dtype == self._dtype:
             if copy:
                 return self.copy(allocator)
             else:
@@ -396,7 +394,7 @@ class ndarray(object):
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
-        elementwise.copy(value, self, dtype=self.dtype)
+        elementwise.copy(value, self, dtype=self._dtype)
 
     # -------------------------------------------------------------------------
     # Shape manipulation
@@ -906,7 +904,7 @@ class ndarray(object):
     # cupy.ndarray does not define __new__
 
     def __array__(self, dtype=None):
-        if dtype is None or self.dtype == dtype:
+        if dtype is None or self._dtype == dtype:
             return self
         else:
             return self.astype(dtype)
@@ -917,9 +915,9 @@ class ndarray(object):
     # Container customization:
 
     def __len__(self):
-        if not self.shape:
+        if not self._shape:
             raise TypeError('len() of unsized object')
-        return self.shape[0]
+        return self._shape[0]
 
     def __getitem__(self, slices):
         # It supports the basic indexing (by slices, ints or Ellipsis) only.
@@ -1063,7 +1061,7 @@ class ndarray(object):
 
     @property
     def _fptr(self):
-        if self.dtype.type == numpy.float64:
+        if self._dtype.type == numpy.float64:
             return ctypes.cast(self.data.ptr, ctypes.POINTER(ctypes.c_double))
         else:
             return ctypes.cast(self.data.ptr, ctypes.POINTER(ctypes.c_float))
@@ -1080,7 +1078,7 @@ class ndarray(object):
 
         """
         a_gpu = ascontiguousarray(self)
-        a_cpu = numpy.empty(self.shape, dtype=self.dtype)
+        a_cpu = numpy.empty(self._shape, dtype=self._dtype)
         ptr = internal.get_ndarray_ptr(a_cpu)
         if stream is None:
             a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
@@ -1099,10 +1097,10 @@ class ndarray(object):
         """
         if not isinstance(arr, numpy.ndarray):
             raise TypeError('Only numpy.ndarray can be set to cupy.ndarray')
-        if self.dtype != arr.dtype:
+        if self._dtype != arr.dtype:
             raise TypeError('{} array cannot be set to {} array'.format(
-                arr.dtype, self.dtype))
-        if self.shape != arr.shape:
+                arr.dtype, self._dtype))
+        if self._shape != arr.shape:
             raise ValueError('Shape mismatch')
         if not self.flags.c_contiguous:
             raise RuntimeError('Cannot set to non-contiguous array')
@@ -1134,14 +1132,14 @@ class ndarray(object):
 
     def _update_c_contiguity(self):
         self._flags &= ~flags.C_CONTIGUOUS
-        if internal.get_c_contiguity(self.shape, self.strides, self.itemsize):
+        if internal.get_c_contiguity(self._shape, self._strides, self.itemsize):
             self._flags |= flags.C_CONTIGUOUS
         self._flags &= ~flags.C_DIRTY
 
     def _update_f_contiguity(self):
         self._flags &= ~flags.F_CONTIGUOUS
-        if internal.get_c_contiguity(tuple(reversed(self.shape)),
-                                     tuple(reversed(self.strides)),
+        if internal.get_c_contiguity(tuple(reversed(self._shape)),
+                                     tuple(reversed(self._strides)),
                                      self.itemsize):
             self._flags |= flags.F_CONTIGUOUS
         self._flags &= ~flags.F_DIRTY

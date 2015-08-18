@@ -9,27 +9,29 @@ _native_ctypes = {
     int: ctypes.c_int,
     float: ctypes.c_float,
     bool: ctypes.c_bool,
-    type(None): lambda x: ctypes.c_void_p()
+    type(None): lambda x: ctypes.c_void_p(),
+    numpy.bool_: ctypes.c_bool,
+    numpy.int8: ctypes.c_int8,
+    numpy.uint8: ctypes.c_uint8,
+    numpy.int16: ctypes.c_int16,
+    numpy.uint16: ctypes.c_uint16,
+    numpy.int32: ctypes.c_int32,
+    numpy.uint32: ctypes.c_uint32,
+    numpy.int64: ctypes.c_int64,
+    numpy.uint64: ctypes.c_uint64,
+    numpy.float16: lambda x: numpy.ctypeslib.as_ctypes(x.view(numpy.uint16)),
+    numpy.float32: ctypes.c_float,
+    numpy.float64: ctypes.c_double,
 }
 
 
+def _get_ctypes(x):
+    return getattr(x, 'ctypes', x)
+
+
 def _pointer(x):
-    conv = _native_ctypes.get(type(x), None)
-    if conv is not None:
-        x = conv(x)
-    elif isinstance(x, numpy.bool_):
-        x = ctypes.c_bool(x)
-    elif isinstance(x, numpy.number):
-        if isinstance(x, numpy.float16):
-            x = numpy.ctypeslib.as_ctypes(x.view(numpy.uint16))
-        else:
-            x = numpy.ctypeslib.as_ctypes(x)
-    else:
-        try:
-            x = x.ctypes
-        except AttributeError:
-            pass
-    return ctypes.pointer(x)
+    converter = _native_ctypes.get(type(x), _get_ctypes)
+    return ctypes.pointer(converter(x))
 
 
 def _get_stream(strm):
