@@ -64,7 +64,7 @@ def get_strides_for_nocopy_reshape(array, new_shape):
 def get_contiguous_strides(shape, itemsize):
     strides = [itemsize for _ in shape]
     for i in six.moves.range(len(strides) - 1, 0, -1):
-        strides[i - 1] = strides[i] * shape[i]
+        strides[i - 1] = strides[i] * max(1, shape[i])
     return tuple(strides)
 
 
