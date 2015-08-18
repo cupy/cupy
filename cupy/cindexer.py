@@ -1,6 +1,5 @@
 import ctypes
 
-import numpy
 import six
 
 from cupy import carray

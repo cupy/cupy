@@ -1,5 +1,4 @@
 import ctypes
-import operator
 
 import numpy
 import six
