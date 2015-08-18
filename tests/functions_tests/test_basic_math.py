@@ -243,8 +243,8 @@ class TestBinaryOpConstant(unittest.TestCase):
     def _test_constant_gpu(self, func):
         x_data = numpy.array(1, numpy.float32)
 
-        self._test_constant_one(func, x_data, 1)
-        self._test_constant_one(func, x_data, 1.0)
+        self._test_constant_one(func, x_data, 1, True)
+        self._test_constant_one(func, x_data, 1.0, True)
         self._test_constant_one(func, x_data, numpy.int64(1), True)
         self._test_constant_one(func, x_data, numpy.float64(1), True)
 
