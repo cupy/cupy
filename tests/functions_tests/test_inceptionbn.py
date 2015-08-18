@@ -211,4 +211,13 @@ class TestInceptionBNInvalidCall4(TestInceptionBNInvalidCall):
     pooltype = 'avg'
 
 
+class TestInceptionBNInvalidPoolType(TestInceptionBNBase):
+
+    pooltype = 'invalid_pooltype'
+
+    def test_invalid_pooltype(self):
+        with self.assertRaises(NotImplementedError):
+            self.f = self._setup_inceptionbn()
+
+
 testing.run_module(__name__, __file__)
