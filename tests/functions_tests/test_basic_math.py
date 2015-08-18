@@ -282,11 +282,45 @@ class TestBinaryOpConstant(unittest.TestCase):
             self._test_constant_array_one(
                 func, x_data, numpy.array([3.0, 4.0, 5.0], numpy.float32))
 
+    def _test_constant_array_gpu_one(self, func, lhs, rhs):
+        x = chainer.Variable(cuda.to_gpu(lhs))
+        y = func(x, rhs)
+        self.assertEqual(y.data.dtype, numpy.float32)
+        y.grad = chainer.cuda.ones_like(y.data).astype(numpy.float32)
+        y.backward()
+        self.assertEqual(x.grad.dtype, numpy.float32)
+
+    def _test_constant_array_gpu(self, func, exception=ValueError):
+        x_data = numpy.array([1.0, 2.0], numpy.float32)
+
+        self._test_constant_array_gpu_one(
+            func, x_data, cuda.to_gpu(numpy.array([3.0, 4.0], numpy.int32)))
+        self._test_constant_array_gpu_one(
+            func, x_data, cuda.to_gpu(numpy.array([3.0, 4.0], numpy.int64)))
+        self._test_constant_array_gpu_one(
+            func, x_data, cuda.to_gpu(numpy.array([3.0, 4.0], numpy.float32)))
+        self._test_constant_array_gpu_one(
+            func, x_data, cuda.to_gpu(numpy.array([3.0, 4.0], numpy.float64)))
+
+        try:
+            self._test_constant_array_one(
+                func, x_data, cuda.to_gpu(numpy.array([3.0, 4.0, 5.0], numpy.float32)))
+        except Exception as e:
+            print type(e)
+
+        with self.assertRaises(exception):
+            self._test_constant_array_one(
+                func, x_data, cuda.to_gpu(numpy.array([3.0, 4.0, 5.0], numpy.float32)))
+
     def test_add_constant(self):
         self._test_constant(lambda x, y: x + y)
 
     def test_add_constant_array(self):
         self._test_constant_array(lambda x, y: x + y)
+
+    @attr.gpu
+    def test_add_constant_array_gpu(self):
+        self._test_constant_array_gpu(lambda x, y: x + y)
 
     def test_radd_constant(self):
         self._test_constant(lambda x, y: y + x)
@@ -294,11 +328,19 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_radd_constant_array(self):
         self._test_constant_array(lambda x, y: y + x)
 
+    @attr.gpu
+    def test_radd_constant_array_gpu(self):
+        self._test_constant_array_gpu(lambda x, y: y + x)
+
     def test_sub_constant(self):
         self._test_constant(lambda x, y: x - y)
 
     def test_sub_constant_array(self):
         self._test_constant_array(lambda x, y: x - y)
+
+    @attr.gpu
+    def test_sub_constant_array_gpu(self):
+        self._test_constant_array_gpu(lambda x, y: x - y)
 
     def test_rsub_constant(self):
         self._test_constant(lambda x, y: y - x)
@@ -306,10 +348,18 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_rsub_constant_array(self):
         self._test_constant_array(lambda x, y: y - x)
 
+    @attr.gpu
+    def test_rsub_constant_array_gpu(self):
+        self._test_constant_array_gpu(lambda x, y: y - x)
+
     def test_mul_constant(self):
         self._test_constant(lambda x, y: x * y)
 
     def test_mul_constant_array(self):
+        self._test_constant_array(lambda x, y: x * y)
+
+    @attr.gpu
+    def test_mul_constant_array_gpu(self):
         self._test_constant_array(lambda x, y: x * y)
 
     def test_rmul_constant(self):
@@ -318,11 +368,21 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_rmul_constant_array(self):
         self._test_constant_array(lambda x, y: y * x)
 
+    @attr.gpu
+    def test_rmul_constant_array_gpu(self):
+        # to be precise, _test_constant_array_one throws pycuda._pvt_struct.error
+        self._test_constant_array_gpu(lambda x, y: y * x, exception=Exception)
+
     def test_div_constant(self):
         self._test_constant(lambda x, y: x / y)
 
     def test_div_constant_array(self):
         self._test_constant_array(lambda x, y: x / y)
+
+    @attr.gpu
+    def test_div_constant_array_gpu(self):
+        # to be precise, _test_constant_array_one throws pycuda._pvt_struct.error
+        self._test_constant_array_gpu(lambda x, y: x / y, exception=Exception)
 
     def test_rdiv_constant(self):
         self._test_constant(lambda x, y: y / x)
@@ -330,17 +390,30 @@ class TestBinaryOpConstant(unittest.TestCase):
     def test_rdiv_constant_array(self):
         self._test_constant_array(lambda x, y: y / x)
 
+    @attr.gpu
+    def test_rdiv_constant_array_gpu(self):
+        self._test_constant_array_gpu(lambda x, y: y / x)
+
     def test_pow_constant(self):
         self._test_constant(lambda x, y: x ** y)
 
     def test_pow_constant_array(self):
         self._test_constant_array(lambda x, y: x ** y)
 
+    @attr.gpu
+    def test_pow_constant_array_gpu(self):
+        self._test_constant_array_gpu(lambda x, y: x ** y, exception=TypeError)
+
     def test_rpow_constant(self):
         self._test_constant(lambda x, y: y ** x)
 
     def test_rpow_constant_array(self):
         self._test_constant_array(lambda x, y: y ** x)
+
+    @attr.gpu
+    def test_rpow_constant_array_gpu(self):
+        # to be precise, _test_constant_array_one throws pycuda._pvt_struct.error
+        self._test_constant_array_gpu(lambda x, y: y ** x, exception=Exception)
 
 
 class VariableConstantOpTestBase(object):
