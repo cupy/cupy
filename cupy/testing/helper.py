@@ -5,6 +5,7 @@ import functools
 import numpy
 
 import cupy
+from cupy import internal
 from cupy.testing import array
 
 
@@ -164,7 +165,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
 
 
 def shaped_arange(shape, xpy=cupy, dtype=numpy.float32):
-    a = numpy.arange(1, numpy.prod(shape, dtype=numpy.int32) + 1, 1)
+    a = numpy.arange(1, internal.prod(shape) + 1, 1)
     if numpy.dtype(dtype).type == numpy.bool_:
         return xpy.array((a % 2 == 0).reshape(shape))
     else:
@@ -172,7 +173,7 @@ def shaped_arange(shape, xpy=cupy, dtype=numpy.float32):
 
 
 def shaped_reverse_arange(shape, xpy=cupy, dtype=numpy.float32):
-    size = numpy.prod(shape, dtype=int)
+    size = internal.prod(shape)
     a = numpy.arange(size, 0, -1)
     return xpy.array(a.astype(dtype).reshape(shape))
 

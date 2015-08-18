@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy import internal
 
 
 def atleast_1d(*arys):
@@ -136,7 +137,7 @@ class broadcast(object):
                             shape[i + offset] = dim
 
         self.shape = tuple(shape)
-        self.size = numpy.prod(self.shape, dtype=int)
+        self.size = internal.prod(self.shape)
         self.nd = len(shape)
 
         broadcasted = []

@@ -1,10 +1,15 @@
 import ctypes
+import operator
 
 import numpy
 import six
 
 import cupy
 from cupy import cuda
+
+
+def prod(args, init=1):
+    return reduce(operator.mul, args, init)
 
 
 def get_reduced_dims(shape, strides, itemsize):
@@ -103,9 +108,9 @@ def infer_unknown_dimension(shape, size):
         raise ValueError('can only specify only one unknown dimension')
 
     shape = tuple(dim if dim >= 0 else -1 for dim in shape)
-    prod = numpy.prod(shape, dtype=int)
-    if prod < 0:
-        return tuple(dim if dim >= 0 else size // -prod for dim in shape)
+    p = prod(shape)
+    if p < 0:
+        return tuple(dim if dim >= 0 else size // -p for dim in shape)
     else:
         return shape
 

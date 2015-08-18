@@ -5,6 +5,7 @@ import cupy
 from cupy import cuda
 from cupy.cuda import cublas
 from cupy import elementwise
+from cupy import internal
 
 
 def dot(a, b, out=None, allocator=None):
@@ -201,12 +202,12 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
     a = _move_axes_to_head(a, axes[0])
     b = _move_axes_to_head(b, axes[1])
 
-    m = numpy.prod(b.shape[sum_ndim:], dtype=int)
-    n = numpy.prod(a.shape[sum_ndim:], dtype=int)
+    m = internal.prod(b.shape[sum_ndim:])
+    n = internal.prod(a.shape[sum_ndim:])
     ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
     if out is not None:
-        if out.size != numpy.prod(ret_shape, dtype=int):
+        if out.size != internal.prod(ret_shape):
             raise ValueError('Output array has an invalid size')
         if not out.flags.c_contiguous:
             raise ValueError('Output array must be C-contiguous')

@@ -4,6 +4,7 @@ import numpy
 import six
 
 from cupy import carray
+from cupy import internal
 
 
 def _make_cindexer(n):
@@ -24,7 +25,7 @@ def to_cindexer(size, shape):
 class Indexer(object):
     def __init__(self, shape):
         self.shape = shape
-        self.size = numpy.prod(shape, dtype=int)
+        self.size = internal.prod(shape)
 
     @property
     def ndim(self):

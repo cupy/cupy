@@ -184,7 +184,7 @@ class ndarray(object):
         .. seealso:: :attr:`numpy.ndarray.size`
 
         """
-        return numpy.prod(self.shape, dtype=int)
+        return internal.prod(self.shape)
 
     @property
     def itemsize(self):

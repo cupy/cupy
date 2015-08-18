@@ -35,7 +35,7 @@ def reshape(a, newshape):
         newshape = tuple(newshape[0])
 
     size = a.size
-    if numpy.prod(newshape, dtype=int) != size:
+    if internal.prod(newshape) != size:
         raise RuntimeError('Total size mismatch on reshape')
 
     newstrides = internal.get_strides_for_nocopy_reshape(a, newshape)

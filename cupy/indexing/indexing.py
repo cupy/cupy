@@ -3,6 +3,7 @@ import six
 
 import cupy
 from cupy import elementwise
+from cupy import internal
 
 
 def take(a, indices, axis=None, out=None, allocator=None):
@@ -62,7 +63,7 @@ def take(a, indices, axis=None, out=None, allocator=None):
             raise ValueError('Output shape mismatch')
 
     cdim = indices.size
-    rdim = numpy.prod(rshape, dtype=int)
+    rdim = internal.prod(rshape)
     return _take_kernel(a, indices, cdim, rdim, out)
 
 
