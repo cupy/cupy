@@ -42,7 +42,6 @@ class EmbedID(function.Function):
             x_type.ndim == 1,
         )
 
-
     def forward(self, x):
         return self.W.take(x[0], axis=0),
 

@@ -10,10 +10,6 @@ from chainer import testing
 from chainer.testing import attr
 
 
-if cuda.available:
-    cuda.init()
-
-
 def _ones(gpu, *shape):
     if gpu:
         return chainer.Variable(cuda.ones(shape).astype(numpy.float32))

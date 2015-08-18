@@ -372,7 +372,6 @@ class ReductionKernel(object):
 
         if self.identity is None:
             assert brod.size != 0
-
         in_types, out_types, types = elementwise._decide_params_type(
             self.in_params, self.out_params,
             elementwise._get_ndarray_dtype(in_args),

@@ -35,14 +35,15 @@ class ClippedReLU(function.Function):
             gy[0] * (0 < x[0]) * (x[0] < self.cap)).astype(numpy.float32),
 
     def forward_gpu(self, x):
-        return cuda.gpuarray.minimum(cuda.gpuarray.maximum(0, x[0]), self.cap),
+        return cuda.elementwise(
+            'T x, T cap', 'T y', 'y = min(max(x, (T)0), cap)',
+            'clipped_relu_fwd')(x[0], self.cap),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        cuda.elementwise(
-            'float* gx, const float* x, const float* gy, const float z',
-            'gx[i] = ((x[i] > 0) and (x[i] < z))? gy[i] : 0',
-            'clipped_relu_bwd')(gx, x[0], gy[0], self.cap)
+        gx = cuda.elementwise(
+            'T x, T gy, T z', 'T gx',
+            'gx = ((x > 0) and (x < z))? gy : 0',
+            'clipped_relu_bwd')(x[0], gy[0], self.cap)
         return gx,
 
 

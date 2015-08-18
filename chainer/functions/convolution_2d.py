@@ -250,23 +250,26 @@ class Convolution2D(function.Function):
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x[0])
-            gy_desc = cudnn.create_tensor_descriptor(gy[0])
+            gy_arr = gy[0]
+            if not gy_arr.flags.c_contiguous:
+                gy_arr = cuda.cupy.ascontiguousarray(gy_arr)
+            gy_desc = cudnn.create_tensor_descriptor(gy_arr)
             one = ctypes.c_float(1)
             zero = ctypes.c_float(0)
             if self.b is not None:
                 libcudnn.convolutionBackwardBias(
-                    handle, one, gy_desc.value, gy[0].data.ptr,
+                    handle, one, gy_desc.value, gy_arr.data.ptr,
                     one, self.bias_desc.value, self.gb.data.ptr)
 
             libcudnn.convolutionBackwardFilter(
                 handle, one, x_desc.value, x[0].data.ptr,
-                gy_desc.value, gy[0].data.ptr, self.conv_desc.value,
+                gy_desc.value, gy_arr.data.ptr, self.conv_desc.value,
                 one, self.filter_desc.value, self.gW.data.ptr)
 
             gx = cuda.empty_like(x[0])
             libcudnn.convolutionBackwardData(
                 handle, one, self.filter_desc.value, self.W.data.ptr,
-                gy_desc.value, gy[0].data.ptr, self.conv_desc.value,
+                gy_desc.value, gy_arr.data.ptr, self.conv_desc.value,
                 zero, x_desc.value, gx.data.ptr)
         else:
             handle = cuda.get_cublas_handle()

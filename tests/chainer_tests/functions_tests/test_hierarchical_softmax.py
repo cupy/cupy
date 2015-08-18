@@ -12,10 +12,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-if cuda.available:
-    cuda.init()
-
-
 class TestHuffmanTree(unittest.TestCase):
 
     def test_empty(self):
@@ -50,7 +46,7 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
     def check_sum(self, x, gpu=False):
         total = 0
         for i in range(5):
-            t = numpy.array([i])
+            t = numpy.array([i], dtype=numpy.int32)
             if gpu:
                 t = cuda.to_gpu(t)
             loss, = self.func.forward((x, t))

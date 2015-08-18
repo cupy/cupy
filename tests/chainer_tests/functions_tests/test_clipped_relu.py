@@ -9,9 +9,6 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
-if cuda.available:
-    cuda.init()
-
 
 class TestClippedReLU(unittest.TestCase):
 
