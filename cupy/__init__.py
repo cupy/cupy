@@ -372,7 +372,7 @@ class ndarray(object):
         v = ndarray.__new__(ndarray)
         v._allocator = self._allocator
         v._dtype = self._dtype
-        v._flags = self._flags | flags.OWNDATA
+        v._flags = self._flags & ~flags.OWNDATA
         v._shape = self._shape
         v._strides = self._strides
         v.data = self.data
