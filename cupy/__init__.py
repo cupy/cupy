@@ -368,8 +368,14 @@ class ndarray(object):
         .. seealso:: :meth:`numpy.ndarray.view`
 
         """
-        v = ndarray(self.shape, self.dtype, self.data, self.strides,
-                    self.allocator)
+        # Use __new__ instead of __init__ to skip recomputation of contiguity
+        v = ndarray.__new__(ndarray)
+        v._allocator = self._allocator
+        v._dtype = self._dtype
+        v._flags = self._flags | flags.OWNDATA
+        v._shape = self._shape
+        v._strides = self._strides
+        v.data = self.data
         v.base = self.base if self.base is not None else self
         return v
 
