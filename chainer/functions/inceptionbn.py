@@ -60,11 +60,13 @@ class InceptionBN(function.Function):
             self.f.conv1 = convolution_2d.Convolution2D(
                 in_channels, out1, 1, stride=stride, nobias=True)
             self.f.conv1n = batch_normalization.BatchNormalization(out1)
+        self.out1 = out1
 
         if proj_pool is not None:
             self.f.poolp = convolution_2d.Convolution2D(
                 in_channels, proj_pool, 1, nobias=True)
             self.f.poolpn = batch_normalization.BatchNormalization(proj_pool)
+        self.proj_pool = proj_pool
 
         if pooltype == 'max':
             self.f.pool = pooling_2d.MaxPooling2D(3, stride=stride, pad=1)
@@ -76,7 +78,7 @@ class InceptionBN(function.Function):
     def __call__(self, x):
         outs = []
 
-        if hasattr(self.f, 'conv1'):
+        if self.out1 > 0:
             h1 = self.f.conv1(x)
             h1 = self.f.conv1n(h1)
             h1 = relu.relu(h1)
@@ -92,7 +94,7 @@ class InceptionBN(function.Function):
         outs.append(h33)
 
         p = self.f.pool(x)
-        if hasattr(self.f, 'poolp'):
+        if self.proj_pool is not None:
             p = relu.relu(self.f.poolpn(self.f.poolp(p)))
         outs.append(p)
 
