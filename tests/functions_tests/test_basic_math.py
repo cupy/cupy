@@ -223,31 +223,20 @@ class TestBinaryOpZeroDimension(BinaryOpTestBase, unittest.TestCase):
 
 class TestBinaryOpConstant(unittest.TestCase):
 
+    def _test_constant_one(self, func, lhs, rhs):
+        x = chainer.Variable(lhs)
+        y = func(x, rhs)
+        self.assertEqual(y.data.dtype, numpy.float32)
+        y.backward()
+        self.assertEqual(x.grad.dtype, numpy.float32)
+
     def _test_constant(self, func):
         x_data = numpy.array(1, numpy.float32)
-        x1 = chainer.Variable(x_data)
-        y1 = func(x1, 1)
-        self.assertEqual(y1.data.dtype, numpy.float32)
-        y1.backward()
-        self.assertEqual(x1.grad.dtype, numpy.float32)
 
-        x2 = chainer.Variable(x_data)
-        y2 = func(x2, 1.0)
-        self.assertEqual(y2.data.dtype, numpy.float32)
-        y2.backward()
-        self.assertEqual(x2.grad.dtype, numpy.float32)
-
-        x3 = chainer.Variable(x_data)
-        y3 = func(x3, numpy.int64(1))
-        self.assertEqual(y3.data.dtype, numpy.float32)
-        y3.backward()
-        self.assertEqual(x3.grad.dtype, numpy.float32)
-
-        x4 = chainer.Variable(x_data)
-        y4 = func(x4, numpy.float64(1.0))
-        self.assertEqual(y4.data.dtype, numpy.float32)
-        y4.backward()
-        self.assertEqual(x4.grad.dtype, numpy.float32)
+        self._test_constant_one(func, x_data, 1)
+        self._test_constant_one(func, x_data, 1.0)
+        self._test_constant_one(func, x_data, numpy.int64(1))
+        self._test_constant_one(func, x_data, numpy.float64(1.0))
 
     def _test_constant_array_one(self, func, lhs, rhs):
         x = chainer.Variable(lhs)
