@@ -26,17 +26,6 @@ class ClippedReLU(function.Function):
         x_type, = in_types
         type_check.expect(x_type.dtype == numpy.float32)
 
-    def check_type_backward(self, in_types, out_types):
-        type_check.expect(
-            in_types.size() == 1,
-            out_types.size() == 1
-        )
-        x_type, = in_types
-        y_type, = out_types
-        type_check.expect(
-            y_type.dtype == numpy.float32,
-            y_type.ndim == x_type.ndim)
-
     def forward_cpu(self, x):
         return utils.force_array(numpy.minimum(
             numpy.maximum(0, x[0]), self.cap)).astype(numpy.float32),
