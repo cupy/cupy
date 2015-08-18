@@ -192,7 +192,6 @@ class Bilinear(function.Function):
 
         # ijk->i[jk]
         e1e2 = e1e2.reshape(i_len, j_len * k_len)
-
         # jkl->[jk]l
         W_mat = self.W.reshape(
             self.W.shape[0] * self.W.shape[1], self.W.shape[2])
@@ -225,27 +224,23 @@ class Bilinear(function.Function):
         return (ge1.reshape(x[0].shape), ge2.reshape(x[1].shape))
 
     def backward_gpu(self, x, gy):
-        gy, = gy
-        # ij
         e1 = array.as_mat(x[0])
-        e1_b = e1[:, :, numpy.newaxis, numpy.newaxis]
-        # ik
         e2 = array.as_mat(x[1])
-        e2_b = e2[:, numpy.newaxis, :, numpy.newaxis]
-        # il
-        gy_b = gy[:, numpy.newaxis, numpy.newaxis, :]
-        # jkl
-        W_b = self.W[numpy.newaxis, :, :, :]
+        gy, = gy
 
         kern_add = cuda.reduce(
-            'T x, T y, T z', 'T out',
-            'x * y * z', 'a + b', 'out += a', 0,
-            'sum_of_three_ary_tensor_product_add')
-
+            'T in0, T in1, T in2', 'T out',
+            'in0 * in1 * in2', 'a + b', 'out += a', 0,
+            'bilinear_product_add')
         kern = cuda.reduce(
-            'T x, T y, T z', 'T out',
-            'x * y * z', 'a + b', 'out = a', 0,
-            'sum_of_three_ary_tensor_product_add')
+            'T in0, T in1, T in2', 'T out',
+            'in0 * in1 * in2', 'a + b', 'out = a', 0,
+            'bilinear_product')
+
+        e1_b = e1[:, :, numpy.newaxis, numpy.newaxis]  # ij
+        e2_b = e2[:, numpy.newaxis, :, numpy.newaxis]  # ik
+        gy_b = gy[:, numpy.newaxis, numpy.newaxis, :]  # il
+        W_b = self.W[numpy.newaxis, :, :, :]  # jkl
 
         # 'ij,ik,il->jkl'
         kern_add(e1_b, e2_b, gy_b, self.gW, axis=0)
