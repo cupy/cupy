@@ -11,7 +11,7 @@ from chainer import utils
 
 class TestWalkerAlias(unittest.TestCase):
     def setUp(self):
-        self.ps = numpy.array([5, 3, 4, 1, 2])
+        self.ps = numpy.array([5, 3, 4, 1, 2], dtype=numpy.int32)
         self.sampler = utils.WalkerAlias(self.ps)
 
     def check_sample(self):

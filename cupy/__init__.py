@@ -1132,7 +1132,8 @@ class ndarray(object):
 
     def _update_c_contiguity(self):
         self._flags &= ~flags.C_CONTIGUOUS
-        if internal.get_c_contiguity(self._shape, self._strides, self.itemsize):
+        if internal.get_c_contiguity(self._shape, self._strides,
+                                     self.itemsize):
             self._flags |= flags.C_CONTIGUOUS
         self._flags &= ~flags.C_DIRTY
 

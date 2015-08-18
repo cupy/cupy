@@ -48,7 +48,7 @@ class ReLU(function.Function):
                 ctypes.c_float(0), desc.value, y.data.ptr)
             self.y = y
         else:
-            y = cuda.cupy.maximum(0, x[0])
+            y = cuda.cupy.maximum(x[0].dtype.type(0), x[0])
         return y,
 
     def backward_cpu(self, x, gy):

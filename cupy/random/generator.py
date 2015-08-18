@@ -182,9 +182,10 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.uniform`
 
         """
+        dtype = numpy.dtype(dtype)
         size = _get_size(size)
         rand = self.random_sample(size=size, dtype=dtype, allocator=allocator)
-        return low + rand * (high - low)
+        return dtype.type(low) + rand * dtype.type(high - low)
 
 
 def seed(seed=None):

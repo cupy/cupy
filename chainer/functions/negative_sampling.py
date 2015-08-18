@@ -56,7 +56,7 @@ class NegativeSampling(function.Function):
     def __init__(self, in_size, counts, sample_size, power=0.75):
         self.sample_size = sample_size
         p = numpy.array(counts, numpy.float32)
-        p = numpy.power(p, power)
+        p = numpy.power(p, p.dtype.type(power))
         self.sampler = walker_alias.WalkerAlias(p)
 
         vocab_size = len(counts)

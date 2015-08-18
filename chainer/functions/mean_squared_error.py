@@ -29,7 +29,7 @@ class MeanSquaredError(function.Function):
         return diff.dot(diff) / diff.dtype.type(diff.size),
 
     def backward(self, inputs, gy):
-        coeff = gy[0] * (2. / self.diff.size)
+        coeff = gy[0] * gy[0].dtype.type(2. / self.diff.size)
         gx0 = coeff * self.diff
         return gx0, -gx0
 

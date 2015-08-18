@@ -99,7 +99,7 @@ def _get_kernel_params(params, is_ndarray, param_types):
             t,
             '_raw_' if f and not p.raw else '',
             p.name)
-        for p, f, t in zip(params, is_ndarray, param_types))
+        for p, f, t in six.moves.zip(params, is_ndarray, param_types))
 
 
 def _reduce_dims(args, params, indexer):
@@ -183,7 +183,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     type_dict = {}
     if out_args_dtype:
         assert len(out_params) == len(out_args_dtype)
-        for p, a in zip(out_params, out_args_dtype):
+        for p, a in six.moves.zip(out_params, out_args_dtype):
             if a is None:
                 raise TypeError('Output arguments must be cupy.ndarray')
             if p.dtype is not None:
@@ -200,7 +200,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
     assert len(in_params) == len(in_args_dtype)
     unknown_ctype = []
-    for p, a in zip(in_params, in_args_dtype):
+    for p, a in six.moves.zip(in_params, in_args_dtype):
         if a is None:
             if p.dtype is None:
                 unknown_ctype.append(p.ctype)
@@ -226,11 +226,12 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
 def _broadcast(args, params, size_error=True):
     brod = cupy.broadcast(
-        *[None if p.raw else a for p, a in zip(params, args)])
+        *[None if p.raw else a for p, a in six.moves.zip(params, args)])
     if size_error and all(not isinstance(i, cupy.ndarray)
                           for i in brod.values):
         raise ValueError('Loop size is Undecided')
-    return brod, [b if a is None else a for a, b in zip(brod.values, args)]
+    return brod, [b if a is None else a
+                  for a, b in six.moves.zip(brod.values, args)]
 
 
 def _get_out_args(in_args, out_args, out_types,
@@ -264,7 +265,7 @@ def _get_elementwise_kernel(
     preamble = types_preamble + '\n' + preamble
 
     op = []
-    for p, f in zip(params, is_ndarray):
+    for p, f in six.moves.zip(params, is_ndarray):
         if not f or p.raw:
             continue
         if p.const:
@@ -367,7 +368,7 @@ class ElementwiseKernel(object):
             _get_ndarray_dtype(in_args), _get_ndarray_dtype(out_args))
 
         in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
-                   for x, t in zip(in_args, in_types)]
+                   for x, t in six.moves.zip(in_args, in_types)]
         out_args = _get_out_args(
             in_args, out_args, out_types, allocator, brod.shape,
             self.out_params)
@@ -521,7 +522,7 @@ class ufunc(object):
         in_types, out_types, routine = self._guess_routine(in_args, dtype)
 
         in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
-                   for x, t in zip(in_args, in_types)]
+                   for x, t in six.moves.zip(in_args, in_types)]
         out_args = _get_out_args(
             in_args, out_args, out_types, allocator, brod.shape)
 
@@ -550,7 +551,8 @@ class ufunc(object):
         if dtype is None:
             for in_types, out_types, routine in self._ops:
                 if all(_can_cast(in_arg, in_type)
-                       for in_arg, in_type in six.moves.zip(in_args, in_types)):
+                       for in_arg, in_type
+                       in six.moves.zip(in_args, in_types)):
                     return in_types, out_types, routine
         else:
             for in_types, out_types, routine in self._ops:

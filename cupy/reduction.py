@@ -146,7 +146,7 @@ def _get_trans_args(args, axis, shape, params=None):
     raw_axis = list(six.moves.range(len(shape)))
     trans = axis + tuple(numpy.delete(raw_axis, axis))
 
-    if all(i == j for i, j in zip(trans, raw_axis)):
+    if all(i == j for i, j in six.moves.zip(trans, raw_axis)):
         return args, shape
     if params is not None and any(p.raw for p in params):
         raise NotImplementedError('Illegal conditions')
@@ -235,7 +235,8 @@ class simple_reduction_function(object):
             params,
             self.identity,
             routine[0], routine[1], routine[2],
-            type_preamble, self._input_expr, self._output_expr, self._preamble)
+            type_preamble, self._input_expr, self._output_expr,
+            self._preamble)
         shared_mem = 32 * block_size
         if out_clp2_size > 256:
             shared_mem = 0
@@ -252,7 +253,8 @@ class simple_reduction_function(object):
         if dtype is None:
             for in_types, out_types, routine in self._ops:
                 if all(numpy.can_cast(in_arg, in_type)
-                       for in_arg, in_type in zip(in_args, in_types)):
+                       for in_arg, in_type
+                       in six.moves.zip(in_args, in_types)):
                     return in_types, out_types, routine
         else:
             for in_types, out_types, routine in self._ops:
@@ -271,10 +273,12 @@ def _get_reduction_kernel(
         for k, v in types)
     input_expr = '\n'.join(
         'const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
-        for f, p in zip(is_ndarray, params) if f and p.const and not p.raw)
+        for f, p in six.moves.zip(is_ndarray, params)
+        if f and p.const and not p.raw)
     output_expr = '\n'.join(
         '{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
-        for f, p in zip(is_ndarray, params) if f and not p.const and not p.raw)
+        for f, p in six.moves.zip(is_ndarray, params)
+        if f and not p.const and not p.raw)
     return kernel_params, type_preamble, input_expr, output_expr
 
 
@@ -383,7 +387,7 @@ class ReductionKernel(object):
         axis = _get_axis(axis, brod.nd)
         out_shape = _get_out_shape(brod.shape, axis, keepdims)
         in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
-                   for x, t in zip(in_args, in_types)]
+                   for x, t in six.moves.zip(in_args, in_types)]
         in_args, in_shape = _get_trans_args(
             in_args, axis, brod.shape, self.in_params)
         out_args = elementwise._get_out_args(
@@ -425,7 +429,7 @@ def create_reduction_func(name, ops, routine=None, identity=None,
             rt = routine
         else:
             typ, rt = t
-            rt = tuple(i or j for i, j in zip(rt, routine))
+            rt = tuple(i or j for i, j in six.moves.zip(rt, routine))
 
         types = typ.split('->')
         if len(types) == 1:
