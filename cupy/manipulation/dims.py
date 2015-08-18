@@ -163,7 +163,7 @@ class broadcast(object):
             view = array.view()
             view._shape = self.shape
             view._strides = tuple(strides)
-            view._update_contiguity()
+            view._mark_dirty()
             broadcasted.append(view)
 
         self.values = broadcasted
@@ -224,5 +224,5 @@ def squeeze(a, axis=None):
     v = a.view()
     v._shape = tuple(new_shape)
     v._strides = tuple(new_strides)
-    a._update_contiguity()
+    v._mark_dirty()
     return v
