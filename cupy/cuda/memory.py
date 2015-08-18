@@ -296,6 +296,7 @@ class PooledMemory(Memory):
             pool.free(self.ptr, self.size)
         self.ptr = None
         self.size = 0
+        self._device = None
         self.pool = None
 
 
