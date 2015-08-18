@@ -116,7 +116,6 @@ class TestInceptionBN(TestInceptionBNBase):
             expected.extend([mock.call.poolp(mock.ANY),
                              mock.call.poolpn(mock.ANY)])
 
-        print(expected)
         self.assertListEqual(self.f.f.mock_calls, expected)
 
     def test_call_cpu(self):
