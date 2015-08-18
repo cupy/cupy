@@ -9,7 +9,9 @@ from cupy import cuda
 
 
 def prod(args, init=1):
-    return reduce(operator.mul, args, init)
+    for arg in args:
+        init *= arg
+    return init
 
 
 def get_reduced_dims(shape, strides, itemsize):
