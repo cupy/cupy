@@ -2,6 +2,7 @@ from chainer import cuda
 from chainer import function
 from chainer import utils
 import numpy
+from scipy.misc import logsumexp
 
 
 class ConnectionistTemporalClassification(function.Function):
@@ -30,62 +31,67 @@ class ConnectionistTemporalClassification(function.Function):
 
     def forward_cpu(self, inputs):
         t = inputs[0]
-        yseq = inputs[1::]
+        yseq = numpy.log(inputs[1::])
         path = self.label_to_path(t)
-        rr = self.recurrence_relation(path.shape[0])
+        rr = numpy.log(self.recurrence_relation(path.shape[0]))
         forward_prob_trans, backward_prob_trans \
             = self.calc_trans_cpu(path, yseq, rr)
-        return utils.force_array(- numpy.log(
-            numpy.sum(forward_prob_trans[-1]
-                      * backward_prob_trans[-1]))).astype(numpy.float32),
+        return utils.force_array(
+            - logsumexp(forward_prob_trans[-1]
+                        + backward_prob_trans[-1])).astype(numpy.float32),
+
+    def log_dot(self, prob, rr):
+        res = numpy.zeros(prob.shape)
+        rtrans = numpy.swapaxes(rr, 1, 0)
+        for i in range(rtrans.shape[0]):
+            res[i] = logsumexp(prob + rtrans[i])
+        return res
 
     def calc_trans_cpu(self, path, yseq, rr):
-        forward_prob = numpy.eye(path.shape[0])[0]
-        backward_prob = numpy.eye(path.shape[0])[0]
+        forward_prob = numpy.log(numpy.eye(path.shape[0])[0]+self.epsilon)
+        backward_prob = numpy.log(numpy.eye(path.shape[0])[0]+self.epsilon)
 
         alpha = ()
         beta = ()
 
         for t in range(len(yseq)):
-            # calc forward probability
+            # calc forward probability in log scale
             y = yseq[t]
-            forward_prob = y[path] * numpy.dot(forward_prob, rr)
+            forward_prob = y[path] + self.log_dot(forward_prob, rr)
             alpha += forward_prob,
 
             # calc backward probability
             y_inv = yseq[len(yseq) - t - 1]
-            backward_prob = numpy.dot(backward_prob, rr)
+            backward_prob = self.log_dot(backward_prob, rr)
             beta += backward_prob[::-1],
-            backward_prob = y_inv[path[::-1]] * backward_prob
+            backward_prob = y_inv[path[::-1]] + backward_prob
         return alpha, beta[::-1]
 
     # path probablity to label probability
     def label_probability(self, label_size, path, multiply):
-        labels_prob = numpy.zeros(label_size)
+        labels_prob = numpy.log(numpy.zeros(label_size))
         chars = set([c for c in path])
         for c in chars:
             pos = numpy.where(path == c)[0]
-            labels_prob[c] = numpy.sum(multiply[pos, ])
+            labels_prob[c] = logsumexp(multiply[pos, ])
         return labels_prob
 
     def backward_cpu(self, inputs, grad_output):
         labels = inputs[0]
-        yseq = inputs[1::]
+        yseq = numpy.log(inputs[1::])
         path = self.label_to_path(labels)
-        rr = self.recurrence_relation(path.shape[0])
-        result = (None,)
+        rr = numpy.log(self.recurrence_relation(path.shape[0]))
         forward_prob_trans, backward_prob_trans \
             = self.calc_trans_cpu(path, yseq, rr)
-        total_probability = numpy.sum(forward_prob_trans[0]
-                                      * backward_prob_trans[0])
+        total_probability = logsumexp(forward_prob_trans[0]
+                                      + backward_prob_trans[0])
+        result = (None,)
         for t in range(len(yseq)):
-            multiply = forward_prob_trans[t] * backward_prob_trans[t]
+            multiply = forward_prob_trans[t] + backward_prob_trans[t]
             label_prob = self.label_probability(yseq[t].shape[0],
                                                 path, multiply)
-            # add epsilon to avoid to devide by 0.
-            result += (- label_prob /
-                       ((yseq[t] + self.epsilon)
-                        * total_probability)) * grad_output[0],
+            result += (- numpy.exp(
+                label_prob - (yseq[t] + total_probability)) * grad_output[0]),
         return result
 
     def forward_gpu(self, inputs):
