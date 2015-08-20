@@ -1,7 +1,6 @@
 import numpy
 
 import cupy
-from cupy import cuda
 
 
 def diag(v, k=0):

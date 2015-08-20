@@ -6,7 +6,6 @@ import six
 import cupy
 from cupy import carray
 from cupy import cindexer
-from cupy import cuda
 from cupy import internal
 from cupy import util
 

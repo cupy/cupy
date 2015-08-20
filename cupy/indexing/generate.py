@@ -1,7 +1,5 @@
 import numpy
 
-from cupy import cuda
-
 
 # TODO(beam2d): Implement these
 # class c_(object):
