@@ -91,7 +91,7 @@ class ConnectionistTemporalClassification(function.Function):
             label_prob = self.label_probability(yseq[t].shape[0],
                                                 path, multiply)
             result += (- numpy.exp(
-                label_prob - (yseq[t] + total_probability)) * grad_output[0]),
+                label_prob - (yseq[t] + total_probability)) * grad_output[0]).astype(numpy.float32),
         return result
 
     def forward_gpu(self, inputs):

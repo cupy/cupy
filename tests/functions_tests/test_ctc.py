@@ -19,7 +19,7 @@ class TestCTC(unittest.TestCase):
         self.x = numpy.array([[0.99, 0., 0.01],
                               [0.45, 0.45, 0.1],
                               [0.1, 0.7, 0.2],
-                              [0.1, 0.78, 0.12]])
+                              [0.1, 0.78, 0.12]]).astype(numpy.float32)
         self.t = numpy.array([0, 1])
         self.l = numpy.array([2, 0, 2, 1, 2])
         self.blank_symbol = 2
