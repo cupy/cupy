@@ -1,3 +1,5 @@
+.. _udkernel:
+
 User-Defined Kernels
 ====================
 
@@ -23,9 +25,6 @@ For example, a kernel that computes a squared difference :math:`f(x, y) = (x - y
 The argument lists consist of comma-separated argument definitions.
 Each argument definition consists of a *type specifier* and an *argument name*.
 Names of NumPy data types can be used as type specifiers.
-
-.. note::
-   ``float`` is interpreted as Python float, which is mapped to ``float64`` in NumPy.
 
 .. note::
    ``n``, ``i``, and names starting with an underscore ``_`` are reserved for the internal use.
@@ -133,10 +132,10 @@ For example, L2 norm along specified axes can be written as follows::
 
   >>> l2norm_kernel = cupy.reduction.ReductionKernel(
   ...     'T x',  # input params
-  ...     'T y',  # output param
+  ...     'T y',  # output params
   ...     'x * x',  # map
   ...     'a + b',  # reduce
-  ...     'y = sqrt(a)',  # post map
+  ...     'y = sqrt(a)',  # post-reduction map
   ...     '0',  # identity value
   ...     'l2norm'  # kernel name
   ... )
