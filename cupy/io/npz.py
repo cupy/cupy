@@ -6,9 +6,8 @@ from cupy import cuda
 
 class NpzFile(object):
 
-    def __init__(self, npz_file, allocator):
+    def __init__(self, npz_file):
         self.npz_file = npz_file
-        self.allocator = allocator
 
     def __enter__(self):
         self.npz_file.__enter__()
@@ -19,13 +18,13 @@ class NpzFile(object):
 
     def __getitem__(self, key):
         arr = self.npz_file[key]
-        return cupy.array(arr, allocator=self.allocator)
+        return cupy.array(arr)
 
     def close(self):
         self.npz_file.close()
 
 
-def load(file, mmap_mode=None, allocator=cuda.alloc):
+def load(file, mmap_mode=None):
     """Loads arrays or pickled objects from ``.npy``, ``.npz`` or pickled file.
 
     This function just calls ``numpy.load`` and then sends the arrays to the
@@ -37,7 +36,6 @@ def load(file, mmap_mode=None, allocator=cuda.alloc):
         mmap_mode (None, 'r+', 'r', 'w+', 'c'): If not None, memory-map the
             file to construct an intermediate ``numpy.ndarray`` object and
             transfer it to the current device.
-        allocator (function): CuPy memory allocator.
 
     Returns:
         CuPy array or NpzFile object depending on the type of the file. NpzFile
@@ -49,9 +47,9 @@ def load(file, mmap_mode=None, allocator=cuda.alloc):
     """
     obj = numpy.load(file, mmap_mode)
     if isinstance(obj, numpy.ndarray):
-        return cupy.array(obj, allocator=allocator)
+        return cupy.array(obj)
     elif isinstance(obj, numpy.lib.npyio.NpzFile):
-        return NpzFile(obj, allocator)
+        return NpzFile(obj)
     else:
         return obj
 

@@ -5,7 +5,7 @@ from cupy import cuda
 from cupy import elementwise
 
 
-def arange(start, stop=None, step=1, dtype=None, allocator=cuda.alloc):
+def arange(start, stop=None, step=1, dtype=None):
     """Rerurns an array with evenly spaced values within a given interval.
 
     Values are generated within the half-open interval [start, stop). The first
@@ -18,7 +18,6 @@ def arange(start, stop=None, step=1, dtype=None, allocator=cuda.alloc):
         step: Step width between each pair of consecutive values.
         dtype: Data type specifier. It is inferred from other arguments by
             default.
-        allocator (function): CuPy memory allocator.
 
     Returns:
         cupy.ndarray: The 1-D array of range values.
@@ -38,16 +37,15 @@ def arange(start, stop=None, step=1, dtype=None, allocator=cuda.alloc):
         start = 0
     size = int(numpy.ceil((stop - start) / step))
     if size <= 0:
-        return cupy.empty((0,), dtype=dtype, allocator=allocator)
+        return cupy.empty((0,), dtype=dtype)
 
-    ret = cupy.empty((size,), dtype=dtype, allocator=allocator)
+    ret = cupy.empty((size,), dtype=dtype)
     typ = numpy.dtype(dtype).type
     _arange_ufunc(typ(start), typ(step), ret, dtype=dtype)
     return ret
 
 
-def linspace(start, stop, num=50, endpoint=True, retstep=False,
-             dtype=None, allocator=cuda.alloc):
+def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
     """Returns an array with evenly-spaced values within a given interval.
 
     Instead of specifying the step width like :func:`cupy.arange`, this
@@ -63,7 +61,6 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False,
             Otherwise, it returns only the array.
         dtype: Data type specifier. It is inferred from the start and stop
             arguments by default.
-        allocator (function): CuPy memory allocator.
 
     Returns:
         cupy.ndarray: The 1-D array of ranged values.
@@ -79,7 +76,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False,
         else:
             dtype = int
 
-    ret = cupy.empty((num,), dtype=dtype, allocator=allocator)
+    ret = cupy.empty((num,), dtype=dtype)
     if num == 0:
         return ret
     elif num == 1:
@@ -100,8 +97,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False,
         return ret
 
 
-def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,
-             allocator=None):
+def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
     # TODO(beam2d): Implement these
     raise NotImplementedError
 

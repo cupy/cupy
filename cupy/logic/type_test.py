@@ -1,4 +1,4 @@
-def iscomplex(a, allocator=None):
+def iscomplex(a):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
@@ -13,7 +13,7 @@ def isfortran(a):
     raise NotImplementedError
 
 
-def isreal(x, allocator=None):
+def isreal(x):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 

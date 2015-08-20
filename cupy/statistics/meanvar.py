@@ -5,18 +5,17 @@ from cupy import math
 from cupy import reduction
 
 
-def median(a, axis=None, out=None, overwrite_input=False, keepdims=False,
-           allocator=None):
+def median(a, axis=None, out=None, overwrite_input=False, keepdims=False):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def average(a, axis=None, weights=None, returned=False, allocator=None):
+def average(a, axis=None, weights=None, returned=False):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def mean(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
+def mean(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the arithmetic mean along an axis.
 
     Args:
@@ -26,8 +25,6 @@ def mean(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
         keepdims (bool): If True, the axis is remained as an axis of size one.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: The mean of the input array along the axis.
@@ -35,12 +32,10 @@ def mean(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
     .. seealso:: :func:`numpy.mean`
 
     """
-    return _mean(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
-                 allocator=allocator)
+    return _mean(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
-        allocator=None):
+def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     """Returns the variance along an axis.
 
     Args:
@@ -50,8 +45,6 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
         keepdims (bool): If True, the axis is remained as an axis of size one.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: The variance of the input array along the axis.
@@ -68,19 +61,16 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
                                     (numpy.integer, numpy.bool_)):
         dtype = numpy.dtype(numpy.float64)
 
-    arrmean = mean(a, axis=axis, dtype=dtype, keepdims=True,
-                   allocator=allocator)
+    arrmean = mean(a, axis=axis, dtype=dtype, keepdims=True)
 
-    x = cupy.subtract(a, arrmean, dtype=dtype, allocator=allocator)
+    x = cupy.subtract(a, arrmean, dtype=dtype)
     cupy.square(x, x)
-    ret = cupy.sum(x, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
-                   allocator=allocator)
+    ret = cupy.sum(x, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
     rcount = max(_count_reduce_items(a, axis) - ddof, 0)
     return cupy.multiply(ret, ret.dtype.type(1.0 / rcount), out=ret)
 
 
-def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
-        allocator=None):
+def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     """Returns the standard deviation along an axis.
 
     Args:
@@ -90,8 +80,6 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
         keepdims (bool): If True, the axis is remained as an axis of size one.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: The standard deviation of the input array along the axis.
@@ -99,25 +87,21 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
     .. seealso:: :func:`numpy.std`
 
     """
-    ret = var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims,
-              allocator=allocator)
-    return math.misc.sqrt_fixed(ret, dtype=dtype, out=out, allocator=allocator)
+    ret = var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+    return math.misc.sqrt_fixed(ret, dtype=dtype, out=out)
 
 
-def nanmean(a, axis=None, dtype=None, out=None, keepdims=False,
-            allocator=None):
+def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
-           allocator=None):
+def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
-           allocator=None):
+def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 

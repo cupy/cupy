@@ -6,7 +6,7 @@ from cupy import elementwise
 from cupy import internal
 
 
-def take(a, indices, axis=None, out=None, allocator=None):
+def take(a, indices, axis=None, out=None):
     """Takes elements of an array at specified indices along an axis.
 
     This is an implementation of "fancy indexing" at single axis.
@@ -21,8 +21,6 @@ def take(a, indices, axis=None, out=None, allocator=None):
             is used by default.
         out (cupy.ndarray): Output array. If provided, it should be of
             appropriate shape and dtype.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: The result of fancy indexing.
@@ -40,22 +38,19 @@ def take(a, indices, axis=None, out=None, allocator=None):
         lshape = a.shape[:axis]
         rshape = a.shape[axis + 1:]
 
-    if allocator is None:
-        allocator = a.allocator
-
     if numpy.isscalar(indices):
         a = cupy.rollaxis(a, axis)
         if out is None:
-            return a[indices].copy(allocator)
+            return a[indices].copy()
         else:
             out[:] = a[indices]
             return out
     elif not isinstance(indices, cupy.ndarray):
-        indices = cupy.array(indices, dtype=int, allocator=allocator)
+        indices = cupy.array(indices, dtype=int)
 
     out_shape = lshape + indices.shape + rshape
     if out is None:
-        out = cupy.empty(out_shape, dtype=a.dtype, allocator=allocator)
+        out = cupy.empty(out_shape, dtype=a.dtype)
     else:
         if out.dtype != a.dtype:
             raise TypeError('Output dtype mismatch')
@@ -67,12 +62,12 @@ def take(a, indices, axis=None, out=None, allocator=None):
     return _take_kernel(a, indices, cdim, rdim, out)
 
 
-def choose(a, choices, out=None, mode='raise', allocator=None):
+def choose(a, choices, out=None, mode='raise'):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def compress(condition, a, axis=None, out=None, allocator=None):
+def compress(condition, a, axis=None, out=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
@@ -115,7 +110,7 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     diag_size = max(0, min(a.shape[-2], a.shape[-1] - offset))
     ret_shape = a.shape[:-2] + (diag_size,)
     if diag_size == 0:
-        return cupy.empty(ret_shape, dtype=a.dtype, allocator=a.allocator)
+        return cupy.empty(ret_shape, dtype=a.dtype)
 
     a = a[..., :diag_size, offset:offset + diag_size]
 
@@ -126,7 +121,7 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     return ret
 
 
-def select(condlist, choicelist, default=0, allocator=None):
+def select(condlist, choicelist, default=0):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 

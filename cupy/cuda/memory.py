@@ -232,15 +232,13 @@ def _malloc(size):
     return MemoryPointer(mem, 0)
 
 
-_alloc = _malloc
+_current_allocator = _malloc
 
 
 def alloc(size):
-    """Calls the default allocator.
+    """Calls the current allocator.
 
-    This function is widely used in CuPy as the default allocator. The actual
-    allocator function can be replaced by calling
-    :func:`cupy.cuda.set_default_allocator` function.
+    Use :func:`~cupy.cuda.set_allocator` to change the current allocator.
 
     Args:
         size (int): Size of the memory allocation.
@@ -249,11 +247,11 @@ def alloc(size):
         ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
     """
-    return _alloc(size)
+    return _current_allocator(size)
 
 
-def set_default_allocator(allocator=_malloc):
-    """Replaces the default allocator implementation.
+def set_allocator(allocator=_malloc):
+    """Sets the current allocator.
 
     Args:
         allocator (function): CuPy memory allocator. It must have the same
@@ -262,8 +260,8 @@ def set_default_allocator(allocator=_malloc):
             size.
 
     """
-    global _alloc
-    _alloc = allocator
+    global _current_allocator
+    _current_allocator = allocator
 
 
 class PooledMemory(Memory):
@@ -381,7 +379,7 @@ class MemoryPool(object):
         This method can be used as a CuPy memory allocator. The simplest way to
         use a memory pool as the default allocator is the following code::
 
-           set_default_allocator(MemoryPool().malloc)
+           set_allocator(MemoryPool().malloc)
 
         Args:
             size (int): Size of the memory buffer to allocate in bytes.

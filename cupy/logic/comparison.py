@@ -6,7 +6,7 @@ def allclose(a, b, rtol=1e-05, atol=1e-08):
     raise NotImplementedError
 
 
-def isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False, allocator=None):
+def isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 

@@ -1,8 +1,8 @@
-def tile(A, reps, allocator=None):
+def tile(A, reps):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def repeat(a, repeats, axis=None, allocator=None):
+def repeat(a, repeats, axis=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError

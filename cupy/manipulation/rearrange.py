@@ -8,11 +8,11 @@ def flipud(m):
     raise NotImplementedError
 
 
-def roll(a, shift, axis=None, allocator=None):
+def roll(a, shift, axis=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def rot90(m, k=1, allocator=None):
+def rot90(m, k=1):
     # TODO(beam2d): Implement it
     raise NotImplementedError

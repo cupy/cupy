@@ -6,8 +6,6 @@ Device management
 
 .. autoclass:: cupy.cuda.Device
    :members:
-.. autofunction:: cupy.cuda.clear_device_dependent_memo
-.. autofunction:: cupy.cuda.memoize
 
 
 Memory management
@@ -18,7 +16,7 @@ Memory management
 .. autoclass:: cupy.cuda.MemoryPointer
    :members:
 .. autofunction:: cupy.cuda.alloc
-.. autofunction:: cupy.cuda.set_default_allocator
+.. autofunction:: cupy.cuda.set_allocator
 .. autoclass:: cupy.cuda.MemoryPool
    :members:
 

@@ -4,7 +4,7 @@ import cupy
 from cupy import cuda
 
 
-def diag(v, k=0, allocator=None):
+def diag(v, k=0):
     """Returns a diagonal or a diagonal array.
 
     Args:
@@ -12,9 +12,6 @@ def diag(v, k=0, allocator=None):
         k (int): Index of diagonals. Zero indicates the main diagonal, a
             positive value an upper diagonal, and a negative value a lower
             diagonal.
-        allocator (function): CuPy memory allocator. If ``v`` is a cupy.ndarray
-            object, its allocator is used by default. Otherwise,
-            :func:`cupy.cuda.alloc` is used by default.
 
     Returns:
         cupy.ndarray: If ``v`` indicates a 1-D array, then it returns a 2-D
@@ -28,64 +25,57 @@ def diag(v, k=0, allocator=None):
     if isinstance(v, cupy.ndarray):
         if v.ndim == 1:
             size = v.size + abs(k)
-            if allocator is None:
-                allocator = v.allocator
-            ret = cupy.zeros((size, size), dtype=v.dtype, allocator=allocator)
+            ret = cupy.zeros((size, size), dtype=v.dtype)
             ret.diagonal(k)[:] = v
             return ret
         else:
             return v.diagonal(k)
     else:
-        if allocator is None:
-            allocator = cuda.alloc
-        return cupy.array(numpy.diag(v, k), allocator=allocator)
+        return cupy.array(numpy.diag(v, k))
 
 
-def diagflat(v, k=0, allocator=None):
+def diagflat(v, k=0):
     """Creates a diagonal array from the flattened input.
 
     Args:
         v (array-like): Array or array-like object.
         k (int): Index of diagonals. See :func:`cupy.diag` for detail.
-        allocator (function): CuPy memory allocator. If ``v`` is a cupy.ndarray
-            object, its allocator is used by default. Otherwise,
-            :func:`cupy.cuda.alloc` is used by default.
 
     Returns:
         cupy.ndarray: A 2-D diagonal array with the diagonal copied from ``v``.
 
     """
     if isinstance(v, cupy.ndarray):
-        return cupy.diag(v.ravel(), k, allocator)
+        return cupy.diag(v.ravel(), k)
     else:
-        return cupy.diag(numpy.ndarray(v).ravel(), k, allocator)
+        return cupy.diag(numpy.ndarray(v).ravel(), k)
 
 
-def tri(N, M=None, k=0, dtype=numpy.float64, allocator=None):
+def tri(N, M=None, k=0, dtype=numpy.float64):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def tril(m, k=0, allocator=None):
+def tril(m, k=0):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def triu(m, k=0, allocator=None):
+def triu(m, k=0):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def vander(x, N=None, increasing=False, allocator=None):
+def vander(x, N=None, increasing=False):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def mat(data, dtype=None, allocator=None):
+def mat(data, dtype=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def bmat(obj, ldict=None, gdict=None, allocator=None):
+def bmat(obj, ldict=None, gdict=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError

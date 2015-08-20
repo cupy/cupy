@@ -3,6 +3,6 @@ def shuffle(x):
     raise NotImplementedError
 
 
-def permutation(x, allocator=None):
+def permutation(x):
     # TODO(beam2d): Implement it
     raise NotImplementedError

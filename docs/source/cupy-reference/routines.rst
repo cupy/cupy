@@ -9,7 +9,7 @@ These functions cover a subset of
 .. module:: cupy
 
 .. toctree::
-   :maxdepth:: 2
+   :maxdepth: 2
 
    creation
    manipulation
