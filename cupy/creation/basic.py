@@ -1,5 +1,4 @@
 import cupy
-from cupy import cuda
 
 
 def empty(shape, dtype=float):

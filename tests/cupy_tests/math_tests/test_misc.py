@@ -39,9 +39,9 @@ class TestMisc(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def check_binary_nan(self, name, xp, dtype):
         a = xp.array([-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, 2],
-                      dtype=dtype)
+                     dtype=dtype)
         b = xp.array([numpy.NAN, numpy.NAN, 1, 0, numpy.NAN, -1, -2],
-                      dtype=dtype)
+                     dtype=dtype)
         return getattr(xp, name)(a, b)
 
     @testing.for_all_dtypes()

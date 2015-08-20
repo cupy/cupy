@@ -1,4 +1,3 @@
-from cupy import cuda
 from cupy.random import generator
 
 
