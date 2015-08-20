@@ -13,16 +13,16 @@ class TestBasic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_empty(self, xpy, dtype):
-        a = xpy.empty((2, 3, 4), dtype=dtype)
+    def test_empty(self, xp, dtype):
+        a = xp.empty((2, 3, 4), dtype=dtype)
         a.fill(0)
         return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_empty_like(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
-        b = xpy.empty_like(a)
+    def test_empty_like(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty_like(a)
         b.fill(0)
         return b
 
@@ -33,43 +33,43 @@ class TestBasic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_eye(self, xpy, dtype):
-        return xpy.eye(5, 4, 1, dtype)
+    def test_eye(self, xp, dtype):
+        return xp.eye(5, 4, 1, dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_identity(self, xpy, dtype):
-        return xpy.identity(4, dtype)
+    def test_identity(self, xp, dtype):
+        return xp.identity(4, dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_zeros(self, xpy, dtype):
-        return xpy.zeros((2, 3, 4), dtype=dtype)
+    def test_zeros(self, xp, dtype):
+        return xp.zeros((2, 3, 4), dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_zeros_like(self, xpy, dtype):
-        a = xpy.ndarray((2, 3, 4), dtype=dtype)
-        return xpy.zeros_like(a)
+    def test_zeros_like(self, xp, dtype):
+        a = xp.ndarray((2, 3, 4), dtype=dtype)
+        return xp.zeros_like(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_ones(self, xpy, dtype):
-        return xpy.ones((2, 3, 4), dtype=dtype)
+    def test_ones(self, xp, dtype):
+        return xp.ones((2, 3, 4), dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_ones_like(self, xpy, dtype):
-        a = xpy.ndarray((2, 3, 4), dtype=dtype)
-        return xpy.ones_like(a)
+    def test_ones_like(self, xp, dtype):
+        a = xp.ndarray((2, 3, 4), dtype=dtype)
+        return xp.ones_like(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_full(self, xpy, dtype):
-        return xpy.full((2, 3, 4), 1, dtype=dtype)
+    def test_full(self, xp, dtype):
+        return xp.full((2, 3, 4), 1, dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_full_like(self, xpy, dtype):
-        a = xpy.ndarray((2, 3, 4), dtype=dtype)
-        return xpy.full_like(a, 1)
+    def test_full_like(self, xp, dtype):
+        a = xp.ndarray((2, 3, 4), dtype=dtype)
+        return xp.full_like(a, 1)

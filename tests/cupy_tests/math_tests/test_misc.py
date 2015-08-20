@@ -12,50 +12,50 @@ class TestMisc(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary(self, name, xpy, dtype, no_bool=False):
+    def check_unary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
             return 0
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a)
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_binary(self, name, xpy, dtype, no_bool=False):
+    def check_binary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
             return 0
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a, b)
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a, b)
 
     @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_negative(self, name, xpy, dtype, no_bool=False):
+    def check_unary_negative(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
             return 0
-        a = xpy.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
-        return getattr(xpy, name)(a)
+        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        return getattr(xp, name)(a)
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_array_equal()
-    def check_binary_nan(self, name, xpy, dtype):
-        a = xpy.array([-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, 2],
+    def check_binary_nan(self, name, xp, dtype):
+        a = xp.array([-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, 2],
                       dtype=dtype)
-        b = xpy.array([numpy.NAN, numpy.NAN, 1, 0, numpy.NAN, -1, -2],
+        b = xp.array([numpy.NAN, numpy.NAN, 1, 0, numpy.NAN, -1, -2],
                       dtype=dtype)
-        return getattr(xpy, name)(a, b)
+        return getattr(xp, name)(a, b)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_clip1(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
+    def test_clip1(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.clip(3, 13)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_clip2(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
-        a_min = xpy.array([3, 4, 5, 6], dtype=dtype)
-        a_max = xpy.array([[10], [9], [8]], dtype=dtype)
+    def test_clip2(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a_min = xp.array([3, 4, 5, 6], dtype=dtype)
+        a_max = xp.array([[10], [9], [8]], dtype=dtype)
         return a.clip(a_min, a_max)
 
     def test_sqrt(self):

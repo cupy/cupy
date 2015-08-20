@@ -10,16 +10,16 @@ class TestElementwise(unittest.TestCase):
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
-    def check_unary_int(self, name, xpy, dtype):
-        a = xpy.array([-3, -2, -1, 0, 1, 2, 3], dtype=dtype)
-        return getattr(xpy, name)(a)
+    def check_unary_int(self, name, xp, dtype):
+        a = xp.array([-3, -2, -1, 0, 1, 2, 3], dtype=dtype)
+        return getattr(xp, name)(a)
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
-    def check_binary_int(self, name, xpy, dtype):
-        a = xpy.array([-3, -2, -1, 0, 1, 2, 3], dtype=dtype)
-        b = xpy.array([0, 1, 2, 3, 4, 5, 6], dtype=dtype)
-        return getattr(xpy, name)(a, b)
+    def check_binary_int(self, name, xp, dtype):
+        a = xp.array([-3, -2, -1, 0, 1, 2, 3], dtype=dtype)
+        b = xp.array([0, 1, 2, 3, 4, 5, 6], dtype=dtype)
+        return getattr(xp, name)(a, b)
 
     def test_bitwise_and(self):
         self.check_binary_int('bitwise_and')

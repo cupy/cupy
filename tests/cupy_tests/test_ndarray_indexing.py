@@ -10,8 +10,8 @@ class TestArrayIndexing(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def check_getitem(self, shape, transpose, indexes, xpy, dtype):
-        a = testing.shaped_arange(shape, xpy, dtype)
+    def check_getitem(self, shape, transpose, indexes, xp, dtype):
+        a = testing.shaped_arange(shape, xp, dtype)
         if transpose:
             a = a.transpose(transpose)
         return a[indexes]
@@ -66,40 +66,40 @@ class TestArrayIndexing(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_setitem_constant(self, xpy, dtype):
-        a = xpy.zeros((2, 3, 4), dtype=dtype)
+    def test_setitem_constant(self, xp, dtype):
+        a = xp.zeros((2, 3, 4), dtype=dtype)
         a[:] = 1
         return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_setitem_partial_constant(self, xpy, dtype):
-        a = xpy.zeros((2, 3, 4), dtype=dtype)
+    def test_setitem_partial_constant(self, xp, dtype):
+        a = xp.zeros((2, 3, 4), dtype=dtype)
         a[1, 1:3] = 1
         return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_setitem_copy(self, xpy, dtype):
-        a = xpy.zeros((2, 3, 4), dtype=dtype)
-        b = testing.shaped_arange((2, 3, 4), xpy, dtype)
+    def test_setitem_copy(self, xp, dtype):
+        a = xp.zeros((2, 3, 4), dtype=dtype)
+        b = testing.shaped_arange((2, 3, 4), xp, dtype)
         a[:] = b
         return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_setitem_partial_copy(self, xpy, dtype):
-        a = xpy.zeros((2, 3, 4), dtype=dtype)
-        b = testing.shaped_arange((3, 2), xpy, dtype)
+    def test_setitem_partial_copy(self, xp, dtype):
+        a = xp.zeros((2, 3, 4), dtype=dtype)
+        b = testing.shaped_arange((3, 2), xp, dtype)
         a[1, ::-1, 1:4:2] = b
         return a
 
     @testing.numpy_cupy_array_equal()
-    def test_T(self, xpy):
-        a = testing.shaped_arange((2, 3, 4), xpy)
+    def test_T(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
         return a.T
 
     @testing.numpy_cupy_array_equal()
-    def test_T_vector(self, xpy):
-        a = testing.shaped_arange((4,), xpy)
+    def test_T_vector(self, xp):
+        a = testing.shaped_arange((4,), xp)
         return a.T

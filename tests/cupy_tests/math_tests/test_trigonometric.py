@@ -10,22 +10,22 @@ class TestTrigonometric(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary(self, name, xpy, dtype):
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a)
+    def check_unary(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_binary(self, name, xpy, dtype):
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a, b)
+    def check_binary(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a, b)
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_unit(self, name, xpy, dtype):
-        a = xpy.array([0.2, 0.4, 0.6, 0.8], dtype=dtype)
-        return getattr(xpy, name)(a)
+    def check_unary_unit(self, name, xp, dtype):
+        a = xp.array([0.2, 0.4, 0.6, 0.8], dtype=dtype)
+        return getattr(xp, name)(a)
 
     def test_sin(self):
         self.check_unary('sin')

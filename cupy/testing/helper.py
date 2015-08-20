@@ -10,7 +10,7 @@ from cupy.testing import array
 
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
-                        name='xpy'):
+                        name='xp'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -24,7 +24,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
-                                  name='xpy'):
+                                  name='xp'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -38,7 +38,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
     return decorator
 
 
-def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xpy'):
+def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -51,7 +51,7 @@ def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xpy'):
     return decorator
 
 
-def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xpy'):
+def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -64,7 +64,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xpy'):
     return decorator
 
 
-def numpy_cupy_array_equal(err_msg='', verbose=True, name='xpy'):
+def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -77,7 +77,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xpy'):
     return decorator
 
 
-def numpy_cupy_array_list_equal(err_msg='', verbose=True, name='xpy'):
+def numpy_cupy_array_list_equal(err_msg='', verbose=True, name='xp'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -90,7 +90,7 @@ def numpy_cupy_array_list_equal(err_msg='', verbose=True, name='xpy'):
     return decorator
 
 
-def numpy_cupy_array_less(err_msg='', verbose=True, name='xpy'):
+def numpy_cupy_array_less(err_msg='', verbose=True, name='xp'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -164,24 +164,24 @@ def for_int_dtypes(name='dtype', no_bool=False):
         return for_dtypes(_int_bool_dtypes, name=name)
 
 
-def shaped_arange(shape, xpy=cupy, dtype=numpy.float32):
+def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
     a = numpy.arange(1, internal.prod(shape) + 1, 1)
     if numpy.dtype(dtype).type == numpy.bool_:
-        return xpy.array((a % 2 == 0).reshape(shape))
+        return xp.array((a % 2 == 0).reshape(shape))
     else:
-        return xpy.array(a.astype(dtype).reshape(shape))
+        return xp.array(a.astype(dtype).reshape(shape))
 
 
-def shaped_reverse_arange(shape, xpy=cupy, dtype=numpy.float32):
+def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
     size = internal.prod(shape)
     a = numpy.arange(size, 0, -1)
-    return xpy.array(a.astype(dtype).reshape(shape))
+    return xp.array(a.astype(dtype).reshape(shape))
 
 
-def shaped_random(shape, xpy=cupy, dtype=numpy.float32, scale=10, seed=0):
+def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
     numpy.random.seed(seed)
     a = numpy.random.rand(*shape) * scale
     if numpy.dtype(dtype).type == numpy.bool_:
-        return xpy.array((a % 2 == 0))
+        return xp.array((a % 2 == 0))
     else:
-        return xpy.array(a.astype(dtype))
+        return xp.array(a.astype(dtype))

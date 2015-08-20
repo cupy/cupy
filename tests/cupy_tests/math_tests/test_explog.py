@@ -12,17 +12,17 @@ class TestExplog(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary(self, name, xpy, dtype):
+    def check_unary(self, name, xp, dtype):
         numpy.seterr(divide='ignore')
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a)
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_binary(self, name, xpy, dtype):
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a, b)
+    def check_binary(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a, b)
 
     def test_exp(self):
         self.check_unary('exp')

@@ -10,33 +10,33 @@ class TestBasic(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_copyto(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
-        b = xpy.empty((2, 3, 4), dtype=dtype)
-        xpy.copyto(b, a)
+    def test_copyto(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.empty((2, 3, 4), dtype=dtype)
+        xp.copyto(b, a)
         return b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_copyto_dtype(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype='?')
-        b = xpy.empty((2, 3, 4), dtype=dtype)
-        xpy.copyto(b, a)
+    def test_copyto_dtype(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype='?')
+        b = xp.empty((2, 3, 4), dtype=dtype)
+        xp.copyto(b, a)
         return b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_copyto_broadcast(self, xpy, dtype):
-        a = testing.shaped_arange((3, 1), xpy, dtype)
-        b = xpy.empty((2, 3, 4), dtype=dtype)
-        xpy.copyto(b, a)
+    def test_copyto_broadcast(self, xp, dtype):
+        a = testing.shaped_arange((3, 1), xp, dtype)
+        b = xp.empty((2, 3, 4), dtype=dtype)
+        xp.copyto(b, a)
         return b
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_copyto_where(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
-        b = testing.shaped_reverse_arange((2, 3, 4), xpy, dtype)
-        c = testing.shaped_arange((2, 3, 4), xpy, '?')
-        xpy.copyto(a, b, where=c)
+    def test_copyto_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3, 4), xp, dtype)
+        c = testing.shaped_arange((2, 3, 4), xp, '?')
+        xp.copyto(a, b, where=c)
         return a

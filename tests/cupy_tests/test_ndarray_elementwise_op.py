@@ -14,8 +14,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def check_array_scalar_op(self, op, xpy, dtype, swap=False):
-        a = testing.shaped_arange((2, 3), xpy, dtype)
+    def check_array_scalar_op(self, op, xp, dtype, swap=False):
+        a = testing.shaped_arange((2, 3), xp, dtype)
         if swap:
             return op(dtype(2), a)
         else:
@@ -101,9 +101,9 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def check_array_array_op(self, op, xpy, dtype):
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xpy, dtype)
+    def check_array_array_op(self, op, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return op(a, b)
 
     def test_add_array(self):
@@ -160,7 +160,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def check_array_broadcasted_op(self, op, xpy, dtype):
+    def check_array_broadcasted_op(self, op, xp, dtype):
         a = testing.shaped_arange((2, 3), dtype=dtype)
         b = testing.shaped_arange((2, 1), dtype=dtype)
         return op(a, b)
@@ -219,9 +219,9 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def check_array_doubly_broadcasted_op(self, op, xpy, dtype):
-        a = testing.shaped_arange((2, 1, 3), xpy, dtype)
-        b = testing.shaped_arange((3, 1), xpy, dtype)
+    def check_array_doubly_broadcasted_op(self, op, xp, dtype):
+        a = testing.shaped_arange((2, 1, 3), xp, dtype)
+        b = testing.shaped_arange((3, 1), xp, dtype)
         return op(a, b)
 
     def test_doubly_broadcasted_add(self):
@@ -252,8 +252,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def check_array_reversed_op(self, op, xpy, dtype):
-        a = testing.shaped_arange((5,), xpy, dtype)
+    def check_array_reversed_op(self, op, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
         return op(a, a[::-1])
 
     def test_array_reversed_add(self):
