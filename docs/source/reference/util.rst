@@ -37,6 +37,7 @@ CuPy array allocation and copy
 
 Kernel definition utilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: memoize
 .. autofunction:: elementwise
 .. autofunction:: reduce
 

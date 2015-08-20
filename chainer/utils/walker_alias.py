@@ -9,7 +9,7 @@ class WalkerAlias(object):
     This method generates a random sample from given probabilities
     :math:`p_1, \dots, p_n` in :math:`O(1)` time.
     It is more efficient than :func:`~numpy.random.choice`.
-    This class has sampling methods in CPU and in GPU.
+    This class works on both CPU and GPU.
 
     Args:
         probs (float list): Probabilities of entries. They are normalized with
@@ -18,7 +18,6 @@ class WalkerAlias(object):
     See: `Wikipedia article <https://en.wikipedia.org/wiki/Alias_method>`_
 
     """
-
     def __init__(self, probs):
         prob = numpy.array(probs, numpy.float32)
         prob /= numpy.sum(prob)
@@ -71,8 +70,9 @@ class WalkerAlias(object):
 
         Returns:
             Returns a generated array with the given shape. If a sampler is in
-            CPU mode the return value is :class:`~numpy.ndarray`, and if it is
-            in GPU mode the return value is :class:`~cupy.ndarray`.
+            CPU mode the return value is a :class:`numpy.ndarray` object, and
+            if it is in GPU mode the return value is a :class:`cupy.ndarray`
+            object.
         """
         if self.use_gpu:
             return self.sample_gpu(shape)

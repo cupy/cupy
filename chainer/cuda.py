@@ -418,12 +418,12 @@ def elementwise(in_params, out_params, operation, name, **kwargs):
     combination and CUDA device.
 
     The arguments are the same as those for
-    :func:`cupy.elementwise.ElementwiseKernel`, except that the ``name``
-    argument is mandatory.
+    :class:`cupy.ElementwiseKernel`, except that the ``name`` argument is
+    mandatory.
 
     """
     _check_cuda_available()
-    return cupy.elementwise.ElementwiseKernel(
+    return cupy.ElementwiseKernel(
         in_params, out_params, operation, name, **kwargs)
 
 
@@ -437,12 +437,12 @@ def reduce(in_params, out_params, map_expr, reduce_expr, post_map_expr,
     combination and CUDA device.
 
     The arguments are the same as those for
-    :func:`cupy.reduction.ReductionKernel`, except that the ``name`` argument
-    is mandatory.
+    :class:`cupy.ReductionKernel`, except that the ``name`` argument is
+    mandatory.
 
     """
     _check_cuda_available()
-    return cupy.reduction.ReductionKernel(
+    return cupy.ReductionKernel(
         in_params, out_params, map_expr, reduce_expr, post_map_expr,
         identity, name, **kwargs)
 

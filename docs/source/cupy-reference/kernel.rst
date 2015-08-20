@@ -10,13 +10,13 @@ We first describe how to define and call elementwise kernels, and then describe 
 Basics of elementwise kernels
 -----------------------------
 
-An elementwise kernel can be defined by the :class:`~cupy.elementwise.ElementwiseKernel` class.
+An elementwise kernel can be defined by the :class:`~cupy.ElementwiseKernel` class.
 The instance of this class defines a CUDA kernel which can be invoked by the ``__call__`` method of this instance.
 
 A definition of an elementwise kernel consists of four parts: an input argument list, an output argument list, a loop body code, and the kernel name.
 For example, a kernel that computes a squared difference :math:`f(x, y) = (x - y)^2` is defined as follows::
 
-  >>> squared_diff = cupy.elementwise.ElementwiseKernel(
+  >>> squared_diff = cupy.ElementwiseKernel(
   ...    'float32 x, float32 y',
   ...    'float32 z',
   ...    'z = (x - y) * (x - y)',
@@ -53,7 +53,7 @@ If a type specifier is one character, then it is treated as a **type placeholder
 It can be used to define a type-generic kernels.
 For example, the above ``squared_diff`` kernel can be made type-generic as follows::
 
-  >>> squared_diff_generic = cupy.elementwise.ElementwiseKernel(
+  >>> squared_diff_generic = cupy.ElementwiseKernel(
   ...     'T x, T y',
   ...     'T z',
   ...     'z = (x - y) * (x - y)',
@@ -66,7 +66,7 @@ If no output arguments are given on the kernel invocation, then only the input a
 
 The type placeholder can be used in the loop body code::
 
-  >>> squared_diff_generic = cupy.elementwise.ElementwiseKernel(
+  >>> squared_diff_generic = cupy.ElementwiseKernel(
   ...     'T x, T y',
   ...     'T z',
   ...     '''
@@ -78,7 +78,7 @@ The type placeholder can be used in the loop body code::
 More than one type placeholder can be used in a kernel definition.
 For example, the above kernel can be further made generic over multiple arguments::
 
-  >>> squared_diff_super_generic = cupy.elementwise.ElementwiseKernel(
+  >>> squared_diff_super_generic = cupy.ElementwiseKernel(
   ...     'X x, Y y',
   ...     'Z z',
   ...     'z = (x - y) * (x - y)',
@@ -99,7 +99,7 @@ We can use the special variables ``n`` and ``i`` for the manual indexing.
 ``i`` indicates the index within the loop.
 For example, a kernel that adds two vectors with reversing one of them can be written as follows::
 
-  >>> add_reverse = cupy.elementwise.ElementwiseKernel(
+  >>> add_reverse = cupy.ElementwiseKernel(
   ...     'T x, raw T y', 'T z',
   ...     'z = x + y[n - i - 1]',
   ...     'add_reverse')
@@ -115,7 +115,7 @@ If you want to mark all arguments as ``raw``, you must specify the ``size`` argu
 Reduction kernels
 -----------------
 
-Reduction kernels can be defined by the :class:`~cupy.reduction.ReductionKernel` class.
+Reduction kernels can be defined by the :class:`~cupy.ReductionKernel` class.
 We can use it by defining four parts of the kernel code:
 
 1. Identity value: This value is used for the initial value of reduction.
@@ -130,7 +130,7 @@ ReductionKernel class automatically inserts other code fragments that are requir
 
 For example, L2 norm along specified axes can be written as follows::
 
-  >>> l2norm_kernel = cupy.reduction.ReductionKernel(
+  >>> l2norm_kernel = cupy.ReductionKernel(
   ...     'T x',  # input params
   ...     'T y',  # output params
   ...     'x * x',  # map
@@ -151,10 +151,10 @@ For example, L2 norm along specified axes can be written as follows::
 Reference
 ---------
 
-.. module:: cupy.elementwise
-.. autoclass:: cupy.elementwise.ElementwiseKernel
+.. module:: cupy
+
+.. autoclass:: cupy.ElementwiseKernel
    :members:
 
-.. module:: cupy.reduction
-.. autoclass:: cupy.reduction.ReductionKernel
+.. autoclass:: cupy.ReductionKernel
    :members:

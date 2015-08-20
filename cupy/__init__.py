@@ -20,6 +20,7 @@ from cupy import logic
 from cupy import manipulation
 from cupy import math
 import cupy.random
+from cupy import reduction
 from cupy import sorting
 from cupy import statistics
 from cupy import util
@@ -1438,3 +1439,6 @@ def get_array_module(*args):
 
 clear_memo = util.clear_memo
 memoize = util.memoize
+
+ElementwiseKernel = elementwise.ElementwiseKernel
+ReductionKernel = reduction.ReductionKernel
