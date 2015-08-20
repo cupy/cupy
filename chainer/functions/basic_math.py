@@ -293,9 +293,10 @@ class DivFromConstant(function.Function):
         return utils.force_array(-value * gy[0] / (x[0] ** 2)),
 
     def backward_gpu(self, x, gy):
+        value = utils.force_type(gy[0].dtype, self.value)
         gx = cuda.elementwise('T x, T gy, T value', 'T gx',
                               'gx = -value * gy / (x * x)',
-                              'div_from_const_bwd')(x[0], gy[0], self.value)
+                              'div_from_const_bwd')(x[0], gy[0], value)
         return gx,
 
 
@@ -365,10 +366,11 @@ class PowVarConst(function.Function):
         return utils.force_array(gx),
 
     def backward_gpu(self, x, gy):
+        value = utils.force_type(x[0].dtype, self.value)
         gx = cuda.elementwise(
             'T x, T gy, T value', 'T gx',
             'gx = value * pow(x, value - 1) * gy',
-            'pow_var_const_bwd')(x[0], gy[0], self.value)
+            'pow_var_const_bwd')(x[0], gy[0], value)
         return gx,
 
 
@@ -402,10 +404,11 @@ class PowConstVar(function.Function):
         return utils.force_array(numpy.log(value) * self.y * gy[0]),
 
     def backward_gpu(self, x, gy):
+        value = utils.force_type(gy[0].dtype, self.value)
         gx = cuda.elementwise(
             'T x, T gy, T value', 'T gx',
             'gx = log(value) * pow(value, x) * gy',
-            'pow_const_var_bwd')(x[0], gy[0], self.value)
+            'pow_const_var_bwd')(x[0], gy[0], value)
         return gx,
 
 

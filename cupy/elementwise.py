@@ -74,8 +74,8 @@ def _get_typename(dtype):
 
 def _check_kernel_args(args):
     for a in args:
-        assert isinstance(a, _scaler_type) or isinstance(
-            a, (cupy.ndarray, cindexer.Indexer))
+        if not isinstance(a, _scaler_type + (cupy.ndarray, cindexer.Indexer)):
+            raise TypeError('Unsupported type %s' % type(a))
 
 
 def _get_kernel_param_types(args):
@@ -213,7 +213,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
                 t = type_dict[p.ctype]
                 if t != a:
                     raise TypeError(
-                        'Type is mismatched %s', (p.name, a, t, p.ctype))
+                        'Type is mismatched %s' % (p.name, a, t, p.ctype))
             else:
                 type_dict[p.ctype] = a
 
@@ -357,7 +357,10 @@ class ElementwiseKernel(object):
         if not (len(args) == self.nin or
                 len(args) == self.nin + self.nout):
             raise TypeError('Wrong number of arguments for %s' % self.name)
-        assert all(i is not None for i in args)
+        for i in args:
+            if isinstance(i, numpy.ndarray):
+                raise TypeError('Unsupported type %s' % type(i))
+        assert not any(i is None for i in args)
         internal.check_args_device(args)
 
         brod, value = _broadcast(args, self.params, n is None)

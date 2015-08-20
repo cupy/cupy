@@ -282,7 +282,7 @@ class TestBinaryOpConstant(unittest.TestCase):
         y.backward()
         self.assertEqual(x.grad.dtype, numpy.float32)
 
-    def _test_constant_array_gpu(self, func, exception=ValueError):
+    def _test_constant_array_gpu(self, func, exception=TypeError):
         x_data = numpy.array([1.0, 2.0], numpy.float32)
 
         self._test_constant_array_gpu_one(
