@@ -69,7 +69,7 @@ class FunctionSet(object):
         This method calls ``to_gpu`` method of each registered object.
 
         Args:
-            device (int or :class:`pycuda.driver.Device` or ``None``): Device
+            device (int or :class:`cupy.cuda.Device` or ``None``): Device
                 ID of GPU. If ``None`` is given, it uses the current device.
 
         Returns:
@@ -105,7 +105,7 @@ class FunctionSet(object):
                 if isinstance(src, numpy.ndarray):
                     numpy.copyto(dst, src)
                 else:
-                    src.get(dst)
+                    dst[:] = src.get()
             elif isinstance(src, numpy.ndarray):
                 dst.set(src)
             else:

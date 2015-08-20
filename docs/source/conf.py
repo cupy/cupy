@@ -12,6 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import ctypes
 import os
 import pkg_resources
 import shlex
@@ -21,6 +22,16 @@ import sys
 __version__ = pkg_resources.get_distribution('chainer').version
 
 sys.path.insert(0, '../..')
+
+# Replace LoadLibrary to mock for importing CuPy on ReadTheDocs.
+class MockObject(object):
+
+    def __getattr__(self, key): return MockObject()
+    def __setattr__(self, key, value): pass
+    def __call__(self, *a, **k): return MockObject()
+
+ctypes.cdll.LoadLibrary = MockObject()
+
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -312,7 +323,4 @@ autosummary_generate = True
 intersphinx_mapping = {
     'python': ('https://docs.python.org/2/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'pycuda': ('http://documen.tician.de/pycuda/', None),
-    'skcuda': ('http://scikit-cuda.readthedocs.org/en/latest/', None),
-    'sklearn': ('http://scikit-learn.org/stable/', None),
 }

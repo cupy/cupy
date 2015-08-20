@@ -1,6 +1,3 @@
-import math
-from numbers import Number
-
 import numpy
 
 from chainer import cuda
@@ -20,21 +17,21 @@ def _convert_value_to_string(value):
 
     if isinstance(value, float):
         return str(value)
-    elif isinstance(value, (numpy.ndarray, cuda.GPUArray)):
+    elif isinstance(value, (numpy.ndarray, cuda.ndarray)):
         return 'constant array'
     else:
         raise ValueError(
-            'value must be float, ndarray, GPUArray, or Variable')
+            'value must be float, ndarray, or Variable')
 
 
 def _check_constant_type(value):
     if numpy.isscalar(value):
         return
-    elif isinstance(value, (numpy.ndarray, cuda.GPUArray)):
+    elif isinstance(value, (numpy.ndarray, cuda.ndarray)):
         return
     else:
         raise ValueError(
-            'value must be float, ndarray, GPUArray, or Variable')
+            'value must be float, ndarray, or Variable')
 
 
 class Neg(function.Function):
@@ -74,11 +71,10 @@ class Absolute(function.Function):
         return utils.force_array(numpy.sign(x[0]) * gy[0]),
 
     def backward_gpu(self, x, gy):
-        gx0 = cuda.empty_like(x[0])
-        cuda.elementwise(
-            'float* gx0, const float* x0, const float* gy',
-            'gx0[i] = ((x0[i] > 0) - (x0[i] < 0)) * gy[i]',
-            'abs_bwd')(gx0, x[0], gy[0])
+        gx0 = cuda.elementwise(
+            'T x0, T gy', 'T gx0',
+            'gx0 = ((x0 > 0) - (x0 < 0)) * gy',
+            'abs_bwd')(x[0], gy[0])
         return gx0,
 
 
@@ -205,21 +201,8 @@ class Mul(function.Function):
     def forward(self, x):
         return utils.force_array(x[0] * x[1]),
 
-    def backward_cpu(self, x, gy):
+    def backward(self, x, gy):
         return utils.force_array(gy[0] * x[1]), utils.force_array(gy[0] * x[0])
-
-    def backward_gpu(self, x, gy):
-        gx0 = cuda.empty_like(x[0])
-        gx1 = cuda.empty_like(x[1])
-        cuda.elementwise(
-            '''
-               float* gx0, float* gx1, const float* x0, const float* x1,
-               const float* gy
-            ''', '''
-               gx0[i] = gy[i] * x1[i];
-               gx1[i] = gy[i] * x0[i];
-            ''', 'mul_bwd')(gx0, gx1, x[0], x[1], gy[0])
-        return gx0, gx1
 
 
 class MulConstant(function.Function):
@@ -239,7 +222,7 @@ class MulConstant(function.Function):
         return utils.force_array(value * x[0]),
 
     def backward(self, x, gy):
-        value = utils.force_type(gy[0].dtype, self.value)
+        value = utils.force_type(x[0].dtype, self.value)
         return utils.force_array(value * gy[0]),
 
 
@@ -272,17 +255,13 @@ class Div(function.Function):
         return gx0, utils.force_array(-gx0 * x[0] / x[1])
 
     def backward_gpu(self, x, gy):
-        gx0 = cuda.empty_like(x[0])
-        gx1 = cuda.empty_like(x[1])
-        cuda.elementwise(
+        return cuda.elementwise(
+            'T x0, T x1, T gy',
+            'T gx0, T gx1',
             '''
-               float* gx0, float* gx1, const float* x0, const float* x1,
-               const float* gy
-            ''', '''
-               gx0[i] = gy[i] / x1[i];
-               gx1[i] = -gx0[i] * x0[i] / x1[i];
-            ''', 'div_bwd')(gx0, gx1, x[0], x[1], gy[0])
-        return gx0, gx1
+               gx0 = gy / x1;
+               gx1 = -gx0 * x0 / x1;
+            ''', 'div_bwd')(x[0], x[1], gy[0])
 
 
 def div(lhs, rhs):  # lhs / rhs
@@ -310,27 +289,14 @@ class DivFromConstant(function.Function):
         return utils.force_array(value / x[0]),
 
     def backward_cpu(self, x, gy):
-        value = utils.force_type(gy[0].dtype, self.value)
+        value = utils.force_type(x[0].dtype, self.value)
         return utils.force_array(-value * gy[0] / (x[0] ** 2)),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        if isinstance(self.value, Number):
-            cuda.elementwise(
-                '''
-                   float* gx, const float* x, const float* gy,
-                   const float value
-                ''',
-                'gx[i] = -value * gy[i] / (x[i] * x[i])',
-                'div_from_const_bwd')(gx, x[0], gy[0], self.value)
-        else:
-            cuda.elementwise(
-                '''
-                   float* gx, const float* x, const float* gy,
-                   const float* value
-                ''',
-                'gx[i] = -value[i] * gy[i] / (x[i] * x[i])',
-                'div_from_const_bwd')(gx, x[0], gy[0], self.value)
+        value = utils.force_type(x[0].dtype, self.value)
+        gx = cuda.elementwise('T x, T gy, T value', 'T gx',
+                              'gx = -value * gy / (x * x)',
+                              'div_from_const_bwd')(x[0], gy[0], value)
         return gx,
 
 
@@ -369,17 +335,12 @@ class PowVarVar(function.Function):
         return gx0, gx1
 
     def backward_gpu(self, x, gy):
-        gx0 = cuda.empty_like(x[0])
-        gx1 = cuda.empty_like(x[1])
-        cuda.elementwise(
+        return cuda.elementwise(
+            'T x0, T x1, T gy', 'T gx0, T gx1',
             '''
-               float* gx0, float* gx1, const float* x0, const float* x1,
-               const float* gy
-            ''', '''
-               gx0[i] = x1[i] * powf(x0[i], x1[i] - 1) * gy[i];
-               gx1[i] = __logf(x0[i]) * powf(x0[i], x1[i]) * gy[i];
-            ''', 'pow_var_var_bwd')(gx0, gx1, x[0], x[1], gy[0])
-        return gx0, gx1
+               gx0 = x1 * pow(x0, x1 - 1) * gy;
+               gx1 = log(x0) * pow(x0, x1) * gy;
+            ''', 'pow_var_var_bwd')(x[0], x[1], gy[0])
 
 
 class PowVarConst(function.Function):
@@ -405,23 +366,11 @@ class PowVarConst(function.Function):
         return utils.force_array(gx),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        if isinstance(self.value, Number):
-            cuda.elementwise(
-                '''
-                   float* gx, const float* x, const float* gy,
-                   const float value
-                ''',
-                'gx[i] = value * powf(x[i], value - 1) * gy[i]',
-                'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
-        else:
-            cuda.elementwise(
-                '''
-                   float* gx, const float* x, const float* gy,
-                   const float* value
-                ''',
-                'gx[i] = value[i] * powf(x[i], value[i] - 1) * gy[i]',
-                'pow_var_const_bwd')(gx, x[0], gy[0], self.value)
+        value = utils.force_type(x[0].dtype, self.value)
+        gx = cuda.elementwise(
+            'T x, T gy, T value', 'T gx',
+            'gx = value * pow(x, value - 1) * gy',
+            'pow_var_const_bwd')(x[0], gy[0], value)
         return gx,
 
 
@@ -445,46 +394,21 @@ class PowConstVar(function.Function):
         type_check.expect(in_types.size() == 1)
         type_check.expect(in_types[0].dtype == numpy.float32)
 
-    def forward_cpu(self, x):
+    def forward(self, x):
         value = utils.force_type(x[0].dtype, self.value)
         self.y = utils.force_array(value ** x[0])
         return self.y,
 
-    def forward_gpu(self, x):
-        y = cuda.empty_like(x[0])
-        if isinstance(self.value, Number):
-            cuda.elementwise('float* y, const float* x, const float value',
-                             'y[i] = powf(value, x[i])',
-                             'pow_const_var_fwd')(y, x[0], self.value)
-        else:
-            cuda.elementwise('float* y, const float* x, const float *value',
-                             'y[i] = powf(value[i], x[i])',
-                             'pow_const_var_fwd')(y, x[0], self.value)
-        return y,
-
     def backward_cpu(self, x, gy):
-        value = utils.force_type(gy[0].dtype, self.value)
+        value = utils.force_type(x[0].dtype, self.value)
         return utils.force_array(numpy.log(value) * self.y * gy[0]),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        if isinstance(self.value, Number):
-            logv = math.log(self.value)
-            cuda.elementwise(
-                '''
-                   float* gx, const float* x, const float* gy,
-                   const float value, const float logv
-                ''',
-                'gx[i] = logv * powf(value, x[i]) * gy[i]',
-                'pow_const_var_bwd')(gx, x[0], gy[0], self.value, logv)
-        else:
-            cuda.elementwise(
-                '''
-                   float* gx, const float* x, const float* gy,
-                   const float* value
-                ''',
-                'gx[i] = __logf(value[i]) * powf(value[i], x[i]) * gy[i]',
-                'pow_const_var_bwd')(gx, x[0], gy[0], self.value)
+        value = utils.force_type(x[0].dtype, self.value)
+        gx = cuda.elementwise(
+            'T x, T gy, T value', 'T gx',
+            'gx = log(value) * pow(value, x) * gy',
+            'pow_const_var_bwd')(x[0], gy[0], value)
         return gx,
 
 
@@ -531,7 +455,7 @@ class Exp(function.Function):
         return self.y,
 
     def forward_gpu(self, x):
-        self.y = cuda.cumath.exp(x[0])
+        self.y = cuda.cupy.exp(x[0])
         return self.y,
 
     def backward(self, x, gy):
@@ -557,7 +481,7 @@ class Log(function.Function):
         return utils.force_array(numpy.log(x[0])),
 
     def forward_gpu(self, x):
-        return cuda.cumath.log(x[0]),
+        return cuda.cupy.log(x[0]),
 
     def backward(self, x, gy):
         return utils.force_array(gy[0] / x[0]),
@@ -578,19 +502,20 @@ class Sin(function.Function):
         type_check.expect(in_types.size() == 1)
         type_check.expect(in_types[0].dtype.kind == 'f')
 
-    def forward_cpu(self, x):
-        self.y = utils.force_array(numpy.sin(x[0]))
-        return self.y,
-
-    def forward_gpu(self, x):
-        y = cuda.cumath.sin(x[0])
-        return y,
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.sin(x[0])),
 
     def backward_cpu(self, x, gy):
-        return utils.force_array(numpy.cos(x[0]) * gy[0]),
+        gx = utils.force_array(numpy.cos(x[0]))
+        gx *= gy[0]
+        return gx,
 
     def backward_gpu(self, x, gy):
-        return utils.force_array(cuda.cumath.cos(x[0]) * gy[0]),
+        gx = cuda.elementwise(
+            'T x, T gy', 'T gx', 'gx = cos(x) * gy', 'sin_bwd'
+        )(x[0], gy[0])
+        return gx,
 
 
 def sin(x):
@@ -608,19 +533,21 @@ class Cos(function.Function):
         type_check.expect(in_types.size() == 1)
         type_check.expect(in_types[0].dtype.kind == 'f')
 
-    def forward_cpu(self, x):
-        self.y = utils.force_array(numpy.cos(x[0]))
-        return self.y,
-
-    def forward_gpu(self, x):
-        y = cuda.cumath.cos(x[0])
-        return y,
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.cos(x[0])),
 
     def backward_cpu(self, x, gy):
-        return utils.force_array(-numpy.sin(x[0]) * gy[0]),
+        gx = utils.force_array(numpy.sin(x[0]))
+        numpy.negative(gx, out=gx)
+        gx *= gy[0]
+        return gx,
 
     def backward_gpu(self, x, gy):
-        return utils.force_array(-cuda.cumath.sin(x[0]) * gy[0]),
+        gx = cuda.elementwise(
+            'T x, T gy', 'T gx', 'gx = -sin(x) * gy', 'cos_bwd'
+        )(x[0], gy[0])
+        return gx,
 
 
 def cos(x):

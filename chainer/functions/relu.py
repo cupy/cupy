@@ -1,15 +1,23 @@
+import ctypes
 import numpy
 
 from chainer import cuda
-from chainer import cudnn
 from chainer import function
 from chainer import utils
 from chainer.utils import type_check
 
 
-if cudnn.available:
-    from chainer.cudnn import libcudnn
-    _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_RELU']
+if cuda.cudnn_enabled:
+    cudnn = cuda.cudnn
+    libcudnn = cudnn.cudnn
+    _mode = libcudnn.CUDNN_ACTIVATION_RELU
+
+
+def _as4darray(arr):
+    if arr.ndim == 0:
+        return arr.reshape(1, 1, 1, 1)
+    else:
+        return arr.reshape(arr.shape[0], -1, 1, 1)
 
 
 class ReLU(function.Function):
@@ -32,37 +40,34 @@ class ReLU(function.Function):
 
     def forward_gpu(self, x):
         y = cuda.empty_like(x[0])
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            desc = cudnn.get_tensor_desc(x[0], 1, 1)
-            libcudnn.cudnnActivationForward(
-                handle, _mode, 1, desc.value, cudnn.get_ptr(x[0]),
-                0, desc.value, cudnn.get_ptr(y))
+        if cuda.cudnn_enabled and self.use_cudnn:
+            handle = cudnn.get_handle()
+            desc = cudnn.create_tensor_descriptor(_as4darray(x[0]))
+            libcudnn.activationForward(
+                handle, _mode, ctypes.c_float(1), desc.value, x[0].data.ptr,
+                ctypes.c_float(0), desc.value, y.data.ptr)
             self.y = y
         else:
-            cuda.elementwise(
-                'float* y, const float* x', 'y[i] = max(0.f, x[i])',
-                'relu_fwd')(y, x[0])
+            y = cuda.cupy.maximum(x[0].dtype.type(0), x[0])
         return y,
 
     def backward_cpu(self, x, gy):
         return utils.force_array(gy[0] * (x[0] > 0)),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            desc = cudnn.get_tensor_desc(self.y, 1, 1)
-            libcudnn.cudnnActivationBackward(
-                handle, _mode, 1, desc.value, cudnn.get_ptr(self.y),
-                desc.value, cudnn.get_ptr(
-                    gy[0]), desc.value, cudnn.get_ptr(x[0]),
-                0, desc.value, cudnn.get_ptr(gx))
+        if cuda.cudnn_enabled and self.use_cudnn:
+            gx = cuda.empty_like(x[0])
+            handle = cudnn.get_handle()
+            desc = cudnn.create_tensor_descriptor(_as4darray(self.y))
+            libcudnn.activationBackward(
+                handle, _mode, ctypes.c_float(1), desc.value, self.y.data.ptr,
+                desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
+                ctypes.c_float(0), desc.value, gx.data.ptr)
         else:
-            cuda.elementwise(
-                'float* gx, const float* x, const float* gy',
-                'gx[i] = x[i] > 0 ? gy[i] : 0',
-                'relu_bwd')(gx, x[0], gy[0])
+            gx = cuda.elementwise(
+                'T x, T gy', 'T gx',
+                'gx = x > 0 ? gy : 0',
+                'relu_bwd')(x[0], gy[0])
         return gx,
 
 

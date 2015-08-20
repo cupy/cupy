@@ -37,6 +37,7 @@ parser.add_argument('--batchsize', '-B', type=int, default=100,
 parser.add_argument('--gpu', '-g', type=int, default=-1,
                     help='Zero-origin GPU ID (nevative value indicates CPU)')
 args = parser.parse_args()
+xp = cuda.cupy if args.gpu >= 0 else np
 assert args.batchsize > 0
 
 
@@ -54,7 +55,7 @@ print('Loading Caffe model file %s...' % args.model, file=sys.stderr)
 func = caffe.CaffeFunction(args.model)
 print('Loaded', file=sys.stderr)
 if args.gpu >= 0:
-    cuda.init(args.gpu)
+    cuda.get_device(args.gpu).use()
     func.to_gpu()
 
 if args.model_type == 'alexnet' or args.model_type == 'caffenet':
@@ -101,19 +102,16 @@ for path, label in dataset:
     i += 1
 
     if i == args.batchsize:
-        x_data = x_batch
-        y_data = y_batch
-        if args.gpu >= 0:
-            x_data = cuda.to_gpu(x_data)
-            y_data = cuda.to_gpu(y_data)
+        x_data = xp.asarray(x_batch)
+        y_data = xp.asarray(y_batch)
 
         x = chainer.Variable(x_data, volatile=True)
         t = chainer.Variable(y_data, volatile=True)
 
         loss, accuracy = forward(x, t)
 
-        accum_loss += float(cuda.to_cpu(loss.data)) * args.batchsize
-        accum_accuracy += float(cuda.to_cpu(accuracy.data)) * args.batchsize
+        accum_loss += float(loss.data) * args.batchsize
+        accum_accuracy += float(accuracy.data) * args.batchsize
         del x, t, loss, accuracy
 
         count += args.batchsize

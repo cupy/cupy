@@ -11,27 +11,25 @@ def _cu_conv_sum(y, x, n):
     # TODO(beam2d): Use scan computation
     rdim = x.size // (x.shape[0] * x.shape[1])
     cuda.elementwise(
-        'float* y, const float* x, int rdim, int N, int n_',
+        'raw T x, int32 rdim, int32 N, int32 n_', 'raw T y',
         '''
           int half_n = n_ / 2;
           int offset = i / rdim * N * rdim + i % rdim;
-          float* xi = x + offset;
-          float* yi = y + offset;
 
           float sum_part = 0;
           for (int j = 0; j < N + half_n; ++j) {
             if (j < N) {
-              sum_part += xi[j * rdim];
+              sum_part += x[offset + j * rdim];
             }
             if (j >= n_) {
-              sum_part -= xi[(j - n_) * rdim];
+              sum_part -= x[offset + (j - n_) * rdim];
             }
             if (j >= half_n) {
-              yi[(j - half_n) * rdim] = sum_part;
+              y[offset + (j - half_n) * rdim] = sum_part;
             }
           }
-        ''', 'lrn_conv_sum')(y, x, rdim, x.shape[1], n,
-                             range=slice(0, x.shape[0] * rdim, 1))
+        ''', 'lrn_conv_sum')(x, rdim, x.shape[1], n, y,
+                             size=x.shape[0] * rdim)
 
 
 class LocalResponseNormalization(function.Function):
@@ -55,7 +53,7 @@ class LocalResponseNormalization(function.Function):
 
     def forward_cpu(self, x):
         half_n = self.n // 2
-        x2 = x[0] * x[0]
+        x2 = numpy.square(x[0])
         sum_part = x2.copy()
         for i in six.moves.range(1, half_n + 1):
             sum_part[:, i:] += x2[:, :-i]
@@ -77,32 +75,30 @@ class LocalResponseNormalization(function.Function):
         return gx,
 
     def forward_gpu(self, x):
-        self.y = x[0] * x[0]  # temporary
+        self.y = cuda.cupy.square(x[0])  # temporary
         self.scale = cuda.empty_like(self.y)
         _cu_conv_sum(self.scale, self.y, self.n)
         cuda.elementwise(
-            '''float* y, float* scale, const float* x,
-               float k, float alpha, float beta''',
-            '''scale[i] = k + alpha * scale[i];
-               y[i] = x[i] * powf(scale[i], -beta);''',
-            'lrn_fwd')(self.y, self.scale, x[0], self.k, self.alpha, self.beta)
+            'T x, T k, T alpha, T beta',
+            'T y, T scale',
+            '''scale = k + alpha * scale;
+               y = x * pow(scale, -beta);''',
+            'lrn_fwd')(x[0], self.k, self.alpha, self.beta,
+                       self.y, self.scale)
         return self.y,
 
     def backward_gpu(self, x, gy):
-        summand = cuda.empty_like(x[0])
-        cuda.elementwise(
-            '''float* summand, const float* scale, const float* y,
-               const float* gy''',
-            'summand[i] = y[i] * gy[i] / scale[i]',
-            'lrn_bwd_summand')(summand, self.scale, self.y, gy[0])
+        summand = cuda.elementwise(
+            'T scale, T y, T gy', 'T summand',
+            'summand = y * gy / scale',
+            'lrn_bwd_summand')(self.scale, self.y, gy[0])
         gx = cuda.empty_like(x[0])
         _cu_conv_sum(gx, summand, self.n)
         cuda.elementwise(
-            '''float* gx, const float* x, const float* gy, const float* scale,
-               float beta, float coeff''',
-            'gx[i] = powf(scale[i], -beta) * gy[i] - coeff * x[i] * gx[i]',
-            'lrn_bwd')(gx, x[0], gy[0], self.scale, self.beta,
-                       2 * self.alpha * self.beta)
+            ' T x, T gy, T scale, T beta, T coeff', 'T gx',
+            'gx = pow(scale, -beta) * gy - coeff * x * gx',
+            'lrn_bwd')(x[0], gy[0], self.scale,
+                       self.beta, 2 * self.alpha * self.beta, gx)
         return gx,
 
 

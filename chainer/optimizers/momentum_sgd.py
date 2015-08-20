@@ -25,8 +25,9 @@ class MomentumSGD(optimizer.Optimizer):
 
     def update_one_gpu(self, param, grad, v):
         cuda.elementwise(
-            '''float* param, const float* grad, float* v,
-               float lr, float momentum''',
-            '''v[i] = momentum * v[i] - lr * grad[i];
-               param[i] += v[i];''',
-            'momentum_sgd')(param, grad, v, self.lr, self.momentum)
+            'T grad, T lr, T momentum',
+            'T param, T v',
+            '''v = momentum * v - lr * grad;
+               param += v;''',
+            'momentum_sgd')(grad, self.lr, self.momentum,
+                            param, v)

@@ -1,5 +1,3 @@
-import ctypes
-
 import numpy
 import six
 
@@ -16,9 +14,15 @@ def _mat_ptrs(a):
     Returns:
         GPU array of pointers to matrices
     """
-    return cuda.to_gpu(numpy.arange(
-        a.ptr, a.ptr + a.shape[0] * a.strides[0], a.strides[0],
-        dtype=ctypes.c_void_p))
+    if a.shape[0] == 1:
+        return cuda.cupy.full((1,), a[0].data.ptr.value, dtype=numpy.intp)
+    else:
+        stride = a[1].data.ptr.value - a[0].data.ptr.value
+        return cuda.cupy.arange(
+            a[0].data.ptr.value,
+            a[0].data.ptr.value + stride * a.shape[0],
+            stride,
+            dtype=numpy.intp)
 
 
 def _as_mat(x):
@@ -29,56 +33,64 @@ def _as_batch_mat(x):
     return x.reshape((x.shape[0], x.shape[1], 1)) if len(x.shape) == 2 else x
 
 
-def _as_trans_op(trans):
-    return 't' if trans else 'n'
-
-
-def _matmul_cpu(a, b, transa=False, transb=False, transout=False):
-    if transout:
-        # (A B)^T = B^T A^T
-        a, b, transa, transb = b, a, not transb, not transa
+def _matmul(a, b, transa=False, transb=False, transout=False):
     a = _as_mat(a)
     b = _as_mat(b)
     if transa:
         a = a.T
     if transb:
         b = b.T
-    return numpy.dot(a, b)
-
-
-def _matmul_gpu(a, b, transa=False, transb=False, transout=False, out=None):
     if transout:
         # (A B)^T = B^T A^T
-        a, b, transa, transb = b, a, not transb, not transa
-    a = _as_mat(a)
-    b = _as_mat(b)
-    with cuda.using_cumisc():
-        return cuda.culinalg.dot(a, b,
-                                 transa=_as_trans_op(transa),
-                                 transb=_as_trans_op(transb),
-                                 out=out)
+        a, b = b.T, a.T
+    return a.dot(b)
+
+
+def _get_ld(a):
+    shape = a.shape[-2:]
+    strides = a.strides[-2:]
+    trans = numpy.argmin(strides)
+    return trans, int(max(shape[trans], max(strides) // a.itemsize))
 
 
 def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
-    if transout:
-        # (A B)^T = B^T A^T
-        a, b, transa, transb = b, a, not transb, not transa
     a = _as_batch_mat(a)
     b = _as_batch_mat(b)
-    alpha = numpy.float32(1.0)
-    beta = numpy.float32(0.0)
-    l, m, k = a.shape
+    trans_axis = (0, 2, 1)
+    if transout:
+        out = out.transpose(trans_axis)
+    needtrans, _ = _get_ld(out)
+    if needtrans == 1:
+        # (A B)^T = B^T A^T
+        a, b = b, a
+        transa, transb = not transb, not transa
+        out = out.transpose(trans_axis)
     if transa:
-        m, k = k, m
-    n = b.shape[1] if transb else b.shape[2]
-    return cuda.cublas.cublasSgemmBatched(
-        cuda.get_cublas_handle(),
-        _as_trans_op(transb),
-        _as_trans_op(transa),
-        n, m, k, alpha,
-        _mat_ptrs(b).gpudata, k if transb else n,
-        _mat_ptrs(a).gpudata, m if transa else k,
-        beta, _mat_ptrs(out).gpudata, n, l)
+        a = a.transpose(trans_axis)
+    if transb:
+        b = b.transpose(trans_axis)
+
+    transa, lda = _get_ld(a)
+    transb, ldb = _get_ld(b)
+    transout, ldout = _get_ld(out)
+    la, n, ka = a.shape
+    lb, kb, m = b.shape
+
+    assert ka == kb
+    assert transout == 0 or ldout == 1
+    assert out.shape == (la, n, m)
+
+    ap = _mat_ptrs(a)
+    bp = _mat_ptrs(b)
+    outp = _mat_ptrs(out)
+    cuda.cublas.sgemmBatched(
+        cuda.Device().cublas_handle,
+        transa,
+        transb,
+        n, m, ka, 1.0,
+        ap.data.ptr, lda,
+        bp.data.ptr, ldb,
+        0.0, outp.data.ptr, ldout, la)
 
 
 def _check_ndim(in_type, lower=1, upper=2):
@@ -131,26 +143,14 @@ class MatMul(function.Function):
             a_type.shape[a_idx] == b_type.shape[b_idx]
         )
 
-    def forward_cpu(self, x):
-        return _matmul_cpu(x[0], x[1], transa=self.transa, transb=self.transb),
+    def forward(self, x):
+        return _matmul(x[0], x[1], transa=self.transa, transb=self.transb),
 
-    def forward_gpu(self, x):
-        return _matmul_gpu(x[0], x[1], transa=self.transa, transb=self.transb),
-
-    def backward_cpu(self, x, gy):
-        gx0 = _matmul_cpu(
+    def backward(self, x, gy):
+        gx0 = _matmul(
             gy[0], x[1], transb=not self.transb, transout=self.transa
             ).reshape(x[0].shape)
-        gx1 = _matmul_cpu(
-            x[0], gy[0], transa=not self.transa, transout=self.transb
-            ).reshape(x[1].shape)
-        return gx0, gx1
-
-    def backward_gpu(self, x, gy):
-        gx0 = _matmul_gpu(
-            gy[0], x[1], transb=not self.transb, transout=self.transa
-            ).reshape(x[0].shape)
-        gx1 = _matmul_gpu(
+        gx1 = _matmul(
             x[0], gy[0], transa=not self.transa, transout=self.transb
             ).reshape(x[1].shape)
         return gx0, gx1
@@ -184,8 +184,8 @@ class BatchMatMul(function.Function):
         batch_size = a.shape[0]
         a_mat_shape = _as_mat(a[0]).shape
         b_mat_shape = _as_mat(b[0]).shape
-        m = a_mat_shape[1] if self.transa else a_mat_shape[0]
-        n = b_mat_shape[0] if self.transb else b_mat_shape[1]
+        m = a_mat_shape[1 if self.transa else 0]
+        n = b_mat_shape[0 if self.transb else 1]
         return (batch_size, m, n)
 
     def check_type_forward(self, in_types):
@@ -215,7 +215,7 @@ class BatchMatMul(function.Function):
         ret_dtype = numpy.find_common_type([a.dtype, b.dtype], [])
         ret = numpy.empty(shape, dtype=ret_dtype)
         for i in six.moves.range(batch_size):
-            ret[i] = _matmul_cpu(
+            ret[i] = _matmul(
                 a[i], b[i], transa=self.transa, transb=self.transb)
         return ret,
 
@@ -225,20 +225,20 @@ class BatchMatMul(function.Function):
         ga = numpy.empty_like(a)
         gb = numpy.empty_like(b)
         for i in six.moves.range(batch_size):
-            ga[i] = _matmul_cpu(gy[0][i], b[i],
-                                transb=not self.transb, transout=self.transa
-                                ).reshape(a[0].shape)
-            gb[i] = _matmul_cpu(a[i], gy[0][i],
-                                transa=not self.transa, transout=self.transb
-                                ).reshape(b[0].shape)
+            ga[i] = _matmul(
+                gy[0][i], b[i], transb=not self.transb,
+                transout=self.transa).reshape(a[0].shape)
+            gb[i] = _matmul(
+                a[i], gy[0][i], transa=not self.transa,
+                transout=self.transb).reshape(b[0].shape)
         return ga, gb
 
     def forward_gpu(self, x):
         a, b = x
         shape = self._output_shape(a, b)
-        ret = cuda.empty(shape)
-        _batch_matmul_gpu(a, b,
-                          transa=self.transa, transb=self.transb, out=ret)
+        ret = cuda.zeros(shape)
+        _batch_matmul_gpu(
+            a, b, transa=self.transa, transb=self.transb, out=ret)
         return ret,
 
     def backward_gpu(self, x, gy):
@@ -246,10 +246,10 @@ class BatchMatMul(function.Function):
         batch_size = a.shape[0]
         ga = cuda.empty((batch_size,) + _as_mat(a[0]).shape)
         gb = cuda.empty((batch_size,) + _as_mat(b[0]).shape)
-        _batch_matmul_gpu(gy[0], b,
-                          transb=not self.transb, transout=self.transa, out=ga)
-        _batch_matmul_gpu(a, gy[0],
-                          transa=not self.transa, transout=self.transb, out=gb)
+        _batch_matmul_gpu(
+            gy[0], b, transb=not self.transb, transout=self.transa, out=ga)
+        _batch_matmul_gpu(
+            a, gy[0], transa=not self.transa, transout=self.transb, out=gb)
         ga = ga.reshape(a.shape)
         gb = gb.reshape(b.shape)
         return ga, gb

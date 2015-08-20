@@ -12,7 +12,7 @@ def as_mat(x):
 
 
 def empty_like(x):
-    if cuda.available and isinstance(x, cuda.GPUArray):
+    if cuda.available and isinstance(x, cuda.ndarray):
         return cuda.empty_like(x)
     else:
         return numpy.empty_like(x)

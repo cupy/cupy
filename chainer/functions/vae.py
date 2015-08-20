@@ -5,11 +5,11 @@ from chainer import variable
 
 
 def gaussian_kl_divergence(mean, ln_var):
-    """Calculate KL-divergence between given gaussian and the standard one.
+    """Computes the KL-divergence of Gaussian variables from the standard one.
 
     Given two variable ``mean`` representing :math:`\\mu` and ``ln_var``
     representing :math:`\\log(\\sigma^2)`, this function returns a variable
-    representing KL-divergence between given multi-dimensional gaussian
+    representing the KL-divergence between the given multi-dimensional Gaussian
     :math:`N(\\mu, S)` and the standard Gaussian :math:`N(0, I)`
 
     .. math::
@@ -39,9 +39,9 @@ def gaussian_kl_divergence(mean, ln_var):
 
 
 def bernoulli_nll(x, y):
-    """Calculate negative log-likelihood of Bernoulli distribution.
+    """Computes the negative log-likelihood of a Bernoulli distribution.
 
-    This function calculates negative log-likelihood on a Bernoulli
+    This function calculates the negative log-likelihood of a Bernoulli
     distribution.
 
     .. math::
@@ -73,10 +73,10 @@ def bernoulli_nll(x, y):
 
 
 def gaussian_nll(x, mean, ln_var):
-    """Calculate negative log-likelihood of Gaussian distribution.
+    """Computes the negative log-likelihood of a Gaussian distribution.
 
     Given two variable ``mean`` representing :math:`\\mu` and ``ln_var``
-    representing :math:`\\log(\\sigma^2)`, this function returns negative
+    representing :math:`\\log(\\sigma^2)`, this function returns the negative
     log-likelihood of :math:`x` on a Gaussian distribution :math:`N(\\mu, S)`,
 
     .. math::
@@ -85,18 +85,18 @@ def gaussian_nll(x, mean, ln_var):
         \\log\\left(\\sqrt{(2\\pi)^D |S|}\\right) +
         \\frac{1}{2}(x - \\mu)^\\top S^{-1}(x - \\mu),
 
-    where :math:`D` is a dimention of :math:`x` and :math:`S` is a diagonal
+    where :math:`D` is a dimension of :math:`x` and :math:`S` is a diagonal
     matrix where :math:`S_{ii} = \\sigma_i^2`.
 
     Args:
         x (~chainer.Variable): Input variable.
-        mean (~chainer.Variable): A variable representing mean of a gaussian
+        mean (~chainer.Variable): A variable representing mean of a Gaussian
             distribution, :math:`\\mu`.
         ln_var (~chainer.Variable): A variable representing logarithm of
-            variance of a gaussian distribution, :math:`\\log(\\sigma^2)`.
+            variance of a Gaussian distribution, :math:`\\log(\\sigma^2)`.
 
     Returns:
-        ~chainer.Variable: A variable representing negative log-likelihood.
+        ~chainer.Variable: A variable representing the negative log-likelihood.
 
     """
     assert isinstance(x, variable.Variable)
