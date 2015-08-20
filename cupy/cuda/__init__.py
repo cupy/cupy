@@ -12,7 +12,7 @@ alloc = memory.alloc
 Memory = memory.Memory
 MemoryPointer = memory.MemoryPointer
 MemoryPool = memory.MemoryPool
-set_default_allocator = memory.set_default_allocator
+set_allocator = memory.set_allocator
 
 Function = module.Function
 Module = module.Module

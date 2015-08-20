@@ -184,8 +184,7 @@ class simple_reduction_function(object):
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
 
-    def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False,
-                 allocator=None):
+    def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False):
         if not isinstance(a, cupy.ndarray):
             raise TypeError('Input type must be cupy.ndarray')
 
@@ -203,7 +202,7 @@ class simple_reduction_function(object):
         axis = _get_axis(axis, a.ndim)
         out_shape = _get_out_shape(a.shape, axis, keepdims)
         out_args = elementwise._get_out_args(
-            in_args, out_args, out_types, allocator, out_shape)
+            in_args, out_args, out_types, out_shape)
         in_args, in_shape = _get_trans_args(
             in_args, axis, in_args[0].shape)
 
@@ -357,7 +356,6 @@ class ReductionKernel(object):
         out = kwargs.pop('out', None)
         axis = kwargs.get('axis', None)
         keepdims = kwargs.get('keepdims', False)
-        allocator = kwargs.get('allocator', None)
 
         if not (len(args) == self.nin or
                 len(args) == self.nin + self.nout):
@@ -391,8 +389,7 @@ class ReductionKernel(object):
         in_args, in_shape = _get_trans_args(
             in_args, axis, brod.shape, self.in_params)
         out_args = elementwise._get_out_args(
-            in_args, out_args, out_types, allocator, out_shape,
-            self.out_params)
+            in_args, out_args, out_types, out_shape, self.out_params)
 
         in_indexer = cindexer.Indexer(in_shape)
         out_indexer = cindexer.Indexer(out_shape)

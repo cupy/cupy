@@ -36,14 +36,6 @@ def _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-def _get_allocator(in_arg):
-    for arg in in_arg:
-        if isinstance(arg, cupy.ndarray):
-            return arg.allocator
-    else:
-        return cuda.alloc
-
-
 def _get_ndarray_dtype(args):
     return tuple(a.dtype if isinstance(a, cupy.ndarray) else None
                  for a in args)
@@ -234,14 +226,11 @@ def _broadcast(args, params, size_error=True):
                   for a, b in six.moves.zip(brod.values, args)]
 
 
-def _get_out_args(in_args, out_args, out_types,
-                  allocator, out_shape, out_params=None):
+def _get_out_args(in_args, out_args, out_types, out_shape, out_params=None):
     if len(out_args) == 0:
         if out_params is not None and any(p.raw for p in out_params):
             raise ValueError('Output array size is Undecided')
-        if allocator is None:
-            allocator = _get_allocator(in_args)
-        out_args = [cupy.empty(shape=out_shape, dtype=t, allocator=allocator)
+        out_args = [cupy.empty(shape=out_shape, dtype=t)
                     for t in out_types]
     else:
         assert len(out_args) == len(out_types)
@@ -352,7 +341,6 @@ class ElementwiseKernel(object):
 
         """
         n = kwargs.pop('size', None)
-        allocator = kwargs.get('allocator', None)
 
         if not (len(args) == self.nin or
                 len(args) == self.nin + self.nout):
@@ -370,8 +358,7 @@ class ElementwiseKernel(object):
         in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
                    for x, t in six.moves.zip(in_args, in_types)]
         out_args = _get_out_args(
-            in_args, out_args, out_types, allocator, brod.shape,
-            self.out_params)
+            in_args, out_args, out_types, brod.shape, self.out_params)
 
         if len(out_args) == 1:
             ret = out_args[0]
@@ -495,8 +482,6 @@ class ufunc(object):
             out (cupy.ndarray): Output array. It outputs to new arrays
                 default.
             dtype: Data type specifier.
-            allocator (function): CuPy memory allocator. The allocator of the
-                first cupy.ndarray argument is used by default.
 
         Returns:
             Output array or a tuple of output arrays.
@@ -504,7 +489,6 @@ class ufunc(object):
         """
         out = kwargs.get('out', None)
         dtype = kwargs.get('dtype', None)
-        allocator = kwargs.get('allocator', None)
 
         if not (len(args) == self.nin or len(args) == self.nargs):
             raise TypeError('Wrong number of arguments for %s' % self.name)
@@ -523,8 +507,7 @@ class ufunc(object):
 
         in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
                    for x, t in six.moves.zip(in_args, in_types)]
-        out_args = _get_out_args(
-            in_args, out_args, out_types, allocator, brod.shape)
+        out_args = _get_out_args(in_args, out_args, out_types, brod.shape)
 
         if len(out_args) == 1:
             ret = out_args[0]

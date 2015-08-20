@@ -16,7 +16,7 @@ Memory management
 .. autoclass:: cupy.cuda.MemoryPointer
    :members:
 .. autofunction:: cupy.cuda.alloc
-.. autofunction:: cupy.cuda.set_default_allocator
+.. autofunction:: cupy.cuda.set_allocator
 .. autoclass:: cupy.cuda.MemoryPool
    :members:
 

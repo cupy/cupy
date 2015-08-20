@@ -78,7 +78,6 @@ class ndarray(object):
         dtype: Data type. It must be an argument of :class:`numpy.dtype`.
         memptr (cupy.cuda.MemoryPointer): Pointer to the array content head.
         strides (tuple of ints): The strides for axes.
-        allocator (function): GPU memory allocator function.
 
     Attributes:
         data (cupy.cuda.MemoryPointer): Pointer to the array content head.
@@ -86,15 +85,13 @@ class ndarray(object):
             created as a view.
 
     """
-    def __init__(self, shape, dtype=float, memptr=None, strides=None,
-                 allocator=cuda.alloc):
+    def __init__(self, shape, dtype=float, memptr=None, strides=None):
         self._shape = tuple(shape)
         self._dtype = numpy.dtype(dtype)
-        self._allocator = allocator
 
         nbytes = self.nbytes
         if memptr is None:
-            self.data = allocator(nbytes)
+            self.data = cuda.alloc(nbytes)
         else:
             self.data = memptr
 
@@ -307,15 +304,13 @@ class ndarray(object):
         """Dumps a pickle of the array to a string."""
         return six.moves.cPickle.dumps(self, -1)
 
-    def astype(self, dtype, copy=True, allocator=None):
+    def astype(self, dtype, copy=True):
         """Casts the array to given data type.
 
         Args:
             dtype: Type specifier.
             copy (bool): If it is False and no cast happens, then this method
                 returns the array itself. Otherwise, a copy is returned.
-            allocator (function): CuPy memory allocator. The allocator of the
-                array is used by default.
 
         Returns:
             If ``copy`` is False and no cast is required, then the array itself
@@ -333,18 +328,18 @@ class ndarray(object):
         dtype = numpy.dtype(dtype)
         if dtype == self._dtype:
             if copy:
-                return self.copy(allocator)
+                return self.copy()
             else:
                 return self
         else:
-            newarray = empty_like(self, dtype=dtype, allocator=allocator)
+            newarray = empty_like(self, dtype=dtype)
             elementwise.copy(self, newarray)
             return newarray
 
     # TODO(beam2d): Implement it
     # def byteswap(self, inplace=False):
 
-    def copy(self, allocator=None):
+    def copy(self):
         """Returns a copy of the array.
 
         .. seealso::
@@ -353,7 +348,7 @@ class ndarray(object):
 
         """
         # TODO(beam2d): Support ordering option
-        return copy(self, allocator)
+        return copy(self)
 
     def view(self, dtype=None):
         """Returns a view of the array.
@@ -372,7 +367,6 @@ class ndarray(object):
         """
         # Use __new__ instead of __init__ to skip recomputation of contiguity
         v = ndarray.__new__(ndarray)
-        v._allocator = self._allocator
         v._dtype = self._dtype
         v._flags = self._flags & ~flags.OWNDATA
         v._shape = self._shape
@@ -435,14 +429,10 @@ class ndarray(object):
         """
         return swapaxes(self, axis1, axis2)
 
-    def flatten(self, allocator=None):
+    def flatten(self):
         """Returns a copy of the array flatten into one dimension.
 
         It currently supports C-order only.
-
-        Args:
-            allocator (function): CuPy memory allocator. The allocator of the
-                source array is used by default.
 
         Returns:
             cupy.ndarray: A copy of the array with one dimension.
@@ -454,7 +444,7 @@ class ndarray(object):
         if self.flags.c_contiguous:
             newarray = self.copy()
         else:
-            newarray = empty_like(self, allocator=allocator)
+            newarray = empty_like(self)
             elementwise.copy(self, newarray)
 
         newarray._shape = self.size,
@@ -486,7 +476,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     # Item selection and manipulation
     # -------------------------------------------------------------------------
-    def take(self, indices, axis=None, out=None, allocator=None):
+    def take(self, indices, axis=None, out=None):
         """Returns an array of elements at given indices along the axis.
 
         .. seealso::
@@ -494,20 +484,19 @@ class ndarray(object):
            :meth:`numpy.ndarray.take`
 
         """
-        return take(self, indices, axis, out, allocator)
+        return take(self, indices, axis, out)
 
     # TODO(beam2d): Implement these
     # def put(self, indices, values, mode='raise'):
-    # def repeat(self, repeats, axis=None, allocator=None):
-    # def choose(self, choices, out=None, mode='raise', allocator=None):
+    # def repeat(self, repeats, axis=None):
+    # def choose(self, choices, out=None, mode='raise'):
     # def sort(self, axis=-1, kind='quicksort', order=None):
-    # def argsort(self, axis=-1, kind='quicksort', order=None, allocator=None):
+    # def argsort(self, axis=-1, kind='quicksort', order=None):
     # def partition(self, kth, axis=-1, kind='introselect', order=None):
-    # def argpartition(self, kth, axis=-1, kind='introselect', order=None,
-    #                  allocator=None):
-    # def searchsorted(self, v, side='left', sorter=None, allocator=None):
-    # def nonzero(self, allocator=None):
-    # def compress(self, condition, axis=None, out=None, allocator=None):
+    # def argpartition(self, kth, axis=-1, kind='introselect', order=None):
+    # def searchsorted(self, v, side='left', sorter=None):
+    # def nonzero(self):
+    # def compress(self, condition, axis=None, out=None):
 
     def diagonal(self, offset=0, axis1=0, axis2=1):
         """Returns a view of the specified diagonals.
@@ -522,8 +511,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     # Calculation
     # -------------------------------------------------------------------------
-    def max(self, axis=None, out=None, dtype=None, keepdims=False,
-            allocator=None):
+    def max(self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the maximum along a given axis.
 
         .. seealso::
@@ -532,11 +520,9 @@ class ndarray(object):
 
         """
         return amax(
-            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
-            allocator=allocator)
+            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
-    def argmax(self, axis=None, out=None, dtype=None, keepdims=False,
-               allocator=None):
+    def argmax(self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the indices of the maximum along a given axis.
 
         .. seealso::
@@ -545,11 +531,9 @@ class ndarray(object):
 
         """
         return argmax(
-            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
-            allocator=allocator)
+            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
-    def min(self, axis=None, out=None, dtype=None, keepdims=False,
-            allocator=None):
+    def min(self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the minimum along a given axis.
 
         .. seealso::
@@ -558,11 +542,9 @@ class ndarray(object):
 
         """
         return amin(
-            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
-            allocator=allocator)
+            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
-    def argmin(self, axis=None, out=None, dtype=None, keepdims=False,
-               allocator=None):
+    def argmin(self, axis=None, out=None, dtype=None, keepdims=False):
         """Returns the indices of the minimum along a given axis.
 
         .. seealso::
@@ -571,13 +553,12 @@ class ndarray(object):
 
         """
         return argmin(
-            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims,
-            allocator=allocator)
+            self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
     # TODO(beam2d): Implement it
-    # def ptp(self, axis=None, out=None, allocator=None):
+    # def ptp(self, axis=None, out=None):
 
-    def clip(self, a_min, a_max, out=None, allocator=None):
+    def clip(self, a_min, a_max, out=None):
         """Returns an array with values limited to [a_min, a_max].
 
         .. seealso::
@@ -585,13 +566,12 @@ class ndarray(object):
            :meth:`numpy.ndarray.clip`
 
         """
-        return clip(self, a_min, a_max, out=out, allocator=allocator)
+        return clip(self, a_min, a_max, out=out)
 
     # TODO(beam2d): Implement it
-    # def round(self, decimals=0, out=None, allocator=None):
+    # def round(self, decimals=0, out=None):
 
-    def trace(self, offset=0, axis1=0, axis2=1, dtype=None, out=None,
-              allocator=None):
+    def trace(self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
         """Returns the sum along diagonals of the array.
 
         .. seealso::
@@ -599,10 +579,9 @@ class ndarray(object):
            :meth:`numpy.ndarray.trace`
 
         """
-        return trace(self, offset, axis1, axis2, dtype, out, allocator)
+        return trace(self, offset, axis1, axis2, dtype, out)
 
-    def sum(self, axis=None, dtype=None, out=None, keepdims=False,
-            allocator=None):
+    def sum(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the sum along a given axis.
 
         .. seealso::
@@ -610,14 +589,12 @@ class ndarray(object):
            :meth:`numpy.ndarray.sum`
 
         """
-        return sum(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
-                   allocator=allocator)
+        return sum(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     # TODO(beam2d): Implement it
-    # def cumsum(self, axis=None, dtype=None, out=None, allocator=None):
+    # def cumsum(self, axis=None, dtype=None, out=None):
 
-    def mean(self, axis=None, dtype=None, out=None, keepdims=False,
-             allocator=None):
+    def mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
 
         .. seealso::
@@ -625,11 +602,9 @@ class ndarray(object):
            :meth:`numpy.ndarray.mean`
 
         """
-        return mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
-                    allocator=allocator)
+        return mean(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    def var(self, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
-            allocator=None):
+    def var(self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         """Returns the variance along a given axis.
 
         .. seealso::
@@ -637,11 +612,9 @@ class ndarray(object):
            :meth:`numpy.ndarray.var`
 
         """
-        return var(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
-                   allocator=allocator)
+        return var(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    def std(self, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
-            allocator=None):
+    def std(self, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         """Returns the standard deviation along a given axis.
 
         .. seealso::
@@ -649,11 +622,9 @@ class ndarray(object):
            :meth:`numpy.ndarray.std`
 
         """
-        return std(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
-                   allocator=allocator)
+        return std(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    def prod(self, axis=None, dtype=None, out=None, keepdims=None,
-             allocator=None):
+    def prod(self, axis=None, dtype=None, out=None, keepdims=None):
         """Returns the product along a given axis.
 
         .. seealso::
@@ -661,13 +632,12 @@ class ndarray(object):
            :meth:`numpy.ndarray.prod`
 
         """
-        return prod(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
-                    allocator=allocator)
+        return prod(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     # TODO(beam2d): Implement these
-    # def cumprod(self, axis=None, dtype=None, out=None, allocator=None):
-    # def all(self, axis=None, out=None, allocator=None):
-    # def any(self, axis=None, out=None, allocator=None):
+    # def cumprod(self, axis=None, dtype=None, out=None):
+    # def all(self, axis=None, out=None):
+    # def any(self, axis=None, out=None):
 
     # -------------------------------------------------------------------------
     # Arithmetic and comparison operations
@@ -1036,7 +1006,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     # Methods outside of the ndarray main documentation
     # -------------------------------------------------------------------------
-    def dot(self, b, out=None, allocator=None):
+    def dot(self, b, out=None):
         """Returns the dot product with given array.
 
         .. seealso::
@@ -1044,16 +1014,11 @@ class ndarray(object):
            :meth:`numpy.ndarray.dot`
 
         """
-        return dot(self, b, out, allocator)
+        return dot(self, b, out)
 
     # -------------------------------------------------------------------------
     # Cupy specific attributes and methods
     # -------------------------------------------------------------------------
-    @property
-    def allocator(self):
-        """CUDA Memory allocator used for this array."""
-        return self._allocator
-
     @property
     def device(self):
         """CUDA device on which this array resides."""

@@ -53,8 +53,7 @@ class RandomState(object):
 
     # NumPy compatible functions
 
-    def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float,
-                  allocator=cuda.alloc):
+    def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
         """Returns an array of samples drawn from a log normal distribution.
 
         .. seealso::
@@ -64,7 +63,7 @@ class RandomState(object):
         """
         dtype = _check_and_get_dtype(dtype)
         size = _get_size(size)
-        out = cupy.empty(size, dtype=dtype, allocator=allocator)
+        out = cupy.empty(size, dtype=dtype)
         if dtype.type == numpy.float32:
             curand.generateLogNormal(self._generator, out._fptr, out.size,
                                      mean, sigma)
@@ -73,8 +72,7 @@ class RandomState(object):
                                            out.size, mean, sigma)
         return out
 
-    def normal(self, loc=0.0, scale=1.0, size=None, dtype=float,
-               allocator=cuda.alloc):
+    def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of normally distributed samples.
 
         .. seealso::
@@ -84,7 +82,7 @@ class RandomState(object):
         """
         dtype = _check_and_get_dtype(dtype)
         size = _get_size(size)
-        out = cupy.empty(size, dtype=dtype, allocator=allocator)
+        out = cupy.empty(size, dtype=dtype)
         if dtype.type == numpy.float32:
             curand.generateNormal(self._generator, out._fptr, out.size, loc,
                                   scale)
@@ -102,11 +100,10 @@ class RandomState(object):
 
         """
         dtype = kwarg.pop('dtype', float)
-        allocator = kwarg.pop('allocator', cuda.alloc)
         if kwarg:
             raise TypeError('rand() got unexpected keyword arguments %s'
                             % ', '.join(kwarg.keys()))
-        return self.random_sample(size=size, dtype=dtype, allocator=allocator)
+        return self.random_sample(size=size, dtype=dtype)
 
     def randn(self, *size, **kwarg):
         """Returns an array of standand normal random values.
@@ -117,16 +114,15 @@ class RandomState(object):
 
         """
         dtype = kwarg.pop('dtype', float)
-        allocator = kwarg.pop('allocator', cuda.alloc)
         if kwarg:
             raise TypeError('randn() got unexpected keyword arguments %s'
                             % ', '.join(kwarg.keys()))
-        return self.normal(size=size, dtype=dtype, allocator=allocator)
+        return self.normal(size=size, dtype=dtype)
 
     _1m_kernel = elementwise.ElementwiseKernel(
         '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
 
-    def random_sample(self, size=None, dtype=float, allocator=cuda.alloc):
+    def random_sample(self, size=None, dtype=float):
         """Returns an array of random values over the interval ``[0, 1)``.
 
         .. seealso::
@@ -136,7 +132,7 @@ class RandomState(object):
         """
         dtype = _check_and_get_dtype(dtype)
         size = _get_size(size)
-        out = cupy.empty(size, dtype=dtype, allocator=allocator)
+        out = cupy.empty(size, dtype=dtype)
         if dtype.type == numpy.float32:
             curand.generateUniform(self._generator, out._fptr, out.size)
         else:
@@ -163,7 +159,7 @@ class RandomState(object):
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
 
-    def standard_normal(self, size=None, dtype=float, allocator=cuda.alloc):
+    def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
 
         .. seealso::
@@ -171,10 +167,9 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.standard_normal`
 
         """
-        return self.normal(size=size, dtype=dtype, allocator=allocator)
+        return self.normal(size=size, dtype=dtype)
 
-    def uniform(self, low=0.0, high=1.0, size=None, dtype=float,
-                allocator=cuda.alloc):
+    def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
         """Returns an array of uniformlly-distributed samples over an interval.
 
         .. seealso::
@@ -184,7 +179,7 @@ class RandomState(object):
         """
         dtype = numpy.dtype(dtype)
         size = _get_size(size)
-        rand = self.random_sample(size=size, dtype=dtype, allocator=allocator)
+        rand = self.random_sample(size=size, dtype=dtype)
         return dtype.type(low) + rand * dtype.type(high - low)
 
 

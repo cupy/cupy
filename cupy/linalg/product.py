@@ -8,7 +8,7 @@ from cupy import elementwise
 from cupy import internal
 
 
-def dot(a, b, out=None, allocator=None):
+def dot(a, b, out=None):
     """Returns a dot product of two arrays.
 
     For arrays with more than one axis, it computes the dot product along the
@@ -20,8 +20,6 @@ def dot(a, b, out=None, allocator=None):
         a (cupy.ndarray): The left argument.
         b (cupy.ndarray): The right argument.
         out (cupy.ndarray): Output array.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: The dot product of ``a`` and ``b``.
@@ -37,8 +35,7 @@ def dot(a, b, out=None, allocator=None):
         a = a.reshape(1, a.size)
     if b_is_vec:
         b = b.reshape(b.size, 1)
-    c = tensordot(a, b, axes=((a.ndim - 1,), (b.ndim - 2,)),
-                  allocator=allocator, out=out)
+    c = tensordot(a, b, axes=((a.ndim - 1,), (b.ndim - 2,)), out=out)
     if out is None:
         if a_is_vec:
             if b_is_vec:
@@ -50,7 +47,7 @@ def dot(a, b, out=None, allocator=None):
     return c
 
 
-def vdot(a, b, allocator=None):
+def vdot(a, b):
     """Returns the dot product of two vectors.
 
     The input arrays are flattened into 1-D vectors and then it performs inner
@@ -59,8 +56,6 @@ def vdot(a, b, allocator=None):
     Args:
         a (cupy.ndarray): The first argument.
         b (cupy.ndarray): The second argument.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: Zero-dimensional array of the dot product result.
@@ -70,7 +65,7 @@ def vdot(a, b, allocator=None):
     """
     a = a.ravel()
     b = b.ravel()
-    return a.dot(b, allocator=allocator)
+    return a.dot(b)
 
 
 def inner(a, b):
@@ -94,7 +89,7 @@ def inner(a, b):
         return tensordot(a, b, axes=(-1, -1))
 
 
-def outer(a, b, out=None, allocator=None):
+def outer(a, b, out=None):
     """Returns the outer product of two vectors.
 
     The input arrays are flattened into 1-D vectors and then it performs outer
@@ -104,8 +99,6 @@ def outer(a, b, out=None, allocator=None):
         a (cupy.ndarray): The first argument.
         b (cupy.ndarray): The second argument.
         out (cupy.ndarray): Output array.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: 2-D array of the outer product of ``a`` and ``b``.
@@ -116,15 +109,15 @@ def outer(a, b, out=None, allocator=None):
     a = a.reshape(a.size, 1)
     b = b.reshape(1, b.size)
     if out is None:
-        return dot(a, b, allocator=allocator)
+        return dot(a, b)
     elif out.flags.c_contiguous:
         return dot(a, b, out=out)
     else:
-        out[:] = dot(a, b, allocator=allocator)
+        out[:] = dot(a, b)
         return out
 
 
-def tensordot(a, b, axes=2, allocator=None, out=None):
+def tensordot(a, b, axes=2, out=None):
     """Returns the tensor dot product of two arrays along specified axes.
 
     This is equivalent to compute dot product along the specified axes which
@@ -139,8 +132,6 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
             - If it is a pair of sequences of integers, then these two
               sequences specify the list of axes for ``a`` and ``b``. The
               corresponding axes are paired for sum-product.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
         out (cupy.ndarray): Output array.
 
     Returns:
@@ -153,7 +144,7 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
     if a.ndim == 0 or b.ndim == 0:
         if axes != 0 and axes != ((), ()):
             raise ValueError('An input is zero-dim while axes has dimensions')
-        return cupy.multiply(a, b, out=out, allocator=allocator)
+        return cupy.multiply(a, b, out=out)
 
     ret_dtype = numpy.find_common_type([a.dtype, b.dtype], [])
 
@@ -212,27 +203,25 @@ def tensordot(a, b, axes=2, allocator=None, out=None):
         if not out.flags.c_contiguous:
             raise ValueError('Output array must be C-contiguous')
 
-    if allocator is None:
-        allocator = a.allocator
     if 0 in a.shape or 0 in b.shape:
         if 0 not in a.shape or 0 not in b.shape:
             raise ValueError('cannot dot zero-sized and non-zero-sized arrays')
         if out is None:
-            return cupy.zeros(ret_shape, dtype=ret_dtype, allocator=allocator)
+            return cupy.zeros(ret_shape, dtype=ret_dtype)
         else:
             out.fill(0)
             return out
 
     if out is None:
-        out = cupy.empty(ret_shape, dtype=dtype, allocator=allocator)
+        out = cupy.empty(ret_shape, dtype=dtype)
         if dtype == ret_dtype:
             ret = out
         else:
-            ret = cupy.empty(ret_shape, dtype=ret_dtype, allocator=allocator)
+            ret = cupy.empty(ret_shape, dtype=ret_dtype)
     else:
         ret = out
         if out.dtype != dtype:
-            out = cupy.empty(ret_shape, dtype=dtype, allocator=allocator)
+            out = cupy.empty(ret_shape, dtype=dtype)
 
     k = a.size // n
 
@@ -307,12 +296,12 @@ def einsum(subscripts, *args):
     raise NotImplementedError
 
 
-def matrix_power(M, n, allocator=cuda.alloc):
+def matrix_power(M, n):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def kron(a, b, allocator=None):
+def kron(a, b):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 

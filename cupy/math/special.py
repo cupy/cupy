@@ -1,8 +1,8 @@
-def i0(x, allocator=None):
+def i0(x):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def sinc(x, allocator=None):
+def sinc(x):
     # TODO(beam2d): Implement it
     raise NotImplementedError

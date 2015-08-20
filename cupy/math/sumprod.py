@@ -1,7 +1,7 @@
 from cupy import reduction
 
 
-def sum(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
+def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     '''Returns the sum of an array along given axes.
 
     Args:
@@ -11,8 +11,6 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
         out (cupy.ndarray): Output array.
         keepdims (bool): If True, the specified axes are remained as axes of
             length one.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: The result array.
@@ -20,10 +18,10 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
     .. seealso:: :func:`numpy.sum`
 
     '''
-    return _sum(a, axis, dtype, out, keepdims, allocator)
+    return _sum(a, axis, dtype, out, keepdims)
 
 
-def prod(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
+def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     '''Returns the product of an array along given axes.
 
     Args:
@@ -33,8 +31,6 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
         out (cupy.ndarray): Output array.
         keepdims (bool): If True, the specified axes are remained as axes of
             length one.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: The result array.
@@ -42,30 +38,30 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False, allocator=None):
     .. seealso:: :func:`numpy.prod`
 
     '''
-    return _prod(a, axis, dtype, out, keepdims, allocator)
+    return _prod(a, axis, dtype, out, keepdims)
 
 
-def nansum(a, axis=None, dtype=None, out=None, keepdims=0, allocator=None):
+def nansum(a, axis=None, dtype=None, out=None, keepdims=0):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def cumprod(a, axis=None, dtype=None, out=None, allocator=None):
+def cumprod(a, axis=None, dtype=None, out=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def cumsum(a, axis=None, dtype=None, out=None, allocator=None):
+def cumsum(a, axis=None, dtype=None, out=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def diff(a, n=1, axis=-1, allocator=None):
+def diff(a, n=1, axis=-1):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def ediff1d(ary, to_end=None, to_begin=None, allocator=None):
+def ediff1d(ary, to_end=None, to_begin=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
@@ -75,7 +71,7 @@ def gradient(f, *varargs, **kwargs):
     raise NotImplementedError
 
 
-def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None, allocator=None):
+def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 

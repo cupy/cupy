@@ -14,8 +14,6 @@ def rand(*size, **kwarg):
         size (tuple of ints): The shape of the array.
         dtype: Data type specifier. Only float32 and float64 types are allowed.
             The default is float64.
-        allocator (function): CuPy memory allocator. :func:`cupy.cuda.alloc` is
-            used by default.
 
     Returns:
         cupy.ndarray: A random array.
@@ -24,11 +22,10 @@ def rand(*size, **kwarg):
 
     """
     dtype = kwarg.pop('dtype', float)
-    allocator = kwarg.pop('allocator', cuda.alloc)
     if kwarg:
         raise TypeError('rand() got unexpected keyward arguments %s'
                         % ', '.join(kwarg.keys()))
-    return random_sample(size=size, dtype=dtype, allocator=allocator)
+    return random_sample(size=size, dtype=dtype)
 
 
 def randn(*size, **kwarg):
@@ -42,8 +39,6 @@ def randn(*size, **kwarg):
         size (tuple of ints): The shape of the array.
         dtype: Data type specifier. Only float32 and float64 types are allowed.
             The default is float64.
-        allocator (function): CuPy memory allocator. :func:`cupy.cuda.alloc` is
-            used by default.
 
     Returns:
         cupy.ndarray: An array of standanr normal random values.
@@ -52,25 +47,23 @@ def randn(*size, **kwarg):
 
     """
     dtype = kwarg.pop('dtype', float)
-    allocator = kwarg.pop('allocator', cuda.alloc)
     if kwarg:
         raise TypeError('randn() got unexpected keyward arguments %s'
                         % ', '.join(kwarg.keys()))
-    return distributions.normal(size=size, dtype=dtype, allocator=allocator)
+    return distributions.normal(size=size, dtype=dtype)
 
 
-def randint(low, high=None, size=None, dtype=int, allocator=cuda.alloc):
+def randint(low, high=None, size=None, dtype=int):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def random_integers(low, high=None, size=None, dtype=int,
-                    allocator=cuda.alloc):
+def random_integers(low, high=None, size=None, dtype=int):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def random_sample(size=None, dtype=float, allocator=cuda.alloc):
+def random_sample(size=None, dtype=float):
     """Returns an array of random values over the interval ``[0, 1)``.
 
     This is a variant of :func:`cupy.random.rand`.
@@ -78,7 +71,6 @@ def random_sample(size=None, dtype=float, allocator=cuda.alloc):
     Args:
         size (int or tuple of ints): The shape of the array.
         dtype: Data type specifier. Only float32 and float64 types are allowed.
-        allocator (function): CuPy memory allocator.
 
     Returns:
         cupy.ndarray: An array of uniformly distributed random values.
@@ -87,9 +79,9 @@ def random_sample(size=None, dtype=float, allocator=cuda.alloc):
 
     """
     rs = generator.get_random_state()
-    return rs.random_sample(size=size, dtype=dtype, allocator=allocator)
+    return rs.random_sample(size=size, dtype=dtype)
 
 
-def choice(a, size=None, replace=True, p=None, allocator=None):
+def choice(a, size=None, replace=True, p=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError

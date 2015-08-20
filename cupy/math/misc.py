@@ -3,7 +3,7 @@ from cupy import elementwise
 _id = 'out0 = in0'
 
 
-def convolve(a, v, mode='full', allocator=None):
+def convolve(a, v, mode='full'):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
@@ -15,7 +15,7 @@ _clip = elementwise.create_ufunc(
     'out0 = min(in2, max(in1, in0))')
 
 
-def clip(a, a_min, a_max, out=None, allocator=None):
+def clip(a, a_min, a_max, out=None):
     '''Clips the values of an array to a given interval.
 
     This is equivalent to ``max(min(a, a_max), a_min)``, while this function is
@@ -26,8 +26,6 @@ def clip(a, a_min, a_max, out=None, allocator=None):
         a_min (scalar or cupy.ndarray): The left side of the interval.
         a_max (scalar or cupy.ndarray): The right side of the interval.
         out (cupy.ndarray): Output array.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: Clipped array.
@@ -35,7 +33,7 @@ def clip(a, a_min, a_max, out=None, allocator=None):
     .. seealso:: :func:`numpy.clip`
 
     '''
-    return _clip(a, a_min, a_max, out=out, allocator=allocator)
+    return _clip(a, a_min, a_max, out=out)
 
 
 sqrt = elementwise.create_ufunc(
@@ -176,16 +174,16 @@ fmin = elementwise.create_ufunc(
     ''')
 
 
-def nan_to_num(x, allocator=None):
+def nan_to_num(x):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def real_if_close(a, tol=100, allocator=None):
+def real_if_close(a, tol=100):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def interp(x, xp, fp, left=None, right=None, allocator=None):
+def interp(x, xp, fp, left=None, right=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError

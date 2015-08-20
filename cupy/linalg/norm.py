@@ -1,4 +1,4 @@
-def norm(x, ord=None, axis=None, allocator=None):
+def norm(x, ord=None, axis=None):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
@@ -8,7 +8,7 @@ def cond(x, p=None):
     raise NotImplementedError
 
 
-def det(a, allocator=None):
+def det(a):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
@@ -18,12 +18,12 @@ def matrix_rank(M, tol=None):
     raise NotImplementedError
 
 
-def slogdet(a, allocator=None):
+def slogdet(a):
     # TODO(beam2d): Implement it
     raise NotImplementedError
 
 
-def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None, allocator=None):
+def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     """Returns the sum along the diagonals of an array.
 
     It computes the sum along the diagonals at ``axis1`` and ``axis2``.
@@ -37,8 +37,6 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None, allocator=None):
         axis2 (int): The second axis along which the trace is taken.
         dtype: Data type specifier of the output.
         out (cupy.ndarray): Output array.
-        allocator (function): CuPy memory allocator. The allocator of ``a`` is
-            used by default.
 
     Returns:
         cupy.ndarray: The trace of ``a`` along axes ``(axis1, axis2)``.
@@ -47,4 +45,4 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None, allocator=None):
 
     """
     d = a.diagonal(offset, axis1, axis2)
-    return d.sum(-1, dtype, out, False, allocator)
+    return d.sum(-1, dtype, out, False)

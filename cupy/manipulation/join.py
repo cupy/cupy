@@ -4,7 +4,7 @@ import six
 import cupy
 
 
-def column_stack(tup, allocator=None):
+def column_stack(tup):
     """Stacks 1-D and 2-D arrays as columns into a 2-D array.
 
     A 1-D array is first converted to a 2-D column array. Then, the 2-D arrays
@@ -12,8 +12,6 @@ def column_stack(tup, allocator=None):
 
     Args:
         tup (sequence of arrays): 1-D or 2-D arrays to be stacked.
-        allocator (function): CuPy memory allocator. The allocator of the first
-            array is used by default.
 
     Returns:
         cupy.ndarray: A new 2-D array of stacked columns.
@@ -33,18 +31,16 @@ def column_stack(tup, allocator=None):
             raise ValueError(
                 'Only 1 or 2 dimensional arrays can be column stacked')
 
-    return concatenate(lst, axis=1, allocator=None)
+    return concatenate(lst, axis=1)
 
 
-def concatenate(tup, axis=0, allocator=None):
+def concatenate(tup, axis=0):
     """Joins arrays along an axis.
 
     Args:
         tup (sequence of arrays): Arrays to be joined. All of these should have
             same dimensionalities except the specified axis.
         axis (int): The axis to join arrays along.
-        allocator (function): CuPy memory allocator. The allocator of the first
-            array is used by default.
 
     Returns:
         cupy.ndarray: Joined array.
@@ -79,9 +75,7 @@ def concatenate(tup, axis=0, allocator=None):
         raise ValueError('Cannot concatenate from empty tuple')
 
     dtype = numpy.find_common_type([a.dtype for a in tup], [])
-    if allocator is None:
-        allocator = tup[0].allocator
-    ret = cupy.empty(shape, dtype=dtype, allocator=allocator)
+    ret = cupy.empty(shape, dtype=dtype)
 
     skip = (slice(None),) * axis
     i = 0
@@ -93,14 +87,12 @@ def concatenate(tup, axis=0, allocator=None):
     return ret
 
 
-def dstack(tup, allocator=None):
+def dstack(tup):
     """Stacks arrays along the third axis.
 
     Args:
         tup (sequence of arrays): Arrays to be stacked. Each array is converted
             by :func:`cupy.atleast_3d` before stacking.
-        allocator (function): CuPy memory allocator. The allocator of the first
-            array is used by default.
 
     Returns:
         cupy.ndarray: Stacked array.
@@ -108,10 +100,10 @@ def dstack(tup, allocator=None):
     .. seealso:: :func:`numpy.dstack`
 
     """
-    return concatenate(cupy.atleast_3d(*tup), 2, allocator)
+    return concatenate(cupy.atleast_3d(*tup), 2)
 
 
-def hstack(tup, allocator=None):
+def hstack(tup):
     """Stacks arrays horizontally.
 
     If an input array has one dimension, then the array is treated as a
@@ -120,8 +112,6 @@ def hstack(tup, allocator=None):
 
     Args:
         tup (sequence of arrays): Arrays to be stacked.
-        allocator (function): CuPy memory allocator. The allocator of the first
-            array is used by default.
 
     Returns:
         cupy.ndarray: Stacked array.
@@ -133,10 +123,10 @@ def hstack(tup, allocator=None):
     axis = 1
     if arrs[0].ndim == 1:
         axis = 0
-    return concatenate(tup, axis, allocator)
+    return concatenate(tup, axis)
 
 
-def vstack(tup, allocator=None):
+def vstack(tup):
     """Stacks arrays vertically.
 
     If an input array has one dimension, then the array is treated as a
@@ -146,8 +136,6 @@ def vstack(tup, allocator=None):
     Args:
         tup (sequence of arrays): Arrays to be stacked. Each array is converted
             by :func:`cupy.atleast_2d` before stacking.
-        allocator (function): CuPy memory allocator. The allocator of the first
-            array is used by default.
 
     Returns:
         cupy.ndarray: Stacked array.
@@ -155,7 +143,7 @@ def vstack(tup, allocator=None):
     .. seealso:: :func:`numpy.dstack`
 
     """
-    return concatenate(cupy.atleast_2d(*tup), 0, allocator)
+    return concatenate(cupy.atleast_2d(*tup), 0)
 
 
 def _get_positive_axis(ndim, axis):
