@@ -15,8 +15,8 @@ CuPy array allocation and copy
 .. note::
    As of v1.3.0, the following array construction wrappers are marked as
    deprecated. Use the corresponding functions of the :mod:`cupy` module
-   instead. The main difference of them is the default dtype is changed from
-   float32 to float64.
+   instead. The main difference of them is that the default dtype is changed
+   from float32 to float64.
 
    ============================= =========================
     Deprecated functions          Recommended functions
