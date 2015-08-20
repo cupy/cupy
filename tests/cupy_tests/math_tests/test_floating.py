@@ -13,16 +13,16 @@ class TestFloating(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary(self, name, xpy, dtype):
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a)
+    def check_unary(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_binary(self, name, xpy, dtype):
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a, b)
+    def check_binary(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a, b)
 
     def test_signbit(self):
         self.check_unary('signbit')
@@ -33,10 +33,10 @@ class TestFloating(unittest.TestCase):
     @testing.for_float_dtypes(name='ftype')
     @testing.for_dtypes(['i', 'l'], name='itype')
     @testing.numpy_cupy_allclose()
-    def test_ldexp(self, xpy, ftype, itype):
-        a = xpy.array([-3, -2, -1, 0, 1, 2, 3], dtype=ftype)
-        b = xpy.array([-3, -2, -1, 0, 1, 2, 3], dtype=itype)
-        return xpy.ldexp(a, b)
+    def test_ldexp(self, xp, ftype, itype):
+        a = xp.array([-3, -2, -1, 0, 1, 2, 3], dtype=ftype)
+        b = xp.array([-3, -2, -1, 0, 1, 2, 3], dtype=itype)
+        return xp.ldexp(a, b)
 
     @testing.for_float_dtypes()
     def test_frexp(self, dtype):

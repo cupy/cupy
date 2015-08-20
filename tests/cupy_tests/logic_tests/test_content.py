@@ -12,18 +12,18 @@ class TestContent(unittest.TestCase):
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_array_equal()
-    def check_unary_inf(self, name, xpy, dtype):
-        a = xpy.array([-3, dtype('inf'), -1, -dtype('inf'), 0, 1, 2],
+    def check_unary_inf(self, name, xp, dtype):
+        a = xp.array([-3, dtype('inf'), -1, -dtype('inf'), 0, 1, 2],
                       dtype=dtype)
-        return getattr(xpy, name)(a)
+        return getattr(xp, name)(a)
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_array_equal()
-    def check_unary_nan(self, name, xpy, dtype):
-        a = xpy.array(
+    def check_unary_nan(self, name, xp, dtype):
+        a = xp.array(
             [-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, dtype('inf')],
             dtype=dtype)
-        return getattr(xpy, name)(a)
+        return getattr(xp, name)(a)
 
     def test_isfinite(self):
         self.check_unary_inf('isfinite')

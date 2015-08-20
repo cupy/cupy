@@ -10,6 +10,6 @@ class TestNrom(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_trace(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4, 5), xpy, dtype)
+    def test_trace(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
         return a.trace(1, 3, 2)

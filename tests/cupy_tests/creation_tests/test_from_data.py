@@ -13,41 +13,41 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array(self, xpy, dtype):
-        return xpy.array([[1, 2, 3], [2, 3, 4]], dtype=dtype)
+    def test_array(self, xp, dtype):
+        return xp.array([[1, 2, 3], [2, 3, 4]], dtype=dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array_copy(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
-        return xpy.array(a)
+    def test_array_copy(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.array(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_array_copy_is_copied(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
-        b = xpy.array(a)
+    def test_array_copy_is_copied(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.array(a)
         a.fill(0)
         return b
 
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_array_equal()
-    def test_array_copy_with_dtype(self, xpy, dtype1, dtype2):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype1)
-        return xpy.array(a, dtype=dtype2)
+    def test_array_copy_with_dtype(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype1)
+        return xp.array(a, dtype=dtype2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_asarray(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
-        return xpy.asarray(a)
+    def test_asarray(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.asarray(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_asarray_is_not_copied(self, xpy, dtype):
-        a = testing.shaped_arange((2, 3, 4), xpy, dtype)
-        b = xpy.asarray(a)
+    def test_asarray_is_not_copied(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        b = xp.asarray(a)
         a.fill(0)
         return b
 
@@ -64,8 +64,8 @@ class TestFromData(unittest.TestCase):
         self.assertIs(a, b)
 
     @testing.numpy_cupy_array_equal()
-    def test_copy(self, xpy):
-        a = xpy.zeros((2, 3, 4), dtype=numpy.float32)
+    def test_copy(self, xp):
+        a = xp.zeros((2, 3, 4), dtype=numpy.float32)
         b = a.copy()
         a[1] = 1
         return b

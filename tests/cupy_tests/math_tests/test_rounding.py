@@ -10,15 +10,15 @@ class TestRounding(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary(self, name, xpy, dtype):
-        a = testing.shaped_arange((2, 3), xpy, dtype)
-        return getattr(xpy, name)(a)
+    def check_unary(self, name, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return getattr(xp, name)(a)
 
     @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_negative(self, name, xpy, dtype):
-        a = xpy.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
-        return getattr(xpy, name)(a)
+    def check_unary_negative(self, name, xp, dtype):
+        a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
+        return getattr(xp, name)(a)
 
     def test_rint(self):
         self.check_unary('rint')
