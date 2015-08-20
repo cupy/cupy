@@ -14,7 +14,7 @@ class TestContent(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def check_unary_inf(self, name, xp, dtype):
         a = xp.array([-3, dtype('inf'), -1, -dtype('inf'), 0, 1, 2],
-                      dtype=dtype)
+                     dtype=dtype)
         return getattr(xp, name)(a)
 
     @testing.for_float_dtypes()
