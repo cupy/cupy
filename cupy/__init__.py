@@ -1471,4 +1471,5 @@ def get_array_module(*args):
         return numpy
 
 
+clear_memo = util.clear_memo
 memoize = util.memoize
