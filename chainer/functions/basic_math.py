@@ -27,11 +27,11 @@ def _convert_value_to_string(value):
 def _check_constant_type(value):
     if numpy.isscalar(value):
         return
-    elif isinstance(value, (numpy.ndarray, cuda.GPUArray)):
+    elif isinstance(value, (numpy.ndarray, cuda.ndarray)):
         return
     else:
         raise ValueError(
-            'value must be float, ndarray, GPUArray, or Variable')
+            'value must be float, ndarray, or Variable')
 
 
 class Neg(function.Function):
@@ -526,23 +526,13 @@ class Cos(function.Function):
     def label(self):
         return 'cos'
 
-<<<<<<< HEAD
-    def forward(self, x):
-        xp = cuda.get_array_module(*x)
-        return utils.force_array(xp.cos(x[0])),
-=======
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         type_check.expect(in_types[0].dtype.kind == 'f')
 
-    def forward_cpu(self, x):
-        self.y = utils.force_array(numpy.cos(x[0]))
-        return self.y,
-
-    def forward_gpu(self, x):
-        y = cuda.cumath.cos(x[0])
-        return y,
->>>>>>> master
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.cos(x[0])),
 
     def backward_cpu(self, x, gy):
         gx = utils.force_array(numpy.sin(x[0]))
