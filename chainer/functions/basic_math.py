@@ -222,7 +222,7 @@ class MulConstant(function.Function):
         return utils.force_array(value * x[0]),
 
     def backward(self, x, gy):
-        value = utils.force_type(gy[0].dtype, self.value)
+        value = utils.force_type(x[0].dtype, self.value)
         return utils.force_array(value * gy[0]),
 
 
@@ -289,11 +289,11 @@ class DivFromConstant(function.Function):
         return utils.force_array(value / x[0]),
 
     def backward_cpu(self, x, gy):
-        value = utils.force_type(gy[0].dtype, self.value)
+        value = utils.force_type(x[0].dtype, self.value)
         return utils.force_array(-value * gy[0] / (x[0] ** 2)),
 
     def backward_gpu(self, x, gy):
-        value = utils.force_type(gy[0].dtype, self.value)
+        value = utils.force_type(x[0].dtype, self.value)
         gx = cuda.elementwise('T x, T gy, T value', 'T gx',
                               'gx = -value * gy / (x * x)',
                               'div_from_const_bwd')(x[0], gy[0], value)
@@ -400,11 +400,11 @@ class PowConstVar(function.Function):
         return self.y,
 
     def backward_cpu(self, x, gy):
-        value = utils.force_type(gy[0].dtype, self.value)
+        value = utils.force_type(x[0].dtype, self.value)
         return utils.force_array(numpy.log(value) * self.y * gy[0]),
 
     def backward_gpu(self, x, gy):
-        value = utils.force_type(gy[0].dtype, self.value)
+        value = utils.force_type(x[0].dtype, self.value)
         gx = cuda.elementwise(
             'T x, T gy, T value', 'T gx',
             'gx = log(value) * pow(value, x) * gy',
