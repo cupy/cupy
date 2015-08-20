@@ -1,13 +1,14 @@
+import ctypes
 import numpy
 
 from chainer import cuda
-from chainer import cudnn
 from chainer import function
 from chainer.utils import type_check
 
-if cudnn.available:
-    from chainer.cudnn import libcudnn
-    _mode = libcudnn.cudnnActivationMode['CUDNN_ACTIVATION_SIGMOID']
+if cuda.cudnn_enabled:
+    cudnn = cuda.cudnn
+    libcudnn = cudnn.cudnn
+    _mode = libcudnn.CUDNN_ACTIVATION_SIGMOID
 
 
 class Sigmoid(function.Function):
@@ -26,37 +27,38 @@ class Sigmoid(function.Function):
         return self.y,
 
     def forward_gpu(self, x):
-        self.y = cuda.empty_like(x[0])
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            desc = cudnn.get_tensor_desc(x[0], 1, 1)
-            libcudnn.cudnnActivationForward(
-                handle, _mode, 1, desc.value, cudnn.get_ptr(x[0]),
-                0, desc.value, cudnn.get_ptr(self.y))
+        if cuda.cudnn_enabled and self.use_cudnn:
+            self.y = cuda.empty_like(x[0])
+            handle = cudnn.get_handle()
+            x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
+            desc = cudnn.create_tensor_descriptor(x_mat)
+            libcudnn.activationForward(
+                handle, _mode, ctypes.c_float(1), desc.value, x_mat.data.ptr,
+                ctypes.c_float(0), desc.value, self.y.data.ptr)
         else:
-            cuda.elementwise(
-                'float* y, const float* x', 'y[i] = 1 / (1 + __expf(-x[i]))',
-                'sigmoid_fwd')(self.y, x[0])
+            self.y = cuda.elementwise(
+                'T x', 'T y', 'y = 1 / (1 + exp(-x))',
+                'sigmoid_fwd')(x[0])
         return self.y,
 
     def backward_cpu(self, x, gy):
         return gy[0] * self.y * (1 - self.y),
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        if cudnn.enabled and self.use_cudnn:
-            handle = cudnn.get_default_handle()
-            desc = cudnn.get_tensor_desc(self.y, 1, 1)
-            libcudnn.cudnnActivationBackward(
-                handle, _mode, 1, desc.value, cudnn.get_ptr(self.y),
-                desc.value, cudnn.get_ptr(
-                    gy[0]), desc.value, cudnn.get_ptr(x[0]),
-                0, desc.value, cudnn.get_ptr(gx))
+        if cuda.cudnn_enabled and self.use_cudnn:
+            gx = cuda.empty_like(x[0])
+            handle = cudnn.get_handle()
+            y_mat = self.y.reshape(self.y.shape[0], -1, 1, 1)
+            desc = cudnn.create_tensor_descriptor(y_mat)
+            libcudnn.activationBackward(
+                handle, _mode, ctypes.c_float(1), desc.value, y_mat.data.ptr,
+                desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
+                ctypes.c_float(0), desc.value, gx.data.ptr)
         else:
-            cuda.elementwise(
-                'float* gx, const float* y, const float* gy',
-                'gx[i] = gy[i] * y[i] * (1 - y[i])',
-                'sigmoid_bwd')(gx, self.y, gy[0])
+            gx = cuda.elementwise(
+                'T y, T gy', 'T gx',
+                'gx = gy * y * (1 - y)',
+                'sigmoid_bwd')(self.y, gy[0])
         return gx,
 
 

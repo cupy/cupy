@@ -5,6 +5,7 @@ This code is ported from following implementation written in Torch.
 https://github.com/tomsercu/lstm
 
 """
+from __future__ import print_function
 import argparse
 import math
 import sys
@@ -23,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
-mod = cuda if args.gpu >= 0 else np
+xp = cuda.cupy if args.gpu >= 0 else np
 
 n_epoch = 39   # number of epochs
 n_units = 650  # number of units per layer
@@ -60,16 +61,12 @@ model = chainer.FunctionSet(embed=F.EmbedID(len(vocab), n_units),
 for param in model.parameters:
     param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 if args.gpu >= 0:
-    cuda.init(args.gpu)
+    cuda.get_device(args.gpu).use()
     model.to_gpu()
-
-# Neural net architecture
 
 
 def forward_one_step(x_data, y_data, state, train=True):
-    if args.gpu >= 0:
-        x_data = cuda.to_gpu(x_data)
-        y_data = cuda.to_gpu(y_data)
+    # Neural net architecture
     x = chainer.Variable(x_data, volatile=not train)
     t = chainer.Variable(y_data, volatile=not train)
     h0 = model.embed(x)
@@ -83,8 +80,8 @@ def forward_one_step(x_data, y_data, state, train=True):
 
 
 def make_initial_state(batchsize=batchsize, train=True):
-    return {name: chainer.Variable(mod.zeros((batchsize, n_units),
-                                             dtype=np.float32),
+    return {name: chainer.Variable(xp.zeros((batchsize, n_units),
+                                            dtype=np.float32),
                                    volatile=not train)
             for name in ('c1', 'h1', 'c2', 'h2')}
 
@@ -92,34 +89,36 @@ def make_initial_state(batchsize=batchsize, train=True):
 optimizer = optimizers.SGD(lr=1.)
 optimizer.setup(model)
 
+
 # Evaluation routine
 
 
 def evaluate(dataset):
-    sum_log_perp = mod.zeros(())
+    sum_log_perp = xp.zeros(())
     state = make_initial_state(batchsize=1, train=False)
     for i in six.moves.range(dataset.size - 1):
-        x_batch = dataset[i:i + 1]
-        y_batch = dataset[i + 1:i + 2]
+        x_batch = xp.asarray(dataset[i:i + 1])
+        y_batch = xp.asarray(dataset[i + 1:i + 2])
         state, loss = forward_one_step(x_batch, y_batch, state, train=False)
         sum_log_perp += loss.data.reshape(())
 
     return math.exp(cuda.to_cpu(sum_log_perp) / (dataset.size - 1))
 
+
 # Learning loop
 whole_len = train_data.shape[0]
 jump = whole_len // batchsize
-cur_log_perp = mod.zeros(())
+cur_log_perp = xp.zeros(())
 epoch = 0
 start_at = time.time()
 cur_at = start_at
 state = make_initial_state()
-accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
+accum_loss = chainer.Variable(xp.zeros((), dtype=np.float32))
 print('going to train {} iterations'.format(jump * n_epoch))
 for i in six.moves.range(jump * n_epoch):
-    x_batch = np.array([train_data[(jump * j + i) % whole_len]
+    x_batch = xp.array([train_data[(jump * j + i) % whole_len]
                         for j in six.moves.range(batchsize)])
-    y_batch = np.array([train_data[(jump * j + i + 1) % whole_len]
+    y_batch = xp.array([train_data[(jump * j + i + 1) % whole_len]
                         for j in six.moves.range(batchsize)])
     state, loss_i = forward_one_step(x_batch, y_batch, state)
     accum_loss += loss_i
@@ -129,7 +128,7 @@ for i in six.moves.range(jump * n_epoch):
         optimizer.zero_grads()
         accum_loss.backward()
         accum_loss.unchain_backward()  # truncate
-        accum_loss = chainer.Variable(mod.zeros((), dtype=np.float32))
+        accum_loss = chainer.Variable(xp.zeros((), dtype=np.float32))
 
         optimizer.clip_grads(grad_clip)
         optimizer.update()

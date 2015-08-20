@@ -42,16 +42,8 @@ class EmbedID(function.Function):
             x_type.ndim == 1,
         )
 
-    def forward_cpu(self, x):
-        return self.W[x[0]],
-
-    def forward_gpu(self, x):
-        y = cuda.empty((x[0].size, self.W.shape[1]), dtype=numpy.float32)
-        cuda.elementwise(
-            'float* y, const float* W, const int* x, int n_out',
-            'y[i] = W[x[i / n_out] * n_out + i % n_out]',
-            'embed_id_fwd')(y, self.W, x[0], self.W.shape[1])
-        return y,
+    def forward(self, x):
+        return self.W.take(x[0], axis=0),
 
     def backward_cpu(self, x, gy):
         numpy.add.at(self.gW, x[0], gy[0])
@@ -59,7 +51,8 @@ class EmbedID(function.Function):
 
     def backward_gpu(self, x, gy):
         cuda.elementwise(
-            'const float* gy, float* gW, const int* x, int n_out',
-            'atomicAdd(gW + x[i / n_out] * n_out + i % n_out, gy[i])',
-            'embed_id_bwd')(gy[0], self.gW, x[0], self.gW.shape[1])
+            'T gy, int32 x, int32 n_out', 'raw T gW',
+            'atomicAdd(&gW[x * n_out + i % n_out], gy)',
+            'embed_id_bwd')(
+                gy[0], x[0][:, numpy.newaxis], self.gW.shape[1], self.gW)
         return None,

@@ -8,9 +8,8 @@ from chainer.utils import type_check
 
 def _fwd_kern():
     return cuda.elementwise(
-        '''float* y, const float* x, const float* cond, const float* W,
-           int cdim, int rdim''',
-        'y[i] = cond[i] >= 0 ? x[i] : x[i] * W[i / rdim % cdim]', 'prelu')
+        'T x, T cond, T W', 'T y',
+        'y = cond >= 0 ? x : x * W', 'prelu')
 
 
 class PReLU(function.Function):
@@ -62,10 +61,8 @@ class PReLU(function.Function):
         return y,
 
     def forward_gpu(self, x):
-        cdim = self.W.size
-        rdim = x[0].size // (x[0].shape[0] * cdim)
-        y = cuda.empty_like(x[0])
-        _fwd_kern()(y, x[0], x[0], self.W, cdim, rdim)
+        shape = self._get_extended_shape_W(x[0])
+        y = _fwd_kern()(x[0], x[0], self.W.reshape(shape))
         return y,
 
     def backward_cpu(self, x, gy):
@@ -82,23 +79,16 @@ class PReLU(function.Function):
         return gx,
 
     def backward_gpu(self, x, gy):
-        ldim = x[0].shape[0]
-        cdim = self.W.size
-        rdim = x[0].size // (ldim * cdim)
-
-        masked = cuda.empty_like(x[0])
-        cuda.elementwise('float* masked, const float* x, const float* gy',
-                         'masked[i] = x[i] >= 0 ? 0 : x[i] * gy[i]',
-                         'prelu_masked')(masked, x[0], gy[0])
-
-        with cuda.using_cumisc():
-            rsum = cuda.cumisc.sum(masked.reshape(ldim * cdim, rdim), axis=1)
-            gW = cuda.cumisc.sum(rsum.reshape(ldim, cdim), axis=0)
-            self.gW += gW.reshape(self.gW.shape)
-            del rsum, gW
+        masked = cuda.elementwise(
+            'T x, T gy', 'T masked',
+            'masked = x >= 0 ? 0 : x * gy',
+            'prelu_masked')(x[0], gy[0])
+        axes = (0,) + tuple(six.moves.range(1 + len(self.W.shape), gy[0].ndim))
+        self.gW += masked.sum(axis=axes)
 
         gx = masked  # reuse buffer
-        _fwd_kern()(gx, gy[0], x[0], self.W, cdim, rdim)
+        shape = self._get_extended_shape_W(gx)
+        _fwd_kern()(gy[0], x[0], self.W.reshape(shape), gx)
         return gx,
 
     def _get_extended_shape_W(self, x):

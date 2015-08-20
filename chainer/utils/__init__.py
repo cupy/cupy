@@ -11,7 +11,7 @@ def force_array(x):
     # We need to convert such a value to a 0-dimension array because `Function`
     # object needs to return an `numpy.ndarray`.
     if numpy.isscalar(x):
-        return numpy.array(x, x.dtype)
+        return numpy.array(x)
     else:
         return x
 

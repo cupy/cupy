@@ -10,8 +10,8 @@ class Variable(object):
 
     """Array with a structure to keep track of computation.
 
-    Every variable holds a data array of type either :class:`~numpy.ndarray` or
-    :class:`~pycuda.gpuarray.GPUArray`.
+    Every variable holds a data array of type either :class:`numpy.ndarray` or
+    :class:`cupy.ndarray`.
 
     A Variable object may be constructed in two ways: by the user or by some
     function. When a variable is created by some function as one of its
@@ -27,8 +27,8 @@ class Variable(object):
     acts like unchaining on every function application.
 
     Attributes:
-        data: Data array of type either :class:`~numpy.ndarray` or
-            :class:`~pycuda.gpuarray.GPUArray`.
+        data: Data array of type either :class:`numpy.ndarray` or
+            :class:`cupy.ndarray`.
 
         grad: Gradient array. It is ``None`` until backprop reaches this
             variable.
@@ -45,21 +45,13 @@ class Variable(object):
         """Initializes a variable.
 
         Args:
-            data (:class:`~numpy.ndarray` or \
-                :class:`~pycuda.gpuarray.GPUArray`):
+            data (:class:`numpy.ndarray` or :class:`cupy.ndarray`):
                 Data array that this variable holds.
             volatile (bool): Volatility flag. If it is True, the variable will
                 not keep track of any function applications.
 
-        .. warning::
-
-           If the data array is of type :class:`~pycuda.gpuarray.GPUArray`, its
-           allocator must be :func:`chainer.cuda.mem_alloc`, which allocates
-           device memory using device-wise memory pool. All functions of
-           :mod:`cuda` automatically uses this allocator.
-
         """
-        assert isinstance(data, (numpy.ndarray, cuda.GPUArray))
+        assert isinstance(data, (numpy.ndarray, cuda.ndarray))
         assert isinstance(volatile, bool)
 
         self.data = data
@@ -141,7 +133,7 @@ https://github.com/pfnet/chainer/issues/new.
         This method uses :data:`grad` as the initial error array. User can
         manually set a gradient array before calling this method. If
         :data:`data` contains only one element (i.e., it is scalar) and
-        :data:`grad` is None, then this method automatically complement 1.0 as
+        :data:`grad` is None, then this method automatically complements 1.0 as
         the initial error. This is useful on starting backprop from some scalar
         loss value.
 
@@ -164,11 +156,11 @@ https://github.com/pfnet/chainer/issues/new.
 
         # Initilize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
-            with cuda.using_device(self.data) as user:
-                if user.is_active:
-                    self.grad = cuda.ones_like(self.data)
-                else:
+            with cuda.get_device(self.data) as device:
+                if device is cuda.DummyDevice:
                     self.grad = numpy.ones_like(self.data)
+                else:
+                    self.grad = cuda.cupy.ones_like(self.data)
 
         def add_cand(cand):
             if cand is not None and cand not in seen_set:
@@ -184,7 +176,7 @@ https://github.com/pfnet/chainer/issues/new.
 
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
-            with cuda.using_device(*(in_data + out_grad)):
+            with cuda.get_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
 

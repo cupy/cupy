@@ -7,8 +7,8 @@ from chainer.utils import type_check
 
 def _kern():
     return cuda.elementwise(
-        'float* y, const float* cond, const float* x, float slope',
-        'y[i] = cond[i] >= 0 ? x[i] : slope * x[i]', 'lrelu')
+        'T cond, T x, T slope', 'T y',
+        'y = cond >= 0 ? x : slope * x', 'lrelu')
 
 
 class LeakyReLU(function.Function):
@@ -31,8 +31,7 @@ class LeakyReLU(function.Function):
         return y,
 
     def forward_gpu(self, x):
-        y = cuda.empty_like(x[0])
-        _kern()(y, x[0], x[0], self.slope)
+        y = _kern()(x[0], x[0], self.slope)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -41,8 +40,7 @@ class LeakyReLU(function.Function):
         return gx,
 
     def backward_gpu(self, x, gy):
-        gx = cuda.empty_like(x[0])
-        _kern()(gx, x[0], gy[0], self.slope)
+        gx = _kern()(x[0], gy[0], self.slope)
         return gx,
 
 

@@ -107,13 +107,13 @@ class Function(object):
 
         Basic behavior is also expressed in documentation of :class:`Function`
         class. This function first copies itself to avoid conflict over
-        multiple invokations.
+        multiple invocations.
 
         .. note::
 
            If the :data:`~Variable.data` attribute of input variables reside on
            GPU device, then, before it calls :meth:`forward` method, the
-           appropriate device is selected, so in most cases implementor does
+           appropriate device is selected, so in most cases implementers do
            not need to take care of device selection.
 
         Args:
@@ -135,7 +135,7 @@ class Function(object):
 
             in_data = tuple(x.data for x in inputs)
             self._check_data_type_forward(in_data)
-            with cuda.using_device(*in_data):
+            with cuda.get_device(*in_data):
                 out_data = self.forward(in_data)
             assert type(out_data) == tuple
 
@@ -162,7 +162,7 @@ class Function(object):
 
         in_data = tuple(x.data for x in self.inputs)
         self._check_data_type_forward(in_data)
-        with cuda.using_device(*in_data):
+        with cuda.get_device(*in_data):
             outputs = self.forward(in_data)
         assert type(outputs) == tuple
 
@@ -224,7 +224,7 @@ class Function(object):
             return value must be a tuple even if it returns only one array.
 
         """
-        if any(isinstance(x, cuda.GPUArray) for x in inputs):
+        if any(isinstance(x, cuda.ndarray) for x in inputs):
             return self.forward_gpu(inputs)
         else:
             return self.forward_cpu(inputs)
@@ -233,10 +233,10 @@ class Function(object):
         """Applies forward propagation to input arrays on CPU.
 
         Args:
-            inputs: Tuple of :class:`~numpy.ndarray` object(s).
+            inputs: Tuple of :class:`numpy.ndarray` object(s).
 
         Returns:
-            tuple: Tuple of :class:`~numpy.ndarray` object(s).
+            tuple: Tuple of :class:`numpy.ndarray` object(s).
 
         .. warning::
 
@@ -250,10 +250,10 @@ class Function(object):
         """Applies forward propagation to input arrays on GPU.
 
         Args:
-            inputs: Tuple of :class:`~pycuda.gpuarray.GPUArray` object(s).
+            inputs: Tuple of :class:`cupy.ndarray` object(s).
 
         Returns:
-            tuple: Tuple of :class:`~pycuda.gpuarray.GPUArray` object(s).
+            tuple: Tuple of :class:`cupy.ndarray` object(s).
 
         .. warning::
 
@@ -287,7 +287,7 @@ class Function(object):
             return value must be a tuple even if it returns only one array.
 
         """
-        if any(isinstance(x, cuda.GPUArray) for x in inputs + grad_outputs):
+        if any(isinstance(x, cuda.ndarray) for x in inputs + grad_outputs):
             return self.backward_gpu(inputs, grad_outputs)
         else:
             return self.backward_cpu(inputs, grad_outputs)
@@ -296,12 +296,12 @@ class Function(object):
         """Applies backprop to output gradient arrays on CPU.
 
         Args:
-            inputs: Tuple of input :class:`~numpy.ndarray` object(s).
-            grad_outputs: Tuple of output gradient :class:`~numpy.ndarray`
+            inputs: Tuple of input :class:`numpy.ndarray` object(s).
+            grad_outputs: Tuple of output gradient :class:`numpy.ndarray`
                 object(s).
 
         Returns:
-            tuple: Tuple of input gradient :class:`~numpy.ndarray` object(s).
+            tuple: Tuple of input gradient :class:`numpy.ndarray` object(s).
             Some or all of them can be ``None``, if the function is not
             differentiable on corresponding inputs.
 
@@ -317,13 +317,13 @@ class Function(object):
         """Applies backprop to output gradient arrays on GPU.
 
         Args:
-            inputs: Tuple of input :class:`~pycuda.gpuarray.GPUArray`
+            inputs: Tuple of input :class:`cupy.ndarray`
                 object(s).
             grad_outputs: Tuple of output gradient
-                :class:`~pycuda.gpuarray.GPUArray` object(s).
+                :class:`cupy.ndarray` object(s).
 
         Returns:
-            tuple: Tuple of input gradient :class:`~pycuda.gpuarray.GPUArray`
+            tuple: Tuple of input gradient :class:`cupy.ndarray`
             object(s). Some or all of them can be ``None``, if the function is
             not differentiable on corresponding inputs.
 
@@ -353,10 +353,10 @@ class Function(object):
         """Migrates the function to GPU and returns self.
 
         The default implementation moves all fields of type
-        :class:`~numpy.ndarray` onto GPU.
+        :class:`numpy.ndarray` onto GPU.
 
         Args:
-            device (int or :class:`pycuda.driver.Device` or ``None``): Device
+            device (int or :class:`cupy.cuda.Device` or ``None``): Device
                 ID of GPU that the function will be migrated on. If this is
                 ``None``, the current device is used.
 
@@ -364,28 +364,25 @@ class Function(object):
             self.
 
         """
-        with cuda.using_device(device):
+        with cuda.get_device(device):
             for k, v in six.iteritems(self.__dict__):
                 if isinstance(v, numpy.ndarray):
-                    setattr(self, k, cuda.to_gpu(v))
-                elif (isinstance(v, cuda.GPUArray) and
-                      v.gpudata.device != device):
-                    setattr(self, k, cuda.copy(v, out_device=device))
+                    setattr(self, k, cuda.cupy.array(v))
         return self
 
     def to_cpu(self):
         """Migrates the function to CPU and returns self.
 
         The default implementation moves all fields of type
-        :class:`pycuda.gpuarray.GPUArray` onto CPU.
+        :class:`cupy.ndarray` onto CPU.
 
         Returns:
             self.
 
         """
         for k, v in six.iteritems(self.__dict__):
-            if isinstance(v, cuda.GPUArray):
-                setattr(self, k, cuda.to_cpu(v))
+            if isinstance(v, cuda.ndarray):
+                setattr(self, k, v.get())
         return self
 
     @property
@@ -449,20 +446,11 @@ class Split(Function):
 
         gx = None
         grad_outputs = [gy for gy in grad_outputs if gy is not None]
-        device_changed = False
-        try:
+        with cuda.get_device(*grad_outputs):
             for gy in grad_outputs:
-                if gx is not None:
-                    gx += gy
-                elif isinstance(gy, cuda.GPUArray):
-                    # it affects to above +=, too
-                    cuda.use_device(gy, pop=False)
-                    device_changed = True
-                    gx = cuda.copy_async(gy)
-                else:
+                if gx is None:
                     gx = gy.copy()
-        finally:
-            if device_changed:
-                cuda.Context.pop()
+                else:
+                    gx += gy
 
         return gx,

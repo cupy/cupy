@@ -9,7 +9,7 @@ class WalkerAlias(object):
     This method generates a random sample from given probabilities
     :math:`p_1, \dots, p_n` in :math:`O(1)` time.
     It is more efficient than :func:`~numpy.random.choice`.
-    This class has sampling methods in CPU and in GPU.
+    This class works on both CPU and GPU.
 
     Args:
         probs (float list): Probabilities of entries. They are normalized with
@@ -18,7 +18,6 @@ class WalkerAlias(object):
     See: `Wikipedia article <https://en.wikipedia.org/wiki/Alias_method>`_
 
     """
-
     def __init__(self, probs):
         prob = numpy.array(probs, numpy.float32)
         prob /= numpy.sum(prob)
@@ -71,8 +70,9 @@ class WalkerAlias(object):
 
         Returns:
             Returns a generated array with the given shape. If a sampler is in
-            CPU mode the return value is :class:`~numpy.ndarray`, and if it is
-            in GPU mode the return value is :class:`~pycuda.gpuarray.GPUArray`.
+            CPU mode the return value is a :class:`numpy.ndarray` object, and
+            if it is in GPU mode the return value is a :class:`cupy.ndarray`
+            object.
         """
         if self.use_gpu:
             return self.sample_gpu(shape)
@@ -87,22 +87,20 @@ class WalkerAlias(object):
         return self.values[index * 2 + left_right]
 
     def sample_gpu(self, shape):
-        ps = cuda.empty(shape, numpy.float32)
-        cuda.get_generator().fill_uniform(ps)
-        vs = cuda.empty(shape, numpy.int32)
-        cuda.elementwise(
-            '''int* vs, const float* ps, const float* threshold,
-            const int* values, int b''',
+        ps = cuda.cupy.random.uniform(size=shape, dtype=numpy.float32)
+        vs = cuda.elementwise(
+            'T ps, raw T threshold , raw S values, int32 b',
+            'int32 vs',
             '''
-            float pb = ps[i] * b;
+            T pb = ps * b;
             int index = __float2int_rd(pb);
             // fill_uniform sometimes returns 1.0, so we need to check index
             if (index >= b) {
               index = 0;
             }
             int lr = threshold[index] < pb - index;
-            vs[i] = values[index * 2 + lr];
+            vs = values[index * 2 + lr];
             ''',
             'walker_alias_sample'
-        )(vs, ps, self.threshold, self.values, len(self.threshold))
+        )(ps, self.threshold, self.values, len(self.threshold))
         return vs

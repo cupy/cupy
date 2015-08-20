@@ -65,7 +65,7 @@ class Linear(function.Function):
             self.W = numpy.random.normal(
                 0, wscale * math.sqrt(1. / in_size),
                 (out_size, in_size)).astype(numpy.float32)
-        if isinstance(self.W, cuda.GPUArray):
+        if isinstance(self.W, cuda.ndarray):
             self.gW = cuda.empty_like(self.W)
         else:
             self.gW = numpy.empty_like(self.W)
@@ -77,7 +77,7 @@ class Linear(function.Function):
             self.b = numpy.repeat(numpy.float32(bias), out_size)
 
         if self.b is not None:
-            if isinstance(self.b, cuda.GPUArray):
+            if isinstance(self.b, cuda.ndarray):
                 self.gb = cuda.empty_like(self.b)
             else:
                 self.gb = numpy.empty_like(self.b)
@@ -110,38 +110,16 @@ class Linear(function.Function):
         if self.gb is not None:
             self.gb.fill(0)
 
-    def forward_cpu(self, x):
+    def forward(self, x):
         x = _as_mat(x[0])
         Wx = x.dot(self.W.T)
         if self.b is not None:
             Wx += self.b
         return Wx,
 
-    def forward_gpu(self, x):
-        x = _as_mat(x[0])
-        y = cuda.empty((x.shape[0], self.W.shape[0]), dtype=x.dtype)
-        with cuda.using_cumisc():
-            cuda.culinalg.dot(x, self.W, transb='T', out=y)
-        if self.b is not None:
-            cuda.elementwise(
-                'float* y, float* b, int n_channel',
-                'y[i] += b[i % n_channel]',
-                'linear_bias')(y, self.b, self.b.size)
-        return y,
-
-    def backward_cpu(self, x, gy):
+    def backward(self, x, gy):
         _x = _as_mat(x[0])
         self.gW += gy[0].T.dot(_x)
         if self.gb is not None:
             self.gb += gy[0].sum(0)
         return gy[0].dot(self.W).reshape(x[0].shape),
-
-    def backward_gpu(self, x, gy):
-        _x = _as_mat(x[0])
-        gx = cuda.empty_like(_x)
-        with cuda.using_cumisc():
-            cuda.culinalg.add_dot(gy[0], _x, self.gW, transa='T')
-            if self.gb is not None:
-                self.gb += cuda.cumisc.sum(gy[0], 0)
-            cuda.culinalg.dot(gy[0], self.W, out=gx)
-        return gx.reshape(x[0].shape),

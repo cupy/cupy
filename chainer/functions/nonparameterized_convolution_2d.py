@@ -60,7 +60,7 @@ class NonparameterizedConvolution2D(function.Function):
             stride=self.stride, pad=self.pad, use_cudnn=self.use_cudnn,
             initialW=W, initial_bias=b)
         self.func = func
-        if any(isinstance(i, cuda.GPUArray) for i in x):
+        if any(isinstance(i, cuda.ndarray) for i in x):
             func.to_gpu()
         return func.forward(x[:1])
 

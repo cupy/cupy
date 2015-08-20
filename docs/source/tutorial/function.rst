@@ -61,7 +61,7 @@ MulAdd is simple and implemented as follows::
 
       def backward_cpu(self, inputs, grad_outputs):
           x, y, z = inputs
-          gw      = grad_outputs[0]
+          gw, = grad_outputs
 
           gx = y * gw
           gy = x * gw
@@ -96,15 +96,15 @@ You can easily predict that the methods we have to write are named :meth:`~Funct
 
       def backward_gpu(self, inputs, grad_outputs):
           x, y, z = inputs
-          gw      = grad_outputs[0]
+          gw, = grad_outputs
 
           gx = y * gw
           gy = x * gw
           gz = gw
           return gx, gy, gz
 
-In GPU methods, arrays are of type :class:`pycuda.gpuarray.GPUArray`
-We use arithmetic operators defined for GPUArray.
+In GPU methods, arrays are of type :class:`cupy.ndarray`.
+We use arithmetic operators defined for this class.
 These operators implement the basic elementwise arithmetics.
 
 You maybe find that the definitions of GPU methods are exactly same as those of CPU methods.
@@ -118,25 +118,100 @@ In that case, we can reduce them to :meth:`~Function.forward` and :meth:`~Functi
 
       def backward(self, inputs, grad_outputs):
           x, y, z = inputs
-          gw      = grad_outputs[0]
+          gw, = grad_outputs
 
           gx = y * gw
           gy = x * gw
           gz = gw
           return gx, gy, gz
 
-Note that this is a very rare case, since GPUArray does not implement most features of :class:`numpy.ndarray`.
+Since the :class:`cupy.ndarray` class implements many methods of :class:`numpy.ndarray`, we can write these unified methods in most cases.
+
+
+Unified forward/backward methods with NumPy/CuPy functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CuPy also implements many functions that are compatible to those of NumPy.
+We can write unified forward/backward methods with them.
+Consider that we want to write a backprop-able function :math:`f(x, y) = \exp(x) + \exp(y)`.
+We name it *ExpAdd* here.
+It can be written straight-forward as follows::
+
+  class ExpAdd(Function):
+      def forward_cpu(self, inputs):
+          x, y = inputs
+          z = numpy.exp(x) + numpy.exp(y)
+          return z,
+
+      def backward_cpu(self, inputs, grad_outputs):
+          x, y = inputs
+          gz, = grad_outputs
+
+          gx = gz * numpy.exp(x)
+          gy = gz * numpy.exp(y)
+          return gx, gy
+
+      def forward_gpu(self, inputs):
+          cupy = cuda.cupy
+          x, y = inputs
+          z = cupy.exp(x) + cupy.exp(y)
+          return z,
+
+      def backward_gpu(self, inputs, grad_outputs):
+          cupy = cuda.cupy
+          x, y = inputs
+          gz, = grad_outputs
+
+          gx = gz * cupy.exp(x)
+          gy = gz * cupy.exp(y)
+          return gx, gy
+
+.. note::
+   Here we used ``cuda.cupy`` instead of directly accessing :mod:`cupy`.
+   This is because the ``cupy`` module cannot be imported if the CUDA is not installed.
+   In order to keep the implementation valid in non-CUDA environment, we have to defer the access to the ``cupy`` module.
+   Note that the :mod:`chainer.cuda` module can be imported even if the CUDA is not installed.
+   Of course, the module in such environment is almost useless, but if the interpreter does not run through the code accessing CUDA-dedicated functions, the code is still valid.
+
+The CPU and GPU implementations are almost same, except that :mod:`numpy` is replaced by :mod:`cupy` in GPU methods.
+We can unify these functions using the :func:`cuda.get_array_module` function.
+This function accepts arbitrary number of arrays, and returns an appropriate module for them.
+See the following code::
+
+  class ExpAdd(Function):
+      def forward(self, inputs):
+          xp = cuda.get_array_module(*inputs)
+          x, y = inputs
+          z = xp.exp(x) + xp.exp(y)
+          return z,
+
+      def backward(self, inputs, grad_outputs):
+          xp = cuda.get_array_module(*inputs)
+          x, y = inputs
+          gz, = grad_outputs
+
+          gx = gz * xp.exp(x)
+          gy = gz * xp.exp(y)
+          return gx, gy
+
+Note that this code works correctly even if CUDA is not installed in the environment.
+If CUDA is not found, get_array_module function always returns :mod:`numpy`.
+We often use the name ``xp`` for the variadic module name, which is analogous to the abbreviation ``np`` for NumPy and ``cp`` for CuPy.
 
 
 Write an Elementwise Kernel Function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Let's turn back to the MulAdd example.
+
 The GPU implementation of MulAdd as shown above is already fast and parallelized on GPU cores.
-However, it invokes two kernels during each of forward and backward computations, which may hurt performance.
+However, it invokes two kernels during each of forward and backward computations.
+It might hurt performance, since the intermediate temporary arrays are read and written by possibly different GPU cores, which consumes much bandwidth.
 We can reduce the number of invocations by defining our own kernel.
+It also reduce the memory consumption.
 
 Most functions only require elementwise operations like MulAdd.
-PyCUDA provides a useful tool to define elementwise kernels, the :class:`pycuda.elementwise.ElementwiseKernel` class, and Chainer wraps it by :func:`cuda.elementwise` function.
+CuPy provides a useful tool to define elementwise kernels, the :class:`cupy.elementwise.ElementwiseKernel` class, and Chainer wraps it by :func:`cuda.elementwise` function.
 Our MulAdd implementation can be improved as follows::
 
   class MulAdd(Function):
@@ -147,48 +222,90 @@ Our MulAdd implementation can be improved as follows::
           ...
 
       def forward_gpu(self, inputs):
+          cupy = cuda.cupy
           x, y, z = inputs
-          w = cuda.empty_like(x)
-          cuda.elementwise(
-              'float* w, const float* x, const float* y, const float* z',
-              'w[i] = x[i] * y[i] + z[i]',
-              'muladd_fwd')(w, x, y, z)
+          w = cuda.elementwise(
+              'float32 x, float32 y, float32 z',
+              'float32 w',
+              'w = x * y + z',
+              'muladd_fwd')(x, y, z)
           return w,
 
       def backward_gpu(self, inputs, grad_outputs):
           x, y, z = inputs
-          gw      = grad_outputs[0]
+          gw, = grad_outputs
 
-          gx = cuda.empty_like(x)
-          gy = cuda.empty_like(y)
-          cuda.elementwise(
+          gx, gy = cuda.elementwise(
+              'float32 x, float32 y, float32 gw',
+              'float32 gx, float32 gy',
               '''
-                 float* gx, float* gy,
-                 const float* x, const float* y, const float* gw
-              ''', '''
-                 gx[i] = gy[i] * gw[i];
-                 gy[i] = gx[i] * gw[i];
-              ''', 'muladd_bwd')(gx, gy, x, y, gw)
+                 gx = gy * gw;
+                 gy = gx * gw;
+              ''',
+              'muladd_bwd')(x, y, gw)
 
-          gz = gw  # no copy
+          gz = gw
           return gx, gy, gz
 
-:func:`cuda.elementwise` function accepts the essential implentation of the kernel function, and returns a kernel invokation function (actually, it returns :class:`~pycuda.elementwise.ElementwiseKernel` object, which is callable).
-In typical usage, we pass three arguments to this function.
-The first is an argument list of the kernel function.
-The second is a body of *parallel loop*, where the variable ``i`` indicates the index in the loop.
-Note that ``i`` runs through all indexes of the first array argument by default.
-The third is the name of the kernel function, which is shown in debugger and profilers.
+:func:`cuda.elementwise` function accepts the essential implementation of the kernel function, and returns a kernel invokation function (actually, it returns :class:`~cupy.elementwise.ElementwiseKernel` object, which is callable).
+In typical usage, we pass four arguments to this function as follows:
+
+1. Input argument list. This is a comma-separated string each entry of which consists of a type specification and an argument name.
+2. Output argument list in the same format as the input argument list.
+3. Body of *parallel loop*. We can use the input/output argument names as an element of these arrays.
+4. Name of the kernel function, which is shown in debuggers and profilers.
 
 Above code is not compiled on every forward/backward computation thanks to two caching mechanisms provided by :func:`cuda.elementwise`.
 
 The first one is *binary caching*:
-:func:`cuda.elementwise` function caches the compiled binary in the ``/tmp`` directory with a hash value of the CUDA code, and reuses it if the given code matches the hash value.
-This caching mechanism is actually implemented in PyCUDA.
+:func:`cuda.elementwise` function caches the compiled binary in the ``$(HOME)/.cupy/kernel_cache`` directory with a hash value of the CUDA code, and reuses it if the given code matches the hash value.
+This caching mechanism is actually implemented in CuPy.
 
 The second one is *upload caching*:
 Given a compiled binary code, we have to upload it to the current GPU in order to execute it.
-:func:`cuda.elementwise` function memoizes the arguments and the curent context, and if it is called with the same arguments and the same context, it reuses the previously uploaded kernel code.
+:func:`cuda.elementwise` function memoizes the arguments and the curent device, and if it is called with the same arguments for the same device, it reuses the previously uploaded kernel code.
+
+The above MulAdd code only works for float32 arrays.
+The :class:`~cupy.elementwise.ElementwiseKernel` also supports the type-variadic kernel definition.
+In order to define variadic kernel functions, you can use *type placeholder* by placing a single character as type specifier::
+
+  class MulAdd(Function):
+      def forward_cpu(self, inputs):
+          ...
+
+      def backward_cpu(self, inputs, grad_outputs):
+          ...
+
+      def forward_gpu(self, inputs):
+          cupy = cuda.cupy
+          x, y, z = inputs
+          w = cuda.elementwise(
+              'T x, T y, T z',
+              'T w',
+              'w = x * y + z',
+              'muladd_fwd')(x, y, z)
+          return w,
+
+      def backward_gpu(self, inputs, grad_outputs):
+          x, y, z = inputs
+          gw, = grad_outputs
+
+          gx, gy = cuda.elementwise(
+              'T x, T y, T gw',
+              'T gx, T gy',
+              '''
+                 gx = gy * gw;
+                 gy = gx * gw;
+              ''',
+              'muladd_bwd')(x, y, gw)
+
+          gz = gw
+          return gx, gy, gz
+
+The type placeholder ``T`` indicates an arbitrary data type that CuPy supports.
+
+There are more functionalities on user-defined kernels in CuPy.
+:ref:`See the CuPy documentation on user-defined kernels for more details. <udkernel>`
 
 
 Parameterized Functions
@@ -227,16 +344,16 @@ Then, the implementation of elementwise product may be as following::
           self.gw = np.empty_like(self.w)
 
       def forward(self, inputs):
-          x = inputs[0]
+          x, = inputs
           y = self.w * x
           return y,
 
       def backward(self, inputs, grad_outputs):
-          x  = inputs[0]
-          gy = grad_outputs[0]
+          x, = inputs
+          gy, = grad_outputs
 
           self.gw += gy * x
-          gx       = gy * self.w
+          gx = gy * self.w
 
           return gx,
 
@@ -244,6 +361,10 @@ Then, the implementation of elementwise product may be as following::
 
    An advanced tip to implement functions: if you want to preserve some information between forward and backward computations (e.g. to cache some arrays), you can store it as attributes.
    It does not make any trouble even if the function object is used more than once in the same network, since :meth:`Function.__call__` operator copies itself before the forward computation.
+
+   Be careful that it might increase the memory consumption during the whole forward-backward computation.
+   If you want to train very large networks on a GPU with limited memory, it is not recommended to cache arrays between forward and backward.
+   There is one exception for this: caching the output arrays do not change the memory consumption, because they are also held by the output Variable objects.
 
    .. warning::
 
@@ -306,4 +427,4 @@ The next three lines compute numerical gradient using the same forward function 
 And at last, we compare these two results elementwise.
 Note that above test code can be easily modified to test GPU version just by replacing CPU arrays to GPU arrays.
 
-You can find many examples of function tests under ``tests/function_tests`` directory.
+You can find many examples of function tests under ``tests/chainer_tests/function_tests`` directory.
