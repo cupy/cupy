@@ -90,69 +90,77 @@ class ConnectionistTemporalClassification(function.Function):
             multiply = forward_prob_trans[t] + backward_prob_trans[t]
             label_prob = self.label_probability(yseq[t].shape[0],
                                                 path, multiply)
-            result += (- numpy.exp(
-                label_prob - (yseq[t] + total_probability)) * grad_output[0]).astype(numpy.float32),
+            result += (- numpy.exp(label_prob
+                                   - (yseq[t] + total_probability))
+                       * grad_output[0]).astype(numpy.float32),
         return result
 
     def forward_gpu(self, inputs):
         t = cuda.to_cpu(inputs[0])
         yseq = inputs[1::]
         path = self.label_to_path(t)
-        rr = cuda.to_gpu(self.recurrence_relation(path.shape[0]))
-        forward_prob = cuda.to_gpu(numpy.eye(path.shape[0])[0])
-        for t in range(len(yseq)):
-            # calc forward probability
-            y = cuda.to_cpu(yseq[t])
-            forward_prob = cuda.to_gpu(y[path]) * cuda.culinalg.dot(
-                forward_prob.reshape(1, forward_prob.shape[0]), rr)
-        forward_prob = cuda.to_cpu(forward_prob)
-        return utils.force_array(
-            - numpy.log(forward_prob[-2]
-                        + forward_prob[-1])).astype(numpy.float32),
+        rr = cuda.to_gpu(numpy.log(self.recurrence_relation(path.shape[0])))
+        forward_prob_trans, backward_prob_trans \
+            = self.calc_trans_gpu(path, yseq, rr)
+        return - self.logsumexp_gpu(forward_prob_trans[-1]
+                                    + backward_prob_trans[-1]),
+
+    def log_dot_gpu(self, prob, rr):
+        res = cuda.cupy.zeros(prob.shape)
+        rrtrans = cuda.cupy.swapaxes(rr, 1, 0)
+        for i in range(rrtrans.shape[0]):
+            res[i] = self.logsumexp_gpu(prob + rrtrans[i])
+        return res
 
     def calc_trans_gpu(self, path, yseq, rr):
-        forward_prob = cuda.to_gpu(numpy.eye(path.shape[0])[0])
-        backward_prob = cuda.to_gpu(numpy.eye(path.shape[0])[0])
+        forward_prob = cuda.cupy.log(cuda.cupy.eye(
+            path.shape[0])[0]+self.epsilon)
+        backward_prob = cuda.cupy.log(cuda.cupy.eye(
+            path.shape[0])[0]+self.epsilon)
 
         alpha = ()
         beta = ()
 
         for t in range(len(yseq)):
             # calc forward probability
-            y = cuda.to_cpu(yseq[t])
-            forward_prob = cuda.to_gpu(y[path]) * cuda.culinalg.dot(
-                forward_prob.reshape(1, forward_prob.shape[0]), rr)
+            y = numpy.log(cuda.to_cpu(yseq[t]))
+            forward_prob = cuda.to_gpu(y[path]) \
+                + self.log_dot_gpu(forward_prob, rr)
             alpha += forward_prob,
 
             # calc backward probability
-            y_inv = cuda.to_cpu(yseq[len(yseq) - t - 1])
-            backward_prob = cuda.culinalg.dot(
-                backward_prob.reshape(1, backward_prob.shape[0]), rr)
-            beta += cuda.to_gpu(cuda.to_cpu(backward_prob)[0][::-1].copy()),
-            backward_prob = cuda.to_gpu(y_inv[path[::-1]]) * backward_prob
+            y_inv = numpy.log(cuda.to_cpu(yseq[len(yseq) - t - 1]))
+            backward_prob = self.log_dot_gpu(backward_prob, rr)
+            beta += backward_prob[::-1],
+            backward_prob = cuda.to_gpu(y_inv[path[::-1]]) + backward_prob
         return alpha, beta[::-1]
 
     def backward_gpu(self, inputs, grad_output):
         t = cuda.to_cpu(inputs[0])
         yseq = inputs[1::]
         path = self.label_to_path(t)
-        rr = cuda.to_gpu(self.recurrence_relation(path.shape[0]))
+        rr = cuda.to_gpu(numpy.log(self.recurrence_relation(path.shape[0])))
         result = (None,)
         forward_prob_trans, backward_prob_trans\
             = self.calc_trans_gpu(path, yseq, rr)
-        with cuda.using_cumisc():
-            total_probability = cuda.to_cpu(cuda.cumisc.sum(
-                forward_prob_trans[0] * backward_prob_trans[0]))
+        total_probability = cuda.to_cpu(
+            self.logsumexp_gpu(forward_prob_trans[0]
+                               + backward_prob_trans[0]))
         for t in range(len(yseq)):
-            y = cuda.to_cpu(yseq[t])
-            multiply = cuda.to_cpu(
-                forward_prob_trans[t] * backward_prob_trans[t])
+            y = numpy.log(cuda.to_cpu(yseq[t]))
+            multiply = cuda.to_cpu(forward_prob_trans[t]
+                                   + backward_prob_trans[t])
             label_prob = self.label_probability(y.shape[0], path, multiply)
-            # add epsilon to avoid to devide by 0.
-            result += cuda.to_gpu(- label_prob /
-                                  ((y + self.epsilon) * total_probability)
-                                  * grad_output[0]),
+            result += (- cuda.to_gpu(
+                numpy.exp(label_prob
+                          - (y + total_probability))).astype(numpy.float32)
+                       * grad_output[0]),
         return result
+
+    def logsumexp_gpu(self, a):
+        vmax = cuda.cupy.amax(a)
+        res = cuda.cupy.log(cuda.cupy.sum(cuda.cupy.exp(a - vmax)))
+        return (res + vmax).astype(numpy.float32)
 
 
 def connectionist_temporal_classification(blank_symbol, t, x):

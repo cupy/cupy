@@ -9,9 +9,6 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
-if cuda.available:
-    cuda.init()
-
 
 class TestCTC(unittest.TestCase):
 
@@ -90,7 +87,8 @@ class TestCTC(unittest.TestCase):
 
     @attr.gpu
     def test_backward_gpu(self):
-        self.gx = cuda.to_gpu(self.g)
+        self.g = cuda.to_gpu(self.g)
+        self.gx = self.g
         self.check_backward(cuda.to_gpu(self.t),
                             tuple(cuda.to_gpu(x_data) for x_data in self.x))
 
