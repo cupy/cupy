@@ -2,7 +2,6 @@ from chainer import cuda
 from chainer import function
 from chainer import utils
 import numpy
-from scipy.misc import logsumexp
 
 
 class ConnectionistTemporalClassification(function.Function):
@@ -37,14 +36,14 @@ class ConnectionistTemporalClassification(function.Function):
         forward_prob_trans, backward_prob_trans \
             = self.calc_trans_cpu(path, yseq, rr)
         return utils.force_array(
-            - logsumexp(forward_prob_trans[-1]
-                        + backward_prob_trans[-1])).astype(numpy.float32),
+            - self.logsumexp(forward_prob_trans[-1]
+                             + backward_prob_trans[-1])).astype(numpy.float32),
 
     def log_dot(self, prob, rr):
         res = numpy.zeros(prob.shape)
         rtrans = numpy.swapaxes(rr, 1, 0)
         for i in range(rtrans.shape[0]):
-            res[i] = logsumexp(prob + rtrans[i])
+            res[i] = self.logsumexp(prob + rtrans[i])
         return res
 
     def calc_trans_cpu(self, path, yseq, rr):
@@ -73,7 +72,7 @@ class ConnectionistTemporalClassification(function.Function):
         chars = set([c for c in path])
         for c in chars:
             pos = numpy.where(path == c)[0]
-            labels_prob[c] = logsumexp(multiply[pos, ])
+            labels_prob[c] = self.logsumexp(multiply[pos, ])
         return labels_prob
 
     def backward_cpu(self, inputs, grad_output):
@@ -83,8 +82,8 @@ class ConnectionistTemporalClassification(function.Function):
         rr = numpy.log(self.recurrence_relation(path.shape[0]))
         forward_prob_trans, backward_prob_trans \
             = self.calc_trans_cpu(path, yseq, rr)
-        total_probability = logsumexp(forward_prob_trans[0]
-                                      + backward_prob_trans[0])
+        total_probability = self.logsumexp(forward_prob_trans[0]
+                                           + backward_prob_trans[0])
         result = (None,)
         for t in range(len(yseq)):
             multiply = forward_prob_trans[t] + backward_prob_trans[t]
@@ -102,14 +101,14 @@ class ConnectionistTemporalClassification(function.Function):
         rr = cuda.to_gpu(numpy.log(self.recurrence_relation(path.shape[0])))
         forward_prob_trans, backward_prob_trans \
             = self.calc_trans_gpu(path, yseq, rr)
-        return - self.logsumexp_gpu(forward_prob_trans[-1]
-                                    + backward_prob_trans[-1]),
+        return - self.logsumexp(forward_prob_trans[-1]
+                                + backward_prob_trans[-1]),
 
     def log_dot_gpu(self, prob, rr):
         res = cuda.cupy.zeros(prob.shape)
         rrtrans = cuda.cupy.swapaxes(rr, 1, 0)
         for i in range(rrtrans.shape[0]):
-            res[i] = self.logsumexp_gpu(prob + rrtrans[i])
+            res[i] = self.logsumexp(prob + rrtrans[i])
         return res
 
     def calc_trans_gpu(self, path, yseq, rr):
@@ -144,8 +143,8 @@ class ConnectionistTemporalClassification(function.Function):
         forward_prob_trans, backward_prob_trans\
             = self.calc_trans_gpu(path, yseq, rr)
         total_probability = cuda.to_cpu(
-            self.logsumexp_gpu(forward_prob_trans[0]
-                               + backward_prob_trans[0]))
+            self.logsumexp(forward_prob_trans[0]
+                           + backward_prob_trans[0]))
         for t in range(len(yseq)):
             y = numpy.log(cuda.to_cpu(yseq[t]))
             multiply = cuda.to_cpu(forward_prob_trans[t]
@@ -157,9 +156,10 @@ class ConnectionistTemporalClassification(function.Function):
                        * grad_output[0]),
         return result
 
-    def logsumexp_gpu(self, a):
-        vmax = cuda.cupy.amax(a)
-        res = cuda.cupy.log(cuda.cupy.sum(cuda.cupy.exp(a - vmax)))
+    def logsumexp(self, a):
+        vtype = cuda.cupy.get_array_module(a)
+        vmax = vtype.amax(a)
+        res = vtype.log(vtype.sum(vtype.exp(a - vmax)))
         return (res + vmax).astype(numpy.float32)
 
 
