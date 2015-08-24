@@ -236,7 +236,7 @@ class Convolution2D(function.Function):
     def backward_cpu(self, x, gy):
         if self.gb is not None:
             self.gb += gy[0].sum(axis=(0, 2, 3))
-        self.gW += numpy.tensordot(gy[0], self.col, ([0, 2, 3], [0, 4, 5]))
+        self.gW += numpy.tensordot(gy[0], self.col, ((0, 2, 3), (0, 4, 5)))
         gcol = numpy.tensordot(self.W, gy[0], (0, 1))
         gcol = numpy.rollaxis(gcol, 3)
 
