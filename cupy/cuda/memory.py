@@ -364,8 +364,8 @@ class MemoryPool(object):
 
     """
     def __init__(self, allocator=_malloc):
-        self._pools = {}
-        self._alloc = allocator
+        self._pools = collections.defaultdict(
+            lambda: SingleDeviceMemoryPool(allocator))
 
     def malloc(self, size):
         """Allocates the memory, from the pool if possible.
@@ -383,8 +383,4 @@ class MemoryPool(object):
 
         """
         dev = device.Device().id
-        pool = self._pools.get(dev, None)
-        if pool is None:
-            pool = SingleDeviceMemoryPool(self._alloc)
-            self._pools[dev] = pool
-        return pool.malloc(size)
+        return self._pools[dev].malloc(size)
