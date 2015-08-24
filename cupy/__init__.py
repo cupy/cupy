@@ -100,7 +100,8 @@ class ndarray(object):
             self._strides = internal.get_contiguous_strides(
                 self._shape, self.itemsize)
             self._flags = flags.C_CONTIGUOUS | flags.OWNDATA
-            if numpy.sum(dim != 1 for dim in shape) <= 1 or nbytes == 0:
+            if nbytes == 0 or six.moves.builtins.sum(dim != 1
+                                                     for dim in shape) <= 1:
                 self._flags |= flags.F_CONTIGUOUS
         else:
             self._strides = strides
