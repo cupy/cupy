@@ -87,7 +87,7 @@ class ndarray(object):
 
     """
     def __init__(self, shape, dtype=float, memptr=None, strides=None):
-        self._shape = tuple(shape)
+        self._shape = shape = tuple(shape)
         self._dtype = numpy.dtype(dtype)
 
         nbytes = self.nbytes
@@ -98,7 +98,7 @@ class ndarray(object):
 
         if strides is None:
             self._strides = internal.get_contiguous_strides(
-                self._shape, self.itemsize)
+                shape, self.itemsize)
             self._flags = flags.C_CONTIGUOUS | flags.OWNDATA
             if nbytes == 0 or six.moves.builtins.sum(dim != 1
                                                      for dim in shape) <= 1:
