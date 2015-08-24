@@ -19,19 +19,17 @@ def memoize(for_each_device=False):
 
     """
     def decorator(f):
+        global _memoized_funcs
+        f._cupy_memo = {}
+        _memoized_funcs.append(f)
+
         @functools.wraps(f)
         def ret(*args, **kwargs):
-            global _memoized_funcs
-
             arg_key = (args, frozenset(kwargs.items()))
             if for_each_device:
                 arg_key = (cuda.Device().id, arg_key)
 
-            memo = getattr(f, '_cupy_memo', None)
-            if memo is None:
-                memo = f._cupy_memo = {}
-                _memoized_funcs.append(f)
-
+            memo = f._cupy_memo
             result = memo.get(arg_key, None)
             if result is None:
                 result = f(*args, **kwargs)
