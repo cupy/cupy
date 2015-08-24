@@ -224,8 +224,8 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
 def _broadcast(args, params, size_error=True):
     brod = cupy.broadcast(
-        *[a if not p.raw and isinstance(a, cupy.ndarray) else None
-          for p, a in six.moves.zip(params, args)])
+        *(a if not p.raw and isinstance(a, cupy.ndarray) else None
+          for p, a in six.moves.zip(params, args)))
     if size_error and all(i is None for i in brod.values):
         raise ValueError('Loop size is Undecided')
     return brod, tuple(b if a is None else a

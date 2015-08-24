@@ -40,7 +40,7 @@ class Function(object):
         a_src = [_native.get(type(x), lambda x: getattr(x, 'ctypes', x))(x)
                  for x in args]
         a = (ctypes.c_void_p * len(args))(
-            *[ctypes.addressof(x) for x in a_src])
+            *(ctypes.addressof(x) for x in a_src))
 
         if stream is None:
             stream = cupy.cuda.stream.Stream(null=True)

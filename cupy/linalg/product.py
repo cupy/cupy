@@ -207,7 +207,7 @@ def tensordot(a, b, axes=2, out=None):
     ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
     if out is not None:
-        if out.size != numpy.prod(ret_shape, dtype=int):
+        if out.size != internal.prod(ret_shape):
             raise ValueError('Output array has an invalid size')
         if not out.flags.c_contiguous:
             raise ValueError('Output array must be C-contiguous')
