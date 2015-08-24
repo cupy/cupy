@@ -16,7 +16,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         casting (str): Casting rule. See :func:`numpy.can_cast` for detail.
         where (cupy.ndarray of bool): If specified, this array acts as a mask,
             and an element is copied only if the corresponding element of
-            ``where``` is True.
+            ``where`` is True.
 
     .. seealso:: :func:`numpy.copyto`
 

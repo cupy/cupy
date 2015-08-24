@@ -107,8 +107,8 @@ def hstack(tup):
     """Stacks arrays horizontally.
 
     If an input array has one dimension, then the array is treated as a
-    horizontal vector and stacked along the only axis. Otherwise, the array
-    is stacked along the second axis.
+    horizontal vector and stacked along the first axis. Otherwise, the array is
+    stacked along the second axis.
 
     Args:
         tup (sequence of arrays): Arrays to be stacked.

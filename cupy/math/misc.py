@@ -18,8 +18,8 @@ _clip = elementwise.create_ufunc(
 def clip(a, a_min, a_max, out=None):
     '''Clips the values of an array to a given interval.
 
-    This is equivalent to ``max(min(a, a_max), a_min)``, while this function is
-    more efficient.
+    This is equivalent to ``maximum(minimum(a, a_max), a_min)``, while this
+    function is more efficient.
 
     Args:
         a (cupy.ndarray): The source array.
@@ -68,7 +68,7 @@ square = elementwise.create_ufunc(
     'out0 = in0 * in0',
     doc='''Elementwise square function.
 
-    .. seealso:: :data:`numpy.square``
+    .. seealso:: :data:`numpy.square`
 
     ''')
 

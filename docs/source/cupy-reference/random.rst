@@ -1,3 +1,5 @@
+.. module:: cupy.random
+
 Random Sampling (cupy.random)
 =============================
 
