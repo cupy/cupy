@@ -60,7 +60,7 @@ class MemoryPointer(object):
     """
     def __init__(self, mem, offset):
         self.mem = mem
-        self.ptr = ctypes.c_void_p(int(mem) + int(offset))
+        self.ptr = ctypes.c_void_p(int(mem) + offset)
 
     def __int__(self):
         """Returns the pointer value."""
@@ -272,10 +272,10 @@ class PooledMemory(Memory):
     should not instantiate it by hand.
 
     """
-    def __init__(self, memptr, pool):
-        self.ptr = memptr.mem.ptr
-        self.size = memptr.mem.size
-        self._device = memptr.mem._device
+    def __init__(self, mem, pool):
+        self.ptr = mem.ptr
+        self.size = mem.size
+        self._device = mem._device
         self.pool = weakref.ref(pool)
 
     def __del__(self):
@@ -303,40 +303,34 @@ class SingleDeviceMemoryPool(object):
     """Memory pool implementation for single device."""
 
     def __init__(self, allocator=_malloc):
-        self._in_use = collections.defaultdict(list)
+        self._in_use = {}
         self._free = collections.defaultdict(list)
         self._alloc = allocator
 
     def malloc(self, size):
-        in_use = self._in_use[size]
         free = self._free[size]
 
         if free:
-            memptr = free.pop()
+            mem = free.pop()
         else:
             try:
-                memptr = self._alloc(size)
+                mem = self._alloc(size).mem
             except runtime.CUDARuntimeError as e:
                 if e.status != 2:
                     raise
                 self.free_all_free()
-                memptr = self._alloc(size)
+                mem = self._alloc(size).mem
 
-        in_use.append(memptr)
-        mem = PooledMemory(memptr, self)
-        return MemoryPointer(mem, 0)
+        self._in_use[mem.ptr.value] = mem
+        pmem = PooledMemory(mem, self)
+        return MemoryPointer(pmem, 0)
 
     def free(self, ptr, size):
-        in_use = self._in_use[size]
-        free = self._free[size]
-
-        for i, memptr in enumerate(in_use):
-            if memptr.mem.ptr.value == ptr.value:
-                del in_use[i]
-                free.append(memptr)
-                break
-        else:
+        mem = self._in_use.pop(ptr.value, None)
+        if mem is None:
             raise RuntimeError('Cannot free out-of-pool memory')
+        else:
+            self._free[size].append(mem)
 
     def free_all_free(self):
         self._free = collections.defaultdict(list)
