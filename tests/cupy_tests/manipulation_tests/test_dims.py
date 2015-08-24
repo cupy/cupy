@@ -75,9 +75,14 @@ class TestDims(unittest.TestCase):
         return xp.expand_dims(a, 2)
 
     @testing.numpy_cupy_array_equal()
-    def test_expand_dims_negative(self, xp):
+    def test_expand_dims_negative1(self, xp):
         a = testing.shaped_arange((2, 3), xp)
         return xp.expand_dims(a, -2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_expand_dims_negative2(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.expand_dims(a, -4)
 
     @testing.numpy_cupy_array_equal()
     def test_squeeze(self, xp):
