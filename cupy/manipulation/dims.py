@@ -196,7 +196,6 @@ def expand_dims(a, axis):
     .. seealso:: :func:`numpy.expand_dims`
 
     """
-    a = cupy.asarray(a)
     shape = a.shape
     if axis < 0:
         axis = axis + len(shape) + 1
