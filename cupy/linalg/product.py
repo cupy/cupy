@@ -269,7 +269,7 @@ def tensordot(a, b, axes=2, out=None):
         else:
             # Matrix-vector product B^T * A
             a, inca = _to_cublas_vector(a, 1)
-            b, transb, ldb = _mat_to_cublas_contiguous(b, False)
+            b, transb, ldb = _mat_to_cublas_contiguous(b, True)
             if transb:
                 # gemv requires (m, k) as the original matrix dimensions
                 # rather than the transposed dimensions.
