@@ -118,53 +118,44 @@ class broadcast(object):
     """
 
     def __init__(self, *arrays):
+        arr = [a for a in arrays if isinstance(a, cupy.ndarray)]
         ndim = 0
-        for array in arrays:
-            if isinstance(array, cupy.ndarray):
-                ndim = max(ndim, array.ndim)
+        for a in arr:
+            ndim = max(ndim, a.ndim)
 
         shape = [1] * ndim
-        for array in arrays:
-            if isinstance(array, cupy.ndarray):
-                offset = len(shape) - array.ndim
-                for i, dim in enumerate(array.shape):
-                    if dim != 1 and shape[i + offset] != dim:
-                        if shape[i + offset] != 1:
-                            raise RuntimeError('Broadcasting failed')
-                        else:
-                            shape[i + offset] = dim
+        for a in arr:
+            offset = len(shape) - a.ndim
+            for i, dim in enumerate(a.shape):
+                if dim != 1 and shape[i + offset] != dim:
+                    if shape[i + offset] != 1:
+                        raise RuntimeError('Broadcasting failed')
+                    else:
+                        shape[i + offset] = dim
 
-        self.shape = tuple(shape)
-        self.size = internal.prod(self.shape)
+        self.shape = shape = tuple(shape)
+        self.size = internal.prod(shape)
         self.nd = len(shape)
 
         broadcasted = []
-        for array in arrays:
-            if not isinstance(array, cupy.ndarray):
-                broadcasted.append(array)
-                continue
-            if array.shape == self.shape:
-                broadcasted.append(array)
+        for a in arrays:
+            if not isinstance(a, cupy.ndarray) or a.shape == shape:
+                broadcasted.append(a)
                 continue
 
-            offset = self.nd - array.ndim
-            strides = []
-            for i, dim in enumerate(shape):
-                if i < offset:
-                    # TODO(okuta) fix if `dim` == 1
-                    strides.append(0)
-                elif array.shape[i - offset] != dim:
-                    strides.append(0)
-                else:
-                    strides.append(array._strides[i - offset])
+            off = self.nd - a.ndim
+            a_sh = a.shape
+            a_st = a._strides
+            strides = [0 if i < off or a_sh[i - off] != dim else a_st[i - off]
+                       for i, dim in enumerate(shape)]
 
-            view = array.view()
-            view._shape = self.shape
+            view = a.view()
+            view._shape = shape
             view._strides = tuple(strides)
             view._mark_dirty()
             broadcasted.append(view)
 
-        self.values = broadcasted
+        self.values = tuple(broadcasted)
 
 
 def broadcast_arrays(*args):

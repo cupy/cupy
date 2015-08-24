@@ -16,18 +16,26 @@ def prod(args, init=1):
 def get_reduced_dims(shape, strides, itemsize):
     if not shape:
         return (), ()
-    elif 0 in shape:
+    if 0 in shape:
         return (0,), (itemsize,)
+
+    if len(shape) == 1:
+        return tuple(shape), tuple(strides)
+    if len(shape) == 2:
+        if shape[0] == 1 or strides[0] == shape[1] * strides[1]:
+            return (shape[0] * shape[1],), (strides[1],)
+        else:
+            return tuple(shape), tuple(strides)
+
     reduced_shape = [shape[0]]
     reduced_strides = [strides[0]]
-    for i in six.moves.range(1, len(shape)):
-        if strides[i - 1] == shape[i] * strides[i] or \
-           reduced_shape[-1] == 1:
-            reduced_shape[-1] *= shape[i]
-            reduced_strides[-1] = strides[i]
+    for sh, st, prev_st in six.moves.zip(shape[1:], strides[1:], strides):
+        if reduced_shape[-1] == 1 or prev_st == sh * st:
+            reduced_shape[-1] *= sh
+            reduced_strides[-1] = st
         else:
-            reduced_shape.append(shape[i])
-            reduced_strides.append(strides[i])
+            reduced_shape.append(sh)
+            reduced_strides.append(st)
 
     return tuple(reduced_shape), tuple(reduced_strides)
 
@@ -36,33 +44,42 @@ def get_reduced_dims_from_array(a):
     return get_reduced_dims(a.shape, a.strides, a.itemsize)
 
 
-def get_strides_for_nocopy_reshape(array, new_shape):
-    shape, strides = map(list, get_reduced_dims_from_array(array))
-    new_strides = []
+def get_strides_for_nocopy_reshape(a, new_shape):
+    if a.size != prod(new_shape):
+        return None
+    a_shape = a.shape
+    a_strides = a.strides
+    a_itemsize = a.itemsize
+    if len(a_shape) == 0:
+        return (a_itemsize,) * len(new_shape)
 
-    dim = 0
+    shape, strides = get_reduced_dims(a_shape, a_strides, a_itemsize)
+
     ndim = len(shape)
-    if len(array.shape) == 0:
-        last_stride = array.itemsize
-    else:
-        last_stride = array.strides[0] * array.shape[0]
+    dim = 0
+    sh = shape[0]
+    st = strides[0]
+    last_stride = sh * st
+    new_strides = []
     for size in new_shape:
-        if size <= 1:
-            new_strides.append(last_stride)
-            continue
-        if dim >= ndim or shape[dim] % size != 0:
-            return None
-        shape[dim] //= size
-        last_stride = shape[dim] * strides[dim]
+        if size > 1:
+            if sh == 1:
+                dim += 1
+                if dim >= ndim:
+                    return None
+                sh = shape[dim]
+                st = strides[dim]
+            if sh % size != 0:
+                return None
+            sh //= size
+            last_stride = sh * st
         new_strides.append(last_stride)
-        if shape[dim] == 1:
-            dim = dim + 1
 
     return tuple(new_strides)
 
 
 def get_contiguous_strides(shape, itemsize):
-    strides = [itemsize for _ in shape]
+    strides = [itemsize] * len(shape)
     for i in six.moves.range(len(strides) - 1, 0, -1):
         strides[i - 1] = strides[i] * max(1, shape[i])
     return tuple(strides)
@@ -103,15 +120,15 @@ def get_c_contiguity(shape, strides, itemsize):
 
 
 def infer_unknown_dimension(shape, size):
-    if sum(dim < 0 for dim in shape) > 1:
-        raise ValueError('can only specify only one unknown dimension')
-
-    shape = tuple(dim if dim >= 0 else -1 for dim in shape)
-    p = prod(shape)
-    if p < 0:
-        return tuple(dim if dim >= 0 else size // -p for dim in shape)
-    else:
+    cnt = 0
+    for dim in shape:
+        cnt += dim < 0
+    if cnt == 0:
         return shape
+    if cnt > 1:
+        raise ValueError('can only specify only one unknown dimension')
+    p = size // prod(dim for dim in shape if dim >= 0)
+    return tuple(dim if dim >= 0 else p for dim in shape)
 
 
 def check_args_device(args):

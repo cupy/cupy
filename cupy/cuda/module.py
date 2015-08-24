@@ -3,9 +3,9 @@ import ctypes
 import numpy
 
 from cupy.cuda import driver
-from cupy.cuda import stream
+import cupy.cuda.stream
 
-_native_ctypes = {
+_native = {
     int: ctypes.c_int,
     float: ctypes.c_float,
     bool: ctypes.c_bool,
@@ -25,22 +25,6 @@ _native_ctypes = {
 }
 
 
-def _get_ctypes(x):
-    return getattr(x, 'ctypes', x)
-
-
-def _pointer(x):
-    converter = _native_ctypes.get(type(x), _get_ctypes)
-    return ctypes.pointer(converter(x))
-
-
-def _get_stream(strm):
-    if strm is None:
-        return stream.Stream(null=True)
-    else:
-        return strm
-
-
 class Function(object):
 
     """CUDA kernel function."""
@@ -53,15 +37,17 @@ class Function(object):
         grid = (grid + (1, 1))[:3]
         block = (block + (1, 1))[:3]
 
-        a = (ctypes.c_void_p * len(args))()
-        for i, arg in enumerate(args):
-            a[i] = ctypes.cast(_pointer(arg), ctypes.c_void_p)
-        arg_ptr = ctypes.cast(a, ctypes.POINTER(ctypes.c_void_p))
+        a_src = [_native.get(type(x), lambda x: getattr(x, 'ctypes', x))(x)
+                 for x in args]
+        a = (ctypes.c_void_p * len(args))(
+            *[ctypes.addressof(x) for x in a_src])
 
-        stream = _get_stream(stream)
+        if stream is None:
+            stream = cupy.cuda.stream.Stream(null=True)
+
         driver.launchKernel(self.ptr, grid[0], grid[1], grid[2],
                             block[0], block[1], block[2], shared_mem,
-                            stream.ptr, arg_ptr, ctypes.c_void_p())
+                            stream.ptr, a, ctypes.c_void_p())
 
     def linear_launch(self, size, args, shared_mem=0, block_max_size=128,
                       stream=None):

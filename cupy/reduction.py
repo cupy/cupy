@@ -6,9 +6,7 @@ import six
 
 import cupy
 from cupy import carray
-from cupy import cindexer
 from cupy import elementwise
-from cupy import internal
 from cupy import util
 
 
@@ -118,41 +116,37 @@ def _make_reduction_function_kernel(
 
 def _get_axis(axis, ndim):
     if axis is None:
-        axis = tuple(numpy.arange(ndim, dtype=int))
+        axis = tuple(six.moves.range(ndim))
     elif isinstance(axis, collections.Iterable):
         axis = tuple(axis)
     else:
         axis = axis,
 
-    if any(ax < -ndim or ax >= ndim for ax in axis):
+    if any(dim < -ndim or dim >= ndim for dim in axis):
         raise ValueError('Axis overrun')
+    axis = tuple(sorted([dim % ndim for dim in axis]))
+    raxis = tuple(dim for dim in six.moves.range(ndim) if dim not in axis)
+    return axis, raxis
 
-    axis = tuple(sorted([ax if ax >= 0 else ax + ndim for ax in axis]))
-    return axis
 
-
-def _get_out_shape(shape, axis, keepdims):
+def _get_out_shape(shape, axis, raxis, keepdims):
     if keepdims:
         out_shape = list(shape)
         for i in axis:
             out_shape[i] = 1
-        out_shape = tuple(out_shape)
-    else:
-        out_shape = tuple(numpy.delete(shape, axis))
-    return out_shape
+        return tuple(out_shape)
+    return tuple(shape[i] for i in raxis)
 
 
-def _get_trans_args(args, axis, shape, params=None):
-    raw_axis = list(six.moves.range(len(shape)))
-    trans = axis + tuple(numpy.delete(raw_axis, axis))
-
-    if all(i == j for i, j in six.moves.zip(trans, raw_axis)):
+def _get_trans_args(args, trans, shape, params=None):
+    if trans == tuple(six.moves.range(len(shape))):
         return args, shape
     if params is not None and any(p.raw for p in params):
         raise NotImplementedError('Illegal conditions')
+    args = [a.transpose(trans) if isinstance(a, cupy.ndarray) else a
+            for a in args]
     shape = tuple(shape[i] for i in trans)
-    return [a.transpose(trans) if isinstance(a, cupy.ndarray) else a
-            for a in args], shape
+    return args, shape
 
 
 def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
@@ -164,8 +158,7 @@ def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
             out_args, params[len(in_args):], out_indexer)
     args = in_args + out_args + [in_indexer, out_indexer,
                                  numpy.int32(out_clp2_size)]
-    is_ndarray = tuple(isinstance(x, cupy.ndarray) for x in args)
-    return args, is_ndarray
+    return args
 
 
 class simple_reduction_function(object):
@@ -190,38 +183,37 @@ class simple_reduction_function(object):
 
         if self.identity is None:
             assert a.size != 0
-        in_args = [a]
+        in_args = a,
         if out is None:
-            out_args = []
+            out_args = ()
         else:
-            out_args = [out]
-        internal.check_args_device(in_args + out_args)
+            out_args = out,
+        elementwise._check_args(in_args + out_args)
 
         in_types, out_types, routine = self._guess_routine(in_args, dtype)
 
-        axis = _get_axis(axis, a.ndim)
-        out_shape = _get_out_shape(a.shape, axis, keepdims)
+        axis, raxis = _get_axis(axis, a.ndim)
+        out_shape = _get_out_shape(a.shape, axis, raxis, keepdims)
         out_args = elementwise._get_out_args(
             in_args, out_args, out_types, out_shape)
         in_args, in_shape = _get_trans_args(
-            in_args, axis, in_args[0].shape)
+            in_args, axis + raxis, in_args[0].shape)
 
-        in_indexer = cindexer.Indexer(in_shape)
-        out_indexer = cindexer.Indexer(out_shape)
+        in_indexer = carray.Indexer(in_shape)
+        out_indexer = carray.Indexer(out_shape)
         out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
 
-        inout_args, is_ndarray = _get_inout_args(
+        inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, out_clp2_size,
             self._params, True)
-        param_types = elementwise._get_kernel_param_types(inout_args)
-        params = elementwise._get_kernel_params(
-            self._params, is_ndarray, param_types)
+        args_info = elementwise._get_args_info(inout_args)
 
         block_size = 512
         reduce_type = routine[3]
         if reduce_type is None:
             reduce_type = elementwise._get_typename(out_types[0])
 
+        params = elementwise._get_kernel_params(self._params, args_info)
         type_preamble = (
             'typedef {} type_in0_raw; typedef {} type_out0_raw;'.format(
                 elementwise._get_typename(in_args[0].dtype),
@@ -263,21 +255,19 @@ class simple_reduction_function(object):
 
 
 @util.memoize(for_each_device=True)
-def _get_reduction_kernel(
-        params, is_ndarray, param_types, types):
-    kernel_params = elementwise._get_kernel_params(
-        params, is_ndarray, param_types)
+def _get_reduction_kernel(params, args_info, types):
+    kernel_params = elementwise._get_kernel_params(params, args_info)
+    arrays = [p for p, a in six.moves.zip(params, args_info)
+              if not p.raw and a[0] is cupy.ndarray]
     type_preamble = '\n'.join(
         'typedef {} {};'.format(elementwise._get_typename(v), k)
         for k, v in types)
     input_expr = '\n'.join(
         'const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
-        for f, p in six.moves.zip(is_ndarray, params)
-        if f and p.const and not p.raw)
+        for p in arrays if p.is_const)
     output_expr = '\n'.join(
         '{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
-        for f, p in six.moves.zip(is_ndarray, params)
-        if f and not p.const and not p.raw)
+        for p in arrays if not p.is_const)
     return kernel_params, type_preamble, input_expr, output_expr
 
 
@@ -360,20 +350,18 @@ class ReductionKernel(object):
         if not (len(args) == self.nin or
                 len(args) == self.nin + self.nout):
             raise TypeError('Wrong number of arguments for %s' % self.name)
-        assert all(i is not None for i in args)
 
-        out_args = list(args[self.nin:])
+        out_args = args[self.nin:]
         if out is not None:
             if self.nout != 1:
                 raise NotImplementedError('')
             if len(out_args) != 0:
                 raise ValueError("cannot specify 'out' as both "
                                  "a positional and keyword argument")
-            out_args = [out]
+            out_args = out,
 
         brod, in_args = elementwise._broadcast(args, self.in_params)
-
-        internal.check_args_device(in_args + out_args)
+        elementwise._check_args(in_args + out_args)
 
         if self.identity is None:
             assert brod.size != 0
@@ -382,26 +370,26 @@ class ReductionKernel(object):
             elementwise._get_ndarray_dtype(in_args),
             elementwise._get_ndarray_dtype(out_args))
 
-        axis = _get_axis(axis, brod.nd)
-        out_shape = _get_out_shape(brod.shape, axis, keepdims)
-        in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
-                   for x, t in six.moves.zip(in_args, in_types)]
+        axis, raxis = _get_axis(axis, brod.nd)
+        out_shape = _get_out_shape(brod.shape, axis, raxis, keepdims)
+        in_args = tuple(x if isinstance(x, cupy.ndarray) else t.type(x)
+                        for x, t in six.moves.zip(in_args, in_types))
         in_args, in_shape = _get_trans_args(
-            in_args, axis, brod.shape, self.in_params)
+            in_args, axis + raxis, brod.shape, self.in_params)
         out_args = elementwise._get_out_args(
             in_args, out_args, out_types, out_shape, self.out_params)
 
-        in_indexer = cindexer.Indexer(in_shape)
-        out_indexer = cindexer.Indexer(out_shape)
+        in_indexer = carray.Indexer(in_shape)
+        out_indexer = carray.Indexer(out_shape)
         out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
 
-        inout_args, is_ndarray = _get_inout_args(
+        inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, out_clp2_size,
             self.params, self.reduce_dims)
-        param_types = elementwise._get_kernel_param_types(inout_args)
+        args_info = elementwise._get_args_info(inout_args)
 
         exprs = _get_reduction_kernel(
-            self.params, is_ndarray, param_types, types)
+            self.params, args_info, types)
         block_size = 512
         kern = _make_reduction_function_kernel(
             self.name, block_size, self.reduce_type, exprs[0], self.identity,

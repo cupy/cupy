@@ -60,18 +60,24 @@ def transpose(a, axes=None):
     .. seealso:: :func:`numpy.transpose`
 
     """
+    ndim = a.ndim
     if not axes:
-        axes = tuple(reversed(six.moves.range(a.ndim)))
-    elif len(axes) == 1 and isinstance(axes[0], collections.Iterable):
-        axes = tuple(axes[0])
+        if ndim <= 1:
+            return a.view()
+        axes = tuple(reversed(six.moves.range(ndim)))
+    else:
+        if len(axes) == 1 and isinstance(axes[0], collections.Iterable):
+            axes = tuple(axes[0])
+        if any(axis < -ndim or axis >= ndim for axis in axes):
+            raise IndexError('Axes overrun')
+        axes = tuple(axis % ndim for axis in axes)
 
-    if any(axis < -a.ndim or axis >= a.ndim for axis in axes):
-        raise IndexError('Axes overrun')
+        a_axes = list(six.moves.range(ndim))
+        if a_axes != sorted(axes):
+            raise ValueError('Invalid axes value: %s' % str(axes))
 
-    axes = tuple(axis % a.ndim for axis in axes)
-
-    if list(six.moves.range(a.ndim)) != sorted(axes):
-        raise ValueError('Invalid axes value: %s' % str(axes))
+        if ndim <= 1 or a_axes == axes:
+            return a.view()
 
     newarray = a.view()
     newarray._shape = tuple(a._shape[axis] for axis in axes)

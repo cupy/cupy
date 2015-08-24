@@ -29,12 +29,11 @@ def reshape(a, newshape):
     # TODO(beam2d): Support ordering option
     if numpy.isscalar(newshape):
         newshape = newshape,
-    newshape = internal.infer_unknown_dimension(newshape, a.size)
-    if len(newshape) == 1 and \
-       isinstance(newshape[0], collections.Iterable):
+    elif len(newshape) == 1 and isinstance(newshape[0], collections.Iterable):
         newshape = tuple(newshape[0])
 
     size = a.size
+    newshape = internal.infer_unknown_dimension(newshape, size)
     if internal.prod(newshape) != size:
         raise RuntimeError('Total size mismatch on reshape')
 
