@@ -1,7 +1,5 @@
 import collections
 
-import numpy
-
 from cupy import internal
 
 
@@ -27,13 +25,21 @@ def reshape(a, newshape):
 
     """
     # TODO(beam2d): Support ordering option
-    if numpy.isscalar(newshape):
+    if not isinstance(newshape, collections.Iterable):
         newshape = newshape,
     elif len(newshape) == 1 and isinstance(newshape[0], collections.Iterable):
         newshape = tuple(newshape[0])
+    else:
+        newshape = tuple(newshape)
+
+    shape = a.shape
+    if newshape == shape:
+        return a.view()
 
     size = a.size
     newshape = internal.infer_unknown_dimension(newshape, size)
+    if newshape == shape:
+        return a.view()
     if internal.prod(newshape) != size:
         raise RuntimeError('Total size mismatch on reshape')
 
