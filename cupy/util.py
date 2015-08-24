@@ -4,7 +4,7 @@ import functools
 from cupy import cuda
 
 
-_memoized_funcs = []
+_memos = []
 
 
 def memoize(for_each_device=False):
@@ -19,9 +19,8 @@ def memoize(for_each_device=False):
 
     """
     def decorator(f):
-        global _memoized_funcs
-        f._cupy_memo = {}
-        _memoized_funcs.append(f)
+        memo = {}
+        _memos.append(memo)
 
         @functools.wraps(f)
         def ret(*args, **kwargs):
@@ -29,7 +28,6 @@ def memoize(for_each_device=False):
             if for_each_device:
                 arg_key = (cuda.Device().id, arg_key)
 
-            memo = f._cupy_memo
             result = memo.get(arg_key, None)
             if result is None:
                 result = f(*args, **kwargs)
@@ -44,7 +42,5 @@ def memoize(for_each_device=False):
 @atexit.register
 def clear_memo():
     """Clears the memoized results for all functions decorated by memoize."""
-    global _memoized_funcs
-    for f in _memoized_funcs:
-        del f._cupy_memo
-    _memoized_funcs = []
+    for memo in _memos:
+        memo.clear()
