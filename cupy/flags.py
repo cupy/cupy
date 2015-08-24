@@ -1,11 +1,10 @@
-import numpy
 
-C_CONTIGUOUS = numpy.ubyte(1)
-F_CONTIGUOUS = numpy.ubyte(1) << 1
-OWNDATA = numpy.ubyte(1) << 2
+C_CONTIGUOUS = 1
+F_CONTIGUOUS = 1 << 1
+OWNDATA = 1 << 2
 
-C_DIRTY = numpy.ubyte(1) << 3  # internal use only
-F_DIRTY = numpy.ubyte(1) << 4  # internal use only
+C_DIRTY = 1 << 3  # internal use only
+F_DIRTY = 1 << 4  # internal use only
 
 
 class Flags(object):
