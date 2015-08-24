@@ -1181,6 +1181,7 @@ atleast_2d = manipulation.dims.atleast_2d
 atleast_3d = manipulation.dims.atleast_3d
 broadcast = manipulation.dims.broadcast
 broadcast_arrays = manipulation.dims.broadcast_arrays
+expand_dims = manipulation.dims.expand_dims
 squeeze = manipulation.dims.squeeze
 
 column_stack = manipulation.join.column_stack

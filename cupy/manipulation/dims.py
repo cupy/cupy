@@ -183,8 +183,24 @@ def broadcast_arrays(*args):
 
 
 def expand_dims(a, axis):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+    """Expands given arrays.
+
+    Args:
+        a (cupy.ndarray): Array to be expanded.
+        axis (int): Position where new axis is to be inserted.
+
+    Returns:
+        cupy.ndarray: The number of dimensions is one greater than that of
+            the input array.
+
+    .. seealso:: :func:`numpy.expand_dims`
+
+    """
+    a = cupy.asarray(a)
+    shape = a.shape
+    if axis < 0:
+        axis = axis + len(shape) + 1
+    return a.reshape(shape[:axis] + (1,) + shape[axis:])
 
 
 def squeeze(a, axis=None):

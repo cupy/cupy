@@ -60,6 +60,21 @@ class TestDims(unittest.TestCase):
         self.assertEqual(4, bc.nd)
 
     @testing.numpy_cupy_array_equal()
+    def test_expand_dims0(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.expand_dims(a, 0)
+
+    @testing.numpy_cupy_array_equal()
+    def test_expand_dims1(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.expand_dims(a, 1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_expand_dims2(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.expand_dims(a, 2)
+
+    @testing.numpy_cupy_array_equal()
     def test_squeeze(self, xp):
         a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
         return a.squeeze()
