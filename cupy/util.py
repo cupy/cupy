@@ -21,6 +21,7 @@ def memoize(for_each_device=False):
     def decorator(f):
         memo = {}
         _memos.append(memo)
+        none = object()
 
         @functools.wraps(f)
         def ret(*args, **kwargs):
@@ -28,8 +29,8 @@ def memoize(for_each_device=False):
             if for_each_device:
                 arg_key = (cuda.Device().id, arg_key)
 
-            result = memo.get(arg_key, None)
-            if result is None:
+            result = memo.get(arg_key, none)
+            if result is none:
                 result = f(*args, **kwargs)
                 memo[arg_key] = result
             return result
