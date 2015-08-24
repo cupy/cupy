@@ -64,7 +64,7 @@ class TestSum(unittest.TestCase):
 
         for i in range(self.x.ndim):
             gy = numpy.ones_like(self.x.sum(axis=i)) * self.gy
-            self.check_backward(self.x, gy, axis=i)
+            self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(gy), axis=i)
 
 
 testing.run_module(__name__, __file__)

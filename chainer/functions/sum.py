@@ -28,15 +28,14 @@ class Sum(function.Function):
 
     def backward(self, x, gy):
         xp = cuda.get_array_module(*x)
+
+        gx = xp.empty_like(x[0])
         if self.axis is None:
-            # TODO(beam2d): Make it async
-            return xp.full_like(x[0], gy[0]),
+            gx[:] = gy[0]
+        else:
+            gx[:] = xp.expand_dims(gy[0], axis=self.axis)
 
-        s = list(x[0].shape)
-        s[self.axis] = 1
-        gy = gy[0].reshape(s)
-
-        return xp.concatenate([gy] * x[0].shape[self.axis], axis=self.axis),
+        return gx,
 
 
 def sum(x, axis=None):
