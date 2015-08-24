@@ -146,39 +146,48 @@ def tensordot(a, b, axes=2, out=None):
             raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b, out=out)
 
-    ret_dtype = numpy.find_common_type([a.dtype, b.dtype], [])
+    if a.dtype == b.dtype:
+        ret_dtype = a.dtype.type
+    else:
+        ret_dtype = numpy.find_common_type((a.dtype, b.dtype), ()).type
 
     # Cast to float32 or float64
-    dtype = numpy.find_common_type([a.dtype, b.dtype, 'f'], [])
+    if ret_dtype == numpy.float32 or ret_dtype == numpy.float64:
+        dtype = ret_dtype
+    else:
+        dtype = numpy.find_common_type((ret_dtype, numpy.float32), ()).type
+
     a = a.astype(dtype, copy=False)
     b = b.astype(dtype, copy=False)
 
-    if a.dtype.type == numpy.float32:
+    if dtype == numpy.float32:
         dot = cublas.sdot
         gemv = cublas.sgemv
         ger = cublas.sger
         gemm = cublas.sgemm
-    elif a.dtype.type == numpy.float64:
+    elif dtype == numpy.float64:
         dot = cublas.ddot
         gemv = cublas.dgemv
         ger = cublas.dger
         gemm = cublas.dgemm
 
     if numpy.isscalar(axes):
-        axes = [list(six.moves.range(a.ndim - axes, a.ndim)),
-                list(six.moves.range(axes))]
+        axes0 = list(six.moves.range(a.ndim - axes, a.ndim))
+        axes1 = list(six.moves.range(axes))
     else:
-        axes = list(axes)
-    if numpy.isscalar(axes[0]):
-        axes[0] = (axes[0],)
-    if numpy.isscalar(axes[1]):
-        axes[1] = (axes[1],)
+        if len(axes) != 2:
+            raise ValueError('Axes must consist of two arrays.')
+        axes0, axes1 = axes
+        if numpy.isscalar(axes0):
+            axes0 = axes0,
+        if numpy.isscalar(axes1):
+            axes1 = axes1,
+    del axes
 
-    if len(axes) != 2:
-        raise ValueError('Axes must consist of two arrays.')
-    if len(axes[0]) != len(axes[1]):
+    if len(axes0) != len(axes1):
         raise ValueError('Axes length mismatch')
-    for a_axis, b_axis in zip(*axes):
+
+    for a_axis, b_axis in zip(axes0, axes1):
         if not (-a.ndim <= a_axis < a.ndim and
                 -b.ndim <= b_axis < b.ndim):
             raise IndexError('Axis overrun')
@@ -186,19 +195,19 @@ def tensordot(a, b, axes=2, out=None):
             raise ValueError('Axis dimension mismatch')
 
     # Make the axes non-negative
-    axes = (tuple(axis % a.ndim for axis in axes[0]),
-            tuple(axis % b.ndim for axis in axes[1]))
+    axes0 = tuple(axis % a.ndim for axis in axes0)
+    axes1 = tuple(axis % b.ndim for axis in axes1)
 
-    sum_ndim = len(axes[0])
-    a = _move_axes_to_head(a, axes[0])
-    b = _move_axes_to_head(b, axes[1])
+    sum_ndim = len(axes0)
+    a = _move_axes_to_head(a, axes0)
+    b = _move_axes_to_head(b, axes1)
 
     m = internal.prod(b.shape[sum_ndim:])
     n = internal.prod(a.shape[sum_ndim:])
     ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
     if out is not None:
-        if out.size != internal.prod(ret_shape):
+        if out.size != numpy.prod(ret_shape, dtype=int):
             raise ValueError('Output array has an invalid size')
         if not out.flags.c_contiguous:
             raise ValueError('Output array must be C-contiguous')
@@ -260,7 +269,7 @@ def tensordot(a, b, axes=2, out=None):
         else:
             # Matrix-vector product B^T * A
             a, inca = _to_cublas_vector(a, 1)
-            b, transb, ldb = _mat_to_cublas_contiguous(b.T)
+            b, transb, ldb = _mat_to_cublas_contiguous(b, False)
             if transb:
                 # gemv requires (m, k) as the original matrix dimensions
                 # rather than the transposed dimensions.
@@ -269,7 +278,7 @@ def tensordot(a, b, axes=2, out=None):
                  0, c._fptr, 1)
     elif m == 1:
         # Matrix-vector product A^T * B
-        a, transa, lda = _mat_to_cublas_contiguous(a.T)
+        a, transa, lda = _mat_to_cublas_contiguous(a, True)
         b, incb = _to_cublas_vector(b, 1)
         if not transa:
             # gemv requires (n, k) as the original matrix dimensions rather
@@ -281,8 +290,8 @@ def tensordot(a, b, axes=2, out=None):
         # Matrix-Matrix product A^T * B
         # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
         # compute C^T = B^T * A here.
-        a, transa, lda = _mat_to_cublas_contiguous(a)
-        b, transb, ldb = _mat_to_cublas_contiguous(b.T)
+        a, transa, lda = _mat_to_cublas_contiguous(a, False)
+        b, transb, ldb = _mat_to_cublas_contiguous(b, True)
         gemm(handle, transb, transa, m, n, k, 1, b._fptr, ldb, a._fptr,
              lda, 0, c._fptr, m)
 
@@ -309,18 +318,28 @@ def kron(a, b):
 def _move_axes_to_head(a, axes):
     # This function moves the axes of ``s`` to the head of the shape.
     axes = tuple(axes)
+    if axes == tuple(six.moves.range(len(axes))):
+        return a
     right_axes = tuple(i for i in six.moves.range(a.ndim) if i not in axes)
     return a.transpose(*(axes + right_axes))
 
 
-def _mat_to_cublas_contiguous(a):
+def _mat_to_cublas_contiguous(a, trans):
     assert a.ndim == 2
     f = a.flags
     if f.f_contiguous:
-        return a, cublas.CUBLAS_OP_N, a.strides[1] // a.itemsize
+        ld = a.strides[1] // a.itemsize
+        if trans:
+            return a, cublas.CUBLAS_OP_T, ld
+        else:
+            return a, cublas.CUBLAS_OP_N, ld
     if not f.c_contiguous:
         a = a.copy()
-    return a, cublas.CUBLAS_OP_T, a.strides[0] // a.itemsize
+    ld = a.strides[0] // a.itemsize
+    if trans:
+        return a, cublas.CUBLAS_OP_N, ld
+    else:
+        return a, cublas.CUBLAS_OP_T, ld
 
 
 def _to_cublas_vector(a, rundim):
