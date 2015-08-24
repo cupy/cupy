@@ -235,10 +235,15 @@ def tensordot(a, b, axes=2, out=None):
     k = a.size // n
 
     # It copies the operands if needed
-    a = a.reshape(k, n)
-    b = b.reshape(k, m)
-    c = out.view()
-    c.shape = (n, m)
+    if a.shape != (k, n):
+        a = a.reshape(k, n)
+    if b.shape != (k, m):
+        b = b.reshape(k, m)
+    if out.shape != (n, m):
+        c = out.view()
+        c.shape = (n, m)
+    else:
+        c = out
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     handle = cuda.Device().cublas_handle
