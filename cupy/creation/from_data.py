@@ -72,7 +72,10 @@ def asarray(a, dtype=None):
 def asanyarray(a, dtype=None):
     """Converts an object to array.
 
-    This is equivalent to :func:`~cupy.asarray`.
+    This is currently equivalent to :func:`~cupy.asarray`, since there is no
+    subclass of ndarray in CuPy. Note that the original
+    :func:`numpy.asanyarray` returns the input array as is if it is an instance
+    of a subtype of numpy.ndarray.
 
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
