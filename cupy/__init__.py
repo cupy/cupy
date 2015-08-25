@@ -99,14 +99,14 @@ class ndarray(object):
         if strides is None:
             self._strides = internal.get_contiguous_strides(
                 shape, self.itemsize)
-            self._flags = flags.C_CONTIGUOUS | flags.OWNDATA
-            if nbytes == 0 or six.moves.builtins.sum(dim != 1
-                                                     for dim in shape) <= 1:
-                self._flags |= flags.F_CONTIGUOUS
+            self._c_contiguous = 1
+            self._f_contiguous = int(
+                nbytes == 0 or
+                six.moves.builtins.sum(dim != 1 for dim in shape) <= 1)
         else:
             self._strides = strides
-            self._flags = flags.OWNDATA
-            self._mark_dirty()
+            self._c_contiguous = -1
+            self._f_contiguous = -1
 
         self.base = None
 
@@ -128,11 +128,12 @@ class ndarray(object):
         .. seealso:: :attr:`numpy.ndarray.flags`
 
         """
-        if self._flags & flags.C_DIRTY:
+        if self._c_contiguous == -1:
             self._update_c_contiguity()
-        if self._flags & flags.F_DIRTY:
+        if self._f_contiguous == -1:
             self._update_f_contiguity()
-        return flags.Flags(self._flags)
+        return flags.Flags(self._c_contiguous, self._f_contiguous,
+                           self.base is not None)
 
     @property
     def shape(self):
@@ -154,7 +155,7 @@ class ndarray(object):
             raise AttributeError('Incompatible shape')
         self._shape = newshape
         self._strides = strides
-        self._mark_f_dirty()
+        self._f_contiguous = -1
 
     @property
     def strides(self):
@@ -369,8 +370,9 @@ class ndarray(object):
         """
         # Use __new__ instead of __init__ to skip recomputation of contiguity
         v = ndarray.__new__(ndarray)
+        v._c_contiguous = self._c_contiguous
+        v._f_contiguous = self._f_contiguous
         v._dtype = self._dtype
-        v._flags = self._flags & ~flags.OWNDATA
         v._shape = self._shape
         v._strides = self._strides
         v.data = self.data
@@ -451,7 +453,8 @@ class ndarray(object):
 
         newarray._shape = self.size,
         newarray._strides = self.itemsize,
-        self._flags |= flags.C_CONTIGUOUS | flags.F_CONTIGUOUS
+        newarray._c_contiguous = 1
+        newarray._f_contiguous = 1
         return newarray
 
     def ravel(self):
@@ -955,7 +958,8 @@ class ndarray(object):
         v._shape = tuple(shape)
         v._strides = tuple(strides)
         v.data = self.data + offset
-        v._mark_dirty()
+        self._c_contiguous = -1
+        self._f_contiguous = -1
 
         return v
 
@@ -1094,36 +1098,21 @@ class ndarray(object):
         shape, strides = internal.get_reduced_dims_from_array(self)
         view._shape = shape
         view._strides = strides
-        view._mark_f_dirty()
+        view._f_contiguous = -1
         return view
 
     def _update_c_contiguity(self):
-        self._flags &= ~flags.C_CONTIGUOUS
-        if internal.get_c_contiguity(self._shape, self._strides,
-                                     self.itemsize):
-            self._flags |= flags.C_CONTIGUOUS
-        self._flags &= ~flags.C_DIRTY
+        self._c_contiguous = int(internal.get_c_contiguity(
+            self._shape, self._strides, self.itemsize))
 
     def _update_f_contiguity(self):
-        self._flags &= ~flags.F_CONTIGUOUS
-        if internal.get_c_contiguity(tuple(reversed(self._shape)),
-                                     tuple(reversed(self._strides)),
-                                     self.itemsize):
-            self._flags |= flags.F_CONTIGUOUS
-        self._flags &= ~flags.F_DIRTY
+        self._f_contiguous = int(internal.get_c_contiguity(
+            tuple(reversed(self._shape)), tuple(reversed(self._strides)),
+            self.itemsize))
 
     def _update_contiguity(self):
         self._update_c_contiguity()
         self._update_f_contiguity()
-
-    def _mark_c_dirty(self):
-        self._flags |= flags.C_DIRTY
-
-    def _mark_f_dirty(self):
-        self._flags |= flags.F_DIRTY
-
-    def _mark_dirty(self):
-        self._flags |= flags.C_DIRTY | flags.F_DIRTY
 
     def _should_use_rop(self, a):
         return getattr(a, '__array_priority__', 0) > self.__array_priority__
