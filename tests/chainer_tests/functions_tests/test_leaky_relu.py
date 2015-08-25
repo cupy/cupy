@@ -16,8 +16,10 @@ class TestLeakyReLU(unittest.TestCase):
 
     def setUp(self):
         # Avoid unstability of numeraical grad
-        self.x = numpy.random.uniform(.5, 1, (5, 4)).astype(numpy.float32)
-        self.x *= numpy.random.randint(2, size=(5, 4)) * 2 - 1
+        self.x = numpy.random.uniform(-1, 1, (5, 4)).astype(numpy.float32)
+        for i in range(self.x.size):
+            if -0.01 < self.x.flat[i] < 0.01:
+                self.x.flat[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, (5, 4)).astype(numpy.float32)
         self.slope = random.random()
 

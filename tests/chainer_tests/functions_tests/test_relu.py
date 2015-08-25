@@ -15,8 +15,10 @@ class TestReLU(unittest.TestCase):
 
     def setUp(self):
         # Avoid unstability of numerical grad
-        self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.x *= numpy.random.randint(2, size=(3, 2)) * 2 - 1
+        self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        for i in range(self.x.size):
+            if -0.01 < self.x.flat[i] < 0.01:
+                self.x.flat[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
