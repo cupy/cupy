@@ -89,6 +89,7 @@ class ndarray(object):
     def __init__(self, shape, dtype=float, memptr=None, strides=None):
         self._shape = shape = tuple(shape)
         self._dtype = numpy.dtype(dtype)
+        self._size = internal.prod(shape)
 
         nbytes = self.nbytes
         if memptr is None:
@@ -149,7 +150,7 @@ class ndarray(object):
 
     @shape.setter
     def shape(self, newshape):
-        newshape = internal.infer_unknown_dimension(newshape, self.size)
+        newshape = internal.infer_unknown_dimension(newshape, self._size)
         strides = internal.get_strides_for_nocopy_reshape(self, newshape)
         if strides is None:
             raise AttributeError('Incompatible shape')
@@ -186,7 +187,7 @@ class ndarray(object):
         .. seealso:: :attr:`numpy.ndarray.size`
 
         """
-        return internal.prod(self._shape)
+        return self._size
 
     @property
     def itemsize(self):
@@ -206,7 +207,7 @@ class ndarray(object):
         .. seealso:: :attr:`numpy.ndarray.nbytes`
 
         """
-        return self.size * self.itemsize
+        return self._size * self.itemsize
 
     # -------------------------------------------------------------------------
     # Data type
@@ -261,7 +262,7 @@ class ndarray(object):
            :attr:`numpy.ndarray.ctypes`.
 
         """
-        return carray.to_carray(self.data.ptr, self.size, self._shape,
+        return carray.to_carray(self.data.ptr, self._size, self._shape,
                                 self._strides)
 
     # -------------------------------------------------------------------------
@@ -375,6 +376,7 @@ class ndarray(object):
         v._dtype = self._dtype
         v._shape = self._shape
         v._strides = self._strides
+        v._size = self._size
         v.data = self.data
         v.base = self.base if self.base is not None else self
         return v
@@ -451,7 +453,7 @@ class ndarray(object):
             newarray = empty_like(self)
             elementwise.copy(self, newarray)
 
-        newarray._shape = self.size,
+        newarray._shape = self._size,
         newarray._strides = self.itemsize,
         newarray._c_contiguous = 1
         newarray._f_contiguous = 1
