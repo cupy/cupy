@@ -22,8 +22,10 @@ class TestPReLUSingle(unittest.TestCase):
         self.W = self.func.W.copy()  # fixed on CPU
 
         # Avoid unstability of numerical gradient
-        self.x = numpy.random.uniform(.5, 1, (4, 3, 2)).astype(numpy.float32)
-        self.x *= numpy.random.randint(2, size=(4, 3, 2)) * 2 - 1
+        self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
+        for i in range(self.x.size):
+            if -0.01 < self.x.flat[i] < 0.01:
+                self.x.flat[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data):
