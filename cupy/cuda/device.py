@@ -46,17 +46,13 @@ class Device(object):
 
     def __enter__(self):
         dev = Device()
-        if dev == self:
-            dev = None
-        else:
-            self.use()
         self._device_stack.append(dev)
+        if dev != self:
+            dev.use()
         return self
 
     def __exit__(self, *args):
-        dev = self._device_stack.pop()
-        if dev is not None:
-            dev.use()
+        self._device_stack.pop().use()
 
     def __repr__(self):
         return '<CUDA Device %d>' % self.id
