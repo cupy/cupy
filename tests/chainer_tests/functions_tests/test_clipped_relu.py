@@ -13,9 +13,11 @@ from chainer.testing import attr
 class TestClippedReLU(unittest.TestCase):
 
     def setUp(self):
-        x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        # Avoid values around zero for stability of numerical gradient
-        self.x = x + (x > 0) - (x <= 0)
+        self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        # Avoid values around zero and z for stability of numerical gradient
+        for i in range(self.x.size):
+            if -0.01 < self.x.flat[i] < 0.01 or 0.74 < self.x.flat[i] < 0.76:
+                self.x.flat[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.z = 0.75
 
