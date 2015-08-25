@@ -10,12 +10,16 @@ There are four differences compared to the original C API.
 
 """
 import ctypes
+import sys
 
 import six
 
 from cupy.cuda import internal
 
-_cuda = internal.load_library('cuda')
+if 'win32' == sys.platform:
+    _cuda = internal.load_library('nvcuda')
+else:
+    _cuda = internal.load_library('cuda')
 
 ###############################################################################
 # Types
