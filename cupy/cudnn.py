@@ -5,12 +5,7 @@ import numpy
 import six
 
 from cupy import cuda
-
-try:
-    from cupy.cuda import cudnn
-    available = True
-except Exception:
-    available = False
+from cupy.cuda import cudnn
 
 
 _handles = {}
