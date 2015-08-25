@@ -15,9 +15,8 @@ from chainer.utils import conv
 
 class TestConvolution2D(unittest.TestCase):
 
-    def setUp(self, use_cudnn=True):
-        self.func = functions.Convolution2D(
-            3, 2, 3, stride=2, pad=1, use_cudnn=use_cudnn)
+    def setUp(self):
+        self.func = functions.Convolution2D(3, 2, 3, stride=2, pad=1)
         self.func.b = numpy.random.uniform(
             -1, 1, self.func.b.shape).astype(numpy.float32)
         self.func.gW.fill(0)
@@ -38,13 +37,11 @@ class TestConvolution2D(unittest.TestCase):
     def test_col2im_consistency(self):
         col = conv.im2col_cpu(self.x, 3, 3, 2, 2, 1, 1)
         h, w = self.x.shape[2:]
-        im_cpu = conv.col2im_cpu(col,         2, 2, 1, 1, h, w)
+        im_cpu = conv.col2im_cpu(col, 2, 2, 1, 1, h, w)
         im_gpu = conv.col2im_gpu(cuda.to_gpu(col), 2, 2, 1, 1, h, w)
         gradient_check.assert_allclose(im_cpu, im_gpu.get())
 
-    @attr.cudnn
-    @condition.retry(3)
-    def test_forward_consistency(self):
+    def check_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
         y_cpu = self.func(x_cpu)
         self.assertEqual(y_cpu.data.dtype, numpy.float32)
@@ -56,10 +53,16 @@ class TestConvolution2D(unittest.TestCase):
 
         gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
 
+    @attr.cudnn
+    @condition.retry(3)
+    def test_forward_consistency(self):
+        self.check_forward_consistency()
+
     @attr.gpu
+    @condition.retry(3)
     def test_forward_consistency_im2col(self):
         self.func.use_cudnn = False
-        self.test_forward_consistency()
+        self.check_forward_consistency()
 
     def check_backward(self, x_data, y_grad):
         x = chainer.Variable(x_data)
@@ -90,7 +93,8 @@ class TestConvolution2D(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_im2col(self):
         self.func.use_cudnn = False
-        self.test_backward_gpu()
+        self.func.to_gpu()
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     def check_pickling(self, x_data):
         x = chainer.Variable(x_data)
