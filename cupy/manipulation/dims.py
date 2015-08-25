@@ -230,5 +230,6 @@ def squeeze(a, axis=None):
     v = a.view()
     v._shape = tuple(new_shape)
     v._strides = tuple(new_strides)
-    v._mark_dirty()
+    v._c_contiguous = -1
+    v._f_contiguous = -1
     return v
