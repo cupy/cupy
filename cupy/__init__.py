@@ -961,8 +961,8 @@ class ndarray(object):
         v._strides = tuple(strides)
         v._size = internal.prod(shape)
         v.data = self.data + offset
-        self._c_contiguous = -1
-        self._f_contiguous = -1
+        v._c_contiguous = -1
+        v._f_contiguous = -1
 
         return v
 
