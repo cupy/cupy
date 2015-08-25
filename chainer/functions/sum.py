@@ -39,5 +39,16 @@ class Sum(function.Function):
 
 
 def sum(x, axis=None):
-    """Sum of array elements over a given axis."""
+    """Sum of array elements over a given axis.
+
+    Args:
+        x (~chainer.Variable): Elements to sum.
+        axis (None or int): Axis which a sum is performed.
+            The default (axis = None) is perform a sum over all the dimensions
+            of the input array.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
     return Sum(axis)(x)
