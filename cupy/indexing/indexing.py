@@ -117,6 +117,7 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     ret = a.view()
     ret._shape = a.shape[:-2] + (diag_size,)
     ret._strides = a.strides[:-2] + (a.strides[-1] + a.strides[-2],)
+    ret._size = internal.prod(ret._shape)
     ret._c_contiguous = -1
     ret._f_contiguous = -1
     return ret

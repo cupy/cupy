@@ -152,6 +152,7 @@ class broadcast(object):
             view = a.view()
             view._shape = shape
             view._strides = tuple(strides)
+            view._size = self.size
             view._c_contiguous = -1
             view._f_contiguous = -1
             broadcasted.append(view)
