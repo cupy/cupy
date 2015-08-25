@@ -18,7 +18,7 @@ def array(obj, dtype=None, copy=True, ndmin=0):
         dtype: Data type specifier.
         copy (bool): If False, this function returns ``obj`` if possible.
             Otherwise this function always returns a new array.
-        ndmin (int): Minimum number of dimensions. Ones are inserated to the
+        ndmin (int): Minimum number of dimensions. Ones are inserted to the
             head of the shape if needed.
 
     Returns:
@@ -52,6 +52,7 @@ def array(obj, dtype=None, copy=True, ndmin=0):
 def asarray(a, dtype=None):
     """Converts an object to array.
 
+    This is equivalent to ``array(a, dtype, copy=False)``.
     This function currently does not support the ``order`` option.
 
     Args:
@@ -71,7 +72,10 @@ def asarray(a, dtype=None):
 def asanyarray(a, dtype=None):
     """Converts an object to array.
 
-    This is equivalent to cupy.asarray.
+    This is currently equivalent to :func:`~cupy.asarray`, since there is no
+    subclass of ndarray in CuPy. Note that the original
+    :func:`numpy.asanyarray` returns the input array as is if it is an instance
+    of a subtype of numpy.ndarray.
 
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 

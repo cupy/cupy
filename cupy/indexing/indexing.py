@@ -82,8 +82,8 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     Args:
         a (cupy.ndarray): Array from which the diagonals are taken.
         offset (int): Index of the diagonals. Zero indicates the main
-            diagonals, positive value upper diagonals, and negative value lower
-            diagonals.
+            diagonals, a positive value upper diagonals, and a negative value
+            lower diagonals.
         axis1 (int): The first axis to take diagonals from.
         axis2 (int): The second axis to take diagonals from.
 

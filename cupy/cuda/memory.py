@@ -10,7 +10,7 @@ class Memory(object):
 
     """Memory allocation on a CUDA device.
 
-    This class provides a RAII interface of the CUDA memory allocation.
+    This class provides an RAII interface of the CUDA memory allocation.
 
     Args:
         size (int): Size of the memory allocation in bytes.

@@ -16,9 +16,9 @@ def reshape(a, newshape):
         a (cupy.ndarray): Array to be reshaped.
         newshape (int or tuple of ints): The new shape of the array to return.
             If it is an integer, then it is treated as a tuple of length one.
-            It should be compatible with ``a.size``. One element can be -1,
-            which is automatically replaced with the appropriate value to make
-            the shape compatible with ``a.size``.
+            It should be compatible with ``a.size``. One of the elements can be
+            -1, which is automatically replaced with the appropriate value to
+            make the shape compatible with ``a.size``.
 
     Returns:
         cupy.ndarray: A reshaped view of ``a`` if possible, otherwise a copy.
@@ -52,7 +52,7 @@ def reshape(a, newshape):
 
 
 def ravel(a):
-    """Returns a flattend array.
+    """Returns a flattened array.
 
     It tries to return a view if possible, otherwise returns a copy.
 
