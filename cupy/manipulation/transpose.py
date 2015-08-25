@@ -61,27 +61,37 @@ def transpose(a, axes=None):
 
     """
     ndim = a.ndim
-    if not axes:
-        if ndim <= 1:
-            return a.view()
-        axes = tuple(reversed(six.moves.range(ndim)))
-    else:
-        if len(axes) == 1 and isinstance(axes[0], collections.Iterable):
-            axes = tuple(axes[0])
-        if any(axis < -ndim or axis >= ndim for axis in axes):
-            raise IndexError('Axes overrun')
-        axes = tuple(axis % ndim for axis in axes)
-
-        a_axes = list(six.moves.range(ndim))
-        if a_axes != sorted(axes):
-            raise ValueError('Invalid axes value: %s' % str(axes))
-
-        if ndim <= 1 or a_axes == axes:
-            return a.view()
-
     newarray = a.view()
+
+    if not axes:
+        if ndim > 1:
+            newarray._shape = tuple(reversed(newarray._shape))
+            newarray._strides = tuple(reversed(newarrya._strides))
+            newarray._c_contiguous, newarray._f_contiguous = \
+                newarray._f_contiguous, newarray._c_contiguous
+        return newarray
+
+    if len(axes) == 1 and isinstance(axes[0], collections.Iterable):
+        axes = tuple(axes[0])
+    if any(axis < -ndim or axis >= ndim for axis in axes):
+        raise IndexError('Axes overrun')
+    axes = tuple(axis % ndim for axis in axes)
+
+    a_axes = list(six.moves.range(ndim))
+    if a_axes != sorted(axes):
+        raise ValueError('Invalid axes value: %s' % str(axes))
+
+    if ndim <= 1 or a_axes == axes:
+        return a.view()
+
     newarray._shape = tuple(a._shape[axis] for axis in axes)
     newarray._strides = tuple(a._strides[axis] for axis in axes)
-    newarray._c_contiguous = -1
-    newarray._f_contiguous = -1
+
+    if axes == tuple(reversed(a_axes)):
+        newarray._c_contiguous, newarray._f_contiguous = \
+            newarray._f_contiguous, newarray._c_contiguous
+    else:
+        newarray._c_contiguous = -1
+        newarray._f_contiguous = -1
+
     return newarray
