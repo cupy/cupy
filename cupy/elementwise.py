@@ -78,7 +78,7 @@ def _check_args(args):
 
 
 def _get_args_info(args):
-    return tuple([(type(a), getattr(a, 'dtype', None), a.ndim) for a in args])
+    return tuple([(type(a), a.dtype, a.ndim) for a in args])
 
 
 def _get_kernel_params(params, args_info):
@@ -100,7 +100,7 @@ def _get_kernel_params(params, args_info):
 
 def _reduce_dims(args, params, indexer):
     if indexer.ndim <= 1:
-        return list(args), indexer
+        return args, indexer
     is_array_flags = [not p.raw and isinstance(a, cupy.ndarray)
                       for a, p in six.moves.zip(args, params)]
     array_args = [a for a, f in six.moves.zip(args, is_array_flags) if f]
@@ -116,20 +116,17 @@ def _reduce_dims(args, params, indexer):
 
     new_shape = tuple(dim for dim in shape if dim != 1)
     if new_shape == indexer.shape:
-        return list(args), indexer
+        return args, indexer
 
-    new_args = list(args)
-    for i in six.moves.range(len(args)):
+    for i, arg in enumerate(args):
         if is_array_flags[i]:
-            arg = args[i].view()
-            new_strides = tuple(s for i, s in enumerate(arg.strides)
-                                if shape[i] != 1)
+            arg = args[i] = arg.view()
             arg._shape = new_shape
-            arg._strides = new_strides
-            new_args[i] = arg
+            arg._strides = tuple(
+                st for st, sh in six.moves.zip(arg.strides, shape) if sh != 1)
 
     indexer.shape = new_shape
-    return new_args, indexer
+    return args, indexer
 
 
 def _get_inout_args(args, indexer, params, reduce_dims):
@@ -224,20 +221,21 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
 def _broadcast(args, params, size_error=True):
     brod = cupy.broadcast(
-        *(a if not p.raw and isinstance(a, cupy.ndarray) else None
-          for p, a in six.moves.zip(params, args)))
+        *[a if not p.raw and isinstance(a, cupy.ndarray) else None
+          for p, a in six.moves.zip(params, args)])
     if size_error and all(i is None for i in brod.values):
         raise ValueError('Loop size is Undecided')
-    return brod, tuple(b if a is None else a
-                       for a, b in six.moves.zip(brod.values, args))
+    value = [b if a is None else a
+             for a, b in six.moves.zip(brod.values, args)]
+    return value, brod.shape
 
 
-def _get_out_args(in_args, out_args, out_types, out_shape, out_params=None):
+def _get_out_args(out_args, out_types, out_shape, out_params=None):
     if len(out_args) == 0:
         if out_params is not None and any(p.raw for p in out_params):
             raise ValueError('Output array size is Undecided')
-        out_args = tuple(cupy.empty(shape=out_shape, dtype=t)
-                         for t in out_types)
+        out_args = [cupy.empty(shape=out_shape, dtype=t)
+                    for t in out_types]
     else:
         for i, a in enumerate(out_args):
             if not isinstance(a, cupy.ndarray):
@@ -355,32 +353,31 @@ class ElementwiseKernel(object):
                 raise TypeError('Unsupported type %s' % type(i))
         _check_args(args)
 
-        brod, value = _broadcast(args, self.params, n is None)
-        in_args = value[:self.nin]
-        out_args = value[self.nin:]
+        values, shape = _broadcast(args, self.params, n is None)
+        in_args = values[:self.nin]
+        out_args = values[self.nin:]
         in_types, out_types, types = _decide_params_type(
             self.in_params, self.out_params,
             _get_ndarray_dtype(in_args), _get_ndarray_dtype(out_args))
 
-        in_args = tuple(x if isinstance(x, cupy.ndarray) else t.type(x)
-                        for x, t in six.moves.zip(in_args, in_types))
-        out_args = _get_out_args(
-            in_args, out_args, out_types, brod.shape, self.out_params)
-
-        ret = out_args
+        ret = out_args = _get_out_args(
+            out_args, out_types, shape, self.out_params)
         if len(ret) == 1:
             ret = ret[0]
 
         if n is None:
-            indexer = carray.Indexer(brod.shape)
+            indexer = carray.Indexer(shape)
         else:
             indexer = carray.Indexer((n,))
 
-        if brod.size == 0:
+        if indexer.size == 0:
             return ret
 
+        inout_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
+                      for x, t in six.moves.zip(in_args, in_types)]
+        inout_args += out_args
         inout_args = _get_inout_args(
-            in_args + out_args, indexer, self.params, self.reduce_dims)
+            inout_args, indexer, self.params, self.reduce_dims)
         args_info = _get_args_info(inout_args)
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
@@ -417,15 +414,39 @@ def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
     return _get_simple_elementwise_kernel(
         kernel_params, operation, name, preamble)
 
+def _guess_routine_from_in_types(ops, in_types):
+    for op in ops:
+        if all(numpy.can_cast(t0, t1) for t0, t1
+               in six.moves.zip(in_types, op[0])):
+            return op
+    return None
 
-@util.memoize()
-def _castable(src, tgt):
-    return numpy.can_cast(src, tgt)
+def _guess_routine_from_dtype(ops, dtype):
+    for op in ops:
+        if all(t == dtype for t in op[1]):
+            return op
+    return None
 
+def _guess_routine(cache, ops, in_args, dtype):
+    if dtype is None:
+        key = tuple([numpy.dtype(type(i))
+                     if isinstance(i, (int, float, bool)) else i.dtype
+                     for i in in_args])
+    else:
+        key = dtype
 
-def _can_cast(arg, totype):
-    totype = numpy.dtype(totype).char
-    return _castable(arg.dtype.char, totype)
+    op = cache.get(key, ())
+    if op is ():
+        if dtype is None:
+            op = _guess_routine_from_in_types(ops, key)
+        else:
+            op = _guess_routine_from_dtype(ops, key)
+
+        cache[key] = op
+
+    if op is not None:
+        return op
+    raise TypeError('Wrong type of arguments for %s' % self.name)
 
 
 class ufunc(object):
@@ -455,7 +476,7 @@ class ufunc(object):
             for i in six.moves.range(nout))
         self._params = _in_params + _out_params + (
             ParameterInfo('CIndexer _ind', False),)
-        self._routine_table = {}
+        self._routine_cache = {}
 
     def __repr__(self):
         return "<ufunc '%s'>" % self.name
@@ -498,36 +519,37 @@ class ufunc(object):
         if not (len(args) == self.nin or len(args) == self.nargs):
             raise TypeError('Wrong number of arguments for %s' % self.name)
 
-        brod = cupy.broadcast(*args)
-        in_args = tuple(numpy.dtype(type(i)).type(i)
-                        if isinstance(i, (int, float, bool)) else i
-                        for i in brod.values[:self.nin])
-        out_args = args[self.nin:]
+        in_args = list(args[:self.nin])
         if out is not None:
             if len(out_args) != 0:
                 raise ValueError("cannot specify 'out' as both "
                                  "a positional and keyword argument")
-            out_args = out,
+            out_args = [out]
+        else:
+            out_args = list(args[self.nin:])
         _check_args(in_args + out_args)
 
-        in_types, out_types, routine = self._guess_routine(in_args, dtype)
+        in_types, out_types, routine = _guess_routine(
+            self._routine_cache, self._ops, in_args, dtype)
 
-        in_args = tuple(x if isinstance(x, cupy.ndarray) else t.type(x)
-                        for x, t in six.moves.zip(in_args, in_types))
-        out_args = _get_out_args(in_args, out_args, out_types, brod.shape)
+        broad = cupy.broadcast(*(in_args + out_args))
 
-        ret = out_args
+        ret = out_args = _get_out_args(out_args, out_types, broad.shape)
         if len(ret) == 1:
             ret = ret[0]
 
-        if 0 in brod.shape:
+        if 0 in broad.shape:
             return ret
 
-        indexer = carray.Indexer(brod.shape)
+        indexer = carray.Indexer(broad.shape)
+        inout_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
+                      for x, t
+                      in six.moves.zip(broad.values[:self.nin], in_types)]
+        inout_args += out_args
         inout_args = _get_inout_args(
-            in_args + out_args, indexer, self._params, True)
+            inout_args, indexer, self._params, True)
         args_info = _get_args_info(inout_args)
-        out_raw_types = tuple(x.dtype for x in out_args)
+        out_raw_types = tuple([x.dtype for x in out_args])
         kern = _get_ufunc_kernel(
             in_types, out_types, routine,
             args_info, out_raw_types,
@@ -536,34 +558,6 @@ class ufunc(object):
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
-    def _guess_routine_from_in_types(self, in_types):
-        for op in self._ops:
-            if all(numpy.can_cast(t0, t1) for t0, t1
-                   in six.moves.zip(in_types, op[0])):
-                return op
-        return None
-
-    def _guess_routine_from_dtype(self, dtype):
-        for op in self._ops:
-            if all(t == dtype for t in op[1]):
-                return op
-        return None
-
-    def _guess_routine(self, in_args, dtype):
-        if dtype is None:
-            key = tuple(i.dtype for i in in_args)
-        else:
-            key = dtype
-        op = self._routine_table.get(key, ())
-        if op is ():
-            if dtype is None:
-                op = self._guess_routine_from_in_types(key)
-            else:
-                op = self._guess_routine_from_dtype(key)
-            self._routine_table[key] = op
-        if op is not None:
-            return op
-        raise TypeError('Wrong type of arguments for %s' % self.name)
 
 
 def create_ufunc(name, ops, routine=None, preamble='', doc=''):

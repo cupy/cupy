@@ -128,7 +128,7 @@ def infer_unknown_dimension(shape, size):
     if cnt > 1:
         raise ValueError('can only specify only one unknown dimension')
     p = size // prod(dim for dim in shape if dim >= 0)
-    return tuple(dim if dim >= 0 else p for dim in shape)
+    return tuple([dim if dim >= 0 else p for dim in shape])
 
 
 def check_args_device(args):

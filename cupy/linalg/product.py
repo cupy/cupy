@@ -195,8 +195,8 @@ def tensordot(a, b, axes=2, out=None):
             raise ValueError('Axis dimension mismatch')
 
     # Make the axes non-negative
-    axes0 = tuple(axis % a.ndim for axis in axes0)
-    axes1 = tuple(axis % b.ndim for axis in axes1)
+    axes0 = tuple([axis % a.ndim for axis in axes0])
+    axes1 = tuple([axis % b.ndim for axis in axes1])
 
     sum_ndim = len(axes0)
     a = _move_axes_to_head(a, axes0)
@@ -322,11 +322,10 @@ def kron(a, b):
 
 def _move_axes_to_head(a, axes):
     # This function moves the axes of ``s`` to the head of the shape.
-    axes = tuple(axes)
-    if axes == tuple(six.moves.range(len(axes))):
+    if all(i == j for i, j in enumerate(axes)):
         return a
-    right_axes = tuple(i for i in six.moves.range(a.ndim) if i not in axes)
-    return a.transpose(*(axes + right_axes))
+    axes = list(axes) + [i for i in six.moves.range(a.ndim) if i not in axes]
+    return a.transpose(*axes)
 
 
 def _mat_to_cublas_contiguous(a, trans):

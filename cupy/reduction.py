@@ -125,7 +125,7 @@ def _get_axis(axis, ndim):
     if any(dim < -ndim or dim >= ndim for dim in axis):
         raise ValueError('Axis overrun')
     axis = tuple(sorted([dim % ndim for dim in axis]))
-    raxis = tuple(dim for dim in six.moves.range(ndim) if dim not in axis)
+    raxis = tuple([dim for dim in six.moves.range(ndim) if dim not in axis])
     return axis, raxis
 
 
@@ -135,7 +135,7 @@ def _get_out_shape(shape, axis, raxis, keepdims):
         for i in axis:
             out_shape[i] = 1
         return tuple(out_shape)
-    return tuple(shape[i] for i in raxis)
+    return tuple([shape[i] for i in raxis])
 
 
 def _get_trans_args(args, trans, shape, params=None):
@@ -145,7 +145,7 @@ def _get_trans_args(args, trans, shape, params=None):
         raise NotImplementedError('Illegal conditions')
     args = [a.transpose(trans) if isinstance(a, cupy.ndarray) else a
             for a in args]
-    shape = tuple(shape[i] for i in trans)
+    shape = tuple([shape[i] for i in trans])
     return args, shape
 
 
@@ -176,6 +176,7 @@ class simple_reduction_function(object):
             'CIndexer _in_ind, CIndexer _out_ind, int32 _out_clp2_size')
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
+        self._routine_cache = {}
 
     def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False):
         if not isinstance(a, cupy.ndarray):
@@ -183,19 +184,21 @@ class simple_reduction_function(object):
 
         if self.identity is None:
             assert a.size != 0
-        in_args = a,
+        in_args = [a]
         if out is None:
-            out_args = ()
+            elementwise._check_args((a,))
+            out_args = []
         else:
-            out_args = out,
-        elementwise._check_args(in_args + out_args)
+            elementwise._check_args((a, out))
+            out_args = [out]
 
-        in_types, out_types, routine = self._guess_routine(in_args, dtype)
+        in_types, out_types, routine = elementwise._guess_routine(
+            self._routine_cache, self._ops, in_args, dtype)
 
         axis, raxis = _get_axis(axis, a.ndim)
         out_shape = _get_out_shape(a.shape, axis, raxis, keepdims)
         out_args = elementwise._get_out_args(
-            in_args, out_args, out_types, out_shape)
+            out_args, out_types, out_shape)
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, in_args[0].shape)
 
@@ -239,19 +242,6 @@ class simple_reduction_function(object):
         if len(out_args) == 1:
             return out_args[0]
         return tuple(out_args)
-
-    def _guess_routine(self, in_args, dtype):
-        if dtype is None:
-            for in_types, out_types, routine in self._ops:
-                if all(numpy.can_cast(in_arg, in_type)
-                       for in_arg, in_type
-                       in six.moves.zip(in_args, in_types)):
-                    return in_types, out_types, routine
-        else:
-            for in_types, out_types, routine in self._ops:
-                if all(t == dtype for t in out_types):
-                    return in_types, out_types, routine
-        raise TypeError('Wrong type of arguments for %s' % self.name)
 
 
 @util.memoize(for_each_device=True)
@@ -351,33 +341,34 @@ class ReductionKernel(object):
                 len(args) == self.nin + self.nout):
             raise TypeError('Wrong number of arguments for %s' % self.name)
 
-        out_args = args[self.nin:]
         if out is not None:
             if self.nout != 1:
                 raise NotImplementedError('')
             if len(out_args) != 0:
                 raise ValueError("cannot specify 'out' as both "
                                  "a positional and keyword argument")
-            out_args = out,
+            out_args = [out]
+        else:
+            out_args = list(args[self.nin:])
 
-        brod, in_args = elementwise._broadcast(args, self.in_params)
+        in_args, broad_shape = elementwise._broadcast(args, self.in_params)
         elementwise._check_args(in_args + out_args)
 
         if self.identity is None:
-            assert brod.size != 0
+            assert 0 in broad_shape
         in_types, out_types, types = elementwise._decide_params_type(
             self.in_params, self.out_params,
             elementwise._get_ndarray_dtype(in_args),
             elementwise._get_ndarray_dtype(out_args))
 
-        axis, raxis = _get_axis(axis, brod.nd)
-        out_shape = _get_out_shape(brod.shape, axis, raxis, keepdims)
-        in_args = tuple(x if isinstance(x, cupy.ndarray) else t.type(x)
-                        for x, t in six.moves.zip(in_args, in_types))
+        axis, raxis = _get_axis(axis, len(broad_shape))
+        out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
+        in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
+                   for x, t in six.moves.zip(in_args, in_types)]
         in_args, in_shape = _get_trans_args(
-            in_args, axis + raxis, brod.shape, self.in_params)
+            in_args, axis + raxis, broad_shape, self.in_params)
         out_args = elementwise._get_out_args(
-            in_args, out_args, out_types, out_shape, self.out_params)
+            out_args, out_types, out_shape, self.out_params)
 
         in_indexer = carray.Indexer(in_shape)
         out_indexer = carray.Indexer(out_shape)

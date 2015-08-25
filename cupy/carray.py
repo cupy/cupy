@@ -54,6 +54,10 @@ class Indexer(object):
     def ctypes(self):
         return to_cindexer(self.size, self.shape)
 
+    @property
+    def dtype(self):
+        return None
+
 
 _header_source = None
 
