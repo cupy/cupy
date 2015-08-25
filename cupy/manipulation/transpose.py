@@ -66,7 +66,7 @@ def transpose(a, axes=None):
     if not axes:
         if ndim > 1:
             newarray._shape = tuple(reversed(newarray._shape))
-            newarray._strides = tuple(reversed(newarrya._strides))
+            newarray._strides = tuple(reversed(newarray._strides))
             newarray._c_contiguous, newarray._f_contiguous = \
                 newarray._f_contiguous, newarray._c_contiguous
         return newarray
