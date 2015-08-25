@@ -111,8 +111,8 @@ class CArray {
 private:
   T* data_;
   int size_;
-  int shape_[ndim];
-  int strides_[ndim];
+  int shape_[ndim == 0 ? 1 : ndim];
+  int strides_[ndim == 0 ? 1 : ndim];
 
 public:
   __device__ int size() const {
@@ -154,8 +154,8 @@ template <int ndim>
 class CIndexer {
 private:
   int size_;
-  int shape_[ndim];
-  int index_[ndim];
+  int shape_[ndim == 0 ? 1 : ndim];
+  int index_[ndim == 0 ? 1 : ndim];
 
 public:
   __device__ int size() const {
