@@ -25,6 +25,10 @@ _native = {
 }
 
 
+def _get_ctypes(x):
+    return getattr(x, 'ctypes', x)
+
+
 class Function(object):
 
     """CUDA kernel function."""
@@ -34,12 +38,8 @@ class Function(object):
         self.ptr = driver.moduleGetFunction(module.ptr, funcname)
 
     def __call__(self, grid, block, args, shared_mem=0, stream=None):
-        grid = (grid + (1, 1))[:3]
-        block = (block + (1, 1))[:3]
-
-        a_src = [_native.get(type(x), lambda x: getattr(x, 'ctypes', x))(x)
-                 for x in args]
-        a = (ctypes.c_void_p * len(args))(
+        a_src = tuple(_native.get(type(x), _get_ctypes)(x) for x in args)
+        a = (ctypes.c_void_p * len(a_src))(
             *(ctypes.addressof(x) for x in a_src))
 
         if stream is None:
@@ -54,7 +54,7 @@ class Function(object):
         # TODO(beam2d): Tune it
         gridx = min(65536, size // block_max_size + 1)
         blockx = min(size, block_max_size)
-        self((gridx,), (blockx,), args, shared_mem, stream)
+        self((gridx, 1, 1), (blockx, 1, 1), args, shared_mem, stream)
 
 
 class Module(object):
