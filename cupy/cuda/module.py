@@ -38,7 +38,7 @@ class Function(object):
         self.ptr = driver.moduleGetFunction(module.ptr, funcname)
 
     def __call__(self, grid, block, args, shared_mem=0, stream=None):
-        a_src = tuple(_native.get(type(x), _get_ctypes)(x) for x in args)
+        a_src = [_native.get(type(x), _get_ctypes)(x) for x in args]
         a = (ctypes.c_void_p * len(a_src))(
             *(ctypes.addressof(x) for x in a_src))
 
