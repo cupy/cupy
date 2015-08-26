@@ -29,10 +29,6 @@ def _get_ctypes(x):
     return getattr(x, 'ctypes', x)
 
 
-def _to_ctypes(x):
-    return _native.get(type(x), _get_ctypes)(x)
-
-
 class Function(object):
 
     """CUDA kernel function."""
@@ -42,8 +38,9 @@ class Function(object):
         self.ptr = driver.moduleGetFunction(module.ptr, funcname)
 
     def __call__(self, grid, block, args, shared_mem=0, stream=None):
-        a_src = tuple(map(_to_ctypes, args))
-        a = (ctypes.c_void_p * len(a_src))(*map(ctypes.addressof, a_src))
+        a_src = [_native.get(type(x), _get_ctypes)(x) for x in args]
+        a = (ctypes.c_void_p * len(a_src))(
+            *[ctypes.addressof(x) for x in a_src])
 
         if stream is None:
             stream = cupy.cuda.stream.Stream(null=True)
