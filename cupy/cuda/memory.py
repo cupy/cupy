@@ -60,7 +60,7 @@ class MemoryPointer(object):
     """
     def __init__(self, mem, offset):
         self.mem = mem
-        self.ptr = ctypes.c_void_p(int(mem) + offset)
+        self.ptr = ctypes.c_void_p(int(mem) + int(offset))
 
     def __int__(self):
         """Returns the pointer value."""
