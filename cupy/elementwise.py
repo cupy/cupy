@@ -414,6 +414,7 @@ def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
     return _get_simple_elementwise_kernel(
         kernel_params, operation, name, preamble)
 
+
 def _guess_routine_from_in_types(ops, in_types):
     for op in ops:
         if all(numpy.can_cast(t0, t1) for t0, t1
@@ -421,13 +422,15 @@ def _guess_routine_from_in_types(ops, in_types):
             return op
     return None
 
+
 def _guess_routine_from_dtype(ops, dtype):
     for op in ops:
         if all(t == dtype for t in op[1]):
             return op
     return None
 
-def _guess_routine(cache, ops, in_args, dtype):
+
+def _guess_routine(name, cache, ops, in_args, dtype):
     if dtype is None:
         key = tuple([numpy.dtype(type(i))
                      if isinstance(i, (int, float, bool)) else i.dtype
@@ -446,7 +449,7 @@ def _guess_routine(cache, ops, in_args, dtype):
 
     if op is not None:
         return op
-    raise TypeError('Wrong type of arguments for %s' % self.name)
+    raise TypeError('Wrong type of arguments for %s' % name)
 
 
 class ufunc(object):
@@ -520,17 +523,17 @@ class ufunc(object):
             raise TypeError('Wrong number of arguments for %s' % self.name)
 
         in_args = list(args[:self.nin])
+        out_args = list(args[self.nin:])
         if out is not None:
             if len(out_args) != 0:
                 raise ValueError("cannot specify 'out' as both "
                                  "a positional and keyword argument")
             out_args = [out]
-        else:
-            out_args = list(args[self.nin:])
+
         _check_args(in_args + out_args)
 
         in_types, out_types, routine = _guess_routine(
-            self._routine_cache, self._ops, in_args, dtype)
+            self.name, self._routine_cache, self._ops, in_args, dtype)
 
         broad = cupy.broadcast(*(in_args + out_args))
 
@@ -557,7 +560,6 @@ class ufunc(object):
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
-
 
 
 def create_ufunc(name, ops, routine=None, preamble='', doc=''):

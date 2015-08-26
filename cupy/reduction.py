@@ -193,7 +193,7 @@ class simple_reduction_function(object):
             out_args = [out]
 
         in_types, out_types, routine = elementwise._guess_routine(
-            self._routine_cache, self._ops, in_args, dtype)
+            self.name, self._routine_cache, self._ops, in_args, dtype)
 
         axis, raxis = _get_axis(axis, a.ndim)
         out_shape = _get_out_shape(a.shape, axis, raxis, keepdims)
@@ -341,6 +341,7 @@ class ReductionKernel(object):
                 len(args) == self.nin + self.nout):
             raise TypeError('Wrong number of arguments for %s' % self.name)
 
+        out_args = list(args[self.nin:])
         if out is not None:
             if self.nout != 1:
                 raise NotImplementedError('')
@@ -348,8 +349,6 @@ class ReductionKernel(object):
                 raise ValueError("cannot specify 'out' as both "
                                  "a positional and keyword argument")
             out_args = [out]
-        else:
-            out_args = list(args[self.nin:])
 
         in_args, broad_shape = elementwise._broadcast(args, self.in_params)
         elementwise._check_args(in_args + out_args)
