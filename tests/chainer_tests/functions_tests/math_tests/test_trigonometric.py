@@ -82,7 +82,7 @@ class UnaryFunctionsTestBase(object):
 
     @attr.gpu
     @condition.retry(3)
-    def test_sin_backward_cpu(self):
+    def test_sin_backward_gpu(self):
         self.check_backward_gpu(F.sin)
 
 
