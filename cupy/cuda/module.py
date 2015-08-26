@@ -23,6 +23,7 @@ _native = {
     numpy.float32: ctypes.c_float,
     numpy.float64: ctypes.c_double,
 }
+_ptrarray_types = [ctypes.c_void_p * l for l in range(32)]
 
 
 def _get_ctypes(x):
@@ -39,7 +40,7 @@ class Function(object):
 
     def __call__(self, grid, block, args, shared_mem=0, stream=None):
         a_src = [_native.get(type(x), _get_ctypes)(x) for x in args]
-        a = (ctypes.c_void_p * len(a_src))(
+        a = _ptrarray_types[len(a_src)](
             *[ctypes.addressof(x) for x in a_src])
 
         if stream is None:
@@ -52,9 +53,12 @@ class Function(object):
     def linear_launch(self, size, args, shared_mem=0, block_max_size=128,
                       stream=None):
         # TODO(beam2d): Tune it
-        gridx = min(65536, size // block_max_size + 1)
-        blockx = min(size, block_max_size)
-        self((gridx, 1, 1), (blockx, 1, 1), args, shared_mem, stream)
+        gridx = size // block_max_size + 1
+        if gridx > 65536:
+            gridx = 65536
+        if size > block_max_size:
+            size = block_max_size
+        self((gridx, 1, 1), (size, 1, 1), args, shared_mem, stream)
 
 
 class Module(object):
