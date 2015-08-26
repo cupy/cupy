@@ -9,7 +9,6 @@ from cupy import cuda
 from cupy import util
 
 
-@util.memoize(for_each_device=True)
 def _get_simple_elementwise_kernel(
         params, operation, name='kernel', preamble='',
         loop_prep='', after_loop='', options=()):
@@ -174,7 +173,7 @@ def _get_param_info(s, is_const=False):
     return tuple(ParameterInfo(i, is_const) for i in s.strip().split(','))
 
 
-@util.memoize(for_each_device=True)
+@util.memoize()
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     type_dict = {}
     if out_args_dtype:
