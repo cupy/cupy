@@ -118,6 +118,7 @@ def _reduce_dims(args, params, indexer):
     if new_shape == indexer.shape:
         return args, indexer
 
+    args = list(args)
     for i, arg in enumerate(args):
         if is_array_flags[i]:
             arg = args[i] = arg.view()
