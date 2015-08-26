@@ -21,8 +21,6 @@ _carrays = [_make_carray(i) for i in six.moves.range(MAX_NDIM)]
 
 
 def to_carray(data, size, shape, strides):
-    if len(shape) == 0:
-        return _carrays[1](data, size, (1,), (0,))
     return _carrays[len(shape)](data, size, shape, strides)
 
 

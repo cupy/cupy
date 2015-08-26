@@ -18,8 +18,6 @@ _cindexers = [_make_cindexer(i) for i in six.moves.range(carray.MAX_NDIM)]
 
 
 def to_cindexer(size, shape):
-    if len(shape) == 0:
-        return _cindexers[1](size, (1,), (0,))
     return _cindexers[len(shape)](size, shape, (0,) * len(shape))
 
 
