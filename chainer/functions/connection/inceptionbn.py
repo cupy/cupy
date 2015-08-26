@@ -1,10 +1,11 @@
 from chainer import function
 from chainer import function_set
-from chainer.functions import batch_normalization
-from chainer.functions import concat
-from chainer.functions import convolution_2d
-from chainer.functions import pooling_2d
-from chainer.functions import relu
+from chainer.functions.activation import relu
+from chainer.functions.array import concat
+from chainer.functions.connection import convolution_2d
+from chainer.functions.normalization import batch_normalization
+from chainer.functions.pooling import average_pooling_2d
+from chainer.functions.pooling import max_pooling_2d
 
 
 class InceptionBN(function.Function):
@@ -69,9 +70,10 @@ class InceptionBN(function.Function):
         self.proj_pool = proj_pool
 
         if pooltype == 'max':
-            self.f.pool = pooling_2d.MaxPooling2D(3, stride=stride, pad=1)
+            self.f.pool = max_pooling_2d.MaxPooling2D(3, stride=stride, pad=1)
         elif pooltype == 'avg':
-            self.f.pool = pooling_2d.AveragePooling2D(3, stride=stride, pad=1)
+            self.f.pool = average_pooling_2d.AveragePooling2D(
+                3, stride=stride, pad=1)
         else:
             raise NotImplementedError()
 

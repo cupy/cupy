@@ -1,6 +1,8 @@
 import math
 
-import chainer.functions as F
+from chainer.functions.activation import softplus
+from chainer.functions.math import exponential
+from chainer.functions.math import sum
 from chainer import variable
 
 
@@ -34,8 +36,8 @@ def gaussian_kl_divergence(mean, ln_var):
     assert isinstance(ln_var, variable.Variable)
 
     J = mean.data.size
-    var = F.exp(ln_var)
-    return (F.sum(mean * mean) + F.sum(var) - F.sum(ln_var) - J) * 0.5
+    var = exponential.exp(ln_var)
+    return (sum.sum(mean * mean) + sum.sum(var) - sum.sum(ln_var) - J) * 0.5
 
 
 def bernoulli_nll(x, y):
@@ -69,7 +71,7 @@ def bernoulli_nll(x, y):
     assert isinstance(x, variable.Variable)
     assert isinstance(y, variable.Variable)
 
-    return F.sum(F.softplus(-y)) + F.sum(y) - F.sum(y * x)
+    return sum.sum(softplus.softplus(-y)) + sum.sum(y) - sum.sum(y * x)
 
 
 def gaussian_nll(x, mean, ln_var):
@@ -104,7 +106,7 @@ def gaussian_nll(x, mean, ln_var):
     assert isinstance(ln_var, variable.Variable)
 
     D = x.data.size
-    x_prec = F.exp(-ln_var)
+    x_prec = exponential.exp(-ln_var)
     x_diff = x - mean
     x_power = (x_diff * x_diff) * x_prec * -0.5
-    return (F.sum(ln_var) + D * math.log(2 * math.pi)) / 2 - F.sum(x_power)
+    return (sum.sum(ln_var) + D * math.log(2 * math.pi)) / 2 - sum.sum(x_power)
