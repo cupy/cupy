@@ -3,7 +3,6 @@ import ctypes
 import numpy
 
 from cupy.cuda import driver
-import cupy.cuda.stream
 
 _native = {
     int: ctypes.c_int,
