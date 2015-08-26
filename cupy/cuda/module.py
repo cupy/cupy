@@ -43,12 +43,9 @@ class Function(object):
         a = _ptrarray_types[len(a_src)](
             *[ctypes.addressof(x) for x in a_src])
 
-        if stream is None:
-            stream = cupy.cuda.stream.Stream(null=True)
-
         driver.launchKernel(self.ptr, grid[0], grid[1], grid[2],
                             block[0], block[1], block[2], shared_mem,
-                            stream.ptr, a, ctypes.c_void_p())
+                            stream and stream.ptr, a, None)
 
     def linear_launch(self, size, args, shared_mem=0, block_max_size=128,
                       stream=None):
