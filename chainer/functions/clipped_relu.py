@@ -42,7 +42,7 @@ class ClippedReLU(function.Function):
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
             'T x, T gy, T z', 'T gx',
-            'gx = ((x > 0) and (x < z))? gy : 0',
+            'gx = ((x > 0) & (x < z))? gy : 0',
             'clipped_relu_bwd')(x[0], gy[0], self.cap)
         return gx,
 
