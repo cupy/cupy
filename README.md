@@ -51,10 +51,7 @@ Then, install CUDA-related dependent packages via pip:
 ```
 pip install chainer-cuda-deps
 ```
-or, from the source:
-```
-python cuda_deps/setup.py install
-```
+If you install the chainer from the source, the cuda dependencies are automatically installed.
 
 ## More information
 
