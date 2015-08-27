@@ -79,7 +79,8 @@ _cudart.cudaGetDevice.argtypes = [ctypes.POINTER(ctypes.c_int)]
 def getDevice():
     device = Device()
     status = _cudart.cudaGetDevice(ctypes.byref(device))
-    check_status(status)
+    if status != 0:
+        check_status(status)
     return device.value
 
 
