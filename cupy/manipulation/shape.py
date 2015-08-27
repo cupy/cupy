@@ -25,12 +25,10 @@ def reshape(a, newshape):
 
     """
     # TODO(beam2d): Support ordering option
-    if not isinstance(newshape, collections.Iterable):
-        newshape = newshape,
-    elif len(newshape) == 1 and isinstance(newshape[0], collections.Iterable):
-        newshape = tuple(newshape[0])
-    else:
+    if isinstance(newshape, collections.Sequence):
         newshape = tuple(newshape)
+    else:
+        newshape = newshape,
 
     shape = a.shape
     if newshape == shape:

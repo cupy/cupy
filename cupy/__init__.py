@@ -408,8 +408,8 @@ class ndarray(object):
 
         """
         # TODO(beam2d): Support ordering option
-        if len(shape) == 1 and isinstance(shape[0], collections.Iterable):
-            shape = tuple(shape[0])
+        if len(shape) == 1 and isinstance(shape[0], collections.Sequence):
+            shape = shape[0]
         return reshape(self, shape)
 
     # TODO(beam2d0: Implement it
@@ -423,6 +423,8 @@ class ndarray(object):
            :meth:`numpy.ndarray.reshape`
 
         """
+        if len(axes) == 1 and isinstance(axes[0], collections.Sequence):
+            axes = axes[0]
         return transpose(self, axes)
 
     def swapaxes(self, axis1, axis2):

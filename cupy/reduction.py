@@ -117,7 +117,7 @@ def _make_reduction_function_kernel(
 def _get_axis(axis, ndim):
     if axis is None:
         axis = tuple(six.moves.range(ndim))
-    elif isinstance(axis, collections.Iterable):
+    elif isinstance(axis, collections.Sequence):
         axis = tuple(axis)
     else:
         axis = axis,

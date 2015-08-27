@@ -235,7 +235,7 @@ def get_random_state():
 def _get_size(size):
     if size is None:
         return ()
-    elif isinstance(size, collections.Iterable):
+    elif isinstance(size, collections.Sequence):
         return tuple(size)
     else:
         return size,
