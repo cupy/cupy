@@ -10,11 +10,10 @@ from cupy import elementwise
 from cupy import util
 
 
-@util.memoize(for_each_device=True)
-def _make_reduction_function_kernel(
+def _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
-        type_preamble, input_expr, output_expr, preamble):
+        type_preamble, input_expr, output_expr, preamble, options):
     if identity is None:
         identity = ''
     module_code = string.Template('''
@@ -110,7 +109,7 @@ def _make_reduction_function_kernel(
         input_expr=input_expr,
         output_expr=output_expr,
         preamble=preamble)
-    module = carray.compile_with_cache(module_code)
+    module = carray.compile_with_cache(module_code, options)
     return module.get_function(name)
 
 
@@ -161,9 +160,29 @@ def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
     return args
 
 
+@util.memoize(for_each_device=True)
+def _get_simple_reduction_function(
+        routine, params, args_info, in_arg_dtype, out_arg_dtype, out_types,
+        name, block_size, identity, input_expr, output_expr, _preamble,
+        options):
+    reduce_type = routine[3]
+    if reduce_type is None:
+        reduce_type = elementwise._get_typename(out_types[0])
+
+    t = (elementwise._get_typename(in_arg_dtype),
+         elementwise._get_typename(out_arg_dtype))
+    type_preamble = 'typedef %s type_in0_raw; typedef %s type_out0_raw;' % t
+
+    params = elementwise._get_kernel_params(params, args_info)
+    return _get_simple_reduction_kernel(
+        name, block_size, reduce_type, params, identity,
+        routine[0], routine[1], routine[2],
+        type_preamble, input_expr, output_expr, _preamble, options)
+
+
 class simple_reduction_function(object):
 
-    def __init__(self, name, ops, identity=None, preamble=''):
+    def __init__(self, name, ops, identity, preamble):
         self.name = name
         self._ops = ops
         self.identity = identity
@@ -212,25 +231,12 @@ class simple_reduction_function(object):
         args_info = elementwise._get_args_info(inout_args)
 
         block_size = 512
-        reduce_type = routine[3]
-        if reduce_type is None:
-            reduce_type = elementwise._get_typename(out_types[0])
+        kern = _get_simple_reduction_function(
+            routine, self._params, args_info,
+            in_args[0].dtype, out_args[0].dtype, out_types,
+            self.name, block_size, self.identity,
+            self._input_expr, self._output_expr, self._preamble, ())
 
-        params = elementwise._get_kernel_params(self._params, args_info)
-        type_preamble = (
-            'typedef {} type_in0_raw; typedef {} type_out0_raw;'.format(
-                elementwise._get_typename(in_args[0].dtype),
-                elementwise._get_typename(out_args[0].dtype)))
-
-        kern = _make_reduction_function_kernel(
-            self.name,
-            block_size,
-            reduce_type,
-            params,
-            self.identity,
-            routine[0], routine[1], routine[2],
-            type_preamble, self._input_expr, self._output_expr,
-            self._preamble)
         shared_mem = 32 * block_size
         if out_clp2_size > 256:
             shared_mem = 0
@@ -245,20 +251,27 @@ class simple_reduction_function(object):
 
 
 @util.memoize(for_each_device=True)
-def _get_reduction_kernel(params, args_info, types):
+def _get_reduction_kernel(
+        params, args_info, types,
+        name, block_size, reduce_type, identity, map_expr, reduce_expr,
+        post_map_expr, preamble, options):
     kernel_params = elementwise._get_kernel_params(params, args_info)
     arrays = [p for p, a in six.moves.zip(params, args_info)
               if not p.raw and a[0] is cupy.ndarray]
     type_preamble = '\n'.join(
-        'typedef {} {};'.format(elementwise._get_typename(v), k)
+        'typedef %s %s;' % (elementwise._get_typename(v), k)
         for k, v in types)
     input_expr = '\n'.join(
-        'const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
-        for p in arrays if p.is_const)
+        ['const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
+         for p in arrays if p.is_const])
     output_expr = '\n'.join(
-        '{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
-        for p in arrays if not p.is_const)
-    return kernel_params, type_preamble, input_expr, output_expr
+        ['{0} &{1} = _raw_{1}[_i];'.format(p.ctype, p.name)
+         for p in arrays if not p.is_const])
+
+    return _get_simple_reduction_kernel(
+        name, block_size, reduce_type, kernel_params, identity,
+        map_expr, reduce_expr, post_map_expr,
+        type_preamble, input_expr, output_expr, preamble, options)
 
 
 class ReductionKernel(object):
@@ -285,17 +298,17 @@ class ReductionKernel(object):
             readability of the performance profiling.
         reduce_type (str): Type of values to be used for reduction. This type
             is used to store the special variables ``a``.
-        options (tuple of str): Additional compilation options.
         reduce_dims (bool): If True, input arrays are reshaped without copy to
             smaller dimensions for efficiency.
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
             top of the cu file.
+        options (tuple of str): Additional compilation options.
 
     """
     def __init__(self, in_params, out_params,
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
-                 options=(), reduce_dims=True, preamble=''):
+                 reduce_dims=True, preamble='', options=()):
         self.in_params = elementwise._get_param_info(in_params, True)
         self.out_params = elementwise._get_param_info(out_params)
         self.nin = len(self.in_params)
@@ -378,13 +391,13 @@ class ReductionKernel(object):
             self.params, self.reduce_dims)
         args_info = elementwise._get_args_info(inout_args)
 
-        exprs = _get_reduction_kernel(
-            self.params, args_info, types)
         block_size = 512
-        kern = _make_reduction_function_kernel(
-            self.name, block_size, self.reduce_type, exprs[0], self.identity,
+        kern = _get_reduction_kernel(
+            self.params, args_info, types,
+            self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
-            exprs[1], exprs[2], exprs[3], self.preamble)
+            self.preamble, self.options)
+
         shared_mem = 32 * block_size
         if out_clp2_size > 256:
             shared_mem = 0
@@ -411,12 +424,11 @@ def create_reduction_func(name, ops, routine=None, identity=None,
             in_types = out_types = tuple(types)
         else:
             in_types, out_types = map(tuple, types)
-        in_types = tuple(numpy.dtype(t) for t in in_types)
-        out_types = tuple(numpy.dtype(t) for t in out_types)
+        in_types = tuple([numpy.dtype(t) for t in in_types])
+        out_types = tuple([numpy.dtype(t) for t in out_types])
         _ops.append((in_types, out_types, rt))
 
-    return simple_reduction_function(
-        name, _ops, identity=identity, preamble=preamble)
+    return simple_reduction_function(name, _ops, identity, preamble)
 
 
 _min_max_preamble = '''

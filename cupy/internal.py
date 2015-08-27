@@ -135,10 +135,7 @@ def infer_unknown_dimension(shape, size):
 def check_args_device(args):
     dev = cuda.Device()
     for arg in args:
-        if isinstance(arg, cupy.ndarray):
-            arg_dev = arg.data.device
-            if arg_dev == dev:
-                continue
+        if isinstance(arg, cupy.ndarray) and not arg.data.device == dev:
             raise ValueError('Array device must be same as the current '
                              'device: array device = %d while current = %d'
-                             % (arg_dev.id, dev.id))
+                             % (arg.data.device.id, dev.id))

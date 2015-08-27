@@ -10,7 +10,7 @@ from cupy import util
 
 
 def _get_simple_elementwise_kernel(
-        params, operation, name='kernel', preamble='',
+        params, operation, name, preamble,
         loop_prep='', after_loop='', options=()):
     module_code = string.Template('''
     ${preamble}
@@ -34,8 +34,8 @@ def _get_simple_elementwise_kernel(
 
 
 def _get_ndarray_dtype(args):
-    return tuple(a.dtype if isinstance(a, cupy.ndarray) else None
-                 for a in args)
+    return tuple([a.dtype if isinstance(a, cupy.ndarray) else None
+                 for a in args])
 _typenames = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
@@ -65,15 +65,12 @@ def _check_args(args):
     dev = cuda.Device()
     for arg in args:
         if isinstance(arg, cupy.ndarray):
-            arg_dev = arg.data.device
-            if arg_dev == dev:
-                continue
-            raise ValueError('Array device must be same as the current '
-                             'device: array device = %d while current = %d'
-                             % (arg_dev.id, dev.id))
-        if isinstance(arg, _scalar_type):
-            continue
-        raise TypeError('Unsupported type %s' % type(arg))
+            if not arg.data.device == dev:
+                raise ValueError('Array device must be same as the current '
+                                 'device: array device = %d while current = %d'
+                                 % (arg.data.device.id, dev.id))
+        elif not isinstance(arg, _scalar_type):
+            raise TypeError('Unsupported type %s' % type(arg))
 
 
 def _get_args_info(args):
@@ -86,14 +83,15 @@ def _get_kernel_params(params, args_info):
         type, dtype, ndim = a
         is_array = type is cupy.ndarray
         if type is carray.Indexer:
-            t = 'CIndexer<{}>'.format(ndim)
+            t = 'CIndexer<%d>' % ndim
         else:
             t = _get_typename(dtype)
             if is_array:
-                t = 'CArray<{}, {}>'.format(t, ndim)
-        ret.append('{}{} {}{}'.format(
-            'const ' if p.is_const else '', t,
-            '_raw_' if is_array and not p.raw else '', p.name))
+                t = 'CArray<%s, %d>' % (t, ndim)
+        ret.append('%s%s %s%s' % ('const ' if p.is_const else '',
+                                  t,
+                                  '_raw_' if is_array and not p.raw else '',
+                                  p.name))
     return ', '.join(ret)
 
 
@@ -102,18 +100,19 @@ def _reduce_dims(args, params, indexer):
         return args, indexer
     is_array_flags = [not p.raw and isinstance(a, cupy.ndarray)
                       for a, p in six.moves.zip(args, params)]
-    array_args = [a for a, f in six.moves.zip(args, is_array_flags) if f]
+    args_strides = [a.strides
+                    for a, f in six.moves.zip(args, is_array_flags) if f]
     shape = list(indexer.shape)
     for i in six.moves.range(1, len(shape)):
-        for arg in array_args:
-            strides = arg.strides
-            if strides[i] * shape[i] != strides[i - 1]:
+        shape_i = shape[i]
+        for strides in args_strides:
+            if strides[i] * shape_i != strides[i - 1]:
                 break
         else:
             shape[i] *= shape[i - 1]
             shape[i - 1] = 1
 
-    new_shape = tuple(dim for dim in shape if dim != 1)
+    new_shape = tuple([dim for dim in shape if dim != 1])
     if new_shape == indexer.shape:
         return args, indexer
 
@@ -123,7 +122,8 @@ def _reduce_dims(args, params, indexer):
             arg = args[i] = arg.view()
             arg._shape = new_shape
             arg._strides = tuple(
-                st for st, sh in six.moves.zip(arg.strides, shape) if sh != 1)
+                [st for st, sh in six.moves.zip(arg.strides, shape)
+                 if sh != 1])
 
     indexer.shape = new_shape
     return args, indexer
@@ -184,12 +184,13 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
             if p.dtype is not None:
                 if a != p.dtype:
                     raise TypeError(
-                        'Type is mismatched %s', (p.name, a, p.dtype))
+                        'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
                 if t != a:
                     raise TypeError(
-                        'Type is mismatched %s', (p.name, a, t))
+                        'Type is mismatched. %s %s %s %s' % (
+                            p.name, a, t, p.ctype))
             else:
                 type_dict[p.ctype] = a
 
@@ -203,19 +204,20 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
             if p.dtype is not None:
                 if a != p.dtype:
                     raise TypeError(
-                        'Type is mismatched %s', (p.name, a, p.dtype))
+                        'Type is mismatched. %s %s %s' % (p.name, a, p.dtype))
             elif p.ctype in type_dict:
                 t = type_dict[p.ctype]
                 if t != a:
                     raise TypeError(
-                        'Type is mismatched %s' % (p.name, a, t, p.ctype))
+                        'Type is mismatched. %s %s %s %s' % (
+                            p.name, a, t, p.ctype))
             else:
                 type_dict[p.ctype] = a
 
-    in_types = tuple(p.dtype if p.dtype is not None else type_dict[p.ctype]
-                     for p in in_params)
-    out_types = tuple(p.dtype if p.dtype is not None else type_dict[p.ctype]
-                      for p in out_params)
+    in_types = tuple([p.dtype if p.dtype is not None else type_dict[p.ctype]
+                      for p in in_params])
+    out_types = tuple([p.dtype if p.dtype is not None else type_dict[p.ctype]
+                       for p in out_params])
     return in_types, out_types, tuple(type_dict.items())
 
 
@@ -253,18 +255,17 @@ def _get_elementwise_kernel(
         preamble, **kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
-        'typedef {} {};'.format(_get_typename(v), k) for k, v in types)
+        'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
     preamble = types_preamble + '\n' + preamble
 
     op = []
     for p, a in six.moves.zip(params, args_info):
-        if p.raw or a[0] != cupy.ndarray:
-            continue
-        if p.is_const:
-            fmt = 'const {t} {n} = _raw_{n}[_ind.get()];'
-        else:
-            fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
-        op.append(fmt.format(t=p.ctype, n=p.name))
+        if not p.raw and a[0] == cupy.ndarray:
+            if p.is_const:
+                fmt = 'const {t} {n} = _raw_{n}[_ind.get()];'
+            else:
+                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+            op.append(fmt.format(t=p.ctype, n=p.name))
     op.append(operation)
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel(
@@ -394,14 +395,13 @@ def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
     types = []
     op = []
     for i, x in enumerate(in_types):
-        types.append('typedef {} in{}_type;'.format(_get_typename(x), i))
-        if args_info[i][0] is not cupy.ndarray:
-            continue
-        op.append(
-            'const in{0}_type in{0} = _raw_in{0}[_ind.get()];'.format(i))
+        types.append('typedef %s in%d_type;' % (_get_typename(x), i))
+        if args_info[i][0] is cupy.ndarray:
+            op.append(
+                'const in{0}_type in{0} = _raw_in{0}[_ind.get()];'.format(i))
 
     for i, x in enumerate(out_types):
-        types.append('typedef {} out{}_type;'.format(_get_typename(x), i))
+        types.append('typedef %s out%d_type;' % (_get_typename(x), i))
         op.append('{1} &out{0} = _raw_out{0}[_ind.get()];'.format(
             i, _get_typename(out_raw_types[i])))
 
@@ -472,10 +472,10 @@ class ufunc(object):
         self._preamble = preamble
         self.__doc__ = doc
         _in_params = tuple(
-            ParameterInfo('T in{}'.format(i), True)
+            ParameterInfo('T in%d' % i, True)
             for i in six.moves.range(nin))
         _out_params = tuple(
-            ParameterInfo('T out{}'.format(i), False)
+            ParameterInfo('T out%d' % i, False)
             for i in six.moves.range(nout))
         self._params = _in_params + _out_params + (
             ParameterInfo('CIndexer _ind', False),)
@@ -494,9 +494,9 @@ class ufunc(object):
         """
         types = []
         for in_types, out_types, _ in self._ops:
-            in_str = ''.join(t.char for t in in_types)
-            out_str = ''.join(t.char for t in out_types)
-            types.append('{}->{}'.format(in_str, out_str))
+            in_str = ''.join([t.char for t in in_types])
+            out_str = ''.join([t.char for t in out_types])
+            types.append('%s->%s' % (in_str, out_str))
         return types
 
     def __call__(self, *args, **kwargs):
@@ -547,7 +547,7 @@ class ufunc(object):
         indexer = carray.Indexer(broad.shape)
         inout_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
                       for x, t
-                      in six.moves.zip(broad.values[:self.nin], in_types)]
+                      in six.moves.zip(broad.values, in_types)]
         inout_args += out_args
         inout_args = _get_inout_args(
             inout_args, indexer, self._params, True)
@@ -576,8 +576,8 @@ def create_ufunc(name, ops, routine=None, preamble='', doc=''):
             in_types = out_types = tuple(types)
         else:
             in_types, out_types = map(tuple, types)
-        in_types = tuple(numpy.dtype(t) for t in in_types)
-        out_types = tuple(numpy.dtype(t) for t in out_types)
+        in_types = tuple([numpy.dtype(t) for t in in_types])
+        out_types = tuple([numpy.dtype(t) for t in out_types])
         _ops.append((in_types, out_types, rt))
 
     return ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble, doc)
