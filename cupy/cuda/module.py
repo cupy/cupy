@@ -26,7 +26,7 @@ _ptrarray_types = [ctypes.c_void_p * l for l in range(32)]
 
 
 def _get_ctypes(x):
-    return getattr(x, 'ctypes', x)
+    return x.ctypes
 
 
 class Function(object):
