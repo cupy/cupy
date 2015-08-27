@@ -236,7 +236,7 @@ class ndarray(object):
         if self.ndim < 2:
             return self
         else:
-            return self.transpose()
+            return transpose(self, None)
 
     __array_priority__ = 100
 

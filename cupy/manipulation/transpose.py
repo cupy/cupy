@@ -22,7 +22,7 @@ def rollaxis(a, axis, start=0):
     tr = list(six.moves.range(a.ndim))
     del tr[axis]
     tr.insert(start, axis)
-    return a.transpose(*tr)
+    return transpose(a, tr)
 
 
 def swapaxes(a, axis1, axis2):
@@ -43,7 +43,7 @@ def swapaxes(a, axis1, axis2):
         raise ValueError('Axis out of range')
     tr = list(six.moves.range(a.ndim))
     tr[axis1], tr[axis2] = tr[axis2], tr[axis1]
-    return a.transpose(*tr)
+    return transpose(a, tr)
 
 
 def transpose(a, axes=None):
@@ -73,8 +73,6 @@ def transpose(a, axes=None):
                 newarray._f_contiguous, newarray._c_contiguous
         return newarray
 
-    if len(axes) == 1 and isinstance(axes[0], collections.Iterable):
-        axes = tuple(axes[0])
     for axis in axes:
         if axis < -ndim or axis >= ndim:
             raise IndexError('Axes overrun')

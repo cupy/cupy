@@ -335,8 +335,8 @@ def _move_axes_to_head(a, axes):
     # This function moves the axes of ``s`` to the head of the shape.
     if all(i == j for i, j in enumerate(axes)):
         return a
-    axes.extend([i for i in six.moves.range(a.ndim) if i not in axes])
-    return a.transpose(*axes)
+    axes += [i for i in six.moves.range(a.ndim) if i not in axes]
+    return cupy.transpose(a, axes)
 
 
 def _mat_to_cublas_contiguous(a, trans):

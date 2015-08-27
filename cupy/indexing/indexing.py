@@ -102,9 +102,9 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     del tr[max_axis]
     del tr[min_axis]
     if offset >= 0:
-        a = a.transpose(tr + [axis1, axis2])
+        a = cupy.transpose(a, tr + [axis1, axis2])
     else:
-        a = a.transpose(tr + [axis2, axis1])
+        a = cupy.transpose(a, tr + [axis2, axis1])
         offset = -offset
 
     diag_size = max(0, min(a.shape[-2], a.shape[-1] - offset))

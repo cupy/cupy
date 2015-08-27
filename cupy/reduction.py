@@ -143,7 +143,7 @@ def _get_trans_args(args, trans, shape, params=None):
         return args, shape
     if params is not None and any(p.raw for p in params):
         raise NotImplementedError('Illegal conditions')
-    args = [a.transpose(trans) if isinstance(a, cupy.ndarray) else a
+    args = [cupy.transpose(a, trans) if isinstance(a, cupy.ndarray) else a
             for a in args]
     shape = tuple([shape[i] for i in trans])
     return args, shape
