@@ -38,10 +38,9 @@ class SoftmaxCrossEntropy(function.Function):
         # deal with the case where the SoftmaxCrossEntropy is
         # unpickled from the old version
         if getattr(self, 'normalize', True):
-            n_unit = int(numpy.prod(self.y.shape[2:]))
-            count = t.shape[0] * n_unit
+            count = x.size // x.shape[1]
         else:
-            count = t.shape[0]
+            count = x.shape[0]
         y = numpy.log(p).sum(keepdims=True) * (-1.0 / count)
         return y.reshape(()),
 
@@ -49,11 +48,10 @@ class SoftmaxCrossEntropy(function.Function):
         cupy = cuda.cupy
         x, t = inputs
         self.y, = softmax.Softmax(self.use_cudnn).forward((x,))
-        n_unit = int(numpy.prod(self.y.shape[2:]))
         if getattr(self, 'normalize', True):
-            count = t.shape[0] * n_unit
+            count = x.size // x.shape[1]
         else:
-            count = t.shape[0]
+            count = x.shape[0]
         y = cupy.rollaxis(self.y, 1, len(self.y))
         ret = cuda.reduce(
             'S t, raw T y, int32 n_channel, T inv_count', 'T out',
@@ -63,8 +61,9 @@ class SoftmaxCrossEntropy(function.Function):
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
-        t, gloss = inputs[1], grad_outputs[0]
-        n_unit = int(numpy.prod(self.y.shape[2:]))
+        x, t = inputs
+        gloss = grad_outputs[0]
+        n_unit = x.size // (x.shape[0] * x.shape[1])
         if self.y.ndim == 2:
             gx = self.y.copy()
             gx[six.moves.xrange(len(t)), t] -= 1
@@ -86,24 +85,21 @@ class SoftmaxCrossEntropy(function.Function):
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):
-        t, gloss = inputs[1], grad_outputs[0]
-        n_unit = numpy.prod(self.y.shape[2:], dtype=int)
+        cupy = cuda.cupy
+        x, t = inputs
+        gloss = grad_outputs[0]
+        n_unit = x.size // (x.shape[0] * x.shape[1])
         if getattr(self, 'normalize', True):
-            count = t.shape[0] * n_unit
+            count = x.shape[0] * n_unit
         else:
-            count = t.shape[0]
+            count = x.shape[0]
         coeff = cuda.cupy.divide(gloss, count, dtype=gloss.dtype)
         gx = cuda.elementwise(
-            'T y, raw S t, raw T coeff, S n_channel, S n_unit',
+            'T y, S t, T coeff, S n_channel, S n_unit',
             'T gx',
-            '''
-               const int n = i / (n_channel * n_unit);
-               const int c = (i % (n_channel * n_unit)) / n_unit;
-               const int m = i % n_unit;
-               gx = coeff[0] * (y - (c == t[n * n_unit + m]));
-            ''',
+            'gx = coeff * (y - (t == (i / n_unit % n_channel)))',
             'softmax_crossent_bwd')(
-                self.y, t, coeff, self.y.shape[1], n_unit)
+                self.y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit)
         return gx, None
 
 
