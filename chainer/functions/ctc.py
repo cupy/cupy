@@ -8,7 +8,7 @@ class ConnectionistTemporalClassification(function.Function):
 
     def __init__(self, blank_symbol):
         self.blank_symbol = blank_symbol
-        self.epsilon = 1e-40
+        self.zero_padding = -10000000000
 
     '''
     Transtion in forword and backword algorithms is represented as matrix.
@@ -17,8 +17,9 @@ class ConnectionistTemporalClassification(function.Function):
     '''
     def recurrence_relation(self, size, vtype):
         big_I = numpy.eye(size+2)
-        rr = numpy.log((numpy.eye(size) + big_I[2:, 1:-1] +
-                        big_I[2:, :-2] * (numpy.arange(size) % 2)) + self.epsilon)
+        rr = numpy.ma.log((numpy.eye(size) + big_I[2:, 1:-1] +
+                           big_I[2:, :-2] * (numpy.arange(size) % 2)))\
+                     .filled(fill_value=self.zero_padding)
         if vtype == numpy:
             return rr
         else:
@@ -48,7 +49,8 @@ class ConnectionistTemporalClassification(function.Function):
 
     # path probablity to label probability
     def label_probability(self, label_size, path, multiply):
-        labels_prob = numpy.log(numpy.zeros(label_size) + self.epsilon)
+        labels_prob = numpy.ma.log(numpy.zeros(label_size))\
+                              .filled(fill_value=self.zero_padding)
         chars = set([c for c in path])
         for c in chars:
             pos = numpy.where(path == c)[0]
@@ -57,7 +59,7 @@ class ConnectionistTemporalClassification(function.Function):
 
     def forward_cpu(self, inputs):
         t = inputs[0]
-        yseq = numpy.log(inputs[1::])
+        yseq = numpy.ma.log(inputs[1::]).filled(fill_value=self.zero_padding)
         path = self.label_to_path(t)
         rr = self.recurrence_relation(path.shape[0],
                                       cuda.cupy.get_array_module(yseq))
@@ -68,8 +70,10 @@ class ConnectionistTemporalClassification(function.Function):
                              + backward_prob_trans[-1])).astype(numpy.float32),
 
     def calc_trans_cpu(self, path, yseq, rr):
-        forward_prob = numpy.log(numpy.eye(path.shape[0])[0]+self.epsilon)
-        backward_prob = numpy.log(numpy.eye(path.shape[0])[0]+self.epsilon)
+        forward_prob = numpy.ma.log(numpy.eye(path.shape[0])[0])\
+                               .filled(fill_value=self.zero_padding)
+        backward_prob = numpy.ma.log(numpy.eye(path.shape[0])[0])\
+                                .filled(fill_value=self.zero_padding)
 
         alpha = ()
         beta = ()
@@ -89,7 +93,7 @@ class ConnectionistTemporalClassification(function.Function):
 
     def backward_cpu(self, inputs, grad_output):
         labels = inputs[0]
-        yseq = numpy.log(inputs[1::])
+        yseq = numpy.ma.log(inputs[1::]).filled(fill_value=self.zero_padding)
         path = self.label_to_path(labels)
         rr = self.recurrence_relation(path.shape[0],
                                       cuda.cupy.get_array_module(yseq))
@@ -119,23 +123,25 @@ class ConnectionistTemporalClassification(function.Function):
                                 + backward_prob_trans[-1]),
 
     def calc_trans_gpu(self, path, yseq, rr):
-        forward_prob = cuda.cupy.log(cuda.cupy.eye(
-            path.shape[0])[0]+self.epsilon)
-        backward_prob = cuda.cupy.log(cuda.cupy.eye(
-            path.shape[0])[0]+self.epsilon)
+        forward_prob = cuda.to_gpu(numpy.ma.log(numpy.eye(path.shape[0])[0])
+                                   .filled(fill_value=self.zero_padding))
+        backward_prob = cuda.to_gpu(numpy.ma.log(numpy.eye(path.shape[0])[0])
+                                    .filled(fill_value=self.zero_padding))
 
         alpha = ()
         beta = ()
 
         for t in range(len(yseq)):
             # calc forward probability
-            y = cuda.to_cpu(cuda.cupy.log(yseq[t]))
+            y = numpy.ma.log(cuda.to_cpu(yseq[t]))\
+                        .filled(fill_value=self.zero_padding)
             forward_prob = cuda.to_gpu(y[path]) \
                 + self.log_dot(forward_prob, rr)
             alpha += forward_prob,
 
             # calc backward probability
-            y_inv = cuda.to_cpu(cuda.cupy.log(yseq[len(yseq) - t - 1]))
+            y_inv = numpy.ma.log(cuda.to_cpu(yseq[len(yseq) - t - 1]))\
+                            .filled(fill_value=self.zero_padding)
             backward_prob = self.log_dot(backward_prob, rr)
             beta += backward_prob[::-1],
             backward_prob = cuda.to_gpu(y_inv[path[::-1]]) + backward_prob
@@ -154,7 +160,8 @@ class ConnectionistTemporalClassification(function.Function):
             self.logsumexp(forward_prob_trans[0]
                            + backward_prob_trans[0]))
         for t in range(len(yseq)):
-            y = cuda.to_cpu(cuda.cupy.log(yseq[t]))
+            y = numpy.ma.log(cuda.to_cpu(yseq[t]))\
+                        .filled(fill_value=self.zero_padding)
             multiply = cuda.to_cpu(forward_prob_trans[t]
                                    + backward_prob_trans[t])
             label_prob = self.label_probability(y.shape[0], path, multiply)
