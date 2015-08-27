@@ -27,15 +27,21 @@ def dot(a, b, out=None):
     .. seealso:: :func:`numpy.dot`
 
     """
-    assert a.ndim > 0 and b.ndim > 0
-    a_is_vec = a.ndim == 1
-    b_is_vec = b.ndim == 1
+    a_ndim = a.ndim
+    b_ndim = b.ndim
+    assert a_ndim > 0 and b_ndim > 0
+    a_is_vec = a_ndim == 1
+    b_is_vec = b_ndim == 1
 
     if a_is_vec:
-        a = a.reshape(1, a.size)
+        a = cupy.reshape(a, (1, a.size))
+        a_ndim = 2
     if b_is_vec:
-        b = b.reshape(b.size, 1)
-    c = tensordot(a, b, axes=((a.ndim - 1,), (b.ndim - 2,)), out=out)
+        b = cupy.reshape(b, (b.size, 1))
+        b_ndim = 2
+
+    c = tensordot(a, b, ((a_ndim - 1,), (b_ndim - 2,)), out)
+
     if out is None:
         if a_is_vec:
             if b_is_vec:
@@ -106,14 +112,15 @@ def outer(a, b, out=None):
     .. seealso:: :func:`numpy.outer`
 
     """
-    a = a.reshape(a.size, 1)
-    b = b.reshape(1, b.size)
+    a = cupy.reshape(a, (a.size, 1))
+    b = cupy.reshape(b, (1, b.size))
+    axes = ((1, ), (0,))
     if out is None:
-        return dot(a, b)
+        return tensordot(a, b, axes)
     elif out.flags.c_contiguous:
-        return dot(a, b, out=out)
+        return tensordot(a, b, axes, out)
     else:
-        out[:] = dot(a, b)
+        out[:] = tensordot(a, b, axes)
         return out
 
 
@@ -163,22 +170,23 @@ def tensordot(a, b, axes=2, out=None):
     b = b.astype(dtype, copy=False)
 
     if numpy.isscalar(axes):
-        axes0 = list(six.moves.range(a_ndim - axes, a_ndim))
-        axes1 = list(six.moves.range(axes))
+        a_axes = list(six.moves.range(a_ndim - axes, a_ndim))
+        b_axes = list(six.moves.range(axes))
     else:
         if len(axes) != 2:
             raise ValueError('Axes must consist of two arrays.')
-        axes0, axes1 = axes
-        if numpy.isscalar(axes0):
-            axes0 = axes0,
-        if numpy.isscalar(axes1):
-            axes1 = axes1,
+        a_axes, b_axes = axes
+        if numpy.isscalar(a_axes):
+            a_axes = a_axes,
+        if numpy.isscalar(b_axes):
+            b_axes = b_axes,
     del axes
 
-    if len(axes0) != len(axes1):
+    sum_ndim = len(a_axes)
+    if sum_ndim != len(b_axes):
         raise ValueError('Axes length mismatch')
 
-    for a_axis, b_axis in zip(axes0, axes1):
+    for a_axis, b_axis in zip(a_axes, b_axes):
         if not (-a.ndim <= a_axis < a_ndim and
                 -b.ndim <= b_axis < b_ndim):
             raise IndexError('Axis overrun')
@@ -186,17 +194,24 @@ def tensordot(a, b, axes=2, out=None):
             raise ValueError('Axis dimension mismatch')
 
     # Make the axes non-negative
-    axes0 = [axis % a_ndim for axis in axes0]
-    axes1 = [axis % b_ndim for axis in axes1]
+    a_axes = [axis % a_ndim for axis in a_axes]
+    b_axes = [axis % b_ndim for axis in b_axes]
 
-    sum_ndim = len(axes0)
-    a = _move_axes_to_head(a, axes0)
-    b = _move_axes_to_head(b, axes1)
+    a = _move_axes_to_head(a, a_axes)
+    b = _move_axes_to_head(b, b_axes)
 
-    m = internal.prod(b.shape[sum_ndim:])
-    n = internal.prod(a.shape[sum_ndim:])
-    ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
+    a_r_shape = a.shape[sum_ndim:]
+    b_r_shape = b.shape[sum_ndim:]
+    ret_shape = a_r_shape + b_r_shape
 
+    n = internal.prod(a_r_shape)
+    m = internal.prod(b_r_shape)
+    k = a.size // n
+
+    return _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype)
+
+
+def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
     if out is not None:
         if out.size != internal.prod(ret_shape):
             raise ValueError('Output array has an invalid size')
@@ -213,33 +228,33 @@ def tensordot(a, b, axes=2, out=None):
             return out
 
     if out is None:
-        out = cupy.empty(ret_shape, dtype=dtype)
+        out = cupy.empty(ret_shape, dtype)
         if dtype == ret_dtype:
             ret = out
         else:
-            ret = cupy.empty(ret_shape, dtype=ret_dtype)
+            ret = cupy.empty(ret_shape, ret_dtype)
     else:
         ret = out
         if out.dtype != dtype:
-            out = cupy.empty(ret_shape, dtype=dtype)
-
-    k = a.size // n
+            out = cupy.empty(ret_shape, dtype)
 
     # It copies the operands if needed
     if a.shape != (k, n):
-        a = a.reshape(k, n)
+        a = cupy.reshape(a, (k, n))
     if b.shape != (k, m):
-        b = b.reshape(k, m)
-    if out.shape != (n, m):
-        c = out.view()
+        b = cupy.reshape(b, (k, m))
+    c = out
+    if c.shape != (n, m):
+        c = c.view()
         c.shape = (n, m)
-    else:
-        c = out
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     handle = cuda.Device().cublas_handle
     if k == 1:
-        if n == 1 or m == 1:
+        if n == 1:
+            # Scalar-vector product
+            cupy.multiply(a, b, c)
+        elif m == 1:
             # Scalar-vector product
             cupy.multiply(a.T, b, c)
         else:
