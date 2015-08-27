@@ -8,7 +8,7 @@ class ConnectionistTemporalClassification(function.Function):
 
     def __init__(self, blank_symbol):
         self.blank_symbol = blank_symbol
-        self.epsilon = 1e-10
+        self.epsilon = 1e-40
 
     '''
     Transtion in forword and backword algorithms is represented as matrix.
@@ -18,7 +18,7 @@ class ConnectionistTemporalClassification(function.Function):
     def recurrence_relation(self, size, vtype):
         big_I = numpy.eye(size+2)
         rr = numpy.log((numpy.eye(size) + big_I[2:, 1:-1] +
-                        big_I[2:, :-2] * (numpy.arange(size) % 2)))
+                        big_I[2:, :-2] * (numpy.arange(size) % 2)) + self.epsilon)
         if vtype == numpy:
             return rr
         else:
@@ -48,7 +48,7 @@ class ConnectionistTemporalClassification(function.Function):
 
     # path probablity to label probability
     def label_probability(self, label_size, path, multiply):
-        labels_prob = numpy.log(numpy.zeros(label_size))
+        labels_prob = numpy.log(numpy.zeros(label_size) + self.epsilon)
         chars = set([c for c in path])
         for c in chars:
             pos = numpy.where(path == c)[0]
