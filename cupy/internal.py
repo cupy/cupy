@@ -85,20 +85,6 @@ def get_contiguous_strides(shape, itemsize):
     return tuple(strides)
 
 
-def get_ndarray_ptr(a_cpu):
-    if a_cpu.dtype.type == numpy.bool_:
-        # Boolean array cannot be directly converted to ctypes
-        a_cpu = a_cpu.view(dtype=numpy.uint8)
-    elif a_cpu.dtype.type == numpy.float16:
-        # Float16 array cannot be directly converted to ctypes
-        a_cpu = a_cpu.view(dtype=numpy.uint16)
-    if a_cpu.shape:
-        return ctypes.cast(numpy.ctypeslib.as_ctypes(a_cpu), ctypes.c_void_p)
-    else:
-        return ctypes.cast(ctypes.pointer(numpy.ctypeslib.as_ctypes(a_cpu)),
-                           ctypes.c_void_p)
-
-
 def complete_slice(slc, dim):
     step = 1 if slc.step is None else slc.step
     if step == 0:

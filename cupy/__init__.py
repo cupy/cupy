@@ -1053,7 +1053,7 @@ class ndarray(object):
         """
         a_gpu = ascontiguousarray(self)
         a_cpu = numpy.empty(self._shape, dtype=self._dtype)
-        ptr = internal.get_ndarray_ptr(a_cpu)
+        ptr = a_cpu.ctypes.data_as(ctypes.c_void_p)
         if stream is None:
             a_gpu.data.copy_to_host(ptr, a_gpu.nbytes)
         else:
@@ -1080,7 +1080,7 @@ class ndarray(object):
             raise RuntimeError('Cannot set to non-contiguous array')
 
         arr = numpy.ascontiguousarray(arr)
-        ptr = internal.get_ndarray_ptr(arr)
+        ptr = arr.ctypes.data_as(ctypes.c_void_p)
         if stream is None:
             self.data.copy_from_host(ptr, self.nbytes)
         else:
