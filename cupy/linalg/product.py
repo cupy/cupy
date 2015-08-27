@@ -141,7 +141,9 @@ def tensordot(a, b, axes=2, out=None):
     .. seealso:: :func:`numpy.tensordot`
 
     """
-    if a.ndim == 0 or b.ndim == 0:
+    a_ndim = a.ndim
+    b_ndim = b.ndim
+    if a_ndim == 0 or b_ndim == 0:
         if axes != 0 and axes != ((), ()):
             raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b, out=out)
@@ -160,19 +162,8 @@ def tensordot(a, b, axes=2, out=None):
     a = a.astype(dtype, copy=False)
     b = b.astype(dtype, copy=False)
 
-    if dtype == numpy.float32:
-        dot = cublas.sdot
-        gemv = cublas.sgemv
-        ger = cublas.sger
-        gemm = cublas.sgemm
-    elif dtype == numpy.float64:
-        dot = cublas.ddot
-        gemv = cublas.dgemv
-        ger = cublas.dger
-        gemm = cublas.dgemm
-
     if numpy.isscalar(axes):
-        axes0 = list(six.moves.range(a.ndim - axes, a.ndim))
+        axes0 = list(six.moves.range(a_ndim - axes, a_ndim))
         axes1 = list(six.moves.range(axes))
     else:
         if len(axes) != 2:
@@ -188,15 +179,15 @@ def tensordot(a, b, axes=2, out=None):
         raise ValueError('Axes length mismatch')
 
     for a_axis, b_axis in zip(axes0, axes1):
-        if not (-a.ndim <= a_axis < a.ndim and
-                -b.ndim <= b_axis < b.ndim):
+        if not (-a.ndim <= a_axis < a_ndim and
+                -b.ndim <= b_axis < b_ndim):
             raise IndexError('Axis overrun')
         if a.shape[a_axis] != b.shape[b_axis]:
             raise ValueError('Axis dimension mismatch')
 
     # Make the axes non-negative
-    axes0 = tuple([axis % a.ndim for axis in axes0])
-    axes1 = tuple([axis % b.ndim for axis in axes1])
+    axes0 = [axis % a_ndim for axis in axes0]
+    axes1 = [axis % b_ndim for axis in axes1]
 
     sum_ndim = len(axes0)
     a = _move_axes_to_head(a, axes0)
@@ -258,6 +249,10 @@ def tensordot(a, b, axes=2, out=None):
             c.fill(0)
             a, inca = _to_cublas_vector(a, 1)
             b, incb = _to_cublas_vector(b, 1)
+            if dtype == numpy.float32:
+                ger = cublas.sger
+            elif dtype == numpy.float64:
+                ger = cublas.dger
             ger(handle, m, n, 1, b._fptr, incb, a._fptr, inca, c._fptr, m)
     elif n == 1:
         if m == 1:
@@ -267,6 +262,10 @@ def tensordot(a, b, axes=2, out=None):
             mode = cublas.getPointerMode(handle)
             cublas.setPointerMode(handle,
                                   cublas.CUBLAS_POINTER_MODE_DEVICE)
+            if dtype == numpy.float32:
+                dot = cublas.sdot
+            elif dtype == numpy.float64:
+                dot = cublas.ddot
             try:
                 dot(handle, k, a._fptr, inca, b._fptr, incb, c._fptr)
             finally:
@@ -279,6 +278,10 @@ def tensordot(a, b, axes=2, out=None):
                 # gemv requires (m, k) as the original matrix dimensions
                 # rather than the transposed dimensions.
                 m, k = k, m
+            if dtype == numpy.float32:
+                gemv = cublas.sgemv
+            elif dtype == numpy.float64:
+                gemv = cublas.dgemv
             gemv(handle, transb, m, k, 1, b._fptr, ldb, a._fptr, inca,
                  0, c._fptr, 1)
     elif m == 1:
@@ -289,6 +292,10 @@ def tensordot(a, b, axes=2, out=None):
             # gemv requires (n, k) as the original matrix dimensions rather
             # than the transposed dimensions.
             n, k = k, n
+        if dtype == numpy.float32:
+            gemv = cublas.sgemv
+        elif dtype == numpy.float64:
+            gemv = cublas.dgemv
         gemv(handle, transa, n, k, 1, a._fptr, lda, b._fptr, incb, 0, c._fptr,
              1)
     else:
@@ -297,6 +304,10 @@ def tensordot(a, b, axes=2, out=None):
         # compute C^T = B^T * A here.
         a, transa, lda = _mat_to_cublas_contiguous(a, False)
         b, transb, ldb = _mat_to_cublas_contiguous(b, True)
+        if dtype == numpy.float32:
+            gemm = cublas.sgemm
+        elif dtype == numpy.float64:
+            gemm = cublas.dgemm
         gemm(handle, transb, transa, m, n, k, 1, b._fptr, ldb, a._fptr,
              lda, 0, c._fptr, m)
 
@@ -324,7 +335,7 @@ def _move_axes_to_head(a, axes):
     # This function moves the axes of ``s`` to the head of the shape.
     if all(i == j for i, j in enumerate(axes)):
         return a
-    axes = list(axes) + [i for i in six.moves.range(a.ndim) if i not in axes]
+    axes.extend([i for i in six.moves.range(a.ndim) if i not in axes])
     return a.transpose(*axes)
 
 
