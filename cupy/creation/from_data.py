@@ -1,3 +1,5 @@
+import ctypes
+
 import numpy
 
 import cupy
@@ -42,7 +44,7 @@ def array(obj, dtype=None, copy=True, ndmin=0):
         if a_cpu.ndim > 0:
             a_cpu = numpy.ascontiguousarray(a_cpu)
         a = cupy.ndarray(a_cpu.shape, dtype=a_cpu.dtype)
-        a.data.copy_from_host(internal.get_ndarray_ptr(a_cpu), a.nbytes)
+        a.data.copy_from_host(a_cpu.ctypes.data_as(ctypes.c_void_p), a.nbytes)
         if a_cpu.dtype == a.dtype:
             return a
         else:

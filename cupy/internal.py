@@ -1,6 +1,3 @@
-import ctypes
-
-import numpy
 import six
 
 import cupy
@@ -22,8 +19,10 @@ def get_reduced_dims(shape, strides, itemsize):
     if len(shape) == 1:
         return tuple(shape), tuple(strides)
     if len(shape) == 2:
-        if shape[0] == 1 or strides[0] == shape[1] * strides[1]:
-            return (shape[0] * shape[1],), (strides[1],)
+        shape0, shape1 = shape
+        strides0, strides1 = strides
+        if shape0 == 1 or strides0 == shape1 * strides1:
+            return (shape0 * shape1,), (strides1,)
         else:
             return tuple(shape), tuple(strides)
 
@@ -79,24 +78,22 @@ def get_strides_for_nocopy_reshape(a, new_shape):
 
 
 def get_contiguous_strides(shape, itemsize):
-    strides = [itemsize] * len(shape)
-    for i in six.moves.range(len(strides) - 1, 0, -1):
-        strides[i - 1] = strides[i] * max(1, shape[i])
+    ndim = len(shape)
+    if ndim == 0:
+        return ()
+    if ndim == 1:
+        return itemsize,
+    if ndim == 2:
+        return shape[1] * itemsize, itemsize
+
+    strides = [0] * ndim
+    st = itemsize
+    for i in six.moves.range(ndim - 1, -1, -1):
+        strides[i] = st
+        sh = shape[i]
+        if sh > 1:
+            st *= sh
     return tuple(strides)
-
-
-def get_ndarray_ptr(a_cpu):
-    if a_cpu.dtype.type == numpy.bool_:
-        # Boolean array cannot be directly converted to ctypes
-        a_cpu = a_cpu.view(dtype=numpy.uint8)
-    elif a_cpu.dtype.type == numpy.float16:
-        # Float16 array cannot be directly converted to ctypes
-        a_cpu = a_cpu.view(dtype=numpy.uint16)
-    if a_cpu.shape:
-        return ctypes.cast(numpy.ctypeslib.as_ctypes(a_cpu), ctypes.c_void_p)
-    else:
-        return ctypes.cast(ctypes.pointer(numpy.ctypeslib.as_ctypes(a_cpu)),
-                           ctypes.c_void_p)
 
 
 def complete_slice(slc, dim):
@@ -116,7 +113,8 @@ def get_c_contiguity(shape, strides, itemsize):
     if 0 in shape:
         return True
     _, strides = get_reduced_dims(shape, strides, itemsize)
-    return len(strides) == 0 or (len(strides) == 1 and strides[0] == itemsize)
+    ndim = len(strides)
+    return ndim == 0 or (ndim == 1 and strides[0] == itemsize)
 
 
 def infer_unknown_dimension(shape, size):
@@ -127,7 +125,10 @@ def infer_unknown_dimension(shape, size):
         return shape
     if cnt > 1:
         raise ValueError('can only specify only one unknown dimension')
-    p = size // prod(dim for dim in shape if dim >= 0)
+    p = size
+    for dim in shape:
+        if dim > 0:
+            p //= dim
     return tuple([dim if dim >= 0 else p for dim in shape])
 
 
