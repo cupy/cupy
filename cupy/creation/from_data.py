@@ -5,7 +5,6 @@ import numpy
 import cupy
 from cupy import cuda
 from cupy import elementwise
-from cupy import internal
 
 
 def array(obj, dtype=None, copy=True, ndmin=0):
