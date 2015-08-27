@@ -15,12 +15,24 @@ def rollaxis(a, axis, start=0):
     .. seealso:: :func:`numpy.rollaxis`
 
     """
-    if axis >= a.ndim:
+    ndim = a.ndim
+    if axis < 0:
+        axis += ndim
+    if start < 0:
+        start += ndim
+    if not (0 <= axis < ndim and 0 <= start <= ndim):
         raise ValueError('Axis out of range')
-    tr = list(six.moves.range(a.ndim))
-    del tr[axis]
-    tr.insert(start, axis)
-    return transpose(a, tr)
+    if axis < start:
+        start -= 1
+    if axis == start:
+        return a
+    if ndim == 2:
+        return transpose(a, None)
+
+    axes = list(six.moves.range(ndim))
+    del axes[axis]
+    axes.insert(start, axis)
+    return transpose(a, axes)
 
 
 def swapaxes(a, axis1, axis2):
@@ -37,11 +49,12 @@ def swapaxes(a, axis1, axis2):
     .. seealso:: :func:`numpy.swapaxes`
 
     """
-    if axis1 >= a.ndim or axis2 >= a.ndim:
+    ndim = a.ndim
+    if axis1 >= ndim or axis2 >= ndim:
         raise ValueError('Axis out of range')
-    tr = list(six.moves.range(a.ndim))
-    tr[axis1], tr[axis2] = tr[axis2], tr[axis1]
-    return transpose(a, tr)
+    axes = list(six.moves.range(ndim))
+    axes[axis1], axes[axis2] = axes[axis2], axes[axis1]
+    return transpose(a, axes)
 
 
 def transpose(a, axes=None):
@@ -61,15 +74,36 @@ def transpose(a, axes=None):
     ndim = a.ndim
     a_shape = a._shape
     a_strides = a._strides
-    newarray = a.view()
+    ret = a.view()
 
     if not axes:
         if ndim > 1:
-            newarray._shape = a_shape[::-1]
-            newarray._strides = a_strides[::-1]
-            newarray._c_contiguous, newarray._f_contiguous = \
-                newarray._f_contiguous, newarray._c_contiguous
-        return newarray
+            ret._shape = a_shape[::-1]
+            ret._strides = a_strides[::-1]
+            ret._c_contiguous, ret._f_contiguous = \
+                a._f_contiguous, a._c_contiguous
+        return ret
+
+    if ndim != len(axes):
+        raise ValueError('Invalid axes value: %s' % str(axes))
+
+    if ndim <= 2:
+        if ndim == 0:
+            return ret
+        elif ndim == 1:
+            if axes[0] == 0:
+                return ret
+        else:
+            axis0, axis1 = axes
+            if axis0 == 0 and axis1 == 1:
+                return ret
+            elif axis0 == 1 and axis1 == 0:
+                ret._shape = a_shape[::-1]
+                ret._strides = a_strides[::-1]
+                ret._c_contiguous, ret._f_contiguous = \
+                    a._f_contiguous, a._c_contiguous
+                return ret
+        raise ValueError('Invalid axes value: %s' % str(axes))
 
     for axis in axes:
         if axis < -ndim or axis >= ndim:
@@ -77,21 +111,23 @@ def transpose(a, axes=None):
     axes = [axis % ndim for axis in axes]
 
     a_axes = list(six.moves.range(ndim))
+
+    if a_axes == axes:
+        return ret
+
+    if a_axes == axes[::-1]:
+        ret._shape = a_shape[::-1]
+        ret._strides = a_strides[::-1]
+        ret._c_contiguous, ret._f_contiguous = \
+            a._f_contiguous, a._c_contiguous
+        return ret
+
     if a_axes != sorted(axes):
         raise ValueError('Invalid axes value: %s' % str(axes))
 
-    if ndim <= 1 or a_axes == axes:
-        return newarray
+    ret._shape = tuple([a_shape[axis] for axis in axes])
+    ret._strides = tuple([a_strides[axis] for axis in axes])
+    ret._c_contiguous = -1
+    ret._f_contiguous = -1
 
-    if a_axes == axes[::-1]:
-        newarray._shape = a_shape[::-1]
-        newarray._strides = a_strides[::-1]
-        newarray._c_contiguous, newarray._f_contiguous = \
-            newarray._f_contiguous, newarray._c_contiguous
-    else:
-        newarray._shape = tuple([a_shape[axis] for axis in axes])
-        newarray._strides = tuple([a_strides[axis] for axis in axes])
-        newarray._c_contiguous = -1
-        newarray._f_contiguous = -1
-
-    return newarray
+    return ret
