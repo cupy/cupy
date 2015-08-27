@@ -1110,8 +1110,7 @@ class ndarray(object):
 
     def _update_f_contiguity(self):
         self._f_contiguous = int(internal.get_c_contiguity(
-            tuple(reversed(self._shape)), tuple(reversed(self._strides)),
-            self.itemsize))
+            self._shape[::-1], self._strides[::-1], self.itemsize))
 
     def _update_contiguity(self):
         self._update_c_contiguity()
