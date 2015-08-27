@@ -52,7 +52,7 @@ class SoftmaxCrossEntropy(function.Function):
             count = x.size // x.shape[1]
         else:
             count = x.shape[0]
-        y = cupy.rollaxis(self.y, 1, len(self.y))
+        y = cupy.rollaxis(self.y, 1, self.y.ndim)
         ret = cuda.reduce(
             'S t, raw T y, int32 n_channel, T inv_count', 'T out',
             'log(y[_j * n_channel + t])',
