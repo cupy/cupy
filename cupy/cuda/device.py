@@ -47,7 +47,7 @@ class Device(object):
     def __enter__(self):
         dev = Device()
         self._device_stack.append(dev)
-        if dev != self:
+        if not dev == self:
             dev.use()
         return self
 
