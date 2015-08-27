@@ -127,7 +127,7 @@ def infer_unknown_dimension(shape, size):
         raise ValueError('can only specify only one unknown dimension')
     p = size
     for dim in shape:
-        if dim >= 0:
+        if dim > 0:
             p //= dim
     return tuple([dim if dim >= 0 else p for dim in shape])
 
