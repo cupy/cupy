@@ -1,3 +1,5 @@
+import collections
+
 import numpy
 import six
 
@@ -40,17 +42,48 @@ def dot(a, b, out=None):
         b = cupy.reshape(b, (b.size, 1))
         b_ndim = 2
 
-    c = tensordot(a, b, ((a_ndim - 1,), (b_ndim - 2,)), out)
+    if a.dtype == b.dtype:
+        ret_dtype = a.dtype.type
+    else:
+        ret_dtype = numpy.find_common_type((a.dtype, b.dtype), ()).type
 
+    # Cast to float32 or float64
+    if ret_dtype == numpy.float32 or ret_dtype == numpy.float64:
+        dtype = ret_dtype
+    else:
+        dtype = numpy.find_common_type((ret_dtype, numpy.float32), ()).type
+
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
+
+    a_axis = a_ndim - 1
+    b_axis = b_ndim - 2
+
+    if a.shape[a_axis] != b.shape[b_axis]:
+        raise ValueError('Axis dimension mismatch')
+
+    if a_axis != 0:
+        a = cupy.rollaxis(a, a_axis, 0)
+    if b_axis != 0:
+        b = cupy.rollaxis(b, b_axis, 0)
+
+    k = a.shape[0]
+    m = b.size // k
+    n = a.size // k
+
+    ret_shape = a.shape[1:] + b.shape[1:]
     if out is None:
         if a_is_vec:
-            if b_is_vec:
-                c.shape = ()
-            else:
-                c.shape = c.shape[1:]
+            ret_shape = () if b_is_vec else ret_shape[1:]
         elif b_is_vec:
-            c.shape = c.shape[:-1]
-    return c
+            ret_shape = ret_shape[:-1]
+    else:
+        if out.size != internal.prod(ret_shape):
+            raise ValueError('Output array has an invalid size')
+        if not out.flags.c_contiguous:
+            raise ValueError('Output array must be C-contiguous')
+
+    return _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype)
 
 
 def vdot(a, b):
@@ -114,17 +147,16 @@ def outer(a, b, out=None):
     """
     a = cupy.reshape(a, (a.size, 1))
     b = cupy.reshape(b, (1, b.size))
-    axes = ((1, ), (0,))
     if out is None:
-        return tensordot(a, b, axes)
+        return dot(a, b)
     elif out.flags.c_contiguous:
-        return tensordot(a, b, axes, out)
+        return dot(a, b, out)
     else:
-        out[:] = tensordot(a, b, axes)
+        out[:] = dot(a, b)
         return out
 
 
-def tensordot(a, b, axes=2, out=None):
+def tensordot(a, b, axes=2):
     """Returns the tensor dot product of two arrays along specified axes.
 
     This is equivalent to compute dot product along the specified axes which
@@ -153,7 +185,7 @@ def tensordot(a, b, axes=2, out=None):
     if a_ndim == 0 or b_ndim == 0:
         if axes != 0 and axes != ((), ()):
             raise ValueError('An input is zero-dim while axes has dimensions')
-        return cupy.multiply(a, b, out=out)
+        return cupy.multiply(a, b)
 
     if a.dtype == b.dtype:
         ret_dtype = a.dtype.type
@@ -169,10 +201,7 @@ def tensordot(a, b, axes=2, out=None):
     a = a.astype(dtype, copy=False)
     b = b.astype(dtype, copy=False)
 
-    if numpy.isscalar(axes):
-        a_axes = list(six.moves.range(a_ndim - axes, a_ndim))
-        b_axes = list(six.moves.range(axes))
-    else:
+    if isinstance(axes, collections.Sequence):
         if len(axes) != 2:
             raise ValueError('Axes must consist of two arrays.')
         a_axes, b_axes = axes
@@ -180,43 +209,32 @@ def tensordot(a, b, axes=2, out=None):
             a_axes = a_axes,
         if numpy.isscalar(b_axes):
             b_axes = b_axes,
-    del axes
+    else:
+        a_axes = tuple(six.moves.range(a_ndim - axes, a_ndim))
+        b_axes = tuple(six.moves.range(axes))
 
     sum_ndim = len(a_axes)
     if sum_ndim != len(b_axes):
         raise ValueError('Axes length mismatch')
 
     for a_axis, b_axis in zip(a_axes, b_axes):
-        if not (-a.ndim <= a_axis < a_ndim and
-                -b.ndim <= b_axis < b_ndim):
-            raise IndexError('Axis overrun')
         if a.shape[a_axis] != b.shape[b_axis]:
             raise ValueError('Axis dimension mismatch')
 
     # Make the axes non-negative
-    a_axes = [axis % a_ndim for axis in a_axes]
-    b_axes = [axis % b_ndim for axis in b_axes]
+    a = _move_axes_to_head(a, [axis % a_ndim for axis in a_axes])
+    b = _move_axes_to_head(b, [axis % b_ndim for axis in b_axes])
 
-    a = _move_axes_to_head(a, a_axes)
-    b = _move_axes_to_head(b, b_axes)
+    ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
-    a_r_shape = a.shape[sum_ndim:]
-    b_r_shape = b.shape[sum_ndim:]
-    ret_shape = a_r_shape + b_r_shape
+    k = internal.prod(a.shape[:sum_ndim])
+    n = a.size // k
+    m = b.size // k
 
-    n = internal.prod(a_r_shape)
-    m = internal.prod(b_r_shape)
-    k = a.size // n
-
-    return _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype)
+    return _tensordot_core(a, b, None, n, m, k, ret_shape, ret_dtype, dtype)
 
 
 def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
-    if out is not None:
-        if out.size != internal.prod(ret_shape):
-            raise ValueError('Output array has an invalid size')
-        if not out.flags.c_contiguous:
-            raise ValueError('Output array must be C-contiguous')
 
     if 0 in a.shape or 0 in b.shape:
         if 0 not in a.shape or 0 not in b.shape:
@@ -348,10 +366,12 @@ def kron(a, b):
 
 def _move_axes_to_head(a, axes):
     # This function moves the axes of ``s`` to the head of the shape.
-    if all(i == j for i, j in enumerate(axes)):
-        return a
-    axes += [i for i in six.moves.range(a.ndim) if i not in axes]
-    return cupy.transpose(a, axes)
+    for idx, axis in enumerate(axes):
+        if idx == axis:
+            continue
+        return cupy.transpose(
+            a, axes + [i for i in six.moves.range(a.ndim) if i not in axes])
+    return a
 
 
 def _mat_to_cublas_contiguous(a, trans):
