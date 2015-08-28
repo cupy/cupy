@@ -256,7 +256,7 @@ class ndarray(object):
 
         .. note::
            The returned value does not have compatibility with
-           :meth:`numpy.ndarray.ctypes`.
+           :attr:`numpy.ndarray.ctypes`.
 
         """
         return carray.to_carray(self.data.ptr, self.size, self._shape,
@@ -361,7 +361,7 @@ class ndarray(object):
 
         Returns:
             cupy.ndarray: A view of the array. A reference to the original
-            array is stored at the :attr:`cupy.ndarray.base` attribute.
+            array is stored at the :attr:`~ndarray.base` attribute.
 
         .. seealso:: :meth:`numpy.ndarray.view`
 
@@ -454,7 +454,7 @@ class ndarray(object):
         return newarray
 
     def ravel(self):
-        """Returns a array flattend into one dimension.
+        """Returns an array flattend into one dimension.
 
         .. seealso::
            :func:`cupy.ravel` for full documentation,
@@ -465,7 +465,7 @@ class ndarray(object):
         return ravel(self)
 
     def squeeze(self, axis=None):
-        """Returns a view with single-dimensional axes removed.
+        """Returns a view with size-one axes removed.
 
         .. seealso::
            :func:`cupy.squeeze` for full documentation,
@@ -527,7 +527,7 @@ class ndarray(object):
         """Returns the indices of the maximum along a given axis.
 
         .. seealso::
-           :data:`cupy.argmax` for full documentation,
+           :func:`cupy.argmax` for full documentation,
            :meth:`numpy.ndarray.argmax`
 
         """
@@ -549,7 +549,7 @@ class ndarray(object):
         """Returns the indices of the minimum along a given axis.
 
         .. seealso::
-           :data:`cupy.argmin` for full documentation,
+           :func:`cupy.argmin` for full documentation,
            :meth:`numpy.ndarray.argmin`
 
         """
@@ -586,7 +586,7 @@ class ndarray(object):
         """Returns the sum along a given axis.
 
         .. seealso::
-           :data:`cupy.sum` for full documentation,
+           :func:`cupy.sum` for full documentation,
            :meth:`numpy.ndarray.sum`
 
         """
@@ -599,7 +599,7 @@ class ndarray(object):
         """Returns the mean along a given axis.
 
         .. seealso::
-           :data:`cupy.mean` for full documentation,
+           :func:`cupy.mean` for full documentation,
            :meth:`numpy.ndarray.mean`
 
         """
@@ -629,7 +629,7 @@ class ndarray(object):
         """Returns the product along a given axis.
 
         .. seealso::
-           :data:`cupy.prod` for full documentation,
+           :func:`cupy.prod` for full documentation,
            :meth:`numpy.ndarray.prod`
 
         """
@@ -1181,6 +1181,7 @@ atleast_2d = manipulation.dims.atleast_2d
 atleast_3d = manipulation.dims.atleast_3d
 broadcast = manipulation.dims.broadcast
 broadcast_arrays = manipulation.dims.broadcast_arrays
+expand_dims = manipulation.dims.expand_dims
 squeeze = manipulation.dims.squeeze
 
 column_stack = manipulation.join.column_stack

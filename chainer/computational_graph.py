@@ -156,7 +156,7 @@ def build_computational_graph(outputs, remove_split=True):
 
             x ---> f ---> y
 
-        See :class:`TestGraphBfuilder` for details.
+        See :class:`TestGraphBuilder` for details.
 
     """
 

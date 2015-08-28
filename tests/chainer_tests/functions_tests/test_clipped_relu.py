@@ -14,6 +14,10 @@ class TestClippedReLU(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        # Avoid values around zero and z for stability of numerical gradient
+        for i in range(self.x.size):
+            if -0.01 < self.x.flat[i] < 0.01 or 0.74 < self.x.flat[i] < 0.76:
+                self.x.flat[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.z = 0.75
 

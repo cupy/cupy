@@ -47,7 +47,7 @@ def eye(N, M=None, k=0, dtype=float):
 
     Args:
         N (int): Number of rows.
-        M (int): Number of cols. M == N by default.
+        M (int): Number of columns. M == N by default.
         k (int): Index of the diagonal. Zero indicates the main diagonal,
             a positive index an upper diagonal, and a negative index a lower
             diagonal.

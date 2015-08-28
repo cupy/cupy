@@ -272,7 +272,6 @@ class Convolution2D(function.Function):
                 gy_desc.value, gy_arr.data.ptr, self.conv_desc.value,
                 zero, x_desc.value, gx.data.ptr)
         else:
-            handle = cuda.get_cublas_handle()
             if self.gb is not None:
                 self.gb += gy[0].sum(axis=(0, 2, 3))
 
@@ -282,15 +281,13 @@ class Convolution2D(function.Function):
                 n, c * self.kh * self.kw, out_h * out_w)
             gy_mats = gy[0].reshape(n, out_c, out_h * out_w)
             for i in moves.range(n):
-                cuda.culinalg.add_dot(
-                    gy_mats[i], col_mats[i], gW_mat, transb='T', handle=handle)
+                gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
 
             W_mat = self.W.reshape(out_c, c * self.kh * self.kw)
             gcol = cuda.empty_like(self.col)
             gcol_mats = gcol.reshape(n, c * self.kh * self.kw, out_h * out_w)
             for i in moves.range(n):
-                cuda.culinalg.dot(W_mat, gy_mats[i], transa='T', handle=handle,
-                                  out=gcol_mats[i])
+                cuda.cupy.dot(W_mat.T, gy_mats[i], gcol_mats[i])
 
             gx = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, h, w)

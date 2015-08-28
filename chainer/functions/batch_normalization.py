@@ -115,7 +115,7 @@ class BatchNormalization(function.Function):
             m = ldim * rdim
             adjust = m / max(m - 1., 1.)  # unbiased estimation
             self.avg_mean *= decay
-            self.avg_mean += (1 - decay) * adjust * mean
+            self.avg_mean += (1 - decay) * mean
             self.avg_var *= decay
             self.avg_var += (1 - decay) * adjust * var
 

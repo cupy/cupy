@@ -33,10 +33,13 @@ The above kernel can be called on either scalars or arrays with broadcasting::
 
   >>> x = cupy.arange(10, dtype=numpy.float32).reshape(2, 5)
   >>> y = cupy.arange(5, dtype=numpy.float32)
-  >>> z = squared_diff(x, y)
-  >>> z
+  >>> squared_diff(x, y)
   array([[  0.,   0.,   0.,   0.,   0.],
          [ 25.,  25.,  25.,  25.,  25.]], dtype=float32)
+
+  >>> squared_diff(x, 5)
+  array([[ 25.,  16.,   9.,   4.,   1.],
+         [  0.,   1.,   4.,   9.,  16.]], dtype=float32)
 
 Output arguments can be explicitly specified (next to the input arguments)::
 
