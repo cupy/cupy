@@ -50,7 +50,11 @@ def reshape(a, newshape):
             newarray, newshape)
     newarray._shape = newshape
     newarray._strides = newstrides
-    newarray._f_contiguous = -1
+    if newarray._c_contiguous == 1:
+        newarray.f_contiguous = int(
+            not size or len(shape) - shape.count(1) <= 1)
+    else:
+        newarray.f_contiguous = -1
     return newarray
 
 
@@ -71,4 +75,4 @@ def ravel(a):
 
     """
     # TODO(beam2d): Support ordering option
-    return reshape(a, -1)
+    return reshape(a, a.size)

@@ -104,7 +104,7 @@ class ndarray(object):
                 shape, self.itemsize)
             self._c_contiguous = 1
             self._f_contiguous = int(
-                size == 0 or len(shape) - shape.count(1) <= 1)
+                not size or len(shape) - shape.count(1) <= 1)
         else:
             self._strides = strides
             self._c_contiguous = -1
