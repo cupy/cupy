@@ -47,7 +47,7 @@ class Device(object):
     def __enter__(self):
         dev = Device()
         self._device_stack.append(dev)
-        if not dev == self:
+        if self.id != dev.id:
             dev.use()
         return self
 
@@ -100,13 +100,11 @@ class Device(object):
 
     def __eq__(self, other):
         """Returns True if ``other`` refers to the same device."""
-        if not isinstance(other, Device):
-            return False
         return self.id == other.id
 
     def __ne__(self, other):
         """Returns True if ``other`` refers to a different device."""
-        return not (self == other)
+        return self.id != other.id
 
 
 def from_pointer(ptr):
