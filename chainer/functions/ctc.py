@@ -100,12 +100,10 @@ class ConnectionistTemporalClassification(function.Function):
                 backward_prob = y_inv[path[::-1]] + backward_prob
         return alpha, beta[::-1]
 
-    def convert_inputs(self, inputs):
-        xp = cuda.get_array_module(inputs[0])
-        labels = inputs[0]
-        yseq = inputs[1::]
-        log_yseq = ()
+    def convert_inputs(self, labels, yseq):
+        xp = cuda.get_array_module(labels)
         labels = self.force_cpu(labels)
+        log_yseq = ()
 
         for y in yseq:
             log_y = numpy.ma.log(self.force_cpu(y))\
@@ -119,8 +117,9 @@ class ConnectionistTemporalClassification(function.Function):
         xp = cuda.get_array_module(y)
         y = self.force_cpu(y)
         differential = utils.force_array(
+            numpy.exp(y)
             - numpy.exp(label_prob
-                        - (y + total_prob)).astype(numpy.float32))
+                        - total_prob)).astype(numpy.float32)
         if xp == cuda.cupy:
             differential = cuda.to_gpu(differential)
         return differential
@@ -129,8 +128,21 @@ class ConnectionistTemporalClassification(function.Function):
         return self.force_cpu(self.logsumexp(forward_prob[0]
                                              + backward_prob[0]))
 
+    def softmax(self, x):
+        xp = cuda.get_array_module(x)
+        val = x - xp.amax(x)
+        val = xp.exp(val)
+        return val / xp.sum(val)
+
+    def activate(self, yseq):
+        result = ()
+        for y in yseq:
+            result += self.softmax(y),
+        return result
+
     def forward(self, inputs):
-        label, yseq = self.convert_inputs(inputs)
+        yseq = self.activate(inputs[1::])
+        label, yseq = self.convert_inputs(inputs[0], yseq)
         path = self.label_to_path(label)
         rr = self.recurrence_relation(path.shape[0],
                                       cuda.cupy.get_array_module(yseq[0]))
@@ -140,7 +152,8 @@ class ConnectionistTemporalClassification(function.Function):
                                                   + backward_prob_trans[-1])),
 
     def backward(self, inputs, grad_output):
-        label, yseq = self.convert_inputs(inputs)
+        yseq = self.activate(inputs[1::])
+        label, yseq = self.convert_inputs(inputs[0], yseq)
         path = self.label_to_path(label)
         rr = self.recurrence_relation(path.shape[0],
                                       cuda.cupy.get_array_module(yseq[0]))

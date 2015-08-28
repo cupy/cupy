@@ -13,10 +13,7 @@ from chainer.testing import attr
 class TestCTC(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.array([[0.99, 0., 0.01],
-                              [0.45, 0.45, 0.1],
-                              [0.1, 0.7, 0.2],
-                              [0.1, 0.78, 0.12]]).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.t = numpy.array([0, 1])
         self.l = numpy.array([2, 0, 2, 1, 2])
         self.blank_symbol = 2
@@ -24,24 +21,24 @@ class TestCTC(unittest.TestCase):
         self.gx = self.g
 
     # recursive forward computation.
-    def alpha(self, t, u):
+    def alpha(self, x, t, u):
         if u < 0:
             return 0.0
         if t == 0:
             if u == 0:
-                return self.x[0][self.blank_symbol]
+                return x[0][self.blank_symbol]
             elif u == 1:
-                return self.x[0][self.l[1]]
+                return x[0][self.l[1]]
             else:
                 return 0.0
         elif self.l[u] == self.blank_symbol or self.l[u] == self.l[u-2]:
-            return self.x[t][self.l[u]] * \
-                (self.alpha(t-1, u-1) + self.alpha(t-1, u))
+            return x[t][self.l[u]] * \
+                (self.alpha(x, t-1, u-1) + self.alpha(x, t-1, u))
         else:
-            return self.x[t][self.l[u]] * \
-                (self.alpha(t-1, u-2)
-                 + self.alpha(t-1, u-1)
-                 + self.alpha(t-1, u))
+            return x[t][self.l[u]] * \
+                (self.alpha(x, t-1, u-2)
+                 + self.alpha(x, t-1, u-1)
+                 + self.alpha(x, t-1, u))
 
     def check_forward(self, t_data, xs_data):
         x = tuple(chainer.Variable(x_data) for x_data in xs_data)
@@ -50,9 +47,12 @@ class TestCTC(unittest.TestCase):
         loss_value = float(loss.data)
 
         # compute expected value by recursive computation.
-        loss_expect = - math.log(self.alpha(self.x.shape[0]-1,
+        xt = self.x
+        for t in range(xt.shape[0]):
+            xt[t] = numpy.exp(xt[t]) / numpy.sum(numpy.exp(xt[t]))
+        loss_expect = - math.log(self.alpha(xt, self.x.shape[0]-1,
                                             self.l.shape[0]-1)
-                                 + self.alpha(self.x.shape[0]-1,
+                                 + self.alpha(xt, self.x.shape[0]-1,
                                               self.l.shape[0]-2))
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
