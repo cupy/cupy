@@ -89,11 +89,13 @@ class ndarray(object):
     def __init__(self, shape, dtype=float, memptr=None, strides=None):
         self._shape = shape = tuple(shape)
         self._dtype = numpy.dtype(dtype)
-        self._size = internal.prod(shape)
+        size = 1
+        for s in shape:
+            size *= s
+        self._size = size
 
-        nbytes = self.nbytes
         if memptr is None:
-            self.data = cuda.alloc(nbytes)
+            self.data = cuda.alloc(self.nbytes)
         else:
             self.data = memptr
 
@@ -102,8 +104,7 @@ class ndarray(object):
                 shape, self.itemsize)
             self._c_contiguous = 1
             self._f_contiguous = int(
-                nbytes == 0 or
-                six.moves.builtins.sum(dim != 1 for dim in shape) <= 1)
+                size == 0 or len(shape) - shape.count(1) <= 1)
         else:
             self._strides = strides
             self._c_contiguous = -1
