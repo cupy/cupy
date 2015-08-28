@@ -49,7 +49,7 @@ def get_strides_for_nocopy_reshape(a, new_shape):
     a_shape = a.shape
     a_strides = a.strides
     a_itemsize = a.itemsize
-    if len(a_shape) == 0:
+    if a_shape:
         return (a_itemsize,) * len(new_shape)
 
     shape, strides = get_reduced_dims(a_shape, a_strides, a_itemsize)
