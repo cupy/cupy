@@ -15,15 +15,25 @@ class ConnectionistTemporalClassification(function.Function):
     See also
     https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
     '''
-    def recurrence_relation(self, size, vtype):
+    def recurrence_relation(self, size, xp):
         big_I = numpy.eye(size+2)
         rr = numpy.ma.log((numpy.eye(size) + big_I[2:, 1:-1] +
                            big_I[2:, :-2] * (numpy.arange(size) % 2)))\
                      .filled(fill_value=self.zero_padding)
-        if vtype == numpy:
+        if xp == numpy:
             return rr
         else:
             return cuda.to_gpu(rr)
+
+    def force_cpu(self, v):
+        if cuda.get_array_module(v) == cuda.cupy:
+            v = cuda.to_cpu(v)
+        return v
+
+    def force_gpu(self, v):
+        if cuda.get_array_module(v) == numpy:
+            v = cuda.to_gpu(v)
+        return v
 
     def label_to_path(self, labels):
         label_length = labels.shape[0]
@@ -34,17 +44,17 @@ class ConnectionistTemporalClassification(function.Function):
         return path
 
     def log_dot(self, prob, rr):
-        vtype = cuda.cupy.get_array_module(prob)
-        res = vtype.zeros(prob.shape)
-        rtrans = vtype.swapaxes(rr, 1, 0)
+        xp = cuda.cupy.get_array_module(prob)
+        res = xp.zeros(prob.shape)
+        rtrans = xp.swapaxes(rr, 1, 0)
         for i in range(rtrans.shape[0]):
             res[i] = self.logsumexp(prob + rtrans[i])
         return res
 
     def logsumexp(self, a):
-        vtype = cuda.cupy.get_array_module(a)
-        vmax = vtype.amax(a)
-        res = vtype.log(vtype.sum(vtype.exp(a - vmax)))
+        xp = cuda.cupy.get_array_module(a)
+        vmax = xp.amax(a)
+        res = xp.log(xp.sum(xp.exp(a - vmax)))
         return (res + vmax).astype(numpy.float32)
 
     # path probablity to label probability
@@ -54,121 +64,98 @@ class ConnectionistTemporalClassification(function.Function):
         chars = set([c for c in path])
         for c in chars:
             pos = numpy.where(path == c)[0]
-            labels_prob[c] = self.logsumexp(multiply[pos, ])
+            labels_prob[c] = self.logsumexp(self.force_cpu(multiply)[pos, ])
         return labels_prob
 
-    def forward_cpu(self, inputs):
-        t = inputs[0]
-        yseq = numpy.ma.log(inputs[1::]).filled(fill_value=self.zero_padding)
-        path = self.label_to_path(t)
-        rr = self.recurrence_relation(path.shape[0],
-                                      cuda.cupy.get_array_module(yseq))
-        forward_prob_trans, backward_prob_trans \
-            = self.calc_trans_cpu(path, yseq, rr)
-        return utils.force_array(
-            - self.logsumexp(forward_prob_trans[-1]
-                             + backward_prob_trans[-1])).astype(numpy.float32),
-
-    def calc_trans_cpu(self, path, yseq, rr):
+    def calc_trans(self, path, yseq, rr):
         forward_prob = numpy.ma.log(numpy.eye(path.shape[0])[0])\
                                .filled(fill_value=self.zero_padding)
         backward_prob = numpy.ma.log(numpy.eye(path.shape[0])[0])\
                                 .filled(fill_value=self.zero_padding)
+        xp = cuda.get_array_module(yseq[0])
+        if xp == cuda.cupy:
+            forward_prob = cuda.to_gpu(forward_prob)
+            backward_prob = cuda.to_gpu(backward_prob)
 
         alpha = ()
         beta = ()
 
         for t in range(len(yseq)):
             # calc forward probability in log scale
-            y = yseq[t]
-            forward_prob = y[path] + self.log_dot(forward_prob, rr)
+            y = self.force_cpu(yseq[t])
+            if xp == cuda.cupy:
+                forward_prob = cuda.to_gpu(cuda.to_cpu(y[path])) \
+                    + self.log_dot(forward_prob, rr)
+            else:
+                forward_prob = y[path] + self.log_dot(forward_prob, rr)
             alpha += forward_prob,
 
             # calc backward probability
-            y_inv = yseq[len(yseq) - t - 1]
+            y_inv = self.force_cpu(yseq[len(yseq) - t - 1])
             backward_prob = self.log_dot(backward_prob, rr)
             beta += backward_prob[::-1],
-            backward_prob = y_inv[path[::-1]] + backward_prob
+            if xp == cuda.cupy:
+                backward_prob = cuda.to_gpu(y_inv[path[::-1]]) + backward_prob
+            else:
+                backward_prob = y_inv[path[::-1]] + backward_prob
         return alpha, beta[::-1]
 
-    def backward_cpu(self, inputs, grad_output):
+    def convert_inputs(self, inputs):
+        xp = cuda.get_array_module(inputs[0])
         labels = inputs[0]
-        yseq = numpy.ma.log(inputs[1::]).filled(fill_value=self.zero_padding)
-        path = self.label_to_path(labels)
-        rr = self.recurrence_relation(path.shape[0],
-                                      cuda.cupy.get_array_module(yseq))
-        forward_prob_trans, backward_prob_trans \
-            = self.calc_trans_cpu(path, yseq, rr)
-        total_probability = self.logsumexp(forward_prob_trans[0]
-                                           + backward_prob_trans[0])
-        result = (None,)
-        for t in range(len(yseq)):
-            multiply = forward_prob_trans[t] + backward_prob_trans[t]
-            label_prob = self.label_probability(yseq[t].shape[0],
-                                                path, multiply)
-            result += (- numpy.exp(label_prob
-                                   - (yseq[t] + total_probability))
-                       * grad_output[0]).astype(numpy.float32),
-        return result
-
-    def forward_gpu(self, inputs):
-        t = cuda.to_cpu(inputs[0])
         yseq = inputs[1::]
-        path = self.label_to_path(t)
+        log_yseq = ()
+        labels = self.force_cpu(labels)
+
+        for y in yseq:
+            log_y = numpy.ma.log(self.force_cpu(y))\
+                            .filled(fill_value=self.zero_padding)
+            if xp == cuda.cupy:
+                log_y = cuda.to_gpu(log_y)
+            log_yseq += log_y,
+        return labels, log_yseq
+
+    def calc_differential(self, label_prob, y, total_prob):
+        xp = cuda.get_array_module(y)
+        y = self.force_cpu(y)
+        differential = utils.force_array(
+            - numpy.exp(label_prob
+                        - (y + total_prob)).astype(numpy.float32))
+        if xp == cuda.cupy:
+            differential = cuda.to_gpu(differential)
+        return differential
+
+    def calc_totalprob(self, forward_prob, backward_prob):
+        return self.force_cpu(self.logsumexp(forward_prob[0]
+                                             + backward_prob[0]))
+
+    def forward(self, inputs):
+        label, yseq = self.convert_inputs(inputs)
+        path = self.label_to_path(label)
         rr = self.recurrence_relation(path.shape[0],
                                       cuda.cupy.get_array_module(yseq[0]))
-        forward_prob_trans, backward_prob_trans \
-            = self.calc_trans_gpu(path, yseq, rr)
-        return - self.logsumexp(forward_prob_trans[-1]
-                                + backward_prob_trans[-1]),
+        forward_prob_trans, backward_prob_trans\
+            = self.calc_trans(path, yseq, rr)
+        return utils.force_array(- self.logsumexp(forward_prob_trans[-1]
+                                                  + backward_prob_trans[-1])),
 
-    def calc_trans_gpu(self, path, yseq, rr):
-        forward_prob = cuda.to_gpu(numpy.ma.log(numpy.eye(path.shape[0])[0])
-                                   .filled(fill_value=self.zero_padding))
-        backward_prob = cuda.to_gpu(numpy.ma.log(numpy.eye(path.shape[0])[0])
-                                    .filled(fill_value=self.zero_padding))
-
-        alpha = ()
-        beta = ()
-
-        for t in range(len(yseq)):
-            # calc forward probability
-            y = numpy.ma.log(cuda.to_cpu(yseq[t]))\
-                        .filled(fill_value=self.zero_padding)
-            forward_prob = cuda.to_gpu(y[path]) \
-                + self.log_dot(forward_prob, rr)
-            alpha += forward_prob,
-
-            # calc backward probability
-            y_inv = numpy.ma.log(cuda.to_cpu(yseq[len(yseq) - t - 1]))\
-                            .filled(fill_value=self.zero_padding)
-            backward_prob = self.log_dot(backward_prob, rr)
-            beta += backward_prob[::-1],
-            backward_prob = cuda.to_gpu(y_inv[path[::-1]]) + backward_prob
-        return alpha, beta[::-1]
-
-    def backward_gpu(self, inputs, grad_output):
-        t = cuda.to_cpu(inputs[0])
-        yseq = inputs[1::]
-        path = self.label_to_path(t)
+    def backward(self, inputs, grad_output):
+        label, yseq = self.convert_inputs(inputs)
+        path = self.label_to_path(label)
         rr = self.recurrence_relation(path.shape[0],
                                       cuda.cupy.get_array_module(yseq[0]))
         result = (None,)
         forward_prob_trans, backward_prob_trans\
-            = self.calc_trans_gpu(path, yseq, rr)
-        total_probability = cuda.to_cpu(
-            self.logsumexp(forward_prob_trans[0]
-                           + backward_prob_trans[0]))
+            = self.calc_trans(path, yseq, rr)
+        total_probability = self.calc_totalprob(forward_prob_trans,
+                                                backward_prob_trans)
         for t in range(len(yseq)):
-            y = numpy.ma.log(cuda.to_cpu(yseq[t]))\
-                        .filled(fill_value=self.zero_padding)
-            multiply = cuda.to_cpu(forward_prob_trans[t]
-                                   + backward_prob_trans[t])
-            label_prob = self.label_probability(y.shape[0], path, multiply)
-            result += (- cuda.to_gpu(
-                numpy.exp(label_prob
-                          - (y + total_probability))).astype(numpy.float32)
-                       * grad_output[0]),
+            multiply = forward_prob_trans[t] + backward_prob_trans[t]
+            label_prob = self.label_probability(yseq[t].shape[0],
+                                                path, multiply)
+            result += self.calc_differential(
+                label_prob, yseq[t],
+                total_probability) * grad_output[0],
         return result
 
 
