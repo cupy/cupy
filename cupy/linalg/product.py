@@ -295,7 +295,8 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape):
                 ger = cublas.sger
             elif dtype == 'd':
                 ger = cublas.dger
-            ger(handle, m, n, 1, b._fptr, incb, a._fptr, inca, c._fptr, m)
+            ger(handle, m, n, 1, b.data.ptr, incb, a.data.ptr, inca,
+                c.data.ptr, m)
 
         if dtype != ret_dtype:
             elementwise.copy(out, ret)
@@ -315,7 +316,7 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape):
             elif dtype == 'd':
                 dot = cublas.ddot
             try:
-                dot(handle, k, a._fptr, inca, b._fptr, incb, c._fptr)
+                dot(handle, k, a.data.ptr, inca, b.data.ptr, incb, c.data.ptr)
             finally:
                 cublas.setPointerMode(handle, mode)
         else:
@@ -330,8 +331,8 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape):
                 gemv = cublas.sgemv
             elif dtype == 'd':
                 gemv = cublas.dgemv
-            gemv(handle, transb, m, k, 1, b._fptr, ldb, a._fptr, inca,
-                 0, c._fptr, 1)
+            gemv(handle, transb, m, k, 1, b.data.ptr, ldb, a.data.ptr, inca,
+                 0, c.data.ptr, 1)
     elif m == 1:
         # Matrix-vector product A^T * B
         a, transa, lda = _mat_to_cublas_contiguous(a, 1)
@@ -344,8 +345,8 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape):
             gemv = cublas.sgemv
         elif dtype == 'd':
             gemv = cublas.dgemv
-        gemv(handle, transa, n, k, 1, a._fptr, lda, b._fptr, incb, 0, c._fptr,
-             1)
+        gemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr, incb, 0,
+             c.data.ptr, 1)
     else:
         # Matrix-Matrix product A^T * B
         # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
@@ -356,8 +357,8 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape):
             gemm = cublas.sgemm
         elif dtype == 'd':
             gemm = cublas.dgemm
-        gemm(handle, transb, transa, m, n, k, 1, b._fptr, ldb, a._fptr,
-             lda, 0, c._fptr, m)
+        gemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb, a.data.ptr,
+             lda, 0, c.data.ptr, m)
 
     if dtype != ret_dtype:
         elementwise.copy(out, ret)
