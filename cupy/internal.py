@@ -17,14 +17,14 @@ def get_reduced_dims(shape, strides, itemsize):
         return (0,), (itemsize,)
 
     if len(shape) == 1:
-        return tuple(shape), tuple(strides)
+        return shape, strides
     if len(shape) == 2:
         shape0, shape1 = shape
         strides0, strides1 = strides
         if shape0 == 1 or strides0 == shape1 * strides1:
             return (shape0 * shape1,), (strides1,)
         else:
-            return tuple(shape), tuple(strides)
+            return shape, strides
 
     reduced_shape = [shape[0]]
     reduced_strides = [strides[0]]
