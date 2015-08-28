@@ -42,29 +42,15 @@ def dot(a, b, out=None):
         b = cupy.reshape(b, (b.size, 1))
         b_ndim = 2
 
-    if a.dtype == b.dtype:
-        ret_dtype = a.dtype.type
-    else:
-        ret_dtype = numpy.find_common_type((a.dtype, b.dtype), ()).type
-
-    # Cast to float32 or float64
-    if ret_dtype == numpy.float32 or ret_dtype == numpy.float64:
-        dtype = ret_dtype
-    else:
-        dtype = numpy.find_common_type((ret_dtype, numpy.float32), ()).type
-
-    a = a.astype(dtype, copy=False)
-    b = b.astype(dtype, copy=False)
-
     a_axis = a_ndim - 1
     b_axis = b_ndim - 2
 
     if a.shape[a_axis] != b.shape[b_axis]:
         raise ValueError('Axis dimension mismatch')
 
-    if a_axis != 0:
+    if a_axis:
         a = cupy.rollaxis(a, a_axis, 0)
-    if b_axis != 0:
+    if b_axis:
         b = cupy.rollaxis(b, b_axis, 0)
 
     k = a.shape[0]
@@ -78,12 +64,12 @@ def dot(a, b, out=None):
         elif b_is_vec:
             ret_shape = ret_shape[:-1]
     else:
-        if out.size != internal.prod(ret_shape):
+        if out.size != n * m:
             raise ValueError('Output array has an invalid size')
         if not out.flags.c_contiguous:
             raise ValueError('Output array must be C-contiguous')
 
-    return _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype)
+    return _tensordot_core(a, b, out, n, m, k, ret_shape)
 
 
 def vdot(a, b):
@@ -102,9 +88,10 @@ def vdot(a, b):
     .. seealso:: :func:`numpy.vdot`
 
     """
-    a = a.ravel()
-    b = b.ravel()
-    return a.dot(b)
+    if a.size != b.size:
+        raise ValueError('Axis dimension mismatch')
+
+    return _tensordot_core(a, b, None, 1, 1, a.size, ())
 
 
 def inner(a, b):
@@ -122,10 +109,29 @@ def inner(a, b):
     .. seealso:: :func:`numpy.inner`
 
     """
-    if a.ndim == 0 or b.ndim == 0:
-        return a * b
-    else:
-        return tensordot(a, b, axes=(-1, -1))
+    a_ndim = a.ndim
+    b_ndim = b.ndim
+    if a_ndim == 0 or b_ndim == 0:
+        return cupy.multiply(a, b)
+
+    a_axis = a_ndim - 1
+    b_axis = b_ndim - 1
+
+    if a.shape[-1] != b.shape[-1]:
+        raise ValueError('Axis dimension mismatch')
+
+    if a_axis:
+        a = cupy.rollaxis(a, a_axis, 0)
+    if b_axis:
+        b = cupy.rollaxis(b, b_axis, 0)
+
+    ret_shape = a.shape[1:] + b.shape[1:]
+
+    k = a.shape[0]
+    n = a.size // k
+    m = b.size // k
+
+    return _tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
 def outer(a, b, out=None):
@@ -145,14 +151,19 @@ def outer(a, b, out=None):
     .. seealso:: :func:`numpy.outer`
 
     """
-    a = cupy.reshape(a, (a.size, 1))
-    b = cupy.reshape(b, (1, b.size))
+    n = a.size
+    m = b.size
+    ret_shape = (n, m)
+
     if out is None:
-        return dot(a, b)
-    elif out.flags.c_contiguous:
-        return dot(a, b, out)
+        return _tensordot_core(a, b, None, n, m, 1, ret_shape)
+
+    if out.size != n * m:
+        raise ValueError('Output array has an invalid size')
+    if out.flags.c_contiguous:
+        return _tensordot_core(a, b, out, n, m, 1, ret_shape)
     else:
-        out[:] = dot(a, b)
+        out[:] = _tensordot_core(a, b, None, n, m, 1, ret_shape)
         return out
 
 
@@ -187,20 +198,6 @@ def tensordot(a, b, axes=2):
             raise ValueError('An input is zero-dim while axes has dimensions')
         return cupy.multiply(a, b)
 
-    if a.dtype == b.dtype:
-        ret_dtype = a.dtype.type
-    else:
-        ret_dtype = numpy.find_common_type((a.dtype, b.dtype), ()).type
-
-    # Cast to float32 or float64
-    if ret_dtype == numpy.float32 or ret_dtype == numpy.float64:
-        dtype = ret_dtype
-    else:
-        dtype = numpy.find_common_type((ret_dtype, numpy.float32), ()).type
-
-    a = a.astype(dtype, copy=False)
-    b = b.astype(dtype, copy=False)
-
     if isinstance(axes, collections.Sequence):
         if len(axes) != 2:
             raise ValueError('Axes must consist of two arrays.')
@@ -231,13 +228,25 @@ def tensordot(a, b, axes=2):
     n = a.size // k
     m = b.size // k
 
-    return _tensordot_core(a, b, None, n, m, k, ret_shape, ret_dtype, dtype)
+    return _tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
-def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
+def _tensordot_core(a, b, out, n, m, k, ret_shape):
+    ret_dtype = a.dtype.char
+    if ret_dtype != b.dtype.char:
+        ret_dtype = numpy.find_common_type((ret_dtype, b.dtype), ()).char
 
-    if 0 in a.shape or 0 in b.shape:
-        if 0 not in a.shape or 0 not in b.shape:
+    # Cast to float32 or float64
+    if ret_dtype == 'f' or ret_dtype == 'd':
+        dtype = ret_dtype
+    else:
+        dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
+
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
+
+    if not a.size or not b.size:
+        if a.size or b.size:
             raise ValueError('cannot dot zero-sized and non-zero-sized arrays')
         if out is None:
             return cupy.zeros(ret_shape, dtype=ret_dtype)
@@ -267,7 +276,6 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
         c.shape = (n, m)
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
-    handle = cuda.Device().cublas_handle
     if k == 1:
         if n == 1:
             # Scalar-vector product
@@ -279,15 +287,22 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
             # Outer product A^T * B
             # c is C-contiguous while cuBLAS requires F-contiguous arrays, so
             # we compute C^T = B^T * A here.
+            handle = cuda.Device().cublas_handle
             c.fill(0)
             a, inca = _to_cublas_vector(a, 1)
             b, incb = _to_cublas_vector(b, 1)
-            if dtype == numpy.float32:
+            if dtype == 'f':
                 ger = cublas.sger
-            elif dtype == numpy.float64:
+            elif dtype == 'd':
                 ger = cublas.dger
             ger(handle, m, n, 1, b._fptr, incb, a._fptr, inca, c._fptr, m)
-    elif n == 1:
+
+        if dtype != ret_dtype:
+            elementwise.copy(out, ret)
+        return ret
+
+    handle = cuda.Device().cublas_handle
+    if n == 1:
         if m == 1:
             # Inner product
             a, inca = _to_cublas_vector(a, 0)
@@ -295,9 +310,9 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
             mode = cublas.getPointerMode(handle)
             cublas.setPointerMode(handle,
                                   cublas.CUBLAS_POINTER_MODE_DEVICE)
-            if dtype == numpy.float32:
+            if dtype == 'f':
                 dot = cublas.sdot
-            elif dtype == numpy.float64:
+            elif dtype == 'd':
                 dot = cublas.ddot
             try:
                 dot(handle, k, a._fptr, inca, b._fptr, incb, c._fptr)
@@ -306,28 +321,28 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
         else:
             # Matrix-vector product B^T * A
             a, inca = _to_cublas_vector(a, 0)
-            b, transb, ldb = _mat_to_cublas_contiguous(b, True)
+            b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
             if transb:
                 # gemv requires (m, k) as the original matrix dimensions
                 # rather than the transposed dimensions.
                 m, k = k, m
-            if dtype == numpy.float32:
+            if dtype == 'f':
                 gemv = cublas.sgemv
-            elif dtype == numpy.float64:
+            elif dtype == 'd':
                 gemv = cublas.dgemv
             gemv(handle, transb, m, k, 1, b._fptr, ldb, a._fptr, inca,
                  0, c._fptr, 1)
     elif m == 1:
         # Matrix-vector product A^T * B
-        a, transa, lda = _mat_to_cublas_contiguous(a, True)
+        a, transa, lda = _mat_to_cublas_contiguous(a, 1)
         b, incb = _to_cublas_vector(b, 1)
         if not transa:
             # gemv requires (n, k) as the original matrix dimensions rather
             # than the transposed dimensions.
             n, k = k, n
-        if dtype == numpy.float32:
+        if dtype == 'f':
             gemv = cublas.sgemv
-        elif dtype == numpy.float64:
+        elif dtype == 'd':
             gemv = cublas.dgemv
         gemv(handle, transa, n, k, 1, a._fptr, lda, b._fptr, incb, 0, c._fptr,
              1)
@@ -335,11 +350,11 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
         # Matrix-Matrix product A^T * B
         # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
         # compute C^T = B^T * A here.
-        a, transa, lda = _mat_to_cublas_contiguous(a, False)
-        b, transb, ldb = _mat_to_cublas_contiguous(b, True)
-        if dtype == numpy.float32:
+        a, transa, lda = _mat_to_cublas_contiguous(a, 0)
+        b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
+        if dtype == 'f':
             gemm = cublas.sgemm
-        elif dtype == numpy.float64:
+        elif dtype == 'd':
             gemm = cublas.dgemm
         gemm(handle, transb, transa, m, n, k, 1, b._fptr, ldb, a._fptr,
              lda, 0, c._fptr, m)
@@ -367,29 +382,23 @@ def kron(a, b):
 def _move_axes_to_head(a, axes):
     # This function moves the axes of ``s`` to the head of the shape.
     for idx, axis in enumerate(axes):
-        if idx == axis:
-            continue
-        return cupy.transpose(
-            a, axes + [i for i in six.moves.range(a.ndim) if i not in axes])
-    return a
+        if idx != axis:
+            break
+    else:
+        return a
+
+    return cupy.transpose(
+        a, axes + [i for i in six.moves.range(a.ndim) if i not in axes])
 
 
 def _mat_to_cublas_contiguous(a, trans):
     assert a.ndim == 2
     f = a.flags
     if f.f_contiguous:
-        ld = a.strides[1] // a.itemsize
-        if trans:
-            return a, cublas.CUBLAS_OP_T, ld
-        else:
-            return a, cublas.CUBLAS_OP_N, ld
+        return a, trans, a.strides[1] // a.itemsize
     if not f.c_contiguous:
         a = a.copy()
-    ld = a.strides[0] // a.itemsize
-    if trans:
-        return a, cublas.CUBLAS_OP_N, ld
-    else:
-        return a, cublas.CUBLAS_OP_T, ld
+    return a, 1 - trans, a.strides[0] // a.itemsize
 
 
 def _to_cublas_vector(a, rundim):
