@@ -305,7 +305,7 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape, ret_dtype, dtype):
                 cublas.setPointerMode(handle, mode)
         else:
             # Matrix-vector product B^T * A
-            a, inca = _to_cublas_vector(a, 1)
+            a, inca = _to_cublas_vector(a, 0)
             b, transb, ldb = _mat_to_cublas_contiguous(b, True)
             if transb:
                 # gemv requires (m, k) as the original matrix dimensions
