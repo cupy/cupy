@@ -1,5 +1,11 @@
+import six
+
 import cupy
 from cupy import internal
+
+
+zip_longest = six.moves.zip_longest
+six_zip = six.moves.zip
 
 
 def atleast_1d(*arys):
@@ -118,44 +124,41 @@ class broadcast(object):
     """
 
     def __init__(self, *arrays):
-        arr = [a for a in arrays if isinstance(a, cupy.ndarray)]
-        ndim = 0
-        for a in arr:
-            ndim = max(ndim, a.ndim)
+        ndarray = cupy.ndarray
+        rev = slice(None, None, -1)
+        shape_arr = [a._shape[rev] for a in arrays
+                     if isinstance(a, ndarray)]
+        r_shape = [max(ss) for ss in zip_longest(*shape_arr)]
 
-        shape = [1] * ndim
-        for a in arr:
-            offset = len(shape) - a.ndim
-            for i, dim in enumerate(a.shape):
-                if dim != 1 and shape[i + offset] != dim:
-                    if shape[i + offset] != 1:
-                        raise RuntimeError('Broadcasting failed')
-                    else:
-                        shape[i + offset] = dim
+        self.shape = shape = tuple(r_shape[rev])
+        self.size = size = internal.prod(shape)
+        self.nd = ndim = len(shape)
 
-        self.shape = shape = tuple(shape)
-        self.size = internal.prod(shape)
-        self.nd = len(shape)
-
-        broadcasted = []
-        for a in arrays:
-            if not isinstance(a, cupy.ndarray) or a.shape == shape:
-                broadcasted.append(a)
+        broadcasted = list(arrays)
+        for i, a in enumerate(broadcasted):
+            if not isinstance(a, ndarray):
                 continue
 
-            off = self.nd - a.ndim
-            a_sh = a.shape
-            a_st = a._strides
-            strides = [0 if i < off or a_sh[i - off] != dim else a_st[i - off]
-                       for i, dim in enumerate(shape)]
+            a_shape = a.shape
+            if a_shape == shape:
+                continue
 
-            view = a.view()
+            r_strides = [
+                a_st if sh == a_sh else (0 if a_sh == 1 else None)
+                for sh, a_sh, a_st
+                in six_zip(r_shape, a._shape[rev], a._strides[rev])]
+
+            if None in r_strides:
+                raise RuntimeError('Broadcasting failed')
+
+            offset = (0,) * (ndim - len(r_strides))
+
+            broadcasted[i] = view = a.view()
             view._shape = shape
-            view._strides = tuple(strides)
-            view._size = self.size
+            view._strides = offset + tuple(r_strides[rev])
+            view._size = size
             view._c_contiguous = -1
             view._f_contiguous = -1
-            broadcasted.append(view)
 
         self.values = tuple(broadcasted)
 

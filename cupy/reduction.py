@@ -10,6 +10,10 @@ from cupy import elementwise
 from cupy import util
 
 
+six_range = six.moves.range
+six_zip = six.moves.zip
+
+
 def _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
@@ -115,16 +119,17 @@ def _get_simple_reduction_kernel(
 
 def _get_axis(axis, ndim):
     if axis is None:
-        axis = tuple(six.moves.range(ndim))
+        axis = tuple(six_range(ndim))
     elif isinstance(axis, collections.Sequence):
         axis = tuple(axis)
     else:
         axis = axis,
 
-    if any(dim < -ndim or dim >= ndim for dim in axis):
-        raise ValueError('Axis overrun')
+    for dim in axis:
+        if dim < -ndim or dim >= ndim:
+            raise ValueError('Axis overrun')
     axis = tuple(sorted([dim % ndim for dim in axis]))
-    raxis = tuple([dim for dim in six.moves.range(ndim) if dim not in axis])
+    raxis = tuple([dim for dim in six_range(ndim) if dim not in axis])
     return axis, raxis
 
 
@@ -138,7 +143,7 @@ def _get_out_shape(shape, axis, raxis, keepdims):
 
 
 def _get_trans_args(args, trans, shape, params=None):
-    if trans == tuple(six.moves.range(len(shape))):
+    if trans == tuple(six_range(len(shape))):
         return args, shape
     if params is not None and any(p.raw for p in params):
         raise NotImplementedError('Illegal conditions')
@@ -190,9 +195,12 @@ class simple_reduction_function(object):
         self.nin = 1
         self.nout = 1
         in_params = elementwise._get_param_info('T in0', True)
-        out_params = elementwise._get_param_info('T out0')
-        self._params = in_params + out_params + elementwise._get_param_info(
-            'CIndexer _in_ind, CIndexer _out_ind, int32 _out_clp2_size')
+        out_params = elementwise._get_param_info('T out0', False)
+        self._params = (
+            in_params + out_params +
+            elementwise._get_param_info(
+                'CIndexer _in_ind, CIndexer _out_ind', False) +
+            elementwise._get_param_info('int32 _out_clp2_size', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
@@ -242,8 +250,7 @@ class simple_reduction_function(object):
             shared_mem = 0
         # TODO(okuta) set actual size
         kern.linear_launch(max(out_indexer.size, block_size), inout_args,
-                           shared_mem=shared_mem,
-                           block_max_size=block_size)
+                           shared_mem, block_size)
 
         if len(out_args) == 1:
             return out_args[0]
@@ -256,7 +263,7 @@ def _get_reduction_kernel(
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
     kernel_params = elementwise._get_kernel_params(params, args_info)
-    arrays = [p for p, a in six.moves.zip(params, args_info)
+    arrays = [p for p, a in six_zip(params, args_info)
               if not p.raw and a[0] is cupy.ndarray]
     type_preamble = '\n'.join(
         'typedef %s %s;' % (elementwise._get_typename(v), k)
@@ -310,12 +317,14 @@ class ReductionKernel(object):
                  identity, name='reduce_kernel', reduce_type=None,
                  reduce_dims=True, preamble='', options=()):
         self.in_params = elementwise._get_param_info(in_params, True)
-        self.out_params = elementwise._get_param_info(out_params)
+        self.out_params = elementwise._get_param_info(out_params, False)
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
-        self.params = self.in_params + self.out_params + \
+        self.params = (
+            self.in_params + self.out_params +
             elementwise._get_param_info(
-                'CIndexer _in_ind, CIndexer _out_ind, int32 _out_clp2_size')
+                'CIndexer _in_ind, CIndexer _out_ind', False) +
+            elementwise._get_param_info('int32 _out_clp2_size', True))
         self.identity = identity
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
@@ -368,18 +377,23 @@ class ReductionKernel(object):
 
         if self.identity is None:
             assert 0 in broad_shape
+
+        cp_array = cupy.ndarray
+        in_ndarray_types = tuple(
+            [a.dtype if isinstance(a, cp_array) else None for a in in_args])
+        out_ndarray_types = tuple(
+            [a.dtype if isinstance(a, cp_array) else None for a in out_args])
         in_types, out_types, types = elementwise._decide_params_type(
             self.in_params, self.out_params,
-            elementwise._get_ndarray_dtype(in_args),
-            elementwise._get_ndarray_dtype(out_args))
+            in_ndarray_types, out_ndarray_types)
 
         axis, raxis = _get_axis(axis, len(broad_shape))
         out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
-        in_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
-                   for x, t in six.moves.zip(in_args, in_types)]
+        in_args = [x if isinstance(x, cp_array) else t.type(x)
+                   for x, t in six_zip(in_args, in_types)]
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, broad_shape, self.in_params)
-        out_args = elementwise._get_out_args(
+        out_args = elementwise._get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params)
 
         in_indexer = carray.Indexer(in_shape)
@@ -403,8 +417,7 @@ class ReductionKernel(object):
             shared_mem = 0
         # TODO(okuta) set actual size
         kern.linear_launch(max(out_indexer.size, block_size), inout_args,
-                           shared_mem=shared_mem,
-                           block_max_size=block_size)
+                           shared_mem, block_size)
         return out_args[0]
 
 
@@ -417,7 +430,7 @@ def create_reduction_func(name, ops, routine=None, identity=None,
             rt = routine
         else:
             typ, rt = t
-            rt = tuple(i or j for i, j in six.moves.zip(rt, routine))
+            rt = tuple(i or j for i, j in six_zip(rt, routine))
 
         types = typ.split('->')
         if len(types) == 1:
