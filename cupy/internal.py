@@ -44,12 +44,13 @@ def get_reduced_dims_from_array(a):
 
 
 def get_strides_for_nocopy_reshape(a, new_shape):
-    if a.size != prod(new_shape):
+    a_size = a.size
+    if a_size != prod(new_shape):
         return None
     a_shape = a.shape
     a_strides = a.strides
     a_itemsize = a.itemsize
-    if a_shape:
+    if a_size == 1:
         return (a_itemsize,) * len(new_shape)
 
     shape, strides = get_reduced_dims(a_shape, a_strides, a_itemsize)
