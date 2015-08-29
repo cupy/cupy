@@ -388,7 +388,7 @@ class ReductionKernel(object):
                                  "a positional and keyword argument")
             out_args = [out]
 
-        in_args, broad_shape = _broadcast(args, self.in_params)
+        in_args, broad_shape = _broadcast(args, self.in_params, True)
         _check_args(in_args + out_args)
 
         if self.identity is None:

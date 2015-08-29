@@ -246,12 +246,16 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return in_types, out_types, tuple(type_dict.items())
 
 
-def _broadcast(args, params, size_error=True):
-    brod = cupy.broadcast(
-        *[a if not p.raw and isinstance(a, cupy.ndarray) else None
-          for p, a in six_zip(params, args)])
-    if size_error and all(i is None for i in brod.values):
-        raise ValueError('Loop size is Undecided')
+def _broadcast(args, params, size_error):
+    value = [a if not p.raw and isinstance(a, cupy.ndarray) else None
+             for p, a in six_zip(params, args)]
+    if size_error:
+        for i in value:
+            if i is not None:
+                break
+        else:
+            raise ValueError('Loop size is Undecided')
+    brod = cupy.broadcast(*value)
     value = [b if a is None else a
              for a, b in six_zip(brod.values, args)]
     return value, brod.shape
