@@ -17,6 +17,10 @@ class MockMemory(object):
     def __int__(self):
         return self.ptr.value or 0
 
+    @property
+    def device(self):
+        return self._device
+
 
 def mock_alloc(size):
     mem = MockMemory(size)

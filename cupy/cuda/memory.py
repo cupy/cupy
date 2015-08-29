@@ -18,11 +18,12 @@ class Memory(object):
     """
     def __init__(self, size):
         self.size = size
-        self.ptr = ctypes.c_void_p()
-        self._device = None
+        self._device = device.Device()
         if size > 0:
-            self._device = device.Device()
             self.ptr = runtime.malloc(size)
+        else:
+            self.ptr = ctypes.c_void_p()
+            self._device = None
 
     def __del__(self):
         if self.ptr:
@@ -35,10 +36,7 @@ class Memory(object):
     @property
     def device(self):
         """Device whose memory the pointer refers to."""
-        if self._device is None:
-            return device.Device()
-        else:
-            return self._device
+        return self._device
 
 
 class MemoryPointer(object):
@@ -60,6 +58,7 @@ class MemoryPointer(object):
     """
     def __init__(self, mem, offset):
         self.mem = mem
+        self._device = mem.device
         self.ptr = ctypes.c_void_p(int(mem) + int(offset))
 
     def __int__(self):
@@ -90,7 +89,7 @@ class MemoryPointer(object):
     @property
     def device(self):
         """Device whose memory the pointer refers to."""
-        return self.mem.device
+        return self._device
 
     def copy_from_device(self, src, size):
         """Copies a memory sequence from the same device.
