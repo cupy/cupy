@@ -13,6 +13,18 @@ from cupy import util
 six_range = six.moves.range
 six_zip = six.moves.zip
 
+_broadcast = elementwise._broadcast
+_check_args = elementwise._check_args
+_decide_params_type = elementwise._decide_params_type
+_get_kernel_params = elementwise._get_kernel_params
+_get_args_info = elementwise._get_args_info
+_get_out_args = elementwise._get_out_args
+_get_out_args_with_params = elementwise._get_out_args_with_params
+_get_param_info = elementwise._get_param_info
+_get_typename = elementwise._get_typename
+_guess_routine = elementwise._guess_routine
+_reduce_dims = elementwise._reduce_dims
+
 
 def _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
@@ -156,10 +168,12 @@ def _get_trans_args(args, trans, shape, params=None):
 def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
                     params, reduce_dims):
     if reduce_dims:
-        in_args, in_indexer = elementwise._reduce_dims(
-            in_args, params, in_indexer)
-        out_args, out_indexer = elementwise._reduce_dims(
-            out_args, params[len(in_args):], out_indexer)
+        in_args, in_shape = _reduce_dims(
+            in_args, params, in_indexer.shape)
+        out_args, out_shape = _reduce_dims(
+            out_args, params[len(in_args):], out_indexer.shape)
+        in_indexer.shape = in_shape
+        out_indexer.shape = out_shape
     args = in_args + out_args + [in_indexer, out_indexer,
                                  numpy.int32(out_clp2_size)]
     return args
@@ -172,13 +186,12 @@ def _get_simple_reduction_function(
         options):
     reduce_type = routine[3]
     if reduce_type is None:
-        reduce_type = elementwise._get_typename(out_types[0])
+        reduce_type = _get_typename(out_types[0])
 
-    t = (elementwise._get_typename(in_arg_dtype),
-         elementwise._get_typename(out_arg_dtype))
+    t = (_get_typename(in_arg_dtype), _get_typename(out_arg_dtype))
     type_preamble = 'typedef %s type_in0_raw; typedef %s type_out0_raw;' % t
 
-    params = elementwise._get_kernel_params(params, args_info)
+    params = _get_kernel_params(params, args_info)
     return _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         routine[0], routine[1], routine[2],
@@ -194,13 +207,13 @@ class simple_reduction_function(object):
         self._preamble = preamble
         self.nin = 1
         self.nout = 1
-        in_params = elementwise._get_param_info('T in0', True)
-        out_params = elementwise._get_param_info('T out0', False)
+        in_params = _get_param_info('T in0', True)
+        out_params = _get_param_info('T out0', False)
         self._params = (
             in_params + out_params +
-            elementwise._get_param_info(
+            _get_param_info(
                 'CIndexer _in_ind, CIndexer _out_ind', False) +
-            elementwise._get_param_info('int32 _out_clp2_size', True))
+            _get_param_info('int32 _out_clp2_size', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
@@ -208,24 +221,25 @@ class simple_reduction_function(object):
     def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False):
         if not isinstance(a, cupy.ndarray):
             raise TypeError('Input type must be cupy.ndarray')
-
         if self.identity is None:
             assert a.size != 0
+        if dtype is not None:
+            dtype = numpy.dtype(dtype).type
+
         in_args = [a]
         if out is None:
-            elementwise._check_args((a,))
+            _check_args((a,))
             out_args = []
         else:
-            elementwise._check_args((a, out))
+            _check_args((a, out))
             out_args = [out]
 
-        in_types, out_types, routine = elementwise._guess_routine(
+        in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
         axis, raxis = _get_axis(axis, a.ndim)
         out_shape = _get_out_shape(a.shape, axis, raxis, keepdims)
-        out_args = elementwise._get_out_args(
-            out_args, out_types, out_shape)
+        out_args = _get_out_args(out_args, out_types, out_shape)
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, in_args[0].shape)
 
@@ -236,12 +250,12 @@ class simple_reduction_function(object):
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, out_clp2_size,
             self._params, True)
-        args_info = elementwise._get_args_info(inout_args)
+        args_info = _get_args_info(inout_args)
 
         block_size = 512
         kern = _get_simple_reduction_function(
             routine, self._params, args_info,
-            in_args[0].dtype, out_args[0].dtype, out_types,
+            in_args[0].dtype.type, out_args[0].dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
 
@@ -262,11 +276,11 @@ def _get_reduction_kernel(
         params, args_info, types,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,
         post_map_expr, preamble, options):
-    kernel_params = elementwise._get_kernel_params(params, args_info)
+    kernel_params = _get_kernel_params(params, args_info)
     arrays = [p for p, a in six_zip(params, args_info)
               if not p.raw and a[0] is cupy.ndarray]
     type_preamble = '\n'.join(
-        'typedef %s %s;' % (elementwise._get_typename(v), k)
+        'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
     input_expr = '\n'.join(
         ['const {0} {1} = _raw_{1}[_j];'.format(p.ctype, p.name)
@@ -316,15 +330,15 @@ class ReductionKernel(object):
                  map_expr, reduce_expr, post_map_expr,
                  identity, name='reduce_kernel', reduce_type=None,
                  reduce_dims=True, preamble='', options=()):
-        self.in_params = elementwise._get_param_info(in_params, True)
-        self.out_params = elementwise._get_param_info(out_params, False)
+        self.in_params = _get_param_info(in_params, True)
+        self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
+        self.nargs = self.nin + self.nout
         self.params = (
             self.in_params + self.out_params +
-            elementwise._get_param_info(
-                'CIndexer _in_ind, CIndexer _out_ind', False) +
-            elementwise._get_param_info('int32 _out_clp2_size', True))
+            _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
+            _get_param_info('int32 _out_clp2_size', True))
         self.identity = identity
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
@@ -356,11 +370,13 @@ class ReductionKernel(object):
         """
 
         out = kwargs.pop('out', None)
-        axis = kwargs.get('axis', None)
-        keepdims = kwargs.get('keepdims', False)
+        axis = kwargs.pop('axis', None)
+        keepdims = kwargs.pop('keepdims', False)
+        if kwargs:
+            raise TypeError('Wrong arguments %s' % kwargs)
 
-        if not (len(args) == self.nin or
-                len(args) == self.nin + self.nout):
+        n_args = len(args)
+        if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
 
         out_args = list(args[self.nin:])
@@ -372,28 +388,30 @@ class ReductionKernel(object):
                                  "a positional and keyword argument")
             out_args = [out]
 
-        in_args, broad_shape = elementwise._broadcast(args, self.in_params)
-        elementwise._check_args(in_args + out_args)
+        in_args, broad_shape = _broadcast(args, self.in_params)
+        _check_args(in_args + out_args)
 
         if self.identity is None:
             assert 0 in broad_shape
 
         cp_array = cupy.ndarray
         in_ndarray_types = tuple(
-            [a.dtype if isinstance(a, cp_array) else None for a in in_args])
+            [a.dtype.type if isinstance(a, cp_array) else None
+             for a in in_args])
         out_ndarray_types = tuple(
-            [a.dtype if isinstance(a, cp_array) else None for a in out_args])
-        in_types, out_types, types = elementwise._decide_params_type(
+            [a.dtype.type if isinstance(a, cp_array) else None
+             for a in out_args])
+        in_types, out_types, types = _decide_params_type(
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
 
         axis, raxis = _get_axis(axis, len(broad_shape))
         out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
-        in_args = [x if isinstance(x, cp_array) else t.type(x)
+        in_args = [x if isinstance(x, cp_array) else t(x)
                    for x, t in six_zip(in_args, in_types)]
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, broad_shape, self.in_params)
-        out_args = elementwise._get_out_args_with_params(
+        out_args = _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params)
 
         in_indexer = carray.Indexer(in_shape)
@@ -403,7 +421,7 @@ class ReductionKernel(object):
         inout_args = _get_inout_args(
             in_args, out_args, in_indexer, out_indexer, out_clp2_size,
             self.params, self.reduce_dims)
-        args_info = elementwise._get_args_info(inout_args)
+        args_info = _get_args_info(inout_args)
 
         block_size = 512
         kern = _get_reduction_kernel(
@@ -437,8 +455,8 @@ def create_reduction_func(name, ops, routine=None, identity=None,
             in_types = out_types = tuple(types)
         else:
             in_types, out_types = map(tuple, types)
-        in_types = tuple([numpy.dtype(t) for t in in_types])
-        out_types = tuple([numpy.dtype(t) for t in out_types])
+        in_types = tuple([numpy.dtype(t).type for t in in_types])
+        out_types = tuple([numpy.dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
 
     return simple_reduction_function(name, _ops, identity, preamble)

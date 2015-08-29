@@ -4,7 +4,7 @@ import os
 import six
 
 from cupy import cuda
-from cupy import internal
+
 
 MAX_NDIM = 25
 
@@ -43,8 +43,11 @@ def to_cindexer(size, shape):
 
 class Indexer(object):
     def __init__(self, shape):
+        size = 1
+        for s in shape:
+            size *= s
         self.shape = shape
-        self.size = internal.prod(shape)
+        self.size = size
 
     @property
     def ndim(self):
@@ -53,10 +56,6 @@ class Indexer(object):
     @property
     def ctypes(self):
         return to_cindexer(self.size, self.shape)
-
-    @property
-    def dtype(self):
-        return None
 
 
 _header_source = None

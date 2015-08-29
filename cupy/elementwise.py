@@ -68,16 +68,26 @@ def _check_args(args):
     scalar_type = _scalar_type
     for arg in args:
         if isinstance(arg, cp_array):
-            if not arg.data.device == dev:
+            if arg.data.device != dev:
                 raise ValueError('Array device must be same as the current '
                                  'device: array device = %d while current = %d'
-                                 % (arg.data.device.id, dev.id))
+                                 % (arg.device.id, dev.id))
         elif not isinstance(arg, scalar_type):
             raise TypeError('Unsupported type %s' % type(arg))
 
 
 def _get_args_info(args):
-    return tuple([(type(a), a.dtype, a.ndim) for a in args])
+    ret = []
+    carray_Indexer = carray.Indexer
+    ret_append = ret.append
+    for a in args:
+        t = type(a)
+        if t == carray_Indexer:
+            dtype = None
+        else:
+            dtype = a.dtype.type
+        ret_append((t, dtype, a.ndim))
+    return tuple(ret)
 
 
 def _get_kernel_params(params, args_info):
@@ -98,43 +108,47 @@ def _get_kernel_params(params, args_info):
     return ', '.join(ret)
 
 
-def _reduce_dims(args, params, indexer):
-    ndim = indexer.ndim
+def _reduce_dims(args, params, shape):
+    ndim = len(shape)
     if ndim <= 1:
-        return args, indexer
+        return args, shape
     is_array_flags = [not p.raw and isinstance(a, cupy.ndarray)
                       for a, p in six_zip(args, params)]
     args_strides = [a.strides
                     for a, f in six_zip(args, is_array_flags) if f]
-    shape = list(indexer.shape)
-    for i in six_range(1, len(shape)):
+    src_shape = shape
+    shape = list(src_shape)
+    cnt = 0
+    for i in six_range(1, ndim):
         j = i - 1
+        shape_j = shape[j]
+        if shape_j == 1:
+            continue
         for strides in args_strides:
             if strides[i] * shape[i] != strides[j]:
+                cnt += 1
+                axis = j
                 break
         else:
-            shape[i] *= shape[j]
+            shape[i] *= shape_j
             shape[j] = 1
+    if shape[-1] != 1:
+        cnt += 1
+        axis = -1
 
-    axis = None
-    for i, sh in enumerate(shape):
-        if sh != 1:
-            if axis is None:
-                axis = i
-            else:
-                break
-    else:
-        if axis is not None:
-            indexer.shape = new_shape = shape[axis],
-            args = list(args)
-            for i, arg in enumerate(args):
-                if is_array_flags[i]:
-                    args[i] = arg = arg.view()
-                    arg._shape = new_shape
-                    arg._strides = arg._strides[axis],
-        return args, indexer
+    if not cnt:
+        return args, src_shape
+    elif cnt == 1:
+        new_shape = shape[axis],
+        args = list(args)
+        for i, arg in enumerate(args):
+            if is_array_flags[i]:
+                args[i] = arg = arg.view()
+                arg._shape = new_shape
+                arg._strides = arg._strides[axis],
+        return args, new_shape
 
-    indexer.shape = new_shape = tuple([dim for dim in shape if dim != 1])
+    new_shape = tuple([dim for dim in shape if dim != 1])
     args = list(args)
     for i, arg in enumerate(args):
         if is_array_flags[i]:
@@ -143,7 +157,7 @@ def _reduce_dims(args, params, indexer):
             arg._strides = tuple(
                 [st for st, sh in six_zip(arg.strides, shape)
                  if sh != 1])
-    return args, indexer
+    return args, new_shape
 
 
 class ParameterInfo(object):
@@ -164,8 +178,9 @@ class ParameterInfo(object):
         elif len(t) == 1:
             self.ctype = t
         else:
-            self.dtype = numpy.dtype(t)
-            if self.dtype.name != t:
+            dtype = numpy.dtype(t)
+            self.dtype = dtype.type
+            if dtype.name != t:
                 raise ValueError('Wrong type %s' % t)
             self.ctype = _get_typename(self.dtype)
 
@@ -272,9 +287,8 @@ def _get_out_args_with_params(out_args, out_types, out_shape, out_params):
 
 
 @util.memoize(for_each_device=True)
-def _get_elementwise_kernel(
-        args_info, types, params, operation, name,
-        preamble, **kwargs):
+def _get_elementwise_kernel(args_info, types, params, operation, name,
+                            preamble, kwargs):
     kernel_params = _get_kernel_params(params, args_info)
     types_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k) for k, v in types)
@@ -292,7 +306,7 @@ def _get_elementwise_kernel(
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel(
         kernel_params, operation, name,
-        preamble, **kwargs)
+        preamble, **dict(kwargs))
 
 
 class ElementwiseKernel(object):
@@ -336,13 +350,14 @@ class ElementwiseKernel(object):
         self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
+        self.nargs = self.nin + self.nout
         param_rest = _get_param_info('CIndexer _ind', False)
         self.params = self.in_params + self.out_params + param_rest
         self.operation = operation
         self.name = name
         self.reduce_dims = reduce_dims
         self.preamble = preamble
-        self.kwargs = kwargs
+        self.kwargs = frozenset(kwargs.items())
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError("Can not use 'i' as a parameter name")
@@ -367,55 +382,57 @@ class ElementwiseKernel(object):
 
         """
         n = kwargs.pop('size', None)
-        np_array = numpy.ndarray
-        cp_array = cupy.ndarray
+        if kwargs:
+            raise TypeError('Wrong arguments %s' % kwargs)
 
-        if not (len(args) == self.nin or
-                len(args) == self.nin + self.nout):
+        n_args = len(args)
+        if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
-        for i in args:
-            if isinstance(i, np_array):
-                raise TypeError('Unsupported type %s' % type(i))
         _check_args(args)
 
         values, shape = _broadcast(args, self.params, n is None)
         in_args = values[:self.nin]
         out_args = values[self.nin:]
+
+        cp_array = cupy.ndarray
         in_ndarray_types = tuple(
-            [a.dtype if isinstance(a, cp_array) else None for a in in_args])
+            [a.dtype.type if isinstance(a, cp_array) else None
+             for a in in_args])
         out_ndarray_types = tuple(
-            [a.dtype if isinstance(a, cp_array) else None for a in out_args])
+            [a.dtype.type if isinstance(a, cp_array) else None
+             for a in out_args])
 
         in_types, out_types, types = _decide_params_type(
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
 
-        ret = out_args = _get_out_args_with_params(
+        out_args = _get_out_args_with_params(
             out_args, out_types, shape, self.out_params)
-        if len(ret) == 1:
-            ret = ret[0]
-
-        if n is None:
-            indexer = carray.Indexer(shape)
+        if self.nout == 1:
+            ret = out_args[0]
         else:
-            indexer = carray.Indexer((n,))
+            ret = tuple(out_args)
 
-        if indexer.size == 0:
+        if n is not None:
+            shape = n,
+
+        if 0 in shape:
             return ret
 
-        inout_args = [x if isinstance(x, cp_array) else t.type(x)
+        inout_args = [x if isinstance(x, cp_array) else t(x)
                       for x, t in six_zip(in_args, in_types)]
         inout_args += out_args
 
         if self.reduce_dims:
-            inout_args, indexer = _reduce_dims(
-                inout_args, self.params, indexer)
+            inout_args, shape = _reduce_dims(
+                inout_args, self.params, shape)
+        indexer = carray.Indexer(shape)
         inout_args.append(indexer)
 
         args_info = _get_args_info(inout_args)
         kern = _get_elementwise_kernel(
             args_info, types, self.params, self.operation,
-            self.name, self.preamble, **self.kwargs)
+            self.name, self.preamble, self.kwargs)
         kern.linear_launch(indexer.size, inout_args)
         return ret
 
@@ -450,8 +467,8 @@ def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
 
 def _guess_routine_from_in_types(ops, in_types):
     for op in ops:
-        for t0, t1 in six_zip(in_types, op[0]):
-            if not numpy.can_cast(t0, t1):
+        for dst, src in six_zip(op[0], in_types):
+            if not numpy.can_cast(src, dst):
                 break
         else:
             return op
@@ -469,11 +486,12 @@ def _guess_routine_from_dtype(ops, dtype):
 
 
 def _guess_routine(name, cache, ops, in_args, dtype):
-    key = dtype
     if dtype is None:
-        key = tuple([numpy.dtype(type(i))
-                     if isinstance(i, (int, float, bool)) else i.dtype
+        key = tuple([numpy.dtype(type(i)).type
+                     if isinstance(i, (int, float, bool)) else i.dtype.type
                      for i in in_args])
+    else:
+        key = dtype
 
     op = cache.get(key, ())
     if op is ():
@@ -530,8 +548,8 @@ class ufunc(object):
         """
         types = []
         for in_types, out_types, _ in self._ops:
-            in_str = ''.join([t.char for t in in_types])
-            out_str = ''.join([t.char for t in out_types])
+            in_str = ''.join([numpy.dtype(t).char for t in in_types])
+            out_str = ''.join([numpy.dtype(t).char for t in out_types])
             types.append('%s->%s' % (in_str, out_str))
         return types
 
@@ -550,45 +568,55 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
-        out = kwargs.get('out', None)
-        dtype = kwargs.get('dtype', None)
+        out = kwargs.pop('out', None)
+        dtype = kwargs.pop('dtype', None)
         if dtype is not None:
-            dtype = numpy.dtype(dtype)
+            dtype = numpy.dtype(dtype).type
+        if kwargs:
+            raise TypeError('Wrong arguments %s' % kwargs)
 
-        if not (len(args) == self.nin or len(args) == self.nargs):
+        n_args = len(args)
+        if n_args != self.nin and n_args != self.nargs:
             raise TypeError('Wrong number of arguments for %s' % self.name)
 
-        in_args = list(args[:self.nin])
-        out_args = list(args[self.nin:])
-        if out is not None:
-            if len(out_args) != 0:
-                raise ValueError("cannot specify 'out' as both "
+        if out is None:
+            in_args = args[:self.nin]
+            out_args = args[self.nin:]
+        else:
+            if self.nout != 1:
+                raise ValueError("Cannot use 'out' in %s" % self.name)
+            if n_args != self.nin:
+                raise ValueError("Cannot specify 'out' as both "
                                  "a positional and keyword argument")
-            out_args = [out]
+            in_args = args
+            out_args = out,
+            args += out_args
 
-        _check_args(in_args + out_args)
+        _check_args(args)
+        broad = cupy.broadcast(*args)
+        shape = broad.shape
 
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
-        broad = cupy.broadcast(*(in_args + out_args))
+        out_args = _get_out_args(out_args, out_types, shape)
+        if self.nout == 1:
+            ret = out_args[0]
+        else:
+            ret = tuple(out_args)
 
-        ret = out_args = _get_out_args(out_args, out_types, broad.shape)
-        if len(ret) == 1:
-            ret = ret[0]
-
-        if 0 in broad.shape:
+        if 0 in shape:
             return ret
 
-        inout_args = [x if isinstance(x, cupy.ndarray) else t.type(x)
-                      for x, t
-                      in six_zip(broad.values, in_types)]
-        inout_args += out_args
-        inout_args, indexer = _reduce_dims(
-            inout_args, self._params, carray.Indexer(broad.shape))
+        inout_args = [x if isinstance(x, cupy.ndarray) else t(x)
+                      for x, t in six_zip(broad.values, in_types)]
+        inout_args.extend(out_args)
+        inout_args, shape = _reduce_dims(inout_args, self._params, shape)
+        indexer = carray.Indexer(shape)
         inout_args.append(indexer)
         args_info = _get_args_info(inout_args)
-        out_raw_types = tuple([x.dtype for x in out_args])
+        out_raw_types = tuple([x.dtype.type for x in out_args])
+
         kern = _get_ufunc_kernel(
             in_types, out_types, routine,
             args_info, out_raw_types,
@@ -612,8 +640,8 @@ def create_ufunc(name, ops, routine=None, preamble='', doc=''):
             in_types = out_types = tuple(types)
         else:
             in_types, out_types = map(tuple, types)
-        in_types = tuple([numpy.dtype(t) for t in in_types])
-        out_types = tuple([numpy.dtype(t) for t in out_types])
+        in_types = tuple([numpy.dtype(t).type for t in in_types])
+        out_types = tuple([numpy.dtype(t).type for t in out_types])
         _ops.append((in_types, out_types, rt))
 
     return ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble, doc)
