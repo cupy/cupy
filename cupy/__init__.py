@@ -1036,13 +1036,6 @@ class ndarray(object):
         """CUDA device on which this array resides."""
         return self.data.device
 
-    @property
-    def _fptr(self):
-        if self._dtype.type == numpy.float64:
-            return ctypes.cast(self.data.ptr, ctypes.POINTER(ctypes.c_double))
-        else:
-            return ctypes.cast(self.data.ptr, ctypes.POINTER(ctypes.c_float))
-
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
 
