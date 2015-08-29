@@ -64,12 +64,11 @@ class RandomState(object):
         dtype = _check_and_get_dtype(dtype)
         size = _get_size(size)
         out = cupy.empty(size, dtype=dtype)
-        if dtype.type == numpy.float32:
-            curand.generateLogNormal(self._generator, out._fptr, out.size,
-                                     mean, sigma)
+        if dtype.char == 'f':
+            func = curand.generateLogNormal
         else:
-            curand.generateLogNormalDouble(self._generator, out._fptr,
-                                           out.size, mean, sigma)
+            func = curand.generateLogNormalDouble
+        func(self._generator, out.data.ptr, out.size, mean, sigma)
         return out
 
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
@@ -83,12 +82,11 @@ class RandomState(object):
         dtype = _check_and_get_dtype(dtype)
         size = _get_size(size)
         out = cupy.empty(size, dtype=dtype)
-        if dtype.type == numpy.float32:
-            curand.generateNormal(self._generator, out._fptr, out.size, loc,
-                                  scale)
+        if dtype.char == 'f':
+            func = curand.generateNormal
         else:
-            curand.generateNormalDouble(self._generator, out._fptr, out.size,
-                                        loc, scale)
+            func = curand.generateNormalDouble
+        func(self._generator, out.data.ptr, out.size, loc, scale)
         return out
 
     def rand(self, *size, **kwarg):
@@ -133,10 +131,11 @@ class RandomState(object):
         dtype = _check_and_get_dtype(dtype)
         size = _get_size(size)
         out = cupy.empty(size, dtype=dtype)
-        if dtype.type == numpy.float32:
-            curand.generateUniform(self._generator, out._fptr, out.size)
+        if dtype.char == 'f':
+            func = curand.generateUniform
         else:
-            curand.generateUniformDouble(self._generator, out._fptr, out.size)
+            func = curand.generateUniformDouble
+        func(self._generator, out.data.ptr, out.size)
         RandomState._1m_kernel(out)
         return out
 
@@ -243,6 +242,6 @@ def _get_size(size):
 
 def _check_and_get_dtype(dtype):
     dtype = numpy.dtype(dtype)
-    if dtype.type not in (numpy.float32, numpy.float64):
+    if dtype.char not in ('f', 'd'):
         raise TypeError('cupy.random only supports float32 and float64')
     return dtype
