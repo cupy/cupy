@@ -59,6 +59,8 @@ def take(a, indices, axis=None, out=None):
 
     cdim = indices.size
     rdim = internal.prod(rshape)
+    indices = cupy.reshape(
+        indices, (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
     return _take_kernel(a, indices, cdim, rdim, out)
 
 
@@ -129,12 +131,11 @@ def select(condlist, choicelist, default=0):
 
 
 _take_kernel = elementwise.ElementwiseKernel(
-    'raw T a, raw S indices, int64 cdim, int64 rdim',
+    'raw T a, S indices, int64 cdim, int64 rdim',
     'T out',
     '''
       long long li = i / (rdim * cdim);
-      long long ci = indices[i / rdim % cdim];
       long long ri = i % rdim;
-      out = a[(li * cdim + ci) * rdim + ri];
+      out = a[(li * cdim + indices) * rdim + ri];
     ''',
     'cupy_take')
