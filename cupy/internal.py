@@ -1,7 +1,8 @@
 import six
 
-import cupy
-from cupy import cuda
+
+six_range = six.moves.range
+six_zip = six.moves.zip
 
 
 def prod(args, init=1):
@@ -28,7 +29,7 @@ def get_reduced_dims(shape, strides, itemsize):
 
     reduced_shape = [shape[0]]
     reduced_strides = [strides[0]]
-    for sh, st, prev_st in six.moves.zip(shape[1:], strides[1:], strides):
+    for sh, st, prev_st in six_zip(shape[1:], strides[1:], strides):
         if reduced_shape[-1] == 1 or prev_st == sh * st:
             reduced_shape[-1] *= sh
             reduced_strides[-1] = st
@@ -39,21 +40,19 @@ def get_reduced_dims(shape, strides, itemsize):
     return tuple(reduced_shape), tuple(reduced_strides)
 
 
-def get_reduced_dims_from_array(a):
-    return get_reduced_dims(a.shape, a.strides, a.itemsize)
-
-
 def get_strides_for_nocopy_reshape(a, new_shape):
     a_size = a.size
-    if a_size != prod(new_shape):
+    size = 1
+    for s in new_shape:
+        size *= s
+    if a_size != size:
         return None
-    a_shape = a.shape
-    a_strides = a.strides
+
     a_itemsize = a.itemsize
     if a_size == 1:
         return (a_itemsize,) * len(new_shape)
 
-    shape, strides = get_reduced_dims(a_shape, a_strides, a_itemsize)
+    shape, strides = get_reduced_dims(a.shape, a.strides, a_itemsize)
 
     ndim = len(shape)
     dim = 0
@@ -89,7 +88,7 @@ def get_contiguous_strides(shape, itemsize):
 
     strides = [0] * ndim
     st = itemsize
-    for i in six.moves.range(ndim - 1, -1, -1):
+    for i in six_range(ndim - 1, -1, -1):
         strides[i] = st
         sh = shape[i]
         if sh > 1:
@@ -131,12 +130,3 @@ def infer_unknown_dimension(shape, size):
         if dim > 0:
             p //= dim
     return tuple([dim if dim >= 0 else p for dim in shape])
-
-
-def check_args_device(args):
-    dev = cuda.Device()
-    for arg in args:
-        if isinstance(arg, cupy.ndarray) and not arg.data.device == dev:
-            raise ValueError('Array device must be same as the current '
-                             'device: array device = %d while current = %d'
-                             % (arg.data.device.id, dev.id))

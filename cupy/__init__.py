@@ -88,20 +88,20 @@ class ndarray(object):
     """
     def __init__(self, shape, dtype=float, memptr=None, strides=None):
         self._shape = shape = tuple(shape)
-        self._dtype = numpy.dtype(dtype)
+        self._dtype = dtype = numpy.dtype(dtype)
         size = 1
         for s in shape:
             size *= s
         self._size = size
 
         if memptr is None:
-            self.data = cuda.alloc(self.nbytes)
+            self.data = cuda.alloc(size * dtype.itemsize)
         else:
             self.data = memptr
 
         if strides is None:
             self._strides = internal.get_contiguous_strides(
-                shape, self.itemsize)
+                shape, dtype.itemsize)
             self._c_contiguous = 1
             self._f_contiguous = int(
                 not size or len(shape) - shape.count(1) <= 1)
@@ -1094,10 +1094,15 @@ class ndarray(object):
 
         """
         view = self.view(dtype=dtype)
-        shape, strides = internal.get_reduced_dims_from_array(self)
+        shape, strides = internal.get_reduced_dims(
+            self._shape, self._strides, self.itemsize)
         view._shape = shape
         view._strides = strides
-        view._f_contiguous = -1
+        if view._c_contiguous == 1:
+            view._f_contiguous = int(
+                not view.size or len(shape) - shape.count(1) <= 1)
+        else:
+            view._f_contiguous = -1
         return view
 
     def _update_c_contiguity(self):
