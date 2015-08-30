@@ -258,7 +258,7 @@ def train_loop():
             continue
         elif inp == 'val':  # start validation
             res_q.put('val')
-            pickle.dump(model, open('model', 'wb'), -1)
+            pickle.dump(model, open(args.out, 'wb'), -1)
             train = False
             continue
 
@@ -299,4 +299,4 @@ feeder.join()
 logger.join()
 
 # Save final model
-pickle.dump(model, open('model', 'wb'), -1)
+pickle.dump(model, open(args.out, 'wb'), -1)
