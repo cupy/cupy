@@ -1093,9 +1093,15 @@ class ndarray(object):
             cupy.ndarray: A view of the array with reduced dimensions.
 
         """
-        view = self.view(dtype=dtype)
+        ndim = self.ndim
+        if ndim <= 1:
+            return self
         shape, strides = internal.get_reduced_dims(
             self._shape, self._strides, self.itemsize)
+        if ndim == len(shape):
+            return self
+
+        view = self.view(dtype=dtype)
         view._shape = shape
         view._strides = strides
         if view._c_contiguous == 1:

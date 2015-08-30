@@ -122,7 +122,9 @@ class NegativeSampling(function.Function):
             '''
             T f = 0;
             for (int j = 0; j < c; ++j) {
-              f += x[(i / m) * c + j] * W[k * c + j];
+              int x_ind[] = {(i / m), j};
+              int w_ind[] = {k, j};
+              f += x[x_ind] * W[w_ind];
             }
             wx = f;
             ''',

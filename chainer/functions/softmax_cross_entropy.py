@@ -57,7 +57,7 @@ class SoftmaxCrossEntropy(function.Function):
             'S t, raw T y, int32 n_channel, T inv_count', 'T out',
             'log(y[_j * n_channel + t])',
             'a + b', 'out = a * inv_count', '0', 'crossent_fwd'
-        )(t, y, y.shape[-1], -1.0 / count)
+        )(t, y.reduced_view(), y.shape[-1], -1.0 / count)
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
@@ -95,9 +95,9 @@ class SoftmaxCrossEntropy(function.Function):
             count = x.shape[0]
         coeff = cuda.cupy.divide(gloss, count, dtype=gloss.dtype)
         gx = cuda.elementwise(
-            'T y, S t, T coeff, S n_channel, S n_unit',
+            'T y, S t, raw T coeff, S n_channel, S n_unit',
             'T gx',
-            'gx = coeff * (y - (t == (i / n_unit % n_channel)))',
+            'gx = coeff[0] * (y - (t == (i / n_unit % n_channel)))',
             'softmax_crossent_bwd')(
                 self.y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit)
         return gx, None

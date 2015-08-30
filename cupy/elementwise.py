@@ -246,10 +246,17 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return in_types, out_types, tuple(type_dict.items())
 
 
-def _broadcast(args, params, size_error):
+def _broadcast(args, params, use_size):
     value = [a if not p.raw and isinstance(a, cupy.ndarray) else None
              for p, a in six_zip(params, args)]
-    if size_error:
+    if use_size:
+        for i in value:
+            if i is None:
+                break
+        else:
+            raise ValueError("Specified 'size' can be used only "
+                             "if all of the ndarray are 'raw'.")
+    else:
         for i in value:
             if i is not None:
                 break
@@ -385,7 +392,7 @@ class ElementwiseKernel(object):
             ``__init__`` method.
 
         """
-        n = kwargs.pop('size', None)
+        size = kwargs.pop('size', None)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -394,7 +401,7 @@ class ElementwiseKernel(object):
             raise TypeError('Wrong number of arguments for %s' % self.name)
         _check_args(args)
 
-        values, shape = _broadcast(args, self.params, n is None)
+        values, shape = _broadcast(args, self.params, size is not None)
         in_args = values[:self.nin]
         out_args = values[self.nin:]
 
@@ -417,8 +424,8 @@ class ElementwiseKernel(object):
         else:
             ret = tuple(out_args)
 
-        if n is not None:
-            shape = n,
+        if size is not None:
+            shape = size,
 
         if 0 in shape:
             return ret
