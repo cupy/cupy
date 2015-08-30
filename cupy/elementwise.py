@@ -112,20 +112,23 @@ def _reduce_dims(args, params, shape):
     ndim = len(shape)
     if ndim <= 1:
         return args, shape
-    is_array_flags = [not p.raw and isinstance(a, cupy.ndarray)
-                      for a, p in six_zip(args, params)]
-    args_strides = [a.strides
-                    for a, f in six_zip(args, is_array_flags) if f]
+
+    cp_array = cupy.ndarray
+    is_array_flags = [not p.raw and isinstance(a, cp_array)
+                      for p, a in six_zip(params, args)]
+    args_strides = [a._strides for a, f in six_zip(args, is_array_flags) if f]
+
     src_shape = shape
     shape = list(src_shape)
     cnt = 0
     for i in six_range(1, ndim):
         j = i - 1
+        shape_i = shape[i]
         shape_j = shape[j]
         if shape_j == 1:
             continue
         for strides in args_strides:
-            if strides[i] * shape[i] != strides[j]:
+            if strides[i] * shape_i != strides[j]:
                 cnt += 1
                 axis = j
                 break
@@ -141,22 +144,21 @@ def _reduce_dims(args, params, shape):
     elif cnt == 1:
         new_shape = shape[axis],
         args = list(args)
-        for i, arg in enumerate(args):
+        for i, a in enumerate(args):
             if is_array_flags[i]:
-                args[i] = arg = arg.view()
-                arg._shape = new_shape
-                arg._strides = arg._strides[axis],
+                a = args[i] = a.view()
+                a._shape = new_shape
+                a._strides = a._strides[axis],
         return args, new_shape
 
     new_shape = tuple([dim for dim in shape if dim != 1])
     args = list(args)
-    for i, arg in enumerate(args):
+    for i, a in enumerate(args):
         if is_array_flags[i]:
-            args[i] = arg = arg.view()
-            arg._shape = new_shape
-            arg._strides = tuple(
-                [st for st, sh in six_zip(arg.strides, shape)
-                 if sh != 1])
+            a = args[i] = a.view()
+            a._shape = new_shape
+            a._strides = tuple(
+                [st for st, sh in six_zip(a._strides, shape) if sh != 1])
     return args, new_shape
 
 

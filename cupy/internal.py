@@ -27,15 +27,24 @@ def get_reduced_dims(shape, strides, itemsize):
         else:
             return shape, strides
 
-    reduced_shape = [shape[0]]
-    reduced_strides = [strides[0]]
+    last_shape = shape[0]
+    last_stride = strides[0]
+    reduced_shape = []
+    reduced_strides = []
+    reduced_shape_append = reduced_shape.append
+    reduced_strides_append = reduced_strides.append
+
     for sh, st, prev_st in six_zip(shape[1:], strides[1:], strides):
-        if reduced_shape[-1] == 1 or prev_st == sh * st:
-            reduced_shape[-1] *= sh
-            reduced_strides[-1] = st
+        if last_shape == 1 or prev_st == sh * st:
+            last_shape *= sh
+            last_stride = st
         else:
-            reduced_shape.append(sh)
-            reduced_strides.append(st)
+            reduced_shape_append(last_shape)
+            reduced_strides_append(last_stride)
+            last_shape = sh
+            last_stride = st
+    reduced_shape_append(last_shape)
+    reduced_strides_append(last_stride)
 
     return tuple(reduced_shape), tuple(reduced_strides)
 
