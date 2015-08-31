@@ -31,7 +31,7 @@ def _check_constant_type(value):
         return
     else:
         raise ValueError(
-            'value must be float, ndarray, or Variable')
+            'value must be scalar, ndarray, or Variable')
 
 
 class Neg(function.Function):
