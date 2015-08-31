@@ -125,6 +125,5 @@ class Linear(function.Function):
         if self.gb is not None:
             self.gb += gy[0].sum(0)
         gx = gy[0].dot(self.W)
-        if gx.shape != x[0].shape:
-            gx = gx.reshape(x[0].shape)
+        gx = gx.reshape(x[0].shape)
         return gx,
