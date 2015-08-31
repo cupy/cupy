@@ -57,7 +57,7 @@ def check_status(status):
 # Context
 ###############################################################################
 
-_cublas.cublasCreate_v2.argtypes = [_P]
+_cublas.cublasCreate_v2.argtypes = (_P,)
 
 
 def create():
@@ -67,7 +67,7 @@ def create():
     return handle
 
 
-_cublas.cublasDestroy_v2.argtypes = [Handle]
+_cublas.cublasDestroy_v2.argtypes = (Handle,)
 
 
 def destroy(handle):
@@ -75,7 +75,7 @@ def destroy(handle):
     check_status(status)
 
 
-_cublas.cublasGetVersion_v2.argtypes = [Handle, _IP]
+_cublas.cublasGetVersion_v2.argtypes = (Handle, _IP)
 
 
 def getVersion(handle):
@@ -85,7 +85,7 @@ def getVersion(handle):
     return version
 
 
-_cublas.cublasGetPointerMode_v2.argtypes = [Handle, _IP]
+_cublas.cublasGetPointerMode_v2.argtypes = (Handle, _IP)
 
 
 def getPointerMode(handle):
@@ -95,7 +95,7 @@ def getPointerMode(handle):
     return mode.value
 
 
-_cublas.cublasSetPointerMode_v2.argtypes = [Handle, _I]
+_cublas.cublasSetPointerMode_v2.argtypes = (Handle, _I)
 
 
 def setPointerMode(handle, mode):
@@ -107,7 +107,7 @@ def setPointerMode(handle, mode):
 # Stream
 ###############################################################################
 
-_cublas.cublasSetStream_v2.argtypes = [Handle, driver.Stream]
+_cublas.cublasSetStream_v2.argtypes = (Handle, driver.Stream)
 
 
 def setStream(handle, stream):
@@ -115,7 +115,7 @@ def setStream(handle, stream):
     check_status(status)
 
 
-_cublas.cublasGetStream_v2.argtypes = [Handle, _P]
+_cublas.cublasGetStream_v2.argtypes = (Handle, _P)
 
 
 def getStream(handle):
@@ -128,7 +128,7 @@ def getStream(handle):
 # BLAS Level 1
 ###############################################################################
 
-_cublas.cublasIsamax_v2.argtypes = [Handle, _I, _FP, _I, _IP]
+_cublas.cublasIsamax_v2.argtypes = (Handle, _I, _P, _I, _IP)
 
 
 def isamax(handle, n, x, incx):
@@ -139,7 +139,7 @@ def isamax(handle, n, x, incx):
     return result.value
 
 
-_cublas.cublasIsamin_v2.argtypes = [Handle, _I, _FP, _I, _IP]
+_cublas.cublasIsamin_v2.argtypes = (Handle, _I, _P, _I, _IP)
 
 
 def isamin(handle, n, x, incx):
@@ -150,7 +150,7 @@ def isamin(handle, n, x, incx):
     return result.value
 
 
-_cublas.cublasSasum_v2.argtypes = [Handle, _I, _FP, _I, _FP]
+_cublas.cublasSasum_v2.argtypes = (Handle, _I, _P, _I, _FP)
 
 
 def sasum(handle, n, x, incx):
@@ -161,7 +161,7 @@ def sasum(handle, n, x, incx):
     return result.value
 
 
-_cublas.cublasSaxpy_v2.argtypes = [Handle, _I, _FP, _FP, _I, _FP, _I]
+_cublas.cublasSaxpy_v2.argtypes = (Handle, _I, _FP, _P, _I, _P, _I)
 
 
 def saxpy(handle, n, alpha, x, incx, y, incy):
@@ -170,7 +170,7 @@ def saxpy(handle, n, alpha, x, incx, y, incy):
     check_status(status)
 
 
-_cublas.cublasDaxpy_v2.argtypes = [Handle, _I, _DP, _DP, _I, _DP, _I]
+_cublas.cublasDaxpy_v2.argtypes = (Handle, _I, _DP, _P, _I, _P, _I)
 
 
 def daxpy(handle, n, alpha, x, incx, y, incy):
@@ -179,7 +179,7 @@ def daxpy(handle, n, alpha, x, incx, y, incy):
     check_status(status)
 
 
-_cublas.cublasSdot_v2.argtypes = [Handle, _I, _FP, _I, _FP, _I, _FP]
+_cublas.cublasSdot_v2.argtypes = (Handle, _I, _P, _I, _P, _I, _P)
 
 
 def sdot(handle, n, x, incx, y, incy, result):
@@ -188,7 +188,7 @@ def sdot(handle, n, x, incx, y, incy, result):
     check_status(status)
 
 
-_cublas.cublasDdot_v2.argtypes = [Handle, _I, _DP, _I, _DP, _I, _DP]
+_cublas.cublasDdot_v2.argtypes = (Handle, _I, _P, _I, _P, _I, _P)
 
 
 def ddot(handle, n, x, incx, y, incy, result):
@@ -197,7 +197,7 @@ def ddot(handle, n, x, incx, y, incy, result):
     check_status(status)
 
 
-_cublas.cublasSnrm2_v2.argtypes = [Handle, _I, _FP, _I, _FP]
+_cublas.cublasSnrm2_v2.argtypes = (Handle, _I, _P, _I, _FP)
 
 
 def snrm2(handle, n, x, incx):
@@ -208,7 +208,7 @@ def snrm2(handle, n, x, incx):
     return result.value
 
 
-_cublas.cublasSscal_v2.argtypes = [Handle, _I, _FP, _FP, _I]
+_cublas.cublasSscal_v2.argtypes = (Handle, _I, _FP, _P, _I)
 
 
 def sscal(handle, n, alpha, x, incx):
@@ -220,8 +220,8 @@ def sscal(handle, n, alpha, x, incx):
 # BLAS Level 2
 ###############################################################################
 
-_cublas.cublasSgemv_v2.argtypes = [Handle, _I, _I, _I, _FP, _FP, _I, _FP, _I,
-                                   _FP, _FP, _I]
+_cublas.cublasSgemv_v2.argtypes = (Handle, _I, _I, _I, _FP, _P, _I, _P, _I,
+                                   _FP, _P, _I)
 
 
 def sgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
@@ -231,8 +231,8 @@ def sgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
     check_status(status)
 
 
-_cublas.cublasDgemv_v2.argtypes = [Handle, _I, _I, _I, _DP, _DP, _I, _DP, _I,
-                                   _DP, _DP, _I]
+_cublas.cublasDgemv_v2.argtypes = (Handle, _I, _I, _I, _DP, _P, _I, _P, _I,
+                                   _DP, _P, _I)
 
 
 def dgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
@@ -242,8 +242,8 @@ def dgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
     check_status(status)
 
 
-_cublas.cublasSger_v2.argtypes = [
-    Handle, _I, _I, _FP, _FP, _I, _FP, _I, _FP, _I]
+_cublas.cublasSger_v2.argtypes = (
+    Handle, _I, _I, _FP, _P, _I, _P, _I, _P, _I)
 
 
 def sger(handle, m, n, alpha, x, incx, y, incy, A, lda):
@@ -251,8 +251,8 @@ def sger(handle, m, n, alpha, x, incx, y, incy, A, lda):
         handle, m, n, ctypes.byref(_F(alpha)), x, incx, y, incy, A, lda)
     check_status(status)
 
-_cublas.cublasDger_v2.argtypes = [
-    Handle, _I, _I, _DP, _DP, _I, _DP, _I, _DP, _I]
+_cublas.cublasDger_v2.argtypes = (
+    Handle, _I, _I, _DP, _P, _I, _P, _I, _P, _I)
 
 
 def dger(handle, m, n, alpha, x, incx, y, incy, A, lda):
@@ -264,8 +264,8 @@ def dger(handle, m, n, alpha, x, incx, y, incy, A, lda):
 # BLAS Level 3
 ###############################################################################
 
-_cublas.cublasSgemm_v2.argtypes = [Handle, _I, _I, _I, _I, _I, _FP, _FP, _I,
-                                   _FP, _I, _FP, _FP, _I]
+_cublas.cublasSgemm_v2.argtypes = (Handle, _I, _I, _I, _I, _I, _FP, _P, _I,
+                                   _P, _I, _FP, _P, _I)
 
 
 def sgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C,
@@ -276,8 +276,8 @@ def sgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C,
     check_status(status)
 
 
-_cublas.cublasDgemm_v2.argtypes = [Handle, _I, _I, _I, _I, _I, _DP, _DP, _I,
-                                   _DP, _I, _DP, _DP, _I]
+_cublas.cublasDgemm_v2.argtypes = (Handle, _I, _I, _I, _I, _I, _DP, _P, _I,
+                                   _P, _I, _DP, _P, _I)
 
 
 def dgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C,
@@ -288,8 +288,8 @@ def dgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C,
     check_status(status)
 
 
-_cublas.cublasSgemmBatched.argtypes = [
-    Handle, _I, _I, _I, _I, _I, _FP, _P, _I, _P, _I, _FP, _P, _I, _I]
+_cublas.cublasSgemmBatched.argtypes = (
+    Handle, _I, _I, _I, _I, _I, _FP, _P, _I, _P, _I, _FP, _P, _I, _I)
 
 
 def sgemmBatched(handle, transa, transb, m, n, k, alpha, Aarray, lda, Barray,
@@ -307,7 +307,7 @@ def sgemmBatched(handle, transa, transb, m, n, k, alpha, Aarray, lda, Barray,
 CUBLAS_SIDE_LEFT = 0
 CUBLAS_SIDE_RIGHT = 1
 
-_cublas.cublasSdgmm.argtypes = [Handle, _I, _I, _I, _FP, _I, _FP, _I, _FP, _I]
+_cublas.cublasSdgmm.argtypes = (Handle, _I, _I, _I, _P, _I, _P, _I, _P, _I)
 
 
 def sdgmm(handle, mode, m, n, A, lda, x, incx, C, ldc):

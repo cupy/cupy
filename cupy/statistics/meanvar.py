@@ -116,8 +116,8 @@ def _count_reduce_items(arr, axis):
 # TODO(okuta) needs cast
 _mean = reduction.create_reduction_func(
     'cupy_mean',
-    ['?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
+    ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'],
+     'f->f', 'd->d'),
     ('in0', 'a + b', 'out0 = a / (_in_ind.size() / _out_ind.size())', None))

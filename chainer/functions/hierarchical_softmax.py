@@ -217,7 +217,9 @@ class BinaryHierarchicalSoftmax(function.Function):
 
               T wx = 0;
               for (int j = 0; j < c; ++j) {
-                wx += w[node * c + j] * x[ind * c + j];
+                int w_ind[] = {node, j};
+                int x_ind[] = {ind, j};
+                wx += w[w_ind] * x[x_ind];
               }
               wxy = wx * codes[p];
               ls = log(1 + exp(-wxy));
@@ -258,8 +260,10 @@ class BinaryHierarchicalSoftmax(function.Function):
 
               T g = -gloss[0] * code / (1.0 + exp(wxy));
               for (int j = 0; j < c; ++j) {
-                atomicAdd(&gx[ind * c + j], g * w[node * c + j]);
-                atomicAdd(&gw[node * c + j], g * x[ind * c + j]);
+                int w_ind[] = {node, j};
+                int x_ind[] = {ind, j};
+                atomicAdd(&gx[x_ind], g * w[w_ind]);
+                atomicAdd(&gw[w_ind], g * x[x_ind]);
               }
             }
             ''',

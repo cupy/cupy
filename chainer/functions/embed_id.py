@@ -52,7 +52,7 @@ class EmbedID(function.Function):
     def backward_gpu(self, x, gy):
         cuda.elementwise(
             'T gy, int32 x, int32 n_out', 'raw T gW',
-            'atomicAdd(&gW[x * n_out + i % n_out], gy)',
+            'int w_ind[] = {x, i % n_out}; atomicAdd(&gW[w_ind], gy)',
             'embed_id_bwd')(
                 gy[0], x[0][:, numpy.newaxis], self.gW.shape[1], self.gW)
         return None,

@@ -1,10 +1,8 @@
-import ctypes
-
-import numpy
 import six
 
-import cupy
-from cupy import cuda
+
+six_range = six.moves.range
+six_zip = six.moves.zip
 
 
 def prod(args, init=1):
@@ -16,70 +14,95 @@ def prod(args, init=1):
 def get_reduced_dims(shape, strides, itemsize):
     if not shape:
         return (), ()
-    elif 0 in shape:
+    if 0 in shape:
         return (0,), (itemsize,)
-    reduced_shape = [shape[0]]
-    reduced_strides = [strides[0]]
-    for i in six.moves.range(1, len(shape)):
-        if strides[i - 1] == shape[i] * strides[i] or \
-           reduced_shape[-1] == 1:
-            reduced_shape[-1] *= shape[i]
-            reduced_strides[-1] = strides[i]
+
+    if len(shape) == 1:
+        return shape, strides
+    if len(shape) == 2:
+        shape0, shape1 = shape
+        strides0, strides1 = strides
+        if shape0 == 1 or strides0 == shape1 * strides1:
+            return (shape0 * shape1,), (strides1,)
         else:
-            reduced_shape.append(shape[i])
-            reduced_strides.append(strides[i])
+            return shape, strides
+
+    last_shape = shape[0]
+    last_stride = strides[0]
+    reduced_shape = []
+    reduced_strides = []
+    reduced_shape_append = reduced_shape.append
+    reduced_strides_append = reduced_strides.append
+
+    for sh, st, prev_st in six_zip(shape[1:], strides[1:], strides):
+        if last_shape == 1 or prev_st == sh * st:
+            last_shape *= sh
+            last_stride = st
+        else:
+            reduced_shape_append(last_shape)
+            reduced_strides_append(last_stride)
+            last_shape = sh
+            last_stride = st
+    reduced_shape_append(last_shape)
+    reduced_strides_append(last_stride)
 
     return tuple(reduced_shape), tuple(reduced_strides)
 
 
-def get_reduced_dims_from_array(a):
-    return get_reduced_dims(a.shape, a.strides, a.itemsize)
+def get_strides_for_nocopy_reshape(a, new_shape):
+    a_size = a.size
+    size = 1
+    for s in new_shape:
+        size *= s
+    if a_size != size:
+        return None
 
+    a_itemsize = a.itemsize
+    if a_size == 1:
+        return (a_itemsize,) * len(new_shape)
 
-def get_strides_for_nocopy_reshape(array, new_shape):
-    shape, strides = map(list, get_reduced_dims_from_array(array))
-    new_strides = []
+    shape, strides = get_reduced_dims(a.shape, a.strides, a_itemsize)
 
-    dim = 0
     ndim = len(shape)
-    if len(array.shape) == 0:
-        last_stride = array.itemsize
-    else:
-        last_stride = array.strides[0] * array.shape[0]
+    dim = 0
+    sh = shape[0]
+    st = strides[0]
+    last_stride = sh * st
+    new_strides = []
     for size in new_shape:
-        if size <= 1:
-            new_strides.append(last_stride)
-            continue
-        if dim >= ndim or shape[dim] % size != 0:
-            return None
-        shape[dim] //= size
-        last_stride = shape[dim] * strides[dim]
+        if size > 1:
+            if sh == 1:
+                dim += 1
+                if dim >= ndim:
+                    return None
+                sh = shape[dim]
+                st = strides[dim]
+            if sh % size != 0:
+                return None
+            sh //= size
+            last_stride = sh * st
         new_strides.append(last_stride)
-        if shape[dim] == 1:
-            dim = dim + 1
 
     return tuple(new_strides)
 
 
 def get_contiguous_strides(shape, itemsize):
-    strides = [itemsize for _ in shape]
-    for i in six.moves.range(len(strides) - 1, 0, -1):
-        strides[i - 1] = strides[i] * max(1, shape[i])
+    ndim = len(shape)
+    if ndim == 0:
+        return ()
+    if ndim == 1:
+        return itemsize,
+    if ndim == 2:
+        return shape[1] * itemsize, itemsize
+
+    strides = [0] * ndim
+    st = itemsize
+    for i in six_range(ndim - 1, -1, -1):
+        strides[i] = st
+        sh = shape[i]
+        if sh > 1:
+            st *= sh
     return tuple(strides)
-
-
-def get_ndarray_ptr(a_cpu):
-    if a_cpu.dtype.type == numpy.bool_:
-        # Boolean array cannot be directly converted to ctypes
-        a_cpu = a_cpu.view(dtype=numpy.uint8)
-    elif a_cpu.dtype.type == numpy.float16:
-        # Float16 array cannot be directly converted to ctypes
-        a_cpu = a_cpu.view(dtype=numpy.uint16)
-    if a_cpu.shape:
-        return ctypes.cast(numpy.ctypeslib.as_ctypes(a_cpu), ctypes.c_void_p)
-    else:
-        return ctypes.cast(ctypes.pointer(numpy.ctypeslib.as_ctypes(a_cpu)),
-                           ctypes.c_void_p)
 
 
 def complete_slice(slc, dim):
@@ -99,27 +122,20 @@ def get_c_contiguity(shape, strides, itemsize):
     if 0 in shape:
         return True
     _, strides = get_reduced_dims(shape, strides, itemsize)
-    return len(strides) == 0 or (len(strides) == 1 and strides[0] == itemsize)
+    ndim = len(strides)
+    return ndim == 0 or (ndim == 1 and strides[0] == itemsize)
 
 
 def infer_unknown_dimension(shape, size):
-    if sum(dim < 0 for dim in shape) > 1:
-        raise ValueError('can only specify only one unknown dimension')
-
-    shape = tuple(dim if dim >= 0 else -1 for dim in shape)
-    p = prod(shape)
-    if p < 0:
-        return tuple(dim if dim >= 0 else size // -p for dim in shape)
-    else:
+    cnt = 0
+    for dim in shape:
+        cnt += dim < 0
+    if cnt == 0:
         return shape
-
-
-def check_args_device(args):
-    dev = cuda.Device()
-    for arg in args:
-        if isinstance(arg, cupy.ndarray):
-            arg_dev = arg.data.device
-            if arg_dev != dev:
-                raise ValueError('Array device must be same as the current '
-                                 'device: array device = %d while current = %d'
-                                 % (arg_dev.id, dev.id))
+    if cnt > 1:
+        raise ValueError('can only specify only one unknown dimension')
+    p = size
+    for dim in shape:
+        if dim > 0:
+            p //= dim
+    return tuple([dim if dim >= 0 else p for dim in shape])
