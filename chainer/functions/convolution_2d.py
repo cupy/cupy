@@ -167,7 +167,7 @@ class Convolution2D(function.Function):
     def forward_cpu(self, x):
         self.col = conv.im2col_cpu(
             x[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
-        y = numpy.tensordot(self.col, self.W, ([1, 2, 3], [1, 2, 3]))
+        y = numpy.tensordot(self.col, self.W, ((1, 2, 3), (1, 2, 3)))
         if self.b is not None:
             y += self.b
         return numpy.rollaxis(y, 3, 1),
