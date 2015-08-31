@@ -87,10 +87,9 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
     if '#include' in source:
         pp_src = '%s %s' % (env, preprocess(source, options))
     else:
-        base = _empty_file_preprocess_cache.pop(env, None)
+        base = _empty_file_preprocess_cache.get(env, None)
         if base is None:
-            base = preprocess('', options)
-            _empty_file_preprocess_cache[env] = base
+            base = _empty_file_preprocess_cache[env] = preprocess('', options)
         pp_src = '%s %s %s' % (env, base, source)
 
     if isinstance(pp_src, six.text_type):

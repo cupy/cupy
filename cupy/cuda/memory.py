@@ -18,11 +18,12 @@ class Memory(object):
     """
     def __init__(self, size):
         self.size = size
-        self.ptr = ctypes.c_void_p()
-        self._device = None
+        self._device = device.Device()
         if size > 0:
-            self._device = device.Device()
             self.ptr = runtime.malloc(size)
+        else:
+            self.ptr = ctypes.c_void_p()
+            self._device = None
 
     def __del__(self):
         if self.ptr:
@@ -35,10 +36,7 @@ class Memory(object):
     @property
     def device(self):
         """Device whose memory the pointer refers to."""
-        if self._device is None:
-            return device.Device()
-        else:
-            return self._device
+        return self._device
 
 
 class MemoryPointer(object):
@@ -60,6 +58,7 @@ class MemoryPointer(object):
     """
     def __init__(self, mem, offset):
         self.mem = mem
+        self._device = mem.device
         self.ptr = ctypes.c_void_p(int(mem) + int(offset))
 
     def __int__(self):
@@ -90,7 +89,7 @@ class MemoryPointer(object):
     @property
     def device(self):
         """Device whose memory the pointer refers to."""
-        return self.mem.device
+        return self._device
 
     def copy_from_device(self, src, size):
         """Copies a memory sequence from the same device.
@@ -272,10 +271,10 @@ class PooledMemory(Memory):
     should not instantiate it by hand.
 
     """
-    def __init__(self, memptr, pool):
-        self.ptr = memptr.mem.ptr
-        self.size = memptr.mem.size
-        self._device = memptr.mem._device
+    def __init__(self, mem, pool):
+        self.ptr = mem.ptr
+        self.size = mem.size
+        self._device = mem._device
         self.pool = weakref.ref(pool)
 
     def __del__(self):
@@ -303,40 +302,34 @@ class SingleDeviceMemoryPool(object):
     """Memory pool implementation for single device."""
 
     def __init__(self, allocator=_malloc):
-        self._in_use = collections.defaultdict(list)
+        self._in_use = {}
         self._free = collections.defaultdict(list)
         self._alloc = allocator
 
     def malloc(self, size):
-        in_use = self._in_use[size]
         free = self._free[size]
 
         if free:
-            memptr = free.pop()
+            mem = free.pop()
         else:
             try:
-                memptr = self._alloc(size)
+                mem = self._alloc(size).mem
             except runtime.CUDARuntimeError as e:
                 if e.status != 2:
                     raise
                 self.free_all_free()
-                memptr = self._alloc(size)
+                mem = self._alloc(size).mem
 
-        in_use.append(memptr)
-        mem = PooledMemory(memptr, self)
-        return MemoryPointer(mem, 0)
+        self._in_use[mem.ptr.value] = mem
+        pmem = PooledMemory(mem, self)
+        return MemoryPointer(pmem, 0)
 
     def free(self, ptr, size):
-        in_use = self._in_use[size]
-        free = self._free[size]
-
-        for i, memptr in enumerate(in_use):
-            if memptr.mem.ptr.value == ptr.value:
-                del in_use[i]
-                free.append(memptr)
-                break
-        else:
+        mem = self._in_use.pop(ptr.value, None)
+        if mem is None:
             raise RuntimeError('Cannot free out-of-pool memory')
+        else:
+            self._free[size].append(mem)
 
     def free_all_free(self):
         self._free = collections.defaultdict(list)
@@ -370,8 +363,8 @@ class MemoryPool(object):
 
     """
     def __init__(self, allocator=_malloc):
-        self._pools = {}
-        self._alloc = allocator
+        self._pools = collections.defaultdict(
+            lambda: SingleDeviceMemoryPool(allocator))
 
     def malloc(self, size):
         """Allocates the memory, from the pool if possible.
@@ -389,8 +382,4 @@ class MemoryPool(object):
 
         """
         dev = device.Device().id
-        pool = self._pools.get(dev, None)
-        if pool is None:
-            pool = SingleDeviceMemoryPool(self._alloc)
-            self._pools[dev] = pool
-        return pool.malloc(size)
+        return self._pools[dev].malloc(size)

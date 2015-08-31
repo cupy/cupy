@@ -1170,4 +1170,58 @@ class ConvertValueToStringTest(unittest.TestCase):
         self._check_array(cuda.ndarray([1, 2]), 'constant array')
 
 
+class TestLabel(unittest.TestCase):
+
+    def test_neg(self):
+        self.assertEqual(basic_math.Neg().label, '__neg__')
+
+    def test_absolute(self):
+        self.assertEqual(basic_math.Absolute().label, '|_|')
+
+    def test_add(self):
+        self.assertEqual(basic_math.Add().label, '_ + _')
+
+    def test_add_constant(self):
+        self.assertEqual(basic_math.AddConstant(2.0).label, '_ + 2.0')
+
+    def test_sub(self):
+        self.assertEqual(basic_math.Sub().label, '_ - _')
+
+    def test_sub_from_constant(self):
+        self.assertEqual(basic_math.SubFromConstant(2.0).label, '2.0 - _')
+
+    def test_mul(self):
+        self.assertEqual(basic_math.Mul().label, '_ * _')
+
+    def test_mul_constant(self):
+        self.assertEqual(basic_math.MulConstant(2.0).label, '_ * 2.0')
+
+    def test_div(self):
+        self.assertEqual(basic_math.Div().label, '_ / _')
+
+    def test_div_from_constant(self):
+        self.assertEqual(basic_math.DivFromConstant(2.0).label, '_ / 2.0')
+
+    def test_pow_var_var(self):
+        self.assertEqual(basic_math.PowVarVar().label, '_ ** _')
+
+    def test_pow_var_const(self):
+        self.assertEqual(basic_math.PowVarConst(2.0).label, '_ ** 2.0')
+
+    def test_pow_const_var(self):
+        self.assertEqual(basic_math.PowConstVar(2.0).label, '2.0 ** _')
+
+    def test_exp(self):
+        self.assertEqual(basic_math.Exp().label, 'exp')
+
+    def test_log(self):
+        self.assertEqual(basic_math.Log().label, 'log')
+
+    def test_sin(self):
+        self.assertEqual(basic_math.Sin().label, 'sin')
+
+    def test_cos(self):
+        self.assertEqual(basic_math.Cos().label, 'cos')
+
+
 testing.run_module(__name__, __file__)

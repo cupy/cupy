@@ -1,7 +1,5 @@
 import collections
 
-import numpy
-
 from cupy import internal
 
 
@@ -27,14 +25,19 @@ def reshape(a, newshape):
 
     """
     # TODO(beam2d): Support ordering option
-    if numpy.isscalar(newshape):
+    if isinstance(newshape, collections.Sequence):
+        newshape = tuple(newshape)
+    else:
         newshape = newshape,
-    newshape = internal.infer_unknown_dimension(newshape, a.size)
-    if len(newshape) == 1 and \
-       isinstance(newshape[0], collections.Iterable):
-        newshape = tuple(newshape[0])
+
+    shape = a.shape
+    if newshape == shape:
+        return a.view()
 
     size = a.size
+    newshape = internal.infer_unknown_dimension(newshape, size)
+    if newshape == shape:
+        return a.view()
     if internal.prod(newshape) != size:
         raise RuntimeError('Total size mismatch on reshape')
 
@@ -47,7 +50,11 @@ def reshape(a, newshape):
             newarray, newshape)
     newarray._shape = newshape
     newarray._strides = newstrides
-    newarray._mark_f_dirty()
+    if newarray._c_contiguous == 1:
+        newarray.f_contiguous = int(
+            not size or len(shape) - shape.count(1) <= 1)
+    else:
+        newarray.f_contiguous = -1
     return newarray
 
 
@@ -68,4 +75,4 @@ def ravel(a):
 
     """
     # TODO(beam2d): Support ordering option
-    return reshape(a, -1)
+    return reshape(a, a.size)
