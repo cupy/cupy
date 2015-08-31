@@ -3,6 +3,7 @@ import unittest
 import numpy
 
 import chainer
+from chainer import basic_math
 from chainer import cuda
 import chainer.functions as F
 from chainer import gradient_check
@@ -1131,6 +1132,42 @@ class TestNotSupportOperation(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             if self.x:
                 pass
+
+
+class ConvertValueToStringTest(unittest.TestCase):
+
+    def _check_scalar(self, value, string):
+        self.assertEqual(basic_math._convert_value_to_string(value), string)
+
+    def test_integer_positive(self):
+        self._check_scalar(2, '2')
+
+    def test_integer_zero(self):
+        self._check_scalar(0, '0')
+
+    def test_integer_negative(self):
+        self._check_scalar(-2, '(-2)')
+
+    def test_float_positive(self):
+        self._check_scalar(2.0, '2.0')
+
+    def test_float_zero(self):
+        self._check_scalar(0.0, '0.0')
+
+    def test_float_negative(self):
+        self._check_scalar(-2.0, '(-2.0)')
+
+    def _check_array(self, value, string):
+        self.assertEqual(basic_math._convert_value_to_string(value), string)
+        value = chainer.Variable(value)
+        self.assertEqual(basic_math._convert_value_to_string(value), string)
+
+    def test_array_cpu(self):
+        self._check_array(numpy.array([1, 2]), 'constant array')
+
+    @attr.gpu
+    def test_array_gpu(self):
+        self._check_array(cuda.ndarray([1, 2]), 'constant array')
 
 
 testing.run_module(__name__, __file__)
