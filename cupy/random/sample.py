@@ -52,14 +52,14 @@ def randn(*size, **kwarg):
     return distributions.normal(size=size, dtype=dtype)
 
 
-def randint(low, high=None, size=None, dtype=int):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def randint(low, high=None, size=None, dtype=int):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def random_integers(low, high=None, size=None, dtype=int):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def random_integers(low, high=None, size=None, dtype=int):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
 def random_sample(size=None, dtype=float):
@@ -81,6 +81,6 @@ def random_sample(size=None, dtype=float):
     return rs.random_sample(size=size, dtype=dtype)
 
 
-def choice(a, size=None, replace=True, p=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def choice(a, size=None, replace=True, p=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError

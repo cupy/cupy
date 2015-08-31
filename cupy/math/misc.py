@@ -3,9 +3,9 @@ from cupy import elementwise
 _id = 'out0 = in0'
 
 
-def convolve(a, v, mode='full'):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def convolve(a, v, mode='full'):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
 _clip = elementwise.create_ufunc(
@@ -174,16 +174,16 @@ fmin = elementwise.create_ufunc(
     ''')
 
 
-def nan_to_num(x):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def nan_to_num(x):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def real_if_close(a, tol=100):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def real_if_close(a, tol=100):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def interp(x, xp, fp, left=None, right=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def interp(x, xp, fp, left=None, right=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError

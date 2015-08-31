@@ -23,9 +23,9 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
                             keepdims=keepdims)
 
 
-def nanargmax(a, axis=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def nanargmax(a, axis=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -50,36 +50,36 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
                             keepdims=keepdims)
 
 
-def nanargmin(a, axis=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def nanargmin(a, axis=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def argwhere(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def argwhere(a):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def nonzero(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def nonzero(a):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def flatnonzero(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def flatnonzero(a):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def where(condition, x=None, y=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def where(condition, x=None, y=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def searchsorted(a, v, side='left', sorter=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def searchsorted(a, v, side='left', sorter=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def extract(condition, arr):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def extract(condition, arr):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError

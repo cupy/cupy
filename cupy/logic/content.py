@@ -37,11 +37,11 @@ isnan = _create_float_test_ufunc(
     ''')
 
 
-def isneginf(x, y=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def isneginf(x, y=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def isposinf(x, y=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def isposinf(x, y=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError

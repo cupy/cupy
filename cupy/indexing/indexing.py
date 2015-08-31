@@ -64,14 +64,14 @@ def take(a, indices, axis=None, out=None):
     return _take_kernel(a, indices, cdim, rdim, out)
 
 
-def choose(a, choices, out=None, mode='raise'):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def choose(a, choices, out=None, mode='raise'):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def compress(condition, a, axis=None, out=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def compress(condition, a, axis=None, out=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
@@ -125,9 +125,9 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     return ret
 
 
-def select(condlist, choicelist, default=0):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def select(condlist, choicelist, default=0):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
 _take_kernel = elementwise.ElementwiseKernel(

@@ -1,26 +1,26 @@
-def norm(x, ord=None, axis=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def norm(x, ord=None, axis=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def cond(x, p=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def cond(x, p=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def det(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def det(a):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def matrix_rank(M, tol=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def matrix_rank(M, tol=None):
+#     # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
-def slogdet(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# def slogdet(a):
+#    # TODO(beam2d): Implement it
+#     raise NotImplementedError
 
 
 def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):

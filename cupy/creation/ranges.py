@@ -96,14 +96,14 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         return ret
 
 
-def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
-    # TODO(beam2d): Implement these
-    raise NotImplementedError
+# def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
+#     # TODO(beam2d): Implement these
+#     raise NotImplementedError
 
 
-def meshgrid(*xi, **kwargs):
-    # TODO(beam2d): Implement these
-    raise NotImplementedError
+# def meshgrid(*xi, **kwargs):
+#     # TODO(beam2d): Implement these
+#     raise NotImplementedError
 
 
 # TODO(beam2d): Implement these
