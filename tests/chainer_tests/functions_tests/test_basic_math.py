@@ -1157,6 +1157,9 @@ class ConvertValueToStringTest(unittest.TestCase):
     def test_float_negative(self):
         self._check_scalar(-2.0, '(-2.0)')
 
+    def test_numpy_scalar(self):
+        self._check_scalar(numpy.float32(2), '2.0')
+
     def _check_array(self, value, string):
         self.assertEqual(basic_math._convert_value_to_string(value), string)
         value = chainer.Variable(value)
