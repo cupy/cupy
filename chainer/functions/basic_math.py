@@ -17,7 +17,7 @@ def _convert_value_to_string(value):
 
     if numpy.isscalar(value):
         if value < 0:
-            return '({})'.format(str(value))
+            return '({})'.format(value)
         else:
             return str(value)
     elif isinstance(value, (numpy.ndarray, cuda.ndarray)):
