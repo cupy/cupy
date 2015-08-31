@@ -42,7 +42,7 @@ setup(
         'cupy': ['carray.cuh'],
     },
     install_requires=['nose',
-                      'numpy',
+                      'numpy>=1.9.0',
                       'protobuf',
                       'six>=1.9.0'],
     tests_require=['mock',

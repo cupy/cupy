@@ -77,7 +77,7 @@ def check_status(status):
 # Generator
 ###############################################################################
 
-_curand.curandCreateGenerator.argtypes = [_P, _I]
+_curand.curandCreateGenerator.argtypes = (_P, _I)
 
 
 def createGenerator(rng_type):
@@ -87,7 +87,7 @@ def createGenerator(rng_type):
     return generator
 
 
-_curand.curandDestroyGenerator.argtypes = [Generator]
+_curand.curandDestroyGenerator.argtypes = (Generator,)
 
 
 def destroyGenerator(generator):
@@ -95,7 +95,7 @@ def destroyGenerator(generator):
     check_status(status)
 
 
-_curand.curandGetVersion.argtypes = [_IP]
+_curand.curandGetVersion.argtypes = (_IP,)
 
 
 def getVersion():
@@ -105,7 +105,7 @@ def getVersion():
     return version
 
 
-_curand.curandSetStream.argtypes = [Generator, runtime.Stream]
+_curand.curandSetStream.argtypes = (Generator, runtime.Stream)
 
 
 def setStream(generator, stream):
@@ -113,7 +113,7 @@ def setStream(generator, stream):
     check_status(status)
 
 
-_curand.curandSetPseudoRandomGeneratorSeed.argtypes = [Generator, _ULL]
+_curand.curandSetPseudoRandomGeneratorSeed.argtypes = (Generator, _ULL)
 
 
 def setPseudoRandomGeneratorSeed(generator, seed):
@@ -121,7 +121,7 @@ def setPseudoRandomGeneratorSeed(generator, seed):
     check_status(status)
 
 
-_curand.curandSetGeneratorOffset.argtypes = [Generator, _ULL]
+_curand.curandSetGeneratorOffset.argtypes = (Generator, _ULL)
 
 
 def setGeneratorOffset(generator, offset):
@@ -129,7 +129,7 @@ def setGeneratorOffset(generator, offset):
     check_status(status)
 
 
-_curand.curandSetGeneratorOrdering.argtypes = [Generator, _I]
+_curand.curandSetGeneratorOrdering.argtypes = (Generator, _I)
 
 
 def setGeneratorOrdering(generator, order):
@@ -141,7 +141,7 @@ def setGeneratorOrdering(generator, order):
 # Generation functions
 ###############################################################################
 
-_curand.curandGenerate.argtypes = [Generator, _UP, _S]
+_curand.curandGenerate.argtypes = (Generator, _P, _S)
 
 
 def generate(generator, outputPtr, num):
@@ -149,7 +149,7 @@ def generate(generator, outputPtr, num):
     check_status(status)
 
 
-_curand.curandGenerateLongLong.argtypes = [Generator, _ULLP, _S]
+_curand.curandGenerateLongLong.argtypes = (Generator, _P, _S)
 
 
 def generateLongLong(generator, outputPtr, num):
@@ -157,7 +157,7 @@ def generateLongLong(generator, outputPtr, num):
     check_status(status)
 
 
-_curand.curandGenerateUniform.argtypes = [Generator, _FP, _S]
+_curand.curandGenerateUniform.argtypes = (Generator, _P, _S)
 
 
 def generateUniform(generator, outputPtr, num):
@@ -165,7 +165,7 @@ def generateUniform(generator, outputPtr, num):
     check_status(status)
 
 
-_curand.curandGenerateUniformDouble.argtypes = [Generator, _DP, _S]
+_curand.curandGenerateUniformDouble.argtypes = (Generator, _P, _S)
 
 
 def generateUniformDouble(generator, outputPtr, num):
@@ -173,7 +173,7 @@ def generateUniformDouble(generator, outputPtr, num):
     check_status(status)
 
 
-_curand.curandGenerateNormal.argtypes = [Generator, _FP, _S, _F, _F]
+_curand.curandGenerateNormal.argtypes = (Generator, _P, _S, _F, _F)
 
 
 def generateNormal(generator, outputPtr, n, mean, stddev):
@@ -182,7 +182,7 @@ def generateNormal(generator, outputPtr, n, mean, stddev):
     check_status(status)
 
 
-_curand.curandGenerateNormalDouble.argtypes = [Generator, _DP, _S, _D, _D]
+_curand.curandGenerateNormalDouble.argtypes = (Generator, _P, _S, _D, _D)
 
 
 def generateNormalDouble(generator, outputPtr, n, mean, stddev):
@@ -191,7 +191,7 @@ def generateNormalDouble(generator, outputPtr, n, mean, stddev):
     check_status(status)
 
 
-_curand.curandGenerateLogNormal.argtypes = [Generator, _FP, _S, _F, _F]
+_curand.curandGenerateLogNormal.argtypes = (Generator, _P, _S, _F, _F)
 
 
 def generateLogNormal(generator, outputPtr, n, mean, stddev):
@@ -200,7 +200,7 @@ def generateLogNormal(generator, outputPtr, n, mean, stddev):
     check_status(status)
 
 
-_curand.curandGenerateLogNormalDouble.argtypes = [Generator, _DP, _S, _D, _D]
+_curand.curandGenerateLogNormalDouble.argtypes = (Generator, _P, _S, _D, _D)
 
 
 def generateLogNormalDouble(generator, outputPtr, n, mean, stddev):
@@ -209,7 +209,7 @@ def generateLogNormalDouble(generator, outputPtr, n, mean, stddev):
     check_status(status)
 
 
-_curand.curandGeneratePoisson.argtypes = [Generator, _UP, _S, _D]
+_curand.curandGeneratePoisson.argtypes = (Generator, _P, _S, _D)
 
 
 def generatePoisson(generator, outputPtr, n, lam):

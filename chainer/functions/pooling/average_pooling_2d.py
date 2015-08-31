@@ -51,7 +51,8 @@ class AveragePooling2D(pooling_2d.Pooling2D):
                  }
                }
                out = val * coeff;
-            ''', 'avg_pool_fwd')(x[0], h, w, y_h, y_w, self.kh, self.kw,
+            ''', 'avg_pool_fwd')(x[0].reduced_view(),
+                                 h, w, y_h, y_w, self.kh, self.kw,
                                  self.sy, self.sx, self.ph, self.pw, coeff,
                                  y)
         return y,
@@ -94,7 +95,8 @@ class AveragePooling2D(pooling_2d.Pooling2D):
                  }
                }
                gx = val * coeff;
-            ''', 'avg_pool_bwd')(gy[0], h, w, y_h, y_w, self.kh, self.kw,
+            ''', 'avg_pool_bwd')(gy[0].reduced_view(),
+                                 h, w, y_h, y_w, self.kh, self.kw,
                                  self.sy, self.sx, self.ph, self.pw, coeff,
                                  gx)
         return gx,

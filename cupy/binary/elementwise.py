@@ -2,11 +2,11 @@ from cupy import elementwise
 
 
 def _create_bit_op(name, op, no_bool, doc=''):
-    types = [] if no_bool else ['??->?']
+    types = () if no_bool else ('??->?',)
     return elementwise.create_ufunc(
         'cupy_' + name,
-        types + ['bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-                 'LL->L', 'qq->q', 'QQ->Q'],
+        types + ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+                 'LL->L', 'qq->q', 'QQ->Q'),
         'out0 = in0 %s in1' % op,
         doc=doc)
 
@@ -46,8 +46,8 @@ bitwise_xor = _create_bit_op(
 
 invert = elementwise.create_ufunc(
     'cupy_invert',
-    [('?->?', 'out0 = !in0'), 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I',
-     'l->l', 'L->L', 'q->q', 'Q->Q'],
+    (('?->?', 'out0 = !in0'), 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I',
+     'l->l', 'L->L', 'q->q', 'Q->Q'),
     'out0 = ~in0',
     doc='''Computes the bitwise NOT of an array elementwise.
 

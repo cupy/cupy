@@ -45,13 +45,14 @@ class Device(object):
         return self.id
 
     def __enter__(self):
-        self._device_stack.append(Device())
-        self.use()
+        dev = Device()
+        self._device_stack.append(dev)
+        if self.id != dev.id:
+            dev.use()
         return self
 
     def __exit__(self, *args):
-        device = self._device_stack.pop()
-        device.use()
+        self._device_stack.pop().use()
 
     def __repr__(self):
         return '<CUDA Device %d>' % self.id
@@ -99,13 +100,11 @@ class Device(object):
 
     def __eq__(self, other):
         """Returns True if ``other`` refers to the same device."""
-        if not isinstance(other, Device):
-            return False
         return self.id == other.id
 
     def __ne__(self, other):
         """Returns True if ``other`` refers to a different device."""
-        return not (self == other)
+        return self.id != other.id
 
 
 def from_pointer(ptr):

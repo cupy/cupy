@@ -10,21 +10,19 @@
 
 Minimum requirements:
 - Python 2.7+, 3.4+
-- NumPy
+- NumPy 1.9+
 - Six 1.9+
 
 Requirements for some features:
 - CUDA support
   - CUDA 6.5+
-  - PyCUDA
-  - scikits.cuda (pip install scikit-cuda>=0.5.0)
-  - Mako (depending through PyCUDA)
 - CuDNN support
   - CuDNN v2
 - Caffe model support
   - Python 2.7+ (Py3 is not supported)
   - Protocol Buffers (pip install protobuf)
 - Testing utilities
+  - Mock
   - Nose
 
 ## Installation
@@ -51,10 +49,7 @@ Then, install CUDA-related dependent packages via pip:
 ```
 pip install chainer-cuda-deps
 ```
-or, from the source:
-```
-python cuda_deps/setup.py install
-```
+If you install the chainer from the source, the cuda dependencies are automatically installed.
 
 ## More information
 

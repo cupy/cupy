@@ -8,7 +8,9 @@ from chainer.utils import type_check
 
 
 def _as_mat(x):
-    return x.reshape(x.shape[0], x.size // x.shape[0])
+    if x.ndim == 2:
+        return x
+    return x.reshape(len(x), -1)
 
 
 class Linear(function.Function):
