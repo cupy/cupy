@@ -15,13 +15,16 @@ def _convert_value_to_string(value):
     if isinstance(value, variable.Variable):
         value = value.data
 
-    if isinstance(value, float):
-        return str(value)
+    if numpy.isscalar(value):
+        if value < 0:
+            return '({})'.format(value)
+        else:
+            return str(value)
     elif isinstance(value, (numpy.ndarray, cuda.ndarray)):
         return 'constant array'
     else:
         raise ValueError(
-            'value must be float, ndarray, or Variable')
+            'value must be scalar, ndarray, or Variable')
 
 
 def _check_constant_type(value):
