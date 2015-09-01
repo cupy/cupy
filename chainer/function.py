@@ -134,7 +134,8 @@ class Function(object):
             assert all(x.volatile for x in inputs)
 
             in_data = tuple(x.data for x in inputs)
-            self._check_data_type_forward(in_data)
+            if type_check.enable:
+                self._check_data_type_forward(in_data)
             with cuda.get_device(*in_data):
                 out_data = self.forward(in_data)
             assert type(out_data) == tuple
@@ -161,7 +162,8 @@ class Function(object):
             self.rank = 0
 
         in_data = tuple(x.data for x in self.inputs)
-        self._check_data_type_forward(in_data)
+        if type_check.enable:
+            self._check_data_type_forward(in_data)
         with cuda.get_device(*in_data):
             outputs = self.forward(in_data)
         assert type(outputs) == tuple
