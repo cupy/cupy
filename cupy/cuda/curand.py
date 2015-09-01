@@ -1,10 +1,15 @@
 """Thin wrapper of cuRAND."""
 import ctypes
+import sys
 
 from cupy.cuda import internal
 from cupy.cuda import runtime
 
-_curand = internal.load_library('curand')
+if 'win32' == sys.platform:
+    _curand = internal.load_library(
+        internal.get_windows_cuda_library_names('curand'))
+else:
+    _curand = internal.load_library('curand')
 
 _I = ctypes.c_int
 _U = ctypes.c_uint

@@ -10,10 +10,15 @@ There are four differences compared to the original C API.
 
 """
 import ctypes
+import sys
 
 from cupy.cuda import internal
 
-_cudart = internal.load_library('cudart')
+if 'win32' == sys.platform:
+    _cudart = internal.load_library(
+        internal.get_windows_cuda_library_names('cudart'))
+else:
+    _cudart = internal.load_library('cudart')
 
 ###############################################################################
 # Types

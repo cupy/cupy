@@ -1,11 +1,13 @@
-import fcntl
 import hashlib
 import os
 import re
 import subprocess
+import sys
 import tempfile
 
+import filelock
 import six
+
 
 from cupy.cuda import device
 from cupy.cuda import module
@@ -45,7 +47,7 @@ def nvcc(source, options=(), arch=None):
             cu_file.write(source)
 
         cmd.append(cu_path)
-        subprocess.check_call(cmd, cwd=root_dir)
+        subprocess.check_output(cmd, cwd=root_dir)
 
         with open(cubin_path, 'rb') as bin_file:
             return bin_file.read()
@@ -62,6 +64,7 @@ def preprocess(source, options=()):
 
         cmd.append(cu_path)
         pp_src = subprocess.check_output(cmd, cwd=root_dir)
+
         if isinstance(pp_src, six.binary_type):
             pp_src = pp_src.decode('utf-8')
         return re.sub('(?m)^#.*$', '', pp_src)
@@ -83,6 +86,14 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         cache_dir = get_cache_dir()
     if arch is None:
         arch = _get_arch()
+
+    if 'win32' == sys.platform:
+        options += ('-Xcompiler', '/wd 4819')
+        if sys.maxsize == 9223372036854775807:
+            options += '-m64',
+        elif sys.maxsize == 2147483647:
+            options += '-m32',
+
     env = (arch, options)
     if '#include' in source:
         pp_src = '%s %s' % (env, preprocess(source, options))
@@ -102,23 +113,19 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         os.makedirs(cache_dir)
 
     lock_path = os.path.join(cache_dir, 'lock_file.lock')
-    if not os.path.exists(lock_path):
-        open(lock_path, 'a').close()
 
     path = os.path.join(cache_dir, name)
-    with open(lock_path, 'r') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    with filelock.FileLock(lock_path) as lock:
         if os.path.exists(path):
             with open(path, 'rb') as file:
                 cubin = file.read()
             mod.load(cubin)
         else:
-            fcntl.flock(lock, fcntl.LOCK_UN)
+            lock.release()
             cubin = nvcc(source, options, arch)
             mod.load(cubin)
-            fcntl.flock(lock, fcntl.LOCK_EX)
+            lock.acquire()
             with open(path, 'wb') as cubin_file:
                 cubin_file.write(cubin)
-        fcntl.flock(lock, fcntl.LOCK_UN)
 
     return mod
