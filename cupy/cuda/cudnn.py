@@ -1,11 +1,16 @@
 """Thin wrapper of CuDNN."""
 # NOTE: This wrapper does not cover all APIs of CuDNN v2.
 import ctypes
+import sys
 
 from cupy.cuda import internal
 from cupy.cuda import runtime
 
-_cudnn = internal.load_library('cudnn')
+if 'win32' == sys.platform:
+    _cudnn = internal.load_library(
+        internal.get_windows_cuda_library_names('cudnn'))
+else:
+    _cudnn = internal.load_library('cudnn')
 
 _I = ctypes.c_int
 _S = ctypes.c_size_t
@@ -78,7 +83,7 @@ STATUS = {
 }
 
 _cudnn.cudnnGetErrorString.restype = ctypes.c_char_p
-_cudnn.cudnnGetErrorString.argtypes = [_I]
+_cudnn.cudnnGetErrorString.argtypes = (_I,)
 
 
 class CuDNNError(RuntimeError):
@@ -98,7 +103,7 @@ def check_status(status):
 # Initialization and CUDA cooperation
 ###############################################################################
 
-_cudnn.cudnnCreate.argtypes = [_P]
+_cudnn.cudnnCreate.argtypes = (_P,)
 
 
 def create():
@@ -108,7 +113,7 @@ def create():
     return handle
 
 
-_cudnn.cudnnDestroy.argtypes = [Handle]
+_cudnn.cudnnDestroy.argtypes = (Handle,)
 
 
 def destroy(handle):
@@ -116,7 +121,7 @@ def destroy(handle):
     check_status(status)
 
 
-_cudnn.cudnnSetStream.argtypes = [Handle, runtime.Stream]
+_cudnn.cudnnSetStream.argtypes = (Handle, runtime.Stream)
 
 
 def setStream(handle, stream):
@@ -124,7 +129,7 @@ def setStream(handle, stream):
     check_status(status)
 
 
-_cudnn.cudnnGetStream.argtypes = [Handle, _P]
+_cudnn.cudnnGetStream.argtypes = (Handle, _P)
 
 
 def getStream(handle):
@@ -138,7 +143,7 @@ def getStream(handle):
 # Tensor manipulation
 ###############################################################################
 
-_cudnn.cudnnCreateTensorDescriptor.argtypes = [_P]
+_cudnn.cudnnCreateTensorDescriptor.argtypes = (_P,)
 
 
 def createTensorDescriptor():
@@ -148,8 +153,8 @@ def createTensorDescriptor():
     return descriptor
 
 
-_cudnn.cudnnSetTensor4dDescriptor.argtypes = [TensorDescriptor, _I, _I,
-                                              _I, _I, _I, _I]
+_cudnn.cudnnSetTensor4dDescriptor.argtypes = (TensorDescriptor, _I, _I,
+                                              _I, _I, _I, _I)
 
 
 def setTensor4dDescriptor(tensorDesc, format, dataType, n, c, h, w):
@@ -158,8 +163,8 @@ def setTensor4dDescriptor(tensorDesc, format, dataType, n, c, h, w):
     check_status(status)
 
 
-_cudnn.cudnnSetTensor4dDescriptorEx.argtypes = [
-    TensorDescriptor, _I, _I, _I, _I, _I, _I, _I, _I, _I]
+_cudnn.cudnnSetTensor4dDescriptorEx.argtypes = (
+    TensorDescriptor, _I, _I, _I, _I, _I, _I, _I, _I, _I)
 
 
 def setTensor4dDescriptorEx(tensorDesc, dataType, n, c, h, w,
@@ -169,8 +174,8 @@ def setTensor4dDescriptorEx(tensorDesc, dataType, n, c, h, w,
     check_status(status)
 
 
-_cudnn.cudnnSetTensorNdDescriptor.argtypes = [TensorDescriptor, _I, _I, _IP,
-                                              _IP]
+_cudnn.cudnnSetTensorNdDescriptor.argtypes = (TensorDescriptor, _I, _I, _IP,
+                                              _IP)
 
 
 def setTensorNdDescriptor(tensorDesc, dataType, nbDims, dimA, strideA):
@@ -179,7 +184,7 @@ def setTensorNdDescriptor(tensorDesc, dataType, nbDims, dimA, strideA):
     check_status(status)
 
 
-_cudnn.cudnnDestroyTensorDescriptor.argtypes = [TensorDescriptor]
+_cudnn.cudnnDestroyTensorDescriptor.argtypes = (TensorDescriptor,)
 
 
 def destroyTensorDescriptor(tensorDesc):
@@ -187,8 +192,8 @@ def destroyTensorDescriptor(tensorDesc):
     check_status(status)
 
 
-_cudnn.cudnnAddTensor.argtypes = [Handle, _I, _P, TensorDescriptor, _P,
-                                  _P, TensorDescriptor, _P]
+_cudnn.cudnnAddTensor.argtypes = (Handle, _I, _P, TensorDescriptor, _P,
+                                  _P, TensorDescriptor, _P)
 
 
 def addTensor(handle, mode, alpha, biasDesc, biasData, beta, srcDestDesc,
@@ -203,7 +208,7 @@ def addTensor(handle, mode, alpha, biasDesc, biasData, beta, srcDestDesc,
 # Filter manipulation
 ###############################################################################
 
-_cudnn.cudnnCreateFilterDescriptor.argtypes = [_P]
+_cudnn.cudnnCreateFilterDescriptor.argtypes = (_P,)
 
 
 def createFilterDescriptor():
@@ -213,8 +218,8 @@ def createFilterDescriptor():
     return desc
 
 
-_cudnn.cudnnSetFilter4dDescriptor.argtypes = [FilterDescriptor, _I,
-                                              _I, _I, _I, _I]
+_cudnn.cudnnSetFilter4dDescriptor.argtypes = (FilterDescriptor, _I,
+                                              _I, _I, _I, _I)
 
 
 def setFilter4dDescriptor(filterDesc, dataType, k, c, h, w):
@@ -223,7 +228,7 @@ def setFilter4dDescriptor(filterDesc, dataType, k, c, h, w):
     check_status(status)
 
 
-_cudnn.cudnnSetFilterNdDescriptor.argtypes = [FilterDescriptor, _I, _IP]
+_cudnn.cudnnSetFilterNdDescriptor.argtypes = (FilterDescriptor, _I, _IP)
 
 
 def setFilterNdDescriptor(filterDesc, nbDims, filterDimA):
@@ -231,7 +236,7 @@ def setFilterNdDescriptor(filterDesc, nbDims, filterDimA):
     check_status(status)
 
 
-_cudnn.cudnnDestroyFilterDescriptor.argtypes = [FilterDescriptor]
+_cudnn.cudnnDestroyFilterDescriptor.argtypes = (FilterDescriptor,)
 
 
 def destroyFilterDescriptor(filterDesc):
@@ -243,7 +248,7 @@ def destroyFilterDescriptor(filterDesc):
 # Convolution
 ###############################################################################
 
-_cudnn.cudnnCreateConvolutionDescriptor.argtypes = [_P]
+_cudnn.cudnnCreateConvolutionDescriptor.argtypes = (_P,)
 
 
 def createConvolutionDescriptor():
@@ -253,8 +258,8 @@ def createConvolutionDescriptor():
     return desc
 
 
-_cudnn.cudnnSetConvolution2dDescriptor.argtypes = [
-    ConvolutionDescriptor, _I, _I, _I, _I, _I, _I, _I]
+_cudnn.cudnnSetConvolution2dDescriptor.argtypes = (
+    ConvolutionDescriptor, _I, _I, _I, _I, _I, _I, _I)
 
 
 def setConvolution2dDescriptor(convDesc, pad_h, pad_w, u, v, upscalex,
@@ -264,8 +269,8 @@ def setConvolution2dDescriptor(convDesc, pad_h, pad_w, u, v, upscalex,
     check_status(status)
 
 
-_cudnn.cudnnSetConvolutionNdDescriptor.argtypes = [
-    ConvolutionDescriptor, _I, _IP, _IP, _IP, _I]
+_cudnn.cudnnSetConvolutionNdDescriptor.argtypes = (
+    ConvolutionDescriptor, _I, _IP, _IP, _IP, _I)
 
 
 def setConvolutionNdDescriptor(convDesc, arrayLength, padA, filterStrideA,
@@ -275,7 +280,7 @@ def setConvolutionNdDescriptor(convDesc, arrayLength, padA, filterStrideA,
     check_status(status)
 
 
-_cudnn.cudnnDestroyConvolutionDescriptor.argtypes = [ConvolutionDescriptor]
+_cudnn.cudnnDestroyConvolutionDescriptor.argtypes = (ConvolutionDescriptor,)
 
 
 def destroyConvolutionDescriptor(convDesc):
@@ -283,9 +288,9 @@ def destroyConvolutionDescriptor(convDesc):
     check_status(status)
 
 
-_cudnn.cudnnGetConvolutionForwardAlgorithm.argtypes = [
+_cudnn.cudnnGetConvolutionForwardAlgorithm.argtypes = (
     Handle, TensorDescriptor, FilterDescriptor, ConvolutionDescriptor,
-    TensorDescriptor, _I, _S, _IP]
+    TensorDescriptor, _I, _S, _IP)
 
 
 def getConvolutionForwardAlgorithm(handle, srcDesc, filterDesc, convDesc,
@@ -298,9 +303,9 @@ def getConvolutionForwardAlgorithm(handle, srcDesc, filterDesc, convDesc,
     return algo.value
 
 
-_cudnn.cudnnGetConvolutionForwardWorkspaceSize.argtypes = [
+_cudnn.cudnnGetConvolutionForwardWorkspaceSize.argtypes = (
     Handle, TensorDescriptor, FilterDescriptor, ConvolutionDescriptor,
-    TensorDescriptor, _I, _SP]
+    TensorDescriptor, _I, _SP)
 
 
 def getConvolutionForwardWorkspaceSize(handle, srcDesc, filterDesc, convDesc,
@@ -313,9 +318,9 @@ def getConvolutionForwardWorkspaceSize(handle, srcDesc, filterDesc, convDesc,
     return sizeInBytes.value
 
 
-_cudnn.cudnnConvolutionForward.argtypes = [
+_cudnn.cudnnConvolutionForward.argtypes = (
     Handle, _P, TensorDescriptor, _P, FilterDescriptor, _P,
-    ConvolutionDescriptor, _I, _P, _S, _P, TensorDescriptor, _P]
+    ConvolutionDescriptor, _I, _P, _S, _P, TensorDescriptor, _P)
 
 
 def convolutionForward(handle, alpha, srcDesc, srcData, filterDesc, filterData,
@@ -328,8 +333,8 @@ def convolutionForward(handle, alpha, srcDesc, srcData, filterDesc, filterData,
     check_status(status)
 
 
-_cudnn.cudnnConvolutionBackwardBias.argtypes = [
-    Handle, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P]
+_cudnn.cudnnConvolutionBackwardBias.argtypes = (
+    Handle, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P)
 
 
 def convolutionBackwardBias(handle, alpha, srcDesc, srcData, beta, destDesc,
@@ -340,9 +345,9 @@ def convolutionBackwardBias(handle, alpha, srcDesc, srcData, beta, destDesc,
     check_status(status)
 
 
-_cudnn.cudnnConvolutionBackwardFilter.argtypes = [
+_cudnn.cudnnConvolutionBackwardFilter.argtypes = (
     Handle, _P, TensorDescriptor, _P, TensorDescriptor, _P,
-    ConvolutionDescriptor, _P, FilterDescriptor, _P]
+    ConvolutionDescriptor, _P, FilterDescriptor, _P)
 
 
 def convolutionBackwardFilter(handle, alpha, srcDesc, srcData, diffDesc,
@@ -353,9 +358,9 @@ def convolutionBackwardFilter(handle, alpha, srcDesc, srcData, diffDesc,
     check_status(status)
 
 
-_cudnn.cudnnConvolutionBackwardData.argtypes = [
+_cudnn.cudnnConvolutionBackwardData.argtypes = (
     Handle, _P, FilterDescriptor, _P, TensorDescriptor, _P,
-    ConvolutionDescriptor, _P, TensorDescriptor, _P]
+    ConvolutionDescriptor, _P, TensorDescriptor, _P)
 
 
 def convolutionBackwardData(handle, alpha, filterDesc, filterData, diffDesc,
@@ -370,7 +375,7 @@ def convolutionBackwardData(handle, alpha, filterDesc, filterData, diffDesc,
 # Pooling
 ###############################################################################
 
-_cudnn.cudnnCreatePoolingDescriptor.argtypes = [_P]
+_cudnn.cudnnCreatePoolingDescriptor.argtypes = (_P,)
 
 
 def createPoolingDescriptor():
@@ -380,8 +385,8 @@ def createPoolingDescriptor():
     return desc
 
 
-_cudnn.cudnnSetPooling2dDescriptor.argtypes = [
-    PoolingDescriptor, _I, _I, _I, _I, _I, _I, _I]
+_cudnn.cudnnSetPooling2dDescriptor.argtypes = (
+    PoolingDescriptor, _I, _I, _I, _I, _I, _I, _I)
 
 
 def setPooling2dDescriptor(poolingDesc, mode, windowHeight, windowWidth,
@@ -393,8 +398,8 @@ def setPooling2dDescriptor(poolingDesc, mode, windowHeight, windowWidth,
     check_status(status)
 
 
-_cudnn.cudnnSetPoolingNdDescriptor.argtypes = [
-    PoolingDescriptor, _I, _I, _IP, _IP, _IP]
+_cudnn.cudnnSetPoolingNdDescriptor.argtypes = (
+    PoolingDescriptor, _I, _I, _IP, _IP, _IP)
 
 
 def setPoolingNdDescriptor(poolingDesc, mode, nbDims, windowDimA, paddingA,
@@ -404,7 +409,7 @@ def setPoolingNdDescriptor(poolingDesc, mode, nbDims, windowDimA, paddingA,
     check_status(status)
 
 
-_cudnn.cudnnDestroyPoolingDescriptor.argtypes = [PoolingDescriptor]
+_cudnn.cudnnDestroyPoolingDescriptor.argtypes = (PoolingDescriptor,)
 
 
 def destroyPoolingDescriptor(poolingDesc):
@@ -412,9 +417,9 @@ def destroyPoolingDescriptor(poolingDesc):
     check_status(status)
 
 
-_cudnn.cudnnPoolingForward.argtypes = [
+_cudnn.cudnnPoolingForward.argtypes = (
     Handle, PoolingDescriptor, _P, TensorDescriptor, _P, _P,
-    TensorDescriptor, _P]
+    TensorDescriptor, _P)
 
 
 def poolingForward(handle, poolingDesc, alpha, srcDesc, srcData, beta,
@@ -425,9 +430,9 @@ def poolingForward(handle, poolingDesc, alpha, srcDesc, srcData, beta,
     check_status(status)
 
 
-_cudnn.cudnnPoolingBackward.argtypes = [
+_cudnn.cudnnPoolingBackward.argtypes = (
     Handle, PoolingDescriptor, _P, TensorDescriptor, _P, TensorDescriptor, _P,
-    TensorDescriptor, _P, _P, TensorDescriptor, _P]
+    TensorDescriptor, _P, _P, TensorDescriptor, _P)
 
 
 def poolingBackward(handle, poolingDesc, alpha, srcDesc, srcData, srcDiffDesc,
@@ -444,8 +449,8 @@ def poolingBackward(handle, poolingDesc, alpha, srcDesc, srcData, srcDiffDesc,
 # Activation
 ###############################################################################
 
-_cudnn.cudnnSoftmaxForward.argtypes = [
-    Handle, _I, _I, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P]
+_cudnn.cudnnSoftmaxForward.argtypes = (
+    Handle, _I, _I, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P)
 
 
 def softmaxForward(handle, algorithm, mode, alpha, srcDesc, srcData, beta,
@@ -456,9 +461,9 @@ def softmaxForward(handle, algorithm, mode, alpha, srcDesc, srcData, beta,
     check_status(status)
 
 
-_cudnn.cudnnSoftmaxBackward.argtypes = [
+_cudnn.cudnnSoftmaxBackward.argtypes = (
     Handle, _I, _I, _P, TensorDescriptor, _P, TensorDescriptor, _P, _P,
-    TensorDescriptor, _P]
+    TensorDescriptor, _P)
 
 
 def softmaxBackward(handle, algorithm, mode, alpha, srcDesc, srcData,
@@ -471,8 +476,8 @@ def softmaxBackward(handle, algorithm, mode, alpha, srcDesc, srcData,
     check_status(status)
 
 
-_cudnn.cudnnActivationForward.argtypes = [
-    Handle, _I, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P]
+_cudnn.cudnnActivationForward.argtypes = (
+    Handle, _I, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P)
 
 
 def activationForward(handle, mode, alpha, srcDesc, srcData, beta, dstDesc,
@@ -483,9 +488,9 @@ def activationForward(handle, mode, alpha, srcDesc, srcData, beta, dstDesc,
     check_status(status)
 
 
-_cudnn.cudnnActivationBackward.argtypes = [
+_cudnn.cudnnActivationBackward.argtypes = (
     Handle, _I, _P, TensorDescriptor, _P, TensorDescriptor, _P,
-    TensorDescriptor, _P, _P, TensorDescriptor, _P]
+    TensorDescriptor, _P, _P, TensorDescriptor, _P)
 
 
 def activationBackward(handle, mode, alpha, srcDesc, srcData, srcDiffDesc,

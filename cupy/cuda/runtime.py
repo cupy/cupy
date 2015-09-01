@@ -10,10 +10,15 @@ There are four differences compared to the original C API.
 
 """
 import ctypes
+import sys
 
 from cupy.cuda import internal
 
-_cudart = internal.load_library('cudart')
+if 'win32' == sys.platform:
+    _cudart = internal.load_library(
+        internal.get_windows_cuda_library_names('cudart'))
+else:
+    _cudart = internal.load_library('cudart')
 
 ###############################################################################
 # Types
@@ -36,9 +41,9 @@ memcpyDefault = 4
 ###############################################################################
 
 _cudart.cudaGetErrorName.restype = ctypes.c_char_p
-_cudart.cudaGetErrorName.argtypes = [ctypes.c_int]
+_cudart.cudaGetErrorName.argtypes = (ctypes.c_int,)
 _cudart.cudaGetErrorString.restype = ctypes.c_char_p
-_cudart.cudaGetErrorString.argtypes = [ctypes.c_int]
+_cudart.cudaGetErrorString.argtypes = (ctypes.c_int,)
 
 
 class CUDARuntimeError(RuntimeError):
@@ -59,7 +64,7 @@ def check_status(status):
 # Initialization
 ###############################################################################
 
-_cudart.cudaDriverGetVersion.argtypes = [ctypes.c_void_p]
+_cudart.cudaDriverGetVersion.argtypes = (ctypes.c_void_p,)
 
 
 def driverGetVersion():
@@ -73,18 +78,19 @@ def driverGetVersion():
 # Device and context operations
 ###############################################################################
 
-_cudart.cudaGetDevice.argtypes = [ctypes.POINTER(ctypes.c_int)]
+_cudart.cudaGetDevice.argtypes = (ctypes.POINTER(ctypes.c_int),)
 
 
 def getDevice():
     device = Device()
     status = _cudart.cudaGetDevice(ctypes.byref(device))
-    check_status(status)
+    if status != 0:
+        check_status(status)
     return device.value
 
 
-_cudart.cudaDeviceGetAttribute.argtypes = [ctypes.POINTER(ctypes.c_int),
-                                           ctypes.c_int, Device]
+_cudart.cudaDeviceGetAttribute.argtypes = (ctypes.POINTER(ctypes.c_int),
+                                           ctypes.c_int, Device)
 
 
 def deviceGetAttribute(attrib, device):
@@ -94,7 +100,7 @@ def deviceGetAttribute(attrib, device):
     return ret.value
 
 
-_cudart.cudaGetDeviceCount.argtypes = [ctypes.POINTER(ctypes.c_int)]
+_cudart.cudaGetDeviceCount.argtypes = (ctypes.POINTER(ctypes.c_int),)
 
 
 def getDeviceCount():
@@ -104,7 +110,7 @@ def getDeviceCount():
     return count.value
 
 
-_cudart.cudaSetDevice.argtypes = [Device]
+_cudart.cudaSetDevice.argtypes = (Device,)
 
 
 def setDevice(device):
@@ -121,7 +127,7 @@ def deviceSynchronize():
 # Memory management
 ###############################################################################
 
-_cudart.cudaMalloc.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+_cudart.cudaMalloc.argtypes = (ctypes.c_void_p, ctypes.c_size_t)
 
 
 def malloc(size):
@@ -131,7 +137,7 @@ def malloc(size):
     return ptr
 
 
-_cudart.cudaFree.argtypes = [ctypes.c_void_p]
+_cudart.cudaFree.argtypes = (ctypes.c_void_p,)
 
 
 def free(ptr):
@@ -139,8 +145,8 @@ def free(ptr):
     check_status(status)
 
 
-_cudart.cudaMemGetInfo.argtypes = [ctypes.POINTER(ctypes.c_int),
-                                   ctypes.POINTER(ctypes.c_int)]
+_cudart.cudaMemGetInfo.argtypes = (ctypes.POINTER(ctypes.c_int),
+                                   ctypes.POINTER(ctypes.c_int))
 
 
 def memGetInfo():
@@ -151,8 +157,8 @@ def memGetInfo():
     return free.value, total.value
 
 
-_cudart.cudaMemcpy.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                               ctypes.c_size_t, ctypes.c_int]
+_cudart.cudaMemcpy.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                               ctypes.c_size_t, ctypes.c_int)
 
 
 def memcpy(dst, src, size, kind):
@@ -160,8 +166,8 @@ def memcpy(dst, src, size, kind):
     check_status(status)
 
 
-_cudart.cudaMemcpyAsync.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                    ctypes.c_size_t, ctypes.c_int, Stream]
+_cudart.cudaMemcpyAsync.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                                    ctypes.c_size_t, ctypes.c_int, Stream)
 
 
 def memcpyAsync(dst, src, size, kind, stream):
@@ -169,8 +175,8 @@ def memcpyAsync(dst, src, size, kind, stream):
     check_status(status)
 
 
-_cudart.cudaMemcpyPeer.argtypes = [ctypes.c_void_p, Device,
-                                   ctypes.c_void_p, Device, ctypes.c_size_t]
+_cudart.cudaMemcpyPeer.argtypes = (ctypes.c_void_p, Device,
+                                   ctypes.c_void_p, Device, ctypes.c_size_t)
 
 
 def memcpyPeer(dst, dstDevice, src, srcDevice, size):
@@ -178,9 +184,9 @@ def memcpyPeer(dst, dstDevice, src, srcDevice, size):
     check_status(status)
 
 
-_cudart.cudaMemcpyPeerAsync.argtypes = [ctypes.c_void_p, Device,
+_cudart.cudaMemcpyPeerAsync.argtypes = (ctypes.c_void_p, Device,
                                         ctypes.c_void_p, Device,
-                                        ctypes.c_size_t, Stream]
+                                        ctypes.c_size_t, Stream)
 
 
 def cudaMemcpyPeerAsync(dst, dstDevice, src, srcDevice, size, stream):
@@ -189,7 +195,7 @@ def cudaMemcpyPeerAsync(dst, dstDevice, src, srcDevice, size, stream):
     check_status(status)
 
 
-_cudart.cudaMemset.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t]
+_cudart.cudaMemset.argtypes = (ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t)
 
 
 def memset(ptr, value, size):
@@ -197,8 +203,8 @@ def memset(ptr, value, size):
     check_status(status)
 
 
-_cudart.cudaMemsetAsync.argtypes = [ctypes.c_void_p, ctypes.c_uint,
-                                    ctypes.c_size_t, Stream]
+_cudart.cudaMemsetAsync.argtypes = (ctypes.c_void_p, ctypes.c_uint,
+                                    ctypes.c_size_t, Stream)
 
 
 def memsetAsync(ptr, value, size, stream):
@@ -211,16 +217,16 @@ cudaMemoryTypeDevice = 2
 
 
 class cudaPointerAttributes(ctypes.Structure):
-    _fields_ = [
+    _fields_ = (
         ('memoryType', ctypes.c_int),
         ('device', ctypes.c_int),
         ('devicePointer', ctypes.c_void_p),
         ('hostPointer', ctypes.c_void_p),
-        ('isManaged', ctypes.c_int)
-    ]
+        ('isManaged', ctypes.c_int),
+    )
 
-_cudart.cudaPointerGetAttributes.argtypes = [
-    ctypes.POINTER(cudaPointerAttributes), ctypes.c_void_p]
+_cudart.cudaPointerGetAttributes.argtypes = (
+    ctypes.POINTER(cudaPointerAttributes), ctypes.c_void_p)
 
 
 def pointerGetAttributes(ptr):
@@ -234,7 +240,7 @@ def pointerGetAttributes(ptr):
 # Stream and Event
 ###############################################################################
 
-_cudart.cudaStreamCreate.argtypes = [ctypes.POINTER(Stream)]
+_cudart.cudaStreamCreate.argtypes = (ctypes.POINTER(Stream),)
 
 
 def streamCreate():
@@ -246,8 +252,8 @@ def streamCreate():
 
 streamDefault = 0
 streamNonBlocking = 1
-_cudart.cudaStreamCreateWithFlags.argtypes = [ctypes.POINTER(Stream),
-                                              ctypes.c_int]
+_cudart.cudaStreamCreateWithFlags.argtypes = (ctypes.POINTER(Stream),
+                                              ctypes.c_int)
 
 
 def streamCreateWithFlags(flags):
@@ -257,7 +263,7 @@ def streamCreateWithFlags(flags):
     return stream
 
 
-_cudart.cudaStreamDestroy.argtypes = [Stream]
+_cudart.cudaStreamDestroy.argtypes = (Stream,)
 
 
 def streamDestroy(stream):
@@ -265,7 +271,7 @@ def streamDestroy(stream):
     check_status(status)
 
 
-_cudart.cudaStreamSynchronize.argtypes = [Stream]
+_cudart.cudaStreamSynchronize.argtypes = (Stream,)
 
 
 def streamSynchronize(stream):
@@ -274,8 +280,8 @@ def streamSynchronize(stream):
 
 
 StreamCallback = ctypes.CFUNCTYPE(Stream, ctypes.c_int, ctypes.c_void_p)
-_cudart.cudaStreamAddCallback.argtypes = [Stream, StreamCallback,
-                                          ctypes.c_void_p, ctypes.c_uint]
+_cudart.cudaStreamAddCallback.argtypes = (Stream, StreamCallback,
+                                          ctypes.c_void_p, ctypes.c_uint)
 
 
 def streamAddCallback(stream, callback, arg, flags=0):
@@ -284,14 +290,14 @@ def streamAddCallback(stream, callback, arg, flags=0):
     check_status(status)
 
 
-_cudart.cudaStreamQuery.argtypes = [Stream]
+_cudart.cudaStreamQuery.argtypes = (Stream,)
 
 
 def streamQuery(stream):
     return _cudart.cudaStreamQuery(stream)
 
 
-_cudart.cudaStreamWaitEvent.argtypes = [Stream, Event, ctypes.c_uint]
+_cudart.cudaStreamWaitEvent.argtypes = (Stream, Event, ctypes.c_uint)
 
 
 def streamWaitEvent(stream, event, flags=0):
@@ -299,7 +305,7 @@ def streamWaitEvent(stream, event, flags=0):
     check_status(status)
 
 
-_cudart.cudaEventCreate.argtypes = [ctypes.POINTER(Event)]
+_cudart.cudaEventCreate.argtypes = (ctypes.POINTER(Event),)
 
 
 def eventCreate():
@@ -313,8 +319,8 @@ eventDefault = 0
 eventBlockingSync = 1
 eventDisableTiming = 2
 eventInterprocess = 4
-_cudart.cudaEventCreateWithFlags.argtypes = [ctypes.POINTER(Event),
-                                             ctypes.c_int]
+_cudart.cudaEventCreateWithFlags.argtypes = (ctypes.POINTER(Event),
+                                             ctypes.c_int)
 
 
 def eventCreateWithFlags(flags):
@@ -324,7 +330,7 @@ def eventCreateWithFlags(flags):
     return event
 
 
-_cudart.cudaEventDestroy.argtypes = [Event]
+_cudart.cudaEventDestroy.argtypes = (Event,)
 
 
 def eventDestroy(event):
@@ -332,8 +338,8 @@ def eventDestroy(event):
     check_status(status)
 
 
-_cudart.cudaEventElapsedTime.argtypes = [ctypes.POINTER(ctypes.c_float),
-                                         Event, Event]
+_cudart.cudaEventElapsedTime.argtypes = (ctypes.POINTER(ctypes.c_float),
+                                         Event, Event)
 
 
 def eventElapsedTime(start, end):
@@ -343,14 +349,14 @@ def eventElapsedTime(start, end):
     return ms.value
 
 
-_cudart.cudaEventQuery.argtypes = [Event]
+_cudart.cudaEventQuery.argtypes = (Event,)
 
 
 def eventQuery(event):
     return _cudart.cudaEventQuery(event)
 
 
-_cudart.cudaEventRecord.argtypes = [Event, Stream]
+_cudart.cudaEventRecord.argtypes = (Event, Stream)
 
 
 def eventRecord(event, stream):
@@ -358,7 +364,7 @@ def eventRecord(event, stream):
     check_status(status)
 
 
-_cudart.cudaEventSynchronize.argtypes = [Event]
+_cudart.cudaEventSynchronize.argtypes = (Event,)
 
 
 def eventSynchronize(event):

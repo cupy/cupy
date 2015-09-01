@@ -113,15 +113,15 @@ def meshgrid(*xi, **kwargs):
 
 _arange_ufunc = elementwise.create_ufunc(
     'cupy_arange',
-    ['bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'],
+    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
+     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
     'out0 = in0 + i * in1')
 
 
 _float_linspace = 'out0 = in0 + i * in1 / in2'
 _linspace_ufunc = elementwise.create_ufunc(
     'cupy_linspace',
-    ['bbb->b', 'Bbb->B', 'hhh->h', 'Hhh->H', 'iii->i', 'Iii->I', 'lll->l',
+    ('bbb->b', 'Bbb->B', 'hhh->h', 'Hhh->H', 'iii->i', 'Iii->I', 'lll->l',
      'Lll->L', 'qqq->q', 'Qqq->Q', ('eel->e', _float_linspace),
-     ('ffl->f', _float_linspace), ('ddl->d', _float_linspace)],
+     ('ffl->f', _float_linspace), ('ddl->d', _float_linspace)),
     'out0 = (in0_type)(in0 + _floor_divide(in1_type(i * in1), in2))')

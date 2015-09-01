@@ -5,15 +5,16 @@ import six
 
 from cupy import cuda
 
+
 MAX_NDIM = 25
 
 
 def _make_carray(n):
     class CArray(ctypes.Structure):
-        _fields_ = [('data', ctypes.c_void_p),
+        _fields_ = (('data', ctypes.c_void_p),
                     ('size', ctypes.c_int),
                     ('shape', ctypes.c_int * n),
-                    ('strides', ctypes.c_int * n)]
+                    ('strides', ctypes.c_int * n))
     return CArray
 
 
@@ -21,8 +22,39 @@ _carrays = [_make_carray(i) for i in six.moves.range(MAX_NDIM)]
 
 
 def to_carray(data, size, shape, strides):
-    global _carrays
     return _carrays[len(shape)](data, size, shape, strides)
+
+
+def _make_cindexer(n):
+    class CIndexer(ctypes.Structure):
+        _fields_ = (('size', ctypes.c_int),
+                    ('shape', ctypes.c_int * n),
+                    ('index', ctypes.c_int * n))
+    return CIndexer
+
+
+_cindexers = [_make_cindexer(i) for i in six.moves.range(MAX_NDIM)]
+
+
+def to_cindexer(size, shape):
+    return _cindexers[len(shape)](size, shape, (0,) * len(shape))
+
+
+class Indexer(object):
+    def __init__(self, shape):
+        size = 1
+        for s in shape:
+            size *= s
+        self.shape = shape
+        self.size = size
+
+    @property
+    def ndim(self):
+        return len(self.shape)
+
+    @property
+    def ctypes(self):
+        return to_cindexer(self.size, self.shape)
 
 
 _header_source = None

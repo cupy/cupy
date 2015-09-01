@@ -3,9 +3,8 @@ import ctypes
 import numpy
 
 from cupy.cuda import driver
-from cupy.cuda import stream
 
-_native_ctypes = {
+_native = {
     int: ctypes.c_int,
     float: ctypes.c_float,
     bool: ctypes.c_bool,
@@ -23,22 +22,11 @@ _native_ctypes = {
     numpy.float32: ctypes.c_float,
     numpy.float64: ctypes.c_double,
 }
+_ptrarray_types = [ctypes.c_void_p * l for l in range(32)]
 
 
 def _get_ctypes(x):
-    return getattr(x, 'ctypes', x)
-
-
-def _pointer(x):
-    converter = _native_ctypes.get(type(x), _get_ctypes)
-    return ctypes.pointer(converter(x))
-
-
-def _get_stream(strm):
-    if strm is None:
-        return stream.Stream(null=True)
-    else:
-        return strm
+    return x.ctypes
 
 
 class Function(object):
@@ -50,25 +38,23 @@ class Function(object):
         self.ptr = driver.moduleGetFunction(module.ptr, funcname)
 
     def __call__(self, grid, block, args, shared_mem=0, stream=None):
-        grid = (grid + (1, 1))[:3]
-        block = (block + (1, 1))[:3]
+        a_src = [_native.get(type(x), _get_ctypes)(x) for x in args]
+        a = _ptrarray_types[len(a_src)](
+            *[ctypes.addressof(x) for x in a_src])
 
-        a = (ctypes.c_void_p * len(args))()
-        for i, arg in enumerate(args):
-            a[i] = ctypes.cast(_pointer(arg), ctypes.c_void_p)
-        arg_ptr = ctypes.cast(a, ctypes.POINTER(ctypes.c_void_p))
-
-        stream = _get_stream(stream)
         driver.launchKernel(self.ptr, grid[0], grid[1], grid[2],
                             block[0], block[1], block[2], shared_mem,
-                            stream.ptr, arg_ptr, ctypes.c_void_p())
+                            stream and stream.ptr, a, None)
 
     def linear_launch(self, size, args, shared_mem=0, block_max_size=128,
                       stream=None):
         # TODO(beam2d): Tune it
-        gridx = min(65536, size // block_max_size + 1)
-        blockx = min(size, block_max_size)
-        self((gridx,), (blockx,), args, shared_mem, stream)
+        gridx = size // block_max_size + 1
+        if gridx > 65536:
+            gridx = 65536
+        if size > block_max_size:
+            size = block_max_size
+        self((gridx, 1, 1), (size, 1, 1), args, shared_mem, stream)
 
 
 class Module(object):

@@ -59,6 +59,8 @@ def take(a, indices, axis=None, out=None):
 
     cdim = indices.size
     rdim = internal.prod(rshape)
+    indices = cupy.reshape(
+        indices, (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
     return _take_kernel(a, indices, cdim, rdim, out)
 
 
@@ -102,9 +104,9 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     del tr[max_axis]
     del tr[min_axis]
     if offset >= 0:
-        a = a.transpose(tr + [axis1, axis2])
+        a = cupy.transpose(a, tr + [axis1, axis2])
     else:
-        a = a.transpose(tr + [axis2, axis1])
+        a = cupy.transpose(a, tr + [axis2, axis1])
         offset = -offset
 
     diag_size = max(0, min(a.shape[-2], a.shape[-1] - offset))
@@ -117,7 +119,9 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     ret = a.view()
     ret._shape = a.shape[:-2] + (diag_size,)
     ret._strides = a.strides[:-2] + (a.strides[-1] + a.strides[-2],)
-    ret._mark_dirty()
+    ret._size = internal.prod(ret._shape)
+    ret._c_contiguous = -1
+    ret._f_contiguous = -1
     return ret
 
 
@@ -127,12 +131,11 @@ def select(condlist, choicelist, default=0):
 
 
 _take_kernel = elementwise.ElementwiseKernel(
-    'raw T a, raw S indices, int64 cdim, int64 rdim',
+    'raw T a, S indices, int64 cdim, int64 rdim',
     'T out',
     '''
       long long li = i / (rdim * cdim);
-      long long ci = indices[i / rdim % cdim];
       long long ri = i % rdim;
-      out = a[(li * cdim + ci) * rdim + ri];
+      out = a[(li * cdim + indices) * rdim + ri];
     ''',
     'cupy_take')

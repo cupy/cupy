@@ -121,8 +121,9 @@ model = chainer.FunctionSet(
 )
 
 if args.out_type == 'hsm':
-    tree = F.create_huffman_tree(counts)
-    model.l = F.BinaryHierarchicalSoftmax(args.unit, tree)
+    HSM = F.BinaryHierarchicalSoftmax
+    tree = HSM.create_huffman_tree(counts)
+    model.l = HSM(args.unit, tree)
     loss_func = model.l
 elif args.out_type == 'ns':
     cs = [counts[w] for w in range(len(counts))]

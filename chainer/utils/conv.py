@@ -55,7 +55,8 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
              col = 0;
            }
         ''',
-        'im2col')(img, h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, col)
+        'im2col')(img.reduced_view(),
+                  h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, col)
     return col
 
 
@@ -102,5 +103,6 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
            }
            img = val;
         ''',
-        'col2im')(col, h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, img)
+        'col2im')(col.reduced_view(),
+                  h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, img)
     return img

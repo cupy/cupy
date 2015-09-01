@@ -10,12 +10,16 @@ There are four differences compared to the original C API.
 
 """
 import ctypes
+import sys
 
 import six
 
 from cupy.cuda import internal
 
-_cuda = internal.load_library('cuda')
+if 'win32' == sys.platform:
+    _cuda = internal.load_library('nvcuda')
+else:
+    _cuda = internal.load_library('cuda')
 
 ###############################################################################
 # Types
@@ -32,8 +36,8 @@ Event = ctypes.c_void_p
 # Error handling
 ###############################################################################
 
-_cuda.cuGetErrorName.argtypes = [ctypes.c_int, ctypes.c_void_p]
-_cuda.cuGetErrorString.argtypes = [ctypes.c_int, ctypes.c_void_p]
+_cuda.cuGetErrorName.argtypes = (ctypes.c_int, ctypes.c_void_p)
+_cuda.cuGetErrorString.argtypes = (ctypes.c_int, ctypes.c_void_p)
 
 
 class CUDADriverError(RuntimeError):
@@ -57,7 +61,7 @@ def check_status(status):
 # Initialization
 ###############################################################################
 
-_cuda.cuInit.argtypes = [ctypes.c_uint]
+_cuda.cuInit.argtypes = (ctypes.c_uint,)
 
 
 def init():
@@ -65,7 +69,7 @@ def init():
     check_status(status)
 
 
-_cuda.cuDriverGetVersion.argtypes = [ctypes.c_void_p]
+_cuda.cuDriverGetVersion.argtypes = (ctypes.c_void_p,)
 
 
 def driverGetVersion():
@@ -78,7 +82,7 @@ def driverGetVersion():
 # Device and context operations
 ###############################################################################
 
-_cuda.cuDeviceGet.argtypes = [ctypes.c_void_p, ctypes.c_int]
+_cuda.cuDeviceGet.argtypes = (ctypes.c_void_p, ctypes.c_int)
 
 
 def deviceGet(device_id):
@@ -88,7 +92,7 @@ def deviceGet(device_id):
     return device
 
 
-_cuda.cuDeviceGetAttribute.argtypes = [ctypes.c_void_p, ctypes.c_int]
+_cuda.cuDeviceGetAttribute.argtypes = (ctypes.c_void_p, ctypes.c_int)
 
 
 def deviceGetAttribute(attrib, device):
@@ -98,7 +102,7 @@ def deviceGetAttribute(attrib, device):
     return ret
 
 
-_cuda.cuDeviceGetCount.argtypes = [ctypes.c_void_p]
+_cuda.cuDeviceGetCount.argtypes = (ctypes.c_void_p,)
 
 
 def deviceGetCount():
@@ -108,7 +112,7 @@ def deviceGetCount():
     return count.value
 
 
-_cuda.cuDeviceTotalMem.argtypes = [ctypes.c_void_p, Device]
+_cuda.cuDeviceTotalMem.argtypes = (ctypes.c_void_p, Device)
 
 
 def deviceTotalMem(device):
@@ -118,7 +122,7 @@ def deviceTotalMem(device):
     return mem.value
 
 
-_cuda.cuCtxCreate_v2.argtypes = [ctypes.c_void_p, ctypes.c_uint, Device]
+_cuda.cuCtxCreate_v2.argtypes = (ctypes.c_void_p, ctypes.c_uint, Device)
 
 
 def ctxCreate(flag, device):
@@ -128,7 +132,7 @@ def ctxCreate(flag, device):
     return ctx
 
 
-_cuda.cuCtxDestroy_v2.argtypes = [ctypes.c_void_p]
+_cuda.cuCtxDestroy_v2.argtypes = (ctypes.c_void_p,)
 
 
 def ctxDestroy(ctx):
@@ -136,7 +140,7 @@ def ctxDestroy(ctx):
     check_status(status)
 
 
-_cuda.cuCtxGetApiVersion.argtypes = [Context, ctypes.c_void_p]
+_cuda.cuCtxGetApiVersion.argtypes = (Context, ctypes.c_void_p)
 
 
 def ctxGetApiVersion(ctx):
@@ -146,7 +150,7 @@ def ctxGetApiVersion(ctx):
     return version.value
 
 
-_cuda.cuCtxGetCurrent.argtypes = [ctypes.c_void_p]
+_cuda.cuCtxGetCurrent.argtypes = (ctypes.c_void_p,)
 
 
 def ctxGetCurrent():
@@ -156,7 +160,7 @@ def ctxGetCurrent():
     return ctx
 
 
-_cuda.cuCtxGetDevice.argtypes = [ctypes.c_void_p]
+_cuda.cuCtxGetDevice.argtypes = (ctypes.c_void_p,)
 
 
 def ctxGetDevice():
@@ -166,7 +170,7 @@ def ctxGetDevice():
     return device
 
 
-_cuda.cuCtxPopCurrent_v2.argtypes = [ctypes.c_void_p]
+_cuda.cuCtxPopCurrent_v2.argtypes = (ctypes.c_void_p,)
 
 
 def ctxPopCurrent():
@@ -176,7 +180,7 @@ def ctxPopCurrent():
     return ctx
 
 
-_cuda.cuCtxPushCurrent_v2.argtypes = [Context]
+_cuda.cuCtxPushCurrent_v2.argtypes = (Context,)
 
 
 def ctxPushCurrent(ctx):
@@ -184,7 +188,7 @@ def ctxPushCurrent(ctx):
     check_status(status)
 
 
-_cuda.cuCtxSetCurrent.argtypes = [Context]
+_cuda.cuCtxSetCurrent.argtypes = (Context,)
 
 
 def ctxSetCurrent(ctx):
@@ -201,7 +205,7 @@ def ctxSynchronize():
 # Module load and kernel execution
 ###############################################################################
 
-_cuda.cuModuleLoad.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+_cuda.cuModuleLoad.argtypes = (ctypes.c_void_p, ctypes.c_char_p)
 
 
 def moduleLoad(filename):
@@ -211,7 +215,7 @@ def moduleLoad(filename):
     return module
 
 
-_cuda.cuModuleLoadData.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+_cuda.cuModuleLoadData.argtypes = (ctypes.c_void_p, ctypes.c_char_p)
 
 
 def moduleLoadData(image):
@@ -221,7 +225,7 @@ def moduleLoadData(image):
     return module
 
 
-_cuda.cuModuleUnload.argtypes = [Module]
+_cuda.cuModuleUnload.argtypes = (Module,)
 
 
 def moduleUnload(module):
@@ -229,7 +233,7 @@ def moduleUnload(module):
     check_status(status)
 
 
-_cuda.cuModuleGetFunction.argtypes = [ctypes.c_void_p, Module, ctypes.c_char_p]
+_cuda.cuModuleGetFunction.argtypes = (ctypes.c_void_p, Module, ctypes.c_char_p)
 
 
 def moduleGetFunction(module, funcname):
@@ -241,8 +245,8 @@ def moduleGetFunction(module, funcname):
     return func
 
 
-_cuda.cuModuleGetGlobal_v2.argtypes = [
-    ctypes.c_void_p, Module, ctypes.c_char_p]
+_cuda.cuModuleGetGlobal_v2.argtypes = (
+    ctypes.c_void_p, Module, ctypes.c_char_p)
 
 
 def moduleGetGlobal(module, varname):
@@ -252,10 +256,10 @@ def moduleGetGlobal(module, varname):
     return var
 
 
-_cuda.cuLaunchKernel.argtypes = [
+_cuda.cuLaunchKernel.argtypes = (
     Function, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint,
     ctypes.c_uint, ctypes.c_uint, ctypes.c_uint, Stream, ctypes.c_void_p,
-    ctypes.c_void_p]
+    ctypes.c_void_p)
 
 
 def launchKernel(f, grid_dim_x, grid_dim_y, grid_dim_z, block_dim_x,
@@ -271,7 +275,7 @@ def launchKernel(f, grid_dim_x, grid_dim_y, grid_dim_z, block_dim_x,
 # Memory management
 ###############################################################################
 
-_cuda.cuMemAlloc_v2.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+_cuda.cuMemAlloc_v2.argtypes = (ctypes.c_void_p, ctypes.c_size_t)
 
 
 def memAlloc(size):
@@ -281,7 +285,7 @@ def memAlloc(size):
     return ptr
 
 
-_cuda.cuMemFree_v2.argtypes = [ctypes.c_void_p]
+_cuda.cuMemFree_v2.argtypes = (ctypes.c_void_p,)
 
 
 def memFree(ptr):
@@ -289,7 +293,7 @@ def memFree(ptr):
     check_status(status)
 
 
-_cuda.cuMemGetInfo_v2.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+_cuda.cuMemGetInfo_v2.argtypes = (ctypes.c_void_p, ctypes.c_void_p)
 
 
 def memGetinfo():
@@ -300,7 +304,7 @@ def memGetinfo():
     return free.value, total.value
 
 
-_cuda.cuMemcpy.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
+_cuda.cuMemcpy.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t)
 
 
 def memcpy(dst, src, size):
@@ -308,8 +312,8 @@ def memcpy(dst, src, size):
     check_status(status)
 
 
-_cuda.cuMemcpyAsync.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                ctypes.c_size_t, Stream]
+_cuda.cuMemcpyAsync.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                                ctypes.c_size_t, Stream)
 
 
 def memcpyAsync(dst, src, size, stream):
@@ -317,8 +321,8 @@ def memcpyAsync(dst, src, size, stream):
     check_status(status)
 
 
-_cuda.cuMemcpyDtoD_v2.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                  ctypes.c_size_t]
+_cuda.cuMemcpyDtoD_v2.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                                  ctypes.c_size_t)
 
 
 def memcpyDtoD(dst, src, size):
@@ -326,8 +330,8 @@ def memcpyDtoD(dst, src, size):
     check_status(status)
 
 
-_cuda.cuMemcpyDtoDAsync_v2.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                       ctypes.c_size_t, Stream]
+_cuda.cuMemcpyDtoDAsync_v2.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                                       ctypes.c_size_t, Stream)
 
 
 def memcpyDtoDAsync(dst, src, size, stream):
@@ -335,8 +339,8 @@ def memcpyDtoDAsync(dst, src, size, stream):
     check_status(status)
 
 
-_cuda.cuMemcpyDtoH_v2.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                  ctypes.c_size_t]
+_cuda.cuMemcpyDtoH_v2.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                                  ctypes.c_size_t)
 
 
 def memcpyDtoH(dst, src, size):
@@ -344,8 +348,8 @@ def memcpyDtoH(dst, src, size):
     check_status(status)
 
 
-_cuda.cuMemcpyDtoHAsync_v2.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                       ctypes.c_size_t, Stream]
+_cuda.cuMemcpyDtoHAsync_v2.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                                       ctypes.c_size_t, Stream)
 
 
 def memcpyDtoHAsync(dst, src, size, stream):
@@ -353,8 +357,8 @@ def memcpyDtoHAsync(dst, src, size, stream):
     check_status(status)
 
 
-_cuda.cuMemcpyHtoD_v2.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                  ctypes.c_size_t]
+_cuda.cuMemcpyHtoD_v2.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                                  ctypes.c_size_t)
 
 
 def memcpyHtoD(dst, src, size):
@@ -362,8 +366,8 @@ def memcpyHtoD(dst, src, size):
     check_status(status)
 
 
-_cuda.cuMemcpyHtoDAsync_v2.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                       ctypes.c_size_t, Stream]
+_cuda.cuMemcpyHtoDAsync_v2.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
+                                       ctypes.c_size_t, Stream)
 
 
 def memcpyHtoDAsync(dst, src, size, stream):
@@ -371,8 +375,8 @@ def memcpyHtoDAsync(dst, src, size, stream):
     check_status(status)
 
 
-_cuda.cuMemcpyPeer.argtypes = [ctypes.c_void_p, Context, ctypes.c_void_p,
-                               Context, ctypes.c_size_t]
+_cuda.cuMemcpyPeer.argtypes = (ctypes.c_void_p, Context, ctypes.c_void_p,
+                               Context, ctypes.c_size_t)
 
 
 def memcpyPeer(dst, dst_ctx, src, src_ctx, size):
@@ -380,8 +384,8 @@ def memcpyPeer(dst, dst_ctx, src, src_ctx, size):
     check_status(status)
 
 
-_cuda.cuMemcpyPeerAsync.argtypes = [ctypes.c_void_p, Context, ctypes.c_void_p,
-                                    Context, ctypes.c_size_t, Stream]
+_cuda.cuMemcpyPeerAsync.argtypes = (ctypes.c_void_p, Context, ctypes.c_void_p,
+                                    Context, ctypes.c_size_t, Stream)
 
 
 def memcpyPeerAsync(dst, dst_ctx, src, src_ctx, size, stream):
@@ -389,8 +393,8 @@ def memcpyPeerAsync(dst, dst_ctx, src, src_ctx, size, stream):
     check_status(status)
 
 
-_cuda.cuMemsetD32_v2.argtypes = [
-    ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t]
+_cuda.cuMemsetD32_v2.argtypes = (
+    ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t)
 
 
 def memsetD32(ptr, value, size):
@@ -398,8 +402,8 @@ def memsetD32(ptr, value, size):
     check_status(status)
 
 
-_cuda.cuMemsetD32Async.argtypes = [ctypes.c_void_p, ctypes.c_uint,
-                                   ctypes.c_size_t, Stream]
+_cuda.cuMemsetD32Async.argtypes = (ctypes.c_void_p, ctypes.c_uint,
+                                   ctypes.c_size_t, Stream)
 
 
 def memsetD32Async(ptr, value, size, stream):
@@ -407,8 +411,8 @@ def memsetD32Async(ptr, value, size, stream):
     check_status(status)
 
 
-_cuda.cuPointerGetAttribute.argtypes = [ctypes.c_void_p, ctypes.c_int,
-                                        ctypes.c_void_p]
+_cuda.cuPointerGetAttribute.argtypes = (ctypes.c_void_p, ctypes.c_int,
+                                        ctypes.c_void_p)
 
 
 def pointerGetAttribute(attribute, ptr):
@@ -424,7 +428,7 @@ def pointerGetAttribute(attribute, ptr):
 # Stream and Event
 ###############################################################################
 
-_cuda.cuStreamCreate.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+_cuda.cuStreamCreate.argtypes = (ctypes.c_void_p, ctypes.c_uint)
 
 
 def streamCreate(flag=0):
@@ -434,7 +438,7 @@ def streamCreate(flag=0):
     return stream
 
 
-_cuda.cuStreamDestroy_v2.argtypes = [Stream]
+_cuda.cuStreamDestroy_v2.argtypes = (Stream,)
 
 
 def streamDestroy(stream):
@@ -442,7 +446,7 @@ def streamDestroy(stream):
     check_status(status)
 
 
-_cuda.cuStreamSynchronize.argtypes = [Stream]
+_cuda.cuStreamSynchronize.argtypes = (Stream,)
 
 
 def streamSynchronize(stream):
@@ -451,8 +455,8 @@ def streamSynchronize(stream):
 
 
 StreamCallback = ctypes.CFUNCTYPE(Stream, ctypes.c_int, ctypes.c_void_p)
-_cuda.cuStreamAddCallback.argtypes = [Stream, StreamCallback, ctypes.c_void_p,
-                                      ctypes.c_uint]
+_cuda.cuStreamAddCallback.argtypes = (Stream, StreamCallback, ctypes.c_void_p,
+                                      ctypes.c_uint)
 
 
 def streamAddCallback(stream, callback, arg, flags=0):
@@ -465,7 +469,7 @@ EVENT_DEFAULT = 0
 EVENT_BLOCKING_SYNC = 1
 EVENT_DISABLE_TIMING = 2
 EVENT_INTERPROCESS = 4
-_cuda.cuEventCreate.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+_cuda.cuEventCreate.argtypes = (ctypes.c_void_p, ctypes.c_uint)
 
 
 def eventCreate(flag):
@@ -475,7 +479,7 @@ def eventCreate(flag):
     return event
 
 
-_cuda.cuEventDestroy_v2.argtypes = [Event]
+_cuda.cuEventDestroy_v2.argtypes = (Event,)
 
 
 def eventDestroy(event):
@@ -483,7 +487,7 @@ def eventDestroy(event):
     check_status(status)
 
 
-_cuda.cuEventRecord.argtypes = [Event, Stream]
+_cuda.cuEventRecord.argtypes = (Event, Stream)
 
 
 def eventRecord(event, stream):
@@ -491,7 +495,7 @@ def eventRecord(event, stream):
     check_status(status)
 
 
-_cuda.cuEventSynchronize.argtypes = [Event]
+_cuda.cuEventSynchronize.argtypes = (Event,)
 
 
 def eventSynchronize(event):

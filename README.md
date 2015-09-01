@@ -4,27 +4,26 @@
 [![travis](https://img.shields.io/travis/pfnet/chainer.svg)](https://travis-ci.org/pfnet/chainer)
 [![coveralls](https://img.shields.io/coveralls/pfnet/chainer.svg)](https://coveralls.io/github/pfnet/chainer)
 
-# chainer: Neural network framework
+# Chainer: a neural network framework
 
 ## Requirements
 
 Minimum requirements:
-- Python 2.7+, 3.4+
-- NumPy
+- Python 2.7+ or 3.4+
+- NumPy 1.9+
 - Six 1.9+
 
 Requirements for some features:
 - CUDA support
   - CUDA 6.5+
-  - PyCUDA
-  - scikits.cuda (pip install scikit-cuda>=0.5.0)
-  - Mako (depending through PyCUDA)
+  - filelock
 - CuDNN support
   - CuDNN v2
 - Caffe model support
   - Python 2.7+ (Py3 is not supported)
   - Protocol Buffers (pip install protobuf)
 - Testing utilities
+  - Mock
   - Nose
 
 ## Installation
@@ -47,11 +46,7 @@ export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ```
 Do not forget to restart your terminal session (or `source` it) to enable this change.
-Then, install CUDA-related dependent packages via pip:
-```
-pip install chainer-cuda-deps
-```
-If you install the chainer from the source, the cuda dependencies are automatically installed.
+It automatically enables the CUDA support.
 
 ## More information
 
