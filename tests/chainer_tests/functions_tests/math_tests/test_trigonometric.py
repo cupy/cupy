@@ -85,6 +85,12 @@ class UnaryFunctionsTestBase(object):
     def test_sin_backward_gpu(self):
         self.check_backward_gpu(F.sin)
 
+    def test_sin(self):
+        self.assertEqual(F.Sin().label, 'sin')
+
+    def test_cos(self):
+        self.assertEqual(F.Cos().label, 'cos')
+
 
 class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
 

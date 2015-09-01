@@ -1141,17 +1141,5 @@ class TestLabel(unittest.TestCase):
     def test_pow_const_var(self):
         self.assertEqual(basic_math.PowConstVar(2.0).label, '2.0 ** _')
 
-    def test_exp(self):
-        self.assertEqual(basic_math.Exp().label, 'exp')
-
-    def test_log(self):
-        self.assertEqual(basic_math.Log().label, 'log')
-
-    def test_sin(self):
-        self.assertEqual(basic_math.Sin().label, 'sin')
-
-    def test_cos(self):
-        self.assertEqual(basic_math.Cos().label, 'cos')
-
 
 testing.run_module(__name__, __file__)

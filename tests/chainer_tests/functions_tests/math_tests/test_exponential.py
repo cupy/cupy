@@ -85,6 +85,12 @@ class UnaryFunctionsTestBase(object):
     def test_log_backward_gpu(self):
         self.check_backward_gpu(F.log)
 
+    def test_exp(self):
+        self.assertEqual(F.Exp().label, 'exp')
+
+    def test_log(self):
+        self.assertEqual(F.Log().label, 'log')
+
 
 class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
 
