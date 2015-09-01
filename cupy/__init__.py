@@ -338,9 +338,7 @@ class ndarray(object):
             elementwise.copy(self, newarray)
             return newarray
 
-
     # TODO(okuta): Implement byteswap
-
 
     def copy(self):
         """Returns a copy of the array.
@@ -380,10 +378,8 @@ class ndarray(object):
         v.base = self.base if self.base is not None else self
         return v
 
-
     # TODO(okuta): Implement getfield
     # TODO(okuta): Implement setflags
-
 
     def fill(self, value):
         """Fills the array with a scalar value.
@@ -412,9 +408,7 @@ class ndarray(object):
             shape = shape[0]
         return reshape(self, shape)
 
-
     # TODO(okuta): Implement resize
-
 
     def transpose(self, *axes):
         """Returns a view of the array with axes permuted.
@@ -496,7 +490,6 @@ class ndarray(object):
         """
         return take(self, indices, axis, out)
 
-
     # TODO(okuta): Implement put
     # TODO(okuta): Implement repeat
     # TODO(okuta): Implement choose
@@ -507,7 +500,6 @@ class ndarray(object):
     # TODO(okuta): Implement searchsorted
     # TODO(okuta): Implement nonzero
     # TODO(okuta): Implement compress
-
 
     def diagonal(self, offset=0, axis1=0, axis2=1):
         """Returns a view of the specified diagonals.
@@ -566,9 +558,7 @@ class ndarray(object):
         return argmin(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
-
     # TODO(okuta): Implement ptp
-
 
     def clip(self, a_min, a_max, out=None):
         """Returns an array with values limited to [a_min, a_max].
@@ -580,9 +570,7 @@ class ndarray(object):
         """
         return clip(self, a_min, a_max, out=out)
 
-
     # TODO(okuta): Implement round
-
 
     def trace(self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
         """Returns the sum along diagonals of the array.
@@ -604,9 +592,7 @@ class ndarray(object):
         """
         return sum(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-
     # TODO(okuta): Implement cumsum
-
 
     def mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
@@ -648,11 +634,9 @@ class ndarray(object):
         """
         return prod(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-
     # TODO(okuta): Implement cumprod
     # TODO(okuta): Implement all
     # TODO(okuta): Implement any
-
 
     # -------------------------------------------------------------------------
     # Arithmetic and comparison operations
@@ -894,9 +878,7 @@ class ndarray(object):
         else:
             return self.astype(dtype)
 
-
     # TODO(okuta): Implement __array_wrap__
-
 
     # Container customization:
 
@@ -989,11 +971,9 @@ class ndarray(object):
         else:
             v.fill(value)
 
-
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
     # TODO(okuta): Implement __contains__
-
 
     # Conversion:
 
