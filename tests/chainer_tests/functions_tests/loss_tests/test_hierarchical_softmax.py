@@ -16,16 +16,16 @@ class TestHuffmanTree(unittest.TestCase):
 
     def test_empty(self):
         with self.assertRaises(ValueError):
-            functions.create_huffman_tree({})
+            functions.BinaryHierarchicalSoftmax.create_huffman_tree({})
 
     def test_simple(self):
-        tree = functions.create_huffman_tree(
+        tree = functions.BinaryHierarchicalSoftmax.create_huffman_tree(
             {'x': 8, 'y': 6, 'z': 5, 'w': 4, 'v': 3})
         expect = (('z', 'y'), (('v', 'w'), 'x'))
         self.assertEqual(expect, tree)
 
     def test_same_count(self):
-        tree = functions.create_huffman_tree(
+        tree = functions.BinaryHierarchicalSoftmax.create_huffman_tree(
             {'x': 1, 'y': 2, 'z': 3})
         # Order of the same items are not defined.
         self.assertTrue((('x', 'y'), 'z') == tree or

@@ -1,131 +1,134 @@
 """Collection of :class:`~chainer.Function` implementations."""
 
-from chainer.functions import accuracy
-from chainer.functions import basic_math
-from chainer.functions import batch_normalization
-from chainer.functions import bilinear
-from chainer.functions import clipped_relu
-from chainer.functions import concat
-from chainer.functions import convolution_2d
-from chainer.functions import copy
-from chainer.functions import cross_covariance
-from chainer.functions import dropout
-from chainer.functions import embed_id
-from chainer.functions import gaussian
-from chainer.functions import hierarchical_softmax
-from chainer.functions import identity
-from chainer.functions import inception
-from chainer.functions import inceptionbn
-from chainer.functions import leaky_relu
-from chainer.functions import linear
-from chainer.functions import local_response_normalization
-from chainer.functions import lstm
-from chainer.functions import matmul
-from chainer.functions import mean_squared_error
-from chainer.functions import negative_sampling
-from chainer.functions import nonparameterized_convolution_2d
-from chainer.functions import nonparameterized_linear
-from chainer.functions import parameter
-from chainer.functions import pooling_2d
-from chainer.functions import prelu
-from chainer.functions import relu
-from chainer.functions import reshape
-from chainer.functions import sigmoid
-from chainer.functions import sigmoid_cross_entropy
-from chainer.functions import softmax
-from chainer.functions import softmax_cross_entropy
-from chainer.functions import softplus
-from chainer.functions import split_axis
-from chainer.functions import sum as sum_
-from chainer.functions import tanh
+from chainer.functions.activation import clipped_relu
+from chainer.functions.activation import leaky_relu
+from chainer.functions.activation import lstm
+from chainer.functions.activation import prelu
+from chainer.functions.activation import relu
+from chainer.functions.activation import sigmoid
+from chainer.functions.activation import softmax
+from chainer.functions.activation import softplus
+from chainer.functions.activation import tanh
+from chainer.functions.array import concat
+from chainer.functions.array import copy
+from chainer.functions.array import reshape
+from chainer.functions.array import split_axis
+from chainer.functions.connection import bilinear
+from chainer.functions.connection import convolution_2d
+from chainer.functions.connection import embed_id
+from chainer.functions.connection import inception
+from chainer.functions.connection import inceptionbn
+from chainer.functions.connection import linear
+from chainer.functions.connection import parameter
+from chainer.functions.evaluation import accuracy
+from chainer.functions.loss import cross_covariance
+from chainer.functions.loss import hierarchical_softmax
+from chainer.functions.loss import mean_squared_error
+from chainer.functions.loss import negative_sampling
+from chainer.functions.loss import sigmoid_cross_entropy
+from chainer.functions.loss import softmax_cross_entropy
+from chainer.functions.loss import vae  # NOQA
+from chainer.functions.math import basic_math  # NOQA
+from chainer.functions.math import exponential
+from chainer.functions.math import identity
+from chainer.functions.math import matmul
+from chainer.functions.math import sum
+from chainer.functions.math import trigonometric
+from chainer.functions.noise import dropout
+from chainer.functions.noise import gaussian
+from chainer.functions.normalization import batch_normalization
+from chainer.functions.normalization import local_response_normalization
+from chainer.functions.pooling import average_pooling_2d
+from chainer.functions.pooling import max_pooling_2d
+from chainer.functions.pooling import spatial_pyramid_pooling_2d
 
-NonparameterizedConvolution2D = \
-    nonparameterized_convolution_2d.NonparameterizedConvolution2D
-NonparameterizedLinear = \
-    nonparameterized_linear.NonparameterizedLinear
+
 ClippedReLU = clipped_relu.ClippedReLU
-Concat = concat.Concat
-Copy = copy.Copy
-Cos = basic_math.Cos
-CrossCovariance = cross_covariance.CrossCovariance
-Dropout = dropout.Dropout
-Gaussian = gaussian.Gaussian
-Identity = identity.Identity
-Reshape = reshape.Reshape
-BatchMatMul = matmul.BatchMatMul
-SplitAxis = split_axis.SplitAxis
-Exp = basic_math.Exp
-Log = basic_math.Log
-LeakyReLU = leaky_relu.LeakyReLU
-LSTM = lstm.LSTM
-MatMul = matmul.MatMul
-ReLU = relu.ReLU
-Sigmoid = sigmoid.Sigmoid
-Sin = basic_math.Sin
-Softmax = softmax.Softmax
-Softplus = softplus.Softplus
-Tanh = tanh.Tanh
-AveragePooling2D = pooling_2d.AveragePooling2D
-MaxPooling2D = pooling_2d.MaxPooling2D
-SpatialPyramidPooling2D = pooling_2d.SpatialPyramidPooling2D
-Pooling2D = pooling_2d.Pooling2D
-LocalResponseNormalization = \
-    local_response_normalization.LocalResponseNormalization
-Accuracy = accuracy.Accuracy
-MeanSquaredError = mean_squared_error.MeanSquaredError
-SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
-SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
-Sum = sum_.Sum
-Inception = inception.Inception
-InceptionBN = inceptionbn.InceptionBN
-
-BatchNormalization = batch_normalization.BatchNormalization
-Convolution2D = convolution_2d.Convolution2D
-EmbedID = embed_id.EmbedID
-BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
-create_huffman_tree = hierarchical_softmax.create_huffman_tree
-Linear = linear.Linear
-NegativeSampling = negative_sampling.NegativeSampling
-Parameter = parameter.Parameter
-PReLU = prelu.PReLU
-Bilinear = bilinear.Bilinear
-
-convolution_2d = nonparameterized_convolution_2d.convolution_2d
-linear = nonparameterized_linear.linear
-
 clipped_relu = clipped_relu.clipped_relu
-concat = concat.concat
-copy = copy.copy
-dropout = dropout.dropout
-gaussian = gaussian.gaussian
-identity = identity.identity
-reshape = reshape.reshape
-split_axis = split_axis.split_axis
-
-absolute = basic_math.absolute
-batch_matmul = matmul.batch_matmul
-cos = basic_math.cos
-exp = basic_math.exp
-log = basic_math.log
+LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
+LSTM = lstm.LSTM
 lstm = lstm.lstm
-matmul = matmul.matmul
+PReLU = prelu.PReLU
+ReLU = relu.ReLU
 relu = relu.relu
+Sigmoid = sigmoid.Sigmoid
 sigmoid = sigmoid.sigmoid
-sin = basic_math.sin
+Softmax = softmax.Softmax
 softmax = softmax.softmax
+Softplus = softplus.Softplus
 softplus = softplus.softplus
+Tanh = tanh.Tanh
 tanh = tanh.tanh
 
-average_pooling_2d = pooling_2d.average_pooling_2d
-max_pooling_2d = pooling_2d.max_pooling_2d
-spatial_pyramid_pooling_2d = pooling_2d.spatial_pyramid_pooling_2d
+Concat = concat.Concat
+concat = concat.concat
+Copy = copy.Copy
+copy = copy.copy
+Reshape = reshape.Reshape
+reshape = reshape.reshape
+SplitAxis = split_axis.SplitAxis
+split_axis = split_axis.split_axis
+
+Bilinear = bilinear.Bilinear
+Convolution2D = convolution_2d.Convolution2D
+convolution_2d = convolution_2d.convolution_2d
+EmbedID = embed_id.EmbedID
+Inception = inception.Inception
+InceptionBN = inceptionbn.InceptionBN
+Linear = linear.Linear
+linear = linear.linear
+Parameter = parameter.Parameter
+
+Accuracy = accuracy.Accuracy
+accuracy = accuracy.accuracy
+
+bernoulli_nll = vae.bernoulli_nll
+BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
+CrossCovariance = cross_covariance.CrossCovariance
+cross_covariance = cross_covariance.cross_covariance
+gaussian_kl_divergence = vae.gaussian_kl_divergence
+gaussian_nll = vae.gaussian_nll
+MeanSquaredError = mean_squared_error.MeanSquaredError
+mean_squared_error = mean_squared_error.mean_squared_error
+NegativeSampling = negative_sampling.NegativeSampling
+SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
+sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
+SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
+softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
+
+BatchMatMul = matmul.BatchMatMul
+batch_matmul = matmul.batch_matmul
+Cos = trigonometric.Cos
+cos = trigonometric.cos
+Exp = exponential.Exp
+exp = exponential.exp
+Identity = identity.Identity
+identity = identity.identity
+Log = exponential.Log
+log = exponential.log
+MatMul = matmul.MatMul
+matmul = matmul.matmul
+Sin = trigonometric.Sin
+sin = trigonometric.sin
+Sum = sum.Sum
+sum = sum.sum
+
+Dropout = dropout.Dropout
+dropout = dropout.dropout
+Gaussian = gaussian.Gaussian
+gaussian = gaussian.gaussian
+
+BatchNormalization = batch_normalization.BatchNormalization
+LocalResponseNormalization = \
+    local_response_normalization.LocalResponseNormalization
 local_response_normalization = \
     local_response_normalization.local_response_normalization
 
-accuracy = accuracy.accuracy
-cross_covariance = cross_covariance.cross_covariance
-mean_squared_error = mean_squared_error.mean_squared_error
-sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
-softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
-sum = sum_.sum
+AveragePooling2D = average_pooling_2d.AveragePooling2D
+average_pooling_2d = average_pooling_2d.average_pooling_2d
+MaxPooling2D = max_pooling_2d.MaxPooling2D
+max_pooling_2d = max_pooling_2d.max_pooling_2d
+SpatialPyramidPooling2D = spatial_pyramid_pooling_2d.SpatialPyramidPooling2D
+spatial_pyramid_pooling_2d = \
+    spatial_pyramid_pooling_2d.spatial_pyramid_pooling_2d

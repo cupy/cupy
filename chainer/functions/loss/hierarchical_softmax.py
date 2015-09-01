@@ -123,6 +123,42 @@ class BinaryHierarchicalSoftmax(function.Function):
             -1, 1, (parser.size(), in_size)).astype(numpy.float32)
         self.gW = numpy.zeros(self.W.shape, numpy.float32)
 
+    @staticmethod
+    def create_huffman_tree(word_counts):
+        """Make a huffman tree from a dictionary containing word counts.
+
+        This method creates a binary huffman tree, that is required for
+        :class:`BinaryHierarchicalSoftmax`.
+        For example, ``{0: 8, 1: 5, 2: 6, 3: 4}`` is converted to
+        ``((3, 1), (2, 0))``.
+
+        Args:
+            word_counts (dict of int key and int or float values):
+                Dictionary representing counts of words.
+
+        Returns:
+            Binary huffman tree with tuples and keys of ``word_coutns``.
+
+        """
+        if len(word_counts) == 0:
+            raise ValueError('Empty vocabulary')
+
+        q = six.moves.queue.PriorityQueue()
+        # Add unique id to each entry so that we can compare two entries with
+        # same counts.
+        # Note that itreitems randomly order the entries.
+        for uid, (w, c) in enumerate(six.iteritems(word_counts)):
+            q.put((c, uid, w))
+
+        while q.qsize() >= 2:
+            (count1, id1, word1) = q.get()
+            (count2, id2, word2) = q.get()
+            count = count1 + count2
+            tree = (word1, word2)
+            q.put((count, min(id1, id2), tree))
+
+        return q.get()[2]
+
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         x_type, t_type = in_types
@@ -271,39 +307,3 @@ class BinaryHierarchicalSoftmax(function.Function):
         )(self.wxy, x, self.W, t, self.paths, self.codes,
           self.begins, gloss, n_in, self.max_length, gx, self.gW)
         return gx, None
-
-
-def create_huffman_tree(word_counts):
-    """Make a huffman tree from a dictionary containing word counts.
-
-    This method creates a binary huffman tree, that is required for
-    :class:`BinaryHierarchicalSoftmax`.
-    For example, ``{0: 8, 1: 5, 2: 6, 3: 4}`` is converted to
-    ``((3, 1), (2, 0))``.
-
-    Args:
-        word_counts (``dict`` of ``int`` key and ``int`` or ``float`` values.):
-            Dictionary representing counts of words.
-
-    Returns:
-        Binary huffman tree with tuples and keys of ``word_coutns``.
-
-    """
-    if len(word_counts) == 0:
-        raise ValueError('Empty vocabulary')
-
-    q = six.moves.queue.PriorityQueue()
-    # Add unique id to each entry so that we can compare two entries with same
-    # counts.
-    # Note that itreitems randomly order the entries.
-    for uid, (w, c) in enumerate(six.iteritems(word_counts)):
-        q.put((c, uid, w))
-
-    while q.qsize() >= 2:
-        (count1, id1, word1) = q.get()
-        (count2, id2, word2) = q.get()
-        count = count1 + count2
-        tree = (word1, word2)
-        q.put((count, min(id1, id2), tree))
-
-    return q.get()[2]
