@@ -23,9 +23,7 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
                             keepdims=keepdims)
 
 
-# def nanargmax(a, axis=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement nanargmax
 
 
 def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -50,36 +48,22 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
                             keepdims=keepdims)
 
 
-# def nanargmin(a, axis=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement nanargmin
 
 
-# def argwhere(a):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement argwhere
 
 
-# def nonzero(a):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement nonzero
 
 
-# def flatnonzero(a):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement flatnonzero
 
 
-# def where(condition, x=None, y=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement where
 
 
-# def searchsorted(a, v, side='left', sorter=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement searchsorted
 
 
-# def extract(condition, arr):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement extract

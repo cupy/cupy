@@ -1,21 +1,13 @@
 # flake8: NOQA
 # "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
 
-# def eig(a):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement eig
 
 
-# def eigh(a, UPLO='L'):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement eigh
 
 
-# def eigvals(a):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement eigvals
 
 
-# def eigvalsh(a, UPLO='L'):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement eigvalsh

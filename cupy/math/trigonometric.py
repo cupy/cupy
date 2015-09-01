@@ -99,9 +99,7 @@ rad2deg = elementwise.create_ufunc(
     ''')
 
 
-# def unwrap(p, discont=3.141592653589793, axis=-1):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement unwrap
 
 
 degrees = rad2deg

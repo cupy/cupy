@@ -41,44 +41,28 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     return _prod(a, axis, dtype, out, keepdims)
 
 
-# def nansum(a, axis=None, dtype=None, out=None, keepdims=0):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement nansum
 
 
-# def cumprod(a, axis=None, dtype=None, out=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement cumprod
 
 
-# def cumsum(a, axis=None, dtype=None, out=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement cumsum
 
 
-# def diff(a, n=1, axis=-1):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement diff
 
 
-# def ediff1d(ary, to_end=None, to_begin=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement ediff1d
 
 
-# def gradient(f, *varargs, **kwargs):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement gradient
 
 
-# def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement cross
 
 
-# def trapz(y, x=None, dx=1.0, axis=-1):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement trapz
 
 
 _sum = reduction.create_reduction_func(

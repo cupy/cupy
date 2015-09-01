@@ -244,8 +244,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     # Array interface
     # -------------------------------------------------------------------------
-    # TODO(beam2d): Implement it
-    # __array_interface__
+    # TODO(beam2d): Implement __array_interface__
 
     # -------------------------------------------------------------------------
     # ctypes foreign function interface
@@ -269,8 +268,7 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     # Array conversion
     # -------------------------------------------------------------------------
-    # TODO(beam2d): Implement it
-    # def item(self, *args):
+    # TODO(okuta): Implement item
 
     def tolist(self):
         """Converts the array to a (possibly nested) Python list.
@@ -283,10 +281,9 @@ class ndarray(object):
         """
         return self.get().tolist()
 
-    # TODO(beam2d): Implement these
-    # def itemset(self, *args):
-    # def tostring(self, order='C'):
-    # def tobytes(self, order='C'):
+    # TODO(okuta): Implement itemset
+    # TODO(okuta): Implement tostring
+    # TODO(okuta): Implement tobytes
 
     def tofile(self, fid, sep='', format='%s'):
         """Writes the array to a file.
@@ -341,8 +338,9 @@ class ndarray(object):
             elementwise.copy(self, newarray)
             return newarray
 
-    # TODO(beam2d): Implement it
-    # def byteswap(self, inplace=False):
+
+    # TODO(okuta): Implement byteswap
+
 
     def copy(self):
         """Returns a copy of the array.
@@ -382,9 +380,10 @@ class ndarray(object):
         v.base = self.base if self.base is not None else self
         return v
 
-    # TODO(beam2d): Implement these
-    # def getfield(self, dtype, offset=0):
-    # def setflags(self, write=None, align=None, uic=None):
+
+    # TODO(okuta): Implement getfield
+    # TODO(okuta): Implement setflags
+
 
     def fill(self, value):
         """Fills the array with a scalar value.
@@ -413,8 +412,9 @@ class ndarray(object):
             shape = shape[0]
         return reshape(self, shape)
 
-    # TODO(beam2d0: Implement it
-    # def resize(self, new_shape, refcheck=True):
+
+    # TODO(okuta): Implement resize
+
 
     def transpose(self, *axes):
         """Returns a view of the array with axes permuted.
@@ -496,17 +496,18 @@ class ndarray(object):
         """
         return take(self, indices, axis, out)
 
-    # TODO(beam2d): Implement these
-    # def put(self, indices, values, mode='raise'):
-    # def repeat(self, repeats, axis=None):
-    # def choose(self, choices, out=None, mode='raise'):
-    # def sort(self, axis=-1, kind='quicksort', order=None):
-    # def argsort(self, axis=-1, kind='quicksort', order=None):
-    # def partition(self, kth, axis=-1, kind='introselect', order=None):
-    # def argpartition(self, kth, axis=-1, kind='introselect', order=None):
-    # def searchsorted(self, v, side='left', sorter=None):
-    # def nonzero(self):
-    # def compress(self, condition, axis=None, out=None):
+
+    # TODO(okuta): Implement put
+    # TODO(okuta): Implement repeat
+    # TODO(okuta): Implement choose
+    # TODO(okuta): Implement sort
+    # TODO(okuta): Implement argsort
+    # TODO(okuta): Implement partition
+    # TODO(okuta): Implement argpartition
+    # TODO(okuta): Implement searchsorted
+    # TODO(okuta): Implement nonzero
+    # TODO(okuta): Implement compress
+
 
     def diagonal(self, offset=0, axis1=0, axis2=1):
         """Returns a view of the specified diagonals.
@@ -565,8 +566,9 @@ class ndarray(object):
         return argmin(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
-    # TODO(beam2d): Implement it
-    # def ptp(self, axis=None, out=None):
+
+    # TODO(okuta): Implement ptp
+
 
     def clip(self, a_min, a_max, out=None):
         """Returns an array with values limited to [a_min, a_max].
@@ -578,8 +580,9 @@ class ndarray(object):
         """
         return clip(self, a_min, a_max, out=out)
 
-    # TODO(beam2d): Implement it
-    # def round(self, decimals=0, out=None):
+
+    # TODO(okuta): Implement round
+
 
     def trace(self, offset=0, axis1=0, axis2=1, dtype=None, out=None):
         """Returns the sum along diagonals of the array.
@@ -601,8 +604,9 @@ class ndarray(object):
         """
         return sum(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    # TODO(beam2d): Implement it
-    # def cumsum(self, axis=None, dtype=None, out=None):
+
+    # TODO(okuta): Implement cumsum
+
 
     def mean(self, axis=None, dtype=None, out=None, keepdims=False):
         """Returns the mean along a given axis.
@@ -644,10 +648,11 @@ class ndarray(object):
         """
         return prod(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
-    # TODO(beam2d): Implement these
-    # def cumprod(self, axis=None, dtype=None, out=None):
-    # def all(self, axis=None, out=None):
-    # def any(self, axis=None, out=None):
+
+    # TODO(okuta): Implement cumprod
+    # TODO(okuta): Implement all
+    # TODO(okuta): Implement any
+
 
     # -------------------------------------------------------------------------
     # Arithmetic and comparison operations
@@ -889,8 +894,9 @@ class ndarray(object):
         else:
             return self.astype(dtype)
 
-    # TODO(beam2d): Impleent it
-    # def __array_wrap__(self, obj):
+
+    # TODO(okuta): Implement __array_wrap__
+
 
     # Container customization:
 
@@ -983,10 +989,11 @@ class ndarray(object):
         else:
             v.fill(value)
 
-    # TODO(beam2d): Implement these
-    # def __getslice__(self, i, j):
-    # def __setslice__(self, i, j, y):
-    # def __contains__(self, y):
+
+    # TODO(okuta): Implement __getslice__
+    # TODO(okuta): Implement __setslice__
+    # TODO(okuta): Implement __contains__
+
 
     # Conversion:
 

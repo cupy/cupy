@@ -50,31 +50,19 @@ def diagflat(v, k=0):
         return cupy.diag(numpy.ndarray(v).ravel(), k)
 
 
-# def tri(N, M=None, k=0, dtype=numpy.float64):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement tri
 
 
-# def tril(m, k=0):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement tril
 
 
-# def triu(m, k=0):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement triu
 
 
-# def vander(x, N=None, increasing=False):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement vander
 
 
-# def mat(data, dtype=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement mat
 
 
-# def bmat(obj, ldict=None, gdict=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement bmat

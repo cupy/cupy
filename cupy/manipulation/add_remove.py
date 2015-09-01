@@ -1,32 +1,19 @@
 # flake8: NOQA
 # "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
 
-# def delete(arr, obj, axis=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement delete
 
 
-# def insert(arr, obj, values, axis=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement insert
 
 
-# def append(arr, values, axis=None):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement append
 
 
-# def resize(a, new_shape):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement resize
 
 
-# def trim_zeros(filt, trim='fb'):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement trim_zeros
 
 
-# def unique(
-#         ar, return_index=False, return_inverse=False, return_counts=False):
-#     # TODO(beam2d): Implement it
-#     raise NotImplementedError
+# TODO(okuta): Implement unique
