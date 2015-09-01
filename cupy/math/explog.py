@@ -22,7 +22,7 @@ expm1 = ufunc.create_math_ufunc(
 
 exp2 = elementwise.create_ufunc(
     'cupy_exp2',
-    ['e->e', 'f->f', ('d->d', 'out0 = pow(2., in0)')],
+    ('e->e', 'f->f', ('d->d', 'out0 = pow(2., in0)')),
     'out0 = powf(2.f, in0)',
     doc='''Elementwise exponentiation with base 2.
 
@@ -69,7 +69,7 @@ log1p = ufunc.create_math_ufunc(
 
 logaddexp = elementwise.create_ufunc(
     'cupy_logaddexp',
-    ['ee->e', 'ff->f', 'dd->d'],
+    ('ee->e', 'ff->f', 'dd->d'),
     'out0 = fmax(in0, in1) + log1p(exp(-fabs(in0 - in1)))',
     doc='''Computes ``log(exp(x1) + exp(x2))`` elementwise.
 
@@ -80,7 +80,7 @@ logaddexp = elementwise.create_ufunc(
 
 logaddexp2 = elementwise.create_ufunc(
     'cupy_logaddexp2',
-    ['ee->e', 'ff->f', 'dd->d'],
+    ('ee->e', 'ff->f', 'dd->d'),
     'out0 = fmax(in0, in1) + log2(1 + exp2(-fabs(in0 - in1)))',
     doc='''Computes ``log2(exp2(x1) + exp2(x2))`` elementwise.
 

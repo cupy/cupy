@@ -49,8 +49,8 @@ class SigmoidCrossEntropy(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
         gx = cuda.elementwise(
-            'T y, S t, T gloss, T inv_cnt', 'T gx',
-            'gx = gloss * inv_cnt * (y - t)',
+            'T y, S t, raw T gloss, T inv_cnt', 'T gx',
+            'gx = gloss[0] * inv_cnt * (y - t)',
             'sigmoid_crossent_bwd')(self.y, t, gloss, 1.0 / t.shape[0])
         return gx, None
 

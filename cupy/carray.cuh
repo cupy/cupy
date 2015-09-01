@@ -1,3 +1,8 @@
+// math
+#ifndef M_PI
+#define M_PI 3.1415926535897932384626433832795
+#endif
+
 // float16
 class float16
 {
@@ -120,11 +125,11 @@ public:
   }
 
   __device__ T& operator[](const int* idx) {
-    int offset = 0;
+    char* ptr = reinterpret_cast<char*>(data_);
     for (int dim = 0; dim < ndim; ++dim) {
-      offset += strides_[dim] * idx[dim];
+      ptr += strides_[dim] * idx[dim];
     }
-    return *reinterpret_cast<T*>(reinterpret_cast<char*>(data_) + offset);
+    return *reinterpret_cast<T*>(ptr);
   }
 
   __device__ T operator[](const int* idx) const {
@@ -132,16 +137,16 @@ public:
   }
 
   __device__ T& operator[](int i) {
-    int offset = 0;
+    char* ptr = reinterpret_cast<char*>(data_);
     for (int dim = ndim; --dim > 0; ) {
-      offset += strides_[dim] * (i % shape_[dim]);
+      ptr += strides_[dim] * (i % shape_[dim]);
       i /= shape_[dim];
     }
     if (ndim > 0) {
-      offset += strides_[0] * i;
+      ptr += strides_[0] * i;
     }
 
-    return *reinterpret_cast<T*>(reinterpret_cast<char*>(data_) + offset);
+    return *reinterpret_cast<T*>(ptr);
   }
 
   __device__ T operator[](int i) const {
@@ -149,6 +154,33 @@ public:
   }
 };
 
+template <typename T>
+class CArray<T, 0> {
+private:
+  T* data_;
+  int size_;
+
+public:
+  __device__ int size() const {
+    return size_;
+  }
+
+  __device__ T& operator[](const int* idx) {
+    return *reinterpret_cast<T*>(data_);
+  }
+
+  __device__ T operator[](const int* idx) const {
+    return (*const_cast<CArray<T, 0>*>(this))[idx];
+  }
+
+  __device__ T& operator[](int i) {
+    return *reinterpret_cast<T*>(data_);
+  }
+
+  __device__ T operator[](int i) const {
+    return (*const_cast<CArray<T, 0>*>(this))[i];
+  }
+};
 
 template <int ndim>
 class CIndexer {
@@ -179,6 +211,23 @@ public:
   }
 };
 
+template <>
+class CIndexer<0> {
+private:
+  int size_;
+
+public:
+  __device__ int size() const {
+    return size_;
+  }
+
+  __device__ void set(int i) {
+  }
+
+  __device__ const int* get() const {
+    return NULL;
+  }
+};
 
 __device__ int _floor_divide(int x, int y) {
   if (y == 0) return 0;

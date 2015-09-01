@@ -148,7 +148,7 @@ class MaxPooling2D(Pooling2D):
                int argmax_ky = argmax_y + ph - out_y * sy;
                int argmax_kx = argmax_x + pw - out_x * sx;
                indexes = argmax_kx + kw * argmax_ky;
-            ''', 'max_pool_fwd')(x[0],
+            ''', 'max_pool_fwd')(x[0].reduced_view(),
                                  h, w, y_h, y_w, self.kh, self.kw,
                                  self.sy, self.sx, self.ph, self.pw,
                                  y, self.indexes)
@@ -203,7 +203,7 @@ class MaxPooling2D(Pooling2D):
                }
                gx = val;
             ''',
-            'max_pool_bwd')(gy[0], self.indexes,
+            'max_pool_bwd')(gy[0].reduced_view(), self.indexes.reduced_view(),
                             h, w, y_h, y_w, self.kh, self.kw,
                             self.sy, self.sx, self.ph, self.pw,
                             gx)
@@ -286,7 +286,8 @@ class AveragePooling2D(Pooling2D):
                  }
                }
                out = val * coeff;
-            ''', 'avg_pool_fwd')(x[0], h, w, y_h, y_w, self.kh, self.kw,
+            ''', 'avg_pool_fwd')(x[0].reduced_view(),
+                                 h, w, y_h, y_w, self.kh, self.kw,
                                  self.sy, self.sx, self.ph, self.pw, coeff,
                                  y)
         return y,
@@ -329,7 +330,8 @@ class AveragePooling2D(Pooling2D):
                  }
                }
                gx = val * coeff;
-            ''', 'avg_pool_bwd')(gy[0], h, w, y_h, y_w, self.kh, self.kw,
+            ''', 'avg_pool_bwd')(gy[0].reduced_view(),
+                                 h, w, y_h, y_w, self.kh, self.kw,
                                  self.sy, self.sx, self.ph, self.pw, coeff,
                                  gx)
         return gx,

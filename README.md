@@ -16,12 +16,14 @@ Minimum requirements:
 Requirements for some features:
 - CUDA support
   - CUDA 6.5+
+  - filelock
 - CuDNN support
   - CuDNN v2
 - Caffe model support
   - Python 2.7+ (Py3 is not supported)
   - Protocol Buffers (pip install protobuf)
 - Testing utilities
+  - Mock
   - Nose
 
 ## Installation
