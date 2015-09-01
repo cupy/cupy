@@ -128,7 +128,7 @@ class broadcast(object):
         rev = slice(None, None, -1)
         shape_arr = [a._shape[rev] for a in arrays
                      if isinstance(a, ndarray)]
-        r_shape = [max(ss) for ss in zip_longest(*shape_arr)]
+        r_shape = [max(ss) for ss in zip_longest(*shape_arr, fillvalue=0)]
 
         self.shape = shape = tuple(r_shape[rev])
         self.size = size = internal.prod(shape)
