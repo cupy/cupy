@@ -1,10 +1,17 @@
 """Thin wrapper of CUBLAS."""
 import ctypes
+import sys
 
 from cupy.cuda import driver
 from cupy.cuda import internal
 
-_cublas = internal.load_library('cublas')
+
+if 'win32' == sys.platform:
+    _cublas = internal.load_library(
+        internal.get_windows_cuda_library_names('cublas'))
+else:
+    _cublas = internal.load_library('cublas')
+
 
 _I = ctypes.c_int
 _P = ctypes.c_void_p
