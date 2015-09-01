@@ -52,7 +52,6 @@ class Linear(function.Function):
        and the other dimensions are reduced to one dimension.
 
     """
-
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
                  initialW=None, initial_bias=None):
         self.W = None
@@ -160,12 +159,13 @@ class NonparameterizedLinear(function.Function):
 
     def forward(self, x):
         W = x[1]
-        b = None
-        if len(x) == 3:
-            b = x[2]
         out_size, in_size = W.shape
-        func = Linear(
-            in_size, out_size, initialW=W, initial_bias=b)
+        if len(x) == 3:
+            func = Linear(
+                in_size, out_size, initialW=W, initial_bias=x[2])
+        else:
+            func = Linear(
+                in_size, out_size, initialW=W, nobias=True)
         self.func = func
         if any(isinstance(i, cuda.ndarray) for i in x):
             func.to_gpu()
@@ -180,13 +180,13 @@ class NonparameterizedLinear(function.Function):
         return (gx[0], func.gW, func.gb)
 
 
-def linear(x, W, b=None, stride=1, pad=0, use_cudnn=True):
+def linear(x, W, b=None):
     """Nonparameterized linear function.
 
     Args:
         x (~chainer.Variable): Input variable.
         W (~chainer.Variable): Weight variable.
-        b (~chainer.Variable): Bias variable.
+        b (~chainer.Variable): Bias variable (optional).
 
     Returns:
         ~chainer.Variable: Output variable.
@@ -194,5 +194,7 @@ def linear(x, W, b=None, stride=1, pad=0, use_cudnn=True):
     .. seealso:: :class:`Linear`
 
     """
-
-    return NonparameterizedLinear()(x, W, b)
+    if b is None:
+        return NonparameterizedLinear()(x, W)
+    else:
+        return NonparameterizedLinear()(x, W, b)
