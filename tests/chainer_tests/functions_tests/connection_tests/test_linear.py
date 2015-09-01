@@ -142,11 +142,8 @@ class TestNonparameterizedLinear(unittest.TestCase):
     def check_backward(self, x_data, W_data, b_data, y_grad):
         x = chainer.Variable(x_data)
         W = chainer.Variable(W_data)
-        if b_data is None:
-            y = functions.linear(x, W)
-        else:
-            b = chainer.Variable(b_data)
-            y = functions.linear(x, W, b)
+        b = None if b_data is None else chainer.Variable(b_data)
+        y = functions.linear(x, W, b)
         y.grad = y_grad
         y.backward()
 
