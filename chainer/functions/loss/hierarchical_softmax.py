@@ -121,7 +121,7 @@ class BinaryHierarchicalSoftmax(function.Function):
 
         self.W = numpy.random.uniform(
             -1, 1, (parser.size(), in_size)).astype(numpy.float32)
-        self.gW = numpy.zeros(self.W.shape, numpy.float32)
+        self.gW = numpy.full_like(self.W, numpy.float32('nan'))
 
     @staticmethod
     def create_huffman_tree(word_counts):

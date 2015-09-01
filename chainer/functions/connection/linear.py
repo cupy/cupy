@@ -67,10 +67,8 @@ class Linear(function.Function):
             self.W = numpy.random.normal(
                 0, wscale * math.sqrt(1. / in_size),
                 (out_size, in_size)).astype(numpy.float32)
-        if isinstance(self.W, cuda.ndarray):
-            self.gW = cuda.empty_like(self.W)
-        else:
-            self.gW = numpy.empty_like(self.W)
+        self.gW = cuda.get_array_module(self.W).full_like(
+            self.W, numpy.float32('nan'))
 
         if initial_bias is not None:
             assert initial_bias.shape == (out_size,)
@@ -79,10 +77,8 @@ class Linear(function.Function):
             self.b = numpy.repeat(numpy.float32(bias), out_size)
 
         if self.b is not None:
-            if isinstance(self.b, cuda.ndarray):
-                self.gb = cuda.empty_like(self.b)
-            else:
-                self.gb = numpy.empty_like(self.b)
+            self.gb = cuda.get_array_module(self.b).full_like(
+                self.b, numpy.float32('nan'))
 
     @property
     def parameter_names(self):

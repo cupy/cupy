@@ -39,7 +39,7 @@ class PReLU(function.Function):
 
     def __init__(self, shape=(), init=0.25):
         self.W = numpy.full(shape, init, dtype=numpy.float32)
-        self.gW = numpy.empty_like(self.W)
+        self.gW = numpy.full_like(self.W, numpy.float32('nan'))
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)

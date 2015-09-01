@@ -38,9 +38,9 @@ class BatchNormalization(function.Function):
         self.avg_var = numpy.zeros_like(self.avg_mean)
 
         self.gamma = numpy.ones_like(self.avg_mean)
-        self.ggamma = numpy.empty_like(self.gamma)
+        self.ggamma = numpy.full_like(self.gamma, numpy.float32('nan'))
         self.beta = numpy.zeros_like(self.avg_mean)
-        self.gbeta = numpy.empty_like(self.beta)
+        self.gbeta = numpy.full_like(self.beta, numpy.float32('nan'))
 
         self.decay = decay
         self.N = [0]  # as a reference
