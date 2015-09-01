@@ -3,8 +3,8 @@ import unittest
 import numpy
 
 from chainer import cuda
-from chainer.utils import array
 from chainer.testing import attr
+from chainer.utils import array
 
 
 class TestFullLike(unittest.TestCase):
