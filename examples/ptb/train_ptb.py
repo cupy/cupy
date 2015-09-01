@@ -61,6 +61,7 @@ model = chainer.FunctionSet(embed=F.EmbedID(len(vocab), n_units),
 for param in model.parameters:
     param[:] = np.random.uniform(-0.1, 0.1, param.shape)
 if args.gpu >= 0:
+    cuda.check_cuda_available()
     cuda.get_device(args.gpu).use()
     model.to_gpu()
 

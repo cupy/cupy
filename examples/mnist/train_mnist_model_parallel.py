@@ -34,6 +34,8 @@ x_train, x_test = np.split(mnist['data'],   [N])
 y_train, y_test = np.split(mnist['target'], [N])
 N_test = y_test.size
 
+cuda.check_cuda_available()
+
 # Prepare the multi-layer perceptron model
 # Note that the model splits into two GPUs at the first layer,
 # and share their activations only at third and sixth layers.
