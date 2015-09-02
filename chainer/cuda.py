@@ -61,9 +61,9 @@ if available:
 
 
 def check_cuda_available():
-    """Check if CUDA is available.
+    """Checks if CUDA is available.
 
-    When CUDA is correctly set up, nothing happen.
+    When CUDA is correctly set up, nothing happens.
     Otherwise it raises ``RuntimeError``.
     """
     if not available:
