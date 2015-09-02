@@ -336,13 +336,16 @@ class NonparameterizedConvolution2D(function.Function):
 
     def forward(self, x):
         W = x[1]
-        b = None
         if len(x) == 3:
-            b = x[2]
-        func = Convolution2D(
-            W.shape[1], W.shape[0], W.shape[2:],
-            stride=self.stride, pad=self.pad, use_cudnn=self.use_cudnn,
-            initialW=W, initial_bias=b)
+            func = Convolution2D(
+                W.shape[1], W.shape[0], W.shape[2:],
+                stride=self.stride, pad=self.pad, use_cudnn=self.use_cudnn,
+                initialW=W, initial_bias=x[2])
+        else:
+            func = Convolution2D(
+                W.shape[1], W.shape[0], W.shape[2:],
+                stride=self.stride, pad=self.pad, use_cudnn=self.use_cudnn,
+                initialW=W, nobias=True)
         self.func = func
         if any(isinstance(i, cuda.ndarray) for i in x):
             func.to_gpu()
@@ -363,7 +366,7 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
     Args:
         x (~chainer.Variable): Input variable.
         W (~chainer.Variable): Weight variable.
-        b (~chainer.Variable): Bias  variable.
+        b (~chainer.Variable): Bias  variable (optional).
         stride (int or (int, int)): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
         pad (int or (int, int)): Spatial padding width for input arrays.
@@ -376,5 +379,9 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
     .. seealso:: :class:`Convolution2D`
 
     """
-    return NonparameterizedConvolution2D(
-        stride=stride, pad=pad, use_cudnn=use_cudnn)(x, W, b)
+    if b is None:
+        return NonparameterizedConvolution2D(
+            stride=stride, pad=pad, use_cudnn=use_cudnn)(x, W)
+    else:
+        return NonparameterizedConvolution2D(
+            stride=stride, pad=pad, use_cudnn=use_cudnn)(x, W, b)
