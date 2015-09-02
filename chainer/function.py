@@ -1,4 +1,5 @@
 import copy
+import os
 import weakref
 
 import numpy
@@ -93,12 +94,14 @@ class Function(object):
         gradient_names: A tuple or list of names of gradient attributes. The
             detail is same as :data:`parameter_names`.
         type_check_enable: When it is ``True``, the function checks types of
-            input arguments.
+            input arguments. Set ``CHAINER_TYPE_CHECK`` environment variable
+            ``0`` to disable type check, or set the variable directly in
+            your own program.
 
     """
     parameter_names = ()
     gradient_names = ()
-    type_check_enable = True
+    type_check_enable = int(os.environ.get('CHAINER_TYPE_CHECK', '1')) != 0
 
     def __init__(self):
         self.inputs = None
