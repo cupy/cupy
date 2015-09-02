@@ -5,8 +5,6 @@ import numpy
 
 from chainer import cuda
 
-enable = True
-
 
 class TypeInfo(object):
 
