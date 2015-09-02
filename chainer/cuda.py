@@ -61,6 +61,11 @@ if available:
 
 
 def check_cuda_available():
+    """Check if CUDA is available.
+
+    When CUDA is correctly set up, nothing happen.
+    Otherwise it raises ``RuntimeError``.
+    """
     if not available:
         global _resolution_error
         msg = 'CUDA environment is not correctly set up.\n'
