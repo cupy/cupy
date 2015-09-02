@@ -59,7 +59,7 @@ CuPy implements many functions on cupy.ndarray objects.
 Understanding NumPy might help utilizing most features of CuPy.
 `See the NumPy documentation for learning it <http://docs.scipy.org/doc/numpy/index.html>`_.
 
-The main difference of cupy.ndarray from numpy.ndarray is that the content is allocated on the device memory.
+The main difference of :class:`cupy.ndarray` from :class:`numpy.ndarray` is that the content is allocated on the device memory.
 The allocation takes place on the current device by default.
 The current device can be changed by :class:`cupy.cuda.Device` object as follows::
 
@@ -70,7 +70,7 @@ Most operations of CuPy is done on the current device.
 Be careful that it causes an error to process an array on a non-current device.
 
 Chainer provides some convenient functions to automatically switch and choose the device.
-For example, the :func:`chainer.cuda.to_gpu` function copies a numpy.ndarray object to a specified device::
+For example, the :func:`chainer.cuda.to_gpu` function copies a :class:`numpy.ndarray` object to a specified device::
 
   x_cpu = np.ones((5, 4, 3), dtype=np.float32)
   x_gpu = cuda.to_gpu(x_cpu, device=1)
@@ -147,7 +147,7 @@ Make sure to give parameters and gradients of the GPU version to the optimizer. 
   optimizer = optimizers.SGD()
   optimizer.setup(model)
 
-Note that this method returns the function set itself.
+Note that this method returns the :class:`FunctionSet` itself.
 The device specifier can be omitted, in which case it uses the current device.
 
 Then, all we have to do is transferring each minibatch to the GPU::
