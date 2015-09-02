@@ -26,7 +26,7 @@ class ConnectionistTemporalClassification(function.Function):
             return cuda.to_gpu(rr)
 
     def force_cpu(self, v):
-        if cuda.get_array_module(v) == cuda.cupy:
+        if cuda.get_array_module(v) != numpy:
             v = cuda.to_cpu(v)
         return v
 
@@ -73,7 +73,7 @@ class ConnectionistTemporalClassification(function.Function):
         backward_prob = numpy.ma.log(numpy.eye(path.shape[0])[0])\
                                 .filled(fill_value=self.zero_padding)
         xp = cuda.get_array_module(yseq[0])
-        if xp == cuda.cupy:
+        if xp != numpy:
             forward_prob = cuda.to_gpu(forward_prob)
             backward_prob = cuda.to_gpu(backward_prob)
 
@@ -83,7 +83,7 @@ class ConnectionistTemporalClassification(function.Function):
         for t in range(len(yseq)):
             # calc forward probability in log scale
             y = self.force_cpu(yseq[t])
-            if xp == cuda.cupy:
+            if xp != numpy:
                 forward_prob = cuda.to_gpu(cuda.to_cpu(y[path])) \
                     + self.log_dot(forward_prob, rr)
             else:
@@ -94,7 +94,7 @@ class ConnectionistTemporalClassification(function.Function):
             y_inv = self.force_cpu(yseq[len(yseq) - t - 1])
             backward_prob = self.log_dot(backward_prob, rr)
             beta += backward_prob[::-1],
-            if xp == cuda.cupy:
+            if xp != numpy:
                 backward_prob = cuda.to_gpu(y_inv[path[::-1]]) + backward_prob
             else:
                 backward_prob = y_inv[path[::-1]] + backward_prob
@@ -108,7 +108,7 @@ class ConnectionistTemporalClassification(function.Function):
         for y in yseq:
             log_y = numpy.ma.log(self.force_cpu(y))\
                             .filled(fill_value=self.zero_padding)
-            if xp == cuda.cupy:
+            if xp != numpy:
                 log_y = cuda.to_gpu(log_y)
             log_yseq += log_y,
         return labels, log_yseq
@@ -120,7 +120,7 @@ class ConnectionistTemporalClassification(function.Function):
             numpy.exp(y)
             - numpy.exp(label_prob
                         - total_prob)).astype(numpy.float32)
-        if xp == cuda.cupy:
+        if xp != numpy:
             differential = cuda.to_gpu(differential)
         return differential
 
