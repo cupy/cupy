@@ -49,6 +49,8 @@ parser.add_argument('--loaderjob', '-j', default=20, type=int,
 parser.add_argument('--out', '-o', default='model',
                     help='Path to save model on each validation')
 args = parser.parse_args()
+if args.gpu >= 0:
+    cuda.check_cuda_available()
 xp = cuda.cupy if args.gpu >= 0 else np
 
 assert 50000 % args.val_batchsize == 0

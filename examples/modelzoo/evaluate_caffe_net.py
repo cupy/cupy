@@ -37,6 +37,8 @@ parser.add_argument('--batchsize', '-B', type=int, default=100,
 parser.add_argument('--gpu', '-g', type=int, default=-1,
                     help='Zero-origin GPU ID (nevative value indicates CPU)')
 args = parser.parse_args()
+if args.gpu >= 0:
+    cuda.check_cuda_available()
 xp = cuda.cupy if args.gpu >= 0 else np
 assert args.batchsize > 0
 
