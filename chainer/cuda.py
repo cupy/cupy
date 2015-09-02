@@ -60,7 +60,12 @@ if available:
         _resolution_error = e
 
 
-def _check_cuda_available():
+def check_cuda_available():
+    """Checks if CUDA is available.
+
+    When CUDA is correctly set up, nothing happens.
+    Otherwise it raises ``RuntimeError``.
+    """
     if not available:
         global _resolution_error
         msg = 'CUDA environment is not correctly set up.\n'
@@ -137,7 +142,7 @@ def get_device(*args):
         if arg is None:
             continue
         if not isinstance(arg, numpy.ndarray):
-            _check_cuda_available()
+            check_cuda_available()
             if isinstance(arg, cupy.ndarray):
                 return arg.device
             else:
@@ -166,7 +171,7 @@ def to_gpu(array, device=None, stream=None):
         copy cupy.ndarray into specified device.
 
     """
-    _check_cuda_available()
+    check_cuda_available()
     assert stream is None  # TODO(beam2d): FIX IT
     with get_device(device):
         return cupy.asarray(array)
@@ -207,7 +212,7 @@ def empty(shape, dtype=numpy.float32):
     warnings.warn(
         'chainer.cuda.empty is deprecated. Use cupy.empty instead.',
         DeprecationWarning)
-    _check_cuda_available()
+    check_cuda_available()
     return cupy.empty(shape, dtype)
 
 
@@ -227,7 +232,7 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
     warnings.warn(
         'chainer.cuda.full is deprecated. Use cupy.full instead.',
         DeprecationWarning)
-    _check_cuda_available()
+    check_cuda_available()
     assert stream is None
     return cupy.full(shape, fill_value, dtype=dtype)
 
@@ -241,7 +246,7 @@ def zeros(shape, dtype=numpy.float32, stream=None):
     warnings.warn(
         'chainer.cuda.zeros is deprecated. Use cupy.zeros instead.',
         DeprecationWarning)
-    _check_cuda_available()
+    check_cuda_available()
     assert stream is None
     return cupy.zeros(shape, dtype=dtype)
 
@@ -255,7 +260,7 @@ def ones(shape, dtype=numpy.float32, stream=None):
     warnings.warn(
         'chainer.cuda.ones is deprecated. Use cupy.ones instead.',
         DeprecationWarning)
-    _check_cuda_available()
+    check_cuda_available()
     assert stream is None
     return cupy.ones(shape, dtype=dtype)
 
@@ -273,7 +278,7 @@ def empty_like(array):
     warnings.warn(
         'chainer.cuda.empty_like is deprecated. Use cupy.empty_like instead.',
         DeprecationWarning)
-    _check_cuda_available()
+    check_cuda_available()
     if isinstance(array, cupy.ndarray):
         return cupy.empty_like(array)
     return cupy.empty(array.shape, dtype=array.dtype)
@@ -294,7 +299,7 @@ def full_like(array, fill_value, stream=None):
     warnings.warn(
         'chainer.cuda.full_like is deprecated. Use cupy.full_like instead.',
         DeprecationWarning)
-    _check_cuda_available()
+    check_cuda_available()
     assert stream is None
     if isinstance(array, cupy.ndarray):
         return cupy.full_like(array, fill_value)
@@ -315,7 +320,7 @@ def zeros_like(array, stream=None):
     warnings.warn(
         'chainer.cuda.zeros_like is deprecated. Use cupy.zeros_like instead.',
         DeprecationWarning)
-    _check_cuda_available()
+    check_cuda_available()
     assert stream is None
     if isinstance(array, cupy.ndarray):
         return cupy.zeros_like(array)
@@ -336,7 +341,7 @@ def ones_like(array, stream=None):
     warnings.warn(
         'chainer.cuda.ones_like is deprecated. Use cupy.ones_like instead.',
         DeprecationWarning)
-    _check_cuda_available()
+    check_cuda_available()
     assert stream is None
     if isinstance(array, cupy.ndarray):
         return cupy.ones_like(array)
@@ -364,7 +369,7 @@ def copy(array, out=None, out_device=None, stream=None):
         specified by ``out_device`` argument.
 
     """
-    _check_cuda_available()
+    check_cuda_available()
     assert stream is None  # TODO(beam2d): FIX IT
 
     if out is None:
@@ -422,7 +427,7 @@ def elementwise(in_params, out_params, operation, name, **kwargs):
     mandatory.
 
     """
-    _check_cuda_available()
+    check_cuda_available()
     return cupy.ElementwiseKernel(
         in_params, out_params, operation, name, **kwargs)
 
@@ -441,7 +446,7 @@ def reduce(in_params, out_params, map_expr, reduce_expr, post_map_expr,
     mandatory.
 
     """
-    _check_cuda_available()
+    check_cuda_available()
     return cupy.ReductionKernel(
         in_params, out_params, map_expr, reduce_expr, post_map_expr,
         identity, name, **kwargs)

@@ -1,4 +1,5 @@
 import copy
+import os
 import weakref
 
 import numpy
@@ -92,10 +93,15 @@ class Function(object):
             or otherwise it should override :meth:`parameters` property.
         gradient_names: A tuple or list of names of gradient attributes. The
             detail is same as :data:`parameter_names`.
+        type_check_enable: When it is ``True``, the function checks types of
+            input arguments. Set ``CHAINER_TYPE_CHECK`` environment variable
+            ``0`` to disable type check, or set the variable directly in
+            your own program.
 
     """
     parameter_names = ()
     gradient_names = ()
+    type_check_enable = int(os.environ.get('CHAINER_TYPE_CHECK', '1')) != 0
 
     def __init__(self):
         self.inputs = None
@@ -134,7 +140,8 @@ class Function(object):
             assert all(x.volatile for x in inputs)
 
             in_data = tuple(x.data for x in inputs)
-            self._check_data_type_forward(in_data)
+            if self.type_check_enable:
+                self._check_data_type_forward(in_data)
             with cuda.get_device(*in_data):
                 out_data = self.forward(in_data)
             assert type(out_data) == tuple
@@ -161,7 +168,8 @@ class Function(object):
             self.rank = 0
 
         in_data = tuple(x.data for x in self.inputs)
-        self._check_data_type_forward(in_data)
+        if self.type_check_enable:
+            self._check_data_type_forward(in_data)
         with cuda.get_device(*in_data):
             outputs = self.forward(in_data)
         assert type(outputs) == tuple

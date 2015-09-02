@@ -1,33 +1,22 @@
-def sort(a, axis=-1, kind='quicksort', order=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# flake8: NOQA
+# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+
+# TODO(okuta): Implement sort
 
 
-def lexsort(keys, axis=-1):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement lexsort
 
 
-def argsort(a, axis=-1, kind='quicksort', order=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement argsort
 
 
-def msort(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement msort
 
 
-def sort_complex(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement sort_complex
 
 
-def partition(a, kth, axis=-1, kind='introselect', order=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement partition
 
 
-def argpartition(a, kth, axis=-1, kind='introselect', order=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement argpartition

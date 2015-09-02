@@ -1,24 +1,16 @@
 from cupy.logic import ufunc
 
 
-def allclose(a, b, rtol=1e-05, atol=1e-08):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement allclose
 
 
-def isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement isclose
 
 
-def array_equal(a1, a2):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement array_equal
 
 
-def array_equiv(a1, a2):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement array_equiv
 
 
 greater = ufunc.create_comparison(

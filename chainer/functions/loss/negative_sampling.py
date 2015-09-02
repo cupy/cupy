@@ -61,7 +61,7 @@ class NegativeSampling(function.Function):
 
         vocab_size = len(counts)
         self.W = numpy.zeros((vocab_size, in_size)).astype(numpy.float32)
-        self.gW = numpy.zeros_like(self.W)
+        self.gW = numpy.full_like(self.W, numpy.nan)
 
     def _make_samples(self, t):
         if hasattr(self, 'samples'):

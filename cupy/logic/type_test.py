@@ -1,23 +1,16 @@
-def iscomplex(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# flake8: NOQA
+# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+
+# TODO(okuta): Implement iscomplex
 
 
-def iscomplexobj(x):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement iscomplexobj
 
 
-def isfortran(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement isfortran
 
 
-def isreal(x):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement isreal
 
 
-def isrealobj(x):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement isrealobj

@@ -1,18 +1,13 @@
-def fliplr(m):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# flake8: NOQA
+# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+
+# TODO(okuta): Implement fliplr
 
 
-def flipud(m):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement flipud
 
 
-def roll(a, shift, axis=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement roll
 
 
-def rot90(m, k=1):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement rot90

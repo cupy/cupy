@@ -365,19 +365,13 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape):
     return ret
 
 
-def einsum(subscripts, *args):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement einsum
 
 
-def matrix_power(M, n):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement matrix_power
 
 
-def kron(a, b):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement kron
 
 
 def _move_axes_to_head(a, axes):

@@ -1,26 +1,17 @@
-import numpy
+# flake8: NOQA
+# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
 
 
-def asfarray(a, dtype=numpy.float64):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement asfarray
 
 
-def asfortranarray(a, dtype=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement asfortranarray
 
 
-def asarray_chkfinite(a, dtype=None, order=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement asarray_chkfinite
 
 
-def asscalar(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement asscalar
 
 
-def require(a, dtype=None, requirements=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement require

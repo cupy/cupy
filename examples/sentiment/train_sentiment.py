@@ -26,6 +26,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
+if args.gpu >= 0:
+    cuda.check_cuda_available()
 xp = cuda.cupy if args.gpu >= 0 else np
 
 n_epoch = 400       # number of epochs
