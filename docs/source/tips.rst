@@ -17,3 +17,4 @@ The compiled binaries are cached to the ``$(HOME)/.cupy/kernel_cache`` directory
 If you see that compilations run everytime you run the same script, then the caching is failed.
 Please check that the directory is kept as is between multiple executions of the script.
 If your home directory is not suited to caching the kernels (e.g. in case that it uses NFS), change the kernel caching directory by setting the ``CUPY_CACHE_DIR`` environment variable to an appropriate path.
+See :ref:`cupy-overview` for more details.
