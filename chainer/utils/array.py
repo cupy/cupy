@@ -16,7 +16,3 @@ def empty_like(x):
         return cuda.empty_like(x)
     else:
         return numpy.empty_like(x)
-
-
-def full_like(x, value):
-    return cuda.get_array_module(x).full_like(x, value)

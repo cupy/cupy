@@ -115,8 +115,8 @@ class Convolution2D(function.Function):
                 0, wscale * math.sqrt(1. / (self.kh * self.kw * in_channels)),
                 (out_channels, in_channels, self.kh, self.kw)
             ).astype(self.dtype)
-        self.gW = cuda.get_array_module(self.W).full_like(
-            self.W, numpy.nan)
+        xp = cuda.get_array_module(self.W)
+        self.gW = xp.full_like(self.W, numpy.nan)
 
         if initial_bias is not None:
             assert initial_bias.shape == (out_channels,)
@@ -125,8 +125,7 @@ class Convolution2D(function.Function):
             self.b = numpy.repeat(self.dtype.type(bias), out_channels)
 
         if self.b is not None:
-            self.gb = cuda.get_array_module(self.b).full_like(
-                self.b, numpy.nan)
+            self.gb = xp.full_like(self.b, numpy.nan)
 
         self.use_cudnn = use_cudnn
         if cuda.cudnn_enabled and use_cudnn:
