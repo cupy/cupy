@@ -68,7 +68,7 @@ class Linear(function.Function):
                 0, wscale * math.sqrt(1. / in_size),
                 (out_size, in_size)).astype(numpy.float32)
         self.gW = cuda.get_array_module(self.W).full_like(
-            self.W, numpy.float32('nan'))
+            self.W, numpy.nan)
 
         if initial_bias is not None:
             assert initial_bias.shape == (out_size,)
@@ -78,7 +78,7 @@ class Linear(function.Function):
 
         if self.b is not None:
             self.gb = cuda.get_array_module(self.b).full_like(
-                self.b, numpy.float32('nan'))
+                self.b, numpy.nan)
 
     @property
     def parameter_names(self):

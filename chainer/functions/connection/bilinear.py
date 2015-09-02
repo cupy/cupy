@@ -123,11 +123,11 @@ class Bilinear(function.Function):
                     (self.in_sizes[1], out_size)).astype(numpy.float32)
                 self.b = numpy.zeros((out_size, ), dtype=numpy.float32)
 
-        self.gW = array.full_like(self.W, numpy.float32('nan'))
+        self.gW = array.full_like(self.W, numpy.nan)
         if not self.nobias:
-            self.gV1 = array.full_like(self.V1, numpy.float32('nan'))
-            self.gV2 = array.full_like(self.V2, numpy.float32('nan'))
-            self.gb = array.full_like(self.b, numpy.float32('nan'))
+            self.gV1 = array.full_like(self.V1, numpy.nan)
+            self.gV2 = array.full_like(self.V2, numpy.nan)
+            self.gb = array.full_like(self.b, numpy.nan)
 
     @property
     def parameter_names(self):

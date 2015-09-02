@@ -31,7 +31,7 @@ class EmbedID(function.Function):
 
     def __init__(self, in_size, out_size):
         self.W = numpy.random.randn(in_size, out_size).astype(numpy.float32)
-        self.gW = numpy.full_like(self.W, numpy.float32('nan'))
+        self.gW = numpy.full_like(self.W, numpy.nan)
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)

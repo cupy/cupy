@@ -20,7 +20,7 @@ class Parameter(function.Function):
 
     def __init__(self, array):
         self.W = array
-        self.gW = numpy.full_like(array, numpy.float32('nan'))
+        self.gW = numpy.full_like(array, numpy.nan)
 
     def __call__(self, volatile=False):
         ret = super(Parameter, self).__call__()
