@@ -43,22 +43,13 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
         a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-def nanmin(a, axis=None, out=None, keepdims=False):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement nanmin
 
 
-def nanmax(a, axis=None, out=None, keepdims=False):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement nanmax
 
 
-def ptp(a, axis=None, out=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement ptp
 
 
-def percentile(a, q, axis=None, out=None, overwrite_input=False,
-               interpolation='linear', keepdims=False):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement percentile

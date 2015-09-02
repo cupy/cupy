@@ -1,9 +1,7 @@
 from cupy.math import ufunc
 
 
-def around(a, decimals=0, out=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement around
 
 
 # TODO(beam2d): Implement it
@@ -19,9 +17,7 @@ rint = ufunc.create_math_ufunc(
     ''')
 
 
-def fix(x, y=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement fix
 
 
 floor = ufunc.create_math_ufunc(

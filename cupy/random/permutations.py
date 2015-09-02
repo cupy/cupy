@@ -1,8 +1,7 @@
-def shuffle(x):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# flake8: NOQA
+# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+
+# TODO(okuta): Implement shuffle
 
 
-def permutation(x):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement permutation

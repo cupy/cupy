@@ -111,9 +111,7 @@ def ascontiguousarray(a, dtype=None):
         return newarray
 
 
-def asmatrix(data, dtype=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement asmatrix
 
 
 def copy(a):
@@ -155,32 +153,19 @@ def copy(a):
     return newarray
 
 
-def frombuffer(buffer, dtype=float, count=-1, offset=0):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement frombuffer
 
 
-def fromfile(file, dtype=float, count=-1, sep=''):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement fromfile
 
 
-def fromfunction(function, shape, **kwargs):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement fromfunction
 
 
-def fromiter(iterable, dtype, count=-1):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement fromiter
 
 
-def fromstring(string, dtype=float, count=-1, sep=''):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement fromstring
 
 
-def loadtxt(fname, dtype=numpy.float64, comments='#', delimiter=None,
-            converters=None, skiprows=0, usecols=None, unpack=False, ndmin=0):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement loadtxt

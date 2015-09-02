@@ -1,26 +1,16 @@
-def norm(x, ord=None, axis=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement norm
 
 
-def cond(x, p=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement cond
 
 
-def det(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement det
 
 
-def matrix_rank(M, tol=None):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement matrix_rank
 
 
-def slogdet(a):
-    # TODO(beam2d): Implement it
-    raise NotImplementedError
+# TODO(okuta): Implement slogdet
 
 
 def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
