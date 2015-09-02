@@ -1,3 +1,5 @@
+.. _cupy-overview:
+
 CuPy Overview
 =============
 
