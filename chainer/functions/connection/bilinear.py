@@ -123,11 +123,12 @@ class Bilinear(function.Function):
                     (self.in_sizes[1], out_size)).astype(numpy.float32)
                 self.b = numpy.zeros((out_size, ), dtype=numpy.float32)
 
-        self.gW = array.empty_like(self.W)
+        xp = cuda.get_array_module(self.W)
+        self.gW = xp.full_like(self.W, numpy.nan)
         if not self.nobias:
-            self.gV1 = array.empty_like(self.V1)
-            self.gV2 = array.empty_like(self.V2)
-            self.gb = array.empty_like(self.b)
+            self.gV1 = xp.full_like(self.V1, numpy.nan)
+            self.gV2 = xp.full_like(self.V2, numpy.nan)
+            self.gb = xp.full_like(self.b, numpy.nan)
 
     @property
     def parameter_names(self):
