@@ -44,7 +44,7 @@ class ConnectionistTemporalClassification(function.Function):
         return path
 
     def log_dot(self, prob, rr):
-        xp = cuda.cupy.get_array_module(prob)
+        xp = cuda.get_array_module(prob)
         res = xp.zeros(prob.shape)
         rtrans = xp.swapaxes(rr, 1, 0)
         for i in range(rtrans.shape[0]):
@@ -52,7 +52,7 @@ class ConnectionistTemporalClassification(function.Function):
         return res
 
     def logsumexp(self, a):
-        xp = cuda.cupy.get_array_module(a)
+        xp = cuda.get_array_module(a)
         vmax = xp.amax(a)
         res = xp.log(xp.sum(xp.exp(a - vmax)))
         return (res + vmax).astype(numpy.float32)
@@ -145,7 +145,7 @@ class ConnectionistTemporalClassification(function.Function):
         label, yseq = self.convert_inputs(inputs[0], yseq)
         path = self.label_to_path(label)
         rr = self.recurrence_relation(path.shape[0],
-                                      cuda.cupy.get_array_module(yseq[0]))
+                                      cuda.get_array_module(yseq[0]))
         forward_prob_trans, backward_prob_trans\
             = self.calc_trans(path, yseq, rr)
         return utils.force_array(- self.logsumexp(forward_prob_trans[-1]
@@ -156,7 +156,7 @@ class ConnectionistTemporalClassification(function.Function):
         label, yseq = self.convert_inputs(inputs[0], yseq)
         path = self.label_to_path(label)
         rr = self.recurrence_relation(path.shape[0],
-                                      cuda.cupy.get_array_module(yseq[0]))
+                                      cuda.get_array_module(yseq[0]))
         result = (None,)
         forward_prob_trans, backward_prob_trans\
             = self.calc_trans(path, yseq, rr)
