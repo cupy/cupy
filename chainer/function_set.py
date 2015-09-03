@@ -5,6 +5,7 @@ import warnings
 from chainer import cuda
 from chainer import function
 
+
 class FunctionSet(object):
 
     """Set of objects with ``parameters`` and ``gradients`` properties.
@@ -77,7 +78,7 @@ class FunctionSet(object):
 
         """
         for func in six.itervalues(self.__dict__):
-            if issubclass(type(func), function.Function):
+            if isinstance(func, (function.Function, FunctionSet)):
                 func.to_gpu(device=device)
         return self
 
@@ -91,7 +92,7 @@ class FunctionSet(object):
 
         """
         for func in six.itervalues(self.__dict__):
-            if issubclass(type(func), function.Function):
+            if isinstance(func, (function.Function, FunctionSet)):
                 func.to_cpu()
         return self
 
@@ -146,4 +147,6 @@ class FunctionSet(object):
             func.gradients = grad_iter
 
     def _get_sorted_funcs(self):
-        return sorted([func for func in six.iteritems(self.__dict__) if issubclass(type(func), function.Function)])
+        return sorted(
+            [func for func in six.iteritems(self.__dict__)
+             if isinstance(func, (function.Function, FunctionSet))])
