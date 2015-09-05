@@ -148,5 +148,6 @@ class FunctionSet(object):
 
     def _get_sorted_funcs(self):
         return sorted(
-            [func for func in six.iteritems(self.__dict__)
-             if isinstance(func, (function.Function, FunctionSet))])
+            [func_tuple for func_tuple in six.iteritems(self.__dict__)
+             if isinstance(func_tuple, tuple) and
+             isinstance(func_tuple[1], (function.Function, FunctionSet))])
