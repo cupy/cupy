@@ -52,8 +52,9 @@ _typenames = {
     numpy.dtype('bool'): 'bool',
 }
 
-
-_scalar_type = (int, float, bool) + tuple(t.type for t in _typenames.keys())
+_python_scalar_type = six.integer_types + (float, bool)
+_scalar_type = _python_scalar_type + tuple(
+    t.type for t in _typenames.keys())
 
 
 def _get_typename(dtype):
@@ -501,7 +502,7 @@ def _guess_routine_from_dtype(ops, dtype):
 def _guess_routine(name, cache, ops, in_args, dtype):
     if dtype is None:
         key = tuple([numpy.dtype(type(i)).type
-                     if isinstance(i, (int, float, bool)) else i.dtype.type
+                     if isinstance(i, _python_scalar_type) else i.dtype.type
                      for i in in_args])
     else:
         key = dtype
