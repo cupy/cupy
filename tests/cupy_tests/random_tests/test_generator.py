@@ -1,9 +1,112 @@
+import mock
 import unittest
 
+import numpy
+
+from cupy.cuda import curand
+from cupy.random import generator
 from cupy import testing
 
 
 @testing.gpu
-class TestGenerator(unittest.TestCase):
+class TestRandomState(unittest.TestCase):
 
     _multiprocess_can_split_ = True
+    args = (0.0, 1.0)
+    size = None
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def check_lognormal(self, curand_func, dtype):
+        out = self.rs.lognormal(self.args[0], self.args[1], self.size, dtype)
+        curand_func.assert_called_once_with(
+            self.rs._generator, out.data.ptr,
+            out.size, self.args[0], self.args[1])
+
+    def test_lognormal_float32(self):
+        curand.generateLogNormal = mock.Mock()
+        self.check_lognormal(curand.generateLogNormal, numpy.float32)
+
+    def test_lognormal_float64(self):
+        curand.generateLogNormalDouble = mock.Mock()
+        self.check_lognormal(curand.generateLogNormalDouble, numpy.float64)
+
+    def check_normal(self, curand_func, dtype):
+        out = self.rs.normal(self.args[0], self.args[1], self.size, dtype)
+        curand_func.assert_called_once_with(
+            self.rs._generator, out.data.ptr,
+            out.size, self.args[0], self.args[1])
+
+    def test_normal_float32(self):
+        curand.generateNormal = mock.Mock()
+        self.check_normal(curand.generateNormal, numpy.float32)
+
+    def test_normal_float64(self):
+        curand.generateNormalDouble = mock.Mock()
+        self.check_normal(curand.generateNormalDouble, numpy.float64)
+
+    def check_random_sample(self, curand_func, dtype):
+        out = self.rs.random_sample(self.size, dtype)
+        curand_func.assert_called_once_with(
+            self.rs._generator, out.data.ptr, out.size)
+
+    def test_random_sample_float32(self):
+        curand.generateUniform = mock.Mock()
+        self.check_random_sample(curand.generateUniform, numpy.float32)
+
+    def test_random_sample_float64(self):
+        curand.generateUniformDouble = mock.Mock()
+        self.check_random_sample(curand.generateUniformDouble, numpy.float64)
+
+
+class TestRandAndRandN(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def test_rand(self):
+        with self.assertRaises(TypeError):
+            self.rs.rand(1, 2, 3, unnecessary='unnecessary_argument')
+
+    def test_randn(self):
+        with self.assertRaises(TypeError):
+            self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+class TestGetSize(unittest.TestCase):
+
+    def test_none(self):
+        self.assertEqual(generator._get_size(None), ())
+
+    def check_collection(self, a):
+        self.assertEqual(generator._get_size(a), tuple(a))
+
+    def test_list(self):
+        self.check_collection([1, 2, 3])
+
+    def test_tuple(self):
+        self.check_collection((1, 2, 3))
+
+    def test_int(self):
+        self.assertEqual(generator._get_size(1), (1,))
+
+    def test_float(self):
+        with self.assertRaises(ValueError):
+            generator._get_size(1.0)
+
+
+class TestCheckAndGetDtype(unittest.TestCase):
+
+    @testing.for_float_dtypes(no_float16=True)
+    def test_float32_64_type(self, dtype):
+        self.assertEqual(generator._check_and_get_dtype(dtype),
+                         numpy.dtype(dtype))
+
+    def test_float16(self):
+        with self.assertRaises(TypeError):
+            generator._check_and_get_dtype(numpy.float16)
+
+    @testing.for_int_dtypes()
+    def test_int_type(self, dtype):
+        with self.assertRaises(TypeError):
+            generator._check_and_get_dtype(dtype)
