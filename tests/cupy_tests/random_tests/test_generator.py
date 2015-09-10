@@ -100,6 +100,7 @@ class TestRandomState4(TestRandomState):
     size = (1, 2, 3)
 
 
+@testing.gpu
 class TestRandAndRandN(unittest.TestCase):
 
     def setUp(self):
