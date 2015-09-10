@@ -8,37 +8,42 @@ class ConnectionistTemporalClassification(function.Function):
 
     def __init__(self, blank_symbol):
         self.blank_symbol = blank_symbol
-        self.zero_padding = -10000000000
+        self.zero_padding = -10000000000.0
 
     '''
     Transtion in forword and backword algorithms is represented as matrix.
     See also
     https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
     '''
-    def recurrence_relation(self, size, xp):
-        big_I = numpy.eye(size+2)
-        rr = numpy.ma.log((numpy.eye(size) + big_I[2:, 1:-1] +
-                           big_I[2:, :-2] * (numpy.arange(size) % 2)))\
-                     .filled(fill_value=self.zero_padding)
+
+    def log_matrix(self, x):
+        xp = cuda.get_array_module(x)
         if xp == numpy:
-            return rr
+            res = numpy.ma.log(x).filled(fill_value=self.zero_padding)
         else:
-            return cuda.to_gpu(rr)
+            create_recurrence_relation = cuda.cupy.ElementwiseKernel(
+                'T x, T e', 'T y',
+                '''
+                if(x == 0){
+                      y = e;
+                }else{
+                      y = log(x);
+                }
+                ''',
+                'create_recurrence_relation')
+            res = create_recurrence_relation(x, self.zero_padding)
+        return res
 
-    def force_cpu(self, v):
-        if cuda.get_array_module(v) != numpy:
-            v = cuda.to_cpu(v)
-        return v
-
-    def force_gpu(self, v):
-        if cuda.get_array_module(v) == numpy:
-            v = cuda.to_gpu(v)
-        return v
+    def recurrence_relation(self, size, xp):
+        rr = (xp.eye(size) + xp.eye(size, k=1) +
+              xp.eye(size, k=2) * (xp.arange(size) % 2))
+        return self.log_matrix(rr)
 
     def label_to_path(self, labels):
+        xp = cuda.get_array_module(labels)
         label_length = labels.shape[0]
-        path = numpy.full((label_length * 2 + 1,),
-                          self.blank_symbol, dtype=int)
+        path = xp.full((label_length * 2 + 1,),
+                       self.blank_symbol, dtype=int)
         for i in range(label_length):
             path[i * 2 + 1] = labels[i]
         return path
@@ -59,74 +64,71 @@ class ConnectionistTemporalClassification(function.Function):
 
     # path probablity to label probability
     def label_probability(self, label_size, path, multiply):
-        labels_prob = numpy.ma.log(numpy.zeros(label_size))\
-                              .filled(fill_value=self.zero_padding)
+        xp = cuda.get_array_module(path)
         chars = set([c for c in path])
-        for c in chars:
-            pos = numpy.where(path == c)[0]
-            labels_prob[c] = self.logsumexp(self.force_cpu(multiply)[pos, ])
+        labels_prob = self.log_matrix(xp.zeros((label_size,),
+                                               dtype=numpy.float32))
+        if xp == numpy:
+            for c in chars:
+                pos = numpy.where(path == c)[0]
+                labels_prob[c] = self.logsumexp(xp.take(multiply, pos))
+        else:
+            cuda.cupy.ElementwiseKernel(
+                'raw float32 x, raw I y, I s',
+                'float32 z',
+                '''
+                float value = z;
+                for(int index=0;index<s;++index){
+                    if(y[index] == i){
+                        if(value > x[index]){
+                            value = value + log(1 + exp(x[index] - value));
+                        }else{
+                            value = x[index] + log(1 + exp(value -x[index]));
+                        }
+                    }
+                    atomicExch(&z, value);
+                }
+                ''',
+                'reduce_probability')(multiply.astype(numpy.float32),
+                                      path, path.shape[0], labels_prob)
         return labels_prob
 
     def calc_trans(self, path, yseq, rr):
-        forward_prob = numpy.ma.log(numpy.eye(path.shape[0])[0])\
-                               .filled(fill_value=self.zero_padding)
-        backward_prob = numpy.ma.log(numpy.eye(path.shape[0])[0])\
-                                .filled(fill_value=self.zero_padding)
         xp = cuda.get_array_module(yseq[0])
-        if xp != numpy:
-            forward_prob = cuda.to_gpu(forward_prob)
-            backward_prob = cuda.to_gpu(backward_prob)
+        forward_prob = self.log_matrix(xp.eye(path.shape[0])[0])
+        backward_prob = self.log_matrix(xp.eye(path.shape[0])[0])
 
         alpha = ()
         beta = ()
 
         for t in range(len(yseq)):
             # calc forward probability in log scale
-            y = self.force_cpu(yseq[t])
-            if xp != numpy:
-                forward_prob = cuda.to_gpu(cuda.to_cpu(y[path])) \
-                    + self.log_dot(forward_prob, rr)
-            else:
-                forward_prob = y[path] + self.log_dot(forward_prob, rr)
+            y = yseq[t]
+            forward_prob = xp.take(y, path) + self.log_dot(forward_prob, rr)
             alpha += forward_prob,
 
             # calc backward probability
-            y_inv = self.force_cpu(yseq[len(yseq) - t - 1])
+            y_inv = yseq[len(yseq) - t - 1]
             backward_prob = self.log_dot(backward_prob, rr)
             beta += backward_prob[::-1],
-            if xp != numpy:
-                backward_prob = cuda.to_gpu(y_inv[path[::-1]]) + backward_prob
-            else:
-                backward_prob = y_inv[path[::-1]] + backward_prob
+            backward_prob = xp.take(y_inv, path[::-1]) + backward_prob
         return alpha, beta[::-1]
 
     def convert_inputs(self, labels, yseq):
-        xp = cuda.get_array_module(labels)
-        labels = self.force_cpu(labels)
         log_yseq = ()
-
         for y in yseq:
-            log_y = numpy.ma.log(self.force_cpu(y))\
-                            .filled(fill_value=self.zero_padding)
-            if xp != numpy:
-                log_y = cuda.to_gpu(log_y)
-            log_yseq += log_y,
+            log_yseq += self.log_matrix(y),
         return labels, log_yseq
 
     def calc_differential(self, label_prob, y, total_prob):
         xp = cuda.get_array_module(y)
-        y = self.force_cpu(y)
         differential = utils.force_array(
-            numpy.exp(y)
-            - numpy.exp(label_prob
-                        - total_prob)).astype(numpy.float32)
-        if xp != numpy:
-            differential = cuda.to_gpu(differential)
+            xp.exp(y) - xp.exp(label_prob
+                               - total_prob)).astype(numpy.float32)
         return differential
 
     def calc_totalprob(self, forward_prob, backward_prob):
-        return self.force_cpu(self.logsumexp(forward_prob[0]
-                                             + backward_prob[0]))
+        return self.logsumexp(forward_prob[0] + backward_prob[0])
 
     def softmax(self, x):
         xp = cuda.get_array_module(x)
