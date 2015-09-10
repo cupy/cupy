@@ -3,6 +3,7 @@ import six
 import warnings
 
 from chainer import cuda
+from chainer import function
 
 
 class FunctionSet(object):
@@ -77,7 +78,8 @@ class FunctionSet(object):
 
         """
         for func in six.itervalues(self.__dict__):
-            func.to_gpu(device=device)
+            if isinstance(func, (function.Function, FunctionSet)):
+                func.to_gpu(device=device)
         return self
 
     def to_cpu(self):
@@ -90,7 +92,8 @@ class FunctionSet(object):
 
         """
         for func in six.itervalues(self.__dict__):
-            func.to_cpu()
+            if isinstance(func, (function.Function, FunctionSet)):
+                func.to_cpu()
         return self
 
     def copy_parameters_from(self, params):
@@ -144,4 +147,6 @@ class FunctionSet(object):
             func.gradients = grad_iter
 
     def _get_sorted_funcs(self):
-        return sorted(six.iteritems(self.__dict__))
+        return sorted(
+            [func_tuple for func_tuple in six.iteritems(self.__dict__)
+             if isinstance(func_tuple[1], (function.Function, FunctionSet))])

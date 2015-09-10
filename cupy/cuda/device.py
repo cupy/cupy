@@ -48,7 +48,7 @@ class Device(object):
         dev = Device()
         self._device_stack.append(dev)
         if self.id != dev.id:
-            dev.use()
+            self.use()
         return self
 
     def __exit__(self, *args):
