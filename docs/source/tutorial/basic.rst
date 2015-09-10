@@ -58,7 +58,7 @@ Forward/Backward Computation
 
 As described above, Chainer uses "Define-by-Run" scheme, so forward computation itself *defines* the network.
 In order to start forward computation, we have to set the input array to :class:`Variable` object.
-Here we start with simple :class:`~numpy.ndarray` with only one element
+Here we start with simple :class:`~numpy.ndarray` with only one element:
 
 .. doctest::
 
@@ -70,13 +70,13 @@ Here we start with simple :class:`~numpy.ndarray` with only one element
    Chainer currently only supports 32-bit float for most computations.
 
 A Variable object has basic arithmetic operators.
-In order to compute :math:`y = x^2 - 2x + 1`, just write
+In order to compute :math:`y = x^2 - 2x + 1`, just write:
 
 .. doctest::
 
    >>> y = x**2 - 2 * x + 1
 
-The resulting ``y`` is also Variable object, whose value can be extracted by accessing the :attr:`~Variable.data` attribute
+The resulting ``y`` is also Variable object, whose value can be extracted by accessing the :attr:`~Variable.data` attribute:
 
 .. doctest::
 
@@ -85,14 +85,14 @@ The resulting ``y`` is also Variable object, whose value can be extracted by acc
 
 What ``y`` holds is not only the result value.
 It also holds the history of computation (or computational graph), which enables us to compute its differentiation.
-This is done by calling its :meth:`~Variable.backward` method
+This is done by calling its :meth:`~Variable.backward` method:
 
 .. doctest::
 
    >>> y.backward()
 
 This runs *error backpropagation* (a.k.a. *backprop* or *reverse-mode automatic differentiation*).
-Then, the gradient is computed and stored in the :attr:`~Variable.grad` attribute of the input variable ``x``
+Then, the gradient is computed and stored in the :attr:`~Variable.grad` attribute of the input variable ``x``:
 
 .. doctest::
 
@@ -101,7 +101,7 @@ Then, the gradient is computed and stored in the :attr:`~Variable.grad` attribut
 
 Also we can compute gradients of intermediate variables.
 Note that Chainer, by default, releases the gradient arrays of intermediate variables for memory efficiency.
-In order to preserve gradient information, pass the ``retain_grad`` argument to the backward method
+In order to preserve gradient information, pass the ``retain_grad`` argument to the backward method:
 
 .. doctest::
 
@@ -113,7 +113,7 @@ In order to preserve gradient information, pass the ``retain_grad`` argument to 
 
 All these computations are easily generalized to multi-element array input.
 Note that if we want to start backward computation from a variable holding a multi-element array, we must set the *initial error* manually.
-This is simply done by setting the :attr:`~Variable.grad` attribute of the output variable
+This is simply done by setting the :attr:`~Variable.grad` attribute of the output variable:
 
 .. doctest::
 
@@ -139,7 +139,7 @@ As noted above, functions are predefined in :mod:`functions` module, which also 
 
 One of the most fundamental parameterized functions is the :class:`~functions.Linear` function (a.k.a. *fully-connected layer* or *affine transformation*).
 It represents a mathematical function :math:`f(x) = Wx + b`, where the matrix :math:`W` and the vector :math:`b` are parameters.
-A linear function from three-dimensional space to two-dimensional space is defined by
+A linear function from three-dimensional space to two-dimensional space is defined by:
 
 .. doctest::
 
@@ -161,7 +161,7 @@ By default, the matrix W is initialized randomly, while the vector b is initiali
    >>> f.b
    array([ 0.,  0.], dtype=float32)
 
-Instances of a parameterized function class act like usual functions
+Instances of a parameterized function class act like usual functions:
 
 .. doctest::
 
@@ -174,7 +174,7 @@ Instances of a parameterized function class act like usual functions
 Gradients of parameters are computed by :meth:`~Variable.backward` method.
 Note that gradients are **accumulated** by the method rather than overwritten.
 So first you must initialize gradients to zero to renew the computation.
-Gradients of Linear function are stored in :attr:`~functions.Linear.gW` and :attr:`~functions.Linear.gb` attributes
+Gradients of Linear function are stored in :attr:`~functions.Linear.gW` and :attr:`~functions.Linear.gb` attributes:
 
 .. doctest::
 
@@ -185,7 +185,7 @@ Gradients of Linear function are stored in :attr:`~functions.Linear.gW` and :att
 
    This procedure is simplified by FunctionSet and Optimizer, which we will see in the next seciton.
 
-Now we can compute the gradients of parameters by simply calling backward method
+Now we can compute the gradients of parameters by simply calling backward method:
 
 .. doctest::
 
@@ -203,7 +203,7 @@ FunctionSet
 
 Most neural network architectures contain multiple parameterized functions.
 :class:`FunctionSet` makes it easy to manage them.
-This class acts like a simple object, with attributes initialized by keyword arguments of the initializer
+This class acts like a simple object, with attributes initialized by keyword arguments of the initializer:
 
 .. doctest::
 
@@ -216,13 +216,13 @@ This class acts like a simple object, with attributes initialized by keyword arg
    >>> type(model.l2)
    <class 'chainer.functions.connection.linear.Linear'>
 
-You can also add additional functions later by setting attributes
+You can also add additional functions later by setting attributes:
 
 .. doctest::
 
    >>> model.l3 = F.Linear(2, 2)
 
-Since the ``model`` is just an object with functions stored as its attributes, we can use these functions in forward computation
+Since the ``model`` is just an object with functions stored as its attributes, we can use these functions in forward computation:
 
 .. doctest::
 
@@ -241,7 +241,7 @@ Optimizer
 :class:`Optimizer` is the last core feature of Chainer described in this section.
 It runs a numerical optimization algorithm given tuples of parameters and gradients.
 Many algorithms are implemented in :mod:`optimizers` module.
-Here we use the simplest one, called Stochastic Gradient Descent
+Here we use the simplest one, called Stochastic Gradient Descent:
 
 .. doctest::
 
@@ -257,7 +257,7 @@ The method :meth:`~Optimizer.setup` prepares for the optimization given paramete
    functions must use same parameter and gradient array objects throughout all forward/backward computations.
 
 In order to run optimization, you first have to compute gradients.
-Zeroing the initial gradient arrays are simply done by calling :meth:`~Optimizer.zero_grads` method
+Zeroing the initial gradient arrays are simply done by calling :meth:`~Optimizer.zero_grads` method:
 
 .. doctest::
 
@@ -266,7 +266,7 @@ Zeroing the initial gradient arrays are simply done by calling :meth:`~Optimizer
 We have done the zeroing manually in the previous section.
 The line above is an equivalent and simpler way to initialize the gradients.
 
-Then, after computing gradient of each parameter, :meth:`~Optimizer.update` method runs one iteration of optimization
+Then, after computing gradient of each parameter, :meth:`~Optimizer.update` method runs one iteration of optimization:
 
 .. doctest::
 
@@ -308,7 +308,7 @@ First, we scale pixels to [0, 1] values, and divide the dataset into 60,000 trai
 
 Next, we want to define the architecture.
 We use a simple three-layer rectifier network with 100 units per layer as an example.
-Before defining the forward routine, we have to prepare our parameterized functions
+Before defining the forward routine, we have to prepare our parameterized functions:
 
 .. doctest::
 
@@ -324,7 +324,7 @@ Note that ``model.l3`` is the final linear layer whose output corresponds to the
 We also set up the optimizer here.
 
 Now we can define the forward routine using these Linear functions.
-Typically it is defined as a simple python function given input arrays
+Typically it is defined as a simple python function given input arrays:
 
 .. doctest::
 
@@ -341,7 +341,7 @@ Since ReLU does not have parameters to optimize, it does not need to be included
 :func:`functions.softmax_cross_entropy` computes the loss function of softmax regression.
 :func:`functions.accuracy` computes the classification accuracy of this minibatch.
 
-Finally, we can write a learning loop as following
+Finally, we can write a learning loop as following:
 
 .. testcode::
    :hide:
@@ -371,7 +371,7 @@ Here you find that, at each iteration, the network is defined by forward computa
 By leveraging this "Define-by-Run" scheme, you can imagine that recurrent nets with variable length input are simply handled by just using loop over different length input for each iteration.
 
 After or during optimization, we want to evaluate the model on the test set.
-It can be achieved simply by calling forward function
+It can be achieved simply by calling forward function:
 
 .. doctest::
 
