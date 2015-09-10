@@ -94,6 +94,7 @@ class TestRandAndRandN(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
+
 class TestGetSize(unittest.TestCase):
 
     def test_none(self):
