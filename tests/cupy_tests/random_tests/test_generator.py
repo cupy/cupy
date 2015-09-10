@@ -59,6 +59,24 @@ class TestRandomState(unittest.TestCase):
         curand.generateUniformDouble = mock.Mock()
         self.check_random_sample(curand.generateUniformDouble, numpy.float64)
 
+    def check_seed(self, curand_func, seed):
+        self.rs.seed(seed)
+        call_args_list = curand_func.call_args_list
+        self.assertEqual(1, len(call_args_list))
+        call_args = call_args_list[0][0]
+        self.assertEqual(2, len(call_args))
+        self.assertEqual(self.rs._generator, call_args[0])
+        self.assertEqual(numpy.uint64, call_args[1].dtype)
+
+    def test_seed_none(self):
+        curand.setPseudoRandomGeneratorSeed = mock.Mock()
+        self.check_seed(curand.setPseudoRandomGeneratorSeed, None)
+
+    @testing.for_all_dtypes()
+    def test_seed_not_none(self, dtype):
+        curand.setPseudoRandomGeneratorSeed = mock.Mock()
+        self.check_seed(curand.setPseudoRandomGeneratorSeed, dtype(0))
+
 
 @testing.gpu
 class TestRandomState2(TestRandomState):
