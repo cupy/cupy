@@ -289,6 +289,11 @@ class Convolution2D(function.Function):
 
         return gx,
 
+    def to_gpu(self, device=None):
+        super(Convolution2D, self).to_gpu(device=device)
+        if cuda.cudnn_enabled and self.use_cudnn:
+            self.max_workspace_size = self.in_channels * self.kh * self.kw * 4
+
 
 class NonparameterizedConvolution2D(function.Function):
 
