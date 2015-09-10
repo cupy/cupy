@@ -3,6 +3,7 @@ import unittest
 
 import numpy
 
+from cupy import cuda
 from cupy.cuda import curand
 from cupy.random import generator
 from cupy import testing
@@ -111,6 +112,34 @@ class TestRandAndRandN(unittest.TestCase):
     def test_randn(self):
         with self.assertRaises(TypeError):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+
+class TestResetStates(unittest.TestCase):
+
+    def test_reset_states(self):
+        generator._random_states = 'dummy'
+        generator.reset_states()
+        self.assertEqual({}, generator._random_states)
+
+
+@testing.gpu
+class TestGetRandomState(unittest.TestCase):
+
+    def setUp(self):
+        self.device_id = cuda.Device().id
+
+    def test_get_random_state_initialize(self):
+        generator._random_states = {}
+        rs = generator.get_random_state()
+        self.assertEqual(generator._random_states[self.device_id], rs)
+
+    def test_get_random_state_memoized(self):
+        generator._random_states = {self.device_id: 'expected',
+                                    self.device_id+1: 'dummy'}
+        rs = generator.get_random_state()
+        self.assertEqual('expected', generator._random_states[self.device_id])
+        self.assertEqual('dummy', generator._random_states[self.device_id+1])
+        self.assertEqual('expected', rs)
 
 
 class TestGetSize(unittest.TestCase):
