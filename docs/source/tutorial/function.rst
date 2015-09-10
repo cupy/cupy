@@ -35,14 +35,14 @@ Let's start with defining MulAdd working on the CPU.
 Any function must inherit the :class:`Function` class.
 The skeleton of a non-parameterized function looks like::
 
-  class MulAdd(Function):
-      def forward_cpu(self, inputs):
-          # do forward computation on CPU
-          return some_tuple
+   class MulAdd(Function):
+       def forward_cpu(self, inputs):
+           # do forward computation on CPU
+           return some_tuple
 
-      def backward_cpu(self, inputs, grad_outputs):
-          # do backward computation on CPU
-          return some_tuple
+       def backward_cpu(self, inputs, grad_outputs):
+           # do backward computation on CPU
+           return some_tuple
 
 We must implement :meth:`~Function.forward_cpu` and :meth:`~Function.backward_cpu` methods.
 The non-self arguments of these functions are tuples of array(s), and these functions must return a tuple of array(s).
@@ -51,22 +51,34 @@ The non-self arguments of these functions are tuples of array(s), and these func
 
    Be careful to return a tuple of arrays even if you have just one array to return.
 
-MulAdd is simple and implemented as follows::
+MulAdd is simple and implemented as follows
 
-  class MulAdd(Function):
-      def forward_cpu(self, inputs):
-          x, y, z = inputs
-          w = x * y + z
-          return w,
+.. testcode::
 
-      def backward_cpu(self, inputs, grad_outputs):
-          x, y, z = inputs
-          gw, = grad_outputs
+   class MulAdd(Function):
+       def forward_cpu(self, inputs):
+           x, y, z = inputs
+           w = x * y + z
+           return w,
 
-          gx = y * gw
-          gy = x * gw
-          gz = gw
-          return gx, gy, gz
+       def backward_cpu(self, inputs, grad_outputs):
+           x, y, z = inputs
+           gw, = grad_outputs
+
+           gx = y * gw
+           gy = x * gw
+           gz = gw
+           return gx, gy, gz
+
+.. testcode::
+   :hide:
+
+   x = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   y = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   z = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   w = MulAdd()(x, y, z)
+   w.grad = np.random.uniform(-1, 1, (3, 2)).astype(np.float32)
+   w.backward()
 
 As per the warning above, ``forward_cpu`` function returns a tuple of single element.
 Note that all arrays appearing in CPU functions are :class:`numpy.ndarray`.
@@ -108,22 +120,35 @@ We use arithmetic operators defined for this class.
 These operators implement the basic elementwise arithmetics.
 
 You maybe find that the definitions of GPU methods are exactly same as those of CPU methods.
-In that case, we can reduce them to :meth:`~Function.forward` and :meth:`~Function.backward` methods::
+In that case, we can reduce them to :meth:`~Function.forward` and :meth:`~Function.backward` methods
 
-  class MulAdd(Function):
-      def forward(self, inputs):
-          x, y, z = inputs
-          w = x * y + z
-          return w,
+.. testcode
 
-      def backward(self, inputs, grad_outputs):
-          x, y, z = inputs
-          gw, = grad_outputs
+   class MulAdd(Function):
+       def forward(self, inputs):
+           x, y, z = inputs
+           w = x * y + z
+           return w,
 
-          gx = y * gw
-          gy = x * gw
-          gz = gw
-          return gx, gy, gz
+       def backward(self, inputs, grad_outputs):
+           x, y, z = inputs
+           gw, = grad_outputs
+
+           gx = y * gw
+           gy = x * gw
+           gz = gw
+           return gx, gy, gz
+
+.. testcode::
+   :hide:
+
+   x = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   y = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   z = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   w = MulAdd()(x, y, z)
+   w.grad = np.random.uniform(-1, 1, (3, 2)).astype(np.float32)
+   w.backward()
+
 
 Since the :class:`cupy.ndarray` class implements many methods of :class:`numpy.ndarray`, we can write these unified methods in most cases.
 
@@ -135,36 +160,49 @@ CuPy also implements many functions that are compatible to those of NumPy.
 We can write unified forward/backward methods with them.
 Consider that we want to write a backprop-able function :math:`f(x, y) = \exp(x) + \exp(y)`.
 We name it *ExpAdd* here.
-It can be written straight-forward as follows::
+It can be written straight-forward as follows
 
-  class ExpAdd(Function):
-      def forward_cpu(self, inputs):
-          x, y = inputs
-          z = numpy.exp(x) + numpy.exp(y)
-          return z,
+.. testcode::
 
-      def backward_cpu(self, inputs, grad_outputs):
-          x, y = inputs
-          gz, = grad_outputs
+   class ExpAdd(Function):
+       def forward_cpu(self, inputs):
+           x, y = inputs
+           z = np.exp(x) + np.exp(y)
+           return z,
 
-          gx = gz * numpy.exp(x)
-          gy = gz * numpy.exp(y)
-          return gx, gy
+       def backward_cpu(self, inputs, grad_outputs):
+           x, y = inputs
+           gz, = grad_outputs
 
-      def forward_gpu(self, inputs):
-          cupy = cuda.cupy
-          x, y = inputs
-          z = cupy.exp(x) + cupy.exp(y)
-          return z,
+           gx = gz * np.exp(x)
+           gy = gz * np.exp(y)
+           return gx, gy
 
-      def backward_gpu(self, inputs, grad_outputs):
-          cupy = cuda.cupy
-          x, y = inputs
-          gz, = grad_outputs
+       def forward_gpu(self, inputs):
+           cupy = cuda.cupy
+           x, y = inputs
+           z = cupy.exp(x) + cupy.exp(y)
+           return z,
 
-          gx = gz * cupy.exp(x)
-          gy = gz * cupy.exp(y)
-          return gx, gy
+       def backward_gpu(self, inputs, grad_outputs):
+           cupy = cuda.cupy
+           x, y = inputs
+           gz, = grad_outputs
+
+           gx = gz * cupy.exp(x)
+           gy = gz * cupy.exp(y)
+           return gx, gy
+
+
+.. testcode::
+   :hide:
+
+   x = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   y = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   z = ExpAdd()(x, y)
+   z.grad = np.random.uniform(-1, 1, (3, 2)).astype(np.float32)
+   z.backward()
+
 
 .. note::
    Here we used ``cuda.cupy`` instead of directly accessing :mod:`cupy`.
@@ -176,23 +214,36 @@ It can be written straight-forward as follows::
 The CPU and GPU implementations are almost same, except that :mod:`numpy` is replaced by :mod:`cupy` in GPU methods.
 We can unify these functions using the :func:`cuda.get_array_module` function.
 This function accepts arbitrary number of arrays, and returns an appropriate module for them.
-See the following code::
+See the following code
 
-  class ExpAdd(Function):
-      def forward(self, inputs):
-          xp = cuda.get_array_module(*inputs)
-          x, y = inputs
-          z = xp.exp(x) + xp.exp(y)
-          return z,
+.. testcode::
 
-      def backward(self, inputs, grad_outputs):
-          xp = cuda.get_array_module(*inputs)
-          x, y = inputs
-          gz, = grad_outputs
+   class ExpAdd(Function):
+       def forward(self, inputs):
+           xp = cuda.get_array_module(*inputs)
+           x, y = inputs
+           z = xp.exp(x) + xp.exp(y)
+           return z,
 
-          gx = gz * xp.exp(x)
-          gy = gz * xp.exp(y)
-          return gx, gy
+       def backward(self, inputs, grad_outputs):
+           xp = cuda.get_array_module(*inputs)
+           x, y = inputs
+           gz, = grad_outputs
+
+           gx = gz * xp.exp(x)
+           gy = gz * xp.exp(y)
+           return gx, gy
+
+
+.. testcode::
+   :hide:
+
+   x = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   y = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   z = ExpAdd()(x, y)
+   z.grad = np.random.uniform(-1, 1, (3, 2)).astype(np.float32)
+   z.backward()
+
 
 Note that this code works correctly even if CUDA is not installed in the environment.
 If CUDA is not found, get_array_module function always returns :mod:`numpy`.
@@ -316,11 +367,13 @@ At this time, suppose that we want to implement elementwise product function bet
 
 .. note::
 
-   Note that the elementwise product between a variable and parameters can be simply implemented by :class:`functions.Parameter` function::
+   Note that the elementwise product between a variable and parameters can be simply implemented by :class:`functions.Parameter` function
 
-     p = F.Parameter(np.random.rand((4, 3), dtype=np.float32))
-     x = Variable(...)
-     y = p() * x
+   .. testcode::
+
+      p = F.Parameter(np.random.randn(4, 3).astype(np.float32))
+      x = Variable(np.random.randn(4, 3).astype(np.float32))
+      y = p() * x
 
    The Parameter function takes no arguments and just returns a variable holding the parameter array.
    The example in this subsection may be slightly more efficient with respect to memory consumption, though.
@@ -333,29 +386,41 @@ There are two differences between parameterized functions and non-parameterized 
 * Parameterized functions must accumulate gradients on backward.
 
 Note that gradient arrays are automatically zeroed by an optimizer, so function implementation only need to initialize their shapes.
-Then, the implementation of elementwise product may be as following::
+Then, the implementation of elementwise product may be as following
 
-  class EltwiseParamProduct(Function):
-      parameter_names = 'w',
-      gradient_names  = 'gw',
+.. testcode::
 
-      def __init__(self, shape):
-          self.w  = np.random.randn(shape).astype(np.float32)
-          self.gw = np.empty_like(self.w)
+   class EltwiseParamProduct(Function):
+       parameter_names = 'w',
+       gradient_names  = 'gw',
 
-      def forward(self, inputs):
-          x, = inputs
-          y = self.w * x
-          return y,
+       def __init__(self, shape):
+           self.w  = np.random.randn(*shape).astype(np.float32)
+           self.gw = np.empty_like(self.w)
 
-      def backward(self, inputs, grad_outputs):
-          x, = inputs
-          gy, = grad_outputs
+       def forward(self, inputs):
+           x, = inputs
+           y = self.w * x
+           return y,
 
-          self.gw += gy * x
-          gx = gy * self.w
+       def backward(self, inputs, grad_outputs):
+           x, = inputs
+           gy, = grad_outputs
 
-          return gx,
+           self.gw += gy * x
+           gx = gy * self.w
+
+           return gx,
+
+.. testcode::
+   :hide:
+
+   x = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   f = EltwiseParamProduct((3, 2))
+   y = f(x)
+   y.grad = np.random.uniform(-1, 1, (3, 2)).astype(np.float32)
+   y.backward()
+
 
 .. note::
 
@@ -381,12 +446,14 @@ They are defined in the :mod:`~chainer.gradient_check` module.
 
 The most important test utility is the :func:`~gradient_check.numerical_grad` function.
 This function computes the numerical gradient of given function using finite differences.
-It can be used as follows::
+It can be used as follows
 
-  x  = np.random.randn(4, 3).astype(np.float32)
-  gy = np.ones((4, 3), dtype=np.float32)
-  f  = lambda: (x * x,)
-  gx = gradient_check.numerical_grad(f, (x,), (gy,))
+.. testcode::
+
+   x  = np.random.randn(4, 3).astype(np.float32)
+   gy = np.ones((4, 3), dtype=np.float32)
+   f  = lambda: (x * x,)
+   gx = gradient_check.numerical_grad(f, (x,), (gy,))
 
 ``f`` is a closure that returns a tuple of array(s) computed from input arrays.
 The second and third arguments of :func:`~gradient_check.numerical_grad` are tuples of input arrays and output gradient arrays, respectively.
@@ -406,20 +473,36 @@ We can mix them in one invocation of assert_allclose.
 The default values of optional arguments are also different.
 
 Here is a typical usage of gradient checking utilities.
-This is a test example of :func:`functions.relu` function::
+This is a test example of :func:`functions.relu` function
 
-  class TestReLU(TestCase):
-      def test_backward_cpu(self):
-          x = Variable(np.random.randn(3, 2).astype(np.float32))
-          y = F.relu(x)
-          y.grad = np.random.randn(3, 2).astype(np.float32)
-          y.backward()
+.. testcode::
+   :hide:
 
-          func = y.creator
-          f = lambda: func.forward((x.data,))
-          gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
+   import unittest
 
-          gradient_check.assert_allclose(gx, x.grad)
+
+.. testcode::
+
+   class TestReLU(unittest.TestCase):
+       def test_backward_cpu(self):
+           x = Variable(np.random.randn(3, 2).astype(np.float32))
+           y = F.relu(x)
+           y.grad = np.random.randn(3, 2).astype(np.float32)
+           y.backward()
+
+           func = y.creator
+           f = lambda: func.forward((x.data,))
+           gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
+
+           gradient_check.assert_allclose(gx, x.grad)
+
+
+.. testcode::
+   :hide:
+
+   suite = unittest.TestLoader().loadTestsFromTestCase(TestReLU)
+   unittest.TextTestRunner().run(suite)
+
 
 We used :attr:`Variable.creator` to extract creator function object of a variable.
 The first four lines of the test code are simple forward and backward computation of ReLU function.
