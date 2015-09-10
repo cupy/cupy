@@ -60,6 +60,27 @@ class TestRandomState(unittest.TestCase):
         self.check_random_sample(curand.generateUniformDouble, numpy.float64)
 
 
+@testing.gpu
+class TestRandomState2(TestRandomState):
+
+    args = (10.0, 20.0)
+    size = None
+
+
+@testing.gpu
+class TestRandomState3(TestRandomState):
+
+    args = (0.0, 1.0)
+    size = 10
+
+
+@testing.gpu
+class TestRandomState4(TestRandomState):
+
+    args = (0.0, 1.0)
+    size = (1, 2, 3)
+
+
 class TestRandAndRandN(unittest.TestCase):
 
     def setUp(self):
