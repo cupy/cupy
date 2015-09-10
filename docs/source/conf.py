@@ -48,6 +48,7 @@ ctypes.cdll.LoadLibrary = MockObject()
 # ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
+              'sphinx.ext.doctest',
               'sphinx.ext.intersphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
@@ -324,3 +325,12 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/2/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
 }
+
+doctest_global_setup = '''
+import numpy as np
+from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers
+import chainer.functions as F
+np.random.seed(0)
+'''
+doctest_test_doctest_blocks = None
+
