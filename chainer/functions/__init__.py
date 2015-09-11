@@ -8,6 +8,7 @@ from chainer.functions.activation import maxout
 from chainer.functions.activation import prelu
 from chainer.functions.activation import relu
 from chainer.functions.activation import sigmoid
+from chainer.functions.activation import slstm
 from chainer.functions.activation import softmax
 from chainer.functions.activation import softplus
 from chainer.functions.activation import tanh
@@ -85,6 +86,8 @@ ReLU = relu.ReLU
 relu = relu.relu
 Sigmoid = sigmoid.Sigmoid
 sigmoid = sigmoid.sigmoid
+SLSTM = slstm.SLSTM
+slstm = slstm.slstm
 Softmax = softmax.Softmax
 softmax = softmax.softmax
 Softplus = softplus.Softplus
