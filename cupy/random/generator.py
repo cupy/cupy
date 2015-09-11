@@ -139,6 +139,30 @@ class RandomState(object):
         RandomState._1m_kernel(out)
         return out
 
+    def _interval_one(mx):
+        mask = mx
+        mask |= mask >> 1
+        mask |= mask >> 2
+        mask |= mask >> 4
+        mask |= mask >> 8
+        mask |= mask >> 16
+        mask |= mask >> 32
+        ret = cupy.empty((1,), dtype=numpy.uint64)
+        while True:
+            curand.generateLongLong(self._generator, ret.data.ptr, 1)
+            if ret & mask <= mx:
+                break
+        return ret[0]
+
+    def interval(mx, size):
+        if size is None:
+            return self._interval_one(mx)
+        ret = cupy.empty(size)
+        v = ret.view().reshape((ret.size,))
+        for idx in xrange(v.size):
+            v[idx] = _interval_one(mx)
+        return ret
+
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
 
