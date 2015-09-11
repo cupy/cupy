@@ -114,64 +114,69 @@ class ConnectionistTemporalClassification(function.Function):
             backward_prob = xp.take(y_inv, path[::-1]) + backward_prob
         return alpha, beta[::-1]
 
-    def convert_inputs(self, labels, yseq):
+    def convert_inputs(self, labels, yseq, index):
         log_yseq = ()
         for y in yseq:
-            log_yseq += self.log_matrix(y),
-        return labels, log_yseq
+            log_yseq += self.log_matrix(y[index]),
+        return labels[index], log_yseq
 
-    def calc_differential(self, label_prob, y, total_prob):
-        xp = cuda.get_array_module(y)
-        differential = utils.force_array(
-            xp.exp(y) - xp.exp(label_prob
-                               - total_prob)).astype(numpy.float32)
-        return differential
+    def calc_path_probability(self, label_prob, total_prob):
+        xp = cuda.get_array_module(label_prob)
+        return xp.exp(label_prob - total_prob)
 
     def calc_totalprob(self, forward_prob, backward_prob):
         return self.logsumexp(forward_prob[0] + backward_prob[0])
 
-    def softmax(self, x):
+    def softmax(self, x, axis=None):
         xp = cuda.get_array_module(x)
-        val = x - xp.amax(x)
+        val = x - xp.amax(x, axis=axis).reshape(x.shape[0], 1)
         val = xp.exp(val)
-        return val / xp.sum(val)
+        return val / xp.sum(val, axis=axis).reshape(x.shape[0], 1)
 
     def activate(self, yseq):
         result = ()
         for y in yseq:
-            result += self.softmax(y),
+            result += self.softmax(y, axis=1),
         return result
 
     def forward(self, inputs):
         yseq = self.activate(inputs[1::])
-        label, yseq = self.convert_inputs(inputs[0], yseq)
-        path = self.label_to_path(label)
-        rr = self.recurrence_relation(path.shape[0],
-                                      cuda.get_array_module(yseq[0]))
-        forward_prob_trans, backward_prob_trans\
-            = self.calc_trans(path, yseq, rr)
-        return utils.force_array(- self.logsumexp(forward_prob_trans[-1]
-                                                  + backward_prob_trans[-1])),
+        loss = 0
+        for i in range(yseq[0].shape[0]):
+            label, y = self.convert_inputs(inputs[0], yseq, i)
+            path = self.label_to_path(label)
+            rr = self.recurrence_relation(path.shape[0],
+                                          cuda.get_array_module(y[0]))
+            forward_prob_trans, backward_prob_trans\
+                = self.calc_trans(path, y, rr)
+            loss += - self.logsumexp(forward_prob_trans[-1]
+                                     + backward_prob_trans[-1])
+        return utils.force_array(loss).astype(numpy.float32),
 
     def backward(self, inputs, grad_output):
         yseq = self.activate(inputs[1::])
-        label, yseq = self.convert_inputs(inputs[0], yseq)
-        path = self.label_to_path(label)
-        rr = self.recurrence_relation(path.shape[0],
-                                      cuda.get_array_module(yseq[0]))
-        result = (None,)
-        forward_prob_trans, backward_prob_trans\
-            = self.calc_trans(path, yseq, rr)
-        total_probability = self.calc_totalprob(forward_prob_trans,
-                                                backward_prob_trans)
+        delta = []
         for t in range(len(yseq)):
-            multiply = forward_prob_trans[t] + backward_prob_trans[t]
-            label_prob = self.label_probability(yseq[t].shape[0],
-                                                path, multiply)
-            result += self.calc_differential(
-                label_prob, yseq[t],
-                total_probability) * grad_output[0],
-        return result
+            delta.append(yseq[t])
+        batch_size = yseq[0].shape[0]
+        for b in range(batch_size):
+            label, y = self.convert_inputs(inputs[0], yseq, b)
+            path = self.label_to_path(label)
+            rr = self.recurrence_relation(path.shape[0],
+                                          cuda.get_array_module(yseq[0]))
+            forward_prob_trans, backward_prob_trans\
+                = self.calc_trans(path, y, rr)
+            total_probability = self.calc_totalprob(forward_prob_trans,
+                                                    backward_prob_trans)
+            for t in range(len(y)):
+                multiply = forward_prob_trans[t] + backward_prob_trans[t]
+                label_prob = self.label_probability(y[t].shape[0],
+                                                    path, multiply)
+                # fixme: batch normarization of padded data.
+                delta[t][b] -= self.calc_path_probability(label_prob,
+                                                          total_probability)
+                delta[t][b] *= grad_output[0]
+        return (None,) + tuple(delta)
 
 
 def connectionist_temporal_classification(blank_symbol, t, x):
@@ -209,5 +214,5 @@ def connectionist_temporal_classification(blank_symbol, t, x):
     if not isinstance(blank_symbol, int):
         raise TypeError('blank_symbol must be non-negative integer.')
     assert blank_symbol >= 0
-    assert blank_symbol < x[0].data.shape[0]
+    assert blank_symbol < x[0].data.shape[1]
     return ConnectionistTemporalClassification(blank_symbol)(t, *x)
