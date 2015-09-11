@@ -25,6 +25,10 @@ class TestRandomState(unittest.TestCase):
             self.rs._generator, out.data.ptr,
             out.size, self.args[0], self.args[1])
 
+    def test_lognormal_float(self):
+        curand.generateLogNormalDouble = mock.Mock()
+        self.check_lognormal(curand.generateLogNormalDouble, float)
+
     def test_lognormal_float32(self):
         curand.generateLogNormal = mock.Mock()
         self.check_lognormal(curand.generateLogNormal, numpy.float32)
