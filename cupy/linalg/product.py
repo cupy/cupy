@@ -336,8 +336,8 @@ def _tensordot_core(a, b, out, n, m, k, ret_shape):
     elif m == 1:
         # Matrix-vector product A^T * B
         a, transa, lda = _mat_to_cublas_contiguous(a, 1)
-        b, incb = _to_cublas_vector(b, 1)
-        if not transa:
+        b, incb = _to_cublas_vector(b, 0)
+        if transa:
             # gemv requires (n, k) as the original matrix dimensions rather
             # than the transposed dimensions.
             n, k = k, n
