@@ -152,10 +152,10 @@ class TestGetRandomState(unittest.TestCase):
 
     def test_get_random_state_memoized(self):
         generator._random_states = {self.device_id: 'expected',
-                                    self.device_id+1: 'dummy'}
+                                    self.device_id + 1: 'dummy'}
         rs = generator.get_random_state()
         self.assertEqual('expected', generator._random_states[self.device_id])
-        self.assertEqual('dummy', generator._random_states[self.device_id+1])
+        self.assertEqual('dummy', generator._random_states[self.device_id + 1])
         self.assertEqual('expected', rs)
 
 
