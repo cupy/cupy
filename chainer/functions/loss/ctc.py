@@ -142,7 +142,8 @@ class ConnectionistTemporalClassification(function.Function):
     def forward(self, inputs):
         yseq = self.activate(inputs[1::])
         loss = 0
-        for i in range(yseq[0].shape[0]):
+        batch_size = yseq[0].shape[0]
+        for i in range(batch_size):
             label, y = self.convert_inputs(inputs[0], yseq, i)
             path = self.label_to_path(label)
             rr = self.recurrence_relation(path.shape[0],
@@ -151,6 +152,7 @@ class ConnectionistTemporalClassification(function.Function):
                 = self.calc_trans(path, y, rr)
             loss += - self.logsumexp(forward_prob_trans[-1]
                                      + backward_prob_trans[-1])
+        loss /= batch_size
         return utils.force_array(loss).astype(numpy.float32),
 
     def backward(self, inputs, grad_output):
@@ -175,6 +177,7 @@ class ConnectionistTemporalClassification(function.Function):
                 # fixme: batch normarization of padded data.
                 delta[t][b] -= self.calc_path_probability(label_prob,
                                                           total_probability)
+                delta[t][b] /= batch_size
                 delta[t][b] *= grad_output[0]
         return (None,) + tuple(delta)
 

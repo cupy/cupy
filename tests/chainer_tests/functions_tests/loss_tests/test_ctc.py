@@ -54,7 +54,8 @@ class TestCTC(unittest.TestCase):
             for t in range(xt.shape[1]):
                 xt[b][t] = numpy.exp(xt[b][t]) / numpy.sum(numpy.exp(xt[b][t]))
         loss_expect = 0
-        for b in range(xt.shape[0]):
+        batch_size = xt.shape[0]
+        for b in range(batch_size):
             loss_expect += -math.log(self.alpha(xt[b],
                                                 self.l[b],
                                                 self.x.shape[0]-1,
@@ -63,7 +64,7 @@ class TestCTC(unittest.TestCase):
                                                   self.l[b],
                                                   self.x.shape[0]-1,
                                                   self.l[b].shape[0]-2))
-
+        loss_expect /= batch_size
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
     def test_forward_cpu(self):
@@ -87,10 +88,10 @@ class TestCTC(unittest.TestCase):
         f = lambda: func.forward((t.data,) + xs_data)
         gl_0, gx_0, gx_1, gx_2, gx_3 = gradient_check.numerical_grad(
             f, ((t.data,) + xs_data), (self.gx,))
-        gradient_check.assert_allclose(xs[0].grad, gx_0, atol=1e-04)
-        gradient_check.assert_allclose(xs[1].grad, gx_1, atol=1e-04)
-        gradient_check.assert_allclose(xs[2].grad, gx_2, atol=1e-04)
-        gradient_check.assert_allclose(xs[3].grad, gx_3, atol=1e-04)
+        gradient_check.assert_allclose(xs[0].grad, gx_0, atol=1e-05)
+        gradient_check.assert_allclose(xs[1].grad, gx_1, atol=1e-05)
+        gradient_check.assert_allclose(xs[2].grad, gx_2, atol=1e-05)
+        gradient_check.assert_allclose(xs[3].grad, gx_3, atol=1e-05)
 
     @condition.retry(3)
     def test_backward_cpu(self):
