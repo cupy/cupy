@@ -12,12 +12,17 @@ class TestSample(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    def setUp(self):
-        random.random_sample = mock.Mock()
-
     def test_rand(self):
+        random.sample_.random_sample = mock.Mock()
         random.rand(1, 2, 3, dtype=numpy.float32)
-        random.random_sample.assert_call_once_with((1, 2, 3), numpy.float32)
+        random.sample_.random_sample.assert_called_once_with(
+            size=(1, 2, 3), dtype=numpy.float32)
+
+    def test_rand_default_dtype(self):
+        random.sample_.random_sample = mock.Mock()
+        random.rand(1, 2, 3)
+        random.sample_.random_sample.assert_called_once_with(
+            size=(1, 2, 3), dtype=float)
 
     def test_rand_invalid_argument(self):
         with self.assertRaises(TypeError):
