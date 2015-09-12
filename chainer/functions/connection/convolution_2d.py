@@ -128,9 +128,8 @@ class Convolution2D(function.Function):
             self.gb = xp.full_like(self.b, numpy.nan)
 
         self.use_cudnn = use_cudnn
-        if cuda.cudnn_enabled and use_cudnn:
-            # chance to choose implicit-precomp-gemm algorithm
-            self.max_workspace_size = in_channels * self.kh * self.kw * 4
+        # chance to choose implicit-precomp-gemm algorithm
+        self.max_workspace_size = in_channels * self.kh * self.kw * 4
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -288,11 +287,6 @@ class Convolution2D(function.Function):
                 gcol, self.sy, self.sx, self.ph, self.pw, h, w)
 
         return gx,
-
-    def to_gpu(self, device=None):
-        super(Convolution2D, self).to_gpu(device=device)
-        if cuda.cudnn_enabled and self.use_cudnn:
-            self.max_workspace_size = self.in_channels * self.kh * self.kw * 4
 
 
 class NonparameterizedConvolution2D(function.Function):
