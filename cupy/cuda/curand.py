@@ -201,7 +201,7 @@ _curand.curandGenerateLogNormal.argtypes = (Generator, _P, _S, _F, _F)
 
 def generateLogNormal(generator, outputPtr, n, mean, stddev):
     status = _curand.curandGenerateLogNormal(generator, outputPtr, n,
-                                             stddev)
+                                             mean, stddev)
     check_status(status)
 
 
