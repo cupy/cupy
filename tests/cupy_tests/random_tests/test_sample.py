@@ -29,8 +29,16 @@ class TestSample(unittest.TestCase):
             random.rand(1, 2, 3, unnecessary='unnecessary_argument')
 
     def test_randn(self):
+        random.distributions.normal = mock.Mock()
         random.randn(1, 2, 3, dtype=numpy.float32)
-        random.random_sample.assert_call_once_with((1, 2, 3), numpy.float32)
+        random.distributions.normal.assert_called_once_with(
+            size=(1, 2, 3), dtype=numpy.float32)
+
+    def test_randn_default_dtype(self):
+        random.distributions.normal = mock.Mock()
+        random.randn(1, 2, 3)
+        random.distributions.normal.assert_called_once_with(
+            size=(1, 2, 3), dtype=float)
 
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
