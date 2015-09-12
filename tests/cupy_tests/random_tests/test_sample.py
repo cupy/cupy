@@ -38,3 +38,22 @@ class TestRandint(unittest.TestCase):
         self.m.interval.assert_called_with(2, (1, 2, 3))
 
 
+@testing.gpu
+class TestRandomIntegers(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    def setUp(self):
+        random.sample_.randint = mock.Mock()
+
+    def test_normal(self):
+        random.random_integers(3, 5)
+        random.sample_.randint.assert_called_with(3, 6, None)
+
+    def test_high_is_none(self):
+        random.random_integers(3, None)
+        random.sample_.randint.assert_called_with(1, 4, None)
+
+    def test_size_is_not_none(self):
+        random.random_integers(3, 5, (1, 2, 3))
+        random.sample_.randint.assert_called_with(3, 6, (1, 2, 3))
