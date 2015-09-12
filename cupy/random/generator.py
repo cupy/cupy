@@ -236,8 +236,10 @@ def _get_size(size):
         return ()
     elif isinstance(size, collections.Sequence):
         return tuple(size)
-    else:
+    elif isinstance(size, int):
         return size,
+    else:
+        raise ValueError('size should be None, collections.Sequence, or int')
 
 
 def _check_and_get_dtype(dtype):
