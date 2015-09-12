@@ -664,7 +664,17 @@ class ndarray(object):
     # Truth value of an array (bool):
 
     def __nonzero__(self):
-        return self != 0
+        if self._size == 0:
+            return False
+        elif self._size == 1:
+            return bool(self.get())
+        else:
+            msg = 'The truth value of an array with more than one element is ' \
+                  'ambiguous. Use a.any() or a.all()'
+            raise ValueError(msg)
+
+    def __bool__(self):
+        return self.__nonzero__()
 
     # Unary operations:
 
