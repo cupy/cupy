@@ -70,7 +70,7 @@ class TestRandomState(unittest.TestCase):
         self.assertEqual(1, len(call_args_list))
         call_args = call_args_list[0][0]
         self.assertEqual(2, len(call_args))
-        self.assertEqual(self.rs._generator, call_args[0])
+        self.assertIs(self.rs._generator, call_args[0])
         self.assertEqual(numpy.uint64, call_args[1].dtype)
 
     def test_seed_none(self):
