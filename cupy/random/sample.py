@@ -76,6 +76,8 @@ def randint(low, high=None, size=None):
     if lo >= hi:
         raise ValueError('low >= high')
 
+    diff = hi - lo
+    rs = generator.get_random_state()
     return lo + rs.interval(diff, size)
 
 
