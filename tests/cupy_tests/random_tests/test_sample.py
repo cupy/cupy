@@ -151,7 +151,8 @@ class TestRandomIntegers2(unittest.TestCase):
 
 
 @testing.gpu
-class TestRandomSample(unittest.TestCase)
+class TestRandomSample(unittest.TestCase):
+
     def test_rand(self):
         random.sample_.random_sample = mock.Mock()
         random.rand(1, 2, 3, dtype=numpy.float32)
@@ -183,4 +184,3 @@ class TestRandomSample(unittest.TestCase)
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
             random.randn(1, 2, 3, unnecessary='unnecessary_argument')
->>>>>>> master
