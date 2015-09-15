@@ -59,12 +59,15 @@ def randint(low, high=None, size=None):
     uniform distribution over left-close and right-open interval ``[low, high)``.
 
     Args:
-        low (int): If ``high`` is not ``None``, it is lower bound of the interval. Otherwise, it is **upper** bound of the interval and lower bound of the inteval is ``0``.
+        low (int): If ``high`` is not ``None``, it is lower bound of the interval.
+        Otherwise, it is **upper** bound of the interval and lower bound of the inteval is ``0``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
 
     Returns:
-        int or cupy.ndarray of ints: If size is ``None``, it is single integer sampled. If size is integer, it is the 1D-array of length ``size`` element. Otherwise, it is the array whose shape specified by ``size``.
+        int or cupy.ndarray of ints: If size is ``None``, it is single integer sampled.
+        If size is integer, it is the 1D-array of length ``size`` element.
+        Otherwise, it is the array whose shape specified by ``size``.
     """
     if high is None:
         lo = 0
@@ -76,7 +79,7 @@ def randint(low, high=None, size=None):
     if lo >= hi:
         raise ValueError('low >= high')
 
-    diff = hi - lo
+    diff = hi - lo - 1
     rs = generator.get_random_state()
     return lo + rs.interval(diff, size)
 
@@ -88,12 +91,15 @@ def random_integers(low, high=None, size=None):
     uniform distribution over closed interval ``[low, high]``.
 
     Args:
-        low (int): If ``high`` is not ``None``, it is lower bound of the interval. Otherwise, it is **upper** bound of the interval and lower bound is ``1``.
+        low (int): If ``high`` is not ``None``, it is lower bound of the interval.
+        Otherwise, it is **upper** bound of the interval and lower bound is ``1``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
 
     Returns:
-        int or cupy.ndarray of ints: If size is ``None``, it is single integer sampled. If size is integer, it is the 1D-array of length ``size`` element. Otherwise, it is the array whose shape specified by ``size``.
+        int or cupy.ndarray of ints: If size is ``None``, it is single integer sampled.
+        If size is integer, it is the 1D-array of length ``size`` element.
+        Otherwise, it is the array whose shape specified by ``size``.
     """
     if high is None:
         high = low
