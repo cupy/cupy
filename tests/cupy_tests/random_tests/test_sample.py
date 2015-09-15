@@ -47,6 +47,7 @@ class TestRandint(unittest.TestCase):
         self.m.interval.assert_called_with(1, (1, 2, 3))
 
 
+@testing.gpu
 class TestRandint2(unittest.TestCase):
 
     def setUp(self):
