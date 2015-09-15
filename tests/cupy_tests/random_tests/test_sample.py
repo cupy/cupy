@@ -7,6 +7,8 @@ import six
 from chainer.testing import condition
 from chainer.testing import hypothesis_testing
 from cupy import cuda
+
+
 from cupy import random
 from cupy import testing
 
@@ -146,3 +148,39 @@ class TestRandomIntegers2(unittest.TestCase):
         expected = numpy.array([float(trial) / mx] * mx)
         if not hypothesis_testing.chi_square_test(counts, expected):
             self.fail()
+
+
+@testing.gpu
+class TestRandomSample(unittest.TestCase)
+    def test_rand(self):
+        random.sample_.random_sample = mock.Mock()
+        random.rand(1, 2, 3, dtype=numpy.float32)
+        random.sample_.random_sample.assert_called_once_with(
+            size=(1, 2, 3), dtype=numpy.float32)
+
+    def test_rand_default_dtype(self):
+        random.sample_.random_sample = mock.Mock()
+        random.rand(1, 2, 3)
+        random.sample_.random_sample.assert_called_once_with(
+            size=(1, 2, 3), dtype=float)
+
+    def test_rand_invalid_argument(self):
+        with self.assertRaises(TypeError):
+            random.rand(1, 2, 3, unnecessary='unnecessary_argument')
+
+    def test_randn(self):
+        random.distributions.normal = mock.Mock()
+        random.randn(1, 2, 3, dtype=numpy.float32)
+        random.distributions.normal.assert_called_once_with(
+            size=(1, 2, 3), dtype=numpy.float32)
+
+    def test_randn_default_dtype(self):
+        random.distributions.normal = mock.Mock()
+        random.randn(1, 2, 3)
+        random.distributions.normal.assert_called_once_with(
+            size=(1, 2, 3), dtype=float)
+
+    def test_randn_invalid_argument(self):
+        with self.assertRaises(TypeError):
+            random.randn(1, 2, 3, unnecessary='unnecessary_argument')
+>>>>>>> master
