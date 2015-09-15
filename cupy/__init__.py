@@ -670,7 +670,7 @@ class ndarray(object):
             return bool(self.get())
         else:
             msg = 'The truth value of an array with more than one element is ' \
-                  'ambiguous. Use a.any() or a.all()'
+                  'ambiguous. Use a.get().any() or a.get().all()'
             raise ValueError(msg)
 
     def __bool__(self):
