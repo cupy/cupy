@@ -17,47 +17,65 @@ class TestProduct(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_dot2(self, xp, dtype):
-        a = testing.shaped_arange((4, 1), xp, dtype)
-        b = testing.shaped_arange((1, 3), xp, dtype)
+    def check_dot(self, shape_a, shape_b, trans_a, trans_b, xp, dtype):
+        a = testing.shaped_arange(shape_a, xp, dtype)
+        b = testing.shaped_arange(shape_b, xp, dtype)
+        if trans_a:
+            a = a.T
+        if trans_b:
+            b = b.T
+        return xp.dot(a, b)
+
+    def check_dot_for_all_trans(self, shape_a, shape_b):
+        self.check_dot(shape_a, shape_b, False, False)
+        self.check_dot(shape_a[::-1], shape_b, True, False)
+        self.check_dot(shape_a, shape_b[::-1], False, True)
+        self.check_dot(shape_a[::-1], shape_b[::-1], True, True)
+
+    def test_dot2(self):
+        self.check_dot_for_all_trans((1, 1), (1, 1))
+
+    def test_dot3(self):
+        self.check_dot_for_all_trans((1, 1), (1, 2))
+
+    def test_dot4(self):
+        self.check_dot_for_all_trans((1, 2), (2, 1))
+
+    def test_dot5(self):
+        self.check_dot_for_all_trans((2, 1), (1, 1))
+
+    def test_dot6(self):
+        self.check_dot_for_all_trans((1, 2), (2, 3))
+
+    def test_dot7(self):
+        self.check_dot_for_all_trans((2, 1), (1, 3))
+
+    def test_dot8(self):
+        self.check_dot_for_all_trans((2, 3), (3, 1))
+
+    def test_dot9(self):
+        self.check_dot_for_all_trans((2, 3), (3, 4))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dot_vec1(self, xp, dtype):
+        a = testing.shaped_arange((2,), xp, dtype)
+        b = testing.shaped_arange((2,), xp, dtype)
         return xp.dot(a, b)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_dot3(self, xp, dtype):
-        a = testing.shaped_arange((2, 1), xp, dtype).T
+    def test_dot_vec2(self, xp, dtype):
+        a = testing.shaped_arange((2,), xp, dtype)
         b = testing.shaped_arange((2, 1), xp, dtype)
         return xp.dot(a, b)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
-    def test_dot4(self, xp, dtype):
+    def test_dot_vec3(self, xp, dtype):
         a = testing.shaped_arange((1, 2), xp, dtype)
-        b = testing.shaped_arange((1, 2), xp, dtype).T
+        b = testing.shaped_arange((2,), xp, dtype)
         return xp.dot(a, b)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_dot5(self, xp, dtype):
-        a = testing.shaped_arange((2, 1), xp, dtype).T
-        b = testing.shaped_arange((1, 2), xp, dtype).T
-        return xp.dot(a, b)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_dot6(self, xp, dtype):
-        a = testing.shaped_arange((10, 2), xp, dtype)
-        b = testing.shaped_arange((2, 10), xp, dtype)
-        return xp.dot(a, b)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_dot_with_out(self, xp, dtype):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = testing.shaped_arange((3, 4, 2), xp, dtype)
-        c = xp.ndarray((2, 3, 3, 2), dtype=dtype)
-        xp.dot(a, b, out=c)
-        return c
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
