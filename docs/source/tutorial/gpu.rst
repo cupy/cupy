@@ -382,7 +382,7 @@ Then, we can write a data-parallel learning loop as follows:
                model_1)
            loss_1.backward()
 
-           optimizer.acumulate_grads(model_1.gradients)
+           optimizer.accumulate_grads(model_1.gradients)
            optimizer.update()
 
            model_1.copy_parameters_from(model_0.parameters)
