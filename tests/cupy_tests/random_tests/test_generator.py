@@ -187,13 +187,13 @@ class TestIntervalOne(unittest.TestCase):
 
     @condition.retry(20)
     def test_lower_bound(self):
-        val = self.rs._interval_one(3).get()
+        val = self.rs._interval_one(2).get()
         self.assertEqual(0, val)
 
     @condition.retry(20)
     def test_upper_bound(self):
-        val = self.rs._interval_one(3).get()
-        self.assertEqual(3, val)
+        val = self.rs._interval_one(2).get()
+        self.assertEqual(2, val)
 
     @condition.retry(5)
     def test_goodness_of_fit(self):

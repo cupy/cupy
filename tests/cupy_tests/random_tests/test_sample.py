@@ -67,13 +67,13 @@ class TestRandint2(unittest.TestCase):
 
     @condition.retry(20)
     def test_lower_bound(self):
-        val = random.randint(0, 3).get()
+        val = random.randint(0, 2).get()
         self.assertEqual(0, val)
 
     @condition.retry(20)
     def test_upper_bound(self):
-        val = random.randint(0, 3).get()
-        self.assertEqual(2, val)
+        val = random.randint(0, 2).get()
+        self.assertEqual(1, val)
 
     @condition.retry(5)
     def test_goodness_of_fit(self):
@@ -131,13 +131,13 @@ class TestRandomIntegers2(unittest.TestCase):
 
     @condition.retry(20)
     def test_lower_bound(self):
-        val = random.random_integers(0, 3).get()
+        val = random.random_integers(0, 2).get()
         self.assertEqual(0, val)
 
     @condition.retry(20)
     def test_upper_bound(self):
-        val = random.random_integers(0, 3).get()
-        self.assertEqual(3, val)
+        val = random.random_integers(0, 2).get()
+        self.assertEqual(2, val)
 
     @condition.retry(5)
     def test_goodness_of_fit(self):
