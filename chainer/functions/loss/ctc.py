@@ -6,15 +6,17 @@ import numpy
 
 class ConnectionistTemporalClassification(function.Function):
 
+    '''To make it usable for real-world cases, this class has two policies below.
+
+    1. This class computes forward and backward variables in the log domain.
+    2. This class applies the softmax function to inputs. The Backward
+    values of CTC loss is often overflows. This is avoided by computing
+    backward values before the activation function is applied.
+    '''
+
     def __init__(self, blank_symbol):
         self.blank_symbol = blank_symbol
         self.zero_padding = -10000000000.0
-
-    '''
-    Transtion in forword and backword algorithms is represented as matrix.
-    See also
-    https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
-    '''
 
     def log_matrix(self, x):
         xp = cuda.get_array_module(x)
@@ -34,6 +36,11 @@ class ConnectionistTemporalClassification(function.Function):
             res = create_recurrence_relation(x, self.zero_padding)
         return res
 
+    '''
+    Transition in forword and backword algorithms is represented as matrix.
+    See also
+    https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
+    '''
     def recurrence_relation(self, size, xp):
         rr = (xp.eye(size) + xp.eye(size, k=1) +
               xp.eye(size, k=2) * (xp.arange(size) % 2))
@@ -174,7 +181,6 @@ class ConnectionistTemporalClassification(function.Function):
                 multiply = forward_prob_trans[t] + backward_prob_trans[t]
                 label_prob = self.label_probability(y[t].shape[0],
                                                     path, multiply)
-                # fixme: batch normarization of padded data.
                 delta[t][b] -= self.calc_path_probability(label_prob,
                                                           total_probability)
                 delta[t][b] /= batch_size
@@ -186,19 +192,25 @@ def connectionist_temporal_classification(blank_symbol, t, x):
     """Connectionist Temporal Classification loss function.
 
     Connectionist Temporal Classification(CTC) [Graves2006]_ is a loss function
-    of sequence labeling where where the alignment between the inputs
-    and target is unknown. See also [Graves2012]_
+    of sequence labeling where the alignment between the inputs and target is
+    unknown. See also [Graves2012]_
 
     Args:
         blank_symbol (int): Index of blank_symbol.
                             This value must be non-negative.
         t (Variable): Expected label sequence.
-        x (Variable): RNN output as probability of
-                      each charactor at each time.
+        x (Variable): RNN output at each time.
                       (ex. :math:`(y_1, y_2, ..., y_T)`)
 
     Returns:
         Variable: A variable holding a scalar value of the CTC loss.
+
+    .. note::
+       You need to input ``x`` without applying to activation functions(e.g.
+       softmax function), because this function applies softmax functions
+       to ``x`` before calculating CTC loss to avoid numerical limitations.
+       You also need to apply softmax function to fowarded values before you
+       decode it.
 
     .. note::
        This function is differentiable only by ``x``.
