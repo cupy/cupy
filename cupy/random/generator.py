@@ -5,6 +5,7 @@ import os
 import time
 
 import numpy
+import six
 
 import cupy
 from cupy import cuda
@@ -188,7 +189,7 @@ class RandomState(object):
 
         ret = cupy.empty(size)
         v = ret.view().reshape((ret.size,))
-        for idx in xrange(v.size):
+        for idx in six.moves.xrange(v.size):
             v[idx] = self._interval_one(mx)
         return ret
 
