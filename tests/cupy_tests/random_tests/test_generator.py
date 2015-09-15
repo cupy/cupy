@@ -170,6 +170,43 @@ class TestInterval(unittest.TestCase):
         self.assertListEqual(self.rs._interval_one.mock_calls, expected)
 
 
+@testing.gpu
+class TestIntervalOne(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def test_zero(self):
+        self.assertEqual(self.rs._interval_one(0), 0)
+
+    @condition.repeat(10)
+    def test_within_interval(self):
+        val = self.rs._interval_one(10).get()
+        self.assertLessEqual(0, val)
+        self.assertLessEqual(val, 10)
+
+    @condition.retry(20)
+    def test_lower_bound(self):
+        val = self.rs._interval_one(3).get()
+        self.assertEqual(0, val)
+
+    @condition.retry(20)
+    def test_upper_bound(self):
+        val = self.rs._interval_one(3).get()
+        self.assertEqual(3, val)
+
+    @condition.retry(5)
+    def test_goodness_of_fit(self):
+        mx = 5
+        trial = 100
+        vals = [self.rs._interval_one(mx).get()
+                for _ in six.moves.xrange(trial)]
+        counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
+        expected = numpy.array([float(trial) / mx + 1] * (mx + 1))
+        if not hypothesis_testing.chi_square_test(counts, expected):
+            self.fail()
+
+
 class TestResetStates(unittest.TestCase):
 
     def test_reset_states(self):
