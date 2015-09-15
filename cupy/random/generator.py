@@ -161,10 +161,11 @@ class RandomState(object):
         mask |= mask >> 32
         mask = cupy.array(mask, dtype=numpy.uint64)
         ret = cupy.empty((), dtype=numpy.uint64)
+        mx = cupy.array(mx, dtype=numpy.uint64)
         while True:
             curand.generate(self._generator, ret.data.ptr, 1)
             ret &= mask
-            if ret.get() <= mx:  # I will use PR #404
+            if ret <= mx:
                 break
         return ret
 
