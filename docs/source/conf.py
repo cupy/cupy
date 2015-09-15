@@ -331,7 +331,7 @@ intersphinx_mapping = {
 doctest_global_setup = '''
 import numpy as np
 import cupy
-from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers
+from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers, utils
 import chainer.functions as F
 np.random.seed(0)
 '''
