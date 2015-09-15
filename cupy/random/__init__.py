@@ -2,12 +2,12 @@ import numpy
 
 from cupy.random import distributions
 from cupy.random import generator
-from cupy.random import sample
+from cupy.random import sample as sample_
 
 
-rand = sample.rand
-randn = sample.randn
-random_sample = sample.random_sample
+rand = sample_.rand
+randn = sample_.randn
+random_sample = sample_.random_sample
 random = random_sample
 ranf = random_sample
 sample = random_sample
