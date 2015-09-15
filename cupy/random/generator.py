@@ -140,7 +140,8 @@ class RandomState(object):
         return out
 
     def _interval_one(self, mx):
-        """ Choose single integer uniformly at random from [0, mx]
+        """Choose single integer uniformly at random from [0, mx]
+
         Args:
             mx (int): Upper bound of the interval
         Returns:
@@ -162,17 +163,22 @@ class RandomState(object):
         while True:
             curand.generate(self._generator, ret.data.ptr, 1)
             ret &= mask
-            if ret.get() <= mx: # I will use PR #404
+            if ret.get() <= mx:  # I will use PR #404
                 break
         return ret
 
     def interval(self, mx, size):
-        """Generate multiple integers that are independently sampled uniformly at random from [0, mx]
+        """Generate multiple integers independently sampled uniformly from [0, mx]
+
         Args:
             mx (int): Upper bound of the interval
-            size (None or int or tuple): Shape of the array or the scalar returned. 
+            size (None or int or tuple): Shape of the array or the scalar
+            returned.
         Returns:
-            int or cupy.array: If ``None``, single integer value is returned. If ``int``, 1-D array of length size is returned. If ``tuple`,` multi-dimensional array with shape ``size`` is returned.
+            int or cupy.array: If ``None``, single integer value is returned.
+            If ``int``, 1-D array of length size is returned.
+            If ``tuple`,` multi-dimensional array with shape
+            ``size`` is returned.
         """
         if size is None:
             return self._interval_one(mx)

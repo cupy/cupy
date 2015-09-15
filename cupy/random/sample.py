@@ -56,16 +56,20 @@ def randint(low, high=None, size=None):
     """Returns a scalar or an array of integer values over ``[low, high)``.
 
     Each element of returned values are independently sampled from
-    uniform distribution over left-close and right-open interval ``[low, high)``.
+    uniform distribution over left-close and right-open interval
+    ``[low, high)``.
 
     Args:
-        low (int): If ``high`` is not ``None``, it is lower bound of the interval.
-        Otherwise, it is **upper** bound of the interval and lower bound of the inteval is ``0``.
+        low (int): If ``high`` is not ``None``,
+        it is the lower bound of the interval.
+        Otherwise, it is the **upper** bound of the interval
+        and lower bound of the inteval is set to ``0``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
 
     Returns:
-        int or cupy.ndarray of ints: If size is ``None``, it is single integer sampled.
+        int or cupy.ndarray of ints: If size is ``None``,
+        it is single integer sampled.
         If size is integer, it is the 1D-array of length ``size`` element.
         Otherwise, it is the array whose shape specified by ``size``.
     """
@@ -91,13 +95,16 @@ def random_integers(low, high=None, size=None):
     uniform distribution over closed interval ``[low, high]``.
 
     Args:
-        low (int): If ``high`` is not ``None``, it is lower bound of the interval.
-        Otherwise, it is **upper** bound of the interval and lower bound is ``1``.
+        low (int): If ``high`` is not ``None``,
+        it is the lower bound of the interval.
+        Otherwise, it is the **upper** bound of the interval
+        and the lower bound is set to ``1``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
 
     Returns:
-        int or cupy.ndarray of ints: If size is ``None``, it is single integer sampled.
+        int or cupy.ndarray of ints: If size is ``None``,
+        it is single integer sampled.
         If size is integer, it is the 1D-array of length ``size`` element.
         Otherwise, it is the array whose shape specified by ``size``.
     """
@@ -105,6 +112,7 @@ def random_integers(low, high=None, size=None):
         high = low
         low = 1
     return randint(low, high+1, size)
+
 
 def random_sample(size=None, dtype=float):
     """Returns an array of random values over the interval ``[0, 1)``.
