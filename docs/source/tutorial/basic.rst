@@ -352,10 +352,10 @@ Finally, we can write a learning loop as following:
 
    >>> batchsize = 100
    >>> datasize = 60000  #doctest: +SKIP
-   >>> for epoch in xrange(20):
-   ...     print 'epoch', epoch
+   >>> for epoch in range(20):
+   ...     print('epoch %d' % epoch)
    ...     indexes = np.random.permutation(datasize)
-   ...     for i in xrange(0, datasize, batchsize):
+   ...     for i in range(0, datasize, batchsize):
    ...         x_batch = x_train[indexes[i : i + batchsize]]
    ...         y_batch = y_train[indexes[i : i + batchsize]]
    ...
@@ -376,7 +376,7 @@ It can be achieved simply by calling forward function:
 .. doctest::
 
    >>> sum_loss, sum_accuracy = 0, 0
-   >>> for i in xrange(0, 10000, batchsize):
+   >>> for i in range(0, 10000, batchsize):
    ...     x_batch = x_test[i : i + batchsize]
    ...     y_batch = y_test[i : i + batchsize]
    ...     loss, accuracy = forward(x_batch, y_batch)
