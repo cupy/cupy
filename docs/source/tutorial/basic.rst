@@ -168,8 +168,8 @@ Instances of a parameterized function class act like usual functions:
    >>> x = Variable(np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32))
    >>> y = f(x)
    >>> y.data
-   array([[ 3.17576146,  1.75755572],
-          [ 8.61950684,  7.18090725]], dtype=float32)
+   array([[ 3.1757617 ,  1.75755572],
+          [ 8.61950684,  7.18090773]], dtype=float32)
 
 Gradients of parameters are computed by :meth:`~Variable.backward` method.
 Note that gradients are **accumulated** by the method rather than overwritten.
