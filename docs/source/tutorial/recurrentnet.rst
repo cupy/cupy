@@ -28,16 +28,18 @@ Here we learn how to write a simple one-layer recurrent net.
 The task is language modeling: given a finite sequence of words, we want to predict the next word at each position without peeking the successive words.
 Suppose that there are 1,000 different word types, and that we use 100 dimensional real vectors to represent each word (a.k.a. word embedding).
 
-Before writing the forward computation, we have to define parameterized functions::
+Before writing the forward computation, we have to define parameterized functions:
 
-  model = FunctionSet(
-      embed  = F.EmbedID(1000, 100),
-      x_to_h = F.Linear(100,   50),
-      h_to_h = F.Linear( 50,   50),
-      h_to_y = F.Linear( 50, 1000),
-  )
-  optimizer = optimizers.SGD()
-  optimizer.setup(model)
+.. testcode::
+
+   model = FunctionSet(
+       embed  = F.EmbedID(1000, 100),
+       x_to_h = F.Linear(100,   50),
+       h_to_h = F.Linear( 50,   50),
+       h_to_y = F.Linear( 50, 1000),
+   )
+   optimizer = optimizers.SGD()
+   optimizer.setup(model)
 
 Here :class:`~functions.EmbedID` is a parameterized function class for word embedding.
 It converts input integers into corresponding fixed-dimensional embedding vectors.
@@ -46,24 +48,26 @@ Here we use 50 hidden units.
 
 Then, we can write down the forward computation.
 Suppose that the input word sequence is given as a list of integer arrays.
-The forward computation is simply written with a for loop::
+The forward computation is simply written with a for loop:
 
-  def forward_one_step(h, cur_word, next_word, volatile=False):
-      word = Variable(cur_word, volatile=volatile)
-      t    = Variable(next_word, volatile=volatile)
-      x    = F.tanh(model.embed(word))
-      h    = F.tanh(model.x_to_h(x) + model.h_to_h(h))
-      y    = model.h_to_y(h)
-      loss = F.softmax_cross_entropy(y, t)
-      return h, loss
+.. testcode::  
 
-  def forward(x_list, volatile=False):
-      h = Variable(np.zeros((1, 50), dtype=np.float32), volatile=volatile)
-      loss = 0
-      for cur_word, next_word in zip(x_list, x_list[1:]):
-          h, new_loss = forward_one_step(h, cur_word, next_word, volatile=volatile)
-          loss += new_loss
-      return loss
+   def forward_one_step(h, cur_word, next_word, volatile=False):
+       word = Variable(cur_word, volatile=volatile)
+       t    = Variable(next_word, volatile=volatile)
+       x    = F.tanh(model.embed(word))
+       h    = F.tanh(model.x_to_h(x) + model.h_to_h(h))
+       y    = model.h_to_y(h)
+       loss = F.softmax_cross_entropy(y, t)
+       return h, loss
+
+   def forward(x_list, volatile=False):
+       h = Variable(np.zeros((1, 50), dtype=np.float32), volatile=volatile)
+       loss = 0
+       for cur_word, next_word in zip(x_list, x_list[1:]):
+           h, new_loss = forward_one_step(h, cur_word, next_word, volatile=volatile)
+           loss += new_loss
+       return loss
 
 Note that the first dimension of ``h`` and ``x_list`` is always the mini-batch size.
 The mini-batch size is assumed to be ``1`` here.
@@ -73,12 +77,19 @@ The ``forward`` function is very simple and no special care needs to be taken wi
 This code actually handles variable length input sequences without any tricks.
 
 Of course, the accumulated loss is a Variable object with the full history of computation.
-So we can just call its :meth:`~Variable.backward` method to compute gradients of the total loss according to the model parameters::
+So we can just call its :meth:`~Variable.backward` method to compute gradients of the total loss according to the model parameters:
 
-  optimizer.zero_grads()
-  loss = forward(x_list)
-  loss.backward()
-  optimizer.update()
+.. testcode::
+   :hide:
+
+   x_list = np.random.randint(255, size=(100, 1)).astype(np.int32)
+
+.. testcode::
+
+   optimizer.zero_grads()
+   loss = forward(x_list)
+   loss.backward()
+   optimizer.update()
 
 Do not forget to call :meth:`Optimizer.zero_grads` before the backward computation!
 
@@ -102,22 +113,24 @@ As a result, they are no longer a part of computation history, and are not invol
 Let's write an example of truncated backprop.
 Here we use the same network as the one used in the previous subsection.
 Suppose that we are given a very long sequence, and we want to run backprop truncated at every 30 time steps.
-We can write truncated backprop using the ``forward_one_step`` function that we wrote above. ::
+We can write truncated backprop using the ``forward_one_step`` function that we wrote above:
 
-  h = Variable(np.zeros((1, 50), dtype=np.float32))
-  loss   = 0
-  count  = 0
-  seqlen = len(x_list[1:])
+.. testcode::
 
-  for cur_word, next_word in zip(x_list, x_list[1:]):
-      h, new_loss = forward_one_step(h, cur_word, next_word)
-      loss  += new_loss
-      count += 1
-      if count % 30 == 0 or count == seqlen:
-          optimizer.zero_grads()
-          loss.backward()
-          loss.unchain_backward()
-          optimizer.update()
+   h = Variable(np.zeros((1, 50), dtype=np.float32))
+   loss   = 0
+   count  = 0
+   seqlen = len(x_list[1:])
+
+   for cur_word, next_word in zip(x_list, x_list[1:]):
+       h, new_loss = forward_one_step(h, cur_word, next_word)
+       loss  += new_loss
+       count += 1
+       if count % 30 == 0 or count == seqlen:
+           optimizer.zero_grads()
+           loss.backward()
+           loss.unchain_backward()
+           optimizer.update()
 
 State is updated at ``foward_one_step``, and the losses are accumulated to ``loss`` variable.
 At each 30 steps, backprop takes place at the accumulated loss.
@@ -142,9 +155,11 @@ Such variables are called *volatile variables*.
    It is not allowed to mix volatile and non-volatile variables as arguments to same function.
 
 Remember that our ``forward`` function accepts ``volatile`` argument.
-So we can enable volatile forward computation by just passing ``volatile=True`` to this function::
+So we can enable volatile forward computation by just passing ``volatile=True`` to this function:
 
-  loss = forward(x_list, volatile=True)
+.. testcode::
+
+   loss = forward(x_list, volatile=True)
 
 Volatile variables are also useful to evaluate feed-forward networks.
 
@@ -154,11 +169,11 @@ For example, suppose that we want to train a feed-forward network ``predictor_fu
 We want to train ``predictor_func`` without storing the computation history for ``fixed_func``.
 This is simply done by following code snippets (suppose ``x_data`` and ``y_data`` indicate input data and label, respectively)::
 
-  x = Variable(x_data, volatile=True)
-  feat = fixed_func(x)
-  feat.volatile = False
-  y = predictor_func(feat)
-  y.backward()
+   x = Variable(x_data, volatile=True)
+   feat = fixed_func(x)
+   feat.volatile = False
+   y = predictor_func(feat)
+   y.backward()
 
 At first, the input variable ``x`` is volatile, so ``fixed_func`` is executed in volatile mode, i.e. without memorizing the computation history.
 Then the intermediate variable ``feat`` is manually set to non-volatile, so ``predictor_func`` is executed in non-volatile mode, i.e., with memorizing the history of computation.
