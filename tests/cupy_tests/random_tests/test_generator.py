@@ -1,4 +1,5 @@
 import mock
+import os
 import unittest
 
 import numpy
@@ -144,6 +145,10 @@ class TestGetRandomState(unittest.TestCase):
 
     def setUp(self):
         self.device_id = cuda.Device().id
+        self.rs_tmp = generator._random_states
+
+    def tearDown(self, *args):
+        generator._random_states = self.rs_tmp
 
     def test_get_random_state_initialize(self):
         generator._random_states = {}
@@ -157,6 +162,30 @@ class TestGetRandomState(unittest.TestCase):
         self.assertEqual('expected', generator._random_states[self.device_id])
         self.assertEqual('dummy', generator._random_states[self.device_id + 1])
         self.assertEqual('expected', rs)
+
+
+@testing.gpu
+class TestGetRandomState2(unittest.TestCase):
+
+    def setUp(self):
+        self.rs_tmp = generator.RandomState
+        generator.RandomState = mock.Mock()
+        self.rs_dict = generator._random_states
+        generator._random_states = {}
+
+    def tearDown(self, *args):
+        generator.RandomState = self.rs_tmp
+        generator._random_states = self.rs_dict
+
+    def test_get_random_state_no_chainer_seed(self):
+        os.unsetenv('CHAINER_SEED')
+        generator.get_random_state()
+        generator.RandomState.assert_called_with(None)
+
+    def test_get_random_state_with_chainer_seed(self):
+        os.environ['CHAINER_SEED'] = '1'
+        generator.get_random_state()
+        generator.RandomState.assert_called_with('1')
 
 
 class TestGetSize(unittest.TestCase):
