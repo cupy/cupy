@@ -18,12 +18,11 @@ class Memory(object):
     """
     def __init__(self, size):
         self.size = size
-        self._device = device.Device()
+        self._device = None
+        self.ptr = ctypes.c_void_p()
         if size > 0:
+            self._device = device.Device()
             self.ptr = runtime.malloc(size)
-        else:
-            self.ptr = ctypes.c_void_p()
-            self._device = None
 
     def __del__(self):
         if self.ptr:
