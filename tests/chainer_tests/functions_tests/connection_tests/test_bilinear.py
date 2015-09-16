@@ -130,6 +130,39 @@ class TestBilinear3(TestBilinear):
     out_size = 1
 
 
+class TestBilinear4(TestBilinear):
+
+    in_shape = (1, 2)
+
+
+class TestBilinear5(TestBilinear):
+
+    in_shape = (2, 1)
+
+
+class TestBilinear6(TestBilinear):
+
+    in_shape = (1, 1)
+
+
+class TestBilinear7(TestBilinear):
+
+    in_shape = (1, 2)
+    out_size = 1
+
+
+class TestBilinear8(TestBilinear):
+
+    in_shape = (2, 1)
+    out_size = 1
+
+
+class TestBilinear9(TestBilinear):
+
+    in_shape = (1, 1)
+    out_size = 1
+
+
 class TestBilinearWOBias(TestBilinear):
 
     def setUp(self):
@@ -177,6 +210,39 @@ class TestBilinearWOBias2(TestBilinearWOBias):
 
 class TestBilinearWOBias3(TestBilinearWOBias):
 
+    out_size = 1
+
+
+class TestBilinearWOBias4(TestBilinearWOBias):
+
+    in_shape = (1, 2)
+
+
+class TestBilinearWOBias5(TestBilinearWOBias):
+
+    in_shape = (2, 1)
+
+
+class TestBilinearWOBias6(TestBilinearWOBias):
+
+    in_shape = (1, 1)
+
+
+class TestBilinearWOBias7(TestBilinearWOBias):
+
+    in_shape = (1, 2)
+    out_size = 1
+
+
+class TestBilinearWOBias8(TestBilinearWOBias):
+
+    in_shape = (2, 1)
+    out_size = 1
+
+
+class TestBilinearWOBias9(TestBilinearWOBias):
+
+    in_shape = (1, 1)
     out_size = 1
 
 
