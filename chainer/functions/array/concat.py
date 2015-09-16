@@ -34,6 +34,9 @@ class Concat(function.Function):
         return xp.concatenate(xs, axis=self.axis),
 
     def backward(self, xs, gy):
+        if not xs[:-1]:
+            return gy
+
         xp = cuda.get_array_module(*xs)
         sizes = numpy.array([x.shape[self.axis] for x in xs[:-1]]).cumsum()
         return xp.split(gy[0], sizes, axis=self.axis)
