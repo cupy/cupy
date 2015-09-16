@@ -212,7 +212,7 @@ class CaffeFunction(function.Function):
         if axis == 1 and param.concat_dim != 1:
             axis = param.concat_dim
 
-        self.forwards[layer.name] = _list_argument_function(
+        self.forwards[layer.name] = _ListArgumentFcuntion(
             functions.concat, axis=axis)
         self._add_layer(layer)
 
@@ -259,7 +259,7 @@ class CaffeFunction(function.Function):
     def _setup_dropout(self, layer):
         param = layer.dropout_param
 
-        self.forwards[layer.name] = _dropout_function(
+        self.forwards[layer.name] = _DropoutFunction(
             self, ratio=param.dropout_ratio)
         self._add_layer(layer)
 
@@ -288,7 +288,7 @@ class CaffeFunction(function.Function):
         if param.norm_region != param.ACROSS_CHANNELS:
             raise RuntimeError('Within-channel LRN is not supported')
 
-        fwd = _single_argument_function(
+        fwd = _SingleArgumentFunction(
             functions.local_response_normalization,
             n=param.local_size, k=param.k,
             alpha=param.alpha / param.local_size, beta=param.beta)
@@ -309,7 +309,7 @@ class CaffeFunction(function.Function):
         else:
             raise RuntimeError('Stochastic pooling is not supported')
 
-        fw = _single_argument_function(func, ksize, stride=stride, pad=pad)
+        fw = _SingleArgumentFunction(func, ksize, stride=stride, pad=pad)
         self.forwards[layer.name] = fw
         self._add_layer(layer)
 
@@ -318,7 +318,7 @@ class CaffeFunction(function.Function):
         slope = layer.relu_param.negative_slope
 
         if slope != 0:
-            fw = _single_argument_function(functions.leaky_relu, slope=slope)
+            fw = _SingleArgumentFunction(functions.leaky_relu, slope=slope)
         else:
             fw = functions.relu
 
@@ -405,7 +405,7 @@ def _get_width(blob):
 
 # Internal class
 
-class _single_argument_function:
+class _SingleArgumentFunction(object):
     def __init__(self, func, *args, **kwargs):
         self.func = func
         self.args = args
@@ -415,7 +415,7 @@ class _single_argument_function:
         return self.func(x, *self.args, **self.kwargs)
 
 
-class _list_argument_function:
+class _ListArgumentFcuntion(object):
     def __init__(self, func, **kwargs):
         self.func = func
         self.kwargs = kwargs
@@ -423,7 +423,7 @@ class _list_argument_function:
     def __call__(self, *xs):
         return self.func(xs, **self.kwargs)
 
-class _dropout_function:
+class _DropoutFunction(object):
     def __init__(self, caffe_func, ratio):
         self.caffe_func = caffe_func
         self.ratio = ratio
