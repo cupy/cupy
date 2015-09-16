@@ -202,8 +202,7 @@ class CaffeFunction(function.Function):
         bottom = []
         for blob_name in layer.bottom:
             bottom.append(self.split_map.get(blob_name, blob_name))
-        top = [i for i in layer.top]
-        self.layers.append((layer.name, bottom, top))
+        self.layers.append((layer.name, bottom, list(layer.top)))
 
     @_layer('Concat', 'CONCAT')
     def _setup_concat(self, layer):
