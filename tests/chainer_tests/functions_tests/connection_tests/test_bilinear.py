@@ -125,6 +125,11 @@ class TestBilinear2(TestBilinear):
             e1.dot(self.V1) + e2.dot(self.V2) + self.b)
 
 
+class TestBilinear3(TestBilinear):
+
+    out_size = 1
+
+
 class TestBilinearWOBias(TestBilinear):
 
     def setUp(self):
@@ -168,6 +173,11 @@ class TestBilinearWOBias2(TestBilinearWOBias):
         e2 = array.as_mat(self.e2)
 
         self.y = numpy.einsum('ij,ik,jkl->il', e1, e2, self.W)
+
+
+class TestBilinearWOBias3(TestBilinearWOBias):
+
+    out_size = 1
 
 
 class InitByInitialParameter(unittest.TestCase):
