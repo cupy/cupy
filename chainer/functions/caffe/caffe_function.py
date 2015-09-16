@@ -425,6 +425,7 @@ class _ListArgumentFcuntion(object):
 
 class _DropoutFunction(object):
     def __init__(self, caffe_func, ratio):
+        # `caffe_func.train` is determined when calling `__call__`
         self.caffe_func = caffe_func
         self.ratio = ratio
 
