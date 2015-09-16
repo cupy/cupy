@@ -31,6 +31,8 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         y = numpy.exp(self.x)
         loss_expect = 0.0
         for i in six.moves.range(y.shape[0]):
+            if self.t[i] == -1:
+                continue
             loss_expect -= math.log(y[i, self.t[i]] / y[i].sum())
         loss_expect /= y.shape[0]
 
@@ -132,5 +134,14 @@ class TestReplicatedSoftmaxCrossEntropy2(TestSoftmaxCrossEntropy):
         loss_expect /= y.shape[0]
 
         self.assertAlmostEqual(loss_expect, loss_value, places=4)
+
+
+class TestSoftmaxCrossEntropyWithIgnoreLabel(TestSoftmaxCrossEntropy):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        self.t = numpy.random.randint(0, 3, (4,)).astype(numpy.int32)
+        self.t[2] = -1
+
 
 testing.run_module(__name__, __file__)
