@@ -196,7 +196,7 @@ _curand.curandGenerateNormalDouble.argtypes = (Generator, _P, _S, _D, _D)
 
 def generateNormalDouble(generator, outputPtr, n, mean, stddev):
     if n % 2 == 1:
-        msg = 'curandGenerateNormalDouble can only generate even number of'\
+        msg = 'curandGenerateNormalDouble can only generate even number of '\
               'random variables simultaneously. See issue #390 for detail.'
         raise ValueError(msg)
     status = _curand.curandGenerateNormalDouble(generator, outputPtr, n, mean,
