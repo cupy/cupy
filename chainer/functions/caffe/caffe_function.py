@@ -423,6 +423,7 @@ class _ListArgumentFcuntion(object):
     def __call__(self, *xs):
         return self.func(xs, **self.kwargs)
 
+
 class _DropoutFunction(object):
     def __init__(self, caffe_func, ratio):
         self.caffe_func = caffe_func
