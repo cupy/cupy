@@ -15,8 +15,9 @@ class TestCTC(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (4, 2, 3)).astype(numpy.float32)
-        self.t = numpy.array([[0, 1], [1, 0]])
-        self.l = numpy.array([[2, 0, 2, 1, 2], [2, 1, 2, 0, 2]])
+        self.t = numpy.array([[0, 1], [1, 0]]).astype(numpy.int32)
+        self.l = numpy.array([[2, 0, 2, 1, 2],
+                              [2, 1, 2, 0, 2]]).astype(numpy.int32)
         self.blank_symbol = 2
         self.g = numpy.array(0.1, dtype=numpy.float32)
         self.gx = self.g

@@ -18,6 +18,20 @@ class ConnectionistTemporalClassification(function.Function):
         self.blank_symbol = blank_symbol
         self.zero_padding = -10000000000.0
 
+    def check_type_forward(self, in_types):
+        utils.type_check.expect(in_types.size() > 1)
+        l_type = in_types[0]
+        utils.type_check.expect(l_type.dtype == numpy.int32)
+
+        x_basetype = in_types[1]
+
+        for i in range(2, len(in_types)):
+            x_type = in_types[1]
+            utils.type_check.expect(
+                x_type.dtype == numpy.float32,
+                x_type.shape == x_basetype.shape,
+            )
+
     def log_matrix(self, x):
         xp = cuda.get_array_module(x)
         if xp == numpy:
