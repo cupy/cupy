@@ -9,11 +9,9 @@ class NesterovAG(optimizer.Optimizer):
     """Nesterov's Accelarated Gradient.
 
     Formulated as the linear combination coefficients of the velocity and
-    gradient contributions at each iteration [Bengio2012]_.
+    gradient contributions at each iteration.
 
-    .. [Bengio2012] Yoshua Bengio, Nicolas Boulanger-Lewandowski and\
-    Razvan Pascanu\
-   `ADVANCES IN OPTIMIZING RECURRENT NETWORKS<http://arxiv.org/abs/1212.0901>`_
+    See: http://arxiv.org/abs/1212.0901
     """
 
     def __init__(self, lr=0.01, momentum=0.9):
