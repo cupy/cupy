@@ -60,6 +60,15 @@ if available:
         _resolution_error = e
 
 
+def init(arg=None):
+    warnings.warn(
+        'chainer.cuda.init is deprecated. You need to call nothing to '
+        'initialize your environment. Call chainer.cuda.check_cuda_available '
+        'to check availability of CUDA.',
+        DeprecationWarning)
+    check_cuda_available()
+
+
 def check_cuda_available():
     """Checks if CUDA is available.
 
