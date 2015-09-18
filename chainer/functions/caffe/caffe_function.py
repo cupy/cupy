@@ -202,7 +202,7 @@ class CaffeFunction(function.Function):
         bottom = []
         for blob_name in layer.bottom:
             bottom.append(self.split_map.get(blob_name, blob_name))
-        self.layers.append((layer.name, bottom, layer.top))
+        self.layers.append((layer.name, bottom, list(layer.top)))
 
     @_layer('Concat', 'CONCAT')
     def _setup_concat(self, layer):
@@ -211,7 +211,8 @@ class CaffeFunction(function.Function):
         if axis == 1 and param.concat_dim != 1:
             axis = param.concat_dim
 
-        self.forwards[layer.name] = lambda *xs: functions.concat(xs, axis=axis)
+        self.forwards[layer.name] = _ListArgumentFcuntion(
+            functions.concat, axis=axis)
         self._add_layer(layer)
 
     @_layer('Convolution', 'CONVOLUTION')
@@ -257,8 +258,8 @@ class CaffeFunction(function.Function):
     def _setup_dropout(self, layer):
         param = layer.dropout_param
 
-        self.forwards[layer.name] = lambda x: functions.dropout(
-            x, ratio=param.dropout_ratio, train=self.train)
+        self.forwards[layer.name] = _DropoutFunction(
+            self, ratio=param.dropout_ratio)
         self._add_layer(layer)
 
     @_layer('InnerProduct', 'INNER_PRODUCT')
@@ -286,8 +287,9 @@ class CaffeFunction(function.Function):
         if param.norm_region != param.ACROSS_CHANNELS:
             raise RuntimeError('Within-channel LRN is not supported')
 
-        fwd = lambda x: functions.local_response_normalization(
-            x, n=param.local_size, k=param.k,
+        fwd = _SingleArgumentFunction(
+            functions.local_response_normalization,
+            n=param.local_size, k=param.k,
             alpha=param.alpha / param.local_size, beta=param.beta)
         self.forwards[layer.name] = fwd
         self._add_layer(layer)
@@ -300,14 +302,13 @@ class CaffeFunction(function.Function):
         pad = _get_pad(param)
 
         if param.pool == param.MAX:
-            fw = lambda x: functions.max_pooling_2d(
-                x, ksize, stride=stride, pad=pad)
+            func = functions.max_pooling_2d
         elif param.pool == param.AVE:
-            fw = lambda x: functions.average_pooling_2d(
-                x, ksize, stride=stride, pad=pad)
+            func = functions.average_pooling_2d
         else:
             raise RuntimeError('Stochastic pooling is not supported')
 
+        fw = _SingleArgumentFunction(func, ksize, stride=stride, pad=pad)
         self.forwards[layer.name] = fw
         self._add_layer(layer)
 
@@ -316,7 +317,7 @@ class CaffeFunction(function.Function):
         slope = layer.relu_param.negative_slope
 
         if slope != 0:
-            fw = lambda x: functions.leaky_relu(x, slope=slope)
+            fw = _SingleArgumentFunction(functions.leaky_relu, slope=slope)
         else:
             fw = functions.relu
 
@@ -399,3 +400,35 @@ def _get_width(blob):
         raise RuntimeError(
             '{}-dimentional array is not supported'.format(
                 len(blob.shape.dim)))
+
+
+# Internal class
+
+class _SingleArgumentFunction(object):
+    def __init__(self, func, *args, **kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, x):
+        return self.func(x, *self.args, **self.kwargs)
+
+
+class _ListArgumentFcuntion(object):
+    def __init__(self, func, **kwargs):
+        self.func = func
+        self.kwargs = kwargs
+
+    def __call__(self, *xs):
+        return self.func(xs, **self.kwargs)
+
+
+class _DropoutFunction(object):
+    def __init__(self, caffe_func, ratio):
+        # `caffe_func.train` is determined when calling `__call__`
+        self.caffe_func = caffe_func
+        self.ratio = ratio
+
+    def __call__(self, x):
+        return functions.dropout(
+            x, ratio=self.ratio, train=self.caffe_func.train)
