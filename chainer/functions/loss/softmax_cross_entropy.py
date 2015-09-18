@@ -102,14 +102,11 @@ class SoftmaxCrossEntropy(function.Function):
             'T y, S t, raw T coeff, S n_channel, S n_unit',
             'T gx',
             '''
-               const int n = i / (n_channel * n_unit);
                const int c = (i / n_unit % n_channel);
-               const int m = i % n_unit;
-               const int ti = t[n * n_unit + m];
-               if (ti == -1) {
+               if (t == -1) {
                  gx = 0;
                } else {
-                 gx = coeff[0] * (y - (c == ti));
+                 gx = coeff[0] * (y - (c == t));
                }
             ''',
             'softmax_crossent_bwd')(
