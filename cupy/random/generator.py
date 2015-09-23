@@ -62,7 +62,6 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-        size = _get_size(size)
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateLogNormal
@@ -80,7 +79,6 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-        size = _get_size(size)
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateNormal
@@ -129,7 +127,6 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-        size = _get_size(size)
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateUniform
@@ -177,7 +174,6 @@ class RandomState(object):
 
         """
         dtype = numpy.dtype(dtype)
-        size = _get_size(size)
         rand = self.random_sample(size=size, dtype=dtype)
         return dtype.type(low) + rand * dtype.type(high - low)
 
@@ -229,17 +225,6 @@ def get_random_state():
         rs = RandomState(os.getenv('CHAINER_SEED'))
         _random_states[dev.id] = rs
     return rs
-
-
-def _get_size(size):
-    if size is None:
-        return ()
-    elif isinstance(size, collections.Sequence):
-        return tuple(size)
-    elif isinstance(size, int):
-        return size,
-    else:
-        raise ValueError('size should be None, collections.Sequence, or int')
 
 
 def _check_and_get_dtype(dtype):

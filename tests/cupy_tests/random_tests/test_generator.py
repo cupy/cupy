@@ -188,28 +188,6 @@ class TestGetRandomState2(unittest.TestCase):
         generator.RandomState.assert_called_with('1')
 
 
-class TestGetSize(unittest.TestCase):
-
-    def test_none(self):
-        self.assertEqual(generator._get_size(None), ())
-
-    def check_collection(self, a):
-        self.assertEqual(generator._get_size(a), tuple(a))
-
-    def test_list(self):
-        self.check_collection([1, 2, 3])
-
-    def test_tuple(self):
-        self.check_collection((1, 2, 3))
-
-    def test_int(self):
-        self.assertEqual(generator._get_size(1), (1,))
-
-    def test_float(self):
-        with self.assertRaises(ValueError):
-            generator._get_size(1.0)
-
-
 class TestCheckAndGetDtype(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
