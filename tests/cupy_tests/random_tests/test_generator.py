@@ -4,6 +4,7 @@ import os
 import unittest
 
 import numpy
+import six
 
 import cupy
 from cupy import cuda
@@ -42,7 +43,7 @@ class TestRandomState(unittest.TestCase):
 
     def check_normal(self, curand_func, dtype):
         shape = cupy._get_size(self.size)
-        exp_size = reduce(operator.mul, shape, 1)
+        exp_size = six.moves.reduce(operator.mul, shape, 1)
         if exp_size % 2 == 1:
             exp_size += 1
 

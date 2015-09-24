@@ -5,6 +5,7 @@ import os
 import time
 
 import numpy
+import six
 
 import cupy
 from cupy import cuda
@@ -88,7 +89,7 @@ class RandomState(object):
         # curand.generateNormal and curand.generateNormalDouble don't support
         # odd size
         size = cupy._get_size(size)
-        element_size = reduce(operator.mul, size, 1)
+        element_size = six.moves.reduce(operator.mul, size, 1)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
             func(self._generator, out.data.ptr, out.size, loc, scale)
