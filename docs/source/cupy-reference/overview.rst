@@ -221,6 +221,7 @@ Array manipulation routines
 :func:`atleast_3d`
 :class:`broadcast`
 :func:`broadcast_arrays`
+:func:`expand_dims`
 :func:`squeeze`
 
 :func:`column_stack`
