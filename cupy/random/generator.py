@@ -52,6 +52,23 @@ class RandomState(object):
             stream = cuda.Stream()
         curand.setStream(self._generator, stream.ptr)
 
+    def _generate_normal(self, func, size, dtype, *args):
+        # curand funcitons below don't support odd size.
+        # * curand.generateNormal
+        # * curand.generateNormalDouble
+        # * curand.generateLogNormal
+        # * curand.generateLogNormalDouble
+        size = cupy._get_size(size)
+        element_size = six.moves.reduce(operator.mul, size, 1)
+        if element_size % 2 == 0:
+            out = cupy.empty(size, dtype=dtype)
+            func(self._generator, out.data.ptr, out.size, *args)
+            return out
+        else:
+            out = cupy.empty((element_size + 1,), dtype=dtype)
+            func(self._generator, out.data.ptr, out.size, *args)
+            return out[:element_size].reshape(size)
+
     # NumPy compatible functions
 
     def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
@@ -63,13 +80,11 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-        out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateLogNormal
         else:
             func = curand.generateLogNormalDouble
-        func(self._generator, out.data.ptr, out.size, mean, sigma)
-        return out
+        return self._generate_normal(func, size, dtype, mean, sigma)
 
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of normally distributed samples.
@@ -80,25 +95,11 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-
         if dtype.char == 'f':
             func = curand.generateNormal
         else:
             func = curand.generateNormalDouble
-
-        # curand.generateNormal and curand.generateNormalDouble don't support
-        # odd size
-        size = cupy._get_size(size)
-        element_size = six.moves.reduce(operator.mul, size, 1)
-        if element_size % 2 == 0:
-            out = cupy.empty(size, dtype=dtype)
-            func(self._generator, out.data.ptr, out.size, loc, scale)
-        else:
-            out = cupy.empty((element_size + 1,), dtype=dtype)
-            func(self._generator, out.data.ptr, out.size, loc, scale)
-            out = out[:element_size].reshape(size)
-
-        return out
+        return self._generate_normal(func, size, dtype, loc, scale)
 
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.

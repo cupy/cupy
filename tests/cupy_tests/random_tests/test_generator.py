@@ -24,10 +24,19 @@ class TestRandomState(unittest.TestCase):
         self.rs = generator.RandomState()
 
     def check_lognormal(self, curand_func, dtype):
+        shape = cupy._get_size(self.size)
+        exp_size = six.moves.reduce(operator.mul, shape, 1)
+        if exp_size % 2 == 1:
+            exp_size += 1
+
+        curand_func.return_value = cupy.zeros(exp_size, dtype=dtype)
         out = self.rs.lognormal(self.args[0], self.args[1], self.size, dtype)
-        curand_func.assert_called_once_with(
-            self.rs._generator, out.data.ptr,
-            out.size, self.args[0], self.args[1])
+        gen, _, size, mean, sigma = curand_func.call_args[0]
+        self.assertIs(gen, self.rs._generator)
+        self.assertEqual(size, exp_size)
+        self.assertIs(mean, self.args[0])
+        self.assertIs(sigma, self.args[1])
+        self.assertEqual(out.shape, shape)
 
     def test_lognormal_float(self):
         curand.generateLogNormalDouble = mock.Mock()
@@ -49,11 +58,11 @@ class TestRandomState(unittest.TestCase):
 
         curand_func.return_value = cupy.zeros(exp_size, dtype=dtype)
         out = self.rs.normal(self.args[0], self.args[1], self.size, dtype)
-        gen, _, size, mu, var = curand_func.call_args[0]
+        gen, _, size, loc, scale = curand_func.call_args[0]
         self.assertIs(gen, self.rs._generator)
         self.assertEqual(size, exp_size)
-        self.assertIs(mu, self.args[0])
-        self.assertIs(var, self.args[1])
+        self.assertIs(loc, self.args[0])
+        self.assertIs(scale, self.args[1])
         self.assertEqual(out.shape, shape)
 
     def test_normal_float32(self):
