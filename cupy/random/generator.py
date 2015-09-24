@@ -1,6 +1,5 @@
 import atexit
 import binascii
-import collections
 import os
 import time
 
