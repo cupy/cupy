@@ -1,9 +1,11 @@
 import mock
+import operator
 import os
 import unittest
 
 import numpy
 
+import cupy
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.random import generator
@@ -39,10 +41,19 @@ class TestRandomState(unittest.TestCase):
         self.check_lognormal(curand.generateLogNormalDouble, numpy.float64)
 
     def check_normal(self, curand_func, dtype):
+        shape = cupy._get_size(self.size)
+        exp_size = reduce(operator.mul, shape, 1)
+        if exp_size % 2 == 1:
+            exp_size += 1
+
+        curand_func.return_value = cupy.zeros(exp_size, dtype=dtype)
         out = self.rs.normal(self.args[0], self.args[1], self.size, dtype)
-        curand_func.assert_called_once_with(
-            self.rs._generator, out.data.ptr,
-            out.size, self.args[0], self.args[1])
+        gen, _, size, mu, var = curand_func.call_args[0]
+        self.assertIs(gen, self.rs._generator)
+        self.assertEqual(size, exp_size)
+        self.assertIs(mu, self.args[0])
+        self.assertIs(var, self.args[1])
+        self.assertEqual(out.shape, shape)
 
     def test_normal_float32(self):
         curand.generateNormal = mock.Mock()
@@ -103,6 +114,27 @@ class TestRandomState4(TestRandomState):
 
     args = (0.0, 1.0)
     size = (1, 2, 3)
+
+
+@testing.gpu
+class TestRandomState6(TestRandomState):
+
+    args = (0.0, 1.0)
+    size = 3
+
+
+@testing.gpu
+class TestRandomState7(TestRandomState):
+
+    args = (0.0, 1.0)
+    size = (3, 3)
+
+
+@testing.gpu
+class TestRandomState8(TestRandomState):
+
+    args = (0.0, 1.0)
+    size = ()
 
 
 @testing.gpu

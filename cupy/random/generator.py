@@ -1,5 +1,6 @@
 import atexit
 import binascii
+import operator
 import os
 import time
 
@@ -78,12 +79,24 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-        out = cupy.empty(size, dtype=dtype)
+
         if dtype.char == 'f':
             func = curand.generateNormal
         else:
             func = curand.generateNormalDouble
-        func(self._generator, out.data.ptr, out.size, loc, scale)
+
+        # curand.generateNormal and curand.generateNormalDouble don't support
+        # odd size
+        size = cupy._get_size(size)
+        element_size = reduce(operator.mul, size, 1)
+        if element_size % 2 == 0:
+            out = cupy.empty(size, dtype=dtype)
+            func(self._generator, out.data.ptr, out.size, loc, scale)
+        else:
+            out = cupy.empty((element_size + 1,), dtype=dtype)
+            func(self._generator, out.data.ptr, out.size, loc, scale)
+            out = out[:element_size].reshape(size)
+
         return out
 
     def rand(self, *size, **kwarg):
