@@ -107,7 +107,7 @@ class ConnectionistTemporalClassification(function.Function):
                             value = x[index] + log(1 + exp(value -x[index]));
                         }
                     }
-                    atomicExch(&z, value);
+                    z = value;
                 }
                 ''',
                 'reduce_probability')(multiply.astype(numpy.float32),
