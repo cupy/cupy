@@ -309,3 +309,144 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_typecast_float2(self):
         self.check_typecast(100000.0)
+
+
+@testing.gpu
+class TestArrayIntElementwiseOp(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_array_scalar_op(self, op, xp, dtype, swap=False):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        if swap:
+            return op(dtype(2), a)
+        else:
+            return op(a, dtype(2))
+
+    def test_lshift_scalar(self):
+        self.check_array_scalar_op(operator.lshift)
+
+    def test_rlshift_scalar(self):
+        self.check_array_scalar_op(operator.lshift, swap=True)
+
+    def test_rshift_scalar(self):
+        self.check_array_scalar_op(operator.rshift)
+
+    def test_rrshift_scalar(self):
+        self.check_array_scalar_op(operator.rshift, swap=True)
+
+    def test_and_scalar(self):
+        self.check_array_scalar_op(operator.and_)
+
+    def test_rand_scalar(self):
+        self.check_array_scalar_op(operator.and_, swap=True)
+
+    def test_or_scalar(self):
+        self.check_array_scalar_op(operator.or_)
+
+    def test_ror_scalar(self):
+        self.check_array_scalar_op(operator.or_, swap=True)
+
+    def test_xor_scalar(self):
+        self.check_array_scalar_op(operator.xor)
+
+    def test_rxor_scalar(self):
+        self.check_array_scalar_op(operator.xor, swap=True)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_array_array_op(self, op, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+        return op(a, b)
+
+    def test_lshift_array(self):
+        self.check_array_scalar_op(operator.lshift)
+
+    def test_ilshift_array(self):
+        self.check_array_scalar_op(operator.ilshift)
+
+    def test_rshift_array(self):
+        self.check_array_scalar_op(operator.rshift)
+
+    def test_irshift_array(self):
+        self.check_array_scalar_op(operator.irshift)
+
+    def test_and_array(self):
+        self.check_array_scalar_op(operator.and_)
+
+    def test_iand_array(self):
+        self.check_array_scalar_op(operator.iand)
+
+    def test_or_array(self):
+        self.check_array_scalar_op(operator.or_)
+
+    def test_ior_array(self):
+        self.check_array_scalar_op(operator.ior)
+
+    def test_xor_array(self):
+        self.check_array_scalar_op(operator.xor)
+
+    def test_ixor_array(self):
+        self.check_array_scalar_op(operator.ixor)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_array_broadcasted_op(self, op, xp, dtype):
+        a = testing.shaped_arange((2, 3), dtype=dtype)
+        b = testing.shaped_arange((2, 1), dtype=dtype)
+        return op(a, b)
+
+    def test_broadcasted_lshift(self):
+        self.check_array_broadcasted_op(operator.lshift)
+
+    def test_broadcasted_ilshift(self):
+        self.check_array_broadcasted_op(operator.ilshift)
+
+    def test_broadcasted_rshift(self):
+        self.check_array_broadcasted_op(operator.rshift)
+
+    def test_broadcasted_irshift(self):
+        self.check_array_broadcasted_op(operator.irshift)
+
+    def test_broadcasted_and(self):
+        self.check_array_broadcasted_op(operator.and_)
+
+    def test_broadcasted_iand(self):
+        self.check_array_broadcasted_op(operator.iand)
+
+    def test_broadcasted_or(self):
+        self.check_array_broadcasted_op(operator.or_)
+
+    def test_broadcasted_ior(self):
+        self.check_array_broadcasted_op(operator.ior)
+
+    def test_broadcasted_xor(self):
+        self.check_array_broadcasted_op(operator.xor)
+
+    def test_broadcasted_ixor(self):
+        self.check_array_broadcasted_op(operator.ixor)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_array_doubly_broadcasted_op(self, op, xp, dtype):
+        a = testing.shaped_arange((2, 1, 3), xp, dtype)
+        b = testing.shaped_arange((3, 1), xp, dtype)
+        return op(a, b)
+
+    def test_doubly_broadcasted_lshift(self):
+        self.check_array_doubly_broadcasted_op(operator.lshift)
+
+    def test_doubly_broadcasted_rshift(self):
+        self.check_array_doubly_broadcasted_op(operator.rshift)
+
+    def test_doubly_broadcasted_and(self):
+        self.check_array_doubly_broadcasted_op(operator.and_)
+
+    def test_doubly_broadcasted_or(self):
+        self.check_array_doubly_broadcasted_op(operator.or_)
+
+    def test_doubly_broadcasted_xor(self):
+        self.check_array_doubly_broadcasted_op(operator.xor)
