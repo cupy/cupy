@@ -5,6 +5,7 @@ import numpy as np
 
 import chainer
 from chainer import cuda
+from chainer.cuda import cupy as cp
 from chainer import gradient_check
 from chainer import optimizer
 from chainer import optimizers
@@ -86,9 +87,9 @@ class TestOptimizer(unittest.TestCase):
     def setup_cpu(self):
         self.optimizer.setup((self.params, self.grads))
 
-    def setup_gpu(self):
-        self.params = list(map(cuda.to_gpu, self.params))
-        self.grads = list(map(cuda.to_gpu, self.grads))
+    def setup_gpu(self, dst_id):
+        self.params = list(map(lambda p: cuda.to_gpu(p, dst_id), self.params))
+        self.grads = list(map(lambda p: cuda.to_gpu(p, dst_id), self.grads))
         self.optimizer.setup((self.params, self.grads))
 
     def check_init_state(self, param, grad, gpu):
@@ -129,7 +130,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_update_gpu(self):
-        self.setup_gpu()
+        self.setup_gpu(cuda.Device().id)
         self.check_update(True)
 
     def check_accumulate_grads(self):
@@ -155,7 +156,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_compute_grads_norm_gpu(self):
-        self.setup_gpu()
+        self.setup_gpu(cuda.Device().id)
         self.check_compute_grads_norm()
 
     def check_weight_decay(self):
@@ -170,7 +171,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_weight_decay_gpu(self):
-        self.setup_gpu()
+        self.setup_gpu(cuda.Device().id)
         self.check_weight_decay()
 
     def check_clip_grads(self):
@@ -185,7 +186,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_clip_grads_gpu(self):
-        self.setup_gpu()
+        self.setup_gpu(cuda.Device().id)
         self.check_clip_grads()
 
 
