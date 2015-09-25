@@ -494,14 +494,14 @@ __device__ min_max_st my_argmax(const min_max_st& a, const min_max_st& b) {
 
 amin = create_reduction_func(
     'cupy_min',
-    ('?->?', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
     ('min_max_st(in0)', 'my_min(a, b)', 'out0 = a.value', 'min_max_st'),
     None, _min_max_preamble)
 
 amax = create_reduction_func(
     'cupy_max',
-    ('?->?', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
     ('min_max_st(in0)', 'my_max(a, b)', 'out0 = a.value', 'min_max_st'),
     None, _min_max_preamble)
