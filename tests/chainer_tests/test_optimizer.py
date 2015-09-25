@@ -133,18 +133,39 @@ class TestOptimizer(unittest.TestCase):
         self.setup_gpu(cuda.Device().id)
         self.check_update(True)
 
-    def check_accumulate_grads(self):
+    def check_accumulate_grads_from_cpu(self):
         self.optimizer.accumulate_grads([np.arange(3)])
         self.assertTrue((cuda.to_cpu(self.grads[0]) == np.arange(3) * 2).all())
 
-    def test_accumulate_grads_cpu(self):
+    def check_accumulate_grads_from_gpu(self, src_id):
+        with cuda.Device(src_id):
+            self.optimizer.accumulate_grads([cp.arange(3)])
+        self.assertTrue((cuda.to_cpu(self.grads[0]) == np.arange(3) * 2).all())
+
+    def test_accumulate_grads_cpu_to_cpu(self):
         self.setup_cpu()
-        self.check_accumulate_grads()
+        self.check_accumulate_grads_from_cpu()
 
     @attr.gpu
-    def test_accumulate_grads_gpu(self):
-        self.setup_gpu()
-        self.check_accumulate_grads()
+    def test_accumulate_grads_cpu_to_gpu(self):
+        self.setup_gpu(cuda.Device().id)
+        self.check_accumulate_grads_from_cpu()
+
+    @attr.gpu
+    def test_accumulate_grads_gpu_to_cpu(self):
+        self.setup_cpu()
+        self.check_accumulate_grads_from_gpu(cuda.Device().id)
+
+    @attr.gpu
+    def test_accumulate_grads_gpu_to_gpu(self):
+        device_id = cuda.Device().id
+        self.setup_gpu(device_id)
+        self.check_accumulate_grads_from_gpu(device_id)
+
+    @attr.multi_gpu(2)
+    def test_accumulate_grads_multigpu(self):
+        self.setup_gpu(0)
+        self.check_accumulate_grads_from_gpu(1)
 
     def check_compute_grads_norm(self):
         norm = self.optimizer.compute_grads_norm()
