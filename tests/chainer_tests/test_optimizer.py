@@ -2,10 +2,10 @@ import unittest
 
 import mock
 import numpy as np
+import cupy as cp
 
 import chainer
 from chainer import cuda
-from chainer.cuda import cupy as cp
 from chainer import gradient_check
 from chainer import optimizer
 from chainer import optimizers
