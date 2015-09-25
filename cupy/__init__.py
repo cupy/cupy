@@ -401,7 +401,7 @@ class ndarray(object):
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
-        elementwise.copy(value, self, dtype=self._dtype)
+        elementwise.copy(self._dtype.type(value), self, dtype=self._dtype)
 
     # -------------------------------------------------------------------------
     # Shape manipulation
