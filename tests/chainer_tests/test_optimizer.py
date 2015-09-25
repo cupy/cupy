@@ -137,6 +137,7 @@ class TestOptimizer(unittest.TestCase):
         self.optimizer.accumulate_grads([np.arange(3)])
         self.assertTrue((cuda.to_cpu(self.grads[0]) == np.arange(3) * 2).all())
 
+    @attr.gpu
     def check_accumulate_grads_from_gpu(self, src_id):
         with cuda.Device(src_id):
             self.optimizer.accumulate_grads([cp.arange(3)])
