@@ -1,6 +1,5 @@
 import unittest
 
-import cupy as cp
 import mock
 import numpy as np
 
@@ -140,7 +139,7 @@ class TestOptimizer(unittest.TestCase):
     @attr.gpu
     def check_accumulate_grads_from_gpu(self, src_id):
         with cuda.Device(src_id):
-            self.optimizer.accumulate_grads([cp.arange(3)])
+            self.optimizer.accumulate_grads([cuda.cupy.arange(3)])
         self.assertTrue((cuda.to_cpu(self.grads[0]) == np.arange(3) * 2).all())
 
     def test_accumulate_grads_cpu_to_cpu(self):
