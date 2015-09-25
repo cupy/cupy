@@ -1,8 +1,8 @@
 import unittest
 
+import cupy as cp
 import mock
 import numpy as np
-import cupy as cp
 
 import chainer
 from chainer import cuda
