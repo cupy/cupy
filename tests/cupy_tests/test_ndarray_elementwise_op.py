@@ -4,6 +4,7 @@ import unittest
 import numpy
 import six
 
+import cupy
 from cupy import testing
 
 
@@ -264,3 +265,42 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_array_reversed_mul(self):
         self.check_array_reversed_op(operator.mul)
+
+    @testing.for_all_dtypes(no_bool=True)
+    def check_typecast(self, val, dtype):
+        a = val + testing.shaped_arange((5,), numpy, dtype)
+        b = val + testing.shaped_arange((5,), cupy, dtype)
+        self.assertEqual(a.dtype, b.dtype)
+
+    def test_typecast_bool1(self):
+        self.check_typecast(True)
+
+    def test_typecast_bool2(self):
+        self.check_typecast(False)
+
+    def test_typecast_int1(self):
+        self.check_typecast(0)
+
+    def test_typecast_int2(self):
+        self.check_typecast(-127)
+
+    def test_typecast_int3(self):
+        self.check_typecast(255)
+
+    def test_typecast_int4(self):
+        self.check_typecast(-32768)
+
+    def test_typecast_int5(self):
+        self.check_typecast(65535)
+
+    def test_typecast_int6(self):
+        self.check_typecast(-2147483648)
+
+    def test_typecast_int7(self):
+        self.check_typecast(4294967295)
+
+    def test_typecast_float1(self):
+        self.check_typecast(0.0)
+
+    def test_typecast_float2(self):
+        self.check_typecast(100000.0)
