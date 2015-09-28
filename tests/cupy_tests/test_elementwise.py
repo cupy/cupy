@@ -2,8 +2,8 @@ import unittest
 
 import cupy
 from cupy import cuda
-from cupy import testing
 from cupy import elementwise
+from cupy import testing
 
 
 @testing.gpu
@@ -29,4 +29,3 @@ class TestElementwise(unittest.TestCase):
     def test_copy_multigpu(self, dtype):
         with self.assertRaises(ValueError):
             self.check_copy(dtype, 0, 1)
-

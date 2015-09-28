@@ -3,7 +3,6 @@ import ctypes
 import numpy
 
 import cupy
-from cupy import cuda
 from cupy import elementwise
 
 

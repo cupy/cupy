@@ -1,10 +1,8 @@
 import unittest
 
-import numpy
-
 import cupy
-from cupy import testing
 from cupy import cuda
+from cupy import testing
 
 
 @testing.gpu
@@ -80,4 +78,3 @@ class TestFromData(unittest.TestCase):
         with cuda.Device(1):
             dst = src.copy()
         testing.assert_allclose(src, dst, rtol=0, atol=0)
-

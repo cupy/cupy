@@ -99,8 +99,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            if (self.device.compute_capability[0] >= '2' and
-                src.device.compute_capability[0] >= '2'):
+            if self.device.compute_capability[0] >= '2' and \
+               src.device.compute_capability[0] >= '2':
                 runtime.memcpy(self.ptr, src.ptr, size,
                                runtime.memcpyDeviceToDevice)
             else:
@@ -120,8 +120,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            if (self.device.compute_capability[0] >= '2' and
-                src.device.compute_capability[0] >= '2'):
+            if self.device.compute_capability[0] >= '2' and \
+               src.device.compute_capability[0] >= '2':
                 runtime.memcpyAsync(self.ptr, src.ptr, size,
                                     runtime.memcpyDeviceToDevice)
             else:
