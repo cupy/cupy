@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 from cupy import testing
+from cupy import cuda
 
 
 @testing.gpu
@@ -64,8 +65,19 @@ class TestFromData(unittest.TestCase):
         self.assertIs(a, b)
 
     @testing.numpy_cupy_array_equal()
-    def test_copy(self, xp):
-        a = xp.zeros((2, 3, 4), dtype=numpy.float32)
+    @testing.for_all_dtypes()
+    def test_copy(self, xp, dtype):
+        a = xp.zeros((2, 3, 4), dtype=dtype)
         b = a.copy()
         a[1] = 1
         return b
+
+    @testing.multi_gpu(2)
+    @testing.for_all_dtypes()
+    def test_copy_multigpu(self, dtype):
+        with cuda.Device(0):
+            src = cupy.random.uniform(-1, 1, (2, 3)).astype(dtype)
+        with cuda.Device(1):
+            dst = src.copy()
+        testing.assert_allclose(src, dst, rtol=0, atol=0)
+
