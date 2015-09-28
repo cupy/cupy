@@ -486,57 +486,65 @@ def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
         kernel_params, operation, name, preamble)
 
 
-def _guess_routine_from_types(ops, in_types, out_type):
-    if out_type is not None:
-        out_type = (out_type,) * len(ops[0][1])
+def _guess_routine_from_in_types(ops, in_types):
     for op in ops:
         for dst, src in six_zip(op[0], in_types):
             if not numpy.can_cast(src, dst):
                 break
         else:
-            if out_type is None or out_type == op[1]:
-                return op
+            return op
     return None
 
 
-def _guess_routine(name, cache, ops, in_args, out_type):
-    if out_type is not None:
-        all_scalars = False
-        max_array_kind = _kind_score[numpy.dtype(out_type).kind]
-    else:
+def _guess_routine_from_dtype(ops, dtype):
+    for op in ops:
+        for t in op[1]:
+            if t != dtype:
+                break
+        else:
+            return op
+    return None
+
+
+def _guess_routine(name, cache, ops, in_args, dtype):
+    if dtype is None:
         all_scalars = True
         max_array_kind = -1
-
-    max_scalar_kind = -1
-    for i in in_args:
-        if isinstance(i, cupy.ndarray):
-            kind = _kind_score[i.dtype.kind]
-            all_scalars = False
-            if kind > max_array_kind:
-                max_array_kind = kind
-        else:
-            if isinstance(i, _python_scalar_type):
-                dtype = numpy.dtype(type(i))
+        max_scalar_kind = -1
+        for i in in_args:
+            if isinstance(i, cupy.ndarray):
+                kind = _kind_score[i.dtype.kind]
+                all_scalars = False
+                if kind > max_array_kind:
+                    max_array_kind = kind
             else:
-                dtype = i.dtype
-            kind = _kind_score[dtype.kind]
-            if kind > max_scalar_kind:
-                max_scalar_kind = kind
-    use_min_scalar = not all_scalars and max_array_kind >= max_scalar_kind
+                if isinstance(i, _python_scalar_type):
+                    dtype = numpy.dtype(type(i))
+                else:
+                    dtype = i.dtype
+                kind = _kind_score[dtype.kind]
+                if kind > max_scalar_kind:
+                    max_scalar_kind = kind
+        use_min_scalar = not all_scalars and max_array_kind >= max_scalar_kind
+        if use_min_scalar:
+            in_types = tuple(in_args)
+            op = ()
+        else:
+            in_types = tuple(
+                [type(i)
+                 if isinstance(i, _python_scalar_type) else i.dtype.type
+                 for i in in_args])
+            op = cache.get(in_types, ())
 
-    if use_min_scalar:
-        key = tuple(in_args) + (out_type,)
-        op = ()
+        if op is ():
+            op = _guess_routine_from_in_types(ops, in_types)
+            if not use_min_scalar:
+                cache[in_types] = op
     else:
-        key = tuple([type(i)
-                     if isinstance(i, _python_scalar_type) else i.dtype.type
-                     for i in in_args] + [out_type])
-        op = cache.get(key, ())
-
-    if op is ():
-        op = _guess_routine_from_types(ops, key, out_type)
-        if not use_min_scalar:
-            cache[key] = op
+        op = cache.get(dtype, ())
+        if op is ():
+            op = _guess_routine_from_dtype(ops, dtype)
+            cache[dtype] = op
 
     if op:
         return op
