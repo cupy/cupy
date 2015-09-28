@@ -2,6 +2,20 @@ from chainer import cuda
 from chainer import function
 from chainer import utils
 import numpy
+import six
+
+
+def logsumexp(a, xp):
+    vmax = xp.amax(a)
+    res = xp.log(xp.sum(xp.exp(a - vmax)))
+    return (res + vmax).astype(numpy.float32)
+
+
+def softmax(x, xp, axis=None):
+    xp = cuda.get_array_module(x)
+    val = x - xp.amax(x, axis=axis).reshape(x.shape[0], 1)
+    val = xp.exp(val)
+    return val / xp.sum(val, axis=axis).reshape(x.shape[0], 1)
 
 
 class ConnectionistTemporalClassification(function.Function):
@@ -25,15 +39,14 @@ class ConnectionistTemporalClassification(function.Function):
 
         x_basetype = in_types[1]
 
-        for i in range(2, len(in_types)):
+        for i in six.moves.range(2, len(in_types)):
             x_type = in_types[1]
             utils.type_check.expect(
                 x_type.dtype == numpy.float32,
                 x_type.shape == x_basetype.shape,
             )
 
-    def log_matrix(self, x):
-        xp = cuda.get_array_module(x)
+    def log_matrix(self, x, xp):
         if xp == numpy:
             res = numpy.ma.log(x).filled(fill_value=self.zero_padding)
         else:
@@ -58,41 +71,32 @@ class ConnectionistTemporalClassification(function.Function):
     def recurrence_relation(self, size, xp):
         rr = (xp.eye(size) + xp.eye(size, k=1) +
               xp.eye(size, k=2) * (xp.arange(size) % 2))
-        return self.log_matrix(rr)
+        return self.log_matrix(rr, xp)
 
-    def label_to_path(self, labels):
-        xp = cuda.get_array_module(labels)
+    def label_to_path(self, labels, xp):
         label_length = labels.shape[0]
         path = xp.full((label_length * 2 + 1,),
                        self.blank_symbol, dtype=int)
-        for i in range(label_length):
+        for i in six.moves.range(label_length):
             path[i * 2 + 1] = labels[i]
         return path
 
-    def log_dot(self, prob, rr):
-        xp = cuda.get_array_module(prob)
+    def log_dot(self, prob, rr, xp):
         res = xp.zeros(prob.shape)
         rtrans = xp.swapaxes(rr, 1, 0)
-        for i in range(rtrans.shape[0]):
-            res[i] = self.logsumexp(prob + rtrans[i])
+        for i in six.moves.range(rtrans.shape[0]):
+            res[i] = logsumexp(prob + rtrans[i], xp)
         return res
 
-    def logsumexp(self, a):
-        xp = cuda.get_array_module(a)
-        vmax = xp.amax(a)
-        res = xp.log(xp.sum(xp.exp(a - vmax)))
-        return (res + vmax).astype(numpy.float32)
-
     # path probablity to label probability
-    def label_probability(self, label_size, path, multiply):
-        xp = cuda.get_array_module(path)
-        chars = set([c for c in path])
+    def label_probability(self, label_size, path, multiply, xp):
         labels_prob = self.log_matrix(xp.zeros((label_size,),
-                                               dtype=numpy.float32))
+                                               dtype=numpy.float32), xp)
         if xp == numpy:
+            chars = {c for c in path}
             for c in chars:
                 pos = numpy.where(path == c)[0]
-                labels_prob[c] = self.logsumexp(xp.take(multiply, pos))
+                labels_prob[c] = logsumexp(xp.take(multiply, pos), xp)
         else:
             cuda.cupy.ElementwiseKernel(
                 'raw float32 x, raw I y, I s',
@@ -101,10 +105,11 @@ class ConnectionistTemporalClassification(function.Function):
                 float value = z;
                 for(int index=0;index<s;++index){
                     if(y[index] == i){
-                        if(value > x[index]){
-                            value = value + log(1 + exp(x[index] - value));
+                        float xvalue = x[index];
+                        if(value > xvalue){
+                            value = value + log(1 + exp(xvalue - value));
                         }else{
-                            value = x[index] + log(1 + exp(value -x[index]));
+                            value = xvalue + log(1 + exp(value - xvalue));
                         }
                     }
                     z = value;
@@ -114,92 +119,77 @@ class ConnectionistTemporalClassification(function.Function):
                                       path, path.shape[0], labels_prob)
         return labels_prob
 
-    def calc_trans(self, path, yseq, rr):
-        xp = cuda.get_array_module(yseq[0])
-        forward_prob = self.log_matrix(xp.eye(path.shape[0])[0])
-        backward_prob = self.log_matrix(xp.eye(path.shape[0])[0])
+    def calc_trans(self, path, yseq, rr, xp):
+        forward_prob = self.log_matrix(xp.eye(path.shape[0])[0], xp)
+        backward_prob = self.log_matrix(xp.eye(path.shape[0])[0], xp)
 
         alpha = ()
         beta = ()
 
-        for t in range(len(yseq)):
+        for t in six.moves.range(len(yseq)):
             # calc forward probability in log scale
             y = yseq[t]
-            forward_prob = xp.take(y, path) + self.log_dot(forward_prob, rr)
+            forward_prob = xp.take(y, path) + self.log_dot(forward_prob,
+                                                           rr, xp)
             alpha += forward_prob,
 
             # calc backward probability
             y_inv = yseq[len(yseq) - t - 1]
-            backward_prob = self.log_dot(backward_prob, rr)
+            backward_prob = self.log_dot(backward_prob, rr, xp)
             beta += backward_prob[::-1],
             backward_prob = xp.take(y_inv, path[::-1]) + backward_prob
         return alpha, beta[::-1]
 
-    def convert_inputs(self, labels, yseq, index):
-        log_yseq = ()
-        for y in yseq:
-            log_yseq += self.log_matrix(y[index]),
+    def convert_inputs(self, labels, yseq, index, xp):
+        log_yseq = [self.log_matrix(y[index], xp) for y in yseq]
         return labels[index], log_yseq
 
-    def calc_path_probability(self, label_prob, total_prob):
-        xp = cuda.get_array_module(label_prob)
+    def calc_path_probability(self, label_prob, total_prob, xp):
         return xp.exp(label_prob - total_prob)
 
-    def calc_totalprob(self, forward_prob, backward_prob):
-        return self.logsumexp(forward_prob[0] + backward_prob[0])
+    def calc_totalprob(self, forward_prob, backward_prob, xp):
+        return logsumexp(forward_prob[0] + backward_prob[0], xp)
 
-    def softmax(self, x, axis=None):
-        xp = cuda.get_array_module(x)
-        val = x - xp.amax(x, axis=axis).reshape(x.shape[0], 1)
-        val = xp.exp(val)
-        return val / xp.sum(val, axis=axis).reshape(x.shape[0], 1)
-
-    def activate(self, yseq):
-        result = ()
-        for y in yseq:
-            result += self.softmax(y, axis=1),
-        return result
+    def activate(self, yseq, xp):
+        return [softmax(y, xp, axis=1) for y in yseq]
 
     def forward(self, inputs):
-        yseq = self.activate(inputs[1::])
+        xp = cuda.get_array_module(inputs[0])
+        yseq = self.activate(inputs[1::], xp)
         loss = 0
         batch_size = yseq[0].shape[0]
-        for i in range(batch_size):
-            label, y = self.convert_inputs(inputs[0], yseq, i)
-            path = self.label_to_path(label)
-            rr = self.recurrence_relation(path.shape[0],
-                                          cuda.get_array_module(y[0]))
+        for i in six.moves.range(batch_size):
+            label, y = self.convert_inputs(inputs[0], yseq, i, xp)
+            path = self.label_to_path(label, xp)
+            rr = self.recurrence_relation(path.shape[0], xp)
             forward_prob_trans, backward_prob_trans\
-                = self.calc_trans(path, y, rr)
-            loss += - self.logsumexp(forward_prob_trans[-1]
-                                     + backward_prob_trans[-1])
+                = self.calc_trans(path, y, rr, xp)
+            loss += - logsumexp(forward_prob_trans[-1]
+                                + backward_prob_trans[-1], xp)
         loss /= batch_size
         return utils.force_array(loss).astype(numpy.float32),
 
     def backward(self, inputs, grad_output):
-        yseq = self.activate(inputs[1::])
-        delta = []
-        for t in range(len(yseq)):
-            delta.append(yseq[t])
+        xp = cuda.get_array_module(inputs[0])
+        yseq = self.activate(inputs[1::], xp)
         batch_size = yseq[0].shape[0]
-        for b in range(batch_size):
-            label, y = self.convert_inputs(inputs[0], yseq, b)
-            path = self.label_to_path(label)
-            rr = self.recurrence_relation(path.shape[0],
-                                          cuda.get_array_module(yseq[0]))
+        for b in six.moves.range(batch_size):
+            label, y = self.convert_inputs(inputs[0], yseq, b, xp)
+            path = self.label_to_path(label, xp)
+            rr = self.recurrence_relation(path.shape[0], xp)
             forward_prob_trans, backward_prob_trans\
-                = self.calc_trans(path, y, rr)
+                = self.calc_trans(path, y, rr, xp)
             total_probability = self.calc_totalprob(forward_prob_trans,
-                                                    backward_prob_trans)
-            for t in range(len(y)):
+                                                    backward_prob_trans, xp)
+            for t in six.moves.range(len(y)):
                 multiply = forward_prob_trans[t] + backward_prob_trans[t]
                 label_prob = self.label_probability(y[t].shape[0],
-                                                    path, multiply)
-                delta[t][b] -= self.calc_path_probability(label_prob,
-                                                          total_probability)
-                delta[t][b] /= batch_size
-                delta[t][b] *= grad_output[0]
-        return (None,) + tuple(delta)
+                                                    path, multiply, xp)
+                yseq[t][b] -= self.calc_path_probability(label_prob,
+                                                         total_probability, xp)
+                yseq[t][b] /= batch_size
+                yseq[t][b] *= grad_output[0]
+        return (None,) + tuple(yseq)
 
 
 def connectionist_temporal_classification(blank_symbol, t, x):
