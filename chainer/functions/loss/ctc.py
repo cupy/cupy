@@ -5,17 +5,17 @@ import numpy
 import six
 
 
-def logsumexp(a, xp):
-    vmax = xp.amax(a)
-    res = xp.log(xp.sum(xp.exp(a - vmax)))
+def logsumexp(a, xp, axis=None):
+    vmax = xp.amax(a, axis=axis, keepdims=True)
+    res = xp.log(xp.sum(xp.exp(a - vmax), axis=axis, keepdims=False))
+    vmax = xp.squeeze(vmax, axis=axis)
     return (res + vmax).astype(numpy.float32)
 
 
-def softmax(x, xp, axis=None):
-    xp = cuda.get_array_module(x)
-    val = x - xp.amax(x, axis=axis).reshape(x.shape[0], 1)
+def softmax(x, xp, axis=1):
+    val = x - xp.amax(x, axis=axis, keepdims=True)
     val = xp.exp(val)
-    return val / xp.sum(val, axis=axis).reshape(x.shape[0], 1)
+    return val / xp.sum(val, axis=axis, keepdims=True)
 
 
 class ConnectionistTemporalClassification(function.Function):
@@ -82,11 +82,8 @@ class ConnectionistTemporalClassification(function.Function):
         return path
 
     def log_dot(self, prob, rr, xp):
-        res = xp.zeros(prob.shape)
         rtrans = xp.swapaxes(rr, 1, 0)
-        for i in six.moves.range(rtrans.shape[0]):
-            res[i] = logsumexp(prob + rtrans[i], xp)
-        return res
+        return logsumexp(prob + rtrans, xp, axis=1)
 
     # path probablity to label probability
     def label_probability(self, label_size, path, multiply, xp):
@@ -123,20 +120,20 @@ class ConnectionistTemporalClassification(function.Function):
         forward_prob = self.log_matrix(xp.eye(path.shape[0])[0], xp)
         backward_prob = self.log_matrix(xp.eye(path.shape[0])[0], xp)
 
-        alpha = ()
-        beta = ()
+        alpha = []
+        beta = []
 
         for t in six.moves.range(len(yseq)):
             # calc forward probability in log scale
             y = yseq[t]
             forward_prob = xp.take(y, path) + self.log_dot(forward_prob,
                                                            rr, xp)
-            alpha += forward_prob,
+            alpha.append(forward_prob)
 
             # calc backward probability
             y_inv = yseq[len(yseq) - t - 1]
             backward_prob = self.log_dot(backward_prob, rr, xp)
-            beta += backward_prob[::-1],
+            beta.append(backward_prob[::-1])
             backward_prob = xp.take(y_inv, path[::-1]) + backward_prob
         return alpha, beta[::-1]
 
@@ -151,7 +148,7 @@ class ConnectionistTemporalClassification(function.Function):
         return logsumexp(forward_prob[0] + backward_prob[0], xp)
 
     def activate(self, yseq, xp):
-        return [softmax(y, xp, axis=1) for y in yseq]
+        return [softmax(y, xp) for y in yseq]
 
     def forward(self, inputs):
         xp = cuda.get_array_module(inputs[0])
