@@ -2,7 +2,10 @@ import mock
 import unittest
 
 import numpy
+import six
 
+from chainer.testing import condition
+from chainer.testing import hypothesis_testing
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.random import generator
