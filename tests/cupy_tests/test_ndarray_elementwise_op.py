@@ -355,6 +355,12 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     def test_rxor_scalar(self):
         self.check_array_scalar_op(operator.xor, swap=True)
 
+    def test_mod_scalar(self):
+        self.check_array_scalar_op(operator.mod)
+
+    def test_rmod_scalar(self):
+        self.check_array_scalar_op(operator.mod, swap=True)
+
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
     def check_array_array_op(self, op, xp, dtype):
@@ -391,6 +397,12 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
 
     def test_ixor_array(self):
         self.check_array_scalar_op(operator.ixor)
+
+    def test_mod_array(self):
+        self.check_array_scalar_op(operator.mod)
+
+    def test_imod_array(self):
+        self.check_array_scalar_op(operator.imod)
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
@@ -429,6 +441,12 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     def test_broadcasted_ixor(self):
         self.check_array_broadcasted_op(operator.ixor)
 
+    def test_broadcasted_mod(self):
+        self.check_array_broadcasted_op(operator.mod)
+
+    def test_broadcasted_imod(self):
+        self.check_array_broadcasted_op(operator.imod)
+
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
     def check_array_doubly_broadcasted_op(self, op, xp, dtype):
@@ -450,3 +468,6 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
 
     def test_doubly_broadcasted_xor(self):
         self.check_array_doubly_broadcasted_op(operator.xor)
+
+    def test_doubly_broadcasted_mod(self):
+        self.check_array_doubly_broadcasted_op(operator.mod)
