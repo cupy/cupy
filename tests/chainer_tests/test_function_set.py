@@ -109,7 +109,7 @@ class TestFunctionSet(unittest.TestCase):
             self.fs.to_gpu(dst_id)
 
         if src_id >= 0:
-            params = map(lambda p: cuda.to_gpu(p, src_id), params)
+            params = [cuda.to_gpu(p, src_id) for p in params]
 
         self.fs.copy_parameters_from(params)
         self.fs.to_cpu()

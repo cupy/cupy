@@ -87,8 +87,8 @@ class TestOptimizer(unittest.TestCase):
         self.optimizer.setup((self.params, self.grads))
 
     def setup_gpu(self, dst_id):
-        self.params = list(map(lambda p: cuda.to_gpu(p, dst_id), self.params))
-        self.grads = list(map(lambda p: cuda.to_gpu(p, dst_id), self.grads))
+        self.params = [cuda.to_gpu(p, dst_id) for p in self.params]
+        self.grads = [cuda.to_gpu(p, dst_id) for p in self.grads]
         self.optimizer.setup((self.params, self.grads))
 
     def check_init_state(self, param, grad, gpu):
