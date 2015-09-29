@@ -14,7 +14,7 @@ class TestMisc(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
-            return 0
+            return numpy.int_(0)
         a = testing.shaped_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a)
 
@@ -22,7 +22,7 @@ class TestMisc(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_binary(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
-            return 0
+            return numpy.int_(0)
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a, b)
@@ -31,7 +31,7 @@ class TestMisc(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_negative(self, name, xp, dtype, no_bool=False):
         if no_bool and numpy.dtype(dtype).char == '?':
-            return 0
+            return numpy.int_(0)
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
         return getattr(xp, name)(a)
 
