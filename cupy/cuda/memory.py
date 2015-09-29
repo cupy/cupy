@@ -99,16 +99,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            if self.device.compute_capability[0] >= '2' and \
-               src.device.compute_capability[0] >= '2':
-                runtime.memcpy(self.ptr, src.ptr, size,
-                               runtime.memcpyDeviceToDevice)
-            else:
-                buf = ctypes.create_string_buffer(size)
-                runtime.memcpy(self.ptr, buf, size,
-                               runtime.memcpyDeviceToHost)
-                runtime.memcpy(buf, src.ptr, size,
-                               runtime.memcpyHostToDevice)
+            runtime.memcpy(self.ptr, src.ptr, size,
+                           runtime.memcpyDeviceToDevice)
 
     def copy_from_device_async(self, src, size, stream):
         """Copies a memory sequence from a (possibly different) device asynchronously.
@@ -120,16 +112,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            if self.device.compute_capability[0] >= '2' and \
-               src.device.compute_capability[0] >= '2':
-                runtime.memcpyAsync(self.ptr, src.ptr, size,
-                                    runtime.memcpyDeviceToDevice)
-            else:
-                buf = ctypes.create_string_buffer(size)
-                runtime.memcpyAsync(self.ptr, buf, size,
-                                    runtime.memcpyDeviceToHost)
-                runtime.memcpyAsync(buf, src.ptr, size,
-                                    runtime.memcpyHostToDevice)
+            runtime.memcpyAsync(self.ptr, src.ptr, size,
+                                runtime.memcpyDeviceToDevice)
 
     def copy_from_host(self, mem, size):
         """Copies a memory sequence from the host memory.
