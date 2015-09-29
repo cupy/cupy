@@ -2,10 +2,10 @@ import unittest
 
 import numpy
 
+
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
@@ -30,8 +30,8 @@ class Copy(unittest.TestCase):
 
         y = functions.copy(x, dst_id)
 
-        y_data = _to_gpu(y.data, dst_id)
-        gradient_check.assert_allclose(self.x_data, y_data, atol=0, rtol=0)
+        numpy.testing.assert_array_equal(
+            self.x_data, cuda.to_cpu(y.data))
 
     def check_backward(self, src_id, dst_id):
         x_data = _to_gpu(self.x_data, src_id)
@@ -44,9 +44,8 @@ class Copy(unittest.TestCase):
         y.backward()
 
         x_grad = x.grad
-        if src_id >= 0:
-            x_grad = x_grad.get()
-        gradient_check.assert_allclose(x_grad, self.gy, atol=0, rtol=0)
+        numpy.testing.assert_array_equal(
+            cuda.to_cpu(x_grad), self.gy)
 
     def test_forward_cpu(self):
         self.check_forward(-1, -1)
