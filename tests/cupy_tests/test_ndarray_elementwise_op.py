@@ -270,7 +270,10 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def check_typecast(self, val, dtype):
         operators = [operator.add, operator.sub, operator.mul, operator.div]
         for op in operators:
+            err = numpy.geterr()
+            numpy.seterr(divide='ignore', invalid='ignore')
             a = op(val, (testing.shaped_arange((5,), numpy, dtype) - 2))
+            numpy.seterr(**err)
             b = op(val, (testing.shaped_arange((5,), cupy, dtype) - 2))
             self.assertEqual(a.dtype, b.dtype)
 
