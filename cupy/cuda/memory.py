@@ -198,8 +198,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyAsync(mem, self.ptr, size, stream,
-                                runtime.memcpyDeviceToHost)
+            runtime.memcpyAsync(mem, self.ptr, size,
+                                runtime.memcpyDeviceToHost, stream)
 
     def memset(self, value, size):
         """Fills a memory sequence by constant byte value.
