@@ -86,7 +86,7 @@ class TestOptimizer(unittest.TestCase):
     def setup_cpu(self):
         self.optimizer.setup((self.params, self.grads))
 
-    def setup_gpu(self, dst_id):
+    def setup_gpu(self, dst_id=None):
         self.params = [cuda.to_gpu(p, dst_id) for p in self.params]
         self.grads = [cuda.to_gpu(p, dst_id) for p in self.grads]
         self.optimizer.setup((self.params, self.grads))
@@ -129,7 +129,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_update_gpu(self):
-        self.setup_gpu(cuda.Device().id)
+        self.setup_gpu()
         self.check_update(True)
 
     def check_accumulate_grads_from_cpu(self):
@@ -148,7 +148,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_accumulate_grads_cpu_to_gpu(self):
-        self.setup_gpu(cuda.Device().id)
+        self.setup_gpu()
         self.check_accumulate_grads_from_cpu()
 
     @attr.gpu
@@ -177,7 +177,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_compute_grads_norm_gpu(self):
-        self.setup_gpu(cuda.Device().id)
+        self.setup_gpu()
         self.check_compute_grads_norm()
 
     def check_weight_decay(self):
@@ -192,7 +192,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_weight_decay_gpu(self):
-        self.setup_gpu(cuda.Device().id)
+        self.setup_gpu()
         self.check_weight_decay()
 
     def check_clip_grads(self):
@@ -207,7 +207,7 @@ class TestOptimizer(unittest.TestCase):
 
     @attr.gpu
     def test_clip_grads_gpu(self):
-        self.setup_gpu(cuda.Device().id)
+        self.setup_gpu()
         self.check_clip_grads()
 
 
