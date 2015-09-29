@@ -31,3 +31,4 @@ shaped_reverse_arange = helper.shaped_reverse_arange
 shaped_random = helper.shaped_random
 
 gpu = attr.gpu
+multi_gpu = attr.multi_gpu
