@@ -3,6 +3,7 @@ import ctypes
 import numpy
 
 import cupy
+from cupy import cuda
 from cupy import elementwise
 
 
@@ -136,9 +137,11 @@ def copy(a):
     if a.size == 0:
         return cupy.empty_like(a)
 
-    newarray = cupy.empty_like(a)
     if not a.flags.c_contiguous:
         a = ascontiguousarray(a)
+        if a.data.device == cuda.Device():
+            return a
+    newarray = cupy.empty_like(a)
     newarray.data.copy_from(a.data, a.nbytes)
     return newarray
 
