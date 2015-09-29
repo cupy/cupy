@@ -113,7 +113,7 @@ class MemoryPointer(object):
         """
         if size > 0:
             runtime.memcpyAsync(self.ptr, src.ptr, size,
-                                runtime.memcpyDeviceToDevice)
+                                runtime.memcpyDeviceToDevice, stream)
 
     def copy_from_host(self, mem, size):
         """Copies a memory sequence from the host memory.
