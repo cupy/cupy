@@ -98,7 +98,7 @@ class TestFunctionSet(unittest.TestCase):
         fs2.to_cpu()
         self.check_equal_fs(self.fs, fs2)
 
-    def check_copy_parameters_from(self, src_id=-1, dst_id=-1):
+    def check_copy_parameters_from(self, src_id, dst_id):
         aW = np.random.uniform(-1, 1, (2, 3)).astype(np.float32)
         ab = np.random.uniform(-1, 1, (2,)).astype(np.float32)
         bW = np.random.uniform(-1, 1, (2, 3)).astype(np.float32)
