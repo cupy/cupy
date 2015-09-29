@@ -268,9 +268,11 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     def check_typecast(self, val, dtype):
-        a = val + (testing.shaped_arange((5,), numpy, dtype) - 2)
-        b = val + (testing.shaped_arange((5,), cupy, dtype) - 2)
-        self.assertEqual(a.dtype, b.dtype)
+        operators = [operator.add, operator.sub, operator.mul, operator.div]
+        for op in operators:
+            a = op(val, (testing.shaped_arange((5,), numpy, dtype) - 2))
+            b = op(val, (testing.shaped_arange((5,), cupy, dtype) - 2))
+            self.assertEqual(a.dtype, b.dtype)
 
     def test_typecast_bool1(self):
         self.check_typecast(True)
