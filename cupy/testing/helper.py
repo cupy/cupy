@@ -18,6 +18,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_allclose(x, y, rtol, atol, err_msg, verbose)
             if type_check:
                 self.assertEqual(x.dtype, y.dtype)
@@ -34,6 +36,8 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_almost_equal(
                 x, y, decimal, err_msg, verbose)
             if type_check:
@@ -50,6 +54,8 @@ def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp', type_check=True):
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_arrays_almost_equal_nulp(x, y, nulp)
             if type_check:
                 self.assertEqual(x.dtype, y.dtype)
@@ -65,6 +71,8 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True):
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_max_ulp(x, y, maxulp, dtype)
             if type_check:
                 self.assertEqual(x.dtype, y.dtype)
@@ -81,6 +89,8 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_equal(x, y, err_msg, verbose)
             if type_check:
                 self.assertEqual(x.dtype, y.dtype)
@@ -96,6 +106,8 @@ def numpy_cupy_array_list_equal(err_msg='', verbose=True, name='xp'):
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_list_equal(x, y, err_msg, verbose)
         return test_func
     return decorator
@@ -110,6 +122,8 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_less(x, y, err_msg, verbose)
             if type_check:
                 self.assertEqual(x.dtype, y.dtype)
