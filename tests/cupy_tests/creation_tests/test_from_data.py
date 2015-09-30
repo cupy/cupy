@@ -62,8 +62,8 @@ class TestFromData(unittest.TestCase):
         b = cupy.ascontiguousarray(a)
         self.assertIs(a, b)
 
-    @testing.numpy_cupy_array_equal()
     @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_copy(self, xp, dtype):
         a = xp.zeros((2, 3, 4), dtype=dtype)
         b = a.copy()
