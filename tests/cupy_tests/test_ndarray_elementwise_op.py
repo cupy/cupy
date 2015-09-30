@@ -319,7 +319,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
     def check_array_scalar_op(self, op, xp, dtype, swap=False):
-        a = testing.shaped_arange((2, 3), xp, dtype)
+        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=dtype)
         if swap:
             return op(dtype(2), a)
         else:
@@ -363,9 +363,54 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
+    def check_array_scalarzero_op(self, op, xp, dtype, swap=False):
+        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=dtype)
+        if swap:
+            return op(dtype(0), a)
+        else:
+            return op(a, dtype(0))
+
+    def test_lshift_scalarzero(self):
+        self.check_array_scalarzero_op(operator.lshift)
+
+    def test_rlshift_scalarzero(self):
+        self.check_array_scalarzero_op(operator.lshift, swap=True)
+
+    def test_rshift_scalarzero(self):
+        self.check_array_scalarzero_op(operator.rshift)
+
+    def test_rrshift_scalarzero(self):
+        self.check_array_scalarzero_op(operator.rshift, swap=True)
+
+    def test_and_scalarzero(self):
+        self.check_array_scalarzero_op(operator.and_)
+
+    def test_rand_scalarzero(self):
+        self.check_array_scalarzero_op(operator.and_, swap=True)
+
+    def test_or_scalarzero(self):
+        self.check_array_scalarzero_op(operator.or_)
+
+    def test_ror_scalarzero(self):
+        self.check_array_scalarzero_op(operator.or_, swap=True)
+
+    def test_xor_scalarzero(self):
+        self.check_array_scalarzero_op(operator.xor)
+
+    def test_rxor_scalarzero(self):
+        self.check_array_scalarzero_op(operator.xor, swap=True)
+
+    def test_mod_scalarzero(self):
+        self.check_array_scalarzero_op(operator.mod)
+
+    def test_rmod_scalarzero(self):
+        self.check_array_scalarzero_op(operator.mod, swap=True)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_allclose()
     def check_array_array_op(self, op, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=dtype)
+        b = xp.array([[0, 0, 1], [0, 1, 2]], dtype=dtype)
         return op(a, b)
 
     def test_lshift_array(self):
@@ -407,8 +452,8 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
     def check_array_broadcasted_op(self, op, xp, dtype):
-        a = testing.shaped_arange((2, 3), dtype=dtype)
-        b = testing.shaped_arange((2, 1), dtype=dtype)
+        a = xp.array([[0, 1, 2], [1, 0, 2], [2, 1, 0]], dtype=dtype)
+        b = xp.array([[0, 0, 1]], dtype=dtype)
         return op(a, b)
 
     def test_broadcasted_lshift(self):
@@ -450,8 +495,8 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
     def check_array_doubly_broadcasted_op(self, op, xp, dtype):
-        a = testing.shaped_arange((2, 1, 3), xp, dtype)
-        b = testing.shaped_arange((3, 1), xp, dtype)
+        a = xp.array([[[0, 1, 2]], [[1, 0, 2]]], dtype=dtype)
+        b = xp.array([[0], [0], [1]], dtype=dtype)
         return op(a, b)
 
     def test_doubly_broadcasted_lshift(self):
