@@ -101,12 +101,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_scalar_op(operator.ipow)
 
     def test_divmod0_scalar(self):
-        numpy.seterr(divide='ignore')
-        self.check_array_scalar_op(lambda x, y: divmod(x, y)[0])
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0])
 
     def test_divmod1_scalar(self):
-        numpy.seterr(divide='ignore')
-        self.check_array_scalar_op(lambda x, y: divmod(x, y)[1])
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1])
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -168,12 +168,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_array_op(operator.ipow)
 
     def test_divmod0_array(self):
-        numpy.seterr(divide='ignore')
-        self.check_array_array_op(lambda x, y: divmod(x, y)[0])
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_array_op(lambda x, y: divmod(x, y)[0])
 
     def test_divmod1_array(self):
-        numpy.seterr(divide='ignore')
-        self.check_array_array_op(lambda x, y: divmod(x, y)[1])
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_array_op(lambda x, y: divmod(x, y)[1])
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -235,12 +235,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_broadcasted_op(operator.ipow)
 
     def test_broadcasted_divmod0(self):
-        numpy.seterr(divide='ignore')
-        self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[0])
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[0])
 
     def test_broadcasted_divmod1(self):
-        numpy.seterr(divide='ignore')
-        self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[1])
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[1])
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -276,12 +276,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_doubly_broadcasted_op(operator.pow)
 
     def test_doubly_broadcasted_divmod0(self):
-        numpy.seterr(divide='ignore')
-        self.check_array_doubly_broadcasted_op(lambda x, y: divmod(x, y)[0])
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_doubly_broadcasted_op(
+                lambda x, y: divmod(x, y)[0])
 
     def test_doubly_broadcasted_divmod1(self):
-        numpy.seterr(divide='ignore')
-        self.check_array_doubly_broadcasted_op(lambda x, y: divmod(x, y)[1])
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_doubly_broadcasted_op(
+                lambda x, y: divmod(x, y)[1])
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
