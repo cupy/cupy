@@ -30,8 +30,8 @@ class TestGaussian(unittest.TestCase):
         f = lambda: func.forward((m.data, v.data))
         gm, gv = gradient_check.numerical_grad(f, (m.data, v.data), (y.grad,))
 
-        gradient_check.assert_allclose(gm, m.grad)
-        gradient_check.assert_allclose(gv, v.grad)
+        gradient_check.assert_allclose(gm, m.grad, atol=1e-4, rtol=1e-3)
+        gradient_check.assert_allclose(gv, v.grad, atol=1e-4, rtol=1e-3)
 
     @condition.retry(3)
     def test_backward_cpu(self):
