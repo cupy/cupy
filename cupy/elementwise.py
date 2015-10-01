@@ -712,8 +712,11 @@ copy_where = create_ufunc(
     'if (in1) out0 = in0')
 
 
-_divmod_float =\
-    'out0_type a = _floor_divide(in0, in1); out0 = a; out1 = in0 - a * in1'
+_divmod_float = '''
+    out0_type a = _floor_divide(in0, in1);
+    out0 = a;
+    out1 = in0 - a * in1'''
+
 _divmod = create_ufunc(
     'cupy_divmod',
     ('bb->bb', 'BB->BB', 'hh->hh', 'HH->HH', 'ii->ii', 'II->II', 'll->ll',
@@ -721,11 +724,12 @@ _divmod = create_ufunc(
      ('ee->ee', _divmod_float),
      ('ff->ff', _divmod_float),
      ('dd->dd', _divmod_float)),
-     '''if (in1 == 0) {
-            out0 = 0;
-            out1 = 0;
-        } else {
-            out0_type a = _floor_divide(in0, in1);
-            out0 = a;
-            out1 = in0 - a * in1;
-        }''')
+    '''
+    if (in1 == 0) {
+        out0 = 0;
+        out1 = 0;
+    } else {
+        out0_type a = _floor_divide(in0, in1);
+        out0 = a;
+        out1 = in0 - a * in1;
+    }''')
