@@ -268,7 +268,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     def check_typecast(self, val, dtype):
-        operators = [operator.add, operator.sub, operator.mul, operator.div]
+        operators = [operator.add, operator.sub, operator.mul]
+        if six.PY3:
+            operators.append(operator.truediv)
+        else:
+            operators.append(operator.div)
+
         for op in operators:
             err = numpy.geterr()
             numpy.seterr(divide='ignore', invalid='ignore')
