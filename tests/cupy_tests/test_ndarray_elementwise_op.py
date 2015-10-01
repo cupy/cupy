@@ -488,7 +488,8 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
             self.check_array_array_op(operator.mod)
 
     def test_imod_array(self):
-        self.check_array_array_op(operator.imod)
+        with testing.NumpyError(divide='ignore'):
+            self.check_array_array_op(operator.imod)
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
