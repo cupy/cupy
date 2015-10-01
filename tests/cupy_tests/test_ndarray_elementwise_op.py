@@ -108,6 +108,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
         numpy.seterr(divide='ignore')
         self.check_array_scalar_op(lambda x, y: divmod(x, y)[1])
 
+    def test_rdivmod0_scalar(self):
+        numpy.seterr(divide='ignore')
+        self.check_array_scalar_op(lambda x, y: divmod(x, y)[0], swap=True)
+
+    def test_rdivmod1_scalar(self):
+        numpy.seterr(divide='ignore')
+        self.check_array_scalar_op(lambda x, y: divmod(x, y)[1], swap=True)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def check_array_array_op(self, op, xp, dtype):
