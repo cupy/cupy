@@ -108,56 +108,56 @@ class TestArrayElementwiseOp(unittest.TestCase):
         return op(a, b)
 
     def test_add_array(self):
-        self.check_array_scalar_op(operator.add)
+        self.check_array_array_op(operator.add)
 
     def test_iadd_array(self):
-        self.check_array_scalar_op(operator.iadd)
+        self.check_array_array_op(operator.iadd)
 
     def test_sub_array(self):
-        self.check_array_scalar_op(operator.sub)
+        self.check_array_array_op(operator.sub)
 
     def test_isub_array(self):
-        self.check_array_scalar_op(operator.isub)
+        self.check_array_array_op(operator.isub)
 
     def test_mul_array(self):
-        self.check_array_scalar_op(operator.mul)
+        self.check_array_array_op(operator.mul)
 
     def test_imul_array(self):
-        self.check_array_scalar_op(operator.imul)
+        self.check_array_array_op(operator.imul)
 
     def test_truediv_array(self):
         numpy.seterr(divide='ignore')
-        self.check_array_scalar_op(operator.truediv)
+        self.check_array_array_op(operator.truediv)
 
     def test_itruediv_array(self):
         numpy.seterr(divide='ignore')
-        self.check_array_scalar_op(operator.itruediv)
+        self.check_array_array_op(operator.itruediv)
 
     def test_div_array(self):
         if six.PY3:
             return
         numpy.seterr(divide='ignore')
-        self.check_array_scalar_op(operator.div)
+        self.check_array_array_op(operator.div)
 
     def test_idiv_array(self):
         if six.PY3:
             return
         numpy.seterr(divide='ignore')
-        self.check_array_scalar_op(operator.idiv)
+        self.check_array_array_op(operator.idiv)
 
     def test_floordiv_array(self):
         numpy.seterr(divide='ignore')
-        self.check_array_scalar_op(operator.floordiv)
+        self.check_array_array_op(operator.floordiv)
 
     def test_ifloordiv_array(self):
         numpy.seterr(divide='ignore')
-        self.check_array_scalar_op(operator.ifloordiv)
+        self.check_array_array_op(operator.ifloordiv)
 
     def test_pow_array(self):
-        self.check_array_scalar_op(operator.pow)
+        self.check_array_array_op(operator.pow)
 
     def test_ipow_array(self):
-        self.check_array_scalar_op(operator.ipow)
+        self.check_array_array_op(operator.ipow)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -419,40 +419,40 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         return op(a, b)
 
     def test_lshift_array(self):
-        self.check_array_scalar_op(operator.lshift)
+        self.check_array_array_op(operator.lshift)
 
     def test_ilshift_array(self):
-        self.check_array_scalar_op(operator.ilshift)
+        self.check_array_array_op(operator.ilshift)
 
     def test_rshift_array(self):
-        self.check_array_scalar_op(operator.rshift)
+        self.check_array_array_op(operator.rshift)
 
     def test_irshift_array(self):
-        self.check_array_scalar_op(operator.irshift)
+        self.check_array_array_op(operator.irshift)
 
     def test_and_array(self):
-        self.check_array_scalar_op(operator.and_)
+        self.check_array_array_op(operator.and_)
 
     def test_iand_array(self):
-        self.check_array_scalar_op(operator.iand)
+        self.check_array_array_op(operator.iand)
 
     def test_or_array(self):
-        self.check_array_scalar_op(operator.or_)
+        self.check_array_array_op(operator.or_)
 
     def test_ior_array(self):
-        self.check_array_scalar_op(operator.ior)
+        self.check_array_array_op(operator.ior)
 
     def test_xor_array(self):
-        self.check_array_scalar_op(operator.xor)
+        self.check_array_array_op(operator.xor)
 
     def test_ixor_array(self):
-        self.check_array_scalar_op(operator.ixor)
+        self.check_array_array_op(operator.ixor)
 
     def test_mod_array(self):
-        self.check_array_scalar_op(operator.mod)
+        self.check_array_array_op(operator.mod)
 
     def test_imod_array(self):
-        self.check_array_scalar_op(operator.imod)
+        self.check_array_array_op(operator.imod)
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_allclose()
