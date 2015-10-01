@@ -17,7 +17,7 @@ class FunctionSwitcher(object):
 
     def __init__(self, f):
         self.tmp = f
-        self.func_name = f.func_name
+        self.func_name = f.__name__
 
     def __enter__(self):
         setattr(curand, self.func_name, mock.Mock())
