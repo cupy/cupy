@@ -13,7 +13,6 @@ class TestExplog(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary(self, name, xp, dtype):
-        numpy.seterr(divide='ignore')
         a = testing.shaped_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a)
 
@@ -34,13 +33,16 @@ class TestExplog(unittest.TestCase):
         self.check_unary('exp2')
 
     def test_log(self):
-        self.check_unary('log')
+        with testing.NumpyError(divide='ignore'):
+            self.check_unary('log')
 
     def test_log10(self):
-        self.check_unary('log10')
+        with testing.NumpyError(divide='ignore'):
+            self.check_unary('log10')
 
     def test_log2(self):
-        self.check_unary('log2')
+        with testing.NumpyError(divide='ignore'):
+            self.check_unary('log2')
 
     def test_log1p(self):
         self.check_unary('log1p')
