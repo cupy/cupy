@@ -116,6 +116,24 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalar_op(lambda x, y: divmod(x, y)[1], swap=True)
 
+    def test_lt_scalar(self):
+        self.check_array_scalar_op(operator.lt)
+
+    def test_le_scalar(self):
+        self.check_array_scalar_op(operator.le)
+
+    def test_gt_scalar(self):
+        self.check_array_scalar_op(operator.gt)
+
+    def test_ge_scalar(self):
+        self.check_array_scalar_op(operator.ge)
+
+    def test_eq_scalar(self):
+        self.check_array_scalar_op(operator.eq)
+
+    def test_ne_scalar(self):
+        self.check_array_scalar_op(operator.ne)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def check_array_array_op(self, op, xp, dtype):
@@ -182,6 +200,24 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_divmod1_array(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(lambda x, y: divmod(x, y)[1])
+
+    def test_lt_array(self):
+        self.check_array_array_op(operator.lt)
+
+    def test_le_array(self):
+        self.check_array_array_op(operator.le)
+
+    def test_gt_array(self):
+        self.check_array_array_op(operator.gt)
+
+    def test_ge_array(self):
+        self.check_array_array_op(operator.ge)
+
+    def test_eq_array(self):
+        self.check_array_array_op(operator.eq)
+
+    def test_ne_array(self):
+        self.check_array_array_op(operator.ne)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -250,6 +286,24 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[1])
 
+    def test_broadcasted_lt(self):
+        self.check_array_broadcasted_op(operator.lt)
+
+    def test_broadcasted_le(self):
+        self.check_array_broadcasted_op(operator.le)
+
+    def test_broadcasted_gt(self):
+        self.check_array_broadcasted_op(operator.gt)
+
+    def test_broadcasted_ge(self):
+        self.check_array_broadcasted_op(operator.ge)
+
+    def test_broadcasted_eq(self):
+        self.check_array_broadcasted_op(operator.eq)
+
+    def test_broadcasted_ne(self):
+        self.check_array_broadcasted_op(operator.ne)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def check_array_doubly_broadcasted_op(self, op, xp, dtype):
@@ -292,6 +346,24 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_doubly_broadcasted_op(
                 lambda x, y: divmod(x, y)[1])
+
+    def test_doubly_broadcasted_lt(self):
+        self.check_array_doubly_broadcasted_op(operator.lt)
+
+    def test_doubly_broadcasted_le(self):
+        self.check_array_doubly_broadcasted_op(operator.le)
+
+    def test_doubly_broadcasted_gt(self):
+        self.check_array_doubly_broadcasted_op(operator.gt)
+
+    def test_doubly_broadcasted_ge(self):
+        self.check_array_doubly_broadcasted_op(operator.ge)
+
+    def test_doubly_broadcasted_eq(self):
+        self.check_array_doubly_broadcasted_op(operator.eq)
+
+    def test_doubly_broadcasted_ne(self):
+        self.check_array_doubly_broadcasted_op(operator.ne)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
