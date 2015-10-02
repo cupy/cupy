@@ -797,8 +797,6 @@ class ndarray(object):
         return subtract(other, self)
 
     def __rmul__(self, other):
-        if not isinstance(other, ndarray):
-            return multiply(other, self)
         return multiply(other, self)
 
     def __rdiv__(self, other):
