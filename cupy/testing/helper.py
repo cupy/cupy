@@ -213,3 +213,15 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.array((a % 2 == 0))
     else:
         return xp.array(a.astype(dtype))
+
+
+class NumpyError(object):
+    def __init__(self, **kw):
+        self.kw = kw
+
+    def __enter__(self):
+        self.err = numpy.geterr()
+        numpy.seterr(**self.kw)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        numpy.seterr(**self.err)
