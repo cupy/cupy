@@ -13,6 +13,8 @@ from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import reshape
 from chainer.functions.array import split_axis
+from chainer.functions.array import swapaxes
+from chainer.functions.array import transpose
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import embed_id
@@ -69,6 +71,10 @@ Reshape = reshape.Reshape
 reshape = reshape.reshape
 SplitAxis = split_axis.SplitAxis
 split_axis = split_axis.split_axis
+Swapaxes = swapaxes.Swapaxes
+swapaxes = swapaxes.swapaxes
+Transpose = transpose.Transpose
+transpose = transpose.transpose
 
 Bilinear = bilinear.Bilinear
 Convolution2D = convolution_2d.Convolution2D
