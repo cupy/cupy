@@ -23,7 +23,8 @@ class TestSwapaxes(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = functions.swapaxes(x, axis1, axis2)
         self.assertEqual(y.data.dtype, numpy.float)
-        self.assertTrue((self.x.swapaxes(axis1, axis2) == cuda.to_cpu(y.data)).all())
+        self.assertTrue((self.x.swapaxes(axis1, axis2) ==
+                         cuda.to_cpu(y.data)).all())
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -53,4 +54,3 @@ class TestSwapaxes(unittest.TestCase):
 
 
 testing.run_module(__name__, __file__)
-

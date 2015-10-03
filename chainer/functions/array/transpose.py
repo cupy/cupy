@@ -20,14 +20,12 @@ class Transpose(function.Function):
     def forward(self, inputs):
         x = inputs[0]
         y = x.transpose(self.axes)
-        print 'TRANSPOSE FWD', x.shape, self.axes, y.shape
         return y,
 
     def backward(self, inputs, grad_outputs):
         gy = grad_outputs[0]
         invAxes = numpy.argsort(self.axes)
         gx = gy.transpose(invAxes)
-        print 'TRANSPOSE BWD', gy.shape, invAxes, gx.shape
         return gx,
 
 
