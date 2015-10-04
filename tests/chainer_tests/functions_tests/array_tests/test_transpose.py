@@ -11,11 +11,11 @@ from chainer.testing import attr
 
 
 class TestTranspose(unittest.TestCase):
-    axes = (0, 2, 1)
+    axes = (-1, 0, 1)
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (4, 3, 2))
-        self.gy = numpy.random.uniform(-1, 1, (4, 2, 3))
+        self.gy = numpy.random.uniform(-1, 1, (2, 4, 3))
 
     def check_forward(self, x_data):
         axes = self.axes

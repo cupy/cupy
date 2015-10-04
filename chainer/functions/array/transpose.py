@@ -8,7 +8,7 @@ class Transpose(function.Function):
     """Permute the dimensions of an array."""
 
     def __init__(self, axes):
-        self.axes = axes
+        self.axes = tuple(ax % len(axes) for ax in axes)
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1,)
@@ -24,8 +24,8 @@ class Transpose(function.Function):
 
     def backward(self, inputs, grad_outputs):
         gy = grad_outputs[0]
-        invAxes = numpy.argsort(self.axes)
-        gx = gy.transpose(invAxes)
+        inv_axes = tuple(numpy.argsort(self.axes))
+        gx = gy.transpose(inv_axes)
         return gx,
 
 
