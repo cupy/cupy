@@ -48,11 +48,11 @@ class GetItem(function.Function):
         gloss = grad_outputs[0]
         gx = cuda.cupy.zeros_like(x)
         gx = cuda.elementwise(
-            'S t, T gloss, raw T gx, int32 n_channel',
-            'T gx',
+            'S t, T gloss, int32 n_channel',
+            'raw T gx',
             'gx[i * n_channel + t] = gloss',
             'getitem_bwd'
-        )(t, gloss, gx, x.shape[1])
+        )(t, gloss, x.shape[1], gx)
         return gx, None
 
 
