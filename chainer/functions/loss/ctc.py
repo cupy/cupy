@@ -119,7 +119,6 @@ class ConnectionistTemporalClassification(function.Function):
                                       path.shape[1], labels_prob)
         return labels_prob
 
-
     def calc_trans(self, path, yseq, rr, xp):
         forward_prob = self.log_matrix(
             xp.eye(path.shape[1], dtype='f')[0], xp)[None, :]
@@ -143,7 +142,6 @@ class ConnectionistTemporalClassification(function.Function):
             beta.append(backward_prob[:, ::-1])
             backward_prob = xp.take(y_inv, r_index) + backward_prob
         return alpha, beta[::-1]
-
 
     def forward(self, inputs):
         xp = cuda.get_array_module(inputs[0])
