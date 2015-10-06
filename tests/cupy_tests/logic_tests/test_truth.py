@@ -3,7 +3,6 @@ import unittest
 import numpy
 import six
 
-import cupy
 from cupy import testing
 
 
@@ -21,7 +20,7 @@ def calc_out_shape(shape, axis, keepdims):
         shape[axis] = 1
     else:
         shape[axis] = -1
-        shape = filter(lambda x: x != -1 , shape)
+        shape = filter(lambda x: x != -1, shape)
     return tuple(shape)
 
 
