@@ -646,8 +646,12 @@ class ndarray(object):
         return prod(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     # TODO(okuta): Implement cumprod
-    # TODO(okuta): Implement all
-    # TODO(okuta): Implement any
+
+    def all(self, axis=None, out=None):
+        return all(self, axis, out)
+
+    def any(self, axis=None, out=None):
+        return any(self, axis, out)
 
     # -------------------------------------------------------------------------
     # Arithmetic and comparison operations
@@ -1300,6 +1304,9 @@ less = logic.comparison.less
 less_equal = logic.comparison.less_equal
 equal = logic.comparison.equal
 not_equal = logic.comparison.not_equal
+
+all = logic.truth.all
+any = logic.truth.any
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
