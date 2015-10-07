@@ -200,11 +200,13 @@ def to_cpu(array, stream=None):
         ``array`` without performing any copy.
 
     """
-    assert stream is None  # TODO(beam2d): FIX IT
     if isinstance(array, ndarray):
-        return array.get()
-    else:
+        return array.get(stream)
+    elif isinsatnce(array, numpy.ndarray):
         return array
+    else:
+        raise TypeError(
+            'The array sent to cpu must be numpy.ndarray or cupy.ndarray')
 
 
 def empty(shape, dtype=numpy.float32):
