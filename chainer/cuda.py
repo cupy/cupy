@@ -202,7 +202,7 @@ def to_cpu(array, stream=None):
     """
     if isinstance(array, ndarray):
         return array.get(stream)
-    elif isinsatnce(array, numpy.ndarray):
+    elif isinstance(array, numpy.ndarray):
         return array
     else:
         raise TypeError(
