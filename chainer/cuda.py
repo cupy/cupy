@@ -190,7 +190,7 @@ def to_cpu(array, stream=None):
     """Copies the given GPU array to host CPU.
 
     Args:
-        array: Array to be sent to GPU.
+        array: Array to be sent to CPU.
         stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
