@@ -220,13 +220,15 @@ class TestNonparameterizedConvolution2D(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_im2col(self):
         self.use_cudnn = False
-        self.test_backward_gpu()
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
+                            cuda.to_gpu(self.b), cuda.to_gpu(self.gy))
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_im2col_nobias(self):
         self.use_cudnn = False
-        self.test_backward_gpu_nobias()
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
+                            None, cuda.to_gpu(self.gy))
 
 
 testing.run_module(__name__, __file__)
