@@ -1,28 +1,141 @@
 """Thin wrapper of CuDNN."""
 # NOTE: This wrapper does not cover all APIs of CuDNN v2.
-import ctypes
-import sys
 
-from cupy.cuda import internal
-from cupy.cuda import runtime
+###############################################################################
+# Types
+###############################################################################
+ctypedef void* Stream
+ctypedef void* Handle
+ctypedef void* TensorDescriptor
+ctypedef void* ConvolutionDescriptor
+ctypedef void* PoolingDescriptor
+ctypedef void* FilterDescriptor
+###############################################################################
+# Extern
+###############################################################################
 
-if 'win32' == sys.platform:
-    _cudnn = internal.load_library(
-        internal.get_windows_cuda_library_names('cudnn'))
-else:
-    _cudnn = internal.load_library('cudnn')
+cdef extern from "cublas.h":
+    # Error handling
+    const char* cudnnGetErrorString(int status)
 
-_I = ctypes.c_int
-_S = ctypes.c_size_t
-_P = ctypes.c_void_p
-_IP = ctypes.POINTER(_I)
-_SP = ctypes.POINTER(_S)
+    # Initialization and CUDA cooperation
+    int cudnnCreate(Handle* handle)
+    int cudnnDestroy(Handle handle)
+    int cudnnSetStream(Handle handle, Stream stream)
+    int cudnnGetStream(Handle handle, Stream* stream)
 
-Handle = _P
-TensorDescriptor = _P
-ConvolutionDescriptor = _P
-PoolingDescriptor = _P
-FilterDescriptor = _P
+    # Tensor manipulation
+    int cudnnCreateTensorDescriptor(TensorDescriptor* descriptor)
+    int cudnnSetTensor4dDescriptor(
+        TensorDescriptor tensorDesc, int format, int dataType,
+        int n, int c, int h, int w)
+    int cudnnSetTensor4dDescriptorEx(
+        TensorDescriptor tensorDesc, int dataType,
+        int n, int c, int h, int w,
+        int nStride, int cStride, int hStride, int wStride)
+    int cudnnSetTensorNdDescriptor(
+        TensorDescriptor tensorDesc, int dataType, int nbDims,
+        int* dimA, int* strideA)
+    int cudnnDestroyTensorDescriptor(TensorDescriptor tensorDesc)
+    int cudnnAddTensor(
+        Handle handle, int mode, void* alpha, TensorDescriptor biasDesc,
+        void* biasData, void* beta, TensorDescriptor srcDestDesc,
+        void* srcDestData)
+
+    # Filter manipulation
+    int cudnnCreateFilterDescriptor(FilterDescriptor* filterDesc)
+    int cudnnSetFilter4dDescriptor(
+        FilterDescriptor filterDesc, int dataType, int n, int c, int h, int w)
+    int cudnnSetFilterNdDescriptor(
+        FilterDescriptor filterDesc, int dataType, int nbDims, int* filterDimA)
+    int cudnnDestroyFilterDescriptor(FilterDescriptor filterDesc)
+
+    # Convolution
+    int cudnnCreateConvolutionDescriptor(ConvolutionDescriptor* convDesc)
+    int cudnnSetConvolution2dDescriptor(
+        ConvolutionDescriptor convDesc, int pad_h, int pad_w, int u, int v,
+        int upscalex, int upscaley, int mode)
+    int cudnnSetConvolutionNdDescriptor(
+        ConvolutionDescriptor convDesc, int arrayLength, int* padA,
+        int* filterStrideA, int* upscaleA, int mode)
+    int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc)
+    int cudnnGetConvolutionForwardAlgorithm(
+        Handle handle, TensorDescriptor srcDesc, FilterDescriptor,
+        ConvolutionDescriptor convDesc, TensorDescriptor destDesc,
+        int preference, size_t memoryLimitInbytes, int* algo)
+    int cudnnGetConvolutionForwardWorkspaceSize(
+        Handle handle, TensorDescriptor srcDesc, FilterDescriptor filterDesc,
+        ConvolutionDescriptor convDesc, TensorDescriptor destDesc, int algo,
+        size_t* sizeInBytes)
+    int cudnnConvolutionForward(
+        Handle handle, void* alpha, TensorDescriptor srcDesc, void* srcData,
+        FilterDescriptor filterDesc, void* filterData,
+        ConvolutionDescriptor convDesc, int algo, void* workSpace,
+        size_t workSpaceSizeInBytes, void* beta,
+        TensorDescriptor destDesc, void* destData)
+    int cudnnConvolutionBackwardBias(
+        Handle handle, void* alpha,
+        TensorDescriptor srcDesc, void* srcData, void* beta,
+        TensorDescriptor destDesc, void* destData)
+    int cudnnConvolutionBackwardFilter(
+        Handle handle, void* alpha,
+        TensorDescriptor srcDesc, void* srcData,
+        TensorDescriptor diffDesc, void* diffData,
+        ConvolutionDescriptor convDesc, void* beta,
+        FilterDescriptor gradDesc, void* gradData)
+    int cudnnConvolutionBackwardData(
+        Handle handle, void* alpha,
+        FilterDescriptor filterDesc, void* filterData,
+        TensorDescriptor diffDesc, void* diffData,
+        ConvolutionDescriptor convDesc, void* beta,
+        TensorDescriptor gradDesc, void* gradData)
+
+    # Pooling
+    int cudnnCreatePoolingDescriptor(PoolingDescriptor* desc)
+    int cudnnSetPooling2dDescriptor(
+        PoolingDescriptor poolingDesc, int mode,
+        int windowHeight, int windowWidth,
+        int verticalPadding, int horizontalPadding,
+        int verticalStride, int horizontalStride)
+    int cudnnSetPoolingNdDescriptor(
+        PoolingDescriptor poolingDesc, int mode, int nbDims,
+        int* windowDimA, int* paddingA, int* strideA)
+    int cudnnDestroyPoolingDescriptor(PoolingDescriptor poolingDesc)
+    int cudnnPoolingForward(
+        Handle handle, PoolingDescriptor poolingDesc, void* alpha,
+        TensorDescriptor srcDesc, void* srcData, void* beta,
+        TensorDescriptor dstDesc, void* dstData)
+    int cudnnPoolingBackward(
+        Handle handle, PoolingDescriptor poolingDesc, void* alpha,
+        TensorDescriptor srcDesc, void* srcData,
+        TensorDescriptor srcDiffDesc, void* srcDiffData,
+        TensorDescriptor destDesc, void* destData, void* beta,
+        TensorDescriptor destDiffDesc, void* destDiffData)
+
+    # Activation
+    int cudnnSoftmaxForward(
+        Handle handle, int algorithm, int mode, void* alpha,
+        TensorDescriptor srcDesc, void* srcData, void* beta,
+        TensorDescriptor dstDesc, void* dstData)
+    int cudnnSoftmaxBackward(
+        Handle handle, int algorithm, int mode, void* alpha,
+        TensorDescriptor srcDesc, void* srcData,
+        TensorDescriptor srcDiffDesc, void* srcDiffData, void* beta,
+        TensorDescriptor destDiffDesc, void* destDiffData)
+    int cudnnActivationForward(
+        Handle handle, int mode, void* alpha,
+        TensorDescriptor srcDesc, void* srcData, void* beta,
+        TensorDescriptor dstDesc, void* dstData)
+    int cudnnActivationBackward(
+        Handle handle, int mode, void* alpha,
+        TensorDescriptor srcDesc, void* srcData,
+        TensorDescriptor srcDiffDesc, void* srcDiffData,
+        TensorDescriptor destDesc, void* destData, void* beta,
+        TensorDescriptor destDiffDesc, void* destDiffData)
+
+###############################################################################
+# Enum
+###############################################################################
 
 CUDNN_DATA_FLOAT = 0
 CUDNN_DATA_DOUBLE = 1
@@ -82,19 +195,16 @@ STATUS = {
     10: 'CUDNN_STATUS_LICENSE_ERROR',
 }
 
-_cudnn.cudnnGetErrorString.restype = ctypes.c_char_p
-_cudnn.cudnnGetErrorString.argtypes = (_I,)
-
 
 class CuDNNError(RuntimeError):
 
-    def __init__(self, status):
+    def __init__(self, int status):
         self.status = status
-        msg = _cudnn.cudnnGetErrorString(status)
+        msg = cudnnGetErrorString(status)
         super(CuDNNError, self).__init__('%s: %s' % (STATUS[status], msg))
 
 
-def check_status(status):
+cpdef check_status(int status):
     if status != 0:
         raise CuDNNError(status)
 
@@ -103,104 +213,77 @@ def check_status(status):
 # Initialization and CUDA cooperation
 ###############################################################################
 
-_cudnn.cudnnCreate.argtypes = (_P,)
-
-
-def create():
-    handle = Handle()
-    status = _cudnn.cudnnCreate(ctypes.byref(handle))
+cpdef size_t create():
+    cdef Handle handle
+    status = cudnnCreate(&handle)
     check_status(status)
-    return handle
+    return <size_t>handle
 
 
-_cudnn.cudnnDestroy.argtypes = (Handle,)
-
-
-def destroy(handle):
-    status = _cudnn.cudnnDestroy(handle)
+cpdef destroy(size_t handle):
+    status = cudnnDestroy(<Handle>handle)
     check_status(status)
 
 
-_cudnn.cudnnSetStream.argtypes = (Handle, runtime.Stream)
-
-
-def setStream(handle, stream):
-    status = _cudnn.cudnnSetStream(handle, stream)
+cpdef setStream(size_t handle, size_t stream):
+    status = cudnnSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
 
-_cudnn.cudnnGetStream.argtypes = (Handle, _P)
-
-
-def getStream(handle):
-    stream = runtime.Stream()
-    status = _cudnn.cudnnGetStream(handle, ctypes.byref(stream))
+cpdef size_t getStream(size_t handle):
+    cdef Stream stream
+    status = cudnnGetStream(<Handle>handle, &stream)
     check_status(status)
-    return stream
+    return <size_t>stream
 
 
 ###############################################################################
 # Tensor manipulation
 ###############################################################################
 
-_cudnn.cudnnCreateTensorDescriptor.argtypes = (_P,)
-
-
-def createTensorDescriptor():
-    descriptor = TensorDescriptor()
-    status = _cudnn.cudnnCreateTensorDescriptor(ctypes.byref(descriptor))
+cpdef size_t createTensorDescriptor():
+    cdef TensorDescriptor descriptor
+    status = cudnnCreateTensorDescriptor(&descriptor)
     check_status(status)
-    return descriptor
+    return <size_t>descriptor
 
 
-_cudnn.cudnnSetTensor4dDescriptor.argtypes = (TensorDescriptor, _I, _I,
-                                              _I, _I, _I, _I)
-
-
-def setTensor4dDescriptor(tensorDesc, format, dataType, n, c, h, w):
-    status = _cudnn.cudnnSetTensor4dDescriptor(tensorDesc, format, dataType,
-                                               n, c, h, w)
+cpdef setTensor4dDescriptor(size_t tensorDesc, int format, int dataType,
+                            int n, int c, int h, int w):
+    status = cudnnSetTensor4dDescriptor(
+        <TensorDescriptor>tensorDesc, format, dataType, n, c, h, w)
     check_status(status)
 
 
-_cudnn.cudnnSetTensor4dDescriptorEx.argtypes = (
-    TensorDescriptor, _I, _I, _I, _I, _I, _I, _I, _I, _I)
-
-
-def setTensor4dDescriptorEx(tensorDesc, dataType, n, c, h, w,
-                            nStride, cStride, hStride, wStride):
-    status = _cudnn.cudnnSetTensor4dDescriptorEx(
-        tensorDesc, dataType, n, c, h, w, nStride, cStride, hStride, wStride)
+cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
+                              int n, int c, int h, int w, int nStride,
+                              int cStride, int hStride, int wStride):
+    status = cudnnSetTensor4dDescriptorEx(
+        <TensorDescriptor>tensorDesc, dataType, n, c, h, w,
+        nStride, cStride, hStride, wStride)
     check_status(status)
 
 
-_cudnn.cudnnSetTensorNdDescriptor.argtypes = (TensorDescriptor, _I, _I, _IP,
-                                              _IP)
-
-
-def setTensorNdDescriptor(tensorDesc, dataType, nbDims, dimA, strideA):
-    status = _cudnn.cudnnSetTensorNdDescriptor(
-        tensorDesc, dataType, nbDims, dimA, strideA)
+cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
+                            size_t dimA, size_t strideA):
+    status = cudnnSetTensorNdDescriptor(
+        <TensorDescriptor>tensorDesc, dataType, nbDims, <int*>dimA,
+        <int*>strideA)
     check_status(status)
 
 
-_cudnn.cudnnDestroyTensorDescriptor.argtypes = (TensorDescriptor,)
-
-
-def destroyTensorDescriptor(tensorDesc):
-    status = _cudnn.cudnnDestroyTensorDescriptor(tensorDesc)
+cpdef destroyTensorDescriptor(size_t tensorDesc):
+    status = cudnnDestroyTensorDescriptor(<TensorDescriptor>tensorDesc)
     check_status(status)
 
 
-_cudnn.cudnnAddTensor.argtypes = (Handle, _I, _P, TensorDescriptor, _P,
-                                  _P, TensorDescriptor, _P)
-
-
-def addTensor(handle, mode, alpha, biasDesc, biasData, beta, srcDestDesc,
-              srcDestData):
-    status = _cudnn.cudnnAddTensor(
-        handle, mode, ctypes.byref(alpha), biasDesc, biasData,
-        ctypes.byref(beta), srcDestDesc, srcDestData)
+cpdef addTensor(handle, mode, size_t alpha,
+                size_t biasDesc, size_t biasData, size_t beta,
+                size_t srcDestDesc, size_t srcDestData):
+    status = cudnnAddTensor(
+        <Handle>handle, mode, <void*>alpha,
+        <TensorDescriptor>biasDesc, <void*>biasData, <void*>beta,
+        <TensorDescriptor>srcDestDesc, <void*>srcDestData)
     check_status(status)
 
 
@@ -208,39 +291,29 @@ def addTensor(handle, mode, alpha, biasDesc, biasData, beta, srcDestDesc,
 # Filter manipulation
 ###############################################################################
 
-_cudnn.cudnnCreateFilterDescriptor.argtypes = (_P,)
-
-
-def createFilterDescriptor():
-    desc = FilterDescriptor()
-    status = _cudnn.cudnnCreateFilterDescriptor(ctypes.byref(desc))
+cpdef size_t createFilterDescriptor():
+    cdef FilterDescriptor desc
+    status = cudnnCreateFilterDescriptor(&desc)
     check_status(status)
-    return desc
+    return <size_t>desc
 
 
-_cudnn.cudnnSetFilter4dDescriptor.argtypes = (FilterDescriptor, _I,
-                                              _I, _I, _I, _I)
-
-
-def setFilter4dDescriptor(filterDesc, dataType, k, c, h, w):
-    status = _cudnn.cudnnSetFilter4dDescriptor(
-        filterDesc, dataType, k, c, h, w)
+cpdef setFilter4dDescriptor(size_t filterDesc,
+                          int dataType, int k, int c, int h, int w):
+    status = cudnnSetFilter4dDescriptor(
+        <FilterDescriptor>filterDesc, dataType, k, c, h, w)
     check_status(status)
 
 
-_cudnn.cudnnSetFilterNdDescriptor.argtypes = (FilterDescriptor, _I, _IP)
-
-
-def setFilterNdDescriptor(filterDesc, nbDims, filterDimA):
-    status = _cudnn.cudnnSetFilterNdDescriptor(filterDesc, nbDims, filterDimA)
+cpdef setFilterNdDescriptor(size_t filterDesc, int dataType, int nbDims,
+                            size_t filterDimA):
+    status = cudnnSetFilterNdDescriptor(
+        <FilterDescriptor>filterDesc, dataType, nbDims, <int*>filterDimA)
     check_status(status)
 
 
-_cudnn.cudnnDestroyFilterDescriptor.argtypes = (FilterDescriptor,)
-
-
-def destroyFilterDescriptor(filterDesc):
-    status = _cudnn.cudnnDestroyFilterDescriptor(filterDesc)
+cpdef destroyFilterDescriptor(size_t filterDesc):
+    status = cudnnDestroyFilterDescriptor(<FilterDescriptor>filterDesc)
     check_status(status)
 
 
@@ -248,126 +321,110 @@ def destroyFilterDescriptor(filterDesc):
 # Convolution
 ###############################################################################
 
-_cudnn.cudnnCreateConvolutionDescriptor.argtypes = (_P,)
-
-
-def createConvolutionDescriptor():
-    desc = ConvolutionDescriptor()
-    status = _cudnn.cudnnCreateConvolutionDescriptor(ctypes.byref(desc))
+cpdef size_t createConvolutionDescriptor():
+    cdef ConvolutionDescriptor desc
+    status = cudnnCreateConvolutionDescriptor(&desc)
     check_status(status)
-    return desc
+    return <size_t>desc
 
 
-_cudnn.cudnnSetConvolution2dDescriptor.argtypes = (
-    ConvolutionDescriptor, _I, _I, _I, _I, _I, _I, _I)
-
-
-def setConvolution2dDescriptor(convDesc, pad_h, pad_w, u, v, upscalex,
-                               upscaley, mode):
-    status = _cudnn.cudnnSetConvolution2dDescriptor(
-        convDesc, pad_h, pad_w, u, v, upscalex, upscaley, mode)
+cpdef setConvolution2dDescriptor(size_t convDesc, int pad_h, int pad_w, int u,
+                                 int v, int upscalex, int upscaley, int mode):
+    status = cudnnSetConvolution2dDescriptor(
+        <ConvolutionDescriptor>convDesc, pad_h, pad_w, u, v, upscalex,
+        upscaley, mode)
     check_status(status)
 
 
-_cudnn.cudnnSetConvolutionNdDescriptor.argtypes = (
-    ConvolutionDescriptor, _I, _IP, _IP, _IP, _I)
-
-
-def setConvolutionNdDescriptor(convDesc, arrayLength, padA, filterStrideA,
-                               upscaleA, mode):
-    status = _cudnn.cudnnSetConvolutionNdDescriptor(
-        convDesc, arrayLength, padA, filterStrideA, upscaleA, mode)
+cpdef setConvolutionNdDescriptor(size_t convDesc, int arrayLength, size_t padA,
+                                 size_t filterStrideA, size_t upscaleA,
+                                 int mode):
+    status = cudnnSetConvolutionNdDescriptor(
+        <ConvolutionDescriptor>convDesc, arrayLength, <int*>padA,
+        <int*>filterStrideA, <int*>upscaleA, mode)
     check_status(status)
 
 
-_cudnn.cudnnDestroyConvolutionDescriptor.argtypes = (ConvolutionDescriptor,)
-
-
-def destroyConvolutionDescriptor(convDesc):
-    status = _cudnn.cudnnDestroyConvolutionDescriptor(convDesc)
+cpdef destroyConvolutionDescriptor(size_t convDesc):
+    status = cudnnDestroyConvolutionDescriptor(<ConvolutionDescriptor>convDesc)
     check_status(status)
 
 
-_cudnn.cudnnGetConvolutionForwardAlgorithm.argtypes = (
-    Handle, TensorDescriptor, FilterDescriptor, ConvolutionDescriptor,
-    TensorDescriptor, _I, _S, _IP)
-
-
-def getConvolutionForwardAlgorithm(handle, srcDesc, filterDesc, convDesc,
-                                   destDesc, preference, memoryLimitInbytes):
-    algo = _I()
-    status = _cudnn.cudnnGetConvolutionForwardAlgorithm(
-        handle, srcDesc, filterDesc, convDesc, destDesc, preference,
-        memoryLimitInbytes, ctypes.byref(algo))
+cpdef int getConvolutionForwardAlgorithm(
+        size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
+        size_t destDesc, int preference, size_t memoryLimitInbytes):
+    cdef int algo
+    status = cudnnGetConvolutionForwardAlgorithm(
+        <Handle>handle, <TensorDescriptor>srcDesc,
+        <FilterDescriptor>filterDesc, <ConvolutionDescriptor>convDesc,
+        <TensorDescriptor>destDesc, preference, memoryLimitInbytes, &algo)
     check_status(status)
-    return algo.value
+    return algo
 
 
-_cudnn.cudnnGetConvolutionForwardWorkspaceSize.argtypes = (
-    Handle, TensorDescriptor, FilterDescriptor, ConvolutionDescriptor,
-    TensorDescriptor, _I, _SP)
-
-
-def getConvolutionForwardWorkspaceSize(handle, srcDesc, filterDesc, convDesc,
-                                       destDesc, algo):
-    sizeInBytes = _S()
-    status = _cudnn.cudnnGetConvolutionForwardWorkspaceSize(
-        handle, srcDesc, filterDesc, convDesc, destDesc, algo,
-        ctypes.byref(sizeInBytes))
+cpdef size_t getConvolutionForwardWorkspaceSize(
+        size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
+        size_t destDesc, int algo):
+    cdef size_t sizeInBytes
+    status = cudnnGetConvolutionForwardWorkspaceSize(
+        <Handle>handle, <TensorDescriptor>srcDesc,
+        <FilterDescriptor>filterDesc, <ConvolutionDescriptor> convDesc,
+        <TensorDescriptor>destDesc, algo, &sizeInBytes)
     check_status(status)
-    return sizeInBytes.value
+    return sizeInBytes
 
 
-_cudnn.cudnnConvolutionForward.argtypes = (
-    Handle, _P, TensorDescriptor, _P, FilterDescriptor, _P,
-    ConvolutionDescriptor, _I, _P, _S, _P, TensorDescriptor, _P)
-
-
-def convolutionForward(handle, alpha, srcDesc, srcData, filterDesc, filterData,
-                       convDesc, algo, workSpace, workSpaceSizeInBytes, beta,
-                       destDesc, destData):
-    status = _cudnn.cudnnConvolutionForward(
-        handle, ctypes.byref(alpha), srcDesc, srcData, filterDesc, filterData,
-        convDesc, algo, workSpace, workSpaceSizeInBytes, ctypes.byref(beta),
-        destDesc, destData)
+cpdef convolutionForward(size_t handle, size_t alpha,
+                         size_t srcDesc, size_t srcData,
+                         size_t filterDesc, size_t filterData,
+                         size_t convDesc, int algo, size_t workSpace,
+                         size_t workSpaceSizeInBytes, size_t beta,
+                         size_t destDesc, size_t destData):
+    status = cudnnConvolutionForward(
+        <Handle>handle, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData,
+        <FilterDescriptor>filterDesc, <void*>filterData,
+        <ConvolutionDescriptor>convDesc, algo, <void*>workSpace,
+        workSpaceSizeInBytes, <void*>beta,
+        <TensorDescriptor>destDesc, <void*>destData)
     check_status(status)
 
 
-_cudnn.cudnnConvolutionBackwardBias.argtypes = (
-    Handle, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P)
-
-
-def convolutionBackwardBias(handle, alpha, srcDesc, srcData, beta, destDesc,
-                            destData):
-    status = _cudnn.cudnnConvolutionBackwardBias(
-        handle, ctypes.byref(alpha), srcDesc, srcData, ctypes.byref(beta),
-        destDesc, destData)
+cpdef convolutionBackwardBias(size_t handle, size_t alpha,
+                              size_t srcDesc, size_t srcData, size_t beta,
+                              size_t destDesc, size_t destData):
+    status = cudnnConvolutionBackwardBias(
+        <Handle>handle, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData, <void*>beta,
+        <TensorDescriptor>destDesc, <void*>destData)
     check_status(status)
 
 
-_cudnn.cudnnConvolutionBackwardFilter.argtypes = (
-    Handle, _P, TensorDescriptor, _P, TensorDescriptor, _P,
-    ConvolutionDescriptor, _P, FilterDescriptor, _P)
-
-
-def convolutionBackwardFilter(handle, alpha, srcDesc, srcData, diffDesc,
-                              diffData, convDesc, beta, gradDesc, gradData):
-    status = _cudnn.cudnnConvolutionBackwardFilter(
-        handle, ctypes.byref(alpha), srcDesc, srcData, diffDesc, diffData,
-        convDesc, ctypes.byref(beta), gradDesc, gradData)
+cpdef convolutionBackwardFilter(size_t handle, size_t alpha,
+                                size_t srcDesc, size_t srcData,
+                                size_t diffDesc, size_t diffData,
+                                size_t convDesc, size_t beta,
+                                size_t gradDesc, size_t gradData):
+    status = cudnnConvolutionBackwardFilter(
+        <Handle>handle, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData,
+        <TensorDescriptor>diffDesc, <void*>diffData,
+        <ConvolutionDescriptor>convDesc, <void*>beta,
+        <FilterDescriptor>gradDesc, <void*>gradData)
     check_status(status)
 
 
-_cudnn.cudnnConvolutionBackwardData.argtypes = (
-    Handle, _P, FilterDescriptor, _P, TensorDescriptor, _P,
-    ConvolutionDescriptor, _P, TensorDescriptor, _P)
-
-
-def convolutionBackwardData(handle, alpha, filterDesc, filterData, diffDesc,
-                            diffData, convDesc, beta, gradDesc, gradData):
-    status = _cudnn.cudnnConvolutionBackwardData(
-        handle, ctypes.byref(alpha), filterDesc, filterData, diffDesc,
-        diffData, convDesc, ctypes.byref(beta), gradDesc, gradData)
+cpdef convolutionBackwardData(size_t handle, size_t alpha,
+                              size_t filterDesc, size_t filterData,
+                              size_t diffDesc, size_t diffData,
+                              size_t convDesc, size_t beta,
+                              size_t gradDesc, size_t gradData):
+    status = cudnnConvolutionBackwardData(
+        <Handle>handle, <void*>alpha,
+        <FilterDescriptor>filterDesc, <void*>filterData,
+        <TensorDescriptor>diffDesc, <void*>diffData,
+        <ConvolutionDescriptor>convDesc, <void*>beta,
+        <TensorDescriptor>gradDesc, <void*>gradData)
     check_status(status)
 
 
@@ -375,73 +432,58 @@ def convolutionBackwardData(handle, alpha, filterDesc, filterData, diffDesc,
 # Pooling
 ###############################################################################
 
-_cudnn.cudnnCreatePoolingDescriptor.argtypes = (_P,)
-
-
-def createPoolingDescriptor():
-    desc = PoolingDescriptor()
-    status = _cudnn.cudnnCreatePoolingDescriptor(ctypes.byref(desc))
+cpdef size_t createPoolingDescriptor():
+    cdef PoolingDescriptor desc
+    status = cudnnCreatePoolingDescriptor(&desc)
     check_status(status)
-    return desc
+    return <size_t>desc
 
 
-_cudnn.cudnnSetPooling2dDescriptor.argtypes = (
-    PoolingDescriptor, _I, _I, _I, _I, _I, _I, _I)
-
-
-def setPooling2dDescriptor(poolingDesc, mode, windowHeight, windowWidth,
-                           verticalPadding, horizontalPadding, verticalStride,
-                           horizontalStride):
-    status = _cudnn.cudnnSetPooling2dDescriptor(
-        poolingDesc, mode, windowHeight, windowWidth, verticalPadding,
-        horizontalPadding, verticalStride, horizontalStride)
+cpdef setPooling2dDescriptor(size_t poolingDesc, int mode,
+                             int windowHeight, int windowWidth,
+                             int verticalPadding, int horizontalPadding,
+                             int verticalStride, int horizontalStride):
+    status = cudnnSetPooling2dDescriptor(
+        <PoolingDescriptor>poolingDesc, mode, windowHeight, windowWidth,
+        verticalPadding, horizontalPadding, verticalStride, horizontalStride)
     check_status(status)
 
 
-_cudnn.cudnnSetPoolingNdDescriptor.argtypes = (
-    PoolingDescriptor, _I, _I, _IP, _IP, _IP)
-
-
-def setPoolingNdDescriptor(poolingDesc, mode, nbDims, windowDimA, paddingA,
-                           strideA):
-    status = _cudnn.cudnnSetPoolingNdDescriptor(
-        poolingDesc, mode, nbDims, windowDimA, paddingA, strideA)
+cpdef setPoolingNdDescriptor(size_t poolingDesc, int mode, int nbDims,
+                             size_t windowDimA, size_t paddingA,
+                             size_t strideA):
+    status = cudnnSetPoolingNdDescriptor(
+        <PoolingDescriptor>poolingDesc, mode, nbDims,
+        <int*>windowDimA, <int*>paddingA, <int*>strideA)
     check_status(status)
 
 
-_cudnn.cudnnDestroyPoolingDescriptor.argtypes = (PoolingDescriptor,)
-
-
-def destroyPoolingDescriptor(poolingDesc):
-    status = _cudnn.cudnnDestroyPoolingDescriptor(poolingDesc)
+cpdef destroyPoolingDescriptor(size_t poolingDesc):
+    status = cudnnDestroyPoolingDescriptor(<PoolingDescriptor>poolingDesc)
     check_status(status)
 
 
-_cudnn.cudnnPoolingForward.argtypes = (
-    Handle, PoolingDescriptor, _P, TensorDescriptor, _P, _P,
-    TensorDescriptor, _P)
-
-
-def poolingForward(handle, poolingDesc, alpha, srcDesc, srcData, beta,
-                   destDesc, destData):
-    status = _cudnn.cudnnPoolingForward(
-        handle, poolingDesc, ctypes.byref(alpha), srcDesc, srcData,
-        ctypes.byref(beta), destDesc, destData)
+cpdef poolingForward(size_t handle, size_t poolingDesc, size_t alpha,
+                     size_t srcDesc, size_t srcData, size_t beta,
+                     size_t dstDesc, size_t dstData):
+    status = cudnnPoolingForward(
+        <Handle>handle, <PoolingDescriptor>poolingDesc, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData, <void*>beta,
+        <TensorDescriptor>dstDesc, <void*>dstData)
     check_status(status)
 
 
-_cudnn.cudnnPoolingBackward.argtypes = (
-    Handle, PoolingDescriptor, _P, TensorDescriptor, _P, TensorDescriptor, _P,
-    TensorDescriptor, _P, _P, TensorDescriptor, _P)
-
-
-def poolingBackward(handle, poolingDesc, alpha, srcDesc, srcData, srcDiffDesc,
-                    srcDiffData, destDesc, destData, beta, destDiffDesc,
-                    destDiffData):
-    status = _cudnn.cudnnPoolingBackward(
-        handle, poolingDesc, ctypes.byref(alpha), srcDesc, srcData,
-        srcDiffDesc, srcDiffData, destDesc, destData, ctypes.byref(beta),
-        destDiffDesc, destDiffData)
+cpdef poolingBackward(size_t handle, size_t poolingDesc, size_t alpha,
+                      size_t srcDesc, size_t srcData,
+                      size_t srcDiffDesc, size_t srcDiffData, 
+                      size_t destDesc, size_t destData, size_t beta,
+                      size_t destDiffDesc, size_t destDiffData):
+    status = cudnnPoolingBackward(
+        <Handle>handle, <PoolingDescriptor>poolingDesc, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData,
+        <TensorDescriptor>srcDiffDesc, <void*>srcDiffData,
+        <TensorDescriptor>destDesc, <void*>destData, <void*>beta,
+        <TensorDescriptor>destDiffDesc, <void*>destDiffData)
     check_status(status)
 
 
@@ -449,55 +491,47 @@ def poolingBackward(handle, poolingDesc, alpha, srcDesc, srcData, srcDiffDesc,
 # Activation
 ###############################################################################
 
-_cudnn.cudnnSoftmaxForward.argtypes = (
-    Handle, _I, _I, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P)
-
-
-def softmaxForward(handle, algorithm, mode, alpha, srcDesc, srcData, beta,
-                   destDesc, destData):
-    status = _cudnn.cudnnSoftmaxForward(
-        handle, algorithm, mode, ctypes.byref(alpha), srcDesc, srcData,
-        ctypes.byref(beta), destDesc, destData)
+cpdef softmaxForward(size_t handle, int algorithm, int mode, size_t alpha,
+                     size_t srcDesc, size_t srcData, size_t beta,
+                     size_t dstDesc, size_t dstData):
+    status = cudnnSoftmaxForward(
+        <Handle>handle, algorithm, mode, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData, <void*>beta,
+        <TensorDescriptor>dstDesc, <void*>dstData)
     check_status(status)
 
 
-_cudnn.cudnnSoftmaxBackward.argtypes = (
-    Handle, _I, _I, _P, TensorDescriptor, _P, TensorDescriptor, _P, _P,
-    TensorDescriptor, _P)
-
-
-def softmaxBackward(handle, algorithm, mode, alpha, srcDesc, srcData,
-                    srcDiffDesc, srcDiffData, beta, destDiffDesc,
-                    destDiffData):
-    status = _cudnn.cudnnSoftmaxBackward(
-        handle, algorithm, mode, ctypes.byref(alpha), srcDesc, srcData,
-        srcDiffDesc, srcDiffData, ctypes.byref(beta), destDiffDesc,
-        destDiffData)
+cpdef softmaxBackward(size_t handle, int algorithm, int mode, size_t alpha,
+                      size_t srcDesc, size_t srcData,
+                      size_t srcDiffDesc, size_t srcDiffData, size_t beta,
+                      size_t destDiffDesc, size_t destDiffData):
+    status = cudnnSoftmaxBackward(
+        <Handle>handle, algorithm, mode, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData,
+        <TensorDescriptor>srcDiffDesc, <void*>srcDiffData, <void*>beta,
+        <TensorDescriptor>destDiffDesc, <void*>destDiffData)
     check_status(status)
 
 
-_cudnn.cudnnActivationForward.argtypes = (
-    Handle, _I, _P, TensorDescriptor, _P, _P, TensorDescriptor, _P)
-
-
-def activationForward(handle, mode, alpha, srcDesc, srcData, beta, dstDesc,
-                      dstData):
-    status = _cudnn.cudnnActivationForward(
-        handle, mode, ctypes.byref(alpha), srcDesc, srcData,
-        ctypes.byref(beta), dstDesc, dstData)
+cpdef activationForward(size_t handle, int mode, size_t alpha,
+                        size_t srcDesc, size_t srcData, size_t beta,
+                        size_t dstDesc, size_t dstData):
+    status = cudnnActivationForward(
+        <Handle>handle, mode, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData, <void*>beta,
+        <TensorDescriptor>dstDesc, <void*>dstData)
     check_status(status)
 
 
-_cudnn.cudnnActivationBackward.argtypes = (
-    Handle, _I, _P, TensorDescriptor, _P, TensorDescriptor, _P,
-    TensorDescriptor, _P, _P, TensorDescriptor, _P)
-
-
-def activationBackward(handle, mode, alpha, srcDesc, srcData, srcDiffDesc,
-                       srcDiffData, destDesc, destData, beta, destDiffDesc,
-                       destDiffData):
-    status = _cudnn.cudnnActivationBackward(
-        handle, mode, ctypes.byref(alpha), srcDesc, srcData, srcDiffDesc,
-        srcDiffData, destDesc, destData, ctypes.byref(beta), destDiffDesc,
-        destDiffData)
+cpdef activationBackward(size_t handle, int mode, size_t alpha,
+                         size_t srcDesc, size_t srcData,
+                         size_t srcDiffDesc, size_t srcDiffData,
+                         size_t destDesc, size_t destData, size_t beta,
+                         size_t destDiffDesc, size_t destDiffData):
+    status = cudnnActivationBackward(
+        <Handle>handle, mode, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData,
+        <TensorDescriptor>srcDiffDesc, <void*>srcDiffData,
+        <TensorDescriptor>destDesc, <void*>destData, <void*>beta,
+        <TensorDescriptor>destDiffDesc, <void*>destDiffData)
     check_status(status)

@@ -1,28 +1,59 @@
 """Thin wrapper of cuRAND."""
-import ctypes
-import sys
 
-from cupy.cuda import internal
-from cupy.cuda import runtime
+###############################################################################
+# Types
+###############################################################################
 
-if 'win32' == sys.platform:
-    _curand = internal.load_library(
-        internal.get_windows_cuda_library_names('curand'))
-else:
-    _curand = internal.load_library('curand')
+ctypedef void* Stream
+ctypedef void* Generator
 
-_I = ctypes.c_int
-_U = ctypes.c_uint
-_S = ctypes.c_size_t
-_ULL = ctypes.c_ulonglong
-_P = ctypes.c_void_p
-_IP = ctypes.POINTER(_I)
-_UP = ctypes.POINTER(_U)
-_ULLP = ctypes.POINTER(_ULL)
-_F = ctypes.c_float
-_D = ctypes.c_double
-_FP = ctypes.POINTER(_F)
-_DP = ctypes.POINTER(_D)
+###############################################################################
+# Extern
+###############################################################################
+
+cdef extern from "cublas.h":
+    # Generator
+    int curandCreateGenerator(Generator* generator, int rng_type)
+    int curandDestroyGenerator(Generator generator)
+    int curandGetVersion(int* version)
+
+    # Stream
+    int curandSetStream(Generator generator, Stream stream)
+    int curandSetPseudoRandomGeneratorSeed(
+        Generator generator, unsigned long long seed)
+    int curandSetGeneratorOffset(
+        Generator generator, unsigned long long offset)
+    int curandSetGeneratorOrdering(Generator generator, int order)
+
+    # Generation functions
+    int curandGenerate(
+        Generator generator, unsigned int* outputPtr, size_t num)
+    int curandGenerateLongLong(
+        Generator generator, unsigned long long* outputPtr, size_t num)
+    int curandGenerateUniform(
+        Generator generator, float* outputPtr, size_t num)
+    int curandGenerateUniformDouble(
+        Generator generator, double* outputPtr, size_t num)
+    int curandGenerateNormal(
+        Generator generator, float* outputPtr, size_t num,
+        float mean, float stddev)
+    int curandGenerateNormalDouble(
+        Generator generator, double* outputPtr, size_t n,
+        double mean, double stddev)
+    int curandGenerateLogNormal(
+        Generator generator, float* outputPtr, size_t n,
+        float mean, float stddev)
+    int curandGenerateLogNormalDouble(
+        Generator generator, double* outputPtr, size_t n,
+        double mean, double stddev)
+    int curandGeneratePoisson(
+        Generator generator, unsigned int* outputPtr, size_t n,
+        double lam)
+
+
+###############################################################################
+# Enum
+###############################################################################
 
 CURAND_RNG_PSEUDO_DEFAULT = 100
 CURAND_RNG_PSEUDO_XORWOW = 101
@@ -41,10 +72,6 @@ CURAND_ORDERING_PSEUDO_DEFAULT = 101
 CURAND_ORDERING_PSEUDO_SEEDED = 102
 CURAND_ORDERING_QUASI_DEFAULT = 201
 
-Generator = _P
-Distribution = _DP
-
-DiscreteDistribution = _P
 
 ###############################################################################
 # Error handling
@@ -74,7 +101,7 @@ class CURANDError(RuntimeError):
         super(CURANDError, self).__init__(STATUS[status])
 
 
-def check_status(status):
+cpdef check_status(int status):
     if status != 0:
         raise CURANDError(status)
 
@@ -82,63 +109,42 @@ def check_status(status):
 # Generator
 ###############################################################################
 
-_curand.curandCreateGenerator.argtypes = (_P, _I)
-
-
-def createGenerator(rng_type):
-    generator = Generator()
-    status = _curand.curandCreateGenerator(ctypes.byref(generator), rng_type)
+cpdef size_t createGenerator(int rng_type):
+    cdef Generator generator
+    status = curandCreateGenerator(&generator, rng_type)
     check_status(status)
-    return generator
+    return <size_t>generator
 
 
-_curand.curandDestroyGenerator.argtypes = (Generator,)
-
-
-def destroyGenerator(generator):
-    status = _curand.curandDestroyGenerator(generator)
+cpdef destroyGenerator(size_t generator):
+    status = curandDestroyGenerator(<Generator>generator)
     check_status(status)
 
 
-_curand.curandGetVersion.argtypes = (_IP,)
-
-
-def getVersion():
-    version = _I()
-    status = _curand.curandGetVersion(ctypes.byref(version))
+cpdef int getVersion():
+    cdef int version
+    status = curandGetVersion(&version)
     check_status(status)
     return version
 
 
-_curand.curandSetStream.argtypes = (Generator, runtime.Stream)
-
-
-def setStream(generator, stream):
-    status = _curand.curandSetStream(generator, stream)
+cpdef setStream(size_t generator, size_t stream):
+    status = curandSetStream(<Generator>generator, <Stream>stream)
     check_status(status)
 
 
-_curand.curandSetPseudoRandomGeneratorSeed.argtypes = (Generator, _ULL)
-
-
-def setPseudoRandomGeneratorSeed(generator, seed):
-    status = _curand.curandSetPseudoRandomGeneratorSeed(generator, seed)
+cpdef setPseudoRandomGeneratorSeed(size_t generator, unsigned long long seed):
+    status = curandSetPseudoRandomGeneratorSeed(<Generator>generator, seed)
     check_status(status)
 
 
-_curand.curandSetGeneratorOffset.argtypes = (Generator, _ULL)
-
-
-def setGeneratorOffset(generator, offset):
-    status = _curand.curandSetGeneratorOffset(generator, offset)
+cpdef setGeneratorOffset(size_t generator, unsigned long long offset):
+    status = curandSetGeneratorOffset(<Generator>generator, offset)
     check_status(status)
 
 
-_curand.curandSetGeneratorOrdering.argtypes = (Generator, _I)
-
-
-def setGeneratorOrdering(generator, order):
-    status = _curand.curandSetGeneratorOrdering(generator, order)
+cpdef setGeneratorOrdering(size_t generator, int order):
+    status = curandSetGeneratorOrdering(<Generator>generator, order)
     check_status(status)
 
 
@@ -146,93 +152,77 @@ def setGeneratorOrdering(generator, order):
 # Generation functions
 ###############################################################################
 
-_curand.curandGenerate.argtypes = (Generator, _P, _S)
-
-
-def generate(generator, outputPtr, num):
-    status = _curand.curandGenerate(generator, outputPtr, num)
+cpdef generate(size_t generator, size_t outputPtr, size_t num):
+    status = curandGenerate(
+        <Generator>generator, <unsigned int*>outputPtr, num)
     check_status(status)
 
 
-_curand.curandGenerateLongLong.argtypes = (Generator, _P, _S)
-
-
-def generateLongLong(generator, outputPtr, num):
-    status = _curand.curandGenerateLongLong(generator, outputPtr, num)
+cpdef generateLongLong(size_t generator, size_t outputPtr, size_t num):
+    status = curandGenerateLongLong(
+        <Generator>generator, <unsigned long long*>outputPtr, num)
     check_status(status)
 
 
-_curand.curandGenerateUniform.argtypes = (Generator, _P, _S)
-
-
-def generateUniform(generator, outputPtr, num):
-    status = _curand.curandGenerateUniform(generator, outputPtr, num)
+cpdef generateUniform(size_t generator, size_t outputPtr, size_t num):
+    status = curandGenerateUniform(
+        <Generator>generator, <float*>outputPtr, num)
     check_status(status)
 
 
-_curand.curandGenerateUniformDouble.argtypes = (Generator, _P, _S)
 
-
-def generateUniformDouble(generator, outputPtr, num):
-    status = _curand.curandGenerateUniformDouble(generator, outputPtr, num)
+cpdef generateUniformDouble(size_t generator, size_t outputPtr, size_t num):
+    status = curandGenerateUniformDouble(
+        <Generator>generator, <double*>outputPtr, num)
     check_status(status)
 
 
-_curand.curandGenerateNormal.argtypes = (Generator, _P, _S, _F, _F)
-
-
-def generateNormal(generator, outputPtr, n, mean, stddev):
+cpdef generateNormal(size_t generator, size_t outputPtr, size_t n,
+                     float mean, float stddev):
     if n % 2 == 1:
         msg = 'curandGenerateNormal can only generate even number of '\
               'random variables simultaneously. See issue #390 for detail.'
         raise ValueError(msg)
-    status = _curand.curandGenerateNormal(generator, outputPtr, n, mean,
-                                          stddev)
+    status = curandGenerateNormal(
+        <Generator>generator, <float*>outputPtr, n, mean, stddev)
     check_status(status)
 
 
-_curand.curandGenerateNormalDouble.argtypes = (Generator, _P, _S, _D, _D)
-
-
-def generateNormalDouble(generator, outputPtr, n, mean, stddev):
+cpdef generateNormalDouble(size_t generator, size_t outputPtr, size_t n,
+                           float mean, float stddev):
     if n % 2 == 1:
         msg = 'curandGenerateNormalDouble can only generate even number of '\
               'random variables simultaneously. See issue #390 for detail.'
         raise ValueError(msg)
-    status = _curand.curandGenerateNormalDouble(generator, outputPtr, n, mean,
-                                                stddev)
+    status = curandGenerateNormalDouble(
+        <Generator>generator, <double*>outputPtr, n, mean, stddev)
     check_status(status)
 
 
-_curand.curandGenerateLogNormal.argtypes = (Generator, _P, _S, _F, _F)
-
-
-def generateLogNormal(generator, outputPtr, n, mean, stddev):
+def generateLogNormal(size_t generator, size_t outputPtr, size_t n,
+                      float mean, float stddev):
     if n % 2 == 1:
         msg = 'curandGenerateLogNormal can only generate even number of '\
               'random variables simultaneously. See issue #390 for detail.'
         raise ValueError(msg)
-    status = _curand.curandGenerateLogNormal(generator, outputPtr, n,
-                                             mean, stddev)
+    status = curandGenerateLogNormal(
+        <Generator>generator, <float*>outputPtr, n, mean, stddev)
     check_status(status)
 
 
-_curand.curandGenerateLogNormalDouble.argtypes = (Generator, _P, _S, _D, _D)
-
-
-def generateLogNormalDouble(generator, outputPtr, n, mean, stddev):
+cpdef generateLogNormalDouble(size_t generator, size_t outputPtr, size_t n,
+                              float mean, float stddev):
     if n % 2 == 1:
         msg = 'curandGenerateLogNormalDouble can only generate even number of '\
               'random variables simultaneously. See issue #390 for detail.'
         raise ValueError(msg)
-    status = _curand.curandGenerateLogNormalDouble(generator, outputPtr, n,
-                                                   mean, stddev)
+    status = curandGenerateLogNormalDouble(
+        <Generator>generator, <double*>outputPtr, n, mean, stddev)
     check_status(status)
 
 
-_curand.curandGeneratePoisson.argtypes = (Generator, _P, _S, _D)
-
-
-def generatePoisson(generator, outputPtr, n, lam):
-    status = _curand.curandGeneratePoisson(generator, outputPtr, n, lam)
+cpdef generatePoisson(size_t generator, size_t outputPtr, size_t n,
+                      double lam):
+    status = curandGeneratePoisson(
+        <Generator>generator, <unsigned int*>outputPtr, n, lam)
     check_status(status)

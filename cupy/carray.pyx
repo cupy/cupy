@@ -1,48 +1,59 @@
-import ctypes
 import os
 
-import six
-
 from cupy import cuda
+cimport cupy.cuda.module
+
+DEF MAX_NDIM = 25
+
+cdef:
+    struct _CArray:
+        void* data
+        int size
+        int shape_and_strides[MAX_NDIM * 2]
+
+    class CArray(cupy.cuda.module.CPointer):
+        cdef _CArray val
+
+        def __init__(self, size_t data, Py_ssize_t size, tuple shape,
+                     tuple strides):
+            self.val.data = <void*>data
+            self.val.size = size
+            cdef int i, ndim = len(shape)
+            for i in range(ndim):
+                self.val.shape_and_strides[i] = shape[i]
+                self.val.shape_and_strides[i + ndim] = strides[i]
+            self.ptr = <void*>&self.val
+
+    struct _CIndexer:
+        int size
+        int shape_and_index[MAX_NDIM * 2]
+
+    class CIndexer(cupy.cuda.module.CPointer):
+        cdef _CIndexer val
+
+        def __init__(self, Py_ssize_t size, tuple shape):
+            self.val.size = size
+            cdef int i, ndim = len(shape)
+            for i in range(ndim):
+                self.val.shape_and_index[i] = shape[i]
+            self.ptr = <void*>&self.val
 
 
-MAX_NDIM = 25
+cpdef CArray to_carray(data, Py_ssize_t size, tuple shape, tuple strides):
+    return CArray(data, size, shape, strides)
 
 
-def _make_carray(n):
-    class CArray(ctypes.Structure):
-        _fields_ = (('data', ctypes.c_void_p),
-                    ('size', ctypes.c_int),
-                    ('shape', ctypes.c_int * n),
-                    ('strides', ctypes.c_int * n))
-    return CArray
+cpdef CIndexer to_cindexer(Py_ssize_t size, tuple shape):
+    return CIndexer(size, shape)
 
 
-_carrays = [_make_carray(i) for i in six.moves.range(MAX_NDIM)]
+cdef class Indexer:
+    cdef:
+        public Py_ssize_t size
+        public tuple shape
 
-
-def to_carray(data, size, shape, strides):
-    return _carrays[len(shape)](data, size, shape, strides)
-
-
-def _make_cindexer(n):
-    class CIndexer(ctypes.Structure):
-        _fields_ = (('size', ctypes.c_int),
-                    ('shape', ctypes.c_int * n),
-                    ('index', ctypes.c_int * n))
-    return CIndexer
-
-
-_cindexers = [_make_cindexer(i) for i in six.moves.range(MAX_NDIM)]
-
-
-def to_cindexer(size, shape):
-    return _cindexers[len(shape)](size, shape, (0,) * len(shape))
-
-
-class Indexer(object):
     def __init__(self, shape):
-        size = 1
+        cdef Py_ssize_t size = 1
         for s in shape:
             size *= s
         self.shape = shape
@@ -55,7 +66,6 @@ class Indexer(object):
     @property
     def ctypes(self):
         return to_cindexer(self.size, self.shape)
-
 
 _header_source = None
 

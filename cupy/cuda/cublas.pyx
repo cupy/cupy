@@ -1,27 +1,80 @@
 """Thin wrapper of CUBLAS."""
-import ctypes
-import sys
 
-from cupy.cuda import driver
-from cupy.cuda import internal
-
-
-if 'win32' == sys.platform:
-    _cublas = internal.load_library(
-        internal.get_windows_cuda_library_names('cublas'))
-else:
-    _cublas = internal.load_library('cublas')
+###############################################################################
+# Types
+###############################################################################
+ctypedef void* Stream
+ctypedef void* Handle
 
 
-_I = ctypes.c_int
-_P = ctypes.c_void_p
-_F = ctypes.c_float
-_D = ctypes.c_double
-_IP = ctypes.POINTER(_I)
-_FP = ctypes.POINTER(_F)
-_DP = ctypes.POINTER(_D)
+###############################################################################
+# Extern
+###############################################################################
 
-Handle = _P
+cdef extern from "cublas_v2.h":
+    # Context
+    int cublasCreate(Handle* handle)
+    int cublasDestroy(Handle handle)
+    int cublasGetVersion(Handle handle, int* version)
+    int cublasGetPointerMode(Handle handle, int* mode)
+    int cublasSetPointerMode(Handle handle, int mode)
+    # Stream
+    int cublasSetStream(Handle handle, Stream streamId)
+    int cublasGetStream(Handle handle, Stream* streamId)
+
+    # BLAS Level 1
+    int cublasIsamax(Handle handle, int n, float* x, int incx, int* result)
+    int cublasIsamin(Handle handle, int n, float* x, int incx, int* result)
+    int cublasSasum(Handle handle, int n, float* x, int incx, float* result)
+    int cublasSaxpy(Handle handle, int n, float* alpha, float* x, int incx,
+                      float* y, int incy)
+    int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
+                       int incx, double* y, int incy)
+    int cublasSdot(Handle handle, int n, float* x, int incx,
+                   float* y, int incy, float* result)
+    int cublasDdot(Handle handle, int n, double* x, int incx,
+                   double* y, int incy, double* result)
+    int cublasSnrm2(Handle handle, int n, float* x, int incx, float* result)
+    int cublasSscal(Handle handle, int n, float* alpha, float* x, int incx)
+
+    # BLAS Level 2
+    int cublasSgemv(
+        Handle handle, int trans, int m, int n, float* alpha,
+        float* A, int lda, float* x, int incx, float* beta,
+        float* y, int incy)
+    int cublasDgemv(
+        Handle handle, int trans, int m, int n, double* alpha,
+        double* A, int lda, double* x, int incx, double* beta,
+        double* y, int incy)
+    int cublasSger(
+        Handle handle, int m, int n, float* alpha, float* x, int incx,
+        float* y, int incy, float* A, int lda)
+    int cublasDger(
+        Handle handle, int m, int n, double* alpha, double* x, int incx,
+        double* y, int incy, double* A, int lda)
+
+    # BLAS Level 3
+    int cublasSgemm(
+        Handle handle, int transa, int transb, int m, int n, int k,
+        float* alpha, float* A, int lda, float* B, int ldb, float* beta,
+        float* C, int ldc)
+    int cublasDgemm(
+        Handle handle, int transa, int transb, int m, int n, int k,
+        double* alpha, double* A, int lda, double* B, int ldb, double* beta,
+        double* C, int ldc)
+    int cublasSgemmBatched(
+        Handle handle, int transa, int transb, int m, int n, int k,
+        float* alpha, float** Aarray, int lda, float** Barray, int ldb,
+        float* beta, float** Carray, int ldc, int batchCount)
+
+    # BLAS extension
+    int cublasSdgmm(
+        Handle handle, int mode, int m, int n, float* A, int lda,
+        float* x, int incx, float* C, int ldc)
+
+###############################################################################
+# Enum
+###############################################################################
 
 CUBLAS_OP_N = 0
 CUBLAS_OP_T = 1
@@ -29,6 +82,9 @@ CUBLAS_OP_C = 2
 
 CUBLAS_POINTER_MODE_HOST = 0
 CUBLAS_POINTER_MODE_DEVICE = 1
+
+CUBLAS_SIDE_LEFT = 0
+CUBLAS_SIDE_RIGHT = 1
 
 ###############################################################################
 # Error handling
@@ -55,7 +111,7 @@ class CUBLASError(RuntimeError):
         super(CUBLASError, self).__init__(STATUS[status])
 
 
-def check_status(status):
+cpdef check_status(int status):
     if status != 0:
         raise CUBLASError(status)
 
@@ -64,49 +120,35 @@ def check_status(status):
 # Context
 ###############################################################################
 
-_cublas.cublasCreate_v2.argtypes = (_P,)
 
-
-def create():
-    handle = Handle()
-    status = _cublas.cublasCreate_v2(ctypes.byref(handle))
+cpdef size_t create():
+    cdef Handle handle
+    status = cublasCreate(&handle)
     check_status(status)
-    return handle
+    return <size_t>handle
 
 
-_cublas.cublasDestroy_v2.argtypes = (Handle,)
-
-
-def destroy(handle):
-    status = _cublas.cublasDestroy_v2(handle)
+cpdef destroy(size_t handle):
+    status = cublasDestroy(<Handle>handle)
     check_status(status)
 
 
-_cublas.cublasGetVersion_v2.argtypes = (Handle, _IP)
-
-
-def getVersion(handle):
-    version = ctypes.c_int()
-    status = _cublas.cublasGetVersion_v2(handle, ctypes.byref(version))
+cpdef int getVersion(size_t handle):
+    cdef int version
+    status = cublasGetVersion(<Handle>handle, &version)
     check_status(status)
     return version
 
 
-_cublas.cublasGetPointerMode_v2.argtypes = (Handle, _IP)
-
-
-def getPointerMode(handle):
-    mode = ctypes.c_int()
-    status = _cublas.cublasGetPointerMode_v2(handle, ctypes.byref(mode))
+cpdef int getPointerMode(size_t handle):
+    cdef int mode
+    status = cublasGetPointerMode(<Handle>handle, &mode)
     check_status(status)
-    return mode.value
+    return mode
 
 
-_cublas.cublasSetPointerMode_v2.argtypes = (Handle, _I)
-
-
-def setPointerMode(handle, mode):
-    status = _cublas.cublasSetPointerMode_v2(handle, mode)
+cpdef setPointerMode(size_t handle, int mode):
+    status = cublasSetPointerMode(<Handle>handle, mode)
     check_status(status)
 
 
@@ -114,209 +156,157 @@ def setPointerMode(handle, mode):
 # Stream
 ###############################################################################
 
-_cublas.cublasSetStream_v2.argtypes = (Handle, driver.Stream)
-
-
-def setStream(handle, stream):
-    status = _cublas.cublasSetStream_v2(handle, stream)
+cpdef setStream(size_t handle, size_t stream):
+    status = cublasSetStream(<Handle>handle, <Stream>stream)
     check_status(status)
 
 
-_cublas.cublasGetStream_v2.argtypes = (Handle, _P)
-
-
-def getStream(handle):
-    stream = driver.Stream()
-    status = _cublas.cublasGetStream_v2(handle, ctypes.byref(stream))
+cpdef size_t getStream(size_t handle):
+    cdef Stream stream
+    status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
-    return stream
+    return <size_t>stream
 
 ###############################################################################
 # BLAS Level 1
 ###############################################################################
 
-_cublas.cublasIsamax_v2.argtypes = (Handle, _I, _P, _I, _IP)
 
-
-def isamax(handle, n, x, incx):
-    result = ctypes.c_int()
-    status = _cublas.cublasIsamax_v2(
-        handle, n, x, incx, ctypes.byref(result))
+cpdef int isamax(size_t handle, int n, size_t x, int incx):
+    cdef int result
+    status = cublasIsamax(
+        <Handle>handle, n, <float*>x, incx, &result)
     check_status(status)
-    return result.value
+    return result
 
 
-_cublas.cublasIsamin_v2.argtypes = (Handle, _I, _P, _I, _IP)
-
-
-def isamin(handle, n, x, incx):
-    result = ctypes.c_int()
-    status = _cublas.cublasIsamin_v2(
-        handle, n, x, incx, ctypes.byref(result))
+cpdef int isamin(size_t handle, int n, size_t x, int incx):
+    cdef int result
+    status = cublasIsamin(
+        <Handle>handle, n, <float*>x, incx, &result)
     check_status(status)
-    return result.value
+    return result
 
 
-_cublas.cublasSasum_v2.argtypes = (Handle, _I, _P, _I, _FP)
-
-
-def sasum(handle, n, x, incx):
-    result = ctypes.c_float()
-    status = _cublas.cublasSasum_v2(
-        handle, n, x, incx, ctypes.byref(result))
+cpdef float sasum(size_t handle, int n, size_t x, int incx):
+    cdef float result
+    status = cublasSasum(
+        <Handle>handle, n, <float*>x, incx, &result)
     check_status(status)
-    return result.value
+    return result
 
 
-_cublas.cublasSaxpy_v2.argtypes = (Handle, _I, _FP, _P, _I, _P, _I)
-
-
-def saxpy(handle, n, alpha, x, incx, y, incy):
-    status = _cublas.cublasSaxpy_v2(
-        handle, n, ctypes.byref(_F(alpha)), x, incx, y, incy)
+cpdef saxpy(size_t handle, int n, float alpha, size_t x, int incx, size_t y,
+            int incy):
+    status = cublasSaxpy(
+        <Handle>handle, n, &alpha, <float*>x, incx, <float*>y, incy)
     check_status(status)
 
 
-_cublas.cublasDaxpy_v2.argtypes = (Handle, _I, _DP, _P, _I, _P, _I)
-
-
-def daxpy(handle, n, alpha, x, incx, y, incy):
-    status = _cublas.cublasDaxpy_v2(
-        handle, n, ctypes.byref(_D(alpha)), x, incx, y, incy)
+cpdef daxpy(size_t handle, int n, double alpha, size_t x, int incx, size_t y,
+            int incy):
+    status = cublasDaxpy(
+        <Handle>handle, n, &alpha, <double*>x, incx, <double*>y, incy)
     check_status(status)
 
 
-_cublas.cublasSdot_v2.argtypes = (Handle, _I, _P, _I, _P, _I, _P)
-
-
-def sdot(handle, n, x, incx, y, incy, result):
-    status = _cublas.cublasSdot_v2(
-        handle, n, x, incx, y, incy, result)
+cpdef sdot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+           size_t result):
+    status = cublasSdot(
+        <Handle>handle, n, <float*>x, incx, <float*>y, incy, <float*>result)
     check_status(status)
 
 
-_cublas.cublasDdot_v2.argtypes = (Handle, _I, _P, _I, _P, _I, _P)
-
-
-def ddot(handle, n, x, incx, y, incy, result):
-    status = _cublas.cublasDdot_v2(
-        handle, n, x, incx, y, incy, result)
+cpdef ddot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+           size_t result):
+    status = cublasDdot(
+        <Handle>handle, n, <double*>x, incx, <double*>y, incy, <double*>result)
     check_status(status)
 
 
-_cublas.cublasSnrm2_v2.argtypes = (Handle, _I, _P, _I, _FP)
-
-
-def snrm2(handle, n, x, incx):
-    result = ctypes.c_float()
-    status = _cublas.cublasSnrm2_v2(
-        handle, n, x, incx, ctypes.byref(result))
+cpdef float snrm2(size_t handle, int n, size_t x, int incx):
+    cdef float result
+    status = cublasSnrm2(<Handle>handle, n, <float*>x, incx, &result)
     check_status(status)
-    return result.value
+    return result
 
 
-_cublas.cublasSscal_v2.argtypes = (Handle, _I, _FP, _P, _I)
-
-
-def sscal(handle, n, alpha, x, incx):
-    status = _cublas.cublasSscal_v2(
-        handle, n, ctypes.byref(_F(alpha)), x, incx)
+cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx):
+    status = cublasSscal(<Handle>handle, n, &alpha, <float*>x, incx)
     check_status(status)
 
 ###############################################################################
 # BLAS Level 2
 ###############################################################################
 
-_cublas.cublasSgemv_v2.argtypes = (Handle, _I, _I, _I, _FP, _P, _I, _P, _I,
-                                   _FP, _P, _I)
-
-
-def sgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
-    status = _cublas.cublasSgemv_v2(
-        handle, trans, m, n, ctypes.byref(_F(alpha)),
-        A, lda, x, incx, ctypes.byref(_F(beta)), y, incy)
+cpdef sgemv(size_t handle, int trans, int m, int n, float alpha, size_t A,
+            int lda, size_t x, int incx, float beta, size_t y, int incy):
+    status = cublasSgemv(
+        <Handle>handle, trans, m, n, &alpha,
+        <float*>A, lda, <float*>x, incx, &beta, <float*>y, incy)
     check_status(status)
 
 
-_cublas.cublasDgemv_v2.argtypes = (Handle, _I, _I, _I, _DP, _P, _I, _P, _I,
-                                   _DP, _P, _I)
-
-
-def dgemv(handle, trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
-    status = _cublas.cublasDgemv_v2(
-        handle, trans, m, n, ctypes.byref(_D(alpha)),
-        A, lda, x, incx, ctypes.byref(_D(beta)), y, incy)
+cpdef dgemv(size_t handle, int trans, int m, int n, double alpha, size_t A,
+            int lda, size_t x, int incx, double beta, size_t y, int incy):
+    status = cublasDgemv(
+        <Handle>handle, trans, m, n, &alpha,
+        <double*>A, lda, <double*>x, incx, &beta, <double*>y, incy)
     check_status(status)
 
 
-_cublas.cublasSger_v2.argtypes = (
-    Handle, _I, _I, _FP, _P, _I, _P, _I, _P, _I)
-
-
-def sger(handle, m, n, alpha, x, incx, y, incy, A, lda):
-    status = _cublas.cublasSger_v2(
-        handle, m, n, ctypes.byref(_F(alpha)), x, incx, y, incy, A, lda)
+cpdef sger(size_t handle, int m, int n, float alpha, size_t x, int incx,
+           size_t y, int incy, size_t A, int lda):
+    status = cublasSger(
+        <Handle>handle, m, n, &alpha, <float*>x, incx, <float*>y, incy,
+        <float*>A, lda)
     check_status(status)
 
-_cublas.cublasDger_v2.argtypes = (
-    Handle, _I, _I, _DP, _P, _I, _P, _I, _P, _I)
 
-
-def dger(handle, m, n, alpha, x, incx, y, incy, A, lda):
-    status = _cublas.cublasDger_v2(
-        handle, m, n, ctypes.byref(_D(alpha)), x, incx, y, incy, A, lda)
+cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
+           size_t y, int incy, size_t A, int lda):
+    status = cublasDger(
+        <Handle>handle, m, n, &alpha, <double*>x, incx, <double*>y, incy,
+        <double*>A, lda)
     check_status(status)
 
 ###############################################################################
 # BLAS Level 3
 ###############################################################################
 
-_cublas.cublasSgemm_v2.argtypes = (Handle, _I, _I, _I, _I, _I, _FP, _P, _I,
-                                   _P, _I, _FP, _P, _I)
-
-
-def sgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C,
-          ldc):
-    status = _cublas.cublasSgemm_v2(
-        handle, transa, transb, m, n, k, ctypes.byref(_F(alpha)),
-        A, lda, B, ldb, ctypes.byref(_F(beta)), C, ldc)
+cpdef sgemm(size_t handle, int transa, int transb, int m, int n, int k,
+            float alpha, size_t A, int lda, size_t B, int ldb, float beta,
+            size_t C, int ldc):
+    status = cublasSgemm(
+        <Handle>handle, transa, transb, m, n, k, &alpha,
+        <float*>A, lda, <float*>B, ldb, &beta, <float*>C, ldc)
     check_status(status)
 
 
-_cublas.cublasDgemm_v2.argtypes = (Handle, _I, _I, _I, _I, _I, _DP, _P, _I,
-                                   _P, _I, _DP, _P, _I)
-
-
-def dgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C,
-          ldc):
-    status = _cublas.cublasDgemm_v2(
-        handle, transa, transb, m, n, k, ctypes.byref(_D(alpha)),
-        A, lda, B, ldb, ctypes.byref(_D(beta)), C, ldc)
+cpdef dgemm(size_t handle, int transa, int transb, int m, int n, int k,
+            double alpha, size_t A, int lda, size_t B, int ldb, double beta,
+            size_t C, int ldc):
+    status = cublasDgemm(
+        <Handle>handle, transa, transb, m, n, k, &alpha,
+        <double*>A, lda, <double*>B, ldb, &beta, <double*>C, ldc)
     check_status(status)
 
 
-_cublas.cublasSgemmBatched.argtypes = (
-    Handle, _I, _I, _I, _I, _I, _FP, _P, _I, _P, _I, _FP, _P, _I, _I)
-
-
-def sgemmBatched(handle, transa, transb, m, n, k, alpha, Aarray, lda, Barray,
-                 ldb, beta, Carray, ldc, batchCount):
-    status = _cublas.cublasSgemmBatched(
-        handle, transa, transb, m, n, k, ctypes.byref(_F(alpha)),
-        Aarray, lda, Barray, ldb, ctypes.byref(_F(beta)),
-        Carray, ldc, batchCount)
+cpdef sgemmBatched(size_t handle, int transa, int transb, int m, int n, int k,
+                   float alpha, size_t Aarray, int lda, size_t Barray, int ldb,
+                   float beta, size_t Carray, int ldc, int batchCount):
+    status = cublasSgemmBatched(
+        <Handle>handle, transa, transb, m, n, k, &alpha, <float**>Aarray, lda,
+        <float**>Barray, ldb, &beta, <float**>Carray, ldc, batchCount)
     check_status(status)
 
 ###############################################################################
 # BLAS extension
 ###############################################################################
 
-CUBLAS_SIDE_LEFT = 0
-CUBLAS_SIDE_RIGHT = 1
-
-_cublas.cublasSdgmm.argtypes = (Handle, _I, _I, _I, _P, _I, _P, _I, _P, _I)
-
-
-def sdgmm(handle, mode, m, n, A, lda, x, incx, C, ldc):
-    status = _cublas.cublasSdgmm(handle, mode, m, n, A, lda, x, incx, C, ldc)
+cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc):
+    status = cublasSdgmm(
+        <Handle>handle, mode, m, n, <float*>A, lda, <float*>x, incx,
+        <float*>C, ldc)
     check_status(status)

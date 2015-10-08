@@ -9,25 +9,10 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-import ctypes
-import sys
-
-from cupy.cuda import internal
-
-if 'win32' == sys.platform:
-    _cudart = internal.load_library(
-        internal.get_windows_cuda_library_names('cudart'))
-else:
-    _cudart = internal.load_library('cudart')
 
 ###############################################################################
-# Types
+# Enum
 ###############################################################################
-
-Device = ctypes.c_int
-Function = ctypes.c_void_p
-Stream = ctypes.c_void_p
-Event = ctypes.c_void_p
 
 memcpyHostToHost = 0
 memcpyHostToDevice = 1
@@ -35,27 +20,33 @@ memcpyDeviceToHost = 2
 memcpyDeviceToDevice = 3
 memcpyDefault = 4
 
+cudaMemoryTypeHost = 1
+cudaMemoryTypeDevice = 2
+
+streamDefault = 0
+streamNonBlocking = 1
+
+eventDefault = 0
+eventBlockingSync = 1
+eventDisableTiming = 2
+eventInterprocess = 4
 
 ###############################################################################
 # Error handling
 ###############################################################################
 
-_cudart.cudaGetErrorName.restype = ctypes.c_char_p
-_cudart.cudaGetErrorName.argtypes = (ctypes.c_int,)
-_cudart.cudaGetErrorString.restype = ctypes.c_char_p
-_cudart.cudaGetErrorString.argtypes = (ctypes.c_int,)
-
-
 class CUDARuntimeError(RuntimeError):
 
     def __init__(self, status):
         self.status = status
-        name = _cudart.cudaGetErrorName(status)
-        msg = _cudart.cudaGetErrorString(status)
-        super(CUDARuntimeError, self).__init__('%s: %s' % (name, msg))
+        self.status = status
+        cdef bytes name = cudaGetErrorName(status)
+        cdef bytes msg = cudaGetErrorString(status)
+        super(CUDARuntimeError, self).__init__(
+            '%s: %s' % (name.decode(), msg.decode()))
 
 
-def check_status(status):
+cpdef check_status(int status):
     if status != 0:
         raise CUDARuntimeError(status)
 
@@ -64,62 +55,45 @@ def check_status(status):
 # Initialization
 ###############################################################################
 
-_cudart.cudaDriverGetVersion.argtypes = (ctypes.c_void_p,)
-
-
-def driverGetVersion():
-    version = ctypes.c_int()
-    status = _cudart.cudaDriverGetVersion(ctypes.byref(version))
+cpdef driverGetVersion():
+    cdef int version
+    status = cudaDriverGetVersion(&version)
     check_status(status)
-    return version.value
+    return version
 
 
 ###############################################################################
 # Device and context operations
 ###############################################################################
 
-_cudart.cudaGetDevice.argtypes = (ctypes.POINTER(ctypes.c_int),)
-
-
-def getDevice():
-    device = Device()
-    status = _cudart.cudaGetDevice(ctypes.byref(device))
-    if status != 0:
-        check_status(status)
-    return device.value
-
-
-_cudart.cudaDeviceGetAttribute.argtypes = (ctypes.POINTER(ctypes.c_int),
-                                           ctypes.c_int, Device)
-
-
-def deviceGetAttribute(attrib, device):
-    ret = ctypes.c_int()
-    status = _cudart.cudaDeviceGetAttribute(ctypes.byref(ret), attrib, device)
+cpdef Device getDevice():
+    cdef Device device
+    status = cudaGetDevice(&device)
     check_status(status)
-    return ret.value
+    return device
 
 
-_cudart.cudaGetDeviceCount.argtypes = (ctypes.POINTER(ctypes.c_int),)
-
-
-def getDeviceCount():
-    count = ctypes.c_int()
-    status = _cudart.cudaGetDeviceCount(ctypes.byref(count))
+cpdef int deviceGetAttribute(attrib, device):
+    cdef int ret
+    status = cudaDeviceGetAttribute(&ret, attrib, device)
     check_status(status)
-    return count.value
+    return ret
 
 
-_cudart.cudaSetDevice.argtypes = (Device,)
+cpdef int getDeviceCount():
+    cdef int count
+    status = cudaGetDeviceCount(&count)
+    check_status(status)
+    return count
 
 
-def setDevice(device):
-    status = _cudart.cudaSetDevice(Device(device))
+cpdef setDevice(Device device):
+    status = cudaSetDevice(device)
     check_status(status)
 
 
-def deviceSynchronize():
-    status = _cudart.cudaDeviceSynchronize()
+cpdef deviceSynchronize():
+    status = cudaDeviceSynchronize()
     check_status(status)
 
 
@@ -127,246 +101,170 @@ def deviceSynchronize():
 # Memory management
 ###############################################################################
 
-_cudart.cudaMalloc.argtypes = (ctypes.c_void_p, ctypes.c_size_t)
-
-
-def malloc(size):
-    ptr = ctypes.c_void_p()
-    status = _cudart.cudaMalloc(ctypes.byref(ptr), size)
+cpdef size_t malloc(size_t size):
+    cdef void* ptr
+    status = cudaMalloc(&ptr, size)
     check_status(status)
-    return ptr
+    return <size_t>ptr
 
 
-_cudart.cudaFree.argtypes = (ctypes.c_void_p,)
-
-
-def free(ptr):
-    status = _cudart.cudaFree(ptr)
+cpdef free(size_t ptr):
+    status = cudaFree(<void*>ptr)
     check_status(status)
 
 
-_cudart.cudaMemGetInfo.argtypes = (ctypes.POINTER(ctypes.c_int),
-                                   ctypes.POINTER(ctypes.c_int))
-
-
-def memGetInfo():
-    free = ctypes.c_size_t()
-    total = ctypes.c_size_t()
-    status = _cudart.cudaMemGetInfo(ctypes.byref(free), ctypes.byref(total))
+cpdef memGetInfo():
+    cdef size_t free, total
+    status = cudaMemGetInfo(&free, &total)
     check_status(status)
-    return free.value, total.value
+    return free, total
 
 
-_cudart.cudaMemcpy.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
-                               ctypes.c_size_t, ctypes.c_int)
-
-
-def memcpy(dst, src, size, kind):
-    status = _cudart.cudaMemcpy(dst, src, size, kind)
+cpdef memcpy(size_t dst, size_t src, size_t size, int kind):
+    status = cudaMemcpy(<void*>dst, <void*>src, size, kind)
     check_status(status)
 
 
-_cudart.cudaMemcpyAsync.argtypes = (ctypes.c_void_p, ctypes.c_void_p,
-                                    ctypes.c_size_t, ctypes.c_int, Stream)
-
-
-def memcpyAsync(dst, src, size, kind, stream):
-    status = _cudart.cudaMemcpyAsync(dst, src, size, kind, stream)
+cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
+                  size_t stream):
+    status = cudaMemcpyAsync(
+        <void*>dst, <void*>src, size, kind, <Stream>stream)
     check_status(status)
 
 
-_cudart.cudaMemcpyPeer.argtypes = (ctypes.c_void_p, Device,
-                                   ctypes.c_void_p, Device, ctypes.c_size_t)
-
-
-def memcpyPeer(dst, dstDevice, src, srcDevice, size):
-    status = _cudart.cudaMemcpyPeer(dst, dstDevice, src, srcDevice, size)
+cpdef memcpyPeer(size_t dst, Device dstDevice, size_t src, Device srcDevice,
+               size_t size):
+    status = cudaMemcpyPeer(<void*>dst, dstDevice, <void*>src, srcDevice, size)
     check_status(status)
 
 
-_cudart.cudaMemcpyPeerAsync.argtypes = (ctypes.c_void_p, Device,
-                                        ctypes.c_void_p, Device,
-                                        ctypes.c_size_t, Stream)
-
-
-def cudaMemcpyPeerAsync(dst, dstDevice, src, srcDevice, size, stream):
-    status = _cudart.cudaMemcpyPeer(dst, dstDevice,
-                                    src, srcDevice, size, stream)
+cpdef memcpyPeerAsync(size_t dst, Device dstDevice,
+                      size_t src, Device srcDevice,
+                      size_t size, size_t stream):
+    status = cudaMemcpyPeerAsync(<void*>dst, dstDevice,
+                                 <void*>src, srcDevice, size, <Stream> stream)
     check_status(status)
 
 
-_cudart.cudaMemset.argtypes = (ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t)
-
-
-def memset(ptr, value, size):
-    status = _cudart.cudaMemset(ptr, value, size)
+cpdef memset(size_t ptr, int value, size_t size):
+    status = cudaMemset(<void*>ptr, value, size)
     check_status(status)
 
 
-_cudart.cudaMemsetAsync.argtypes = (ctypes.c_void_p, ctypes.c_uint,
-                                    ctypes.c_size_t, Stream)
-
-
-def memsetAsync(ptr, value, size, stream):
-    status = _cudart.cudaMemsetAsync(ptr, value, size, stream)
+cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream):
+    status = cudaMemsetAsync(<void*>ptr, value, size, <Stream> stream)
     check_status(status)
 
 
-cudaMemoryTypeHost = 1
-cudaMemoryTypeDevice = 2
+cdef class PointerAttributes:
+    cdef:
+        public int device
+        public size_t devicePointer
+        public size_t hostPointer
+        public int isManaged
+        public int memoryType
+
+    cdef _init(self, cudaPointerAttributes* attrs):
+        self.device = attrs.device
+        self.devicePointer = <size_t>(attrs.devicePointer)
+        self.hostPointer = <size_t>(attrs.hostPointer)
+        self.isManaged = attrs.isManaged
+        self.memoryType = attrs.memoryType
 
 
-class cudaPointerAttributes(ctypes.Structure):
-    _fields_ = (
-        ('memoryType', ctypes.c_int),
-        ('device', ctypes.c_int),
-        ('devicePointer', ctypes.c_void_p),
-        ('hostPointer', ctypes.c_void_p),
-        ('isManaged', ctypes.c_int),
-    )
-
-_cudart.cudaPointerGetAttributes.argtypes = (
-    ctypes.POINTER(cudaPointerAttributes), ctypes.c_void_p)
-
-
-def pointerGetAttributes(ptr):
-    attrs = cudaPointerAttributes()
-    status = _cudart.cudaPointerGetAttributes(ctypes.byref(attrs), ptr)
+cpdef PointerAttributes pointerGetAttributes(size_t ptr):
+    cdef cudaPointerAttributes attrs
+    status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
-    return attrs
+    ret = PointerAttributes()
+    ret._init(&attrs)
+    return ret
 
 
 ###############################################################################
 # Stream and Event
 ###############################################################################
 
-_cudart.cudaStreamCreate.argtypes = (ctypes.POINTER(Stream),)
-
-
-def streamCreate():
-    stream = Stream()
-    status = _cudart.cudaStreamCreate(ctypes.byref(stream))
+cpdef size_t streamCreate():
+    cdef Stream stream
+    status = cudaStreamCreate(&stream)
     check_status(status)
-    return stream
+    return <size_t>stream
 
 
-streamDefault = 0
-streamNonBlocking = 1
-_cudart.cudaStreamCreateWithFlags.argtypes = (ctypes.POINTER(Stream),
-                                              ctypes.c_int)
-
-
-def streamCreateWithFlags(flags):
-    stream = Stream()
-    status = _cudart.cudaStreamCreateWithFlags(ctypes.byref(stream), flags)
+cpdef size_t streamCreateWithFlags(unsigned int flags):
+    cdef Stream stream
+    status = cudaStreamCreateWithFlags(&stream, flags)
     check_status(status)
-    return stream
+    return <size_t>stream
 
 
-_cudart.cudaStreamDestroy.argtypes = (Stream,)
-
-
-def streamDestroy(stream):
-    status = _cudart.cudaStreamDestroy(stream)
+cpdef streamDestroy(size_t stream):
+    status = cudaStreamDestroy(<Stream>stream)
     check_status(status)
 
 
-_cudart.cudaStreamSynchronize.argtypes = (Stream,)
-
-
-def streamSynchronize(stream):
-    status = _cudart.cudaStreamSynchronize(stream)
+cpdef streamSynchronize(size_t stream):
+    status = cudaStreamSynchronize(<Stream>stream)
     check_status(status)
 
 
-StreamCallback = ctypes.CFUNCTYPE(Stream, ctypes.c_int, ctypes.c_void_p)
-_cudart.cudaStreamAddCallback.argtypes = (Stream, StreamCallback,
-                                          ctypes.c_void_p, ctypes.c_uint)
+cdef _streamCallbackFunc(Stream hStream, int status, void* userData):
+    func, data = <tuple>userData
+    func(<size_t>hStream, status, data)
 
-
-def streamAddCallback(stream, callback, arg, flags=0):
-    status = _cudart.cudaStreamAddCallback(stream, StreamCallback(callback),
-                                           ctypes.byref(arg), flags)
+cpdef streamAddCallback(size_t stream, callback, size_t arg,
+                        unsigned int flags=0):
+    func_arg = (callback, arg)
+    status = cudaStreamAddCallback(
+        <Stream>stream, <StreamCallback>_streamCallbackFunc,
+        <void*>func_arg, flags)
     check_status(status)
 
 
-_cudart.cudaStreamQuery.argtypes = (Stream,)
+cpdef streamQuery(size_t stream):
+    return cudaStreamQuery(<Stream>stream)
 
 
-def streamQuery(stream):
-    return _cudart.cudaStreamQuery(stream)
-
-
-_cudart.cudaStreamWaitEvent.argtypes = (Stream, Event, ctypes.c_uint)
-
-
-def streamWaitEvent(stream, event, flags=0):
-    status = _cudart.cudaStreamWaitEvent(stream, event, flags)
+def streamWaitEvent(size_t stream, size_t event, unsigned int flags=0):
+    status = cudaStreamWaitEvent(<Stream>stream, <Event>event, flags)
     check_status(status)
 
 
-_cudart.cudaEventCreate.argtypes = (ctypes.POINTER(Event),)
-
-
-def eventCreate():
-    event = Event()
-    status = _cudart.cudaEventCreate(ctypes.byref(event))
+cpdef size_t eventCreate():
+    cdef Event event
+    status = cudaEventCreate(&event)
     check_status(status)
-    return event
+    return <size_t>event
 
-
-eventDefault = 0
-eventBlockingSync = 1
-eventDisableTiming = 2
-eventInterprocess = 4
-_cudart.cudaEventCreateWithFlags.argtypes = (ctypes.POINTER(Event),
-                                             ctypes.c_int)
-
-
-def eventCreateWithFlags(flags):
-    event = Event()
-    status = _cudart.cudaEventCreateWithFlags(ctypes.byref(event), flags)
+cpdef size_t eventCreateWithFlags(flags):
+    cdef Event event
+    status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)
-    return event
+    return <size_t>event
 
 
-_cudart.cudaEventDestroy.argtypes = (Event,)
-
-
-def eventDestroy(event):
-    status = _cudart.cudaEventDestroy(event)
+cpdef eventDestroy(size_t event):
+    status = cudaEventDestroy(<Event>event)
     check_status(status)
 
 
-_cudart.cudaEventElapsedTime.argtypes = (ctypes.POINTER(ctypes.c_float),
-                                         Event, Event)
-
-
-def eventElapsedTime(start, end):
-    ms = ctypes.c_float()
-    status = _cudart.cudaEventElapsedTime(ctypes.byref(ms), start, end)
+cpdef float eventElapsedTime(size_t start, size_t end):
+    cdef float ms
+    status = cudaEventElapsedTime(&ms, <Event>start, <Event>end)
     check_status(status)
-    return ms.value
+    return ms
 
 
-_cudart.cudaEventQuery.argtypes = (Event,)
+cpdef eventQuery(size_t event):
+    return cudaEventQuery(<Event>event)
 
 
-def eventQuery(event):
-    return _cudart.cudaEventQuery(event)
-
-
-_cudart.cudaEventRecord.argtypes = (Event, Stream)
-
-
-def eventRecord(event, stream):
-    status = _cudart.cudaEventRecord(event, stream)
+cpdef eventRecord(size_t event, size_t stream):
+    status = cudaEventRecord(<Event>event, <Stream>stream)
     check_status(status)
 
 
-_cudart.cudaEventSynchronize.argtypes = (Event,)
-
-
-def eventSynchronize(event):
-    status = _cudart.cudaEventSynchronize(event)
+cpdef eventSynchronize(size_t event):
+    status = cudaEventSynchronize(<Event>event)
     check_status(status)

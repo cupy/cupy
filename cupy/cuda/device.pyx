@@ -1,3 +1,4 @@
+# cython: profile=True
 import atexit
 
 import six
@@ -6,7 +7,9 @@ from cupy.cuda import cublas
 from cupy.cuda import runtime
 
 
-class Device(object):
+_cublas_handles = {}
+
+cdef class Device:
 
     """Object that represents a CUDA device.
 
@@ -31,7 +34,6 @@ class Device(object):
         id (int): ID of this device.
 
     """
-    _cublas_handles = {}
 
     def __init__(self, device=None):
         if device is None:
@@ -45,19 +47,19 @@ class Device(object):
         return self.id
 
     def __enter__(self):
-        dev = Device()
-        self._device_stack.append(dev)
-        if self.id != dev.id:
+        cdef int id = runtime.getDevice()
+        self._device_stack.append(id)
+        if self.id != id:
             self.use()
         return self
 
     def __exit__(self, *args):
-        self._device_stack.pop().use()
+        runtime.setDevice(self._device_stack.pop())
 
     def __repr__(self):
         return '<CUDA Device %d>' % self.id
 
-    def use(self):
+    cpdef use(self):
         """Makes this device current.
 
         If you want to switch a device temporarily, use the *with* statement.
@@ -65,7 +67,7 @@ class Device(object):
         """
         runtime.setDevice(self.id)
 
-    def synchronize(self):
+    cpdef synchronize(self):
         """Synchronizes the current thread to the device."""
         with self:
             runtime.deviceSynchronize()
@@ -91,20 +93,16 @@ class Device(object):
         itself is different.
 
         """
-        handle = self._cublas_handles.get(self.id, None)
+        handle = _cublas_handles.get(self.id, None)
         if handle is None:
             with self:
                 handle = cublas.create()
-                self._cublas_handles[self.id] = handle
+                _cublas_handles[self.id] = handle
         return handle
 
-    def __eq__(self, other):
-        """Returns True if ``other`` refers to the same device."""
-        return self.id == other.id
-
-    def __ne__(self, other):
-        """Returns True if ``other`` refers to a different device."""
-        return self.id != other.id
+    def __cmp__(Device self, Device other):
+        """Returns 0 if ``other`` refers to the same device."""
+        return self.id - other.id
 
 
 def from_pointer(ptr):
@@ -124,6 +122,7 @@ def from_pointer(ptr):
 @atexit.register
 def destroy_cublas_handles():
     """Destroys the cuBLAS handles for all devices."""
-    for handle in six.itervalues(Device._cublas_handles):
+    global _cublas_handles
+    for handle in six.itervalues(_cublas_handles):
         cublas.destroy(handle)
-    Device._cublas_handles = {}
+    _cublas_handles = {}
