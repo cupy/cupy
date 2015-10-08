@@ -11,7 +11,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-class TestSigmoid(unittest.TestCase):
+class TestTanh(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-.5, .5, (3, 2)).astype(numpy.float32)
