@@ -1,5 +1,4 @@
 import collections
-import ctypes
 
 import numpy
 
@@ -56,9 +55,13 @@ class Pooling2D(function.Function):
         x_desc = cudnn.create_tensor_descriptor(x[0])
         y_desc = cudnn.create_tensor_descriptor(y)
 
+
+        dtype = x[0].dtype
+        one = numpy.array(1, dtype=dtype).ctypes
+        zero = numpy.array(0, dtype=dtype).ctypes
         libcudnn.poolingForward(
-            handle, pool_desc.value, ctypes.c_float(1), x_desc.value,
-            x[0].data.ptr, ctypes.c_float(0), y_desc.value, y.data.ptr)
+            handle, pool_desc.value, one.data, x_desc.value,
+            x[0].data.ptr, zero.data, y_desc.value, y.data.ptr)
         self.y = y
 
         return y,
@@ -74,11 +77,14 @@ class Pooling2D(function.Function):
         x_desc = cudnn.create_tensor_descriptor(x[0])
         y_desc = cudnn.create_tensor_descriptor(gy)
 
+        dtype = x[0].dtype
+        one = numpy.array(1, dtype=dtype).ctypes
+        zero = numpy.array(0, dtype=dtype).ctypes
         gx = cuda.empty_like(x[0])
         libcudnn.poolingBackward(
-            handle, pool_desc.value, ctypes.c_float(1), y_desc.value,
+            handle, pool_desc.value, one.data, y_desc.value,
             self.y.data.ptr, y_desc.value, gy.data.ptr, x_desc.value,
-            x[0].data.ptr, ctypes.c_float(0), x_desc.value, gx.data.ptr)
+            x[0].data.ptr, zero.data, x_desc.value, gx.data.ptr)
         return gx,
 
     def create_pool_desc(self):

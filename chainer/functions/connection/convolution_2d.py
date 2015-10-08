@@ -1,4 +1,3 @@
-import ctypes
 import math
 
 import numpy
@@ -194,20 +193,21 @@ class Convolution2D(function.Function):
             workspace = cuda.empty(
                 (max(workspace_size // 4, 1),), dtype=self.dtype)
 
-            one = ctypes.c_float(1)
-            zero = ctypes.c_float(0)
+            dtype = x[0].dtype
+            one = numpy.array(1, dtype=dtype).ctypes
+            zero = numpy.array(0, dtype=dtype).ctypes
             libcudnn.convolutionForward(
-                handle, one, x_desc.value, x[0].data.ptr,
+                handle, one.data, x_desc.value, x[0].data.ptr,
                 self.filter_desc.value, self.W.data.ptr, self.conv_desc.value,
-                algo, workspace.data.ptr, workspace_size, zero, y_desc.value,
-                y.data.ptr)
+                algo, workspace.data.ptr, workspace_size, zero.data,
+                y_desc.value, y.data.ptr)
 
             # TODO(beam2d): Support unshared bias
             if self.b is not None:
                 libcudnn.addTensor(
-                    handle, libcudnn.CUDNN_ADD_SAME_C, one,
-                    self.bias_desc.value, self.b.data.ptr, one, y_desc.value,
-                    y.data.ptr)
+                    handle, libcudnn.CUDNN_ADD_SAME_C, one.data,
+                    self.bias_desc.value, self.b.data.ptr, one.data,
+                    y_desc.value, y.data.ptr)
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(
@@ -248,23 +248,25 @@ class Convolution2D(function.Function):
             if not gy_arr.flags.c_contiguous:
                 gy_arr = cuda.cupy.ascontiguousarray(gy_arr)
             gy_desc = cudnn.create_tensor_descriptor(gy_arr)
-            one = ctypes.c_float(1)
-            zero = ctypes.c_float(0)
+            dtype = x[0].dtype
+            one = numpy.array(1, dtype=dtype).ctypes
+            zero = numpy.array(0, dtype=dtype).ctypes
             if self.b is not None:
                 libcudnn.convolutionBackwardBias(
-                    handle, one, gy_desc.value, gy_arr.data.ptr,
-                    one, self.bias_desc.value, self.gb.data.ptr)
+                    handle, one.data, gy_desc.value, gy_arr.data.ptr,
+                    one.data, self.bias_desc.value, self.gb.data.ptr)
 
             libcudnn.convolutionBackwardFilter(
-                handle, one, x_desc.value, x[0].data.ptr,
+                handle, one.data, x_desc.value, x[0].data.ptr,
                 gy_desc.value, gy_arr.data.ptr, self.conv_desc.value,
-                one, self.filter_desc.value, self.gW.data.ptr)
+                one.data, self.filter_desc.value, self.gW.data.ptr)
 
             gx = cuda.empty_like(x[0])
             libcudnn.convolutionBackwardData(
-                handle, one, self.filter_desc.value, self.W.data.ptr,
-                gy_desc.value, gy_arr.data.ptr, self.conv_desc.value,
-                zero, x_desc.value, gx.data.ptr)
+                handle, one.data, self.filter_desc.value,
+                self.W.data.ptr, gy_desc.value, gy_arr.data.ptr,
+                self.conv_desc.value, zero.data, x_desc.value,
+                gx.data.ptr)
         else:
             if self.gb is not None:
                 self.gb += gy[0].sum(axis=(0, 2, 3))
