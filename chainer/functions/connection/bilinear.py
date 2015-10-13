@@ -159,10 +159,9 @@ class Bilinear(function.Function):
         )
 
         in_sizes = type_check.Variable(self.in_sizes, 'in_sizes')
-        type_check_prod = type_check.Variable(numpy.prod, 'prod')
         type_check.expect(
-            type_check_prod(e1_type.shape[1:]) == in_sizes[0],
-            type_check_prod(e2_type.shape[1:]) == in_sizes[1]
+            type_check.prod(e1_type.shape[1:]) == in_sizes[0],
+            type_check.prod(e2_type.shape[1:]) == in_sizes[1]
         )
 
     def zero_grads(self):
