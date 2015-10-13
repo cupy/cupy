@@ -29,9 +29,14 @@ class Sum(function.Function):
 
         if self.axis is not None:
             for axis in self.axis:
-                type_check.expect(
-                    axis < in_types[0].ndim,
-                )
+                if axis >= 0:
+                    type_check.expect(
+                        axis < in_types[0].ndim,
+                    )
+                else:
+                    type_check.expect(
+                        -axis - 1 < in_types[0].ndim,
+                    )
 
     def forward(self, x):
         xp = cuda.get_array_module(*x)
