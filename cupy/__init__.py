@@ -648,10 +648,10 @@ class ndarray(object):
     # TODO(okuta): Implement cumprod
 
     def all(self, axis=None, out=None):
-        return all(self, axis, out)
+        return logic.truth.all(self, axis, out)
 
     def any(self, axis=None, out=None):
-        return any(self, axis, out)
+        return logic.truth.any(self, axis, out)
 
     # -------------------------------------------------------------------------
     # Arithmetic and comparison operations
