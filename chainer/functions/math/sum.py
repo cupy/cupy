@@ -45,7 +45,12 @@ class Sum(function.Function):
             gx[:] = gy[0]
         else:
             gy = gy[0]
+            actual_axis = []
             for axis in self.axis:
+                if axis < 0:
+                    axis = len(gx.shape) + axis
+                actual_axis.append(axis)
+            for axis in sorted(actual_axis):
                 gy = xp.expand_dims(gy, axis=axis)
             gx[:] = gy
 
