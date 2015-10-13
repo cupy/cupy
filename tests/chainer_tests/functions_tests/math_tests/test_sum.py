@@ -76,7 +76,7 @@ class TestSum(unittest.TestCase):
 
     @attr.gpu
     @condition.retry(3)
-    def test_forward_multi_axis_gpu(self):
+    def test_forward_multi_axis_invert_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), axis=(1, 0))
 
     @attr.gpu
