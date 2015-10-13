@@ -13,7 +13,10 @@ class Sum(function.Function):
             self.axis = None
         elif isinstance(axis, int):
             self.axis = (axis,)
-        elif isinstance(axis, tuple):
+        elif isinstance(axis, tuple) and all(isinstance(a, int) for a in axis):
+            if len(set(axis)) != len(axis):
+                raise ValueError('duplicate value in axis: ({})'.format(
+                    ', '.join(map(str, axis))))
             self.axis = axis
         else:
             raise TypeError('None, int or tuple of int are required')

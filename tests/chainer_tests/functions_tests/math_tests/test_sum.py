@@ -143,5 +143,16 @@ class TestSum(unittest.TestCase):
         gy = numpy.ones_like(self.x.sum(axis=(0, -1))) * self.gy
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(gy), axis=(0, -1))
 
+    def test_invalid_axis_type(self):
+        with self.assertRaises(TypeError):
+            functions.Sum([0])
+
+    def test_invalid_axis_type_in_tuple(self):
+        with self.assertRaises(TypeError):
+            functions.Sum((1, 'x'))
+
+    def test_duplicate_axis(self):
+        with self.assertRaises(ValueError):
+            functions.Sum((0, 0))
 
 testing.run_module(__name__, __file__)
