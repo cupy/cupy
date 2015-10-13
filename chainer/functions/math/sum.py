@@ -9,7 +9,14 @@ class Sum(function.Function):
     """Sum of array elements over a given axis."""
 
     def __init__(self, axis=None):
-        self.axis = axis
+        if axis is None:
+            self.axis = None
+        elif isinstance(axis, int):
+            self.axis = (axis,)
+        elif isinstance(axis, tuple):
+            self.axis = axis
+        else:
+            raise TypeError('None, int or tuple of int are required')
 
     def check_type_forward(self, in_types):
         type_check.expect(
@@ -18,9 +25,10 @@ class Sum(function.Function):
         )
 
         if self.axis is not None:
-            type_check.expect(
-                self.axis < in_types[0].ndim,
-            )
+            for axis in self.axis:
+                type_check.expect(
+                    axis < in_types[0].ndim,
+                )
 
     def forward(self, x):
         xp = cuda.get_array_module(*x)
@@ -33,7 +41,10 @@ class Sum(function.Function):
         if self.axis is None:
             gx[:] = gy[0]
         else:
-            gx[:] = xp.expand_dims(gy[0], axis=self.axis)
+            gy = gy[0]
+            for axis in self.axis:
+                gy = xp.expand_dims(gy, axis=axis)
+            gx[:] = gy
 
         return gx,
 
