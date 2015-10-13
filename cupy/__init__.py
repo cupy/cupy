@@ -918,7 +918,7 @@ class ndarray(object):
         else:
             slices = list(slices)
 
-        if _builtin_any(isinstance(s, ndarray) for s in slices):
+        if six.moves.builtins.any(isinstance(s, ndarray) for s in slices):
             raise ValueError('Advanced indexing is not supported')
 
         # Expand ellipsis into empty slices
@@ -1306,7 +1306,6 @@ equal = logic.comparison.equal
 not_equal = logic.comparison.not_equal
 
 all = logic.truth.all
-_builtin_any = any
 any = logic.truth.any
 
 # -----------------------------------------------------------------------------
@@ -1449,7 +1448,7 @@ def get_array_module(*args):
                return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
-    if _builtin_any(isinstance(arg, ndarray) for arg in args):
+    if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):
         return _cupy
     else:
         return numpy
