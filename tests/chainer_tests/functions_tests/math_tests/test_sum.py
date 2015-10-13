@@ -34,8 +34,16 @@ class TestSum(unittest.TestCase):
             self.check_forward(self.x, axis=i)
 
     @condition.retry(3)
+    def test_forward_negative_axis_cpu(self):
+        self.check_forward(self.x, axis=-1)
+
+    @condition.retry(3)
     def test_forward_multi_axis_cpu(self):
         self.check_forward(self.x, axis=(0, 1))
+
+    @condition.retry(3)
+    def test_forward_negative_multi_axis_cpu(self):
+        self.check_forward(self.x, axis=(0, -1))
 
     @attr.gpu
     @condition.retry(3)
@@ -50,8 +58,18 @@ class TestSum(unittest.TestCase):
 
     @attr.gpu
     @condition.retry(3)
+    def test_forward_negative_axis_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x), axis=-1)
+
+    @attr.gpu
+    @condition.retry(3)
     def test_forward_multi_axis_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), axis=(0, 1))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_negative_multi_axis_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x), axis=(0, -1))
 
     def check_backward(self, x_data, y_grad, axis=None):
         x = chainer.Variable(x_data)
@@ -74,9 +92,19 @@ class TestSum(unittest.TestCase):
             self.check_backward(self.x, gy, axis=i)
 
     @condition.retry(3)
+    def test_backward_negative_axis_cpu(self):
+        gy = numpy.ones_like(self.x.sum(axis=-1)) * self.gy
+        self.check_backward(self.x, gy, axis=-1)
+
+    @condition.retry(3)
     def test_backward_multi_axis_cpu(self):
         gy = numpy.ones_like(self.x.sum(axis=(0, 1))) * self.gy
         self.check_backward(self.x, gy, axis=(0, 1))
+
+    @condition.retry(3)
+    def test_backward_negative_multi_axis_cpu(self):
+        gy = numpy.ones_like(self.x.sum(axis=(0, -1))) * self.gy
+        self.check_backward(self.x, gy, axis=(0, -1))
 
     @attr.gpu
     @condition.retry(3)
@@ -92,9 +120,28 @@ class TestSum(unittest.TestCase):
 
     @attr.gpu
     @condition.retry(3)
+    def test_backward_negative_axis_gpu(self):
+        for i in range(self.x.ndim):
+            gy = numpy.ones_like(self.x.sum(axis=-1)) * self.gy
+            self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(gy), axis=-1)
+
+    @attr.gpu
+    @condition.retry(3)
     def test_backward_multi_axis_gpu(self):
         gy = numpy.ones_like(self.x.sum(axis=(0, 1))) * self.gy
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(gy), axis=(0, 1))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_multi_axis_gpu(self):
+        gy = numpy.ones_like(self.x.sum(axis=(0, 1))) * self.gy
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(gy), axis=(0, 1))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_negative_multi_axis_gpu(self):
+        gy = numpy.ones_like(self.x.sum(axis=(0, -1))) * self.gy
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(gy), axis=(0, -1))
 
 
 testing.run_module(__name__, __file__)
