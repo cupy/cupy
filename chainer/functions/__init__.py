@@ -9,6 +9,7 @@ from chainer.functions.activation import sigmoid
 from chainer.functions.activation import softmax
 from chainer.functions.activation import softplus
 from chainer.functions.activation import tanh
+from chainer.functions.array import broadcast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import reshape
@@ -64,6 +65,8 @@ softplus = softplus.softplus
 Tanh = tanh.Tanh
 tanh = tanh.tanh
 
+Broadcast = broadcast.Broadcast
+broadcast = broadcast.broadcast
 Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
