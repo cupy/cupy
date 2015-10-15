@@ -5,6 +5,11 @@ from chainer import cuda
 from chainer import utils
 
 
+def _copy_arrays(xs):
+    xp = cuda.get_array_module(*xs)
+    return tuple(xp.copy(x) for x in xs)
+
+
 def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
     grads = tuple(numpy.zeros_like(x) for x in inputs)
     for x, gx in zip(inputs, grads):
@@ -13,9 +18,9 @@ def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
         for i in six.moves.range(flat_x.size):
             orig = flat_x[i]
             flat_x[i] = orig + eps
-            ys1 = f()
+            ys1 = _copy_arrays(f())
             flat_x[i] = orig - eps
-            ys2 = f()
+            ys2 = _copy_arrays(f())
             flat_x[i] = orig
 
             for y1, y2, gy in zip(ys1, ys2, grad_outputs):
@@ -37,10 +42,10 @@ def numerical_grad_gpu(f, inputs, grad_outputs, eps=1e-3):
             orig = x_cpu[i]
             x_cpu[i] = orig + eps
             x.set(x_cpu)
-            ys1 = f()
+            ys1 = _copy_arrays(f())
             x_cpu[i] = orig - eps
             x.set(x_cpu)
-            ys2 = f()
+            ys2 = _copy_arrays(f())
             x_cpu[i] = orig
             x.set(x_cpu)
 
