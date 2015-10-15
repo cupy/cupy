@@ -6,6 +6,7 @@ import numpy
 import six
 
 from chainer import cuda
+from chainer import flag
 from chainer.utils import type_check
 from chainer import variable
 
@@ -103,10 +104,12 @@ class Function(object):
     gradient_names = ()
     type_check_enable = int(os.environ.get('CHAINER_TYPE_CHECK', '1')) != 0
 
+
     def __init__(self):
         self.inputs = None
         self.outputs = None
         self.rank = None
+
 
     def __call__(self, *inputs):
         """Applies forward propagation with chaining backward references.
@@ -135,10 +138,8 @@ class Function(object):
         # First copy itself to avoid duplication within the graph.
         self = copy.copy(self)
 
-        if any(x.volatile for x in inputs):  # not build graph
-            # do not mix multiple volatility
-            assert all(x.volatile for x in inputs)
-
+        out_volatility = flag.aggregate_flags([x.volatile for x in inputs])
+        if out_volatility == 'ON':  # not build a graph
             in_data = tuple(x.data for x in inputs)
             if self.type_check_enable:
                 self._check_data_type_forward(in_data)
@@ -152,7 +153,7 @@ class Function(object):
                 return outputs[0]
             return outputs
 
-        # Build graph
+        # Build a graph
         # Be careful that forward references must be weak
         self.inputs = []
         for x in inputs:
@@ -174,7 +175,8 @@ class Function(object):
             outputs = self.forward(in_data)
         assert type(outputs) == tuple
 
-        ret = tuple(variable.Variable(y) for y in outputs)
+        ret = tuple(variable.Variable(y, volatile=out_volatility)
+                    for y in outputs)
         for y in ret:
             y.set_creator(self)
 

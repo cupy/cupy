@@ -4,6 +4,7 @@ import weakref
 import numpy
 
 from chainer import cuda
+from chainer import flag
 
 
 class Variable(object):
@@ -36,27 +37,26 @@ class Variable(object):
         creator: The function who creates this variable. It is ``None`` if the
             variable is not created by any function.
 
-        volatile: Boolean flag. If True, the variable does not keep track of
-            any function applications.
+        volatile: Ternary flag. If ON, the variable does not keep track of
+            any function applications. See :class:`~chainer.Flag` for the
+            detail of ternary flags.
 
     """
-
-    def __init__(self, data, volatile=False):
+    def __init__(self, data, volatile=flag.OFF):
         """Initializes a variable.
 
         Args:
             data (:class:`numpy.ndarray` or :class:`cupy.ndarray`):
                 Data array that this variable holds.
-            volatile (bool): Volatility flag. If it is True, the variable will
-                not keep track of any function applications.
+            volatile (~chainer.Flag): Volatility flag. If it is ON, the
+                variable will not keep track of any function applications.
 
         """
         assert isinstance(data, (numpy.ndarray, cuda.ndarray))
-        assert isinstance(volatile, bool)
 
         self.data = data
         self.rank = 0
-        self.volatile = volatile
+        self._volatile = flag.Flag(volatile)
 
         self.splitter = weakref.ref(lambda: 0)  # dead ref
         self._grad = None
@@ -73,6 +73,14 @@ class Variable(object):
 
         """
         return self.data.size
+
+    @property
+    def volatile(self):
+        return self._volatile
+
+    @volatile.setter
+    def volatile(self, v):
+        self._volatile = flag.Flag(v)
 
     @property
     def label(self):
@@ -107,6 +115,14 @@ https://github.com/pfnet/chainer/issues/new.
                 raise ValueError('Shape of data and grad mismatch: %s != %s%s'
                                  % (self.data.shape, g.shape, error_msg))
         self._grad = g
+
+    def zerograd(self):
+        """Initializes the gradient array by zeros."""
+        if self._grad is None:
+            xp = cuda.get_array_module(self.data)
+            self._grad = xp.zeros_like(self.data)
+        else:
+            self._grad.fill(0)
 
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.

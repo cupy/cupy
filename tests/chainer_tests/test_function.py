@@ -196,7 +196,7 @@ class TestFunction(unittest.TestCase):
     def check_call_mixed_volatile(self):
         x1 = chainer.Variable(self.x1, volatile=True)
         x2 = chainer.Variable(self.x2, volatile=False)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             self.f(x1, x2)
 
     def test_call_mixed_volatile_cpu(self):
