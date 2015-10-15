@@ -27,6 +27,8 @@ def _backward_one(x, g):
 
 class Broadcast(function.Function):
 
+    """Function that broadcast given arrays."""
+
     def check_type_forward(self, in_types):
         shapes = [t.eval().shape for t in in_types]
         r_shapes = [s[::-1] for s in shapes]
@@ -53,7 +55,7 @@ def broadcast(*args):
       args (Variables): Variables to be broadcasted.
 
     Returns:
-      ``tuple``; Tuple of :class:`~chainer.Variable` objects which are
+      ``tuple``: Tuple of :class:`~chainer.Variable` objects which are
           broadcasted from given arguments.
     """
     return Broadcast()(*args)
