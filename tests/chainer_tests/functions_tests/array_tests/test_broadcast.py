@@ -96,7 +96,7 @@ class TestBroadcastTypeError(unittest.TestCase):
 
         with self.assertRaises(type_check.InvalidType):
             functions.broadcast(x, y)
-        
+
     def test_invalid_shape_fill(self):
         x_data = numpy.zeros((3, 2, 5), dtype=numpy.int32)
         y_data = numpy.zeros((4), dtype=numpy.float32)
