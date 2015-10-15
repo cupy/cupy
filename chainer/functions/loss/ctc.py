@@ -183,7 +183,7 @@ class ConnectionistTemporalClassification(function.Function):
         return (None,) + tuple(yseq)
 
 
-def connectionist_temporal_classification(blank_symbol, t, x):
+def connectionist_temporal_classification(x, t, blank_symbol):
     """Connectionist Temporal Classification loss function.
 
     Connectionist Temporal Classification(CTC) [Graves2006]_ is a loss function
@@ -191,11 +191,11 @@ def connectionist_temporal_classification(blank_symbol, t, x):
     unknown. See also [Graves2012]_
 
     Args:
-        blank_symbol (int): Index of blank_symbol.
-                            This value must be non-negative.
-        t (Variable): Expected label sequence.
         x (Variable): RNN output at each time.
                       (ex. :math:`(y_1, y_2, ..., y_T)`)
+        t (Variable): Expected label sequence.
+        blank_symbol (int): Index of blank_symbol.
+                            This value must be non-negative.
 
     Returns:
         Variable: A variable holding a scalar value of the CTC loss.

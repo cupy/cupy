@@ -45,7 +45,7 @@ class TestCTC(unittest.TestCase):
     def check_forward(self, t_data, xs_data):
         x = tuple(chainer.Variable(x_data) for x_data in xs_data)
         t = chainer.Variable(t_data)
-        loss = functions.connectionist_temporal_classification(2, t, x)
+        loss = functions.connectionist_temporal_classification(x, t, 2)
         loss_value = float(loss.data)
 
         # compute expected value by recursive computation.
@@ -80,7 +80,7 @@ class TestCTC(unittest.TestCase):
     def check_backward(self, t_data, xs_data):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
         t = chainer.Variable(t_data)
-        loss = functions.connectionist_temporal_classification(2, t, xs)
+        loss = functions.connectionist_temporal_classification(xs, t, 2)
         loss.grad = self.g
         loss.backward()
 
