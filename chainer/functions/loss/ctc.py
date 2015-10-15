@@ -210,6 +210,9 @@ def connectionist_temporal_classification(x, t, blank_symbol):
     .. note::
        This function is differentiable only by ``x``.
 
+    .. note::
+       This function supports (batch x sequence x 1-dimensional input)-data.
+
     .. [Graves2006] Alex Graves, Santiago Fernandez,\
     Faustino Gomez, Jurgen Schmidhuber,\
     `Connectionist Temporal Classification: Labelling Unsegmented\
@@ -225,4 +228,8 @@ def connectionist_temporal_classification(x, t, blank_symbol):
         raise TypeError('blank_symbol must be non-negative integer.')
     assert blank_symbol >= 0
     assert blank_symbol < x[0].data.shape[1]
+    # This implementation only supports 1-dimensional data.
+    # TODO(jnishi): Support d(>1)-dimentinal inputs.
+    assert(len(x[0].data.shape) == 2)
+
     return ConnectionistTemporalClassification(blank_symbol)(t, *x)
