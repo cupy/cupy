@@ -137,19 +137,12 @@ def copy(a):
     if a.size == 0:
         return cupy.empty_like(a)
 
-    if a.data.device != cuda.Device():
-        # peer copy
+    if not a.flags.c_contiguous:
         a = ascontiguousarray(a)
-        newarray = cupy.empty_like(a)
-        newarray.data.copy_from_peer(a.data, a.nbytes)
-        return newarray
-
-    # in-device copy
+        if a.data.device == cuda.Device():
+            return a
     newarray = cupy.empty_like(a)
-    if a.flags.c_contiguous:
-        newarray.data.copy_from(a.data, a.nbytes)
-    else:
-        elementwise.copy(a, newarray)
+    newarray.data.copy_from(a.data, a.nbytes)
     return newarray
 
 

@@ -66,6 +66,17 @@ float32 = numpy.float32
 float64 = numpy.float64
 
 
+def _get_size(size):
+    if size is None:
+        return ()
+    elif isinstance(size, collections.Sequence):
+        return tuple(size)
+    elif isinstance(size, int):
+        return size,
+    else:
+        raise ValueError('size should be None, collections.Sequence, or int')
+
+
 class ndarray(object):
 
     """Multi-dimensional array on a CUDA device.
@@ -87,7 +98,7 @@ class ndarray(object):
 
     """
     def __init__(self, shape, dtype=float, memptr=None, strides=None):
-        self._shape = shape = tuple(shape)
+        self._shape = shape = _get_size(shape)
         self._dtype = dtype = numpy.dtype(dtype)
         size = 1
         for s in shape:
@@ -786,8 +797,6 @@ class ndarray(object):
         return subtract(other, self)
 
     def __rmul__(self, other):
-        if not isinstance(other, ndarray):
-            return multiply(other, self)
         return multiply(other, self)
 
     def __rdiv__(self, other):

@@ -10,13 +10,14 @@ from chainer.testing import attr
 
 
 class TestReshape(unittest.TestCase):
+    out_shape = (2, 2, 6)
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (2, 2, 6)).astype(numpy.float32)
 
     def check_forward(self, x_data):
-        shape = self.gy.shape
+        shape = self.out_shape
         x = chainer.Variable(x_data)
         y = functions.reshape(x, shape)
         self.assertEqual(y.data.dtype, numpy.float32)
@@ -37,6 +38,10 @@ class TestReshape(unittest.TestCase):
 
         shape = self.x.shepe
         self.assertTrue((self.gy.reshape(shape) == cuda.to_cpu(x.grad)).all())
+
+
+class TestReshapeUnknownDimension(TestReshape):
+    out_shape = (2, -1, 6)
 
 
 testing.run_module(__name__, __file__)

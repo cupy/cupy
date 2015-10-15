@@ -1,3 +1,4 @@
+import operator
 import unittest
 
 import numpy
@@ -37,3 +38,63 @@ class TestArrayBoolOp(unittest.TestCase):
     def test_bool_two_elements(self, dtype):
         with self.assertRaises(ValueError):
             bool(cupy.array([1, 2], dtype=dtype))
+
+
+@testing.gpu
+class TestArrayUnaryOp(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_array_op(self, op, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return op(a)
+
+    def test_neg_array(self):
+        self.check_array_op(operator.neg)
+
+    def test_pos_array(self):
+        self.check_array_op(operator.pos)
+
+    def test_abs_array(self):
+        self.check_array_op(operator.abs)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_zerodim_op(self, op, xp, dtype):
+        a = xp.array(-2)
+        return op(a)
+
+    def test_neg_zerodim(self):
+        self.check_zerodim_op(operator.neg)
+
+    def test_pos_zerodim(self):
+        self.check_zerodim_op(operator.pos)
+
+    def test_abs_zerodim(self):
+        self.check_zerodim_op(operator.abs)
+
+
+@testing.gpu
+class TestArrayIntUnaryOp(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_array_op(self, op, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return op(a)
+
+    def test_invert_array(self):
+        self.check_array_op(operator.invert)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def check_zerodim_op(self, op, xp, dtype):
+        a = xp.array(-2)
+        return op(a)
+
+    def test_invert_zerodim(self):
+        self.check_zerodim_op(operator.invert)

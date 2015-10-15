@@ -60,6 +60,15 @@ if available:
         _resolution_error = e
 
 
+def init(arg=None):
+    warnings.warn(
+        'chainer.cuda.init is deprecated. You need to call nothing to '
+        'initialize your environment. Call chainer.cuda.check_cuda_available '
+        'to check availability of CUDA.',
+        DeprecationWarning)
+    check_cuda_available()
+
+
 def check_cuda_available():
     """Checks if CUDA is available.
 
@@ -181,7 +190,7 @@ def to_cpu(array, stream=None):
     """Copies the given GPU array to host CPU.
 
     Args:
-        array: Array to be sent to GPU.
+        array: Array to be sent to CPU.
         stream (cupy.cuda.Stream): CUDA stream.
 
     Returns:
@@ -191,11 +200,13 @@ def to_cpu(array, stream=None):
         ``array`` without performing any copy.
 
     """
-    assert stream is None  # TODO(beam2d): FIX IT
     if isinstance(array, ndarray):
-        return array.get()
-    else:
+        return array.get(stream)
+    elif isinstance(array, numpy.ndarray):
         return array
+    else:
+        raise TypeError(
+            'The array sent to cpu must be numpy.ndarray or cupy.ndarray')
 
 
 def empty(shape, dtype=numpy.float32):

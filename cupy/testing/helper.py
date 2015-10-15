@@ -10,7 +10,7 @@ from cupy.testing import array
 
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
-                        name='xp'):
+                        name='xp', type_check=True):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -18,13 +18,17 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_allclose(x, y, rtol, atol, err_msg, verbose)
+            if type_check:
+                self.assertEqual(x.dtype, y.dtype)
         return test_func
     return decorator
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
-                                  name='xp'):
+                                  name='xp', type_check=True):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -32,13 +36,17 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_almost_equal(
                 x, y, decimal, err_msg, verbose)
+            if type_check:
+                self.assertEqual(x.dtype, y.dtype)
         return test_func
     return decorator
 
 
-def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp'):
+def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp', type_check=True):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -46,12 +54,16 @@ def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp'):
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_arrays_almost_equal_nulp(x, y, nulp)
+            if type_check:
+                self.assertEqual(x.dtype, y.dtype)
         return test_func
     return decorator
 
 
-def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp'):
+def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -59,12 +71,17 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp'):
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_max_ulp(x, y, maxulp, dtype)
+            if type_check:
+                self.assertEqual(x.dtype, y.dtype)
         return test_func
     return decorator
 
 
-def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp'):
+def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
+                           type_check=True):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -72,7 +89,11 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp'):
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_equal(x, y, err_msg, verbose)
+            if type_check:
+                self.assertEqual(x.dtype, y.dtype)
         return test_func
     return decorator
 
@@ -85,12 +106,15 @@ def numpy_cupy_array_list_equal(err_msg='', verbose=True, name='xp'):
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_list_equal(x, y, err_msg, verbose)
         return test_func
     return decorator
 
 
-def numpy_cupy_array_less(err_msg='', verbose=True, name='xp'):
+def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
+                          type_check=True):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -98,7 +122,11 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp'):
             x = impl(self, *args, **kw)
             kw[name] = numpy
             y = impl(self, *args, **kw)
+            self.assertIsNotNone(x)
+            self.assertIsNotNone(y)
             array.assert_array_less(x, y, err_msg, verbose)
+            if type_check:
+                self.assertEqual(x.dtype, y.dtype)
         return test_func
     return decorator
 
@@ -185,3 +213,15 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.array((a % 2 == 0))
     else:
         return xp.array(a.astype(dtype))
+
+
+class NumpyError(object):
+    def __init__(self, **kw):
+        self.kw = kw
+
+    def __enter__(self):
+        self.err = numpy.geterr()
+        numpy.seterr(**self.kw)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        numpy.seterr(**self.err)

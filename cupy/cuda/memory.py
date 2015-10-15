@@ -91,7 +91,7 @@ class MemoryPointer(object):
         return self._device
 
     def copy_from_device(self, src, size):
-        """Copies a memory sequence from the same device.
+        """Copies a memory sequence from a (possibly different) device.
 
         Args:
             src (cupy.cuda.MemoryPointer): Source memory pointer.
@@ -103,7 +103,7 @@ class MemoryPointer(object):
                            runtime.memcpyDeviceToDevice)
 
     def copy_from_device_async(self, src, size, stream):
-        """Copies a memory sequence from the same device asynchronously.
+        """Copies a memory sequence from a (possibly different) device asynchronously.
 
         Args:
             src (cupy.cuda.MemoryPointer): Source memory pointer.
@@ -112,8 +112,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyAsync(self.ptr, src.ptr, size, stream,
-                                runtime.memcpyDeviceToDevice)
+            runtime.memcpyAsync(self.ptr, src.ptr, size,
+                                runtime.memcpyDeviceToDevice, stream)
 
     def copy_from_host(self, mem, size):
         """Copies a memory sequence from the host memory.
@@ -198,8 +198,8 @@ class MemoryPointer(object):
 
         """
         if size > 0:
-            runtime.memcpyAsync(mem, self.ptr, size, stream,
-                                runtime.memcpyDeviceToHost)
+            runtime.memcpyAsync(mem, self.ptr, size,
+                                runtime.memcpyDeviceToHost, stream)
 
     def memset(self, value, size):
         """Fills a memory sequence by constant byte value.
