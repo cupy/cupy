@@ -142,6 +142,25 @@ class NumericalGradientTest6(NumericalGradientTest):
         self.gys = (None,)
 
 
+class NumericalGradientReferenceTest(unittest.TestCase):
+
+    def setUp(self):
+        self.x = _uniform(2, 3)
+
+    def check_reference(self, x):
+        # A returned value and an input refers the same memory.
+        func = lambda: (x,)
+        gx, = gradient_check.numerical_grad(func, (x,), (1,))
+        gradient_check.assert_allclose(cuda.to_cpu(gx), 1)
+
+    def test_reference_cpu(self):
+        self.check_reference(self.x)
+
+    @attr.gpu
+    def test_reference_gpu(self):
+        self.check_reference(cuda.to_gpu(self.x))
+
+
 class NumericalGradientInvalidEps(NumericalGradientTest):
 
     def check_invalid_eps(self, xs, gys, eps):
