@@ -4,8 +4,8 @@ import numpy
 
 import chainer
 from chainer import cuda
-from chainer import gradient_check
 from chainer import functions
+from chainer import gradient_check
 from chainer.testing import attr
 from chainer.utils import type_check
 
