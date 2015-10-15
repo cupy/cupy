@@ -1,5 +1,6 @@
 import unittest
 
+import cupy
 from cupy import testing
 
 
@@ -47,3 +48,42 @@ class TestIndexing(unittest.TestCase):
     def test_diagonal_negative(self, xp, dtype):
         a = testing.shaped_arange((3, 4, 5), xp, dtype)
         return a.diagonal(-1, 2, 0)
+
+
+@testing.gpu
+class TestChoose(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_choose(self, xp, dtype):
+        a = xp.array([0, 2, 1, 2])
+        c = testing.shaped_arange((3, 4), xp, dtype)
+        return a.choose(c)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_choose_wrap(self, xp, dtype):
+        a = xp.array([0, 3, -1, 5])
+        c = testing.shaped_arange((3, 4), xp, dtype)
+        return a.choose(c, mode='wrap')
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_choose_clip(self, xp, dtype):
+        a = xp.array([0, 3, -1, 5])
+        c = testing.shaped_arange((3, 4), xp, dtype)
+        return a.choose(c, mode='clip')
+
+    def test_unknown_clip(self):
+        a = cupy.array([0, 3, -1, 5])
+        c = testing.shaped_arange((3, 4), cupy, cupy.float32)
+        with self.assertRaises(TypeError):
+            a.choose(c, mode='unknow')
+
+    def test_raise(self):
+        a = cupy.array([2])
+        c = cupy.array([[0, 1]])
+        with self.assertRaises(ValueError):
+            a.choose(c)
