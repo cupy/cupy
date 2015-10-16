@@ -60,6 +60,30 @@ class TestAll(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
+    def test_all_reduce_all_zero(self, xp, dtype):
+        x = xp.zeros((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, None)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_reduce_all_zero_2(self, xp, dtype):
+        x = xp.zeros((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, (0, 1, 2))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_reduce_all_one(self, xp, dtype):
+        x = xp.ones((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, None)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_reduce_all_one_2(self, xp, dtype):
+        x = xp.ones((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, (0, 1, 2))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
     def test_all_partial_reduce(self, xp, dtype):
         x = testing.shaped_arange((2, 3, 4), xp, dtype)
         return self.check(x, xp, 0)
@@ -80,6 +104,54 @@ class TestAll(unittest.TestCase):
     @testing.numpy_cupy_array_list_equal()
     def test_all_partial_reduce_4(self, xp, dtype):
         x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return self.check(x, xp, (0, 1))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_partial_reduce_all_zero(self, xp, dtype):
+        x = xp.zeros((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, 0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_partial_reduce_2_all_zero(self, xp, dtype):
+        x = xp.zeros((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, 1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_partial_reduce_3_all_zero(self, xp, dtype):
+        x = xp.zeros((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, 2)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_partial_reduce_4_all_zero(self, xp, dtype):
+        x = xp.zeros((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, (0, 1))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_partial_reduce_all_one(self, xp, dtype):
+        x = xp.ones((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, 0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_partial_reduce_2_all_one(self, xp, dtype):
+        x = xp.ones((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, 1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_partial_reduce_3_all_one(self, xp, dtype):
+        x = xp.ones((2, 3, 4), dtype=dtype)
+        return self.check(x, xp, 2)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_all_partial_reduce_4_all_one(self, xp, dtype):
+        x = xp.ones((2, 3, 4), dtype=dtype)
         return self.check(x, xp, (0, 1))
 
 
