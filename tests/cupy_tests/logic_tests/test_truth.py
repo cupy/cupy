@@ -33,17 +33,17 @@ class TestAll(unittest.TestCase):
         self.f = 'all'
 
     def check(self, x, xp, axis):
-        a = xp.all(x, axis)
+        a = getattr(xp, self.f)(x, axis)
 
         out_shape = calc_out_shape(x.shape, axis, False)
         b = xp.empty(out_shape, dtype=x.dtype)
         getattr(xp, self.f)(x, axis, out=b)
 
-        c = xp.all(x, axis, keepdims=True)
+        c = getattr(xp, self.f)(x, axis, keepdims=True)
 
         out_shape2 = calc_out_shape(x.shape, axis, True)
         d = xp.empty(out_shape2, dtype=x.dtype)
-        xp.all(x, axis, out=d, keepdims=True)
+        getattr(xp, self.f)(x, axis, out=d, keepdims=True)
         return (a, b, c, d)
 
     @testing.for_all_dtypes()
