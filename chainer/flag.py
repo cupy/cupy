@@ -29,10 +29,12 @@ class Flag(object):
     _cached_, and can be compared by ``is`` operator.
 
     """
-    def __init__(self, name):
-        # Note: This method is only used for construction of ON, OFF, and AUTO.
-        # After their construction, this method is deleted.
-        self.value = _values[name]
+    def __new__(cls, name):
+        if name in _flags:
+            return _flags[name]
+        flag = super(Flag, cls).__new__(cls)
+        flag.value = _values[name]
+        return flag
 
     def __bool__(self):
         value = self.value
@@ -52,10 +54,10 @@ class Flag(object):
         return hash(self.value)
 
 
+_flags = {}
 ON = Flag('ON')
 OFF = Flag('OFF')
 AUTO = Flag('AUTO')
-
 
 _flags = {
     'on': ON,
@@ -68,15 +70,6 @@ _flags = {
     'AUTO': AUTO,
     _AUTO: AUTO,
 }
-
-
-def _new(cls, name):
-    return _flags[name]
-
-
-# Force Flag objects chosen from the caches
-del Flag.__init__
-Flag.__new__ = _new
 
 
 def aggregate_flags(flags):
