@@ -39,6 +39,14 @@ class TestVariable(unittest.TestCase):
         self.a = np.random.uniform(0.1, 10, 10).astype(np.float32)
         self.c = np.arange(10).reshape(2, 5).astype(np.float32)
 
+    def test_repr(self):
+        x = chainer.Variable(self.x, name='x')
+        self.assertEqual(repr(x), '<variable x>')
+
+    def test_str(self):
+        x = chainer.Variable(self.x, name='x')
+        self.assertEqual(str(x), 'x')
+
     def check_len(self, gpu):
         x = self.x
         if gpu:

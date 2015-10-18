@@ -27,6 +27,12 @@ class Variable(object):
     inputs, the output variables do not hold references to the function. This
     acts like unchaining on every function application.
 
+    Args:
+        data (array): Initial data array.
+        volatile (~chainer.Flag): Volatility flag. String ('on', 'off', or
+            'auto') or boolean values can be used, too.
+        name (str): Name of the variable.
+
     Attributes:
         data: Data array of type either :class:`numpy.ndarray` or
             :class:`cupy.ndarray`.
@@ -42,7 +48,7 @@ class Variable(object):
             detail of ternary flags.
 
     """
-    def __init__(self, data, volatile=flag.OFF):
+    def __init__(self, data, volatile=flag.OFF, name=None):
         """Initializes a variable.
 
         Args:
@@ -61,6 +67,17 @@ class Variable(object):
         self.splitter = weakref.ref(lambda: 0)  # dead ref
         self._grad = None
         self.creator = None
+
+        self.name = name
+
+    def __repr__(self):
+        if self.name:
+            return '<variable %s>' % self.name
+        else:
+            return '<variable at 0x%x>' % id(self)
+
+    def __str__(self):
+        return self.name or ('<var@%x>' % id(self))
 
     def __pos__(self):
         return self
