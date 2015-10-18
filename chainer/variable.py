@@ -133,6 +133,25 @@ https://github.com/pfnet/chainer/issues/new.
                                  % (self.data.shape, g.shape, error_msg))
         self._grad = g
 
+    def to_cpu(self):
+        """Copies the data and gradient arrays to CPU."""
+        self.data = cuda.to_cpu(self.data)
+        if self._grad is not None:
+            self._grad = cuda.to_cpu(self._grad)
+
+    def to_gpu(self, device=None):
+        """Copies the data and gradient arrays to specified GPU.
+
+        Args:
+            device: Target device specifier. If omitted, the current device is
+                used.
+
+        """
+        with cuda.get_device(device):
+            self.data = cuda.to_gpu(self.data)
+            if self._grad is not None:
+                self._grad = cuda.to_gpu(self._grad)
+
     def zerograd(self):
         """Initializes the gradient array by zeros."""
         if self._grad is None:
@@ -140,6 +159,58 @@ https://github.com/pfnet/chainer/issues/new.
             self._grad = xp.zeros_like(self.data)
         else:
             self._grad.fill(0)
+
+    def copydata(self, var):
+        """Copies the data array from given source variable.
+
+        This method just copies the data attribute from given variable to this
+        variable, except that the copy is even done across the host and
+        different devices.
+
+        Args:
+            var (Variable): Source variable.
+
+        """
+        src = var.data
+        dst = self.data
+        src_xp = cuda.get_array_module(src)
+        dst_xp = cuda.get_array_module(dst)
+        if dst_xp is src_xp:
+            dst_xp.copyto(dst, src)
+        elif dst_xp is numpy:
+            dst_xp.copyto(dst, src.get())
+        else:
+            dst.set(src)
+
+    def addgrad(self, var):
+        """Accumulates the gradient array from given source variable.
+
+        This method just runs ``self.grad += var.grad``, except that the
+        accumulation is even done across the host and different devices.
+
+        Args:
+            var (Variable): Source variable.
+
+        """
+        src = var._grad
+        dst = self._grad
+        if src is None:
+            raise ValueError('Source gradient is not set.')
+        if dst is None:
+            raise ValueError('Target graidient is not set.')
+
+        xp = cuda.get_array_module(dst)
+        if xp is numpy:
+            dst += cuda.to_cpu(src)
+        elif isinstance(src, numpy.ndarray):
+            dst += cuda.to_gpu(src, device=dst)
+        else:
+            dst_dev = dst.device
+            if dst_dev == src.device:
+                dst += src
+            else:
+                with dst_dev:
+                    dst += xp.copy(src)
 
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.
