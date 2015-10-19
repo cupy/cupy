@@ -55,7 +55,6 @@ class Pooling2D(function.Function):
         x_desc = cudnn.create_tensor_descriptor(x[0])
         y_desc = cudnn.create_tensor_descriptor(y)
 
-
         dtype = x[0].dtype
         one = numpy.array(1, dtype=dtype).ctypes
         zero = numpy.array(0, dtype=dtype).ctypes
