@@ -67,6 +67,34 @@ class TestAll(unittest.TestCase):
         x = xp.ones((2, 3, 4), dtype=dtype)
         return self.check(x, xp, None, (0, 1, 2), 0, 1, 2, (0, 1))
 
+    @testing.for_dtypes(
+        (numpy.float64, numpy.float32, numpy.float16, numpy.bool_))
+    @testing.numpy_cupy_array_list_equal()
+    def test_nan(self, xp, dtype):
+        x = xp.array([[numpy.nan]], dtype=dtype)
+        return self.check(x, xp, None, 0, 1, (0, 1))
+
+    @testing.for_dtypes(
+        (numpy.float64, numpy.float32, numpy.float16, numpy.bool_))
+    @testing.numpy_cupy_array_list_equal()
+    def test_nan_2(self, xp, dtype):
+        x = xp.array([[numpy.nan, 0]], dtype=dtype)
+        return self.check(x, xp, None, 0, 1, (0, 1))
+
+    @testing.for_dtypes(
+        (numpy.float64, numpy.float32, numpy.float16, numpy.bool_))
+    @testing.numpy_cupy_array_list_equal()
+    def test_nan_3(self, xp, dtype):
+        x = xp.array([[numpy.nan, 1]], dtype=dtype)
+        return self.check(x, xp, None, 0, 1, (0, 1))
+
+    @testing.for_dtypes(
+        (numpy.float64, numpy.float32, numpy.float16, numpy.bool_))
+    @testing.numpy_cupy_array_list_equal()
+    def test_nan_4(self, xp, dtype):
+        x = xp.array([[numpy.nan, 0, 1]], dtype=dtype)
+        return self.check(x, xp, None, 0, 1, (0, 1))
+
 
 @testing.gpu
 class TestAny(TestAll):
