@@ -49,13 +49,13 @@ class TestAll(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_all_reduce(self, xp, dtype):
-        x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x = testing.shaped_arange((2, 3, 4), xp, dtype) - 10
         return self.check(x, xp, None)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_all_reduce_2(self, xp, dtype):
-        x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x = testing.shaped_arange((2, 3, 4), xp, dtype) - 10
         return self.check(x, xp, (0, 1, 2))
 
     @testing.for_all_dtypes()
@@ -85,25 +85,25 @@ class TestAll(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_all_partial_reduce(self, xp, dtype):
-        x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x = testing.shaped_arange((2, 3, 4), xp, dtype) - 10
         return self.check(x, xp, 0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_all_partial_reduce_2(self, xp, dtype):
-        x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x = testing.shaped_arange((2, 3, 4), xp, dtype) - 10
         return self.check(x, xp, 1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_all_partial_reduce_3(self, xp, dtype):
-        x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x = testing.shaped_arange((2, 3, 4), xp, dtype) - 10
         return self.check(x, xp, 2)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_list_equal()
     def test_all_partial_reduce_4(self, xp, dtype):
-        x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x = testing.shaped_arange((2, 3, 4), xp, dtype) - 10
         return self.check(x, xp, (0, 1))
 
     @testing.for_all_dtypes()
