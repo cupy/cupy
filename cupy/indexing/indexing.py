@@ -27,10 +27,11 @@ def take(a, indices, axis=None, out=None):
 def choose(a, choices, out=None, mode='raise'):
     n = choices.shape[0]
 
-    if a.ndim + 1 < choices.ndim:
-        for i in range(choices.ndim - (a.ndim + 1)):
+    # broadcast `a` and `choices[i]` for all i
+    if a.ndim < choices.ndim - 1:
+        for i in range(choices.ndim - 1 - a.ndim):
             a = cupy.expand_dims(a, 0)
-    elif a.ndim + 1 > choices.ndim:
+    elif a.ndim > choices.ndim - 1:
         for i in range(a.ndim + 1 - choices.ndim):
             choices = cupy.expand_dims(choices, 1)
     ba, bcs = cupy.broadcast_arrays(a, choices)
