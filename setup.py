@@ -50,7 +50,7 @@ setup(
                       'numpy>=1.9.0',
                       'protobuf',
                       'six>=1.9.0'],
-    setup_requires=['Cython',
+    setup_requires=['Cython>=0.23',
                     'numpy>=1.9.0'],
     tests_require=['mock',
                    'nose'],
