@@ -149,6 +149,7 @@ class NumericalGradientReferenceTest(unittest.TestCase):
 
     def check_reference(self, x):
         # A returned value and an input refers the same memory.
+        # See issue #488
         func = lambda: (x,)
         gx, = gradient_check.numerical_grad(func, (x,), (1,))
         gradient_check.assert_allclose(cuda.to_cpu(gx), 1)
