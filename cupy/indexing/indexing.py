@@ -26,16 +26,25 @@ def take(a, indices, axis=None, out=None):
 
 def choose(a, choices, out=None, mode='raise'):
     n = choices.shape[0]
-    n_channel = numpy.prod(choices.shape[1:])
+
+    if a.ndim + 1 < choices.ndim:
+        for i in range(choices.ndim - (a.ndim + 1)):
+            a = cupy.expand_dims(a, 0)
+    elif a.ndim + 1 > choices.ndim:
+        for i in range(a.ndim + 1 - choices.ndim):
+            choices = cupy.expand_dims(choices, 1)
+    ba, bcs = cupy.broadcast_arrays(a, choices)
+
+    n_channel = numpy.prod(bcs[0].shape)
     if mode == 'raise':
         if not ((a < n).all() and (0 <= a).all()):
             raise ValueError('invalid entry in choice array')
-        c = _choose_kernel(a, choices, n_channel)
+        c = _choose_kernel(ba[0], bcs, n_channel)
     elif mode == 'wrap':
-        a = a % n
-        c = _choose_kernel(a, choices, n_channel)
+        ba = ba[0] % n
+        c = _choose_kernel(ba, bcs, n_channel)
     elif mode == 'clip':
-        c = _choose_clip_kernel(a, choices, n_channel, n)
+        c = _choose_clip_kernel(ba[0], bcs, n_channel, n)
     else:
         raise TypeError('clipmode not understood')
 

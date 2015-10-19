@@ -64,6 +64,20 @@ class TestChoose(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_choose_broadcast(self, xp, dtype):
+        a = xp.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]])
+        c = xp.array([-10, 10], dtype=dtype)
+        return a.choose(c)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_choose_broadcast2(self, xp, dtype):
+        a = xp.array([0, 1])
+        c = testing.shaped_arange((3, 5, 2), xp, dtype)
+        return a.choose(c)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_choose_wrap(self, xp, dtype):
         a = xp.array([0, 3, -1, 5])
         c = testing.shaped_arange((3, 4), xp, dtype)
@@ -87,3 +101,10 @@ class TestChoose(unittest.TestCase):
         c = cupy.array([[0, 1]])
         with self.assertRaises(ValueError):
             a.choose(c)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_choose_broadcast_fail(self, xp, dtype):
+        a = xp.array([0, 1])
+        c = testing.shaped_arange((3, 5, 4), xp, dtype)
+        return a.choose(c)
