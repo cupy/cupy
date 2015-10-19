@@ -50,7 +50,7 @@ def get_compiler_setting():
     include_dirs = []
     library_dirs = []
     define_macros = []
-    if sys.platform == 'win':
+    if sys.platform == 'win32':
         include_dirs = [localpath('windows')]
         library_dirs = []
         cuda_path = os.environ.get('CUDA_PATH', None)
@@ -75,7 +75,7 @@ def localpath(*args):
 
 
 def get_path(key):
-    splitter = ';' if sys.platform == 'win' else ':'
+    splitter = ';' if sys.platform == 'win32' else ':'
     return os.environ.get(key, "").split(splitter)
 
 
