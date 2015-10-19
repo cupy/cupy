@@ -6,7 +6,7 @@ import six
 from cupy import testing
 
 
-def calc_out_shape(shape, axis, keepdims):
+def _calc_out_shape(shape, axis, keepdims):
     if axis is None:
         axis = list(six.moves.range(len(shape)))
     elif isinstance(axis, int):
@@ -35,13 +35,13 @@ class TestAll(unittest.TestCase):
     def check_one_axis(self, x, xp, axis):
         a = getattr(xp, self.f)(x, axis)
 
-        out_shape = calc_out_shape(x.shape, axis, False)
+        out_shape = _calc_out_shape(x.shape, axis, False)
         b = xp.empty(out_shape, dtype=x.dtype)
         getattr(xp, self.f)(x, axis, out=b)
 
         c = getattr(xp, self.f)(x, axis, keepdims=True)
 
-        out_shape2 = calc_out_shape(x.shape, axis, True)
+        out_shape2 = _calc_out_shape(x.shape, axis, True)
         d = xp.empty(out_shape2, dtype=x.dtype)
         getattr(xp, self.f)(x, axis, out=d, keepdims=True)
         return (a, b, c, d)
