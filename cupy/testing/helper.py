@@ -131,6 +131,30 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     return decorator
 
 
+def numpy_cupy_raises(name='xp'):
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            kw[name] = cupy
+            try:
+                impl(self, *args, **kw)
+                cupy_error = None
+            except Exception as e:
+                cupy_error = e
+
+            kw[name] = numpy
+            try:
+                impl(self, *args, **kw)
+                numpy_error = None
+            except Exception as e:
+                numpy_error = e
+
+            self.assertIs(type(cupy_error), type(numpy_error))
+            self.assertIsNotNone(cupy_error)
+        return test_func
+    return decorator
+
+
 def for_dtypes(dtypes, name='dtype'):
     def decorator(impl):
         @functools.wraps(impl)
