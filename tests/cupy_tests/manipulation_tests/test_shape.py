@@ -1,5 +1,6 @@
 import unittest
 
+import cupy
 from cupy import testing
 
 
@@ -51,3 +52,20 @@ class TestShape(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = a.transpose(2, 0, 1)
         return a.ravel()
+
+    def test_reshape_contiguity(self):
+        a = cupy.arange(6).reshape(2, 3)
+        self.assertTrue(a.flags.c_contiguous)
+        self.assertFalse(a.flags.f_contiguous)
+
+        a = a.reshape(1, 6, 1)
+        self.assertTrue(a.flags.c_contiguous)
+        self.assertTrue(a.flags.f_contiguous)
+
+        b = a.T.reshape(1, 6, 1)
+        self.assertTrue(b.flags.c_contiguous)
+        self.assertTrue(b.flags.f_contiguous)
+
+        b = a.T.reshape(2, 3)
+        self.assertTrue(b.flags.c_contiguous)
+        self.assertFalse(b.flags.f_contiguous)

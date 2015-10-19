@@ -149,7 +149,7 @@ class broadcast(object):
                 in six_zip(r_shape, a._shape[rev], a._strides[rev])]
 
             if None in r_strides:
-                raise RuntimeError('Broadcasting failed')
+                raise ValueError('Broadcasting failed')
 
             offset = (0,) * (ndim - len(r_strides))
 

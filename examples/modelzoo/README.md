@@ -1,4 +1,4 @@
-# Evalute a Caffe reference model
+# Evaluate a Caffe reference model
 
 ## Requirements
 
