@@ -1366,6 +1366,7 @@ clip = math.misc.clip
 sqrt = math.misc.sqrt
 square = math.misc.square
 absolute = math.misc.absolute
+abs = math.misc.absolute
 sign = math.misc.sign
 maximum = math.misc.maximum
 minimum = math.misc.minimum
