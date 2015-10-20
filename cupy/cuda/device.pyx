@@ -1,4 +1,3 @@
-# cython: profile=True
 import atexit
 
 import six
