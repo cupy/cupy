@@ -99,9 +99,20 @@ cdef class Device:
                 _cublas_handles[self.id] = handle
         return handle
 
-    def __cmp__(Device self, Device other):
-        """Returns 0 if ``other`` refers to the same device."""
-        return self.id - other.id
+    def __richcmp__(Device self, Device other, int op):
+        if op == 0:
+            return self.id < other.id
+        if op == 1:
+            return self.id <= other.id
+        if op == 2:
+            return self.id == other.id
+        if op == 3:
+            return self.id != other.id
+        if op == 4:
+            return self.id > other.id
+        if op == 5:
+            return self.id >= other.id
+        raise ValueError('')
 
 
 def from_pointer(ptr):

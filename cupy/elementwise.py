@@ -76,7 +76,7 @@ def _check_args(args):
     scalar_type = _scalar_type
     for arg in args:
         if isinstance(arg, cp_array):
-            if arg.data.device != dev:
+            if arg.device != dev:
                 raise ValueError('Array device must be same as the current '
                                  'device: array device = %d while current = %d'
                                  % (arg.device.id, dev.id))
