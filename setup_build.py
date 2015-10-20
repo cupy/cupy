@@ -1,10 +1,11 @@
 from __future__ import print_function
-from distutils.command.build_ext import build_ext
+from distutils.command import build_ext
 import os
 from os import path
 import sys
 
-from setuptools import Extension
+from setuptools import extension
+
 
 MODULES = [
     {
@@ -61,7 +62,9 @@ def get_compiler_setting():
     else:
         include_dirs = get_path('CPATH') + ['/usr/local/cuda/include']
         library_dirs = get_path('LD_LIBRARY_PATH') + [
-            '/opt/local/lib', '/usr/local/lib']
+            '/usr/local/cuda/lib64',
+            '/opt/local/lib',
+            '/usr/local/lib']
 
     return {
         'include_dirs': include_dirs,
@@ -110,13 +113,13 @@ def make_extensions():
             continue
         s = settings.copy()
         s['libraries'] = module['libraries']
-        ret.extend([
-            Extension(f, [localpath(path.join(*f.split('.')) + '.pyx')], **s)
-            for f in module['file']])
+        ret.extend([extension.Extension(
+                        f, [localpath(path.join(*f.split('.')) + '.pyx')], **s)
+                    for f in module['file']])
     return ret
 
 
-class chainer_build_ext(build_ext):
+class chainer_build_ext(build_ext.build_ext):
 
     def run(self):
 
@@ -126,4 +129,5 @@ class chainer_build_ext(build_ext):
 
         print("Executing cythonize()")
         self.extensions = cythonize(make_extensions(), force=True)
-        build_ext.run(self)
+
+        build_ext.build_ext.run(self)
