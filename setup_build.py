@@ -100,16 +100,18 @@ def make_extensions():
         import numpy.core
         numpy_include = path.join(
             path.dirname(numpy.core.__file__), 'include')
-
     include_dirs = settings['include_dirs']
     include_dirs.append(numpy_include)
+
+    print('Include directories:', settings['include_dirs'])
+    print('Library directories:', settings['library_dirs'])
 
     ret = []
     for module in MODULES:
         include = [i for i in module['include']
                    if not check_include(include_dirs, i)]
         if include:
-            print("Missing include files.", *include)
+            print('Missing include files:', *include)
             continue
         s = settings.copy()
         s['libraries'] = module['libraries']
