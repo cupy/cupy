@@ -14,6 +14,10 @@ class TestCuda(unittest.TestCase):
         if not cuda.available:
             self.assertIs(cuda.get_device(), cuda.DummyDevice)
 
+    def test_get_dummy_device_for_empty_array(self):
+        x = cuda.cupy.array([]).reshape((0, 10))
+        self.assertIs(cuda.get_device(x), cuda.DummyDevice)
+
     def test_to_gpu_unavailable(self):
         x = numpy.array([1])
         if not cuda.available:
