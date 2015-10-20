@@ -12,6 +12,7 @@ import argparse
 import datetime
 import json
 import multiprocessing
+import os
 import random
 import sys
 import threading
@@ -46,6 +47,8 @@ parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 parser.add_argument('--loaderjob', '-j', default=20, type=int,
                     help='Number of parallel data loading processes')
+parser.add_argument('--root', '-r', default='.',
+                    help='Root directory path of image files')
 parser.add_argument('--out', '-o', default='model',
                     help='Path to save model on each validation')
 args = parser.parse_args()
@@ -56,16 +59,16 @@ xp = cuda.cupy if args.gpu >= 0 else np
 assert 50000 % args.val_batchsize == 0
 
 
-def load_image_list(path):
+def load_image_list(path, root):
     tuples = []
     for line in open(path):
         pair = line.strip().split()
-        tuples.append((pair[0], np.int32(pair[1])))
+        tuples.append((os.path.join(root, pair[0]), np.int32(pair[1])))
     return tuples
 
 # Prepare dataset
-train_list = load_image_list(args.train)
-val_list = load_image_list(args.val)
+train_list = load_image_list(args.train, args.root)
+val_list = load_image_list(args.val, args.root)
 mean_image = pickle.load(open(args.mean, 'rb'))
 
 # Prepare model
