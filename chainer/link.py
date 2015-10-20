@@ -17,11 +17,11 @@ class Link(object):
     def __init__(self, **params):
         self._params = []
         self._persistent = []
-        self._xp = numpy
+        self._cpu = True
         self.name = None
 
         for name, shape in six.iteritems(params):
-            self.add_parameter(name, shape)
+            self.add_param(name, shape)
 
     @property
     def xp(self):
@@ -31,9 +31,9 @@ class Link(object):
         :mod:`numpy` or :mod:`cupy`.
 
         """
-        return self._xp
+        return numpy if self._cpu else cuda.cupy
 
-    def add_parameter(self, name, shape, dtype=numpy.float32):
+    def add_param(self, name, shape, dtype=numpy.float32):
         """Registers a parameter to the link.
 
         The registered parameter is saved and loaded on serialization and
@@ -54,7 +54,7 @@ class Link(object):
             raise AttributeError(
                 'cannot register a new parameter %s: attribute exists'
                 % name)
-        data = self._xp.full(shape, numpy.nan, dtype=dtype)
+        data = self.xp.full(shape, numpy.nan, dtype=dtype)
         grad = data.copy()
         var = variable.Variable(data, volatile='auto', name=name)
         var.grad = grad
@@ -114,7 +114,7 @@ class Link(object):
         override this method to do so.
 
         """
-        if self._xp is numpy:
+        if self._cpu:
             return
         for param in self.params():
             param.to_cpu()
@@ -123,7 +123,7 @@ class Link(object):
             value = d[name]
             if isinstance(value, cuda.ndarray):
                 d[name] = value.get()
-        self._xp = numpy
+        self._cpu = False
 
     def to_gpu(self, device=None):
         """Copies parameter variables and persistent values to GPU.
@@ -138,7 +138,7 @@ class Link(object):
 
         """
         cuda.check_cuda_available()
-        if self._xp is cuda.cupy:
+        if not self._cpu:
             return
         with cuda.get_device(device):
             for param in self.params():
@@ -148,7 +148,7 @@ class Link(object):
                 value = d[name]
                 if isinstance(value, numpy.ndarray):
                     d[name] = cuda.to_gpu(value)
-        self._xp = cuda.cupy
+        self._cpu = False
 
     def params(self):
         """Returns a generator of all parameters under the link hierarchy.

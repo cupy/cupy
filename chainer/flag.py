@@ -44,6 +44,9 @@ class Flag(object):
 
     __nonzero__ = __bool__
 
+    def __reduce__(self):
+        return Flag, (self.value,)
+
     def __repr__(self):
         return _reprs[self.value]
 

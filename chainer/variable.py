@@ -70,6 +70,9 @@ class Variable(object):
 
         self.name = name
 
+    def __reduce__(self):
+        return (Variable, (self.data, self.volatile, self.name))
+
     def __repr__(self):
         if self.name:
             return '<variable %s>' % self.name
