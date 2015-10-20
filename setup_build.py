@@ -103,13 +103,17 @@ def make_extensions():
     include_dirs = settings['include_dirs']
     include_dirs.append(numpy_include)
 
-    print('Include directories:', settings['include_dirs'])
-    print('Library directories:', settings['library_dirs'])
+    settings['include_dirs'] = [
+        x for x in include_dirs if path.exists(x)]
+    settings['library_dirs'] = [
+        x for x in settings['library_dirs'] if path.exists(x)]
 
     ret = []
     for module in MODULES:
         include = [i for i in module['include']
                    if not check_include(include_dirs, i)]
+        print('Include directories:', settings['include_dirs'])
+        print('Library directories:', settings['library_dirs'])
         if include:
             print('Missing include files:', *include)
             continue
