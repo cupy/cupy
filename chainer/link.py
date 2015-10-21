@@ -427,6 +427,9 @@ class ChainList(Link):
         """
         return self._children[index]
 
+    def __iter__(self):
+        return iter(self._children)
+
     def __len__(self):
         """Returns a number of children."""
         return len(self._children)

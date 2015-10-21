@@ -359,6 +359,12 @@ class TestChainList(unittest.TestCase):
         self.assertIs(self.c1[1], self.l2)
         self.assertEqual(self.l2.name, '1')
 
+    def test_iter(self):
+        links = list(self.c2)
+        self.assertEqual(2, len(links))
+        self.assertIs(links[0], self.c1)
+        self.assertIs(links[1], self.l3)
+
     def test_len(self):
         self.assertEqual(len(self.c1), 2)
         self.assertEqual(len(self.c2), 2)
