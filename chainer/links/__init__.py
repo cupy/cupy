@@ -12,6 +12,7 @@ from chainer.links.connection import mlp_convolution_2d
 from chainer.links.connection import parameter
 from chainer.links.loss import hierarchical_softmax
 from chainer.links.loss import negative_sampling
+from chainer.links.model import classifier
 from chainer.links.normalization import batch_normalization
 
 
@@ -29,5 +30,7 @@ Parameter = parameter.Parameter
 
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = negative_sampling.NegativeSampling
+
+Classifier = classifier.Classifier
 
 BatchNormalization = batch_normalization.BatchNormalization
