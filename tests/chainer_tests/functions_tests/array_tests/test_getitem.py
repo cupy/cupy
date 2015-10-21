@@ -59,3 +59,8 @@ class TestGetItem(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x_data),
                             cuda.to_gpu(self.t_data),
                             cuda.to_gpu(self.gy_data))
+
+
+class TestGetItemZeroSize(unittest.TestCase):
+    in_shape = (0, 5)
+    out_shape = (0,)
