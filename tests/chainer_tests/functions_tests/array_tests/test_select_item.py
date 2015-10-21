@@ -10,7 +10,7 @@ from chainer import testing
 from chainer.testing import attr
 
 
-class TestGetItem(unittest.TestCase):
+class TestSelectItem(unittest.TestCase):
     in_shape = (10, 5)
     out_shape = (10,)
 
@@ -25,7 +25,7 @@ class TestGetItem(unittest.TestCase):
     def check_forward(self, x_data, t_data):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
-        y = functions.getitem(x, t)
+        y = functions.select_item(x, t)
         y_exp = cuda.to_cpu(x_data)[range(t_data.size), cuda.to_cpu(t_data)]
 
         numpy.testing.assert_equal(cuda.to_cpu(y.data), y_exp)
@@ -41,7 +41,7 @@ class TestGetItem(unittest.TestCase):
     def check_backward(self, x_data, t_data, gy_data):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
-        y = functions.getitem(x, t)
+        y = functions.select_item(x, t)
         y.grad = gy_data
         y.backward()
         self.assertEqual(None, t.grad)
@@ -62,7 +62,7 @@ class TestGetItem(unittest.TestCase):
                             cuda.to_gpu(self.gy_data))
 
 
-class TestGetItemZeroSize(unittest.TestCase):
+class TestSelectItemZeroSize(unittest.TestCase):
     in_shape = (0, 5)
     out_shape = (0,)
 

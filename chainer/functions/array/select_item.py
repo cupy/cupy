@@ -6,9 +6,9 @@ from chainer import function
 from chainer.utils import type_check
 
 
-class GetItem(function.Function):
+class SelectItem(function.Function):
 
-    """Get elements stored in given indicies."""
+    """Select elements stored in given indicies."""
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -56,10 +56,10 @@ class GetItem(function.Function):
         return gx, None
 
 
-def getitem(x, t):
-    """Get elements stored in given indicies.
+def select_item(x, t):
+    """Select elements stored in given indicies.
 
-    This function returns ```x[range(t.size), t]```.
+    This function returns ```t.choose(x.T)```.
 
     Args:
         x (Variable): Variable storing arrays.
@@ -69,4 +69,4 @@ def getitem(x, t):
         ~chainer.Variable: Variable that holds ```t```-th element of ```x```.
 
     """
-    return GetItem()(x, t)
+    return SelectItem()(x, t)
