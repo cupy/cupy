@@ -64,7 +64,6 @@ class Variable(object):
         self.rank = 0
         self._volatile = flag.Flag(volatile)
 
-        self.splitter = weakref.ref(lambda: 0)  # dead ref
         self._grad = None
         self.creator = None
 
@@ -260,6 +259,8 @@ https://github.com/pfnet/chainer/issues/new.
 
         cand_funcs = []
         seen_set = set()
+        seen_vars = set()
+        need_copy = set()
 
         # Initilize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
@@ -270,12 +271,13 @@ https://github.com/pfnet/chainer/issues/new.
                     self.grad = cuda.cupy.ones_like(self.data)
 
         def add_cand(cand):
-            if cand is not None and cand not in seen_set:
+            if cand not in seen_set:
                 # Negate since heapq is min-heap
                 heapq.heappush(cand_funcs, (-cand.rank, len(seen_set), cand))
                 seen_set.add(cand)
 
-        add_cand(self.creator)
+        if self.creator is not None:
+            add_cand(self.creator)
 
         while cand_funcs:
             _, _, func = heapq.heappop(cand_funcs)
@@ -292,9 +294,31 @@ https://github.com/pfnet/chainer/issues/new.
                     if y is not None and y is not self:
                         y.grad = None
             for x, gx in zip(func.inputs, gxs):
-                x.grad = gx
-                if gx is not None:  # skip if gradient does not flow
+                if gx is None:
+                    continue
+                # Accumulate the graident to x. It is a bit tricky to handle
+                # branches and parameter gradient accumulation correctly.
+                id_x = id(x)
+                if x.creator is None:  # leaf
+                    if x._grad is None:
+                        x.grad = gx
+                        need_copy.add(id_x)
+                    elif id_x in need_copy:
+                        x.grad = x.grad + gx  # copy
+                        need_copy.remove(id_x)
+                    else:
+                        x._grad += gx
+                else:  # not a leaf
                     add_cand(x.creator)
+                    if id_x not in seen_vars:  # 1st visit
+                        x.grad = gx
+                        seen_vars.add(id_x)
+                        need_copy.add(id_x)
+                    elif id_x in need_copy:  # 2nd visit
+                        x._grad = gx + x._grad  # copied
+                        need_copy.remove(id_x)
+                    else:  # 3rd or later visit
+                        x._grad += gx
 
     def unchain_backward(self):
         """Deletes references between variables and functions backward.

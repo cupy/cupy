@@ -123,14 +123,11 @@ class TestFunction(unittest.TestCase):
 
         for y in ys:
             self.assertIsInstance(y, chainer.Variable)
-            # rank is (maximum rank in xs) + 2, since Function call
-            # automatically inserts Split function.
-            self.assertEqual(y.rank, 5)
+            # rank is (maximum rank in xs) + 1
+            self.assertEqual(y.rank, 4)
             self.assertFalse(y.volatile)
-            # __call__ method makes a copy
-            self.assertIsNot(y.creator, self.f)
+            self.assertIs(y.creator, self.f)
 
-        self.assertIsNone(self.f.outputs)
         self.assertIsInstance(y.creator.outputs, tuple)
 
     def test_call_cpu(self):
@@ -157,7 +154,7 @@ class TestFunction(unittest.TestCase):
             self.assertTrue(y.volatile)
             self.assertIsNone(y.creator)
 
-        self.assertIsNone(self.f.outputs)
+        self.assertFalse(hasattr(self.f, 'outputs'))
 
     def test_call_volatile_cpu(self):
         self.check_call_volatile()
@@ -194,8 +191,8 @@ class TestFunction(unittest.TestCase):
         self.check_call_single_return_value(True)
 
     def check_call_mixed_volatile(self):
-        x1 = chainer.Variable(self.x1, volatile=True)
-        x2 = chainer.Variable(self.x2, volatile=False)
+        x1 = chainer.Variable(self.x1, volatile='on')
+        x2 = chainer.Variable(self.x2, volatile='off')
         with self.assertRaises(ValueError):
             self.f(x1, x2)
 
@@ -206,6 +203,36 @@ class TestFunction(unittest.TestCase):
     def test_call_mixed_volatile_gpu(self):
         self.setup_gpu()
         self.check_call_mixed_volatile()
+
+    def check_call_auto_on_volatile(self):
+        x1 = chainer.Variable(self.x1, volatile='on')
+        x2 = chainer.Variable(self.x2, volatile='auto')
+        ret = self.f(x1, x2)
+        self.assertEqual(ret[0].volatile, 'on')
+        self.assertEqual(ret[1].volatile, 'on')
+
+    def test_call_auto_on_volatile_cpu(self):
+        self.check_call_auto_on_volatile()
+
+    @attr.gpu
+    def test_call_auto_on_volatile_gpu(self):
+        self.setup_gpu()
+        self.check_call_auto_on_volatile()
+
+    def check_call_auto_off_volatile(self):
+        x1 = chainer.Variable(self.x1, volatile='off')
+        x2 = chainer.Variable(self.x2, volatile='auto')
+        ret = self.f(x1, x2)
+        self.assertEqual(ret[0].volatile, 'off')
+        self.assertEqual(ret[1].volatile, 'off')
+
+    def test_call_auto_off_volatile_cpu(self):
+        self.check_call_auto_off_volatile()
+
+    @attr.gpu
+    def test_call_auto_off_volatile_gpu(self):
+        self.setup_gpu()
+        self.check_call_auto_off_volatile()
 
     def _get_f(self):
         x1 = chainer.Variable(self.x1)
@@ -231,85 +258,20 @@ class TestFunction(unittest.TestCase):
 
         self.assertIsNone(f.inputs)
 
-    def test_parameters_getter(self):
-        self.assertEqual(self.f.parameters, ())
-
-    def test_gradients_getter(self):
-        self.assertEqual(self.f.gradients, ())
-
     def test_label(self):
         self.assertEqual(self.f.label, 'Function')
-
-
-class TestParameterizedFunction(unittest.TestCase):
-
-    def setUp(self):
-        f = chainer.Function()
-        f.p1 = numpy.arange(10)
-        f.p2 = numpy.arange(5)
-        f.g1 = numpy.arange(8)
-        f.g2 = numpy.arange(3)
-        f.parameter_names = ('p1', 'p2')
-        f.gradient_names = ('g1', 'g2')
-        self.f = f
-
-    @attr.gpu
-    def test_to_gpu(self):
-        self.f.to_gpu()
-        self.assertIsInstance(self.f.p1, cuda.cupy.ndarray)
-        self.assertIsInstance(self.f.p2, cuda.cupy.ndarray)
-
-    @attr.gpu
-    def test_to_cpu(self):
-        self.f.to_gpu()
-        self.f.to_cpu()
-        self.assertIsInstance(self.f.p1, numpy.ndarray)
-        self.assertIsInstance(self.f.p2, numpy.ndarray)
-
-    def test_parameters_getter(self):
-        ps = self.f.parameters
-        self.assertIsInstance(ps, tuple)
-        self.assertEqual(len(ps), 2)
-
-    def test_parameters_setter(self):
-        p1 = numpy.arange(10) + 1
-        p2 = numpy.arange(5) + 1
-        self.f.parameters = (p1, p2)
-        q1, q2 = self.f.parameters
-        self.assertIs(p1, q1)
-        self.assertIs(p2, q2)
-
-    def test_parameters_setter_invalid_size(self):
-        p1 = numpy.arange(10) + 1
-        with self.assertRaises(AssertionError):
-            self.f.parameters = (p1,)
-
-    def test_gradients_getter(self):
-        gs = self.f.gradients
-        self.assertIsInstance(gs, tuple)
-        self.assertEqual(len(gs), 2)
-
-    def test_gradients_setter(self):
-        g1 = numpy.arange(8) + 1
-        g2 = numpy.arange(4) + 1
-        self.f.gradients = (g1, g2)
-        h1, h2 = self.f.gradients
-        self.assertIs(g1, h1)
-        self.assertIs(g2, h2)
-
-    def test_gradients_setter_invalid_size(self):
-        g1 = numpy.arange(8) + 1
-        with self.assertRaises(AssertionError):
-            self.f.gradients = (g1,)
 
 
 class TestFunctionBackwardIntegration(unittest.TestCase):
 
     def test_backward(self):
-        x = chainer.Variable(numpy.array([1]))
+        x = chainer.Variable(numpy.array([1]), name='x')
         y1 = F.identity(x)
+        y1.name = 'y1'
         y2 = F.identity(x)
+        y2.name = 'y2'
         z = y1 + y2
+        z.name = 'z'
 
         z.grad = numpy.array([1])
         z.backward(retain_grad=True)
@@ -317,78 +279,6 @@ class TestFunctionBackwardIntegration(unittest.TestCase):
         self.assertEqual(y1.grad[0], 1)
         self.assertEqual(y2.grad[0], 1)
         self.assertEqual(x.grad[0], 2)
-
-
-class TestSplit(unittest.TestCase):
-
-    def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        self.g1 = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        self.g2 = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-
-    def _make_split(self, x):
-        v = chainer.Variable(x)
-        v.rank = 1
-        return chainer.function.Split(v)
-
-    def check_init(self, x):
-        split = self._make_split(x)
-        self.assertEqual(split.rank, 1)
-
-    def test_init_cpu(self):
-        self.check_init(self.x)
-
-    @attr.gpu
-    def test_init_gpu(self):
-        self.check_init(cuda.to_gpu(self.x))
-
-    def check_add_branch(self, x):
-        split = self._make_split(x)
-
-        out = split.add_branch()
-        self.assertIsInstance(out, chainer.Variable)
-        self.assertIs(out.creator, split)
-        self.assertEqual(len(split.outputs), 1)
-
-    def test_add_branch_cpu(self):
-        self.check_add_branch(self.x)
-
-    @attr.gpu
-    def test_add_branch_gpu(self):
-        self.check_add_branch(cuda.to_gpu(self.x))
-
-    def check_backward(self, x, g1, g2):
-        split = self._make_split(x)
-
-        grads = (g1, g2, None)
-        gx, = split.backward((x,), grads)
-        gradient_check.assert_allclose(g1 + g2, gx)
-
-    def test_backward_cpu(self):
-        self.check_backward(self.x, self.g1, self.g2)
-
-    @attr.gpu
-    def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x),
-                            cuda.to_gpu(self.g1),
-                            cuda.to_gpu(self.g2))
-
-    def check_backward_one(self, x, g1):
-        split = self._make_split(x)
-
-        grads = (g1,)
-        gx, = split.backward((x,), grads)
-        # Note that when only one argument is given, its return value
-        # is a grad itself, and not a copy of it.
-        self.assertIs(g1, gx)
-
-    def test_backward_one_cpu(self):
-        self.check_backward_one(self.x, self.g1)
-
-    @attr.gpu
-    def test_backward_one_gpu(self):
-        self.check_backward_one(cuda.to_gpu(self.x),
-                                cuda.to_cpu(self.g1))
 
 
 testing.run_module(__name__, __file__)
