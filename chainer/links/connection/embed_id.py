@@ -16,6 +16,9 @@ class EmbedID(link.Link):
             size).
         out_size (int): Size of embedding vector.
 
+    Attributes:
+        W (~chainer.Variable): Embedding parameter matrix.
+
     .. seealso:: :func:`chainer.functions.embed_id`
 
     """

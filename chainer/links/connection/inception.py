@@ -30,11 +30,6 @@ class Inception(link.Chain):
         out5 (int): Output size of 5x5 convolution path.
         proj_pool (int): Projection size of max pooling path.
 
-    Returns:
-        Variable: Output variable. Its array has the same spatial size and the
-            same minibatch size as the input array. The channel dimension has
-            size ``out1 + out3 + out5 + proj_pool``.
-
     """
     def __init__(self, in_channels, out1, proj3, out3, proj5, out5, proj_pool):
         super(Inception, self).__init__(
@@ -47,6 +42,17 @@ class Inception(link.Chain):
         )
 
     def __call__(self, x):
+        """Computes the output of the Inception module.
+
+        Args:
+            x (~chainer.Variable): Input variable.
+
+        Returns:
+            Variable: Output variable. Its array has the same spatial size and
+            the same minibatch size as the input array. The channel dimension
+            has size ``out1 + out3 + out5 + proj_pool``.
+
+        """
         out1 = self.conv1(x)
         out3 = self.conv3(relu.relu(self.proj3(x)))
         out5 = self.conv5(relu.relu(self.proj5(x)))

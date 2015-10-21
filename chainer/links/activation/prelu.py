@@ -14,6 +14,9 @@ class PReLU(link.Link):
     Human-Level Performance on ImageNet Classification \
     <http://arxiv.org/abs/1502.01852>`_.
 
+    Attributes:
+        W (~chainer.Variable): Coefficient of parameteric ReLU.
+
     .. seealso:: :func:`chainer.functions.prelu`
 
     """

@@ -30,9 +30,19 @@ class BatchNormalization(link.Link):
     Args:
         size (int or tuple of ints): Size (or shape) of channel
             dimensions.
-        decay (float): Decay rate of moving average.
+        decay (float): Decay rate of moving average. It is used on training.
         eps (float): Epsilon value for numerical stability.
         dtype (numpy.dtype): Type to use in computing.
+
+    Attributes:
+        gamma (~chainer.Variable): Scaling parameter.
+        beta (~chainer.Variable): Shifting parameter.
+        avg_mean (~chainer.Variable): Population mean.
+        avg_var (~chainer.Variable): Population variance.
+        N (int): Count of batches given for finetuning.
+        decay (float): Decay rate of moving average. It is used on training.
+        eps (float): Epsilon value for numerical stability. This value is added
+            to the batch variances.
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
           Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_

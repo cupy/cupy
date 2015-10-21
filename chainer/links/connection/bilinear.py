@@ -33,6 +33,13 @@ class Bilinear(link.Link):
             and :math:`V^2` is initialized by scaled centered Gaussian
             distributions and :math:`b` is set to :math:`0`.
 
+    Attributes:
+        W (~chainer.Variable): Bilinear weight parameter.
+        V1 (~chainer.Variable): Linear weight parameter for the first argument.
+        V2 (~chainer.Variable): Linear weight parameter for the second
+            argument.
+        b (~chainer.Variable): Bias parameter.
+
     .. seealso:: See :func:`chainer.functions.bilinear` for details.
 
     """

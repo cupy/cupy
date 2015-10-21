@@ -13,6 +13,9 @@ class Parameter(link.Link):
     Args:
         array: Initial parameter array.
 
+    Attributes:
+        W (~chainer.Variable): Parameter variable.
+
     """
     def __init__(self, array):
         super(Parameter, self).__init__()

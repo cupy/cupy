@@ -20,6 +20,9 @@ class NegativeSampling(link.Link):
         sample_size (int): Number of negative samples.
         power (float): Power factor :math:`\\alpha`.
 
+    Attributes:
+        W (~chainer.Variable): Weight parameter matrix.
+
     .. seealso:: :func:`~chainer.functions.negative_sampling` for more detail.
 
     """

@@ -29,6 +29,10 @@ class Convolution2D(link.Link):
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``.
 
+    Attributes:
+        W (~chainer.Variable): Weight parameter.
+        b (~chainer.Variable): Bias parameter.
+
     .. seealso::
        See :func:`chainer.functions.convolution_2d` for the definition of
        two-dimensional convolution.

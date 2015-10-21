@@ -287,6 +287,9 @@ class BinaryHierarchicalSoftmax(link.Link):
         in_size (int): Dimension of input vectors.
         tree: A binary tree made with tuples like `((1, 2), 3)`.
 
+    Attributes:
+        W (~chainer.Variable): Weight parameter matrix.
+
     See: Hierarchical Probabilistic Neural Network Language Model [Morin+,
     AISTAT2005].
 
