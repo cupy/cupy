@@ -53,6 +53,14 @@ class Flag(object):
     def __eq__(self, other):
         return self is Flag(other)
 
+    def __ne__(self, other):
+        return self is not Flag(other)
+
+    def __lt__(self, other):
+        raise RuntimeError('no order is defined between flags')
+
+    __le__ = __gt__ = __ge__ = __lt__
+
     def __hash__(self):
         return hash(self.value)
 
