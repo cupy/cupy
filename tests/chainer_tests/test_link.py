@@ -189,19 +189,19 @@ class TestChain(unittest.TestCase):
         self.assertIsNot(c2.c1.l1, self.l1)
         self.assertIsNot(c2.c1.l1.x, self.l1.x)
         self.assertIs(c2.c1.l1.x.data, self.l1.x.data)
-        self.assertIs(c2.c1.l1.x.grad, self.l1.x.grad)
+        self.assertIs(c2.c1.l1.x.grad, None)
 
         self.assertTrue(hasattr(c2.c1, 'l2'))
         self.assertIsNot(c2.c1.l2, self.l2)
         self.assertIsNot(c2.c1.l2.x, self.l2.x)
         self.assertIs(c2.c1.l2.x.data, self.l2.x.data)
-        self.assertIs(c2.c1.l2.x.grad, self.l2.x.grad)
+        self.assertIs(c2.c1.l2.x.grad, None)
 
         self.assertTrue(hasattr(c2, 'l3'))
         self.assertIsNot(c2.l3, self.l3)
         self.assertIsNot(c2.l3.x, self.l3.x)
         self.assertIs(c2.l3.x.data, self.l3.x.data)
-        self.assertIs(c2.l3.x.grad, self.l3.x.grad)
+        self.assertIs(c2.l3.x.grad, None)
 
     def test_to_cpu_on_cpu(self):
         x1 = self.l1.x.data
@@ -376,17 +376,17 @@ class TestChainList(unittest.TestCase):
         self.assertIsNot(c2[0][0], self.l1)
         self.assertIsNot(c2[0][0].x, self.l1.x)
         self.assertIs(c2[0][0].x.data, self.l1.x.data)
-        self.assertIs(c2[0][0].x.grad, self.l1.x.grad)
+        self.assertIs(c2[0][0].x.grad, None)
 
         self.assertIsNot(c2[0][1], self.l2)
         self.assertIsNot(c2[0][1].x, self.l2.x)
         self.assertIs(c2[0][1].x.data, self.l2.x.data)
-        self.assertIs(c2[0][1].x.grad, self.l2.x.grad)
+        self.assertIs(c2[0][1].x.grad, None)
 
         self.assertIsNot(c2[1], self.l3)
         self.assertIsNot(c2[1].x, self.l3.x)
         self.assertIs(c2[1].x.data, self.l3.x.data)
-        self.assertIs(c2[1].x.grad, self.l3.x.grad)
+        self.assertIs(c2[1].x.grad, None)
 
     def test_to_cpu_on_cpu(self):
         x1 = self.l1.x.data
