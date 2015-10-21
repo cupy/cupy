@@ -123,7 +123,7 @@ class Link(object):
             value = d[name]
             if isinstance(value, cuda.ndarray):
                 d[name] = value.get()
-        self._cpu = False
+        self._cpu = True
 
     def to_gpu(self, device=None):
         """Copies parameter variables and persistent values to GPU.
