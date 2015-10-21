@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 
 
@@ -64,3 +65,6 @@ class TestGetItem(unittest.TestCase):
 class TestGetItemZeroSize(unittest.TestCase):
     in_shape = (0, 5)
     out_shape = (0,)
+
+
+testing.run_module(__name__, __file__)
