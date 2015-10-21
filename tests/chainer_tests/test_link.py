@@ -31,11 +31,11 @@ class TestLink(unittest.TestCase):
         self.check_param_init('x', (2, 3), 'f')
         self.check_param_init('y', (2,), 'f')
 
-    def test_add_parameter(self):
-        self.link.add_parameter('z', (2, 3))
+    def test_add_param(self):
+        self.link.add_param('z', (2, 3))
         self.check_param_init('z', (2, 3), 'f')
 
-        self.link.add_parameter('w', (2, 3), dtype='d')
+        self.link.add_param('w', (2, 3), dtype='d')
         self.check_param_init('w', (2, 3), 'd')
 
     def test_add_persistent(self):
