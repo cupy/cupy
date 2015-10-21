@@ -59,6 +59,8 @@ class GetItem(function.Function):
 def getitem(x, t):
     """Get elements stored in given indicies.
 
+    This function returns ```x[range(t.size), t]```.
+
     Args:
         x (Variable): Variable storing arrays.
         t (Variable): Variable storing index numbers.
