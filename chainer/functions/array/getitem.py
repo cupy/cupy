@@ -24,7 +24,7 @@ class GetItem(function.Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        return x[six.moves.range(t.size), t],
+        return t.choose(x.T),
 
     def forward_gpu(self, inputs):
         x, t = inputs
