@@ -34,6 +34,7 @@ Array manipulation functions
 .. autofunction:: copy
 .. autofunction:: identity
 .. autofunction:: reshape
+.. autofunction:: select_item
 .. autofunction:: split_axis
 
 Activation functions

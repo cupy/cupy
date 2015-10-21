@@ -59,7 +59,8 @@ class SelectItem(function.Function):
 def select_item(x, t):
     """Select elements stored in given indicies.
 
-    This function returns ```t.choose(x.T)```.
+    This function returns ```t.choose(x.T)```, that means
+    ```y[i] == x[i, t[i]]``` for all ```i```.
 
     Args:
         x (Variable): Variable storing arrays.
