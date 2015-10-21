@@ -70,6 +70,7 @@ class TestGRU(unittest.TestCase):
 
     @attr.gpu
     def test_backward_gpu(self):
+        self.func.to_gpu()
         self.check_backward(cuda.to_gpu(self.h),
                             cuda.to_gpu(self.x),
                             cuda.to_gpu(self.gy))
