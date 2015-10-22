@@ -126,12 +126,16 @@ class FunctionSet(object):
 
     @parameters.setter
     def parameters(self, params):
+        funcs = self._get_sorted_funcs()
+
+        expected_params_size = sum([len(func.parameters) for _, func in funcs])
+        assert expected_params_size == len(params)
+
         idx = 0
-        for _, func in self._get_sorted_funcs():
+        for _, func in funcs:
             param_size = len(func.parameters)
             func.parameters = params[idx: idx + param_size]
             idx += param_size
-        assert idx == len(params)
 
     @property
     def gradients(self):
@@ -145,12 +149,16 @@ class FunctionSet(object):
 
     @gradients.setter
     def gradients(self, grads):
+        funcs = self._get_sorted_funcs()
+
+        expected_grads_size = sum([len(func.gradients) for _, func in funcs])
+        assert expected_grads_size == len(grads)
+
         idx = 0
-        for _, func in self._get_sorted_funcs():
+        for _, func in funcs:
             grad_size = len(func.gradients)
             func.gradients = grads[idx: idx + grad_size]
             idx += grad_size
-        assert idx == len(grads)
 
     def _get_sorted_funcs(self):
         return sorted(
