@@ -134,28 +134,6 @@ class TestRandAndRandN(unittest.TestCase):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
-class TestInterval(unittest.TestCase):
-
-    def setUp(self):
-        self.rs = generator.RandomState()
-        self.rs._interval_one = mock.Mock()
-        self.rs._interval_one.return_value = 0
-
-    def test_size_is_none(self):
-        self.rs.interval(0, None)
-        self.rs._interval_one.assert_called_with(0)
-
-    def test_size_is_int(self):
-        self.rs.interval(0, 5)
-        expected = [mock.call(0)] * 5
-        self.assertListEqual(self.rs._interval_one.mock_calls, expected)
-
-    def test_size_is_tuple(self):
-        self.rs.interval(0, (1, 2, 3))
-        expected = [mock.call(0)] * 6
-        self.assertListEqual(self.rs._interval_one.mock_calls, expected)
-
-
 @testing.gpu
 class TestInterval(unittest.TestCase):
 
