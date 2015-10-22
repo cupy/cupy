@@ -5,7 +5,6 @@ import os
 import time
 
 import numpy
-import six
 
 import cupy
 from cupy import cuda
@@ -148,7 +147,8 @@ class RandomState(object):
             size (None or int or tuple): Shape of the array or the scalar
             returned.
         Returns:
-            int or cupy.ndarray: If ``None``, it is ndarray with shape ``()`` is returned.
+            int or cupy.ndarray: If ``None``, an ndarray with
+            shape ``()`` is returned.
             If ``int``, 1-D array of length size is returned.
             If ``tuple`,` multi-dimensional array with shape
             ``size`` is returned.
