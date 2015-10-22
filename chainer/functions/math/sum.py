@@ -67,7 +67,7 @@ def sum(x, axis=None):
 
     Args:
         x (~chainer.Variable): Elements to sum.
-        axis (None or int): Axis which a sum is performed.
+        axis (None, int, or tuple of int): Axis which a sum is performed.
             The default (axis = None) is perform a sum over all the dimensions
             of the input array.
 
