@@ -61,9 +61,9 @@ class TestRandint2(unittest.TestCase):
 
     @condition.repeat(10)
     def test_within_interval(self):
-        val = random.randint(0, 10).get()
-        self.assertLessEqual(0, val)
-        self.assertLess(val, 10)
+        val = random.randint(0, 10, (2, 3)).get()
+        numpy.testing.assert_array_less(numpy.full((2, 3), -1), val)
+        numpy.testing.assert_array_less(val, numpy.full((2, 3), 10))
 
     @condition.retry(20)
     def test_lower_bound(self):
@@ -82,6 +82,15 @@ class TestRandint2(unittest.TestCase):
         vals = [random.randint(mx).get() for _ in six.moves.xrange(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
+        if not hypothesis_testing.chi_square_test(counts, expected):
+            self.fail()
+
+    @condition.retry(5)
+    def test_goodness_of_fit_2(self):
+        mx = 5
+        vals = random.randint(mx, size=(5, 20)).get()
+        counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
+        expected = numpy.array([float(vals.size) / mx] * mx)
         if not hypothesis_testing.chi_square_test(counts, expected):
             self.fail()
 
@@ -125,9 +134,9 @@ class TestRandomIntegers2(unittest.TestCase):
 
     @condition.repeat(10)
     def test_within_interval(self):
-        val = random.random_integers(0, 10).get()
-        self.assertLessEqual(0, val)
-        self.assertLessEqual(val, 10)
+        val = random.random_integers(0, 10, (2, 3)).get()
+        numpy.testing.assert_array_less(numpy.full((2, 3), -1), val)
+        numpy.testing.assert_array_less(val, numpy.full((2, 3), 11))
 
     @condition.retry(20)
     def test_lower_bound(self):
@@ -146,6 +155,15 @@ class TestRandomIntegers2(unittest.TestCase):
         vals = [random.randint(0, mx).get() for _ in six.moves.xrange(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
+        if not hypothesis_testing.chi_square_test(counts, expected):
+            self.fail()
+
+    @condition.retry(5)
+    def test_goodness_of_fit_2(self):
+        mx = 5
+        vals = random.randint(0, mx, (5, 20)).get()
+        counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
+        expected = numpy.array([float(vals.size) / mx] * mx)
         if not hypothesis_testing.chi_square_test(counts, expected):
             self.fail()
 
