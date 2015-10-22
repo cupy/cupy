@@ -182,6 +182,10 @@ _curand.curandGenerateNormal.argtypes = (Generator, _P, _S, _F, _F)
 
 
 def generateNormal(generator, outputPtr, n, mean, stddev):
+    if n % 2 == 1:
+        msg = 'curandGenerateNormal can only generate even number of '\
+              'random variables simultaneously. See issue #390 for detail.'
+        raise ValueError(msg)
     status = _curand.curandGenerateNormal(generator, outputPtr, n, mean,
                                           stddev)
     check_status(status)
@@ -191,6 +195,10 @@ _curand.curandGenerateNormalDouble.argtypes = (Generator, _P, _S, _D, _D)
 
 
 def generateNormalDouble(generator, outputPtr, n, mean, stddev):
+    if n % 2 == 1:
+        msg = 'curandGenerateNormalDouble can only generate even number of '\
+              'random variables simultaneously. See issue #390 for detail.'
+        raise ValueError(msg)
     status = _curand.curandGenerateNormalDouble(generator, outputPtr, n, mean,
                                                 stddev)
     check_status(status)
@@ -200,6 +208,10 @@ _curand.curandGenerateLogNormal.argtypes = (Generator, _P, _S, _F, _F)
 
 
 def generateLogNormal(generator, outputPtr, n, mean, stddev):
+    if n % 2 == 1:
+        msg = 'curandGenerateLogNormal can only generate even number of '\
+              'random variables simultaneously. See issue #390 for detail.'
+        raise ValueError(msg)
     status = _curand.curandGenerateLogNormal(generator, outputPtr, n,
                                              mean, stddev)
     check_status(status)
@@ -209,6 +221,10 @@ _curand.curandGenerateLogNormalDouble.argtypes = (Generator, _P, _S, _D, _D)
 
 
 def generateLogNormalDouble(generator, outputPtr, n, mean, stddev):
+    if n % 2 == 1:
+        msg = 'curandGenerateLogNormalDouble can only generate even number of '\
+              'random variables simultaneously. See issue #390 for detail.'
+        raise ValueError(msg)
     status = _curand.curandGenerateLogNormalDouble(generator, outputPtr, n,
                                                    mean, stddev)
     check_status(status)

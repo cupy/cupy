@@ -56,6 +56,13 @@ _python_scalar_type = six.integer_types + (float, bool)
 _scalar_type = _python_scalar_type + tuple(
     t.type for t in _typenames.keys())
 
+_kind_score = {
+    'b': 0,
+    'u': 1,
+    'i': 1,
+    'f': 2,
+}
+
 
 def _get_typename(dtype):
     if dtype is None:
@@ -499,21 +506,49 @@ def _guess_routine_from_dtype(ops, dtype):
     return None
 
 
+def _check_in_args_kind(in_args):
+    all_scalars = True
+    max_array_kind = -1
+    max_scalar_kind = -1
+    for i in in_args:
+        if isinstance(i, cupy.ndarray):
+            kind = _kind_score[i.dtype.kind]
+            all_scalars = False
+            if kind > max_array_kind:
+                max_array_kind = kind
+        else:
+            if isinstance(i, _python_scalar_type):
+                dtype = numpy.dtype(type(i))
+            else:
+                dtype = i.dtype
+            kind = _kind_score[dtype.kind]
+            if kind > max_scalar_kind:
+                max_scalar_kind = kind
+    return not all_scalars and max_array_kind >= max_scalar_kind
+
+
 def _guess_routine(name, cache, ops, in_args, dtype):
     if dtype is None:
-        key = tuple([numpy.dtype(type(i)).type
-                     if isinstance(i, _python_scalar_type) else i.dtype.type
-                     for i in in_args])
-    else:
-        key = dtype
-
-    op = cache.get(key, ())
-    if op is ():
-        if dtype is None:
-            op = _guess_routine_from_in_types(ops, key)
+        use_raw_value = _check_in_args_kind(in_args)
+        if use_raw_value:
+            in_types = tuple(in_args)
+            op = ()
         else:
-            op = _guess_routine_from_dtype(ops, key)
-        cache[key] = op
+            in_types = tuple(
+                [type(i)
+                 if isinstance(i, _python_scalar_type) else i.dtype.type
+                 for i in in_args])
+            op = cache.get(in_types, ())
+
+        if op is ():
+            op = _guess_routine_from_in_types(ops, in_types)
+            if not use_raw_value:
+                cache[in_types] = op
+    else:
+        op = cache.get(dtype, ())
+        if op is ():
+            op = _guess_routine_from_dtype(ops, dtype)
+            cache[dtype] = op
 
     if op:
         return op
@@ -677,8 +712,24 @@ copy_where = create_ufunc(
     'if (in1) out0 = in0')
 
 
+_divmod_float = '''
+    out0_type a = _floor_divide(in0, in1);
+    out0 = a;
+    out1 = in0 - a * in1'''
+
 _divmod = create_ufunc(
     'cupy_divmod',
-    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
-    'out0_type a = _floor_divide(in0, in1); out0 = a; out1 = in0 - a * in1')
+    ('bb->bb', 'BB->BB', 'hh->hh', 'HH->HH', 'ii->ii', 'II->II', 'll->ll',
+     'LL->LL', 'qq->qq', 'QQ->QQ',
+     ('ee->ee', _divmod_float),
+     ('ff->ff', _divmod_float),
+     ('dd->dd', _divmod_float)),
+    '''
+    if (in1 == 0) {
+        out0 = 0;
+        out1 = 0;
+    } else {
+        out0_type a = _floor_divide(in0, in1);
+        out0 = a;
+        out1 = in0 - a * in1;
+    }''')

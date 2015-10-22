@@ -21,7 +21,7 @@ Learnable connections
 .. autoclass:: NegativeSampling
 .. autoclass:: Parameter
 
-Array commputation functions
+Array computation functions
 ----------------------------
 .. autofunction:: convolution_2d
 .. autofunction:: linear
@@ -85,7 +85,6 @@ Reusable subnetwork of complex architectures
 
 Variational Auto-Encoder (VAE)
 ------------------------------
-.. module:: chainer.functions.vae
 .. autofunction:: gaussian_kl_divergence
 .. autofunction:: bernoulli_nll
 .. autofunction:: gaussian_nll

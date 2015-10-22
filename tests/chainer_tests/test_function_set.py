@@ -98,18 +98,18 @@ class TestFunctionSet(unittest.TestCase):
         fs2.to_cpu()
         self.check_equal_fs(self.fs, fs2)
 
-    def check_copy_parameters_from(self, src_gpu=False, dst_gpu=False):
+    def check_copy_parameters_from(self, src_id, dst_id):
         aW = np.random.uniform(-1, 1, (2, 3)).astype(np.float32)
         ab = np.random.uniform(-1, 1, (2,)).astype(np.float32)
         bW = np.random.uniform(-1, 1, (2, 3)).astype(np.float32)
         bb = np.random.uniform(-1, 1, (2,)).astype(np.float32)
         params = [aW.copy(), ab.copy(), bW.copy(), bb.copy()]
 
-        if dst_gpu:
-            self.fs.to_gpu()
+        if dst_id >= 0:
+            self.fs.to_gpu(dst_id)
 
-        if src_gpu:
-            params = map(cuda.to_gpu, params)
+        if src_id >= 0:
+            params = [cuda.to_gpu(p, src_id) for p in params]
 
         self.fs.copy_parameters_from(params)
         self.fs.to_cpu()
@@ -120,19 +120,24 @@ class TestFunctionSet(unittest.TestCase):
         self.assertTrue((self.fs.b.b == bb).all())
 
     def test_copy_parameters_from_cpu_to_cpu(self):
-        self.check_copy_parameters_from(False, False)
+        self.check_copy_parameters_from(-1, -1)
 
     @attr.gpu
     def test_copy_parameters_from_cpu_to_gpu(self):
-        self.check_copy_parameters_from(False, True)
+        self.check_copy_parameters_from(-1, cuda.Device().id)
 
     @attr.gpu
     def test_copy_parameters_from_gpu_to_cpu(self):
-        self.check_copy_parameters_from(True, False)
+        self.check_copy_parameters_from(cuda.Device().id, -1)
 
     @attr.gpu
     def test_copy_parameters_from_gpu_to_gpu(self):
-        self.check_copy_parameters_from(True, True)
+        device_id = cuda.Device().id
+        self.check_copy_parameters_from(device_id, device_id)
+
+    @attr.multi_gpu(2)
+    def test_copy_parameters_from_multigpu(self):
+        self.check_copy_parameters_from(0, 1)
 
     def test_getitem(self):
         self.assertIs(self.fs['a'], self.fs.a)

@@ -18,6 +18,7 @@ numpy_cupy_array_max_ulp = helper.numpy_cupy_array_max_ulp
 numpy_cupy_array_equal = helper.numpy_cupy_array_equal
 numpy_cupy_array_list_equal = helper.numpy_cupy_array_list_equal
 numpy_cupy_array_less = helper.numpy_cupy_array_less
+numpy_cupy_raises = helper.numpy_cupy_raises
 for_dtypes = helper.for_dtypes
 for_all_dtypes = helper.for_all_dtypes
 for_float_dtypes = helper.for_float_dtypes
@@ -30,4 +31,7 @@ shaped_reverse_arange = helper.shaped_reverse_arange
 
 shaped_random = helper.shaped_random
 
+NumpyError = helper.NumpyError
+
 gpu = attr.gpu
+multi_gpu = attr.multi_gpu

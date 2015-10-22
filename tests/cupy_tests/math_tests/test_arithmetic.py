@@ -1,7 +1,5 @@
 import unittest
 
-import numpy
-
 from cupy import testing
 
 
@@ -40,19 +38,19 @@ class TestArithmetic(unittest.TestCase):
         self.check_binary('add')
 
     def test_reciprocal(self):
-        numpy.seterr(divide='ignore', invalid='ignore')
-        self.check_unary('reciprocal')
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
+            self.check_unary('reciprocal')
 
     def test_multiply(self):
         self.check_binary('multiply')
 
     def test_divide(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary('divide')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary('divide')
 
     def test_divide_negative(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary_negative('divide')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary_negative('divide')
 
     def test_power(self):
         self.check_binary('power')
@@ -64,28 +62,28 @@ class TestArithmetic(unittest.TestCase):
         self.check_binary('subtract')
 
     def test_true_divide(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary('true_divide')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary('true_divide')
 
     def test_true_divide_negative(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary_negative('true_divide')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary_negative('true_divide')
 
     def test_floor_divide(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary('floor_divide')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary('floor_divide')
 
     def test_floor_divide_negative(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary_negative('floor_divide')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary_negative('floor_divide')
 
     def test_fmod(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary('fmod')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary('fmod')
 
     def test_fmod_negative(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary_negative('fmod')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary_negative('fmod')
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
@@ -98,9 +96,9 @@ class TestArithmetic(unittest.TestCase):
         return d
 
     def test_remainder(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary('remainder')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary('remainder')
 
     def test_remainder_negative(self):
-        numpy.seterr(divide='ignore')
-        self.check_binary_negative('remainder')
+        with testing.NumpyError(divide='ignore'):
+            self.check_binary_negative('remainder')

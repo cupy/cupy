@@ -23,14 +23,16 @@ __version__ = pkg_resources.get_distribution('chainer').version
 
 sys.path.insert(0, '../..')
 
-# Replace LoadLibrary to mock for importing CuPy on ReadTheDocs.
-class MockObject(object):
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+    # Replace LoadLibrary to mock for importing CuPy on ReadTheDocs.
+    class MockObject(object):
 
-    def __getattr__(self, key): return MockObject()
-    def __setattr__(self, key, value): pass
-    def __call__(self, *a, **k): return MockObject()
+        def __getattr__(self, key): return MockObject()
+        def __setattr__(self, key, value): pass
+        def __call__(self, *a, **k): return MockObject()
 
-ctypes.cdll.LoadLibrary = MockObject()
+    ctypes.cdll.LoadLibrary = MockObject()
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -48,6 +50,7 @@ ctypes.cdll.LoadLibrary = MockObject()
 # ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
+              'sphinx.ext.doctest',
               'sphinx.ext.intersphinx',
               'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
@@ -324,3 +327,12 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/2/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
 }
+
+doctest_global_setup = '''
+import numpy as np
+import cupy
+from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers, utils
+import chainer.functions as F
+np.random.seed(0)
+'''
+doctest_test_doctest_blocks = None

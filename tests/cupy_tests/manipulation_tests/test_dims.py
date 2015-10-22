@@ -59,6 +59,12 @@ class TestDims(unittest.TestCase):
         self.assertEqual(2 * 3 * 3 * 4, bc.size)
         self.assertEqual(4, bc.nd)
 
+    @testing.numpy_cupy_raises()
+    def test_broadcast_fail(self, xp):
+        a = xp.zeros((2, 3))
+        b = xp.zeros((3, 2))
+        xp.broadcast(a, b)
+
     @testing.numpy_cupy_array_equal()
     def test_expand_dims0(self, xp):
         a = testing.shaped_arange((2, 3), xp)

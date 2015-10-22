@@ -337,4 +337,13 @@ class TestListItem(unittest.TestCase):
         self.assertEqual('[[0]]', T._repr([[T.Constant(0)]]))
 
 
+class TestProd(unittest.TestCase):
+
+    def test_name(self):
+        self.assertEqual(T.prod.name, 'prod')
+
+    def test_value(self):
+        self.assertIs(T.prod.value, numpy.prod)
+
+
 testing.run_module(__name__, __file__)

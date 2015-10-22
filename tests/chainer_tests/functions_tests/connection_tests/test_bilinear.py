@@ -125,6 +125,44 @@ class TestBilinear2(TestBilinear):
             e1.dot(self.V1) + e2.dot(self.V2) + self.b)
 
 
+class TestBilinear3(TestBilinear):
+
+    out_size = 1
+
+
+class TestBilinear4(TestBilinear):
+
+    in_shape = (1, 2)
+
+
+class TestBilinear5(TestBilinear):
+
+    in_shape = (2, 1)
+
+
+class TestBilinear6(TestBilinear):
+
+    in_shape = (1, 1)
+
+
+class TestBilinear7(TestBilinear):
+
+    in_shape = (1, 2)
+    out_size = 1
+
+
+class TestBilinear8(TestBilinear):
+
+    in_shape = (2, 1)
+    out_size = 1
+
+
+class TestBilinear9(TestBilinear):
+
+    in_shape = (1, 1)
+    out_size = 1
+
+
 class TestBilinearWOBias(TestBilinear):
 
     def setUp(self):
@@ -168,6 +206,44 @@ class TestBilinearWOBias2(TestBilinearWOBias):
         e2 = array.as_mat(self.e2)
 
         self.y = numpy.einsum('ij,ik,jkl->il', e1, e2, self.W)
+
+
+class TestBilinearWOBias3(TestBilinearWOBias):
+
+    out_size = 1
+
+
+class TestBilinearWOBias4(TestBilinearWOBias):
+
+    in_shape = (1, 2)
+
+
+class TestBilinearWOBias5(TestBilinearWOBias):
+
+    in_shape = (2, 1)
+
+
+class TestBilinearWOBias6(TestBilinearWOBias):
+
+    in_shape = (1, 1)
+
+
+class TestBilinearWOBias7(TestBilinearWOBias):
+
+    in_shape = (1, 2)
+    out_size = 1
+
+
+class TestBilinearWOBias8(TestBilinearWOBias):
+
+    in_shape = (2, 1)
+    out_size = 1
+
+
+class TestBilinearWOBias9(TestBilinearWOBias):
+
+    in_shape = (1, 1)
+    out_size = 1
 
 
 class InitByInitialParameter(unittest.TestCase):

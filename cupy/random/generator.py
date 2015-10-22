@@ -1,10 +1,11 @@
 import atexit
 import binascii
-import collections
+import operator
 import os
 import time
 
 import numpy
+import six
 
 import cupy
 from cupy import cuda
@@ -51,6 +52,23 @@ class RandomState(object):
             stream = cuda.Stream()
         curand.setStream(self._generator, stream.ptr)
 
+    def _generate_normal(self, func, size, dtype, *args):
+        # curand funcitons below don't support odd size.
+        # * curand.generateNormal
+        # * curand.generateNormalDouble
+        # * curand.generateLogNormal
+        # * curand.generateLogNormalDouble
+        size = cupy._get_size(size)
+        element_size = six.moves.reduce(operator.mul, size, 1)
+        if element_size % 2 == 0:
+            out = cupy.empty(size, dtype=dtype)
+            func(self._generator, out.data.ptr, out.size, *args)
+            return out
+        else:
+            out = cupy.empty((element_size + 1,), dtype=dtype)
+            func(self._generator, out.data.ptr, out.size, *args)
+            return out[:element_size].reshape(size)
+
     # NumPy compatible functions
 
     def lognormal(self, mean=0.0, sigma=1.0, size=None, dtype=float):
@@ -62,14 +80,11 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-        size = _get_size(size)
-        out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateLogNormal
         else:
             func = curand.generateLogNormalDouble
-        func(self._generator, out.data.ptr, out.size, mean, sigma)
-        return out
+        return self._generate_normal(func, size, dtype, mean, sigma)
 
     def normal(self, loc=0.0, scale=1.0, size=None, dtype=float):
         """Returns an array of normally distributed samples.
@@ -80,14 +95,11 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-        size = _get_size(size)
-        out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateNormal
         else:
             func = curand.generateNormalDouble
-        func(self._generator, out.data.ptr, out.size, loc, scale)
-        return out
+        return self._generate_normal(func, size, dtype, loc, scale)
 
     def rand(self, *size, **kwarg):
         """Returns uniform random values over the interval ``[0, 1)``.
@@ -129,7 +141,6 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
-        size = _get_size(size)
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateUniform
@@ -203,6 +214,7 @@ class RandomState(object):
             seed = numpy.uint64(seed)
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
+        curand.setGeneratorOffset(self._generator, 0)
 
     def standard_normal(self, size=None, dtype=float):
         """Returns samples drawn from the standard normal distribution.
@@ -223,7 +235,6 @@ class RandomState(object):
 
         """
         dtype = numpy.dtype(dtype)
-        size = _get_size(size)
         rand = self.random_sample(size=size, dtype=dtype)
         return dtype.type(low) + rand * dtype.type(high - low)
 
@@ -272,20 +283,9 @@ def get_random_state():
     dev = cuda.Device()
     rs = _random_states.get(dev.id, None)
     if rs is None:
-        rs = RandomState()
+        rs = RandomState(os.getenv('CHAINER_SEED'))
         _random_states[dev.id] = rs
     return rs
-
-
-def _get_size(size):
-    if size is None:
-        return ()
-    elif isinstance(size, collections.Sequence):
-        return tuple(size)
-    elif isinstance(size, int):
-        return size,
-    else:
-        raise ValueError('size should be None, collections.Sequence, or int')
 
 
 def _check_and_get_dtype(dtype):

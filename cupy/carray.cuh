@@ -124,6 +124,14 @@ public:
     return size_;
   }
 
+  __device__ const int* shape() const {
+    return shape_;
+  }
+
+  __device__ const int* strides() const {
+    return strides_;
+  }
+
   __device__ T& operator[](const int* idx) {
     char* ptr = reinterpret_cast<char*>(data_);
     for (int dim = 0; dim < ndim; ++dim) {

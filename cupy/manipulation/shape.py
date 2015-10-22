@@ -52,7 +52,7 @@ def reshape(a, newshape):
     newarray._strides = newstrides
     if newarray._c_contiguous == 1:
         newarray._f_contiguous = int(
-            not size or len(shape) - shape.count(1) <= 1)
+            not size or len(newshape) - newshape.count(1) <= 1)
     else:
         newarray._f_contiguous = -1
     return newarray

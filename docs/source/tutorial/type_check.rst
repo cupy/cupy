@@ -37,22 +37,38 @@ You can override this method to check the condition on types and shapes of argum
 
 ``in_types`` is an instance of :class:`utils.type_check.TypeInfoTuple`, which is a sub-class of ``tuple``.
 To get type information about the first argument, use ``in_types[0]``.
-If the function gets multiple arguments, we recommend to use new variables for readability::
+If the function gets multiple arguments, we recommend to use new variables for readability:
 
-  x_type, y_type = in_types
+.. testcode::
+   :hide:
+
+   data = (np.empty((3, 2, 2), dtype=np.float32), np.empty((1, 2, 2), dtype=np.float32))
+   in_types = utils.type_check.get_types(data, 'in_types', False)
+
+
+.. testcode::
+
+   x_type, y_type = in_types
 
 In this case, ``x_type`` represents the type of the first argument, and ``y_type`` represents the second one.
 
 We describe usage of ``in_types`` with an example.
-When you want to check if the number of dimension of ``x_type`` equals to ``2``, write this code::
+When you want to check if the number of dimension of ``x_type`` equals to ``2``, write this code:
 
-  utils.type_check.expect(x_type.ndim == 2)
+.. testcode::
+
+   utils.type_check.expect(x_type.ndim == 2)
 
 When this condition is true, nothing happens.
-Otherwise this code throws an exception, and a user gets a message like this::
+Otherwise this code throws an exception, and a user gets a message like this:
 
-  Expect: in_types[0].ndim == 2
-  Actual: 3 != 2
+.. testoutput::
+   :options: -IGNORE_EXCEPTION_DETAIL
+
+   Traceback (most recent call last):
+   ...
+   InvalidType: Expect: in_types[0].ndim == 2
+   Actual: 3 != 2
 
 This error message means that "``ndim`` of the first argument expected to be ``2``, but actually it is ``3``".
 
@@ -67,28 +83,41 @@ You can access three information of ``x_type``.
 - ``.dtype`` is ``numpy.dtype`` representing data type of the value.
 
 You can check all members.
-For example, the size of the first dimension must be positive, you can write like this::
+For example, the size of the first dimension must be positive, you can write like this:
 
-  utils.type_check.expect(x_type.shape[0] > 0)
+.. testcode::
 
-You can also check data types with ``.dtype``::
+   utils.type_check.expect(x_type.shape[0] > 0)
 
-  utils.type_check.expect(x_type.dtype == numpy.float32)
+You can also check data types with ``.dtype``:
 
-And an error is like this::
+.. testcode::
 
-  Expect: in_types[0].dtype == numpy.float32
-  Actual: numpy.float64 != numpy.float32
+   utils.type_check.expect(x_type.dtype == np.float64)
+
+And an error is like this:
+
+.. testoutput::
+   :options: -IGNORE_EXCEPTION_DETAIL +NORMALIZE_WHITESPACE
+
+   Traceback (most recent call last):
+   ...
+   InvalidType: Expect: in_types[0].dtype == <type 'numpy.float64'>
+   Actual: float32 != <type 'numpy.float64'>
 
 You can also check ``kind`` of ``dtype``.
-This code checks if the type is floating point::
+This code checks if the type is floating point
 
-  utils.type_check.expect(x_type.dtype.kind == 'f')
+.. testcode::
+
+   utils.type_check.expect(x_type.dtype.kind == 'f')
 
 You can compare between variables.
-For example, the following code checks if the first argument and the second argument have the same length::
+For example, the following code checks if the first argument and the second argument have the same length:
 
-  utils.type_check.expect(x_type.shape[0] == y_type.shape[0])
+.. testcode::
+
+   utils.type_check.expect(x_type.shape[1] == y_type.shape[1])
 
 
 Internal mechanism of type check
@@ -105,9 +134,11 @@ Actually ``x_type`` is a :class:`utils.type_check.Expr` objects, and doesn't hav
 When it is ``True``, it causes no error and shows nothing.
 Otherwise, this method shows a readable error message.
 
-If you want to evaluate a :class:`utils.type_check.Expr` object, call :meth:`eval` method::
+If you want to evaluate a :class:`utils.type_check.Expr` object, call :meth:`eval` method:
 
-  actual_type = x_type.eval()
+.. testcode::
+
+   actual_type = x_type.eval()
 
 ``actual_type`` is an instance of :class:`TypeInfo`, while ``x_type`` is an instance of :class:`utils.type_check.Expr`.
 In the same way, ``x_type.shape[0].eval()`` returns an int value.
@@ -118,35 +149,53 @@ More powerfull methods
 
 :class:`utils.type_check.Expr` class is more powerfull.
 It supports all mathematical operators such as ``+`` and ``*``.
-You can write a condition that the first dimension of ``x_type`` is the first dimension of ``y_type`` times four::
+You can write a condition that the first dimension of ``x_type`` is the first dimension of ``y_type`` times four:
 
-  x_type.shape[0] == y_type.shape[0] * 4
+.. testcode::
 
-When ``x_type.shape[0] == 3`` and ``y_type.shape[0] == 1``, users can get the error message below::
+   utils.type_check.expect(x_type.shape[0] == y_type.shape[0] * 4)
 
-  Expect: in_types[0].shape[0] == in_types[1].shape[0] * 4
-  Actual: 3 != 4
+When ``x_type.shape[0] == 3`` and ``y_type.shape[0] == 1``, users can get the error message below:
+
+.. testoutput::
+   :options: -IGNORE_EXCEPTION_DETAIL
+
+   Traceback (most recent call last):
+   ...
+   InvalidType: Expect: in_types[0].shape[0] == in_types[1].shape[0] * 4
+   Actual: 3 != 4
 
 
-To compare a member variable of your function, wrap a value with :class:`utils.type_check.Variable` to show readable error message::
+To compare a member variable of your function, wrap a value with :class:`utils.type_check.Variable` to show readable error message:
 
-  x_type.shape[0] == utils.type_check.Variable(self.in_size, "in_size")
+.. testcode::
+   :hide:
 
-This code can check the equivalent condition below::
+   class Object(object):
+       in_size = 2
+   self = Object()
 
-  x_type.shape[0] == self.in_size
+.. testcode::
+
+   x_type.shape[0] == utils.type_check.Variable(self.in_size, "in_size")
+
+This code can check the equivalent condition below:
+
+.. testcode::
+
+   x_type.shape[0] == self.in_size
 
 However, the latter condition doesn't know meanig of this value.
 When this condition is not satisfied, the latter code shows unreadable error message::
 
-  Expect: in_types[0].shape[0] == 4  # what does '4' mean?
+  InvalidType: Expect: in_types[0].shape[0] == 4  # what does '4' mean?
   Actual: 3 != 4
 
 Note that the second argument of :class:`utils.type_check.Variable` is only for readability.
 
 The former shows this message::
 
-  Expect: in_types[0].shape[0] == in_size  # OK, `in_size` is a value that is given to the constructor
+  InvalidType: Expect: in_types[0].shape[0] == in_size  # OK, `in_size` is a value that is given to the constructor
   Actual: 3 != 4  # You can also check actual value here
 
 
@@ -155,19 +204,26 @@ Call functions
 
 How to check summation of all values of shape?
 :class:`utils.type_check.Expr` also supports function call.
-::
+:
 
-   sum = utils.type_check.Variable('sum', numpy.sum)
-   utils.type_check.expect(sum(x_type.shape) == 10)
+.. testcode::
+
+    sum = utils.type_check.Variable(np.sum, 'sum')
+    utils.type_check.expect(sum(x_type.shape) == 10)
 
 Why do we need to wrap the function ``numpy.sum`` with :class:`utils.type_check.Variable`?
 ``x_type.shape`` is not a tuple but an object of :class:`utils.type_check.Expr` as we have seen before.
 Therefore, ``numpy.sum(x_type.shape)`` fails.
 We need to evaluate this function lazily.
 
-The above example makes an error message like this::
+The above example makes an error message like this:
 
-   Expect: sum(in_types[0].shape) == 10
+.. testoutput::
+   :options: -IGNORE_EXCEPTION_DETAIL
+
+   Traceback (most recent call last):
+   ...
+   InvalidType: Expect: sum(in_types[0].shape) == 10
    Actual: 7 != 10
 
 
@@ -176,7 +232,15 @@ More complicated cases
 
 How to write a more complicated condition that can't be written with these operators?
 You can evaluate :class:`utils.type_check.Expr` and get its result value with :meth:`eval` method.
-And, check the condition and show warning message by your hand::
+And, check the condition and show warning message by your hand:
+
+.. testcode::
+   :hide:
+
+   def more_complicated_condition(x):
+       return False
+
+.. testcode::
 
   x_shape = x_type.shape.eval()  # get actual shape (int tuple)
   if not more_complicated_condition(x_shape):
@@ -185,10 +249,15 @@ And, check the condition and show warning message by your hand::
       raise utils.type_check.InvalidType(expect_msg, actual_msg)
 
 Please make a readable error message.
-This code generates an error below::
+This code generates an error below:
 
-  Expect: Shape is expected to be ...
-  Actual: Shape is ...
+.. testoutput::
+   :options: -IGNORE_EXCEPTION_DETAIL
+
+   Traceback (most recent call last):
+   ...
+   InvalidType: Expect: Shape is expected to be ...
+   Actual: Shape is ...
 
 
 
@@ -197,32 +266,40 @@ Typical type check example
 
 We show a typical type check for a function.
 
-First check the number of arguments::
+First check the number of arguments:
 
-  utils.type_check.expect(in_types.size() == 2)
+.. testcode::
+
+   utils.type_check.expect(in_types.size() == 2)
 
 ``in_types.size()`` returns a :class:`utils.type_check.Expr` object representing a number of arguments.
 You can check it in the same way.
 
-And then, get each type::
+And then, get each type:
 
-  x_type, y_type = in_types
+.. testcode::
+
+   x_type, y_type = in_types
 
 Don't get each value before check ``in_types.size()``.
 When the number of argument is illegal, this process may fail.
-For example, this code doesn't work when the size of ``in_types`` is zero::
+For example, this code doesn't work when the size of ``in_types`` is zero:
 
-  utils.type_check.expect(
-    in_types.size() == 1,
-    in_types[0].ndim == 1,
-  )
+.. testcode::
 
-After that, check each type::
+   utils.type_check.expect(
+     in_types.size() == 2,
+     in_types[0].ndim == 3,
+   )
 
-  utils.type_check.expect(
-    x_type.dtype == numpy.float32,
-    x_type.ndim == 2,
-    x_type.shape[1] == 4,
-  )
+After that, check each type:
+
+.. testcode::
+
+   utils.type_check.expect(
+     x_type.dtype == np.float32,
+     x_type.ndim == 3,
+     x_type.shape[1] == 2,
+   )
 
 The above example works correctly even when ``x_type.ndim == 0`` as all conditions are evaluated lazily.

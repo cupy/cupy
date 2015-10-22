@@ -67,6 +67,9 @@ class TestClippedReLUZeroDim(TestClippedReLU):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        # Avoid values around zero and z for stability of numerical gradient
+        if -0.01 < self.x[()] < 0.01 or 0.74 < self.x[()] < 0.76:
+            self.x[()] = 0.5
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         self.z = 0.75
 
