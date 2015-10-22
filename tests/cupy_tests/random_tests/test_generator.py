@@ -228,10 +228,16 @@ class TestGetRandomState2(unittest.TestCase):
         generator.RandomState = mock.Mock()
         self.rs_dict = generator._random_states
         generator._random_states = {}
+        self.chainer_seed = os.getenv('CHAINER_SEED')
 
     def tearDown(self, *args):
         generator.RandomState = self.rs_tmp
         generator._random_states = self.rs_dict
+        if self.chainer_seed is None:
+            if 'CHAINER_SEED' in os.environ:
+                del os.environ['CHAINER_SEED']
+        else:
+            os.environ['CHAINER_SEED'] = self.chainer_seed
 
     def test_get_random_state_no_chainer_seed(self):
         os.unsetenv('CHAINER_SEED')
