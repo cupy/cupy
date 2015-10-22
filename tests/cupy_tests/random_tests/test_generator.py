@@ -157,38 +157,48 @@ class TestInterval(unittest.TestCase):
 
 
 @testing.gpu
-class TestIntervalOne(unittest.TestCase):
+class TestInterval(unittest.TestCase):
 
     def setUp(self):
         self.rs = generator.RandomState()
 
     def test_zero(self):
-        self.assertEqual(self.rs._interval_one(0), 0)
+        numpy.testing.assert_array_equal(
+            self.rs.interval(0, (2, 3)).get(), numpy.zeros((2, 3)))
 
     @condition.repeat(10)
     def test_within_interval(self):
-        val = self.rs._interval_one(10).get()
-        self.assertLessEqual(0, val)
-        self.assertLessEqual(val, 10)
+        val = self.rs.interval(10, (2, 3)).get()
+        numpy.testing.assert_array_less(numpy.full((2, 3), -1), val)
+        numpy.testing.assert_array_less(val, numpy.full((2, 3), 11))
 
     @condition.retry(20)
     def test_lower_bound(self):
-        val = self.rs._interval_one(2).get()
+        val = self.rs.interval(2, None).get()
         self.assertEqual(0, val)
 
     @condition.retry(20)
     def test_upper_bound(self):
-        val = self.rs._interval_one(2).get()
+        val = self.rs.interval(2, None).get()
         self.assertEqual(2, val)
 
     @condition.retry(5)
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
-        vals = [self.rs._interval_one(mx).get()
+        vals = [self.rs.interval(mx, None).get()
                 for _ in six.moves.xrange(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(trial) / mx + 1] * (mx + 1))
+        if not hypothesis_testing.chi_square_test(counts, expected):
+            self.fail()
+
+    @condition.retry(5)
+    def test_goodness_of_fit_2(self):
+        mx = 5
+        vals = self.rs.interval(mx, (5, 5)).get()
+        counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
+        expected = numpy.array([float(vals.size) / mx + 1] * (mx + 1))
         if not hypothesis_testing.chi_square_test(counts, expected):
             self.fail()
 
