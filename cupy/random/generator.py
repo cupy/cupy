@@ -140,35 +140,6 @@ class RandomState(object):
         RandomState._1m_kernel(out)
         return out
 
-    def _interval_one(self, mx):
-        """Choose single integer uniformly at random from [0, mx]
-
-        Args:
-            mx (int): Upper bound of the interval
-        Returns:
-            int: Single sampled integer
-        """
-        # How should we treat negative value?
-        if mx == 0:
-            return 0
-
-        mask = mx
-        mask |= mask >> 1
-        mask |= mask >> 2
-        mask |= mask >> 4
-        mask |= mask >> 8
-        mask |= mask >> 16
-        mask |= mask >> 32
-        mask = cupy.array(mask, dtype=numpy.uint64)
-        ret = cupy.empty((), dtype=numpy.uint64)
-        mx = cupy.array(mx, dtype=numpy.uint64)
-        while True:
-            curand.generate(self._generator, ret.data.ptr, 1)
-            ret &= mask
-            if ret <= mx:
-                break
-        return ret
-
     def interval(self, mx, size):
         """Generate multiple integers independently sampled uniformly from [0, mx]
 
@@ -177,22 +148,42 @@ class RandomState(object):
             size (None or int or tuple): Shape of the array or the scalar
             returned.
         Returns:
-            int or cupy.array: If ``None``, single integer value is returned.
+            int or cupy.ndarray: If ``None``, it is ndarray with shape ``()`` is returned.
             If ``int``, 1-D array of length size is returned.
             If ``tuple`,` multi-dimensional array with shape
             ``size`` is returned.
+            Currently, each element of the array is ``numpy.float32``.
         """
+        dtype = numpy.int32
         if size is None:
-            return self._interval_one(mx)
-
-        if isinstance(size, int):
+            return self.interval(mx, 1).reshape(())
+        elif isinstance(size, int):
             size = (size, )
 
-        ret = cupy.empty(size)
-        v = ret.view().reshape((ret.size,))
-        for idx in six.moves.xrange(v.size):
-            v[idx] = self._interval_one(mx)
-        return ret
+        if mx == 0:
+            return cupy.zeros(size, dtype=dtype)
+
+        mask = mx
+        mask |= mask >> 1
+        mask |= mask >> 2
+        mask |= mask >> 4
+        mask |= mask >> 8
+        mask |= mask >> 16
+        mask = cupy.array(mask, dtype=dtype)
+
+        ret = cupy.zeros(size, dtype=dtype)
+        sample = cupy.zeros(size, dtype=dtype)
+        done = cupy.zeros(size, dtype=numpy.bool_)
+        while True:
+            curand.generate(
+                self._generator, sample.data.ptr, sample.size)
+            sample &= mask
+            success = sample <= mx
+            ret = ret * (1 - success) + sample * success
+            ret = ret.astype(numpy.int64)
+            done |= success
+            if done.get().all():
+                return ret
 
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
