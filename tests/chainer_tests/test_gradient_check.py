@@ -190,6 +190,36 @@ class NumericalGradientInvalidType(unittest.TestCase):
             gradient_check.numerical_grad(self.f, (self.x,), (y,))
 
 
+class NumericalGradientEpsTest(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.array(0.0, dtype=numpy.float32)
+        self.y = numpy.array(1.0, dtype=numpy.float32)
+
+    def check_different_eps(self, x, y):
+        def f():
+            if -1 < x < 1:
+                return x.copy(),
+            elif -2 < x < 2:
+                return 2 * x,
+            else:
+                return 0,
+
+        gx, = gradient_check.numerical_grad(f, (x,), (y,), eps=0.5)
+        self.assertEqual(gx, 1.)
+        gx, = gradient_check.numerical_grad(f, (x,), (y,), eps=1.5)
+        self.assertEqual(gx, 2.)
+        gx, = gradient_check.numerical_grad(f, (x,), (y,), eps=2.5)
+        self.assertEqual(gx, 0.)
+
+    def test_differenct_eps_cpu(self):
+        self.check_different_eps(self.x, self.y)
+
+    @attr.gpu
+    def test_differenct_eps_gpu(self):
+        self.check_different_eps(cuda.to_gpu(self.x), cuda.to_gpu(self.y))
+
+
 class AssertAllCloseTest(unittest.TestCase):
 
     def setUp(self):
