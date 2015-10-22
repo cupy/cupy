@@ -11,7 +11,7 @@ class SoftmaxCrossEntropy(function.Function):
 
     """Softmax activation followed by a cross entropy loss."""
 
-    invalid_label = -1
+    ignore_label = -1
 
     def __init__(self, use_cudnn=True, normalize=True):
         self.use_cudnn = use_cudnn
@@ -40,10 +40,11 @@ class SoftmaxCrossEntropy(function.Function):
         # deal with the case where the SoftmaxCrossEntropy is
         # unpickled from the old version
         if getattr(self, 'normalize', True):
-            count = (t != -1).sum()
+            count = (t != self.ignore_label).sum()
         else:
             count = x.shape[0]
-        y = (numpy.log(p) * (t.flat != -1)).sum(keepdims=True) * (-1.0 / count)
+        y = (numpy.log(p) * (t.flat != self.ignore_label)).sum(keepdims=True) \
+            * (-1.0 / count)
         return y.reshape(()),
 
     def forward_gpu(self, inputs):
@@ -51,7 +52,7 @@ class SoftmaxCrossEntropy(function.Function):
         x, t = inputs
         self.y, = softmax.Softmax(self.use_cudnn).forward((x,))
         if getattr(self, 'normalize', True):
-            count = float((t != -1).sum())
+            count = float((t != self.ignore_label).sum())
         else:
             count = t.shape[0]
         y = cupy.rollaxis(self.y, 1, self.y.ndim)
@@ -69,7 +70,7 @@ class SoftmaxCrossEntropy(function.Function):
         if self.y.ndim == 2:
             gx = self.y.copy()
             gx[six.moves.xrange(len(t)), numpy.maximum(t, 0)] -= 1
-            gx *= (t != -1).reshape((len(t), 1))
+            gx *= (t != self.ignore_label).reshape((len(t), 1))
         else:
             # in the case where y.ndim is higher than 2,
             # we think that a current implementation is inefficient
@@ -78,11 +79,11 @@ class SoftmaxCrossEntropy(function.Function):
             fst_index = numpy.arange(t.size) // n_unit
             trd_index = numpy.arange(t.size) % n_unit
             gx[fst_index, numpy.maximum(t.flat, 0), trd_index] -= 1
-            gx *= (t != -1).reshape((len(t), 1, -1))
+            gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
             gx = gx.reshape(self.y.shape)
 
         if getattr(self, 'normalize', True):
-            count = (t != -1).sum()
+            count = (t != self.ignore_label).sum()
         else:
             count = t.shape[0]
         gx *= gloss / count
@@ -94,7 +95,7 @@ class SoftmaxCrossEntropy(function.Function):
         gloss = grad_outputs[0]
         n_unit = t.size // t.shape[0]
         if getattr(self, 'normalize', True):
-            count = float((t != -1).sum())
+            count = float((t != self.ignore_label).sum())
         else:
             count = t.shape[0]
         coeff = cuda.cupy.divide(gloss, count, dtype=gloss.dtype)
