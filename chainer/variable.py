@@ -156,11 +156,12 @@ https://github.com/pfnet/chainer/issues/new.
 
     def zerograd(self):
         """Initializes the gradient array by zeros."""
-        if self._grad is None:
-            xp = cuda.get_array_module(self.data)
-            self._grad = xp.zeros_like(self.data)
-        else:
-            self._grad.fill(0)
+        with cuda.get_device(self.data) as dev:
+            if self._grad is None:
+                xp = numpy if int(dev) == -1 else cuda.cupy
+                self._grad = xp.zeros_like(self.data)
+            else:
+                self._grad.fill(0)
 
     def copydata(self, var):
         """Copies the data array from given source variable.
@@ -298,27 +299,28 @@ https://github.com/pfnet/chainer/issues/new.
                     continue
                 # Accumulate the graident to x. It is a bit tricky to handle
                 # branches and parameter gradient accumulation correctly.
-                id_x = id(x)
-                if x.creator is None:  # leaf
-                    if x._grad is None:
-                        x.grad = gx
-                        need_copy.add(id_x)
-                    elif id_x in need_copy:
-                        x.grad = x.grad + gx  # copy
-                        need_copy.remove(id_x)
-                    else:
-                        x._grad += gx
-                else:  # not a leaf
-                    add_cand(x.creator)
-                    if id_x not in seen_vars:  # 1st visit
-                        x.grad = gx
-                        seen_vars.add(id_x)
-                        need_copy.add(id_x)
-                    elif id_x in need_copy:  # 2nd visit
-                        x._grad = gx + x._grad  # copied
-                        need_copy.remove(id_x)
-                    else:  # 3rd or later visit
-                        x._grad += gx
+                with cuda.get_device(gx):
+                    id_x = id(x)
+                    if x.creator is None:  # leaf
+                        if x._grad is None:
+                            x.grad = gx
+                            need_copy.add(id_x)
+                        elif id_x in need_copy:
+                            x.grad = x.grad + gx  # copy
+                            need_copy.remove(id_x)
+                        else:
+                            x._grad += gx
+                    else:  # not a leaf
+                        add_cand(x.creator)
+                        if id_x not in seen_vars:  # 1st visit
+                            x.grad = gx
+                            seen_vars.add(id_x)
+                            need_copy.add(id_x)
+                        elif id_x in need_copy:  # 2nd visit
+                            x._grad = gx + x._grad  # copied
+                            need_copy.remove(id_x)
+                        else:  # 3rd or later visit
+                            x._grad += gx
 
     def unchain_backward(self):
         """Deletes references between variables and functions backward.

@@ -31,8 +31,6 @@ class DotNode(object):
 
         if isinstance(self.node, variable.Variable):
             return "oval"
-        elif isinstance(self.node, function.Split):
-            return "hexagon"
         else:
             return "box"
 

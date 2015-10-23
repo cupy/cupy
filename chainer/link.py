@@ -113,9 +113,11 @@ class Link(object):
         attributes must be copied to CPU, the link implementation must
         override this method to do so.
 
+        Returns: self
+
         """
         if self._cpu:
-            return
+            return self
         for param in self.params():
             param.to_cpu()
         d = self.__dict__
@@ -124,6 +126,7 @@ class Link(object):
             if isinstance(value, cuda.ndarray):
                 d[name] = value.get()
         self._cpu = True
+        return self
 
     def to_gpu(self, device=None):
         """Copies parameter variables and persistent values to GPU.
@@ -136,10 +139,12 @@ class Link(object):
             device: Target device specifier. If omitted, the current device is
                 used.
 
+        Returns: self
+
         """
         cuda.check_cuda_available()
         if not self._cpu:
-            return
+            return self
         with cuda.get_device(device):
             for param in self.params():
                 param.to_gpu()
@@ -149,6 +154,7 @@ class Link(object):
                 if isinstance(value, numpy.ndarray):
                     d[name] = cuda.to_gpu(value)
         self._cpu = False
+        return self
 
     def params(self):
         """Returns a generator of all parameters under the link hierarchy.
@@ -325,6 +331,7 @@ class Chain(Link):
         d = self.__dict__
         for name in self._children:
             d[name].to_cpu()
+        return self
 
     def to_gpu(self, device=None):
         with cuda.get_device(device):
@@ -332,6 +339,7 @@ class Chain(Link):
             d = self.__dict__
             for name in self._children:
                 d[name].to_gpu()
+        return self
 
     def params(self):
         for param in super(Chain, self).params():
@@ -467,12 +475,14 @@ class ChainList(Link):
         super(ChainList, self).to_cpu()
         for link in self._children:
             link.to_cpu()
+        return self
 
     def to_gpu(self, device=None):
         with cuda.get_device(device):
             super(ChainList, self).to_gpu()
             for link in self._children:
                 link.to_gpu()
+        return self
 
     def params(self):
         for param in super(ChainList, self).params():

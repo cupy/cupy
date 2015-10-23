@@ -232,6 +232,30 @@ class TestVariable(unittest.TestCase):
     def test_zerograd_fill_cpu(self):
         self.check_zerograd(np.empty(3, dtype=np.float32), fill=True)
 
+    @attr.multi_gpu(2)
+    def test_zerograds_multi_gpu(self):
+        cupy = cuda.cupy
+        with cuda.get_device(1):
+            a = chainer.Variable(cupy.empty(3, dtype=np.float32))
+        a.zerograd()
+        self.assertIsNot(a.grad, None)
+        self.assertEqual(int(a.grad.device), 1)
+        with cuda.get_device(1):
+            g_expect = cupy.zeros_like(a.data)
+            cupy.testing.assert_array_equal(a.grad, g_expect)
+
+    @attr.multi_gpu(2)
+    def test_zerograds_fill_multi_gpu(self):
+        cupy = cuda.cupy
+        with cuda.get_device(1):
+            a = chainer.Variable(cupy.empty(3, dtype=np.float32))
+            a.grad = cupy.empty_like(a.data)
+        a.zerograd()
+        self.assertEqual(int(a.grad.device), 1)
+        with cuda.get_device(1):
+            g_expect = cupy.zeros_like(a.data)
+            cupy.testing.assert_array_equal(a.grad, g_expect)
+
     @attr.gpu
     def test_zerograd_gpu(self):
         self.check_zerograd(cuda.cupy.empty(3, dtype=np.float32))

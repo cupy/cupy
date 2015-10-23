@@ -24,6 +24,7 @@ setup(
               'chainer.links.activation',
               'chainer.links.connection',
               'chainer.links.loss',
+              'chainer.links.model',
               'chainer.links.normalization',
               'chainer.optimizers',
               'chainer.serializers',

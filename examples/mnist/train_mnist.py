@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 """Chainer example: train a multi-layer perceptron on MNIST
 
-This is a minimal example to write a feed-forward net. It requires scikit-learn
-to load MNIST dataset.
+This is a minimal example to write a feed-forward net.
 
 """
 import argparse
@@ -11,21 +10,21 @@ import numpy as np
 import six
 
 import chainer
-from chainer import computational_graph as c
+from chainer import computational_graph
 from chainer import cuda
-import chainer.functions as F
+import chainer.links as L
 from chainer import optimizers
 
 import data
+import net
 
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
+parser.add_argument('--net', '-n', choices=('simple', 'parallel'),
+                    default='simple', help='network type')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
-if args.gpu >= 0:
-    cuda.check_cuda_available()
-xp = cuda.cupy if args.gpu >= 0 else np
 
 batchsize = 100
 n_epoch = 20
@@ -43,22 +42,16 @@ x_train, x_test = np.split(mnist['data'],   [N])
 y_train, y_test = np.split(mnist['target'], [N])
 N_test = y_test.size
 
-# Prepare multi-layer perceptron model
-model = chainer.FunctionSet(l1=F.Linear(784, n_units),
-                            l2=F.Linear(n_units, n_units),
-                            l3=F.Linear(n_units, 10))
-if args.gpu >= 0:
-    cuda.get_device(args.gpu).use()
-    model.to_gpu()
-
-
-def forward(x_data, y_data, train=True):
-    # Neural net architecture
-    x, t = chainer.Variable(x_data), chainer.Variable(y_data)
-    h1 = F.dropout(F.relu(model.l1(x)),  train=train)
-    h2 = F.dropout(F.relu(model.l2(h1)), train=train)
-    y = model.l3(h2)
-    return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
+# Prepare multi-layer perceptron model, defined in net.py
+if args.net == 'simple':
+    model = L.Classifier(net.MnistMLP(784, n_units, 10))
+    if args.gpu >= 0:
+        cuda.get_device(args.gpu).use()
+        model.to_gpu()
+elif args.net == 'parallel':
+    cuda.check_cuda_available()
+    model = L.Classifier(net.MnistMLPParallel(784, n_units, 10))
+    xp = cuda.cupy
 
 
 # Setup optimizer
@@ -74,25 +67,21 @@ for epoch in six.moves.range(1, n_epoch + 1):
     sum_accuracy = 0
     sum_loss = 0
     for i in six.moves.range(0, N, batchsize):
-        x_batch = xp.asarray(x_train[perm[i:i + batchsize]])
-        y_batch = xp.asarray(y_train[perm[i:i + batchsize]])
+        x = chainer.Variable(xp.asarray(x_train[perm[i:i + batchsize]]))
+        t = chainer.Variable(xp.asarray(y_train[perm[i:i + batchsize]]))
 
-        optimizer.zero_grads()
-        loss, acc = forward(x_batch, y_batch)
-        loss.backward()
-        optimizer.update()
+        # Pass the loss function (Classifier defines it) and its arguments
+        optimizer.update(model, x, t)
 
         if epoch == 1 and i == 0:
-            with open("graph.dot", "w") as o:
-                o.write(c.build_computational_graph((loss, )).dump())
-            with open("graph.wo_split.dot", "w") as o:
-                g = c.build_computational_graph((loss, ),
-                                                remove_split=True)
+            with open('graph.dot', 'w') as o:
+                g = computational_graph.build_computational_graph(
+                    (model.loss, ), remove_split=True)
                 o.write(g.dump())
             print('graph generated')
 
-        sum_loss += float(loss.data) * len(y_batch)
-        sum_accuracy += float(acc.data) * len(y_batch)
+        sum_loss += float(model.loss.data) * len(t.data)
+        sum_accuracy += float(model.accuracy.data) * len(t.data)
 
     print('train mean loss={}, accuracy={}'.format(
         sum_loss / N, sum_accuracy / N))
@@ -101,13 +90,13 @@ for epoch in six.moves.range(1, n_epoch + 1):
     sum_accuracy = 0
     sum_loss = 0
     for i in six.moves.range(0, N_test, batchsize):
-        x_batch = xp.asarray(x_test[i:i + batchsize])
-        y_batch = xp.asarray(y_test[i:i + batchsize])
-
-        loss, acc = forward(x_batch, y_batch, train=False)
-
-        sum_loss += float(loss.data) * len(y_batch)
-        sum_accuracy += float(acc.data) * len(y_batch)
+        x = chainer.Variable(xp.asarray(x_test[i:i + batchsize]),
+                             volatile='on')
+        t = chainer.Variable(xp.asarray(y_test[i:i + batchsize]),
+                             volatile='on')
+        loss = model(x, t)
+        sum_loss += float(loss.data) * len(t.data)
+        sum_accuracy += float(model.accuracy.data) * len(t.data)
 
     print('test  mean loss={}, accuracy={}'.format(
         sum_loss / N_test, sum_accuracy / N_test))
