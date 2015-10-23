@@ -1,4 +1,11 @@
-# flake8: NOQA
-# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+from cupy import reduction
 
-# TODO(okuta): Implement count_nonzero
+
+def count_nonzero(x):
+    return int(_count_nonzero(x))
+
+_count_nonzero = reduction.create_reduction_func(
+    'cupy_count_nonzero',
+    ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
+     'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'),
+    ('in0', 'a + b', 'out0 = (a != 0)', None), 0)

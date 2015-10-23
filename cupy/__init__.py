@@ -1376,6 +1376,8 @@ fmin = math.misc.fmin
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
+count_nonzero = sorting.count.count_nonzero
+
 argmax = sorting.search.argmax
 argmin = sorting.search.argmin
 
