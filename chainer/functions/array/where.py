@@ -1,32 +1,36 @@
+import numpy
+
 from chainer import cuda
 from chainer import function
-from chainer import type_check
+from chainer.utils import type_check
 
 
-class Where(function.Fuction):
-
-    def __init__(self, condition):
-        self.condition = condition
+class Where(function.Function):
 
     def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() == 2)
+        type_check.expect(in_types.size() == 3)
+        c_type, x_type, y_type = in_types
+
         type_check.expect(
-            in_types[0].dtype == in_types[1].dtype,
-            in_types[0].shape == self.condition.shape,
-            in_types[1].shape == self.condition.shape,
+            c_type.dtype == numpy.bool_,
+            x_type.dtype == y_type.dtype,
+            x_type.shape == c_type.shape,
+            y_type.shape == c_type.shape,
         )
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
-        return xp.where(self.condition, inputs[0], inputs[1]),
+        condition, x, y = inputs
+        return xp.where(condition, x, y),
 
     def backward(self, inputs, grads):
         xp = cuda.get_array_module(*inputs)
+        condition, x, y = inputs
         zeros = xp.zeros((), dtype=grads.dtype)
-        gx = xp.where(self.condition, grads, zeros)
-        gy = xp.where(~self.condition, grads, zeros)
+        gx = xp.where(condition, grads, zeros)
+        gy = xp.where(~condition, grads, zeros)
         return gx, gy
 
 
 def where(condition, x, y):
-    return Where(condition)(x, y)
+    return Where()(condition, x, y)
