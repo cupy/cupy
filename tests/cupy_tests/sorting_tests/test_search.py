@@ -71,37 +71,44 @@ class TestSearch(unittest.TestCase):
 
 class TestWhere(unittest.TestCase):
 
-    @testing.for_all_dtypes()
+    cond_shape = (2, 3, 4)
+    x_shape = (2, 3, 4)
+    y_shape = (2, 3, 4)
+
+    @testing.for_all_dtypes(name='cond_type')
+    @testing.for_all_dtypes(name='x_type')
+    @testing.for_all_dtypes(name='y_type')
     @testing.numpy_cupy_allclose()
-    def test_basic(self, xp, dtype):
-        cond = testing.shaped_random((2, 3, 4), xp, dtype=xp.bool_)
-        x = testing.shaped_random((2, 3, 4), xp, dtype)
-        y = testing.shaped_random((2, 3, 4), xp, dtype)
+    def test_where(self, xp, cond_type, x_type, y_type):
+        m = testing.shaped_random(self.cond_shape, xp, xp.bool_)
+        cond = testing.shaped_random(self.cond_shape, xp, cond_type) * m
+        x = testing.shaped_random(self.x_shape, xp, x_type)
+        y = testing.shaped_random(self.y_shape, xp, y_type)
         return xp.where(cond, x, y)
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_condition_broadcast(self, xp, dtype):
-        cond = testing.shaped_random((4,), xp, dtype=xp.bool_)
-        x = testing.shaped_random((2, 3, 4), xp, dtype)
-        y = testing.shaped_random((2, 3, 4), xp, dtype)
-        return xp.where(cond, x, y)
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_value_broadcast(self, xp, dtype):
-        cond = testing.shaped_random((2, 3, 4), xp, dtype=xp.bool_)
-        x = testing.shaped_random((2, 3, 4), xp, dtype)
-        y = testing.shaped_random((3, 4), xp, dtype)
-        return xp.where(cond, x, y)
+class TestWhereBroadcast(TestWhere):
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
-    def test_condition_value_broadcast(self, xp, dtype):
-        cond = testing.shaped_random((3, 4), xp, dtype=xp.bool_)
-        x = testing.shaped_random((2, 3, 4), xp, dtype)
-        y = testing.shaped_random((4,), xp, dtype)
-        return xp.where(cond, x, y)
+    cond_shape = (4,)
+    x_shape = (2, 3, 4)
+    y_shape = (2, 3, 4)
+
+
+class TestWhereValueBroadcast(TestWhere):
+
+    cond_shape = (2, 3, 4)
+    x_shape = (2, 3, 4)
+    y_shape = (3, 4)
+
+
+class TestWhereConditionValueBroadcast(TestWhere):
+
+    cond_shape = (3, 4)
+    x_shape = (2, 3, 4)
+    y_shape = (4,)
+
+
+class TestWhereError(unittest.TestCase):
 
     @testing.numpy_cupy_raises()
     def test_one_argument(self, xp):
