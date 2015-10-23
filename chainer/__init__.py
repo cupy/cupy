@@ -19,6 +19,7 @@ Deserializer = serializer.Deserializer
 Flag = flag.Flag
 Function = function.Function
 FunctionSet = function_set.FunctionSet
+GradientMethod = optimizer.GradientMethod
 Link = link.Link
 Optimizer = optimizer.Optimizer
 Serializer = serializer.Serializer

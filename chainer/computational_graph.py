@@ -9,15 +9,15 @@ class DotNode(object):
 
     This class represents a node of computational graph,
     with some utilities for dot language.
-    """
 
+    """
     def __init__(self, node):
         """Initializes DotNode.
 
         Args:
             node: :class: `Variable` object or :class: `Function` object.
-        """
 
+        """
         assert isinstance(node, (variable.Variable, function.Function))
         self.node = node
         self.id_ = id(node)
@@ -51,13 +51,14 @@ class DotNode(object):
 
 
 class ComputationalGraph(object):
+
     """Class that represents computational graph.
 
     .. note::
 
       We assume that the computational graph is directed and acyclic.
-    """
 
+    """
     def __init__(self, nodes, edges):
         """Initializes computational graph.
 
@@ -65,6 +66,7 @@ class ComputationalGraph(object):
             nodes (list): List of nodes. Each node is either
                  :class:`Variable` object or :class:`Function` object.
             edges (list): List of edges. Each edge consists of pair of nodes.
+
         """
         self.nodes = nodes
         self.edges = edges
@@ -75,8 +77,8 @@ class ComputationalGraph(object):
         `label` property of is used as short description of each node.
         Returns:
             str: The graph in dot format.
-        """
 
+        """
         ret = "digraph graphname{"
         for node in self.nodes:
             assert isinstance(node, (variable.Variable, function.Function))
@@ -102,6 +104,7 @@ class ComputationalGraph(object):
 
         Returns
             str: The graph in specified format.
+
         """
         if format == 'dot':
             return self._to_dot()
@@ -159,6 +162,8 @@ def build_computational_graph(outputs, remove_split=True):
         See :class:`TestGraphBuilder` for details.
 
     """
+    if not remove_split:
+        raise ValueError('remove_split=False is not supported anymore')
 
     cands = []
     seen_edges = set()
@@ -189,28 +194,15 @@ def build_computational_graph(outputs, remove_split=True):
         _, _, cand = heapq.heappop(cands)
         if isinstance(cand, variable.Variable):
             creator = cand.creator
-            if remove_split and isinstance(creator, function.Split):
-                # assume that function.Split has only one input
-                next_cand = creator.inputs[0]
-                add_cand(next_cand)
-                continue
             if creator is not None and (creator, cand) not in seen_edges:
                 add_cand(creator)
                 seen_edges.add((creator, cand))
                 nodes.add(HashableObject(creator))
                 nodes.add(HashableObject(cand))
         elif isinstance(cand, function.Function):
-            if remove_split and isinstance(cand, function.Split):
-                next_cand = creator.inputs[0]
-                add_cand(next_cand)
-                continue
             for input_ in cand.inputs:
                 if input_ is not cand and (input_, cand) not in seen_edges:
                     creator = input_.creator
-                    if remove_split and \
-                       creator is not None and \
-                       isinstance(creator, function.Split):
-                        input_ = creator.inputs[0]
                     add_cand(input_)
                     seen_edges.add((input_, cand))
                     nodes.add(HashableObject(input_))

@@ -6,52 +6,48 @@ import six.moves.cPickle as pickle
 
 import chainer
 from chainer import cuda
-from chainer import functions as F
+from chainer import links as L
 from chainer import testing
 from chainer.testing import attr
 
 
-class MockFunction(chainer.Function):
+class SimpleLink(chainer.Link):
 
     def __init__(self, shape):
-        self.p = np.zeros(shape).astype(np.float32)
-        self.gp = np.ones(shape).astype(np.float32)
-
-    parameter_names = ('p', )
-    gradient_names = ('gp', )
+        super(SimpleLink, self).__init__(p=shape)
+        self.p.data.fill(0)
+        self.p.grad.fill(1)
 
 
 class TestNestedFunctionSet(unittest.TestCase):
 
     def setUp(self):
         self.fs1 = chainer.FunctionSet(
-            a=MockFunction((1, 2)))
+            a=SimpleLink((1, 2)))
         self.fs2 = chainer.FunctionSet(
             fs1=self.fs1,
-            b=MockFunction((3, 4)))
-
-    def test_get_sorted_funcs(self):
-        six.assertCountEqual(
-            self, [k for (k, v) in self.fs2._get_sorted_funcs()], ('b', 'fs1'))
+            b=SimpleLink((3, 4)))
 
     def test_collect_parameters(self):
-        p_b = np.zeros((3, 4)).astype(np.float32)
-        p_a = np.zeros((1, 2)).astype(np.float32)
-        gp_b = np.ones((3, 4)).astype(np.float32)
-        gp_a = np.ones((1, 2)).astype(np.float32)
+        params = self.fs2.parameters
+        grads = self.fs2.gradients
+        self.assertEqual(len(params), 2)
+        self.assertEqual(len(grads), 2)
 
-        actual = (self.fs2.parameters, self.fs2.gradients)
-        self.assertTrue(list(map(len, actual)) == [2, 2])
-        self.assertTrue((actual[0][0] == p_b).all())
-        self.assertTrue((actual[0][1] == p_a).all())
-        self.assertTrue((actual[1][0] == gp_b).all())
-        self.assertTrue((actual[1][1] == gp_a).all())
+        self.assertIn(params[0].shape, ((1, 2), (3, 4)))
+        idx_a = 0 if params[0].shape == (1, 2) else 1
+        idx_b = 1 - idx_a
+        self.assertIs(params[idx_a], self.fs1.a.p.data)
+        self.assertIs(grads[idx_a], self.fs1.a.p.grad)
+        self.assertIs(params[idx_b], self.fs2.b.p.data)
+        self.assertIs(grads[idx_b], self.fs2.b.p.grad)
 
     def test_pickle_cpu(self):
         fs2_serialized = pickle.dumps(self.fs2)
         fs2_loaded = pickle.loads(fs2_serialized)
-        self.assertTrue((self.fs2.b.p == fs2_loaded.b.p).all())
-        self.assertTrue((self.fs2.fs1.a.p == fs2_loaded.fs1.a.p).all())
+        self.assertTrue((self.fs2.b.p.data == fs2_loaded.b.p.data).all())
+        self.assertTrue(
+            (self.fs2.fs1.a.p.data == fs2_loaded.fs1.a.p.data).all())
 
     @attr.gpu
     def test_pickle_gpu(self):
@@ -61,27 +57,24 @@ class TestNestedFunctionSet(unittest.TestCase):
         fs2_loaded.to_cpu()
         self.fs2.to_cpu()
 
-        self.assertTrue((self.fs2.b.p == fs2_loaded.b.p).all())
-        self.assertTrue((self.fs2.fs1.a.p == fs2_loaded.fs1.a.p).all())
+        self.assertTrue((self.fs2.b.p.data == fs2_loaded.b.p.data).all())
+        self.assertTrue(
+            (self.fs2.fs1.a.p.data == fs2_loaded.fs1.a.p.data).all())
 
 
 class TestFunctionSet(unittest.TestCase):
 
     def setUp(self):
         self.fs = chainer.FunctionSet(
-            a=F.Linear(3, 2),
-            b=F.Linear(3, 2)
+            a=L.Linear(3, 2),
+            b=L.Linear(3, 2)
         )
 
-    def test_get_sorted_funcs(self):
-        six.assertCountEqual(
-            self, [k for (k, v) in self.fs._get_sorted_funcs()], ('a', 'b'))
-
     def check_equal_fs(self, fs1, fs2):
-        self.assertTrue((fs1.a.W == fs2.a.W).all())
-        self.assertTrue((fs1.a.b == fs2.a.b).all())
-        self.assertTrue((fs1.b.W == fs2.b.W).all())
-        self.assertTrue((fs1.b.b == fs2.b.b).all())
+        self.assertTrue((fs1.a.W.data == fs2.a.W.data).all())
+        self.assertTrue((fs1.a.b.data == fs2.a.b.data).all())
+        self.assertTrue((fs1.b.W.data == fs2.b.W.data).all())
+        self.assertTrue((fs1.b.b.data == fs2.b.b.data).all())
 
     def test_pickle_cpu(self):
         s = pickle.dumps(self.fs)
@@ -114,10 +107,10 @@ class TestFunctionSet(unittest.TestCase):
         self.fs.copy_parameters_from(params)
         self.fs.to_cpu()
 
-        self.assertTrue((self.fs.a.W == aW).all())
-        self.assertTrue((self.fs.a.b == ab).all())
-        self.assertTrue((self.fs.b.W == bW).all())
-        self.assertTrue((self.fs.b.b == bb).all())
+        self.assertTrue((self.fs.a.W.data == aW).all())
+        self.assertTrue((self.fs.a.b.data == ab).all())
+        self.assertTrue((self.fs.b.W.data == bW).all())
+        self.assertTrue((self.fs.b.b.data == bb).all())
 
     def test_copy_parameters_from_cpu_to_cpu(self):
         self.check_copy_parameters_from(-1, -1)
