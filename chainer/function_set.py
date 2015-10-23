@@ -128,7 +128,7 @@ class FunctionSet(object):
     def parameters(self, params):
         funcs = self._get_sorted_funcs()
 
-        expected_params_size = sum([len(func.parameters) for _, func in funcs])
+        expected_params_size = sum(len(func.parameters) for _, func in funcs)
         assert expected_params_size == len(params)
 
         idx = 0
