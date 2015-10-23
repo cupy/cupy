@@ -26,10 +26,9 @@ class Where(function.Function):
     def backward(self, inputs, grads):
         xp = cuda.get_array_module(*inputs)
         condition, x, y = inputs
-        zeros = xp.zeros((), dtype=grads.dtype)
-        gx = xp.where(condition, grads, zeros)
-        gy = xp.where(~condition, grads, zeros)
-        return gx, gy
+        gx = xp.where(condition, grads[0], 0)
+        gy = xp.where(~condition, grads[0], 0)
+        return None, gx, gy
 
 
 def where(condition, x, y):
