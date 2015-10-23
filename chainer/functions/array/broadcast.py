@@ -27,7 +27,7 @@ def _backward_one(x, g):
 
 class Broadcast(function.Function):
 
-    """Function that broadcast given arrays."""
+    """Function that broadcasts given arrays."""
 
     def check_type_forward(self, in_types):
         shapes = [t.eval().shape for t in in_types]
