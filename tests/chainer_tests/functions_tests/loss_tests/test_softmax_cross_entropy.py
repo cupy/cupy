@@ -36,7 +36,11 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
                 continue
             loss_expect -= math.log(y[i, self.t[i]] / y[i].sum())
             count += 1
-        loss_expect /= count
+
+        if count == 0:
+            loss_expect = 0.0
+        else:
+            loss_expect /= count
 
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
@@ -108,7 +112,11 @@ class TestReplicatedSoftmaxCrossEntropy1(TestSoftmaxCrossEntropy):
                 loss_expect -= math.log(
                     y[i, self.t[i, k], k] / y[i, :, k].sum())
                 count += 1
-        loss_expect /= count
+
+        if count == 0:
+            loss_expect = 0.0
+        else:
+            loss_expect /= count
 
         self.assertAlmostEqual(loss_expect, loss_value, places=4)
 
@@ -151,6 +159,13 @@ class TestSoftmaxCrossEntropyWithIgnoreLabel(TestSoftmaxCrossEntropy):
         self.t[2] = -1
 
 
+class TestSoftmaxCrossEntropyIgnoreAll(TestSoftmaxCrossEntropy):
+
+    def setUp(self):
+        super(TestSoftmaxCrossEntropyIgnoreAll, self).setUp()
+        self.t[:] = -1
+
+
 class TestReplicatedSoftmaxCrossEntropy1IgnoreLabel(
         TestReplicatedSoftmaxCrossEntropy1):
 
@@ -165,6 +180,22 @@ class TestReplicatedSoftmaxCrossEntropy2IgnoreLabel(
     def setUp(self):
         super(TestReplicatedSoftmaxCrossEntropy2IgnoreLabel, self).setUp()
         self.t[0, 1, 2] = -1
+
+
+class TestReplicatedSoftmaxCrossEntropy1IgnoreAll(
+        TestReplicatedSoftmaxCrossEntropy1):
+
+    def setUp(self):
+        super(TestReplicatedSoftmaxCrossEntropy1IgnoreAll, self).setUp()
+        self.t[:] = -1
+
+
+class TestReplicatedSoftmaxCrossEntropy2IgnoreAll(
+        TestReplicatedSoftmaxCrossEntropy2):
+
+    def setUp(self):
+        super(TestReplicatedSoftmaxCrossEntropy2IgnoreAll, self).setUp()
+        self.t[:] = -1
 
 
 testing.run_module(__name__, __file__)

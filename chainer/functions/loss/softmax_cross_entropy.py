@@ -43,6 +43,10 @@ class SoftmaxCrossEntropy(function.Function):
             count = (t != self.ignore_label).sum()
         else:
             count = x.shape[0]
+
+        if count == 0:
+            return numpy.array(0.0, dtype=x.dtype),
+
         y = (numpy.log(p) * (t.flat != self.ignore_label)).sum(keepdims=True) \
             * (-1.0 / count)
         return y.reshape(()),
@@ -55,6 +59,10 @@ class SoftmaxCrossEntropy(function.Function):
             count = float((t != self.ignore_label).sum())
         else:
             count = t.shape[0]
+
+        if count == 0:
+            return cupy.array(0.0, dtype=x.dtype),
+
         y = cupy.rollaxis(self.y, 1, self.y.ndim)
         ret = cuda.reduce(
             'S t, raw T y, int32 n_channel, T inv_count', 'T out',
@@ -86,6 +94,10 @@ class SoftmaxCrossEntropy(function.Function):
             count = (t != self.ignore_label).sum()
         else:
             count = t.shape[0]
+
+        if count == 0:
+            return numpy.zeros_like(x), None
+
         gx *= gloss / count
         return gx, None
 
@@ -98,6 +110,10 @@ class SoftmaxCrossEntropy(function.Function):
             count = float((t != self.ignore_label).sum())
         else:
             count = t.shape[0]
+
+        if count == 0:
+            return cupy.zeros_like(x), None
+
         coeff = cuda.cupy.divide(gloss, count, dtype=gloss.dtype)
         gx = cuda.elementwise(
             'T y, S t, raw T coeff, S n_channel, S n_unit',
@@ -127,6 +143,7 @@ def softmax_cross_entropy(x, t, use_cudnn=True, normalize=True):
             to 2, it computes a cross entropy of the replicated softmax if the
             number of dimensions is greater than 2.
         t (Variable): Variable holding an int32 vector of groundtruth labels.
+            If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
         normalize (Variable): Variable holding a boolean value which
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
