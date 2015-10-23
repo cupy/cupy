@@ -12,77 +12,106 @@ from chainer.utils import type_check
 
 class TestBroadcast(unittest.TestCase):
 
-    x_shape = (3, 1, 5)
-    y_shape = (1, 2, 5)
+    in_shapes = [(3, 1, 5), (1, 2, 5)]
     out_shape = (3, 2, 5)
 
     def setUp(self):
         uniform = numpy.random.uniform
-        self.x_data = uniform(0, 1, self.x_shape).astype(numpy.float32)
-        self.y_data = uniform(0, 1, self.y_shape).astype(numpy.float32)
-        self.gbx_data = uniform(0, 1, self.out_shape).astype(numpy.float32)
-        self.gby_data = uniform(0, 1, self.out_shape).astype(numpy.float32)
+        self.data = [uniform(0, 1, shape).astype(numpy.float32)
+                     for shape in self.in_shapes]
+        self.grads = [uniform(0, 1, self.out_shape).astype(numpy.float32)
+                      for _ in range(len(self.in_shapes))]
 
-    def check_forward(self, x_data, y_data):
-        x = chainer.Variable(x_data)
-        y = chainer.Variable(y_data)
+    def check_forward(self, data):
+        xs = [chainer.Variable(x) for x in data]
+        bxs = functions.broadcast(*xs)
 
-        bx, by = functions.broadcast(x, y)
+        # When len(xs) == 1, function returns a Variable object
+        if isinstance(bxs, chainer.Variable):
+            bxs = (bxs,)
 
-        self.assertEqual(bx.data.shape, self.out_shape)
-        self.assertEqual(by.data.shape, self.out_shape)
+        for bx in bxs:
+            self.assertEqual(bx.data.shape, self.out_shape)
 
     def test_forward_cpu(self):
-        self.check_forward(self.x_data, self.y_data)
+        self.check_forward(self.data)
 
     @attr.gpu
     def test_forward_gpu(self):
-        self.check_forward(cuda.to_gpu(self.x_data),
-                           cuda.to_gpu(self.y_data))
+        self.check_forward([cuda.to_gpu(x) for x in self.data])
 
-    def check_backward(self, x_data, y_data, gbx_data, gby_data):
-        x = chainer.Variable(x_data)
-        y = chainer.Variable(y_data)
-        bx, by = functions.broadcast(x, y)
+    def check_backward(self, data, grads):
+        xs = [chainer.Variable(x) for x in data]
+        bxs = functions.broadcast(*xs)
 
-        func = by.creator
-        f = lambda: func.forward((x.data, y.data))
+        # When len(xs) == 1, function returns a Variable object
+        if isinstance(bxs, chainer.Variable):
+            bxs = (bxs,)
 
-        bx.grad = gbx_data
-        bx.backward()
-        gx, gy = gradient_check.numerical_grad(
-            f, (x.data, y.data), (bx.grad, by.grad))
-        gradient_check.assert_allclose(gx, x.grad)
+        func = bxs[0].creator
+        f = lambda: func.forward(data)
 
-        by.grad = gby_data
-        by.backward()
-        gx, gy = gradient_check.numerical_grad(
-            f, (x.data, y.data), (bx.grad, by.grad))
-        gradient_check.assert_allclose(gy, y.grad)
+        for i, (bx, grad) in enumerate(zip(bxs, grads)):
+            bx.grad = grad
+            bx.backward()
+            gxs = gradient_check.numerical_grad(
+                f, data, tuple(bx.grad for bx in bxs))
+            gradient_check.assert_allclose(gxs[i], xs[i].grad)
 
     def test_backward_cpu(self):
-        self.check_backward(self.x_data, self.y_data,
-                            self.gbx_data, self.gby_data)
+        self.check_backward(self.data, self.grads)
 
     @attr.gpu
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x_data),
-                            cuda.to_gpu(self.y_data),
-                            cuda.to_gpu(self.gbx_data),
-                            cuda.to_gpu(self.gby_data))
+        self.check_backward([cuda.to_gpu(x) for x in self.data],
+                            [cuda.to_gpu(x) for x in self.grads])
 
 
 class TestBroadcastFill(TestBroadcast):
 
-    x_shape = (3, 2, 5)
-    y_shape = (5,)
+    in_shapes = [(3, 2, 5), (5,)]
     out_shape = (3, 2, 5)
 
 
 class TestBroadcastScalar(TestBroadcast):
 
-    x_shape = (3, 2, 5)
-    y_shape = ()
+    in_shapes = [(3, 2, 5), ()]
+    out_shape = (3, 2, 5)
+
+
+class TestBroadcastSameShape(TestBroadcast):
+
+    in_shapes = [(3, 2, 5), (3, 2, 5)]
+    out_shape = (3, 2, 5)
+
+
+class TestBroadcastScalarAndScalar(TestBroadcast):
+
+    in_shapes = [(), ()]
+    out_shape = ()
+
+
+class TestBroadcastOne(TestBroadcast):
+
+    in_shapes = [(1, 1, 1), (1,)]
+    out_shape = (1, 1, 1)
+
+
+class TestBroadcastOneAndScalar(TestBroadcast):
+
+    in_shapes = [(1, 1, 1), ()]
+    out_shape = (1, 1, 1)
+
+
+class TestBroadcastOneArgument(TestBroadcast):
+
+    in_shapes = [(3, 2, 5)]
+    out_shape = (3, 2, 5)
+
+
+class TestBroadcastThreeArguments(TestBroadcast):
+
+    in_shapes = [(3, 1, 5), (1, 2, 5), (3, 2, 1)]
     out_shape = (3, 2, 5)
 
 
