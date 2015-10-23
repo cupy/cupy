@@ -43,6 +43,7 @@ class SoftmaxCrossEntropy(function.Function):
             count = (t != self.ignore_label).sum()
         else:
             count = x.shape[0]
+        self.count = count
 
         if count == 0:
             return numpy.zeros((), dtype=x.dtype),
@@ -59,6 +60,7 @@ class SoftmaxCrossEntropy(function.Function):
             count = float((t != self.ignore_label).sum())
         else:
             count = t.shape[0]
+        self.count = count
 
         if count == 0:
             return cupy.zeros((), dtype=x.dtype),
@@ -73,6 +75,9 @@ class SoftmaxCrossEntropy(function.Function):
 
     def backward_cpu(self, inputs, grad_outputs):
         x, t = inputs
+        if self.count == 0:
+            return numpy.zeros_like(x), None
+
         gloss = grad_outputs[0]
         n_unit = t.size // t.shape[0]
         if self.y.ndim == 2:
@@ -90,31 +95,18 @@ class SoftmaxCrossEntropy(function.Function):
             gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
             gx = gx.reshape(self.y.shape)
 
-        if getattr(self, 'normalize', True):
-            count = (t != self.ignore_label).sum()
-        else:
-            count = t.shape[0]
-
-        if count == 0:
-            return numpy.zeros_like(x), None
-
-        gx *= gloss / count
+        gx *= gloss / self.count
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):
         cupy = cuda.cupy
         x, t = inputs
-        gloss = grad_outputs[0]
-        n_unit = t.size // t.shape[0]
-        if getattr(self, 'normalize', True):
-            count = float((t != self.ignore_label).sum())
-        else:
-            count = t.shape[0]
-
-        if count == 0:
+        if self.count == 0:
             return cupy.zeros_like(x), None
 
-        coeff = cuda.cupy.divide(gloss, count, dtype=gloss.dtype)
+        gloss = grad_outputs[0]
+        n_unit = t.size // t.shape[0]
+        coeff = cuda.cupy.divide(gloss, self.count, dtype=gloss.dtype)
         gx = cuda.elementwise(
             'T y, S t, raw T coeff, S n_channel, S n_unit',
             'T gx',
