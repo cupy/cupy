@@ -48,9 +48,9 @@ from chainer.functions.pooling import spatial_pyramid_pooling_2d
 
 ClippedReLU = clipped_relu.ClippedReLU
 clipped_relu = clipped_relu.clipped_relu
+ConnectionistTemporalClassification = ctc.ConnectionistTemporalClassification
 connectionist_temporal_classification \
     = ctc.connectionist_temporal_classification
-ConnectionistTemporalClassification = ctc.connectionist_temporal_classification
 LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LSTM = lstm.LSTM

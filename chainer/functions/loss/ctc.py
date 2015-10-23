@@ -1,8 +1,10 @@
+import numpy
+import six
+
 from chainer import cuda
 from chainer import function
 from chainer import utils
-import numpy
-import six
+from chainer.utils import type_check
 
 
 def _logsumexp(a, xp, axis=None):
@@ -48,15 +50,15 @@ class ConnectionistTemporalClassification(function.Function):
         self.zero_padding = -10000000000.0
 
     def check_type_forward(self, in_types):
-        utils.type_check.expect(in_types.size() > 1)
+        type_check.expect(in_types.size() > 1)
         l_type = in_types[0]
-        utils.type_check.expect(l_type.dtype == numpy.int32)
+        type_check.expect(l_type.dtype == numpy.int32)
 
         x_basetype = in_types[1]
 
         for i in six.moves.range(2, len(in_types)):
-            x_type = in_types[1]
-            utils.type_check.expect(
+            x_type = in_types[i]
+            type_check.expect(
                 x_type.dtype == numpy.float32,
                 x_type.shape == x_basetype.shape,
             )
@@ -102,7 +104,7 @@ class ConnectionistTemporalClassification(function.Function):
                 T value = z;
                 I c = i % b_max, b = i / b_max;
                 int ind[2] = {b, -1};
-                for(int index=0;index<c_max;++index){
+                for(int index=0; index<c_max; ++index){
                     ind[1] = index;
                     if(y[ind] == c){
                         T xvalue = x[ind];
