@@ -6,14 +6,24 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.utils import type_check
 
 
+@testing.parameterize(
+    {'in_shapes': [(3, 1, 5), (1, 2, 5)], 'out_shape': (3, 2, 5)},
+    {'in_shapes': [(3, 2, 5), (5,)],      'out_shape': (3, 2, 5)},
+    {'in_shapes': [(3, 2, 5), ()],        'out_shape': (3, 2, 5)},
+    {'in_shapes': [(3, 2, 5), (3, 2, 5)], 'out_shape': (3, 2, 5)},
+    {'in_shapes': [(), ()],               'out_shape': ()},
+    {'in_shapes': [(1, 1, 1), (1,)],      'out_shape': (1, 1, 1)},
+    {'in_shapes': [(1, 1, 1), ()],        'out_shape': (1, 1, 1)},
+    {'in_shapes': [(3, 2, 5)],            'out_shape': (3, 2, 5)},
+    {'in_shapes': [(3, 1, 5), (1, 2, 5), (3, 2, 1)],
+     'out_shape': (3, 2, 5)},
+)
 class TestBroadcast(unittest.TestCase):
-
-    in_shapes = [(3, 1, 5), (1, 2, 5)]
-    out_shape = (3, 2, 5)
 
     def setUp(self):
         uniform = numpy.random.uniform
@@ -65,54 +75,6 @@ class TestBroadcast(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward([cuda.to_gpu(x) for x in self.data],
                             [cuda.to_gpu(x) for x in self.grads])
-
-
-class TestBroadcastFill(TestBroadcast):
-
-    in_shapes = [(3, 2, 5), (5,)]
-    out_shape = (3, 2, 5)
-
-
-class TestBroadcastScalar(TestBroadcast):
-
-    in_shapes = [(3, 2, 5), ()]
-    out_shape = (3, 2, 5)
-
-
-class TestBroadcastSameShape(TestBroadcast):
-
-    in_shapes = [(3, 2, 5), (3, 2, 5)]
-    out_shape = (3, 2, 5)
-
-
-class TestBroadcastScalarAndScalar(TestBroadcast):
-
-    in_shapes = [(), ()]
-    out_shape = ()
-
-
-class TestBroadcastOne(TestBroadcast):
-
-    in_shapes = [(1, 1, 1), (1,)]
-    out_shape = (1, 1, 1)
-
-
-class TestBroadcastOneAndScalar(TestBroadcast):
-
-    in_shapes = [(1, 1, 1), ()]
-    out_shape = (1, 1, 1)
-
-
-class TestBroadcastOneArgument(TestBroadcast):
-
-    in_shapes = [(3, 2, 5)]
-    out_shape = (3, 2, 5)
-
-
-class TestBroadcastThreeArguments(TestBroadcast):
-
-    in_shapes = [(3, 1, 5), (1, 2, 5), (3, 2, 1)]
-    out_shape = (3, 2, 5)
 
 
 class TestBroadcastTypeError(unittest.TestCase):
