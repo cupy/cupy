@@ -66,7 +66,7 @@ def where(condition, x=None, y=None):
 
     .. note::
 
-       Currently Cupy doesn't support ``wherer(condition)``, that Numpy
+       Currently Cupy doesn't support ``where(condition)``, that Numpy
        supports.
 
     Args:
