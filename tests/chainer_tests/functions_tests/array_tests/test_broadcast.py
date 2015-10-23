@@ -134,3 +134,7 @@ class TestBroadcastTypeError(unittest.TestCase):
 
         with self.assertRaises(type_check.InvalidType):
             functions.broadcast(x, y)
+
+    def test_no_args(self):
+        with self.assertRaises(type_check.InvalidType):
+            functions.broadcast()

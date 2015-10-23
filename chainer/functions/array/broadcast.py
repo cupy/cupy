@@ -30,6 +30,8 @@ class Broadcast(function.Function):
     """Function that broadcasts given arrays."""
 
     def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() > 0)
+
         shapes = [t.eval().shape for t in in_types]
         r_shapes = [s[::-1] for s in shapes]
         r_filled = six.moves.zip_longest(*r_shapes, fillvalue=1)
