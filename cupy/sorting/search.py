@@ -62,6 +62,24 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
 
 
 def where(condition, x=None, y=None):
+    """Return elements, either from x or y, depending on condition.
+
+    .. note::
+
+       Currently Cupy doesn't support ``wherer(condition)``, that Numpy
+       supports.
+
+    Args:
+        condition (cupy.ndarray): When True, take x, otherwise take y.
+        x (cupy.ndarray): Values from which to choose on ``True``.
+        y (cupy.ndarray): Values from which to choose on ``False``.
+
+    Returns:
+        cupy.ndarray: Each element of output contains elements of ``x`` when
+            ``condition`` is ``True``, otherwise elements of ``y``.
+
+    """
+
     missing = (x is None, y is None).count(True)
 
     if missing == 1:
