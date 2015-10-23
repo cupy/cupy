@@ -29,7 +29,7 @@ class Where(function.Function):
         xp = cuda.get_array_module(*inputs)
         condition, x, y = inputs
         gx = xp.where(condition, grads[0], 0)
-        gy = xp.where(~condition, grads[0], 0)
+        gy = xp.where(condition, 0, grads[0])
         return None, gx, gy
 
 
