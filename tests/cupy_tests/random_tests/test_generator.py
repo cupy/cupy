@@ -234,8 +234,7 @@ class TestGetRandomState2(unittest.TestCase):
         generator.RandomState = self.rs_tmp
         generator._random_states = self.rs_dict
         if self.chainer_seed is None:
-            if 'CHAINER_SEED' in os.environ:
-                del os.environ['CHAINER_SEED']
+            os.environ.pop('CHAINER_SEED', None)
         else:
             os.environ['CHAINER_SEED'] = self.chainer_seed
 
