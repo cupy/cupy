@@ -1383,7 +1383,9 @@ argmin = sorting.search.argmin
 # Statistics
 # -----------------------------------------------------------------------------
 amin = statistics.order.amin
+min = statistics.order.amin
 amax = statistics.order.amax
+max = statistics.order.amax
 
 mean = statistics.meanvar.mean
 var = statistics.meanvar.var
