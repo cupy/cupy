@@ -1,5 +1,9 @@
 import nose
 
+from chainer.testing import parameterized
+
+parameterize = parameterized.parameterize
+
 
 def run_module(name, file):
     """Run current test cases of the file.
