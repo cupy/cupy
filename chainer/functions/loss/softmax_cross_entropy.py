@@ -45,7 +45,7 @@ class SoftmaxCrossEntropy(function.Function):
             count = x.shape[0]
 
         if count == 0:
-            return numpy.array(0.0, dtype=x.dtype),
+            return numpy.zeros((), dtype=x.dtype),
 
         y = (numpy.log(p) * (t.flat != self.ignore_label)).sum(keepdims=True) \
             * (-1.0 / count)
@@ -61,7 +61,7 @@ class SoftmaxCrossEntropy(function.Function):
             count = t.shape[0]
 
         if count == 0:
-            return cupy.array(0.0, dtype=x.dtype),
+            return cupy.zeros((), dtype=x.dtype),
 
         y = cupy.rollaxis(self.y, 1, self.y.ndim)
         ret = cuda.reduce(
