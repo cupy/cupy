@@ -71,15 +71,13 @@ def where(condition, x=None, y=None):
         # TODO(unno): return nonzero(cond)
         return NotImplementedError()
 
-    bc, bx, by = manipulation.dims.broadcast_arrays(condition, x, y)
-    return _where_kernel(bc, bx, by)
+    return _where_ufunc(condition, x, y)
 
-_where_kernel = elementwise.ElementwiseKernel(
-    'C c, T x, T y',
-    'T z',
-    'z = c ? x : y',
-    'cupy_where'
-)
+_where_ufunc = elementwise.create_ufunc(
+    'cupy_where',
+    ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
+     '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f', '?dd->d'),
+    'out0 = in0 ? in1 : in2')
 
 
 # TODO(okuta): Implement searchsorted
