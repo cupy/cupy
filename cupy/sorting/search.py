@@ -88,7 +88,7 @@ def where(condition, x=None, y=None):
         # TODO(unno): return nonzero(cond)
         return NotImplementedError()
 
-    return _where_ufunc(condition, x, y)
+    return _where_ufunc(condition.astype('?'), x, y)
 
 _where_ufunc = elementwise.create_ufunc(
     'cupy_where',
