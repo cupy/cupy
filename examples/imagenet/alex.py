@@ -4,7 +4,7 @@ import chainer.functions as F
 
 class Alex(chainer.FunctionSet):
 
-    """Single-GPU AlexNet.
+    """Single-GPU AlexNet without partition toward the channel axis.
 
     """
 
