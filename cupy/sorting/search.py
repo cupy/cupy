@@ -1,5 +1,4 @@
 from cupy import elementwise
-from cupy import manipulation
 from cupy import reduction
 
 
