@@ -151,7 +151,7 @@ class FunctionSet(object):
     def gradients(self, grads):
         funcs = self._get_sorted_funcs()
 
-        expected_grads_size = sum([len(func.gradients) for _, func in funcs])
+        expected_grads_size = sum(len(func.gradients) for _, func in funcs)
         assert expected_grads_size == len(grads)
 
         idx = 0
