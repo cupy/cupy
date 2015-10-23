@@ -15,6 +15,7 @@ from chainer.functions.array import reshape
 from chainer.functions.array import split_axis
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
+from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import embed_id
@@ -75,6 +76,8 @@ Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
 Transpose = transpose.Transpose
 transpose = transpose.transpose
+Where = where.Where
+where = where.where
 
 Bilinear = bilinear.Bilinear
 Convolution2D = convolution_2d.Convolution2D

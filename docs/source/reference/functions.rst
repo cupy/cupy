@@ -35,6 +35,7 @@ Array manipulation functions
 .. autofunction:: identity
 .. autofunction:: reshape
 .. autofunction:: split_axis
+.. autofunction:: where
 
 Activation functions
 --------------------

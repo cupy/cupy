@@ -1380,6 +1380,7 @@ count_nonzero = sorting.count.count_nonzero
 
 argmax = sorting.search.argmax
 argmin = sorting.search.argmin
+where = sorting.search.where
 
 # -----------------------------------------------------------------------------
 # Statistics

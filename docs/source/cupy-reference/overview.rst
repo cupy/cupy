@@ -370,6 +370,7 @@ Sorting, searching, and counting
 :func:`argmax`
 :func:`argmin`
 :func:`count_nonzero`
+:func:`where`
 
 Statistics
 ~~~~~~~~~~
