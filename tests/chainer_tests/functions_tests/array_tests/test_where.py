@@ -5,6 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 import chainer.functions as F
+from chainer import testing
 from chainer.testing import attr
 
 
@@ -43,3 +44,6 @@ class TestWhere(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.c_data),
                            cuda.to_gpu(self.x_data),
                            cuda.to_gpu(self.y_data))
+
+
+testing.run_module(__name__, __file__)
