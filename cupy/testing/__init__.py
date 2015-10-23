@@ -1,6 +1,7 @@
 from cupy.testing import array
 from cupy.testing import attr
 from cupy.testing import helper
+from cupy.testing import parameterized
 
 assert_allclose = array.assert_allclose
 assert_array_almost_equal = array.assert_array_almost_equal
@@ -25,6 +26,8 @@ for_float_dtypes = helper.for_float_dtypes
 for_signed_dtypes = helper.for_signed_dtypes
 for_unsigned_dtypes = helper.for_unsigned_dtypes
 for_int_dtypes = helper.for_int_dtypes
+
+parameterize = parameterized.parameterize
 
 shaped_arange = helper.shaped_arange
 shaped_reverse_arange = helper.shaped_reverse_arange
