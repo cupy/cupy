@@ -69,11 +69,13 @@ class TestSearch(unittest.TestCase):
         return a.argmin(axis=2)
 
 
+@testing.parameterize(
+    {'cond_shape': (2, 3, 4), 'x_shape': (2, 3, 4), 'y_shape': (2, 3, 4)},
+    {'cond_shape': (4,),      'x_shape': (2, 3, 4), 'y_shape': (2, 3, 4)},
+    {'cond_shape': (2, 3, 4), 'x_shape': (2, 3, 4), 'y_shape': (3, 4)},
+    {'cond_shape': (3, 4),    'x_shape': (2, 3, 4), 'y_shape': (4,)},
+)
 class TestWhere(unittest.TestCase):
-
-    cond_shape = (2, 3, 4)
-    x_shape = (2, 3, 4)
-    y_shape = (2, 3, 4)
 
     @testing.for_all_dtypes(name='cond_type')
     @testing.for_all_dtypes(name='x_type')
@@ -81,31 +83,12 @@ class TestWhere(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_where(self, xp, cond_type, x_type, y_type):
         m = testing.shaped_random(self.cond_shape, xp, xp.bool_)
+        # Almost all values of a matrix `shaped_random` makes are not zero.
+        # To make a sparse matrix, we need multiply `m`.
         cond = testing.shaped_random(self.cond_shape, xp, cond_type) * m
         x = testing.shaped_random(self.x_shape, xp, x_type)
         y = testing.shaped_random(self.y_shape, xp, y_type)
         return xp.where(cond, x, y)
-
-
-class TestWhereBroadcast(TestWhere):
-
-    cond_shape = (4,)
-    x_shape = (2, 3, 4)
-    y_shape = (2, 3, 4)
-
-
-class TestWhereValueBroadcast(TestWhere):
-
-    cond_shape = (2, 3, 4)
-    x_shape = (2, 3, 4)
-    y_shape = (3, 4)
-
-
-class TestWhereConditionValueBroadcast(TestWhere):
-
-    cond_shape = (3, 4)
-    x_shape = (2, 3, 4)
-    y_shape = (4,)
 
 
 class TestWhereError(unittest.TestCase):
