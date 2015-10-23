@@ -1,3 +1,5 @@
+from cupy import elementwise
+from cupy import manipulation
 from cupy import reduction
 
 
@@ -60,7 +62,24 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
 # TODO(okuta): Implement flatnonzero
 
 
-# TODO(okuta): Implement where
+def where(condition, x=None, y=None):
+    missing = (x is None, y is None).count(True)
+
+    if missing == 1:
+        raise ValueError("Must provide both 'x' and 'y' or neither.")
+    if missing == 2:
+        # TODO(unno): return nonzero(cond)
+        return NotImplementedError()
+
+    bc, bx, by = manipulation.dims.broadcast_arrays(condition, x, y)
+    return _where_kernel(bc, bx, by)
+
+_where_kernel = elementwise.ElementwiseKernel(
+    'C c, T x, T y',
+    'T z',
+    'z = c ? x : y',
+    'cupy_where'
+)
 
 
 # TODO(okuta): Implement searchsorted
