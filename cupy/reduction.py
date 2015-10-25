@@ -37,36 +37,27 @@ def _get_simple_reduction_kernel(
     ${preamble}
     #define REDUCE(a, b) (${reduce_expr})
     #define POST_MAP(a) (${post_map_expr})
+    #define _REDUCE(_offset) if (_tid < _offset) { \
+      _type_reduce _a = _sdata[_tid], _b = _sdata[(_tid + _offset)]; \
+      _sdata[_tid] = REDUCE(_a, _b); \
+    }
 
     typedef ${reduce_type} _type_reduce;
     extern "C" __global__ void ${name}(${params}) {
-      if (_out_clp2_size > 256) {
-        CUPY_FOR(_i, _out_ind.size()) {
-          _type_reduce _s = _type_reduce(${identity});
-          for (int _j = _i, _J = 0;
-               _j < _in_ind.size();
-               _j += _out_ind.size(), _J++) {
-            _in_ind.set(_j);
-            ${input_expr}
-            _type_reduce _a = ${pre_map_expr};
-            _s = REDUCE(_s, _a);
-          }
-          _out_ind.set(_i);
-          ${output_expr}
-          POST_MAP(_s);
-        }
-      } else {
-        extern __shared__ _type_reduce _sdata_raw[];
-        _type_reduce *_sdata = _sdata_raw;
-        int _tid = threadIdx.x;
-        _sdata[_tid] = _type_reduce(${identity});
-        unsigned int _i = _tid % _out_clp2_size;
-        if (_i >= _out_ind.size()) return;
+      extern __shared__ _type_reduce _sdata_raw[];
+      _type_reduce *_sdata = _sdata_raw;
+      unsigned int _tid = threadIdx.x;
+
+      int _J_offset = _tid / _block_stride;
+      int _j_offset = _J_offset * _out_ind.size();
+      int _J_stride = ${block_size};
+      int _j_stride = ${block_size} * _out_ind.size();
+
+      for (int _i_base = blockIdx.x * _block_stride;
+           _i_base < _out_ind.size();
+           _i_base += gridDim.x * _block_stride) {
         _type_reduce _s = _type_reduce(${identity});
-        int _J_offset = _tid / _out_clp2_size;
-        int _j_offset = _J_offset * _out_ind.size();
-        int _J_stride = ${block_size} / _out_clp2_size;
-        int _j_stride = _J_stride * _out_ind.size();
+        int _i = _i_base + _tid % _block_stride;
         for (int _j = _i + _j_offset, _J = _J_offset;
              _j < _in_ind.size();
              _j += _j_stride, _J += _J_stride) {
@@ -75,29 +66,32 @@ def _get_simple_reduction_kernel(
           _type_reduce _a = ${pre_map_expr};
           _s = REDUCE(_s, _a);
         }
-        _sdata[_tid] = _s;
-        __syncthreads();
-        if (_tid >= 256) return;
-        _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 256]);
-        __syncthreads();
-        if (_out_clp2_size <= 128) {
-          _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 128]);
+        if (_block_stride < ${block_size}) {
+          _sdata[_tid] = _s;
           __syncthreads();
-          if (_out_clp2_size <= 64) {
-            _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 64]);
+          if (_block_stride <= 256) {
+            _REDUCE(256);
             __syncthreads();
-            if (_out_clp2_size <= 32) {
-              _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 32]);
-              if (_out_clp2_size <= 16) {
-                _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 16]);
-                if (_out_clp2_size <= 8) {
-                  _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 8]);
-                  if (_out_clp2_size <= 4) {
-                    _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 4]);
-                    if (_out_clp2_size <= 2) {
-                      _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 2]);
-                      if (_out_clp2_size <= 1) {
-                        _sdata[_tid] = REDUCE(_sdata[_tid], _sdata[_tid + 1]);
+            if (_block_stride <= 128) {
+              _REDUCE(128)
+              __syncthreads();
+              if (_block_stride <= 64) {
+                _REDUCE(64)
+                __syncthreads();
+                if (_block_stride <= 32) {
+                  _REDUCE(32)
+                  if (_block_stride <= 16) {
+                    _REDUCE(16)
+                    if (_block_stride <= 8) {
+                      _REDUCE(8)
+                      if (_block_stride <= 4) {
+                        _REDUCE(4)
+                        if (_block_stride <= 2) {
+                          _REDUCE(2)
+                          if (_block_stride <= 1) {
+                            _REDUCE(1)
+                          }
+                        }
                       }
                     }
                   }
@@ -105,12 +99,14 @@ def _get_simple_reduction_kernel(
               }
             }
           }
+          _s = _sdata[_tid];
+          __syncthreads();
         }
-        _s = _sdata[_tid];
-        if (_tid >= _out_ind.size()) return;
-        _out_ind.set(_i);
-         ${output_expr}
-        POST_MAP(_s);
+        if (_J_offset == 0 && _i < _out_ind.size()) {
+          _out_ind.set(_i);
+          ${output_expr}
+          POST_MAP(_s);
+        }
       }
     }''').substitute(
         name=name,
@@ -213,7 +209,7 @@ class simple_reduction_function(object):
             in_params + out_params +
             _get_param_info(
                 'CIndexer _in_ind, CIndexer _out_ind', False) +
-            _get_param_info('int32 _out_clp2_size', True))
+            _get_param_info('int32 _block_stride', True))
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
@@ -243,28 +239,30 @@ class simple_reduction_function(object):
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, in_args[0].shape)
 
+        block_size = 512
         in_indexer = carray.Indexer(in_shape)
         out_indexer = carray.Indexer(out_shape)
-        out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
+        clp2_count = 2 ** int.bit_length(
+            int(in_indexer.size // out_indexer.size - 1))
+        block_stride = max(1, block_size // clp2_count)
 
         inout_args = _get_inout_args(
-            in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+            in_args, out_args, in_indexer, out_indexer, block_stride,
             self._params, True)
         args_info = _get_args_info(inout_args)
 
-        block_size = 512
         kern = _get_simple_reduction_function(
             routine, self._params, args_info,
             in_args[0].dtype.type, out_args[0].dtype.type, out_types,
             self.name, block_size, self.identity,
             self._input_expr, self._output_expr, self._preamble, ())
 
-        shared_mem = 32 * block_size
-        if out_clp2_size > 256:
-            shared_mem = 0
         # TODO(okuta) set actual size
-        kern.linear_launch(max(out_indexer.size, block_size), inout_args,
-                           shared_mem, block_size)
+        shared_mem = 32 * block_size
+
+        kern.linear_launch(
+            (out_indexer.size + block_stride - 1) // block_stride * block_size,
+            inout_args, shared_mem, block_size)
 
         if len(out_args) == 1:
             return out_args[0]
@@ -338,7 +336,7 @@ class ReductionKernel(object):
         self.params = (
             self.in_params + self.out_params +
             _get_param_info('CIndexer _in_ind, CIndexer _out_ind', False) +
-            _get_param_info('int32 _out_clp2_size', True))
+            _get_param_info('int32 _block_stride', True))
         self.identity = identity
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr
@@ -414,28 +412,30 @@ class ReductionKernel(object):
         out_args = _get_out_args_with_params(
             out_args, out_types, out_shape, self.out_params)
 
+        block_size = 512
         in_indexer = carray.Indexer(in_shape)
         out_indexer = carray.Indexer(out_shape)
-        out_clp2_size = 2 ** int.bit_length(int(out_indexer.size - 1))
+        clp2_count = 2 ** int.bit_length(
+            int(in_indexer.size // out_indexer.size - 1))
+        block_stride = max(1, block_size // clp2_count)
 
         inout_args = _get_inout_args(
-            in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+            in_args, out_args, in_indexer, out_indexer, block_stride,
             self.params, self.reduce_dims)
         args_info = _get_args_info(inout_args)
 
-        block_size = 512
         kern = _get_reduction_kernel(
             self.params, args_info, types,
             self.name, block_size, self.reduce_type, self.identity,
             self.map_expr, self.reduce_expr, self.post_map_expr,
             self.preamble, self.options)
 
-        shared_mem = 32 * block_size
-        if out_clp2_size > 256:
-            shared_mem = 0
         # TODO(okuta) set actual size
-        kern.linear_launch(max(out_indexer.size, block_size), inout_args,
-                           shared_mem, block_size)
+        shared_mem = 32 * block_size
+
+        kern.linear_launch(
+            (out_indexer.size + block_stride - 1) // block_stride * block_size,
+            inout_args, shared_mem, block_size)
         return out_args[0]
 
 
@@ -483,11 +483,13 @@ __device__ min_max_st my_max(const min_max_st& a, const min_max_st& b) {
 __device__ min_max_st my_argmin(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
+    if (a.value == b.value) return min_max_st(a.value, min(a.index, b.index));
     return (a.value <= b.value) ? a : b;
 }
 __device__ min_max_st my_argmax(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
+    if (a.value == b.value) return min_max_st(a.value, min(a.index, b.index));
     return (a.value >= b.value) ? a : b;
 }'''
 
