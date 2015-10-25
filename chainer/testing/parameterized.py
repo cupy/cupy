@@ -1,3 +1,4 @@
+import itertools
 import sys
 import unittest
 
