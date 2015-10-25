@@ -99,10 +99,18 @@ class BatchNormalization(function.Function):
             var = self.avg_var
 
         self.std = xp.sqrt(var, dtype=var.dtype)
-        x_mu = x - mean
-        self.x_hat = x_mu / self.std
-        y = self.gamma * self.x_hat
-        y += self.beta
+
+        if xp == numpy:
+            self.x_hat = (x - mean) / self.std
+            y = self.gamma * self.x_hat
+            y += self.beta
+        else:
+            self.x_hat, y = cuda.elementwise(
+                'T x, T mean, T std, T gamma, T beta', 'T x_hat, T y', '''
+                T x_hat_ = (x - mean) / std;
+                x_hat = x_hat_;
+                y = gamma * x_hat_ + beta;''', 'bn_fwd1')(
+                    x, mean, self.std, self.gamma, self.beta)
 
         # Compute exponential moving average
         if self.use_batch_mean:
@@ -114,10 +122,19 @@ class BatchNormalization(function.Function):
 
             m = ldim * rdim
             adjust = m / max(m - 1., 1.)  # unbiased estimation
-            self.avg_mean *= decay
-            self.avg_mean += (1 - decay) * mean
-            self.avg_var *= decay
-            self.avg_var += (1 - decay) * adjust * var
+            if xp == numpy:
+                self.avg_mean *= decay
+                self.avg_mean += (1 - decay) * mean
+                self.avg_var *= decay
+                self.avg_var += (1 - decay) * adjust * var
+            else:
+                cuda.elementwise(
+                    'T mean, T var, T decay, T adjust',
+                    'T avg_mean, T avg_var', '''
+                    avg_mean = decay * avg_mean + (1 - decay) * mean;
+                    avg_var = decay * avg_var + (1 - decay) * adjust * var;''',
+                    'bn_fwd2')(
+                        mean, var, decay, adjust, self.avg_mean, self.avg_var)
 
         return y.reshape(x_orig[0].shape),
 
@@ -127,7 +144,7 @@ class BatchNormalization(function.Function):
 
         ldim, cdim, rdim = self._internal_shape(x_orig[0])
         gy = gy[0].reshape(ldim, cdim, rdim)
-        m = ldim * rdim
+        inv_m = 1. / (ldim * rdim)
 
         gbeta = gy.sum(axis=(0, 2), keepdims=True)
         self.gbeta += gbeta
@@ -135,11 +152,19 @@ class BatchNormalization(function.Function):
         ggamma = (gy * self.x_hat).sum(axis=(0, 2), keepdims=True)
         self.ggamma += ggamma
 
-        coeff = self.gamma / self.std
-        gbeta /= m
-        ggamma /= m
+        if cuda.get_array_module(*x_orig) == numpy:
+            coeff = self.gamma / self.std
+            gbeta *= inv_m
+            ggamma *= inv_m
+            gx = coeff * (gy - self.x_hat * ggamma - gbeta)
+        else:
+            gx = cuda.elementwise(
+                'T gy, T gbeta, T ggamma, T x_hat, T gamma, T std, T inv_m',
+                'T gx',
+                'gx = gamma / std * (gy - (x_hat * ggamma + gbeta) * inv_m)',
+                'bn_bwd')(
+                    gy, gbeta, ggamma, self.x_hat, self.gamma, self.std, inv_m)
 
-        gx = coeff * (gy - self.x_hat * ggamma - gbeta)
         return gx.reshape(x_orig[0].shape),
 
     def _internal_shape(self, x):
