@@ -37,8 +37,9 @@ def _activate(yseq, xp):
 
 class ConnectionistTemporalClassification(function.Function):
 
-    '''To make it usable for real-world cases, this class has two policies below.
+    '''The implementation of Connectionist Temporal Classfication loss functions.
 
+    To make it usable for real-world cases, this class has two policies below.
     1. This class computes forward and backward variables in the log domain.
     2. This class applies the softmax function to inputs. The Backward
     values of CTC loss is often overflows. This is avoided by computing
@@ -104,7 +105,7 @@ class ConnectionistTemporalClassification(function.Function):
                 T value = z;
                 I c = i % b_max, b = i / b_max;
                 int ind[2] = {b, -1};
-                for(int index=0; index<c_max; ++index){
+                for(int index = 0; index < c_max; ++index){
                     ind[1] = index;
                     if(y[ind] == c){
                         T xvalue = x[ind];
@@ -213,7 +214,7 @@ def connectionist_temporal_classification(x, t, blank_symbol):
        This function is differentiable only by ``x``.
 
     .. note::
-       This function supports (batch x sequence x 1-dimensional input)-data.
+       This function supports (batch, sequence, 1-dimensional input)-data.
 
     .. [Graves2006] Alex Graves, Santiago Fernandez,\
     Faustino Gomez, Jurgen Schmidhuber,\
