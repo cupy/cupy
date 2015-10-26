@@ -25,8 +25,11 @@ class HDF5Serializer(serializer.Serializer):
         return HDF5Serializer(self.group.require_group(key), self.compression)
 
     def __call__(self, key, value):
-        arr = numpy.asarray(cuda.to_cpu(value))
-        self.group.create_dataset(key, data=arr, compression=self.compression)
+        if isinstance(value, cuda.ndarray):
+            value = cuda.to_cpu(value)
+        arr = numpy.asarray(value)
+        compression = None if arr.size <= 1 else self.compression
+        self.group.create_dataset(key, data=arr, compression=compression)
 
 
 def save_hdf5(filename, obj, compression=4):

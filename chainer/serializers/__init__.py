@@ -1,4 +1,4 @@
-import hdf5
+from chainer.serializers import hdf5
 
 HDF5Serializer = hdf5.HDF5Serializer
 HDF5Deserializer = hdf5.HDF5Deserializer
