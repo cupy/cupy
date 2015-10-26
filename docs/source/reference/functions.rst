@@ -66,7 +66,7 @@ Normalization functions
    :members: __call__
 .. autofunction:: local_response_normalization
 
-Noise injecting functions 
+Noise injecting functions
 -------------------------
 .. autofunction:: dropout
 .. autofunction:: gaussian
@@ -74,6 +74,7 @@ Noise injecting functions
 Loss, evaluation and aggregation
 --------------------------------
 .. autofunction:: accuracy
+.. autofunction:: contrastive
 .. autofunction:: mean_squared_error
 .. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
