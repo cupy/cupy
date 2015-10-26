@@ -406,6 +406,8 @@ class WeightDecay(object):
         rate (float): Coefficient for the weight decay.
 
     """
+    name = 'WeightDecay'
+
     def __init__(self, rate):
         self.rate = rate
 
@@ -438,6 +440,8 @@ class GradientClipping(object):
         threshold (float): L2 norm threshold of gradient norm.
 
     """
+    name = 'GradientClipping'
+
     def __init__(self, threshold):
         self.threshold = threshold
 
