@@ -15,3 +15,6 @@ class ProductTest(unittest.TestCase):
 
     def test_product(self):
         self.assertListEqual(testing.product(self.actual), self.expect)
+
+
+testing.run_module(__name__, __file__)
