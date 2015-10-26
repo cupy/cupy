@@ -88,6 +88,14 @@ def where(condition, x=None, y=None):
         # TODO(unno): return nonzero(cond)
         return NotImplementedError()
 
+    # On CUDA 6.5 these combinations don't work correctly (on CUDA >=7.0, it
+    # works).
+    # To avoid such situation, we need to cast before calculation.
+    # See issue #551.
+    if y.dtype == 'd' and (x.dtype == '?' or x.dtype == 'b' or x.dtype == 'B'
+                           or x.dtype == 'h' or x.dtype == 'H'):
+        x = x.astype('d')
+
     return _where_ufunc(condition.astype('?'), x, y)
 
 _where_ufunc = elementwise.create_ufunc(
