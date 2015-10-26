@@ -239,7 +239,7 @@ class TestGetRandomState2(unittest.TestCase):
             os.environ['CHAINER_SEED'] = self.chainer_seed
 
     def test_get_random_state_no_chainer_seed(self):
-        os.unsetenv('CHAINER_SEED')
+        os.environ.pop('CHAINER_SEED', None)
         generator.get_random_state()
         generator.RandomState.assert_called_with(None)
 
