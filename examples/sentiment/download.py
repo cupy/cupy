@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import os
 import os.path
-import urllib
+from six.moves.urllib import request
 import zipfile
 
 
-urllib.urlretrieve(
+request.urlretrieve(
     'http://nlp.stanford.edu/sentiment/trainDevTestTrees_PTB.zip',
     'trainDevTestTrees_PTB.zip')
 zf = zipfile.ZipFile('trainDevTestTrees_PTB.zip')

@@ -9,12 +9,14 @@ from chainer.functions.activation import sigmoid
 from chainer.functions.activation import softmax
 from chainer.functions.activation import softplus
 from chainer.functions.activation import tanh
+from chainer.functions.array import broadcast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import reshape
 from chainer.functions.array import split_axis
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
+from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import embed_id
@@ -71,6 +73,8 @@ softplus = softplus.softplus
 Tanh = tanh.Tanh
 tanh = tanh.tanh
 
+Broadcast = broadcast.Broadcast
+broadcast = broadcast.broadcast
 Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
@@ -83,6 +87,8 @@ Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
 Transpose = transpose.Transpose
 transpose = transpose.transpose
+Where = where.Where
+where = where.where
 
 bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
