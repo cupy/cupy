@@ -91,11 +91,11 @@ class TestNestedFunctionSet(TestFunctionSetBase):
         if gpu:
             params = tuple(p.get() for p in params)
         if attribute == 'parameters':
-            np.testing.assert_equal(params[0], self.p_b)
-            np.testing.assert_equal(params[1], self.p_a)
+            np.testing.assert_equal(params[0], cuda.to_cpu(self.fs1.a.p.data))
+            np.testing.assert_equal(params[1], cuda.to_cpu(self.fs2.b.p.data))
         elif attribute == 'gradients':
-            np.testing.assert_equal(params[0], self.gp_b)
-            np.testing.assert_equal(params[1], self.gp_a)
+            np.testing.assert_equal(params[0], cuda.to_cpu(self.fs1.a.p.grad))
+            np.testing.assert_equal(params[1], cuda.to_cpu(self.fs2.b.p.grad))
         else:
             raise ValueError(
                 'attribute should be parameters or gradients')
@@ -172,15 +172,15 @@ class TestFunctionSet(TestFunctionSetBase):
             a=L.Linear(3, 2),
             b=L.Linear(3, 2)
         )
-        self.aW = self.fs.a.W
-        self.ab = self.fs.a.b
-        self.bW = self.fs.b.W
-        self.bb = self.fs.b.b
+        self.aW = self.fs.a.W.data
+        self.ab = self.fs.a.b.data
+        self.bW = self.fs.b.W.data
+        self.bb = self.fs.b.b.data
 
-        self.agW = self.fs.a.gW
-        self.agb = self.fs.a.gb
-        self.bgW = self.fs.b.gW
-        self.bgb = self.fs.b.gb
+        self.agW = self.fs.a.W.grad
+        self.agb = self.fs.a.b.grad
+        self.bgW = self.fs.b.W.grad
+        self.bgb = self.fs.b.b.grad
 
     def check_equal_fs(self, fs1, fs2):
         self.assertTrue((fs1.a.W.data == fs2.a.W.data).all())

@@ -43,7 +43,12 @@ class FunctionSet(link.Chain):
             else:
                 d['_children'].append(key)
             value.name = key
-        d[key] = value
+        # deal with properties
+        prop = getattr(self.__class__, key, None)
+        if isinstance(prop, property) and prop.fset is not None:
+            prop.fset(self, value)
+        else:
+            super(FunctionSet, self).__setattr__(key, value)
 
     def collect_parameters(self):
         """Returns a tuple of parameters and gradients.
@@ -104,6 +109,7 @@ class FunctionSet(link.Chain):
 
     @parameters.setter
     def parameters(self, params):
+        assert len(params) == len([_ for _ in self.params()])
         for dst, src in zip(self.params(), params):
             dst.data = src
 
@@ -118,5 +124,6 @@ class FunctionSet(link.Chain):
 
     @gradients.setter
     def gradients(self, grads):
+        assert len(grads) == len([_ for _ in self.params()])
         for dst, src in zip(self.params(), grads):
             dst.grad = src
