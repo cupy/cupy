@@ -4,6 +4,7 @@
 This is a minimal example to write a feed-forward net.
 
 """
+from __future__ import print_function
 import argparse
 
 import numpy as np
@@ -14,14 +15,19 @@ from chainer import computational_graph
 from chainer import cuda
 import chainer.links as L
 from chainer import optimizers
+from chainer import serializers
 
 import data
 import net
 
 
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
+parser.add_argument('--initmodel', '-m', default='',
+                    help='Initialize the model from given file')
+parser.add_argument('--resume', '-r', default='',
+                    help='Resume the optimization from snapshot')
 parser.add_argument('--net', '-n', choices=('simple', 'parallel'),
-                    default='simple', help='network type')
+                    default='simple', help='Network type')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
@@ -48,15 +54,23 @@ if args.net == 'simple':
     if args.gpu >= 0:
         cuda.get_device(args.gpu).use()
         model.to_gpu()
+    xp = numpy if args.gpu < 0 else cuda.cupy
 elif args.net == 'parallel':
     cuda.check_cuda_available()
     model = L.Classifier(net.MnistMLPParallel(784, n_units, 10))
     xp = cuda.cupy
 
-
 # Setup optimizer
 optimizer = optimizers.Adam()
 optimizer.setup(model)
+
+# Init/Resume
+if args.initmodel:
+    print('Load model from', args.initmodel)
+    serializers.load_hdf5(args.initmodel, model)
+if args.resume:
+    print('Load optimizer state from', args.resume)
+    serializers.load_hdf5(args.resume, optimizer)
 
 # Learning loop
 for epoch in six.moves.range(1, n_epoch + 1):
@@ -100,3 +114,9 @@ for epoch in six.moves.range(1, n_epoch + 1):
 
     print('test  mean loss={}, accuracy={}'.format(
         sum_loss / N_test, sum_accuracy / N_test))
+
+# Save the model and the optimizer
+print('save the model')
+serializers.save_hdf5('mlp.model', model)
+print('save the optimizer')
+serializers.save_hdf5('mlp.state', optimizer)
