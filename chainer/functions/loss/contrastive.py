@@ -62,11 +62,13 @@ class Contrastive(function.Function):
 
 
 def contrastive(x0, x1, y, margin=1, use_cudnn=True):
-    """Computes contrastive loss. It takes a variable pair and a label as
-    inputs. The label is 1 when those two input variables are similar, or 0
-    when they are dissimilar. Let :math:`N` and :math:`K` denote mini-batchsize
-    and the dimension of input variables, respectively, the shape of both input
-    variables should be (N, K).
+    """Computes contrastive loss.
+
+    It takes a variable pair and a label as inputs. The label is 1 when those
+    two input variables are similar, or 0 when they are dissimilar. Let
+    :math:`N` and :math:`K` denote mini-batchsize and the dimension of input
+    variables, respectively, the shape of both input variables should be
+    (N, K).
 
     .. math::
         L = \\frac{1}{2N} \\left( \\sum_{n=1}^N y_n d_n
