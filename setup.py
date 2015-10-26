@@ -54,6 +54,11 @@ setup(
                       'numpy>=1.9.0',
                       'protobuf',
                       'six>=1.9.0'],
+    # Cython is required to setup h5py, not for chainer itself.
+    # This line is required for h5py-2.5.0, as `setup_requires` is missing in
+    # its `setup.py` and you cannot install h5py directly.
+    # In the msater branch of h5py, this problem is fixed.
+    setup_requires=['Cython>=0.17'],
     tests_require=['mock',
                    'nose'],
 )
