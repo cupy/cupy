@@ -3,6 +3,7 @@ import nose
 from chainer.testing import parameterized
 
 parameterize = parameterized.parameterize
+product = parameterized.product
 
 
 def run_module(name, file):

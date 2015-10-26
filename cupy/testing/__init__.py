@@ -28,6 +28,7 @@ for_unsigned_dtypes = helper.for_unsigned_dtypes
 for_int_dtypes = helper.for_int_dtypes
 
 parameterize = parameterized.parameterize
+product = parameterized.product
 
 shaped_arange = helper.shaped_arange
 shaped_reverse_arange = helper.shaped_reverse_arange
