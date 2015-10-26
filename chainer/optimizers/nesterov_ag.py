@@ -35,7 +35,7 @@ class NesterovAG(optimizer.Optimizer):
             'T grad, T lr, T momentum',
             'T param, T v',
             '''v = v * momentum - lr * grad;
-               param += momentum * momentum * v;
-               param -= (1 + momentum) * lr * grad;''',
+               param += momentum * momentum * v - (1 + momentum) * lr * grad;
+               ''',
             'nesterov_ag')(grad, self.lr, self.momentum,
                            param, v)
