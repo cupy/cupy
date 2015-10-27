@@ -119,9 +119,10 @@ def make_extensions():
             continue
         s = settings.copy()
         s['libraries'] = module['libraries']
-        ret.extend([extension.Extension(
-                        f, [localpath(path.join(*f.split('.')) + '.pyx')], **s)
-                    for f in module['file']])
+        ret.extend([
+            extension.Extension(
+                f, [localpath(path.join(*f.split('.')) + '.pyx')], **s)
+            for f in module['file']])
     return ret
 
 
