@@ -1,6 +1,5 @@
 import numpy
 
-import cupy
 from cupy import math
 from cupy import reduction
 
@@ -55,15 +54,19 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
     if dtype is None and issubclass(a.dtype.type,
                                     (numpy.integer, numpy.bool_)):
-        dtype = numpy.dtype(numpy.float64)
+        dtype = 'd'
 
+    shape = a.shape
+    items = 1
+    for ax in axis:
+        items *= shape[ax]
+    alpha = 1. / max(items - ddof, 0)
     arrmean = mean(a, axis=axis, dtype=dtype, keepdims=True)
-
-    x = cupy.subtract(a, arrmean, dtype=dtype)
-    cupy.square(x, x)
-    ret = cupy.sum(x, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
-    rcount = max(_count_reduce_items(a, axis) - ddof, 0)
-    return cupy.multiply(ret, ret.dtype.type(1.0 / rcount), out=ret)
+    if out is None:
+        return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+    else:
+        return _var_core_out(
+            a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
 
 
 def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
@@ -96,12 +99,14 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 # TODO(okuta): Implement nanvar
 
 
-def _count_reduce_items(arr, axis):
-    items = 1
-    for ax in axis:
-        items *= arr.shape[ax]
-    return items
-
+_var_core = reduction.ReductionKernel(
+    'S x, T mean, T alpha', 'T out',
+    '(x - mean) * (x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core')
+_var_core_out = reduction.ReductionKernel(
+    'S x, T mean, T alpha', 'U out',
+    '(x - mean) * (x - mean)',
+    'a + b', 'out = alpha * a', '0', '_var_core')
 
 # TODO(okuta) needs cast
 _mean = reduction.create_reduction_func(

@@ -9,7 +9,17 @@ class Sum(function.Function):
     """Sum of array elements over a given axis."""
 
     def __init__(self, axis=None):
-        self.axis = axis
+        if axis is None:
+            self.axis = None
+        elif isinstance(axis, int):
+            self.axis = (axis,)
+        elif isinstance(axis, tuple) and all(isinstance(a, int) for a in axis):
+            if len(set(axis)) != len(axis):
+                raise ValueError('duplicate value in axis: ({})'.format(
+                    ', '.join(map(str, axis))))
+            self.axis = axis
+        else:
+            raise TypeError('None, int or tuple of int are required')
 
     def check_type_forward(self, in_types):
         type_check.expect(
@@ -18,9 +28,15 @@ class Sum(function.Function):
         )
 
         if self.axis is not None:
-            type_check.expect(
-                self.axis < in_types[0].ndim,
-            )
+            for axis in self.axis:
+                if axis >= 0:
+                    type_check.expect(
+                        axis < in_types[0].ndim,
+                    )
+                else:
+                    type_check.expect(
+                        -axis - 1 < in_types[0].ndim,
+                    )
 
     def forward(self, x):
         xp = cuda.get_array_module(*x)
@@ -33,7 +49,15 @@ class Sum(function.Function):
         if self.axis is None:
             gx[:] = gy[0]
         else:
-            gx[:] = xp.expand_dims(gy[0], axis=self.axis)
+            gy = gy[0]
+            actual_axis = []
+            for axis in self.axis:
+                if axis < 0:
+                    axis = len(gx.shape) + axis
+                actual_axis.append(axis)
+            for axis in sorted(actual_axis):
+                gy = xp.expand_dims(gy, axis=axis)
+            gx[:] = gy
 
         return gx,
 
@@ -43,7 +67,7 @@ def sum(x, axis=None):
 
     Args:
         x (~chainer.Variable): Elements to sum.
-        axis (None or int): Axis which a sum is performed.
+        axis (None, int, or tuple of int): Axis which a sum is performed.
             The default (axis = None) is perform a sum over all the dimensions
             of the input array.
 
