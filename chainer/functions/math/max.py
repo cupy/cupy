@@ -4,7 +4,7 @@ from chainer.utils import type_check
 
 
 class SelectorBase(function.Function):
-    """Select an array element from a given axis or set of axes, e.g. the maximum."""
+    """Select an array element from a given axis or set of axes."""
 
     def __init__(self, axis=None, keepdims=False):
         self.keepdims = keepdims
@@ -53,7 +53,8 @@ class SelectorBase(function.Function):
         else:
             axis = [ax % x.ndim for ax in self.axis]
 
-        # Add broadcastable dimensions to y and gy for each one that was reduced in the forward operation
+        # Add broadcastable dimensions to y and gy
+        # for each one that was reduced in the forward operation
         shape = [s if ax not in axis else 1 for ax, s in enumerate(x.shape)]
         gy = gy[0].reshape(shape)
         y = self.y.reshape(shape)
@@ -82,6 +83,7 @@ class Min(SelectorBase):
 
 def max(x, axis=None, keepdims=False):
     """Maximum of array elements over a given axis.
+
     Args:
         x (~chainer.Variable): Array to be maximized.
         axis (None, int, or tuple of int): Axis over which a max is performed.
@@ -89,12 +91,14 @@ def max(x, axis=None, keepdims=False):
             of the input array.
     Returns:
         ~chainer.Variable: Output variable.
+
     """
     return Max(axis, keepdims)(x)
 
 
 def min(x, axis=None, keepdims=False):
     """Minimum of array elements over a given axis.
+
     Args:
         x (~chainer.Variable): Array to be minimized.
         axis (None, int, or tuple of int): Axis over which a min is performed.
@@ -102,6 +106,6 @@ def min(x, axis=None, keepdims=False):
             of the input array.
     Returns:
         ~chainer.Variable: Output variable.
+
     """
     return Min(axis, keepdims)(x)
-
