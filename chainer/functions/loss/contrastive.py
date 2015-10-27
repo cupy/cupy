@@ -9,9 +9,8 @@ class Contrastive(function.Function):
 
     """Contrastive loss function."""
 
-    def __init__(self, margin, use_cudnn=True):
+    def __init__(self, margin):
         self.margin = float(margin)
-        self.use_cudnn = use_cudnn
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 3)
@@ -61,7 +60,7 @@ class Contrastive(function.Function):
         return gx0, -gx0, None
 
 
-def contrastive(x0, x1, y, margin=1, use_cudnn=True):
+def contrastive(x0, x1, y, margin=1):
     """Computes contrastive loss.
 
     It takes a variable pair and a label as inputs. The label is 1 when those
@@ -83,11 +82,9 @@ def contrastive(x0, x1, y, margin=1, use_cudnn=True):
         x1 (~chainer.Variable): The second input variable.
         y (~chainer.Variable): Labels. All values should be 0 or 1.
         margin (int): A parameter for contrastive loss.
-        use_cudnn (bool): If True and CuDNN is enabled, then this function
-            uses CuDNN as the core implementation.
 
     Returns:
         ~chainer.Varible: A variable holding a scalar that is the loss value
             calculated by the above equation.
     """
-    return Contrastive(margin, use_cudnn)(x0, x1, y)
+    return Contrastive(margin)(x0, x1, y)
