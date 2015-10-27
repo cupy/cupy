@@ -154,9 +154,7 @@ class BatchNormalization(function.Function):
 
         if cuda.get_array_module(*x_orig) == numpy:
             coeff = self.gamma / self.std
-            gbeta *= inv_m
-            ggamma *= inv_m
-            gx = coeff * (gy - self.x_hat * ggamma - gbeta)
+            gx = coeff * (gy - (self.x_hat * ggamma + gbeta) * inv_m)
         else:
             gx = cuda.elementwise(
                 'T gy, T gbeta, T ggamma, T x_hat, T gamma, T std, T inv_m',
