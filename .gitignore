@@ -1,8 +1,11 @@
 *~
 *.pyc
+*.c
+*.so
 build
 \#*\#
 .\#*
 htmlcov/
 chainer.egg-info/
+.eggs/
 .coverage
