@@ -2,6 +2,7 @@ import numpy
 
 from chainer.functions.normalization import batch_normalization
 from chainer import link
+from chainer import variable
 
 
 class BatchNormalization(link.Link):
@@ -105,9 +106,10 @@ class BatchNormalization(link.Link):
             self.avg_var += func.var
             del func.var
         else:
+            mean = variable.Variable(self.avg_mean, volatile='auto')
+            var = variable.Variable(self.avg_var, volatile='auto')
             ret = batch_normalization.fixed_batch_normalization(
-                x, self.gamma, self.beta, self.avg_mean, self.avg_var,
-                self.eps)
+                x, self.gamma, self.beta, mean, var, self.eps)
         return ret
 
     def start_finetuning(self):

@@ -1,8 +1,10 @@
 import chainer
 import chainer.functions as F
+import chainer.links as L
 
 
-class GoogLeNetBN(chainer.FunctionSet):
+class GoogLeNetBN(chainer.Chain):
+
     """New GoogLeNet of BatchNormalization version."""
 
     insize = 224
@@ -37,15 +39,33 @@ class GoogLeNetBN(chainer.FunctionSet):
             normb2=F.BatchNormalization(1024),
             outb=F.Linear(1024, 1000),
         )
+        self._train = True
 
-    def forward(self, x_data, y_data, train=True):
-        x = chainer.Variable(x_data, volatile=not train)
-        t = chainer.Variable(y_data, volatile=not train)
+    @property
+    def train(self):
+        return self._train
+
+    @train.setter
+    def train(self, value):
+        self._train = value
+        self.inc3a.train = value
+        self.inc3b.train = value
+        self.inc3c.train = value
+        self.inc4a.train = value
+        self.inc4b.train = value
+        self.inc4c.train = value
+        self.inc4d.train = value
+        self.inc4e.train = value
+        self.inc5a.train = value
+        self.inc5b.train = value
+
+    def __call__(self, x, t):
+        test = not self.train
 
         h = F.max_pooling_2d(
-            F.relu(self.norm1(self.conv1(x))),  3, stride=2, pad=1)
+            F.relu(self.norm1(self.conv1(x), test=test)),  3, stride=2, pad=1)
         h = F.max_pooling_2d(
-            F.relu(self.norm2(self.conv2(h))), 3, stride=2, pad=1)
+            F.relu(self.norm2(self.conv2(h), test=test)), 3, stride=2, pad=1)
 
         h = self.inc3a(h)
         h = self.inc3b(h)
@@ -53,23 +73,27 @@ class GoogLeNetBN(chainer.FunctionSet):
         h = self.inc4a(h)
 
         a = F.average_pooling_2d(h, 5, stride=3)
-        a = F.relu(self.norma(self.conva(a)))
-        a = F.relu(self.norma2(self.lina(a)))
+        a = F.relu(self.norma(self.conva(a), test=test))
+        a = F.relu(self.norma2(self.lina(a), test=test))
         a = self.outa(a)
-        a = F.softmax_cross_entropy(a, t)
+        self.loss1 = F.softmax_cross_entropy(a, t)
 
         h = self.inc4b(h)
         h = self.inc4c(h)
         h = self.inc4d(h)
 
         b = F.average_pooling_2d(h, 5, stride=3)
-        b = F.relu(self.normb(self.convb(b)))
-        b = F.relu(self.normb2(self.linb(b)))
+        b = F.relu(self.normb(self.convb(b), test=test))
+        b = F.relu(self.normb2(self.linb(b), test=test))
         b = self.outb(b)
-        b = F.softmax_cross_entropy(b, t)
+        self.loss2 = F.softmax_cross_entropy(b, t)
 
         h = self.inc4e(h)
         h = self.inc5a(h)
         h = F.average_pooling_2d(self.inc5b(h), 7)
         h = self.out(h)
-        return 0.3 * (a + b) + F.softmax_cross_entropy(h, t), F.accuracy(h, t)
+        self.loss3 = F.softmax_cross_entropy(h, t)
+
+        self.loss = 0.3 * (self.loss1 + self.loss2) + self.loss3
+        self.accuracy = F.accuracy(h, t)
+        return self.loss

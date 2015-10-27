@@ -13,7 +13,6 @@ class AdaDelta(optimizer.GradientMethod):
     """
 
     def __init__(self, rho=0.95, eps=1e-6):
-        super(AdaDelta, self).__init__()
         self.rho = rho
         self.eps = eps
 

@@ -30,6 +30,10 @@ class InceptionBN(link.Chain):
         proj_pool (bool): If True, do projection in the pooling path.
         stride (int): Stride parameter of the last convolution of each path.
 
+    Attributes:
+        train (bool): If True, then batch normalization layers are used in
+            training mode. If False, they are used in testing mode.
+
     .. seealso:: :class:`Inception`
 
     """
@@ -74,22 +78,25 @@ class InceptionBN(link.Chain):
         if pooltype != 'max' and pooltype != 'avg':
             raise NotImplementedError()
 
+        self.train = True
+
     def __call__(self, x):
+        test = not self.train
         outs = []
 
         if self.out1 > 0:
             h1 = self.conv1(x)
-            h1 = self.conv1n(h1)
+            h1 = self.conv1n(h1, test=test)
             h1 = relu.relu(h1)
             outs.append(h1)
 
-        h3 = relu.relu(self.proj3n(self.proj3(x)))
-        h3 = relu.relu(self.conv3n(self.conv3(h3)))
+        h3 = relu.relu(self.proj3n(self.proj3(x), test=test))
+        h3 = relu.relu(self.conv3n(self.conv3(h3), test=test))
         outs.append(h3)
 
-        h33 = relu.relu(self.proj33n(self.proj33(x)))
-        h33 = relu.relu(self.conv33an(self.conv33a(h33)))
-        h33 = relu.relu(self.conv33bn(self.conv33b(h33)))
+        h33 = relu.relu(self.proj33n(self.proj33(x), test=test))
+        h33 = relu.relu(self.conv33an(self.conv33a(h33), test=test))
+        h33 = relu.relu(self.conv33bn(self.conv33b(h33), test=test))
         outs.append(h33)
 
         if self.pooltype == 'max':
@@ -98,7 +105,7 @@ class InceptionBN(link.Chain):
             p = average_pooling_2d.average_pooling_2d(x, 3, stride=self.stride,
                                                       pad=1)
         if self.proj_pool is not None:
-            p = relu.relu(self.poolpn(self.poolp(p)))
+            p = relu.relu(self.poolpn(self.poolp(p), test=test))
         outs.append(p)
 
         y = concat.concat(outs, axis=1)

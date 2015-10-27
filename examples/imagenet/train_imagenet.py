@@ -24,9 +24,13 @@ import six
 import six.moves.cPickle as pickle
 from six.moves import queue
 
-from chainer import computational_graph as c
+import chainer
+from chainer import computational_graph
 from chainer import cuda
+import chainer.links as L
 from chainer import optimizers
+from chainer import serializers
+
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from ILSVRC2012 dataset')
@@ -51,6 +55,12 @@ parser.add_argument('--root', '-r', default='.',
                     help='Root directory path of image files')
 parser.add_argument('--out', '-o', default='model',
                     help='Path to save model on each validation')
+parser.add_argument('--outstate', '-s', default='state',
+                    help='Path to save optimizer state on each validation')
+parser.add_argument('--initmodel', default='',
+                    help='Initialize the model from given file')
+parser.add_argument('--resume', default='',
+                    help='Resume the optimization from snapshot')
 args = parser.parse_args()
 if args.gpu >= 0:
     cuda.check_cuda_available()
@@ -97,6 +107,14 @@ if args.gpu >= 0:
 # Setup optimizer
 optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
 optimizer.setup(model)
+
+# Init/Resume
+if args.initmodel:
+    print('Load model from', args.initmodel)
+    serializers.load_hdf5(args.initmodel, model)
+if args.resume:
+    print('Load optimizer state from', args.resume)
+    serializers.load_hdf5(args.resume, optimizer)
 
 
 # ------------------------------------------------------------------------------
@@ -161,7 +179,7 @@ def feed_data():
                 i = 0
 
             count += 1
-            if count % 100000 == 0:
+            if count % 1000 == 0:
                 data_q.put('val')
                 j = 0
                 for path, label in val_list:
@@ -262,37 +280,32 @@ def train_loop():
             break
         elif inp == 'train':  # restart training
             res_q.put('train')
-            train = True
+            model.train = True
             continue
         elif inp == 'val':  # start validation
             res_q.put('val')
-            pickle.dump(model, open(args.out, 'wb'), -1)
-            train = False
+            serializers.save_hdf5(args.out, model)
+            serializers.save_hdf5(args.outstate, optimizer)
+            model.train = False
             continue
 
-        x = xp.asarray(inp[0])
-        y = xp.asarray(inp[1])
+        volatile = 'off' if model.train else 'on'
+        x = chainer.Variable(xp.asarray(inp[0]), volatile=volatile)
+        t = chainer.Variable(xp.asarray(inp[1]), volatile=volatile)
 
-        if train:
-            optimizer.zero_grads()
-            loss, accuracy = model.forward(x, y)
-            loss.backward()
-            optimizer.update()
-
+        if model.train:
+            optimizer.update(model, x, t)
             if not graph_generated:
                 with open('graph.dot', 'w') as o:
-                    o.write(c.build_computational_graph((loss,), False).dump())
-                with open('graph.wo_split.dot', 'w') as o:
-                    o.write(c.build_computational_graph((loss,), True).dump())
-                print('generated graph')
+                    o.write(computational_graph.build_computational_graph(
+                        (model.loss,)).dump())
+                print('generated graph', file=sys.stderr)
                 graph_generated = True
-
         else:
-            loss, accuracy = model.forward(x, y, train=False)
+            model(x, t)
 
-        res_q.put((float(loss.data),
-                   float(accuracy.data)))
-        del loss, accuracy, x, y
+        res_q.put((float(model.loss.data), float(model.accuracy.data)))
+        del x, t
 
 # Invoke threads
 feeder = threading.Thread(target=feed_data)
@@ -307,4 +320,5 @@ feeder.join()
 logger.join()
 
 # Save final model
-pickle.dump(model, open(args.out, 'wb'), -1)
+serializers.save_hdf5(args.out, model)
+serializers.save_hdf5(args.outstate, optimizer)
