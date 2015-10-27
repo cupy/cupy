@@ -7,13 +7,6 @@ import six
 from cupy import testing
 
 
-def _product(parameter):
-    keys = sorted(parameter)
-    values = [parameter[key] for key in keys]
-    values_product = itertools.product(*values)
-    return [dict(zip(keys, vals)) for vals in values_product]
-
-
 def _calc_out_shape(shape, axis, keepdims):
     if axis is None:
         axis = list(six.moves.range(len(shape)))
@@ -33,12 +26,13 @@ def _calc_out_shape(shape, axis, keepdims):
 
 
 @testing.parameterize(
-    *_product({'f': ['all', 'any'],
-               'x': [numpy.arange(24).reshape(2, 3, 4) - 10,
-                     numpy.zeros((2, 3, 4)),
-                     numpy.ones((2, 3, 4))],
-               'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
-               'keepdims': [False, True]}))
+    *testing.product(
+        {'f': ['all', 'any'],
+         'x': [numpy.arange(24).reshape(2, 3, 4) - 10,
+               numpy.zeros((2, 3, 4)),
+               numpy.ones((2, 3, 4))],
+         'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
+         'keepdims': [False, True]}))
 @testing.gpu
 class TestAllAny(unittest.TestCase):
 
@@ -61,13 +55,14 @@ class TestAllAny(unittest.TestCase):
 
 
 @testing.parameterize(
-    *_product({'f': ['all', 'any'],
-               'x': [numpy.array([[[numpy.nan]]]),
-                     numpy.array([[[numpy.nan, 0]]]),
-                     numpy.array([[[numpy.nan, 1]]]),
-                     numpy.array([[[numpy.nan, 0, 1]]])],
-               'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
-               'keepdims': [False, True]}))
+    *testing.product(
+        {'f': ['all', 'any'],
+         'x': [numpy.array([[[numpy.nan]]]),
+               numpy.array([[[numpy.nan, 0]]]),
+               numpy.array([[[numpy.nan, 1]]]),
+               numpy.array([[[numpy.nan, 0, 1]]])],
+         'axis': [None, (0, 1, 2), 0, 1, 2, (0, 1)],
+         'keepdims': [False, True]}))
 @testing.gpu
 class TestAllAnyWithNaN(unittest.TestCase):
 
