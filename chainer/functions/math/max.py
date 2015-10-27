@@ -65,17 +65,11 @@ class SelectorBase(function.Function):
 
 class Max(SelectorBase):
 
-    def __init__(self, axis=None, keepdims=False):
-        super(Max, self).__init__(axis, keepdims)
-
     def _fwd(self, x, xp):
         return xp.amax(x, axis=self.axis, keepdims=self.keepdims)
 
 
 class Min(SelectorBase):
-
-    def __init__(self, axis=None, keepdims=False):
-        super(Min, self).__init__(axis, keepdims)
 
     def _fwd(self, x, xp):
         return xp.amin(x, axis=self.axis, keepdims=self.keepdims)
