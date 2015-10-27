@@ -405,5 +405,8 @@ cdef class MemoryPool(object):
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
+        if size == 0:
+            mem = Memory(0)
+            return MemoryPointer(mem, 0)
         dev = device.Device().id
         return self._pools[dev].malloc(size)
