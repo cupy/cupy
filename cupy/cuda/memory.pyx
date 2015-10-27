@@ -328,7 +328,7 @@ cdef class SingleDeviceMemoryPool:
         self._alloc = allocator
         self._weakref = weakref.ref(self)
 
-    cpdef malloc(self, size):
+    cpdef malloc(self, Py_ssize_t size):
         free = self._free[size]
 
         if free:
@@ -346,7 +346,7 @@ cdef class SingleDeviceMemoryPool:
         pmem = PooledMemory(mem, self._weakref)
         return MemoryPointer(pmem, 0)
 
-    cpdef free(self, ptr, Py_ssize_t size):
+    cpdef free(self, size_t ptr, Py_ssize_t size):
         mem = self._in_use.pop(ptr, None)
         if mem is None:
             raise RuntimeError('Cannot free out-of-pool memory')
