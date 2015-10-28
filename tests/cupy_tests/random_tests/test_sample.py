@@ -5,12 +5,12 @@ import numpy
 import six
 
 from chainer.testing import condition
-from chainer.testing import hypothesis_testing
 from cupy import cuda
 
 
 from cupy import random
 from cupy import testing
+from cupy.testing import hypothesis_testing
 
 
 @testing.gpu
