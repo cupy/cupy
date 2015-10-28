@@ -59,11 +59,11 @@ class TestGRU(unittest.TestCase):
         y.grad = y_grad
         y.backward()
 
-        f = lambda: _gru(self.func, h.data, x.data)
+        f = lambda: (_gru(self.func, h.data, x.data),)
         gh, gx = gradient_check.numerical_grad(f, (h.data, x.data), (y.grad,))
 
-        # gradient_check.assert_allclose(gh, h.grad)
-        # gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.assert_allclose(gh, h.grad, atol=1e-4)
+        gradient_check.assert_allclose(gx, x.grad, atol=1e-4)
 
     def test_backward_cpu(self):
         self.check_backward(self.h, self.x, self.gy)
