@@ -15,7 +15,7 @@ def chi_square_test(observed, expected, alpha=0.05, df=None):
 
     Returns:
         bool: ``True`` if null hypothesis is **NOT** reject.
-        Otherwise, ``False``
+        Otherwise, ``False``.
     """
     if df is None:
         df = observed.size - 1
