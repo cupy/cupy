@@ -36,7 +36,7 @@ parser.add_argument('--mean', '-m', default='mean.npy',
                     help='Path to the mean file (computed by compute_mean.py)')
 parser.add_argument('--arch', '-a', default='nin',
                     help='Convnet architecture \
-                    (nin, alexbn, googlenet, googlenetbn)')
+                    (nin, alex, alexbn, googlenet, googlenetbn)')
 parser.add_argument('--batchsize', '-B', type=int, default=32,
                     help='Learning minibatch size')
 parser.add_argument('--val_batchsize', '-b', type=int, default=250,
@@ -75,6 +75,9 @@ mean_image = pickle.load(open(args.mean, 'rb'))
 if args.arch == 'nin':
     import nin
     model = nin.NIN()
+elif args.arch == 'alex':
+    import alex
+    model = alex.Alex()
 elif args.arch == 'alexbn':
     import alexbn
     model = alexbn.AlexBN()

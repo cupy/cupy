@@ -76,10 +76,11 @@ def _check_args(args):
     scalar_type = _scalar_type
     for arg in args:
         if isinstance(arg, cp_array):
-            if arg.data.device != dev:
+            arr_dev = arg.device
+            if arr_dev is not None and arr_dev != dev:
                 raise ValueError('Array device must be same as the current '
                                  'device: array device = %d while current = %d'
-                                 % (arg.device.id, dev.id))
+                                 % (arr_dev.id, dev.id))
         elif not isinstance(arg, scalar_type):
             raise TypeError('Unsupported type %s' % type(arg))
 

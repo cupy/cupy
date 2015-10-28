@@ -30,11 +30,14 @@ Array computation functions
 
 Array manipulation functions
 ----------------------------
+.. autofunction:: broadcast
 .. autofunction:: concat
 .. autofunction:: copy
 .. autofunction:: identity
 .. autofunction:: reshape
+.. autofunction:: select_item
 .. autofunction:: split_axis
+.. autofunction:: where
 
 Activation functions
 --------------------
