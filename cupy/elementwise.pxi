@@ -3,7 +3,6 @@ import string
 import numpy
 import six
 
-import cupy
 from cupy import carray
 from cupy import cuda
 from cupy import util

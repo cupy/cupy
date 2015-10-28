@@ -4,9 +4,7 @@ import string
 import numpy
 import six
 
-import cupy
 from cupy import carray
-from cupy import elementwise
 from cupy import util
 
 
