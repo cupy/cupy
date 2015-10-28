@@ -6,13 +6,13 @@ import unittest
 import numpy
 import six
 
-from chainer.testing import condition
 import cupy
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.random import generator
 from cupy import testing
-from cupy.testing import hypothesis_testing
+from cupy.testing import condition
+from cupy.testing import hypothesis
 
 
 class FunctionSwitcher(object):
@@ -239,7 +239,7 @@ class TestInterval(unittest.TestCase):
                 for _ in six.moves.xrange(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(trial) / mx + 1] * (mx + 1))
-        self.assertTrue(hypothesis_testing.chi_square_test(counts, expected))
+        self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
     @condition.retry(5)
     def test_goodness_of_fit_2(self):
@@ -247,7 +247,7 @@ class TestInterval(unittest.TestCase):
         vals = self.rs.interval(mx, (5, 5)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(vals.size) / mx + 1] * (mx + 1))
-        self.assertTrue(hypothesis_testing.chi_square_test(counts, expected))
+        self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
 class TestResetStates(unittest.TestCase):
