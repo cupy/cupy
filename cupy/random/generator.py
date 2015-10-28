@@ -174,12 +174,7 @@ class RandomState(object):
         if mx == 0:
             return cupy.zeros(size, dtype=dtype)
 
-        mask = mx
-        mask |= mask >> 1
-        mask |= mask >> 2
-        mask |= mask >> 4
-        mask |= mask >> 8
-        mask |= mask >> 16
+        mask = (1 << mx.bit_length()) - 1
         mask = cupy.array(mask, dtype=dtype)
 
         ret = cupy.zeros(size, dtype=dtype)
@@ -190,7 +185,7 @@ class RandomState(object):
                 self._generator, sample.data.ptr, sample.size)
             sample &= mask
             success = sample <= mx
-            ret = ret * (1 - success) + sample * success
+            ret = ret * ~success + sample * success
             ret = ret.astype(numpy.int64)
             done |= success
             if done.get().all():
