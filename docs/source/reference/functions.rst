@@ -46,6 +46,8 @@ Activation functions
 .. autofunction:: leaky_relu
 .. autofunction:: log
 .. autofunction:: lstm
+.. autofunction:: max
+.. autofunction:: min
 .. autoclass:: PReLU
 .. autofunction:: relu
 .. autofunction:: sigmoid
