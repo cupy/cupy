@@ -15,6 +15,8 @@ Sample random data
 
 .. autofunction:: cupy.random.rand
 .. autofunction:: cupy.random.randn
+.. autofunction:: cupy.random.randint
+.. autofunction:: cupy.random.random_integers
 .. autofunction:: cupy.random.random_sample
 .. autofunction:: cupy.random.random
 .. autofunction:: cupy.random.ranf
