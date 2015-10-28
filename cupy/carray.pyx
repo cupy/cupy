@@ -64,7 +64,7 @@ cdef class Indexer:
         return len(self.shape)
 
     @property
-    def ctypes(self):
+    def cstruct(self):
         return to_cindexer(self.size, self.shape)
 
 _header_source = None

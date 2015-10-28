@@ -258,19 +258,15 @@ class ndarray(object):
     # TODO(beam2d): Implement __array_interface__
 
     # -------------------------------------------------------------------------
-    # ctypes foreign function interface
+    # foreign function interface
     # -------------------------------------------------------------------------
     @property
-    def ctypes(self):
+    def cstruct(self):
         """C representation of the array.
 
         This property is used for sending an array to CUDA kernels. The type of
         returned C structure is different for different dtypes and ndims. The
         definition of C type is written in ``cupy/carray.cuh``.
-
-        .. note::
-           The returned value does not have compatibility with
-           :attr:`numpy.ndarray.ctypes`.
 
         """
         return carray.to_carray(self.data.ptr, self._size, self._shape,

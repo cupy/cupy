@@ -62,8 +62,8 @@ cdef CPointer _pointer(x):
             return CInt32(x.view(numpy.int32))
         elif x.itemsize == 8:
             return CInt64(x.view(numpy.int64))
-    elif hasattr(x, 'ctypes'):  # TODO(okuta): fix name
-        return x.ctypes
+    elif hasattr(x, 'cstruct'):
+        return x.cstruct
 
     raise TypeError('Unsupported type %s' % type(x))
 
