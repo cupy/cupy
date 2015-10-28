@@ -1,3 +1,4 @@
+import itertools
 import sys
 import unittest
 
@@ -29,3 +30,10 @@ def parameterize(*params):
         # Remove original base class
         return None
     return f
+
+
+def product(parameter):
+    keys = sorted(parameter)
+    values = [parameter[key] for key in keys]
+    values_product = itertools.product(*values)
+    return [dict(zip(keys, vals)) for vals in values_product]

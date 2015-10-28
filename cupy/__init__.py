@@ -646,8 +646,12 @@ class ndarray(object):
         return prod(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     # TODO(okuta): Implement cumprod
-    # TODO(okuta): Implement all
-    # TODO(okuta): Implement any
+
+    def all(self, axis=None, out=None):
+        return logic.truth.all(self, axis, out)
+
+    def any(self, axis=None, out=None):
+        return logic.truth.any(self, axis, out)
 
     # -------------------------------------------------------------------------
     # Arithmetic and comparison operations
@@ -681,7 +685,7 @@ class ndarray(object):
             return bool(self.get())
         else:
             msg = 'The truth value of an array with more than one element is ' \
-                  'ambiguous. Use a.get().any() or a.get().all()'
+                  'ambiguous. Use a.any() or a.all()'
             raise ValueError(msg)
 
     def __bool__(self):
@@ -914,7 +918,7 @@ class ndarray(object):
         else:
             slices = list(slices)
 
-        if any(isinstance(s, ndarray) for s in slices):
+        if six.moves.builtins.any(isinstance(s, ndarray) for s in slices):
             raise ValueError('Advanced indexing is not supported')
 
         # Expand ellipsis into empty slices
@@ -1301,6 +1305,9 @@ less_equal = logic.comparison.less_equal
 equal = logic.comparison.equal
 not_equal = logic.comparison.not_equal
 
+all = logic.truth.all
+any = logic.truth.any
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -1386,7 +1393,9 @@ where = sorting.search.where
 # Statistics
 # -----------------------------------------------------------------------------
 amin = statistics.order.amin
+min = statistics.order.amin
 amax = statistics.order.amax
+max = statistics.order.amax
 
 mean = statistics.meanvar.mean
 var = statistics.meanvar.var
@@ -1441,7 +1450,7 @@ def get_array_module(*args):
                return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
-    if any(isinstance(arg, ndarray) for arg in args):
+    if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):
         return _cupy
     else:
         return numpy
