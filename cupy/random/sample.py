@@ -111,7 +111,7 @@ def random_integers(low, high=None, size=None):
     if high is None:
         high = low
         low = 1
-    return randint(low, high+1, size)
+    return randint(low, high + 1, size)
 
 
 def random_sample(size=None, dtype=float):
