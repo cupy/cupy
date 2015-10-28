@@ -151,7 +151,7 @@ class RandomState(object):
         return out
 
     def interval(self, mx, size):
-        """Generate multiple integers independently sampled uniformly from [0, mx]
+        """Generate multiple integers independently sampled uniformly from [0, mx].
 
         Args:
             mx (int): Upper bound of the interval
