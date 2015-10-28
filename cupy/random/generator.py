@@ -163,7 +163,7 @@ class RandomState(object):
             If ``int``, 1-D array of length size is returned.
             If ``tuple``, multi-dimensional array with shape
             ``size`` is returned.
-            Currently, each element of the array is ``numpy.float32``.
+            Currently, each element of the array is ``numpy.int32``.
         """
         dtype = numpy.int32
         if size is None:
@@ -185,8 +185,7 @@ class RandomState(object):
                 self._generator, sample.data.ptr, sample.size)
             sample &= mask
             success = sample <= mx
-            ret = ret * ~success + sample * success
-            ret = ret.astype(numpy.int64)
+            ret = cupy.where(success, sample, ret)
             done |= success
             if done.all():
                 return ret
