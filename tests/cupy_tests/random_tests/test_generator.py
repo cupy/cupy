@@ -224,8 +224,7 @@ class TestInterval(unittest.TestCase):
                 for _ in six.moves.xrange(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(trial) / mx + 1] * (mx + 1))
-        if not hypothesis_testing.chi_square_test(counts, expected):
-            self.fail()
+        self.assertTrue(hypothesis_testing.chi_square_test(counts, expected))
 
     @condition.retry(5)
     def test_goodness_of_fit_2(self):
@@ -233,8 +232,7 @@ class TestInterval(unittest.TestCase):
         vals = self.rs.interval(mx, (5, 5)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(vals.size) / mx + 1] * (mx + 1))
-        if not hypothesis_testing.chi_square_test(counts, expected):
-            self.fail()
+        self.assertTrue(hypothesis_testing.chi_square_test(counts, expected))
 
 
 class TestResetStates(unittest.TestCase):
