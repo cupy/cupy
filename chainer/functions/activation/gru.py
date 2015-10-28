@@ -32,7 +32,7 @@ class GRU(function_set.FunctionSet):
 
     See:
         - `On the Properties of Neural Machine Translation: Encoder-Decoder
-          Approaches <http://www.aclweb.org/anthology/W14-4012>`_ 
+          Approaches <http://www.aclweb.org/anthology/W14-4012>`_
           [Cho+, SSST2014].
         - `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
           Modeling <http://arxiv.org/abs/1412.3555>`_
