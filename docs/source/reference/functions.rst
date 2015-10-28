@@ -35,6 +35,8 @@ Array manipulation functions
 .. autofunction:: identity
 .. autofunction:: reshape
 .. autofunction:: split_axis
+.. autofunction:: swapaxes
+.. autofunction:: transpose
 
 Activation functions
 --------------------
