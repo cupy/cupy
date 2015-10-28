@@ -188,7 +188,7 @@ class RandomState(object):
             ret = ret * ~success + sample * success
             ret = ret.astype(numpy.int64)
             done |= success
-            if done.get().all():
+            if done.all():
                 return ret
 
     def seed(self, seed=None):
