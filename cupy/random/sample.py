@@ -61,9 +61,9 @@ def randint(low, high=None, size=None):
 
     Args:
         low (int): If ``high`` is not ``None``,
-        it is the lower bound of the interval.
-        Otherwise, it is the **upper** bound of the interval
-        and lower bound of the inteval is set to ``0``.
+            it is the lower bound of the interval.
+            Otherwise, it is the **upper** bound of the interval
+            and lower bound of the inteval is set to ``0``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
 
@@ -96,9 +96,9 @@ def random_integers(low, high=None, size=None):
 
     Args:
         low (int): If ``high`` is not ``None``,
-        it is the lower bound of the interval.
-        Otherwise, it is the **upper** bound of the interval
-        and the lower bound is set to ``1``.
+            it is the lower bound of the interval.
+            Otherwise, it is the **upper** bound of the interval
+            and the lower bound is set to ``1``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
 
