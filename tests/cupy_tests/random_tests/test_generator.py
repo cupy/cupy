@@ -200,6 +200,21 @@ class TestInterval(unittest.TestCase):
         numpy.testing.assert_array_equal(
             self.rs.interval(0, (2, 3)).get(), numpy.zeros((2, 3)))
 
+    def test_shape_zero(self):
+        v = self.rs.interval(10, None)
+        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.shape, ())
+
+    def test_shape_one_dim(self):
+        v = self.rs.interval(10, 10)
+        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.shape, (10,))
+
+    def test_shape_multi_dim(self):
+        v = self.rs.interval(10, (1, 2))
+        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.shape, (1, 2))
+
     @condition.repeat(10)
     def test_within_interval(self):
         val = self.rs.interval(10, (2, 3)).get()
