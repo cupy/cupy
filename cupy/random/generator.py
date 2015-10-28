@@ -151,17 +151,17 @@ class RandomState(object):
         return out
 
     def interval(self, mx, size):
-        """Generate multiple integers independently sampled uniformly from [0, mx].
+        """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
 
         Args:
             mx (int): Upper bound of the interval
             size (None or int or tuple): Shape of the array or the scalar
-            returned.
+                returned.
         Returns:
             int or cupy.ndarray: If ``None``, an ndarray with
             shape ``()`` is returned.
             If ``int``, 1-D array of length size is returned.
-            If ``tuple`,` multi-dimensional array with shape
+            If ``tuple``, multi-dimensional array with shape
             ``size`` is returned.
             Currently, each element of the array is ``numpy.float32``.
         """
