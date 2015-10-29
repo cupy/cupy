@@ -11,7 +11,81 @@ class Link(object):
 
     """Building block of model definitions.
 
-    TODO(beam2d): Write the doc.
+    Link is a building block of neural network models that support various
+    features like handling parameters, defining network fragments,
+    serialization, etc.
+
+    Link is the primitive structure for the model definitions. It supports
+    management of parameter variables and *persistent values* that should be
+    incorporated to serialization. Parameters are variables registered via
+    the :meth:`add_param` method, or given to the initializer method.
+    Persistent values are arrays, scalars, or any other serializable values
+    registered via the :meth:`add_persistent` method.
+
+    .. note::
+       Whereas arbitrary serializable objects can be registered as persistent
+       values, it is strongly recommended to just register values that should
+       be treated as results of learning. A typical example of persistent
+       values is ones computed during training and required for testing, e.g.
+       running statistics for batch normalization.
+
+    Parameters and persistent values are referred by their names. They can be
+    accessed as attributes of the names. Link class itself manages the lists
+    of names of parameters and persistent values to distinguish parameters and
+    persistent values from other attributes.
+
+    Link can be composed into more complex models. This composition feature is
+    supported by child classes like :class:`Chain` and :class:`ChainList`. One
+    can create a chain by combining one or more links. See the documents for
+    these classes for details.
+
+    As noted above, Link supports the serialization protocol of the
+    :class:`~chainer.Serializer` class. **Note that only parameters and
+    persistent values are saved and loaded.** Other attributes are considered
+    as a part of user program (i.e. a part of network definition). In order to
+    construct a link from saved file, other attributes must be identically
+    reconstructed by user codes.
+
+    .. admonition:: Example
+
+       This is a simple example of custom link definition. Chainer itself also
+       provides many links defined under the :mod:`~chainer.links` module. They
+       might serve as examples, too.
+
+       Consider we want to define a simple primitive link that implements a
+       fully-connected layer based on the :func:`~functions.linear` function.
+       Note that this function takes input units, a weight variable, and a bias
+       variable as arguments. Then, the fully-connected layer can be defined as
+       follows::
+
+          import chainer
+          import chainer.functions as F
+          import numpy as np
+
+          class LinearLayer(chainer.Link):
+
+              def __init__(self, n_in, n_out):
+                  # Parameters are initialized as a numpy array of given shape.
+                  super(LinearLayer, self).__init__(
+                      W=(n_out, n_in),
+                      b=(n_out,),
+                  )
+                  self.W[...] = np.random.randn(n_out, n_in)
+                  self.b.fill(0)
+
+              def __call__(self, x):
+                  return F.linear(x, self.W, self.b)
+
+       This example shows that a user can define arbitrary parameters and use
+       them in any methods. Links typically implement the ``__call__``
+       operator.
+
+    Args:
+        params: Shapes of initial parameters. The keywords are used as their
+            names. The names are also set to the parameter variables.
+
+    Attributes:
+        name (str): Name of this link, given by the parent chain (if exists).
 
     """
     def __init__(self, **params):
@@ -277,7 +351,64 @@ class Chain(Link):
 
     """Composable link with object-like interface.
 
-    TODO(beam2d): Write the doc.
+    Composability is one of the most important features of neural nets. Neural
+    net models consist of many reusable fragments, and each model itself might
+    be embedded into a larger learnable system. Chain enables us to write a
+    neural net based on composition, without bothering about routine works like
+    collecting parameters, serialization, copying the structure with parameters
+    shared, etc.
+
+    This class actually provides a way to compose one or more links into one
+    structure. A chain can contain one or more *child links*. Child link is a
+    link registered to the chain with its own name. The child link is stored to
+    an attribute of the chain with the name. User can write a whole model or a
+    fragment of neural nets as a child class of Chain.
+
+    Each chain itself is also a link. Therefore, one can combine chains into
+    higher-level chains. In this way, links and chains construct a *link
+    hierarchy*. Link hierarchy forms a tree structure, where each node is
+    identified by the path from the root. The path is represented by a string
+    like a file path in UNIX, consisting of names of nodes on the path, joined
+    by slashes ``/``.
+
+    .. admonition:: Example
+
+       This is a simple example of custom chain definition. Chainer itself also
+       provides some chains defined under the :mod:`~chainer.links` module.
+       They might serve as examples, too.
+
+       Consider we want to define a multi-layer perceptron consisting of two
+       hidden layers with rectifiers as activation functions. We can use the
+       :class:`~chainer.links.Linear` link as a building block::
+
+          import chainer
+          import chainer.functions as F
+          import chainer.links as L
+
+          class MultiLayerPerceptron(chainer.Chain):
+
+              def __init__(self, n_in, n_hidden, n_out):
+                  # Create and register three layers for this MLP
+                  super(MultiLayerPerceptron, self).__init__(
+                      layer1=L.Linear(n_in, n_hidden),
+                      layer2=L.Linear(n_hidden, n_hidden),
+                      layer3=L.Linear(n_hidden, n_out),
+                  )
+
+              def __call__(self, x):
+                  # Forward propagation
+                  h1 = F.relu(self.layer1(x))
+                  h2 = F.relu(self.layer2(h1))
+                  return self.layer3(h2)
+
+       Child links are registered via the initializer method. They also can be
+       registered by the :meth:`add_link` method. The forward propagation is
+       often implemented as The ``__call__`` operator as the above example,
+       though it is not mandatory.
+
+    Args:
+        links: Child links. The keywords are used as their names. The names are
+            also set to the links.
 
     """
     def __init__(self, **links):
@@ -413,7 +544,17 @@ class ChainList(Link):
 
     """Composable link with list-like interface.
 
-    TODO(beam2d): Write the doc.
+    This is another example of compositional link. Unlike :class:`Chain`, this
+    class can be used like a list of child links. Each child link is indexed by
+    a non-negative integer, and it maintains the current number of registered
+    child links. The :meth:`add_link` method inserts a new link at the end of
+    the list. It is useful to write a chain with arbitrary number of child
+    links, e.g. an arbitrarily deep multi-layer perceptron.
+
+    Note that this class does not implement all methods of :class:`list`.
+
+    Args:
+        links: Initial child links.
 
     """
     def __init__(self, *links):

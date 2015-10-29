@@ -36,28 +36,16 @@ class Variable(object):
     Attributes:
         data: Data array of type either :class:`numpy.ndarray` or
             :class:`cupy.ndarray`.
-
         grad: Gradient array. It is ``None`` until backprop reaches this
             variable.
-
         creator: The function who creates this variable. It is ``None`` if the
             variable is not created by any function.
-
-        volatile: Ternary flag. If ON, the variable does not keep track of
-            any function applications. See :class:`~chainer.Flag` for the
-            detail of ternary flags.
+        volatile: Ternary :class:`~chainer.Flag` object. If ON, the variable
+            does not keep track of any function applications. See
+            :class:`~chainer.Flag` for the detail of ternary flags.
 
     """
     def __init__(self, data, volatile=flag.OFF, name=None):
-        """Initializes a variable.
-
-        Args:
-            data (:class:`numpy.ndarray` or :class:`cupy.ndarray`):
-                Data array that this variable holds.
-            volatile (~chainer.Flag): Volatility flag. If it is ON, the
-                variable will not keep track of any function applications.
-
-        """
         assert isinstance(data, (numpy.ndarray, cuda.ndarray))
 
         self.data = data

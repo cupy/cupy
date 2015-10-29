@@ -25,8 +25,19 @@ class Flag(object):
 
     """Ternary flag object for variables.
 
-    The flag object represents either of ON, OFF, or AUTO. The flag object is
-    _cached_, and can be compared by ``is`` operator.
+    It takes three values: ON, OFF, and AUTO.
+
+    ON and OFF flag can be evaluated as a boolean value. These are converted
+    to True and False, respectively. AUTO flag cannot be converted to boolean.
+    In this case, ValueError is raised.
+
+    Args:
+        name (str, bool, or None): Name of the flag. Following values are
+            allowed:
+
+            - ``'on'``, ``'ON'``, or ``True`` for ON value
+            - ``'off'``, ``'OFF'``, or ``False`` for OFF value
+            - ``'auto'``, ``'AUTO'``, or ``None`` for AUTO value
 
     """
     def __new__(cls, name):
@@ -39,7 +50,7 @@ class Flag(object):
     def __bool__(self):
         value = self.value
         if value is _AUTO:
-            raise TypeError('Flag AUTO cannot be converted to boolean')
+            raise ValueError('Flag AUTO cannot be converted to boolean')
         return value
 
     __nonzero__ = __bool__
@@ -66,9 +77,15 @@ class Flag(object):
 
 
 _flags = {}
+
 ON = Flag('ON')
+"""Equivalent to Flag('on')."""
+
 OFF = Flag('OFF')
+"""Equivalent to Flag('off')."""
+
 AUTO = Flag('AUTO')
+"""Equivalent to Flag('auto')."""
 
 _flags = {
     'on': ON,

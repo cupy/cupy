@@ -30,11 +30,11 @@ class InceptionBN(link.Chain):
         proj_pool (bool): If True, do projection in the pooling path.
         stride (int): Stride parameter of the last convolution of each path.
 
+    .. seealso:: :class:`Inception`
+
     Attributes:
         train (bool): If True, then batch normalization layers are used in
             training mode. If False, they are used in testing mode.
-
-    .. seealso:: :class:`Inception`
 
     """
     def __init__(self, in_channels, out1, proj3, out3, proj33, out33,

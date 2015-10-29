@@ -35,6 +35,13 @@ class BatchNormalization(link.Link):
         eps (float): Epsilon value for numerical stability.
         dtype (numpy.dtype): Type to use in computing.
 
+    See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
+          Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
+
+    .. seealso::
+       :func:`~chainer.functions.batch_normalization`,
+       :func:`~chainer.functions.fixed_batch_normalization`
+
     Attributes:
         gamma (~chainer.Variable): Scaling parameter.
         beta (~chainer.Variable): Shifting parameter.
@@ -44,9 +51,6 @@ class BatchNormalization(link.Link):
         decay (float): Decay rate of moving average. It is used on training.
         eps (float): Epsilon value for numerical stability. This value is added
             to the batch variances.
-
-    See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
-          Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
 
     """
     def __init__(self, size, decay=0.9, eps=1e-5, dtype=numpy.float32):

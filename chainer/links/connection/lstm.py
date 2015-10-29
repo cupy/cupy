@@ -14,18 +14,18 @@ class LSTM(link.Chain):
     activation function, this chain holds upward and lateral connections as
     child links.
 
-    It also maintains _states_, including the cell state and the output
-    at the previous time step. Therefore, it can be used as a _stateful LSTM_.
+    It also maintains *states*, including the cell state and the output
+    at the previous time step. Therefore, it can be used as a *stateful LSTM*.
 
     Args:
         in_size (int): Dimensionality of input vectors.
         out_size (int): Dimensionality of output vectors.
 
     Attributes:
-        upward (~chainer.links.Linear): Linear layer of upward connections.
-        lateral (~chainer.links.Linear): Linear layer of lateral connections.
-        c (~chainer.Variable): Cell states of LSTM units.
-        h (~chainer.Variable): Output at the previous timestep.
+        upward (chainer.links.Linear): Linear layer of upward connections.
+        lateral (chainer.links.Linear): Linear layer of lateral connections.
+        c (chainer.Variable): Cell states of LSTM units.
+        h (chainer.Variable): Output at the previous timestep.
 
     """
     def __init__(self, in_size, out_size):
@@ -39,7 +39,7 @@ class LSTM(link.Chain):
     def reset_state(self):
         """Resets the internal state.
 
-        It sets None to the :attr:`~LSTM.c` and :attr:`~LSTM.h` attributes.
+        It sets None to the :attr:`c` and :attr:`h` attributes.
 
         """
         self.c = self.h = None
@@ -51,7 +51,7 @@ class LSTM(link.Chain):
             x (~chainer.Variable): A new batch from the input sequence.
 
         Returns:
-            ~chainer.Varaible: Outputs of updated LSTM units.
+            ~chainer.Variable: Outputs of updated LSTM units.
 
         """
         lstm_in = self.upward(x)

@@ -14,10 +14,10 @@ class PReLU(link.Link):
     Human-Level Performance on ImageNet Classification \
     <http://arxiv.org/abs/1502.01852>`_.
 
+    .. seealso:: :func:`chainer.functions.prelu`
+
     Attributes:
         W (~chainer.Variable): Coefficient of parameteric ReLU.
-
-    .. seealso:: :func:`chainer.functions.prelu`
 
     """
     def __init__(self, shape=(), init=0.25):

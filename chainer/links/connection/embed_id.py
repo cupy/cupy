@@ -16,10 +16,10 @@ class EmbedID(link.Link):
             size).
         out_size (int): Size of embedding vector.
 
+    .. seealso:: :func:`chainer.functions.embed_id`
+
     Attributes:
         W (~chainer.Variable): Embedding parameter matrix.
-
-    .. seealso:: :func:`chainer.functions.embed_id`
 
     """
     def __init__(self, in_size, out_size):

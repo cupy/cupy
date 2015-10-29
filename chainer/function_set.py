@@ -9,7 +9,11 @@ from chainer import link
 
 class FunctionSet(link.Chain):
 
-    """Set of chains (as "parameterized functions").
+    """Set of links (as "parameterized functions").
+
+    FunctionSet is a subclass of :class:`~chainer.Chain`. Function
+    registration is done just by adding an attribute to :class:`
+    object.
 
     .. deprecated:: v1.5
        Use :class:`~chainer.Chain` instead.
@@ -18,9 +22,6 @@ class FunctionSet(link.Chain):
           FunctionSet was used for manipulation of one or more parameterized
           functions. The concept of parameterized function is gone, and it has
           been replaced by :class:`~chainer.Link` and :class:`~chainer.Chain`.
-
-    Function registration is done just by adding an attribute to
-    :class:`FunctionSet` object.
 
     """
     def __init__(self, **links):

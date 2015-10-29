@@ -33,14 +33,14 @@ class Bilinear(link.Link):
             and :math:`V^2` is initialized by scaled centered Gaussian
             distributions and :math:`b` is set to :math:`0`.
 
+    .. seealso:: See :func:`chainer.functions.bilinear` for details.
+
     Attributes:
         W (~chainer.Variable): Bilinear weight parameter.
         V1 (~chainer.Variable): Linear weight parameter for the first argument.
         V2 (~chainer.Variable): Linear weight parameter for the second
             argument.
         b (~chainer.Variable): Bias parameter.
-
-    .. seealso:: See :func:`chainer.functions.bilinear` for details.
 
     """
     def __init__(self, left_size, right_size, out_size, nobias=False,

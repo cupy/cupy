@@ -133,6 +133,7 @@ dropout = dropout.dropout
 Gaussian = gaussian.Gaussian
 gaussian = gaussian.gaussian
 
+fixed_batch_normalization = batch_normalization.fixed_batch_normalization
 batch_normalization = batch_normalization.batch_normalization
 LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization

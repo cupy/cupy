@@ -18,24 +18,33 @@ class Optimizer(object):
 
     """Base class of all numerical optimizers.
 
-    Optimizer is set up with references to parameters and gradients, and
-    then on every call of :meth:`update`, it updates parameters based on
-    corresponding gradients. Optimizer implementations must override
-    :meth:`update_one` method, which updates one parameter array using the
-    corresponding gradient array.
+    This class provides basic features for all optimization methods. It
+    optimizes parameters of a *target link*. The target link is registered via
+    the :meth:`setup` method, and then the :meth:`update` method updates its
+    parameters based on a given loss function.
 
-    Optimizer can optionally use state for each parameter/gradient pair. It is
-    initialized by :meth:`init_state` method at set up.
+    Each optimizer implementation must be defined as a child class of
+    Optimizer. It must override :meth:`update` method. An optimizer can use
+    *internal states* each of which is tied to one of the parameters. State is
+    a dictionary of serializable values (typically arrays of size same as
+    the corresponding parameters). In order to use state dictionaries, the
+    optimizer must override :meth:`init_state` method (or its CPU/GPU versions,
+    :meth:`init_state_cpu` and :meth:`init_state_gpu`).
 
-    Optimizer also accepts hook functions. A hook function accepts the
-    optimizer as an argument and returns nothing. The timing of the invocation
-    depends on each implementation, but typically it is right after the
-    gradient computation. A hook function can assume that some gradients are
-    already computed.
+    If the optimizer is based on single gradient computation (like
+    most first-order methods), then it should inherit :class:`GradientMethod`,
+    which adds some features dedicated for the first order methods.
+
+    Optimizer instance also supports *hook functions*. Hook function is
+    registered by the :meth:`add_hook` method. Each hook function is called
+    in registration order in advance of the actual parameter update.
 
     Attributes:
-        t (int): Number of update steps. It can be used in :meth:`update_one`
-            implementation, where :attr:`t` is incremented beforehand.
+        target: Target link object. It is set by the :meth:`setup` method.
+        t: Number of update steps. It must be incremented by the
+            :meth:`update` method.
+        epoch: Current epoch. It is incremented by the :meth:`new_epoch`
+            method.
 
     """
     def setup(self, link):
@@ -176,7 +185,9 @@ class Optimizer(object):
     def new_epoch(self):
         """Starts a new epoch.
 
-        This method increments the :attr:`epoch` count.
+        This method increments the :attr:`epoch` count. Note that if the
+        optimizer depends on the epoch count, then user should call this method
+        appropriately at the beginning of each epoch.
 
         """
         self.epoch += 1
@@ -330,8 +341,8 @@ class GradientMethod(Optimizer):
     """Base class of all single gradient-based optimizers.
 
     This is an extention of the :class:`Optimizer` class. Typical gradient
-    methods that just require the gradient at the current parameter vector can
-    be implemented as its child class.
+    methods that just require the gradient at the current parameter vector on
+    an update can be implemented as its child class.
 
     An implementation of a gradient method must override the following methods:
 
@@ -342,6 +353,21 @@ class GradientMethod(Optimizer):
 
     """
     def update(self, lossfun=None, *args, **kwds):
+        """Updates parameters based on a loss function or computed gradients.
+
+        This method runs in two ways.
+
+        - If ``lossfun`` is given, then use it as a loss function to compute
+          gradients.
+        - Otherwise, this method assumes that the gradients are already
+          computed.
+
+        In both cases, the computed gradients are used to update parameters.
+        The actual update routines are defined by the :meth:`update_one`
+        method (or its CPU/GPU versions, :meth:`update_one_cpu` and
+        :meth:`update_one_gpu`).
+
+        """
         if lossfun is not None:
             self.target.zerograds()
             loss = lossfun(*args, **kwds)

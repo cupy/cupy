@@ -8,4 +8,5 @@ Optimizers
 .. autoclass:: Adam
 .. autoclass:: MomentumSGD
 .. autoclass:: RMSprop
+.. autoclass:: RMSpropGraves
 .. autoclass:: SGD

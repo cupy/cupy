@@ -20,10 +20,10 @@ class NegativeSampling(link.Link):
         sample_size (int): Number of negative samples.
         power (float): Power factor :math:`\\alpha`.
 
+    .. seealso:: :func:`~chainer.functions.negative_sampling` for more detail.
+
     Attributes:
         W (~chainer.Variable): Weight parameter matrix.
-
-    .. seealso:: :func:`~chainer.functions.negative_sampling` for more detail.
 
     """
     def __init__(self, in_size, counts, sample_size, power=0.75):
