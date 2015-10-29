@@ -97,7 +97,7 @@ class Linear(function.Function):
         type_check.expect(
             x_type.dtype == numpy.float32,
             x_type.ndim >= 2,
-            (type_check.Variable(numpy.prod, 'prod')(x_type.shape[1:]) ==
+            (type_check.prod(x_type.shape[1:]) ==
              type_check.Variable(self.W.shape[1], 'W.shape[1]')),
         )
 
@@ -137,13 +137,12 @@ class NonparameterizedLinear(function.Function):
         x_type = in_types[0]
         w_type = in_types[1]
 
-        prod = type_check.Variable(numpy.prod, 'prod')
         type_check.expect(
             x_type.dtype == numpy.float32,
             w_type.dtype == numpy.float32,
             x_type.ndim >= 2,
             w_type.ndim == 2,
-            prod(x_type.shape[1:]) == w_type.shape[1],
+            type_check.prod(x_type.shape[1:]) == w_type.shape[1],
         )
         if in_types.size().eval() == 3:
             b_type = in_types[2]

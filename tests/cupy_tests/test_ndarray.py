@@ -1,6 +1,7 @@
 import unittest
 
 import cupy
+from cupy import testing
 
 
 class TestGetSize(unittest.TestCase):
@@ -25,12 +26,12 @@ class TestGetSize(unittest.TestCase):
             cupy._get_size(1.0)
 
 
+@testing.parameterize(
+    {'arg': None, 'shape': ()},
+    {'arg': 3, 'shape': (3,)},
+)
 class TestNdarrayInit(unittest.TestCase):
 
-    def test_shape_none(self):
-        a = cupy.ndarray(None)
-        self.assertTupleEqual(a.shape, ())
-
-    def test_shape_int(self):
-        a = cupy.ndarray(3)
-        self.assertTupleEqual(a.shape, (3, ))
+    def test_shape(self):
+        a = cupy.ndarray(self.arg)
+        self.assertTupleEqual(a.shape, self.shape)
