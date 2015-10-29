@@ -3,8 +3,6 @@ import os
 from cupy import cuda
 cimport cupy.cuda.module
 
-DEF MAX_NDIM = 25
-
 cdef:
     struct _CArray:
         void* data

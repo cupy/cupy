@@ -406,7 +406,6 @@ cdef class MemoryPool(object):
 
         """
         if size == 0:
-            mem = Memory(0)
-            return MemoryPointer(mem, 0)
+            return MemoryPointer(Memory(0), 0)
         dev = device.Device().id
         return self._pools[dev].malloc(size)

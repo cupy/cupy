@@ -3,7 +3,6 @@ import string
 import numpy
 import six
 
-from cupy import carray
 from cupy import cuda
 from cupy import util
 
@@ -32,7 +31,7 @@ def _get_simple_elementwise_kernel(
         preamble=preamble,
         loop_prep=loop_prep,
         after_loop=after_loop)
-    module = carray.compile_with_cache(module_code, options)
+    module = compile_with_cache(module_code, options)
     return module.get_function(name)
 
 
@@ -71,10 +70,9 @@ def _get_typename(dtype):
 
 def _check_args(args):
     dev = cuda.Device()
-    cp_array = cupy.ndarray
     scalar_type = _scalar_type
     for arg in args:
-        if isinstance(arg, cp_array):
+        if isinstance(arg, ndarray):
             arr_dev = arg.device
             if arr_dev is not None and arr_dev != dev:
                 raise ValueError('Array device must be same as the current '
@@ -86,7 +84,7 @@ def _check_args(args):
 
 def _get_args_info(args):
     ret = []
-    carray_Indexer = carray.Indexer
+    carray_Indexer = Indexer
     ret_append = ret.append
     for a in args:
         t = type(a)
@@ -102,8 +100,8 @@ def _get_kernel_params(params, args_info):
     ret = []
     for p, a in six_zip(params, args_info):
         type, dtype, ndim = a
-        is_array = type is cupy.ndarray
-        if type is carray.Indexer:
+        is_array = type is ndarray
+        if type is Indexer:
             t = 'CIndexer<%d>' % ndim
         else:
             t = _get_typename(dtype)
@@ -121,8 +119,7 @@ def _reduce_dims(args, params, shape):
     if ndim <= 1:
         return args, shape
 
-    cp_array = cupy.ndarray
-    is_array_flags = [not p.raw and isinstance(a, cp_array)
+    is_array_flags = [not p.raw and isinstance(a, ndarray)
                       for p, a in six_zip(params, args)]
     args_strides = [a._strides for a, f in six_zip(args, is_array_flags) if f]
 
@@ -257,7 +254,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
 
 def _broadcast(args, params, use_size):
-    value = [a if not p.raw and isinstance(a, cupy.ndarray) else None
+    value = [a if not p.raw and isinstance(a, ndarray) else None
              for p, a in six_zip(params, args)]
     if use_size:
         for i in value:
@@ -272,7 +269,7 @@ def _broadcast(args, params, use_size):
                 break
         else:
             raise ValueError('Loop size is Undecided')
-    brod = cupy.broadcast(*value)
+    brod = broadcast(*value)
     value = [b if a is None else a
              for a, b in six_zip(brod.values, args)]
     return value, brod.shape
@@ -280,10 +277,10 @@ def _broadcast(args, params, use_size):
 
 def _get_out_args(out_args, out_types, out_shape):
     if not out_args:
-        return [cupy.empty(out_shape, t) for t in out_types]
+        return [ndarray(out_shape, t) for t in out_types]
 
     for a in out_args:
-        if not isinstance(a, cupy.ndarray):
+        if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         if a.shape != out_shape:
@@ -296,10 +293,10 @@ def _get_out_args_with_params(out_args, out_types, out_shape, out_params):
         for p in out_params:
             if p.raw:
                 raise ValueError('Output array size is Undecided')
-        return [cupy.empty(out_shape, t) for t in out_types]
+        return [ndarray(out_shape, t) for t in out_types]
 
     for a, p in six_zip(out_args, out_params):
-        if not isinstance(a, cupy.ndarray):
+        if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         if a.shape != out_shape and not p.raw:
@@ -317,7 +314,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
 
     op = []
     for p, a in six_zip(params, args_info):
-        if not p.raw and a[0] == cupy.ndarray:
+        if not p.raw and a[0] == ndarray:
             if p.is_const:
                 fmt = 'const {t} {n} = _raw_{n}[_ind.get()];'
             else:
@@ -415,12 +412,11 @@ class ElementwiseKernel(object):
         in_args = values[:self.nin]
         out_args = values[self.nin:]
 
-        cp_array = cupy.ndarray
         in_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, cp_array) else None
+            [a.dtype.type if isinstance(a, ndarray) else None
              for a in in_args])
         out_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, cp_array) else None
+            [a.dtype.type if isinstance(a, ndarray) else None
              for a in out_args])
 
         in_types, out_types, types = _decide_params_type(
@@ -440,14 +436,14 @@ class ElementwiseKernel(object):
         if 0 in shape:
             return ret
 
-        inout_args = [x if isinstance(x, cp_array) else t(x)
+        inout_args = [x if isinstance(x, ndarray) else t(x)
                       for x, t in six_zip(in_args, in_types)]
         inout_args += out_args
 
         if self.reduce_dims:
             inout_args, shape = _reduce_dims(
                 inout_args, self.params, shape)
-        indexer = carray.Indexer(shape)
+        indexer = Indexer(shape)
         inout_args.append(indexer)
 
         args_info = _get_args_info(inout_args)
@@ -467,7 +463,7 @@ def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
     op = []
     for i, x in enumerate(in_types):
         types.append('typedef %s in%d_type;' % (_get_typename(x), i))
-        if args_info[i][0] is cupy.ndarray:
+        if args_info[i][0] is ndarray:
             op.append(
                 'const in{0}_type in{0} = _raw_in{0}[_ind.get()];'.format(i))
 
@@ -511,7 +507,7 @@ def _check_in_args_kind(in_args):
     max_array_kind = -1
     max_scalar_kind = -1
     for i in in_args:
-        if isinstance(i, cupy.ndarray):
+        if isinstance(i, ndarray):
             kind = _kind_score[i.dtype.kind]
             all_scalars = False
             if kind > max_array_kind:
@@ -642,7 +638,7 @@ class ufunc(object):
             args += out_args
 
         _check_args(args)
-        broad = cupy.broadcast(*args)
+        broad = broadcast(*args)
         shape = broad.shape
 
         in_types, out_types, routine = _guess_routine(
@@ -657,11 +653,11 @@ class ufunc(object):
         if 0 in shape:
             return ret
 
-        inout_args = [x if isinstance(x, cupy.ndarray) else t(x)
+        inout_args = [x if isinstance(x, ndarray) else t(x)
                       for x, t in six_zip(broad.values, in_types)]
         inout_args.extend(out_args)
         inout_args, shape = _reduce_dims(inout_args, self._params, shape)
-        indexer = carray.Indexer(shape)
+        indexer = Indexer(shape)
         inout_args.append(indexer)
         args_info = _get_args_info(inout_args)
         out_raw_types = tuple([x.dtype.type for x in out_args])
@@ -694,42 +690,3 @@ def create_ufunc(name, ops, routine=None, preamble='', doc=''):
         _ops.append((in_types, out_types, rt))
 
     return ufunc(name, len(_ops[0][0]), len(_ops[0][1]), _ops, preamble, doc)
-
-
-_id = 'out0 = in0'
-
-copy = create_ufunc(
-    'cupy_copy',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    _id)
-
-
-copy_where = create_ufunc(
-    'cupy_copy_where',
-    ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
-     'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d'),
-    'if (in1) out0 = in0')
-
-
-_divmod_float = '''
-    out0_type a = _floor_divide(in0, in1);
-    out0 = a;
-    out1 = in0 - a * in1'''
-
-_divmod = create_ufunc(
-    'cupy_divmod',
-    ('bb->bb', 'BB->BB', 'hh->hh', 'HH->HH', 'ii->ii', 'II->II', 'll->ll',
-     'LL->LL', 'qq->qq', 'QQ->QQ',
-     ('ee->ee', _divmod_float),
-     ('ff->ff', _divmod_float),
-     ('dd->dd', _divmod_float)),
-    '''
-    if (in1 == 0) {
-        out0 = 0;
-        out1 = 0;
-    } else {
-        out0_type a = _floor_divide(in0, in1);
-        out0 = a;
-        out1 = in0 - a * in1;
-    }''')

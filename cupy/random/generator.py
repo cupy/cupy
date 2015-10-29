@@ -8,9 +8,9 @@ import numpy
 import six
 
 import cupy
+from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
-from cupy import elementwise
 
 
 class RandomState(object):
@@ -129,7 +129,7 @@ class RandomState(object):
                             % ', '.join(kwarg.keys()))
         return self.normal(size=size, dtype=dtype)
 
-    _1m_kernel = elementwise.ElementwiseKernel(
+    _1m_kernel = core.ElementwiseKernel(
         '', 'T x', 'x = 1 - x', 'cupy_random_1_minus_x')
 
     def random_sample(self, size=None, dtype=float):
