@@ -150,6 +150,46 @@ class RandomState(object):
         RandomState._1m_kernel(out)
         return out
 
+    def interval(self, mx, size):
+        """Generate multiple integers independently sampled uniformly from ``[0, mx]``.
+
+        Args:
+            mx (int): Upper bound of the interval
+            size (None or int or tuple): Shape of the array or the scalar
+                returned.
+        Returns:
+            int or cupy.ndarray: If ``None``, an ndarray with
+            shape ``()`` is returned.
+            If ``int``, 1-D array of length size is returned.
+            If ``tuple``, multi-dimensional array with shape
+            ``size`` is returned.
+            Currently, each element of the array is ``numpy.int32``.
+        """
+        dtype = numpy.int32
+        if size is None:
+            return self.interval(mx, 1).reshape(())
+        elif isinstance(size, int):
+            size = (size, )
+
+        if mx == 0:
+            return cupy.zeros(size, dtype=dtype)
+
+        mask = (1 << mx.bit_length()) - 1
+        mask = cupy.array(mask, dtype=dtype)
+
+        ret = cupy.zeros(size, dtype=dtype)
+        sample = cupy.zeros(size, dtype=dtype)
+        done = cupy.zeros(size, dtype=numpy.bool_)
+        while True:
+            curand.generate(
+                self._generator, sample.data.ptr, sample.size)
+            sample &= mask
+            success = sample <= mx
+            ret = cupy.where(success, sample, ret)
+            done |= success
+            if done.all():
+                return ret
+
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
 

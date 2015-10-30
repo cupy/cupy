@@ -57,10 +57,20 @@ class BatchNormalizationFunction(function.Function):
             self.var = var
 
         self.std = xp.sqrt(var, dtype=var.dtype)
-        x_mu = x - mean[expander]
-        self.x_hat = x_mu / self.std[expander]
-        y = gamma * self.x_hat
-        y += beta
+
+        if xp is numpy:
+            x_mu = x - mean[expander]
+            self.x_hat = x_mu / self.std[expander]
+            y = gamma * self.x_hat
+            y += beta
+        else:
+            self.x_hat, y = cuda.elementwise(
+                'T x, T mean, T std, T gamma, T beta', 'T x_hat, T y',
+                '''
+                   x_hat = (x - mean) / std;
+                   y = gamma * x_hat + beta;
+                ''',
+                'bn_fwd')(x, mean[expander], self.std[expander], gamma, beta)
         return y,
 
     def backward(self, inputs, grad_outputs):
@@ -80,8 +90,18 @@ class BatchNormalizationFunction(function.Function):
         gbeta = gy.sum(axis=axis)
         ggamma = (gy * self.x_hat).sum(axis=axis)
 
-        gx = (gamma / self.std)[expander] * (
-            gy - (self.x_hat * ggamma[expander] + gbeta[expander]) / m)
+        xp = cuda.get_array_module(x)
+        if xp is numpy:
+            gx = (gamma / self.std)[expander] * (
+                gy - (self.x_hat * ggamma[expander] + gbeta[expander]) / m)
+        else:
+            inv_m = numpy.float32(1) / m
+            gx = cuda.elementwise(
+                'T gy, T x_hat, T gamma, T std, T ggamma, T gbeta, T inv_m',
+                'T gx',
+                'gx = (gamma / std) * (gy - (x_hat * ggamma + gbeta) * inv_m)',
+                'bn_bwd')(gy, self.x_hat, gamma[expander], self.std[expander],
+                          ggamma[expander], gbeta[expander], inv_m)
         return gx, ggamma, gbeta
 
 

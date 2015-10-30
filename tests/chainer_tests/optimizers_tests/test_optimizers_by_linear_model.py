@@ -128,6 +128,11 @@ class TestMomentumSGD(OptimizerTestBase, unittest.TestCase):
         return optimizers.MomentumSGD(0.1)
 
 
+class NesterovAG(OptimizerTestBase, unittest.TestCase):
+    def create(self):
+        return optimizers.NesterovAG(0.1)
+
+
 class TestRMSprop(OptimizerTestBase, unittest.TestCase):
 
     def create(self):

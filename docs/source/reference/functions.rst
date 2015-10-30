@@ -24,7 +24,6 @@ functions, which users should use.
 
    KEEP EACH LIST IN LEXICOGRAPHICAL ORDER.
 
-
 Activation functions
 --------------------
 .. autofunction:: clipped_relu
@@ -43,6 +42,7 @@ Array manipulations
 .. autofunction:: concat
 .. autofunction:: copy
 .. autofunction:: reshape
+.. autofunction:: select_item
 .. autofunction:: split_axis
 .. autofunction:: swapaxes
 .. autofunction:: transpose
