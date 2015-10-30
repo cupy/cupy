@@ -135,6 +135,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         p2 = self.pool.malloc(10)
         self.assertNotEqual(ptr1.value, p2.ptr.value)
 
+
 @testing.gpu
 class TestMemoryPool(unittest.TestCase):
 
