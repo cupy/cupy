@@ -26,6 +26,7 @@ for_float_dtypes = helper.for_float_dtypes
 for_signed_dtypes = helper.for_signed_dtypes
 for_unsigned_dtypes = helper.for_unsigned_dtypes
 for_int_dtypes = helper.for_int_dtypes
+for_dtypes_combination = helper.for_dtypes_combination
 
 parameterize = parameterized.parameterize
 product = parameterized.product

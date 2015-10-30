@@ -1,12 +1,14 @@
 from __future__ import print_function
 
 import functools
+import random
 
 import numpy
 
 import cupy
 from cupy import internal
 from cupy.testing import array
+from cupy.testing import parameterized
 
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
@@ -181,17 +183,21 @@ _regular_dtypes = _regular_float_dtypes + _int_bool_dtypes
 _dtypes = _float_dtypes + _int_bool_dtypes
 
 
-def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
+def _make_all_dtypes(no_float16, no_bool):
     if no_float16:
         if no_bool:
-            return for_dtypes(_regular_float_dtypes + _int_dtypes, name=name)
+            return _regular_float_dtypes + _int_dtypes
         else:
-            return for_dtypes(_regular_dtypes, name=name)
+            return _regular_dtypes
     else:
         if no_bool:
-            return for_dtypes(_float_dtypes + _int_dtypes, name=name)
+            return _float_dtypes + _int_dtypes
         else:
-            return for_dtypes(_dtypes, name=name)
+            return _dtypes
+
+
+def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
+    return for_dtypes(_make_all_dtypes(no_float16, no_bool), name=name)
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
@@ -214,6 +220,38 @@ def for_int_dtypes(name='dtype', no_bool=False):
         return for_dtypes(_int_dtypes, name=name)
     else:
         return for_dtypes(_int_bool_dtypes, name=name)
+
+
+def for_dtypes_combination(names=['dtype'],
+                           no_float16=False, no_bool=False, full=False):
+    types = _make_all_dtypes(no_float16, no_bool)
+    if full:
+        combination = parameterized.product({name: types for name in names})
+    else:
+        ts = []
+        for _ in range(len(names)):
+            # Make shffuled list of types for each name
+            t = list(types)
+            random.shuffle(t)
+            ts.append(t)
+
+        combination = [dict(zip(names, typs)) for typs in zip(*ts)]
+
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            for dtypes in combination:
+                kw_copy = kw.copy()
+                kw_copy.update(dtypes)
+
+                try:
+                    impl(self, *args, **kw_copy)
+                except Exception:
+                    print(dtypes)
+                    raise
+
+        return test_func
+    return decorator
 
 
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
