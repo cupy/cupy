@@ -172,9 +172,9 @@ class ConnectionistTemporalClassification(function.Function):
             self.forward_prob_trans[0] + self.backward_prob_trans[0],
             xp, axis=1)
         scale = grad_output[0] / batch_size
-        for t in six.moves.range(len(self.yseq)):
-            multiply = self.forward_prob_trans[t] + self.backward_prob_trans[t]
-            y = self.yseq[t]
+        for y, f, b in zip(self.yseq, self.forward_prob_trans,
+                           self.backward_prob_trans):
+            multiply = f + b
             label_prob = self.label_probability(
                 y.shape[1], self.path, multiply, xp)
             y -= xp.exp(label_prob - total_probability[:, None])
