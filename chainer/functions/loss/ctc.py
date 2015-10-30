@@ -37,14 +37,14 @@ def _activate(yseq, xp):
 
 class ConnectionistTemporalClassification(function.Function):
 
-    '''The implementation of Connectionist Temporal Classfication loss functions.
+    """The implementation of Connectionist Temporal Classfication loss functions.
 
     To make it usable for real-world cases, this class has two policies below.
     1. This class computes forward and backward variables in the log domain.
     2. This class applies the softmax function to inputs. The Backward
     values of CTC loss is often overflows. This is avoided by computing
     backward values before the activation function is applied.
-    '''
+    """
 
     def __init__(self, blank_symbol):
         self.blank_symbol = blank_symbol
@@ -75,12 +75,13 @@ class ConnectionistTemporalClassification(function.Function):
             res = create_recurrence_relation(x, self.zero_padding)
         return res
 
-    '''
-    Transition in forword and backword algorithms is represented as matrix.
-    See also
-    https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
-    '''
     def recurrence_relation(self, size, dtype, xp):
+        """Transition in forword and backword algorithms is represented as matrix.
+
+        See also
+        https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
+        """
+
         rr = (xp.eye(size, dtype=dtype) +
               xp.eye(size, k=1, dtype=dtype) +
               xp.eye(size, k=2, dtype=dtype) *
