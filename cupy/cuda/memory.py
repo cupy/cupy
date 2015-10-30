@@ -306,8 +306,9 @@ class SingleDeviceMemoryPool(object):
         self._alloc = allocator
 
     def malloc(self, size):
+        if size == 0:
+                return MemoryPointer(Memory(0), 0)
         free = self._free[size]
-
         if free:
             mem = free.pop()
         else:
@@ -380,7 +381,5 @@ class MemoryPool(object):
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        if size == 0:
-            return MemoryPointer(Memory(0), 0)
         dev = device.Device().id
         return self._pools[dev].malloc(size)
