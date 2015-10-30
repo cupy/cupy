@@ -73,7 +73,10 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
         f = lambda: func.forward((x.data,))
         gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
 
-        gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
+        gradient_check.assert_allclose(
+            cuda.to_cpu(gx),
+            cuda.to_cpu(x.grad),
+            atol=1e-04)
 
     @condition.retry(3)
     def test_backward_cpu(self):
