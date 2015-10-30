@@ -22,7 +22,7 @@ def rand(*size, **kwarg):
     """
     dtype = kwarg.pop('dtype', float)
     if kwarg:
-        raise TypeError('rand() got unexpected keyward arguments %s'
+        raise TypeError('rand() got unexpected keyword arguments %s'
                         % ', '.join(kwarg.keys()))
     return random_sample(size=size, dtype=dtype)
 
@@ -47,7 +47,7 @@ def randn(*size, **kwarg):
     """
     dtype = kwarg.pop('dtype', float)
     if kwarg:
-        raise TypeError('randn() got unexpected keyward arguments %s'
+        raise TypeError('randn() got unexpected keyword arguments %s'
                         % ', '.join(kwarg.keys()))
     return distributions.normal(size=size, dtype=dtype)
 
