@@ -150,41 +150,36 @@ class ConnectionistTemporalClassification(function.Function):
     def forward(self, inputs):
         xp = cuda.get_array_module(inputs[0])
         batch_size = len(inputs[0])
-        yseq = _activate(inputs[1::], xp)
-        log_yseq = [self.log_matrix(y, xp) for y in yseq]
-        path = _label_to_path(inputs[0], self.blank_symbol, xp)
+        self.yseq = _activate(inputs[1::], xp)
+        log_yseq = [self.log_matrix(y, xp) for y in self.yseq]
+        self.path = _label_to_path(inputs[0], self.blank_symbol, xp)
         rr = self.recurrence_relation(
-            path.shape[1], numpy.float32, xp)[None, :, :]
-        forward_prob_trans, backward_prob_trans\
-            = self.calc_trans(path, log_yseq, rr, xp)
+            self.path.shape[1], numpy.float32, xp)[None, :, :]
+        self.forward_prob_trans, self.backward_prob_trans\
+            = self.calc_trans(self.path, log_yseq, rr, xp)
 
         loss = utils.force_array(xp.sum(_logsumexp(
-            forward_prob_trans[-1] + backward_prob_trans[-1], xp, axis=1)))
+            self.forward_prob_trans[-1] + self.backward_prob_trans[-1],
+            xp, axis=1)))
         loss /= -batch_size
         return loss,
 
     def backward(self, inputs, grad_output):
         xp = cuda.get_array_module(inputs[0])
         batch_size = len(inputs[0])
-        yseq = _activate(inputs[1::], xp)
-        log_yseq = [self.log_matrix(y, xp) for y in yseq]
-        path = _label_to_path(inputs[0], self.blank_symbol, xp)
-        rr = self.recurrence_relation(
-            path.shape[1], numpy.float32, xp)[None, :, :]
-        forward_prob_trans, backward_prob_trans\
-            = self.calc_trans(path, log_yseq, rr, xp)
 
         total_probability = _logsumexp(
-            forward_prob_trans[0] + backward_prob_trans[0], xp, axis=1)
+            self.forward_prob_trans[0] + self.backward_prob_trans[0],
+            xp, axis=1)
         scale = grad_output[0] / batch_size
-        for t in six.moves.range(len(yseq)):
-            multiply = forward_prob_trans[t] + backward_prob_trans[t]
-            y = yseq[t]
+        for t in six.moves.range(len(self.yseq)):
+            multiply = self.forward_prob_trans[t] + self.backward_prob_trans[t]
+            y = self.yseq[t]
             label_prob = self.label_probability(
-                y.shape[1], path, multiply, xp)
+                y.shape[1], self.path, multiply, xp)
             y -= xp.exp(label_prob - total_probability[:, None])
             y *= scale
-        return (None,) + tuple(yseq)
+        return (None,) + tuple(self.yseq)
 
 
 def connectionist_temporal_classification(x, t, blank_symbol):
