@@ -5,6 +5,7 @@ python:
   - "3.4"
 
 install:
+  - sudo apt-get install -y libhdf5-serial-dev
   - python setup.py install
   - pip install nose flake8 hacking
 
