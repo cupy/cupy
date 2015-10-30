@@ -105,13 +105,13 @@ class ConnectionistTemporalClassification(function.Function):
                 T value = z;
                 I c = i % b_max, b = i / b_max;
                 int ind[2] = {b, -1};
-                for(int index = 0; index < c_max; ++index){
+                for (int index = 0; index < c_max; ++index) {
                     ind[1] = index;
-                    if(y[ind] == c){
+                    if (y[ind] == c) {
                         T xvalue = x[ind];
-                        if(value > xvalue){
+                        if (value > xvalue) {
                             value = value + log(1 + exp(xvalue - value));
-                        }else{
+                        } else {
                             value = xvalue + log(1 + exp(value - xvalue));
                         }
                     }
