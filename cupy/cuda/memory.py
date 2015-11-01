@@ -307,7 +307,7 @@ class SingleDeviceMemoryPool(object):
 
     def malloc(self, size):
         if size == 0:
-                return MemoryPointer(Memory(0), 0)
+            return MemoryPointer(Memory(0), 0)
         free = self._free[size]
         if free:
             mem = free.pop()
