@@ -1,7 +1,7 @@
 import atexit
 import functools
 
-from cupy import cuda
+from cupy cimport cuda
 
 
 _memos = []
@@ -25,10 +25,10 @@ def memoize(for_each_device=False):
 
         @functools.wraps(f)
         def ret(*args, **kwargs):
-            arg_key = (args, frozenset(kwargs.items()))
+            cdef int id = -1
             if for_each_device:
-                arg_key = (cuda.Device().id, arg_key)
-
+                id = cuda.Device().id
+            arg_key = (id, args, frozenset(kwargs.items()))
             result = memo.get(arg_key, none)
             if result is none:
                 result = f(*args, **kwargs)

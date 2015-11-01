@@ -19,6 +19,7 @@ MODULES = [
             'cupy.cuda.memory',
             'cupy.cuda.module',
             'cupy.cuda.runtime',
+            'cupy.util',
         ],
         'include': [
             'cublas_v2.h',
