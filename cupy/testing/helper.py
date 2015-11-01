@@ -235,7 +235,7 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
     if numpy.dtype(dtype).type == numpy.bool_:
         return xp.asarray(numpy.random.randint(2, size=shape).astype(dtype))
     else:
-        return xp.asarray((numpy.random.rand(*shape)* scale).astype(dtype))
+        return xp.asarray((numpy.random.rand(*shape) * scale).astype(dtype))
 
 
 class NumpyError(object):
