@@ -13,14 +13,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_scalar_op(self, op, xp, dtype, swap=False):
-        a = testing.shaped_arange((2, 3), xp, dtype)
+    def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False):
+        a = testing.shaped_arange((2, 3), xp, x_type)
         if swap:
-            return op(dtype(2), a)
+            return op(y_type(2), a)
         else:
-            return op(a, dtype(2))
+            return op(a, y_type(2))
 
     def test_add_scalar(self):
         self.check_array_scalar_op(operator.add)
@@ -134,11 +134,11 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_ne_scalar(self):
         self.check_array_scalar_op(operator.ne)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_array_op(self, op, xp, dtype):
-        a = testing.shaped_arange((2, 3), xp, dtype)
-        b = testing.shaped_reverse_arange((2, 3), xp, dtype)
+    def check_array_array_op(self, op, xp, x_type, y_type):
+        a = testing.shaped_arange((2, 3), xp, x_type)
+        b = testing.shaped_reverse_arange((2, 3), xp, y_type)
         return op(a, b)
 
     def test_add_array(self):
@@ -219,11 +219,11 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_ne_array(self):
         self.check_array_array_op(operator.ne)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_broadcasted_op(self, op, xp, dtype):
-        a = testing.shaped_arange((2, 3), dtype=dtype)
-        b = testing.shaped_arange((2, 1), dtype=dtype)
+    def check_array_broadcasted_op(self, op, xp, x_type, y_type):
+        a = testing.shaped_arange((2, 3), dtype=x_type)
+        b = testing.shaped_arange((2, 1), dtype=y_type)
         return op(a, b)
 
     def test_broadcasted_add(self):
@@ -304,11 +304,11 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_broadcasted_ne(self):
         self.check_array_broadcasted_op(operator.ne)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_doubly_broadcasted_op(self, op, xp, dtype):
-        a = testing.shaped_arange((2, 1, 3), xp, dtype)
-        b = testing.shaped_arange((3, 1), xp, dtype)
+    def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type):
+        a = testing.shaped_arange((2, 1, 3), xp, x_type)
+        b = testing.shaped_arange((3, 1), xp, y_type)
         return op(a, b)
 
     def test_doubly_broadcasted_add(self):
@@ -365,11 +365,12 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_doubly_broadcasted_ne(self):
         self.check_array_doubly_broadcasted_op(operator.ne)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_reversed_op(self, op, xp, dtype):
-        a = testing.shaped_arange((5,), xp, dtype)
-        return op(a, a[::-1])
+    def check_array_reversed_op(self, op, xp, x_type, y_type):
+        a = testing.shaped_arange((5,), xp, x_type)
+        b = testing.shaped_arange((5,), xp, y_type)
+        return op(a, b[::-1])
 
     def test_array_reversed_add(self):
         self.check_array_reversed_op(operator.add)
@@ -433,14 +434,14 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_int_dtypes()
+    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_scalar_op(self, op, xp, dtype, swap=False):
-        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=dtype)
+    def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False):
+        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
         if swap:
-            return op(dtype(2), a)
+            return op(y_type(2), a)
         else:
-            return op(a, dtype(2))
+            return op(a, y_type(2))
 
     def test_lshift_scalar(self):
         self.check_array_scalar_op(operator.lshift)
@@ -479,14 +480,14 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalar_op(operator.mod, swap=True)
 
-    @testing.for_int_dtypes()
+    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_scalarzero_op(self, op, xp, dtype, swap=False):
-        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=dtype)
+    def check_array_scalarzero_op(self, op, xp, x_type, y_type, swap=False):
+        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
         if swap:
-            return op(dtype(0), a)
+            return op(y_type(0), a)
         else:
-            return op(a, dtype(0))
+            return op(a, y_type(0))
 
     def test_lshift_scalarzero(self):
         self.check_array_scalarzero_op(operator.lshift)
@@ -526,11 +527,11 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalarzero_op(operator.mod, swap=True)
 
-    @testing.for_int_dtypes()
+    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_array_op(self, op, xp, dtype):
-        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=dtype)
-        b = xp.array([[0, 0, 1], [0, 1, 2]], dtype=dtype)
+    def check_array_array_op(self, op, xp, x_type, y_type):
+        a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
+        b = xp.array([[0, 0, 1], [0, 1, 2]], dtype=y_type)
         return op(a, b)
 
     def test_lshift_array(self):
@@ -571,11 +572,11 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.imod)
 
-    @testing.for_int_dtypes()
+    @testing.for_int_dtypes_combination(names=['x_types', 'y_types'])
     @testing.numpy_cupy_allclose()
-    def check_array_broadcasted_op(self, op, xp, dtype):
-        a = xp.array([[0, 1, 2], [1, 0, 2], [2, 1, 0]], dtype=dtype)
-        b = xp.array([[0, 0, 1]], dtype=dtype)
+    def check_array_broadcasted_op(self, op, xp, x_type, y_type):
+        a = xp.array([[0, 1, 2], [1, 0, 2], [2, 1, 0]], dtype=x_type)
+        b = xp.array([[0, 0, 1]], dtype=y_type)
         return op(a, b)
 
     def test_broadcasted_lshift(self):
@@ -616,11 +617,11 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.imod)
 
-    @testing.for_int_dtypes()
+    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
-    def check_array_doubly_broadcasted_op(self, op, xp, dtype):
-        a = xp.array([[[0, 1, 2]], [[1, 0, 2]]], dtype=dtype)
-        b = xp.array([[0], [0], [1]], dtype=dtype)
+    def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type):
+        a = xp.array([[[0, 1, 2]], [[1, 0, 2]]], dtype=x_type)
+        b = xp.array([[0], [0], [1]], dtype=y_type)
         return op(a, b)
 
     def test_doubly_broadcasted_lshift(self):

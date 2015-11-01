@@ -222,9 +222,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
         return for_dtypes(_int_bool_dtypes, name=name)
 
 
-def for_dtypes_combination(names=['dtype'],
-                           no_float16=False, no_bool=False, full=False):
-    types = _make_all_dtypes(no_float16, no_bool)
+def for_dtypes_combination(types, names=['dtype'], full=False):
     if full:
         combination = parameterized.product({name: types for name in names})
     else:
@@ -252,6 +250,20 @@ def for_dtypes_combination(names=['dtype'],
 
         return test_func
     return decorator
+
+
+def for_all_dtypes_combination(names=['dtyes'],
+                               no_float16=False, no_bool=False, full=False):
+    types = _make_all_dtypes(no_float16, no_bool)
+    return for_dtypes_combination(types, names, full)
+
+
+def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=False):
+    if no_bool:
+        types = _int_dtypes
+    else:
+        types = _int_bool_dtypes
+    return for_dtypes_combination(types, names, full)
 
 
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
