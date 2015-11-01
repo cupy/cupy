@@ -483,11 +483,13 @@ __device__ min_max_st my_max(const min_max_st& a, const min_max_st& b) {
 __device__ min_max_st my_argmin(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
+    if (a.value == b.value) return min_max_st(a.value, min(a.index, b.index));
     return (a.value <= b.value) ? a : b;
 }
 __device__ min_max_st my_argmax(const min_max_st& a, const min_max_st& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
+    if (a.value == b.value) return min_max_st(a.value, min(a.index, b.index));
     return (a.value >= b.value) ? a : b;
 }'''
 
