@@ -61,11 +61,8 @@ class ContinuousBoW(chainer.Chain):
         )
 
     def __call__(self, x, context):
-        h = None
-        for c in context:
-            e = self.embed(c)
-            h = h + e if h is not None else e
-
+        e = model.embed(context)
+        h = F.sum(e, axis=0)
         return self.loss_func(h, x)
 
 
@@ -78,14 +75,14 @@ class SkipGram(chainer.Chain):
         )
 
     def __call__(self, x, context):
-        loss = None
-        for c in context:
-            e = self.embed(c)
-
-            loss_i = self.loss_func(e, x)
-            loss = loss_i if loss is None else loss + loss_i
-
-        return loss
+        e = model.embed(context)
+        shape = e.data.shape
+        dummy = chainer.Variable(
+            xp.empty((shape[0], shape[1])))
+        x, _ = F.broadcast(x, dummy)
+        e = F.reshape(e, (shape[0] * shape[1], shape[2]))
+        x = F.reshape(x, (shape[0] * shape[1],))
+        return self.loss_func(e, x)
 
 
 class SoftmaxCrossEntropyLoss(chainer.Chain):
@@ -102,13 +99,9 @@ def calculate_loss(model, dataset, position):
     # use random window size in the same way as the original word2vec
     # implementation.
     w = np.random.randint(args.window - 1) + 1
-    context = []
-    for offset in range(-w, w + 1):
-        if offset == 0:
-            continue
-        c_data = xp.asarray(dataset[position + offset])
-        c = chainer.Variable(c_data)
-        context.append(c)
+    pos = [position + o for o in range(-w, w + 1) if o != 0]
+    d = xp.asarray(np.take(dataset, pos))
+    context = chainer.Variable(d)
     x_data = xp.asarray(dataset[position])
     x = chainer.Variable(x_data)
     return model(x, context)
