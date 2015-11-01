@@ -4,12 +4,14 @@
 ###############################################################################
 # Types
 ###############################################################################
-ctypedef void* Stream
+
+from cupy.cuda.driver cimport Stream
 ctypedef void* Handle
 ctypedef void* TensorDescriptor
 ctypedef void* ConvolutionDescriptor
 ctypedef void* PoolingDescriptor
 ctypedef void* FilterDescriptor
+
 ###############################################################################
 # Extern
 ###############################################################################

@@ -76,12 +76,18 @@ cdef class MemoryPointer:
         """Returns the pointer value."""
         return self.ptr
 
-    def __add__(self, offset):
+    def __add__(x, y):
         """Adds an offset to the pointer."""
-        if not isinstance(self, MemoryPointer):
-            self, offset = offset, self
+        cdef MemoryPointer self
+        cdef Py_ssize_t offset
+        if isinstance(x, MemoryPointer):
+            self = x
+            offset = <Py_ssize_t?>y
+        else:
+            self = <MemoryPointer?>y
+            offset = <Py_ssize_t?>x
         return MemoryPointer(self.mem,
-                             self.ptr - self.mem.ptr + <Py_ssize_t>offset)
+                             self.ptr - self.mem.ptr + offset)
 
     def __iadd__(self, Py_ssize_t offset):
         """Adds an offset to the pointer in place."""
@@ -329,6 +335,8 @@ cdef class SingleDeviceMemoryPool:
         self._weakref = weakref.ref(self)
 
     cpdef malloc(self, Py_ssize_t size):
+        if size == 0:
+            return MemoryPointer(Memory(0), 0)
         free = self._free[size]
 
         if free:
@@ -405,7 +413,5 @@ cdef class MemoryPool(object):
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        if size == 0:
-            return MemoryPointer(Memory(0), 0)
         dev = device.Device().id
         return self._pools[dev].malloc(size)

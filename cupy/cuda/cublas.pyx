@@ -3,9 +3,9 @@
 ###############################################################################
 # Types
 ###############################################################################
-ctypedef void* Stream
-ctypedef void* Handle
 
+from cupy.cuda.driver cimport Stream
+ctypedef void* Handle
 
 ###############################################################################
 # Extern
@@ -115,11 +115,9 @@ cpdef check_status(int status):
     if status != 0:
         raise CUBLASError(status)
 
-
 ###############################################################################
 # Context
 ###############################################################################
-
 
 cpdef size_t create():
     cdef Handle handle
@@ -151,7 +149,6 @@ cpdef setPointerMode(size_t handle, int mode):
     status = cublasSetPointerMode(<Handle>handle, mode)
     check_status(status)
 
-
 ###############################################################################
 # Stream
 ###############################################################################
@@ -170,7 +167,6 @@ cpdef size_t getStream(size_t handle):
 ###############################################################################
 # BLAS Level 1
 ###############################################################################
-
 
 cpdef int isamax(size_t handle, int n, size_t x, int incx):
     cdef int result
