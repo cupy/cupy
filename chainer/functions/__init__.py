@@ -27,6 +27,7 @@ from chainer.functions.connection import linear
 from chainer.functions.connection import parameter
 from chainer.functions.evaluation import accuracy
 from chainer.functions.loss import cross_covariance
+from chainer.functions.loss import ctc
 from chainer.functions.loss import hierarchical_softmax
 from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
@@ -50,6 +51,9 @@ from chainer.functions.pooling import spatial_pyramid_pooling_2d
 
 ClippedReLU = clipped_relu.ClippedReLU
 clipped_relu = clipped_relu.clipped_relu
+ConnectionistTemporalClassification = ctc.ConnectionistTemporalClassification
+connectionist_temporal_classification \
+    = ctc.connectionist_temporal_classification
 LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LSTM = lstm.LSTM

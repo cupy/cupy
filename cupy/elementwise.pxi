@@ -195,7 +195,7 @@ class ParameterInfo(object):
             if i == 'raw':
                 self.raw = True
             else:
-                raise Exception('Unknown keyward "%s"' % i)
+                raise Exception('Unknown keyword "%s"' % i)
 
 
 @util.memoize()

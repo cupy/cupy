@@ -11,6 +11,8 @@ from cupy import cuda
 from cupy.cuda import curand
 from cupy.random import generator
 from cupy import testing
+from cupy.testing import condition
+from cupy.testing import hypothesis
 
 
 class FunctionSwitcher(object):
@@ -186,6 +188,66 @@ class TestRandAndRandN(unittest.TestCase):
     def test_randn_invalid_argument(self):
         with self.assertRaises(TypeError):
             self.rs.randn(1, 2, 3, unnecessary='unnecessary_argument')
+
+
+@testing.gpu
+class TestInterval(unittest.TestCase):
+
+    def setUp(self):
+        self.rs = generator.RandomState()
+
+    def test_zero(self):
+        numpy.testing.assert_array_equal(
+            self.rs.interval(0, (2, 3)).get(), numpy.zeros((2, 3)))
+
+    def test_shape_zero(self):
+        v = self.rs.interval(10, None)
+        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.shape, ())
+
+    def test_shape_one_dim(self):
+        v = self.rs.interval(10, 10)
+        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.shape, (10,))
+
+    def test_shape_multi_dim(self):
+        v = self.rs.interval(10, (1, 2))
+        self.assertEqual(v.dtype, 'i')
+        self.assertEqual(v.shape, (1, 2))
+
+    @condition.repeat(10)
+    def test_within_interval(self):
+        val = self.rs.interval(10, (2, 3)).get()
+        numpy.testing.assert_array_less(numpy.full((2, 3), -1), val)
+        numpy.testing.assert_array_less(val, numpy.full((2, 3), 11))
+
+    @condition.retry(20)
+    def test_lower_bound(self):
+        val = self.rs.interval(2, None).get()
+        self.assertEqual(0, val)
+
+    @condition.retry(20)
+    def test_upper_bound(self):
+        val = self.rs.interval(2, None).get()
+        self.assertEqual(2, val)
+
+    @condition.retry(5)
+    def test_goodness_of_fit(self):
+        mx = 5
+        trial = 100
+        vals = [self.rs.interval(mx, None).get()
+                for _ in six.moves.xrange(trial)]
+        counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
+        expected = numpy.array([float(trial) / mx + 1] * (mx + 1))
+        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+
+    @condition.retry(5)
+    def test_goodness_of_fit_2(self):
+        mx = 5
+        vals = self.rs.interval(mx, (5, 5)).get()
+        counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
+        expected = numpy.array([float(vals.size) / mx + 1] * (mx + 1))
+        self.assertTrue(hypothesis.chi_square_test(counts, expected))
 
 
 class TestResetStates(unittest.TestCase):
