@@ -22,6 +22,18 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
             y = impl(self, *args, **kw)
             self.assertIsNotNone(x)
             self.assertIsNotNone(y)
+
+            vs = kw.values()
+            if any(v in _unsigned_dtypes for v in vs) and \
+               any(v in _float_dtypes + _signed_dtypes for v in vs):
+                ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
+                for k in ks:
+                    kw[k] = numpy.int64
+                mask = cupy.asnumpy(impl(self, *args, **kw)) >= 0
+                inds = numpy.nonzero(mask)
+                x = cupy.asnumpy(x)[inds]
+                y = cupy.asnumpy(y)[inds]
+
             array.assert_allclose(x, y, rtol, atol, err_msg, verbose)
             if type_check:
                 self.assertEqual(x.dtype, y.dtype)
