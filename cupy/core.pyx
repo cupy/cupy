@@ -25,8 +25,12 @@ def _get_size(size):
     else:
         raise ValueError('size should be None, collections.Sequence, or int')
 
+cdef _should_use_rop(x, y):
+    xp = getattr(x, '__array_priority__', 0)
+    yp = getattr(y, '__array_priority__', 0)
+    return xp < yp and not isinstance(y, ndarray)
 
-class ndarray(object):
+cdef class ndarray:
 
     """Multi-dimensional array on a CUDA device.
 
@@ -47,10 +51,16 @@ class ndarray(object):
 
     """
 
-#    cdef:
-#        tuple _shape, _strides
-#        numpy.dtype _dtype
-#        object data
+    cdef:
+        public Py_ssize_t _size
+        public int _c_contiguous
+        public int _f_contiguous
+        public object _dtype
+        public object data
+        public ndarray base
+        public tuple _shape
+        public tuple _strides
+
 
     def __init__(self, shape, dtype=float, memptr=None, strides=None):
         self._shape = shape = _get_size(shape)
@@ -103,8 +113,7 @@ class ndarray(object):
         return flags.Flags(self._c_contiguous, self._f_contiguous,
                            self.base is not None)
 
-    @property
-    def shape(self):
+    property shape:
         """Lengths of axes.
 
         Setter of this property involves reshaping without copy. If the array
@@ -113,17 +122,18 @@ class ndarray(object):
         .. seealso: :attr:`numpy.ndarray.shape`
 
         """
-        return self._shape
 
-    @shape.setter
-    def shape(self, newshape):
-        newshape = infer_unknown_dimension(newshape, self._size)
-        strides = get_strides_for_nocopy_reshape(self, newshape)
-        if strides is None:
-            raise AttributeError('Incompatible shape')
-        self._shape = newshape
-        self._strides = strides
-        self._f_contiguous = -1
+        def __get__(self):
+            return self._shape
+
+        def __set__(self, newshape):
+            newshape = infer_unknown_dimension(newshape, self._size)
+            strides = get_strides_for_nocopy_reshape(self, newshape)
+            if strides is None:
+                raise AttributeError('Incompatible shape')
+            self._shape = newshape
+            self._strides = strides
+            self._f_contiguous = -1
 
     @property
     def strides(self):
@@ -313,7 +323,7 @@ class ndarray(object):
         # TODO(beam2d): Support ordering option
         return copy(self)
 
-    def view(self, dtype=None):
+    cpdef ndarray view(self, dtype=None):
         """Returns a view of the array.
 
         Args:
@@ -329,6 +339,7 @@ class ndarray(object):
 
         """
         # Use __new__ instead of __init__ to skip recomputation of contiguity
+        cdef ndarray v
         v = ndarray.__new__(ndarray)
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
@@ -612,23 +623,20 @@ class ndarray(object):
     # -------------------------------------------------------------------------
     # Comparison operators:
 
-    def __lt__(self, other):
-        return less(self, other)
-
-    def __le__(self, other):
-        return less_equal(self, other)
-
-    def __gt__(self, other):
-        return greater(self, other)
-
-    def __ge__(self, other):
-        return greater_equal(self, other)
-
-    def __eq__(self, other):
-        return equal(self, other)
-
-    def __ne__(self, other):
-        return not_equal(self, other)
+    def __richcmp__(object self, object other, int op):
+        if op == 0:
+            return less(self, other)
+        if op == 1:
+            return less_equal(self, other)
+        if op == 2:
+            return equal(self, other)
+        if op == 3:
+            return not_equal(self, other)
+        if op == 4:
+            return greater(self, other)
+        if op == 5:
+            return greater_equal(self, other)
+        return NotImplemented
 
     # Truth value of an array (bool):
 
@@ -661,92 +669,93 @@ class ndarray(object):
 
     # Arithmetic:
 
-    def __add__(self, other):
-        if self._should_use_rop(other):
-            return other.__radd__(self)
+    def __add__(x, y):
+        if _should_use_rop(x, y):
+            return y.__radd__(x)
         else:
-            return add(self, other)
+            return add(x, y)
 
-    def __sub__(self, other):
-        if self._should_use_rop(other):
-            return other.__rsub__(self)
+    def __sub__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rsub__(x)
         else:
-            return subtract(self, other)
+            return subtract(x, y)
 
-    def __mul__(self, other):
-        if self._should_use_rop(other):
-            return other.__rmul__(self)
+    def __mul__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rmul__(x)
         else:
-            return multiply(self, other)
+            return multiply(x, y)
 
-    def __div__(self, other):
-        if self._should_use_rop(other):
-            return other.__rdiv__(self)
+    def __div__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rdiv__(x)
         else:
-            return divide(self, other)
+            return divide(x, y)
 
-    def __truediv__(self, other):
-        if self._should_use_rop(other):
-            return other.__rtruediv__(self)
+    def __truediv__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rtruediv__(x)
         else:
-            return true_divide(self, other)
+            return true_divide(x, y)
 
-    def __floordiv__(self, other):
-        if self._should_use_rop(other):
-            return other.__rfloordiv__(self)
+    def __floordiv__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rfloordiv__(x)
         else:
-            return floor_divide(self, other)
+            return floor_divide(x, y)
 
-    def __mod__(self, other):
-        if self._should_use_rop(other):
-            return other.__rmod__(self)
+    def __mod__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rmod__(x)
         else:
-            return remainder(self, other)
+            return remainder(x, y)
 
-    def __divmod__(self, other):
-        if self._should_use_rop(other):
-            return other.__rdivmod__(self)
+    def __divmod__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rdivmod__(x)
         else:
-            return divmod(self, other)
+            return divmod(x, y)
 
-    def __pow__(self, other, modulo=None):
+    def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
-        if self._should_use_rop(other):
-            return other.__rpow__(self)
+        if _should_use_rop(x, y):
+            return y.__rpow__(x)
         else:
-            return power(self, other)
+            return power(x, y)
 
-    def __lshift__(self, other):
-        if self._should_use_rop(other):
-            return other.__rlshift__(self)
+    def __lshift__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rlshift__(x)
         else:
-            return left_shift(self, other)
+            return left_shift(x, y)
 
-    def __rshift__(self, other):
-        if self._should_use_rop(other):
-            return other.__rrshift__(self)
+    def __rshift__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rrshift__(x)
         else:
-            return right_shift(self, other)
+            return right_shift(x, y)
 
-    def __and__(self, other):
-        if self._should_use_rop(other):
-            return other.__rand__(self)
+    def __and__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rand__(x)
         else:
-            return bitwise_and(self, other)
+            return bitwise_and(x, y)
 
-    def __or__(self, other):
-        if self._should_use_rop(other):
-            return other.__ror__(self)
+    def __or__(x, y):
+        if _should_use_rop(x, y):
+            return y.__ror__(x)
         else:
-            return bitwise_or(self, other)
+            return bitwise_or(x, y)
 
-    def __xor__(self, other):
-        if self._should_use_rop(other):
-            return other.__rxor__(self)
+    def __xor__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rxor__(x)
         else:
-            return bitwise_xor(self, other)
+            return bitwise_xor(x, y)
 
     # Arithmetic __r{op}__ (CuPy specific):
+    """
 
     def __radd__(self, other):
         return add(other, self)
@@ -789,6 +798,7 @@ class ndarray(object):
 
     def __rxor__(self, other):
         return bitwise_xor(other, self)
+    """
 
     # Arithmetic, in-place:
 
@@ -813,7 +823,7 @@ class ndarray(object):
     def __imod__(self, other):
         return remainder(self, other, self)
 
-    def __ipow__(self, other, modulo=None):
+    def __ipow__(self, other):
         return power(self, other, self)
 
     def __ilshift__(self, other):
@@ -1086,9 +1096,6 @@ class ndarray(object):
     def _update_contiguity(self):
         self._update_c_contiguity()
         self._update_f_contiguity()
-
-    def _should_use_rop(self, a):
-        return getattr(a, '__array_priority__', 0) > self.__array_priority__
 
 
 newaxis = numpy.newaxis  # == None
@@ -1407,7 +1414,8 @@ def copy(a):
 # Array manipulation routines
 # -----------------------------------------------------------------------------
 
-def reshape(a, newshape):
+cdef ndarray reshape(ndarray a, newshape):
+    cdef ndarray newarray
     # TODO(beam2d): Support ordering option
     if isinstance(newshape, collections.Sequence):
         newshape = tuple(newshape)
@@ -1442,7 +1450,7 @@ def reshape(a, newshape):
     return newarray
 
 
-def rollaxis(a, axis, start=0):
+cpdef ndarray rollaxis(ndarray a, axis, start=0):
     ndim = a.ndim
     if axis < 0:
         axis += ndim
@@ -1463,7 +1471,7 @@ def rollaxis(a, axis, start=0):
     return transpose(a, axes)
 
 
-def swapaxes(a, axis1, axis2):
+cdef ndarray swapaxes(ndarray a, axis1, axis2):
     ndim = a.ndim
     if axis1 >= ndim or axis2 >= ndim:
         raise ValueError('Axis out of range')
@@ -1472,7 +1480,7 @@ def swapaxes(a, axis1, axis2):
     return transpose(a, axes)
 
 
-def transpose(a, axes=None):
+cdef ndarray transpose(ndarray a, axes=None):
     ndim = a.ndim
     a_shape = a._shape
     a_strides = a._strides
@@ -1594,7 +1602,7 @@ class broadcast(object):
         self.values = tuple(broadcasted)
 
 
-def squeeze(a, axis=None):
+cdef ndarray squeeze(ndarray a, axis=None):
     if axis is None:
         axis = tuple(i for i, n in enumerate(a._shape) if n == 1)
     elif isinstance(axis, int):
@@ -1833,7 +1841,9 @@ def dot(a, b, out=None):
     return _tensordot_core(a, b, out, n, m, k, ret_shape)
 
 
-def _tensordot_core(a, b, out, n, m, k, ret_shape):
+cpdef ndarray _tensordot_core(
+        ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
+        Py_ssize_t k, ret_shape):
     ret_dtype = a.dtype.char
     if ret_dtype != b.dtype.char:
         ret_dtype = numpy.find_common_type((ret_dtype, b.dtype), ()).char

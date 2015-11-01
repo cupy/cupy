@@ -112,7 +112,7 @@ cdef class Device:
             return self.id > other.id
         if op == 5:
             return self.id >= other.id
-        raise ValueError('')
+        return NotImplemented
 
 
 def from_pointer(ptr):
