@@ -145,3 +145,4 @@ class TestMemoryPool(unittest.TestCase):
     def test_zero_size_alloc(self):
         mem = self.pool.malloc(0).mem
         self.assertIsInstance(mem, memory.Memory)
+        self.assertNotIsInstance(mem, memory.PooledMemory)
