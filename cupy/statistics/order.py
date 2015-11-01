@@ -16,7 +16,7 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
 
     """
     # TODO(okuta): check type
-    return a.amin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 def amax(a, axis=None, out=None, keepdims=False, dtype=None):
@@ -37,7 +37,7 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
 
     """
     # TODO(okuta): check type
-    return a.amax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 # TODO(okuta): Implement nanmin
