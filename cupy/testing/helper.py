@@ -230,11 +230,12 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
     return xp.array(a.astype(dtype).reshape(shape))
 
 
-def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10):
+def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
+    numpy.random.seed(seed)
     if numpy.dtype(dtype).type == numpy.bool_:
-        return xp.random.randint(2, size=shape).astype(dtype)
+        return xp.asarray(numpy.random.randint(2, size=shape).astype(dtype))
     else:
-        return (xp.random.rand(*shape) * scale).astype(dtype)
+        return xp.asarray((numpy.random.rand(*shape)* scale).astype(dtype))
 
 
 class NumpyError(object):
