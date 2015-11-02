@@ -434,7 +434,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
+    @testing.for_signed_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False):
         a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
@@ -480,7 +480,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalar_op(operator.mod, swap=True)
 
-    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
+    @testing.for_signed_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_scalarzero_op(self, op, xp, x_type, y_type, swap=False):
         a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
@@ -527,7 +527,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_scalarzero_op(operator.mod, swap=True)
 
-    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
+    @testing.for_signed_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_array_op(self, op, xp, x_type, y_type):
         a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
@@ -572,7 +572,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.imod)
 
-    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
+    @testing.for_signed_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_broadcasted_op(self, op, xp, x_type, y_type):
         a = xp.array([[0, 1, 2], [1, 0, 2], [2, 1, 0]], dtype=x_type)
@@ -617,7 +617,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.imod)
 
-    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
+    @testing.for_signed_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type):
         a = xp.array([[[0, 1, 2]], [[1, 0, 2]]], dtype=x_type)
