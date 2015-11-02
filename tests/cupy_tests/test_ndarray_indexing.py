@@ -64,6 +64,22 @@ class TestArrayIndexing(unittest.TestCase):
     def test_getitem_newaxis5(self):
         self.check_getitem((), None, (None, None))
 
+    @testing.numpy_cupy_raises()
+    def test_getitem_invalid_slice_start(self, xp):
+        xp.zeros((2, 3, 4))[0:1:0]
+
+    @testing.numpy_cupy_raises()
+    def test_getitem_invalid_slice_start(self, xp):
+        xp.zeros((2, 3, 4))[(0, 0):None:None]
+
+    @testing.numpy_cupy_raises()
+    def test_getitem_invalid_slice_stop(self, xp):
+        xp.zeros((2, 3, 4))[None:(0, 0):None]
+
+    @testing.numpy_cupy_raises()
+    def test_getitem_invalid_slice_step(self, xp):
+        xp.zeros((2, 3, 4))[None:None:(0, 0)]
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_setitem_constant(self, xp, dtype):
