@@ -25,62 +25,189 @@ cdef class PointerAttributes:
 ###############################################################################
 # Extern
 ###############################################################################
+IF CUPY_USE_CUDA:
+    cdef extern from "cuda_runtime.h":
+        # Types
+        cdef struct _PointerAttributes 'cudaPointerAttributes':
+            int device
+            void* devicePointer
+            void* hostPointer
+            int isManaged
+            int memoryType
 
-cdef extern from "cuda_runtime.h":
-    # Types
-    cdef struct _PointerAttributes 'cudaPointerAttributes':
-        int device
-        void* devicePointer
-        void* hostPointer
-        int isManaged
-        int memoryType
+        # Error handling
+        const char* cudaGetErrorName(Error error)
+        const char* cudaGetErrorString(Error error)
 
-    # Error handling
-    const char* cudaGetErrorName(Error error)
-    const char* cudaGetErrorString(Error error)
+        # Initialization
+        int cudaDriverGetVersion(int* driverVersion )
 
-    # Initialization
-    int cudaDriverGetVersion(int* driverVersion )
+        # Device operations
+        int cudaGetDevice(int* device)
+        int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device )
+        int cudaGetDeviceCount(int* count)
+        int cudaSetDevice(int device)
+        int cudaDeviceSynchronize()
 
-    # Device operations
-    int cudaGetDevice(int* device)
-    int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device )
-    int cudaGetDeviceCount(int* const)
-    int cudaSetDevice(int device)
-    int cudaDeviceSynchronize()
+        # Memory management
+        int cudaMalloc(void** devPtr, size_t size)
+        int cudaFree(void* devPtr)
+        int cudaMemGetInfo(size_t* free, size_t* total)
+        int cudaMemcpy(void* dst, const void* src, size_t count,
+                       MemoryKind kind)
+        int cudaMemcpyAsync(void* dst, const void* src, size_t count,
+                            MemoryKind kind, Stream stream)
+        int cudaMemcpyPeer(void* dst, int dstDevice, const void* src,
+                           int srcDevice, size_t count)
+        int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
+                           int srcDevice, size_t count, Stream stream)
+        int cudaMemset(void* devPtr, int value, size_t count)
+        int cudaMemsetAsync(void* devPtr, int value, size_t count,
+                            Stream stream)
+        int cudaPointerGetAttributes(_PointerAttributes* attributes,
+                                     const void* ptr)
 
-    # Memory management
-    int cudaMalloc(void** devPtr, size_t size)
-    int cudaFree(void* devPtr)
-    int cudaMemGetInfo(size_t* free, size_t* total)
-    int cudaMemcpy(void* dst, const void* src, size_t count, MemoryKind kind)
-    int cudaMemcpyAsync(void* dst, const void* src, size_t count,
-                        MemoryKind kind, Stream stream)
-    int cudaMemcpyPeer(void* dst, int dstDevice, const void* src,
-                       int srcDevice, size_t count)
-    int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
-                       int srcDevice, size_t count, Stream stream)
-    int cudaMemset(void* devPtr, int value, size_t count)
-    int cudaMemsetAsync(void* devPtr, int value, size_t count, Stream stream)
-    int cudaPointerGetAttributes(_PointerAttributes* attributes,
-                                 const void* ptr)
+        # Stream and Event
+        int cudaStreamCreate(Stream* pStream)
+        int cudaStreamCreateWithFlags(Stream* pStream, unsigned int flags)
+        int cudaStreamDestroy(Stream stream)
+        int cudaStreamSynchronize(Stream stream)
+        int cudaStreamAddCallback(Stream stream, StreamCallback callback,
+                                  void* userData, unsigned int flags)
+        int cudaStreamQuery(Stream stream)
+        int cudaStreamWaitEvent(Stream stream, Event event,
+                                unsigned int flags)
+        int cudaEventCreate(Event* event)
+        int cudaEventCreateWithFlags(Event* event, unsigned int flags)
+        int cudaEventDestroy(Event event)
+        int cudaEventElapsedTime(float* ms, Event start, Event end)
+        int cudaEventQuery(Event event)
+        int cudaEventRecord(Event event, Stream stream)
+        int cudaEventSynchronize(Event event)
 
-    # Stream and Event
-    int cudaStreamCreate(Stream* pStream)
-    int cudaStreamCreateWithFlags(Stream* pStream, unsigned int flags)
-    int cudaStreamDestroy(Stream stream)
-    int cudaStreamSynchronize(Stream stream)
-    int cudaStreamAddCallback(Stream stream, StreamCallback callback,
-                              void* userData, unsigned int flags)
-    int cudaStreamQuery(Stream stream)
-    int cudaStreamWaitEvent(Stream stream, Event event, unsigned int flags)
-    int cudaEventCreate(Event* event)
-    int cudaEventCreateWithFlags(Event* event, unsigned int flags)
-    int cudaEventDestroy(Event event)
-    int cudaEventElapsedTime(float* ms, Event start, Event end)
-    int cudaEventQuery(Event event)
-    int cudaEventRecord(Event event, Stream stream)
-    int cudaEventSynchronize(Event event)
+ELSE:
+    cdef:
+        # Types
+        cdef struct _PointerAttributes:
+            int device
+            void* devicePointer
+            void* hostPointer
+            int isManaged
+            int memoryType
+
+
+        # Error handling
+        const char* cudaGetErrorName(Error error):
+            return None
+
+        const char* cudaGetErrorString(Error error):
+            return None
+
+
+        # Initialization
+        int cudaDriverGetVersion(int* driverVersion ):
+            return 0
+
+
+        # Device operations
+        int cudaGetDevice(int* device):
+            return 0
+
+        int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device ):
+            return 0
+
+        int cudaGetDeviceCount(int* count):
+            return 0
+
+        int cudaSetDevice(int device):
+            return 0
+
+        int cudaDeviceSynchronize():
+            return 0
+
+
+        # Memory management
+        int cudaMalloc(void** devPtr, size_t size):
+            return 0
+
+        int cudaFree(void* devPtr):
+            return 0
+
+        int cudaMemGetInfo(size_t* free, size_t* total):
+            return 0
+
+        int cudaMemcpy(void* dst, const void* src, size_t count,
+                       MemoryKind kind):
+            return 0
+
+        int cudaMemcpyAsync(void* dst, const void* src, size_t count,
+                            MemoryKind kind, Stream stream):
+            return 0
+
+        int cudaMemcpyPeer(void* dst, int dstDevice, const void* src,
+                           int srcDevice, size_t count):
+            return 0
+
+        int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
+                           int srcDevice, size_t count, Stream stream):
+            return 0
+
+        int cudaMemset(void* devPtr, int value, size_t count):
+            return 0
+
+        int cudaMemsetAsync(void* devPtr, int value, size_t count,
+                            Stream stream):
+            return 0
+
+        int cudaPointerGetAttributes(_PointerAttributes* attributes,
+                                     const void* ptr):
+            return 0
+
+
+        # Stream and Event
+        int cudaStreamCreate(Stream* pStream):
+            return 0
+
+        int cudaStreamCreateWithFlags(Stream* pStream, unsigned int flags):
+            return 0
+
+        int cudaStreamDestroy(Stream stream):
+            return 0
+
+        int cudaStreamSynchronize(Stream stream):
+            return 0
+
+        int cudaStreamAddCallback(Stream stream, StreamCallback callback,
+                                  void* userData, unsigned int flags):
+            return 0
+
+        int cudaStreamQuery(Stream stream):
+            return 0
+
+        int cudaStreamWaitEvent(Stream stream, Event event,
+                                unsigned int flags):
+            return 0
+
+        int cudaEventCreate(Event* event):
+            return 0
+
+        int cudaEventCreateWithFlags(Event* event, unsigned int flags):
+            return 0
+
+        int cudaEventDestroy(Event event):
+            return 0
+
+        int cudaEventElapsedTime(float* ms, Event start, Event end):
+            return 0
+
+        int cudaEventQuery(Event event):
+            return 0
+
+        int cudaEventRecord(Event event, Stream stream):
+            return 0
+
+        int cudaEventSynchronize(Event event):
+            return 0
 
 
 ###############################################################################

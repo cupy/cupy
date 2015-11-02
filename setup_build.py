@@ -89,7 +89,7 @@ def check_include(dirs, file_path):
     return any(path.exists(path.join(dir, file_path)) for dir in dirs)
 
 
-def make_extensions():
+def make_extensions(options):
 
     """Produce a list of Extension instances which passed to cythonize()."""
 
@@ -111,22 +111,49 @@ def make_extensions():
     settings['library_dirs'] = [
         x for x in settings['library_dirs'] if path.exists(x)]
 
+    if options['linetrace']:
+        settings['define_macros'].append(('CYTHON_TRACE', '1'))
+    nocuda = options['nocuda']
+
     ret = []
     for module in MODULES:
-        include = [i for i in module['include']
-                   if not check_include(include_dirs, i)]
         print('Include directories:', settings['include_dirs'])
         print('Library directories:', settings['library_dirs'])
-        if include:
-            print('Missing include files:', *include)
+
+        include = [i for i in module['include']
+                   if not check_include(include_dirs, i)]
+        if not nocuda and include:
+            print('Missing include files:', include)
             continue
+
         s = settings.copy()
-        s['libraries'] = module['libraries']
+        if not nocuda:
+            s['libraries'] = module['libraries']
         ret.extend([
             extension.Extension(
                 f, [localpath(path.join(*f.split('.')) + '.pyx')], **s)
             for f in module['file']])
     return ret
+
+
+_arg_options = {}
+
+
+def parse_args():
+    global _arg_options
+    _arg_options['profile'] = '--cupy-profile' in sys.argv
+    if _arg_options['profile']:
+        sys.argv.remove('--cupy-profile')
+
+    _arg_options['linetrace'] = '--cupy-linetrace' in sys.argv
+    if _arg_options['linetrace']:
+        sys.argv.remove('--cupy-linetrace')
+
+    _arg_options['nocuda'] = '--cupy-nocuda' in sys.argv
+    if _arg_options['nocuda']:
+        sys.argv.remove('--cupy-nocuda')
+    if os.environ.get('READTHEDOCS', None):
+        _arg_options['nocuda'] = True
 
 
 class chainer_build_ext(build_ext.build_ext):
@@ -137,7 +164,19 @@ class chainer_build_ext(build_ext.build_ext):
 
         from Cython.Build import cythonize
 
-        print("Executing cythonize()")
-        self.extensions = cythonize(make_extensions(), force=True)
+        print('Executing cythonize()')
+        print('Options:', _arg_options)
+
+        directive_keys = ('linetrace', 'profile')
+        directives = {key: _arg_options[key] for key in directive_keys}
+        compile_time_env = {
+            'CUPY_USE_CUDA': not _arg_options['nocuda'],
+        }
+
+        self.extensions = cythonize(
+            make_extensions(_arg_options),
+            force=True,
+            compiler_directives=directives,
+            compile_time_env=compile_time_env)
 
         build_ext.build_ext.run(self)

@@ -1,8 +1,13 @@
 #!/usr/bin/env python
+
 from setuptools import Extension
 from setuptools import setup
 
 import setup_build
+
+
+setup_build.parse_args()
+
 
 setup(
     name='chainer',

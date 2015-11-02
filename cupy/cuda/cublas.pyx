@@ -1,73 +1,189 @@
 """Thin wrapper of CUBLAS."""
 
-
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from 'cublas_v2.h':
-    # Context
-    int cublasCreate(Handle* handle)
-    int cublasDestroy(Handle handle)
-    int cublasGetVersion(Handle handle, int* version)
-    int cublasGetPointerMode(Handle handle, PointerMode* mode)
-    int cublasSetPointerMode(Handle handle, PointerMode mode)
+IF CUPY_USE_CUDA:
+    cdef extern from 'cublas_v2.h':
+        # Context
+        int cublasCreate(Handle* handle)
+        int cublasDestroy(Handle handle)
+        int cublasGetVersion(Handle handle, int* version)
+        int cublasGetPointerMode(Handle handle, PointerMode* mode)
+        int cublasSetPointerMode(Handle handle, PointerMode mode)
 
-    # Stream
-    int cublasSetStream(Handle handle, Stream streamId)
-    int cublasGetStream(Handle handle, Stream* streamId)
+        # Stream
+        int cublasSetStream(Handle handle, Stream streamId)
+        int cublasGetStream(Handle handle, Stream* streamId)
 
-    # BLAS Level 1
-    int cublasIsamax(Handle handle, int n, float* x, int incx, int* result)
-    int cublasIsamin(Handle handle, int n, float* x, int incx, int* result)
-    int cublasSasum(Handle handle, int n, float* x, int incx, float* result)
-    int cublasSaxpy(Handle handle, int n, float* alpha, float* x, int incx,
-                    float* y, int incy)
-    int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
-                    int incx, double* y, int incy)
-    int cublasSdot(Handle handle, int n, float* x, int incx,
-                   float* y, int incy, float* result)
-    int cublasDdot(Handle handle, int n, double* x, int incx,
-                   double* y, int incy, double* result)
-    int cublasSnrm2(Handle handle, int n, float* x, int incx, float* result)
-    int cublasSscal(Handle handle, int n, float* alpha, float* x, int incx)
+        # BLAS Level 1
+        int cublasIsamax(Handle handle, int n, float* x, int incx, int* result)
+        int cublasIsamin(Handle handle, int n, float* x, int incx, int* result)
+        int cublasSasum(Handle handle, int n, float* x, int incx,
+                        float* result)
+        int cublasSaxpy(Handle handle, int n, float* alpha, float* x,
+                        int incx, float* y, int incy)
+        int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
+                        int incx, double* y, int incy)
+        int cublasSdot(Handle handle, int n, float* x, int incx,
+                       float* y, int incy, float* result)
+        int cublasDdot(Handle handle, int n, double* x, int incx,
+                       double* y, int incy, double* result)
+        int cublasSnrm2(Handle handle, int n, float* x, int incx,
+                        float* result)
+        int cublasSscal(Handle handle, int n, float* alpha, float* x, int incx)
 
-    # BLAS Level 2
-    int cublasSgemv(
-        Handle handle, Operation trans, int m, int n, float* alpha,
-        float* A, int lda, float* x, int incx, float* beta,
-        float* y, int incy)
-    int cublasDgemv(
-        Handle handle, Operation trans, int m, int n, double* alpha,
-        double* A, int lda, double* x, int incx, double* beta,
-        double* y, int incy)
-    int cublasSger(
-        Handle handle, int m, int n, float* alpha, float* x, int incx,
-        float* y, int incy, float* A, int lda)
-    int cublasDger(
-        Handle handle, int m, int n, double* alpha, double* x, int incx,
-        double* y, int incy, double* A, int lda)
+        # BLAS Level 2
+        int cublasSgemv(
+                Handle handle, Operation trans, int m, int n, float* alpha,
+                float* A, int lda, float* x, int incx, float* beta,
+                float* y, int incy)
+        int cublasDgemv(
+                Handle handle, Operation trans, int m, int n, double* alpha,
+                double* A, int lda, double* x, int incx, double* beta,
+                double* y, int incy)
+        int cublasSger(
+                Handle handle, int m, int n, float* alpha, float* x, int incx,
+                float* y, int incy, float* A, int lda)
+        int cublasDger(
+                Handle handle, int m, int n, double* alpha, double* x,
+                int incx, double* y, int incy, double* A, int lda)
 
-    # BLAS Level 3
-    int cublasSgemm(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, float* alpha, float* A, int lda, float* B, int ldb,
-        float* beta, float* C, int ldc)
-    int cublasDgemm(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, double* alpha, double* A, int lda, double* B, int ldb,
-        double* beta, double* C, int ldc)
-    int cublasSgemmBatched(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, const float* alpha, const float** Aarray, int lda,
-        const float** Barray, int ldb, const float* beta,
-        float** Carray, int ldc, int batchCount)
+        # BLAS Level 3
+        int cublasSgemm(
+                Handle handle, Operation transa, Operation transb, int m,
+                int n, int k, float* alpha, float* A, int lda, float* B,
+                int ldb, float* beta, float* C, int ldc)
+        int cublasDgemm(
+                Handle handle, Operation transa, Operation transb, int m,
+                int n, int k, double* alpha, double* A, int lda, double* B,
+                int ldb, double* beta, double* C, int ldc)
+        int cublasSgemmBatched(
+                Handle handle, Operation transa, Operation transb, int m,
+                int n, int k, const float* alpha, const float** Aarray,
+                int lda, const float** Barray, int ldb, const float* beta,
+                float** Carray, int ldc, int batchCount)
 
-    # BLAS extension
-    int cublasSdgmm(
-        Handle handle, SideMode mode, int m, int n, float* A, int lda,
-        float* x, int incx, float* C, int ldc)
+        # BLAS extension
+        int cublasSdgmm(
+                Handle handle, SideMode mode, int m, int n, float* A, int lda,
+                float* x, int incx, float* C, int ldc)
 
+ELSE:
+    cdef:
+        # Context
+        int cublasCreate(Handle* handle):
+            return 0
+
+        int cublasDestroy(Handle handle):
+            return 0
+
+        int cublasGetVersion(Handle handle, int* version):
+            return 0
+
+        int cublasGetPointerMode(Handle handle, PointerMode* mode):
+            return 0
+
+        int cublasSetPointerMode(Handle handle, PointerMode mode):
+            return 0
+
+
+        # Stream
+        int cublasSetStream(Handle handle, Stream streamId):
+            return 0
+
+        int cublasGetStream(Handle handle, Stream* streamId):
+            return 0
+
+
+        # BLAS Level 1
+        int cublasIsamax(Handle handle, int n, float* x, int incx,
+                         int* result):
+            return 0
+
+        int cublasIsamin(Handle handle, int n, float* x, int incx,
+                         int* result):
+            return 0
+
+        int cublasSasum(Handle handle, int n, float* x, int incx,
+                        float* result):
+            return 0
+
+        int cublasSaxpy(Handle handle, int n, float* alpha, float* x,
+                        int incx, float* y, int incy):
+            return 0
+
+        int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
+                        int incx, double* y, int incy):
+            return 0
+
+        int cublasSdot(Handle handle, int n, float* x, int incx,
+                       float* y, int incy, float* result):
+            return 0
+
+        int cublasDdot(Handle handle, int n, double* x, int incx,
+                       double* y, int incy, double* result):
+            return 0
+
+        int cublasSnrm2(Handle handle, int n, float* x, int incx,
+                        float* result):
+            return 0
+
+        int cublasSscal(Handle handle, int n, float* alpha, float* x,
+                        int incx):
+            return 0
+
+
+        # BLAS Level 2
+        int cublasSgemv(
+                Handle handle, Operation trans, int m, int n, float* alpha,
+                float* A, int lda, float* x, int incx, float* beta,
+                float* y, int incy):
+            return 0
+
+        int cublasDgemv(
+                Handle handle, Operation trans, int m, int n, double* alpha,
+                double* A, int lda, double* x, int incx, double* beta,
+                double* y, int incy):
+            return 0
+
+        int cublasSger(
+                Handle handle, int m, int n, float* alpha, float* x, int incx,
+                float* y, int incy, float* A, int lda):
+            return 0
+
+        int cublasDger(
+                Handle handle, int m, int n, double* alpha, double* x,
+                int incx, double* y, int incy, double* A, int lda):
+            return 0
+
+        # BLAS Level 3
+        int cublasSgemm(
+                Handle handle, Operation transa, Operation transb, int m,
+                int n, int k, float* alpha, float* A, int lda, float* B,
+                int ldb, float* beta, float* C, int ldc):
+            return 0
+
+        int cublasDgemm(
+                Handle handle, Operation transa, Operation transb, int m,
+                int n, int k, double* alpha, double* A, int lda, double* B,
+                int ldb, double* beta, double* C, int ldc):
+            return 0
+
+        int cublasSgemmBatched(
+                Handle handle, Operation transa, Operation transb, int m,
+                int n, int k, const float* alpha, const float** Aarray,
+                int lda, const float** Barray, int ldb, const float* beta,
+                float** Carray, int ldc, int batchCount):
+            return 0
+
+
+        # BLAS extension
+        int cublasSdgmm(
+                Handle handle, SideMode mode, int m, int n, float* A, int lda,
+                float* x, int incx, float* C, int ldc):
+            return 0
 
 ###############################################################################
 # Error handling

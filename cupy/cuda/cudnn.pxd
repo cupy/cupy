@@ -4,25 +4,45 @@
 
 from cupy.cuda.driver cimport Stream
 
+IF CUPY_USE_CUDA:
+    cdef extern from *:
+        ctypedef int ActivationMode 'cudnnActivationMode_t'
+        ctypedef int AddMode 'cudnnAddMode_t'
+        ctypedef int ConvolutionFwdAlgo 'cudnnConvolutionFwdAlgo_t'
+        ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
+        ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
+        ctypedef int DataType 'cudnnDataType_t'
+        ctypedef int PoolingMode 'cudnnPoolingMode_t'
+        ctypedef int SoftmaxAlgorithm 'cudnnSoftmaxAlgorithm_t'
+        ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
+        ctypedef int Status 'cudnnStatus_t'
+        ctypedef int TensorFormat 'cudnnTensorFormat_t'
 
-cdef extern from *:
-    ctypedef int ActivationMode 'cudnnActivationMode_t'
-    ctypedef int AddMode 'cudnnAddMode_t'
-    ctypedef int ConvolutionFwdAlgo 'cudnnConvolutionFwdAlgo_t'
-    ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
-    ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'
-    ctypedef int DataType 'cudnnDataType_t'
-    ctypedef int PoolingMode 'cudnnPoolingMode_t'
-    ctypedef int SoftmaxAlgorithm 'cudnnSoftmaxAlgorithm_t'
-    ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
-    ctypedef int Status 'cudnnStatus_t'
-    ctypedef int TensorFormat 'cudnnTensorFormat_t'
+        ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
+        ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
+        ctypedef void* Handle 'cudnnHandle_t'
+        ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
+        ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
 
-    ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
-    ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
-    ctypedef void* Handle 'cudnnHandle_t'
-    ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
-    ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
+ELSE:
+    cdef:
+        ctypedef int ActivationMode
+        ctypedef int AddMode
+        ctypedef int ConvolutionFwdAlgo
+        ctypedef int ConvolutionFwdPreference
+        ctypedef int ConvolutionMode
+        ctypedef int DataType
+        ctypedef int PoolingMode
+        ctypedef int SoftmaxAlgorithm
+        ctypedef int SoftmaxMode
+        ctypedef int Status
+        ctypedef int TensorFormat
+
+        ctypedef void* ConvolutionDescriptor
+        ctypedef void* FilterDescriptor
+        ctypedef void* Handle
+        ctypedef void* PoolingDescriptor
+        ctypedef void* TensorDescriptor
 
 
 ###############################################################################

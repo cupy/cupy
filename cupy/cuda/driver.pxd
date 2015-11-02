@@ -2,22 +2,41 @@
 # Types
 ###############################################################################
 
-cdef extern from *:
-    ctypedef int Device 'CUdevice'
-    ctypedef int DeviceAttribute 'CUdevice_attribute'
-    ctypedef int PointerAttribute 'CUpointer_attribute'
-    ctypedef int Result 'CUresult'
+IF CUPY_USE_CUDA:
+    cdef extern from *:
+        ctypedef int Device 'CUdevice'
+        ctypedef int DeviceAttribute 'CUdevice_attribute'
+        ctypedef int PointerAttribute 'CUpointer_attribute'
+        ctypedef int Result 'CUresult'
 
-    ctypedef void* Context 'struct CUctx_st*'
-    ctypedef void* Deviceptr 'CUdeviceptr'
-    ctypedef void* Event 'struct CUevent_st*'
-    ctypedef void* Function 'struct CUfunc_st*'
-    ctypedef void* Module 'struct CUmod_st*'
-    ctypedef void* Stream 'struct CUstream_st*'
+        ctypedef void* Context 'struct CUctx_st*'
+        ctypedef void* Deviceptr 'CUdeviceptr'
+        ctypedef void* Event 'struct CUevent_st*'
+        ctypedef void* Function 'struct CUfunc_st*'
+        ctypedef void* Module 'struct CUmod_st*'
+        ctypedef void* Stream 'struct CUstream_st*'
 
-    ctypedef void (*StreamCallbackDef)(
-        Stream hStream, Result status, void* userData)
-    ctypedef StreamCallbackDef StreamCallback 'CUstreamCallback'
+        ctypedef void (*StreamCallbackDef)(
+            Stream hStream, Result status, void* userData)
+        ctypedef StreamCallbackDef StreamCallback 'CUstreamCallback'
+
+ELSE:
+    cdef:
+        ctypedef int Device
+        ctypedef int DeviceAttribute
+        ctypedef int PointerAttribute
+        ctypedef int Result
+
+        ctypedef void* Context
+        ctypedef void* Deviceptr
+        ctypedef void* Event
+        ctypedef void* Function
+        ctypedef void* Module
+        ctypedef void* Stream
+
+        ctypedef void (*StreamCallbackDef)(
+            Stream hStream, Result status, void* userData)
+        ctypedef StreamCallbackDef StreamCallback
 
 
 ###############################################################################

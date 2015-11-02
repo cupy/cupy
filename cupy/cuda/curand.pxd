@@ -5,11 +5,19 @@
 from cupy.cuda.driver cimport Stream
 
 
-cdef extern from *:
-    ctypedef int Ordering 'curandOrdering_t'
+IF CUPY_USE_CUDA:
+    cdef extern from *:
+        ctypedef int Ordering 'curandOrdering_t'
+        ctypedef int RngType 'curandRngType_t'
 
-    ctypedef int RngType 'curandRngType_t'
-    ctypedef void* Generator 'curandGenerator_t'
+        ctypedef void* Generator 'curandGenerator_t'
+
+ELSE:
+    cdef:
+        ctypedef int Ordering
+        ctypedef int RngType
+
+        ctypedef void* Generator
 
 
 ###############################################################################

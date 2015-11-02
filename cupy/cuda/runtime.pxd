@@ -6,18 +6,6 @@ from cupy.cuda.driver cimport Event
 from cupy.cuda.driver cimport Stream
 
 
-cdef extern from *:
-    ctypedef int Error 'cudaError_t'
-    ctypedef int DeviceAttr 'enum cudaDeviceAttr'
-    ctypedef int MemoryKind 'enum cudaMemcpyKind'
-
-    ctypedef size_t _Pointer 'void*'
-
-    ctypedef void (*StreamCallbackDef)(
-        Stream stream, Error status, void* userData)
-    ctypedef StreamCallbackDef StreamCallback 'cudaStreamCallback_t'
-
-
 cdef class PointerAttributes:
     cdef:
         public int device
@@ -25,6 +13,31 @@ cdef class PointerAttributes:
         public size_t hostPointer
         public int isManaged
         public int memoryType
+
+
+IF CUPY_USE_CUDA:
+    cdef extern from *:
+        ctypedef int Error 'cudaError_t'
+        ctypedef int DeviceAttr 'enum cudaDeviceAttr'
+        ctypedef int MemoryKind 'enum cudaMemcpyKind'
+
+        ctypedef size_t _Pointer 'void*'
+
+        ctypedef void (*StreamCallbackDef)(
+            Stream stream, Error status, void* userData)
+        ctypedef StreamCallbackDef StreamCallback 'cudaStreamCallback_t'
+
+ELSE:
+    cdef:
+        ctypedef int Error
+        ctypedef int DeviceAttr
+        ctypedef int MemoryKind
+
+        ctypedef size_t _Pointer
+
+        ctypedef void (*StreamCallbackDef)(
+            Stream stream, Error status, void* userData)
+        ctypedef StreamCallbackDef StreamCallback
 
 
 ###############################################################################
