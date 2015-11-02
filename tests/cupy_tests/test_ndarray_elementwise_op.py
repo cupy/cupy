@@ -18,9 +18,9 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False):
         a = testing.shaped_arange((2, 3), xp, x_type)
         if swap:
-            return op(y_type(2), a)
+            return op(y_type(3), a)
         else:
-            return op(a, y_type(2))
+            return op(a, y_type(3))
 
     def test_add_scalar(self):
         self.check_array_scalar_op(operator.add)
