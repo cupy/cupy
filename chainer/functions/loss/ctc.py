@@ -37,14 +37,14 @@ def _activate(yseq, xp):
 
 class ConnectionistTemporalClassification(function.Function):
 
-    '''The implementation of Connectionist Temporal Classfication loss functions.
+    """The implementation of Connectionist Temporal Classfication loss functions.
 
     To make it usable for real-world cases, this class has two policies below.
     1. This class computes forward and backward variables in the log domain.
     2. This class applies the softmax function to inputs. The Backward
     values of CTC loss is often overflows. This is avoided by computing
     backward values before the activation function is applied.
-    '''
+    """
 
     def __init__(self, blank_symbol):
         self.blank_symbol = blank_symbol
@@ -75,12 +75,13 @@ class ConnectionistTemporalClassification(function.Function):
             res = create_recurrence_relation(x, self.zero_padding)
         return res
 
-    '''
-    Transition in forword and backword algorithms is represented as matrix.
-    See also
-    https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
-    '''
     def recurrence_relation(self, size, dtype, xp):
+        """Transition in forword and backword algorithms is represented as matrix.
+
+        See also
+        https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
+        """
+
         rr = (xp.eye(size, dtype=dtype) +
               xp.eye(size, k=1, dtype=dtype) +
               xp.eye(size, k=2, dtype=dtype) *
@@ -105,13 +106,13 @@ class ConnectionistTemporalClassification(function.Function):
                 T value = z;
                 I c = i % b_max, b = i / b_max;
                 int ind[2] = {b, -1};
-                for(int index = 0; index < c_max; ++index){
+                for (int index = 0; index < c_max; ++index) {
                     ind[1] = index;
-                    if(y[ind] == c){
+                    if (y[ind] == c) {
                         T xvalue = x[ind];
-                        if(value > xvalue){
+                        if (value > xvalue) {
                             value = value + log(1 + exp(xvalue - value));
-                        }else{
+                        } else {
                             value = xvalue + log(1 + exp(value - xvalue));
                         }
                     }
@@ -129,61 +130,50 @@ class ConnectionistTemporalClassification(function.Function):
         offset = xp.arange(
             0, yseq[0].size, yseq[0].shape[1], dtype=path.dtype)[:, None]
 
-        alpha = []
+        # prob[i] := forward[i] + backward[-i-1]
+        prob = []
         index = offset + path
         for y in yseq:
             # calc forward probability in log scale
             forward_prob = xp.take(y, index) + _log_dot(
                 forward_prob[:, None, :], rr, xp)
-            alpha.append(forward_prob)
+            prob.append(forward_prob)
 
-        beta = []
         r_index = offset + path[:, ::-1]
-        for y_inv in yseq[::-1]:
+        for i, y_inv in enumerate(yseq[::-1]):
             # calc backward probability
             backward_prob = _log_dot(backward_prob[:, None, :], rr, xp)
-            beta.append(backward_prob[:, ::-1])
+            prob[-i - 1] += backward_prob[:, ::-1]
             backward_prob = xp.take(y_inv, r_index) + backward_prob
-        return alpha, beta[::-1]
+        return prob
 
     def forward(self, inputs):
         xp = cuda.get_array_module(inputs[0])
         batch_size = len(inputs[0])
-        yseq = _activate(inputs[1::], xp)
-        log_yseq = [self.log_matrix(y, xp) for y in yseq]
-        path = _label_to_path(inputs[0], self.blank_symbol, xp)
+        self.yseq = _activate(inputs[1::], xp)
+        log_yseq = [self.log_matrix(y, xp) for y in self.yseq]
+        self.path = _label_to_path(inputs[0], self.blank_symbol, xp)
         rr = self.recurrence_relation(
-            path.shape[1], numpy.float32, xp)[None, :, :]
-        forward_prob_trans, backward_prob_trans\
-            = self.calc_trans(path, log_yseq, rr, xp)
+            self.path.shape[1], numpy.float32, xp)[None, :, :]
+        self.prob_trans = self.calc_trans(self.path, log_yseq, rr, xp)
 
-        loss = utils.force_array(xp.sum(_logsumexp(
-            forward_prob_trans[-1] + backward_prob_trans[-1], xp, axis=1)))
+        loss = utils.force_array(xp.sum(
+            _logsumexp(self.prob_trans[-1], xp, axis=1)))
         loss /= -batch_size
         return loss,
 
     def backward(self, inputs, grad_output):
         xp = cuda.get_array_module(inputs[0])
         batch_size = len(inputs[0])
-        yseq = _activate(inputs[1::], xp)
-        log_yseq = [self.log_matrix(y, xp) for y in yseq]
-        path = _label_to_path(inputs[0], self.blank_symbol, xp)
-        rr = self.recurrence_relation(
-            path.shape[1], numpy.float32, xp)[None, :, :]
-        forward_prob_trans, backward_prob_trans\
-            = self.calc_trans(path, log_yseq, rr, xp)
 
-        total_probability = _logsumexp(
-            forward_prob_trans[0] + backward_prob_trans[0], xp, axis=1)
+        total_probability = _logsumexp(self.prob_trans[0], xp, axis=1)
         scale = grad_output[0] / batch_size
-        for t in six.moves.range(len(yseq)):
-            multiply = forward_prob_trans[t] + backward_prob_trans[t]
-            y = yseq[t]
+        for y, prob in zip(self.yseq, self.prob_trans):
             label_prob = self.label_probability(
-                y.shape[1], path, multiply, xp)
+                y.shape[1], self.path, prob, xp)
             y -= xp.exp(label_prob - total_probability[:, None])
             y *= scale
-        return (None,) + tuple(yseq)
+        return (None,) + tuple(self.yseq)
 
 
 def connectionist_temporal_classification(x, t, blank_symbol):
