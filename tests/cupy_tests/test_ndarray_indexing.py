@@ -38,24 +38,32 @@ class TestArrayIndexingParameterized(unittest.TestCase):
         return a[self.indexes]
 
 
+@testing.parameterize(
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(0, 1, 0), )},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice((0, 0), None, None), )},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(None, (0, 0), None), )},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(None, None, (0, 0)), )},
+)
+@testing.gpu
+class TestArrayInvalidIndex(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_invalid_getitem(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if self.transpose:
+            a = a.transpose(self.transpose)
+        a[self.indexes]
+
+
 @testing.gpu
 class TestArrayIndex(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_getitem_zero_step(self, xp):
-        xp.zeros((2, 3, 4))[0:1:0]
-
-    @testing.numpy_cupy_raises()
-    def test_getitem_invalid_slice_start(self, xp):
-        xp.zeros((2, 3, 4))[(0, 0):None:None]
-
-    @testing.numpy_cupy_raises()
-    def test_getitem_invalid_slice_stop(self, xp):
-        xp.zeros((2, 3, 4))[None:(0, 0):None]
-
-    @testing.numpy_cupy_raises()
-    def test_getitem_invalid_slice_step(self, xp):
-        xp.zeros((2, 3, 4))[None:None:(0, 0)]
+    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
