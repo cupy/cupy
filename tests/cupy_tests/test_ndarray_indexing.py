@@ -65,7 +65,7 @@ class TestArrayIndexing(unittest.TestCase):
         self.check_getitem((), None, (None, None))
 
     @testing.numpy_cupy_raises()
-    def test_getitem_invalid_slice_start(self, xp):
+    def test_getitem_zero_step(self, xp):
         xp.zeros((2, 3, 4))[0:1:0]
 
     @testing.numpy_cupy_raises()
