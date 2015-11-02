@@ -13,7 +13,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-class TestHinge(unittest.TestCase):
+class TestContrastive(unittest.TestCase):
 
     def setUp(self):
         self.x0 = numpy.random.uniform(-1, 1, (5, 2)).astype(numpy.float32)
