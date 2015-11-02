@@ -572,7 +572,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.imod)
 
-    @testing.for_int_dtypes_combination(names=['x_types', 'y_types'])
+    @testing.for_int_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_broadcasted_op(self, op, xp, x_type, y_type):
         a = xp.array([[0, 1, 2], [1, 0, 2], [2, 1, 0]], dtype=x_type)
