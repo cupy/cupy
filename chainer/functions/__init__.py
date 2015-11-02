@@ -20,6 +20,7 @@ from chainer.functions.array import transpose
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
+from chainer.functions.connection import deconvolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import inception
 from chainer.functions.connection import inceptionbn
@@ -92,6 +93,7 @@ where = where.where
 Bilinear = bilinear.Bilinear
 Convolution2D = convolution_2d.Convolution2D
 convolution_2d = convolution_2d.convolution_2d
+Deconvolution2D = deconvolution_2d.Deconvolution2D
 EmbedID = embed_id.EmbedID
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN
