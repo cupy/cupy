@@ -146,7 +146,6 @@ def complete_slice(slc, dim):
     return slice(start, stop, step)
 
 
-
 def get_c_contiguity(shape, strides, itemsize):
     if 0 in shape:
         return True
