@@ -27,6 +27,8 @@ for_signed_dtypes = helper.for_signed_dtypes
 for_unsigned_dtypes = helper.for_unsigned_dtypes
 for_int_dtypes = helper.for_int_dtypes
 for_all_dtypes_combination = helper.for_all_dtypes_combination
+for_signed_dtypes_combination = helper.for_signed_dtypes_combination
+for_unsigned_dtypes_combination = helper.for_unsigned_dtypes_combination
 for_int_dtypes_combination = helper.for_int_dtypes_combination
 
 parameterize = parameterized.parameterize

@@ -270,6 +270,14 @@ def for_all_dtypes_combination(names=['dtyes'],
     return for_dtypes_combination(types, names, full)
 
 
+def for_signed_dtypes_combination(names=['dtype'], full=False):
+    return for_dtypes_combination(_signed_dtypes, names=names, full=full)
+
+
+def for_unsigned_dtypes_combination(names=['dtype'], full=False):
+    return for_dtypes_combination(_unsigned_dtypes, names=names, full=full)
+
+
 def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=False):
     if no_bool:
         types = _int_dtypes
