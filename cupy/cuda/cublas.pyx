@@ -1,23 +1,18 @@
 """Thin wrapper of CUBLAS."""
 
-###############################################################################
-# Types
-###############################################################################
-
-from cupy.cuda.driver cimport Stream
-ctypedef void* Handle
 
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from "cublas_v2.h":
+cdef extern from 'cublas_v2.h':
     # Context
     int cublasCreate(Handle* handle)
     int cublasDestroy(Handle handle)
     int cublasGetVersion(Handle handle, int* version)
-    int cublasGetPointerMode(Handle handle, int* mode)
-    int cublasSetPointerMode(Handle handle, int mode)
+    int cublasGetPointerMode(Handle handle, PointerMode* mode)
+    int cublasSetPointerMode(Handle handle, PointerMode mode)
+
     # Stream
     int cublasSetStream(Handle handle, Stream streamId)
     int cublasGetStream(Handle handle, Stream* streamId)
@@ -27,9 +22,9 @@ cdef extern from "cublas_v2.h":
     int cublasIsamin(Handle handle, int n, float* x, int incx, int* result)
     int cublasSasum(Handle handle, int n, float* x, int incx, float* result)
     int cublasSaxpy(Handle handle, int n, float* alpha, float* x, int incx,
-                      float* y, int incy)
+                    float* y, int incy)
     int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
-                       int incx, double* y, int incy)
+                    int incx, double* y, int incy)
     int cublasSdot(Handle handle, int n, float* x, int incx,
                    float* y, int incy, float* result)
     int cublasDdot(Handle handle, int n, double* x, int incx,
@@ -39,11 +34,11 @@ cdef extern from "cublas_v2.h":
 
     # BLAS Level 2
     int cublasSgemv(
-        Handle handle, int trans, int m, int n, float* alpha,
+        Handle handle, Operation trans, int m, int n, float* alpha,
         float* A, int lda, float* x, int incx, float* beta,
         float* y, int incy)
     int cublasDgemv(
-        Handle handle, int trans, int m, int n, double* alpha,
+        Handle handle, Operation trans, int m, int n, double* alpha,
         double* A, int lda, double* x, int incx, double* beta,
         double* y, int incy)
     int cublasSger(
@@ -55,42 +50,30 @@ cdef extern from "cublas_v2.h":
 
     # BLAS Level 3
     int cublasSgemm(
-        Handle handle, int transa, int transb, int m, int n, int k,
-        float* alpha, float* A, int lda, float* B, int ldb, float* beta,
-        float* C, int ldc)
+        Handle handle, Operation transa, Operation transb, int m,
+        int n, int k, float* alpha, float* A, int lda, float* B, int ldb,
+        float* beta, float* C, int ldc)
     int cublasDgemm(
-        Handle handle, int transa, int transb, int m, int n, int k,
-        double* alpha, double* A, int lda, double* B, int ldb, double* beta,
-        double* C, int ldc)
+        Handle handle, Operation transa, Operation transb, int m,
+        int n, int k, double* alpha, double* A, int lda, double* B, int ldb,
+        double* beta, double* C, int ldc)
     int cublasSgemmBatched(
-        Handle handle, int transa, int transb, int m, int n, int k,
-        float* alpha, float** Aarray, int lda, float** Barray, int ldb,
-        float* beta, float** Carray, int ldc, int batchCount)
+        Handle handle, Operation transa, Operation transb, int m,
+        int n, int k, const float* alpha, const float** Aarray, int lda,
+        const float** Barray, int ldb, const float* beta,
+        float** Carray, int ldc, int batchCount)
 
     # BLAS extension
     int cublasSdgmm(
-        Handle handle, int mode, int m, int n, float* A, int lda,
+        Handle handle, SideMode mode, int m, int n, float* A, int lda,
         float* x, int incx, float* C, int ldc)
 
-###############################################################################
-# Enum
-###############################################################################
-
-CUBLAS_OP_N = 0
-CUBLAS_OP_T = 1
-CUBLAS_OP_C = 2
-
-CUBLAS_POINTER_MODE_HOST = 0
-CUBLAS_POINTER_MODE_DEVICE = 1
-
-CUBLAS_SIDE_LEFT = 0
-CUBLAS_SIDE_RIGHT = 1
 
 ###############################################################################
 # Error handling
 ###############################################################################
 
-STATUS = {
+cdef dict STATUS = {
     0: 'CUBLAS_STATUS_SUCCESS',
     1: 'CUBLAS_STATUS_NOT_INITIALIZED',
     3: 'CUBLAS_STATUS_ALLOC_FAILED',
@@ -115,6 +98,7 @@ cpdef check_status(int status):
     if status != 0:
         raise CUBLASError(status)
 
+
 ###############################################################################
 # Context
 ###############################################################################
@@ -126,7 +110,7 @@ cpdef size_t create():
     return <size_t>handle
 
 
-cpdef destroy(size_t handle):
+cpdef void destroy(size_t handle):
     status = cublasDestroy(<Handle>handle)
     check_status(status)
 
@@ -139,15 +123,16 @@ cpdef int getVersion(size_t handle):
 
 
 cpdef int getPointerMode(size_t handle):
-    cdef int mode
+    cdef PointerMode mode
     status = cublasGetPointerMode(<Handle>handle, &mode)
     check_status(status)
     return mode
 
 
 cpdef setPointerMode(size_t handle, int mode):
-    status = cublasSetPointerMode(<Handle>handle, mode)
+    status = cublasSetPointerMode(<Handle>handle, <PointerMode>mode)
     check_status(status)
+
 
 ###############################################################################
 # Stream
@@ -163,6 +148,7 @@ cpdef size_t getStream(size_t handle):
     status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
+
 
 ###############################################################################
 # BLAS Level 1
@@ -231,6 +217,7 @@ cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx):
     status = cublasSscal(<Handle>handle, n, &alpha, <float*>x, incx)
     check_status(status)
 
+
 ###############################################################################
 # BLAS Level 2
 ###############################################################################
@@ -238,7 +225,7 @@ cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx):
 cpdef sgemv(size_t handle, int trans, int m, int n, float alpha, size_t A,
             int lda, size_t x, int incx, float beta, size_t y, int incy):
     status = cublasSgemv(
-        <Handle>handle, trans, m, n, &alpha,
+        <Handle>handle, <Operation>trans, m, n, &alpha,
         <float*>A, lda, <float*>x, incx, &beta, <float*>y, incy)
     check_status(status)
 
@@ -246,7 +233,7 @@ cpdef sgemv(size_t handle, int trans, int m, int n, float alpha, size_t A,
 cpdef dgemv(size_t handle, int trans, int m, int n, double alpha, size_t A,
             int lda, size_t x, int incx, double beta, size_t y, int incy):
     status = cublasDgemv(
-        <Handle>handle, trans, m, n, &alpha,
+        <Handle>handle, <Operation>trans, m, n, &alpha,
         <double*>A, lda, <double*>x, incx, &beta, <double*>y, incy)
     check_status(status)
 
@@ -266,35 +253,39 @@ cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
         <double*>A, lda)
     check_status(status)
 
+
 ###############################################################################
 # BLAS Level 3
 ###############################################################################
 
-cpdef sgemm(size_t handle, int transa, int transb, int m, int n, int k,
-            float alpha, size_t A, int lda, size_t B, int ldb, float beta,
-            size_t C, int ldc):
+cpdef sgemm(size_t handle, int transa, int transb,
+            int m, int n, int k, float alpha, size_t A, int lda,
+            size_t B, int ldb, float beta, size_t C, int ldc):
     status = cublasSgemm(
-        <Handle>handle, transa, transb, m, n, k, &alpha,
-        <float*>A, lda, <float*>B, ldb, &beta, <float*>C, ldc)
+        <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+        &alpha, <float*>A, lda, <float*>B, ldb, &beta, <float*>C, ldc)
     check_status(status)
 
 
-cpdef dgemm(size_t handle, int transa, int transb, int m, int n, int k,
-            double alpha, size_t A, int lda, size_t B, int ldb, double beta,
-            size_t C, int ldc):
+cpdef dgemm(size_t handle, int transa, int transb,
+            int m, int n, int k, double alpha, size_t A, int lda,
+            size_t B, int ldb, double beta, size_t C, int ldc):
     status = cublasDgemm(
-        <Handle>handle, transa, transb, m, n, k, &alpha,
-        <double*>A, lda, <double*>B, ldb, &beta, <double*>C, ldc)
+        <Handle>handle, <Operation>transa, <Operation>transb,m, n, k,
+        &alpha, <double*>A, lda, <double*>B, ldb, &beta, <double*>C, ldc)
     check_status(status)
 
 
-cpdef sgemmBatched(size_t handle, int transa, int transb, int m, int n, int k,
-                   float alpha, size_t Aarray, int lda, size_t Barray, int ldb,
-                   float beta, size_t Carray, int ldc, int batchCount):
+cpdef sgemmBatched(
+        size_t handle, int transa, int transb, int m, int n, int k,
+        float alpha, size_t Aarray, int lda, size_t Barray, int ldb,
+        float beta, size_t Carray, int ldc, int batchCount):
     status = cublasSgemmBatched(
-        <Handle>handle, transa, transb, m, n, k, &alpha, <float**>Aarray, lda,
-        <float**>Barray, ldb, &beta, <float**>Carray, ldc, batchCount)
+        <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+        &alpha, <const float**>Aarray, lda, <const float**>Barray, ldb, &beta,
+        <float**>Carray, ldc, batchCount)
     check_status(status)
+
 
 ###############################################################################
 # BLAS extension
@@ -303,6 +294,6 @@ cpdef sgemmBatched(size_t handle, int transa, int transb, int m, int n, int k,
 cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc):
     status = cublasSdgmm(
-        <Handle>handle, mode, m, n, <float*>A, lda, <float*>x, incx,
+        <Handle>handle, <SideMode>mode, m, n, <float*>A, lda, <float*>x, incx,
         <float*>C, ldc)
     check_status(status)

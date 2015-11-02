@@ -2,11 +2,23 @@ import atexit
 
 import six
 
-from cupy.cuda import cublas
-from cupy.cuda import runtime
+from cupy.cuda cimport cublas
+from cupy.cuda cimport runtime
 
 
-_cublas_handles = {}
+cpdef int get_device_id():
+    return runtime.getDevice()
+
+
+cdef dict _cublas_handles = {}
+
+
+cpdef get_cublas_handle():
+    dev_id = get_device_id()
+    if dev_id in _cublas_handles:
+        return _cublas_handles[dev_id]
+    return Device().cublas_handle
+
 
 cdef class Device:
 
@@ -92,11 +104,11 @@ cdef class Device:
         itself is different.
 
         """
-        handle = _cublas_handles.get(self.id, None)
-        if handle is None:
-            with self:
-                handle = cublas.create()
-                _cublas_handles[self.id] = handle
+        if self.id in _cublas_handles:
+            return _cublas_handles[self.id]
+        with self:
+            handle = cublas.create()
+            _cublas_handles[self.id] = handle
         return handle
 
     def __richcmp__(Device self, Device other, int op):

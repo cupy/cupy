@@ -10,24 +10,23 @@ There are four differences compared to the original C API.
 
 """
 
+
 ###############################################################################
 # Extern
 ###############################################################################
 
 cdef extern from "cuda.h":
-    pass
-    int cuGetErrorName(int error, const char** pStr)
-    int cuGetErrorString(int error, const char** pStr)
+    # Error handling
+    int cuGetErrorName(Result error, const char** pStr)
+    int cuGetErrorString(Result error, const char** pStr)
 
     # Initialization
-
     int cuInit(unsigned int Flags)
 
     # Device and context operations
-
     int cuDriverGetVersion(int* driverVersion)
     int cuDeviceGet(Device* device, int ordinal)
-    int cuDeviceGetAttribute(int* pi, int attrib, Device dev)
+    int cuDeviceGetAttribute(int* pi, DeviceAttribute attrib, Device dev)
     int cuDeviceGetCount(int* count)
     int cuDeviceTotalMem(size_t* bytes, Device dev)
     int cuCtxCreate(Context* pctx, unsigned int flags, Device dev)
@@ -41,67 +40,58 @@ cdef extern from "cuda.h":
     int cuCtxSynchronize()
 
     # Module load and kernel execution
-
     int cuModuleLoad(Module* module, char* fname)
     int cuModuleLoadData(Module* module, void* image)
     int cuModuleUnload(Module hmod)
     int cuModuleGetFunction(Function* hfunc, Module hmod, char* name)
-    int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod, char* name)
-    int cuLaunchKernel (
+    int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
+                          char* name)
+    int cuLaunchKernel(
         Function f,
         unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ,
         unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ,
         unsigned int sharedMemBytes, Stream hStream,
         void** kernelParams, void** extra)
 
-
     # Memory management
-
     int cuMemAlloc(Deviceptr* dptr, size_t bytesize)
     int cuMemFree(Deviceptr dptr)
     int cuMemGetInfo(size_t* free, size_t* total)
     int cuMemcpy(Deviceptr dst, Deviceptr src, size_t ByteCount)
-    int cuMemcpyAsync(Deviceptr dst, Deviceptr src, size_t ByteCount, Stream hStream)
-    int cuMemcpyDtoD(Deviceptr dstDevice, Deviceptr srcDevice, size_t ByteCount)
-    int cuMemcpyDtoDAsync(Deviceptr dstDevice, Deviceptr srcDevice, size_t ByteCount, Stream hStream)
+    int cuMemcpyAsync(Deviceptr dst, Deviceptr src, size_t ByteCount,
+                      Stream hStream)
+    int cuMemcpyDtoD(Deviceptr dstDevice, Deviceptr srcDevice,
+                     size_t ByteCount)
+    int cuMemcpyDtoDAsync(Deviceptr dstDevice, Deviceptr srcDevice,
+                          size_t ByteCount, Stream hStream)
     int cuMemcpyDtoH(void* dstHost, Deviceptr srcDevice, size_t ByteCount)
-    int cuMemcpyDtoHAsync(void* dstHost, Deviceptr srcDevice, size_t ByteCount, Stream hStream)
+    int cuMemcpyDtoHAsync(void* dstHost, Deviceptr srcDevice, size_t ByteCount,
+                          Stream hStream)
     int cuMemcpyHtoD(Deviceptr dstDevice, void* srcHost, size_t ByteCount)
-    int cuMemcpyHtoDAsync(Deviceptr dstDevice, void* srcHost, size_t ByteCount, Stream hStream)
-    int cuMemcpyPeer(Deviceptr dstDevice, Context dstContext, Deviceptr srcDevice, Context srcContext, size_t ByteCount)
-    int cuMemcpyPeerAsync(Deviceptr dstDevice, Context dstContext, Deviceptr srcDevice, Context srcContext, size_t ByteCount, Stream hStream)
+    int cuMemcpyHtoDAsync(Deviceptr dstDevice, void* srcHost, size_t ByteCount,
+                          Stream hStream)
+    int cuMemcpyPeer(Deviceptr dstDevice, Context dstContext,
+                     Deviceptr srcDevice, Context srcContext, size_t ByteCount)
+    int cuMemcpyPeerAsync(Deviceptr dstDevice, Context dstContext,
+                          Deviceptr srcDevice, Context srcContext,
+                          size_t ByteCount, Stream hStream)
     int cuMemsetD32(Deviceptr dstDevice, unsigned int ui, size_t N)
-    int cuMemsetD32Async(Deviceptr dstDevice, unsigned int ui, size_t N, Stream hStream)
-    int cuPointerGetAttribute(void* data, int attribute, Deviceptr ptr)
+    int cuMemsetD32Async(Deviceptr dstDevice, unsigned int ui, size_t N,
+                         Stream hStream)
+    int cuPointerGetAttribute(void* data, PointerAttribute attribute,
+                              Deviceptr ptr)
 
     # Stream and Event
-
     int cuStreamCreate(Stream* phStream, unsigned int Flags)
     int cuStreamDestroy(Stream hStream)
     int cuStreamSynchronize(Stream hStream)
-    int cuStreamAddCallback(Stream hStream, StreamCallback callback, void* userData, unsigned int flags)
+    int cuStreamAddCallback(Stream hStream, StreamCallback callback,
+                            void* userData, unsigned int flags)
     int cuEventCreate(Event* phEvent, unsigned int Flags)
     int cuEventDestroy(Event hEvent)
     int cuEventRecord(Event hEvent, Stream hStream)
     int cuEventSynchronize(Event hEvent)
 
-###############################################################################
-# Enum
-###############################################################################
-
-CU_POINTER_ATTRIBUTE_CONTEXT = 1
-CU_POINTER_ATTRIBUTE_MEMORY_TYPE = 2
-CU_POINTER_ATTRIBUTE_DEVICE_POINTER = 3
-CU_POINTER_ATTRIBUTE_HOST_POINTER = 4
-CU_POINTER_ATTRIBUTE_P2P_TOKENS = 5
-CU_POINTER_ATTRIBUTE_SYNC_MEMOPS = 6
-CU_POINTER_ATTRIBUTE_BUFFER_ID = 7
-CU_POINTER_ATTRIBUTE_IS_MANAGED = 8
-
-EVENT_DEFAULT = 0
-EVENT_BLOCKING_SYNC = 1
-EVENT_DISABLE_TIMING = 2
-EVENT_INTERPROCESS = 4
 
 ###############################################################################
 # Error handling
@@ -109,10 +99,10 @@ EVENT_INTERPROCESS = 4
 
 class CUDADriverError(RuntimeError):
 
-    def __init__(self, int status):
+    def __init__(self, Result status):
         self.status = status
-        cdef char *name
-        cdef char *msg
+        cdef const char *name
+        cdef const char *msg
         cuGetErrorName(status, &name)
         cuGetErrorString(status, &msg)
         cdef bytes s_name = name, s_msg = msg
@@ -123,6 +113,7 @@ class CUDADriverError(RuntimeError):
 cpdef check_status(int status):
     if status != 0:
         raise CUDADriverError(status)
+
 
 ###############################################################################
 # Initialization
@@ -143,16 +134,16 @@ cpdef int driverGetVersion():
 # Device and context operations
 ###############################################################################
 
-cpdef Device deviceGet(Device device_id):
+cpdef Device deviceGet(int device_id):
     cdef Device device
     status = cuDeviceGet(&device, device_id)
     check_status(status)
     return device
 
 
-cpdef int deviceGetAttribute(attrib, Device device):
+cpdef int deviceGetAttribute(int attrib, Device device):
     cdef int ret
-    status = cuDeviceGetAttribute(&ret, attrib, device)
+    status = cuDeviceGetAttribute(&ret, <DeviceAttribute>attrib, device)
     check_status(status)
     return ret
 
@@ -171,7 +162,7 @@ cpdef size_t deviceTotalMem(Device device):
     return mem
 
 
-cpdef size_t ctxCreate(flag, Device device):
+cpdef size_t ctxCreate(unsigned int flag, Device device):
     cdef Context ctx
     status = cuCtxCreate(&ctx, flag, device)
     check_status(status)
@@ -259,7 +250,7 @@ cpdef size_t moduleGetFunction(size_t module, str funcname):
 
 
 cpdef size_t moduleGetGlobal(size_t module, str varname):
-    cdef void* var
+    cdef Deviceptr var
     cdef size_t size
     cdef bytes b_varname = varname.encode()
     status = cuModuleGetGlobal(&var, &size, <Module>module, <char*>b_varname)
@@ -285,8 +276,7 @@ cpdef launchKernel(
 # Memory management
 ###############################################################################
 
-
-cpdef size_t memAlloc(size):
+cpdef size_t memAlloc(size_t size):
     cdef Deviceptr ptr
     status = cuMemAlloc(&ptr, size)
     check_status(status)
@@ -305,51 +295,52 @@ cpdef tuple memGetinfo():
     return free, total
 
 
-cpdef memcpy(size_t dst, size_t src, size):
+cpdef memcpy(size_t dst, size_t src, size_t size):
     status = cuMemcpy(<Deviceptr>dst, <Deviceptr>src, size)
     check_status(status)
 
 
-cpdef memcpyAsync(size_t dst, size_t src, size, size_t stream):
+cpdef memcpyAsync(size_t dst, size_t src, size_t size, size_t stream):
     status = cuMemcpyAsync(
         <Deviceptr>dst, <Deviceptr>src, size, <Stream>stream)
     check_status(status)
 
 
-cpdef memcpyDtoD(size_t dst, size_t src, size):
+cpdef memcpyDtoD(size_t dst, size_t src, size_t size):
     status = cuMemcpyDtoD(<Deviceptr>dst, <Deviceptr>src, size)
     check_status(status)
 
 
-cpdef memcpyDtoDAsync(size_t dst, size_t src, size, size_t stream):
+cpdef memcpyDtoDAsync(size_t dst, size_t src, size_t size, size_t stream):
     status = cuMemcpyDtoDAsync(
         <Deviceptr>dst, <Deviceptr>src, size, <Stream>stream)
     check_status(status)
 
 
-cpdef memcpyDtoH(size_t dst, size_t src, size):
-    status = cuMemcpyDtoH(<Deviceptr>dst, <Deviceptr>src, size)
+cpdef memcpyDtoH(size_t dst, size_t src, size_t size):
+    status = cuMemcpyDtoH(<void*>dst, <Deviceptr>src, size)
     check_status(status)
 
 
-cpdef memcpyDtoHAsync(size_t dst, size_t src, size, size_t stream):
+cpdef memcpyDtoHAsync(size_t dst, size_t src, size_t size, size_t stream):
     status = cuMemcpyDtoHAsync(
-        <Deviceptr>dst, <Deviceptr>src, size, <Stream>stream)
+        <void*>dst, <Deviceptr>src, size, <Stream>stream)
     check_status(status)
 
 
-cpdef memcpyHtoD(size_t dst, size_t src, size):
-    status = cuMemcpyHtoD(<Deviceptr>dst, <Deviceptr>src, size)
+cpdef memcpyHtoD(size_t dst, size_t src, size_t size):
+    status = cuMemcpyHtoD(<Deviceptr>dst, <void*>src, size)
     check_status(status)
 
 
-cpdef memcpyHtoDAsync(size_t dst, size_t src, size, size_t stream):
+cpdef memcpyHtoDAsync(size_t dst, size_t src, size_t size, size_t stream):
     status = cuMemcpyHtoDAsync(
-        <Deviceptr>dst, <Deviceptr>src, size, <Stream>stream)
+        <Deviceptr>dst, <void*>src, size, <Stream>stream)
     check_status(status)
 
 
-cpdef memcpyPeer(size_t dst, size_t dst_ctx, size_t src, size_t src_ctx, size):
+cpdef memcpyPeer(size_t dst, size_t dst_ctx, size_t src, size_t src_ctx,
+                 size_t size):
     status = cuMemcpyPeer(
         <Deviceptr>dst, <Context>dst_ctx, <Deviceptr>src, <Context>src_ctx,
         size)
@@ -357,28 +348,30 @@ cpdef memcpyPeer(size_t dst, size_t dst_ctx, size_t src, size_t src_ctx, size):
 
 
 cpdef memcpyPeerAsync(size_t dst, size_t dst_ctx, size_t src, size_t src_ctx,
-                      size, size_t stream):
+                      size_t size, size_t stream):
     status = cuMemcpyPeerAsync(
         <Deviceptr>dst, <Context>dst_ctx, <Deviceptr>src, <Context>src_ctx,
         size, <Stream>stream)
     check_status(status)
 
 
-cpdef memsetD32(size_t ptr, value, size):
+cpdef memsetD32(size_t ptr, unsigned int value, size_t size):
     status = cuMemsetD32(<Deviceptr>ptr, value, size)
     check_status(status)
 
 
-cpdef memsetD32Async(size_t ptr, value, size, size_t stream):
+cpdef memsetD32Async(size_t ptr, unsigned int value, size_t size,
+                     size_t stream):
     status = cuMemsetD32Async(<Deviceptr>ptr, value, size, <Stream>stream)
     check_status(status)
 
 
-cpdef size_t pointerGetAttribute(attribute, ptr):
+cpdef size_t pointerGetAttribute(int attribute, size_t ptr):
     assert attribute == 0  # Currently only context query is supported
 
     cdef Context ctx
-    status = cuPointerGetAttribute(&ctx, attribute, <Deviceptr>ptr)
+    status = cuPointerGetAttribute(
+        &ctx, <PointerAttribute>attribute, <Deviceptr>ptr)
     check_status(status)
     return <size_t>ctx
 
@@ -387,7 +380,7 @@ cpdef size_t pointerGetAttribute(attribute, ptr):
 # Stream and Event
 ###############################################################################
 
-cpdef size_t streamCreate(flag=0):
+cpdef size_t streamCreate(unsigned int flag=0):
     cdef Stream stream
     status = cuStreamCreate(&stream, flag)
     check_status(status)
@@ -404,11 +397,12 @@ cpdef streamSynchronize(size_t stream):
     check_status(status)
 
 
-cdef _streamCallbackFunc(Stream hStream, int status, void *userData):
+cdef _streamCallbackFunc(Stream hStream, Result status, void *userData):
     func, data = <tuple>userData
-    func(<size_t>hStream, status, data)
+    func(<size_t>hStream, <int>status, data)
 
-cpdef streamAddCallback(size_t stream, callback, size_t arg,
+
+cpdef streamAddCallback(size_t stream, object callback, size_t arg,
                         unsigned int flags=0):
     func_arg = (callback, arg)
     status = cuStreamAddCallback(
@@ -417,7 +411,7 @@ cpdef streamAddCallback(size_t stream, callback, size_t arg,
     check_status(status)
 
 
-cpdef size_t eventCreate(flag):
+cpdef size_t eventCreate(unsigned int flag):
     cdef Event event
     status = cuEventCreate(&event, flag)
     check_status(status)

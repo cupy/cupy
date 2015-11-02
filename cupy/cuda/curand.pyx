@@ -1,17 +1,11 @@
 """Thin wrapper of cuRAND."""
 
-###############################################################################
-# Types
-###############################################################################
-
-ctypedef void* Stream
-ctypedef void* Generator
 
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from "cublas.h":
+cdef extern from "curand.h":
     # Generator
     int curandCreateGenerator(Generator* generator, int rng_type)
     int curandDestroyGenerator(Generator generator)
@@ -23,7 +17,7 @@ cdef extern from "cublas.h":
         Generator generator, unsigned long long seed)
     int curandSetGeneratorOffset(
         Generator generator, unsigned long long offset)
-    int curandSetGeneratorOrdering(Generator generator, int order)
+    int curandSetGeneratorOrdering(Generator generator, Ordering order)
 
     # Generation functions
     int curandGenerate(
@@ -50,27 +44,6 @@ cdef extern from "cublas.h":
         Generator generator, unsigned int* outputPtr, size_t n,
         double lam)
 
-
-###############################################################################
-# Enum
-###############################################################################
-
-CURAND_RNG_PSEUDO_DEFAULT = 100
-CURAND_RNG_PSEUDO_XORWOW = 101
-CURAND_RNG_PSEUDO_MRG32K3A = 121
-CURAND_RNG_PSEUDO_MTGP32 = 141
-CURAND_RNG_PSEUDO_MT19937 = 142
-CURAND_RNG_PSEUDO_PHILOX4_32_10 = 161
-CURAND_RNG_QUASI_DEFAULT = 200
-CURAND_RNG_QUASI_SOBOL32 = 201
-CURAND_RNG_QUASI_SCRAMBLED_SOBOL32 = 202
-CURAND_RNG_QUASI_SOBOL64 = 203
-CURAND_RNG_QUASI_SCRAMBLED_SOBOL64 = 204
-
-CURAND_ORDERING_PSEUDO_BEST = 100
-CURAND_ORDERING_PSEUDO_DEFAULT = 101
-CURAND_ORDERING_PSEUDO_SEEDED = 102
-CURAND_ORDERING_QUASI_DEFAULT = 201
 
 
 ###############################################################################
@@ -105,13 +78,14 @@ cpdef check_status(int status):
     if status != 0:
         raise CURANDError(status)
 
+
 ###############################################################################
 # Generator
 ###############################################################################
 
 cpdef size_t createGenerator(int rng_type):
     cdef Generator generator
-    status = curandCreateGenerator(&generator, rng_type)
+    status = curandCreateGenerator(&generator, <RngType>rng_type)
     check_status(status)
     return <size_t>generator
 
@@ -144,7 +118,7 @@ cpdef setGeneratorOffset(size_t generator, unsigned long long offset):
 
 
 cpdef setGeneratorOrdering(size_t generator, int order):
-    status = curandSetGeneratorOrdering(<Generator>generator, order)
+    status = curandSetGeneratorOrdering(<Generator>generator, <Ordering>order)
     check_status(status)
 
 

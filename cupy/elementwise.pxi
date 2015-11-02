@@ -3,8 +3,10 @@ import string
 import numpy
 import six
 
-from cupy import cuda
 from cupy import util
+
+from cupy.cuda cimport device
+from cupy.cuda cimport module
 
 
 six_range = six.moves.range
@@ -69,15 +71,15 @@ def _get_typename(dtype):
 
 
 def _check_args(args):
-    dev = cuda.Device()
+    dev_id = device.get_device_id()
     scalar_type = _scalar_type
     for arg in args:
         if isinstance(arg, ndarray):
             arr_dev = arg.device
-            if arr_dev is not None and arr_dev != dev:
+            if arr_dev is not None and arr_dev.id != dev_id:
                 raise ValueError('Array device must be same as the current '
                                  'device: array device = %d while current = %d'
-                                 % (arr_dev.id, dev.id))
+                                 % (arr_dev.id, dev_id))
         elif not isinstance(arg, scalar_type):
             raise TypeError('Unsupported type %s' % type(arg))
 

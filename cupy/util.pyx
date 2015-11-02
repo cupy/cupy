@@ -1,13 +1,13 @@
 import atexit
 import functools
 
-from cupy cimport cuda
+from cupy.cuda cimport device
 
 
-_memos = []
+cdef list _memos = []
 
 
-def memoize(for_each_device=False):
+def memoize(bint for_each_device=False):
     """Makes a function memoizing the result for each argument and device.
 
     This decorator provides automatic memoization of the function result.
@@ -26,13 +26,15 @@ def memoize(for_each_device=False):
         @functools.wraps(f)
         def ret(*args, **kwargs):
             cdef int id = -1
+            cdef dict m = memo
             if for_each_device:
-                id = cuda.Device().id
+                id = device.get_device_id()
             arg_key = (id, args, frozenset(kwargs.items()))
-            result = memo.get(arg_key, none)
-            if result is none:
+            if arg_key in m:
+                result = m[arg_key]
+            else:
                 result = f(*args, **kwargs)
-                memo[arg_key] = result
+                m[arg_key] = result
             return result
 
         return ret

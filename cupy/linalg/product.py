@@ -178,8 +178,8 @@ def tensordot(a, b, axes=2):
             raise ValueError('Axis dimension mismatch')
 
     # Make the axes non-negative
-    a = core._move_axes_to_head(a, [axis % a_ndim for axis in a_axes])
-    b = core._move_axes_to_head(b, [axis % b_ndim for axis in b_axes])
+    a = _move_axes_to_head(a, [axis % a_ndim for axis in a_axes])
+    b = _move_axes_to_head(b, [axis % b_ndim for axis in b_axes])
 
     ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
@@ -197,3 +197,14 @@ def tensordot(a, b, axes=2):
 
 
 # TODO(okuta): Implement kron
+
+def _move_axes_to_head(a, axes):
+    # This function moves the axes of ``s`` to the head of the shape.
+    for idx, axis in enumerate(axes):
+        if idx != axis:
+            break
+    else:
+        return a
+
+    return a.transpose(
+        axes + [i for i in six.moves.range(a.ndim) if i not in axes])

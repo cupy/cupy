@@ -10,39 +10,59 @@ There are four differences compared to the original C API.
 
 """
 
+
+cdef class PointerAttributes:
+
+    def __init__(self, int device, size_t devicePointer, size_t hostPointer,
+                 int isManaged, int memoryType):
+        self.device = device
+        self.devicePointer = devicePointer
+        self.hostPointer = hostPointer
+        self.isManaged = isManaged
+        self.memoryType = memoryType
+
+
 ###############################################################################
 # Extern
 ###############################################################################
 
 cdef extern from "cuda_runtime.h":
+    # Types
+    cdef struct _PointerAttributes 'cudaPointerAttributes':
+        int device
+        void* devicePointer
+        void* hostPointer
+        int isManaged
+        int memoryType
+
     # Error handling
-    char* cudaGetErrorName(int error)
-    char* cudaGetErrorString(int error)
+    const char* cudaGetErrorName(Error error)
+    const char* cudaGetErrorString(Error error)
 
     # Initialization
     int cudaDriverGetVersion(int* driverVersion )
 
     # Device operations
-    int cudaGetDevice(Device* device)
-    int cudaDeviceGetAttribute(int* value, int attr, int device )
+    int cudaGetDevice(int* device)
+    int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device )
     int cudaGetDeviceCount(int* const)
-    int cudaSetDevice(Device device)
+    int cudaSetDevice(int device)
     int cudaDeviceSynchronize()
 
     # Memory management
     int cudaMalloc(void** devPtr, size_t size)
     int cudaFree(void* devPtr)
     int cudaMemGetInfo(size_t* free, size_t* total)
-    int cudaMemcpy(void* dst, const void* src, size_t count, int kind)
-    int cudaMemcpyAsync(void* dst, const void* src, size_t count, int kind,
-                        Stream stream)
+    int cudaMemcpy(void* dst, const void* src, size_t count, MemoryKind kind)
+    int cudaMemcpyAsync(void* dst, const void* src, size_t count,
+                        MemoryKind kind, Stream stream)
     int cudaMemcpyPeer(void* dst, int dstDevice, const void* src,
                        int srcDevice, size_t count)
     int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
                        int srcDevice, size_t count, Stream stream)
     int cudaMemset(void* devPtr, int value, size_t count)
     int cudaMemsetAsync(void* devPtr, int value, size_t count, Stream stream)
-    int cudaPointerGetAttributes(cudaPointerAttributes* attributes,
+    int cudaPointerGetAttributes(_PointerAttributes* attributes,
                                  const void* ptr)
 
     # Stream and Event
@@ -51,7 +71,7 @@ cdef extern from "cuda_runtime.h":
     int cudaStreamDestroy(Stream stream)
     int cudaStreamSynchronize(Stream stream)
     int cudaStreamAddCallback(Stream stream, StreamCallback callback,
-                              void* userData, unsigned int  flags)
+                              void* userData, unsigned int flags)
     int cudaStreamQuery(Stream stream)
     int cudaStreamWaitEvent(Stream stream, Event event, unsigned int flags)
     int cudaEventCreate(Event* event)
@@ -62,26 +82,6 @@ cdef extern from "cuda_runtime.h":
     int cudaEventRecord(Event event, Stream stream)
     int cudaEventSynchronize(Event event)
 
-###############################################################################
-# Enum
-###############################################################################
-
-memcpyHostToHost = 0
-memcpyHostToDevice = 1
-memcpyDeviceToHost = 2
-memcpyDeviceToDevice = 3
-memcpyDefault = 4
-
-cudaMemoryTypeHost = 1
-cudaMemoryTypeDevice = 2
-
-streamDefault = 0
-streamNonBlocking = 1
-
-eventDefault = 0
-eventBlockingSync = 1
-eventDisableTiming = 2
-eventInterprocess = 4
 
 ###############################################################################
 # Error handling
@@ -91,9 +91,8 @@ class CUDARuntimeError(RuntimeError):
 
     def __init__(self, status):
         self.status = status
-        self.status = status
-        cdef bytes name = cudaGetErrorName(status)
-        cdef bytes msg = cudaGetErrorString(status)
+        cdef bytes name = cudaGetErrorName(<Error>status)
+        cdef bytes msg = cudaGetErrorString(<Error>status)
         super(CUDARuntimeError, self).__init__(
             '%s: %s' % (name.decode(), msg.decode()))
 
@@ -118,16 +117,16 @@ cpdef driverGetVersion():
 # Device and context operations
 ###############################################################################
 
-cpdef Device getDevice():
-    cdef Device device
+cpdef int getDevice():
+    cdef int device
     status = cudaGetDevice(&device)
     check_status(status)
     return device
 
 
-cpdef int deviceGetAttribute(attrib, device):
+cpdef int deviceGetAttribute(int attrib, int device):
     cdef int ret
-    status = cudaDeviceGetAttribute(&ret, attrib, device)
+    status = cudaDeviceGetAttribute(&ret, <DeviceAttr>attrib, device)
     check_status(status)
     return ret
 
@@ -139,7 +138,7 @@ cpdef int getDeviceCount():
     return count
 
 
-cpdef setDevice(Device device):
+cpdef setDevice(int device):
     status = cudaSetDevice(device)
     check_status(status)
 
@@ -173,25 +172,25 @@ cpdef memGetInfo():
 
 
 cpdef memcpy(size_t dst, size_t src, size_t size, int kind):
-    status = cudaMemcpy(<void*>dst, <void*>src, size, kind)
+    status = cudaMemcpy(<void*>dst, <void*>src, size, <MemoryKind>kind)
     check_status(status)
 
 
 cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
                   size_t stream):
     status = cudaMemcpyAsync(
-        <void*>dst, <void*>src, size, kind, <Stream>stream)
+        <void*>dst, <void*>src, size, <MemoryKind>kind, <Stream>stream)
     check_status(status)
 
 
-cpdef memcpyPeer(size_t dst, Device dstDevice, size_t src, Device srcDevice,
+cpdef memcpyPeer(size_t dst, int dstDevice, size_t src, int srcDevice,
                size_t size):
     status = cudaMemcpyPeer(<void*>dst, dstDevice, <void*>src, srcDevice, size)
     check_status(status)
 
 
-cpdef memcpyPeerAsync(size_t dst, Device dstDevice,
-                      size_t src, Device srcDevice,
+cpdef memcpyPeerAsync(size_t dst, int dstDevice,
+                      size_t src, int srcDevice,
                       size_t size, size_t stream):
     status = cudaMemcpyPeerAsync(<void*>dst, dstDevice,
                                  <void*>src, srcDevice, size, <Stream> stream)
@@ -208,29 +207,13 @@ cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream):
     check_status(status)
 
 
-cdef class PointerAttributes:
-    cdef:
-        public int device
-        public size_t devicePointer
-        public size_t hostPointer
-        public int isManaged
-        public int memoryType
-
-    cdef _init(self, cudaPointerAttributes* attrs):
-        self.device = attrs.device
-        self.devicePointer = <size_t>(attrs.devicePointer)
-        self.hostPointer = <size_t>(attrs.hostPointer)
-        self.isManaged = attrs.isManaged
-        self.memoryType = attrs.memoryType
-
-
 cpdef PointerAttributes pointerGetAttributes(size_t ptr):
-    cdef cudaPointerAttributes attrs
+    cdef _PointerAttributes attrs
     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
-    ret = PointerAttributes()
-    ret._init(&attrs)
-    return ret
+    return PointerAttributes(
+        attrs.device, <size_t>attrs.devicePointer, <size_t>attrs.hostPointer,
+        attrs.isManaged, attrs.memoryType)
 
 
 ###############################################################################
@@ -278,7 +261,7 @@ cpdef streamQuery(size_t stream):
     return cudaStreamQuery(<Stream>stream)
 
 
-def streamWaitEvent(size_t stream, size_t event, unsigned int flags=0):
+cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=0):
     status = cudaStreamWaitEvent(<Stream>stream, <Event>event, flags)
     check_status(status)
 
@@ -289,7 +272,7 @@ cpdef size_t eventCreate():
     check_status(status)
     return <size_t>event
 
-cpdef size_t eventCreateWithFlags(flags):
+cpdef size_t eventCreateWithFlags(unsigned int flags):
     cdef Event event
     status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)

@@ -25,6 +25,7 @@ MODULES = [
             'cublas_v2.h',
             'cuda.h',
             'cuda_runtime.h',
+            'curand.h',
         ],
         'libraries': [
             'cublas',
@@ -71,6 +72,7 @@ def get_compiler_setting():
         'include_dirs': include_dirs,
         'library_dirs': library_dirs,
         'define_macros': define_macros,
+        'language': 'c++',
     }
 
 

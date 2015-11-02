@@ -5,7 +5,7 @@ import weakref
 from cupy.cuda import device
 from cupy.cuda import runtime
 
-cimport device
+from cupy.cuda cimport device
 
 
 cdef class Memory:
@@ -18,10 +18,6 @@ cdef class Memory:
         size (int): Size of the memory allocation in bytes.
 
     """
-    cdef:
-        public Py_ssize_t size
-        public size_t ptr
-        device.Device _device
 
     def __init__(self, Py_ssize_t size):
         self.size = size
@@ -62,10 +58,6 @@ cdef class MemoryPointer:
         ptr (ctypes.c_void_p): Pointer to the place within the buffer.
 
     """
-    cdef:
-        public object mem
-        public size_t ptr
-        object _device
 
     def __init__(self, Memory mem, Py_ssize_t offset):
         self.mem = mem
@@ -94,7 +86,7 @@ cdef class MemoryPointer:
         self.ptr += offset
         return self
 
-    def __sub__(self, Py_ssize_t offset):
+    def __sub__(self, offset):
         """Subtracts an offset from the pointer."""
         return self + -offset
 
@@ -107,7 +99,7 @@ cdef class MemoryPointer:
         """Device whose memory the pointer refers to."""
         return self._device
 
-    def copy_from_device(self, MemoryPointer src, Py_ssize_t size):
+    cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size):
         """Copies a memory sequence from a (possibly different) device.
 
         Args:
@@ -119,7 +111,7 @@ cdef class MemoryPointer:
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDeviceToDevice)
 
-    def copy_from_device_async(self, src, size_t size, stream):
+    cpdef copy_from_device_async(self, MemoryPointer src, size_t size, stream):
         """Copies a memory sequence from a (possibly different) device asynchronously.
 
         Args:
@@ -132,7 +124,7 @@ cdef class MemoryPointer:
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDeviceToDevice, stream)
 
-    def copy_from_host(self, mem, size_t size):
+    cpdef copy_from_host(self, mem, size_t size):
         """Copies a memory sequence from the host memory.
 
         Args:
@@ -144,7 +136,7 @@ cdef class MemoryPointer:
             runtime.memcpy(self.ptr, mem.value, size,
                            runtime.memcpyHostToDevice)
 
-    def copy_from_host_async(self, mem, size_t size, stream):
+    cpdef copy_from_host_async(self, mem, size_t size, stream):
         """Copies a memory sequence from the host memory asynchronously.
 
         Args:
@@ -157,7 +149,7 @@ cdef class MemoryPointer:
             runtime.memcpyAsync(self.ptr, mem.value, size, stream,
                                 runtime.memcpyHostToDevice)
 
-    def copy_from(self, mem, size_t size):
+    cpdef copy_from(self, mem, size_t size):
         """Copies a memory sequence from a (possibly different) device or host.
 
         This function is a useful interface that selects appropriate one from
@@ -175,7 +167,7 @@ cdef class MemoryPointer:
         else:
             self.copy_from_host(mem, size)
 
-    def copy_from_async(self, mem, size_t size, stream):
+    cpdef copy_from_async(self, mem, size_t size, stream):
         """Copies a memory sequence from an arbitrary place asynchronously.
 
         This function is a useful interface that selects appropriate one from
@@ -194,7 +186,7 @@ cdef class MemoryPointer:
         else:
             self.copy_from_host_async(mem, size, stream)
 
-    def copy_to_host(self, mem, size_t size):
+    cpdef copy_to_host(self, mem, size_t size):
         """Copies a memory sequence to the host memory.
 
         Args:
@@ -206,7 +198,7 @@ cdef class MemoryPointer:
             runtime.memcpy(mem.value, self.ptr, size,
                            runtime.memcpyDeviceToHost)
 
-    def copy_to_host_async(self, mem, size_t size, stream):
+    cpdef copy_to_host_async(self, mem, size_t size, stream):
         """Copies a memory sequence to the host memory asynchronously.
 
         Args:
@@ -220,7 +212,7 @@ cdef class MemoryPointer:
             runtime.memcpyAsync(mem.value, self.ptr, size,
                                 runtime.memcpyDeviceToHost, stream)
 
-    def memset(self, int value, size_t size):
+    cpdef memset(self, int value, size_t size):
         """Fills a memory sequence by constant byte value.
 
         Args:
@@ -231,7 +223,7 @@ cdef class MemoryPointer:
         if size > 0:
             runtime.memset(self.ptr, value, size)
 
-    def memset_async(self, int value, size_t size, stream):
+    cpdef memset_async(self, int value, size_t size, stream):
         """Fills a memory sequence by constant byte value asynchronously.
 
         Args:
@@ -244,15 +236,15 @@ cdef class MemoryPointer:
             runtime.memsetAsync(self.ptr, value, size, stream)
 
 
-cpdef _malloc(Py_ssize_t size):
+cpdef MemoryPointer _malloc(Py_ssize_t size):
     mem = Memory(size)
     return MemoryPointer(mem, 0)
 
 
-_current_allocator = _malloc
+cdef object _current_allocator = _malloc
 
 
-cpdef alloc(Py_ssize_t size):
+cpdef MemoryPointer alloc(Py_ssize_t size):
     """Calls the current allocator.
 
     Use :func:`~cupy.cuda.set_allocator` to change the current allocator.
@@ -289,8 +281,6 @@ cdef class PooledMemory(Memory):
     should not instantiate it by hand.
 
     """
-    cdef:
-        object pool
 
     def __init__(self, Memory mem, pool):
         self.ptr = mem.ptr
@@ -322,19 +312,13 @@ cdef class SingleDeviceMemoryPool:
 
     """Memory pool implementation for single device."""
 
-    cdef:
-        dict _in_use
-        object _free, _alloc
-        object __weakref__
-        object _weakref
-
     def __init__(self, allocator=_malloc):
         self._in_use = {}
         self._free = collections.defaultdict(list)
         self._alloc = allocator
         self._weakref = weakref.ref(self)
 
-    cpdef malloc(self, Py_ssize_t size):
+    cpdef MemoryPointer malloc(self, Py_ssize_t size):
         if size == 0:
             return MemoryPointer(Memory(0), 0)
         free = self._free[size]
@@ -392,13 +376,12 @@ cdef class MemoryPool(object):
             in use.
 
     """
-    cdef object _pools
 
     def __init__(self, allocator=_malloc):
         self._pools = collections.defaultdict(
             lambda: SingleDeviceMemoryPool(allocator))
 
-    cpdef malloc(self, Py_ssize_t size):
+    cpdef MemoryPointer malloc(self, Py_ssize_t size):
         """Allocates the memory, from the pool if possible.
 
         This method can be used as a CuPy memory allocator. The simplest way to

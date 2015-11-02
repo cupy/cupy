@@ -3,19 +3,25 @@ import collections
 import ctypes
 import sys
 
-#cimport numpy
 import numpy
 import six
 
-from cupy.cuda import cublas
 from cupy import flags
 from cupy import util
+
+cimport cython
+
+from cupy.cuda cimport cublas
+from cupy.cuda cimport device
+from cupy.cuda cimport memory
+from cupy.cuda cimport module
 
 
 DEF MAX_NDIM = 25
 
 
-def _get_size(size):
+@cython.profile(False)
+cpdef inline tuple _get_size(size):
     if size is None:
         return ()
     elif isinstance(size, collections.Sequence):
@@ -25,10 +31,13 @@ def _get_size(size):
     else:
         raise ValueError('size should be None, collections.Sequence, or int')
 
-cdef _should_use_rop(x, y):
+
+@cython.profile(False)
+cdef inline _should_use_rop(x, y):
     xp = getattr(x, '__array_priority__', 0)
     yp = getattr(y, '__array_priority__', 0)
     return xp < yp and not isinstance(y, ndarray)
+
 
 cdef class ndarray:
 
@@ -56,7 +65,7 @@ cdef class ndarray:
         public int _c_contiguous
         public int _f_contiguous
         public object _dtype
-        public object data
+        public memory.MemoryPointer data
         public ndarray base
         public tuple _shape
         public tuple _strides
@@ -71,7 +80,7 @@ cdef class ndarray:
         self._size = size
 
         if memptr is None:
-            self.data = cuda.alloc(size * dtype.itemsize)
+            self.data = memory.alloc(size * dtype.itemsize)
         else:
             self.data = memptr
 
@@ -1112,7 +1121,7 @@ cdef inline long long internal_prod(args, long long init=1):
     return init
 
 
-def get_reduced_dims(shape, strides, itemsize):
+cpdef get_reduced_dims(shape, strides, itemsize):
     if not shape:
         return (), ()
     if 0 in shape:
@@ -1150,7 +1159,7 @@ def get_reduced_dims(shape, strides, itemsize):
     return tuple(reduced_shape), tuple(reduced_strides)
 
 
-def get_strides_for_nocopy_reshape(a, new_shape):
+cpdef tuple get_strides_for_nocopy_reshape(a, new_shape):
     a_size = a.size
     size = 1
     for s in new_shape:
@@ -1187,7 +1196,7 @@ def get_strides_for_nocopy_reshape(a, new_shape):
     return tuple(new_strides)
 
 
-def get_contiguous_strides(shape, itemsize):
+cpdef tuple get_contiguous_strides(shape, itemsize):
     ndim = len(shape)
     if ndim == 0:
         return ()
@@ -1206,7 +1215,7 @@ def get_contiguous_strides(shape, itemsize):
     return tuple(strides)
 
 
-def complete_slice(slc, dim):
+cpdef slice complete_slice(slc, dim):
     step = 1 if slc.step is None else slc.step
     if step == 0:
         raise ValueError('Slice step must be nonzero.')
@@ -1219,7 +1228,8 @@ def complete_slice(slc, dim):
     return slice(start, stop, step)
 
 
-def get_c_contiguity(shape, strides, itemsize):
+@cython.profile(False)
+cpdef inline get_c_contiguity(shape, strides, itemsize):
     if 0 in shape:
         return True
     _, strides = get_reduced_dims(shape, strides, itemsize)
@@ -1404,7 +1414,7 @@ def copy(a):
 
     if not a.flags.c_contiguous:
         a = ascontiguousarray(a)
-        if a.data.device == cuda.Device():
+        if a.data.device == device.Device():
             return a
     newarray = ndarray(a.shape, a.dtype)
     newarray.data.copy_from(a.data, a.nbytes)
@@ -1898,22 +1908,21 @@ cpdef ndarray _tensordot_core(
             # Outer product A^T * B
             # c is C-contiguous while cuBLAS requires F-contiguous arrays, so
             # we compute C^T = B^T * A here.
-            handle = cuda.Device().cublas_handle
+            handle = device.get_cublas_handle()
             c.fill(0)
             a, inca = _to_cublas_vector(a, 1)
             b, incb = _to_cublas_vector(b, 1)
             if dtype == 'f':
-                ger = cublas.sger
+                cublas.sger(handle, m, n, 1, b.data.ptr, incb, a.data.ptr,
+                            inca, c.data.ptr, m)
             elif dtype == 'd':
-                ger = cublas.dger
-            ger(handle, m, n, 1, b.data.ptr, incb, a.data.ptr, inca,
-                c.data.ptr, m)
-
+                cublas.dger(handle, m, n, 1, b.data.ptr, incb, a.data.ptr,
+                            inca, c.data.ptr, m)
         if dtype != ret_dtype:
             elementwise_copy(out, ret)
         return ret
 
-    handle = cuda.Device().cublas_handle
+    handle = device.get_cublas_handle()
     if n == 1:
         if m == 1:
             # Inner product
@@ -1922,12 +1931,13 @@ cpdef ndarray _tensordot_core(
             mode = cublas.getPointerMode(handle)
             cublas.setPointerMode(handle,
                                   cublas.CUBLAS_POINTER_MODE_DEVICE)
-            if dtype == 'f':
-                dot = cublas.sdot
-            elif dtype == 'd':
-                dot = cublas.ddot
             try:
-                dot(handle, k, a.data.ptr, inca, b.data.ptr, incb, c.data.ptr)
+                if dtype == 'f':
+                    cublas.sdot(handle, k, a.data.ptr, inca, b.data.ptr, incb,
+                                c.data.ptr)
+                elif dtype == 'd':
+                    cublas.ddot(handle, k, a.data.ptr, inca, b.data.ptr, incb,
+                                c.data.ptr)
             finally:
                 cublas.setPointerMode(handle, mode)
         else:
@@ -1939,11 +1949,11 @@ cpdef ndarray _tensordot_core(
                 # rather than the transposed dimensions.
                 m, k = k, m
             if dtype == 'f':
-                gemv = cublas.sgemv
+                cublas.sgemv(handle, transb, m, k, 1, b.data.ptr, ldb,
+                             a.data.ptr, inca, 0, c.data.ptr, 1)
             elif dtype == 'd':
-                gemv = cublas.dgemv
-            gemv(handle, transb, m, k, 1, b.data.ptr, ldb, a.data.ptr, inca,
-                 0, c.data.ptr, 1)
+                cublas.dgemv(handle, transb, m, k, 1, b.data.ptr, ldb,
+                             a.data.ptr, inca, 0, c.data.ptr, 1)
     elif m == 1:
         # Matrix-vector product A^T * B
         a, transa, lda = _mat_to_cublas_contiguous(a, 1)
@@ -1953,11 +1963,11 @@ cpdef ndarray _tensordot_core(
             # than the transposed dimensions.
             n, k = k, n
         if dtype == 'f':
-            gemv = cublas.sgemv
+            cublas.sgemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr,
+                         incb, 0, c.data.ptr, 1)
         elif dtype == 'd':
-            gemv = cublas.dgemv
-        gemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr, incb, 0,
-             c.data.ptr, 1)
+            cublas.dgemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr,
+                         incb, 0, c.data.ptr, 1)
     else:
         # Matrix-Matrix product A^T * B
         # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
@@ -1965,30 +1975,18 @@ cpdef ndarray _tensordot_core(
         a, transa, lda = _mat_to_cublas_contiguous(a, 0)
         b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
         if dtype == 'f':
-            gemm = cublas.sgemm
+            cublas.sgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
+                         a.data.ptr, lda, 0, c.data.ptr, m)
         elif dtype == 'd':
-            gemm = cublas.dgemm
-        gemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb, a.data.ptr,
-             lda, 0, c.data.ptr, m)
+            cublas.dgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
+                         a.data.ptr, lda, 0, c.data.ptr, m)
 
     if dtype != ret_dtype:
         elementwise_copy(out, ret)
     return ret
 
 
-def _move_axes_to_head(a, axes):
-    # This function moves the axes of ``s`` to the head of the shape.
-    for idx, axis in enumerate(axes):
-        if idx != axis:
-            break
-    else:
-        return a
-
-    return a.transpose(
-        axes + [i for i in six.moves.range(a.ndim) if i not in axes])
-
-
-def _mat_to_cublas_contiguous(a, trans):
+cpdef tuple _mat_to_cublas_contiguous(ndarray a, int trans):
     assert a.ndim == 2
     f = a.flags
     if f.f_contiguous:
@@ -1998,7 +1996,7 @@ def _mat_to_cublas_contiguous(a, trans):
     return a, 1 - trans, a.strides[0] // a.itemsize
 
 
-def _to_cublas_vector(a, rundim):
+cpdef tuple _to_cublas_vector(ndarray a, int rundim):
     if a.strides[rundim] < 0:
         return a.copy(), 1
     else:
@@ -2237,7 +2235,7 @@ absolute = create_ufunc(
     (('?->?', 'out0 = in0'),
      'b->b', ('B->B', 'out0 = in0'), 'h->h', ('H->H', 'out0 = in0'),
      'i->i', ('I->I', 'out0 = in0'), 'l->l', ('L->L', 'out0 = in0'),
-     'q->q', ('Q->Q', 'out0 = in0'), 
+     'q->q', ('Q->Q', 'out0 = in0'),
      ('e->e', 'out0 = fabsf(in0)'),
      ('f->f', 'out0 = fabsf(in0)'),
      ('d->d', 'out0 = fabs(in0)')),
