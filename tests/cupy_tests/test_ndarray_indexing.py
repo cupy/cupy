@@ -5,9 +5,13 @@ from cupy import testing
 
 @testing.parameterize(
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': (1, 0, 2)},
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': (-1, 0, -2)},
     {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': (1, 0, 2)},
+    {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': (-1, 0, -2)},
     {'shape': (2, 3, 4), 'transpose': None,
      'indexes': (slice(None), slice(None, 1), slice(2))},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(None), slice(None, -1), slice(-2))},
     {'shape': (2, 3, 4), 'transpose': (2, 0, 1),
      'indexes': (slice(None), slice(None, 1), slice(2))},
     {'shape': (2, 3, 5), 'transpose': None,
@@ -39,6 +43,10 @@ class TestArrayIndexingParameterized(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': -3},
+    {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': -5},
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': 3},
+    {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': 5},
     {'shape': (2, 3, 4), 'transpose': None,
      'indexes': (slice(0, 1, 0), )},
     {'shape': (2, 3, 4), 'transpose': None,

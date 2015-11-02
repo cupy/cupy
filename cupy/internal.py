@@ -126,6 +126,8 @@ def complete_slice(slc, dim):
         except TypeError:
             raise IndexError(
                 'slice.start must be int or None: {}'.format(slc))
+        if start < 0:
+            start += dim
 
     if slc.stop is None:
         stop = None
@@ -135,6 +137,8 @@ def complete_slice(slc, dim):
         except TypeError:
             raise IndexError(
                 'slice.stop must be int or None: {}'.format(slc))
+        if stop < 0:
+            stop += dim
 
     if step > 0:
         start = 0 if start is None else max(0, min(dim, start))
