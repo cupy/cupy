@@ -66,7 +66,7 @@ Normalization functions
    :members: __call__
 .. autofunction:: local_response_normalization
 
-Noise injecting functions 
+Noise injecting functions
 -------------------------
 .. autofunction:: dropout
 .. autofunction:: gaussian
@@ -79,6 +79,7 @@ Loss, evaluation and aggregation
 .. autofunction:: softmax_cross_entropy
 .. autofunction:: sum
 .. autofunction:: cross_covariance
+.. autofunction:: hinge
 
 Reusable subnetwork of complex architectures
 --------------------------------------------
