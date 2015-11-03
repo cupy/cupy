@@ -199,5 +199,5 @@ class chainer_install(install.install):
 
         # Hack for Read the Docs
         if os.environ.get('READTHEDOCS', None):
-            print('Executing develop cmmand for Read the Docs')
+            print('Executing develop command for Read the Docs')
             self.run_command('develop')
