@@ -106,15 +106,43 @@ def get_contiguous_strides(shape, itemsize):
 
 
 def complete_slice(slc, dim):
-    step = 1 if slc.step is None else slc.step
+    if slc.step is None:
+        step = 1
+    else:
+        try:
+            step = int(slc.step)
+        except TypeError:
+            raise IndexError(
+                'slice.step must be int or None: {}'.format(slc))
+
     if step == 0:
         raise ValueError('Slice step must be nonzero.')
-    elif step > 0:
-        start = 0 if slc.start is None else max(0, min(dim, slc.start))
-        stop = dim if slc.stop is None else max(start, min(dim, slc.stop))
+
+    if slc.start is None:
+        start = None
     else:
-        start = dim - 1 if slc.start is None else max(0, min(dim, slc.start))
-        stop = -1 if slc.stop is None else max(0, min(start, slc.stop))
+        try:
+            start = int(slc.start)
+        except TypeError:
+            raise IndexError(
+                'slice.start must be int or None: {}'.format(slc))
+
+    if slc.stop is None:
+        stop = None
+    else:
+        try:
+            stop = int(slc.stop)
+        except TypeError:
+            raise IndexError(
+                'slice.stop must be int or None: {}'.format(slc))
+
+    if step > 0:
+        start = 0 if start is None else max(0, min(dim, start))
+        stop = dim if stop is None else max(start, min(dim, stop))
+    else:
+        start = dim - 1 if start is None else max(0, min(dim, start))
+        stop = -1 if stop is None else max(0, min(start, stop))
+
     return slice(start, stop, step)
 
 
