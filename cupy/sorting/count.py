@@ -18,4 +18,4 @@ _count_nonzero = core.create_reduction_func(
     'cupy_count_nonzero',
     ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'),
-    ('in0', 'a + b', 'out0 = (a != 0)', None), 0)
+    ('in0 != 0', 'a + b', 'out0 = a', None), 0)
