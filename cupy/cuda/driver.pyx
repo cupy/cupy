@@ -15,256 +15,83 @@ There are four differences compared to the original C API.
 # Extern
 ###############################################################################
 
-IF CUPY_USE_CUDA:
-    cdef extern from "cuda.h":
-        # Error handling
-        int cuGetErrorName(Result error, const char** pStr)
-        int cuGetErrorString(Result error, const char** pStr)
+cdef extern from "cupy_cuda.h":
+    # Error handling
+    int cuGetErrorName(Result error, const char** pStr)
+    int cuGetErrorString(Result error, const char** pStr)
 
-        # Initialization
-        int cuInit(unsigned int Flags)
+    # Initialization
+    int cuInit(unsigned int Flags)
 
-        # Device and context operations
-        int cuDriverGetVersion(int* driverVersion)
-        int cuDeviceGet(Device* device, int ordinal)
-        int cuDeviceGetAttribute(int* pi, DeviceAttribute attrib, Device dev)
-        int cuDeviceGetCount(int* count)
-        int cuDeviceTotalMem(size_t* bytes, Device dev)
-        int cuCtxCreate(Context* pctx, unsigned int flags, Device dev)
-        int cuCtxDestroy(Context ctx)
-        int cuCtxGetApiVersion(Context ctx, unsigned int* version)
-        int cuCtxGetCurrent(Context* pctx)
-        int cuCtxGetDevice(Device* device)
-        int cuCtxPopCurrent(Context* pctx)
-        int cuCtxPushCurrent(Context ctx)
-        int cuCtxSetCurrent(Context ctx)
-        int cuCtxSynchronize()
+    # Device and context operations
+    int cuDriverGetVersion(int* driverVersion)
+    int cuDeviceGet(Device* device, int ordinal)
+    int cuDeviceGetAttribute(int* pi, DeviceAttribute attrib, Device dev)
+    int cuDeviceGetCount(int* count)
+    int cuDeviceTotalMem(size_t* bytes, Device dev)
+    int cuCtxCreate(Context* pctx, unsigned int flags, Device dev)
+    int cuCtxDestroy(Context ctx)
+    int cuCtxGetApiVersion(Context ctx, unsigned int* version)
+    int cuCtxGetCurrent(Context* pctx)
+    int cuCtxGetDevice(Device* device)
+    int cuCtxPopCurrent(Context* pctx)
+    int cuCtxPushCurrent(Context ctx)
+    int cuCtxSetCurrent(Context ctx)
+    int cuCtxSynchronize()
 
-        # Module load and kernel execution
-        int cuModuleLoad(Module* module, char* fname)
-        int cuModuleLoadData(Module* module, void* image)
-        int cuModuleUnload(Module hmod)
-        int cuModuleGetFunction(Function* hfunc, Module hmod, char* name)
-        int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
-                              char* name)
-        int cuLaunchKernel(
-                Function f, unsigned int gridDimX, unsigned int gridDimY,
-                unsigned int gridDimZ, unsigned int blockDimX,
-                unsigned int blockDimY, unsigned int blockDimZ,
-                unsigned int sharedMemBytes, Stream hStream,
-                void** kernelParams, void** extra)
+    # Module load and kernel execution
+    int cuModuleLoad(Module* module, char* fname)
+    int cuModuleLoadData(Module* module, void* image)
+    int cuModuleUnload(Module hmod)
+    int cuModuleGetFunction(Function* hfunc, Module hmod, char* name)
+    int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
+                          char* name)
+    int cuLaunchKernel(
+            Function f, unsigned int gridDimX, unsigned int gridDimY,
+            unsigned int gridDimZ, unsigned int blockDimX,
+            unsigned int blockDimY, unsigned int blockDimZ,
+            unsigned int sharedMemBytes, Stream hStream,
+            void** kernelParams, void** extra)
 
-        # Memory management
-        int cuMemAlloc(Deviceptr* dptr, size_t bytesize)
-        int cuMemFree(Deviceptr dptr)
-        int cuMemGetInfo(size_t* free, size_t* total)
-        int cuMemcpy(Deviceptr dst, Deviceptr src, size_t ByteCount)
-        int cuMemcpyAsync(Deviceptr dst, Deviceptr src, size_t ByteCount,
-                          Stream hStream)
-        int cuMemcpyDtoD(Deviceptr dstDevice, Deviceptr srcDevice,
-                         size_t ByteCount)
-        int cuMemcpyDtoDAsync(Deviceptr dstDevice, Deviceptr srcDevice,
-                              size_t ByteCount, Stream hStream)
-        int cuMemcpyDtoH(void* dstHost, Deviceptr srcDevice, size_t ByteCount)
-        int cuMemcpyDtoHAsync(void* dstHost, Deviceptr srcDevice,
-                              size_t ByteCount, Stream hStream)
-        int cuMemcpyHtoD(Deviceptr dstDevice, void* srcHost, size_t ByteCount)
-        int cuMemcpyHtoDAsync(Deviceptr dstDevice, void* srcHost,
-                              size_t ByteCount, Stream hStream)
-        int cuMemcpyPeer(Deviceptr dstDevice, Context dstContext,
-                         Deviceptr srcDevice, Context srcContext,
-                         size_t ByteCount)
-        int cuMemcpyPeerAsync(Deviceptr dstDevice, Context dstContext,
-                              Deviceptr srcDevice, Context srcContext,
-                              size_t ByteCount, Stream hStream)
-        int cuMemsetD32(Deviceptr dstDevice, unsigned int ui, size_t N)
-        int cuMemsetD32Async(Deviceptr dstDevice, unsigned int ui, size_t N,
-                             Stream hStream)
-        int cuPointerGetAttribute(void* data, PointerAttribute attribute,
-                                  Deviceptr ptr)
+    # Memory management
+    int cuMemAlloc(Deviceptr* dptr, size_t bytesize)
+    int cuMemFree(Deviceptr dptr)
+    int cuMemGetInfo(size_t* free, size_t* total)
+    int cuMemcpy(Deviceptr dst, Deviceptr src, size_t ByteCount)
+    int cuMemcpyAsync(Deviceptr dst, Deviceptr src, size_t ByteCount,
+                      Stream hStream)
+    int cuMemcpyDtoD(Deviceptr dstDevice, Deviceptr srcDevice,
+                     size_t ByteCount)
+    int cuMemcpyDtoDAsync(Deviceptr dstDevice, Deviceptr srcDevice,
+                          size_t ByteCount, Stream hStream)
+    int cuMemcpyDtoH(void* dstHost, Deviceptr srcDevice, size_t ByteCount)
+    int cuMemcpyDtoHAsync(void* dstHost, Deviceptr srcDevice,
+                          size_t ByteCount, Stream hStream)
+    int cuMemcpyHtoD(Deviceptr dstDevice, void* srcHost, size_t ByteCount)
+    int cuMemcpyHtoDAsync(Deviceptr dstDevice, void* srcHost,
+                          size_t ByteCount, Stream hStream)
+    int cuMemcpyPeer(Deviceptr dstDevice, Context dstContext,
+                     Deviceptr srcDevice, Context srcContext,
+                     size_t ByteCount)
+    int cuMemcpyPeerAsync(Deviceptr dstDevice, Context dstContext,
+                          Deviceptr srcDevice, Context srcContext,
+                          size_t ByteCount, Stream hStream)
+    int cuMemsetD32(Deviceptr dstDevice, unsigned int ui, size_t N)
+    int cuMemsetD32Async(Deviceptr dstDevice, unsigned int ui, size_t N,
+                         Stream hStream)
+    int cuPointerGetAttribute(void* data, PointerAttribute attribute,
+                              Deviceptr ptr)
 
-        # Stream and Event
-        int cuStreamCreate(Stream* phStream, unsigned int Flags)
-        int cuStreamDestroy(Stream hStream)
-        int cuStreamSynchronize(Stream hStream)
-        int cuStreamAddCallback(Stream hStream, StreamCallback callback,
-                                void* userData, unsigned int flags)
-        int cuEventCreate(Event* phEvent, unsigned int Flags)
-        int cuEventDestroy(Event hEvent)
-        int cuEventRecord(Event hEvent, Stream hStream)
-        int cuEventSynchronize(Event hEvent)
-
-ELSE:
-    cdef:
-        # Error handling
-        int cuGetErrorName(Result error, const char** pStr):
-            return 0
-
-        int cuGetErrorString(Result error, const char** pStr):
-            return 0
-
-        # Initialization
-        int cuInit(unsigned int Flags):
-            return 0
-
-
-        # Device and context operations
-        int cuDriverGetVersion(int* driverVersion):
-            return 0
-
-        int cuDeviceGet(Device* device, int ordinal):
-            return 0
-
-        int cuDeviceGetAttribute(int* pi, DeviceAttribute attrib, Device dev):
-            return 0
-
-        int cuDeviceGetCount(int* count):
-            return 0
-
-        int cuDeviceTotalMem(size_t* bytes, Device dev):
-            return 0
-
-        int cuCtxCreate(Context* pctx, unsigned int flags, Device dev):
-            return 0
-
-        int cuCtxDestroy(Context ctx):
-            return 0
-
-        int cuCtxGetApiVersion(Context ctx, unsigned int* version):
-            return 0
-
-        int cuCtxGetCurrent(Context* pctx):
-            return 0
-
-        int cuCtxGetDevice(Device* device):
-            return 0
-
-        int cuCtxPopCurrent(Context* pctx):
-            return 0
-
-        int cuCtxPushCurrent(Context ctx):
-            return 0
-
-        int cuCtxSetCurrent(Context ctx):
-            return 0
-
-        int cuCtxSynchronize():
-            return 0
-
-
-        # Module load and kernel execution
-        int cuModuleLoad(Module* module, char* fname):
-            return 0
-
-        int cuModuleLoadData(Module* module, void* image):
-            return 0
-
-        int cuModuleUnload(Module hmod):
-            return 0
-
-        int cuModuleGetFunction(Function* hfunc, Module hmod, char* name):
-            return 0
-
-        int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
-                              char* name):
-            return 0
-
-        int cuLaunchKernel(
-                Function f, unsigned int gridDimX, unsigned int gridDimY,
-                unsigned int gridDimZ, unsigned int blockDimX,
-                unsigned int blockDimY, unsigned int blockDimZ,
-                unsigned int sharedMemBytes, Stream hStream,
-                void** kernelParams, void** extra):
-            return 0
-
-
-        # Memory management
-        int cuMemAlloc(Deviceptr* dptr, size_t bytesize):
-            return 0
-
-        int cuMemFree(Deviceptr dptr):
-            return 0
-
-        int cuMemGetInfo(size_t* free, size_t* total):
-            return 0
-
-        int cuMemcpy(Deviceptr dst, Deviceptr src, size_t ByteCount):
-            return 0
-
-        int cuMemcpyAsync(Deviceptr dst, Deviceptr src, size_t ByteCount,
-                          Stream hStream):
-            return 0
-
-        int cuMemcpyDtoD(Deviceptr dstDevice, Deviceptr srcDevice,
-                         size_t ByteCount):
-            return 0
-
-        int cuMemcpyDtoDAsync(Deviceptr dstDevice, Deviceptr srcDevice,
-                              size_t ByteCount, Stream hStream):
-            return 0
-
-        int cuMemcpyDtoH(void* dstHost, Deviceptr srcDevice, size_t ByteCount):
-            return 0
-
-        int cuMemcpyDtoHAsync(void* dstHost, Deviceptr srcDevice,
-                              size_t ByteCount, Stream hStream):
-            return 0
-
-        int cuMemcpyHtoD(Deviceptr dstDevice, void* srcHost, size_t ByteCount):
-            return 0
-
-        int cuMemcpyHtoDAsync(Deviceptr dstDevice, void* srcHost,
-                              size_t ByteCount, Stream hStream):
-            return 0
-
-        int cuMemcpyPeer(Deviceptr dstDevice, Context dstContext,
-                         Deviceptr srcDevice, Context srcContext,
-                         size_t ByteCount):
-            return 0
-
-        int cuMemcpyPeerAsync(Deviceptr dstDevice, Context dstContext,
-                              Deviceptr srcDevice, Context srcContext,
-                              size_t ByteCount, Stream hStream):
-            return 0
-
-        int cuMemsetD32(Deviceptr dstDevice, unsigned int ui, size_t N):
-            return 0
-
-        int cuMemsetD32Async(Deviceptr dstDevice, unsigned int ui, size_t N,
-                             Stream hStream):
-            return 0
-
-        int cuPointerGetAttribute(void* data, PointerAttribute attribute,
-                                  Deviceptr ptr):
-            return 0
-
-
-        # Stream and Event
-        int cuStreamCreate(Stream* phStream, unsigned int Flags):
-            return 0
-
-        int cuStreamDestroy(Stream hStream):
-            return 0
-
-        int cuStreamSynchronize(Stream hStream):
-            return 0
-
-        int cuStreamAddCallback(Stream hStream, StreamCallback callback,
-                                void* userData, unsigned int flags):
-            return 0
-
-        int cuEventCreate(Event* phEvent, unsigned int Flags):
-            return 0
-
-        int cuEventDestroy(Event hEvent):
-            return 0
-
-        int cuEventRecord(Event hEvent, Stream hStream):
-            return 0
-
-        int cuEventSynchronize(Event hEvent):
-            return 0
-
+    # Stream and Event
+    int cuStreamCreate(Stream* phStream, unsigned int Flags)
+    int cuStreamDestroy(Stream hStream)
+    int cuStreamSynchronize(Stream hStream)
+    int cuStreamAddCallback(Stream hStream, StreamCallback callback,
+                            void* userData, unsigned int flags)
+    int cuEventCreate(Event* phEvent, unsigned int Flags)
+    int cuEventDestroy(Event hEvent)
+    int cuEventRecord(Event hEvent, Stream hStream)
+    int cuEventSynchronize(Event hEvent)
 
 
 ###############################################################################

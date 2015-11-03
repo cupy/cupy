@@ -8,21 +8,12 @@
 from cupy.cuda.driver cimport Stream
 
 
-IF CUPY_USE_CUDA:
-    cdef extern from *:
-        ctypedef void* Handle 'cublasHandle_t'
+cdef extern from *:
+    ctypedef void* Handle 'cublasHandle_t'
 
-        ctypedef int Operation 'cublasOperation_t'
-        ctypedef int PointerMode 'cublasPointerMode_t'
-        ctypedef int SideMode 'cublasSideMode_t'
-
-ELSE:
-    cdef:
-        ctypedef void* Handle
-
-        ctypedef int Operation
-        ctypedef int PointerMode
-        ctypedef int SideMode
+    ctypedef int Operation 'cublasOperation_t'
+    ctypedef int PointerMode 'cublasPointerMode_t'
+    ctypedef int SideMode 'cublasSideMode_t'
 
 
 ###############################################################################

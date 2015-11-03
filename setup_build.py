@@ -97,6 +97,7 @@ def make_extensions(options):
 
     """Produce a list of Extension instances which passed to cythonize()."""
 
+    no_cuda = options['no_cuda']
     settings = get_compiler_setting()
 
     try:
@@ -117,7 +118,8 @@ def make_extensions(options):
 
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
-    nocuda = options['nocuda']
+    if no_cuda:
+        settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
     ret = []
     for module in MODULES:
@@ -126,12 +128,12 @@ def make_extensions(options):
 
         include = [i for i in module['include']
                    if not check_include(include_dirs, i)]
-        if not nocuda and include:
+        if not no_cuda and include:
             print('Missing include files:', include)
             continue
 
         s = settings.copy()
-        if not nocuda:
+        if not no_cuda:
             s['libraries'] = module['libraries']
         ret.extend([
             setuptools.Extension(
@@ -153,12 +155,12 @@ def parse_args():
     if _arg_options['linetrace']:
         sys.argv.remove('--cupy-linetrace')
 
-    _arg_options['nocuda'] = '--cupy-nocuda' in sys.argv
-    if _arg_options['nocuda']:
-        sys.argv.remove('--cupy-nocuda')
+    _arg_options['no_cuda'] = '--cupy-no-cuda' in sys.argv
+    if _arg_options['no_cuda']:
+        sys.argv.remove('--cupy-no-cuda')
     on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
     if on_rtd:
-        _arg_options['nocuda'] = True
+        _arg_options['no_cuda'] = True
 
 
 class chainer_build_ext(build_ext.build_ext):
@@ -175,15 +177,11 @@ class chainer_build_ext(build_ext.build_ext):
 
             directive_keys = ('linetrace', 'profile')
             directives = {key: _arg_options[key] for key in directive_keys}
-            compile_time_env = {
-                'CUPY_USE_CUDA': not _arg_options['nocuda'],
-            }
 
             extensions = cythonize(
                 make_extensions(_arg_options),
                 force=True,
-                compiler_directives=directives,
-                compile_time_env=compile_time_env)
+                compiler_directives=directives)
 
             # Modify ext_modules for cython
             ext_modules.remove(dummy_extension)

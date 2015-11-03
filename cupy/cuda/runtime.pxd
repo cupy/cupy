@@ -15,29 +15,16 @@ cdef class PointerAttributes:
         public int memoryType
 
 
-IF CUPY_USE_CUDA:
-    cdef extern from *:
-        ctypedef int Error 'cudaError_t'
-        ctypedef int DeviceAttr 'enum cudaDeviceAttr'
-        ctypedef int MemoryKind 'enum cudaMemcpyKind'
+cdef extern from *:
+    ctypedef int Error 'cudaError_t'
+    ctypedef int DeviceAttr 'enum cudaDeviceAttr'
+    ctypedef int MemoryKind 'enum cudaMemcpyKind'
 
-        ctypedef size_t _Pointer 'void*'
+    ctypedef size_t _Pointer 'void*'
 
-        ctypedef void (*StreamCallbackDef)(
-            Stream stream, Error status, void* userData)
-        ctypedef StreamCallbackDef StreamCallback 'cudaStreamCallback_t'
-
-ELSE:
-    cdef:
-        ctypedef int Error
-        ctypedef int DeviceAttr
-        ctypedef int MemoryKind
-
-        ctypedef size_t _Pointer
-
-        ctypedef void (*StreamCallbackDef)(
-            Stream stream, Error status, void* userData)
-        ctypedef StreamCallbackDef StreamCallback
+    ctypedef void (*StreamCallbackDef)(
+        Stream stream, Error status, void* userData)
+    ctypedef StreamCallbackDef StreamCallback 'cudaStreamCallback_t'
 
 
 ###############################################################################
