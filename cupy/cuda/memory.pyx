@@ -55,7 +55,7 @@ cdef class MemoryPointer:
 
     Attributes:
         mem (Memory): The device memory buffer.
-        ptr (ctypes.c_void_p): Pointer to the place within the buffer.
+        ptr (int): Pointer to the place within the buffer.
 
     """
 
