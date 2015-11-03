@@ -36,7 +36,7 @@ class Hinge(function.Function):
                 self.bottom_diff[i, j] = max(0, 1 + self.bottom_diff[i, j])
         loss = 0
         if self.norm == 'L1':
-            loss = numpy.sum(self.bottom_diff) / num
+            loss = numpy.sum(numpy.abs(self.bottom_diff)) / num
         elif self.norm == 'L2':
             loss = numpy.sum(self.bottom_diff ** 2) / num
         else:
@@ -46,17 +46,18 @@ class Hinge(function.Function):
 
     def forward_gpu(self, inputs):
         x, t = inputs
+        num, dim = x.shape
         self.bottom_diff = cuda.cupy.copy(x)
         self.bottom_diff = cuda.elementwise(
             'S t, int32 dim', 'raw T bottom_diff',
             'bottom_diff[i * dim + t] *= -1',
-            'hinge_fwd')(t, x.shape[1], self.bottom_diff)
+            'hinge_fwd')(t, dim, self.bottom_diff)
         self.bottom_diff = cuda.cupy.maximum(0, 1 + self.bottom_diff)
         loss = 0
         if self.norm == 'L1':
-            loss = cuda.cupy.sum(self.bottom_diff) / x.shape[0]
+            loss = cuda.cupy.sum(cuda.cupy.abs(self.bottom_diff)) / num
         elif self.norm == 'L2':
-            loss = cuda.cupy.sum(self.bottom_diff ** 2) / x.shape[0]
+            loss = cuda.cupy.sum(self.bottom_diff ** 2) / num
         else:
             raise NotImplementedError()
 
