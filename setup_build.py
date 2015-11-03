@@ -156,7 +156,8 @@ def parse_args():
     _arg_options['nocuda'] = '--cupy-nocuda' in sys.argv
     if _arg_options['nocuda']:
         sys.argv.remove('--cupy-nocuda')
-    if os.environ.get('READTHEDOCS', None):
+    on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+    if on_rtd:
         _arg_options['nocuda'] = True
 
 
