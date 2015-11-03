@@ -12,7 +12,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import ctypes
 import os
 import pkg_resources
 import shlex
