@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 
-from setuptools import Extension
 from setuptools import setup
 
 import setup_build
 
-
 setup_build.parse_args()
-
 
 setup(
     name='chainer',
@@ -59,6 +56,9 @@ setup(
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext
-    ext_modules=[Extension('chainer.x', ['x.c'])],
-    cmdclass={'build_ext': setup_build.chainer_build_ext},
+    ext_modules=[setup_build.dummy_extension],
+    cmdclass={
+        'build_ext': setup_build.chainer_build_ext,
+        'install': setup_build.chainer_install,  # For Read the Docs
+    },
 )

@@ -1,10 +1,14 @@
 from __future__ import print_function
-from distutils.command import build_ext
 import os
 from os import path
 import sys
 
-from setuptools import extension
+import setuptools
+from setuptools.command import build_ext
+from setuptools.command import install
+
+
+dummy_extension = setuptools.Extension('chainer', ['x.c'])
 
 
 MODULES = [
@@ -130,7 +134,7 @@ def make_extensions(options):
         if not nocuda:
             s['libraries'] = module['libraries']
         ret.extend([
-            extension.Extension(
+            setuptools.Extension(
                 f, [localpath(path.join(*f.split('.')) + '.pyx')], **s)
             for f in module['file']])
     return ret
@@ -158,25 +162,43 @@ def parse_args():
 
 class chainer_build_ext(build_ext.build_ext):
 
-    def run(self):
+    """`build_ext` command for cython files."""
 
-        """Distutils calls this method to run the command."""
-
+    def finalize_options(self):
         from Cython.Build import cythonize
 
-        print('Executing cythonize()')
-        print('Options:', _arg_options)
+        ext_modules = self.distribution.ext_modules
+        if dummy_extension in ext_modules:
+            print('Executing cythonize()')
+            print('Options:', _arg_options)
 
-        directive_keys = ('linetrace', 'profile')
-        directives = {key: _arg_options[key] for key in directive_keys}
-        compile_time_env = {
-            'CUPY_USE_CUDA': not _arg_options['nocuda'],
-        }
+            directive_keys = ('linetrace', 'profile')
+            directives = {key: _arg_options[key] for key in directive_keys}
+            compile_time_env = {
+                'CUPY_USE_CUDA': not _arg_options['nocuda'],
+            }
 
-        self.extensions = cythonize(
-            make_extensions(_arg_options),
-            force=True,
-            compiler_directives=directives,
-            compile_time_env=compile_time_env)
+            extensions = cythonize(
+                make_extensions(_arg_options),
+                force=True,
+                compiler_directives=directives,
+                compile_time_env=compile_time_env)
 
-        build_ext.build_ext.run(self)
+            # Modify ext_modules for cython
+            ext_modules.remove(dummy_extension)
+            ext_modules.extend(extensions)
+
+        build_ext.build_ext.finalize_options(self)
+
+
+class chainer_install(install.install):
+
+    """`install` command for read the docs."""
+
+    def run(self):
+        install.install.run(self)
+
+        # Hack for Read the Docs
+        if os.environ.get('READTHEDOCS', None):
+            print('Executing develop cmmand for Read the Docs')
+            self.run_command('develop')
