@@ -14,13 +14,16 @@ if cuda.cudnn_enabled:
     libcudnn = cuda.cudnn.cudnn
     _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
 
+
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
     return (x, x)
 
+
 def get_deconv_outsize(h, kh, sy, ph):
-	return sy * (h - 1) + kh - 2 * ph
+    return sy * (h - 1) + kh - 2 * ph
+
 
 class Deconvolution2D(function.Function):
 
@@ -168,7 +171,7 @@ class Deconvolution2D(function.Function):
             self.gb.fill(0)
 
     def forward_cpu(self, x):
-    	n, c, h, w = x[0].shape
+        n, c, h, w = x[0].shape
         gcol = numpy.tensordot(self.W, x[0], (0, 1))
         # k, m, n, b, h, w
         gcol = numpy.rollaxis(gcol, 3)
@@ -215,7 +218,8 @@ class Deconvolution2D(function.Function):
         else:
             W_mat = self.W.reshape(in_c, c * self.kh * self.kw)
             x_mats = x[0].reshape(n, in_c, in_h * in_w)
-            gcol = cuda.empty((n, c, self.kh, self.kw, in_h, in_w), dtype=numpy.float32)
+            gcol = cuda.empty((n, c, self.kh, self.kw, in_h,
+                               in_w), dtype=numpy.float32)
             gcol_mats = gcol.reshape(n, c * self.kh * self.kw, in_h * in_w)
             for i in moves.range(n):
                 cuda.cupy.dot(W_mat.T, x_mats[i], gcol_mats[i])
@@ -224,7 +228,6 @@ class Deconvolution2D(function.Function):
             if self.b is not None:
                 y += self.b.reshape(1, self.b.size, 1, 1)
         return y,
-
 
     def backward_cpu(self, x, gy):
         if self.gb is not None:

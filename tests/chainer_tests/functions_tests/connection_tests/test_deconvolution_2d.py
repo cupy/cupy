@@ -10,6 +10,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 import chainer.functions as F
 
+
 class TestDeconvolution2D(unittest.TestCase):
 
     def setUp(self):
@@ -20,7 +21,7 @@ class TestDeconvolution2D(unittest.TestCase):
         self.func.gb.fill(0)
 
         self.gy = numpy.random.uniform(-1, 1,
-                                      (2, 2, 5, 3)).astype(numpy.float32)
+                                       (2, 2, 5, 3)).astype(numpy.float32)
         self.x = numpy.random.uniform(-1, 1,
                                       (2, 3, 3, 2)).astype(numpy.float32)
 
@@ -54,7 +55,8 @@ class TestDeconvolution2D(unittest.TestCase):
         y.backward()
 
         func = y.creator
-        f = lambda: func.forward((x.data,))
+
+        def f(): func.forward((x.data,))
         gx, gW, gb = gradient_check.numerical_grad(
             f, (x.data, func.W, func.b), (y.grad,), eps=1e-2)
 
