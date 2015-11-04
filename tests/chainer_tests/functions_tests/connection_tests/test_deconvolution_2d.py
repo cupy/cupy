@@ -56,7 +56,7 @@ class TestDeconvolution2D(unittest.TestCase):
 
         func = y.creator
 
-        def f(): func.forward((x.data,))
+        f = lambda: func.forward((x.data,))
         gx, gW, gb = gradient_check.numerical_grad(
             f, (x.data, func.W, func.b), (y.grad,), eps=1e-2)
 
