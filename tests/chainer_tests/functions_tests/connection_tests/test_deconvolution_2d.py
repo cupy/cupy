@@ -4,9 +4,9 @@ import numpy
 
 import chainer
 from chainer import cuda
+from chainer import functions as F
 from chainer import gradient_check
 from chainer import testing
-import chainer.functions as F
 from chainer.testing import attr
 from chainer.testing import condition
 
