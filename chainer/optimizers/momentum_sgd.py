@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import cuda
 from chainer import optimizer
 

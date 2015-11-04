@@ -4,7 +4,6 @@ import six
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
-from chainer.utils import walker_alias
 
 
 class NegativeSamplingFunction(function.Function):

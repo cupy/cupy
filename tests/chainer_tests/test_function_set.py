@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-import six
 import six.moves.cPickle as pickle
 
 import chainer

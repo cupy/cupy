@@ -1,5 +1,4 @@
 import heapq
-import weakref
 
 import numpy
 

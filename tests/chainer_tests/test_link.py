@@ -493,7 +493,7 @@ class TestChainList(unittest.TestCase):
         l1.x.data.fill(0)
         l2.x.data.fill(1)
         l3.x.data.fill(2)
-        
+
         self.c2.copyparams(c2)
 
         numpy.testing.assert_array_equal(self.l1.x.data, l1.x.data)

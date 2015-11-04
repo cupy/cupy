@@ -1,4 +1,3 @@
-from chainer import cuda
 from chainer.functions.activation import lstm
 from chainer import link
 from chainer.links.connection import linear

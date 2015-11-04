@@ -1,6 +1,6 @@
-from chainer import link
 from chainer.functions.evaluation import accuracy
 from chainer.functions.loss import softmax_cross_entropy
+from chainer import link
 
 
 class Classifier(link.Chain):

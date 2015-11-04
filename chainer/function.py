@@ -1,9 +1,5 @@
-import copy
 import os
 import weakref
-
-import numpy
-import six
 
 from chainer import cuda
 from chainer import flag

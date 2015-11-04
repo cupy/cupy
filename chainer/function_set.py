@@ -1,9 +1,7 @@
 import numpy
-import six
 import warnings
 
 from chainer import cuda
-from chainer import function
 from chainer import link
 
 

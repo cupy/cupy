@@ -1,6 +1,5 @@
 import unittest
 
-import mock
 import numpy
 
 import chainer

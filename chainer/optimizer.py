@@ -98,7 +98,6 @@ class Optimizer(object):
                             elif (isinstance(value, cupy.ndarray) and
                                   value.device != dev):
                                 state[key] = cupy.copy(value)
-                    
 
     def init_state(self, param, state):
         """Initializes the optimizer state corresponding to the parameter.

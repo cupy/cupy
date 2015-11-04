@@ -9,7 +9,6 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
-from chainer.utils import conv
 
 
 class TestConvolution2DFunction(unittest.TestCase):

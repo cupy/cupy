@@ -1,6 +1,5 @@
 import numpy
 
-from chainer import cuda
 from chainer.functions.connection import bilinear
 from chainer import link
 

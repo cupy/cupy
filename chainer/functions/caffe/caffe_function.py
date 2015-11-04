@@ -5,7 +5,6 @@ import warnings
 import numpy
 import six
 
-from chainer import function
 from chainer import function_set
 from chainer import functions
 # caffe_pb2 does not support Py3
