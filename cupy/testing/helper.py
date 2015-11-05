@@ -11,32 +11,66 @@ from cupy.testing import array
 from cupy.testing import parameterized
 
 
+def _call_func(self, impl, args, kw):
+    try:
+        result = impl(self, *args, **kw)
+        self.assertIsNotNone(result)
+        error = None
+    except Exception as e:
+        result = None
+        error = e
+
+    return result, error
+
+
+def _make_positive_indices(self, impl, args, kw):
+    ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
+    for k in ks:
+        kw[k] = numpy.int64
+    mask = cupy.asnumpy(impl(self, *args, **kw)) >= 0
+    return numpy.nonzero(mask)
+
+
+def _contains_signed_and_unsigned(kw):
+    vs = kw.values()
+    return any(v in _unsigned_dtypes for v in vs) and \
+        any(v in _float_dtypes + _signed_dtypes for v in vs)
+
+
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
-                        name='xp', type_check=True):
+                        name='xp', type_check=True, accept_error=True):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             kw[name] = cupy
-            x = impl(self, *args, **kw)
+            cupy_result, cupy_error = _call_func(self, impl, args, kw)
+
             kw[name] = numpy
-            y = impl(self, *args, **kw)
-            self.assertIsNotNone(x)
-            self.assertIsNotNone(y)
+            numpy_result, numpy_error = _call_func(self, impl, args, kw)
 
-            vs = kw.values()
-            if any(v in _unsigned_dtypes for v in vs) and \
-               any(v in _float_dtypes + _signed_dtypes for v in vs):
-                ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
-                for k in ks:
-                    kw[k] = numpy.int64
-                mask = cupy.asnumpy(impl(self, *args, **kw)) >= 0
-                inds = numpy.nonzero(mask)
-                x = cupy.asnumpy(x)[inds]
-                y = cupy.asnumpy(y)[inds]
+            if cupy_error or numpy_error:
+                if accept_error:
+                    self.assertIs(type(cupy_error), type(numpy_error))
+                    return
+                elif cupy_error:
+                    raise cupy_error
+                elif numpy_error:
+                    raise numpy_error
 
-            array.assert_allclose(x, y, rtol, atol, err_msg, verbose)
+            # Behavior of assigning a negative value to an unsigned integer
+            # variable is undefined.
+            # nVidia GPUs and Intel CPUs behaved differently.
+            # To avoid this difference, we need to ignore dimentions whose
+            # values are negative.
+            if _contains_signed_and_unsigned(kw):
+                inds = _make_positive_indices(self, impl, args, kw)
+                cupy_result = cupy.asnumpy(cupy_result)[inds]
+                numpy_result = cupy.asnumpy(numpy_result)[inds]
+
+            array.assert_allclose(cupy_result, numpy_result,
+                                  rtol, atol, err_msg, verbose)
             if type_check:
-                self.assertEqual(x.dtype, y.dtype)
+                self.assertEqual(cupy_result.dtype, numpy_result.dtype)
         return test_func
     return decorator
 
