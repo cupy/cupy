@@ -1,5 +1,6 @@
 import numpy
 
+from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 
@@ -20,7 +21,8 @@ class Parameter(function.Function):
 
     def __init__(self, array):
         self.W = array
-        self.gW = numpy.full_like(array, numpy.nan)
+        xp = cuda.get_array_module(array)
+        self.gW = xp.full_like(self.W, numpy.nan)
 
     def __call__(self, volatile=False):
         ret = super(Parameter, self).__call__()
