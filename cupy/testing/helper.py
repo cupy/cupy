@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import functools
+import os
 import random
 
 import numpy
@@ -222,7 +223,10 @@ def for_int_dtypes(name='dtype', no_bool=False):
         return for_dtypes(_int_bool_dtypes, name=name)
 
 
-def for_dtypes_combination(types, names=['dtype'], full=False):
+def for_dtypes_combination(types, names=['dtype'], full=None):
+    if full is None:
+        full = int(os.environ.get('CUPY_TEST_FULL_COMBINATION', '0')) != 0
+
     if full:
         combination = parameterized.product({name: types for name in names})
     else:
@@ -253,20 +257,20 @@ def for_dtypes_combination(types, names=['dtype'], full=False):
 
 
 def for_all_dtypes_combination(names=['dtyes'],
-                               no_float16=False, no_bool=False, full=False):
+                               no_float16=False, no_bool=False, full=None):
     types = _make_all_dtypes(no_float16, no_bool)
     return for_dtypes_combination(types, names, full)
 
 
-def for_signed_dtypes_combination(names=['dtype'], full=False):
+def for_signed_dtypes_combination(names=['dtype'], full=None):
     return for_dtypes_combination(_signed_dtypes, names=names, full=full)
 
 
-def for_unsigned_dtypes_combination(names=['dtype'], full=False):
+def for_unsigned_dtypes_combination(names=['dtype'], full=None):
     return for_dtypes_combination(_unsigned_dtypes, names=names, full=full)
 
 
-def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=False):
+def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=None):
     if no_bool:
         types = _int_dtypes
     else:
