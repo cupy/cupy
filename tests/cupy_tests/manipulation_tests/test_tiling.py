@@ -39,3 +39,18 @@ class TestRepeatFailure(unittest.TestCase):
     def test_repeat_failure(self):
         x = testing.shaped_arange((2, 3, 4))
         cupy.repeat(x, -3)
+
+
+@testing.parameterize(
+    {'reps': 2},
+    {'reps': (2, 3)},
+)
+@testing.gpu
+class TestTile(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.numpy_cupy_array_equal()
+    def test_array_tile(self, xp):
+        x = testing.shaped_arange((2, 3, 4), xp)
+        return xp.tile(x, self.reps)
