@@ -54,7 +54,7 @@ if args.net == 'simple':
     if args.gpu >= 0:
         cuda.get_device(args.gpu).use()
         model.to_gpu()
-    xp = numpy if args.gpu < 0 else cuda.cupy
+    xp = np if args.gpu < 0 else cuda.cupy
 elif args.net == 'parallel':
     cuda.check_cuda_available()
     model = L.Classifier(net.MnistMLPParallel(784, n_units, 10))
