@@ -51,13 +51,14 @@ class NumericalGradientTest(unittest.TestCase):
         func = lambda: f(xs)
         dx_actual = gradient_check.numerical_grad(func, xs, gys, eps)
 
+        print('eps: {}'.format(eps))
         self.assertEqual(len(dx_expect), len(dx_actual))
         for e, a in zip(dx_expect, dx_actual):
             gradient_check.assert_allclose(e, a, atol=1e-3, rtol=1e-3)
 
     def check_numerical_grad(self, f, df, xs, gys, eps=None):
         if eps is None:
-            eps = tuple(10**(-i) for i in six.moves.range(1, 5))
+            eps = tuple(10**(-i) for i in six.moves.range(2, 5))
         elif not isinstance(eps, tuple):
             eps = (eps, )
 
@@ -89,7 +90,7 @@ class NumericalGradientTest2(NumericalGradientTest):
 class NumericalGradientTest3(NumericalGradientTest):
 
     # Too small eps causes cancellation of significant digits
-    eps = (1e-1, 1e-2, 1e-3)
+    eps = (1e-2, 1e-3)
 
     def f(self, xs):
         xp = cuda.get_array_module(*xs)
