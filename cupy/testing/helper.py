@@ -59,8 +59,8 @@ def _make_decorator(check_func, name, type_check, accept_error):
 
             # Behavior of assigning a negative value to an unsigned integer
             # variable is undefined.
-            # nVidia GPUs and Intel CPUs behaved differently.
-            # To avoid this difference, we need to ignore dimentions whose
+            # nVidia GPUs and Intel CPUs behave differently.
+            # To avoid this difference, we need to ignore dimensions whose
             # values are negative.
             if _contains_signed_and_unsigned(kw):
                 inds = _make_positive_indices(self, impl, args, kw)
