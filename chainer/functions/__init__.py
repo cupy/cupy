@@ -37,6 +37,7 @@ from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import exponential
 from chainer.functions.math import identity
+from chainer.functions.math import inv
 from chainer.functions.math import matmul
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
@@ -132,6 +133,8 @@ Sin = trigonometric.Sin
 sin = trigonometric.sin
 Sum = sum.Sum
 sum = sum.sum
+BatchInv = inv.BatchInv
+batch_inv = inv.batch_inv
 
 Dropout = dropout.Dropout
 dropout = dropout.dropout
