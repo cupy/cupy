@@ -320,3 +320,19 @@ _cublas.cublasSdgmm.argtypes = (Handle, _I, _I, _I, _P, _I, _P, _I, _P, _I)
 def sdgmm(handle, mode, m, n, A, lda, x, incx, C, ldc):
     status = _cublas.cublasSdgmm(handle, mode, m, n, A, lda, x, incx, C, ldc)
     check_status(status)
+
+_cublas.cublasSgetrfBatched.argtypes = [Handle, _I, _P, _I, _P, _P, _I]
+
+
+def sgetrf(handle, n, A, lda, P, info, batchSize):
+    status = _cublas.cublasSgetrfBatched(handle, n, A, lda, P,
+                                         info, batchSize)
+    check_status(status)
+
+_cublas.cublasSgetriBatched.argtypes = (Handle, _I, _P, _I, _P, _P, _I, _P, _I)
+
+
+def sgetri(handle, n, A, lda, P, C, ldac, info, batchSize):
+    status = _cublas.cublasSgetriBatched(handle, n, A, lda, P, C, ldac,
+                                         info, batchSize)
+    check_status(status)
