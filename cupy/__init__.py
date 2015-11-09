@@ -961,11 +961,14 @@ class ndarray(object):
                 offset += s.start * self._strides[j]
                 j += 1
             elif numpy.isscalar(s):
-                s = int(s)
-                if s >= self._shape[j]:
-                    raise IndexError('Index %s exceeds the size %s at axis %s'
-                                     % (s, self._shape[j], j))
-                offset += s * self._strides[j]
+                ind = int(s)
+                if ind < 0:
+                    ind += self._shape[j]
+                if not (0 <= ind < self._shape[j]):
+                    msg = 'Index %s is out of bounds for axis %s with size %s' \
+                          % (s, j, self._shape[j])
+                    raise IndexError(msg)
+                offset += ind * self._strides[j]
                 j += 1
             else:
                 raise TypeError('Invalid index type: %s' % type(slices[i]))
