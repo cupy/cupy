@@ -934,11 +934,14 @@ cdef class ndarray:
                 offset += s.start * self._strides[j]
                 j += 1
             elif numpy.isscalar(s):
-                s = int(s)
-                if s >= self._shape[j]:
-                    raise IndexError('Index %s exceeds the size %s at axis %s'
-                                     % (s, self._shape[j], j))
-                offset += s * self._strides[j]
+                ind = int(s)
+                if ind < 0:
+                    ind += self._shape[j]
+                if not (0 <= ind < self._shape[j]):
+                    msg = 'Index %s is out of bounds for axis %s with size %s' \
+                          % (s, j, self._shape[j])
+                    raise IndexError(msg)
+                offset += ind * self._strides[j]
                 j += 1
             else:
                 raise TypeError('Invalid index type: %s' % type(slices[i]))
@@ -1236,6 +1239,8 @@ cpdef slice complete_slice(slc, dim):
         except TypeError:
             raise IndexError(
                 'slice.start must be int or None: {}'.format(slc))
+        if start < 0:
+            start += dim
 
     if slc.stop is None:
         stop = None
@@ -1245,6 +1250,8 @@ cpdef slice complete_slice(slc, dim):
         except TypeError:
             raise IndexError(
                 'slice.stop must be int or None: {}'.format(slc))
+        if stop < 0:
+            stop += dim
 
     if step > 0:
         start = 0 if start is None else max(0, min(dim, start))

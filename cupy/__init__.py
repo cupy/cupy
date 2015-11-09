@@ -66,6 +66,7 @@ float64 = numpy.float64
 
 
 ufunc = core.ufunc
+
 newaxis = numpy.newaxis  # == None
 
 # =============================================================================

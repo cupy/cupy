@@ -196,7 +196,14 @@ class Function(object):
 
     def _check_data_type_forward(self, in_data):
         in_type = type_check.get_types(in_data, 'in_types', False)
-        self.check_type_forward(in_type)
+        try:
+            self.check_type_forward(in_type)
+        except type_check.InvalidType as e:
+            msg = """
+Invalid operation is performed in: {0} (Forward)
+
+{1}""".format(self.label, str(e))
+            raise type_check.InvalidType(e.expect, e.actual, msg=msg)
 
     def check_type_forward(self, in_types):
         """Checks types of input data before forward propagation.
