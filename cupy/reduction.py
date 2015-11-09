@@ -217,8 +217,9 @@ class simple_reduction_function(object):
     def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False):
         if not isinstance(a, cupy.ndarray):
             raise TypeError('Input type must be cupy.ndarray')
-        if self.identity is None:
-            assert a.size != 0
+        if self.identity is None and 0 in a.shape:
+            raise ValueError(('zero-size array to reduction operation'
+                              ' %s which has no identity') % self.name)
         if dtype is not None:
             dtype = numpy.dtype(dtype).type
 
@@ -396,8 +397,9 @@ class ReductionKernel(object):
         in_args, broad_shape = _broadcast(args, self.in_params, False)
         _check_args(in_args + out_args)
 
-        if self.identity is None:
-            assert 0 in broad_shape
+        if self.identity is None and 0 in broad_shape:
+            raise ValueError(('zero-size array to reduction operation'
+                              ' %s which has no identity') % self.name)
 
         cp_array = cupy.ndarray
         in_ndarray_types = tuple(
