@@ -166,7 +166,7 @@ cpdef check_status(int status):
 # Initialization and CUDA cooperation
 ###############################################################################
 
-cpdef size_t create():
+cpdef size_t create() except *:
     cdef Handle handle
     status = cudnnCreate(&handle)
     check_status(status)
@@ -183,7 +183,7 @@ cpdef setStream(size_t handle, size_t stream):
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle):
+cpdef size_t getStream(size_t handle) except *:
     cdef Stream stream
     status = cudnnGetStream(<Handle>handle, &stream)
     check_status(status)
@@ -194,7 +194,7 @@ cpdef size_t getStream(size_t handle):
 # Tensor manipulation
 ###############################################################################
 
-cpdef size_t createTensorDescriptor():
+cpdef size_t createTensorDescriptor() except *:
     cdef TensorDescriptor descriptor
     status = cudnnCreateTensorDescriptor(&descriptor)
     check_status(status)
@@ -245,7 +245,7 @@ cpdef addTensor(
 # Filter manipulation
 ###############################################################################
 
-cpdef size_t createFilterDescriptor():
+cpdef size_t createFilterDescriptor() except *:
     cdef FilterDescriptor desc
     status = cudnnCreateFilterDescriptor(&desc)
     check_status(status)
@@ -276,7 +276,7 @@ cpdef destroyFilterDescriptor(size_t filterDesc):
 # Convolution
 ###############################################################################
 
-cpdef size_t createConvolutionDescriptor():
+cpdef size_t createConvolutionDescriptor() except *:
     cdef ConvolutionDescriptor desc
     status = cudnnCreateConvolutionDescriptor(&desc)
     check_status(status)
@@ -308,7 +308,7 @@ cpdef destroyConvolutionDescriptor(size_t convDesc):
 
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int preference, size_t memoryLimitInbytes):
+        size_t destDesc, int preference, size_t memoryLimitInbytes) except *:
     cdef ConvolutionFwdAlgo algo
     status = cudnnGetConvolutionForwardAlgorithm(
         <Handle>handle, <TensorDescriptor>srcDesc,
@@ -321,7 +321,7 @@ cpdef int getConvolutionForwardAlgorithm(
 
 cpdef size_t getConvolutionForwardWorkspaceSize(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int algo):
+        size_t destDesc, int algo) except *:
     cdef size_t sizeInBytes
     status = cudnnGetConvolutionForwardWorkspaceSize(
         <Handle>handle, <TensorDescriptor>srcDesc,
@@ -386,7 +386,7 @@ cpdef convolutionBackwardData(
 # Pooling
 ###############################################################################
 
-cpdef size_t createPoolingDescriptor():
+cpdef size_t createPoolingDescriptor() except *:
     cdef PoolingDescriptor desc
     status = cudnnCreatePoolingDescriptor(&desc)
     check_status(status)

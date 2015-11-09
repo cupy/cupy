@@ -2,10 +2,10 @@ import collections
 import ctypes
 import weakref
 
-from cupy.cuda import device
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
+from cupy.cuda cimport runtime
 
 
 cdef class Memory:
@@ -319,6 +319,8 @@ cdef class SingleDeviceMemoryPool:
         self._weakref = weakref.ref(self)
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
+        cdef list free
+        cdef Memory mem
         if size == 0:
             return MemoryPointer(Memory(0), 0)
         free = self._free[size]
@@ -338,11 +340,13 @@ cdef class SingleDeviceMemoryPool:
         return MemoryPointer(pmem, 0)
 
     cpdef free(self, size_t ptr, Py_ssize_t size):
+        cdef list free
+        cdef Memory mem
         mem = self._in_use.pop(ptr, None)
         if mem is None:
             raise RuntimeError('Cannot free out-of-pool memory')
-        else:
-            self._free[size].append(mem)
+        free = self._free[size]
+        free.append(mem)
 
     cpdef free_all_free(self):
         self._free = collections.defaultdict(list)
@@ -395,5 +399,5 @@ cdef class MemoryPool(object):
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        dev = device.Device().id
+        dev = device.get_device_id()
         return self._pools[dev].malloc(size)

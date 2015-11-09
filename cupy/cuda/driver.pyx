@@ -125,7 +125,7 @@ cpdef init():
     check_status(status)
 
 
-cpdef int driverGetVersion():
+cpdef int driverGetVersion() except *:
     cdef int version
     status = cuDriverGetVersion(&version)
     check_status(status)
@@ -135,35 +135,35 @@ cpdef int driverGetVersion():
 # Device and context operations
 ###############################################################################
 
-cpdef Device deviceGet(int device_id):
+cpdef Device deviceGet(int device_id) except *:
     cdef Device device
     status = cuDeviceGet(&device, device_id)
     check_status(status)
     return device
 
 
-cpdef int deviceGetAttribute(int attrib, Device device):
+cpdef int deviceGetAttribute(int attrib, Device device) except *:
     cdef int ret
     status = cuDeviceGetAttribute(&ret, <DeviceAttribute>attrib, device)
     check_status(status)
     return ret
 
 
-cpdef int deviceGetCount():
+cpdef int deviceGetCount() except *:
     cdef int count
     status = cuDeviceGetCount(&count)
     check_status(status)
     return count
 
 
-cpdef size_t deviceTotalMem(Device device):
+cpdef size_t deviceTotalMem(Device device) except *:
     cdef size_t mem
     status = cuDeviceTotalMem(&mem, device)
     check_status(status)
     return mem
 
 
-cpdef size_t ctxCreate(unsigned int flag, Device device):
+cpdef size_t ctxCreate(unsigned int flag, Device device) except *:
     cdef Context ctx
     status = cuCtxCreate(&ctx, flag, device)
     check_status(status)
@@ -175,28 +175,28 @@ cpdef ctxDestroy(size_t ctx):
     check_status(status)
 
 
-cpdef unsigned int ctxGetApiVersion(size_t ctx):
+cpdef unsigned int ctxGetApiVersion(size_t ctx) except *:
     cdef unsigned int version
     status = cuCtxGetApiVersion(<Context>ctx, &version)
     check_status(status)
     return version
 
 
-cpdef size_t ctxGetCurrent():
+cpdef size_t ctxGetCurrent() except *:
     cdef Context ctx
     status = cuCtxGetCurrent(&ctx)
     check_status(status)
     return <size_t>ctx
 
 
-cpdef Device ctxGetDevice():
+cpdef Device ctxGetDevice() except *:
     cdef Device device
     status = cuCtxGetDevice(&device)
     check_status(status)
     return device
 
 
-cpdef size_t ctxPopCurrent():
+cpdef size_t ctxPopCurrent() except *:
     cdef Context ctx
     status = cuCtxPopCurrent(&ctx)
     check_status(status)
@@ -222,7 +222,7 @@ cpdef ctxSynchronize():
 # Module load and kernel execution
 ###############################################################################
 
-cpdef size_t moduleLoad(str filename):
+cpdef size_t moduleLoad(str filename) except *:
     cdef Module module
     cdef bytes b_filename = filename.encode()
     status = cuModuleLoad(&module, b_filename)
@@ -230,7 +230,7 @@ cpdef size_t moduleLoad(str filename):
     return <size_t>module
 
 
-cpdef size_t moduleLoadData(bytes image):
+cpdef size_t moduleLoadData(bytes image) except *:
     cdef Module module
     status = cuModuleLoadData(&module, <char*>image)
     check_status(status)
@@ -242,7 +242,7 @@ cpdef moduleUnload(size_t module):
     check_status(status)
 
 
-cpdef size_t moduleGetFunction(size_t module, str funcname):
+cpdef size_t moduleGetFunction(size_t module, str funcname) except *:
     cdef Function func
     cdef bytes b_funcname = funcname.encode()
     status = cuModuleGetFunction(&func, <Module>module, <char*>b_funcname)
@@ -250,7 +250,7 @@ cpdef size_t moduleGetFunction(size_t module, str funcname):
     return <size_t>func
 
 
-cpdef size_t moduleGetGlobal(size_t module, str varname):
+cpdef size_t moduleGetGlobal(size_t module, str varname) except *:
     cdef Deviceptr var
     cdef size_t size
     cdef bytes b_varname = varname.encode()
@@ -277,7 +277,7 @@ cpdef launchKernel(
 # Memory management
 ###############################################################################
 
-cpdef size_t memAlloc(size_t size):
+cpdef size_t memAlloc(size_t size) except *:
     cdef Deviceptr ptr
     status = cuMemAlloc(&ptr, size)
     check_status(status)
@@ -367,7 +367,7 @@ cpdef memsetD32Async(size_t ptr, unsigned int value, size_t size,
     check_status(status)
 
 
-cpdef size_t pointerGetAttribute(int attribute, size_t ptr):
+cpdef size_t pointerGetAttribute(int attribute, size_t ptr) except *:
     assert attribute == 0  # Currently only context query is supported
 
     cdef Context ctx
@@ -381,7 +381,7 @@ cpdef size_t pointerGetAttribute(int attribute, size_t ptr):
 # Stream and Event
 ###############################################################################
 
-cpdef size_t streamCreate(unsigned int flag=0):
+cpdef size_t streamCreate(unsigned int flag=0) except *:
     cdef Stream stream
     status = cuStreamCreate(&stream, flag)
     check_status(status)
@@ -412,7 +412,7 @@ cpdef streamAddCallback(size_t stream, object callback, size_t arg,
     check_status(status)
 
 
-cpdef size_t eventCreate(unsigned int flag):
+cpdef size_t eventCreate(unsigned int flag) except *:
     cdef Event event
     status = cuEventCreate(&event, flag)
     check_status(status)

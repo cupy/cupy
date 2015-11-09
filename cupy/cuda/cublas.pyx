@@ -104,26 +104,26 @@ cpdef check_status(int status):
 # Context
 ###############################################################################
 
-cpdef size_t create():
+cpdef size_t create() except *:
     cdef Handle handle
     status = cublasCreate(&handle)
     check_status(status)
     return <size_t>handle
 
 
-cpdef void destroy(size_t handle):
+cpdef void destroy(size_t handle) except *:
     status = cublasDestroy(<Handle>handle)
     check_status(status)
 
 
-cpdef int getVersion(size_t handle):
+cpdef int getVersion(size_t handle) except *:
     cdef int version
     status = cublasGetVersion(<Handle>handle, &version)
     check_status(status)
     return version
 
 
-cpdef int getPointerMode(size_t handle):
+cpdef int getPointerMode(size_t handle) except *:
     cdef PointerMode mode
     status = cublasGetPointerMode(<Handle>handle, &mode)
     check_status(status)
@@ -144,7 +144,7 @@ cpdef setStream(size_t handle, size_t stream):
     check_status(status)
 
 
-cpdef size_t getStream(size_t handle):
+cpdef size_t getStream(size_t handle) except *:
     cdef Stream stream
     status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
@@ -155,7 +155,7 @@ cpdef size_t getStream(size_t handle):
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(size_t handle, int n, size_t x, int incx):
+cpdef int isamax(size_t handle, int n, size_t x, int incx) except *:
     cdef int result
     status = cublasIsamax(
         <Handle>handle, n, <float*>x, incx, &result)
@@ -163,7 +163,7 @@ cpdef int isamax(size_t handle, int n, size_t x, int incx):
     return result
 
 
-cpdef int isamin(size_t handle, int n, size_t x, int incx):
+cpdef int isamin(size_t handle, int n, size_t x, int incx) except *:
     cdef int result
     status = cublasIsamin(
         <Handle>handle, n, <float*>x, incx, &result)
@@ -171,7 +171,7 @@ cpdef int isamin(size_t handle, int n, size_t x, int incx):
     return result
 
 
-cpdef float sasum(size_t handle, int n, size_t x, int incx):
+cpdef float sasum(size_t handle, int n, size_t x, int incx) except *:
     cdef float result
     status = cublasSasum(
         <Handle>handle, n, <float*>x, incx, &result)
@@ -207,7 +207,7 @@ cpdef ddot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef float snrm2(size_t handle, int n, size_t x, int incx):
+cpdef float snrm2(size_t handle, int n, size_t x, int incx) except *:
     cdef float result
     status = cublasSnrm2(<Handle>handle, n, <float*>x, incx, &result)
     check_status(status)

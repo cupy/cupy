@@ -108,7 +108,7 @@ cpdef check_status(int status):
 # Initialization
 ###############################################################################
 
-cpdef driverGetVersion():
+cpdef int driverGetVersion() except *:
     cdef int version
     status = cudaDriverGetVersion(&version)
     check_status(status)
@@ -119,21 +119,21 @@ cpdef driverGetVersion():
 # Device and context operations
 ###############################################################################
 
-cpdef int getDevice():
+cpdef int getDevice() except *:
     cdef int device
     status = cudaGetDevice(&device)
     check_status(status)
     return device
 
 
-cpdef int deviceGetAttribute(int attrib, int device):
+cpdef int deviceGetAttribute(int attrib, int device) except *:
     cdef int ret
     status = cudaDeviceGetAttribute(&ret, <DeviceAttr>attrib, device)
     check_status(status)
     return ret
 
 
-cpdef int getDeviceCount():
+cpdef int getDeviceCount() except *:
     cdef int count
     status = cudaGetDeviceCount(&count)
     check_status(status)
@@ -154,7 +154,7 @@ cpdef deviceSynchronize():
 # Memory management
 ###############################################################################
 
-cpdef size_t malloc(size_t size):
+cpdef size_t malloc(size_t size) except *:
     cdef void* ptr
     status = cudaMalloc(&ptr, size)
     check_status(status)
@@ -222,14 +222,14 @@ cpdef PointerAttributes pointerGetAttributes(size_t ptr):
 # Stream and Event
 ###############################################################################
 
-cpdef size_t streamCreate():
+cpdef size_t streamCreate() except *:
     cdef Stream stream
     status = cudaStreamCreate(&stream)
     check_status(status)
     return <size_t>stream
 
 
-cpdef size_t streamCreateWithFlags(unsigned int flags):
+cpdef size_t streamCreateWithFlags(unsigned int flags) except *:
     cdef Stream stream
     status = cudaStreamCreateWithFlags(&stream, flags)
     check_status(status)
@@ -268,13 +268,13 @@ cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=0):
     check_status(status)
 
 
-cpdef size_t eventCreate():
+cpdef size_t eventCreate() except *:
     cdef Event event
     status = cudaEventCreate(&event)
     check_status(status)
     return <size_t>event
 
-cpdef size_t eventCreateWithFlags(unsigned int flags):
+cpdef size_t eventCreateWithFlags(unsigned int flags) except *:
     cdef Event event
     status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)
@@ -286,7 +286,7 @@ cpdef eventDestroy(size_t event):
     check_status(status)
 
 
-cpdef float eventElapsedTime(size_t start, size_t end):
+cpdef float eventElapsedTime(size_t start, size_t end) except *:
     cdef float ms
     status = cudaEventElapsedTime(&ms, <Event>start, <Event>end)
     check_status(status)

@@ -73,17 +73,17 @@ cpdef enum:
 # Initialization and CUDA cooperation
 ###############################################################################
 
-cpdef size_t create()
+cpdef size_t create() except *
 cpdef destroy(size_t handle)
 cpdef setStream(size_t handle, size_t stream)
-cpdef size_t getStream(size_t handle)
+cpdef size_t getStream(size_t handle) except *
 
 
 ###############################################################################
 # Tensor manipulation
 ###############################################################################
 
-cpdef size_t createTensorDescriptor()
+cpdef size_t createTensorDescriptor() except *
 cpdef setTensor4dDescriptor(size_t tensorDesc, int format, int dataType,
                             int n, int c, int h, int w)
 cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
@@ -101,7 +101,7 @@ cpdef addTensor(
 # Filter manipulation
 ###############################################################################
 
-cpdef size_t createFilterDescriptor()
+cpdef size_t createFilterDescriptor() except *
 cpdef setFilter4dDescriptor(
         size_t filterDesc, int dataType, int k, int c, int h, int w)
 cpdef setFilterNdDescriptor(
@@ -113,7 +113,7 @@ cpdef destroyFilterDescriptor(size_t filterDesc)
 # Convolution
 ###############################################################################
 
-cpdef size_t createConvolutionDescriptor()
+cpdef size_t createConvolutionDescriptor() except *
 cpdef setConvolution2dDescriptor(
         size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
         int upscaley, int mode)
@@ -123,10 +123,10 @@ cpdef setConvolutionNdDescriptor(
 cpdef destroyConvolutionDescriptor(size_t convDesc)
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int preference, size_t memoryLimitInbytes)
+        size_t destDesc, int preference, size_t memoryLimitInbytes) except *
 cpdef size_t getConvolutionForwardWorkspaceSize(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int algo)
+        size_t destDesc, int algo) except *
 cpdef convolutionForward(
         size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
         size_t filterDesc, size_t filterData, size_t convDesc, int algo,
@@ -149,7 +149,7 @@ cpdef convolutionBackwardData(
 # Pooling
 ###############################################################################
 
-cpdef size_t createPoolingDescriptor()
+cpdef size_t createPoolingDescriptor() except *
 cpdef setPooling2dDescriptor(
         size_t poolingDesc, int mode, int windowHeight, int windowWidth,
         int verticalPadding, int horizontalPadding, int verticalStride,

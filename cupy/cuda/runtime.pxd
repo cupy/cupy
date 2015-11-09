@@ -54,16 +54,16 @@ cpdef enum:
 # Initialization
 ###############################################################################
 
-cpdef driverGetVersion()
+cpdef int driverGetVersion() except *
 
 
 ###############################################################################
 # Device and context operations
 ###############################################################################
 
-cpdef int getDevice()
-cpdef int deviceGetAttribute(int attrib, int device)
-cpdef int getDeviceCount()
+cpdef int getDevice() except *
+cpdef int deviceGetAttribute(int attrib, int device) except *
+cpdef int getDeviceCount() except *
 cpdef setDevice(int device)
 cpdef deviceSynchronize()
 
@@ -72,7 +72,7 @@ cpdef deviceSynchronize()
 # Memory management
 ###############################################################################
 
-cpdef size_t malloc(size_t size)
+cpdef size_t malloc(size_t size) except *
 cpdef free(size_t ptr)
 cpdef memGetInfo()
 cpdef memcpy(size_t dst, size_t src, size_t size, int kind)
@@ -92,18 +92,18 @@ cpdef PointerAttributes pointerGetAttributes(size_t ptr)
 # Stream and Event
 ###############################################################################
 
-cpdef size_t streamCreate()
-cpdef size_t streamCreateWithFlags(unsigned int flags)
+cpdef size_t streamCreate() except *
+cpdef size_t streamCreateWithFlags(unsigned int flags) except *
 cpdef streamDestroy(size_t stream)
 cpdef streamSynchronize(size_t stream)
 cpdef streamAddCallback(size_t stream, callback, size_t arg,
                         unsigned int flags=*)
 cpdef streamQuery(size_t stream)
 cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=*)
-cpdef size_t eventCreate()
-cpdef size_t eventCreateWithFlags(unsigned int flags)
+cpdef size_t eventCreate() except *
+cpdef size_t eventCreateWithFlags(unsigned int flags) except *
 cpdef eventDestroy(size_t event)
-cpdef float eventElapsedTime(size_t start, size_t end)
+cpdef float eventElapsedTime(size_t start, size_t end) except *
 cpdef eventQuery(size_t event)
 cpdef eventRecord(size_t event, size_t stream)
 cpdef eventSynchronize(size_t event)

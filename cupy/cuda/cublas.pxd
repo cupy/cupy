@@ -36,10 +36,10 @@ cpdef enum:
 # Context
 ###############################################################################
 
-cpdef size_t create()
-cpdef void destroy(size_t handle)
-cpdef int getVersion(size_t handle)
-cpdef int getPointerMode(size_t handle)
+cpdef size_t create() except *
+cpdef void destroy(size_t handle) except *
+cpdef int getVersion(size_t handle) except *
+cpdef int getPointerMode(size_t handle) except *
 cpdef setPointerMode(size_t handle, int mode)
 
 
@@ -48,16 +48,16 @@ cpdef setPointerMode(size_t handle, int mode)
 ###############################################################################
 
 cpdef setStream(size_t handle, size_t stream)
-cpdef size_t getStream(size_t handle)
+cpdef size_t getStream(size_t handle) except *
 
 
 ###############################################################################
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(size_t handle, int n, size_t x, int incx)
-cpdef int isamin(size_t handle, int n, size_t x, int incx)
-cpdef float sasum(size_t handle, int n, size_t x, int incx)
+cpdef int isamax(size_t handle, int n, size_t x, int incx) except *
+cpdef int isamin(size_t handle, int n, size_t x, int incx) except *
+cpdef float sasum(size_t handle, int n, size_t x, int incx) except *
 cpdef saxpy(size_t handle, int n, float alpha, size_t x, int incx, size_t y,
             int incy)
 cpdef daxpy(size_t handle, int n, double alpha, size_t x, int incx, size_t y,
@@ -66,7 +66,7 @@ cpdef sdot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
 cpdef ddot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
-cpdef float snrm2(size_t handle, int n, size_t x, int incx)
+cpdef float snrm2(size_t handle, int n, size_t x, int incx) except *
 cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx)
 
 
