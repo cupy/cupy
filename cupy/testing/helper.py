@@ -33,9 +33,9 @@ def _make_positive_indices(self, impl, args, kw):
 
 
 def _contains_signed_and_unsigned(kw):
-    vs = kw.values()
-    return any(v in _unsigned_dtypes for v in vs) and \
-        any(v in _float_dtypes + _signed_dtypes for v in vs)
+    vs = set(kw.values())
+    return any(d in vs for d in _unsigned_dtypes) and \
+        any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
 def _make_decorator(check_func, name, type_check, accept_error):
