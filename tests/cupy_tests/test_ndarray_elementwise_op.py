@@ -494,10 +494,11 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         self.check_array_scalar_op(operator.xor, swap=True)
 
     def test_mod_scalar(self):
-        self.check_array_scalar_op(operator.mod)
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
+            self.check_array_scalar_op(operator.mod)
 
     def test_rmod_scalar(self):
-        with testing.NumpyError(divide='ignore'):
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_scalar_op(operator.mod, swap=True)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
@@ -540,11 +541,11 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         self.check_array_scalarzero_op(operator.xor, swap=True)
 
     def test_mod_scalarzero(self):
-        with testing.NumpyError(divide='ignore'):
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_scalarzero_op(operator.mod)
 
     def test_rmod_scalarzero(self):
-        with testing.NumpyError(divide='ignore'):
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_scalarzero_op(operator.mod, swap=True)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
@@ -585,11 +586,11 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         self.check_array_array_op(operator.ixor)
 
     def test_mod_array(self):
-        with testing.NumpyError(divide='ignore'):
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_array_op(operator.mod)
 
     def test_imod_array(self):
-        with testing.NumpyError(divide='ignore'):
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_array_op(operator.imod)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
@@ -630,11 +631,11 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         self.check_array_broadcasted_op(operator.ixor)
 
     def test_broadcasted_mod(self):
-        with testing.NumpyError(divide='ignore'):
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_broadcasted_op(operator.mod)
 
     def test_broadcasted_imod(self):
-        with testing.NumpyError(divide='ignore'):
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_broadcasted_op(operator.imod)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
@@ -660,5 +661,5 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
         self.check_array_doubly_broadcasted_op(operator.xor)
 
     def test_doubly_broadcasted_mod(self):
-        with testing.NumpyError(divide='ignore'):
+        with testing.NumpyError(divide='ignore', invalid='ignore'):
             self.check_array_doubly_broadcasted_op(operator.mod)
