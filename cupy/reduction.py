@@ -236,6 +236,11 @@ class simple_reduction_function(object):
         axis, raxis = _get_axis(axis, a.ndim)
         out_shape = _get_out_shape(a.shape, axis, raxis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape)
+        if 0 in out_shape:
+            if len(out_args) == 1:
+                return out_args[0]
+            return tuple(out_args)
+
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, in_args[0].shape)
 
@@ -407,12 +412,15 @@ class ReductionKernel(object):
 
         axis, raxis = _get_axis(axis, len(broad_shape))
         out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
+        out_args = _get_out_args_with_params(
+            out_args, out_types, out_shape, self.out_params)
+        if 0 in out_shape:
+            return out_args[0]
+
         in_args = [x if isinstance(x, cp_array) else t(x)
                    for x, t in six_zip(in_args, in_types)]
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, broad_shape, self.in_params)
-        out_args = _get_out_args_with_params(
-            out_args, out_types, out_shape, self.out_params)
 
         block_size = 512
         in_indexer = carray.Indexer(in_shape)
