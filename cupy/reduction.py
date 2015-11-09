@@ -242,7 +242,9 @@ class simple_reduction_function(object):
         block_size = 512
         in_indexer = carray.Indexer(in_shape)
         out_indexer = carray.Indexer(out_shape)
-        clp2_count = 2 ** int.bit_length(
+        # Rounding Up to the Next Power of 2
+        # clp2_count >= in_indexer.size // out_indexer.size
+        clp2_count = 1 << int.bit_length(
             int(in_indexer.size // out_indexer.size - 1))
         block_stride = max(1, block_size // clp2_count)
 
@@ -415,7 +417,9 @@ class ReductionKernel(object):
         block_size = 512
         in_indexer = carray.Indexer(in_shape)
         out_indexer = carray.Indexer(out_shape)
-        clp2_count = 2 ** int.bit_length(
+        # Rounding Up to the Next Power of 2
+        # clp2_count >= in_indexer.size // out_indexer.size
+        clp2_count = 1 << int.bit_length(
             int(in_indexer.size // out_indexer.size - 1))
         block_stride = max(1, block_size // clp2_count)
 
