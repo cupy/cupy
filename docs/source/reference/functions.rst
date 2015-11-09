@@ -75,6 +75,7 @@ Noise injecting functions
 Loss, evaluation and aggregation
 --------------------------------
 .. autofunction:: accuracy
+.. autofunction:: connectionist_temporal_classification
 .. autofunction:: mean_squared_error
 .. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
