@@ -103,4 +103,29 @@ class TestVolatile(unittest.TestCase):
         self.check_volatile(False)
 
 
+class TestInit(unittest.TestCase):
+
+    def setUp(self):
+        self.W = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.p = functions.Parameter(self.W)
+
+    def check(self, p, xp):
+        self.assertIsInstance(p.W, xp.ndarray)
+        self.assertIsInstance(p.gW, xp.ndarray)
+
+    def test_cpu(self):
+        self.check(self.p, numpy)
+
+    @attr.gpu
+    def test_gpu_initialize_by_numpy_ndarray(self):
+        self.p.to_gpu()
+        self.check(self.p, cuda.cupy)
+
+    @attr.gpu
+    def test_gpu_initialize_by_cupy_ndarray(self):
+        W = cuda.to_gpu(self.W)
+        p = functions.Parameter(W)
+        self.check(p, cuda.cupy)
+
+
 testing.run_module(__name__, __file__)
