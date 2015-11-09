@@ -40,12 +40,14 @@ cdef class CIndexer(cupy.cuda.module.CPointer):
         self.ptr = <void*>&self.val
 
 
-cpdef CArray to_carray(size_t data, Py_ssize_t size, tuple shape,
-                       tuple strides):
+@cython.profile(False)
+cpdef inline CArray to_carray(size_t data, Py_ssize_t size, tuple shape,
+                              tuple strides):
     return CArray(data, size, shape, strides)
 
 
-cpdef CIndexer to_cindexer(Py_ssize_t size, tuple shape):
+@cython.profile(False)
+cpdef inline CIndexer to_cindexer(Py_ssize_t size, tuple shape):
     return CIndexer(size, shape)
 
 
@@ -54,7 +56,7 @@ cdef class Indexer:
         public Py_ssize_t size
         public tuple shape
 
-    def __init__(self, shape):
+    def __init__(self, tuple shape):
         cdef Py_ssize_t size = 1
         for s in shape:
             size *= s
@@ -72,7 +74,7 @@ cdef class Indexer:
 cdef str _header_source = None
 
 
-cpdef _get_header_source():
+cpdef str _get_header_source():
     global _header_source
     if _header_source is None:
         header_path = os.path.join(os.path.dirname(__file__), 'carray.cuh')
@@ -82,6 +84,6 @@ cpdef _get_header_source():
 
 
 cpdef module.Module compile_with_cache(
-        source, options=(), arch=None, cachd_dir=None):
+        str source, tuple options=(), arch=None, cachd_dir=None):
     source = _get_header_source() + source
     return cuda.compile_with_cache(source, options, arch, cachd_dir)

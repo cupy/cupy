@@ -7,11 +7,10 @@ import six
 from cupy import util
 
 
-six_range = six.moves.range
 six_zip = six.moves.zip
 
 
-def _get_simple_reduction_kernel(
+cpdef _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, preamble, options):
@@ -114,9 +113,9 @@ def _get_simple_reduction_kernel(
     return module.get_function(name)
 
 
-def _get_axis(axis, ndim):
+cdef _get_axis(axis, ndim):
     if axis is None:
-        axis = tuple(six_range(ndim))
+        axis = tuple(range(ndim))
     elif isinstance(axis, collections.Sequence):
         axis = tuple(axis)
     else:
@@ -126,11 +125,11 @@ def _get_axis(axis, ndim):
         if dim < -ndim or dim >= ndim:
             raise ValueError('Axis overrun')
     axis = tuple(sorted([dim % ndim for dim in axis]))
-    raxis = tuple([dim for dim in six_range(ndim) if dim not in axis])
+    raxis = tuple([dim for dim in range(ndim) if dim not in axis])
     return axis, raxis
 
 
-def _get_out_shape(shape, axis, raxis, keepdims):
+cdef _get_out_shape(shape, axis, raxis, keepdims):
     if keepdims:
         out_shape = list(shape)
         for i in axis:
@@ -139,8 +138,8 @@ def _get_out_shape(shape, axis, raxis, keepdims):
     return tuple([shape[i] for i in raxis])
 
 
-def _get_trans_args(args, trans, shape, params=None):
-    if trans == tuple(six_range(len(shape))):
+cdef _get_trans_args(args, trans, shape, params):
+    if trans == tuple(range(len(shape))):
         return args, shape
     if params is not None and any(p.raw for p in params):
         raise NotImplementedError('Illegal conditions')
@@ -150,7 +149,7 @@ def _get_trans_args(args, trans, shape, params=None):
     return args, shape
 
 
-def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
+cdef _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
                     params, reduce_dims):
     if reduce_dims:
         in_args, in_shape = _reduce_dims(
@@ -226,7 +225,7 @@ class simple_reduction_function(object):
         out_shape = _get_out_shape(a.shape, axis, raxis, keepdims)
         out_args = _get_out_args(out_args, out_types, out_shape)
         in_args, in_shape = _get_trans_args(
-            in_args, axis + raxis, in_args[0].shape)
+            in_args, axis + raxis, in_args[0].shape, None)
 
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
@@ -423,8 +422,8 @@ class ReductionKernel(object):
         return out_args[0]
 
 
-def create_reduction_func(name, ops, routine=None, identity=None,
-                          preamble=''):
+cpdef create_reduction_func(name, ops, routine=None, identity=None,
+                            preamble=''):
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
@@ -432,7 +431,7 @@ def create_reduction_func(name, ops, routine=None, identity=None,
             rt = routine
         else:
             typ, rt = t
-            rt = tuple(i or j for i, j in six_zip(rt, routine))
+            rt = tuple([i or j for i, j in six_zip(rt, routine)])
 
         types = typ.split('->')
         if len(types) == 1:

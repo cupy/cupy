@@ -6,14 +6,12 @@ import six
 from cupy import util
 
 from cupy.cuda cimport device
-from cupy.cuda cimport module
 
 
-six_range = six.moves.range
 six_zip = six.moves.zip
 
 
-def _get_simple_elementwise_kernel(
+cpdef _get_simple_elementwise_kernel(
         params, operation, name, preamble,
         loop_prep='', after_loop='', options=()):
     module_code = string.Template('''
@@ -37,7 +35,7 @@ def _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-_typenames = {
+cdef dict _typenames_base = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
@@ -52,11 +50,20 @@ _typenames = {
     numpy.dtype('bool'): 'bool',
 }
 
-_python_scalar_type = six.integer_types + (float, bool)
-_scalar_type = _python_scalar_type + tuple(
-    t.type for t in _typenames.keys())
+cdef str _all_type_chars = 'dfeqlihbQLIHB?'
 
-_kind_score = {
+cdef dict _typenames = {
+    numpy.dtype(i).type:_typenames_base[numpy.dtype(i)]
+    for i in _all_type_chars}
+
+cdef tuple _python_scalar_type = six.integer_types + (float, bool)
+cdef tuple _scalar_type = _python_scalar_type + tuple([
+    numpy.dtype(i).type for i in _all_type_chars])
+
+cdef set _python_scalar_type_set = set(_python_scalar_type)
+cdef set _scalar_type_set = set(_scalar_type)
+
+cdef dict _kind_score = {
     'b': 0,
     'u': 1,
     'i': 1,
@@ -64,27 +71,33 @@ _kind_score = {
 }
 
 
-def _get_typename(dtype):
+cdef str _get_typename(dtype):
     if dtype is None:
         raise ValueError('dtype is None')
-    return _typenames[numpy.dtype(dtype)]
+    if dtype not in _typenames:
+        dtype = numpy.dtype(dtype).type
+    return _typenames[dtype]
 
 
-def _check_args(args):
+cdef void _check_args(args) except *:
     dev_id = device.get_device_id()
-    scalar_type = _scalar_type
     for arg in args:
-        if isinstance(arg, ndarray):
+        t = type(arg)
+        if t in _scalar_type_set:
+            continue
+        if issubclass(t, ndarray):
             arr_dev = arg.device
-            if arr_dev is not None and arr_dev.id != dev_id:
-                raise ValueError('Array device must be same as the current '
-                                 'device: array device = %d while current = %d'
-                                 % (arr_dev.id, dev_id))
-        elif not isinstance(arg, scalar_type):
-            raise TypeError('Unsupported type %s' % type(arg))
+            if arr_dev is None or arr_dev.id == dev_id:
+                continue
+            raise ValueError('Array device must be same as the current '
+                             'device: array device = %d while current = %d'
+                             % (arr_dev.id, dev_id))
+        if issubclass(t, _scalar_type):
+            continue
+        raise TypeError('Unsupported type %s' % type(arg))
 
 
-def _get_args_info(args):
+cdef tuple _get_args_info(args):
     ret = []
     carray_Indexer = Indexer
     ret_append = ret.append
@@ -98,7 +111,7 @@ def _get_args_info(args):
     return tuple(ret)
 
 
-def _get_kernel_params(params, args_info):
+cdef str _get_kernel_params(params, args_info):
     ret = []
     for p, a in six_zip(params, args_info):
         type, dtype, ndim = a
@@ -116,7 +129,7 @@ def _get_kernel_params(params, args_info):
     return ', '.join(ret)
 
 
-def _reduce_dims(args, params, shape):
+cdef tuple _reduce_dims(args, params, shape):
     ndim = len(shape)
     if ndim <= 1:
         return args, shape
@@ -128,7 +141,7 @@ def _reduce_dims(args, params, shape):
     src_shape = shape
     shape = list(src_shape)
     cnt = 0
-    for i in six_range(1, ndim):
+    for i in range(1, ndim):
         j = i - 1
         shape_i = shape[i]
         shape_j = shape[j]
@@ -169,17 +182,23 @@ def _reduce_dims(args, params, shape):
     return args, new_shape
 
 
-class ParameterInfo(object):
+cdef class ParameterInfo:
+    cdef:
+        readonly str name
+        readonly object dtype
+        readonly str ctype
+        readonly bint raw
+        readonly bint is_const
 
-    def __init__(self, str, is_const):
+    def __init__(self, str param, bint is_const):
         self.name = None
         self.dtype = None
         self.ctype = None
         self.raw = False
         self.is_const = is_const
-        s = tuple(i for i in str.split() if len(i) != 0)
+        s = tuple([i for i in param.split() if len(i) != 0])
         if len(s) < 2:
-            raise Exception('Syntax error: %s' % str)
+            raise Exception('Syntax error: %s' % param)
 
         t, self.name = s[-2:]
         if t == 'CIndexer':
@@ -255,7 +274,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return in_types, out_types, tuple(type_dict.items())
 
 
-def _broadcast(args, params, use_size):
+cdef tuple _broadcast(args, params, use_size):
     value = [a if not p.raw and isinstance(a, ndarray) else None
              for p, a in six_zip(params, args)]
     if use_size:
@@ -277,7 +296,7 @@ def _broadcast(args, params, use_size):
     return value, brod.shape
 
 
-def _get_out_args(out_args, out_types, out_shape):
+cdef object _get_out_args(out_args, out_types, out_shape):
     if not out_args:
         return [ndarray(out_shape, t) for t in out_types]
 
@@ -290,7 +309,8 @@ def _get_out_args(out_args, out_types, out_shape):
     return out_args
 
 
-def _get_out_args_with_params(out_args, out_types, out_shape, out_params):
+cdef list _get_out_args_with_params(out_args, out_types, out_shape,
+                                    out_params):
     if not out_args:
         for p in out_params:
             if p.raw:
@@ -329,7 +349,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
         preamble, **dict(kwargs))
 
 
-class ElementwiseKernel(object):
+cdef class ElementwiseKernel:
 
     """User-defined elementwise kernel.
 
@@ -364,6 +384,20 @@ class ElementwiseKernel(object):
             the bottom of the kernel function definition.
 
     """
+
+    cdef:
+        readonly tuple in_params
+        readonly tuple out_params
+        readonly int nin
+        readonly int nout
+        readonly int nargs
+        readonly tuple params
+        readonly str operation
+        readonly str name
+        readonly bint reduce_dims
+        readonly str preamble
+        readonly object kwargs
+
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='', **kwargs):
         self.in_params = _get_param_info(in_params, True)
@@ -401,6 +435,9 @@ class ElementwiseKernel(object):
             ``__init__`` method.
 
         """
+
+        cdef cupy.cuda.module.Function kern
+
         size = kwargs.pop('size', None)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
@@ -484,7 +521,7 @@ def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
         kernel_params, operation, name, preamble)
 
 
-def _guess_routine_from_in_types(ops, in_types):
+cdef tuple _guess_routine_from_in_types(ops, in_types):
     for op in ops:
         for dst, src in six_zip(op[0], in_types):
             if not numpy.can_cast(src, dst):
@@ -494,7 +531,7 @@ def _guess_routine_from_in_types(ops, in_types):
     return None
 
 
-def _guess_routine_from_dtype(ops, dtype):
+cdef tuple _guess_routine_from_dtype(ops, dtype):
     for op in ops:
         for t in op[1]:
             if t != dtype:
@@ -504,7 +541,7 @@ def _guess_routine_from_dtype(ops, dtype):
     return None
 
 
-def _check_in_args_kind(in_args):
+cdef bint _check_in_args_kind(in_args) except *:
     all_scalars = True
     max_array_kind = -1
     max_scalar_kind = -1
@@ -525,7 +562,7 @@ def _check_in_args_kind(in_args):
     return not all_scalars and max_array_kind >= max_scalar_kind
 
 
-def _guess_routine(name, cache, ops, in_args, dtype):
+cdef tuple _guess_routine(name, cache, ops, in_args, dtype):
     if dtype is None:
         use_raw_value = _check_in_args_kind(in_args)
         if use_raw_value:
@@ -574,10 +611,10 @@ class ufunc(object):
         self.__doc__ = doc
         _in_params = tuple(
             ParameterInfo('T in%d' % i, True)
-            for i in six_range(nin))
+            for i in range(nin))
         _out_params = tuple(
             ParameterInfo('T out%d' % i, False)
-            for i in six_range(nout))
+            for i in range(nout))
         self._params = _in_params + _out_params + (
             ParameterInfo('CIndexer _ind', False),)
         self._routine_cache = {}
@@ -615,6 +652,9 @@ class ufunc(object):
             Output array or a tuple of output arrays.
 
         """
+
+        cdef cupy.cuda.module.Function kern
+
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
         if dtype is not None:
@@ -673,7 +713,7 @@ class ufunc(object):
         return ret
 
 
-def create_ufunc(name, ops, routine=None, preamble='', doc=''):
+cpdef create_ufunc(name, ops, routine=None, preamble='', doc=''):
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
