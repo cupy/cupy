@@ -184,20 +184,26 @@ class TestChain(unittest.TestCase):
 
     def test_copy(self):
         c2 = self.c2.copy()
+        self.assertIs(c2.name, None)
         self.assertTrue(hasattr(c2, 'c1'))
+        self.assertEqual(c2.c1.name, 'c1')
         self.assertIsNot(c2.c1, self.c1)
+        self.assertEqual(c2.c1.l1.name, 'l1')
         self.assertIsNot(c2.c1.l1, self.l1)
         self.assertIsNot(c2.c1.l1.x, self.l1.x)
         self.assertIs(c2.c1.l1.x.data, self.l1.x.data)
         self.assertIs(c2.c1.l1.x.grad, None)
+        self.assertIs(c2.name, None)
 
         self.assertTrue(hasattr(c2.c1, 'l2'))
+        self.assertEqual(c2.c1.l2.name, 'l2')
         self.assertIsNot(c2.c1.l2, self.l2)
         self.assertIsNot(c2.c1.l2.x, self.l2.x)
         self.assertIs(c2.c1.l2.x.data, self.l2.x.data)
         self.assertIs(c2.c1.l2.x.grad, None)
 
         self.assertTrue(hasattr(c2, 'l3'))
+        self.assertEqual(c2.l3.name, 'l3')
         self.assertIsNot(c2.l3, self.l3)
         self.assertIsNot(c2.l3.x, self.l3.x)
         self.assertIs(c2.l3.x.data, self.l3.x.data)
@@ -372,18 +378,23 @@ class TestChainList(unittest.TestCase):
     def test_copy(self):
         c2 = self.c2.copy()
 
+        self.assertIs(c2.name, None)
         self.assertIsNot(c2[0], self.c1)
+        self.assertEqual(c2[0].name, '0')
         self.assertIsNot(c2[0][0], self.l1)
+        self.assertEqual(c2[0][0].name, '0')
         self.assertIsNot(c2[0][0].x, self.l1.x)
         self.assertIs(c2[0][0].x.data, self.l1.x.data)
         self.assertIs(c2[0][0].x.grad, None)
 
         self.assertIsNot(c2[0][1], self.l2)
+        self.assertEqual(c2[0][1].name, '1')
         self.assertIsNot(c2[0][1].x, self.l2.x)
         self.assertIs(c2[0][1].x.data, self.l2.x.data)
         self.assertIs(c2[0][1].x.grad, None)
 
         self.assertIsNot(c2[1], self.l3)
+        self.assertEqual(c2[1].name, '1')
         self.assertIsNot(c2[1].x, self.l3.x)
         self.assertIs(c2[1].x.data, self.l3.x.data)
         self.assertIs(c2[1].x.grad, None)

@@ -454,7 +454,9 @@ class Chain(Link):
         d = ret.__dict__
         for name in ret._children:
             # copy child links recursively
-            d[name] = d[name].copy()
+            copied = d[name].copy()
+            copied.name = name
+            d[name] = copied
         return ret
 
     def to_cpu(self):
@@ -609,7 +611,11 @@ class ChainList(Link):
 
     def copy(self):
         ret = super(ChainList, self).copy()
-        ret._children = [link.copy() for link in ret._children]
+        children = ret._children
+        for i, child in enumerate(children):
+            child = child.copy()
+            child.name = str(i)
+            children[i] = child
         return ret
 
     def to_cpu(self):
