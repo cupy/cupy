@@ -170,12 +170,15 @@ class TestChain(unittest.TestCase):
 
     def test_init(self):
         self.assertIs(self.c1.l1, self.l1)
+        self.assertIs(self.c1['l1'], self.l1)
         self.assertEqual(self.l1.name, 'l1')
 
         self.assertIs(self.c2.c1, self.c1)
+        self.assertIs(self.c2['c1'], self.c1)
         self.assertEqual(self.c1.name, 'c1')
 
         self.assertIs(self.c2.l3, self.l3)
+        self.assertIs(self.c2['l3'], self.l3)
         self.assertEqual(self.l3.name, 'l3')
 
     def test_add_link(self):

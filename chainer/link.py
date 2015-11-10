@@ -418,6 +418,10 @@ class Chain(Link):
         for name, link in six.iteritems(links):
             self.add_link(name, link)
 
+    def __getitem__(self, name):
+        """Equivalent to getattr."""
+        return getattr(self, name)
+
     def add_link(self, name, link):
         """Regsiters a child link to this chain.
 
