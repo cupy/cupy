@@ -62,24 +62,42 @@ class Contrastive(function.Function):
 
 def contrastive(x0, x1, y, margin=1):
     """Computes contrastive loss.
-    It takes a variable pair and a label as inputs. The label is 1 when those
-    two input variables are similar, or 0 when they are dissimilar. Let
+
+    It takes a pair of variables and a label as inputs. The label is 1 when
+    those two input variables are similar, or 0 when they are dissimilar. Let
     :math:`N` and :math:`K` denote mini-batchsize and the dimension of input
-    variables, respectively, the shape of both input variables should be
+    variables, respectively. The shape of both input variables should be
     (N, K).
+
     .. math::
-        L = \\frac{1}{2N} \\left( \\sum_{n=1}^N y_n d_n
-            + (1 - y_n) \\max ({\\rm margin} - \\sqrt{d_n}, 0)^2 \\right)
-    where :math:`N` denotes the mini-batch size, and
-    :math:`d_n = \\| {\\bf x_0}_n - {\\bf x_1}_n \\|_2`, and
-    :math:`{\\bf x_0}_n` means the n-th K-dimensional vector in a mini-batch.
+        L = \\frac{1}{2N} \\left( \\sum_{n=1}^N y_n d_n^2
+            + (1 - y_n) \\max ({\\rm margin} - d_n, 0)^2 \\right)
+
+    where :math:`d_n = \\| {\\bf x_0}_n - {\\bf x_1}_n \\|_2`. :math:`N`
+    denotes the mini-batch size. Input variables, x0 and x1, have :math:`N`
+    vectors, and each vector is K-dimensional. Therefore, :math:`{\\bf x_0}_n`
+    and :math:`{\\bf x_1}_n` are :math:`n`-th K-dimensional vectors of x0 and
+    x1.
+
     Args:
-        x0 (~chainer.Variable): The first input variable.
-        x1 (~chainer.Variable): The second input variable.
-        y (~chainer.Variable): Labels. All values should be 0 or 1.
+        x0 (~chainer.Variable): The first input variable. The shape should be
+            (N, K), where N denotes the minibatch size, and K denotes the
+            dimension of x0.
+        x1 (~chainer.Variable): The second input variable. The shape should be
+            the same as x0.
+        y (~chainer.Variable): Labels. All values should be 0 or 1. The shape
+            should be (N,), where N denotes the minibatch size.
         margin (int): A parameter for contrastive loss.
+
     Returns:
         ~chainer.Varible: A variable holding a scalar that is the loss value
             calculated by the above equation.
+
+    .. note::
+        This cost can be used to train siamese networks. See `Learning a
+        Similarity Metric Discriminatively, with Application to Face
+        Verification` <http://yann.lecun.com/exdb/publis/pdf/chopra-05.pdf> for
+        details.
+
     """
     return Contrastive(margin)(x0, x1, y)
