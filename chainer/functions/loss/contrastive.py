@@ -20,7 +20,6 @@ class Contrastive(function.Function):
             x0_type.dtype == numpy.float32,
             x1_type.dtype == numpy.float32,
             x0_type.shape == x1_type.shape,
-            x0_type.shape[0] == x1_type.shape[0],
             x1_type.shape[0] == y_type.shape[0],
             x0_type.ndim == 2,
             x1_type.ndim == 2,
@@ -62,27 +61,22 @@ class Contrastive(function.Function):
 
 def contrastive(x0, x1, y, margin=1):
     """Computes contrastive loss.
-
     It takes a variable pair and a label as inputs. The label is 1 when those
     two input variables are similar, or 0 when they are dissimilar. Let
     :math:`N` and :math:`K` denote mini-batchsize and the dimension of input
     variables, respectively, the shape of both input variables should be
     (N, K).
-
     .. math::
         L = \\frac{1}{2N} \\left( \\sum_{n=1}^N y_n d_n
             + (1 - y_n) \\max ({\\rm margin} - \\sqrt{d_n}, 0)^2 \\right)
-
     where :math:`N` denotes the mini-batch size, and
     :math:`d_n = \\| {\\bf x_0}_n - {\\bf x_1}_n \\|_2`, and
     :math:`{\\bf x_0}_n` means the n-th K-dimensional vector in a mini-batch.
-
     Args:
         x0 (~chainer.Variable): The first input variable.
         x1 (~chainer.Variable): The second input variable.
         y (~chainer.Variable): Labels. All values should be 0 or 1.
         margin (int): A parameter for contrastive loss.
-
     Returns:
         ~chainer.Varible: A variable holding a scalar that is the loss value
             calculated by the above equation.
