@@ -19,6 +19,7 @@ class Contrastive(function.Function):
         type_check.expect(
             x0_type.dtype == numpy.float32,
             x1_type.dtype == numpy.float32,
+            y_type.dtype == numpy.int32,
             x0_type.shape == x1_type.shape,
             x1_type.shape[0] == y_type.shape[0],
             x0_type.ndim == 2,
