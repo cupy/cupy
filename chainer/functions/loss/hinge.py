@@ -34,7 +34,7 @@ class Hinge(function.Function):
         self.bottom_diff = numpy.copy(x)
         for i in six.moves.range(num):
             self.bottom_diff[i, t[i]] *= -1
-        self.bottom_diff = max(0, 1 + self.bottom_diff)
+        self.bottom_diff = numpy.maximum(0, 1 + self.bottom_diff)
         loss = 0
         if self.norm == 'L1':
             loss = numpy.sum(numpy.abs(self.bottom_diff)) / num
