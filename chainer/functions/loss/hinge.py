@@ -56,7 +56,7 @@ class Hinge(function.Function):
         self.bottom_diff = cuda.cupy.maximum(0, 1 + self.bottom_diff)
         loss = 0
         if self.norm == 'L1':
-            loss = cuda.cupy.sum(cuda.cupy.abs(self.bottom_diff)) / num
+            loss = cuda.cupy.sum(self.bottom_diff) / num
         elif self.norm == 'L2':
             loss = cuda.cupy.sum(self.bottom_diff ** 2) / num
         else:
