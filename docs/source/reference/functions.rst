@@ -37,6 +37,8 @@ Array manipulation functions
 .. autofunction:: reshape
 .. autofunction:: select_item
 .. autofunction:: split_axis
+.. autofunction:: swapaxes
+.. autofunction:: transpose
 .. autofunction:: where
 
 Activation functions
@@ -47,6 +49,8 @@ Activation functions
 .. autofunction:: leaky_relu
 .. autofunction:: log
 .. autofunction:: lstm
+.. autofunction:: max
+.. autofunction:: min
 .. autoclass:: PReLU
 .. autofunction:: relu
 .. autofunction:: sigmoid
