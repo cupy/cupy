@@ -19,6 +19,7 @@ import numpy as np
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import chainer.links as L
 from chainer import optimizers
 
 
@@ -88,24 +89,42 @@ def read_corpus(path, vocab):
         return trees
 
 
-def traverse(node, train=True, evaluate=None, root=True):
+class RecursiveNet(chainer.Chain):
+
+    def __init__(self, n_vocab, n_units):
+        super(RecursiveNet, self).__init__(
+            embed=L.EmbedID(n_vocab, n_units),
+            l=L.Linear(n_units * 2, n_units),
+            w=L.Linear(n_units, n_label))
+
+    def leaf(self, x):
+        return self.embed(x)
+
+    def node(self, left, right):
+        return F.tanh(self.l(F.concat((left, right))))
+
+    def label(self, v):
+        return self.w(v)
+
+
+def traverse(model, node, train=True, evaluate=None, root=True):
     if isinstance(node['node'], int):
         # leaf node
         word = xp.array([node['node']], np.int32)
         loss = 0
         x = chainer.Variable(word, volatile=not train)
-        v = model.embed(x)
+        v = model.leaf(x)
     else:
         # internal node
         left_node, right_node = node['node']
         left_loss, left = traverse(
-            left_node, train=train, evaluate=evaluate, root=False)
+            model, left_node, train=train, evaluate=evaluate, root=False)
         right_loss, right = traverse(
-            right_node, train=train, evaluate=evaluate, root=False)
-        v = F.tanh(model.l(F.concat((left, right))))
+            model, right_node, train=train, evaluate=evaluate, root=False)
+        v = model.node(left, right)
         loss = left_loss + right_loss
 
-    y = model.w(v)
+    y = model.label(v)
 
     if train:
         label = xp.array([node['label']], np.int32)
@@ -126,10 +145,12 @@ def traverse(node, train=True, evaluate=None, root=True):
     return loss, v
 
 
-def evaluate(test_trees):
+def evaluate(model, test_trees):
+    m = model.copy()
+    m.volatile = True
     result = collections.defaultdict(lambda: 0)
     for tree in test_trees:
-        traverse(tree, train=False, evaluate=result)
+        traverse(m, tree, train=False, evaluate=result)
 
     acc_node = 100.0 * result['correct_node'] / result['total_node']
     acc_root = 100.0 * result['correct_root'] / result['total_root']
@@ -143,11 +164,7 @@ train_trees = read_corpus('trees/train.txt', vocab)
 test_trees = read_corpus('trees/test.txt', vocab)
 develop_trees = read_corpus('trees/dev.txt', vocab)
 
-model = chainer.FunctionSet(
-    embed=F.EmbedID(len(vocab), n_units),
-    l=F.Linear(n_units * 2, n_units),
-    w=F.Linear(n_units, n_label),
-)
+model = RecursiveNet(len(vocab), n_units)
 
 if args.gpu >= 0:
     model.to_gpu()
@@ -166,7 +183,7 @@ for epoch in range(n_epoch):
     cur_at = time.time()
     random.shuffle(train_trees)
     for tree in train_trees:
-        loss, v = traverse(tree, train=True)
+        loss, v = traverse(model, tree, train=True)
         accum_loss += loss
         count += 1
 
@@ -189,10 +206,10 @@ for epoch in range(n_epoch):
 
     if (epoch + 1) % epoch_per_eval == 0:
         print('Train data evaluation:')
-        evaluate(train_trees)
+        evaluate(model, train_trees)
         print('Develop data evaluation:')
-        evaluate(develop_trees)
+        evaluate(model, develop_trees)
         print('')
 
 print('Test evaluateion')
-evaluate(test_trees)
+evaluate(model, test_trees)
