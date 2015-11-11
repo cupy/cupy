@@ -200,15 +200,19 @@ class TestFunctionSet(TestFunctionSetBase):
         ab = np.random.uniform(-1, 1, (2,)).astype(np.float32)
         bW = np.random.uniform(-1, 1, (2, 3)).astype(np.float32)
         bb = np.random.uniform(-1, 1, (2,)).astype(np.float32)
-        params = [aW.copy(), ab.copy(), bW.copy(), bb.copy()]
 
+        fs = self.fs.copy()
+        fs.a.W.data = aW
+        fs.a.b.data = ab
+        fs.b.W.data = bW
+        fs.b.b.data = bb
+
+        if src_id >= 0:
+            fs.to_gpu(src_id)
         if dst_id >= 0:
             self.fs.to_gpu(dst_id)
 
-        if src_id >= 0:
-            params = [cuda.to_gpu(p, src_id) for p in params]
-
-        self.fs.copy_parameters_from(params)
+        self.fs.copy_parameters_from(fs.parameters)
         self.fs.to_cpu()
 
         self.assertTrue((self.fs.a.W.data == aW).all())
