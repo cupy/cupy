@@ -14,6 +14,7 @@ import six.moves.cPickle as pickle
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import chainer.links as L
 import chainer.optimizers as O
 
 parser = argparse.ArgumentParser()
@@ -49,44 +50,66 @@ print('Output type: {}'.format(args.out_type))
 print('')
 
 
-def continuous_bow(dataset, position):
-    h = None
+class ContinuousBoW(chainer.Chain):
 
+    def __init__(self, n_vocab, n_units, loss_func):
+        super(ContinuousBoW, self).__init__(
+            embed=F.EmbedID(n_vocab, args.unit),
+            loss_func=loss_func,
+        )
+
+    def __call__(self, x, context):
+        h = None
+        for c in context:
+            e = self.embed(c)
+            h = h + e if h is not None else e
+
+        return self.loss_func(h, x)
+
+
+class SkipGram(chainer.Chain):
+
+    def __init__(self, n_vocab, n_units, loss_func):
+        super(SkipGram, self).__init__(
+            embed=L.EmbedID(n_vocab, n_units),
+            loss_func=loss_func,
+        )
+
+    def __call__(self, x, context):
+        loss = None
+        for c in context:
+            e = self.embed(c)
+
+            loss_i = self.loss_func(e, x)
+            loss = loss_i if loss is None else loss + loss_i
+
+        return loss
+
+
+class SoftmaxCrossEntropyLoss(chainer.Chain):
+    def __init__(self, n_in, n_out):
+        super(SoftmaxCrossEntropyLoss, self).__init__(
+            W=L.Linear(n_in, n_out),
+        )
+
+    def __call__(self, x, t):
+        return F.softmax_cross_entropy(self.W(x), t)
+
+
+def calculate_loss(model, dataset, offset):
     # use random window size in the same way as the original word2vec
     # implementation.
     w = np.random.randint(args.window - 1) + 1
+    context = []
     for offset in range(-w, w + 1):
         if offset == 0:
             continue
-        d = xp.asarray(dataset[position + offset])
-        x = chainer.Variable(d)
-        e = model.embed(x)
-        h = h + e if h is not None else e
-
-    d = xp.asarray(dataset[position])
-    t = chainer.Variable(d)
-    return loss_func(h, t)
-
-
-def skip_gram(dataset, position):
-    d = xp.asarray(dataset[position])
-    t = chainer.Variable(d)
-
-    # use random window size in the same way as the original word2vec
-    # implementation.
-    w = np.random.randint(args.window - 1) + 1
-    loss = None
-    for offset in range(-w, w + 1):
-        if offset == 0:
-            continue
-        d = xp.asarray(dataset[position + offset])
-        x = chainer.Variable(d)
-        e = model.embed(x)
-
-        loss_i = loss_func(e, t)
-        loss = loss_i if loss is None else loss + loss_i
-
-    return loss
+        c_data = xp.asarray(dataset[position + offset])
+        c = chainer.Variable(c_data)
+        context.append(c)
+    x_data = xp.asarray(dataset[position])
+    x = chainer.Variable(x_data)
+    return model(x, context)
 
 
 if args.gpu >= 0:
@@ -111,31 +134,24 @@ n_vocab = len(word2index)
 print('n_vocab: %d' % n_vocab)
 print('data length: %d' % len(dataset))
 
-if args.model == 'skipgram':
-    train_model = skip_gram
-elif args.model == 'cbow':
-    train_model = continuous_bow
-else:
-    raise Exception('Unknown model type: {}'.format(args.model))
-
-model = chainer.FunctionSet(
-    embed=F.EmbedID(n_vocab, args.unit),
-)
-
 if args.out_type == 'hsm':
-    HSM = F.BinaryHierarchicalSoftmax
+    HSM = L.BinaryHierarchicalSoftmax
     tree = HSM.create_huffman_tree(counts)
-    model.l = HSM(args.unit, tree)
-    loss_func = model.l
+    loss_func = HSM(args.unit, tree)
 elif args.out_type == 'ns':
     cs = [counts[w] for w in range(len(counts))]
-    model.l = F.NegativeSampling(args.unit, cs, 20)
-    loss_func = model.l
+    loss_func = L.NegativeSampling(args.unit, cs, 20)
 elif args.out_type == 'original':
-    model.l = F.Linear(args.unit, n_vocab)
-    loss_func = lambda h, t: F.softmax_cross_entropy(model.l(h), t)
+    loss_func = SoftmaxCrossEntropyLoss(args.unit, n_vocab)
 else:
     raise Exception('Unknown output type: {}'.format(args.out_type))
+
+if args.model == 'skipgram':
+    model = SkipGram(n_vocab, args.unit, loss_func)
+elif args.model == 'cbow':
+    model = ContinuousBoW(n_vocab, args.unit, loss_func)
+else:
+    raise Exception('Unknown model type: {}'.format(args.model))
 
 if args.gpu >= 0:
     model.to_gpu()
@@ -166,7 +182,7 @@ for epoch in range(args.epoch):
 
         position = np.array(
             range(0, args.batchsize)) * skip + (args.window + i)
-        loss = train_model(dataset, position)
+        loss = calculate_loss(model, dataset, position)
         accum_loss += loss.data
         word_count += args.batchsize
 
