@@ -69,9 +69,9 @@ class Hinge(function.Function):
         for i in six.moves.range(t.shape[0]):
             self.bottom_diff[i, t[i]] *= -1
         if self.norm == 'L1':
-            gx = gloss * numpy.sign(self.bottom_diff) / t.shape[0]
+            gx = (gloss / t.shape[0]) * numpy.sign(self.bottom_diff)
         elif self.norm == 'L2':
-            gx = gloss * 2 * self.bottom_diff / t.shape[0]
+            gx = (2 * gloss / t.shape[0]) * self.bottom_diff
         else:
             raise NotImplementedError()
 
@@ -85,9 +85,9 @@ class Hinge(function.Function):
             'bottom_diff[i * dim + t] *= -1',
             'hinge_bwd')(t, inputs[0].shape[1], self.bottom_diff)
         if self.norm == 'L1':
-            gx = gloss * xp.sign(self.bottom_diff) / t.shape[0]
+            gx = (gloss / t.shape[0]) * xp.sign(self.bottom_diff)
         elif self.norm == 'L2':
-            gx = gloss * 2 * self.bottom_diff / t.shape[0]
+            gx = (2 * gloss / t.shape[0]) * self.bottom_diff
         else:
             raise NotImplementedError()
 
