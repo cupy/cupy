@@ -11,7 +11,10 @@ class Hinge(function.Function):
     """Hinge loss."""
 
     def __init__(self, norm='L1'):
-        self.norm = norm
+        if norm in ['L1', 'L2']:
+            self.norm = norm
+        else:
+            raise NotImplementedError("norm should be either 'L1' or 'L2'")
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
