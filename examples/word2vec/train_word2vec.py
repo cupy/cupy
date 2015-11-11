@@ -9,7 +9,6 @@ import collections
 import time
 
 import numpy as np
-import six.moves.cPickle as pickle
 
 import chainer
 from chainer import cuda
@@ -192,7 +191,9 @@ for epoch in range(args.epoch):
 
     print(accum_loss)
 
-model.to_cpu()
-with open('model.pickle', 'wb') as f:
-    obj = (model, index2word, word2index)
-    pickle.dump(obj, f)
+with open('word2vec.model', 'w') as f:
+    f.write('%d %d\n' % (len(index2word), args.unit))
+    w = model.embed.W.data
+    for i in range(w.shape[0]):
+        v = ' '.join(['%f' % v for v in w[i]])
+        f.write('%s %s\n' % (index2word[i], v))
