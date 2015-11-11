@@ -12,7 +12,7 @@ class EmbedIDFunction(function.Function):
         x_type, w_type = in_types
         type_check.expect(
             x_type.dtype == numpy.int32,
-            x_type.ndim == 1,
+            x_type.ndim >= 1,
         )
         type_check.expect(
             w_type.dtype == numpy.float32,
@@ -35,7 +35,8 @@ class EmbedIDFunction(function.Function):
             cuda.elementwise(
                 'T gy, int32 x, int32 n_out', 'raw T gW',
                 'int w_ind[] = {x, i % n_out}; atomicAdd(&gW[w_ind], gy)',
-                'embed_id_bwd')(gy, x[:, None], gW.shape[1], gW)
+                'embed_id_bwd')(
+                    gy, xp.expand_dims(x, -1), gW.shape[1], gW)
         return None, gW
 
 

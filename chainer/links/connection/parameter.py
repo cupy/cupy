@@ -1,3 +1,4 @@
+from chainer import cuda
 from chainer.functions.math import identity
 from chainer import link
 
@@ -21,6 +22,8 @@ class Parameter(link.Link):
         super(Parameter, self).__init__()
         self.add_param('W', array.shape, dtype=array.dtype)
         self.W.data = array
+        if isinstance(array, cuda.ndarray):
+            self.to_gpu(array)
 
     def __call__(self, volatile='off'):
         """Returns the parameter variable.

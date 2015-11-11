@@ -14,7 +14,6 @@ functions, which users should use.
    compatibility, though it is strongly recommended to use them via the
    :mod:`chainer.links` package.
 
-
 ..
    For contributors that want to update these lists:
 
@@ -61,6 +60,7 @@ Evaluation functions
 
 Loss functions
 --------------
+.. autofunction:: connectionist_temporal_classification
 .. autofunction:: cross_covariance
 .. autofunction:: mean_squared_error
 .. autofunction:: negative_sampling
@@ -81,6 +81,8 @@ Mathematical functions
 .. autofunction:: identity
 .. autofunction:: log
 .. autofunction:: matmul
+.. autofunction:: max
+.. autofunction:: min
 .. autofunction:: sin
 .. autofunction:: sum
 

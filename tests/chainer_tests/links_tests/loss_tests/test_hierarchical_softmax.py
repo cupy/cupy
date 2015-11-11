@@ -90,8 +90,8 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
         gx, _, gW = gradient_check.numerical_grad(
             f, (x.data, t.data, self.link.W.data), (y.grad,), eps=1e-2)
 
-        gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gW, self.link.W.grad)
+        gradient_check.assert_allclose(gx, x.grad, atol=1e-4)
+        gradient_check.assert_allclose(gW, self.link.W.grad, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):

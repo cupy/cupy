@@ -134,3 +134,15 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         self.pool.free_all_free()
         p2 = self.pool.malloc(10)
         self.assertNotEqual(ptr1.value, p2.ptr.value)
+
+
+@testing.gpu
+class TestMemoryPool(unittest.TestCase):
+
+    def setUp(self):
+        self.pool = memory.SingleDeviceMemoryPool()
+
+    def test_zero_size_alloc(self):
+        mem = self.pool.malloc(0).mem
+        self.assertIsInstance(mem, memory.Memory)
+        self.assertNotIsInstance(mem, memory.PooledMemory)

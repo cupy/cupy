@@ -34,6 +34,7 @@ from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import exponential
 from chainer.functions.math import identity
 from chainer.functions.math import matmul
+from chainer.functions.math import minmax
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -130,6 +131,10 @@ Log = exponential.Log
 log = exponential.log
 MatMul = matmul.MatMul
 matmul = matmul.matmul
+Max = minmax.Max
+max = minmax.max
+Min = minmax.Min
+min = minmax.min
 Sin = trigonometric.Sin
 sin = trigonometric.sin
 Sum = sum.Sum
