@@ -41,6 +41,9 @@ class TestFunctionSetBase(unittest.TestCase):
         with self.assertRaises(AssertionError):
             setattr(fs, attribute, values)
 
+    def _assert_all_is(self, a1, a2):
+        self.assertEqual(sorted(map(id, a1)), sorted(map(id, a2)))
+
 
 class TestNestedFunctionSet(TestFunctionSetBase):
 
@@ -56,14 +59,8 @@ class TestNestedFunctionSet(TestFunctionSetBase):
         grads = self.fs2.gradients
         self.assertEqual(len(params), 2)
         self.assertEqual(len(grads), 2)
-
-        self.assertIn(params[0].shape, ((1, 2), (3, 4)))
-        idx_a = 0 if params[0].shape == (1, 2) else 1
-        idx_b = 1 - idx_a
-        self.assertIs(params[idx_a], self.fs1.a.p.data)
-        self.assertIs(grads[idx_a], self.fs1.a.p.grad)
-        self.assertIs(params[idx_b], self.fs2.b.p.data)
-        self.assertIs(grads[idx_b], self.fs2.b.p.grad)
+        self._assert_all_is(params, [self.fs1.a.p.data, self.fs2.b.p.data])
+        self._assert_all_is(grads, [self.fs1.a.p.grad, self.fs2.b.p.grad])
 
     def test_pickle_cpu(self):
         fs2_serialized = pickle.dumps(self.fs2)
@@ -87,14 +84,10 @@ class TestNestedFunctionSet(TestFunctionSetBase):
     def check_getter(self, fs, gpu, attribute):
         params = getattr(fs, attribute)
         self.assertEqual(len(params), 2)
-        if gpu:
-            params = tuple(p.get() for p in params)
         if attribute == 'parameters':
-            np.testing.assert_equal(params[0], cuda.to_cpu(self.fs1.a.p.data))
-            np.testing.assert_equal(params[1], cuda.to_cpu(self.fs2.b.p.data))
+            self._assert_all_is(params, [self.fs1.a.p.data, self.fs2.b.p.data])
         elif attribute == 'gradients':
-            np.testing.assert_equal(params[0], cuda.to_cpu(self.fs1.a.p.grad))
-            np.testing.assert_equal(params[1], cuda.to_cpu(self.fs2.b.p.grad))
+            self._assert_all_is(params, [self.fs1.a.p.grad, self.fs2.b.p.grad])
         else:
             raise ValueError(
                 'attribute should be parameters or gradients')
@@ -253,19 +246,16 @@ class TestFunctionSet(TestFunctionSetBase):
     def check_getter(self, fs, gpu, attribute):
         params = getattr(fs, attribute)
         self.assertEqual(len(params), 4)
-        if gpu:
-            params = tuple(p.get() for p in params)
-
         if attribute == 'parameters':
-            np.testing.assert_array_equal(params[0], self.aW)
-            np.testing.assert_array_equal(params[1], self.ab)
-            np.testing.assert_array_equal(params[2], self.bW)
-            np.testing.assert_array_equal(params[3], self.bb)
+            self._assert_all_is(
+                params,
+                [self.fs.a.W.data, self.fs.a.b.data,
+                 self.fs.b.W.data, self.fs.b.b.data])
         elif attribute == 'gradients':
-            np.testing.assert_array_equal(params[0], self.agW)
-            np.testing.assert_array_equal(params[1], self.agb)
-            np.testing.assert_array_equal(params[2], self.bgW)
-            np.testing.assert_array_equal(params[3], self.bgb)
+            self._assert_all_is(
+                params,
+                [self.fs.a.W.grad, self.fs.a.b.grad,
+                 self.fs.b.W.grad, self.fs.b.b.grad])
 
     def test_parameters_getter_cpu(self):
         self.check_getter(self.fs, False, 'parameters')
