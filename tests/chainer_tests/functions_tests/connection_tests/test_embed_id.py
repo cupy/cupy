@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 import chainer
 from chainer import cuda
@@ -12,6 +11,10 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    {'x_data': [0, 1, 0]},
+    {'x_data': [[0, 1, 0], [1, 0, 1]]},
+)
 class TestEmbedID(unittest.TestCase):
 
     def setUp(self):
@@ -19,8 +22,9 @@ class TestEmbedID(unittest.TestCase):
         self.func.gW.fill(0)
 
         self.W = self.func.W.copy()  # fixed on CPU
-        self.x = numpy.array([0, 1, 0], dtype=numpy.int32)
-        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.x = numpy.array(self.x_data, dtype=numpy.int32)
+        y_shape = self.x.shape + (2,)
+        self.gy = numpy.random.uniform(-1, 1, y_shape).astype(numpy.float32)
 
     def to_gpu(self):
         self.func.W = cuda.to_gpu(self.func.W)
@@ -32,7 +36,7 @@ class TestEmbedID(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = numpy.empty_like(self.gy)
-        for i in six.moves.range(self.x.size):
+        for i in numpy.ndindex(self.x.shape):
             y_expect[i] = self.W[int(self.x[i])]
 
         gradient_check.assert_allclose(y_expect, y.data, atol=0, rtol=0)

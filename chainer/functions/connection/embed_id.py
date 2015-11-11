@@ -39,7 +39,7 @@ class EmbedID(function.Function):
 
         type_check.expect(
             x_type.dtype == numpy.int32,
-            x_type.ndim == 1,
+            x_type.ndim >= 1,
         )
 
     def forward(self, x):
@@ -54,5 +54,6 @@ class EmbedID(function.Function):
             'T gy, int32 x, int32 n_out', 'raw T gW',
             'int w_ind[] = {x, i % n_out}; atomicAdd(&gW[w_ind], gy)',
             'embed_id_bwd')(
-                gy[0], x[0][:, numpy.newaxis], self.gW.shape[1], self.gW)
+                gy[0], cuda.cupy.expand_dims(x[0], -1),
+                self.gW.shape[1], self.gW)
         return None,
