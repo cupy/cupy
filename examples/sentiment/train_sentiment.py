@@ -172,6 +172,7 @@ if args.gpu >= 0:
 # Setup optimizer
 optimizer = optimizers.AdaGrad(lr=0.1)
 optimizer.setup(model)
+optimizer.add_hook('WeightDecay', optimizer.WeightDecay(0.0001))
 
 accum_loss = 0
 count = 0
@@ -190,7 +191,6 @@ for epoch in range(n_epoch):
         if count >= batchsize:
             optimizer.zero_grads()
             accum_loss.backward()
-            optimizer.weight_decay(0.0001)
             optimizer.update()
             total_loss += float(accum_loss.data)
 
