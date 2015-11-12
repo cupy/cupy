@@ -15,16 +15,17 @@ cdef class Memory:
     This class provides an RAII interface of the CUDA memory allocation.
 
     Args:
+        device (cupy.cuda.Device): Device whose memory the pointer refers to.
         size (int): Size of the memory allocation in bytes.
 
     """
 
     def __init__(self, Py_ssize_t size):
         self.size = size
-        self._device = None
+        self.device = None
         self.ptr = 0
         if size > 0:
-            self._device = device.Device()
+            self.device = device.Device()
             self.ptr = runtime.malloc(size)
 
     def __dealloc__(self):
@@ -34,11 +35,6 @@ cdef class Memory:
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
         return self.ptr
-
-    @property
-    def device(self):
-        """Device whose memory the pointer refers to."""
-        return self._device
 
 
 cdef class MemoryPointer:
@@ -54,14 +50,14 @@ cdef class MemoryPointer:
             pointer refers.
 
     Attributes:
+        device (cupy.cuda.Device): Device whose memory the pointer refers to.
         mem (Memory): The device memory buffer.
         ptr (int): Pointer to the place within the buffer.
-
     """
 
     def __init__(self, Memory mem, Py_ssize_t offset):
         self.mem = mem
-        self._device = mem.device
+        self.device = mem.device
         self.ptr = mem.ptr + offset
 
     def __int__(self):
@@ -93,11 +89,6 @@ cdef class MemoryPointer:
     def __isub__(self, Py_ssize_t offset):
         """Subtracts an offset from the pointer in place."""
         return self.__iadd__(-offset)
-
-    @property
-    def device(self):
-        """Device whose memory the pointer refers to."""
-        return self._device
 
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size):
         """Copies a memory sequence from a (possibly different) device.
@@ -285,7 +276,7 @@ cdef class PooledMemory(Memory):
     def __init__(self, Memory mem, pool):
         self.ptr = mem.ptr
         self.size = mem.size
-        self._device = mem._device
+        self.device = mem.device
         self.pool = pool
 
     def __dealloc__(self):
@@ -304,7 +295,7 @@ cdef class PooledMemory(Memory):
             pool.free(self.ptr, self.size)
         self.ptr = 0
         self.size = 0
-        self._device = None
+        self.device = None
         self.pool = None
 
 

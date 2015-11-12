@@ -3,17 +3,17 @@ from cupy.cuda cimport device
 cdef class Memory:
 
     cdef:
-        public Py_ssize_t size
+        public device.Device device
         public size_t ptr
-        device.Device _device
+        public Py_ssize_t size
 
 
 cdef class MemoryPointer:
 
     cdef:
-        public object mem
-        public size_t ptr
-        device.Device _device
+        readonly device.Device device
+        readonly object mem
+        readonly size_t ptr
 
     cpdef copy_from_device(self, MemoryPointer src, Py_ssize_t size)
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size, stream)
@@ -44,8 +44,9 @@ cdef class PooledMemory(Memory):
 cdef class SingleDeviceMemoryPool:
 
     cdef:
+        object _alloc
         dict _in_use
-        object _free, _alloc
+        object _free
         object __weakref__
         object _weakref
 
