@@ -1,3 +1,5 @@
+// This file is a stub header file of cuda for Read the Docs.
+
 #ifndef INCLUDE_GUARD_CUPY_CUDA_H
 #define INCLUDE_GUARD_CUPY_CUDA_H
 
@@ -14,35 +16,23 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 typedef int CUdevice;
-typedef int CUdevice_attribute;
-typedef int CUpointer_attribute;
 typedef int CUresult;
 
 typedef int Device;
-typedef int DeviceAttribute;
-typedef int PointerAttribute;
 typedef int Result;
 
 
-struct CUctx_st {};
 typedef void* CUdeviceptr;
 struct CUevent_st {};
 struct CUfunc_st {};
 struct CUmod_st {};
 struct CUstream_st {};
 
-typedef struct CUctx_st* Context;
 typedef CUdeviceptr Deviceptr;
 typedef struct CUevent_st* Event;
 typedef struct CUfunc_st* Function;
 typedef struct CUmod_st* Module;
 typedef struct CUstream_st* Stream;
-
-
-typedef void (*CUstreamCallback)(
-    Stream hStream, Result status, void* userData);
-
-typedef CUstreamCallback StreamCallback;
 
 
 // Error handling
@@ -51,69 +41,6 @@ int cuGetErrorName(Result error, const char** pStr) {
 }
 
 int cuGetErrorString(Result error, const char** pStr) {
-    return 0;
-}
-
-// Initialization
-int cuInit(unsigned int Flags) {
-    return 0;
-}
-
-
-// Device and context operations
-int cuDriverGetVersion(int* driverVersion) {
-    return 0;
-}
-
-int cuDeviceGet(Device* device, int ordinal) {
-    return 0;
-}
-
-int cuDeviceGetAttribute(int* pi, DeviceAttribute attrib, Device dev) {
-    return 0;
-}
-
-int cuDeviceGetCount(int* count) {
-    return 0;
-}
-
-int cuDeviceTotalMem(size_t* bytes, Device dev) {
-    return 0;
-}
-
-int cuCtxCreate(Context* pctx, unsigned int flags, Device dev) {
-    return 0;
-}
-
-int cuCtxDestroy(Context ctx) {
-    return 0;
-}
-
-int cuCtxGetApiVersion(Context ctx, unsigned int* version) {
-    return 0;
-}
-
-int cuCtxGetCurrent(Context* pctx) {
-    return 0;
-}
-
-int cuCtxGetDevice(Device* device) {
-    return 0;
-}
-
-int cuCtxPopCurrent(Context* pctx) {
-    return 0;
-}
-
-int cuCtxPushCurrent(Context ctx) {
-    return 0;
-}
-
-int cuCtxSetCurrent(Context ctx) {
-    return 0;
-}
-
-int cuCtxSynchronize() {
     return 0;
 }
 
@@ -146,118 +73,6 @@ int cuLaunchKernel(
         unsigned int blockDimY, unsigned int blockDimZ,
         unsigned int sharedMemBytes, Stream hStream,
         void** kernelParams, void** extra) {
-    return 0;
-}
-
-
-// Memory management
-int cuMemAlloc(Deviceptr* dptr, size_t bytesize) {
-    return 0;
-}
-
-int cuMemFree(Deviceptr dptr) {
-    return 0;
-}
-
-int cuMemGetInfo(size_t* free, size_t* total) {
-    return 0;
-}
-
-int cuMemcpy(Deviceptr dst, Deviceptr src, size_t ByteCount) {
-    return 0;
-}
-
-int cuMemcpyAsync(Deviceptr dst, Deviceptr src, size_t ByteCount,
-                  Stream hStream) {
-    return 0;
-}
-
-int cuMemcpyDtoD(Deviceptr dstDevice, Deviceptr srcDevice,
-                 size_t ByteCount) {
-    return 0;
-}
-
-int cuMemcpyDtoDAsync(Deviceptr dstDevice, Deviceptr srcDevice,
-                      size_t ByteCount, Stream hStream) {
-    return 0;
-}
-
-int cuMemcpyDtoH(void* dstHost, Deviceptr srcDevice, size_t ByteCount) {
-    return 0;
-}
-
-int cuMemcpyDtoHAsync(void* dstHost, Deviceptr srcDevice,
-                      size_t ByteCount, Stream hStream) {
-    return 0;
-}
-
-int cuMemcpyHtoD(Deviceptr dstDevice, void* srcHost, size_t ByteCount) {
-    return 0;
-}
-
-int cuMemcpyHtoDAsync(Deviceptr dstDevice, void* srcHost,
-                      size_t ByteCount, Stream hStream) {
-    return 0;
-}
-
-int cuMemcpyPeer(Deviceptr dstDevice, Context dstContext,
-                 Deviceptr srcDevice, Context srcContext,
-                 size_t ByteCount) {
-    return 0;
-}
-
-int cuMemcpyPeerAsync(Deviceptr dstDevice, Context dstContext,
-                      Deviceptr srcDevice, Context srcContext,
-                      size_t ByteCount, Stream hStream) {
-    return 0;
-}
-
-int cuMemsetD32(Deviceptr dstDevice, unsigned int ui, size_t N) {
-    return 0;
-}
-
-int cuMemsetD32Async(Deviceptr dstDevice, unsigned int ui, size_t N,
-                     Stream hStream) {
-    return 0;
-}
-
-int cuPointerGetAttribute(void* data, PointerAttribute attribute,
-                          Deviceptr ptr) {
-    return 0;
-}
-
-
-// Stream and Event
-int cuStreamCreate(Stream* phStream, unsigned int Flags) {
-    return 0;
-}
-
-int cuStreamDestroy(Stream hStream) {
-    return 0;
-}
-
-int cuStreamSynchronize(Stream hStream) {
-    return 0;
-}
-
-int cuStreamAddCallback(Stream hStream, StreamCallback callback,
-                        void* userData, unsigned int flags) {
-    return 0;
-}
-
-int cuEventCreate(Event* phEvent, unsigned int Flags) {
-    return 0;
-}
-
-int cuEventDestroy(Event hEvent) {
-    return 0;
-}
-
-int cuEventRecord(Event hEvent, Stream hStream) {
-    return 0;
-}
-
-int cuEventSynchronize(Event hEvent) {
     return 0;
 }
 

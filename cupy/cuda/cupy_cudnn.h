@@ -1,3 +1,5 @@
+// This file is a stub header file of cudnn for Read the Docs.
+
 #ifndef INCLUDE_GUARD_CUPY_CUDNN_H
 #define INCLUDE_GUARD_CUPY_CUDNN_H
 
