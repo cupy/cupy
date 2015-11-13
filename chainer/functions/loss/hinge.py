@@ -110,6 +110,8 @@ def hinge(x, t, norm='L1'):
             -1 & {\\rm otherwise,}
             \\end{array} \\right.
 
+        and
+
         .. math::
             p = \\left \\{ \\begin{array}{cc}
             1 & {\\rm if~norm} = {\\rm 'L1'} \\\\
@@ -120,8 +122,9 @@ def hinge(x, t, norm='L1'):
         x (~chainer.Variable): Input variable. The shape of ``x`` should be
             (:math:`N`, :math:`K`).
         t (~chainer.Variable): The :math:`N`-dimensional label vector
-            :math:`{\\bf l}` with values :math:`l_n \in [0, 1, 2, \dots, K-1]`.
-            The shape of ``t`` should be (:math:`N`,).
+            :math:`{\\bf l}` with values
+            :math:`l_n \in \{0, 1, 2, \dots, K-1\}`. The shape of ``t`` should
+            be (:math:`N`,).
         norm (string): Specifies norm type. Only either 'L1' or 'L2' is
             acceptable.
 
