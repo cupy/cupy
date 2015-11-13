@@ -35,54 +35,54 @@ cdef extern from "cupy_cuda.h":
         int memoryType
 
     # Error handling
-    const char* cudaGetErrorName(Error error)
-    const char* cudaGetErrorString(Error error)
+    const char* cudaGetErrorName(Error error) nogil
+    const char* cudaGetErrorString(Error error) nogil
 
     # Initialization
-    int cudaDriverGetVersion(int* driverVersion )
+    int cudaDriverGetVersion(int* driverVersion ) nogil
 
     # Device operations
-    int cudaGetDevice(int* device)
-    int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device )
-    int cudaGetDeviceCount(int* count)
-    int cudaSetDevice(int device)
-    int cudaDeviceSynchronize()
+    int cudaGetDevice(int* device) nogil
+    int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device) nogil
+    int cudaGetDeviceCount(int* count) nogil
+    int cudaSetDevice(int device) nogil
+    int cudaDeviceSynchronize() nogil
 
     # Memory management
-    int cudaMalloc(void** devPtr, size_t size)
-    int cudaFree(void* devPtr)
-    int cudaMemGetInfo(size_t* free, size_t* total)
+    int cudaMalloc(void** devPtr, size_t size) nogil
+    int cudaFree(void* devPtr) nogil
+    int cudaMemGetInfo(size_t* free, size_t* total) nogil
     int cudaMemcpy(void* dst, const void* src, size_t count,
-                   MemoryKind kind)
+                   MemoryKind kind) nogil
     int cudaMemcpyAsync(void* dst, const void* src, size_t count,
-                        MemoryKind kind, Stream stream)
+                        MemoryKind kind, Stream stream) nogil
     int cudaMemcpyPeer(void* dst, int dstDevice, const void* src,
-                       int srcDevice, size_t count)
+                       int srcDevice, size_t count) nogil
     int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
-                       int srcDevice, size_t count, Stream stream)
-    int cudaMemset(void* devPtr, int value, size_t count)
+                       int srcDevice, size_t count, Stream stream) nogil
+    int cudaMemset(void* devPtr, int value, size_t count) nogil
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
-                        Stream stream)
+                        Stream stream) nogil
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
-                                 const void* ptr)
+                                 const void* ptr) nogil
 
     # Stream and Event
-    int cudaStreamCreate(Stream* pStream)
-    int cudaStreamCreateWithFlags(Stream* pStream, unsigned int flags)
-    int cudaStreamDestroy(Stream stream)
-    int cudaStreamSynchronize(Stream stream)
+    int cudaStreamCreate(Stream* pStream) nogil
+    int cudaStreamCreateWithFlags(Stream* pStream, unsigned int flags) nogil
+    int cudaStreamDestroy(Stream stream) nogil
+    int cudaStreamSynchronize(Stream stream) nogil
     int cudaStreamAddCallback(Stream stream, StreamCallback callback,
-                              void* userData, unsigned int flags)
-    int cudaStreamQuery(Stream stream)
+                              void* userData, unsigned int flags) nogil
+    int cudaStreamQuery(Stream stream) nogil
     int cudaStreamWaitEvent(Stream stream, Event event,
-                            unsigned int flags)
-    int cudaEventCreate(Event* event)
-    int cudaEventCreateWithFlags(Event* event, unsigned int flags)
-    int cudaEventDestroy(Event event)
-    int cudaEventElapsedTime(float* ms, Event start, Event end)
-    int cudaEventQuery(Event event)
-    int cudaEventRecord(Event event, Stream stream)
-    int cudaEventSynchronize(Event event)
+                            unsigned int flags) nogil
+    int cudaEventCreate(Event* event) nogil
+    int cudaEventCreateWithFlags(Event* event, unsigned int flags) nogil
+    int cudaEventDestroy(Event event) nogil
+    int cudaEventElapsedTime(float* ms, Event start, Event end) nogil
+    int cudaEventQuery(Event event) nogil
+    int cudaEventRecord(Event event, Stream stream) nogil
+    int cudaEventSynchronize(Event event) nogil
 
 
 ###############################################################################
@@ -146,7 +146,8 @@ cpdef setDevice(int device):
 
 
 cpdef deviceSynchronize():
-    status = cudaDeviceSynchronize()
+    with nogil:
+        status = cudaDeviceSynchronize()
     check_status(status)
 
 
@@ -156,13 +157,15 @@ cpdef deviceSynchronize():
 
 cpdef size_t malloc(size_t size) except *:
     cdef void* ptr
-    status = cudaMalloc(&ptr, size)
+    with nogil:
+        status = cudaMalloc(&ptr, size)
     check_status(status)
     return <size_t>ptr
 
 
 cpdef free(size_t ptr):
-    status = cudaFree(<void*>ptr)
+    with nogil:
+        status = cudaFree(<void*>ptr)
     check_status(status)
 
 
@@ -174,7 +177,8 @@ cpdef memGetInfo():
 
 
 cpdef memcpy(size_t dst, size_t src, size_t size, int kind):
-    status = cudaMemcpy(<void*>dst, <void*>src, size, <MemoryKind>kind)
+    with nogil:
+        status = cudaMemcpy(<void*>dst, <void*>src, size, <MemoryKind>kind)
     check_status(status)
 
 
@@ -187,7 +191,9 @@ cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
 
 cpdef memcpyPeer(size_t dst, int dstDevice, size_t src, int srcDevice,
                size_t size):
-    status = cudaMemcpyPeer(<void*>dst, dstDevice, <void*>src, srcDevice, size)
+    with nogil:
+        status = cudaMemcpyPeer(<void*>dst, dstDevice, <void*>src, srcDevice,
+                                size)
     check_status(status)
 
 
@@ -200,7 +206,8 @@ cpdef memcpyPeerAsync(size_t dst, int dstDevice,
 
 
 cpdef memset(size_t ptr, int value, size_t size):
-    status = cudaMemset(<void*>ptr, value, size)
+    with nogil:
+        status = cudaMemset(<void*>ptr, value, size)
     check_status(status)
 
 
@@ -303,5 +310,6 @@ cpdef eventRecord(size_t event, size_t stream):
 
 
 cpdef eventSynchronize(size_t event):
-    status = cudaEventSynchronize(<Event>event)
+    with nogil:
+        status = cudaEventSynchronize(<Event>event)
     check_status(status)
