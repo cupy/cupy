@@ -9,6 +9,7 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
+import cython
 
 
 ###############################################################################
@@ -52,7 +53,8 @@ class CUDADriverError(RuntimeError):
             '%s: %s' % (s_name.decode(), s_msg.decode()))
 
 
-cpdef check_status(int status):
+@cython.profile(False)
+cpdef inline check_status(int status):
     if status != 0:
         raise CUDADriverError(status)
 

@@ -1,4 +1,6 @@
 """Thin wrapper of CUBLAS."""
+import cython
+
 
 ###############################################################################
 # Extern
@@ -95,7 +97,8 @@ class CUBLASError(RuntimeError):
         super(CUBLASError, self).__init__(STATUS[status])
 
 
-cpdef check_status(int status):
+@cython.profile(False)
+cpdef inline check_status(int status):
     if status != 0:
         raise CUBLASError(status)
 

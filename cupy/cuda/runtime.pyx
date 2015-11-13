@@ -9,6 +9,7 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
+import cython
 
 
 cdef class PointerAttributes:
@@ -99,7 +100,8 @@ class CUDARuntimeError(RuntimeError):
             '%s: %s' % (name.decode(), msg.decode()))
 
 
-cpdef check_status(int status):
+@cython.profile(False)
+cpdef inline check_status(int status):
     if status != 0:
         raise CUDARuntimeError(status)
 

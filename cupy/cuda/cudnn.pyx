@@ -1,5 +1,6 @@
 """Thin wrapper of CuDNN."""
 # NOTE: This wrapper does not cover all APIs of CuDNN v2.
+import cython
 
 
 ###############################################################################
@@ -157,7 +158,8 @@ class CuDNNError(RuntimeError):
         super(CuDNNError, self).__init__('%s: %s' % (STATUS[status], msg))
 
 
-cpdef check_status(int status):
+@cython.profile(False)
+cpdef inline check_status(int status):
     if status != 0:
         raise CuDNNError(status)
 

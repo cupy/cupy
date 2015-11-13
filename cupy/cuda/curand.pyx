@@ -1,4 +1,5 @@
 """Thin wrapper of cuRAND."""
+import cython
 
 
 ###############################################################################
@@ -74,7 +75,8 @@ class CURANDError(RuntimeError):
         super(CURANDError, self).__init__(STATUS[status])
 
 
-cpdef check_status(int status):
+@cython.profile(False)
+cpdef inline check_status(int status):
     if status != 0:
         raise CURANDError(status)
 
