@@ -14,14 +14,13 @@ cdef class CArray(cupy.cuda.module.CPointer):
     cdef:
         _CArray val
 
-    def __init__(self, size_t data, Py_ssize_t size, tuple shape,
-                 tuple strides):
-        cdef int i, ndim = len(shape)
-        self.val.data = <void*>data
-        self.val.size = size
+    def __init__(self, ndarray arr):
+        cdef int i, ndim = arr.ndim
+        self.val.data = <void*>arr.data.ptr
+        self.val.size = arr.size
         for i in range(ndim):
-            self.val.shape_and_strides[i] = shape[i]
-            self.val.shape_and_strides[i + ndim] = strides[i]
+            self.val.shape_and_strides[i] = arr._shape[i]
+            self.val.shape_and_strides[i + ndim] = arr._strides[i]
         self.ptr = <void*>&self.val
 
 cdef struct _CIndexer:
@@ -38,12 +37,6 @@ cdef class CIndexer(cupy.cuda.module.CPointer):
         for i in range(len(shape)):
             self.val.shape_and_index[i] = shape[i]
         self.ptr = <void*>&self.val
-
-
-@cython.profile(False)
-cpdef inline CArray to_carray(size_t data, Py_ssize_t size, tuple shape,
-                              tuple strides):
-    return CArray(data, size, shape, strides)
 
 
 @cython.profile(False)

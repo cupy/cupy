@@ -209,10 +209,10 @@ class simple_reduction_function(object):
 
         in_args = [a]
         if out is None:
-            _check_args((a,))
+            a = _preprocess_args((a,))[0]
             out_args = []
         else:
-            _check_args((a, out))
+            a, out = _preprocess_args((a, out))
             out_args = [out]
 
         in_types, out_types, routine = _guess_routine(
@@ -378,8 +378,9 @@ class ReductionKernel(object):
                                  "a positional and keyword argument")
             out_args = [out]
 
-        in_args, broad_shape = _broadcast(args, self.in_params, False)
-        _check_args(in_args + out_args)
+        in_args = _preprocess_args(args[:self.nin])
+        out_args = _preprocess_args(out_args)
+        in_args, broad_shape = _broadcast(in_args, self.in_params, False)
 
         if self.identity is None and 0 in broad_shape:
             raise ValueError(('zero-size array to reduction operation'
