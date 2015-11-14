@@ -41,4 +41,5 @@ def transpose(x, axes=None):
         ~chainer.Variable: Variable whose axes are permuted.
 
     """
+    axes = axes or list(range(len(x.data.shape)))[::-1]
     return Transpose(axes)(x)
