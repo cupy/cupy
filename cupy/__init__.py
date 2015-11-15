@@ -501,8 +501,16 @@ class ndarray(object):
         """
         return take(self, indices, axis, out)
 
+    def repeat(self, repeats, axis=None):
+        """Returns an array with repeated arrays along an axis.
+
+        .. seealso::
+            :func:`cupy.repeat` for full documentation,
+            :meth:`numpy.ndarray.repeat`
+        """
+        return repeat(self, repeats, axis)
+
     # TODO(okuta): Implement put
-    # TODO(okuta): Implement repeat
     # TODO(okuta): Implement choose
     # TODO(okuta): Implement sort
     # TODO(okuta): Implement argsort
@@ -1207,6 +1215,8 @@ dsplit = manipulation.split.dsplit
 hsplit = manipulation.split.hsplit
 split = manipulation.split.split
 vsplit = manipulation.split.vsplit
+
+repeat = manipulation.tiling.repeat
 
 # -----------------------------------------------------------------------------
 # Binary operations
