@@ -31,10 +31,9 @@ def tile(A, reps):
         # have no data there is no risk of an inadvertent overwrite.
         c = cupy.array(A, copy=False, ndmin=d)
     if (d < c.ndim):
-        tup = (1,) * (c.ndim-d) + tup
+        tup = (1,) * (c.ndim - d) + tup
     shape_out = tuple(s * t for s, t in zip(c.shape, tup))
-    n = c.size
-    if n == 0:
+    if c.size == 0:
         return cupy.empty(shape_out, dtype=c.dtype)
     c_shape = []
     ret_shape = []
