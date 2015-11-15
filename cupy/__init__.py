@@ -1216,6 +1216,7 @@ hsplit = manipulation.split.hsplit
 split = manipulation.split.split
 vsplit = manipulation.split.vsplit
 
+tile = manipulation.tiling.tile
 repeat = manipulation.tiling.repeat
 
 # -----------------------------------------------------------------------------
