@@ -42,8 +42,14 @@ class TestRepeatFailure(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'reps': 0},
+    {'reps': 1},
     {'reps': 2},
+    {'reps': -1},
+    {'reps': (0, 1)},
+    {'reps': (-1, -2)},
     {'reps': (2, 3)},
+    {'reps': (2, 3, 4, 5)},
 )
 @testing.gpu
 class TestTile(unittest.TestCase):

@@ -50,7 +50,8 @@ def tile(A, reps):
             ret_shape.append(nrep)
             ret_shape.append(dim_in)
     ret = cupy.empty(ret_shape, dtype=c.dtype)
-    ret[...] = c.reshape(c_shape)
+    if ret.size:
+        ret[...] = c.reshape(c_shape)
     return ret.reshape(shape_out)
 
 
