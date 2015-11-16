@@ -431,6 +431,8 @@ class ndarray(object):
         """
         if len(axes) == 1 and isinstance(axes[0], collections.Sequence):
             axes = axes[0]
+        if axes == (None,):
+            axes = axes[0]
         return transpose(self, axes)
 
     def swapaxes(self, axis1, axis2):
