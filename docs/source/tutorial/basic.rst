@@ -47,6 +47,7 @@ We will review such amenities in later sections of this tutorial.
    In example codes of this tutorial, we assume for simplicity that the following symbols are already imported::
 
      import numpy as np
+     import chainer
      from chainer import cuda, Function, gradient_check, Variable, optimizers, serializers, utils
      from chainer import Link, Chain, ChainList
      import chainer.functions as F
