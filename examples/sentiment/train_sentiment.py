@@ -9,6 +9,7 @@ This is Socher's simple recursive model, not RTNN:
 """
 
 import argparse
+import codecs
 import collections
 import random
 import re
@@ -79,7 +80,7 @@ def convert_tree(vocab, exp):
 
 
 def read_corpus(path, vocab):
-    with open(path) as f:
+    with codecs.open(path, encoding='utf-8') as f:
         trees = []
         for line in f:
             line = line.strip()
