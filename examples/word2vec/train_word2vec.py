@@ -102,7 +102,7 @@ def calculate_loss(model, dataset, position):
     pos = [position + o for o in range(-w, w + 1) if o != 0]
     d = xp.asarray(np.take(dataset, pos))
     context = chainer.Variable(d)
-    x_data = xp.asarray(dataset[position])
+    x_data = xp.asarray(np.take(dataset, position))
     x = chainer.Variable(x_data)
     return model(x, context)
 
