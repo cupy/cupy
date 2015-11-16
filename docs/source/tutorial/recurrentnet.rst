@@ -42,7 +42,7 @@ Then, call on this instance ``l(x)`` executes *one step of LSTM layer*:
 .. doctest::
 
    >>> l.reset_state()
-   >>> x = Variable(np.random.randn((10, 100)).astype(np.float32))
+   >>> x = Variable(np.random.randn(10, 100).astype(np.float32))
    >>> y = l(x)
 
 Do not forget to reset the internal state of the LSTM layer before the forward computation!
@@ -52,7 +52,7 @@ Then, the next input can be direclty fed to the LSTM instance:
 
 .. doctest::
 
-   >>> x2 = Variable(np.random.randn((10, 100)).astype(np.float32))
+   >>> x2 = Variable(np.random.randn(10, 100).astype(np.float32))
    >>> y2 = l(x2)
 
 Based on this LSTM link, let's write our recurrent network as a new chain:
