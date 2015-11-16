@@ -1,10 +1,10 @@
-from chainer import function_set
 from chainer.functions.activation import sigmoid
 from chainer.functions.activation import tanh
-from chainer.functions.connection import linear
+from chainer import link
+from chainer.links.connection import linear
 
 
-class GRU(function_set.FunctionSet):
+class GRU(link.Chain):
 
     """Gated Recurrent Unit function (GRU).
 
