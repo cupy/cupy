@@ -14,3 +14,8 @@ script:
   - flake8 chainer cupy tests examples --exclude=libcudnn.py,caffe_pb2.py
 
 sudo: false
+
+addons:
+  apt:
+    packages:
+      - libhdf5-dev
