@@ -27,7 +27,7 @@ class Transpose(function.Function):
         inv_axes = self.axes
         if self.axes:
             axes = tuple(ax % len(self.axes) for ax in self.axes)
-            inv_axes = tuple(numpy.argsort(axes)) 
+            inv_axes = tuple(numpy.argsort(axes))
         gx = gy.transpose(inv_axes)
         return gx,
 
