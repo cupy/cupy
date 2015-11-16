@@ -19,7 +19,7 @@ class SplitAxis(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        type_check.expect(in_types[0].ndim >= self.axis)
+        type_check.expect(in_types[0].ndim > self.axis)
 
         if isinstance(self.indices_or_sections, collections.Iterable):
             max_index = type_check.Variable(
