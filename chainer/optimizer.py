@@ -203,6 +203,11 @@ class Optimizer(object):
                 used by default.
 
         """
+        if not callable(hook):
+            raise TypeError('hook function is not callable')
+        if not hasattr(self, '_hooks'):
+            raise RuntimeError('call `setup` method before `add_hook` method')
+
         if name is None:
             name = hook.name
         if name in self._hooks:

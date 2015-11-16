@@ -36,6 +36,44 @@ class TestOptimizerUtility(unittest.TestCase):
         self.assertAlmostEqual(optimizer._sqnorm(a), 4)
 
 
+class TestOptimizerHook(unittest.TestCase):
+
+    def setUp(self):
+        self.optimizer = optimizer.Optimizer()
+        self.target = SimpleLink(
+            np.arange(6, dtype=np.float32).reshape(2, 3),
+            np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3))
+
+    def test_add_hook(self):
+        h1 = mock.MagicMock()
+        self.optimizer.setup(self.target)
+        self.optimizer.add_hook(h1, 'h1')
+        self.optimizer.call_hooks()
+        h1.assert_called_with(self.optimizer)
+
+    def test_remove_hook(self):
+        h1 = mock.MagicMock()
+        self.optimizer.setup(self.target)
+        self.optimizer.add_hook(h1, 'h1')
+        self.optimizer.remove_hook('h1')
+        self.optimizer.call_hooks()
+        self.assertFalse(h1.called)
+
+    def test_duplicated_hook(self):
+        self.optimizer.setup(self.target)
+        self.optimizer.add_hook(lambda s: None, 'h1')
+        with self.assertRaises(KeyError):
+            self.optimizer.add_hook(lambda s: None, 'h1')
+
+    def test_invalid_hook(self):
+        with self.assertRaises(TypeError):
+            self.optimizer.add_hook(1)
+
+    def test_add_hook_before_setup(self):
+        with self.assertRaises(RuntimeError):
+            self.optimizer.add_hook(lambda s: None, 'h1')
+
+
 class SimpleLink(chainer.Link):
 
     def __init__(self, w, g):

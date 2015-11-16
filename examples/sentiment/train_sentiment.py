@@ -172,7 +172,7 @@ if args.gpu >= 0:
 # Setup optimizer
 optimizer = optimizers.AdaGrad(lr=0.1)
 optimizer.setup(model)
-optimizer.add_hook('WeightDecay', optimizer.WeightDecay(0.0001))
+optimizer.add_hook(chainer.optimizer.WeightDecay(0.0001))
 
 accum_loss = 0
 count = 0
