@@ -12,3 +12,5 @@ install:
 script:
   - nosetests -a '!gpu' tests/chainer_tests
   - flake8 chainer cupy tests examples --exclude=libcudnn.py,caffe_pb2.py
+
+sudo: false
