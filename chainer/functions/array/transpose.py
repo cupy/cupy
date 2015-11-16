@@ -9,8 +9,6 @@ class Transpose(function.Function):
 
     def __init__(self, axes=None):
         self.axes = axes
-        if axes:
-            self.axes = tuple(ax % len(axes) for ax in axes)
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1,)
@@ -21,14 +19,15 @@ class Transpose(function.Function):
 
     def forward(self, inputs):
         x = inputs[0]
-        if not self.axes:
-            self.axes = list(range(len(x.data.shape)))[::-1]
         y = x.transpose(self.axes)
         return y,
 
     def backward(self, inputs, grad_outputs):
         gy = grad_outputs[0]
-        inv_axes = tuple(numpy.argsort(self.axes))
+        inv_axes = self.axes
+        if self.axes:
+            axes = tuple(ax % len(self.axes) for ax in self.axes)
+            inv_axes = tuple(numpy.argsort(axes)) 
         gx = gy.transpose(inv_axes)
         return gx,
 

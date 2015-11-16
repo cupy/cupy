@@ -52,4 +52,12 @@ class TestTranspose(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
+class TestTransposeNoneAxes(TestTranspose):
+    axes = None
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (4, 3, 2))
+        self.gy = numpy.random.uniform(-1, 1, (2, 3, 4))
+
+
 testing.run_module(__name__, __file__)
