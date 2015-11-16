@@ -30,7 +30,7 @@ class LSTM(link.Chain):
     def __init__(self, in_size, out_size):
         super(LSTM, self).__init__(
             upward=linear.Linear(in_size, 4 * out_size),
-            lateral=linear.Linear(in_size, 4 * out_size, nobias=True),
+            lateral=linear.Linear(out_size, 4 * out_size, nobias=True),
         )
         self.state_size = out_size
         self.reset_state()
