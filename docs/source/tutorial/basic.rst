@@ -448,7 +448,7 @@ So instead of using the above example, we will use this predefined Classifier ch
    >>> optimizer = optimizers.SGD()
    >>> optimizer.setup(model)
 
-Finally, we can write a leraning loop as following:
+Finally, we can write a learning loop as following:
 
 .. testcode::
    :hide:
