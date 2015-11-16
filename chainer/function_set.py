@@ -1,37 +1,53 @@
 import numpy
-import six
 import warnings
 
 from chainer import cuda
-from chainer import function
+from chainer import link
 
 
-class FunctionSet(object):
+class FunctionSet(link.Chain):
 
-    """Set of objects with ``parameters`` and ``gradients`` properties.
+    """Set of links (as "parameterized functions").
 
-    :class:`FunctionSet` is useful to collect parameters and gradients of
-    multiple parameterized :class:`Function` objects. :class:`FunctionSet`
-    itself also implements :attr:`~FunctionSet.parameters` and
-    :attr:`~FunctionSet.gradients`, so it can be nested in another
-    :class:`FunctionSet` object.
+    FunctionSet is a subclass of :class:`~chainer.Chain`. Function
+    registration is done just by adding an attribute to :class:`
+    object.
 
-    Function registration is done by just adding an attribute to
-    :class:`FunctionSet` object.
+    .. deprecated:: v1.5
+       Use :class:`~chainer.Chain` instead.
+
+       .. note::
+          FunctionSet was used for manipulation of one or more parameterized
+          functions. The concept of parameterized function is gone, and it has
+          been replaced by :class:`~chainer.Link` and :class:`~chainer.Chain`.
 
     """
+    def __init__(self, **links):
+        super(FunctionSet, self).__init__(**links)
+        warnings.warn('FunctionSet is deprecated. Use Chain instead.',
+                      DeprecationWarning)
 
-    def __init__(self, **functions):
-        """Initializes the function set by given functions.
-
-        Args:
-            **functions: ``dict`` of ``str`` key and :class:`Function` values.
-                The key-value pairs are just set to the :class:`FunctionSet`
-                object as attributes.
-
-        """
-        for name, func in six.iteritems(functions):
-            setattr(self, name, func)
+    def __setattr__(self, key, value):
+        d = self.__dict__
+        if isinstance(value, link.Link):
+            # we cannot use add_link here since add_link calls setattr, and we
+            # should allow overwriting for backward compatibility
+            if value.name is not None:
+                raise ValueError(
+                    'given link is already registered to another chain by name'
+                    ' %s' % value.name)
+            if key in d:
+                d[key].name = None
+                del d[key]
+            else:
+                d['_children'].append(key)
+            value.name = key
+        # deal with properties
+        prop = getattr(self.__class__, key, None)
+        if isinstance(prop, property) and prop.fset is not None:
+            prop.fset(self, value)
+        else:
+            super(FunctionSet, self).__setattr__(key, value)
 
     def collect_parameters(self):
         """Returns a tuple of parameters and gradients.
@@ -41,60 +57,27 @@ class FunctionSet(object):
             parameter arrays, and the second is a tuple of gradient arrays.
 
         """
-
         msg = ("'collect_parameters' is deprecated. "
                "You can pass FunctionSet itself to 'optimizer.setup'")
         warnings.warn(msg, FutureWarning)
         return self
 
     def __getitem__(self, key):
-        """Returns the :class:`Function` objects by name.
+        """Returns an attribute by name.
 
         Args:
-            key (str): Name of the function.
+            key (str): Name of the attribute.
 
         Returns:
-            ~chainer.Function: Function object.
+            Attribute.
 
         .. admonition:: Example
 
-           >>> model = FunctionSet(l1=F.Linear(10, 10), l2=F.Linear(10, 10))
-           >>> l1 = model['l1']
-        """
+           >>> model = FunctionSet(l1=L.Linear(10, 10), l2=L.Linear(10, 10))
+           >>> l1 = model['l1']  # equivalent to l1 = model.l1
 
+        """
         return getattr(self, key)
-
-    def to_gpu(self, device=None):
-        """Migrates all parameters and gradients onto GPU.
-
-        This method calls ``to_gpu`` method of each registered object.
-
-        Args:
-            device (int or :class:`cupy.cuda.Device` or ``None``): Device
-                ID of GPU. If ``None`` is given, it uses the current device.
-
-        Returns:
-            self
-
-        """
-        for func in six.itervalues(self.__dict__):
-            if isinstance(func, (function.Function, FunctionSet)):
-                func.to_gpu(device=device)
-        return self
-
-    def to_cpu(self):
-        """Migrates all parameters and gradients onto CPU.
-
-        This method calls ``to_cpu`` method of each registered object.
-
-        Returns:
-            self
-
-        """
-        for func in six.itervalues(self.__dict__):
-            if isinstance(func, (function.Function, FunctionSet)):
-                func.to_cpu()
-        return self
 
     def copy_parameters_from(self, params):
         """Copies parameters from another source without reallocation.
@@ -118,24 +101,16 @@ class FunctionSet(object):
     def parameters(self):
         """Tuple of parameter arrays of all registered functions.
 
-        The order of parameters is consistent with :meth:`gradients` property.
+        The order of parameters is consistent with :meth:`parameters` property.
 
         """
-        return sum((func.parameters for _, func in self._get_sorted_funcs()),
-                   ())
+        return tuple(param.data for param in self.params())
 
     @parameters.setter
     def parameters(self, params):
-        funcs = self._get_sorted_funcs()
-
-        expected_params_size = sum(len(func.parameters) for _, func in funcs)
-        assert expected_params_size == len(params)
-
-        idx = 0
-        for _, func in funcs:
-            param_size = len(func.parameters)
-            func.parameters = params[idx: idx + param_size]
-            idx += param_size
+        assert len(params) == len([_ for _ in self.params()])
+        for dst, src in zip(self.params(), params):
+            dst.data = src
 
     @property
     def gradients(self):
@@ -144,23 +119,10 @@ class FunctionSet(object):
         The order of gradients is consistent with :meth:`parameters` property.
 
         """
-        return sum((func.gradients for _, func in self._get_sorted_funcs()),
-                   ())
+        return tuple(param.grad for param in self.params())
 
     @gradients.setter
     def gradients(self, grads):
-        funcs = self._get_sorted_funcs()
-
-        expected_grads_size = sum(len(func.gradients) for _, func in funcs)
-        assert expected_grads_size == len(grads)
-
-        idx = 0
-        for _, func in funcs:
-            grad_size = len(func.gradients)
-            func.gradients = grads[idx: idx + grad_size]
-            idx += grad_size
-
-    def _get_sorted_funcs(self):
-        return sorted(
-            [func_tuple for func_tuple in six.iteritems(self.__dict__)
-             if isinstance(func_tuple[1], (function.Function, FunctionSet))])
+        assert len(grads) == len([_ for _ in self.params()])
+        for dst, src in zip(self.params(), grads):
+            dst.grad = src

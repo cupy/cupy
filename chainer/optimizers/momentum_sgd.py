@@ -1,10 +1,8 @@
-import numpy
-
 from chainer import cuda
 from chainer import optimizer
 
 
-class MomentumSGD(optimizer.Optimizer):
+class MomentumSGD(optimizer.GradientMethod):
 
     """Classical momentum SGD."""
 
@@ -12,22 +10,21 @@ class MomentumSGD(optimizer.Optimizer):
         self.lr = lr
         self.momentum = momentum
 
-    def init_state_cpu(self, param, grad):
-        return numpy.zeros_like(param)
+    def init_state(self, param, state):
+        xp = cuda.get_array_module(param.data)
+        state['v'] = xp.zeros_like(param.data)
 
-    def init_state_gpu(self, param, grad):
-        return cuda.zeros_like(param)
-
-    def update_one_cpu(self, param, grad, v):
+    def update_one_cpu(self, param, state):
+        v = state['v']
         v *= self.momentum
-        v -= self.lr * grad
-        param += v
+        v -= self.lr * param.grad
+        param.data += v
 
-    def update_one_gpu(self, param, grad, v):
+    def update_one_gpu(self, param, state):
         cuda.elementwise(
             'T grad, T lr, T momentum',
             'T param, T v',
             '''v = momentum * v - lr * grad;
                param += v;''',
-            'momentum_sgd')(grad, self.lr, self.momentum,
-                            param, v)
+            'momentum_sgd')(param.grad, self.lr, self.momentum,
+                            param.data, state['v'])

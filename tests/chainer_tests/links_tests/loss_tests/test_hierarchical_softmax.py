@@ -5,8 +5,8 @@ import numpy
 
 import chainer
 from chainer import cuda
-from chainer import functions
 from chainer import gradient_check
+from chainer import links
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
@@ -16,16 +16,16 @@ class TestHuffmanTree(unittest.TestCase):
 
     def test_empty(self):
         with self.assertRaises(ValueError):
-            functions.BinaryHierarchicalSoftmax.create_huffman_tree({})
+            links.BinaryHierarchicalSoftmax.create_huffman_tree({})
 
     def test_simple(self):
-        tree = functions.BinaryHierarchicalSoftmax.create_huffman_tree(
+        tree = links.BinaryHierarchicalSoftmax.create_huffman_tree(
             {'x': 8, 'y': 6, 'z': 5, 'w': 4, 'v': 3})
         expect = (('z', 'y'), (('v', 'w'), 'x'))
         self.assertEqual(expect, tree)
 
     def test_same_count(self):
-        tree = functions.BinaryHierarchicalSoftmax.create_huffman_tree(
+        tree = links.BinaryHierarchicalSoftmax.create_huffman_tree(
             {'x': 1, 'y': 2, 'z': 3})
         # Order of the same items are not defined.
         self.assertTrue((('x', 'y'), 'z') == tree or
@@ -36,13 +36,13 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
 
     def setUp(self):
         tree = ((0, 1), ((2, 3), 4))
-        self.func = functions.BinaryHierarchicalSoftmax(3, tree)
-        self.func.gW.fill(0)
+        self.link = links.BinaryHierarchicalSoftmax(3, tree)
+        self.link.zerograds()
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
         self.t = numpy.array([0, 2]).astype(numpy.int32)
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
 
-        self.W = self.func.W.copy()
+        self.W = self.link.W.data.copy()
 
     def check_sum(self, x, gpu=False):
         total = 0
@@ -50,7 +50,7 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
             t = numpy.array([i], dtype=numpy.int32)
             if gpu:
                 t = cuda.to_gpu(t)
-            loss, = self.func.forward((x, t))
+            loss = self.link(chainer.Variable(x), chainer.Variable(t)).data
             self.assertEqual(loss.dtype, numpy.float32)
             self.assertEqual(loss.shape, ())
             total += numpy.exp(-cuda.to_cpu(loss))
@@ -65,37 +65,33 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
     @condition.retry(3)
     def test_sum_gpu(self):
         x = numpy.array([[1.0, 2.0, 3.0]], numpy.float32)
-        self.func.to_gpu()
+        self.link.to_gpu()
         self.check_sum(cuda.to_gpu(x), gpu=True)
 
     @attr.gpu
     def test_forward(self):
         # TODO(unno): We need to test return values of forward function.
-        cpu_loss, = self.func.forward((self.x, self.t))
-        self.func.to_gpu()
-        gpu_loss, = self.func.forward((cuda.to_gpu(self.x),
-                                       cuda.to_gpu(self.t)))
+        cpu_loss = self.link(chainer.Variable(self.x),
+                             chainer.Variable(self.t)).data
+        self.link.to_gpu()
+        gpu_loss = self.link(chainer.Variable(cuda.to_gpu(self.x)),
+                             chainer.Variable(cuda.to_gpu(self.t))).data
         gradient_check.assert_allclose(
             cpu_loss, cuda.to_cpu(gpu_loss))
 
     def check_backward(self, x_data, t_data, y_grad):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
-        y = self.func(x, t)
+        y = self.link(x, t)
         y.grad = y_grad
         y.backward()
 
-        func = y.creator
-        f = lambda: func.forward((x.data, t.data))
+        f = lambda: (self.link(x, t).data,)
         gx, _, gW = gradient_check.numerical_grad(
-            f, (x.data, t.data, func.W), (y.grad,), eps=1e-2)
+            f, (x.data, t.data, self.link.W.data), (y.grad,), eps=1e-2)
 
-        gradient_check.assert_allclose(cuda.to_cpu(gx),
-                                       cuda.to_cpu(x.grad),
-                                       atol=1e-04)
-        gradient_check.assert_allclose(cuda.to_cpu(gW),
-                                       cuda.to_cpu(func.gW),
-                                       atol=1e-04)
+        gradient_check.assert_allclose(gx, x.grad, atol=1e-4)
+        gradient_check.assert_allclose(gW, self.link.W.grad, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -104,20 +100,21 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.func.to_gpu()
+        self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x),
                             cuda.to_gpu(self.t),
                             cuda.to_gpu(self.gy))
 
     @attr.gpu
     def test_to_cpu(self):
-        f = copy.deepcopy(self.func)
-        self.func.to_gpu()
-        self.func.to_cpu()
+        f = copy.deepcopy(self.link)._func
+        self.link.to_gpu()
+        self.link.to_cpu()
+        g = self.link._func
 
-        self.assertTrue((f.begins == self.func.begins).all())
-        self.assertTrue((f.paths == self.func.paths).all())
-        self.assertTrue((f.codes == self.func.codes).all())
+        self.assertTrue((f.begins == g.begins).all())
+        self.assertTrue((f.paths == g.paths).all())
+        self.assertTrue((f.codes == g.codes).all())
 
 
 testing.run_module(__name__, __file__)

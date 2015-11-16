@@ -23,6 +23,7 @@ import cupy.random
 from cupy import reduction
 from cupy import sorting
 from cupy import statistics
+from cupy import testing  # NOQA
 from cupy import util
 
 random = cupy.random
