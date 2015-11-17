@@ -50,9 +50,9 @@ class TestContrastive(unittest.TestCase):
 
     def test_negative_margin(self):
         self.margin = -1
-        self.assertRaises(Exception, self.check_forward,
+        self.assertRaises(ValueError, self.check_forward,
                           self.x0, self.x1, self.t)
-        self.assertRaises(Exception, self.check_backward,
+        self.assertRaises(ValueError, self.check_backward,
                           self.x0, self.x1, self.t)
 
     @condition.retry(3)

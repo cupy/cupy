@@ -11,7 +11,7 @@ class Contrastive(function.Function):
 
     def __init__(self, margin):
         if margin <= 0:
-            raise Exception("margin should be positive value.")
+            raise ValueError("margin should be positive value.")
         self.margin = margin
 
     def check_type_forward(self, in_types):
