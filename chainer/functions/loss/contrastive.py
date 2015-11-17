@@ -10,7 +10,9 @@ class Contrastive(function.Function):
     """Contrastive loss function."""
 
     def __init__(self, margin):
-        self.margin = float(margin)
+        if margin < 0:
+            raise Exception("margin should be positive value.")
+        self.margin = margin
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 3)
@@ -87,7 +89,8 @@ def contrastive(x0, x1, y, margin=1):
             the same as x0.
         y (~chainer.Variable): Labels. All values should be 0 or 1. The shape
             should be (N,), where N denotes the minibatch size.
-        margin (int): A parameter for contrastive loss.
+        margin (float): A parameter for contrastive loss. It should be positive
+            value.
 
     Returns:
         ~chainer.Varible: A variable holding a scalar that is the loss value
