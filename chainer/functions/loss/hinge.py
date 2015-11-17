@@ -37,7 +37,7 @@ class Hinge(function.Function):
         self.bottom_diff = numpy.maximum(0, 1 + self.bottom_diff)
         loss = 0
         if self.norm == 'L1':
-            loss = numpy.sum(numpy.abs(self.bottom_diff)) / num
+            loss = numpy.sum(self.bottom_diff) / num
         elif self.norm == 'L2':
             loss = numpy.sum(self.bottom_diff ** 2) / num
         else:
