@@ -65,8 +65,8 @@ class TestContrastive(unittest.TestCase):
         gx0, = gradient_check.numerical_grad(f, (x0.data,), (1,))
         gx1, = gradient_check.numerical_grad(f, (x1.data,), (1,))
 
-        gradient_check.assert_allclose(gx0, x0.grad)
-        gradient_check.assert_allclose(gx1, x1.grad)
+        gradient_check.assert_allclose(gx0, x0.grad, rtol=1e-4, atol=1e-4)
+        gradient_check.assert_allclose(gx1, x1.grad, rtol=1e-4, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
