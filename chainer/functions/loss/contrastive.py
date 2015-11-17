@@ -10,7 +10,7 @@ class Contrastive(function.Function):
     """Contrastive loss function."""
 
     def __init__(self, margin):
-        if margin < 0:
+        if margin <= 0:
             raise Exception("margin should be positive value.")
         self.margin = margin
 

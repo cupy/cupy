@@ -15,7 +15,7 @@ from chainer.testing import condition
 
 @testing.parameterize(
     *testing.product({
-        'batchsize': [5, 10], 'input_dim': [2, 3], 'margin': [-1, 2]
+        'batchsize': [5, 10], 'input_dim': [2, 3], 'margin': [1, 2]
     })
 )
 class TestContrastive(unittest.TestCase):
