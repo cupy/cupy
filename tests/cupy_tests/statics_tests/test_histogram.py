@@ -5,8 +5,8 @@ import numpy
 from cupy import testing
 
 
-# Note that numpy.bincount does not support uint64 as it casts an input array to
-# int64.
+# Note that numpy.bincount does not support uint64 as it casts an input array
+# to int64.
 _except_uint64 = (
     numpy.float16, numpy.float32, numpy.float64,
     numpy.int8, numpy.int16, numpy.int32, numpy.int64,
