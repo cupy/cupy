@@ -92,6 +92,8 @@ def get_path(key):
 def check_include(dirs, file_path):
     return any(path.exists(path.join(dir, file_path)) for dir in dirs)
 
+def check_readthedocs_environment():
+    return os.environ.get('READTHEDOCS', None) == 'True'
 
 def make_extensions(options):
 
@@ -158,8 +160,7 @@ def parse_args():
     _arg_options['no_cuda'] = '--cupy-no-cuda' in sys.argv
     if _arg_options['no_cuda']:
         sys.argv.remove('--cupy-no-cuda')
-    on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-    if on_rtd:
+    if check_readthedocs_environment():
         _arg_options['no_cuda'] = True
 
 
@@ -198,6 +199,6 @@ class chainer_install(install.install):
         install.install.run(self)
 
         # Hack for Read the Docs
-        if os.environ.get('READTHEDOCS', None):
+        if check_readthedocs_environment():
             print('Executing develop command for Read the Docs')
             self.run_command('develop')
