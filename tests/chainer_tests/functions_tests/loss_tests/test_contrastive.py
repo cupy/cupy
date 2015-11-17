@@ -38,7 +38,7 @@ class TestContrastive(unittest.TestCase):
             if td == 1:  # similar pair
                 loss_expect += d
             elif td == 0:  # dissimilar pair
-                loss_expect += max(1 - math.sqrt(d), 0) ** 2
+                loss_expect += max(self.margin - math.sqrt(d), 0) ** 2
         loss_expect /= 2.0 * self.t.shape[0]
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
