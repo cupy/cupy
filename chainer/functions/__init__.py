@@ -108,6 +108,7 @@ Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 
 bernoulli_nll = vae.bernoulli_nll
+BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 Contrastive = contrastive.Contrastive
 contrastive = contrastive.contrastive
 CrossCovariance = cross_covariance.CrossCovariance
