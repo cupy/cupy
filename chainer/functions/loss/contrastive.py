@@ -22,6 +22,7 @@ class Contrastive(function.Function):
             y_type.dtype == numpy.int32,
             x0_type.shape == x1_type.shape,
             x1_type.shape[0] == y_type.shape[0],
+            x1_type.shape[0] > 0,
             x0_type.ndim == 2,
             x1_type.ndim == 2,
             y_type.ndim == 1
