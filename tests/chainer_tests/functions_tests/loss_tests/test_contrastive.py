@@ -24,7 +24,8 @@ class TestContrastive(unittest.TestCase):
         x_shape = (self.batchsize, self.input_dim)
         self.x0 = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
         self.x1 = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
-        self.t = numpy.random.randint(0, 2, (self.batchsize,)).astype(numpy.int32)
+        self.t = numpy.random.randint(
+            0, 2, (self.batchsize,)).astype(numpy.int32)
 
     def check_forward(self, x0_data, x1_data, t_data):
         x0_val = chainer.Variable(x0_data)
