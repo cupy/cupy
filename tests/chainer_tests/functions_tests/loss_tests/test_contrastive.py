@@ -16,8 +16,8 @@ from chainer.testing import condition
 class TestContrastive(unittest.TestCase):
 
     def setUp(self):
-        self.x0 = numpy.random.uniform(-1, 1, (5, 2)).astype(numpy.float32)
-        self.x1 = numpy.random.uniform(-1, 1, (5, 2)).astype(numpy.float32)
+        self.x0 = numpy.random.uniform(-1, 1, (5, 3)).astype(numpy.float32)
+        self.x1 = numpy.random.uniform(-1, 1, (5, 3)).astype(numpy.float32)
         self.t = numpy.random.randint(0, 2, (5,)).astype(numpy.int32)
         self.margin = 1
 

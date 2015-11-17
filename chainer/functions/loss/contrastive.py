@@ -47,15 +47,15 @@ class Contrastive(function.Function):
         xp = cuda.get_array_module(*inputs)
         x0, x1, y = inputs
 
-        y = xp.vstack((y, y)).T
+        y = xp.repeat(y[:, xp.newaxis], x0.shape[1], axis=1)
         alpha = gy[0] / y.shape[0]
-        dist = xp.vstack((self.dist, self.dist)).T
+        dist = xp.repeat(self.dist[:, xp.newaxis], x0.shape[1], axis=1)
         # similar pair
         gx0 = alpha * y * self.diff
         # dissimilar pair
-        mdist = xp.vstack((self.mdist, self.mdist)).T
+        mdist = xp.repeat(self.mdist[:, xp.newaxis], x0.shape[1], axis=1)
         mdist_p = xp.array(self.mdist > 0, dtype=xp.int32)
-        mdist_p = xp.vstack((mdist_p, mdist_p)).T
+        mdist_p = xp.repeat(mdist_p[:, xp.newaxis], x0.shape[1], axis=1)
         gx0 += alpha * (1 - y) * mdist_p * mdist * -(self.diff / dist)
         gx0 = gx0.astype(xp.float32)
 

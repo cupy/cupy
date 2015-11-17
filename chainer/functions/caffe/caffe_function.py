@@ -5,7 +5,6 @@ import warnings
 import numpy
 import six
 
-from chainer import function
 from chainer import function_set
 from chainer import functions
 # caffe_pb2 does not support Py3
@@ -34,16 +33,17 @@ else:
     available = False
 
 
-class CaffeFunction(function.Function):
-    """Function using the model file of Caffe.
+class CaffeFunction(object):
 
-    Given a binary protobuf file of a Caffe model, this function loads and
+    """Caffe emulator based on the model file of Caffe.
+
+    Given a binary protobuf file of a Caffe model, this class loads and
     emulates it on :class:`~chainer.Variable` objects. It supports the official
     reference models provided by BVLC.
 
     .. note::
 
-       This function only supports Python 2.7, since the compiled module for
+       This class only supports Python 2.7, since the compiled module for
        protocol buffers only supports Python 2. The ``__init__`` function
        raises an exception in Python 3.
 

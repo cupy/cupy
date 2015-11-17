@@ -52,3 +52,10 @@ Splitting arrays along axis
 .. autofunction:: cupy.vsplit
 .. autofunction:: cupy.hsplit
 .. autofunction:: cupy.dsplit
+
+
+Repeating part of arrays along axis
+===================================
+
+.. autofunction:: cupy.tile
+.. autofunction:: cupy.repeat

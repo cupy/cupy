@@ -4,8 +4,8 @@ import numpy
 
 import chainer
 from chainer import cuda
-from chainer import functions
 from chainer import gradient_check
+from chainer import links
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
@@ -14,12 +14,12 @@ from chainer.testing import condition
 class TestPReLUSingle(unittest.TestCase):
 
     def setUp(self):
-        self.func = functions.PReLU()
-        self.func.W = numpy.random.uniform(
-            -1, 1, self.func.W.shape).astype(numpy.float32)
-        self.func.gW.fill(0)
+        self.link = links.PReLU()
+        W = self.link.W.data
+        W[...] = numpy.random.uniform(-1, 1, W.shape)
+        self.link.zerograds()
 
-        self.W = self.func.W.copy()  # fixed on CPU
+        self.W = W.copy()  # fixed on CPU
 
         # Avoid unstability of numerical gradient
         self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
@@ -30,7 +30,7 @@ class TestPReLUSingle(unittest.TestCase):
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = self.func(x)
+        y = self.link(x)
         self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = self.x.copy()
@@ -47,21 +47,22 @@ class TestPReLUSingle(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
-        self.func.to_gpu()
+        self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
         x = chainer.Variable(x_data)
-        y = self.func(x)
+        y = self.link(x)
         y.grad = y_grad
         y.backward()
 
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, gW = gradient_check.numerical_grad(f, (x.data, func.W), (y.grad,))
+        W = self.link.W
+        link = self.link
+        f = lambda: (link(x).data,)
+        gx, gW = gradient_check.numerical_grad(f, (x.data, W.data), (y.grad,))
 
         gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gW, func.gW, atol=1e-4)
+        gradient_check.assert_allclose(gW, W.grad, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -70,19 +71,19 @@ class TestPReLUSingle(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.func.to_gpu()
+        self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
 class TestPReLUMulti(TestPReLUSingle):
 
     def setUp(self):
-        self.func = functions.PReLU(shape=(3,))
-        self.func.W = numpy.random.uniform(
-            -1, 1, self.func.W.shape).astype(numpy.float32)
-        self.func.gW.fill(0)
+        self.link = links.PReLU(shape=(3,))
+        W = self.link.W.data
+        W[...] = numpy.random.uniform(-1, 1, W.shape)
+        self.link.zerograds()
 
-        self.W = self.func.W.copy()  # fixed on CPU
+        self.W = W.copy()  # fixed on CPU
 
         # Avoid unstability of numerical gradient
         self.x = numpy.random.uniform(.5, 1, (4, 3, 2)).astype(numpy.float32)
@@ -91,7 +92,7 @@ class TestPReLUMulti(TestPReLUSingle):
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = self.func(x)
+        y = self.link(x)
 
         y_expect = self.x.copy()
         for i in numpy.ndindex(self.x.shape):
