@@ -90,6 +90,7 @@ class SoftmaxCrossEntropyLoss(chainer.Chain):
         super(SoftmaxCrossEntropyLoss, self).__init__(
             W=L.Linear(n_in, n_out),
         )
+        self.W.W.data[...] = 0
 
     def __call__(self, x, t):
         return F.softmax_cross_entropy(self.W(x), t)
@@ -137,9 +138,11 @@ if args.out_type == 'hsm':
     HSM = L.BinaryHierarchicalSoftmax
     tree = HSM.create_huffman_tree(counts)
     loss_func = HSM(args.unit, tree)
+    loss_func.W.data[...] = 0
 elif args.out_type == 'ns':
     cs = [counts[w] for w in range(len(counts))]
     loss_func = L.NegativeSampling(args.unit, cs, 20)
+    loss_func.W.data[...] = 0
 elif args.out_type == 'original':
     loss_func = SoftmaxCrossEntropyLoss(args.unit, n_vocab)
 else:
@@ -151,6 +154,9 @@ elif args.model == 'cbow':
     model = ContinuousBoW(n_vocab, args.unit, loss_func)
 else:
     raise Exception('Unknown model type: {}'.format(args.model))
+
+model.embed.W.data[...] = np.random.uniform(-1, 1, (n_vocab, args.unit)) \
+                                   .astype(np.float32) / args.unit
 
 if args.gpu >= 0:
     model.to_gpu()
