@@ -15,7 +15,8 @@ def bincount(x, weights=None, minlength=None):
 
     Args:
         x (cupy.ndarray): Input array.
-        weights (cupy.ndarray): Weights array which has the same shpae as ``x``.
+        weights (cupy.ndarray): Weights array which has the same shpae as
+            ``x``.
         minlength (int): A minimum number of bins for the output array.
 
     Returns:
