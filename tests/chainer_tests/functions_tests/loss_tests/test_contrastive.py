@@ -48,6 +48,13 @@ class TestContrastive(unittest.TestCase):
         loss_expect /= 2.0 * self.t.shape[0]
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
+    def test_negative_margin(self):
+        self.margin = -1
+        self.assertRaises(Exception, self.check_forward,
+                          self.x0, self.x1, self.t)
+        self.assertRaises(Exception, self.check_backward,
+                          self.x0, self.x1, self.t)
+
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x0, self.x1, self.t)
@@ -62,7 +69,7 @@ class TestContrastive(unittest.TestCase):
         x0 = chainer.Variable(x0_data)
         x1 = chainer.Variable(x1_data)
         t = chainer.Variable(t_data)
-        loss = functions.contrastive(x0, x1, t)
+        loss = functions.contrastive(x0, x1, t, self.margin)
         loss.backward()
         self.assertEqual(None, t.grad)
 
