@@ -19,6 +19,7 @@ from cupy import math
 import cupy.random
 from cupy import sorting
 from cupy import statistics
+from cupy import testing  # NOQA
 from cupy import util
 
 random = cupy.random
@@ -63,7 +64,6 @@ uint64 = numpy.uint64
 float16 = numpy.float16
 float32 = numpy.float32
 float64 = numpy.float64
-
 
 ufunc = core.ufunc
 
@@ -133,6 +133,9 @@ dsplit = manipulation.split.dsplit
 hsplit = manipulation.split.hsplit
 split = manipulation.split.split
 vsplit = manipulation.split.vsplit
+
+tile = manipulation.tiling.tile
+repeat = manipulation.tiling.repeat
 
 # -----------------------------------------------------------------------------
 # Binary operations

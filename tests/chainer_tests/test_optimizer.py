@@ -36,32 +36,83 @@ class TestOptimizerUtility(unittest.TestCase):
         self.assertAlmostEqual(optimizer._sqnorm(a), 4)
 
 
+class TestOptimizerHook(unittest.TestCase):
+
+    def setUp(self):
+        self.optimizer = optimizer.Optimizer()
+        self.target = SimpleLink(
+            np.arange(6, dtype=np.float32).reshape(2, 3),
+            np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3))
+
+    def test_add_hook(self):
+        h1 = mock.MagicMock()
+        self.optimizer.setup(self.target)
+        self.optimizer.add_hook(h1, 'h1')
+        self.optimizer.call_hooks()
+        h1.assert_called_with(self.optimizer)
+
+    def test_remove_hook(self):
+        h1 = mock.MagicMock()
+        self.optimizer.setup(self.target)
+        self.optimizer.add_hook(h1, 'h1')
+        self.optimizer.remove_hook('h1')
+        self.optimizer.call_hooks()
+        self.assertFalse(h1.called)
+
+    def test_duplicated_hook(self):
+        self.optimizer.setup(self.target)
+        self.optimizer.add_hook(lambda s: None, 'h1')
+        with self.assertRaises(KeyError):
+            self.optimizer.add_hook(lambda s: None, 'h1')
+
+    def test_invalid_hook(self):
+        with self.assertRaises(TypeError):
+            self.optimizer.add_hook(1)
+
+    def test_add_hook_before_setup(self):
+        with self.assertRaises(RuntimeError):
+            self.optimizer.add_hook(lambda s: None, 'h1')
+
+
+class SimpleLink(chainer.Link):
+
+    def __init__(self, w, g):
+        super(SimpleLink, self).__init__(param=w.shape)
+        self.param.data = w
+        self.param.grad = g
+
+
 class TestOptimizerWeightDecay(unittest.TestCase):
 
     def setUp(self):
-        self.w = np.arange(6, dtype=np.float32).reshape(2, 3)
-        self.g = np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3)
+        self.target = SimpleLink(
+            np.arange(6, dtype=np.float32).reshape(2, 3),
+            np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3))
 
-    def check_weight_decay(self, w, g):
+    def check_weight_decay(self):
+        w = self.target.param.data
+        g = self.target.param.grad
+
         decay = 0.2
         expect = w - g - decay * w
 
         opt = optimizers.SGD(lr=1)
-        opt.setup((w, g))
+        opt.setup(self.target)
         opt.weight_decay(decay)
         opt.update()
 
         gradient_check.assert_allclose(expect, w)
 
     def test_weight_decay_cpu(self):
-        self.check_weight_decay(self.w, self.g)
+        self.check_weight_decay()
 
     @attr.gpu
     def test_weight_decay_gpu(self):
-        self.check_weight_decay(cuda.to_gpu(self.w), cuda.to_gpu(self.g))
+        self.target.to_gpu()
+        self.check_weight_decay()
 
 
-class TestOptimizer(unittest.TestCase):
+class TestGradientMethod(unittest.TestCase):
 
     def _suffix(self, gpu):
         if gpu:
@@ -73,42 +124,42 @@ class TestOptimizer(unittest.TestCase):
         return getattr(self.optimizer, prefix + '_' + self._suffix(gpu))
 
     def setUp(self):
-        opt = chainer.Optimizer()
-        opt.init_state_cpu = mock.MagicMock(return_value=1)
-        opt.init_state_gpu = mock.MagicMock(return_value=1)
+        opt = chainer.GradientMethod()
+        opt.init_state_cpu = mock.MagicMock()
+        opt.init_state_gpu = mock.MagicMock()
         opt.update_one_cpu = mock.MagicMock()
         opt.update_one_gpu = mock.MagicMock()
         self.optimizer = opt
 
-        self.params = [np.arange(3).astype(np.float32)]
-        self.grads = [np.arange(3).astype(np.float32)]
+        self.target = SimpleLink(
+            np.arange(3).astype(np.float32),
+            np.arange(3).astype(np.float32))
 
     def setup_cpu(self):
-        self.optimizer.setup((self.params, self.grads))
+        self.optimizer.setup(self.target)
 
     def setup_gpu(self, dst_id=None):
-        self.params = [cuda.to_gpu(p, dst_id) for p in self.params]
-        self.grads = [cuda.to_gpu(p, dst_id) for p in self.grads]
-        self.optimizer.setup((self.params, self.grads))
+        self.target.to_gpu()
+        self.optimizer.setup(self.target)
 
-    def check_init_state(self, param, grad, gpu):
-        state = self.optimizer.init_state(param, grad)
+    def check_init_state(self, gpu):
+        param = chainer.Variable(np.arange(3))
+        param.grad = np.arange(3)
+        if gpu:
+            param.to_gpu()
+        state = {}
+        self.optimizer.init_state(param, state)
 
-        self.assertEqual(state, 1)
         self._get_method('init_state', gpu).assert_called_once_with(
-            param, grad)
+            param, state)
         self.assertEqual(self._get_method('init_state', not gpu).call_count, 0)
 
     def test_init_state_cpu(self):
-        param = np.arange(3)
-        grad = np.arange(3)
-        self.check_init_state(param, grad, False)
+        self.check_init_state(False)
 
     @attr.gpu
     def test_init_state_gpu(self):
-        param = cuda.to_gpu(np.arange(3))
-        grad = cuda.to_gpu(np.arange(3))
-        self.check_init_state(param, grad, True)
+        self.check_init_state(True)
 
     def check_update(self, gpu):
         self.assertEqual(self.optimizer.t, 0)
@@ -117,11 +168,11 @@ class TestOptimizer(unittest.TestCase):
         self.assertEqual(self.optimizer.t, 1)
 
         self._get_method('update_one', gpu).assert_called_once_with(
-            self.params[0], self.grads[0], 1)
+            self.target.param, {})
         self.assertEqual(self._get_method('update_one', not gpu).call_count, 0)
 
         self.optimizer.zero_grads()
-        self.assertTrue((cuda.to_cpu(self.grads[0]) == 0).all())
+        self.assertTrue((cuda.to_cpu(self.target.param.grad) == 0).all())
 
     def test_update_cpu(self):
         self.setup_cpu()
@@ -134,13 +185,15 @@ class TestOptimizer(unittest.TestCase):
 
     def check_accumulate_grads_from_cpu(self):
         self.optimizer.accumulate_grads([np.arange(3)])
-        self.assertTrue((cuda.to_cpu(self.grads[0]) == np.arange(3) * 2).all())
+        grad = self.target.param.grad
+        self.assertTrue((cuda.to_cpu(grad) == np.arange(3) * 2).all())
 
     @attr.gpu
     def check_accumulate_grads_from_gpu(self, src_id):
         with cuda.Device(src_id):
             self.optimizer.accumulate_grads([cuda.cupy.arange(3)])
-        self.assertTrue((cuda.to_cpu(self.grads[0]) == np.arange(3) * 2).all())
+        grad = self.target.param.grad
+        self.assertTrue((cuda.to_cpu(grad) == np.arange(3) * 2).all())
 
     def test_accumulate_grads_cpu_to_cpu(self):
         self.setup_cpu()
@@ -182,7 +235,7 @@ class TestOptimizer(unittest.TestCase):
 
     def check_weight_decay(self):
         self.optimizer.weight_decay(0.1)
-        g = cuda.to_cpu(self.grads[0])
+        g = cuda.to_cpu(self.target.param.grad)
         expect = np.array([0.0, 1.1, 2.2], dtype=np.float32)
         gradient_check.assert_allclose(g, expect)
 
@@ -197,7 +250,7 @@ class TestOptimizer(unittest.TestCase):
 
     def check_clip_grads(self):
         self.optimizer.clip_grads(1.0)
-        g = cuda.to_cpu(self.grads[0])
+        g = cuda.to_cpu(self.target.param.grad)
         sqnorm = g.dot(g)
         self.assertAlmostEqual(sqnorm, 1.0, delta=1.0e-5)
 

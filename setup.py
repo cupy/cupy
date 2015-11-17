@@ -4,11 +4,22 @@ from setuptools import setup
 
 import setup_build
 
+
+install_requires = [
+    'filelock',
+    'nose',
+    'numpy>=1.9.0',
+    'protobuf',
+    'six>=1.9.0']
+
+if not setup_build.check_readthedocs_environment():
+    install_requires.append('h5py>=2.5.0')
+
 setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.4.0',
+    version='1.4.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -25,7 +36,14 @@ setup(
               'chainer.functions.noise',
               'chainer.functions.normalization',
               'chainer.functions.pooling',
+              'chainer.links',
+              'chainer.links.activation',
+              'chainer.links.connection',
+              'chainer.links.loss',
+              'chainer.links.model',
+              'chainer.links.normalization',
               'chainer.optimizers',
+              'chainer.serializers',
               'chainer.testing',
               'chainer.utils',
               'cupy',
@@ -46,11 +64,7 @@ setup(
     package_data={
         'cupy': ['carray.cuh'],
     },
-    install_requires=['filelock',
-                      'nose',
-                      'numpy>=1.9.0',
-                      'protobuf',
-                      'six>=1.9.0'],
+    install_requires=install_requires,
     setup_requires=['Cython>=0.23',
                     'numpy>=1.9.0'],
     tests_require=['mock',

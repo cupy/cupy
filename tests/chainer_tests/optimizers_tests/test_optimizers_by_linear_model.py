@@ -6,6 +6,7 @@ import six
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import chainer.links as L
 from chainer import optimizers
 from chainer import testing
 from chainer.testing import attr
@@ -13,14 +14,13 @@ from chainer.testing import condition
 
 
 class LinearModel(object):
+
     UNIT_NUM = 10
     BATCH_SIZE = 32
     EPOCH = 100
 
     def __init__(self, optimizer):
-        self.model = chainer.FunctionSet(
-            l=F.Linear(self.UNIT_NUM, 2)
-        )
+        self.model = L.Linear(self.UNIT_NUM, 2)
         self.optimizer = optimizer
         # true parameters
         self.w = np.random.uniform(-1, 1,
@@ -48,14 +48,14 @@ class LinearModel(object):
 
         for epoch in six.moves.range(self.EPOCH):
             x, t = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu)
-            optimizer.zero_grads()
-            y = model.l(x)
+            model.zerograds()
+            y = model(x)
             loss = F.softmax_cross_entropy(y, t)
             loss.backward()
             optimizer.update()
 
         x_test, t_test = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu)
-        y_test = model.l(x_test)
+        y_test = model(x_test)
         return F.accuracy(y_test, t_test)
 
     def _accuracy_cpu(self):
@@ -77,6 +77,7 @@ class LinearModel(object):
 
 
 class OptimizerTestBase(object):
+
     def create(self):
         raise NotImplementedError()
 
@@ -94,33 +95,35 @@ class OptimizerTestBase(object):
 
     def test_initialize(self):
         model = self.model.model
-        assert isinstance(model, chainer.FunctionSet)
+        assert isinstance(model, chainer.Link)
         optimizer = self.create()
         optimizer.setup(model)
 
-        self.assertEqual(len(optimizer.tuples), len(model.parameters))
-
-        msg = "'params_grads' must have 'parameters' and 'gradients'"
-        with self.assertRaisesRegexp(ValueError, msg):
+        msg = 'optimization target must be a link'
+        with self.assertRaisesRegexp(TypeError, msg):
             optimizer.setup('xxx')
 
 
 class TestAdaDelta(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.AdaDelta(eps=1e-5)
 
 
 class TestAdaGrad(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.AdaGrad(0.1)
 
 
 class TestAdam(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.Adam(0.1)
 
 
 class TestMomentumSGD(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.MomentumSGD(0.1)
 
@@ -131,16 +134,19 @@ class NesterovAG(OptimizerTestBase, unittest.TestCase):
 
 
 class TestRMSprop(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.RMSprop(0.1)
 
 
 class TestRMSpropGraves(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.RMSpropGraves(0.1)
 
 
 class TestSGD(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.SGD(0.1)
 

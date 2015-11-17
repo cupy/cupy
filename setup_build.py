@@ -92,8 +92,10 @@ def get_path(key):
 def check_include(dirs, file_path):
     return any(path.exists(path.join(dir, file_path)) for dir in dirs)
 
+
 def check_readthedocs_environment():
     return os.environ.get('READTHEDOCS', None) == 'True'
+
 
 def make_extensions(options):
 

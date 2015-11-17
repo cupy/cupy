@@ -581,7 +581,16 @@ cdef class ndarray:
         return take(self, indices, axis, out)
 
     # TODO(okuta): Implement put
-    # TODO(okuta): Implement repeat
+
+    cpdef repeat(self, repeats, axis=None):
+        """Returns an array with repeated arrays along an axis.
+
+        .. seealso::
+            :func:`cupy.repeat` for full documentation,
+            :meth:`numpy.ndarray.repeat`
+        """
+        return repeat(self, repeats, axis)
+
     # TODO(okuta): Implement choose
     # TODO(okuta): Implement sort
     # TODO(okuta): Implement argsort
@@ -1658,6 +1667,69 @@ cdef class broadcast:
 
         self.values = tuple(broadcasted)
 
+cpdef ndarray repeat(ndarray a, repeats, axis=None):
+    """Repeat arrays along an axis.
+
+    Args:
+        a (cupy.ndarray): Array to transform.
+        repeats (int, list or tuple): The number of repeats.
+        axis (int): The axis to repeat.
+
+    Returns:
+        cupy.ndarray: Transformed array with repeats.
+
+    .. seealso:: :func:`numpy.repeat`
+
+    """
+    cdef ndarray ret
+    if isinstance(repeats, int):
+        if repeats < 0:
+            raise ValueError(
+                "'repeats' should not be negative: {}".format(repeats))
+        if axis is None:
+            a = a.reshape((-1, 1))
+            print(a.size, a.shape)
+            ret = ndarray((a.size, repeats), dtype=a.dtype)
+            if ret.size:
+                ret[...] = a
+            return ret.ravel()
+
+        repeats = [repeats] * a._shape[axis % a._shape.size()]
+    elif cpython.PySequence_Check(repeats):
+        for rep in repeats:
+            if rep < 0:
+                raise ValueError(
+                    "all elements of 'repeats' should not be negative: {}"
+                    .format(repeats))
+        if axis is None:
+            raise ValueError(
+                "'axis' should be specified if 'repeats' is sequence")
+        if a.shape[axis] != len(repeats):
+            raise ValueError(
+                "'repeats' and 'axis' of 'a' should be same length: {} != {}"
+                .format(a.shape[axis], len(repeats)))
+    else:
+        raise ValueError(
+            "'repeats' should be int or sequence: {}".format(repeats))
+
+    if axis < 0:
+        axis += a.ndim
+
+    ret_shape = list(a.shape)
+    ret_shape[axis] = sum(repeats)
+    ret = ndarray(ret_shape, dtype=a.dtype)
+    a_index = [slice(None)] * len(ret_shape)
+    ret_index = list(a_index)
+    offset = 0
+    for i in range(a._shape[axis]):
+        if repeats[i] == 0:
+            continue
+        a_index[axis] = slice(i, i + 1)
+        ret_index[axis] = slice(offset, offset + repeats[i])
+        # convert to tuple because cupy has a indexing bug
+        ret[tuple(ret_index)] = a[tuple(a_index)]
+        offset += repeats[i]
+    return ret
 
 # -----------------------------------------------------------------------------
 # Binary operations

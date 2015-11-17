@@ -1,12 +1,11 @@
-from chainer import function
-from chainer import function_set
 from chainer.functions.activation import relu
 from chainer.functions.array import concat
-from chainer.functions.connection import convolution_2d
 from chainer.functions.pooling import max_pooling_2d
+from chainer import link
+from chainer.links.connection import convolution_2d
 
 
-class Inception(function.Function):
+class Inception(link.Chain):
 
     """Inception module of GoogLeNet.
 
@@ -31,21 +30,9 @@ class Inception(function.Function):
         out5 (int): Output size of 5x5 convolution path.
         proj_pool (int): Projection size of max pooling path.
 
-    Returns:
-        Variable: Output variable. Its array has the same spatial size and the
-            same minibatch size as the input array. The channel dimension has
-            size ``out1 + out3 + out5 + proj_pool``.
-
-    .. note::
-
-       This function inserts the full computation graph of the Inception module
-       behind the input array. This function itself is not inserted into the
-       computation graph.
-
     """
-
     def __init__(self, in_channels, out1, proj3, out3, proj5, out5, proj_pool):
-        self.f = function_set.FunctionSet(
+        super(Inception, self).__init__(
             conv1=convolution_2d.Convolution2D(in_channels, out1, 1),
             proj3=convolution_2d.Convolution2D(in_channels, proj3, 1),
             conv3=convolution_2d.Convolution2D(proj3, out3, 3, pad=1),
@@ -55,37 +42,21 @@ class Inception(function.Function):
         )
 
     def __call__(self, x):
-        out1 = self.f.conv1(x)
-        out3 = self.f.conv3(relu.relu(self.f.proj3(x)))
-        out5 = self.f.conv5(relu.relu(self.f.proj5(x)))
-        pool = self.f.projp(max_pooling_2d.max_pooling_2d(
+        """Computes the output of the Inception module.
+
+        Args:
+            x (~chainer.Variable): Input variable.
+
+        Returns:
+            Variable: Output variable. Its array has the same spatial size and
+            the same minibatch size as the input array. The channel dimension
+            has size ``out1 + out3 + out5 + proj_pool``.
+
+        """
+        out1 = self.conv1(x)
+        out3 = self.conv3(relu.relu(self.proj3(x)))
+        out5 = self.conv5(relu.relu(self.proj5(x)))
+        pool = self.projp(max_pooling_2d.max_pooling_2d(
             x, 3, stride=1, pad=1))
         y = relu.relu(concat.concat((out1, out3, out5, pool), axis=1))
         return y
-
-    # forward of Inception is a series of forward operations
-    # of existing functions. So we do not need additional type checks.
-    def check_type_forward(self, in_types):
-        pass
-
-    def to_gpu(self, device=None):
-        return self.f.to_gpu(device)
-
-    def to_cpu(self):
-        return self.f.to_cpu()
-
-    @property
-    def parameters(self):
-        return self.f.parameters
-
-    @parameters.setter
-    def parameters(self, params):
-        self.f.parameters = params
-
-    @property
-    def gradients(self):
-        return self.f.gradients
-
-    @gradients.setter
-    def gradients(self, grads):
-        self.f.gradients = grads
