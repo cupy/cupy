@@ -62,7 +62,7 @@ class ContinuousBoW(chainer.Chain):
 
     def __call__(self, x, context):
         e = model.embed(context)
-        h = F.sum(e, axis=0)
+        h = F.sum(e, axis=0) * (1. / context.data.shape[0])
         return self.loss_func(h, x)
 
 
