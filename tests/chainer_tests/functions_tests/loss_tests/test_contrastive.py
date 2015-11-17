@@ -13,13 +13,18 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    *testing.product({
+        'batchsize': [5, 10], 'input_dim': [2, 3], 'margin': [-1, 2]
+    })
+)
 class TestContrastive(unittest.TestCase):
 
     def setUp(self):
-        self.x0 = numpy.random.uniform(-1, 1, (5, 2)).astype(numpy.float32)
-        self.x1 = numpy.random.uniform(-1, 1, (5, 2)).astype(numpy.float32)
-        self.t = numpy.random.randint(0, 2, (5,)).astype(numpy.int32)
-        self.margin = 1
+        x_shape = (self.batchsize, self.input_dim)
+        self.x0 = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
+        self.x1 = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
+        self.t = numpy.random.randint(0, 2, (self.batchsize,)).astype(numpy.int32)
 
     def check_forward(self, x0_data, x1_data, t_data):
         x0_val = chainer.Variable(x0_data)
