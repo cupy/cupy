@@ -26,6 +26,7 @@ from chainer.functions.evaluation import accuracy
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
+from chainer.functions.loss import hinge
 from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
@@ -115,6 +116,8 @@ CrossCovariance = cross_covariance.CrossCovariance
 cross_covariance = cross_covariance.cross_covariance
 gaussian_kl_divergence = vae.gaussian_kl_divergence
 gaussian_nll = vae.gaussian_nll
+Hinge = hinge.Hinge
+hinge = hinge.hinge
 MeanSquaredError = mean_squared_error.MeanSquaredError
 mean_squared_error = mean_squared_error.mean_squared_error
 negative_sampling = negative_sampling.negative_sampling

@@ -72,6 +72,7 @@ Loss functions
 .. autofunction:: negative_sampling
 .. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
+.. autofunction:: hinge
 
 Loss functions for VAE
 ~~~~~~~~~~~~~~~~~~~~~~
