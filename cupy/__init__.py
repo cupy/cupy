@@ -7,10 +7,7 @@ import six
 from cupy import binary
 from cupy import core
 from cupy import creation
-# from cupy import cuda
-# from cupy import flags
 from cupy import indexing
-# from cupy import internal
 from cupy import io
 from cupy import linalg
 from cupy import logic
@@ -24,7 +21,6 @@ from cupy import util
 
 random = cupy.random
 
-_get_size = core._get_size
 ndarray = core.ndarray
 
 # dtype short cut

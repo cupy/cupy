@@ -7,6 +7,7 @@ import numpy
 import six
 
 import cupy
+from cupy import core
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.random import generator
@@ -39,7 +40,7 @@ class TestRandomState(unittest.TestCase):
         self.rs = generator.RandomState()
 
     def check_lognormal(self, curand_func, dtype):
-        shape = cupy._get_size(self.size)
+        shape = core.get_size(self.size)
         exp_size = six.moves.reduce(operator.mul, shape, 1)
         if exp_size % 2 == 1:
             exp_size += 1
@@ -66,7 +67,7 @@ class TestRandomState(unittest.TestCase):
             self.check_lognormal(curand.generateLogNormalDouble, numpy.float64)
 
     def check_normal(self, curand_func, dtype):
-        shape = cupy._get_size(self.size)
+        shape = core.get_size(self.size)
         exp_size = six.moves.reduce(operator.mul, shape, 1)
         if exp_size % 2 == 1:
             exp_size += 1

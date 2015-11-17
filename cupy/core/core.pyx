@@ -5,7 +5,7 @@ import sys
 import numpy
 import six
 
-from cupy import flags
+from cupy.core import flags
 from cupy import util
 
 cimport cpython
@@ -21,7 +21,7 @@ from cupy.cuda cimport module
 DEF MAX_NDIM = 25
 
 @cython.profile(False)
-cpdef inline tuple _get_size(object size):
+cpdef inline tuple get_size(object size):
     if size is None:
         return ()
     if cpython.PySequence_Check(size):
@@ -95,7 +95,7 @@ cdef class ndarray:
 
     def __init__(self, shape, dtype=float, memptr=None):
         cdef Py_ssize_t size
-        self._shape = _get_size(shape)
+        self._shape = get_size(shape)
         ndim = self._shape.size()
         for x in self._shape:
             if x < 0:
@@ -578,7 +578,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.take`
 
         """
-        return take(self, indices, axis, out)
+        return _take(self, indices, axis, out)
 
     # TODO(okuta): Implement put
 
@@ -589,7 +589,7 @@ cdef class ndarray:
             :func:`cupy.repeat` for full documentation,
             :meth:`numpy.ndarray.repeat`
         """
-        return repeat(self, repeats, axis)
+        return _repeat(self, repeats, axis)
 
     # TODO(okuta): Implement choose
     # TODO(okuta): Implement sort
@@ -608,7 +608,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.diagonal`
 
         """
-        return diagonal(self, offset, axis1, axis2)
+        return _diagonal(self, offset, axis1, axis2)
 
     # -------------------------------------------------------------------------
     # Calculation
@@ -621,7 +621,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.max`
 
         """
-        return amax(
+        return _amax(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
     cpdef ndarray argmax(self, axis=None, out=None, dtype=None,
@@ -633,7 +633,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.argmax`
 
         """
-        return argmax(
+        return _argmax(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
     cpdef ndarray min(self, axis=None, out=None, dtype=None, keepdims=False):
@@ -644,7 +644,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.min`
 
         """
-        return amin(
+        return _amin(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
     cpdef ndarray argmin(self, axis=None, out=None, dtype=None,
@@ -656,7 +656,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.argmin`
 
         """
-        return argmin(
+        return _argmin(
             self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
     # TODO(okuta): Implement ptp
@@ -716,7 +716,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.var`
 
         """
-        return var(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+        return _var(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     cpdef ndarray std(self, axis=None, dtype=None, out=None, ddof=0,
                       keepdims=False):
@@ -727,7 +727,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.std`
 
         """
-        return std(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+        return _std(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     cpdef ndarray prod(self, axis=None, dtype=None, out=None, keepdims=None):
         """Returns the product along a given axis.
@@ -1486,7 +1486,7 @@ __device__ min_max_st my_argmax(const min_max_st& a, const min_max_st& b) {
 }'''
 
 
-cdef amin = create_reduction_func(
+cdef _amin = create_reduction_func(
     'cupy_min',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
@@ -1494,7 +1494,7 @@ cdef amin = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef amax = create_reduction_func(
+cdef _amax = create_reduction_func(
     'cupy_max',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
@@ -1502,7 +1502,7 @@ cdef amax = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef argmin = create_reduction_func(
+cdef _argmin = create_reduction_func(
     'cupy_argmin',
     ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'),
@@ -1510,7 +1510,7 @@ cdef argmin = create_reduction_func(
     None, _min_max_preamble)
 
 
-cdef argmax = create_reduction_func(
+cdef _argmax = create_reduction_func(
     'cupy_argmax',
     ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'),
@@ -1667,7 +1667,7 @@ cdef class broadcast:
 
         self.values = tuple(broadcasted)
 
-cpdef ndarray repeat(ndarray a, repeats, axis=None):
+cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     """Repeat arrays along an axis.
 
     Args:
@@ -1735,8 +1735,7 @@ cpdef ndarray repeat(ndarray a, repeats, axis=None):
 # Binary operations
 # -----------------------------------------------------------------------------
 
-#elementeise
-cdef _create_bit_op(name, op, no_bool, doc=''):
+cpdef _create_bit_op(name, op, no_bool, doc=''):
     types = () if no_bool else ('??->?',)
     return create_ufunc(
         'cupy_' + name,
@@ -1829,7 +1828,7 @@ cdef _take_kernel = ElementwiseKernel(
     'cupy_take')
 
 
-cpdef ndarray take(ndarray a, indices, axis=None, ndarray out=None):
+cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     if axis is None:
         a = a.ravel()
         lshape = ()
@@ -1866,7 +1865,7 @@ cpdef ndarray take(ndarray a, indices, axis=None, ndarray out=None):
     return _take_kernel(a, indices, cdim, rdim, out)
 
 
-cpdef ndarray diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
+cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
                        Py_ssize_t axis2=1):
     if axis1 < axis2:
         min_axis, max_axis = axis1, axis2
@@ -1955,10 +1954,10 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         if not out._c_contiguous:
             raise ValueError('Output array must be C-contiguous')
 
-    return _tensordot_core(a, b, out, n, m, k, ret_shape)
+    return tensordot_core(a, b, out, n, m, k, ret_shape)
 
 
-cpdef ndarray _tensordot_core(
+cpdef ndarray tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
         Py_ssize_t k, vector.vector[Py_ssize_t] ret_shape):
     cdef vector.vector[Py_ssize_t] shape
@@ -2382,7 +2381,7 @@ cdef _clip = create_ufunc(
 # Statistics
 # -----------------------------------------------------------------------------
 
-cpdef ndarray var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
+cpdef ndarray _var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
                   keepdims=False):
     if axis is None:
         axis = tuple(range(a.ndim))
@@ -2406,8 +2405,8 @@ cpdef ndarray var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
             a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
 
 
-cpdef std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    ret = var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+cpdef _std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    ret = _var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
     return sqrt_fixed(ret, dtype=dtype, out=out)
 
 

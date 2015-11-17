@@ -119,7 +119,7 @@ def broadcast_arrays(*args):
     .. seealso:: :func:`numpy.broadcast_arrays`
 
     """
-    return core.broadcast(*args).values
+    return broadcast(*args).values
 
 
 def expand_dims(a, axis):

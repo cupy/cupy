@@ -50,7 +50,7 @@ def vdot(a, b):
     if a.size != b.size:
         raise ValueError('Axis dimension mismatch')
 
-    return core._tensordot_core(a, b, None, 1, 1, a.size, ())
+    return core.tensordot_core(a, b, None, 1, 1, a.size, ())
 
 
 def inner(a, b):
@@ -90,7 +90,7 @@ def inner(a, b):
     n = a.size // k
     m = b.size // k
 
-    return core._tensordot_core(a, b, None, n, m, k, ret_shape)
+    return core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
 def outer(a, b, out=None):
@@ -115,14 +115,14 @@ def outer(a, b, out=None):
     ret_shape = (n, m)
 
     if out is None:
-        return core._tensordot_core(a, b, None, n, m, 1, ret_shape)
+        return core.tensordot_core(a, b, None, n, m, 1, ret_shape)
 
     if out.size != n * m:
         raise ValueError('Output array has an invalid size')
     if out.flags.c_contiguous:
-        return core._tensordot_core(a, b, out, n, m, 1, ret_shape)
+        return core.tensordot_core(a, b, out, n, m, 1, ret_shape)
     else:
-        out[:] = core._tensordot_core(a, b, None, n, m, 1, ret_shape)
+        out[:] = core.tensordot_core(a, b, None, n, m, 1, ret_shape)
         return out
 
 
@@ -187,7 +187,7 @@ def tensordot(a, b, axes=2):
     n = a.size // k
     m = b.size // k
 
-    return core._tensordot_core(a, b, None, n, m, k, ret_shape)
+    return core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
 # TODO(okuta): Implement einsum

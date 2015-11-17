@@ -15,7 +15,8 @@ MODULES = [
     {
         'name': 'cuda',
         'file': [
-            'cupy.core',
+            'cupy.core.core',
+            'cupy.core.flags',
             'cupy.cuda.cublas',
             'cupy.cuda.curand',
             'cupy.cuda.device',

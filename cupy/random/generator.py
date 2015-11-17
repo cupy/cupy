@@ -58,7 +58,7 @@ class RandomState(object):
         # * curand.generateNormalDouble
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
-        size = cupy._get_size(size)
+        size = core.get_size(size)
         element_size = six.moves.reduce(operator.mul, size, 1)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
