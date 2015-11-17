@@ -47,11 +47,6 @@ Array manipulations
 .. autofunction:: transpose
 .. autofunction:: where
 
-Noise injecting functions
--------------------------
-.. autofunction:: dropout
-.. autofunction:: gaussian
-
 Neural network connections
 --------------------------
 .. autofunction:: bilinear
