@@ -109,7 +109,8 @@ cpdef _get_simple_reduction_kernel(
     return module.get_function(name)
 
 
-cdef _get_axis(axis, ndim):
+cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
+    cdef Py_ssize_t dim
     if axis is None:
         axis = tuple(range(ndim))
     elif isinstance(axis, collections.Sequence):
@@ -125,7 +126,8 @@ cdef _get_axis(axis, ndim):
     return axis, raxis
 
 
-cdef _get_out_shape(shape, axis, raxis, keepdims):
+cpdef tuple _get_out_shape(
+        tuple shape, tuple axis, tuple raxis, bint keepdims):
     if keepdims:
         out_shape = list(shape)
         for i in axis:
@@ -134,19 +136,23 @@ cdef _get_out_shape(shape, axis, raxis, keepdims):
     return tuple([shape[i] for i in raxis])
 
 
-cdef _get_trans_args(args, trans, shape, params):
+cpdef tuple _get_trans_args(list args, tuple trans, tuple shape, tuple params):
+    cdef ParameterInfo p
     if trans == tuple(range(len(shape))):
         return args, shape
-    if params is not None and any(p.raw for p in params):
-        raise NotImplementedError('Illegal conditions')
+    if params is not None:
+        for p in params:
+            if p.raw:
+                raise NotImplementedError('Illegal conditions')
     args = [a.transpose(trans) if isinstance(a, ndarray) else a
             for a in args]
     shape = tuple([shape[i] for i in trans])
     return args, shape
 
 
-cdef _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
-                    params, reduce_dims):
+cpdef list _get_inout_args(
+        list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
+        object out_clp2_size, tuple params, bint reduce_dims):
     if reduce_dims:
         in_args, in_shape = _reduce_dims(
             in_args, params, in_indexer.shape)

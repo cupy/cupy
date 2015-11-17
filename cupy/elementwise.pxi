@@ -108,7 +108,7 @@ cpdef list _preprocess_args(args):
     return ret
 
 
-cpdef tuple _get_args_info(args):
+cpdef tuple _get_args_info(list args):
     ret = []
     for a in args:
         t = type(a)
@@ -120,10 +120,12 @@ cpdef tuple _get_args_info(args):
     return tuple(ret)
 
 
-cpdef str _get_kernel_params(params, args_info):
+cpdef str _get_kernel_params(tuple params, tuple args_info):
+    cdef ParameterInfo p
     ret = []
-    for p, a in six.moves.zip(params, args_info):
-        type, dtype, ndim = a
+    for i in range(len(params)):
+        p = params[i]
+        type, dtype, ndim = <tuple>(args_info[i])
         is_array = type is ndarray
         if type is Indexer:
             t = 'CIndexer<%d>' % ndim
@@ -189,7 +191,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
                 arr = a
                 arr = arr.view()
                 newstrides.assign(1, arr._strides[axis])
-                arr._set_shape_and_strides(newshape, newstrides)
+                arr._set_shape_and_strides(newshape, newstrides, False)
                 a = arr
             ret.append(a)
         return ret, tuple(newshape)
@@ -206,7 +208,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
             for i in range(ndim):
                 if vecshape[i] != 1:
                     newstrides.push_back(arr._strides[i])
-            arr._set_shape_and_strides(newshape, newstrides)
+            arr._set_shape_and_strides(newshape, newstrides, False)
             a = arr
         ret.append(a)
     return ret, tuple(newshape)
@@ -338,7 +340,7 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     return value, brod.shape
 
 
-cdef object _get_out_args(out_args, out_types, out_shape):
+cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape):
     if not out_args:
         return [ndarray(out_shape, t) for t in out_types]
 
@@ -351,19 +353,22 @@ cdef object _get_out_args(out_args, out_types, out_shape):
     return out_args
 
 
-cdef list _get_out_args_with_params(out_args, out_types, out_shape,
-                                    out_params):
+cdef list _get_out_args_with_params(
+        list out_args, tuple out_types, tuple out_shape, tuple out_params):
+    cdef ParameterInfo p
     if not out_args:
         for p in out_params:
             if p.raw:
                 raise ValueError('Output array size is Undecided')
         return [ndarray(out_shape, t) for t in out_types]
 
-    for a, p in six.moves.zip(out_args, out_params):
+    for i in range(len(out_params)):
+        a = out_args[i]
+        p = out_params[i]
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
-        if a.shape != out_shape and not p.raw:
+        if not p.raw and a.shape != out_shape:
             raise ValueError('Out shape is mismatched')
     return out_args
 
@@ -496,9 +501,7 @@ cdef class ElementwiseKernel:
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
              for a in in_args])
-        out_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, ndarray) else None
-             for a in out_args])
+        out_ndarray_types = tuple([a.dtype.type for a in out_args])
 
         in_types, out_types, types = _decide_params_type(
             self.in_params, self.out_params,
@@ -517,8 +520,8 @@ cdef class ElementwiseKernel:
         if 0 in shape:
             return ret
 
-        inout_args = [x if isinstance(x, ndarray) else t(x)
-                      for x, t in six.moves.zip(in_args, in_types)]
+        inout_args = [x if isinstance(x, ndarray) else in_types[i](x)
+                      for i, x in enumerate(in_args)]
         inout_args += out_args
 
         if self.reduce_dims:
@@ -536,8 +539,8 @@ cdef class ElementwiseKernel:
 
 
 @util.memoize(for_each_device=True)
-def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
-                      params, name, preamble):
+def _get_ufunc_kernel(
+        in_types, out_types, routine, args_info, params, name, preamble):
     kernel_params = _get_kernel_params(params, args_info)
 
     types = []
@@ -551,7 +554,7 @@ def _get_ufunc_kernel(in_types, out_types, routine, args_info, out_raw_types,
     for i, x in enumerate(out_types):
         types.append('typedef %s out%d_type;' % (_get_typename(x), i))
         op.append('{1} &out{0} = _raw_out{0}[_ind.get()];'.format(
-            i, _get_typename(out_raw_types[i])))
+            i, _get_typename(args_info[i + len(in_types)][1])))
 
     op.append(routine)
     operation = '\n'.join(op)
@@ -590,7 +593,7 @@ cdef tuple _guess_routine_from_dtype(list ops, object dtype):
     return None
 
 
-cdef bint _check_should_use_min_scalar(in_args) except *:
+cdef bint _check_should_use_min_scalar(list in_args) except *:
     cdef int kind, max_array_kind, max_scalar_kind
     cdef bint all_scalars
     all_scalars = True
@@ -739,18 +742,18 @@ class ufunc(object):
         if 0 in shape:
             return ret
 
-        inout_args = [x if isinstance(x, ndarray) else t(x)
-                      for x, t in six.moves.zip(broad.values, in_types)]
+        inout_args = []
+        for i, t in enumerate(in_types):
+            x = broad.values[i]
+            inout_args.append(x if isinstance(x, ndarray) else t(x))
         inout_args.extend(out_args)
         inout_args, shape = _reduce_dims(inout_args, self._params, shape)
         indexer = Indexer(shape)
         inout_args.append(indexer)
         args_info = _get_args_info(inout_args)
-        out_raw_types = tuple([x.dtype.type for x in out_args])
 
         kern = _get_ufunc_kernel(
-            in_types, out_types, routine,
-            args_info, out_raw_types,
+            in_types, out_types, routine, args_info, 
             self._params, self.name, self._preamble)
 
         kern.linear_launch(indexer.size, inout_args)
