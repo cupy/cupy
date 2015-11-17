@@ -23,6 +23,7 @@ from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
+from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
 from chainer.functions.loss import mean_squared_error
@@ -107,6 +108,9 @@ Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 
 bernoulli_nll = vae.bernoulli_nll
+BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
+Contrastive = contrastive.Contrastive
+contrastive = contrastive.contrastive
 CrossCovariance = cross_covariance.CrossCovariance
 cross_covariance = cross_covariance.cross_covariance
 gaussian_kl_divergence = vae.gaussian_kl_divergence

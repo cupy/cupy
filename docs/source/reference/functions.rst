@@ -47,6 +47,11 @@ Array manipulations
 .. autofunction:: transpose
 .. autofunction:: where
 
+Noise injecting functions
+-------------------------
+.. autofunction:: dropout
+.. autofunction:: gaussian
+
 Neural network connections
 --------------------------
 .. autofunction:: bilinear
@@ -61,6 +66,7 @@ Evaluation functions
 Loss functions
 --------------
 .. autofunction:: connectionist_temporal_classification
+.. autofunction:: contrastive
 .. autofunction:: cross_covariance
 .. autofunction:: mean_squared_error
 .. autofunction:: negative_sampling
