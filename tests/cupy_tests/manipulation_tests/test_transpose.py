@@ -43,3 +43,8 @@ class TestTranspose(unittest.TestCase):
     def test_external_transpose(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         return xp.transpose(a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_transpose_none(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        return a.transpose(None)

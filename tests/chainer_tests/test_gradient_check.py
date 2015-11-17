@@ -29,6 +29,8 @@ def _dot(x, y):
 
 class NumericalGradientTest(unittest.TestCase):
 
+    eps = None
+
     def f(self, xs):
         return (xs[0] ** 2,)
 
@@ -49,13 +51,14 @@ class NumericalGradientTest(unittest.TestCase):
         func = lambda: f(xs)
         dx_actual = gradient_check.numerical_grad(func, xs, gys, eps)
 
+        print('eps: {}'.format(eps))
         self.assertEqual(len(dx_expect), len(dx_actual))
         for e, a in zip(dx_expect, dx_actual):
             gradient_check.assert_allclose(e, a, atol=1e-3, rtol=1e-3)
 
     def check_numerical_grad(self, f, df, xs, gys, eps=None):
         if eps is None:
-            eps = tuple(10**(-i) for i in six.moves.range(1, 5))
+            eps = tuple(10**(-i) for i in six.moves.range(2, 5))
         elif not isinstance(eps, tuple):
             eps = (eps, )
 
@@ -64,7 +67,8 @@ class NumericalGradientTest(unittest.TestCase):
 
     @condition.retry(3)
     def test_numerical_grad_cpu(self):
-        self.check_numerical_grad(self.f, self.df, self.xs, self.gys)
+        self.check_numerical_grad(self.f, self.df, self.xs, self.gys,
+                                  eps=self.eps)
 
     @condition.retry(3)
     @attr.gpu
@@ -73,7 +77,8 @@ class NumericalGradientTest(unittest.TestCase):
                     for gy in self.gys)
 
         self.check_numerical_grad(self.f, self.df,
-                                  tuple(map(cuda.to_gpu, self.xs)), gys)
+                                  tuple(map(cuda.to_gpu, self.xs)), gys,
+                                  eps=self.eps)
 
 
 class NumericalGradientTest2(NumericalGradientTest):
@@ -83,6 +88,9 @@ class NumericalGradientTest2(NumericalGradientTest):
 
 
 class NumericalGradientTest3(NumericalGradientTest):
+
+    # Too small eps causes cancellation of significant digits
+    eps = (1e-2, 1e-3)
 
     def f(self, xs):
         xp = cuda.get_array_module(*xs)

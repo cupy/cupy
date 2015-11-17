@@ -23,6 +23,7 @@ import cupy.random
 from cupy import reduction
 from cupy import sorting
 from cupy import statistics
+from cupy import testing  # NOQA
 from cupy import util
 
 random = cupy.random
@@ -431,6 +432,8 @@ class ndarray(object):
         """
         if len(axes) == 1 and isinstance(axes[0], collections.Sequence):
             axes = axes[0]
+        if axes == (None,):
+            axes = axes[0]
         return transpose(self, axes)
 
     def swapaxes(self, axis1, axis2):
@@ -501,8 +504,16 @@ class ndarray(object):
         """
         return take(self, indices, axis, out)
 
+    def repeat(self, repeats, axis=None):
+        """Returns an array with repeated arrays along an axis.
+
+        .. seealso::
+            :func:`cupy.repeat` for full documentation,
+            :meth:`numpy.ndarray.repeat`
+        """
+        return repeat(self, repeats, axis)
+
     # TODO(okuta): Implement put
-    # TODO(okuta): Implement repeat
     # TODO(okuta): Implement choose
     # TODO(okuta): Implement sort
     # TODO(okuta): Implement argsort
@@ -646,8 +657,12 @@ class ndarray(object):
         return prod(self, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     # TODO(okuta): Implement cumprod
-    # TODO(okuta): Implement all
-    # TODO(okuta): Implement any
+
+    def all(self, axis=None, out=None):
+        return logic.truth.all(self, axis, out)
+
+    def any(self, axis=None, out=None):
+        return logic.truth.any(self, axis, out)
 
     # -------------------------------------------------------------------------
     # Arithmetic and comparison operations
@@ -681,7 +696,7 @@ class ndarray(object):
             return bool(self.get())
         else:
             msg = 'The truth value of an array with more than one element is ' \
-                  'ambiguous. Use a.get().any() or a.get().all()'
+                  'ambiguous. Use a.any() or a.all()'
             raise ValueError(msg)
 
     def __bool__(self):
@@ -914,7 +929,7 @@ class ndarray(object):
         else:
             slices = list(slices)
 
-        if any(isinstance(s, ndarray) for s in slices):
+        if six.moves.builtins.any(isinstance(s, ndarray) for s in slices):
             raise ValueError('Advanced indexing is not supported')
 
         # Expand ellipsis into empty slices
@@ -957,11 +972,14 @@ class ndarray(object):
                 offset += s.start * self._strides[j]
                 j += 1
             elif numpy.isscalar(s):
-                s = int(s)
-                if s >= self._shape[j]:
-                    raise IndexError('Index %s exceeds the size %s at axis %s'
-                                     % (s, self._shape[j], j))
-                offset += s * self._strides[j]
+                ind = int(s)
+                if ind < 0:
+                    ind += self._shape[j]
+                if not (0 <= ind < self._shape[j]):
+                    msg = 'Index %s is out of bounds for axis %s with size %s' \
+                          % (s, j, self._shape[j])
+                    raise IndexError(msg)
+                offset += ind * self._strides[j]
                 j += 1
             else:
                 raise TypeError('Invalid index type: %s' % type(slices[i]))
@@ -1201,6 +1219,9 @@ hsplit = manipulation.split.hsplit
 split = manipulation.split.split
 vsplit = manipulation.split.vsplit
 
+tile = manipulation.tiling.tile
+repeat = manipulation.tiling.repeat
+
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
@@ -1301,6 +1322,9 @@ less_equal = logic.comparison.less_equal
 equal = logic.comparison.equal
 not_equal = logic.comparison.not_equal
 
+all = logic.truth.all
+any = logic.truth.any
+
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
@@ -1386,7 +1410,9 @@ where = sorting.search.where
 # Statistics
 # -----------------------------------------------------------------------------
 amin = statistics.order.amin
+min = statistics.order.amin
 amax = statistics.order.amax
+max = statistics.order.amax
 
 mean = statistics.meanvar.mean
 var = statistics.meanvar.var
@@ -1441,7 +1467,7 @@ def get_array_module(*args):
                return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
-    if any(isinstance(arg, ndarray) for arg in args):
+    if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):
         return _cupy
     else:
         return numpy

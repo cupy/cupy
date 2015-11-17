@@ -3,6 +3,7 @@ language: python
 python:
   - "2.7"
   - "3.4"
+  - "3.5"
 
 install:
   - python setup.py install
@@ -10,4 +11,11 @@ install:
 
 script:
   - nosetests -a '!gpu' tests/chainer_tests
-  - flake8 chainer cupy tests examples --exclude=libcudnn.py,caffe_pb2.py
+  - flake8
+
+sudo: false
+
+addons:
+  apt:
+    packages:
+      - libhdf5-serial-dev

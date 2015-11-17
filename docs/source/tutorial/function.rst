@@ -5,27 +5,24 @@ Define your own function
 
 In this section, you will learn about the following things:
 
-* How to define a non-parameterized function
+* How to define a function on variables
 * Useful tools to write a function using a GPU
-* How to define a parameterized function
 * How to test the function definition
 
 After reading this section, you will be able to:
 
-* Write your own non-parameterized function
+* Write your own functions
 * Define simple kernels in the function definition
-* Write your own parameterized function
 
 
-Non-parameterized Functions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Differentiable Functions
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Chainer provides a collection of functions in the :mod:`~chainer.functions` module.
 It covers typical use cases in deep learning, so many existing works can be implemented with them.
 On the other hand, deep learning is evolving rapidly and we cannot cover all possible functions to define unseen architectures.
 So it is important to learn how to define your own functions.
 
-Since they are simpler, we first show how to define non-parameterized functions.
 First, suppose we want to define an elementwise function :math:`f(x, y, z) = x * y + z`.
 While it is possible to implement this equation using a combination of the ``*`` and ``+`` functions,
 defining it as a single function may reduce memory consumption, so it is not *only* a toy example.
@@ -33,7 +30,7 @@ Here we call this function *MulAdd*.
 
 Let's start with defining MulAdd working on the CPU.
 Any function must inherit the :class:`Function` class.
-The skeleton of a non-parameterized function looks like::
+The skeleton of a function looks like::
 
    class MulAdd(Function):
        def forward_cpu(self, inputs):
@@ -80,7 +77,7 @@ MulAdd is simple and implemented as follows
    w.grad = np.random.uniform(-1, 1, (3, 2)).astype(np.float32)
    w.backward()
 
-As per the warning above, ``forward_cpu`` function returns a tuple of single element.
+As per the warning above, the ``forward_cpu`` method returns a tuple of single element.
 Note that all arrays appearing in CPU functions are :class:`numpy.ndarray`.
 The forward function is straightforward:
 It unpacks the input tuple, computes the output, and packs it into a tuple.
@@ -119,10 +116,10 @@ In GPU methods, arrays are of type :class:`cupy.ndarray`.
 We use arithmetic operators defined for this class.
 These operators implement the basic elementwise arithmetics.
 
-You maybe find that the definitions of GPU methods are exactly same as those of CPU methods.
+You may find that the definitions of GPU methods are exactly same as those of CPU methods.
 In that case, we can reduce them to :meth:`~Function.forward` and :meth:`~Function.backward` methods
 
-.. testcode
+.. testcode::
 
    class MulAdd(Function):
        def forward(self, inputs):
@@ -151,6 +148,26 @@ In that case, we can reduce them to :meth:`~Function.forward` and :meth:`~Functi
 
 
 Since the :class:`cupy.ndarray` class implements many methods of :class:`numpy.ndarray`, we can write these unified methods in most cases.
+
+The MulAdd function is used as follows:
+
+.. testcode::
+
+   x = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   y = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   z = Variable(np.random.uniform(-1, 1, (3, 2)).astype(np.float32))
+   w = MulAdd()(x, y, z)
+
+It looks a bit ugly: we have to explicitly instantiate MulAdd before applying it to variables.
+We also have to be careful that one instance of MulAdd must not be used multiple times, since it acts as a node in the computational graph.
+In Chainer, we often define a thin wrapper Python function that hide the instantiation:
+
+.. testcode::
+
+   def muladd(x, y, z):
+       return MulAdd()(x, y, z)
+
+   w = muladd(x, y, z)
 
 
 Unified forward/backward methods with NumPy/CuPy functions
@@ -193,6 +210,9 @@ It can be written straight-forward as follows
            gy = gz * cupy.exp(y)
            return gx, gy
 
+   def expadd(x, y):
+       return ExpAdd()(x, y)
+
 
 .. testcode::
    :hide:
@@ -233,6 +253,9 @@ See the following code
            gx = gz * xp.exp(x)
            gy = gz * xp.exp(y)
            return gx, gy
+
+   def expadd(x, y):
+       return ExpAdd()(x, y)
 
 
 .. testcode::
@@ -359,58 +382,28 @@ There are more functionalities on user-defined kernels in CuPy.
 :ref:`See the CuPy documentation on user-defined kernels for more details. <udkernel>`
 
 
-Parameterized Functions
-~~~~~~~~~~~~~~~~~~~~~~~
+Links that wrap functions
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Next we show how to define a parameterized function.
-At this time, suppose that we want to implement elementwise product function between the input array and the parameter array.
+Some functions are meant to be combined with parameters.
+In such case, it is useful to write a small **link** that wraps the function.
+We have already seen how to define a chain that wraps other links (by inheriting :class:`Chain` class).
+Here we study how to define a link that does not hold any other links.
 
-.. note::
-
-   Note that the elementwise product between a variable and parameters can be simply implemented by :class:`functions.Parameter` function
-
-   .. testcode::
-
-      p = F.Parameter(np.random.randn(4, 3).astype(np.float32))
-      x = Variable(np.random.randn(4, 3).astype(np.float32))
-      y = p() * x
-
-   The Parameter function takes no arguments and just returns a variable holding the parameter array.
-   The example in this subsection may be slightly more efficient with respect to memory consumption, though.
-
-There are two differences between parameterized functions and non-parameterized functions:
-
-* Parameterized functions have parameter arrays and corresponding gradient arrays.
-  They are typically stored as attributes of the function class, where the function should provide :attr:`~Function.parameter_names` and :attr:`~Function.gradient_names` attributes (or properties).
-  Otherwise, the function must override :attr:`~Function.parameters` and :attr:`~Function.gradients` properties directly.
-* Parameterized functions must accumulate gradients on backward.
-
-Note that gradient arrays are automatically zeroed by an optimizer, so function implementation only need to initialize their shapes.
-Then, the implementation of elementwise product may be as following
+As the first example, suppose that we want to implement elementwise product function between the input array and the parameter array.
+It can be defined as follows:
 
 .. testcode::
 
-   class EltwiseParamProduct(Function):
-       parameter_names = 'w',
-       gradient_names  = 'gw',
-
+   class EltwiseParamProduct(Link):
        def __init__(self, shape):
-           self.w  = np.random.randn(*shape).astype(np.float32)
-           self.gw = np.empty_like(self.w)
+           # By passing a shape of the parameter, the initializer allocates a
+           # parameter variable of the shape.
+           super(EltwiseParamProduct, self).__init__(W=shape)
+           self.W.data[...] = np.random.randn(*shape)
 
-       def forward(self, inputs):
-           x, = inputs
-           y = self.w * x
-           return y,
-
-       def backward(self, inputs, grad_outputs):
-           x, = inputs
-           gy, = grad_outputs
-
-           self.gw += gy * x
-           gx = gy * self.w
-
-           return gx,
+       def __call__(self, x):
+           return self.W * x
 
 .. testcode::
    :hide:
@@ -421,12 +414,66 @@ Then, the implementation of elementwise product may be as following
    y.grad = np.random.uniform(-1, 1, (3, 2)).astype(np.float32)
    y.backward()
 
+We can also initialize the parameter after the initialization by the :meth:`Link.add_param` method.
+
+.. testcode::
+
+   class EltwiseParamProduct(Link):
+       def __init__(self, shape):
+           super(EltwiseParamProduct, self).__init__()
+           self.add_param('W', shape)
+           self.W.data[...] = np.random.randn(*shape)
+
+       def __call__(self, x):
+           return self.W * x
+
+Note that the initializer and the :meth:`~Link.add_param` method does not initialize elements of the parameter array.
+We have to manually initialize the elements by random values, zeros, etc.
+
+For another example, assume we want to define a simple linear layer.
+It is already defined as :class:`~chainer.links.Linear`, so this is an educational example.
+The linear layer is divided into two parts: a function and its wrapper link.
+First, we have to define a function on variables:
+
+.. testcode::
+
+   class LinearFunction(Function):
+       def forward(self, inputs):
+           x, W, b = inputs
+           return x.dot(W.t) + b,
+
+       def backward(self, inputs, grad_outputs):
+           x, W, b = inputs
+           gy, = grad_outputs
+
+           gx = gy.dot(W)
+           gW = gy.T.dot(x)
+           gb = gy.sum(axis=0)
+           return gx, gW, gb
+
+   def linear(x, W, b):
+       return LinearFunction()(x, W, b)
+
+This function takes three arguments: input, weight, and bias.
+It can be used as a part of model definition, though is inconvenient since the user have to manage the weight and bias parameters directly.
+In order to make a convenient module, let's wrap it into a link:
+
+.. testcode::
+
+   class Linear(Link):
+       def __init__(self, in_size, out_size):
+           super(Linear, self).__init__(W=(out_size, in_size), b=out_size)
+           self.W.data[...] = np.random.randn(out_size, in_size) / math.sqrt(in_size)
+           self.b.data.fill(0)
+
+       def __call__(self, x):
+           return linear(x, self.W, self.b)
+
+This link hides the parameters of the linear layer.
 
 .. note::
 
    An advanced tip to implement functions: if you want to preserve some information between forward and backward computations (e.g. to cache some arrays), you can store it as attributes.
-   It does not make any trouble even if the function object is used more than once in the same network, since :meth:`Function.__call__` operator copies itself before the forward computation.
-
    Be careful that it might increase the memory consumption during the whole forward-backward computation.
    If you want to train very large networks on a GPU with limited memory, it is not recommended to cache arrays between forward and backward.
    There is one exception for this: caching the output arrays do not change the memory consumption, because they are also held by the output Variable objects.
@@ -476,12 +523,8 @@ Here is a typical usage of gradient checking utilities.
 This is a test example of :func:`functions.relu` function
 
 .. testcode::
-   :hide:
 
    import unittest
-
-
-.. testcode::
 
    class TestReLU(unittest.TestCase):
        def test_backward_cpu(self):
@@ -490,8 +533,7 @@ This is a test example of :func:`functions.relu` function
            y.grad = np.random.randn(3, 2).astype(np.float32)
            y.backward()
 
-           func = y.creator
-           f = lambda: func.forward((x.data,))
+           f = lambda: (F.relu(x).data,)
            gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
 
            gradient_check.assert_allclose(gx, x.grad)
@@ -504,10 +546,9 @@ This is a test example of :func:`functions.relu` function
    unittest.TextTestRunner().run(suite)
 
 
-We used :attr:`Variable.creator` to extract creator function object of a variable.
 The first four lines of the test code are simple forward and backward computation of ReLU function.
-The next three lines compute numerical gradient using the same forward function without backward routine.
+The next two lines compute numerical gradient using the same forward function without backward routine.
 And at last, we compare these two results elementwise.
-Note that above test code can be easily modified to test GPU version just by replacing CPU arrays to GPU arrays.
+Note that the above test code can be easily modified to test GPU version just by replacing CPU arrays to GPU arrays.
 
 You can find many examples of function tests under ``tests/chainer_tests/function_tests`` directory.

@@ -93,7 +93,12 @@ def where(condition, x=None, y=None):
 _where_ufunc = elementwise.create_ufunc(
     'cupy_where',
     ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
-     '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f', '?dd->d'),
+     '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f',
+     # On CUDA 6.5 these combinations don't work correctly (on CUDA >=7.0, it
+     # works).
+     # See issue #551.
+     '?hd->d', '?Hd->d',
+     '?dd->d'),
     'out0 = in0 ? in1 : in2')
 
 

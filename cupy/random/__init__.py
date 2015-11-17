@@ -8,6 +8,8 @@ from cupy.random import sample as sample_
 rand = sample_.rand
 randn = sample_.randn
 random_sample = sample_.random_sample
+randint = sample_.randint
+random_integers = sample_.random_integers
 random = random_sample
 ranf = random_sample
 sample = random_sample

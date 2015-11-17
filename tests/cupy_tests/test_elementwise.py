@@ -29,3 +29,15 @@ class TestElementwise(unittest.TestCase):
     def test_copy_multigpu(self, dtype):
         with self.assertRaises(ValueError):
             self.check_copy(dtype, 0, 1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_copy_zero_sized_array1(self, xp, dtype):
+        src = xp.empty((0,), dtype=dtype)
+        return xp.copy(src)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_copy_zero_sized_array2(self, xp, dtype):
+        src = xp.empty((1, 0, 2), dtype=dtype)
+        return xp.copy(src)
