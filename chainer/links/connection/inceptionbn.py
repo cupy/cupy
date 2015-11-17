@@ -1,17 +1,17 @@
-from chainer import function
-from chainer import function_set
 from chainer.functions.activation import relu
 from chainer.functions.array import concat
-from chainer.functions.connection import convolution_2d
-from chainer.functions.normalization import batch_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
+from chainer import link
+from chainer.links.connection import convolution_2d
+from chainer.links.normalization import batch_normalization
 
 
-class InceptionBN(function.Function):
+class InceptionBN(link.Chain):
+
     """Inception module of the new GoogLeNet with BatchNormalization.
 
-    This class acts like :class:`Inception`, while InceptionBN uses the
+    This chain acts like :class:`Inception`, while InceptionBN uses the
     :class:`BatchNormalization` on top of each convolution, the 5x5 convolution
     path is replaced by two consecutive 3x3 convolution applications, and the
     pooling method is configurable.
@@ -32,14 +32,14 @@ class InceptionBN(function.Function):
 
     .. seealso:: :class:`Inception`
 
+    Attributes:
+        train (bool): If True, then batch normalization layers are used in
+            training mode. If False, they are used in testing mode.
+
     """
     def __init__(self, in_channels, out1, proj3, out3, proj33, out33,
                  pooltype, proj_pool=None, stride=1):
-        if out1 > 0:
-            assert stride == 1
-            assert proj_pool is not None
-
-        self.f = function_set.FunctionSet(
+        super(InceptionBN, self).__init__(
             proj3=convolution_2d.Convolution2D(
                 in_channels, proj3, 1, nobias=True),
             conv3=convolution_2d.Convolution2D(
@@ -58,72 +58,55 @@ class InceptionBN(function.Function):
         )
 
         if out1 > 0:
-            self.f.conv1 = convolution_2d.Convolution2D(
-                in_channels, out1, 1, stride=stride, nobias=True)
-            self.f.conv1n = batch_normalization.BatchNormalization(out1)
+            assert stride == 1
+            assert proj_pool is not None
+            self.add_link('conv1', convolution_2d.Convolution2D(
+                in_channels, out1, 1, stride=stride, nobias=True))
+            self.add_link('conv1n', batch_normalization.BatchNormalization(
+                out1))
         self.out1 = out1
 
         if proj_pool is not None:
-            self.f.poolp = convolution_2d.Convolution2D(
-                in_channels, proj_pool, 1, nobias=True)
-            self.f.poolpn = batch_normalization.BatchNormalization(proj_pool)
+            self.add_link('poolp', convolution_2d.Convolution2D(
+                in_channels, proj_pool, 1, nobias=True))
+            self.add_link('poolpn', batch_normalization.BatchNormalization(
+                proj_pool))
         self.proj_pool = proj_pool
 
-        if pooltype == 'max':
-            self.f.pool = max_pooling_2d.MaxPooling2D(3, stride=stride, pad=1)
-        elif pooltype == 'avg':
-            self.f.pool = average_pooling_2d.AveragePooling2D(
-                3, stride=stride, pad=1)
-        else:
+        self.stride = stride
+        self.pooltype = pooltype
+        if pooltype != 'max' and pooltype != 'avg':
             raise NotImplementedError()
 
+        self.train = True
+
     def __call__(self, x):
+        test = not self.train
         outs = []
 
         if self.out1 > 0:
-            h1 = self.f.conv1(x)
-            h1 = self.f.conv1n(h1)
+            h1 = self.conv1(x)
+            h1 = self.conv1n(h1, test=test)
             h1 = relu.relu(h1)
             outs.append(h1)
 
-        h3 = relu.relu(self.f.proj3n(self.f.proj3(x)))
-        h3 = relu.relu(self.f.conv3n(self.f.conv3(h3)))
+        h3 = relu.relu(self.proj3n(self.proj3(x), test=test))
+        h3 = relu.relu(self.conv3n(self.conv3(h3), test=test))
         outs.append(h3)
 
-        h33 = relu.relu(self.f.proj33n(self.f.proj33(x)))
-        h33 = relu.relu(self.f.conv33an(self.f.conv33a(h33)))
-        h33 = relu.relu(self.f.conv33bn(self.f.conv33b(h33)))
+        h33 = relu.relu(self.proj33n(self.proj33(x), test=test))
+        h33 = relu.relu(self.conv33an(self.conv33a(h33), test=test))
+        h33 = relu.relu(self.conv33bn(self.conv33b(h33), test=test))
         outs.append(h33)
 
-        p = self.f.pool(x)
+        if self.pooltype == 'max':
+            p = max_pooling_2d.max_pooling_2d(x, 3, stride=self.stride, pad=1)
+        else:
+            p = average_pooling_2d.average_pooling_2d(x, 3, stride=self.stride,
+                                                      pad=1)
         if self.proj_pool is not None:
-            p = relu.relu(self.f.poolpn(self.f.poolp(p)))
+            p = relu.relu(self.poolpn(self.poolp(p), test=test))
         outs.append(p)
 
         y = concat.concat(outs, axis=1)
         return y
-
-    # forward of InceptionBN is a series of forward operations
-    # of existing functions. So we do not need additional type checks.
-    def check_type_forward(self, in_types):
-        pass
-
-    def to_gpu(self, device=None):
-        super(InceptionBN, self).to_gpu(device)
-        self.f.to_gpu(device)
-
-    @property
-    def parameters(self):
-        return self.f.parameters
-
-    @parameters.setter
-    def parameters(self, params):
-        self.f.parameters = params
-
-    @property
-    def gradients(self):
-        return self.f.gradients
-
-    @gradients.setter
-    def gradients(self, grads):
-        self.f.gradients = grads

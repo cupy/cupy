@@ -23,6 +23,7 @@ import cupy.random
 from cupy import reduction
 from cupy import sorting
 from cupy import statistics
+from cupy import testing  # NOQA
 from cupy import util
 
 random = cupy.random
@@ -431,6 +432,8 @@ class ndarray(object):
         """
         if len(axes) == 1 and isinstance(axes[0], collections.Sequence):
             axes = axes[0]
+        if axes == (None,):
+            axes = axes[0]
         return transpose(self, axes)
 
     def swapaxes(self, axis1, axis2):
@@ -501,8 +504,16 @@ class ndarray(object):
         """
         return take(self, indices, axis, out)
 
+    def repeat(self, repeats, axis=None):
+        """Returns an array with repeated arrays along an axis.
+
+        .. seealso::
+            :func:`cupy.repeat` for full documentation,
+            :meth:`numpy.ndarray.repeat`
+        """
+        return repeat(self, repeats, axis)
+
     # TODO(okuta): Implement put
-    # TODO(okuta): Implement repeat
     # TODO(okuta): Implement choose
     # TODO(okuta): Implement sort
     # TODO(okuta): Implement argsort
@@ -1207,6 +1218,9 @@ dsplit = manipulation.split.dsplit
 hsplit = manipulation.split.hsplit
 split = manipulation.split.split
 vsplit = manipulation.split.vsplit
+
+tile = manipulation.tiling.tile
+repeat = manipulation.tiling.repeat
 
 # -----------------------------------------------------------------------------
 # Binary operations

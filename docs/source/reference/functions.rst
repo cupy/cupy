@@ -4,92 +4,107 @@ Standard Function implementations
 .. module:: chainer.functions
 
 Chainer provides basic :class:`~chainer.Function` implementations in the
-:mod:`chainer.functions` package.
+:mod:`chainer.functions` package. Most of them are wrapped by plain Python
+functions, which users should use.
 
-Non-parameterized functions are provided as plain Python functions. These can be
-used directly in forward computation without explicit handling of
-:class:`~chainer.Function` objects. On the other hand, parameterized functions
-should be used with explicit handling of :class:`~chainer.Function` objects.
+.. note::
+   As of v1.5, the concept of parameterized functions are gone, and they are
+   replaced by corresponding :class:`~chainer.Link` implementations. They are
+   still put in the :mod:`~chainer.functions` namespace for backward
+   compatibility, though it is strongly recommended to use them via the
+   :mod:`chainer.links` package.
 
-Learnable connections
----------------------
-.. autoclass:: Bilinear
-.. autoclass:: BinaryHierarchicalSoftmax
-.. autoclass:: Convolution2D
-.. autoclass:: EmbedID
-.. autoclass:: Linear
-.. autoclass:: NegativeSampling
-.. autoclass:: Parameter
+..
+   For contributors that want to update these lists:
 
-Array computation functions
-----------------------------
-.. autofunction:: convolution_2d
-.. autofunction:: linear
-.. autofunction:: matmul
-.. autofunction:: batch_matmul
+   Each list corresponds to the package under chainer.functions. For example,
+   the first section "Activation functions" shows functions under the
+   chainer.functions.activation subpackage.
 
-Array manipulation functions
-----------------------------
-.. autofunction:: broadcast
-.. autofunction:: concat
-.. autofunction:: copy
-.. autofunction:: identity
-.. autofunction:: reshape
-.. autofunction:: select_item
-.. autofunction:: split_axis
-.. autofunction:: where
+   KEEP EACH LIST IN LEXICOGRAPHICAL ORDER.
 
 Activation functions
 --------------------
 .. autofunction:: clipped_relu
-.. autofunction:: cos
-.. autofunction:: exp
 .. autofunction:: leaky_relu
-.. autofunction:: log
 .. autofunction:: lstm
-.. autoclass:: PReLU
+.. autofunction:: prelu
 .. autofunction:: relu
 .. autofunction:: sigmoid
-.. autofunction:: sin
 .. autofunction:: softmax
 .. autofunction:: softplus
 .. autofunction:: tanh
 
-Pooling functions
------------------
-.. autofunction:: average_pooling_2d
-.. autofunction:: max_pooling_2d
-.. autofunction:: spatial_pyramid_pooling_2d
-
-Normalization functions
------------------------
-.. autoclass:: BatchNormalization
-   :members: __call__
-.. autofunction:: local_response_normalization
+Array manipulations
+-------------------
+.. autofunction:: broadcast
+.. autofunction:: concat
+.. autofunction:: copy
+.. autofunction:: reshape
+.. autofunction:: select_item
+.. autofunction:: split_axis
+.. autofunction:: swapaxes
+.. autofunction:: transpose
+.. autofunction:: where
 
 Noise injecting functions
 -------------------------
 .. autofunction:: dropout
 .. autofunction:: gaussian
 
-Loss, evaluation and aggregation
---------------------------------
+Neural network connections
+--------------------------
+.. autofunction:: bilinear
+.. autofunction:: convolution_2d
+.. autofunction:: embed_id
+.. autofunction:: linear
+
+Evaluation functions
+--------------------
 .. autofunction:: accuracy
+
+Loss functions
+--------------
 .. autofunction:: connectionist_temporal_classification
 .. autofunction:: contrastive
+.. autofunction:: cross_covariance
 .. autofunction:: mean_squared_error
+.. autofunction:: negative_sampling
 .. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
-.. autofunction:: sum
-.. autofunction:: cross_covariance
 
-Reusable subnetwork of complex architectures
---------------------------------------------
-.. autoclass:: Inception
-.. autoclass:: InceptionBN
-
-Variational Auto-Encoder (VAE)
-------------------------------
-.. autofunction:: gaussian_kl_divergence
+Loss functions for VAE
+~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: bernoulli_nll
+.. autofunction:: gaussian_kl_divergence
 .. autofunction:: gaussian_nll
+
+Mathematical functions
+----------------------
+.. autofunction:: batch_matmul
+.. autofunction:: cos
+.. autofunction:: exp
+.. autofunction:: identity
+.. autofunction:: log
+.. autofunction:: matmul
+.. autofunction:: max
+.. autofunction:: min
+.. autofunction:: sin
+.. autofunction:: sum
+
+Noise injections
+----------------
+.. autofunction:: dropout
+.. autofunction:: gaussian
+
+Normalization functions
+-----------------------
+.. autofunction:: batch_normalization
+.. autofunction:: fixed_batch_normalization
+.. autofunction:: local_response_normalization
+
+Spatial pooling
+---------------
+.. autofunction:: average_pooling_2d
+.. autofunction:: max_pooling_2d
+.. autofunction:: spatial_pyramid_pooling_2d

@@ -16,11 +16,18 @@ import six
 
 import chainer
 from chainer import cuda
-import chainer.functions as F
+import chainer.links as L
 from chainer import optimizers
+from chainer import serializers
+
+import net
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--initmodel', '-m', default='',
+                    help='Initialize the model from given file')
+parser.add_argument('--resume', '-r', default='',
+                    help='Resume the optimization from snapshot')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 args = parser.parse_args()
@@ -51,59 +58,43 @@ valid_data = load_data('ptb.valid.txt')
 test_data = load_data('ptb.test.txt')
 print('#vocab =', len(vocab))
 
-# Prepare RNNLM model
-model = chainer.FunctionSet(embed=F.EmbedID(len(vocab), n_units),
-                            l1_x=F.Linear(n_units, 4 * n_units),
-                            l1_h=F.Linear(n_units, 4 * n_units),
-                            l2_x=F.Linear(n_units, 4 * n_units),
-                            l2_h=F.Linear(n_units, 4 * n_units),
-                            l3=F.Linear(n_units, len(vocab)))
-for param in model.parameters:
-    param[:] = np.random.uniform(-0.1, 0.1, param.shape)
+# Prepare RNNLM model, defined in net.py
+lm = net.RNNLM(len(vocab), n_units)
+model = L.Classifier(lm)
+model.compute_accuracy = False  # we only want the perplexity
+for param in model.params():
+    data = param.data
+    data[:] = np.random.uniform(-0.1, 0.1, data.shape)
 if args.gpu >= 0:
-    cuda.check_cuda_available()
     cuda.get_device(args.gpu).use()
     model.to_gpu()
-
-
-def forward_one_step(x_data, y_data, state, train=True):
-    # Neural net architecture
-    x = chainer.Variable(x_data, volatile=not train)
-    t = chainer.Variable(y_data, volatile=not train)
-    h0 = model.embed(x)
-    h1_in = model.l1_x(F.dropout(h0, train=train)) + model.l1_h(state['h1'])
-    c1, h1 = F.lstm(state['c1'], h1_in)
-    h2_in = model.l2_x(F.dropout(h1, train=train)) + model.l2_h(state['h2'])
-    c2, h2 = F.lstm(state['c2'], h2_in)
-    y = model.l3(F.dropout(h2, train=train))
-    state = {'c1': c1, 'h1': h1, 'c2': c2, 'h2': h2}
-    return state, F.softmax_cross_entropy(y, t)
-
-
-def make_initial_state(batchsize=batchsize, train=True):
-    return {name: chainer.Variable(xp.zeros((batchsize, n_units),
-                                            dtype=np.float32),
-                                   volatile=not train)
-            for name in ('c1', 'h1', 'c2', 'h2')}
 
 # Setup optimizer
 optimizer = optimizers.SGD(lr=1.)
 optimizer.setup(model)
+optimizer.add_hook(chainer.optimizer.GradientClipping(grad_clip))
 
-
-# Evaluation routine
+# Init/Resume
+if args.initmodel:
+    print('Load model from', args.initmodel)
+    serializers.load_hdf5(args.initmodel, model)
+if args.resume:
+    print('Load optimizer state from', args.resume)
+    serializers.load_hdf5(args.resume, optimizer)
 
 
 def evaluate(dataset):
-    sum_log_perp = xp.zeros(())
-    state = make_initial_state(batchsize=1, train=False)
-    for i in six.moves.range(dataset.size - 1):
-        x_batch = xp.asarray(dataset[i:i + 1])
-        y_batch = xp.asarray(dataset[i + 1:i + 2])
-        state, loss = forward_one_step(x_batch, y_batch, state, train=False)
-        sum_log_perp += loss.data.reshape(())
+    # Evaluation routine
+    evaluator = model.copy()  # to use different state
+    evaluator.predictor.reset_state()  # initialize state
 
-    return math.exp(cuda.to_cpu(sum_log_perp) / (dataset.size - 1))
+    sum_log_perp = 0
+    for i in six.moves.range(dataset.size - 1):
+        x = chainer.Variable(xp.asarray(dataset[i:i + 1]), volatile='on')
+        t = chainer.Variable(xp.asarray(dataset[i + 1:i + 2]), volatile='on')
+        loss = evaluator(x, t)
+        sum_log_perp += loss.data
+    return math.exp(float(sum_log_perp) / (dataset.size - 1))
 
 
 # Learning loop
@@ -113,31 +104,30 @@ cur_log_perp = xp.zeros(())
 epoch = 0
 start_at = time.time()
 cur_at = start_at
-state = make_initial_state()
-accum_loss = chainer.Variable(xp.zeros((), dtype=np.float32))
+accum_loss = 0
+batch_idxs = list(range(batchsize))
 print('going to train {} iterations'.format(jump * n_epoch))
+
 for i in six.moves.range(jump * n_epoch):
-    x_batch = xp.array([train_data[(jump * j + i) % whole_len]
-                        for j in six.moves.range(batchsize)])
-    y_batch = xp.array([train_data[(jump * j + i + 1) % whole_len]
-                        for j in six.moves.range(batchsize)])
-    state, loss_i = forward_one_step(x_batch, y_batch, state)
+    x = chainer.Variable(xp.asarray(
+        [train_data[(jump * j + i) % whole_len] for j in batch_idxs]))
+    t = chainer.Variable(xp.asarray(
+        [train_data[(jump * j + i + 1) % whole_len] for j in batch_idxs]))
+    loss_i = model(x, t)
     accum_loss += loss_i
-    cur_log_perp += loss_i.data.reshape(())
+    cur_log_perp += loss_i.data
 
     if (i + 1) % bprop_len == 0:  # Run truncated BPTT
-        optimizer.zero_grads()
+        model.zerograds()
         accum_loss.backward()
         accum_loss.unchain_backward()  # truncate
-        accum_loss = chainer.Variable(xp.zeros((), dtype=np.float32))
-
-        optimizer.clip_grads(grad_clip)
+        accum_loss = 0
         optimizer.update()
 
     if (i + 1) % 10000 == 0:
         now = time.time()
         throuput = 10000. / (now - cur_at)
-        perp = math.exp(cuda.to_cpu(cur_log_perp) / 10000)
+        perp = math.exp(float(cur_log_perp) / 10000)
         print('iter {} training perplexity: {:.2f} ({:.2f} iters/sec)'.format(
             i + 1, perp, throuput))
         cur_at = now
@@ -161,3 +151,9 @@ for i in six.moves.range(jump * n_epoch):
 print('test')
 test_perp = evaluate(test_data)
 print('test perplexity:', test_perp)
+
+# Save the model and the optimizer
+print('save the model')
+serializers.save_hdf5('rnnlm.model', model)
+print('save the optimizer')
+serializers.save_hdf5('rnnlm.state', optimizer)
