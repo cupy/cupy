@@ -21,6 +21,8 @@ Learnable connections
    :members:
 .. autoclass:: EmbedID
    :members:
+.. autoclass:: GRU
+   :members:
 .. autoclass:: Inception
    :members:
 .. autoclass:: InceptionBN
