@@ -172,17 +172,19 @@ class chainer_build_ext(build_ext.build_ext):
     def finalize_options(self):
         ext_modules = self.distribution.ext_modules
         if dummy_extension in ext_modules:
-            from Cython.Build import cythonize
             print('Executing cythonize()')
             print('Options:', _arg_options)
 
             directive_keys = ('linetrace', 'profile')
             directives = {key: _arg_options[key] for key in directive_keys}
 
-            extensions = cythonize(
-                make_extensions(_arg_options),
-                force=True,
-                compiler_directives=directives)
+            extensions = make_extensions(_arg_options)
+            if len(extensions) != 0:
+                from Cython.Build import cythonize
+                extensions = cythonize(
+                    extensions,
+                    force=True,
+                    compiler_directives=directives)
 
             # Modify ext_modules for cython
             ext_modules.remove(dummy_extension)
