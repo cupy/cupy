@@ -8,7 +8,7 @@ from setuptools import setup
 import chainer_setup_build
 
 
-print(setuptools.__version__)
+print("setuptools", setuptools.__version__)
 
 install_requires = [
     'filelock',
