@@ -81,15 +81,19 @@ class TestCTC(unittest.TestCase):
     def check_backward(self, t_data, xs_data):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
         t = chainer.Variable(t_data)
+        xp = cuda.get_array_module(xs_data[0])
+        input_length = xp.full((len(xs[0].data),), len(xs[0].data[0]), dtype='i')
+        label_length = xp.full((len(t.data),), len(t.data[0]), dtype='i')
+
         loss = functions.connectionist_temporal_classification(xs, t, 2)
         loss.grad = self.g
         loss.backward()
 
         func = loss.creator
         xs_data = tuple(x.data for x in xs)
-        f = lambda: func.forward((t.data,) + xs_data)
-        gl_0, gx_0, gx_1, gx_2, gx_3 = gradient_check.numerical_grad(
-            f, ((t.data,) + xs_data), (self.gx,))
+        f = lambda: func.forward((input_length, label_length, t.data,) + xs_data)
+        gx_0, gx_1, gx_2, gx_3 = gradient_check.numerical_grad(
+            f, (xs_data), (self.gx,))
         gradient_check.assert_allclose(xs[0].grad, gx_0, atol=1e-04)
         gradient_check.assert_allclose(xs[1].grad, gx_1, atol=1e-04)
         gradient_check.assert_allclose(xs[2].grad, gx_2, atol=1e-04)
