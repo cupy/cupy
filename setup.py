@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+import sys
+
 from setuptools import setup
 
-import setup_build
-
+import chainer_setup_build
 
 install_requires = [
     'filelock',
@@ -12,10 +13,17 @@ install_requires = [
     'protobuf',
     'six>=1.9.0']
 
-if not setup_build.check_readthedocs_environment():
+
+# Hack for Read the Docs
+on_rtd = chainer_setup_build.check_readthedocs_environment()
+if not on_rtd:
     install_requires.append('h5py>=2.5.0')
 
-setup_build.parse_args()
+if on_rtd:
+    print('Add develop command for Read the Docs')
+    sys.argv.insert(1, 'develop')
+
+chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
@@ -48,6 +56,7 @@ setup(
               'chainer.utils',
               'cupy',
               'cupy.binary',
+              'cupy.core',
               'cupy.creation',
               'cupy.cuda',
               'cupy.indexing',
@@ -62,7 +71,7 @@ setup(
               'cupy.statistics',
               'cupy.testing'],
     package_data={
-        'cupy': ['carray.cuh'],
+        'cupy': ['core/carray.cuh'],
     },
     install_requires=install_requires,
     setup_requires=['Cython>=0.23',
@@ -70,9 +79,8 @@ setup(
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext
-    ext_modules=[setup_build.dummy_extension],
+    ext_modules=[chainer_setup_build.dummy_extension],
     cmdclass={
-        'build_ext': setup_build.chainer_build_ext,
-        'install': setup_build.chainer_install,  # For Read the Docs
+        'build_ext': chainer_setup_build.chainer_build_ext,
     },
 )
