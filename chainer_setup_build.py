@@ -158,8 +158,8 @@ def parse_args():
     cupy_coverage = '--cupy-coverage' in sys.argv
     if cupy_coverage:
         sys.argv.remove('--cupy-coverage')
-        _arg_options['linetrace'] = True
-        _arg_options['annotate'] = True
+    _arg_options['linetrace'] = cupy_coverage
+    _arg_options['annotate'] = cupy_coverage
 
     _arg_options['no_cuda'] = '--cupy-no-cuda' in sys.argv
     if _arg_options['no_cuda']:
