@@ -121,6 +121,7 @@ def make_extensions(options):
 
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
+        settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
@@ -154,9 +155,11 @@ def parse_args():
     if _arg_options['profile']:
         sys.argv.remove('--cupy-profile')
 
-    _arg_options['linetrace'] = '--cupy-linetrace' in sys.argv
-    if _arg_options['linetrace']:
-        sys.argv.remove('--cupy-linetrace')
+    cupy_coverage = '--cupy-coverage' in sys.argv
+    if cupy_coverage:
+        sys.argv.remove('--cupy-coverage')
+        _arg_options['linetrace'] = True
+        _arg_options['annotate'] = True
 
     _arg_options['no_cuda'] = '--cupy-no-cuda' in sys.argv
     if _arg_options['no_cuda']:
@@ -178,13 +181,18 @@ class chainer_build_ext(build_ext.build_ext):
             directive_keys = ('linetrace', 'profile')
             directives = {key: _arg_options[key] for key in directive_keys}
 
+            cythonize_option_keys = ('annotate',)
+            cythonize_options = {
+                key: _arg_options[key] for key in cythonize_option_keys}
+
             extensions = make_extensions(_arg_options)
             if len(extensions) != 0:
                 from Cython.Build import cythonize
                 extensions = cythonize(
                     extensions,
                     force=True,
-                    compiler_directives=directives)
+                    compiler_directives=directives,
+                    **cythonize_options)
 
             # Modify ext_modules for cython
             ext_modules.remove(dummy_extension)

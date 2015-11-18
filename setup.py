@@ -8,6 +8,7 @@ import chainer_setup_build
 
 
 install_requires = [
+    'Cython>=0.23',
     'filelock',
     'nose',
     'numpy>=1.9.0',
