@@ -180,13 +180,12 @@ class chainer_build_ext(build_ext.build_ext):
 
         ext_modules = self.distribution.ext_modules
         if dummy_extension in ext_modules:
-            print('Executing cythonize()')
+            print('Making cython extensions')
             print('Options:', _arg_options)
             extensions = make_extensions(_arg_options)
 
             # Modify ext_modules for cython
             ext_modules.remove(dummy_extension)
             ext_modules.extend(extensions)
-            print(ext_modules)
 
         build_ext.build_ext.finalize_options(self)
