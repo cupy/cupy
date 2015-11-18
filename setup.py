@@ -2,13 +2,10 @@
 
 import sys
 
-import setuptools
 from setuptools import setup
 
 import chainer_setup_build
 
-
-print("setuptools", setuptools.__version__)
 
 install_requires = [
     'filelock',
@@ -79,8 +76,7 @@ setup(
     },
     install_requires=install_requires,
     setup_requires=['Cython>=0.23',
-                    'numpy>=1.9.0',
-                    'setuptools>=18.0'],
+                    'numpy>=1.9.0'],
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext

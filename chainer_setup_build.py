@@ -7,7 +7,7 @@ import setuptools
 from setuptools.command import build_ext
 
 
-dummy_extension = setuptools.Extension('chainer', ['x.c'])
+dummy_extension = setuptools.Extension('chainer', ['chainer.c'])
 
 MODULES = [
     {
@@ -124,9 +124,6 @@ def make_extensions(options):
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
-    directive_keys = ('linetrace', 'profile')
-    directives = {key: options[key] for key in directive_keys}
-
     ret = []
     for module in MODULES:
         print('Include directories:', settings['include_dirs'])
@@ -145,9 +142,6 @@ def make_extensions(options):
             setuptools.Extension(
                 f, [localpath(path.join(*f.split('.')) + '.pyx')], **s)
             for f in module['file']])
-    for i in ret:
-        i.cython_directives = directives
-
     return ret
 
 
@@ -176,13 +170,19 @@ class chainer_build_ext(build_ext.build_ext):
     """`build_ext` command for cython files."""
 
     def finalize_options(self):
-        self.force = True
-
         ext_modules = self.distribution.ext_modules
         if dummy_extension in ext_modules:
-            print('Making cython extensions')
+            from Cython.Build import cythonize
+            print('Executing cythonize()')
             print('Options:', _arg_options)
-            extensions = make_extensions(_arg_options)
+
+            directive_keys = ('linetrace', 'profile')
+            directives = {key: _arg_options[key] for key in directive_keys}
+
+            extensions = cythonize(
+                make_extensions(_arg_options),
+                force=True,
+                compiler_directives=directives)
 
             # Modify ext_modules for cython
             ext_modules.remove(dummy_extension)
