@@ -4,9 +4,9 @@ import sys
 import numpy
 import six
 
-from cupy import core
 
 from cupy import binary
+from cupy import core
 from cupy import creation
 from cupy import indexing
 from cupy import io
