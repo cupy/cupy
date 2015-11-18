@@ -2,9 +2,13 @@
 
 import sys
 
+import setuptools
 from setuptools import setup
 
 import chainer_setup_build
+
+
+print(setuptools.__version__)
 
 install_requires = [
     'filelock',
