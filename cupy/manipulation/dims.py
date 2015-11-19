@@ -122,6 +122,29 @@ def broadcast_arrays(*args):
     return broadcast(*args).values
 
 
+def broadcast_to(array, shape, subok=False):
+    rev = slice(None, None, -1)
+    shape_arr = array._shape[rev]
+    r_shape = [max(ss) for ss in zip_longest(shape_arr, shape[rev], fillvalue=0)]
+
+    r_strides = [
+        a_st if sh == a_sh else (0 if a_sh == 1 else None)
+        for sh, a_sh, a_st
+        in six_zip(r_shape, array._shape[rev], array._strides[rev])]
+
+    if None in r_strides:
+        raise ValueError('Broadcasting failed')
+
+    offset = (0,) * (len(r_shape) - len(r_strides))
+    view = array.view()
+    view._shape = shape
+    view._strides = offset + tuple(r_strides[rev])
+    view._size = internal.prod(r_shape)
+    view._c_contiguous = -1
+    view._f_contiguous = -1
+    return view
+
+
 def expand_dims(a, axis):
     """Expands given arrays.
 

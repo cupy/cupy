@@ -65,6 +65,13 @@ class TestDims(unittest.TestCase):
         b = xp.zeros((3, 2))
         xp.broadcast(a, b)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_broadcast_to(self, xp, dtype):
+        a = testing.shaped_arange((3, 1, 4), xp, dtype)
+        b = xp.broadcast_to(a, (2, 1, 3, 4))
+        return b
+
     @testing.numpy_cupy_array_equal()
     def test_expand_dims0(self, xp):
         a = testing.shaped_arange((2, 3), xp)
