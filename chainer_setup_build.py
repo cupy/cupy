@@ -184,7 +184,7 @@ def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
         cmd = list(cython_cmdbase)
         if annotate:
             cmd.append('--annotate')
-        for i in compiler_directives.iteritems():
+        for i in compiler_directives.items():
             cmd.append('--directive')
             cmd.append('%s=%s' % i)
         cpp_files = [path.splitext(f)[0] + ".cpp" for f in ext.sources]
