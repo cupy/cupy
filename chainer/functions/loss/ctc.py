@@ -47,7 +47,7 @@ def _rotate_path(path, path_length , xp):
 
 def _create_mask_array(input_length, i, xp):
     batch_size = len(input_length)
-    max_length = input_length - 1
+    max_length = xp.max(input_length)
     mask_array = xp.zeros((batch_size, max_length), dtype=numpy.float32)
     for i, l in enumerate(input_length):
         if i < l:
@@ -201,12 +201,12 @@ class ConnectionistTemporalClassification(function.Function):
         total_probability = _logsumexp(self.prob_trans[0], xp, axis=1)
         scale = grad_output[0] / batch_size
         for i, (y, prob) in enumerate(zip(self.yseq, self.prob_trans)):
-            # mask = _create_mask_array(self.input_length, i, xp)
+            mask = _create_mask_array(self.input_length, i, xp)
             label_prob = self.label_probability(
                 y.shape[1], self.path, prob, xp)
             y -= xp.exp(label_prob - total_probability[:, None])
             y *= scale
-            # y *= mask
+            y *= mask
         return (None, None, None) + tuple(self.yseq)
 
 
