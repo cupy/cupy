@@ -1,7 +1,6 @@
 *~
 *.pyc
 *.pyo
-*.c
 *.cpp
 *.so
 build
