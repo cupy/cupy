@@ -150,9 +150,11 @@ class Deconvolution2D(function.Function):
     def forward_cpu(self, x):
         _, _, h, w = x[0].shape
         gcol = numpy.tensordot(self.W, x[0], (0, 1))
-        # k, m, n, b, h, w
+        # - k, m, n: shape of out_channel
+        # - b: number of inputs
+        # - h, w: height and width of kernels
+        # k, m, n, b, h, w -> b, k, m, n, h, w
         gcol = numpy.rollaxis(gcol, 3)
-        # b, k, m, n, h, w
         h_ = get_deconv_outsize(h, self.kh, self.sy, self.ph)
         w_ = get_deconv_outsize(w, self.kw, self.sx, self.pw)
         y = conv.col2im_cpu(
