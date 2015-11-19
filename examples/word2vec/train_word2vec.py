@@ -23,9 +23,9 @@ parser.add_argument('--unit', '-u', default=100, type=int,
                     help='number of units')
 parser.add_argument('--window', '-w', default=5, type=int,
                     help='window size')
-parser.add_argument('--batchsize', '-b', type=int, default=100,
+parser.add_argument('--batchsize', '-b', type=int, default=1000,
                     help='learning minibatch size')
-parser.add_argument('--epoch', '-e', default=10, type=int,
+parser.add_argument('--epoch', '-e', default=20, type=int,
                     help='number of epochs to learn')
 parser.add_argument('--model', '-m', choices=['skipgram', 'cbow'],
                     default='skipgram',
