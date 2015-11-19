@@ -10,21 +10,38 @@ from chainer import testing
 from chainer.utils.conv import get_deconv_outsize
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.testing import parameterize
 
 
+def _pair(x):
+    if hasattr(x, '__getitem__'):
+        return x
+    return (x, x)
+
+
+@parameterize(
+    {'in_channels': 3, 'out_channels': 2, 'ksize': 3, 'stride': 2, 'pad': 1},
+)
 class TestDeconvolution2D(unittest.TestCase):
 
     def setUp(self):
-        self.func = F.Deconvolution2D(3, 2, 3, stride=2, pad=1)
+        self.func = F.Deconvolution2D(
+            self.in_channels, self.out_channels, self.ksize,
+            stride=self.stride, pad=self.pad)
         self.func.b = numpy.random.uniform(
             -1, 1, self.func.b.shape).astype(numpy.float32)
         self.func.gW.fill(0)
         self.func.gb.fill(0)
 
-        self.gy = numpy.random.uniform(-1, 1,
-                                       (2, 2, 5, 3)).astype(numpy.float32)
-        self.x = numpy.random.uniform(-1, 1,
-                                      (2, 3, 3, 2)).astype(numpy.float32)
+        N = 2
+        h, w = 3, 2
+        kh, kw = _pair(self.ksize)
+        out_h = get_deconv_outsize(h, kh, self.stride, self.pad)
+        out_w = get_deconv_outsize(w, kw, self.stride, self.pad)
+        self.gy = numpy.random.uniform(
+            -1, 1, (N, self.out_channels, out_h, out_w)).astype(numpy.float32)
+        self.x = numpy.random.uniform(
+            -1, 1, (N, self.in_channels, h, w)).astype(numpy.float32)
 
     def check_forward_consistency(self, nobias=False):
         if nobias:
