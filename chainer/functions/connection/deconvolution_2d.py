@@ -148,7 +148,7 @@ class Deconvolution2D(function.Function):
             self.gb.fill(0)
 
     def forward_cpu(self, x):
-        n, c, h, w = x[0].shape
+        _, _, h, w = x[0].shape
         gcol = numpy.tensordot(self.W, x[0], (0, 1))
         # k, m, n, b, h, w
         gcol = numpy.rollaxis(gcol, 3)
