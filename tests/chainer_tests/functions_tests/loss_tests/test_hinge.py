@@ -16,8 +16,8 @@ class TestHinge(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (10, 5)).astype(numpy.float32)
-        # Avoid values around zero for stability
-        self.x[numpy.logical_and(-0.01 < self.x, self.x < 0.01)] = 0.5
+        # Avoid values around -1.0 for stability
+        self.x[numpy.logical_and(-1.01 < self.x, self.x < -0.99)] = 0.5
         self.t = numpy.random.randint(0, 5, (10,)).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data, norm):
