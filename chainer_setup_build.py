@@ -1,6 +1,9 @@
 from __future__ import print_function
+import copy
 import os
 from os import path
+import pkg_resources
+import subprocess
 import sys
 
 import setuptools
@@ -168,6 +171,31 @@ def parse_args():
         _arg_options['no_cuda'] = True
 
 
+def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
+    cython_pkg = pkg_resources.get_distribution('cython')
+    cython_path = path.join(cython_pkg.location, 'cython.py')
+    print("cython path:%s" % cython_pkg.location)
+    cython_cmdbase = ['/usr/bin/env', 'python', cython_path]
+    subprocess.check_call(cython_cmdbase + ['--version'])
+
+    cython_cmdbase.extend(['--fast-fail', '--verbose', '--cplus'])
+    ret = []
+    for ext in extensions:
+        cmd = list(cython_cmdbase)
+        if annotate:
+            cmd.append('--annotate')
+        for i in compiler_directives.iteritems():
+            cmd.append('--directive')
+            cmd.append('%s=%s' % i)
+        cpp_files = [path.splitext(f)[0] + ".cpp" for f in ext.sources]
+        cmd += ext.sources
+        subprocess.check_call(cmd)
+        ext = copy.copy(ext)
+        ext.sources = cpp_files
+        ret.append(ext)
+    return ret
+
+
 class chainer_build_ext(build_ext.build_ext):
 
     """`build_ext` command for cython files."""
@@ -186,13 +214,11 @@ class chainer_build_ext(build_ext.build_ext):
                 key: _arg_options[key] for key in cythonize_option_keys}
 
             extensions = make_extensions(_arg_options)
-            if len(extensions) != 0:
-                from Cython.Build import cythonize
-                extensions = cythonize(
-                    extensions,
-                    force=True,
-                    compiler_directives=directives,
-                    **cythonize_options)
+            extensions = cythonize(
+                extensions,
+                force=True,
+                compiler_directives=directives,
+                **cythonize_options)
 
             # Modify ext_modules for cython
             ext_modules.remove(dummy_extension)
