@@ -4,9 +4,9 @@
 #define INCLUDE_GUARD_CUPY_CUDA_H
 
 #ifndef CUPY_NO_CUDA
+#include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <cublas_v2.h>
 #include <curand.h>
 
 #else // #ifndef CUPY_NO_CUDA
