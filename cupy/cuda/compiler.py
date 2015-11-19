@@ -8,7 +8,6 @@ import tempfile
 import filelock
 import six
 
-
 from cupy.cuda import device
 from cupy.cuda import module
 
