@@ -11,6 +11,10 @@ def get_conv_outsize(size, k, s, p, cover_all=False):
         return (size + p * 2 - k) // s + 1
 
 
+def get_deconv_outsize(size, k, s, p):
+    return s * (size - 1) + k - 2 * p
+
+
 def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
     n, c, h, w = img.shape
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all)

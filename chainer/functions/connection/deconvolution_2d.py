@@ -21,10 +21,6 @@ def _pair(x):
     return (x, x)
 
 
-def get_deconv_outsize(h, kh, sy, ph):
-    return sy * (h - 1) + kh - 2 * ph
-
-
 class Deconvolution2D(function.Function):
 
     """Two dimensional deconvolution function.
@@ -155,8 +151,8 @@ class Deconvolution2D(function.Function):
         # - h, w: height and width of kernels
         # k, m, n, b, h, w -> b, k, m, n, h, w
         gcol = numpy.rollaxis(gcol, 3)
-        h_ = get_deconv_outsize(h, self.kh, self.sy, self.ph)
-        w_ = get_deconv_outsize(w, self.kw, self.sx, self.pw)
+        h_ = conv.get_deconv_outsize(h, self.kh, self.sy, self.ph)
+        w_ = conv.get_deconv_outsize(w, self.kw, self.sx, self.pw)
         y = conv.col2im_cpu(
             gcol, self.sy, self.sx, self.ph, self.pw, h_, w_)
         # b, k, h, w
@@ -167,8 +163,8 @@ class Deconvolution2D(function.Function):
     def forward_gpu(self, x):
         n, in_c, in_h, in_w = x[0].shape
         c = self.W.shape[1]  # out_c
-        h = get_deconv_outsize(in_h, self.kh, self.sy, self.ph)
-        w = get_deconv_outsize(in_w, self.kw, self.sx, self.pw)
+        h = conv.get_deconv_outsize(in_h, self.kh, self.sy, self.ph)
+        w = conv.get_deconv_outsize(in_w, self.kw, self.sx, self.pw)
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x[0])
