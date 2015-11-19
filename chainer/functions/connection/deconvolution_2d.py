@@ -56,12 +56,12 @@ class Deconvolution2D(function.Function):
     default. The deviation is scaled by ``wscale`` if specified.
 
     The bias vector is of size :math:`c_O`.
-    Each element of it is initialized by ``bias`` argument.
+    Its elements are initialized by ``bias`` argument.
     If ``nobias`` argument is set to True, then this function does not hold
     the bias parameter.
 
     Let :math:`X` be the input tensor of dimensions :math:`(n, c_I, h, w)`,
-    :math:`(s_Y, s_X)` be the stride of filter application, and
+    :math:`(s_Y, s_X)` the stride of filter application, and
     :math:`(p_H, p_W)` the spatial padding size. Then, the output size
     :math:`(h_O, w_O)` is determined by the following equations:
 
