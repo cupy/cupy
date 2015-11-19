@@ -141,7 +141,7 @@ if args.out_type == 'hsm':
     loss_func.W.data[...] = 0
 elif args.out_type == 'ns':
     cs = [counts[w] for w in range(len(counts))]
-    loss_func = L.NegativeSampling(args.unit, cs, 20)
+    loss_func = L.NegativeSampling(args.unit, cs, 5)
     loss_func.W.data[...] = 0
 elif args.out_type == 'original':
     loss_func = SoftmaxCrossEntropyLoss(args.unit, n_vocab)
