@@ -6,6 +6,7 @@ import six
 from cupy import util
 
 from cupy.cuda cimport device
+from cupy.cuda cimport function
 
 
 cpdef _get_simple_elementwise_kernel(
@@ -483,7 +484,7 @@ cdef class ElementwiseKernel:
 
         """
 
-        cdef cupy.cuda.module.Function kern
+        cdef function.Function kern
 
         size = kwargs.pop('size', None)
         if kwargs:
@@ -699,7 +700,7 @@ class ufunc(object):
 
         """
 
-        cdef cupy.cuda.module.Function kern
+        cdef function.Function kern
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)

@@ -15,7 +15,6 @@ from libcpp cimport vector
 from cupy.cuda cimport cublas
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
-from cupy.cuda cimport module
 
 
 DEF MAX_NDIM = 25

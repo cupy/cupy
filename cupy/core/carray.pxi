@@ -2,14 +2,15 @@ import os
 
 from cupy import cuda
 
-cimport cupy.cuda.module
+from cupy.cuda cimport function
+
 
 cdef struct _CArray:
     void* data
     int size
     int shape_and_strides[MAX_NDIM * 2]
 
-cdef class CArray(cupy.cuda.module.CPointer):
+cdef class CArray(cupy.cuda.function.CPointer):
 
     cdef:
         _CArray val
@@ -27,7 +28,7 @@ cdef struct _CIndexer:
     int size
     int shape_and_index[MAX_NDIM * 2]
 
-cdef class CIndexer(cupy.cuda.module.CPointer):
+cdef class CIndexer(cupy.cuda.function.CPointer):
     cdef:
         _CIndexer val
 
@@ -76,7 +77,7 @@ cpdef str _get_header_source():
     return _header_source
 
 
-cpdef module.Module compile_with_cache(
+cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None):
     source = _get_header_source() + source
     return cuda.compile_with_cache(source, options, arch, cachd_dir)

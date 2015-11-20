@@ -23,7 +23,7 @@ MODULES = [
             'cupy.cuda.device',
             'cupy.cuda.driver',
             'cupy.cuda.memory',
-            'cupy.cuda.module',
+            'cupy.cuda.function',
             'cupy.cuda.runtime',
             'cupy.util',
         ],
