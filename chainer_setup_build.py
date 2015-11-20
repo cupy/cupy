@@ -175,7 +175,7 @@ def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
     cython_pkg = pkg_resources.get_distribution('cython')
     cython_path = path.join(cython_pkg.location, 'cython.py')
     print("cython path:%s" % cython_pkg.location)
-    cython_cmdbase = ['/usr/bin/env', 'python', cython_path]
+    cython_cmdbase = [sys.executable, cython_path]
     subprocess.check_call(cython_cmdbase + ['--version'])
 
     cython_cmdbase.extend(['--fast-fail', '--verbose', '--cplus'])
