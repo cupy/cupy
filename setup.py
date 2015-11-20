@@ -75,6 +75,7 @@ setup(
     package_data={
         'cupy': ['core/carray.cuh'],
     },
+    zip_safe=False,
     install_requires=install_requires,
     setup_requires=['Cython>=0.23',
                     'numpy>=1.9.0'],
