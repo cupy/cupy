@@ -10,6 +10,7 @@ cdef struct _CArray:
     int size
     int shape_and_strides[MAX_NDIM * 2]
 
+
 cdef class CArray(cupy.cuda.function.CPointer):
 
     cdef:
@@ -24,9 +25,11 @@ cdef class CArray(cupy.cuda.function.CPointer):
             self.val.shape_and_strides[i + ndim] = arr._strides[i]
         self.ptr = <void*>&self.val
 
+
 cdef struct _CIndexer:
     int size
     int shape_and_index[MAX_NDIM * 2]
+
 
 cdef class CIndexer(cupy.cuda.function.CPointer):
     cdef:
@@ -64,6 +67,7 @@ cdef class Indexer:
     @property
     def cstruct(self):
         return to_cindexer(self.size, self.shape)
+
 
 cdef str _header_source = None
 
