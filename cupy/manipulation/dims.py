@@ -125,7 +125,8 @@ def broadcast_arrays(*args):
 def broadcast_to(array, shape, subok=False):
     rev = slice(None, None, -1)
     shape_arr = array._shape[rev]
-    r_shape = [max(ss) for ss in zip_longest(shape_arr, shape[rev], fillvalue=0)]
+    r_shape = [max(ss) for ss
+               in zip_longest(shape_arr, shape[rev], fillvalue=0)]
 
     r_strides = [
         a_st if sh == a_sh else (0 if a_sh == 1 else None)
