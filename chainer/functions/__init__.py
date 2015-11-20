@@ -103,12 +103,8 @@ where = where.where
 
 bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
-Deconvolution2D = deconvolution_2d.Deconvolution2D
-EmbedID = embed_id.EmbedID
+deconvolution_2d = deconvolution_2d.deconvolution_2d
 embed_id = embed_id.embed_id
-Inception = inception.Inception
-InceptionBN = inceptionbn.InceptionBN
-Linear = linear.Linear
 linear = linear.linear
 
 Accuracy = accuracy.Accuracy
