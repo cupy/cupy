@@ -182,8 +182,6 @@ def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
     ret = []
     for ext in extensions:
         cmd = list(cython_cmdbase)
-        if annotate:
-            cmd.append('--annotate')
         for i in compiler_directives.items():
             cmd.append('--directive')
             cmd.append('%s=%s' % i)
