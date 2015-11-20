@@ -1,9 +1,35 @@
 #!/usr/bin/env python
+
+import sys
+
 from setuptools import setup
+
+import chainer_setup_build
+
+
+install_requires = [
+    'Cython>=0.23',
+    'filelock',
+    'nose',
+    'numpy>=1.9.0',
+    'protobuf',
+    'six>=1.9.0']
+
+
+# Hack for Read the Docs
+on_rtd = chainer_setup_build.check_readthedocs_environment()
+if not on_rtd:
+    install_requires.append('h5py>=2.5.0')
+
+if on_rtd:
+    print('Add develop command for Read the Docs')
+    sys.argv.insert(1, 'develop')
+
+chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.4.0',
+    version='1.4.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -20,11 +46,19 @@ setup(
               'chainer.functions.noise',
               'chainer.functions.normalization',
               'chainer.functions.pooling',
+              'chainer.links',
+              'chainer.links.activation',
+              'chainer.links.connection',
+              'chainer.links.loss',
+              'chainer.links.model',
+              'chainer.links.normalization',
               'chainer.optimizers',
+              'chainer.serializers',
               'chainer.testing',
               'chainer.utils',
               'cupy',
               'cupy.binary',
+              'cupy.core',
               'cupy.creation',
               'cupy.cuda',
               'cupy.indexing',
@@ -39,13 +73,17 @@ setup(
               'cupy.statistics',
               'cupy.testing'],
     package_data={
-        'cupy': ['carray.cuh'],
+        'cupy': ['core/carray.cuh'],
     },
-    install_requires=['filelock',
-                      'nose',
-                      'numpy>=1.9.0',
-                      'protobuf',
-                      'six>=1.9.0'],
+    zip_safe=False,
+    install_requires=install_requires,
+    setup_requires=['Cython>=0.23',
+                    'numpy>=1.9.0'],
     tests_require=['mock',
                    'nose'],
+    # To trick build into running build_ext
+    ext_modules=[chainer_setup_build.dummy_extension],
+    cmdclass={
+        'build_ext': chainer_setup_build.chainer_build_ext,
+    },
 )

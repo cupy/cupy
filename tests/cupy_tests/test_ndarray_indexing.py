@@ -3,82 +3,75 @@ import unittest
 from cupy import testing
 
 
+@testing.parameterize(
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': (1, 0, 2)},
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': (-1, 0, -2)},
+    {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': (1, 0, 2)},
+    {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': (-1, 0, -2)},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(None), slice(None, 1), slice(2))},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(None), slice(None, -1), slice(-2))},
+    {'shape': (2, 3, 4), 'transpose': (2, 0, 1),
+     'indexes': (slice(None), slice(None, 1), slice(2))},
+    {'shape': (2, 3, 5), 'transpose': None,
+     'indexes': (slice(None, None, -1), slice(1, None, -1), slice(4, 1, -2))},
+    {'shape': (2, 3, 5), 'transpose': (2, 0, 1),
+     'indexes': (slice(4, 1, -2), slice(None, None, -1), slice(1, None, -1))},
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': (Ellipsis, 2)},
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': (1, Ellipsis)},
+    {'shape': (2, 3, 4, 5), 'transpose': None, 'indexes': (1, Ellipsis, 3)},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (1, None, slice(2), None, 2)},
+    {'shape': (2, 3), 'transpose': None, 'indexes': (None,)},
+    {'shape': (2,), 'transpose': None, 'indexes': (slice(None,), None)},
+    {'shape': (), 'transpose': None, 'indexes': (None,)},
+    {'shape': (), 'transpose': None, 'indexes': (None, None)},
+)
 @testing.gpu
-class TestArrayIndexing(unittest.TestCase):
+class TestArrayIndexingParameterized(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def check_getitem(self, shape, transpose, indexes, xp, dtype):
-        a = testing.shaped_arange(shape, xp, dtype)
-        if transpose:
-            a = a.transpose(transpose)
-        return a[indexes]
+    def test_getitem(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if self.transpose:
+            a = a.transpose(self.transpose)
+        return a[self.indexes]
 
-    def test_getitem_direct(self):
-        self.check_getitem((2, 3, 4), None, (1, 0, 2))
 
-    def test_getitem_transposed_direct(self):
-        self.check_getitem((2, 3, 4), (2, 0, 1), (1, 0, 2))
+@testing.parameterize(
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': -3},
+    {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': -5},
+    {'shape': (2, 3, 4), 'transpose': None, 'indexes': 3},
+    {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': 5},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(0, 1, 0), )},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice((0, 0), None, None), )},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(None, (0, 0), None), )},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(None, None, (0, 0)), )},
+)
+@testing.gpu
+class TestArrayInvalidIndex(unittest.TestCase):
 
-    def test_getitem_slice1(self):
-        self.check_getitem((2, 3, 4), None,
-                           (slice(None), slice(None, 1), slice(2)))
-
-    def test_getitem_transposed_slice1(self):
-        self.check_getitem((2, 3, 4), (2, 0, 1),
-                           (slice(None), slice(None, 1), slice(2)))
-
-    def test_getitem_slice2(self):
-        self.check_getitem((2, 3, 5), None,
-                           (slice(None, None, -1), slice(1, None, -1),
-                            slice(4, 1, -2)))
-
-    def test_getitem_transposed_slice2(self):
-        self.check_getitem((2, 3, 5), (2, 0, 1),
-                           (slice(4, 1, -2), slice(None, None, -1),
-                            slice(1, None, -1)))
-
-    def test_getitem_ellipsis1(self):
-        self.check_getitem((2, 3, 4), None, (Ellipsis, 2))
-
-    def test_getitem_ellipsis2(self):
-        self.check_getitem((2, 3, 4), None, (1, Ellipsis))
-
-    def test_getitem_ellipsis3(self):
-        self.check_getitem((2, 3, 4, 5), None, (1, Ellipsis, 3))
-
-    def test_getitem_newaxis1(self):
-        self.check_getitem((2, 3, 4), None, (1, None, slice(2), None, 2))
-
-    def test_getitem_newaxis2(self):
-        self.check_getitem((2, 3), None, (None,))
-
-    def test_getitem_newaxis3(self):
-        self.check_getitem((2,), None, (slice(None,), None))
-
-    def test_getitem_newaxis4(self):
-        self.check_getitem((), None, (None,))
-
-    def test_getitem_newaxis5(self):
-        self.check_getitem((), None, (None, None))
-
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_raises()
-    def test_getitem_zero_step(self, xp):
-        xp.zeros((2, 3, 4))[0:1:0]
+    def test_invalid_getitem(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if self.transpose:
+            a = a.transpose(self.transpose)
+        a[self.indexes]
 
-    @testing.numpy_cupy_raises()
-    def test_getitem_invalid_slice_start(self, xp):
-        xp.zeros((2, 3, 4))[(0, 0):None:None]
 
-    @testing.numpy_cupy_raises()
-    def test_getitem_invalid_slice_stop(self, xp):
-        xp.zeros((2, 3, 4))[None:(0, 0):None]
+@testing.gpu
+class TestArrayIndex(unittest.TestCase):
 
-    @testing.numpy_cupy_raises()
-    def test_getitem_invalid_slice_step(self, xp):
-        xp.zeros((2, 3, 4))[None:None:(0, 0)]
+    _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

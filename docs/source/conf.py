@@ -12,7 +12,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import ctypes
 import os
 import pkg_resources
 import shlex
@@ -24,15 +23,6 @@ __version__ = pkg_resources.get_distribution('chainer').version
 sys.path.insert(0, '../..')
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
-    # Replace LoadLibrary to mock for importing CuPy on ReadTheDocs.
-    class MockObject(object):
-
-        def __getattr__(self, key): return MockObject()
-        def __setattr__(self, key, value): pass
-        def __call__(self, *a, **k): return MockObject()
-
-    ctypes.cdll.LoadLibrary = MockObject()
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -331,8 +321,11 @@ intersphinx_mapping = {
 doctest_global_setup = '''
 import numpy as np
 import cupy
-from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers, utils
+import chainer
+from chainer import cuda, Function, gradient_check, Variable, optimizers, serializers, utils
+from chainer import Link, Chain, ChainList
 import chainer.functions as F
+import chainer.links as L
 np.random.seed(0)
 '''
 doctest_test_doctest_blocks = None

@@ -22,14 +22,12 @@ from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import deconvolution_2d
 from chainer.functions.connection import embed_id
-from chainer.functions.connection import inception
-from chainer.functions.connection import inceptionbn
 from chainer.functions.connection import linear
-from chainer.functions.connection import parameter
 from chainer.functions.evaluation import accuracy
+from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
-from chainer.functions.loss import hierarchical_softmax
+from chainer.functions.loss import hinge
 from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
@@ -39,6 +37,7 @@ from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import exponential
 from chainer.functions.math import identity
 from chainer.functions.math import matmul
+from chainer.functions.math import minmax
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -48,6 +47,18 @@ from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
+from chainer.links.activation import prelu as links_prelu
+from chainer.links.connection import bilinear as links_bilinear
+from chainer.links.connection import convolution_2d as links_convolution_2d
+from chainer.links.connection import embed_id as links_embed_id
+from chainer.links.connection import inception
+from chainer.links.connection import inceptionbn
+from chainer.links.connection import linear as links_linear
+from chainer.links.connection import parameter
+from chainer.links.loss import hierarchical_softmax
+from chainer.links.loss import negative_sampling as links_negative_sampling
+from chainer.links.normalization import batch_normalization \
+    as links_batch_normalization
 
 
 ClippedReLU = clipped_relu.ClippedReLU
@@ -59,7 +70,7 @@ LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LSTM = lstm.LSTM
 lstm = lstm.lstm
-PReLU = prelu.PReLU
+prelu = prelu.prelu
 ReLU = relu.ReLU
 relu = relu.relu
 Sigmoid = sigmoid.Sigmoid
@@ -90,29 +101,32 @@ transpose = transpose.transpose
 Where = where.Where
 where = where.where
 
-Bilinear = bilinear.Bilinear
-Convolution2D = convolution_2d.Convolution2D
+bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
 Deconvolution2D = deconvolution_2d.Deconvolution2D
 EmbedID = embed_id.EmbedID
+embed_id = embed_id.embed_id
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN
 Linear = linear.Linear
 linear = linear.linear
-Parameter = parameter.Parameter
 
 Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
+Contrastive = contrastive.Contrastive
+contrastive = contrastive.contrastive
 CrossCovariance = cross_covariance.CrossCovariance
 cross_covariance = cross_covariance.cross_covariance
 gaussian_kl_divergence = vae.gaussian_kl_divergence
 gaussian_nll = vae.gaussian_nll
+Hinge = hinge.Hinge
+hinge = hinge.hinge
 MeanSquaredError = mean_squared_error.MeanSquaredError
 mean_squared_error = mean_squared_error.mean_squared_error
-NegativeSampling = negative_sampling.NegativeSampling
+negative_sampling = negative_sampling.negative_sampling
 SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
 sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
@@ -130,6 +144,10 @@ Log = exponential.Log
 log = exponential.log
 MatMul = matmul.MatMul
 matmul = matmul.matmul
+Max = minmax.Max
+max = minmax.max
+Min = minmax.Min
+min = minmax.min
 Sin = trigonometric.Sin
 sin = trigonometric.sin
 Sum = sum.Sum
@@ -140,7 +158,8 @@ dropout = dropout.dropout
 Gaussian = gaussian.Gaussian
 gaussian = gaussian.gaussian
 
-BatchNormalization = batch_normalization.BatchNormalization
+fixed_batch_normalization = batch_normalization.fixed_batch_normalization
+batch_normalization = batch_normalization.batch_normalization
 LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization
 local_response_normalization = \
@@ -153,3 +172,19 @@ max_pooling_2d = max_pooling_2d.max_pooling_2d
 SpatialPyramidPooling2D = spatial_pyramid_pooling_2d.SpatialPyramidPooling2D
 spatial_pyramid_pooling_2d = \
     spatial_pyramid_pooling_2d.spatial_pyramid_pooling_2d
+
+# Import for backward compatibility
+PReLU = links_prelu.PReLU
+
+Bilinear = links_bilinear.Bilinear
+Convolution2D = links_convolution_2d.Convolution2D
+EmbedID = links_embed_id.EmbedID
+Inception = inception.Inception
+InceptionBN = inceptionbn.InceptionBN
+Linear = links_linear.Linear
+Parameter = parameter.Parameter
+
+BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
+NegativeSampling = links_negative_sampling.NegativeSampling
+
+BatchNormalization = links_batch_normalization.BatchNormalization

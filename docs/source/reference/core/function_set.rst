@@ -1,5 +1,5 @@
-FunctionSet
------------
+FunctionSet (deprecated)
+------------------------
 
 .. currentmodule:: chainer
 .. autoclass:: FunctionSet

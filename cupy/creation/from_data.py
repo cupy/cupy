@@ -1,10 +1,5 @@
-import ctypes
-
-import numpy
-
 import cupy
-from cupy import cuda
-from cupy import elementwise
+from cupy import core
 
 
 def array(obj, dtype=None, copy=True, ndmin=0):
@@ -29,25 +24,7 @@ def array(obj, dtype=None, copy=True, ndmin=0):
 
     """
     # TODO(beam2d): Support order and subok options
-    if isinstance(obj, cupy.ndarray):
-        if dtype is None:
-            dtype = obj.dtype
-        a = obj.astype(dtype, copy)
-
-        ndim = a.ndim
-        if ndmin > ndim:
-            a.shape = (1,) * (ndmin - ndim) + a.shape
-        return a
-    else:
-        a_cpu = numpy.array(obj, dtype=dtype, copy=False, ndmin=ndmin)
-        if a_cpu.ndim > 0:
-            a_cpu = numpy.ascontiguousarray(a_cpu)
-        a = cupy.ndarray(a_cpu.shape, dtype=a_cpu.dtype)
-        a.data.copy_from_host(a_cpu.ctypes.data_as(ctypes.c_void_p), a.nbytes)
-        if a_cpu.dtype == a.dtype:
-            return a
-        else:
-            return a.view(dtype=a_cpu.dtype)
+    return core.array(obj, dtype, copy, ndmin)
 
 
 def asarray(a, dtype=None):
@@ -98,17 +75,7 @@ def ascontiguousarray(a, dtype=None):
     .. seealso:: :func:`numpy.ascontiguousarray`
 
     """
-    if dtype is None:
-        dtype = a.dtype
-    else:
-        dtype = numpy.dtype(dtype)
-
-    if dtype == a.dtype and a.flags.c_contiguous:
-        return a
-    else:
-        newarray = cupy.empty_like(a, dtype)
-        elementwise.copy(a, newarray)
-        return newarray
+    return core.ascontiguousarray(a, dtype)
 
 
 # TODO(okuta): Implement asmatrix
@@ -134,16 +101,7 @@ def copy(a):
     # function allocates a new array on the current device, and copies the
     # contents over the devices.
     # TODO(beam2d): Support ordering option
-    if a.size == 0:
-        return cupy.empty_like(a)
-
-    if not a.flags.c_contiguous:
-        a = ascontiguousarray(a)
-        if a.data.device == cuda.Device():
-            return a
-    newarray = cupy.empty_like(a)
-    newarray.data.copy_from(a.data, a.nbytes)
-    return newarray
+    return a.copy()
 
 
 # TODO(okuta): Implement frombuffer

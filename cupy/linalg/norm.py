@@ -34,5 +34,5 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     .. seealso:: :func:`numpy.trace`
 
     """
-    d = a.diagonal(offset, axis1, axis2)
-    return d.sum(-1, dtype, out, False)
+    # TODO(okuta): check type
+    return a.trace(offset, axis1, axis2, dtype, out)
