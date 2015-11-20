@@ -140,7 +140,7 @@ def broadcast_to(array, shape, subok=False):
     view = array.view()
     view._shape = shape
     view._strides = offset + tuple(r_strides[rev])
-    view._size = internal.prod(r_shape)
+    view._size = core.internal_prod(r_shape)
     view._c_contiguous = -1
     view._f_contiguous = -1
     return view
