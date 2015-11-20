@@ -1,8 +1,8 @@
-from cupy import elementwise
+from cupy import core
 from cupy.math import ufunc
 
 
-signbit = elementwise.create_ufunc(
+signbit = core.create_ufunc(
     'cupy_signbit',
     ('e->?', 'f->?', 'd->?'),
     'out0 = signbit(in0)',
@@ -22,7 +22,7 @@ copysign = ufunc.create_math_ufunc(
     ''')
 
 
-ldexp = elementwise.create_ufunc(
+ldexp = core.create_ufunc(
     'cupy_ldexp',
     ('ei->e', 'fi->f', 'el->e', 'fl->f', 'di->d', 'dl->d'),
     'out0 = ldexp(in0, in1)',
@@ -33,7 +33,7 @@ ldexp = elementwise.create_ufunc(
     ''')
 
 
-frexp = elementwise.create_ufunc(
+frexp = core.create_ufunc(
     'cupy_frexp',
     ('e->ei', 'f->fi', 'd->di'),
     'int nptr; out0 = frexp(in0, &nptr); out1 = nptr',

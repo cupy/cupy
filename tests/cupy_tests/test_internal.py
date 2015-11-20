@@ -1,6 +1,6 @@
 import unittest
 
-from cupy import internal
+from cupy import core
 from cupy import testing
 
 
@@ -33,7 +33,7 @@ class TestCompleteSlice(unittest.TestCase):
 
     def test_complete_slice(self):
         self.assertEqual(
-            internal.complete_slice(slice(*self.slice), 10),
+            core.complete_slice(slice(*self.slice), 10),
             slice(*self.expect))
 
 
@@ -41,20 +41,20 @@ class TestCompleteSliceError(unittest.TestCase):
 
     def test_invalid_step_value(self):
         with self.assertRaises(ValueError):
-            internal.complete_slice(slice(1, 1, 0), 1)
+            core.complete_slice(slice(1, 1, 0), 1)
 
     def test_invalid_step_type(self):
         with self.assertRaises(IndexError):
-            internal.complete_slice(slice(1, 1, (1, 2)), 1)
+            core.complete_slice(slice(1, 1, (1, 2)), 1)
 
     def test_invalid_start_type(self):
         with self.assertRaises(IndexError):
-            internal.complete_slice(slice((1, 2), 1, 1), 1)
+            core.complete_slice(slice((1, 2), 1, 1), 1)
         with self.assertRaises(IndexError):
-            internal.complete_slice(slice((1, 2), 1, -1), 1)
+            core.complete_slice(slice((1, 2), 1, -1), 1)
 
     def test_invalid_stop_type(self):
         with self.assertRaises(IndexError):
-            internal.complete_slice(slice((1, 2), 1, 1), 1)
+            core.complete_slice(slice((1, 2), 1, 1), 1)
         with self.assertRaises(IndexError):
-            internal.complete_slice(slice((1, 2), 1, -1), 1)
+            core.complete_slice(slice((1, 2), 1, -1), 1)

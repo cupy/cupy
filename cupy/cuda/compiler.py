@@ -8,9 +8,8 @@ import tempfile
 import filelock
 import six
 
-
 from cupy.cuda import device
-from cupy.cuda import module
+from cupy.cuda import function
 
 
 def _get_arch():
@@ -107,7 +106,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         pp_src = pp_src.encode('utf-8')
     name = '%s.cubin' % hashlib.md5(pp_src).hexdigest()
 
-    mod = module.Module()
+    mod = function.Module()
 
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)

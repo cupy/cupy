@@ -16,6 +16,7 @@ Minimum requirements:
 Requirements for some features:
 - CUDA support
   - CUDA 6.5+
+  - Cython 0.23+
   - filelock
 - CuDNN support
   - CuDNN v2

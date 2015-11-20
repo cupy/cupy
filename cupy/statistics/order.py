@@ -1,6 +1,3 @@
-from cupy import reduction
-
-
 def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the minimum of an array or the minimum along an axis.
 
@@ -18,8 +15,8 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amin`
 
     """
-    return reduction.amin(
-        a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    # TODO(okuta): check type
+    return a.min(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 def amax(a, axis=None, out=None, keepdims=False, dtype=None):
@@ -39,8 +36,8 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     .. seealso:: :func:`numpy.amax`
 
     """
-    return reduction.amax(
-        a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    # TODO(okuta): check type
+    return a.max(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 # TODO(okuta): Implement nanmin

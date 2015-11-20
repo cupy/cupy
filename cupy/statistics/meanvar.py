@@ -1,9 +1,3 @@
-import numpy
-
-from cupy import math
-from cupy import reduction
-
-
 # TODO(okuta): Implement median
 
 
@@ -27,7 +21,8 @@ def mean(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.mean`
 
     """
-    return _mean(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    # TODO(okuta): check type
+    return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
@@ -47,26 +42,8 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.var`
 
     """
-    if axis is None:
-        axis = tuple(range(a.ndim))
-    if not isinstance(axis, tuple):
-        axis = (axis,)
-
-    if dtype is None and issubclass(a.dtype.type,
-                                    (numpy.integer, numpy.bool_)):
-        dtype = 'd'
-
-    shape = a.shape
-    items = 1
-    for ax in axis:
-        items *= shape[ax]
-    alpha = 1. / max(items - ddof, 0)
-    arrmean = mean(a, axis=axis, dtype=dtype, keepdims=True)
-    if out is None:
-        return _var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
-    else:
-        return _var_core_out(
-            a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
+    # TODO(okuta): check type
+    return a.var(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
@@ -86,8 +63,8 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.std`
 
     """
-    ret = var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
-    return math.misc.sqrt_fixed(ret, dtype=dtype, out=out)
+    # TODO(okuta): check type
+    return a.std(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 # TODO(okuta): Implement nanmean
@@ -97,22 +74,3 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
 
 # TODO(okuta): Implement nanvar
-
-
-_var_core = reduction.ReductionKernel(
-    'S x, T mean, T alpha', 'T out',
-    '(x - mean) * (x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core')
-_var_core_out = reduction.ReductionKernel(
-    'S x, T mean, T alpha', 'U out',
-    '(x - mean) * (x - mean)',
-    'a + b', 'out = alpha * a', '0', '_var_core')
-
-# TODO(okuta) needs cast
-_mean = reduction.create_reduction_func(
-    'cupy_mean',
-    ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
-     'q->d', 'Q->d',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'),
-    ('in0', 'a + b', 'out0 = a / (_in_ind.size() / _out_ind.size())', None))
