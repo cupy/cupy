@@ -5,7 +5,7 @@ from chainer import cuda
 from chainer import function
 from chainer.utils import conv
 from chainer.utils import type_check
-import ctypes
+
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -89,18 +89,18 @@ class Deconvolution2DFunction(function.Function):
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
 
-            one = ctypes.c_float(1)
-            zero = ctypes.c_float(0)
+            one = numpy.array(1, dtype=x.dtype).ctypes
+            zero = numpy.array(0, dtype=x.dtype).ctypes
 
             libcudnn.convolutionBackwardData(
-                handle, one, self.filter_desc.value, W.data.ptr,
+                handle, one.data, self.filter_desc.value, W.data.ptr,
                 x_desc.value, x.data.ptr, self.conv_desc.value,
-                zero, y_desc.value, y.data.ptr)
+                zero.data, y_desc.value, y.data.ptr)
             if len(inputs) == 3:
                 libcudnn.addTensor(
                     handle, libcudnn.CUDNN_ADD_SAME_C,
-                    one, self.bias_desc.value, b.data.ptr,
-                    one, y_desc.value, y.data.ptr)
+                    one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
         else:
             W_mat = W.reshape(in_c, c * kh * kw)
             x_mats = x.reshape(n, in_c, in_h * in_w)
@@ -156,26 +156,26 @@ class Deconvolution2DFunction(function.Function):
             workspace = cuda.empty(
                 (max(workspace_size // 4, 1),), dtype=numpy.float32)
 
-            one = ctypes.c_float(1)
-            zero = ctypes.c_float(0)
+            one = numpy.array(1, dtype=x.dtype).ctypes
+            zero = numpy.array(0, dtype=x.dtype).ctypes
 
             libcudnn.convolutionForward(
-                handle, one, gy_desc.value, gy.data.ptr,
+                handle, one.data, gy_desc.value, gy.data.ptr,
                 self.filter_desc.value, W.data.ptr,
                 self.conv_desc.value, algo, workspace.data.ptr, workspace_size,
-                zero, gx_desc.value, gx.data.ptr)
+                zero.data, gx_desc.value, gx.data.ptr)
             # bias backward
             if len(inputs) == 3:
                 b = inputs[2]
                 gb = cuda.cupy.empty_like(b)
                 libcudnn.convolutionBackwardBias(
-                    handle, one, gy_desc.value, gy.data.ptr,
-                    zero, self.bias_desc.value, gb.data.ptr)
+                    handle, one.data, gy_desc.value, gy.data.ptr,
+                    zero.data, self.bias_desc.value, gb.data.ptr)
             # filter backward
             libcudnn.convolutionBackwardFilter(
-                handle, one, gy_desc.value, gy.data.ptr,
+                handle, one.data, gy_desc.value, gy.data.ptr,
                 gx_desc.value, x.data.ptr, self.conv_desc.value,
-                one, self.filter_desc.value, gW.data.ptr)
+                one.data, self.filter_desc.value, gW.data.ptr)
         else:
             # Implementation using im2col
             col = conv.im2col_gpu(
