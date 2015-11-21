@@ -20,10 +20,15 @@ def _pair(x):
 
 
 @parameterize(
-    {'in_channels': 3, 'out_channels': 2, 'ksize': 3,
-     'stride': 2, 'pad': 1, 'nobias': True},
-    {'in_channels': 3, 'out_channels': 2, 'ksize': 3,
-     'stride': 2, 'pad': 1, 'nobias': False},
+    *testing.product({
+        'in_channels': [3],
+        'out_channels': [2],
+        'ksize': [3],
+        'stride': [2],
+        'pad': [1],
+        'nobias': [True, False],
+        'use_cudnn': [True, False]
+    })
 )
 class TestDeconvolution2D(unittest.TestCase):
 
@@ -64,12 +69,7 @@ class TestDeconvolution2D(unittest.TestCase):
     @attr.cudnn
     @condition.retry(3)
     def test_forward_consistency(self):
-        self.check_forward_consistency()
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_forward_consistency_im2col(self):
-        self.link.use_cudnn = False
+        self.link.use_cudnn = self.use_cudnn
         self.check_forward_consistency()
 
     def check_backward(self, x_data, y_grad):
@@ -97,13 +97,7 @@ class TestDeconvolution2D(unittest.TestCase):
     @attr.cudnn
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.link.to_gpu()
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_backward_gpu_im2col(self):
-        self.link.use_cudnn = False
+        self.link.use_cudnn = self.use_cudnn
         self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
