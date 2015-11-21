@@ -52,7 +52,9 @@ class Deconvolution2D(link.Link):
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
                  initialW=None, initial_bias=None):
         kh, kw = _pair(ksize)
-        self._deconv_arg = (stride, pad, use_cudnn)
+        self.stride = _pair(stride)
+        self.pad = _pair(pad)
+        self.use_cudnn = use_cudnn
 
         W_shape = (in_channels, out_channels, kh, kw)
         super(Deconvolution2D, self).__init__(W=W_shape)
@@ -79,7 +81,7 @@ class Deconvolution2D(link.Link):
 
     def __call__(self, x):
         return deconvolution_2d.deconvolution_2d(
-            x, self.W, self.b, *self._deconv_arg)
+            x, self.W, self.b, self.stride, self.pad, self.use_cudnn)
 
 
 def _pair(x):
