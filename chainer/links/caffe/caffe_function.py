@@ -10,7 +10,7 @@ from chainer import link
 from chainer import links
 # caffe_pb2 does not support Py3
 if sys.version_info < (3, 0, 0):
-    from chainer.functions.caffe import caffe_pb2
+    from chainer.links.caffe import caffe_pb2
 
     _type_to_method = {}
     _oldname_to_method = {}
