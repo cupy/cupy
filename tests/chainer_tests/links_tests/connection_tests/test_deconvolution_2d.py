@@ -52,7 +52,7 @@ class TestDeconvolution2D(unittest.TestCase):
         y_cpu = self.link(x_cpu)
         self.assertEqual(y_cpu.data.dtype, numpy.float32)
 
-        self.func.to_gpu()
+        self.link.to_gpu()
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         y_gpu = self.link(x_gpu)
         self.assertEqual(y_gpu.data.dtype, numpy.float32)
@@ -72,13 +72,13 @@ class TestDeconvolution2D(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_forward_consistency_im2col(self):
-        self.func.use_cudnn = False
+        self.link.use_cudnn = False
         self.check_forward_consistency()
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_consistency_im2col_nobias(self):
-        self.func.use_cudnn = False
+        self.link.use_cudnn = False
         self.check_forward_consistency(nobias=True)
 
     def check_backward(self, x_data, y_grad, nobias=True):
@@ -110,28 +110,28 @@ class TestDeconvolution2D(unittest.TestCase):
     @attr.cudnn
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.func.to_gpu()
+        self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.cudnn
     @condition.retry(3)
     def test_backward_gpu_nobias(self):
-        self.func.to_gpu()
+        self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy),
                             nobias=True)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_im2col(self):
-        self.func.use_cudnn = False
-        self.func.to_gpu()
+        self.link.use_cudnn = False
+        self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_im2col_nobias(self):
-        self.func.use_cudnn = False
-        self.func.to_gpu()
+        self.link.use_cudnn = False
+        self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy),
                             nobias=True)
 
