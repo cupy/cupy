@@ -7,10 +7,10 @@ from chainer import cuda
 from chainer import gradient_check
 from chainer import links as L
 from chainer import testing
-from chainer.utils import conv
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.testing import parameterize
+from chainer.utils import conv
 
 
 def _pair(x):
