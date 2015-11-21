@@ -74,6 +74,8 @@ class Deconvolution2D(link.Link):
         elif not nobias:
             self.add_param('b', out_channels)
             self.b.data = numpy.repeat(numpy.float32(bias), out_channels)
+        else:
+            self.b = None
 
     def __call__(self, x):
         return deconvolution_2d.deconvolution_2d(

@@ -44,10 +44,7 @@ class TestDeconvolution2D(unittest.TestCase):
         self.x = numpy.random.uniform(
             -1, 1, (N, self.in_channels, h, w)).astype(numpy.float32)
 
-    def check_forward_consistency(self, nobias=False):
-        if nobias:
-            self.link.b = None
-
+    def check_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
         y_cpu = self.link(x_cpu)
         self.assertEqual(y_cpu.data.dtype, numpy.float32)
