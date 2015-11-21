@@ -138,7 +138,7 @@ class Deconvolution2DFunction(function.Function):
         _, out_channels, kh, kw = W.shape
         c, h, w = gy.shape[1:]
         gx = cuda.empty((n, in_c, in_h, in_w), dtype=numpy.float32)
-        gW = cuda.cupy.empty_like(W)
+
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             gy_desc = cudnn.create_tensor_descriptor(gy)
@@ -171,6 +171,7 @@ class Deconvolution2DFunction(function.Function):
                 libcudnn.convolutionBackwardBias(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     zero.data, self.bias_desc.value, gb.data.ptr)
+            gW = cuda.cupy.empty_like(W)
             # filter backward
             libcudnn.convolutionBackwardFilter(
                 handle, one.data, gy_desc.value, gy.data.ptr,
@@ -193,6 +194,7 @@ class Deconvolution2DFunction(function.Function):
                 gb = gy.sum(axis=(0, 2, 3))
 
             # filter backward
+            gW = cuda.cupy.zeros_like(W)
             gW_mat = gW.reshape(in_c, c * kh * kw)
             x_mats = x.reshape(n, in_c, in_h * in_w)
             for i in moves.range(n):
