@@ -27,6 +27,8 @@ class Deconvolution2D(link.Link):
         nobias (bool): If True, then this function does not use the bias term.
         outsize (tuple): Expected output size of deconvolutional operation.
             It should be pair of height and width :math:`(out_H, out_W)`.
+            Default value is ``None`` and the outsize is estimated by
+            input size, stride and pad.
         use_cudnn (bool): If True, then this function uses CuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``.
