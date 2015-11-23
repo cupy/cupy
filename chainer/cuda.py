@@ -80,6 +80,8 @@ def check_cuda_available():
         msg = 'CUDA environment is not correctly set up.\n'
         msg += str(_resolution_error)
         raise RuntimeError(msg)
+    if not cudnn_enabled:
+        warnings.warn('cuDNN is not enabled')
 
 
 class DummyDeviceType(object):
