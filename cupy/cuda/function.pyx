@@ -21,6 +21,7 @@ cdef class CInt8(CPointer):
         self.val = v
         self.ptr = <void*>&self.val
 
+
 cdef class CInt16(CPointer):
     cdef:
         numpy.npy_int16 val
@@ -29,6 +30,7 @@ cdef class CInt16(CPointer):
         self.val = v
         self.ptr = <void*>&self.val
 
+
 cdef class CInt32(CPointer):
     cdef:
         numpy.npy_int32 val
@@ -36,6 +38,7 @@ cdef class CInt32(CPointer):
     def __init__(self, numpy.npy_int32 v):
         self.val = v
         self.ptr = <void*>&self.val
+
 
 cdef class CInt64(CPointer):
     cdef:
