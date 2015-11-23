@@ -76,8 +76,9 @@ cdef inline CPointer _pointer(x):
         return CInt16(x.view(numpy.int16))
     if itemsize == 4:
         return CInt32(x.view(numpy.int32))
-    # itemsize == 8
-    return CInt64(x.view(numpy.int64))
+    if itemsize == 8:
+        return CInt64(x.view(numpy.int64))
+    raise TypeError('Unsupported type %s. (size=%d)', type(x), itemsize)
 
 
 cdef inline size_t _get_stream(strm) except *:
