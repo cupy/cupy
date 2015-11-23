@@ -67,11 +67,11 @@ def get_compiler_setting():
         cuda_path_default = path.normpath(
             path.join(path.dirname(nvcc_path), '..'))
 
-    cuda_path = os.environ.get(
-        'CUDA_PATH',  # Nvidia default on Windows
-        os.environ.get(
-            'CUDA_ROOT',  # PyCUDA default
-            cuda_path_default))
+    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
+    if not path.exists(cuda_path):
+        os.environ.get('CUDA_ROOT', '')  # PyCUDA default
+    if not path.exists(cuda_path):
+        cuda_path = cuda_path_default
 
     include_dirs = []
     library_dirs = []
