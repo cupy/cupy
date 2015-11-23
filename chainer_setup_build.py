@@ -56,23 +56,39 @@ MODULES = [
 
 
 def get_compiler_setting():
+    nvcc_path = search_on_path(('nvcc', 'nvcc.exe'))
+    cuda_path_default = None
+    if nvcc_path is None:
+        print('**************************************************************')
+        print('*** WARNING: nvcc not in path.')
+        print('*** WARNING: Please set path to nvcc.')
+        print('**************************************************************')
+    else:
+        cuda_path_default = path.normpath(
+            path.join(path.dirname(nvcc_path), '..'))
+
+    cuda_path = os.environ.get(
+        'CUDA_PATH',  # Nvidia default on Windows
+        os.environ.get(
+            'CUDA_ROOT',  # PyCUDA default
+            cuda_path_default))
+
     include_dirs = []
     library_dirs = []
     define_macros = []
+
     if sys.platform == 'win32':
-        include_dirs = [localpath('windows')]
-        library_dirs = []
-        cuda_path = os.environ.get('CUDA_PATH', None)
         if cuda_path:
             include_dirs.append(path.join(cuda_path, 'include'))
             library_dirs.append(path.join(cuda_path, 'bin'))
             library_dirs.append(path.join(cuda_path, 'lib', 'x64'))
+        include_dirs.append(localpath('windows'))
     else:
-        include_dirs = get_path('CPATH') + ['/usr/local/cuda/include']
-        library_dirs = get_path('LD_LIBRARY_PATH') + [
-            '/usr/local/cuda/lib64',
-            '/opt/local/lib',
-            '/usr/local/lib']
+        if cuda_path:
+            include_dirs.append(path.join(cuda_path, 'include'))
+            library_dirs.append(path.join(cuda_path, 'lib64'))
+
+    include_dirs.extend(get_path('CPATH') + get_path('CPLUS_INCLUDE_PATH'))
 
     return {
         'include_dirs': include_dirs,
@@ -87,8 +103,15 @@ def localpath(*args):
 
 
 def get_path(key):
-    splitter = ';' if sys.platform == 'win32' else ':'
-    return os.environ.get(key, "").split(splitter)
+    return os.environ.get(key, "").split(os.pathsep)
+
+
+def search_on_path(filenames):
+    for p in get_path('PATH'):
+        for filename in filenames:
+            full = path.join(p, filename)
+            if path.exists(full):
+                return path.abspath(full)
 
 
 def check_include(dirs, file_path):
@@ -121,6 +144,7 @@ def make_extensions(options):
         x for x in include_dirs if path.exists(x)]
     settings['library_dirs'] = [
         x for x in settings['library_dirs'] if path.exists(x)]
+    settings['runtime_library_dirs'] = settings['library_dirs']
 
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
