@@ -40,6 +40,19 @@ class Deconvolution2DFunction(function.Function):
             x_type.shape[1] == w_type.shape[0]
         )
 
+        if self.outh is not None:
+            type_check.expect(
+                x_type.shape[2] ==
+                conv.get_conv_outsize(self.outh, w_type.shape[2],
+                                      self.sy, self.ph),
+            )
+        if self.outw is not None:
+            type_check.expect(
+                x_type.shape[3] ==
+                conv.get_conv_outsize(self.outw, w_type.shape[3],
+                                      self.sx, self.pw),
+            )
+
         if n_in.eval() == 3:
             b_type = in_types[2]
             type_check.expect(
