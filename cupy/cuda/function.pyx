@@ -12,9 +12,6 @@ cdef class CPointer:
     def __init__(self, p=0):
         self.ptr = <void*>p
 
-    @property
-    def intp(self):
-        return <numpy.npy_intp>self.ptr
 
 cdef class CInt8(CPointer):
     cdef:
