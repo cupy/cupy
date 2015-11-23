@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import cupy
 from cupy.core import core
 
@@ -91,3 +93,11 @@ class TestInferUnknownDimension(unittest.TestCase):
     def test_infer(self):
         self.assertEqual(core._infer_unknown_dimension((-1, 2, 3), 12),
                          [2, 2, 3])
+
+
+class TestArray(unittest.TestCase):
+
+    def test_unsupported_type(self):
+        arr = numpy.ndarray((2,3), dtype=object)
+        with self.assertRaises(ValueError):
+            core.array(arr)
