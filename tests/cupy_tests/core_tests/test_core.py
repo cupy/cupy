@@ -98,6 +98,6 @@ class TestInferUnknownDimension(unittest.TestCase):
 class TestArray(unittest.TestCase):
 
     def test_unsupported_type(self):
-        arr = numpy.ndarray((2,3), dtype=object)
+        arr = numpy.ndarray((2, 3), dtype=object)
         with self.assertRaises(ValueError):
             core.array(arr)
