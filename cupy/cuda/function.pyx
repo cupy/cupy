@@ -3,7 +3,7 @@ import six
 
 cimport cpython
 from libcpp cimport vector
-cimport numpy
+cimport numpy as cnumpy
 
 from cupy.cuda cimport driver
 
@@ -14,46 +14,42 @@ cdef class CPointer:
 
     @property
     def intp(self):
-        return <numpy.npy_intp>self.ptr
+        return <cnumpy.npy_intp>self.ptr
 
 cdef class CInt8(CPointer):
     cdef:
-        numpy.npy_int8 val
+        cnumpy.npy_int8 val
 
-    def __init__(self, numpy.npy_int8 v):
+    def __init__(self, cnumpy.npy_int8 v):
         self.val = v
         self.ptr = <void*>&self.val
 
 cdef class CInt16(CPointer):
     cdef:
-        numpy.npy_int16 val
+        cnumpy.npy_int16 val
 
-    def __init__(self, numpy.npy_int16 v):
+    def __init__(self, cnumpy.npy_int16 v):
         self.val = v
         self.ptr = <void*>&self.val
 
 cdef class CInt32(CPointer):
     cdef:
-        numpy.npy_int32 val
+        cnumpy.npy_int32 val
 
-    def __init__(self, numpy.npy_int32 v):
+    def __init__(self, cnumpy.npy_int32 v):
         self.val = v
         self.ptr = <void*>&self.val
 
 cdef class CInt64(CPointer):
     cdef:
-        numpy.npy_int64 val
+        cnumpy.npy_int64 val
 
-    def __init__(self, numpy.npy_int64 v):
+    def __init__(self, cnumpy.npy_int64 v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
-cdef set _pointer_numpy_types = {
-    numpy.bool_,
-    numpy.int8, numpy.uint8, numpy.int16, numpy.uint16,
-    numpy.int32, numpy.uint32, numpy.int64, numpy.uint64,
-    numpy.half, numpy.single, numpy.double}
+cdef set _pointer_numpy_types = {numpy.dtype(i).type for i in '?bhilqBHILQefd'}
 
 
 cdef inline CPointer _pointer(x):
