@@ -21,10 +21,11 @@ def _pair(x):
 
 class Deconvolution2DFunction(function.Function):
 
-    def __init__(self, stride=1, pad=0, use_cudnn=True):
+    def __init__(self, stride=1, pad=0, outsize=None, use_cudnn=True):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
         self.use_cudnn = use_cudnn
+        self.outh, self.outw = (None, None) if outsize is None else outsize
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -57,10 +58,12 @@ class Deconvolution2DFunction(function.Function):
         # - h, w: height and width of kernels
         # k, m, n, b, h, w -> b, k, m, n, h, w
         gcol = numpy.rollaxis(gcol, 3)
-        h_ = conv.get_deconv_outsize(h, kh, self.sy, self.ph)
-        w_ = conv.get_deconv_outsize(w, kw, self.sx, self.pw)
+        if self.outh is None:
+            self.outh = conv.get_deconv_outsize(h, kh, self.sy, self.ph)
+        if self.outw is None:
+            self.outw = conv.get_deconv_outsize(w, kw, self.sx, self.pw)
         y = conv.col2im_cpu(
-            gcol, self.sy, self.sx, self.ph, self.pw, h_, w_)
+            gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
         # b, k, h, w
         if len(inputs) == 3:
             b = inputs[2]
@@ -72,14 +75,16 @@ class Deconvolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
         n, in_c, in_h, in_w = x.shape
         c = W.shape[1]  # out_c
-        h = conv.get_deconv_outsize(in_h, kh, self.sy, self.ph)
-        w = conv.get_deconv_outsize(in_w, kw, self.sx, self.pw)
+        if self.outh is None:
+            self.outh = conv.get_deconv_outsize(in_h, kh, self.sy, self.ph)
+        if self.outw is None:
+            self.outw = conv.get_deconv_outsize(in_w, kw, self.sx, self.pw)
         if len(inputs) == 3:
             b = inputs[2]
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
-            y = cuda.empty((n, c, h, w), dtype=numpy.float32)
+            y = cuda.empty((n, c, self.outh, self.outw), dtype=numpy.float32)
             y_desc = cudnn.create_tensor_descriptor(y)
 
             self.filter_desc = cudnn.create_filter_descriptor(W)
@@ -110,7 +115,7 @@ class Deconvolution2DFunction(function.Function):
             for i in moves.range(n):
                 cuda.cupy.dot(W_mat.T, x_mats[i], gcol_mats[i])
             y = conv.col2im_gpu(
-                gcol, self.sy, self.sx, self.ph, self.pw, h, w)
+                gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
             if len(inputs) == 3:
                 y += b.reshape(1, b.size, 1, 1)
         return y,
@@ -205,7 +210,8 @@ class Deconvolution2DFunction(function.Function):
             return gx, gW
 
 
-def deconvolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
+def deconvolution_2d(x, W, b=None, stride=1, pad=0,
+                     outsize=None, use_cudnn=True):
     """Two dimensional deconvolution function.
 
     This is an implementation of two-dimensional deconvolution.
@@ -221,6 +227,8 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
         pad (int or (int, int)): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
+        outsize (tuple): Expected output size of deconvolutional operation.
+            It should be pair of height and width :math:`(out_H, out_W)`.
         use_cudnn (bool): If True, then this function uses CuDNN if available.
 
 
@@ -241,7 +249,7 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
        w_O &= s_X (w - 1) + k_W - 2p_W.
 
     """
-    func = Deconvolution2DFunction(stride, pad, use_cudnn)
+    func = Deconvolution2DFunction(stride, pad, outsize, use_cudnn)
     if b is None:
         return func(x, W)
     else:

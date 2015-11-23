@@ -25,6 +25,8 @@ class Deconvolution2D(link.Link):
         wscale (float): Scaling factor of the initial weight.
         bias (float): Initial bias value.
         nobias (bool): If True, then this function does not use the bias term.
+        outsize (tuple): Expected output size of deconvolutional operation.
+            It should be pair of height and width :math:`(out_H, out_W)`.
         use_cudnn (bool): If True, then this function uses CuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``.
@@ -49,11 +51,12 @@ class Deconvolution2D(link.Link):
     """
 
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
-                 wscale=1, bias=0, nobias=False, use_cudnn=True,
+                 wscale=1, bias=0, nobias=False, outsize=None, use_cudnn=True,
                  initialW=None, initial_bias=None):
         kh, kw = _pair(ksize)
         self.stride = _pair(stride)
         self.pad = _pair(pad)
+        self.outsize = (None, None) if outsize is None else outsize
         self.use_cudnn = use_cudnn
 
         W_shape = (in_channels, out_channels, kh, kw)
@@ -81,7 +84,8 @@ class Deconvolution2D(link.Link):
 
     def __call__(self, x):
         return deconvolution_2d.deconvolution_2d(
-            x, self.W, self.b, self.stride, self.pad, self.use_cudnn)
+            x, self.W, self.b, self.stride, self.pad,
+            self.outsize, self.use_cudnn)
 
 
 def _pair(x):

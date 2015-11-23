@@ -28,7 +28,8 @@ def _pair(x):
         'stride': [1, 2],
         'pad': [1],
         'nobias': [True, False],
-        'use_cudnn': [True, False]
+        'use_cudnn': [True, False],
+        'test_outsize': [True, False],
     })
 )
 class TestDeconvolution2DFunction(unittest.TestCase):
@@ -48,6 +49,7 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         inh, inw = 4, 3
         outh = conv.get_deconv_outsize(inh, kh, sh, ph)
         outw = conv.get_deconv_outsize(inw, kw, sw, pw)
+        self.outsize = (outh, outw) if self.test_outsize else None
         self.x = numpy.random.uniform(
             -1, 1, (N, self.in_channels, inh, inw)).astype(numpy.float32)
         self.gy = numpy.random.uniform(
@@ -60,7 +62,7 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         b_cpu = None if self.nobias else chainer.Variable(self.b)
         y_cpu = F.deconvolution_2d(
             x_cpu, W_cpu, b_cpu, stride=self.stride, pad=self.pad,
-            use_cudnn=self.use_cudnn)
+            outsize=self.outsize, use_cudnn=self.use_cudnn)
 
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         W_gpu = chainer.Variable(cuda.to_gpu(self.W))
@@ -68,7 +70,7 @@ class TestDeconvolution2DFunction(unittest.TestCase):
             cuda.to_gpu(self.b))
         y_gpu = F.deconvolution_2d(
             x_gpu, W_gpu, b_gpu, stride=self.stride, pad=self.pad,
-            use_cudnn=self.use_cudnn)
+            outsize=self.outsize, use_cudnn=self.use_cudnn)
 
         gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
 
