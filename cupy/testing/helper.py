@@ -86,6 +86,7 @@ def _make_decorator(check_func, name, type_check, accept_error):
                 _check_cupy_numpy_error(self, cupy_error, cupy_tb,
                                         numpy_error, numpy_tb,
                                         accept_error=accept_error)
+                return
 
             # Behavior of assigning a negative value to an unsigned integer
             # variable is undefined.
