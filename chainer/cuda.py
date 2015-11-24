@@ -80,7 +80,9 @@ def check_cuda_available():
         msg += str(_resolution_error)
         raise RuntimeError(msg)
     if not cudnn_enabled:
-        warnings.warn('cuDNN is not enabled')
+        warnings.warn(
+            'cuDNN is not enabled.'
+            'Please reinstall chainer after you install cudnn.')
 
 
 class DummyDeviceType(object):
