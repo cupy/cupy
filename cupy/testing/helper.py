@@ -3,6 +3,7 @@ from __future__ import print_function
 import functools
 import os
 import random
+import traceback
 
 import numpy
 
@@ -17,11 +18,43 @@ def _call_func(self, impl, args, kw):
         result = impl(self, *args, **kw)
         self.assertIsNotNone(result)
         error = None
+        tb = None
     except Exception as e:
         result = None
         error = e
+        tb = traceback.format_exc()
 
-    return result, error
+    return result, error, tb
+
+
+def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
+                            numpy_tb, accept_error=True):
+    if cupy_error is None and numpy_error is None:
+        self.fail('Both cupy and numpy are expected to raise errors, but not')
+    elif cupy_error is None:
+        self.fail('Only numpy raises error\n\n'
+                  + numpy_tb)
+    elif numpy_error is None:
+        self.fail('Only cupy raises error\n\n'
+                  + cupy_tb)
+    elif type(cupy_error) is not type(numpy_error):
+        msg = '''Differnet types of errors occurred
+
+cupy
+%s
+numpy
+%s
+''' % (cupy_tb, numpy_tb)
+        self.fail(msg)
+    elif not accept_error:
+        msg = '''Both cupy and numpy raise exceptions
+
+cupy
+%s
+numpy
+%s
+''' % (cupy_tb, numpy_tb)
+        self.fail(msg)
 
 
 def _make_positive_indices(self, impl, args, kw):
@@ -43,19 +76,17 @@ def _make_decorator(check_func, name, type_check, accept_error):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             kw[name] = cupy
-            cupy_result, cupy_error = _call_func(self, impl, args, kw)
+            cupy_result, cupy_error, cupy_tb = _call_func(self, impl, args, kw)
 
             kw[name] = numpy
-            numpy_result, numpy_error = _call_func(self, impl, args, kw)
+            numpy_result, numpy_error, numpy_tb = \
+                _call_func(self, impl, args, kw)
 
             if cupy_error or numpy_error:
-                if accept_error:
-                    self.assertIs(type(cupy_error), type(numpy_error))
-                    return
-                elif cupy_error:
-                    raise cupy_error
-                elif numpy_error:
-                    raise numpy_error
+                _check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                        numpy_error, numpy_tb,
+                                        accept_error=accept_error)
+                return
 
             # Behavior of assigning a negative value to an unsigned integer
             # variable is undefined.
@@ -142,18 +173,22 @@ def numpy_cupy_raises(name='xp'):
             try:
                 impl(self, *args, **kw)
                 cupy_error = None
+                cupy_tb = None
             except Exception as e:
                 cupy_error = e
+                cupy_tb = traceback.format_exc()
 
             kw[name] = numpy
             try:
                 impl(self, *args, **kw)
                 numpy_error = None
+                numpy_tb = None
             except Exception as e:
                 numpy_error = e
+                numpy_tb = traceback.format_exc()
 
-            self.assertIs(type(cupy_error), type(numpy_error))
-            self.assertIsNotNone(cupy_error)
+            _check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                                    numpy_error, numpy_tb, accept_error=True)
         return test_func
     return decorator
 

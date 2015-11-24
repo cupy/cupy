@@ -330,6 +330,8 @@ mean = statistics.meanvar.mean
 var = statistics.meanvar.var
 std = statistics.meanvar.std
 
+bincount = statistics.histogram.bincount
+
 
 # CuPy specific functions
 def asnumpy(a, stream=None):
