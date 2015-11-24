@@ -507,6 +507,27 @@ class TestSoftmaxWithLoss(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0])
 
 
+class TestSoftmaxWithLossInvalidAxis(TestCaffeFunctionBase):
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'SoftmaxWithLoss',
+                'bottom': ['x'],
+                'top': ['y'],
+                'softmax_param': {
+                    'axis': 0,
+                }
+            }
+        ]
+    }
+
+    def test_softmax_with_loss_invalid_axis(self):
+        with self.assertRaises(RuntimeError):
+            self.init_func()
+
+
 class TestSplit(TestCaffeFunctionBase):
 
     data = {
