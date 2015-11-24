@@ -211,8 +211,8 @@ def for_dtypes(dtypes, name='dtype'):
 
 _regular_float_dtypes = (numpy.float64, numpy.float32)
 _float_dtypes = _regular_float_dtypes + (numpy.float16,)
-_signed_dtypes = (numpy.int64, numpy.int32, numpy.int16, numpy.int8)
-_unsigned_dtypes = (numpy.uint64, numpy.uint32, numpy.uint16, numpy.uint8)
+_signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
+_unsigned_dtypes = tuple(numpy.dtype(i).type for i in 'BHILQ')
 _int_dtypes = _signed_dtypes + _unsigned_dtypes
 _int_bool_dtypes = _int_dtypes + (numpy.bool_,)
 _regular_dtypes = _regular_float_dtypes + _int_bool_dtypes
