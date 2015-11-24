@@ -46,8 +46,14 @@ In this case, you have to add the following line to `.bashrc` or `.zshrc` (choos
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ```
-Do not forget to restart your terminal session (or `source` it) to enable this change.
-It automatically enables the CUDA support.
+If you want to enable cudnn, add a path containing `cudnn.h` to `CPATH`, and add a path containing `libcudnn.so` to `LIBRARY_PATH` and `LD_LIBRARY_PATH`:
+```
+export CPATH=/path/to/cudnn/include:$CPATH
+export LIBRARY_PATH=/path/to/cudnn/lib:$LIBRARY_PATH
+export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
+```
+Do not forget to restart your terminal session (or `source` it) to enable these changes.
+And then, reinstall Chainer.
 
 ## More information
 
