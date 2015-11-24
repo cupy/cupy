@@ -252,6 +252,43 @@ class TestInnerProduct(TestCaffeFunctionBase):
             f.b.data, numpy.array([0, 1], dtype=numpy.float32))
 
 
+class TestInnerProductDim4(TestCaffeFunctionBase):
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'InnerProduct',
+                'bottom': ['x'],
+                'top': ['y'],
+                'inner_product_param': {
+                    'bias_term': False,
+                    'axis': 1
+                },
+                'blobs': [
+                    # weight
+                    {
+                        'shape': {
+                            'dim': [4, 5, 2, 3]
+                        },
+                        # when `ndim` == 4, `data` stored shape[2] x shape[3]
+                        # data
+                        'data': list(range(6)),
+                    }
+                ]
+            }
+        ]
+    }
+
+    def test_linear(self):
+        self.init_func()
+        f = self.func.forwards['l1']
+        self.assertIsInstance(f, links.Linear)
+        numpy.testing.assert_array_equal(
+            f.W.data, numpy.array([[0, 1, 2], [3, 4, 5]], dtype=numpy.float32))
+        self.assertIsNone(f.b)
+
+
 class TestInnerProductInvalidDim(TestCaffeFunctionBase):
 
     data = {
