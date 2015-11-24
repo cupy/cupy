@@ -68,8 +68,13 @@ def get_compiler_setting():
             path.join(path.dirname(nvcc_path), '..'))
 
     cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
-    if not path.exists(cuda_path):
-        os.environ.get('CUDA_ROOT', '')  # PyCUDA default
+    if len(cuda_path) > 0 and cuda_path != cuda_path_default:
+        print('**************************************************************')
+        print('*** WARNING: nvcc path != CUDA_PATH')
+        print('*** WARNING: nvcc path: %s', cuda_path_default)
+        print('*** WARNING: CUDA_PATH: %s', cuda_path)
+        print('**************************************************************')
+
     if not path.exists(cuda_path):
         cuda_path = cuda_path_default
 
@@ -103,7 +108,7 @@ def localpath(*args):
 
 
 def get_path(key):
-    return os.environ.get(key, "").split(os.pathsep)
+    return os.environ.get(key, '').split(os.pathsep)
 
 
 def search_on_path(filenames):
