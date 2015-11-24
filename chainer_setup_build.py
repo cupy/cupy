@@ -1,10 +1,13 @@
 from __future__ import print_function
 import copy
+import distutils
 import os
 from os import path
 import pkg_resources
+import shutil
 import subprocess
 import sys
+import tempfile
 
 import setuptools
 from setuptools.command import build_ext
@@ -93,8 +96,6 @@ def get_compiler_setting():
             include_dirs.append(path.join(cuda_path, 'include'))
             library_dirs.append(path.join(cuda_path, 'lib64'))
 
-    include_dirs.extend(get_path('CPATH') + get_path('CPLUS_INCLUDE_PATH'))
-
     return {
         'include_dirs': include_dirs,
         'library_dirs': library_dirs,
@@ -127,7 +128,43 @@ def check_readthedocs_environment():
     return os.environ.get('READTHEDOCS', None) == 'True'
 
 
-def make_extensions(options):
+def check_library(compiler, includes=[], libraries=[],
+                  include_dirs=[], library_dirs=[]):
+    temp_dir = tempfile.mkdtemp()
+
+    try:
+        source = '''
+        int main(int argc, char* argv[]) {
+          return 0;
+        }
+        '''
+        fname = os.path.join(temp_dir, 'a.cpp')
+        with open(fname, 'w') as f:
+            for header in includes:
+                f.write('#include <%s>\n' % header)
+            f.write(source)
+
+        try:
+            objects = compiler.compile([fname], output_dir=temp_dir,
+                                       include_dirs=include_dirs)
+        except distutils.errors.CompileError:
+            return False
+
+        try:
+            compiler.link_executable(objects,
+                                     os.path.join(temp_dir, 'a.out'),
+                                     libraries=libraries,
+                                     library_dirs=library_dirs)
+        except (distutils.errors.LinkError, TypeError):
+            return False
+
+        return True
+
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def make_extensions(options, compiler):
 
     """Produce a list of Extension instances which passed to cythonize()."""
 
@@ -162,11 +199,26 @@ def make_extensions(options):
         print('Include directories:', settings['include_dirs'])
         print('Library directories:', settings['library_dirs'])
 
-        include = [i for i in module['include']
-                   if not check_include(include_dirs, i)]
-        if not no_cuda and include:
-            print('Missing include files:', include)
-            continue
+        if not no_cuda:
+            if not check_library(compiler,
+                                 includes=module['include'],
+                                 include_dirs=settings['include_dirs']):
+                print('**************************************************')
+                print('*** Include files not found: %s' % module['include'])
+                print('*** Skip installing %s support' % module['name'])
+                print('*** Check your CPATH environment variable')
+                print('**************************************************')
+                continue
+
+            if not check_library(compiler,
+                                 libraries=module['libraries'],
+                                 library_dirs=settings['library_dirs']):
+                print('**************************************************')
+                print('*** Cannot link libraries: %s' % module['libraries'])
+                print('*** Skip installing %s support' % module['name'])
+                print('*** Check your LIBRARY_PATH environment variable')
+                print('**************************************************')
+                continue
 
         s = settings.copy()
         if not no_cuda:
@@ -240,7 +292,10 @@ class chainer_build_ext(build_ext.build_ext):
             cythonize_options = {
                 key: _arg_options[key] for key in cythonize_option_keys}
 
-            extensions = make_extensions(_arg_options)
+            compiler = distutils.ccompiler.new_compiler(self.compiler)
+            distutils.sysconfig.customize_compiler(compiler)
+
+            extensions = make_extensions(_arg_options, compiler)
             extensions = cythonize(
                 extensions,
                 force=True,
