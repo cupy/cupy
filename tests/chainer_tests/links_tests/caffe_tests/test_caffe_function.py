@@ -109,7 +109,8 @@ class TestConcat(TestCaffeFunctionBaseMock):
     def test_concat(self):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x', 'y'], ['z'])
-        self.mock.assert_called_with((self.inputs[0], self.inputs[1]), axis=2)
+        self.mock.assert_called_once_with(
+            (self.inputs[0], self.inputs[1]), axis=2)
 
 
 class TestConvolution(TestCaffeFunctionBase):
@@ -195,7 +196,8 @@ class TestDropout(TestCaffeFunctionBaseMock):
     def test_dropout(self):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
-        self.mock.assert_called_with(self.inputs[0], ratio=0.25, train=False)
+        self.mock.assert_called_once_with(
+            self.inputs[0], ratio=0.25, train=False)
 
 
 class TestInnerProduct(TestCaffeFunctionBase):
@@ -267,7 +269,7 @@ class TestLRN(TestCaffeFunctionBaseMock):
     def test_lrn(self):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
-        self.mock.assert_called_with(
+        self.mock.assert_called_once_with(
             self.inputs[0], n=4, k=0.5, alpha=0.5 / 4, beta=0.25)
 
 
@@ -300,7 +302,7 @@ class TestMaxPooling(TestCaffeFunctionBaseMock):
     def test_max_pooling(self):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
-        self.mock.assert_called_with(
+        self.mock.assert_called_once_with(
             self.inputs[0], (2, 3), stride=(4, 5), pad=(6, 7))
 
 
@@ -330,7 +332,7 @@ class TestAveragePooling(TestCaffeFunctionBaseMock):
     def test_max_pooling(self):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
-        self.mock.assert_called_with(
+        self.mock.assert_called_once_with(
             self.inputs[0], 2, stride=4, pad=6)
 
 
@@ -357,7 +359,7 @@ class TestReLU(TestCaffeFunctionBaseMock):
     def test_lrn(self):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
-        self.mock.assert_called_with(self.inputs[0])
+        self.mock.assert_called_once_with(self.inputs[0])
 
 
 class TestLeakyReLU(TestCaffeFunctionBaseMock):
@@ -383,7 +385,7 @@ class TestLeakyReLU(TestCaffeFunctionBaseMock):
     def test_lrn(self):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
-        self.mock.assert_called_with(self.inputs[0], slope=0.5)
+        self.mock.assert_called_once_with(self.inputs[0], slope=0.5)
 
 
 class TestSoftmaxWithLoss(TestCaffeFunctionBaseMock):
@@ -406,7 +408,7 @@ class TestSoftmaxWithLoss(TestCaffeFunctionBaseMock):
     def test_softmax_with_loss(self):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
-        self.mock.assert_called_with(self.inputs[0])
+        self.mock.assert_called_once_with(self.inputs[0])
 
 
 class TestSplit(TestCaffeFunctionBase):
