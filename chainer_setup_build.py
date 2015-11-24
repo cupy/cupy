@@ -151,8 +151,8 @@ def check_library(compiler, includes=[], libraries=[],
             return False
 
         try:
-            compiler.link_executable(objects,
-                                     os.path.join(temp_dir, 'a.out'),
+            compiler.link_shared_lib(objects,
+                                     os.path.join(temp_dir, 'a'),
                                      libraries=libraries,
                                      library_dirs=library_dirs)
         except (distutils.errors.LinkError, TypeError):
