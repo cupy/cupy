@@ -252,6 +252,29 @@ class TestInnerProduct(TestCaffeFunctionBase):
             f.b.data, numpy.array([0, 1], dtype=numpy.float32))
 
 
+class TestInnerProductInvalidDim(TestCaffeFunctionBase):
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'InnerProduct',
+                'blobs': [
+                    {
+                        'shape': {
+                            'dim': [2, 3, 4, 5, 6]  # 5-dim is not supported
+                        },
+                    },
+                ]
+            }
+        ]
+    }
+
+    def test_linear(self):
+        with self.assertRaises(RuntimeError):
+            self.init_func()
+
+
 class TestInnerProductNonDefaultAxis(TestCaffeFunctionBase):
 
     data = {
