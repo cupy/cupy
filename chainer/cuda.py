@@ -76,10 +76,13 @@ def check_cuda_available():
     Otherwise it raises ``RuntimeError``.
     """
     if not available:
-        global _resolution_error
         msg = 'CUDA environment is not correctly set up.\n'
         msg += str(_resolution_error)
         raise RuntimeError(msg)
+    if not cudnn_enabled:
+        warnings.warn(
+            'cuDNN is not enabled.'
+            'Please reinstall chainer after you install cudnn.')
 
 
 class DummyDeviceType(object):
