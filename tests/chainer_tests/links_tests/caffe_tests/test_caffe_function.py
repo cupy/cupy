@@ -282,28 +282,9 @@ class TestInnerProductNonDefaultAxis(TestCaffeFunctionBase):
             {
                 'name': 'l1',
                 'type': 'InnerProduct',
-                'bottom': ['x'],
-                'top': ['y'],
                 'inner_product_param': {
-                    'bias_term': True,
-                    'axis': 0
-                },
-                'blobs': [
-                    # weight
-                    {
-                        'shape': {
-                            'dim': [2, 3]
-                        },
-                        'data': list(range(6)),
-                    },
-                    # bias
-                    {
-                        'shape': {
-                            'dim': [2]
-                        },
-                        'data': list(range(2)),
-                    }
-                ]
+                    'axis': 0  # non-default axis
+                }
             }
         ]
     }
@@ -352,10 +333,8 @@ class TestLRNWithinChannel(TestCaffeFunctionBase):
             {
                 'name': 'l1',
                 'type': 'LRN',
-                'bottom': ['x'],
-                'top': ['y'],
                 'lrn_param': {
-                    'norm_region': 1,  # WITHIN_CHANNELS
+                    'norm_region': 1,  # WITHIN_CHANNELS is not supported
                 },
             }
         ]
@@ -438,10 +417,8 @@ class TestStochasticPooling(TestCaffeFunctionBase):
             {
                 'name': 'l1',
                 'type': 'Pooling',
-                'bottom': ['x'],
-                'top': ['y'],
                 'pooling_param': {
-                    'pool': 2,  # STOCHASTIC
+                    'pool': 2,  # STOCHASTIC is not supported
                 }
             }
         ]
@@ -537,10 +514,8 @@ class TestSoftmaxWithLossInvalidAxis(TestCaffeFunctionBase):
             {
                 'name': 'l1',
                 'type': 'SoftmaxWithLoss',
-                'bottom': ['x'],
-                'top': ['y'],
                 'softmax_param': {
-                    'axis': 0,
+                    'axis': 0,  # invalid axis
                 }
             }
         ]
