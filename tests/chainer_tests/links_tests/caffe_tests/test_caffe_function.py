@@ -408,6 +408,27 @@ class TestAveragePooling(TestCaffeFunctionBaseMock):
             self.inputs[0], 2, stride=4, pad=6)
 
 
+class TestStochasticPooling(TestCaffeFunctionBase):
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Pooling',
+                'bottom': ['x'],
+                'top': ['y'],
+                'pooling_param': {
+                    'pool': 2,  # STOCHASTIC
+                }
+            }
+        ]
+    }
+
+    def test_stochastic_pooling(self):
+        with self.assertRaises(RuntimeError):
+            self.init_func()
+
+
 class TestReLU(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.relu'
