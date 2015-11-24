@@ -553,3 +553,8 @@ class TestCaffeFunctionAvailable(unittest.TestCase):
     @unittest.skipUnless(six.PY3, 'CaffeFunction is unavailable on Py3')
     def test_py3_unavailable(self):
         self.assertFalse(links.caffe.caffe_function.available)
+
+    @unittest.skipUnless(six.PY3, 'CaffeFunction is unavailable on Py3')
+    def test_py3_init_error(self):
+        with self.assertRaises(RuntimeError):
+            caffe.CaffeFunction('')
