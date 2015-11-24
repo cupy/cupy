@@ -252,6 +252,44 @@ class TestInnerProduct(TestCaffeFunctionBase):
             f.b.data, numpy.array([0, 1], dtype=numpy.float32))
 
 
+class TestInnerProductNonDefaultAxis(TestCaffeFunctionBase):
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'InnerProduct',
+                'bottom': ['x'],
+                'top': ['y'],
+                'inner_product_param': {
+                    'bias_term': True,
+                    'axis': 0
+                },
+                'blobs': [
+                    # weight
+                    {
+                        'shape': {
+                            'dim': [2, 3]
+                        },
+                        'data': list(range(6)),
+                    },
+                    # bias
+                    {
+                        'shape': {
+                            'dim': [2]
+                        },
+                        'data': list(range(2)),
+                    }
+                ]
+            }
+        ]
+    }
+
+    def test_linear(self):
+        with self.assertRaises(RuntimeError):
+            self.init_func()
+
+
 class TestLRN(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.local_response_normalization'
