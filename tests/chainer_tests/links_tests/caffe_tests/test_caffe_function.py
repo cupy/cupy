@@ -49,10 +49,12 @@ class TestCaffeFunctionBase(unittest.TestCase):
         param = _make_param(self.data)
         self.model_file.write(param.SerializeToString())
         self.model_file.flush()
-        self.func = caffe.CaffeFunction(self.model_file.name)
 
     def tearDown(self):
         self.model_file.close()
+
+    def init_func(self):
+        self.func = caffe.CaffeFunction(self.model_file.name)
 
 
 class TestCaffeFunctionBaseMock(TestCaffeFunctionBase):
@@ -110,6 +112,7 @@ class TestConcat(TestCaffeFunctionBaseMock):
     }
 
     def test_concat(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x', 'y'], ['z'])
         self.mock.assert_called_once_with(
@@ -147,6 +150,7 @@ class TestConvolution(TestCaffeFunctionBase):
     }
 
     def test_convolution(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         f = self.func.forwards['l1']
         self.assertIsInstance(f, links.Convolution2D)
@@ -173,6 +177,7 @@ class TestData(TestCaffeFunctionBase):
     }
 
     def test_data(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 0)
 
 
@@ -197,6 +202,7 @@ class TestDropout(TestCaffeFunctionBaseMock):
     }
 
     def test_dropout(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(
@@ -237,6 +243,7 @@ class TestInnerProduct(TestCaffeFunctionBase):
     }
 
     def test_linear(self):
+        self.init_func()
         f = self.func.forwards['l1']
         self.assertIsInstance(f, links.Linear)
         numpy.testing.assert_array_equal(
@@ -270,6 +277,7 @@ class TestLRN(TestCaffeFunctionBaseMock):
     }
 
     def test_lrn(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(
@@ -303,6 +311,7 @@ class TestMaxPooling(TestCaffeFunctionBaseMock):
     }
 
     def test_max_pooling(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(
@@ -333,6 +342,7 @@ class TestAveragePooling(TestCaffeFunctionBaseMock):
     }
 
     def test_max_pooling(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(
@@ -360,6 +370,7 @@ class TestReLU(TestCaffeFunctionBaseMock):
     }
 
     def test_lrn(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(self.inputs[0])
@@ -386,6 +397,7 @@ class TestLeakyReLU(TestCaffeFunctionBaseMock):
     }
 
     def test_lrn(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(self.inputs[0], slope=0.5)
@@ -409,6 +421,7 @@ class TestSoftmaxWithLoss(TestCaffeFunctionBaseMock):
     }
 
     def test_softmax_with_loss(self):
+        self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(self.inputs[0])
@@ -428,6 +441,7 @@ class TestSplit(TestCaffeFunctionBase):
     }
 
     def test_split(self):
+        self.init_func()
         self.assertEqual(self.func.split_map, {'y': 'x', 'z': 'x'})
 
 
