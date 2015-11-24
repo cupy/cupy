@@ -322,6 +322,27 @@ class TestLRN(TestCaffeFunctionBaseMock):
             self.inputs[0], n=4, k=0.5, alpha=0.5 / 4, beta=0.25)
 
 
+class TestLRNWithinChannel(TestCaffeFunctionBase):
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'LRN',
+                'bottom': ['x'],
+                'top': ['y'],
+                'lrn_param': {
+                    'norm_region': 1,  # WITHIN_CHANNELS
+                },
+            }
+        ]
+    }
+
+    def test_lrn(self):
+        with self.assertRaises(RuntimeError):
+            self.init_func()
+
+
 class TestMaxPooling(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.max_pooling_2d'
