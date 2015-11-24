@@ -3,11 +3,13 @@ import unittest
 
 import mock
 import numpy
+import six
 
 import chainer
 from chainer import links
 from chainer.links import caffe
-from chainer.links.caffe import caffe_pb2
+if six.PY2:
+    from chainer.links.caffe import caffe_pb2
 
 
 def _iter_init(param, data):
@@ -39,6 +41,7 @@ def _make_param(data):
     return param
 
 
+@unittest.skipUnless(six.PY2, 'Only py2 supports caffe_function')
 class TestCaffeFunctionBase(unittest.TestCase):
 
     def setUp(self):
@@ -259,7 +262,7 @@ class TestLRN(TestCaffeFunctionBaseMock):
                     'local_size': 4,
                     'alpha': 0.5,
                     'beta': 0.25,
-                    'norm_region': caffe_pb2.LRNParameter.ACROSS_CHANNELS,
+                    'norm_region': 0,  # ACROSS_CHANNELS
                     'k': 0.5
                 },
             }
@@ -287,7 +290,7 @@ class TestMaxPooling(TestCaffeFunctionBaseMock):
                 'bottom': ['x'],
                 'top': ['y'],
                 'pooling_param': {
-                    'pool': caffe_pb2.PoolingParameter.MAX,
+                    'pool': 0,  # MAX
                     'kernel_h': 2,
                     'kernel_w': 3,
                     'stride_h': 4,
@@ -320,7 +323,7 @@ class TestAveragePooling(TestCaffeFunctionBaseMock):
                 'bottom': ['x'],
                 'top': ['y'],
                 'pooling_param': {
-                    'pool': caffe_pb2.PoolingParameter.AVE,
+                    'pool': 1,  # AVE
                     'kernel_size': 2,
                     'stride': 4,
                     'pad': 6,
@@ -426,3 +429,14 @@ class TestSplit(TestCaffeFunctionBase):
 
     def test_split(self):
         self.assertEqual(self.func.split_map, {'y': 'x', 'z': 'x'})
+
+
+class TestCaffeFunctionAvailable(unittest.TestCase):
+
+    @unittest.skipUnless(six.PY2, 'CaffeFunction is available on Py2')
+    def test_py2_available(self):
+        self.assertTrue(links.caffe.caffe_function.available)
+
+    @unittest.skipUnless(six.PY3, 'CaffeFunction is unavailable on Py3')
+    def test_py3_unavailable(self):
+        self.assertFalse(links.caffe.caffe_function.available)
