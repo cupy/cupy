@@ -3,7 +3,7 @@ import unittest
 import six
 
 import cupy
-from cupy import reduction
+from cupy import core
 from cupy import testing
 
 
@@ -13,10 +13,10 @@ class SimpleReductionFunction(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     def setUp(self):
-        self.my_int8_sum = reduction.create_reduction_func(
+        self.my_int8_sum = core.create_reduction_func(
             'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=False)
     def check_int8_sum(self, shape, xp, axis=None, keepdims=False):
         a = testing.shaped_random(shape, xp, 'b')
         if xp == cupy:
@@ -57,10 +57,10 @@ class TestReductionKernel(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     def setUp(self):
-        self.my_sum = reduction.ReductionKernel(
+        self.my_sum = core.ReductionKernel(
             'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
 
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=False)
     def check_int8_sum(self, shape, xp, axis=None, keepdims=False):
         a = testing.shaped_random(shape, xp, 'b')
         if xp == cupy:

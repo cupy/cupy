@@ -4,29 +4,13 @@ import string
 import numpy
 import six
 
-import cupy
-from cupy import carray
-from cupy import elementwise
 from cupy import util
 
 
-six_range = six.moves.range
 six_zip = six.moves.zip
 
-_broadcast = elementwise._broadcast
-_check_args = elementwise._check_args
-_decide_params_type = elementwise._decide_params_type
-_get_kernel_params = elementwise._get_kernel_params
-_get_args_info = elementwise._get_args_info
-_get_out_args = elementwise._get_out_args
-_get_out_args_with_params = elementwise._get_out_args_with_params
-_get_param_info = elementwise._get_param_info
-_get_typename = elementwise._get_typename
-_guess_routine = elementwise._guess_routine
-_reduce_dims = elementwise._reduce_dims
 
-
-def _get_simple_reduction_kernel(
+cpdef _get_simple_reduction_kernel(
         name, block_size, reduce_type, params, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         type_preamble, input_expr, output_expr, preamble, options):
@@ -121,13 +105,14 @@ def _get_simple_reduction_kernel(
         input_expr=input_expr,
         output_expr=output_expr,
         preamble=preamble)
-    module = carray.compile_with_cache(module_code, options)
+    module = compile_with_cache(module_code, options)
     return module.get_function(name)
 
 
-def _get_axis(axis, ndim):
+cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
+    cdef Py_ssize_t dim
     if axis is None:
-        axis = tuple(six_range(ndim))
+        axis = tuple(range(ndim))
     elif isinstance(axis, collections.Sequence):
         axis = tuple(axis)
     else:
@@ -137,11 +122,12 @@ def _get_axis(axis, ndim):
         if dim < -ndim or dim >= ndim:
             raise ValueError('Axis overrun')
     axis = tuple(sorted([dim % ndim for dim in axis]))
-    raxis = tuple([dim for dim in six_range(ndim) if dim not in axis])
+    raxis = tuple([dim for dim in range(ndim) if dim not in axis])
     return axis, raxis
 
 
-def _get_out_shape(shape, axis, raxis, keepdims):
+cpdef tuple _get_out_shape(
+        tuple shape, tuple axis, tuple raxis, bint keepdims):
     if keepdims:
         out_shape = list(shape)
         for i in axis:
@@ -150,19 +136,23 @@ def _get_out_shape(shape, axis, raxis, keepdims):
     return tuple([shape[i] for i in raxis])
 
 
-def _get_trans_args(args, trans, shape, params=None):
-    if trans == tuple(six_range(len(shape))):
+cpdef tuple _get_trans_args(list args, tuple trans, tuple shape, tuple params):
+    cdef ParameterInfo p
+    if trans == tuple(range(len(shape))):
         return args, shape
-    if params is not None and any(p.raw for p in params):
-        raise NotImplementedError('Illegal conditions')
-    args = [cupy.transpose(a, trans) if isinstance(a, cupy.ndarray) else a
+    if params is not None:
+        for p in params:
+            if p.raw:
+                raise NotImplementedError('Illegal conditions')
+    args = [a.transpose(trans) if isinstance(a, ndarray) else a
             for a in args]
     shape = tuple([shape[i] for i in trans])
     return args, shape
 
 
-def _get_inout_args(in_args, out_args, in_indexer, out_indexer, out_clp2_size,
-                    params, reduce_dims):
+cpdef list _get_inout_args(
+        list in_args, list out_args, Indexer in_indexer, Indexer out_indexer,
+        object out_clp2_size, tuple params, bint reduce_dims):
     if reduce_dims:
         in_args, in_shape = _reduce_dims(
             in_args, params, in_indexer.shape)
@@ -215,7 +205,7 @@ class simple_reduction_function(object):
         self._routine_cache = {}
 
     def __call__(self, a, axis=None, dtype=None, out=None, keepdims=False):
-        if not isinstance(a, cupy.ndarray):
+        if not isinstance(a, ndarray):
             raise TypeError('Input type must be cupy.ndarray')
         if self.identity is None and 0 in a.shape:
             raise ValueError(('zero-size array to reduction operation'
@@ -225,10 +215,10 @@ class simple_reduction_function(object):
 
         in_args = [a]
         if out is None:
-            _check_args((a,))
+            a = _preprocess_args((a,))[0]
             out_args = []
         else:
-            _check_args((a, out))
+            a, out = _preprocess_args((a, out))
             out_args = [out]
 
         in_types, out_types, routine = _guess_routine(
@@ -243,11 +233,11 @@ class simple_reduction_function(object):
             return tuple(out_args)
 
         in_args, in_shape = _get_trans_args(
-            in_args, axis + raxis, in_args[0].shape)
+            in_args, axis + raxis, in_args[0].shape, None)
 
         block_size = 512
-        in_indexer = carray.Indexer(in_shape)
-        out_indexer = carray.Indexer(out_shape)
+        in_indexer = Indexer(in_shape)
+        out_indexer = Indexer(out_shape)
         # Rounding Up to the Next Power of 2
         # clp2_count >= in_indexer.size // out_indexer.size
         clp2_count = 1 << int.bit_length(
@@ -284,7 +274,7 @@ def _get_reduction_kernel(
         post_map_expr, preamble, options):
     kernel_params = _get_kernel_params(params, args_info)
     arrays = [p for p, a in six_zip(params, args_info)
-              if not p.raw and a[0] is cupy.ndarray]
+              if not p.raw and a[0] is ndarray]
     type_preamble = '\n'.join(
         'typedef %s %s;' % (_get_typename(v), k)
         for k, v in types)
@@ -394,19 +384,19 @@ class ReductionKernel(object):
                                  "a positional and keyword argument")
             out_args = [out]
 
-        in_args, broad_shape = _broadcast(args, self.in_params, False)
-        _check_args(in_args + out_args)
+        in_args = _preprocess_args(args[:self.nin])
+        out_args = _preprocess_args(out_args)
+        in_args, broad_shape = _broadcast(in_args, self.in_params, False)
 
         if self.identity is None and 0 in broad_shape:
             raise ValueError(('zero-size array to reduction operation'
                               ' %s which has no identity') % self.name)
 
-        cp_array = cupy.ndarray
         in_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, cp_array) else None
+            [a.dtype.type if isinstance(a, ndarray) else None
              for a in in_args])
         out_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, cp_array) else None
+            [a.dtype.type if isinstance(a, ndarray) else None
              for a in out_args])
         in_types, out_types, types = _decide_params_type(
             self.in_params, self.out_params,
@@ -419,14 +409,14 @@ class ReductionKernel(object):
         if 0 in out_shape:
             return out_args[0]
 
-        in_args = [x if isinstance(x, cp_array) else t(x)
+        in_args = [x if isinstance(x, ndarray) else t(x)
                    for x, t in six_zip(in_args, in_types)]
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, broad_shape, self.in_params)
 
         block_size = 512
-        in_indexer = carray.Indexer(in_shape)
-        out_indexer = carray.Indexer(out_shape)
+        in_indexer = Indexer(in_shape)
+        out_indexer = Indexer(out_shape)
         # Rounding Up to the Next Power of 2
         # clp2_count >= in_indexer.size // out_indexer.size
         clp2_count = 1 << int.bit_length(
@@ -453,8 +443,8 @@ class ReductionKernel(object):
         return out_args[0]
 
 
-def create_reduction_func(name, ops, routine=None, identity=None,
-                          preamble=''):
+cpdef create_reduction_func(name, ops, routine=None, identity=None,
+                            preamble=''):
     _ops = []
     for t in ops:
         if not isinstance(t, tuple):
@@ -462,7 +452,7 @@ def create_reduction_func(name, ops, routine=None, identity=None,
             rt = routine
         else:
             typ, rt = t
-            rt = tuple(i or j for i, j in six_zip(rt, routine))
+            rt = tuple([i or j for i, j in six_zip(rt, routine)])
 
         types = typ.split('->')
         if len(types) == 1:
@@ -474,64 +464,3 @@ def create_reduction_func(name, ops, routine=None, identity=None,
         _ops.append((in_types, out_types, rt))
 
     return simple_reduction_function(name, _ops, identity, preamble)
-
-
-_min_max_preamble = '''
-struct min_max_st{
-    type_in0_raw value;
-    int index;
-    __device__ min_max_st() : index(-1) { }
-    __device__ min_max_st(type_in0_raw v) : value(v), index(0) { }
-    __device__ min_max_st(type_in0_raw v, int i) : value(v), index(i) { }
-};
-__device__ min_max_st my_min(const min_max_st& a, const min_max_st& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    return min_max_st(min(a.value, b.value));
-}
-__device__ min_max_st my_max(const min_max_st& a, const min_max_st& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    return min_max_st(max(a.value, b.value));
-}
-__device__ min_max_st my_argmin(const min_max_st& a, const min_max_st& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value) return min_max_st(a.value, min(a.index, b.index));
-    return (a.value <= b.value) ? a : b;
-}
-__device__ min_max_st my_argmax(const min_max_st& a, const min_max_st& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    if (a.value == b.value) return min_max_st(a.value, min(a.index, b.index));
-    return (a.value >= b.value) ? a : b;
-}'''
-
-
-amin = create_reduction_func(
-    'cupy_min',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    ('min_max_st(in0)', 'my_min(a, b)', 'out0 = a.value', 'min_max_st'),
-    None, _min_max_preamble)
-
-amax = create_reduction_func(
-    'cupy_max',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    ('min_max_st(in0)', 'my_max(a, b)', 'out0 = a.value', 'min_max_st'),
-    None, _min_max_preamble)
-
-argmin = create_reduction_func(
-    'cupy_argmin',
-    ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
-     'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'),
-    ('min_max_st(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index', 'min_max_st'),
-    None, _min_max_preamble)
-
-argmax = create_reduction_func(
-    'cupy_argmax',
-    ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
-     'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'),
-    ('min_max_st(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index', 'min_max_st'),
-    None, _min_max_preamble)

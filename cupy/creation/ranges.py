@@ -1,7 +1,7 @@
 import numpy
 
 import cupy
-from cupy import elementwise
+from cupy import core
 
 
 def arange(start, stop=None, step=1, dtype=None):
@@ -106,7 +106,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
 # ogrid
 
 
-_arange_ufunc = elementwise.create_ufunc(
+_arange_ufunc = core.create_ufunc(
     'cupy_arange',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
@@ -114,7 +114,7 @@ _arange_ufunc = elementwise.create_ufunc(
 
 
 _float_linspace = 'out0 = in0 + i * in1 / in2'
-_linspace_ufunc = elementwise.create_ufunc(
+_linspace_ufunc = core.create_ufunc(
     'cupy_linspace',
     ('bbb->b', 'Bbb->B', 'hhh->h', 'Hhh->H', 'iii->i', 'Iii->I', 'lll->l',
      'Lll->L', 'qqq->q', 'Qqq->Q', ('eel->e', _float_linspace),

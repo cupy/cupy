@@ -1,6 +1,6 @@
 import numpy
 
-from cupy import elementwise
+from cupy import core
 
 
 def copyto(dst, src, casting='same_kind', where=None):
@@ -31,9 +31,9 @@ def copyto(dst, src, casting='same_kind', where=None):
         if _can_memcpy(dst, src):
             dst.data.copy_from(src.data, src.nbytes)
         else:
-            elementwise.copy(src, dst)
+            core.elementwise_copy(src, dst)
     else:
-        elementwise.copy_where(src, where, dst)
+        core.elementwise_copy_where(src, where, dst)
 
 
 def _can_memcpy(dst, src):

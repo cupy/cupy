@@ -382,6 +382,8 @@ Statistics
 :func:`var`
 :func:`std`
 
+:func:`bincount`
+
 Other
 ~~~~~
 

@@ -1,4 +1,3 @@
-import ctypes
 import numpy
 
 from chainer import cuda
@@ -31,13 +30,16 @@ class Softmax(function.Function):
     def forward(self, x):
         xp = cuda.get_array_module(*x)
         if xp != numpy and cuda.cudnn_enabled and self.use_cudnn:
+            dtype = x[0].dtype
+            one = numpy.array(1, dtype=dtype).ctypes
+            zero = numpy.array(0, dtype=dtype).ctypes
             handle = cudnn.get_handle()
             x_cube = x[0].reshape(x[0].shape[:2] + (-1, 1))
             desc = cudnn.create_tensor_descriptor(x_cube)
             self.y = xp.empty_like(x[0])
             libcudnn.softmaxForward(
-                handle, _algorithm, _mode, ctypes.c_float(1), desc.value,
-                x_cube.data.ptr, ctypes.c_float(0), desc.value,
+                handle, _algorithm, _mode, one.data, desc.value,
+                x_cube.data.ptr, zero.data, desc.value,
                 self.y.data.ptr)
         else:
             self.y = x[0] - x[0].max(axis=1, keepdims=True)
@@ -49,13 +51,16 @@ class Softmax(function.Function):
     def backward(self, x, gy):
         xp = cuda.get_array_module(*x)
         if xp != numpy and cuda.cudnn_enabled and self.use_cudnn:
+            dtype = x[0].dtype
+            one = numpy.array(1, dtype=dtype).ctypes
+            zero = numpy.array(0, dtype=dtype).ctypes
             handle = cudnn.get_handle()
             gx = xp.empty_like(x[0])
             gx_cube = gx.reshape(gx.shape[:2] + (-1, 1))
             desc = cudnn.create_tensor_descriptor(gx_cube)
             libcudnn.softmaxBackward(
-                handle, _algorithm, _mode, ctypes.c_float(1), desc.value,
-                self.y.data.ptr, desc.value, gy[0].data.ptr, ctypes.c_float(0),
+                handle, _algorithm, _mode, one.data, desc.value,
+                self.y.data.ptr, desc.value, gy[0].data.ptr, zero.data,
                 desc.value, gx.data.ptr)
         else:
             gx = self.y * gy[0]

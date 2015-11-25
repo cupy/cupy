@@ -42,7 +42,9 @@ class Convolution2D(link.Link):
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
                  initialW=None, initial_bias=None):
         kh, kw = _pair(ksize)
-        self._conv_arg = (stride, pad, use_cudnn)
+        self.stride = _pair(stride)
+        self.pad = _pair(pad)
+        self.use_cudnn = use_cudnn
 
         W_shape = (out_channels, in_channels, kh, kw)
         super(Convolution2D, self).__init__(W=W_shape)
@@ -72,7 +74,7 @@ class Convolution2D(link.Link):
 
         """
         return convolution_2d.convolution_2d(
-            x, self.W, self.b, *self._conv_arg)
+            x, self.W, self.b, self.stride, self.pad, self.use_cudnn)
 
 
 def _pair(x):
