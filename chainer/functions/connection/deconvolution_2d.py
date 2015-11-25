@@ -194,7 +194,7 @@ class Deconvolution2DFunction(function.Function):
             libcudnn.convolutionBackwardFilter(
                 handle, one.data, gy_desc.value, gy.data.ptr,
                 gx_desc.value, x.data.ptr, self.conv_desc.value,
-                one.data, self.filter_desc.value, gW.data.ptr)
+                zero.data, self.filter_desc.value, gW.data.ptr)
         else:
             # Implementation using im2col
             col = conv.im2col_gpu(
