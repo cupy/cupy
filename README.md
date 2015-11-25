@@ -8,6 +8,8 @@
 
 ## Requirements
 
+Chainer is tested on Ubuntu 14.04 and CentOS 7. We recommend them to use Chainer, though it may run on other systems as well.
+
 Minimum requirements:
 - Python 2.7.6+, 3.4.3+, 3.5.0+
 - NumPy 1.9
