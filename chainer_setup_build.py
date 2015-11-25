@@ -186,7 +186,8 @@ def make_extensions(options, compiler):
         x for x in include_dirs if path.exists(x)]
     settings['library_dirs'] = [
         x for x in settings['library_dirs'] if path.exists(x)]
-    settings['runtime_library_dirs'] = settings['library_dirs']
+    if sys.platform != 'win32':
+        settings['runtime_library_dirs'] = settings['library_dirs']
 
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
