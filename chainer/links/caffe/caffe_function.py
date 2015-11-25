@@ -5,11 +5,12 @@ import warnings
 import numpy
 import six
 
-from chainer import function_set
 from chainer import functions
+from chainer import link
+from chainer import links
 # caffe_pb2 does not support Py3
 if sys.version_info < (3, 0, 0):
-    from chainer.functions.caffe import caffe_pb2
+    from chainer.links.caffe import caffe_pb2
 
     _type_to_method = {}
     _oldname_to_method = {}
@@ -33,7 +34,7 @@ else:
     available = False
 
 
-class CaffeFunction(object):
+class CaffeFunction(link.Chain):
 
     """Caffe emulator based on the model file of Caffe.
 
@@ -103,11 +104,12 @@ class CaffeFunction(object):
         if not available:
             raise RuntimeError('CaffeFunction is not supported on Python 3')
 
+        super(CaffeFunction, self).__init__()
+
         net = caffe_pb2.NetParameter()
         with open(model_path, 'rb') as model_file:
             net.MergeFromString(model_file.read())
 
-        self.fs = function_set.FunctionSet()
         self.forwards = {}
         self.split_map = {}
         self.layers = []
@@ -174,30 +176,6 @@ class CaffeFunction(object):
         self.variables = variables
         return tuple(variables[blob] for blob in outputs)
 
-    def to_gpu(self, device=None):
-        self.fs.to_gpu(device)
-        return self
-
-    def to_cpu(self):
-        self.fs.to_cpu()
-        return self
-
-    @property
-    def parameters(self):
-        return self.fs.parameters
-
-    @parameters.setter
-    def parameters(self, values):
-        self.fs.parameters = values
-
-    @property
-    def gradients(self):
-        return self.fs.gradients
-
-    @gradients.setter
-    def gradients(self, values):
-        self.fs.gradients = values
-
     def _add_layer(self, layer):
         bottom = []
         for blob_name in layer.bottom:
@@ -227,9 +205,9 @@ class CaffeFunction(object):
 
         n_in = channels * param.group
         n_out = num
-        func = functions.Convolution2D(n_in, n_out, ksize, stride, pad,
-                                       nobias=not param.bias_term)
-        func.W.fill(0)
+        func = links.Convolution2D(n_in, n_out, ksize, stride, pad,
+                                   nobias=not param.bias_term)
+        func.W.data[...] = 0
 
         part_size = len(blobs[0].data) // param.group
         for i in six.moves.range(param.group):
@@ -237,16 +215,16 @@ class CaffeFunction(object):
                              (i+1) * n_in // param.group)
             out_slice = slice(i * n_out // param.group,
                               (i+1) * n_out // param.group)
-            w = func.W[out_slice, in_slice]
+            w = func.W.data[out_slice, in_slice]
 
             data = numpy.array(blobs[0].data[i*part_size:(i+1)*part_size])
             w[:] = data.reshape(w.shape)
 
         if param.bias_term:
-            func.b[:] = blobs[1].data
+            func.b.data[:] = blobs[1].data
 
-        setattr(self.fs, layer.name, func)
-        self.forwards[layer.name] = func
+        self.add_link(layer.name, func)
+        self.forwards[layer.name] = _CallChildLink(self, layer.name)
         self._add_layer(layer)
 
     @_layer('Data', 'DATA')
@@ -272,13 +250,13 @@ class CaffeFunction(object):
 
         blobs = layer.blobs
         width, height = _get_width(blobs[0]), _get_height(blobs[0])
-        func = functions.Linear(width, height, nobias=not bias_term)
-        func.W.ravel()[:] = blobs[0].data
+        func = links.Linear(width, height, nobias=not bias_term)
+        func.W.data.ravel()[:] = blobs[0].data
         if bias_term:
-            func.b[:] = blobs[1].data
+            func.b.data[:] = blobs[1].data
 
-        setattr(self.fs, layer.name, func)
-        self.forwards[layer.name] = func
+        self.add_link(layer.name, func)
+        self.forwards[layer.name] = _CallChildLink(self, layer.name)
         self._add_layer(layer)
 
     @_layer('LRN', 'LRN')
@@ -432,3 +410,12 @@ class _DropoutFunction(object):
     def __call__(self, x):
         return functions.dropout(
             x, ratio=self.ratio, train=self.caffe_func.train)
+
+
+class _CallChildLink(object):
+    def __init__(self, caffe_func, name):
+        self.name = name
+        self.caffe_func = caffe_func
+
+    def __call__(self, *xs):
+        return self.caffe_func[self.name](*xs)

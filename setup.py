@@ -48,6 +48,7 @@ setup(
               'chainer.functions.pooling',
               'chainer.links',
               'chainer.links.activation',
+              'chainer.links.caffe',
               'chainer.links.connection',
               'chainer.links.loss',
               'chainer.links.model',

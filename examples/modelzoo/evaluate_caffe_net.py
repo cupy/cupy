@@ -19,7 +19,7 @@ from PIL import Image
 import chainer
 from chainer import cuda
 import chainer.functions as F
-from chainer.functions import caffe
+from chainer.links import caffe
 
 
 parser = argparse.ArgumentParser(
