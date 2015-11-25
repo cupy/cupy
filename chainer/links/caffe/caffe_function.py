@@ -224,7 +224,7 @@ class CaffeFunction(link.Chain):
             func.b.data[:] = blobs[1].data
 
         self.add_link(layer.name, func)
-        self.forwards[layer.name] = func
+        self.forwards[layer.name] = _CallChildLink(self, layer.name)
         self._add_layer(layer)
 
     @_layer('Data', 'DATA')
@@ -256,7 +256,7 @@ class CaffeFunction(link.Chain):
             func.b.data[:] = blobs[1].data
 
         self.add_link(layer.name, func)
-        self.forwards[layer.name] = func
+        self.forwards[layer.name] = _CallChildLink(self, layer.name)
         self._add_layer(layer)
 
     @_layer('LRN', 'LRN')
@@ -410,3 +410,12 @@ class _DropoutFunction(object):
     def __call__(self, x):
         return functions.dropout(
             x, ratio=self.ratio, train=self.caffe_func.train)
+
+
+class _CallChildLink(object):
+    def __init__(self, caffe_func, name):
+        self.name = name
+        self.caffe_func = caffe_func
+
+    def __call__(self, *xs):
+        return self.caffe_func[self.name](*xs)

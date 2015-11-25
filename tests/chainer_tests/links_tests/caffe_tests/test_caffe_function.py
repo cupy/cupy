@@ -119,7 +119,11 @@ class TestConcat(TestCaffeFunctionBaseMock):
             (self.inputs[0], self.inputs[1]), axis=2)
 
 
-class TestConvolution(TestCaffeFunctionBase):
+class TestConvolution(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.Convolution2D.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
 
     data = {
         'layer': [
@@ -152,7 +156,7 @@ class TestConvolution(TestCaffeFunctionBase):
     def test_convolution(self):
         self.init_func()
         self.assertEqual(len(self.func.layers), 1)
-        f = self.func.forwards['l1']
+        f = self.func.l1
         self.assertIsInstance(f, links.Convolution2D)
         for i in range(3):  # 3 == group
             in_slice = slice(i * 4, (i + 1) * 4)  # 4 == channels
@@ -163,6 +167,9 @@ class TestConvolution(TestCaffeFunctionBase):
 
         numpy.testing.assert_array_equal(
             f.b.data, range(6))
+
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0])
 
 
 class TestData(TestCaffeFunctionBase):
@@ -209,7 +216,11 @@ class TestDropout(TestCaffeFunctionBaseMock):
             self.inputs[0], ratio=0.25, train=False)
 
 
-class TestInnerProduct(TestCaffeFunctionBase):
+class TestInnerProduct(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.Linear.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
 
     data = {
         'layer': [
@@ -244,15 +255,22 @@ class TestInnerProduct(TestCaffeFunctionBase):
 
     def test_linear(self):
         self.init_func()
-        f = self.func.forwards['l1']
+        f = self.func.l1
         self.assertIsInstance(f, links.Linear)
         numpy.testing.assert_array_equal(
             f.W.data, numpy.array([[0, 1, 2], [3, 4, 5]], dtype=numpy.float32))
         numpy.testing.assert_array_equal(
             f.b.data, numpy.array([0, 1], dtype=numpy.float32))
 
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0])
 
-class TestInnerProductDim4(TestCaffeFunctionBase):
+
+class TestInnerProductDim4(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.Linear.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
 
     data = {
         'layer': [
@@ -282,11 +300,14 @@ class TestInnerProductDim4(TestCaffeFunctionBase):
 
     def test_linear(self):
         self.init_func()
-        f = self.func.forwards['l1']
+        f = self.func.l1
         self.assertIsInstance(f, links.Linear)
         numpy.testing.assert_array_equal(
             f.W.data, numpy.array([[0, 1, 2], [3, 4, 5]], dtype=numpy.float32))
         self.assertIsNone(f.b)
+
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0])
 
 
 class TestInnerProductInvalidDim(TestCaffeFunctionBase):
