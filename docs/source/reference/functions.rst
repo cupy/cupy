@@ -51,6 +51,7 @@ Neural network connections
 --------------------------
 .. autofunction:: bilinear
 .. autofunction:: convolution_2d
+.. autofunction:: deconvolution_2d
 .. autofunction:: embed_id
 .. autofunction:: linear
 
