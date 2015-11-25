@@ -14,6 +14,7 @@ Minimum requirements:
 - Python 2.7.6+, 3.4.3+, 3.5.0+
 - NumPy 1.9
 - Six 1.9
+- h5py 2.5.0
 
 Requirements for some features:
 - CUDA support
