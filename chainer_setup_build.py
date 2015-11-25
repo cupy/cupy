@@ -225,8 +225,7 @@ def make_extensions(options, compiler):
         if not no_cuda:
             s['libraries'] = module['libraries']
         ret.extend([
-            setuptools.Extension(
-                f, [localpath(path.join(*f.split('.')) + '.pyx')], **s)
+            setuptools.Extension(f, [path.join(*f.split('.')) + '.pyx'], **s)
             for f in module['file']])
     return ret
 
