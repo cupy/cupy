@@ -46,7 +46,7 @@ In this case, you have to add the following line to `.bashrc` or `.zshrc` (choos
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ```
-If you want to enable cuDNN, add a path containing `cudnn.h` to `CPATH`, and add a directory containing `libcudnn.so` to `LIBRARY_PATH` and `LD_LIBRARY_PATH`:
+If you want to enable cuDNN, add a directory containing `cudnn.h` to `CPATH`, and add a directory containing `libcudnn.so` to `LIBRARY_PATH` and `LD_LIBRARY_PATH`:
 ```
 export CPATH=/path/to/cudnn/include:$CPATH
 export LIBRARY_PATH=/path/to/cudnn/lib:$LIBRARY_PATH
