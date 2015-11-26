@@ -85,16 +85,19 @@ def get_compiler_setting():
     library_dirs = []
     define_macros = []
 
-    if sys.platform == 'win32':
-        if cuda_path:
-            include_dirs.append(path.join(cuda_path, 'include'))
+    if cuda_path:
+        include_dirs.append(path.join(cuda_path, 'include'))
+        if sys.platform == 'win32':
             library_dirs.append(path.join(cuda_path, 'bin'))
             library_dirs.append(path.join(cuda_path, 'lib', 'x64'))
-        include_dirs.append(localpath('windows'))
-    else:
-        if cuda_path:
-            include_dirs.append(path.join(cuda_path, 'include'))
+        elif sys.platform == 'darwin':
+            library_dirs.append(path.join(cuda_path, 'lib'))
+        else:
             library_dirs.append(path.join(cuda_path, 'lib64'))
+    if sys.platform == 'win32':
+        include_dirs.append(localpath('windows'))
+    elif sys.platform == 'darwin':
+        library_dirs.append('/usr/local/cuda/lib')
 
     return {
         'include_dirs': include_dirs,
