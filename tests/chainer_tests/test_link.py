@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -156,6 +157,18 @@ class TestLink(unittest.TestCase):
         gy_expect = numpy.zeros_like(l.y.grad)
         numpy.testing.assert_array_equal(self.link.x.grad, gx_expect)
         numpy.testing.assert_array_equal(self.link.y.grad, gy_expect)
+
+    def test_serialize(self):
+        serializer = mock.MagicMock(return_value=3)
+        l = chainer.Link(x=(2, 3), y=2)
+        l.add_persistent('z', 1)
+        l.serialize(serializer)
+        self.assertEqual(serializer.call_count, 3)
+        serializer.assert_any_call('x', l.x.data)
+        serializer.assert_any_call('y', l.y.data)
+        serializer.assert_any_call('z', 1)
+
+        self.assertEqual(l.z, 3)
 
 
 class TestChain(unittest.TestCase):
@@ -345,6 +358,14 @@ class TestChain(unittest.TestCase):
         numpy.testing.assert_array_equal(self.l1.x.grad, numpy.zeros((2, 3)))
         numpy.testing.assert_array_equal(self.l2.x.grad, numpy.zeros(2))
         numpy.testing.assert_array_equal(self.l3.x.grad, numpy.zeros(3))
+
+    def test_serialize(self):
+        serializer = mock.MagicMock()
+        self.c1.serialize(serializer)
+
+        self.assertEqual(serializer.call_count, 0)
+        serializer['l1'].assert_called_once('x', self.l1.x.data)
+        serializer['l2'].assert_called_once('x', self.l2.x.data)
 
 
 class TestChainList(unittest.TestCase):
@@ -539,6 +560,14 @@ class TestChainList(unittest.TestCase):
         numpy.testing.assert_array_equal(self.l1.x.grad, numpy.zeros((2, 3)))
         numpy.testing.assert_array_equal(self.l2.x.grad, numpy.zeros(2))
         numpy.testing.assert_array_equal(self.l3.x.grad, numpy.zeros(3))
+
+    def test_serialize(self):
+        serializer = mock.MagicMock()
+        self.c1.serialize(serializer)
+
+        self.assertEqual(serializer.call_count, 0)
+        serializer['0'].assert_called_once('x', self.l1.x.data)
+        serializer['1'].assert_called_once('x', self.l2.x.data)
 
 
 testing.run_module(__name__, __file__)
