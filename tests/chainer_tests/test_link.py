@@ -4,6 +4,7 @@ import numpy
 
 import chainer
 from chainer import cuda
+from chainer import testing
 from chainer.testing import attr
 
 
@@ -538,3 +539,6 @@ class TestChainList(unittest.TestCase):
         numpy.testing.assert_array_equal(self.l1.x.grad, numpy.zeros((2, 3)))
         numpy.testing.assert_array_equal(self.l2.x.grad, numpy.zeros(2))
         numpy.testing.assert_array_equal(self.l3.x.grad, numpy.zeros(3))
+
+
+testing.run_module(__name__, __file__)
