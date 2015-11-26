@@ -32,7 +32,7 @@ class TestExpandDims(unittest.TestCase):
         y = functions.expand_dims(x, self.axis)
         self.assertEqual(y.data.shape, self.out_shape)
         y_expect = numpy.expand_dims(cuda.to_cpu(x_data), self.axis)
-        cuda.cupy.testing.assert_array_equal(y.data, y_expect)
+        numpy.testing.assert_array_equal(cuda.to_cpu(y.data), y_expect)
 
     def check_backward(self, x_data, y_grad):
         x = chainer.Variable(x_data)
