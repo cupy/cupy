@@ -7,8 +7,8 @@ from chainer.utils import type_check
 class Transpose(function.Function):
     """Permute the dimensions of an array."""
 
-    def __init__(self, axes):
-        self.axes = tuple(ax % len(axes) for ax in axes)
+    def __init__(self, axes=None):
+        self.axes = axes
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1,)
@@ -24,7 +24,10 @@ class Transpose(function.Function):
 
     def backward(self, inputs, grad_outputs):
         gy = grad_outputs[0]
-        inv_axes = tuple(numpy.argsort(self.axes))
+        inv_axes = self.axes
+        if self.axes:
+            axes = tuple(ax % len(self.axes) for ax in self.axes)
+            inv_axes = tuple(numpy.argsort(axes))
         gx = gy.transpose(inv_axes)
         return gx,
 

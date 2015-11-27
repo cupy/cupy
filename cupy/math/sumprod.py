@@ -1,6 +1,3 @@
-from cupy import reduction
-
-
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     '''Returns the sum of an array along given axes.
 
@@ -18,7 +15,8 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.sum`
 
     '''
-    return _sum(a, axis, dtype, out, keepdims)
+    # TODO(okuta): check type
+    return a.sum(axis, dtype, out, keepdims)
 
 
 def prod(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -38,7 +36,8 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.prod`
 
     '''
-    return _prod(a, axis, dtype, out, keepdims)
+    # TODO(okuta): check type
+    return a.prod(axis, dtype, out, keepdims)
 
 
 # TODO(okuta): Implement nansum
@@ -63,21 +62,3 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 
 
 # TODO(okuta): Implement trapz
-
-
-_sum = reduction.create_reduction_func(
-    'cupy_sum',
-    ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'),
-    ('in0', 'a + b', 'out0 = a', None), 0)
-
-
-_prod = reduction.create_reduction_func(
-    'cupy_prod',
-    ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'],
-    ('in0', 'a * b', 'out0 = a', None), 1)

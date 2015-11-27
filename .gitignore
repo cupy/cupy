@@ -1,8 +1,14 @@
 *~
+*.egg/
 *.pyc
+*.pyo
+*.cpp
+*.so
 build
 \#*\#
 .\#*
-htmlcov/
-chainer.egg-info/
 .coverage
+.eggs/
+chainer.egg-info/
+dist/
+htmlcov/

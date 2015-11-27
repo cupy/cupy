@@ -20,11 +20,14 @@ from chainer.functions.array import transpose
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
+from chainer.functions.connection import deconvolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
+from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
+from chainer.functions.loss import hinge
 from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
@@ -100,6 +103,7 @@ where = where.where
 
 bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
+deconvolution_2d = deconvolution_2d.deconvolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
 
@@ -107,10 +111,15 @@ Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 
 bernoulli_nll = vae.bernoulli_nll
+BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
+Contrastive = contrastive.Contrastive
+contrastive = contrastive.contrastive
 CrossCovariance = cross_covariance.CrossCovariance
 cross_covariance = cross_covariance.cross_covariance
 gaussian_kl_divergence = vae.gaussian_kl_divergence
 gaussian_nll = vae.gaussian_nll
+Hinge = hinge.Hinge
+hinge = hinge.hinge
 MeanSquaredError = mean_squared_error.MeanSquaredError
 mean_squared_error = mean_squared_error.mean_squared_error
 negative_sampling = negative_sampling.negative_sampling

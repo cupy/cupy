@@ -400,7 +400,7 @@ It can be defined as follows:
            # By passing a shape of the parameter, the initializer allocates a
            # parameter variable of the shape.
            super(EltwiseParamProduct, self).__init__(W=shape)
-           self.W[...] = np.random.randn(*shape)
+           self.W.data[...] = np.random.randn(*shape)
 
        def __call__(self, x):
            return self.W * x

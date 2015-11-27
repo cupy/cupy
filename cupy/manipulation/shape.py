@@ -1,8 +1,3 @@
-import collections
-
-from cupy import internal
-
-
 def reshape(a, newshape):
     """Returns an array with new shape and same elements.
 
@@ -25,37 +20,8 @@ def reshape(a, newshape):
 
     """
     # TODO(beam2d): Support ordering option
-    if isinstance(newshape, collections.Sequence):
-        newshape = tuple(newshape)
-    else:
-        newshape = newshape,
-
-    shape = a.shape
-    if newshape == shape:
-        return a.view()
-
-    size = a.size
-    newshape = internal.infer_unknown_dimension(newshape, size)
-    if newshape == shape:
-        return a.view()
-    if internal.prod(newshape) != size:
-        raise RuntimeError('Total size mismatch on reshape')
-
-    newstrides = internal.get_strides_for_nocopy_reshape(a, newshape)
-    if newstrides is not None:
-        newarray = a.view()
-    else:
-        newarray = a.copy()
-        newstrides = internal.get_strides_for_nocopy_reshape(
-            newarray, newshape)
-    newarray._shape = newshape
-    newarray._strides = newstrides
-    if newarray._c_contiguous == 1:
-        newarray._f_contiguous = int(
-            not size or len(newshape) - newshape.count(1) <= 1)
-    else:
-        newarray._f_contiguous = -1
-    return newarray
+    # TODO(okuta): check type
+    return a.reshape(newshape)
 
 
 def ravel(a):
@@ -75,4 +41,5 @@ def ravel(a):
 
     """
     # TODO(beam2d): Support ordering option
-    return reshape(a, a.size)
+    # TODO(okuta): check type
+    return a.ravel()

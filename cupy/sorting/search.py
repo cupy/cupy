@@ -1,5 +1,4 @@
-from cupy import elementwise
-from cupy import reduction
+from cupy import core
 
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -20,8 +19,8 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.argmax`
 
     """
-    return reduction.argmax(a, axis=axis, dtype=dtype, out=out,
-                            keepdims=keepdims)
+    # TODO(okuta): check type
+    return a.argmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 # TODO(okuta): Implement nanargmax
@@ -45,8 +44,8 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.argmin`
 
     """
-    return reduction.argmin(a, axis=axis, dtype=dtype, out=out,
-                            keepdims=keepdims)
+    # TODO(okuta): check type
+    return a.argmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
 # TODO(okuta): Implement nanargmin
@@ -90,7 +89,7 @@ def where(condition, x=None, y=None):
 
     return _where_ufunc(condition.astype('?'), x, y)
 
-_where_ufunc = elementwise.create_ufunc(
+_where_ufunc = core.create_ufunc(
     'cupy_where',
     ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
      '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f',

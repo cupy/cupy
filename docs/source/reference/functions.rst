@@ -51,6 +51,7 @@ Neural network connections
 --------------------------
 .. autofunction:: bilinear
 .. autofunction:: convolution_2d
+.. autofunction:: deconvolution_2d
 .. autofunction:: embed_id
 .. autofunction:: linear
 
@@ -61,11 +62,13 @@ Evaluation functions
 Loss functions
 --------------
 .. autofunction:: connectionist_temporal_classification
+.. autofunction:: contrastive
 .. autofunction:: cross_covariance
 .. autofunction:: mean_squared_error
 .. autofunction:: negative_sampling
 .. autofunction:: sigmoid_cross_entropy
 .. autofunction:: softmax_cross_entropy
+.. autofunction:: hinge
 
 Loss functions for VAE
 ~~~~~~~~~~~~~~~~~~~~~~

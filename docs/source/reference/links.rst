@@ -19,7 +19,11 @@ Learnable connections
    :members:
 .. autoclass:: Convolution2D
    :members:
+.. autoclass:: Deconvolution2D
+   :members:
 .. autoclass:: EmbedID
+   :members:
+.. autoclass:: GRU
    :members:
 .. autoclass:: Inception
    :members:

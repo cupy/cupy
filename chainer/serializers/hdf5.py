@@ -1,8 +1,16 @@
-import h5py
+import os
+
 import numpy
 
 from chainer import cuda
 from chainer import serializer
+
+
+try:
+    import h5py
+except ImportError:
+    if not os.environ.get('READTHEDOCS', None) == 'True':
+        raise
 
 
 class HDF5Serializer(serializer.Serializer):
