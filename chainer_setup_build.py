@@ -94,9 +94,7 @@ def get_compiler_setting():
             library_dirs.append(path.join(cuda_path, 'lib'))
         else:
             library_dirs.append(path.join(cuda_path, 'lib64'))
-    if sys.platform == 'win32':
-        include_dirs.append(localpath('windows'))
-    elif sys.platform == 'darwin':
+    if sys.platform == 'darwin':
         library_dirs.append('/usr/local/cuda/lib')
 
     return {
