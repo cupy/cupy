@@ -69,11 +69,12 @@ class MaxoutFunction(function.Function):
 
 
 def maxout(x, W, b=None):
-    """Maxout function
+    """non parametrized Maxout activation function
 
     It accepts two or three arguments: an input minibatch ``x``,
     a weight tensor ``W``, and optionally a bias matrix ``b``.
     It computes :math:`Y_{i} = \mathrm{max}_{j} (xW_{\cdot ij} + b_{ij})`
+    (minibatch dimension is omitted in the equation).
 
     Args:
        x (~chainer.Variable): Input variable. Its first dimension is assumed

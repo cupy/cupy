@@ -5,7 +5,7 @@ from chainer import link
 
 
 class Maxout(link.Link):
-    """Maxout layer
+    """Maxout Networks
 
     description here
     Args:
@@ -20,9 +20,18 @@ class Maxout(link.Link):
 
     .. seealso:: :func:`~chainer.functions.maxout`
 
+    See:
+         Goodfellow, I., Warde-farley, D., Mirza, M.,
+         Courville, A., & Bengio, Y. (2013).
+         Maxout Networks. In Proceedings of the 30th International
+         Conference on Machine Learning (ICML-13) (pp. 1319-1327).
+         `URL<http://jmlr.org/proceedings/papers/v28/goodfellow13.html>`_
+
     Attributes:
-        W (~chainer.Variable): w
-        b (~chainer.Variable): w
+        W (~chainer.Variable): Weight tensor with shape :math:`(I, C, O)`
+        b (~chainer.Variable): Bias vector with shape :math:`(C, O)`,
+        where :math:`I`, :math:`C`, and :math:`O` is
+        ``in_size``, `num_channel`, and , `out_size`, respectively.
     """
 
     def __init__(self, in_size, num_channel, out_size,
