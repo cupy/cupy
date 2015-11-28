@@ -1,6 +1,7 @@
 """Collection of :class:`~chainer.Link` implementations."""
 
 from chainer.links.activation import prelu
+from chainer.links.activation import maxout
 from chainer.links.connection import bilinear
 from chainer.links.connection import convolution_2d
 from chainer.links.connection import deconvolution_2d
@@ -18,6 +19,7 @@ from chainer.links.model import classifier
 from chainer.links.normalization import batch_normalization
 
 
+Maxout = maxout.Maxout
 PReLU = prelu.PReLU
 
 Bilinear = bilinear.Bilinear

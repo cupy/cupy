@@ -6,7 +6,7 @@ from chainer.utils import type_check
 
 
 def _as_mat(x):
-    if x.dim == 2:
+    if x.ndim == 2:
         return x
     return x.reshape(len(x), -1)
 
@@ -25,43 +25,44 @@ class MaxoutFunction(function.Function):
             w_type.dtype.kind == 'f',
             x_type.ndim >= 2,
             w_type.ndim == 3,
-            type_check.prod(x_type.shape[1:]) == w_type.shape[1]
+            type_check.prod(x_type.shape[1:]) == w_type.shape[0]
         )
 
-        if n_int.eval() == 3:
+        if in_types.size().eval() == 3:
             b_type = in_types[2]
             type_check.expect(
                 b_type.dtype.kind == 'f',
                 b_type.ndim == 2,
-                b_type.shape[0] == w_type.shape[0]
+                b_type.shape[0:] == w_type.shape[1:]
             )
 
     def forward(self, inputs):
-        xp = cuda.get_array_module(inputs)
-
+        xp = cuda.get_array_module(*inputs)
         x = _as_mat(inputs[0])
         W = inputs[1]
-        ys = xp.tensordot(x, W, axis=1)
-        if len(inputs == 3):
-            b = inputs[2]
-            ys += b
+        ys = xp.tensordot(x, W, axes=1)
+        if len(inputs) == 3:
+            ys += inputs[2]
         self.argmax = xp.argmax(ys, axis=1)
         return xp.max(ys, axis=1),
 
     def backward(self, inputs, grad_outputs):
         gy = grad_outputs[0]
-        x, W = inputs[:2]
+        x = _as_mat(inputs[0])
+        W = inputs[1]
 
-        xp = cuda.get_array_module(inputs)
-        gxW = xp.zeros((gy.shape[0], W.shape[1], gy.shape[1]))
-        gxW_r = xp.rollaxis(gx, 1)
-        for i in numpy.ndindex(gy.shape):
-            gxW_r[self.argmax[i]][i] = gy[i]
-        gx = xp.tensordot(gxW, W, ((1, 2), (1, 2))).reshape(x.shape)
-        gW = xp.tensordot(x, gW, (0, 0))
+        xp = cuda.get_array_module(*inputs)
+        # gradient of z = xW + b
+        gz = xp.zeros((gy.shape[0], W.shape[1], gy.shape[1]), x.dtype)
+        gz_r = xp.rollaxis(gz, 1)
+        for idx in numpy.ndindex(gy.shape):
+            argmax = int(self.argmax[idx])
+            gz_r[argmax, idx[0], idx[1]] = gy[idx[0], idx[1]]
+        gx = xp.tensordot(gz, W, ((1, 2), (1, 2))).reshape(inputs[0].shape)
+        gW = xp.tensordot(x, gz, (0, 0))
 
         if len(inputs) == 3:
-            gb = gy.sum(axis=0)
+            gb = gz.sum(axis=0)
             return gx, gW, gb
         else:
             return gx, gW

@@ -1,6 +1,6 @@
 import numpy
 
-from chainer.functions.connections import maxout
+from chainer.functions.activation import maxout
 from chainer import link
 
 
@@ -26,16 +26,19 @@ class Maxout(link.Link):
     """
 
     def __init__(self, in_size, num_channel, out_size,
-                 wscale, initialW, initial_bias):
+                 wscale=1, initialW=None, initial_bias=0):
         super(Maxout, self).__init__(W=(in_size, num_channel, out_size))
         if initialW is None:
             initialW = numpy.random.normal(
-                0, wscale * numpy.sqrt(1. / in_size), (out_size, in_size))
+                0, wscale * numpy.sqrt(1. / in_size),
+                (in_size, num_channel, out_size))
         self.W.data[...] = initialW
 
         if initial_bias is not None:
             self.add_param('b', (num_channel, out_size))
             self.b.data[...] = initial_bias
+        else:
+            self.b = None
 
     def __call__(self, x):
         """Applies the maxout layer.
