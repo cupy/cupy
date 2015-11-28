@@ -44,6 +44,8 @@ Activation/loss/normalization functions with parameters
    :members:
 .. autoclass:: PReLU
    :members:
+.. autoclass:: Maxout
+   :members:
 .. autoclass:: NegativeSampling
    :members:
 

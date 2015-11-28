@@ -7,7 +7,6 @@ from chainer import link
 class Maxout(link.Link):
     """Maxout Networks
 
-    description here
     Args:
         in_size (int): Dimension of input vectors.
         num_channel (int): Number of channels.
@@ -18,20 +17,20 @@ class Maxout(link.Link):
         initial_bias (2-D array): Initial bias value. If ``None``, then this
             functions uses to initialize ``bias``.
 
+    Attributes:
+        W (~chainer.Variable): Weight tensor with shape
+            (``in_size``, ``num_channel``, ``out_size``)
+        b (~chainer.Variable): Bias vector with shape
+            (``num_channel``, ``out_size``),
+
     .. seealso:: :func:`~chainer.functions.maxout`
 
-    See:
+    .. seealso::
          Goodfellow, I., Warde-farley, D., Mirza, M.,
          Courville, A., & Bengio, Y. (2013).
          Maxout Networks. In Proceedings of the 30th International
          Conference on Machine Learning (ICML-13) (pp. 1319-1327).
-         `URL<http://jmlr.org/proceedings/papers/v28/goodfellow13.html>`_
-
-    Attributes:
-        W (~chainer.Variable): Weight tensor with shape :math:`(I, C, O)`
-        b (~chainer.Variable): Bias vector with shape :math:`(C, O)`,
-        where :math:`I`, :math:`C`, and :math:`O` is
-        ``in_size``, `num_channel`, and , `out_size`, respectively.
+         `URL <http://jmlr.org/proceedings/papers/v28/goodfellow13.html>`_
     """
 
     def __init__(self, in_size, num_channel, out_size,

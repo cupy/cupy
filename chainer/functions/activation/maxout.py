@@ -73,8 +73,16 @@ def maxout(x, W, b=None):
 
     It accepts two or three arguments: an input minibatch ``x``,
     a weight tensor ``W``, and optionally a bias matrix ``b``.
-    It computes :math:`Y_{i} = \mathrm{max}_{j} (xW_{\cdot ij} + b_{ij})`
-    (minibatch dimension is omitted in the equation).
+    It computes
+
+    .. math::
+
+      `Y_{i} = \mathrm{max}_{j} (x^{T}W_{\cdot ij} + b_{ij})`
+
+    where :x: is a input vector and :math:`W_{\cdot ij}
+    is sub-vector of `W` whose second and third elements are
+    fixed to :math:`i` and :math:`j`, respectively
+    (minibatch dimension is omitted in the above equation).
 
     Args:
        x (~chainer.Variable): Input variable. Its first dimension is assumed
