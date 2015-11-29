@@ -96,6 +96,7 @@ class TestNonparameterizedMaxout(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.W, getattr(self, 'b', None), self.gy)
 
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         b = getattr(self, 'b', None)
