@@ -65,6 +65,10 @@ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 Do not forget to restart your terminal session (or `source` it) to enable these changes.
 And then, reinstall Chainer.
 
+Chainer had `chainer-cuda-deps` module to enable CUDA in previous version.
+Recent version (>=1.3) does not require this module.
+So *we do not have to install* `chainer-cuda-deps`.
+
 ## More information
 
 - Official site: http://chainer.org/
