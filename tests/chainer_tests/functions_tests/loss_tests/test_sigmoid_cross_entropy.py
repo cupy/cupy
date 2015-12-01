@@ -13,11 +13,15 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    {'shape': (4, 3)},
+    {'shape': (65536, 1)},  # too large shape causes int32 -> float64 issue
+)
 class TestSigmoidCrossEntropy(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        self.t = numpy.random.randint(0, 2, (4, 3)).astype(numpy.int32)
+        self.x = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
+        self.t = numpy.random.randint(0, 2, self.shape).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data, use_cudnn=True):
         x_val = chainer.Variable(x_data)
