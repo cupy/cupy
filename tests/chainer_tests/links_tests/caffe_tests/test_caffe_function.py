@@ -8,6 +8,7 @@ import six
 import chainer
 from chainer import links
 from chainer.links import caffe
+from chainer import testing
 if six.PY2:
     from chainer.links.caffe import caffe_pb2
 
@@ -616,3 +617,6 @@ class TestCaffeFunctionAvailable(unittest.TestCase):
     def test_py3_init_error(self):
         with self.assertRaises(RuntimeError):
             caffe.CaffeFunction('')
+
+
+testing.run_module(__name__, __file__)
