@@ -62,6 +62,10 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         loss.backward()
         self.assertEqual(None, t.grad)
 
+        # Skip too large case. That requires a long time.
+        if self.shape[0] == 65536:
+            return
+
         func = loss.creator
         f = lambda: func.forward((x.data, t.data))
         gx, = gradient_check.numerical_grad(f, (x.data,), (1,), eps=0.01)
