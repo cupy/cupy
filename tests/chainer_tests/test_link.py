@@ -360,12 +360,18 @@ class TestChain(unittest.TestCase):
         numpy.testing.assert_array_equal(self.l3.x.grad, numpy.zeros(3))
 
     def test_serialize(self):
+        mocks = {'l1': mock.MagicMock(), 'l2': mock.MagicMock()}
         serializer = mock.MagicMock()
+        serializer.__getitem__.side_effect = lambda k: mocks[k]
         self.c1.serialize(serializer)
 
         self.assertEqual(serializer.call_count, 0)
-        serializer['l1'].assert_called_once('x', self.l1.x.data)
-        serializer['l2'].assert_called_once('x', self.l2.x.data)
+        self.assertEqual(serializer.__getitem__.call_count, 2)
+        serializer.__getitem__.assert_any_call('l1')
+        serializer.__getitem__.assert_any_call('l2')
+
+        mocks['l1'].assert_called_with('x', self.l1.x.data)
+        mocks['l2'].assert_called_with('x', self.l2.x.data)
 
 
 class TestChainList(unittest.TestCase):
@@ -562,12 +568,18 @@ class TestChainList(unittest.TestCase):
         numpy.testing.assert_array_equal(self.l3.x.grad, numpy.zeros(3))
 
     def test_serialize(self):
+        mocks = {'0': mock.MagicMock(), '1': mock.MagicMock()}
         serializer = mock.MagicMock()
+        serializer.__getitem__.side_effect = lambda k: mocks[k]
         self.c1.serialize(serializer)
 
         self.assertEqual(serializer.call_count, 0)
-        serializer['0'].assert_called_once('x', self.l1.x.data)
-        serializer['1'].assert_called_once('x', self.l2.x.data)
+        self.assertEqual(serializer.__getitem__.call_count, 2)
+        serializer.__getitem__.assert_any_call('0')
+        serializer.__getitem__.assert_any_call('1')
+
+        mocks['0'].assert_called_with('x', self.l1.x.data)
+        mocks['1'].assert_called_with('x', self.l2.x.data)
 
 
 testing.run_module(__name__, __file__)
