@@ -59,7 +59,7 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
 Chainer had `chainer-cuda-deps` module to enable CUDA in previous version.
 Recent version (>=1.3) does not require this module.
-So **we do not have to install** `chainer-cuda-deps`.
+So **you do not have to install** `chainer-cuda-deps`.
 
 If you want to enable cuDNN, add a directory containing `cudnn.h` to `CPATH`, and add a directory containing `libcudnn.so` to `LIBRARY_PATH` and `LD_LIBRARY_PATH`:
 ```
