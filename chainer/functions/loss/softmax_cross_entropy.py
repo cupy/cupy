@@ -11,6 +11,7 @@ if cuda.cudnn_enabled:
     libcudnn = cudnn.cudnn
     _algorithm = libcudnn.CUDNN_SOFTMAX_LOG
     _mode = libcudnn.CUDNN_SOFTMAX_MODE_CHANNEL
+    _cudnn_version = libcudnn.getVersion()
 
 
 def logsumexp(x):
@@ -23,7 +24,8 @@ def logsumexp(x):
 
 def softmax_log(x, use_cudnn):
     xp = cuda.get_array_module(x)
-    if xp != numpy and cuda.cudnn_enabled and use_cudnn:
+    if xp != numpy and cuda.cudnn_enabled and use_cudnn \
+       and _cudnn_version >= 3000:
         dtype = x.dtype
         one = numpy.array(1, dtype=dtype).ctypes
         zero = numpy.array(0, dtype=dtype).ctypes
