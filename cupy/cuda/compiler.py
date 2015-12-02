@@ -32,6 +32,15 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
+def _run_nvcc(cmd, cwd):
+    try:
+        return subprocess.check_output(cmd, cwd=cwd)
+    except OSError as e:
+        trace = sys.exc_info()[2]
+        msg = 'Failed to run `nvcc` command: ' + str(e)
+        raise OSError(msg), None, trace
+
+
 def nvcc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
@@ -46,7 +55,7 @@ def nvcc(source, options=(), arch=None):
             cu_file.write(source)
 
         cmd.append(cu_path)
-        subprocess.check_output(cmd, cwd=root_dir)
+        _run_nvcc(cmd, root_dir)
 
         with open(cubin_path, 'rb') as bin_file:
             return bin_file.read()
@@ -62,7 +71,7 @@ def preprocess(source, options=()):
             cu_file.write(source)
 
         cmd.append(cu_path)
-        pp_src = subprocess.check_output(cmd, cwd=root_dir)
+        pp_src = _run_nvcc(cmd, root_dir)
 
         if isinstance(pp_src, six.binary_type):
             pp_src = pp_src.decode('utf-8')
