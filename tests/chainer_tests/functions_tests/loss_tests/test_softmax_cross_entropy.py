@@ -35,7 +35,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         for i in six.moves.range(self.x.shape[0]):
             if self.t[i] == -1:
                 continue
-            log_z = reduce(numpy.logaddexp, self.x[i])
+            log_z = numpy.ufunc.reduce(numpy.logaddexp, self.x[i])
             loss_expect -= (self.x[i] - log_z)[self.t[i]]
             count += 1
 

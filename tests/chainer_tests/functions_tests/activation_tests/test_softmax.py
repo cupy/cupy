@@ -26,7 +26,7 @@ class TestSoftmax(unittest.TestCase):
         y_expect = numpy.empty_like(self.x)
         for i in six.moves.range(y_expect.shape[0]):
             x = self.x[i]
-            log_z = reduce(numpy.logaddexp, x)
+            log_z = numpy.ufunc.reduce(numpy.logaddexp, x)
             x -= log_z
             y_expect[i] = numpy.exp(x)
 
