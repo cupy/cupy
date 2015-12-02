@@ -7,6 +7,19 @@ from chainer.functions import softmax
 from chainer.utils import type_check
 
 
+def logsumexp(x):
+    xp = cuda.get_array_module(x)
+    m = x.max(axis=1, keepdims=True)
+    y = x - m
+    xp.exp(y, out=y)
+    return xp.log(y.sum(axis=1, keepdims=True)) + m
+
+
+def softmax_log(x):
+    log_z = logsumexp(x)
+    return x - log_z
+
+
 class SoftmaxCrossEntropy(function.Function):
 
     """Softmax activation followed by a cross entropy loss."""
@@ -32,11 +45,12 @@ class SoftmaxCrossEntropy(function.Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        self.y, = softmax.Softmax().forward((x,))
-        yd = numpy.rollaxis(self.y, 1)
-        yd = yd.reshape(len(yd), -1).T
+        log_y = softmax_log(x)
+        self.y = numpy.exp(log_y)
+        log_yd = numpy.rollaxis(log_y, 1)
+        log_yd = log_yd.reshape(len(log_yd), -1).T
 
-        p = yd[six.moves.range(t.size), numpy.maximum(t.flat, 0)]
+        log_p = log_yd[six.moves.range(t.size), numpy.maximum(t.flat, 0)]
         # deal with the case where the SoftmaxCrossEntropy is
         # unpickled from the old version
         if getattr(self, 'normalize', True):
@@ -48,14 +62,15 @@ class SoftmaxCrossEntropy(function.Function):
         if count == 0:
             return numpy.zeros((), dtype=x.dtype),
 
-        y = (numpy.log(p) * (t.flat != self.ignore_label)).sum(keepdims=True) \
+        y = (log_p * (t.flat != self.ignore_label)).sum(keepdims=True) \
             * (-1.0 / count)
         return y.reshape(()),
 
     def forward_gpu(self, inputs):
         cupy = cuda.cupy
         x, t = inputs
-        self.y, = softmax.Softmax(self.use_cudnn).forward((x,))
+        log_y = softmax_log(x)
+        self.y = cupy.exp(log_y)
         if getattr(self, 'normalize', True):
             count = float((t != self.ignore_label).sum())
         else:
@@ -65,12 +80,12 @@ class SoftmaxCrossEntropy(function.Function):
         if count == 0:
             return cupy.zeros((), dtype=x.dtype),
 
-        y = cupy.rollaxis(self.y, 1, self.y.ndim)
+        log_y = cupy.rollaxis(log_y, 1, log_y.ndim)
         ret = cuda.reduce(
-            'S t, raw T y, int32 n_channel, T inv_count', 'T out',
-            't == -1 ? 0 : log(y[_j * n_channel + t])',
+            'S t, raw T log_y, int32 n_channel, T inv_count', 'T out',
+            't == -1 ? 0 : log_y[_j * n_channel + t]',
             'a + b', 'out = a * inv_count', '0', 'crossent_fwd'
-        )(t, y.reduced_view(), y.shape[-1], -1.0 / count)
+        )(t, log_y.reduced_view(), log_y.shape[-1], -1.0 / count)
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):

@@ -15,6 +15,8 @@ from chainer.testing import condition
 
 class TestSoftmaxCrossEntropy(unittest.TestCase):
 
+    backward_atol = 1e-4
+
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.t = numpy.random.randint(0, 3, (4,)).astype(numpy.int32)
@@ -28,13 +30,13 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         loss_value = float(cuda.to_cpu(loss.data))
 
         # Compute expected value
-        y = numpy.exp(self.x)
         loss_expect = 0.0
         count = 0
-        for i in six.moves.range(y.shape[0]):
+        for i in six.moves.range(self.x.shape[0]):
             if self.t[i] == -1:
                 continue
-            loss_expect -= math.log(y[i, self.t[i]] / y[i].sum())
+            log_z = reduce(numpy.logaddexp, self.x[i])
+            loss_expect -= (self.x[i] - log_z)[self.t[i]]
             count += 1
 
         if count == 0:
@@ -69,7 +71,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         f = lambda: func.forward((x.data, t.data))
         gx, = gradient_check.numerical_grad(f, (x.data,), (1,), eps=0.02)
 
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-4)
+        gradient_check.assert_allclose(gx, x.grad, atol=self.backward_atol)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -84,6 +86,15 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
+
+
+class TestSoftmaxCrossEntropyUnstable(TestSoftmaxCrossEntropy):
+
+    backward_atol = 1e-3
+
+    def setUp(self):
+        self.x = numpy.array([[-1000, 1]], dtype=numpy.float32)
+        self.t = numpy.array([0], dtype=numpy.int32)
 
 
 class TestReplicatedSoftmaxCrossEntropy1(TestSoftmaxCrossEntropy):

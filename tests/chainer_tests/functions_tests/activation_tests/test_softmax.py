@@ -23,9 +23,12 @@ class TestSoftmax(unittest.TestCase):
         y = functions.softmax(x, use_cudnn)
         self.assertEqual(y.data.dtype, numpy.float32)
 
-        y_expect = numpy.exp(self.x)
+        y_expect = numpy.empty_like(self.x)
         for i in six.moves.range(y_expect.shape[0]):
-            y_expect[i] /= y_expect[i].sum()
+            x = self.x[i]
+            log_z = reduce(numpy.logaddexp, x)
+            x -= log_z
+            y_expect[i] = numpy.exp(x)
 
         gradient_check.assert_allclose(y_expect, y.data)
 
@@ -68,6 +71,13 @@ class TestSoftmax(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
+
+
+class TestSoftmaxUnstable(TestSoftmax):
+
+    def setUp(self):
+        self.x = numpy.array([[-1000, 1]], dtype=numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, (1, 2)).astype(numpy.float32)
 
 
 class TestReplicatedSoftmax1(TestSoftmax):
