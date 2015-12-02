@@ -3,7 +3,6 @@ import six
 
 from chainer import cuda
 from chainer import function
-from chainer.functions import softmax
 from chainer.utils import type_check
 
 
