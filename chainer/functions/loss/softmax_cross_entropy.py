@@ -15,6 +15,7 @@ def logsumexp(x):
 
 
 def softmax_log(x):
+    # TODO(unno): Use cudnn (cudnn v2 doesn't support CUDNN_SOFTMAX_LOG)
     log_z = logsumexp(x)
     return x - log_z
 
