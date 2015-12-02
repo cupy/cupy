@@ -38,7 +38,7 @@ def _run_nvcc(cmd, cwd):
     except OSError as e:
         trace = sys.exc_info()[2]
         msg = 'Failed to run `nvcc` command: ' + str(e)
-        raise OSError(msg), None, trace
+        six.reraise(OSError, msg, trace)
 
 
 def nvcc(source, options=(), arch=None):
