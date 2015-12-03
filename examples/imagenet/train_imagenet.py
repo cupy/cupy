@@ -178,7 +178,7 @@ def feed_data():
                 i = 0
 
             count += 1
-            if count % 1000 == 0:
+            if count % 100000 == 0:
                 data_q.put('val')
                 j = 0
                 for path, label in val_list:
