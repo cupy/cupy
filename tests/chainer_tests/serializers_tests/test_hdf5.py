@@ -152,7 +152,7 @@ class TestLoadHDF5(unittest.TestCase):
         if hasattr(self, 'temp_file_path'):
             os.remove(self.temp_file_path)
 
-    def test_save(self):
+    def test_load(self):
         obj = mock.MagicMock()
         hdf5.load_hdf5(self.temp_file_path, obj)
 
