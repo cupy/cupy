@@ -145,8 +145,8 @@ class TestLoadHDF5(unittest.TestCase):
     def setUp(self):
         _, path = tempfile.mkstemp()
         self.temp_file_path = path
-        with h5py.File(path, 'w'):
-            pass
+        # Make a hdf5 file with empty data
+        h5py.File(path, 'w')
 
     def tearDown(self):
         if hasattr(self, 'temp_file_path'):
