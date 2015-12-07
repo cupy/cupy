@@ -376,4 +376,14 @@ class TestVariableSetCreator(unittest.TestCase):
         self.check_set_creator(cuda.to_gpu(self.x))
 
 
+@attr.gpu
+@attr.multi_gpu(2)
+class TestVariableCopyBetweenGPUs(unittest.TestCase):
+
+    def test_copy_to_another_gpu(self):
+        c1 = chainer.Variable(cuda.to_gpu(np.array([1, 2, 3]), device=0))
+        c1.to_gpu(1)
+        self.assertEqual(int(cuda.get_device(c1.data)), 1)
+
+
 testing.run_module(__name__, __file__)
