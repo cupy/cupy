@@ -3,12 +3,12 @@ import copy
 import distutils
 import os
 from os import path
-import pkg_resources
 import shutil
 import subprocess
 import sys
 import tempfile
 
+import pkg_resources
 import setuptools
 from setuptools.command import build_ext
 
@@ -255,10 +255,14 @@ def parse_args():
         _arg_options['no_cuda'] = True
 
 
+def get_cython_pkg():
+    return pkg_resources.get_distribution('cython')
+
+
 def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
-    cython_pkg = pkg_resources.get_distribution('cython')
-    cython_path = path.join(cython_pkg.location, 'cython.py')
-    print("cython path:%s" % cython_pkg.location)
+    cython_location = get_cython_pkg().location
+    cython_path = path.join(cython_location, 'cython.py')
+    print("cython path:%s" % cython_location)
     cython_cmdbase = [sys.executable, cython_path]
     subprocess.check_call(cython_cmdbase + ['--version'])
 
@@ -272,6 +276,16 @@ def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
         cpp_files = [path.splitext(f)[0] + ".cpp" for f in ext.sources]
         cmd += ext.sources
         subprocess.check_call(cmd)
+        ext = copy.copy(ext)
+        ext.sources = cpp_files
+        ret.append(ext)
+    return ret
+
+
+def to_cpp(extensions):
+    ret = []
+    for ext in extensions:
+        cpp_files = [path.splitext(f)[0] + ".cpp" for f in ext.sources]
         ext = copy.copy(ext)
         ext.sources = cpp_files
         ret.append(ext)
@@ -299,11 +313,17 @@ class chainer_build_ext(build_ext.build_ext):
             distutils.sysconfig.customize_compiler(compiler)
 
             extensions = make_extensions(_arg_options, compiler)
-            extensions = cythonize(
-                extensions,
-                force=True,
-                compiler_directives=directives,
-                **cythonize_options)
+
+            cython_pkg = get_cython_pkg()
+            req_version = pkg_resources.SetuptoolsVersion('0.23')
+            if cython_pkg is None or cython_pkg.parsed_version < req_version:
+                extensions = to_cpp(extensions)
+            else:
+                extensions = cythonize(
+                    extensions,
+                    force=True,
+                    compiler_directives=directives,
+                    **cythonize_options)
 
             # Modify ext_modules for cython
             ext_modules.remove(dummy_extension)
