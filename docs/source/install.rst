@@ -8,13 +8,13 @@ Before installing Chainer
 
 We recommend these platforms.
 
-* `Ubuntu <http://www.ubuntu.com/>`_ 14.04 LTS
-* `CentOS <https://www.centos.org/>`_ 7
+* `Ubuntu <http://www.ubuntu.com/>`_ 14.04 LTS 64bit
+* `CentOS <https://www.centos.org/>`_ 7 64bit
 
 Chainer is supported on Python 2.7.6+, 3.4.3+, 3.5.0+.
 Chainer and dependent libraries use these tools and libraries.
 
-* gcc
+* g++
 * libhdf5
 
 You need to install them before installing Chainer.
@@ -41,7 +41,6 @@ Chainer depends to these Python packages:
 CUDA support
 
 * `CUDA <https://developer.nvidia.com/cuda-zone>`_ 6.5, 7.0, 7.5
-* `Cython <http://cython.org/>`_ 0.23
 * `filelock <https://filelock.readthedocs.org>`_
 
 cuDNN support
@@ -122,13 +121,16 @@ If you installed CUDA to non-default directory, you need to specify the director
 Install Chainer with CUDA and cuDNN
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-cuDNN is a library for Deep Neural Networks that nVidia provides.
+cuDNN is a library for Deep Neural Networks that NVIDIA provides.
 Chainer can use cuDNN.
 If you want to enable cuDNN, install cuDNN and CUDA before installing Chainer.
-We recommend you to install cuDNN to CUDA directory::
+We recommend you to install cuDNN to CUDA directory.
+For example if you uses Ubuntu linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
   $ cp /path/to/cudnn.h $CUDA_PATH/include
   $ cp /path/to/cudnn.so $CUDA_PATH/lib64
+
+The destination directories depend on your environment.
 
 
 Uninstall Chainer
