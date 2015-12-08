@@ -1,5 +1,5 @@
 """Thin wrapper of CUBLAS."""
-import cython
+cimport cython
 
 
 ###############################################################################
