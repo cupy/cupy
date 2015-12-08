@@ -133,6 +133,20 @@ For example if you uses Ubuntu linux, copy ``.h`` files to ``include`` directory
 The destination directories depend on your environment.
 
 
+Install Chainer for developes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Chainer uses Cython (>=0.23).
+Developers need to use Cython to regenerate C++ sources from ``pyx`` files.
+We recommend to use ``pip`` with ``-e`` option for editable mode::
+
+  $ pip install -U cython
+  $ cd /path/to/chainer/source
+  $ pip install -e .
+
+Users need not to install Cython as a distribution package of Chainer only contains generated sources.
+
+
 Uninstall Chainer
 -----------------
 
