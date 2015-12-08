@@ -48,9 +48,9 @@ class SoftmaxCrossEntropy(function.Function):
         log_y = softmax_log(x)
         self.y = numpy.exp(log_y)
         log_yd = numpy.rollaxis(log_y, 1)
-        log_yd = log_yd.reshape(len(log_yd), -1).T
+        log_yd = log_yd.reshape(len(log_yd), -1)
 
-        log_p = log_yd[six.moves.range(t.size), numpy.maximum(t.flat, 0)]
+        log_p = log_yd[numpy.maximum(t.flat, 0), six.moves.range(t.size)]
         # deal with the case where the SoftmaxCrossEntropy is
         # unpickled from the old version
         if getattr(self, 'normalize', True):
