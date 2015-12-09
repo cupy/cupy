@@ -1,5 +1,5 @@
 """Thin wrapper of cuRAND."""
-import cython
+cimport cython
 
 
 ###############################################################################
