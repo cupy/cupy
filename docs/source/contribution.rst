@@ -130,9 +130,9 @@ Testing Guidelines
 
 Testing is one of the most important part of your code.
 You must test your code by unit tests following our testing guidelines.
-Note that we are using the nose package for testing, so install nose before writing your codes::
+Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your codes::
 
-  $ pip install nose
+  $ pip install nose mock
 
 In order to run unittests at the repository root, you first have to build Cython files in place by running the following command::
 
