@@ -15,14 +15,14 @@ def _mat_ptrs(a):
         GPU array of pointers to matrices
     """
     if a.shape[0] == 1:
-        return cuda.cupy.full((1,), a[0].data.ptr, dtype=numpy.intp)
+        return cuda.cupy.full((1,), a[0].data.ptr, dtype=numpy.uintp)
     else:
         stride = a[1].data.ptr - a[0].data.ptr
         return cuda.cupy.arange(
             a[0].data.ptr,
             a[0].data.ptr + stride * a.shape[0],
             stride,
-            dtype=numpy.intp)
+            dtype=numpy.uintp)
 
 
 def _as_mat(x):
