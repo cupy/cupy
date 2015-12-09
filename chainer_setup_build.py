@@ -15,6 +15,8 @@ from setuptools.command import build_ext
 
 dummy_extension = setuptools.Extension('chainer', ['chainer.c'])
 
+cython_version = '0.23.0'
+
 MODULES = [
     {
         'name': 'cuda',
@@ -267,29 +269,31 @@ def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
     subprocess.check_call(cython_cmdbase + ['--version'])
 
     cython_cmdbase.extend(['--fast-fail', '--verbose', '--cplus'])
-    ret = []
     for ext in extensions:
         cmd = list(cython_cmdbase)
         for i in compiler_directives.items():
             cmd.append('--directive')
             cmd.append('%s=%s' % i)
-        cpp_files = [path.splitext(f)[0] + ".cpp" for f in ext.sources]
-        cmd += ext.sources
-        subprocess.check_call(cmd)
-        ext = copy.copy(ext)
-        ext.sources = cpp_files
-        ret.append(ext)
-    return ret
+        subprocess.check_call(cmd + ext.sources)
 
 
-def to_cpp(extensions):
+def to_cpp_extensions(extensions):
     ret = []
-    for ext in extensions:
-        cpp_files = [path.splitext(f)[0] + ".cpp" for f in ext.sources]
-        ext = copy.copy(ext)
-        ext.sources = cpp_files
+    for x in extensions:
+        ext = copy.copy(x)
+        ext.sources = [path.splitext(f)[0] + ".cpp" for f in x.sources]
         ret.append(ext)
     return ret
+
+
+def check_extensions(extensions):
+    for x in extensions:
+        for f in x.sources:
+            if not path.isfile(f):
+                msg = ('Missing file: %s\n' % f +
+                       'Please install Cython.\n' +
+                       'See http://docs.chainer.org/en/stable/install.html')
+                raise RuntimeError(msg)
 
 
 class chainer_build_ext(build_ext.build_ext):
@@ -299,7 +303,7 @@ class chainer_build_ext(build_ext.build_ext):
     def finalize_options(self):
         ext_modules = self.distribution.ext_modules
         if dummy_extension in ext_modules:
-            print('Executing cythonize()')
+            print('Executing cythonize')
             print('Options:', _arg_options)
 
             directive_keys = ('linetrace', 'profile')
@@ -314,16 +318,14 @@ class chainer_build_ext(build_ext.build_ext):
 
             extensions = make_extensions(_arg_options, compiler)
 
-            cython_pkg = get_cython_pkg()
-            req_version = pkg_resources.SetuptoolsVersion('0.23')
-            if cython_pkg is None or cython_pkg.parsed_version < req_version:
-                extensions = to_cpp(extensions)
-            else:
-                extensions = cythonize(
-                    extensions,
-                    force=True,
-                    compiler_directives=directives,
-                    **cythonize_options)
+            cython = get_cython_pkg()
+            req_version = pkg_resources.parse_version(cython_version)
+            if cython is not None and cython.parsed_version > req_version:
+                cythonize(extensions, force=True,
+                          compiler_directives=directives, **cythonize_options)
+
+            extensions = to_cpp_extensions(extensions)
+            check_extensions(extensions)
 
             # Modify ext_modules for cython
             ext_modules.remove(dummy_extension)
