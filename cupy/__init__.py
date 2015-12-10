@@ -135,6 +135,8 @@ vsplit = manipulation.split.vsplit
 tile = manipulation.tiling.tile
 repeat = manipulation.tiling.repeat
 
+roll = manipulation.rearrange.roll
+
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
