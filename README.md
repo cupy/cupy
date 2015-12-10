@@ -39,6 +39,12 @@ apt-get install libhdf5-dev
 yum install hdf5-devel
 ```
 
+If you use old ``setuptools``, upgrade it:
+
+```
+pip install -U setuptools
+```
+
 Then, install Chainer via PyPI:
 ```
 pip install chainer
