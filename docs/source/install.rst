@@ -28,6 +28,10 @@ This is typical installation method for each platform::
   $ yum -y install epel-release
   $ yum install gcc hdf5-devel
 
+If you use old ``setuptools``, upgrade it::
+
+  $ pip install -U setuptools
+
 
 Install Chainer
 ---------------
