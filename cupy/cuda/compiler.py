@@ -36,9 +36,10 @@ def _run_nvcc(cmd, cwd):
     try:
         return subprocess.check_output(cmd, cwd=cwd)
     except OSError as e:
-        trace = sys.exc_info()[2]
-        msg = 'Failed to run `nvcc` command: ' + str(e)
-        six.reraise(OSError, OSError(msg), trace)
+        msg = 'Failed to run `nvcc` command. ' \
+              'Check PATH environment variable: ' \
+              + str(e)
+        raise OSError(msg)
 
 
 def nvcc(source, options=(), arch=None):
