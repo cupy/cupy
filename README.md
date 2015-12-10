@@ -19,8 +19,8 @@ Minimum requirements:
 Requirements for some features:
 - CUDA support
   - CUDA 6.5, 7.0, 7.5
-  - Cython 0.23
   - filelock
+  - g++
 - cuDNN support
   - cuDNN v2, v3
 - Caffe model support
