@@ -293,7 +293,7 @@ cdef class PooledMemory(Memory):
         pool = self.pool()
         if pool:
             pool.free(self.ptr, self.size)
-        self.ptr = 0
+        self.ptr = None
         self.size = 0
         self.device = None
         self.pool = None
