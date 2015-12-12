@@ -60,5 +60,12 @@ class TestExpandDims(unittest.TestCase):
     def test_backward(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
+    def test_invalid_dim(self):
+        x = chainer.Variable(self.x)
+        with self.assertRaises(chainer.utils.type_check.InvalidType):
+            functions.expand_dims(x, self.x.ndim + 1)
+        with self.assertRaises(chainer.utils.type_check.InvalidType):
+            functions.expand_dims(x, -self.x.ndim - 2)
+
 
 testing.run_module(__name__, __file__)
