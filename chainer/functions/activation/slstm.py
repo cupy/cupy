@@ -96,7 +96,7 @@ class SLSTM(function.Function):
                 'T c, T h',
                 '''
                     COMMON_ROUTINE;
-                    c = aa1 * ai1 + af1 * c_prev1 * aa2 * ai2 + af2 * c_prev2;
+                    c = aa1 * ai1 + af1 * c_prev1 + aa2 * ai2 + af2 * c_prev2;
                     h = ao * tanh(c);
                 ''',
                 'slstm_fwd', preamble=_preamble)(
