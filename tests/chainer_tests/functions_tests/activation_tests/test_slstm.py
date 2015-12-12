@@ -54,7 +54,7 @@ class TestSLSTM(unittest.TestCase):
         i2_in = self.x2[:, [1, 5]]
         f2_in = self.x2[:, [2, 6]]
         o2_in = self.x2[:, [3, 7]]
-        
+
         c_expect = _sigmoid(i1_in) * numpy.tanh(a1_in) + \
             _sigmoid(i2_in) * numpy.tanh(a2_in) + \
             _sigmoid(f1_in) * self.c_prev1 + \
@@ -99,7 +99,8 @@ class TestSLSTM(unittest.TestCase):
         c.backward()
 
         func = c.creator
-        f = lambda: func.forward((c_prev1.data, c_prev2.data, x1.data, x2.data))
+        f = lambda: func.forward(
+            (c_prev1.data, c_prev2.data, x1.data, x2.data))
         gc_prev1, gc_prev2, gx1, gx2 = gradient_check.numerical_grad(
             f, (c_prev1.data, c_prev2.data, x1.data, x2.data),
             (c_grad, h_grad), eps=1e-2)

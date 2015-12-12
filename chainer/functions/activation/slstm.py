@@ -86,7 +86,7 @@ class SLSTM(function.Function):
 
             self.o = _sigmoid(o1 + o2)
             self.c = self.a1 * self.i1 + self.a2 * self.i2 + \
-                     self.f1 * c_prev1 + self.f2 * c_prev2
+                self.f1 * c_prev1 + self.f2 * c_prev2
 
             h = self.o * numpy.tanh(self.c)
         else:
