@@ -104,9 +104,8 @@ class Convolution2DFunction(function.Function):
             # TODO(beam2d): Support unshared bias
             if b is not None:
                 libcudnn.addTensor(
-                    handle, libcudnn.CUDNN_ADD_SAME_C, one.data,
-                    self.bias_desc.value, b.data.ptr, one.data,
-                    y_desc.value, y.data.ptr)
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(

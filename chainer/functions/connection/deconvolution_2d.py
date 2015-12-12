@@ -116,8 +116,7 @@ class Deconvolution2DFunction(function.Function):
                 zero.data, y_desc.value, y.data.ptr)
             if len(inputs) == 3:
                 libcudnn.addTensor(
-                    handle, libcudnn.CUDNN_ADD_SAME_C,
-                    one.data, self.bias_desc.value, b.data.ptr,
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
                     one.data, y_desc.value, y.data.ptr)
         else:
             W_mat = W.reshape(in_c, c * kh * kw)
