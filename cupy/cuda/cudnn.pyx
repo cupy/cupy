@@ -76,14 +76,15 @@ cdef extern from "cupy_cudnn.h":
             TensorDescriptor srcDesc, void* srcData, void* beta,
             TensorDescriptor destDesc, void* destData)
     int cudnnGetConvolutionBackwardFilterAlgorithm(
-            Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
-            ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
-            ConvolutionBwdFilterPreference preference,
+            Handle handle, TensorDescriptor srcDesc,
+            TensorDescriptor diffDesc, ConvolutionDescriptor convDesc,
+            FilterDescriptor filterDesc, ConvolutionBwdFilterPreference preference,
             size_t memoryLimitInbytes, ConvolutionBwdFilterAlgo* algo)
     int cudnnGetConvolutionBackwardFilterWorkspaceSize(
-            Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
-            ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
-            ConvolutionBwdFilterAlgo algo, size_t* sizeInBytes)
+            Handle handle, TensorDescriptor srcDesc,
+            TensorDescriptor diffDesc, ConvolutionDescriptor convDesc,
+            FilterDescriptor filterDesc, ConvolutionBwdFilterAlgo algo,
+            size_t* sizeInBytes)
     int cudnnConvolutionBackwardFilter(
             Handle handle, void* alpha,
             TensorDescriptor srcDesc, void* srcData,
