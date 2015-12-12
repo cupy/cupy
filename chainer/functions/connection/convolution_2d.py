@@ -10,7 +10,6 @@ if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cuda.cudnn.cudnn
     _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
-    _bwd_pref = libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
 
 
 def _pair(x):
@@ -105,8 +104,9 @@ class Convolution2DFunction(function.Function):
             # TODO(beam2d): Support unshared bias
             if b is not None:
                 libcudnn.addTensor(
-                    handle, one.data, self.bias_desc.value, b.data.ptr,
-                    one.data, y_desc.value, y.data.ptr)
+                    handle, libcudnn.CUDNN_ADD_SAME_C, one.data,
+                    self.bias_desc.value, b.data.ptr, one.data,
+                    y_desc.value, y.data.ptr)
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(
@@ -158,21 +158,9 @@ class Convolution2DFunction(function.Function):
             one = numpy.array(1, dtype=dtype).ctypes
             zero = numpy.array(0, dtype=dtype).ctypes
 
-            self.max_workspace_size = c * kh * kw * 4
-            algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
-                handle, x_desc.value, gy_desc.value,
-                self.conv_desc.value, self.filter_desc.value, _bwd_pref,
-                self.max_workspace_size)
-            workspace_size = libcudnn.getConvolutionBackwardFilterWorkspaceSize(
-                handle, x_desc.value, gy_desc.value, self.conv_desc.value,
-                self.filter_desc.value, algo)
-            workspace = cupy.empty(
-                (max(workspace_size // 4, 1),), dtype=x.dtype)
-
             libcudnn.convolutionBackwardFilter(
                 handle, one.data, x_desc.value, x.data.ptr,
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
-                algo, workspace.data.ptr, workspace_size,
                 zero.data, self.filter_desc.value, gW.data.ptr)
 
             gx = cuda.cupy.empty_like(x)

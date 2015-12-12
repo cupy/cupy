@@ -91,6 +91,15 @@ cdef extern from "cupy_cudnn.h":
             ConvolutionDescriptor convDesc, ConvolutionBwdFilterAlgo algo,
             void* workSpace, size_t workSpaceSizeInBytes, void* beta,
             FilterDescriptor gradDesc, void* gradData)
+    int cudnnGetConvolutionBackwardDataAlgorithm(
+            Handle handle, FilterDescriptor filterDesc, TensorDescriptor diffDesc,
+            ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
+            ConvolutionBwdDataPreference preference,
+            size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo)
+    int cudnnGetConvolutionBackwardDataWorkspaceSize(
+            Handle handle, FilterDescriptor filterDesc, TensorDescriptor diffDesc,
+            ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
+            ConvolutionBwdDataAlgo algo, size_t* sizeInBytes)
     int cudnnConvolutionBackwardData(
             Handle handle, void* alpha,
             FilterDescriptor filterDesc, void* filterData,
@@ -384,7 +393,6 @@ cpdef int getConvolutionBackwardFilterAlgorithm(
     check_status(status)
     return algo
 
-
 cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
         size_t filterDesc, int algo) except *:
@@ -410,6 +418,29 @@ cpdef convolutionBackwardFilter(
         <FilterDescriptor>gradDesc, <void*>gradData)
     check_status(status)
 
+cpdef int getConvolutionBackwardDataAlgorithm(
+        size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
+        size_t gradDesc, ConvolutionBwdDataPreference preference,
+        size_t memoryLimitInbytes) except *:
+      cdef ConvolutionBwdDataAlgo algo
+      status = cudnnGetConvolutionBackwardDataAlgorithm(
+          <Handle>handle, <FilterDescriptor>filterDesc, <TensorDescriptor>diffDesc,
+          <ConvolutionDescriptor>convDesc, <TensorDescriptor>gradDesc,
+          <ConvolutionBwdDataPreference>preference,
+          memoryLimitInbytes, &algo)
+      check_status(status)
+      return algo
+
+cpdef size_t getConvolutionBackwardDataWorkspaceSize(
+        size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
+        size_t gradDesc, int algo) except *:
+      cdef size_t sizeInBytes
+      status = cudnnGetConvolutionBackwardDataWorkspaceSize(
+          <Handle>handle, <FilterDescriptor>filterDesc, <TensorDescriptor>diffDesc,
+          <ConvolutionDescriptor> convDesc, <TensorDescriptor>gradDesc,
+          <ConvolutionBwdDataAlgo>algo, &sizeInBytes)
+      check_status(status)
+      return sizeInBytes
 
 cpdef convolutionBackwardData(
         size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
