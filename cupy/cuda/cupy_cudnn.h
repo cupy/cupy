@@ -19,8 +19,13 @@ typedef int cudnnActivationMode_t;
 typedef int cudnnAddMode_t;
 typedef int cudnnConvolutionFwdAlgo_t;
 typedef int cudnnConvolutionFwdPreference_t;
+typedef int cudnnConvolutionBwdFilterPreference_t;
+typedef int cudnnConvolutionBwdFilterAlgo_t;
+typedef int cudnnConvolutionBwdDataPreference_t;
+typedef int cudnnConvolutionBwdDataAlgo_t;
 typedef int cudnnConvolutionMode_t;
 typedef int cudnnDataType_t;
+typedef int cudnnNanPropagation_t;
 typedef int cudnnPoolingMode_t;
 typedef int cudnnSoftmaxAlgorithm_t;
 typedef int cudnnSoftmaxMode_t;
@@ -31,6 +36,9 @@ typedef int ActivationMode;
 typedef int AddMode;
 typedef int ConvolutionFwdAlgo;
 typedef int ConvolutionFwdPreference;
+typedef int ConvolutionBwdFilterAlgo;
+typedef int ConvolutionBwdDataAlgo;
+typedef int ConvolutionBwdFilterPreference;
 typedef int ConvolutionMode;
 typedef int DataType;
 typedef int PoolingMode;
@@ -106,9 +114,9 @@ int cudnnDestroyTensorDescriptor(TensorDescriptor tensorDesc) {
 }
 
 int cudnnAddTensor(
-        Handle handle, AddMode mode, void* alpha,
-        TensorDescriptor biasDesc, void* biasData, void* beta,
-        TensorDescriptor srcDestDesc, void* srcDestData) {
+        Handle handle, void* alpha, TensorDescriptor biasDesc,
+        void* biasData, void* beta, TensorDescriptor srcDestDesc,
+        void* srcDestData) {
     return 0;
 }
 
@@ -148,7 +156,8 @@ int cudnnSetConvolution2dDescriptor(
 
 int cudnnSetConvolutionNdDescriptor(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
-        int* filterStrideA, int* upscaleA, ConvolutionMode mode) {
+        int* filterStrideA, int* upscaleA, ConvolutionMode mode,
+        DataType dataType) {
     return 0;
 }
 
@@ -159,7 +168,7 @@ int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc) {
 int cudnnGetConvolutionForwardAlgorithm(
         Handle handle, TensorDescriptor srcDesc,
         FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
-        TensorDescriptor destDesc, int preference,
+        TensorDescriptor destDesc, ConvolutionFwdPreference preference,
         size_t memoryLimitInbytes, ConvolutionFwdAlgo* algo) {
     return 0;
 }
@@ -188,12 +197,45 @@ int cudnnConvolutionBackwardBias(
     return 0;
 }
 
+int cudnnGetConvolutionBackwardFilterAlgorithm(
+        Handle handle, TensorDescriptor srcDesc,
+        FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
+        TensorDescriptor destDesc, ConvolutionBwdFilterPreference preference,
+        size_t memoryLimitInbytes, ConvolutionBwdFilterAlgo* algo) {
+    return 0;
+}
+
+int cudnnGetConvolutionBackwardFilterWorkspaceSize(
+        Handle handle, TensorDescriptor srcDesc,
+        FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
+        FilterDescriptor destDesc, ConvolutionBwdFilterAlgo algo,
+        size_t* sizeInBytes) {
+    return 0;
+}
+
 int cudnnConvolutionBackwardFilter(
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor diffDesc, void* diffData,
-        ConvolutionDescriptor convDesc, void* beta,
+        ConvolutionDescriptor convDesc, ConvolutionBwdFilterAlgo algo,
+        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
         FilterDescriptor gradDesc, void* gradData) {
+    return 0;
+}
+
+int cudnnGetConvolutionBackwardDataAlgorithm(
+        Handle handle, FilterDescriptor filterDesc,
+        TensorDescriptor diffDesc, ConvolutionDescriptor convDesc,
+        TensorDescriptor gradDesc, ConvolutionBwdDataPreference preference,
+        size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo) {
+    return 0;
+}
+
+int cudnnGetConvolutionBackwardDataWorkspaceSize(
+        Handle handle, FilterDescriptor filterDesc,
+        TensorDescriptor diffDesc, ConvolutionDescriptor convDesc,
+        TensorDescriptor gradDesc, ConvolutionBwdDataAlgo algo,
+        size_t* sizeInBytes) {
     return 0;
 }
 
@@ -201,7 +243,8 @@ int cudnnConvolutionBackwardData(
         Handle handle, void* alpha,
         FilterDescriptor filterDesc, void* filterData,
         TensorDescriptor diffDesc, void* diffData,
-        ConvolutionDescriptor convDesc, void* beta,
+        ConvolutionDescriptor convDesc, ConvolutionBwdDataAlgo algo,
+        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
         TensorDescriptor gradDesc, void* gradData) {
     return 0;
 }
