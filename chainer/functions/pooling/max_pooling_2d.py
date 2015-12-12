@@ -36,8 +36,8 @@ class MaxPooling2D(pooling_2d.Pooling2D):
             h, self.kh, self.sy, self.ph, self.cover_all)
         y_w = conv.get_conv_outsize(
             w, self.kw, self.sx, self.pw, self.cover_all)
-        y = cuda.empty((n, c, y_h, y_w), dtype=x[0].dtype)
-        self.indexes = cuda.empty((n, c, y_h, y_w), dtype=numpy.int32)
+        y = cupy.empty((n, c, y_h, y_w), dtype=x[0].dtype)
+        self.indexes = cupy.empty((n, c, y_h, y_w), dtype=numpy.int32)
 
         cuda.elementwise(
             'raw T in, int32 h, int32 w, int32 out_h, int32 out_w,'

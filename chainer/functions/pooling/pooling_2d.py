@@ -49,7 +49,7 @@ class Pooling2D(function.Function):
             h, self.kh, self.sy, self.ph, self.cover_all)
         y_w = conv.get_conv_outsize(
             w, self.kw, self.sx, self.pw, self.cover_all)
-        y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
+        y = cupy.empty((n, c, y_h, y_w), dtype=numpy.float32)
 
         handle = cudnn.get_handle()
         pool_desc = self.create_pool_desc()

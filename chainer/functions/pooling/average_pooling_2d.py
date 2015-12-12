@@ -28,7 +28,7 @@ class AveragePooling2D(pooling_2d.Pooling2D):
         n, c, h, w = x[0].shape
         y_h = conv.get_conv_outsize(h, self.kh, self.sy, self.ph)
         y_w = conv.get_conv_outsize(w, self.kw, self.sx, self.pw)
-        y = cuda.empty((n, c, y_h, y_w), dtype=numpy.float32)
+        y = cupy.empty((n, c, y_h, y_w), dtype=numpy.float32)
         coeff = 1. / (self.kh * self.kw)
         cuda.elementwise(
             'raw T in, int32 h, int32 w,'
