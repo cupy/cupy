@@ -1,6 +1,7 @@
 import numpy
 
 from chainer import cuda
+import cupy
 
 
 def as_vec(x):
@@ -13,6 +14,6 @@ def as_mat(x):
 
 def empty_like(x):
     if cuda.available and isinstance(x, cuda.ndarray):
-        return cuda.empty_like(x)
+        return cupy.empty_like(x)
     else:
         return numpy.empty_like(x)

@@ -6,6 +6,7 @@ from chainer import cuda
 from chainer import function
 from chainer.utils import conv
 from chainer.utils import type_check
+import cupy
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -79,7 +80,7 @@ class Pooling2D(function.Function):
         dtype = x[0].dtype
         one = numpy.array(1, dtype=dtype).ctypes
         zero = numpy.array(0, dtype=dtype).ctypes
-        gx = cuda.empty_like(x[0])
+        gx = cupy.empty_like(x[0])
         libcudnn.poolingBackward(
             handle, pool_desc.value, one.data, y_desc.value,
             self.y.data.ptr, y_desc.value, gy.data.ptr, x_desc.value,

@@ -3,6 +3,7 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
+import cupy
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -26,7 +27,7 @@ class Tanh(function.Function):
         return self.y,
 
     def forward_gpu(self, x):
-        self.y = cuda.empty_like(x[0])
+        self.y = cupy.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
             dtype = x[0].dtype
             one = numpy.array(1, dtype=dtype).ctypes
@@ -46,7 +47,7 @@ class Tanh(function.Function):
 
     def backward_gpu(self, x, gy):
         if cuda.cudnn_enabled and self.use_cudnn:
-            gx = cuda.empty_like(self.y)
+            gx = cupy.empty_like(self.y)
             dtype = x[0].dtype
             one = numpy.array(1, dtype=dtype).ctypes
             zero = numpy.array(0, dtype=dtype).ctypes

@@ -3,6 +3,7 @@ import numpy
 from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
+import cupy
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -96,7 +97,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
 
         n, c, h, w = x[0].shape
         y_h, y_w = gy[0].shape[2:]
-        gx = cuda.empty_like(x[0])
+        gx = cupy.empty_like(x[0])
 
         cuda.elementwise(
             'raw T gy, raw S indexes, int32 h, int32 w,'

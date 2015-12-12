@@ -5,6 +5,7 @@ from chainer import cuda
 from chainer import function
 from chainer.utils import conv
 from chainer.utils import type_check
+import cupy
 
 
 if cuda.cudnn_enabled:
@@ -185,11 +186,11 @@ class Deconvolution2DFunction(function.Function):
             # bias backward
             if len(inputs) == 3:
                 b = inputs[2]
-                gb = cuda.cupy.empty_like(b)
+                gb = cupy.empty_like(b)
                 libcudnn.convolutionBackwardBias(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     zero.data, self.bias_desc.value, gb.data.ptr)
-            gW = cuda.cupy.empty_like(W)
+            gW = cupy.empty_like(W)
             # filter backward
             libcudnn.convolutionBackwardFilter(
                 handle, one.data, gy_desc.value, gy.data.ptr,

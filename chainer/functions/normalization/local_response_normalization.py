@@ -4,6 +4,7 @@ import six
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
+import cupy
 
 
 def _cu_conv_sum(y, x, n):
@@ -76,7 +77,7 @@ class LocalResponseNormalization(function.Function):
 
     def forward_gpu(self, x):
         self.y = cuda.cupy.square(x[0])  # temporary
-        self.scale = cuda.empty_like(self.y)
+        self.scale = cupy.empty_like(self.y)
         _cu_conv_sum(self.scale, self.y, self.n)
         cuda.elementwise(
             'T x, T k, T alpha, T beta',
@@ -92,7 +93,7 @@ class LocalResponseNormalization(function.Function):
             'T scale, T y, T gy', 'T summand',
             'summand = y * gy / scale',
             'lrn_bwd_summand')(self.scale, self.y, gy[0])
-        gx = cuda.empty_like(x[0])
+        gx = cupy.empty_like(x[0])
         _cu_conv_sum(gx, summand, self.n)
         cuda.elementwise(
             ' T x, T gy, T scale, T beta, T coeff', 'T gx',
