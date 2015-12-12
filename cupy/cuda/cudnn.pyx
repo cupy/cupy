@@ -58,7 +58,7 @@ cdef extern from "cupy_cudnn.h":
     int cudnnGetConvolutionForwardAlgorithm(
             Handle handle, TensorDescriptor srcDesc,
             FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
-            TensorDescriptor destDesc, int preference,
+            TensorDescriptor destDesc, ConvolutionFwdPreference preference,
             size_t memoryLimitInbytes, ConvolutionFwdAlgo* algo)
     int cudnnGetConvolutionForwardWorkspaceSize(
             Handle handle, TensorDescriptor srcDesc,
@@ -75,6 +75,16 @@ cdef extern from "cupy_cudnn.h":
             Handle handle, void* alpha,
             TensorDescriptor srcDesc, void* srcData, void* beta,
             TensorDescriptor destDesc, void* destData)
+    int cudnnGetConvolutionBackwardFilterAlgorithm(
+            Handle handle, TensorDescriptor srcDesc,
+            TensorDescriptor diffDesc, ConvolutionDescriptor convDesc,
+            FilterDescriptor filterDesc, ConvolutionBwdFilterPreference preference,
+            size_t memoryLimitInbytes, ConvolutionBwdFilterAlgo* algo)
+    int cudnnGetConvolutionBackwardFilterWorkspaceSize(
+            Handle handle, TensorDescriptor srcDesc,
+            TensorDescriptor diffDesc, ConvolutionDescriptor convDesc,
+            FilterDescriptor filterDesc, ConvolutionBwdFilterAlgo algo,
+            size_t* sizeInBytes)
     int cudnnConvolutionBackwardFilter(
             Handle handle, void* alpha,
             TensorDescriptor srcDesc, void* srcData,
@@ -314,7 +324,8 @@ cpdef destroyConvolutionDescriptor(size_t convDesc):
 
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int preference, size_t memoryLimitInbytes) except *:
+        size_t destDesc, ConvolutionFwdPreference preference,
+        size_t memoryLimitInbytes) except *:
     cdef ConvolutionFwdAlgo algo
     status = cudnnGetConvolutionForwardAlgorithm(
         <Handle>handle, <TensorDescriptor>srcDesc,

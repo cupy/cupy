@@ -161,7 +161,8 @@ cpdef setConvolutionNdDescriptor(
 cpdef destroyConvolutionDescriptor(size_t convDesc)
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int preference, size_t memoryLimitInbytes) except *
+        size_t destDesc, ConvolutionFwdPreference preference,
+        size_t memoryLimitInbytes) except *
 cpdef size_t getConvolutionForwardWorkspaceSize(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
         size_t destDesc, int algo) except *
