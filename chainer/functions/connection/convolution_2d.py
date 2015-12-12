@@ -10,7 +10,8 @@ if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cuda.cudnn.cudnn
     _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
-    _bwd_pref = libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
+    _bwd_filter_pref = libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
+    _bwd_data_pref = libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
 def _pair(x):
@@ -161,7 +162,7 @@ class Convolution2DFunction(function.Function):
             self.max_workspace_size = c * kh * kw * 4
             algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
                 handle, x_desc.value, gy_desc.value,
-                self.conv_desc.value, self.filter_desc.value, _bwd_pref,
+                self.conv_desc.value, self.filter_desc.value, _bwd_filter_pref,
                 self.max_workspace_size)
             workspace_size = libcudnn.getConvolutionBackwardFilterWorkspaceSize(
                 handle, x_desc.value, gy_desc.value, self.conv_desc.value,
@@ -175,10 +176,21 @@ class Convolution2DFunction(function.Function):
                 algo, workspace.data.ptr, workspace_size,
                 zero.data, self.filter_desc.value, gW.data.ptr)
 
+            algo = libcudnn.getConvolutionBackwardDataAlgorithm(
+                handle, self.filter_desc.value, gy_desc.value,
+                self.conv_desc.value, x_desc.value, _bwd_data_pref,
+                self.max_workspace_size)
+            workspace_size = libcudnn.getConvolutionBackwardDataWorkspaceSize(
+                handle, self.filter_desc.value, gy_desc.value,
+                self.conv_desc.value, x_desc.value, algo)
+            workspace = cupy.empty(
+                (max(workspace_size // 4, 1),), dtype=x.dtype)
+
             gx = cuda.cupy.empty_like(x)
             libcudnn.convolutionBackwardData(
                 handle, one.data, self.filter_desc.value, W.data.ptr,
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                algo, workspace.data.ptr, workspace_size,
                 zero.data, x_desc.value, gx.data.ptr)
 
             if b is not None:
