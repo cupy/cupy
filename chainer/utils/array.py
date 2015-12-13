@@ -1,7 +1,9 @@
 import numpy
 
 from chainer import cuda
-import cupy
+
+if cuda.available:
+    import cupy
 
 
 def as_vec(x):

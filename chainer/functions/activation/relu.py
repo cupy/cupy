@@ -4,7 +4,9 @@ from chainer import cuda
 from chainer import function
 from chainer import utils
 from chainer.utils import type_check
-import cupy
+
+if cuda.available:
+    import cupy
 
 
 if cuda.cudnn_enabled:

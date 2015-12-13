@@ -4,7 +4,9 @@ import six
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
-import cupy
+
+if cuda.available:
+    import cupy
 
 
 def _mat_ptrs(a):

@@ -3,7 +3,10 @@ import numpy
 from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
-import cupy
+
+if cuda.available:
+    import cupy
+
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn

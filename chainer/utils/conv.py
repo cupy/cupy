@@ -2,7 +2,9 @@ import numpy
 import six
 
 from chainer import cuda
-import cupy
+
+if cuda.available:
+    import cupy
 
 
 def get_conv_outsize(size, k, s, p, cover_all=False):
