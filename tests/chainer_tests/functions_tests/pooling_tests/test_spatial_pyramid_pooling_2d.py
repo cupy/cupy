@@ -21,11 +21,11 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
         # Avoid unstability of numerical gradient
         shape = (self.n, self.c, self.h, self.w)
         size = numpy.prod(shape)
-        self.x = numpy.arange(size, dtype=numpy.float32) .reshape(shape)
+        self.x = numpy.arange(size, dtype=numpy.float32).reshape(shape)
         numpy.random.shuffle(self.x)
         self.x += numpy.random.uniform(
             0.4, 0.6, shape).astype(numpy.float32)
-        self.x /= (self.n * self.c * self.h * self.w)
+        self.x /= size
 
         self.one = numpy.ones(
             (self.n, self.c, self.h, self.w)).astype(numpy.float32)
