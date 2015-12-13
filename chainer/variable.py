@@ -94,7 +94,7 @@ class Variable(object):
         if self.data.shape == ():
             return str(self.data.dtype)
         return '(%s), %s' % (', '.join(map(str, self.data.shape)),
-                           str(self.data.dtype))
+                             str(self.data.dtype))
 
     @property
     def grad(self):
