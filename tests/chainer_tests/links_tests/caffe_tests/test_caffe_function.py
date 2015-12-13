@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 
@@ -46,16 +47,16 @@ def _make_param(data):
 class TestCaffeFunctionBase(unittest.TestCase):
 
     def setUp(self):
-        self.model_file = tempfile.NamedTemporaryFile()
         param = _make_param(self.data)
-        self.model_file.write(param.SerializeToString())
-        self.model_file.flush()
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            self.temp_file_path = f.name
+            f.write(param.SerializeToString())
 
     def tearDown(self):
-        self.model_file.close()
+        os.remove(self.temp_file_path)
 
     def init_func(self):
-        self.func = caffe.CaffeFunction(self.model_file.name)
+        self.func = caffe.CaffeFunction(self.temp_file_path)
 
 
 class TestCaffeFunctionBaseMock(TestCaffeFunctionBase):
