@@ -5,9 +5,6 @@ from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 
-if cuda.available:
-    import cupy
-
 
 def _mat_ptrs(a):
     """Creates an array of pointers to matrices
@@ -247,8 +244,8 @@ class BatchMatMul(function.Function):
     def backward_gpu(self, x, gy):
         a, b = x
         batch_size = a.shape[0]
-        ga = cupy.empty((batch_size,) + _as_mat(a[0]).shape)
-        gb = cupy.empty((batch_size,) + _as_mat(b[0]).shape)
+        ga = cuda.cupy.empty((batch_size,) + _as_mat(a[0]).shape)
+        gb = cuda.cupy.empty((batch_size,) + _as_mat(b[0]).shape)
         _batch_matmul_gpu(
             gy[0], b, transb=not self.transb, transout=self.transa, out=ga)
         _batch_matmul_gpu(

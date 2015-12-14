@@ -4,10 +4,6 @@ from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
 
-if cuda.available:
-    import cupy
-
-
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
@@ -39,8 +35,8 @@ class MaxPooling2D(pooling_2d.Pooling2D):
             h, self.kh, self.sy, self.ph, self.cover_all)
         y_w = conv.get_conv_outsize(
             w, self.kw, self.sx, self.pw, self.cover_all)
-        y = cupy.empty((n, c, y_h, y_w), dtype=x[0].dtype)
-        self.indexes = cupy.empty((n, c, y_h, y_w), dtype=numpy.int32)
+        y = cuda.cupy.empty((n, c, y_h, y_w), dtype=x[0].dtype)
+        self.indexes = cuda.cupy.empty((n, c, y_h, y_w), dtype=numpy.int32)
 
         cuda.elementwise(
             'raw T in, int32 h, int32 w, int32 out_h, int32 out_w,'
@@ -100,7 +96,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
 
         n, c, h, w = x[0].shape
         y_h, y_w = gy[0].shape[2:]
-        gx = cupy.empty_like(x[0])
+        gx = cuda.cupy.empty_like(x[0])
 
         cuda.elementwise(
             'raw T gy, raw S indexes, int32 h, int32 w,'

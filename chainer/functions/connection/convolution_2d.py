@@ -69,7 +69,7 @@ class Convolution2DFunction(function.Function):
         out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph)
         out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw)
 
-        y = cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
+        y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
@@ -90,7 +90,7 @@ class Convolution2DFunction(function.Function):
             workspace_size = libcudnn.getConvolutionForwardWorkspaceSize(
                 handle, x_desc.value, self.filter_desc.value,
                 self.conv_desc.value, y_desc.value, algo)
-            workspace = cupy.empty(
+            workspace = cuda.cupy.empty(
                 (max(workspace_size // 4, 1),), dtype=x.dtype)
 
             dtype = x.dtype
@@ -149,7 +149,7 @@ class Convolution2DFunction(function.Function):
         n, c, h, w = x.shape
         kh, kw = W.shape[2:]
 
-        gW = cupy.empty_like(W)
+        gW = cuda.cupy.empty_like(W)
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
@@ -165,14 +165,14 @@ class Convolution2DFunction(function.Function):
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
                 zero.data, self.filter_desc.value, gW.data.ptr)
 
-            gx = cupy.empty_like(x)
+            gx = cuda.cupy.empty_like(x)
             libcudnn.convolutionBackwardData(
                 handle, one.data, self.filter_desc.value, W.data.ptr,
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
                 zero.data, x_desc.value, gx.data.ptr)
 
             if b is not None:
-                gb = cupy.empty_like(inputs[2])
+                gb = cuda.cupy.empty_like(inputs[2])
                 libcudnn.convolutionBackwardBias(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     zero.data, self.bias_desc.value, gb.data.ptr)
@@ -186,7 +186,7 @@ class Convolution2DFunction(function.Function):
                 gW_mat += cupy.dot(gy_mats[i], col_mats[i].T)
 
             W_mat = W.reshape(out_c, -1)
-            gcol = cupy.empty_like(self.col)
+            gcol = cuda.cupy.empty_like(self.col)
             gcol_mats = gcol.reshape(n, c * kh * kw, out_h * out_w)
             for i in moves.range(n):
                 cupy.dot(W_mat.T, gy_mats[i], gcol_mats[i])

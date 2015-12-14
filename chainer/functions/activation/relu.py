@@ -5,9 +5,6 @@ from chainer import function
 from chainer import utils
 from chainer.utils import type_check
 
-if cuda.available:
-    import cupy
-
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -41,7 +38,7 @@ class ReLU(function.Function):
         return utils.force_array(numpy.maximum(zero, x[0])),
 
     def forward_gpu(self, x):
-        y = cupy.empty_like(x[0])
+        y = cuda.cupy.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
             dtype = x[0].dtype
             one = numpy.array(1, dtype=dtype).ctypes
@@ -61,7 +58,7 @@ class ReLU(function.Function):
 
     def backward_gpu(self, x, gy):
         if cuda.cudnn_enabled and self.use_cudnn:
-            gx = cupy.empty_like(x[0])
+            gx = cuda.cupy.empty_like(x[0])
             dtype = gx.dtype
             one = numpy.array(1, dtype=dtype).ctypes
             zero = numpy.array(0, dtype=dtype).ctypes

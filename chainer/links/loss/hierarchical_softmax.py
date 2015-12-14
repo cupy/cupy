@@ -170,9 +170,9 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
         max_length = cuda.to_cpu(max_length)[()]
 
         length = max_length * x.shape[0]
-        ls = cupy.empty((length,), dtype=numpy.float32)
+        ls = cuda.cupy.empty((length,), dtype=numpy.float32)
         n_in = x.shape[1]
-        wxy = cupy.empty_like(ls)
+        wxy = cuda.cupy.empty_like(ls)
         cuda.elementwise(
             '''raw T x, raw T w, raw int32 ts, raw int32 paths,
             raw T codes, raw int32 begins, int32 c, int32 max_length''',

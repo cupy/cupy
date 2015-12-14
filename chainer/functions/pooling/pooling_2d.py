@@ -7,9 +7,6 @@ from chainer import function
 from chainer.utils import conv
 from chainer.utils import type_check
 
-if cuda.available:
-    import cupy
-
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -52,7 +49,7 @@ class Pooling2D(function.Function):
             h, self.kh, self.sy, self.ph, self.cover_all)
         y_w = conv.get_conv_outsize(
             w, self.kw, self.sx, self.pw, self.cover_all)
-        y = cupy.empty((n, c, y_h, y_w), dtype=numpy.float32)
+        y = cuda.cupy.empty((n, c, y_h, y_w), dtype=numpy.float32)
 
         handle = cudnn.get_handle()
         pool_desc = self.create_pool_desc()
@@ -83,7 +80,7 @@ class Pooling2D(function.Function):
         dtype = x[0].dtype
         one = numpy.array(1, dtype=dtype).ctypes
         zero = numpy.array(0, dtype=dtype).ctypes
-        gx = cupy.empty_like(x[0])
+        gx = cuda.cupy.empty_like(x[0])
         libcudnn.poolingBackward(
             handle, pool_desc.value, one.data, y_desc.value,
             self.y.data.ptr, y_desc.value, gy.data.ptr, x_desc.value,
