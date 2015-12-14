@@ -16,9 +16,21 @@ class TestSearch(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_external_argmax_all(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        return xp.argmax(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_argmax_axis_large(self, xp, dtype):
         a = testing.shaped_random((3, 1000), xp, dtype)
         return a.argmax(axis=0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_external_argmax_axis_large(self, xp, dtype):
+        a = testing.shaped_random((3, 1000), xp, dtype)
+        return xp.argmax(a, axis=0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -46,9 +58,21 @@ class TestSearch(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_external_argmin_all(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        return xp.argmin(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_argmin_axis_large(self, xp, dtype):
         a = testing.shaped_random((3, 1000), xp, dtype)
         return a.argmin(axis=0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_external_argmin_axis_large(self, xp, dtype):
+        a = testing.shaped_random((3, 1000), xp, dtype)
+        return xp.argmin(a, axis=0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
