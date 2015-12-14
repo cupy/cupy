@@ -48,6 +48,8 @@ class TestCaffeFunctionBase(unittest.TestCase):
 
     def setUp(self):
         param = _make_param(self.data)
+        # The name can be used to open the file a second time,
+        # while the named temporary file is still open on the Windows.
         with tempfile.NamedTemporaryFile(delete=False) as f:
             self.temp_file_path = f.name
             f.write(param.SerializeToString())
