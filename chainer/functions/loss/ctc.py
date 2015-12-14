@@ -36,62 +36,40 @@ def _activate(yseq, xp):
     return [_softmax(y, xp) for y in yseq]
 
 
-def _padding(yseq, input_length):
-    res = yseq
-    for b, n in enumerate(input_length):
-        for i in six.moves.range(len(res)):
-            if i >= int(n):
-                res[i][b] = 1.0
-    return res
+def _move_label_to_front(path, path_length, xp):
+    return (xp.take(path[:, ::-1],
+                    (xp.arange(0, path.size, path.shape[1],
+                               dtype=numpy.int32)[:, None]
+                     + (xp.arange(path.size).reshape(path.shape)
+                        - path_length[:, None])
+                     % path.shape[1])))
 
 
-def _roll(a, shift, xp):
-    n = len(a)
-    shift %= n
-    if shift == 0:
-        return a
-    else:
-        indexes = xp.concatenate((xp.arange(n - shift, n, dtype=numpy.int32),
-                                  xp.arange(n - shift, dtype=numpy.int32)))
-        return xp.take(a, indexes, axis=0)
+def _move_label_to_back(path, path_length, xp):
+    return (xp.take(path,
+                    (xp.arange(0, path.size, path.shape[1],
+                               dtype=numpy.int32)[:, None]
+                     + (xp.arange(path.size).reshape(path.shape)
+                        + path_length[:, None])[:, ::-1]
+                     % path.shape[1])))
 
 
-def _backward_to_forward(path, path_length, xp):
-    res = xp.zeros_like(path)
-    for i, (p, l) in enumerate(zip(path[:, ::-1], path_length)):
-        res[i] = xp.take(p,
-                         xp.array([(j-int(l)) % len(p)
-                                   for j in six.moves.range(len(p))]))
-    return res
-
-
-def _forward_to_backward(path, path_length, xp):
-    res = xp.zeros_like(path)
-    for i, (p, l) in enumerate(zip(path, path_length)):
-        res[i] = xp.take(p,
-                         xp.array([(j+int(l)) % len(p)
-                                   for j in six.moves.range(len(p))]))
-    return res[:, ::-1]
-
-
-def _create_mask_array(mask_shape, input_length, t, xp):
-    mask_array = xp.zeros(mask_shape, dtype=numpy.float32)
-    for i, l in enumerate(input_length):
-        if t < l:
-            mask_array[i] = xp.ones((mask_shape[1],), dtype=numpy.float32)
-    return mask_array
-
-
-def _backward_inputs(yseq, input_length):
-    yseq_inv = yseq[::-1]
-    for b, n in enumerate(input_length):
-        for i in six.moves.range(len(yseq_inv)):
-            rotate_length = len(yseq_inv) - int(n)
-            if i + rotate_length < len(yseq_inv):
-                yseq_inv[i][b] = yseq_inv[i+rotate_length][b]
-            else:
-                yseq_inv[i][b] = 0.0
-    return yseq_inv
+def _move_inputs(prob, input_length, xp):
+    concatenated = xp.rollaxis(xp.dstack(prob), 2)
+    rotate = (numpy.swapaxes((xp.arange(concatenated.shape[0]
+                                        * concatenated.shape[1])
+                              % concatenated.shape[0]).reshape(
+                                  (concatenated.shape[1],
+                                   concatenated.shape[0])),
+                             1, 0)
+              + input_length[None, :]) % concatenated.shape[0]
+    index = concatenated.shape[2]\
+        * (rotate * concatenated.shape[1]
+           + xp.arange(0, concatenated.shape[1])[None, :])[:, :, None]\
+        + xp.arange(concatenated.shape[2])[None, None, :]
+    result = [xp.squeeze(a)
+              for a in xp.vsplit(xp.take(concatenated, index), len(prob))]
+    return result
 
 
 class ConnectionistTemporalClassification(function.Function):
@@ -132,7 +110,7 @@ class ConnectionistTemporalClassification(function.Function):
                 'y = x == 0 ? e : log(x)',
                 'create_recurrence_relation')
             res = create_recurrence_relation(x, self.zero_padding)
-        return res
+        return res.astype(numpy.float32)
 
     def recurrence_relation(self, path_length, dtype, xp):
         """Transition in forword and backword algorithms is represented as matrix.
@@ -141,17 +119,15 @@ class ConnectionistTemporalClassification(function.Function):
         https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
         """
         max_length = int(xp.max(path_length))
-        rr = xp.zeros((len(path_length), max_length, max_length), dtype=dtype)
-        for i, n in enumerate(path_length):
-            n = int(n)
-            rr[i] = (xp.eye(max_length, dtype=dtype) +
-                     xp.eye(max_length, k=1, dtype=dtype) +
-                     xp.eye(max_length, k=2, dtype=dtype) *
-                     (xp.arange(max_length, dtype=dtype) % dtype(2)))
-            for m in six.moves.range(n, max_length):
-                for k in six.moves.range(max_length):
-                    rr[i][k][m] = 0
-        return self.log_matrix(rr, xp)
+        rr = (xp.eye(max_length, dtype=dtype) +
+              xp.eye(max_length, k=1, dtype=dtype) +
+              xp.eye(max_length, k=2, dtype=dtype) *
+              (xp.arange(max_length, dtype=dtype) % dtype(2)))
+        return self.log_matrix(rr[None, :]
+                               * xp.greater(
+                                   (path_length[:, None]
+                                    - xp.arange(max_length)[None, :]),
+                                   0).astype(numpy.int32)[:, :, None], xp)
 
     # path probablity to label probability
     def label_probability(self, label_size, path, path_length, multiply, xp):
@@ -198,48 +174,37 @@ class ConnectionistTemporalClassification(function.Function):
             0, yseq[0].size, yseq[0].shape[1], dtype=path.dtype)[:, None]
 
         # prob[i] := forward[i] + backward[-i-1]
-        prob = xp.zeros((len(yseq), len(self.path),
-                         int(xp.max(self.path_length))),
-                        dtype=numpy.float32)
+        prob = []
         index = offset + path
         frr = self.recurrence_relation(
             self.path_length, numpy.float32, xp)
 
         # forward computation.
-        for i, y in enumerate(yseq):
-            for j, b in enumerate(self.input_length):
-                if int(b) == i:
-                    frr[j] = self.log_matrix(xp.eye(len(frr[j])), xp)
+        for y in yseq:
             # calc forward probability in log scale
             forward_prob = xp.take(y, index) + _log_dot(
                 forward_prob[:, None, :], frr, xp)
-            prob[i] = forward_prob
+            prob.append(forward_prob)
         r_index = offset \
-            + _forward_to_backward(path, self.path_length, xp)
+            + _move_label_to_back(path, self.path_length, xp)
 
         # rotate yseq with path_length
-        yseq_inv = _backward_inputs(yseq, self.input_length)
+        yseq_inv = _move_inputs(yseq, self.input_length, xp)[::-1]
         brr = self.recurrence_relation(
             self.path_length, numpy.float32, xp)
 
         # move to back.
-        for i, p in enumerate(self.input_length):
-            prob[:, i, :] = _roll(prob[:, i, :], -int(p), xp)
-
+        prob = _move_inputs(prob, self.input_length, xp)
         # backward computation.
         for i, y_inv in enumerate(yseq_inv):
-            for j, b in enumerate(self.input_length):
-                if int(b) == i:
-                    brr[j] = self.log_matrix(xp.eye(len(brr[j])), xp)
             # calc backward probability
             backward_prob = _log_dot(backward_prob[:, None, :], brr, xp)
-            prob[-i - 1] += _backward_to_forward(backward_prob,
+            prob[-i - 1] += _move_label_to_front(backward_prob,
                                                  self.path_length, xp)
             backward_prob = xp.take(y_inv, r_index) + backward_prob
 
         # move to front.
-        for i, p in enumerate(self.input_length):
-            prob[:, i, :] = _roll(prob[:, i, :], int(p), xp)
+        prob = _move_inputs(prob, -self.input_length, xp)
         return prob
 
     def forward(self, inputs):
@@ -250,7 +215,7 @@ class ConnectionistTemporalClassification(function.Function):
         self.path_length = 2 * inputs[1] + 1
 
         batch_size = len(inputs[2])
-        self.yseq = _padding(_activate(inputs[3::], xp), self.input_length)
+        self.yseq = _activate(inputs[3::], xp)
         log_yseq = [self.log_matrix(y, xp) for y in self.yseq]
         self.path = _label_to_path(inputs[2], self.blank_symbol, xp)
         self.prob_trans = self.calc_trans(self.path, log_yseq, xp)
@@ -267,12 +232,13 @@ class ConnectionistTemporalClassification(function.Function):
         total_probability = _logsumexp(self.prob_trans[0], xp, axis=1)
         scale = grad_output[0] / batch_size
         for i, (y, prob) in enumerate(zip(self.yseq, self.prob_trans)):
-            mask = _create_mask_array(y.shape, self.input_length, i, xp)
             label_prob = self.label_probability(
                 y.shape[1], self.path, self.path_length, prob, xp)
             y -= xp.exp(label_prob - total_probability[:, None])
             y *= scale
-            y *= mask
+            # mask
+            y *= xp.less((i - self.input_length),
+                         0).astype(numpy.int32)[:, None]
         return (None, None, None) + tuple(self.yseq)
 
 
