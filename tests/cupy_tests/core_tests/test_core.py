@@ -1,7 +1,5 @@
 import unittest
 
-import numpy
-
 import cupy
 from cupy.core import core
 
