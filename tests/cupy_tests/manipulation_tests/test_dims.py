@@ -68,8 +68,13 @@ class TestDims(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_broadcast_to(self, xp, dtype):
+        # Note that broadcast_to is only supported on numpy>=1.10
         a = testing.shaped_arange((3, 1, 4), xp, dtype)
-        b = xp.broadcast_to(a, (2, 1, 3, 4))
+        if xp is cupy:
+            b = xp.broadcast_to(a, (2, 1, 3, 4))
+        else:
+            dummy = xp.empty((2, 1, 3, 4))
+            b, _ = xp.broadcast_arrays(a, dummy)
         return b
 
     @testing.numpy_cupy_array_equal()
