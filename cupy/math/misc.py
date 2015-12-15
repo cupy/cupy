@@ -23,7 +23,7 @@ def clip(a, a_min, a_max, out=None):
 
     '''
     # TODO(okuta): check type
-    return a(a_min, a_max, out=out)
+    return a.clip(a_min, a_max, out=out)
 
 
 sqrt = core.create_ufunc(

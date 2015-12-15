@@ -1,6 +1,6 @@
 """Thin wrapper of CuDNN."""
 # NOTE: This wrapper does not cover all APIs of CuDNN v2.
-import cython
+cimport cython
 
 
 ###############################################################################

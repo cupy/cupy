@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 
@@ -8,6 +9,7 @@ import six
 import chainer
 from chainer import links
 from chainer.links import caffe
+from chainer import testing
 if six.PY2:
     from chainer.links.caffe import caffe_pb2
 
@@ -45,16 +47,18 @@ def _make_param(data):
 class TestCaffeFunctionBase(unittest.TestCase):
 
     def setUp(self):
-        self.model_file = tempfile.NamedTemporaryFile()
         param = _make_param(self.data)
-        self.model_file.write(param.SerializeToString())
-        self.model_file.flush()
+        # The name can be used to open the file a second time,
+        # while the named temporary file is still open on the Windows.
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            self.temp_file_path = f.name
+            f.write(param.SerializeToString())
 
     def tearDown(self):
-        self.model_file.close()
+        os.remove(self.temp_file_path)
 
     def init_func(self):
-        self.func = caffe.CaffeFunction(self.model_file.name)
+        self.func = caffe.CaffeFunction(self.temp_file_path)
 
 
 class TestCaffeFunctionBaseMock(TestCaffeFunctionBase):
@@ -616,3 +620,6 @@ class TestCaffeFunctionAvailable(unittest.TestCase):
     def test_py3_init_error(self):
         with self.assertRaises(RuntimeError):
             caffe.CaffeFunction('')
+
+
+testing.run_module(__name__, __file__)

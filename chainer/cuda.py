@@ -190,7 +190,12 @@ def to_gpu(array, device=None, stream=None):
     check_cuda_available()
     assert stream is None  # TODO(beam2d): FIX IT
     with get_device(device):
-        return cupy.asarray(array)
+        dev_id = int(get_device(array))
+        if dev_id != -1 and dev_id != cupy.cuda.device.get_device_id():
+            # Need to make a copy when an array is copied to another device
+            return cupy.array(array, copy=True)
+        else:
+            return cupy.asarray(array)
 
 
 def to_cpu(array, stream=None):

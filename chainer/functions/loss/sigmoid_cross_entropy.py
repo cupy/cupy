@@ -43,7 +43,8 @@ class SigmoidCrossEntropy(function.Function):
 
     def backward_cpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        gx = gloss * (self.y - t.astype(self.y.dtype)) / t.shape[0]
+        dtype = self.y.dtype
+        gx = gloss * (self.y - t.astype(dtype)) / dtype.type(t.shape[0])
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):

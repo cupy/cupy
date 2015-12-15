@@ -1689,7 +1689,6 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
                 "'repeats' should not be negative: {}".format(repeats))
         if axis is None:
             a = a.reshape((-1, 1))
-            print(a.size, a.shape)
             ret = ndarray((a.size, repeats), dtype=a.dtype)
             if ret.size:
                 ret[...] = a

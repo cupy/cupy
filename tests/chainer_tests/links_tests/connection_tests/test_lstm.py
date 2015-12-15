@@ -55,3 +55,6 @@ class TestLSTM(unittest.TestCase):
     def test_forward_gpu(self):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
+
+
+testing.run_module(__name__, __file__)

@@ -52,6 +52,12 @@ class TestMisc(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_clip_func(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.clip(a, 3, 13)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_clip2(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         a_min = xp.array([3, 4, 5, 6], dtype=dtype)

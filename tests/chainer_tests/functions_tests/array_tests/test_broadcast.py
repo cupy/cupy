@@ -100,3 +100,6 @@ class TestBroadcastTypeError(unittest.TestCase):
     def test_no_args(self):
         with self.assertRaises(type_check.InvalidType):
             functions.broadcast()
+
+
+testing.run_module(__name__, __file__)
