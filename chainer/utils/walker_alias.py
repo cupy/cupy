@@ -28,7 +28,7 @@ class WalkerAlias(object):
         pairs.sort()
         for prob, i in pairs:
             p = prob * len(probs)
-            while p > 1 and ir < len(threshold):
+            while p > 1 and ir < il:
                 values[ir * 2 + 1] = i
                 p -= 1.0 - threshold[ir]
                 ir += 1
