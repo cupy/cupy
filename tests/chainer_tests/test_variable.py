@@ -25,7 +25,7 @@ class Constant(chainer.Function):
         return tuple(map(np.zeros_like, inputs))
 
     def backward_gpu(self, inputs, grad_outputs):
-        return tuple(map(cuda.zeros_like, inputs))
+        return tuple(map(cuda.cupy.zeros_like, inputs))
 
 
 def constant(xs, value):
@@ -96,7 +96,7 @@ class TestVariable(unittest.TestCase):
         for i in six.moves.range(length):
             ret.append(constant((ret[i], ), (self.a, )))
         if gpu:
-            ret[-1].grad = cuda.zeros_like(ret[-1].data)
+            ret[-1].grad = cuda.cupy.zeros_like(ret[-1].data)
         else:
             ret[-1].grad = np.zeros_like(ret[-1].data)
         return ret
@@ -158,7 +158,7 @@ class TestVariable(unittest.TestCase):
     def test_grad_type_check_type_cpu_gpu_mixture(self):
         a = chainer.Variable(np.empty((3,), dtype=np.float32))
         with self.assertRaises(TypeError):
-            a.grad = cuda.empty((3,), dtype=np.float32)
+            a.grad = cuda.cupy.empty((3,), dtype=np.float32)
 
     def test_grad_type_check_dtype(self):
         a = chainer.Variable(np.empty((3,), dtype=np.float32))
