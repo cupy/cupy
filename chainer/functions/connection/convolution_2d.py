@@ -59,7 +59,6 @@ class Convolution2DFunction(function.Function):
         return numpy.rollaxis(y, 3, 1),
 
     def forward_gpu(self, inputs):
-        cupy = cuda.cupy
         x, W = inputs[:2]
         out_c, _, kh, kw = W.shape
 
@@ -141,7 +140,6 @@ class Convolution2DFunction(function.Function):
             return gx, gW
 
     def backward_gpu(self, inputs, grad_outputs):
-        cupy = cuda.cupy
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
@@ -154,7 +152,7 @@ class Convolution2DFunction(function.Function):
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
             if not gy.flags.c_contiguous:
-                gy = cupy.ascontiguousarray(gy)
+                gy = cuda.cupy.ascontiguousarray(gy)
             gy_desc = cudnn.create_tensor_descriptor(gy)
             dtype = x.dtype
             one = numpy.array(1, dtype=dtype).ctypes
@@ -183,13 +181,13 @@ class Convolution2DFunction(function.Function):
             # TODO(beam2d): Use streams or batch gemm
             gW_mat[...] = 0
             for i in moves.range(n):
-                gW_mat += cupy.dot(gy_mats[i], col_mats[i].T)
+                gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
 
             W_mat = W.reshape(out_c, -1)
             gcol = cuda.cupy.empty_like(self.col)
             gcol_mats = gcol.reshape(n, c * kh * kw, out_h * out_w)
             for i in moves.range(n):
-                cupy.dot(W_mat.T, gy_mats[i], gcol_mats[i])
+                cuda.cupy.dot(W_mat.T, gy_mats[i], gcol_mats[i])
 
             gx = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, h, w)

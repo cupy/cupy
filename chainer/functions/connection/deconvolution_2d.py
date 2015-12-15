@@ -96,7 +96,8 @@ class Deconvolution2DFunction(function.Function):
         if cuda.cudnn_enabled and self.use_cudnn:
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
-            y = cuda.cupy.empty((n, c, self.outh, self.outw), dtype=numpy.float32)
+            y = cuda.cupy.empty((n, c, self.outh, self.outw),
+                                dtype=numpy.float32)
             y_desc = cudnn.create_tensor_descriptor(y)
 
             self.filter_desc = cudnn.create_filter_descriptor(W)
@@ -121,8 +122,8 @@ class Deconvolution2DFunction(function.Function):
         else:
             W_mat = W.reshape(in_c, c * kh * kw)
             x_mats = x.reshape(n, in_c, in_h * in_w)
-            gcol = cuda.cupy.empty((n, c, kh, kw, in_h,
-                               in_w), dtype=numpy.float32)
+            gcol = cuda.cupy.empty(
+                (n, c, kh, kw, in_h, in_w), dtype=numpy.float32)
             gcol_mats = gcol.reshape(n, c * kh * kw, in_h * in_w)
             for i in moves.range(n):
                 cuda.cupy.dot(W_mat.T, x_mats[i], gcol_mats[i])

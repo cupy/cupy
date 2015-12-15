@@ -161,7 +161,6 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
         return gx
 
     def forward_gpu(self, inputs):
-        cupy = cuda.cupy
         x, t, W = inputs
         max_length = cuda.reduce(
             'T t, raw T begins', 'T out', 'begins[t + 1] - begins[t]',
@@ -209,13 +208,12 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
         return ls.sum(),
 
     def backward_gpu(self, inputs, grad_outputs):
-        cupy = cuda.cupy
         x, t, W = inputs
         gloss, = grad_outputs
 
         n_in = x.shape[1]
-        gx = cupy.zeros_like(x)
-        gW = cupy.zeros_like(W)
+        gx = cuda.cupy.zeros_like(x)
+        gW = cuda.cupy.zeros_like(W)
         cuda.elementwise(
             '''T wxy, raw T x, raw T w, raw int32 ts, raw int32 paths,
             raw T codes, raw int32 begins, raw T gloss,
