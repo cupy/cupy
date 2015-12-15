@@ -296,7 +296,6 @@ cdef class PooledMemory(Memory):
         self.ptr = 0
         self.size = 0
         self.device = None
-        self.pool = None
 
 
 cdef class SingleDeviceMemoryPool:
