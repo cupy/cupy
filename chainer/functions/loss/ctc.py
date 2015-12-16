@@ -112,13 +112,12 @@ class ConnectionistTemporalClassification(function.Function):
             res = create_recurrence_relation(x, self.zero_padding)
         return res.astype(numpy.float32)
 
-    def recurrence_relation(self, path_length, dtype, xp):
+    def recurrence_relation(self, path_length, max_length, dtype, xp):
         """Transition in forword and backword algorithms is represented as matrix.
 
         See also
         https://blog.wtf.sg/2014/10/06/connectionist-temporal-classification-ctc-with-theano/
         """
-        max_length = int(xp.max(path_length))
         rr = (xp.eye(max_length, dtype=dtype) +
               xp.eye(max_length, k=1, dtype=dtype) +
               xp.eye(max_length, k=2, dtype=dtype) *
@@ -177,8 +176,7 @@ class ConnectionistTemporalClassification(function.Function):
         prob = []
         index = offset + path
         frr = self.recurrence_relation(
-            self.path_length, numpy.float32, xp)
-
+            self.path_length, path.shape[1], numpy.float32, xp)
         # forward computation.
         for y in yseq:
             # calc forward probability in log scale
@@ -191,7 +189,7 @@ class ConnectionistTemporalClassification(function.Function):
         # rotate yseq with path_length
         yseq_inv = _move_inputs(yseq, self.input_length, xp)[::-1]
         brr = self.recurrence_relation(
-            self.path_length, numpy.float32, xp)
+            self.path_length, path.shape[1], numpy.float32, xp)
 
         # move to back.
         prob = _move_inputs(prob, self.input_length, xp)
