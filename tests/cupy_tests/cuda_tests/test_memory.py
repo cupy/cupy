@@ -146,3 +146,8 @@ class TestMemoryPool(unittest.TestCase):
         mem = self.pool.malloc(0).mem
         self.assertIsInstance(mem, memory.Memory)
         self.assertNotIsInstance(mem, memory.PooledMemory)
+
+    def test_double_free(self):
+        mem = self.pool.malloc(1).mem
+        mem.free()
+        mem.free()
