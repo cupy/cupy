@@ -108,3 +108,11 @@ class TestRanges(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_linspace_float_overflow(self, xp):
         return xp.linspace(0., sys.float_info.max / 5, 10, dtype=float)
+
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_float_underflow(self, xp):
+        # find minimum subnormal number
+        x = sys.float_info.min
+        while x / 2 > 0:
+            x /= 2
+        return xp.linspace(0., x, 10, dtype=float)

@@ -83,7 +83,11 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         step = float(stop - start) / div
         stop = float(stop)
 
-        _linspace_ufunc(start, step, ret)
+        if step == 0.0:
+            # for underflow
+            _linspace_ufunc_underflow(start, stop - start, div, ret)
+        else:
+            _linspace_ufunc(start, step, ret)
 
         if endpoint:
             ret[-1] = stop
@@ -115,3 +119,8 @@ _linspace_ufunc = core.create_ufunc(
     'cupy_linspace',
     ('dd->d',),
     'out0 = in0 + i * in1')
+
+_linspace_ufunc_underflow = core.create_ufunc(
+    'cupy_linspace',
+    ('ddd->d',),
+    'out0 = in0 + i * in1 / in2')
