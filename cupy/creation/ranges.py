@@ -66,7 +66,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
 
     """
     if num < 0:
-        raise ValueError('linspace with num<=0 is not supported')
+        raise ValueError('linspace with num<0 is not supported')
 
     if dtype is None:
         # In actual implementation, only float is used
