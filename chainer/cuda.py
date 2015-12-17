@@ -123,7 +123,8 @@ DummyDevice = DummyDeviceType()
 # Global states
 # ------------------------------------------------------------------------------
 if available:
-    cuda.set_allocator(cuda.MemoryPool().malloc)
+    pool = cuda.MemoryPool()
+    cuda.set_allocator(pool.malloc)
 
 
 # ------------------------------------------------------------------------------
