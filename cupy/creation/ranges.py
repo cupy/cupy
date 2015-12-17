@@ -65,15 +65,12 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         cupy.ndarray: The 1-D array of ranged values.
 
     """
-    if num <= 0:
-        # TODO(beam2d): Return zero-sized array
+    if num < 0:
         raise ValueError('linspace with num<=0 is not supported')
 
     if dtype is None:
-        if any(numpy.dtype(type(val)).kind == 'f' for val in (start, stop)):
-            dtype = float
-        else:
-            dtype = int
+        # In actual implementation, only float is used
+        dtype = float
 
     ret = cupy.empty((num,), dtype=dtype)
     if num == 0:
@@ -83,9 +80,9 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         return ret
 
     if endpoint:
-        step = (stop - start) / (num - 1)
+        step = float(stop - start) / (num - 1)
     else:
-        step = (stop - start) / num
+        step = float(stop - start) / num
         stop = start + step * (num - 1)
 
     typ = numpy.dtype(dtype).type
