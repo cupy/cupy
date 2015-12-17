@@ -76,6 +76,10 @@ class TestRanges(unittest.TestCase):
     def test_linspace_no_dtype_int(self, xp):
         return xp.linspace(0, 10)
 
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_allclose()
     def test_linspace_no_dtype_float(self, xp):
-        return xp.arange(0.0, 10.0)
+        return xp.linspace(0.0, 10.0)
+
+    @testing.numpy_cupy_raises()
+    def test_linspace_neg_num(self, xp):
+        return xp.linspace(0, 10, -1)
