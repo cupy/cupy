@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from cupy import testing
@@ -57,6 +58,22 @@ class TestRanges(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
+    def test_linspace_zero_num_no_endopoint_with_retstep(self, xp, dtype):
+        x, step = xp.linspace(0, 10, 0, dtype=dtype, endpoint=False,
+                              retstep=True)
+        self.assertIs(step, float('nan'))
+        return x
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_one_num_no_endopoint_with_retstep(self, xp, dtype):
+        x, step = xp.linspace(0, 10, 1, dtype=dtype, endpoint=False,
+                              retstep=True)
+        self.assertIs(step, float('nan'))
+        return x
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
     def test_linspace_one_num(self, xp, dtype):
         return xp.linspace(0, 10, 1, dtype=dtype)
 
@@ -80,6 +97,14 @@ class TestRanges(unittest.TestCase):
     def test_linspace_no_dtype_float(self, xp):
         return xp.linspace(0.0, 10.0)
 
+    @testing.numpy_cupy_allclose()
+    def test_linspace_float_args_with_int_dtype(self, xp):
+        return xp.linspace(0.1, 9.1, 11, dtype=int)
+
     @testing.numpy_cupy_raises()
     def test_linspace_neg_num(self, xp):
         return xp.linspace(0, 10, -1)
+
+    @testing.numpy_cupy_allclose()
+    def test_linspace_float_overflow(self, xp):
+        return xp.linspace(0., sys.float_info.max / 5, 10, dtype=float)
