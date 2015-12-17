@@ -2,8 +2,10 @@ from __future__ import print_function
 
 import functools
 import os
+import pkg_resources
 import random
 import traceback
+import unittest
 
 import numpy
 
@@ -311,6 +313,33 @@ def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=None):
     else:
         types = _int_bool_dtypes
     return for_dtypes_combination(types, names, full)
+
+
+def with_requires(*requirements):
+    """Run a test case only when given requirements are satisfied.
+
+    .. admonition:: Example
+
+       This test case runs only when `numpy>=1.10` is installed.
+
+       >>> @helper.with_requires('numpy>=1.10')
+       ... def test_for_numpy_1_10(self):
+       ...     pass
+
+    Args:
+        requirements: A list of string representing requirement condition to
+            run a given test case.
+
+    """
+    ws = pkg_resources.WorkingSet()
+    try:
+        ws.require(*requirements)
+        condition = True
+    except pkg_resources.VersionConflict:
+        condition = False
+
+    msg = 'requires: {}'.format(','.join(requirements))
+    return unittest.skipUnless(condition, msg)
 
 
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
