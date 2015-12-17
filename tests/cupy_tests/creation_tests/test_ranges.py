@@ -1,3 +1,4 @@
+import math
 import sys
 import unittest
 
@@ -56,23 +57,23 @@ class TestRanges(unittest.TestCase):
     def test_linspace_zero_num(self, xp, dtype):
         return xp.linspace(0, 10, 0, dtype=dtype)
 
-    # This test case only works on numpy>=1.10
-    # @testing.for_all_dtypes(no_bool=True)
-    # @testing.numpy_cupy_array_equal()
-    # def test_linspace_zero_num_no_endopoint_with_retstep(self, xp, dtype):
-    #     x, step = xp.linspace(0, 10, 0, dtype=dtype, endpoint=False,
-    #                           retstep=True)
-    #     self.assertTrue(math.isnan(step))
-    #     return x
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_zero_num_no_endopoint_with_retstep(self, xp, dtype):
+        x, step = xp.linspace(0, 10, 0, dtype=dtype, endpoint=False,
+                              retstep=True)
+        self.assertTrue(math.isnan(step))
+        return x
 
-    # This test case only works on numpy>=1.10
-    # @testing.for_all_dtypes(no_bool=True)
-    # @testing.numpy_cupy_array_equal()
-    # def test_linspace_one_num_no_endopoint_with_retstep(self, xp, dtype):
-    #     x, step = xp.linspace(0, 10, 1, dtype=dtype, endpoint=False,
-    #                           retstep=True)
-    #     self.assertTrue(math.isnan(step))
-    #     return x
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_one_num_no_endopoint_with_retstep(self, xp, dtype):
+        x, step = xp.linspace(0, 10, 1, dtype=dtype, endpoint=False,
+                              retstep=True)
+        self.assertTrue(math.isnan(step))
+        return x
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -103,20 +104,20 @@ class TestRanges(unittest.TestCase):
     def test_linspace_float_args_with_int_dtype(self, xp):
         return xp.linspace(0.1, 9.1, 11, dtype=int)
 
-    # This test case only works numpy>=1.10
-    # @testing.numpy_cupy_raises()
-    # def test_linspace_neg_num(self, xp):
-    #     return xp.linspace(0, 10, -1)
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_raises()
+    def test_linspace_neg_num(self, xp):
+        return xp.linspace(0, 10, -1)
 
     @testing.numpy_cupy_allclose()
     def test_linspace_float_overflow(self, xp):
         return xp.linspace(0., sys.float_info.max / 5, 10, dtype=float)
 
-    # This test case only works numpy>=1.10
-    # @testing.numpy_cupy_array_equal()
-    # def test_linspace_float_underflow(self, xp):
-    #     # find minimum subnormal number
-    #     x = sys.float_info.min
-    #     while x / 2 > 0:
-    #         x /= 2
-    #     return xp.linspace(0., x, 10, dtype=float)
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_array_equal()
+    def test_linspace_float_underflow(self, xp):
+        # find minimum subnormal number
+        x = sys.float_info.min
+        while x / 2 > 0:
+            x /= 2
+        return xp.linspace(0., x, 10, dtype=float)
