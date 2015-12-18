@@ -346,12 +346,13 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
     if not out_args:
         return [ndarray(out_shape, t) for t in out_types]
 
-    for a, out_type in six.moves.zip(out_args, out_types):
+    for i, a in enumerate(out_args):
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         if a.shape != out_shape:
             raise ValueError('Out shape is mismatched')
+        out_type = out_types[i]
         if not numpy.can_cast(out_type, a.dtype, casting=casting):
             msg = 'output (typecode \'{}\') could not be coerced to ' \
                   'provided output parameter (typecode \'{}\') according to ' \
