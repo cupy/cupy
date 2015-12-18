@@ -16,6 +16,63 @@ from setuptools.command import build_ext
 dummy_extension = setuptools.Extension('chainer', ['chainer.c'])
 
 cython_version = '0.23.0'
+minimum_cuda_version = 6500
+minimum_cudnn_version = 2000
+
+
+def check_cuda_version(compiler, settings):
+    out = build_and_run(compiler, '''
+    #include <cuda.h>
+    #include <stdio.h>
+    int main(int argc, char* argv[]) {
+      printf("%d", CUDA_VERSION);
+    }
+    ''', include_dirs=settings['include_dirs'])
+
+    if out is None:
+        print('**************************************************')
+        print('*** Cannot check CUDA version')
+        print('**************************************************')
+        return False
+
+    cuda_version = int(out)
+
+    if cuda_version < minimum_cuda_version:
+        print('**************************************************')
+        print('*** CUDA version is too old: %d' % cuda_version)
+        print('*** CUDA v6.5 or newer is required')
+        print('**************************************************')
+        return False
+
+    return True
+
+
+def check_cudnn_version(compiler, settings):
+    out = build_and_run(compiler, '''
+    #include <cudnn.h>
+    #include <stdio.h>
+    int main(int argc, char* argv[]) {
+      printf("%d", CUDNN_VERSION);
+    }
+    ''', include_dirs=settings['include_dirs'])
+
+    if out is None:
+        print('**************************************************')
+        print('*** Cannot check cuDNN version')
+        print('**************************************************')
+        return False
+
+    cudnn_version = int(out)
+
+    if cudnn_version < minimum_cudnn_version:
+        print('**************************************************')
+        print('*** cuDNN version is too old: %d' % cudnn_version)
+        print('*** cuDNN v2 or newer is required')
+        print('**************************************************')
+        return False
+
+    return True
+
 
 MODULES = [
     {
@@ -44,6 +101,7 @@ MODULES = [
             'cudart',
             'curand',
         ],
+        'check_method': check_cuda_version,
     },
     {
         'name': 'cudnn',
@@ -56,6 +114,7 @@ MODULES = [
         'libraries': [
             'cudnn',
         ],
+        'check_method': check_cudnn_version,
     }
 ]
 
@@ -169,6 +228,40 @@ def check_library(compiler, includes=[], libraries=[],
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def build_and_run(compiler, source, libraries=[],
+                  include_dirs=[], library_dirs=[]):
+    temp_dir = tempfile.mkdtemp()
+
+    try:
+        fname = os.path.join(temp_dir, 'a.cpp')
+        with open(fname, 'w') as f:
+            f.write(source)
+
+        try:
+            objects = compiler.compile([fname], output_dir=temp_dir,
+                                       include_dirs=include_dirs)
+        except distutils.errors.CompileError:
+            return None
+
+        try:
+            compiler.link_executable(objects,
+                                     os.path.join(temp_dir, 'a'),
+                                     libraries=libraries,
+                                     library_dirs=library_dirs)
+        except (distutils.errors.LinkError, TypeError):
+            return None
+
+        try:
+            out = subprocess.check_output(os.path.join(temp_dir, 'a'))
+            return out
+
+        except Exception:
+            return None
+
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
 def make_extensions(options, compiler):
 
     """Produce a list of Extension instances which passed to cythonize()."""
@@ -224,6 +317,10 @@ def make_extensions(options, compiler):
                 print('*** Skip installing %s support' % module['name'])
                 print('*** Check your LIBRARY_PATH environment variable')
                 print('**************************************************')
+                continue
+
+            if 'check_method' in module and \
+               not module['check_method'](compiler, settings):
                 continue
 
         s = settings.copy()
