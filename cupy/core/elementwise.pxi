@@ -341,16 +341,25 @@ cdef tuple _broadcast(list args, tuple params, bint use_size):
     return value, brod.shape
 
 
-cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape):
+cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
+                        str casting):
     if not out_args:
         return [ndarray(out_shape, t) for t in out_types]
 
-    for a in out_args:
+    for a, out_type in six.moves.zip(out_args, out_types):
         if not isinstance(a, ndarray):
             raise TypeError(
                 'Output arguments type must be cupy.ndarray')
         if a.shape != out_shape:
             raise ValueError('Out shape is mismatched')
+        if not numpy.can_cast(out_type, a.dtype, casting=casting):
+            msg = 'output (typecode \'{}\') could not be coerced to ' \
+                  'provided output parameter (typecode \'{}\') according to ' \
+                  'the casting rule "{}"'.format(
+                      numpy.dtype(out_type).char,
+                      a.dtype.char,
+                      casting)
+            raise TypeError(msg)
     return out_args
 
 
@@ -704,6 +713,8 @@ class ufunc(object):
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
+        # Note default behavie of casting is 'same_kind' on numpy>=1.10
+        casting = kwargs.pop('casting', 'same_kind')
         if dtype is not None:
             dtype = numpy.dtype(dtype).type
         if kwargs:
@@ -734,7 +745,7 @@ class ufunc(object):
         in_types, out_types, routine = _guess_routine(
             self.name, self._routine_cache, self._ops, in_args, dtype)
 
-        out_args = _get_out_args(out_args, out_types, shape)
+        out_args = _get_out_args(out_args, out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
         else:

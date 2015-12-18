@@ -226,7 +226,7 @@ class simple_reduction_function(object):
 
         axis, raxis = _get_axis(axis, a.ndim)
         out_shape = _get_out_shape(a.shape, axis, raxis, keepdims)
-        out_args = _get_out_args(out_args, out_types, out_shape)
+        out_args = _get_out_args(out_args, out_types, out_shape, 'same_kind')
         if 0 in out_shape:
             if len(out_args) == 1:
                 return out_args[0]
