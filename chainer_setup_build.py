@@ -16,7 +16,7 @@ from setuptools.command import build_ext
 dummy_extension = setuptools.Extension('chainer', ['chainer.c'])
 
 cython_version = '0.23.0'
-minimum_cuda_version = 6500
+minimum_cuda_version = 6050
 minimum_cudnn_version = 2000
 
 
