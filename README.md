@@ -81,8 +81,8 @@ And then, reinstall Chainer.
 
 Seiya Tokui, Kenta Oono, Shohei Hido and Justin Clayton,
 *Chainer: a Next-Generation Open Source Framework for Deep Learning*,
-in Neural Information Processing Systems, Workshop on Machine Learning Systems, 2015
-[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf)
+in Neural Information Processing Systems(NIPS), Workshop on Machine Learning Systems(LearningSys), 2015
+[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](chainer_bibtex.txt)
 
 
 ## More information
