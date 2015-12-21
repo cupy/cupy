@@ -167,7 +167,7 @@ class Convolution2DFunction(function.Function):
             workspace_size = libcudnn.getConvolutionBackwardFilterWorkspaceSize(
                 handle, x_desc.value, gy_desc.value, self.conv_desc.value,
                 self.filter_desc.value, algo)
-            workspace = cupy.empty(
+            workspace = cuda.cupy.empty(
                 (max(workspace_size // 4, 1),), dtype=x.dtype)
 
             libcudnn.convolutionBackwardFilter(
@@ -183,7 +183,7 @@ class Convolution2DFunction(function.Function):
             workspace_size = libcudnn.getConvolutionBackwardDataWorkspaceSize(
                 handle, self.filter_desc.value, gy_desc.value,
                 self.conv_desc.value, x_desc.value, algo)
-            workspace = cupy.empty(
+            workspace = cuda.cupy.empty(
                 (max(workspace_size // 4, 1),), dtype=x.dtype)
 
             gx = cuda.cupy.empty_like(x)

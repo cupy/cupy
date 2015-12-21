@@ -85,7 +85,6 @@ class Deconvolution2DFunction(function.Function):
         return y,
 
     def forward_gpu(self, inputs):
-        cupy = cuda.cupy
         x, W = inputs[:2]
         kh, kw = W.shape[2:]
         n, in_c, in_h, in_w = x.shape
@@ -121,7 +120,7 @@ class Deconvolution2DFunction(function.Function):
             workspace_size = libcudnn.getConvolutionBackwardDataWorkspaceSize(
                 handle, self.filter_desc.value, x_desc.value,
                 self.conv_desc.value, y_desc.value, algo)
-            workspace = cupy.empty(
+            workspace = cuda.cupy.empty(
                 (max(workspace_size // 4, 1),), dtype=x.dtype)
 
             libcudnn.convolutionBackwardData(
@@ -164,7 +163,6 @@ class Deconvolution2DFunction(function.Function):
             return gx, gW
 
     def backward_gpu(self, inputs, grad_outputs):
-        cupy = cuda.cupy
         x, W = inputs[:2]
         gy = grad_outputs[0]
         n, in_c, in_h, in_w = x.shape
@@ -214,7 +212,7 @@ class Deconvolution2DFunction(function.Function):
             workspace_size = libcudnn.getConvolutionBackwardFilterWorkspaceSize(
                 handle, gy_desc.value, gx_desc.value, self.conv_desc.value,
                 self.filter_desc.value, algo)
-            workspace = cupy.empty(
+            workspace = cuda.cupy.empty(
                 (max(workspace_size // 4, 1),), dtype=x.dtype)
 
             libcudnn.convolutionBackwardFilter(
