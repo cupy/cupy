@@ -151,3 +151,16 @@ class TestMemoryPool(unittest.TestCase):
         mem = self.pool.malloc(1).mem
         mem.free()
         mem.free()
+
+    def test_free_all_free(self):
+        from cupy.cuda import Device
+        self.pool = memory.MemoryPool()
+        with Device(0):
+            mem = self.pool.malloc(1).mem
+            self.assertIsInstance(mem, memory.Memory)
+            self.assertIsInstance(mem, memory.PooledMemory)
+            self.assertEqual(self.pool.n_free(), 0)
+            mem.free()
+            self.assertEqual(self.pool.n_free(), 1)
+            self.pool.free_all_free()
+            self.assertEqual(self.pool.n_free(), 0)
