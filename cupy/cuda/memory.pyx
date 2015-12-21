@@ -392,10 +392,10 @@ cdef class MemoryPool(object):
         dev = device.get_device_id()
         return self._pools[dev].malloc(size)
 
-    cpdef destroy(self):
-        """Destroy memory pool anyway.
+    cpdef free_all_free(self):
+        """release unusing memory pool.
         """
         dev = device.get_device_id()
         if dev in self._pools:
-            del self._pools[dev]
+            self._pools[dev].free_all_free()
 

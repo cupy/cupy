@@ -61,4 +61,4 @@ cdef class MemoryPool:
         object _pools
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
-    cpdef destroy(self)
+    cpdef free_all_free(self)
