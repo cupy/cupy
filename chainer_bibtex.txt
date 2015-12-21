@@ -1,0 +1,6 @@
+@inproceedings{chainer_learningsys2015,
+  author       = "Seiya Tokui, Kenta Oono, Shohei Hido and Justin Clayton",
+  title        = "Chainer: a Next-Generation Open Source Framework for Deep Learning",
+  booktitle    = "Neural Information Processing Systems(NIPS), Workshop on Machine Learning Systems(LearningSys)",
+  year         = "2015",
+}
