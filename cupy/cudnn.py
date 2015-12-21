@@ -47,7 +47,7 @@ def get_data_type(dtype):
         return cudnn.CUDNN_DATA_FLOAT
     elif dtype.type == numpy.float64:
         return cudnn.CUDNN_DATA_DOUBLE
-    elif dtype.type == numpy.float16
+    elif dtype.type == numpy.float16:
         return cudnn.CUDNN_DATA_HALF
     else:
         raise TypeError('Dtype {} is not supported in CuDNN'.format(dtype))
