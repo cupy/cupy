@@ -101,9 +101,8 @@ class TestSearch(unittest.TestCase):
 )
 class TestWhere(unittest.TestCase):
 
-    @testing.for_all_dtypes(name='cond_type')
-    @testing.for_all_dtypes(name='x_type')
-    @testing.for_all_dtypes(name='y_type')
+    @testing.for_all_dtypes_combination(
+        names=['cond_type', 'x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def test_where(self, xp, cond_type, x_type, y_type):
         m = testing.shaped_random(self.cond_shape, xp, xp.bool_)
