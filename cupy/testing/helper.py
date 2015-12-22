@@ -334,12 +334,12 @@ def with_requires(*requirements):
     ws = pkg_resources.WorkingSet()
     try:
         ws.require(*requirements)
-        condition = True
+        skip = False
     except pkg_resources.VersionConflict:
-        condition = False
+        skip = True
 
     msg = 'requires: {}'.format(','.join(requirements))
-    return unittest.skipUnless(condition, msg)
+    return unittest.skipIf(skip, msg)
 
 
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
