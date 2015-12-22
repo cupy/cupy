@@ -7,11 +7,21 @@ from chainer import cuda
 import chainer.link as link_module
 
 
-def _sqnorm(x):
-    # TODO(delta2323): Make it public function and move it to common directory.
-    with cuda.get_device(x):
-        x = x.ravel()
-        return float(x.dot(x))
+def _sum_sqnorm(arr):
+    sum = {}
+    for x in arr:
+        with cuda.get_device(x) as dev:
+            x = x.ravel()
+            s = x.dot(x)
+        id = int(dev)
+        if id in sum:
+            sum[id] += s
+        else:
+            sum[id] = s
+    ret = 0.0
+    for i in six.itervalues(sum):
+        ret += float(i)
+    return ret
 
 
 class Optimizer(object):
@@ -277,11 +287,7 @@ class Optimizer(object):
         .. deprecated:: v1.5
 
         """
-        # TODO(beam2d): Make it asynchronous to CPU when gradients exist on GPU
-        sqnorm = 0
-        for param in self.target.params():
-            sqnorm += _sqnorm(param.grad)
-        return numpy.sqrt(sqnorm)
+        return numpy.sqrt(_sum_sqnorm([p.grad for p in self.target.params()]))
 
     def clip_grads(self, maxnorm):
         """Clips the norm of whole gradients up to the threshold.
@@ -476,11 +482,7 @@ class GradientClipping(object):
         self.threshold = threshold
 
     def __call__(self, opt):
-        # TODO(beam2d): Make it faster. Avoid CPU/GPU copy as much as possible.
-        sum2 = 0
-        for param in opt.target.params():
-            sum2 += _sqnorm(param.grad)
-        norm = numpy.sqrt(sum2)
+        norm = numpy.sqrt(_sum_sqnorm([p.grad for p in opt.target.params()]))
         rate = self.threshold / norm
         if rate < 1:
             for param in opt.target.params():
