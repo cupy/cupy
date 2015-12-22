@@ -59,7 +59,15 @@ class GoogLeNetBN(chainer.Chain):
         self.inc5a.train = value
         self.inc5b.train = value
 
+    def clear(self):
+        self.loss = None
+        self.loss1 = None
+        self.loss2 = None
+        self.loss3 = None
+        self.accuracy = None
+
     def __call__(self, x, t):
+        self.clear()
         test = not self.train
 
         h = F.max_pooling_2d(

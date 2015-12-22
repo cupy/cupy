@@ -187,6 +187,7 @@ for epoch in range(args.epoch):
 
         model.zerograds()
         loss.backward()
+        del loss
         optimizer.update()
 
     print(accum_loss)

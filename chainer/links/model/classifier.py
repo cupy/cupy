@@ -48,6 +48,9 @@ class Classifier(link.Chain):
             ~chainer.Variable: Loss value.
 
         """
+        self.y = None
+        self.loss = None
+        self.accuracy = None
         self.y = self.predictor(x)
         self.loss = self.lossfun(self.y, t)
         if self.compute_accuracy:
