@@ -352,7 +352,10 @@ def parse_args():
 
 
 def get_cython_pkg():
-    return pkg_resources.get_distribution('cython')
+    try:
+        return pkg_resources.get_distribution('cython')
+    except pkg_resources.DistributionNotFound:
+        return None
 
 
 def run_command(cmd):
