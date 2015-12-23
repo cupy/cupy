@@ -42,8 +42,8 @@ before_install:
     fi
 
 install:
-  - python setup.py install
   - pip install cython
+  - python setup.py install
   - pip install h5py
   - pip install nose flake8 hacking mock
 
