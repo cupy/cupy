@@ -61,3 +61,24 @@ def broadcast(*args):
           broadcasted from given arguments.
     """
     return Broadcast()(*args)
+
+
+class BroadcastTo(function.Function):
+
+    """Function that broadcasts an array to a new shape."""
+
+    def __init__(self, shape):
+        shape = tuple(shape)
+        self._shape = shape
+
+    def forward(self, xs):
+        xp = cuda.get_array_module(*xs)
+        x = xs[0]
+        return xp.broadcast_to(x, self._shape),
+
+    def backward(self, xs, grads):
+        return tuple(_backward_one(x, g) for x, g in six.moves.zip(xs, grads))
+
+
+def broadcast_to(x, shape):
+    return BroadcastTo(shape)(x)
