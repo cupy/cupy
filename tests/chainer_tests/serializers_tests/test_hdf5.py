@@ -236,20 +236,25 @@ def no_h5py(name, _globals=None, _locals=None, fromlist=(), level=0):
 
 class TestNoH5py(unittest.TestCase):
 
+    def setUp(self):
+        __builtins__['__import__'] = no_h5py
+
+    def tearDown(self):
+        __builtins__['__import__'] = original_import
+
     def test_raise(self):
         del sys.modules['chainer.serializers.hdf5']
         del sys.modules['chainer.serializers']
 
-        with mock.patch('__builtin__.__import__', side_effect=no_h5py):
-            import chainer.serializers
-            with self.assertRaises(RuntimeError):
-                chainer.serializers.save_hdf5(None, None, None)
-            with self.assertRaises(RuntimeError):
-                chainer.serializers.load_hdf5(None, None)
-            with self.assertRaises(RuntimeError):
-                chainer.serializers.HDF5Serializer(None)
-            with self.assertRaises(RuntimeError):
-                chainer.serializers.HDF5Deserializer(None)
+        import chainer.serializers
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.save_hdf5(None, None, None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.load_hdf5(None, None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.HDF5Serializer(None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.HDF5Deserializer(None)
 
 
 testing.run_module(__name__, __file__)
