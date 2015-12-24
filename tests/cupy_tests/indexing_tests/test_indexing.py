@@ -14,6 +14,11 @@ class TestIndexing(unittest.TestCase):
         return a.take(2, axis=1)
 
     @testing.numpy_cupy_array_equal()
+    def test_external_take_by_scalar(self, xp):
+        a = testing.shaped_arange((2, 4, 3), xp)
+        return xp.take(a, 2, axis=1)
+
+    @testing.numpy_cupy_array_equal()
     def test_take_by_array(self, xp):
         a = testing.shaped_arange((2, 4, 3), xp)
         b = xp.array([[1, 3], [2, 0]])
@@ -27,12 +32,18 @@ class TestIndexing(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_diagonal1(self, xp, dtype):
+    def test_diagonal(self, xp, dtype):
         a = testing.shaped_arange((3, 4, 5), xp, dtype)
         return a.diagonal(1, 2, 0)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_diagonal2(self, xp, dtype):
+    def test_external_diagonal(self, xp, dtype):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return xp.diagonal(a, 1, 2, 0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_diagonal_negative(self, xp, dtype):
         a = testing.shaped_arange((3, 4, 5), xp, dtype)
         return a.diagonal(-1, 2, 0)
