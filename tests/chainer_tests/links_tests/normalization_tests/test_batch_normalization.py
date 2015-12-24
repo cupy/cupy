@@ -30,8 +30,10 @@ class TestBatchNormalization(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
 
+        self.volatile = 'off'
+
     def check_forward(self, x_data):
-        x = chainer.Variable(x_data)
+        x = chainer.Variable(x_data, volatile=self.volatile)
         y = self.link(x)
         self.assertEqual(y.data.dtype, numpy.float32)
 
@@ -50,6 +52,19 @@ class TestBatchNormalization(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
+        self.link.to_gpu()
+        self.check_forward(cuda.to_gpu(self.x))
+
+    @condition.retry(3)
+    def test_forward_cpu_volatile(self):
+        self.volatile = 'on'
+        self.link.test = True
+        self.check_forward(self.x)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu_volatile(self):
+        self.volatile = 'on'
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
 
@@ -98,6 +113,8 @@ class TestBatchNormalization2D(TestBatchNormalization):
                                       (7, 3, 2, 2)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1,
                                        (7, 3, 2, 2)).astype(numpy.float32)
+
+        self.volatile = 'off'
 
 
 testing.run_module(__name__, __file__)
