@@ -18,7 +18,9 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
     pooling_class = functions.MaxPooling2D
 
     def setUp(self):
-        # Avoid unstability of numerical gradient
+        # Spacial pyramid pooling uses max pooling in its implementation.
+        # To avoid unstability of numerical gradient, use enoufh different
+        # values.
         shape = (self.n, self.c, self.h, self.w)
         size = numpy.prod(shape)
         self.x = numpy.arange(size, dtype=numpy.float32).reshape(shape)
