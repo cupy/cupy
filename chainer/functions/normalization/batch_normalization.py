@@ -74,11 +74,6 @@ class BatchNormalizationFunction(function.Function):
         return y,
 
     def backward(self, inputs, grad_outputs):
-        if len(inputs) == 5:
-            # TODO(beam2d): Support it
-            raise RuntimeError('BatchNormalization does not support backprop '
-                               'with fixed mean/var.')
-
         x, gamma = inputs[:2]
         gy = grad_outputs[0]
 
@@ -102,7 +97,10 @@ class BatchNormalizationFunction(function.Function):
                 'gx = (gamma / std) * (gy - (x_hat * ggamma + gbeta) * inv_m)',
                 'bn_bwd')(gy, self.x_hat, gamma[expander], self.std[expander],
                           ggamma[expander], gbeta[expander], inv_m)
-        return gx, ggamma, gbeta
+        if len(inputs) == 5:
+            return gx, ggamma, gbeta, None, None
+        else:
+            return gx, ggamma, gbeta
 
 
 def batch_normalization(x, gamma, beta, eps=1e-5):
