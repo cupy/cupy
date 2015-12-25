@@ -3,4 +3,5 @@
   title        = "Chainer: a Next-Generation Open Source Framework for Deep Learning",
   booktitle    = "Proceedings of Workshop on Machine Learning Systems(LearningSys) in The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIPS)",
   year         = "2015",
+  url          = "http://learningsys.org/papers/LearningSys_2015_paper_33.pdf"
 }
