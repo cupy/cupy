@@ -53,7 +53,7 @@ class TestBatchNormalization(unittest.TestCase):
             self.x.var(axis=self.aggr_axes, keepdims=True) + self.link.eps)
         y_expect = self.gamma * (self.x - mean) / std + self.beta
 
-        gradient_check.assert_allclose(y_expect, y.data)
+        gradient_check.assert_allclose(y_expect, y.data, rtol=1e-3, atol=1e-4)
         self.assertEqual(numpy.float32, y.data.dtype)
 
     @condition.retry(3)
