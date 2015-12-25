@@ -140,21 +140,24 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
-        self.pool = memory.SingleDeviceMemoryPool()
+        self.pool = memory.MemoryPool()
 
     def test_zero_size_alloc(self):
-        mem = self.pool.malloc(0).mem
-        self.assertIsInstance(mem, memory.Memory)
-        self.assertNotIsInstance(mem, memory.PooledMemory)
+        from cupy.cuda import Device
+        with Device(0):
+            mem = self.pool.malloc(0).mem
+            self.assertIsInstance(mem, memory.Memory)
+            self.assertNotIsInstance(mem, memory.PooledMemory)
 
     def test_double_free(self):
-        mem = self.pool.malloc(1).mem
-        mem.free()
-        mem.free()
+        from cupy.cuda import Device
+        with Device(0):
+            mem = self.pool.malloc(1).mem
+            mem.free()
+            mem.free()
 
     def test_free_all_free(self):
         from cupy.cuda import Device
-        self.pool = memory.MemoryPool()
         with Device(0):
             mem = self.pool.malloc(1).mem
             self.assertIsInstance(mem, memory.Memory)
