@@ -54,7 +54,7 @@ def assert_arrays_almost_equal_nulp(x, y, nulp=1):
 
     .. seealso:: :func:`numpy.testing.assert_array_almost_equal_nulp`
     """
-    numpy.testing.assert_array_almost_equal_nulp(
+    numpy.testing.assert_arrays_almost_equal_nulp(
         cupy.asnumpy(x), cupy.asnumpy(y), nulp=nulp)
 
 
