@@ -372,8 +372,10 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
-         no_float16(bool): If, True. The test with `numpy.float16` is skipped.
-         no_bool(bool): If, True. The test with `numpy.bool_` is skipped.
+         no_float16(bool): If, True, `numpy.float16` is
+             omitted from candidate dtypes.
+         no_bool(bool): If, True, `numpy.bool_` is
+             omitted from candidate dtypes.
 
     dtypes to be tested: `numpy.float16`(optional), `numpy.float32`,
     `numpy.float64`, `numpy.dtype('b')`, `numpy.dtype('h')`,
@@ -391,7 +393,8 @@ def for_float_dtypes(name='dtype', no_float16=False):
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
-         no_float16(bool): If, True. The test with `numpy.float16` is skipped.
+         no_float16(bool): If, True, `numpy.float16` is
+             omitted from candidate dtypes.
 
     dtypes to be tested: `numpy.float16`(optional), `numpy.float32`,
     `numpy.float64`.
@@ -437,7 +440,8 @@ def for_int_dtypes(name='dtype', no_bool=False):
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
-         no_bool(bool): If, True. The test with `numpy.bool_` is skipped.
+         no_bool(bool): If, True, `numpy.bool_` is
+             omitted from candidate dtypes.
 
     dtypes to be tested: `numpy.dtype('b')`, `numpy.dtype('h')`,
     `numpy.dtype('i')`, `numpy.dtype('l')`, `numpy.dtype('q')`,
@@ -528,9 +532,10 @@ def for_all_dtypes_combination(names=['dtyes'],
 
     Args:
          names(list of str): Argument names to which dtypes are passed.
-         no_float16(bool): If, True. `numpy.float16` is
+         no_float16(bool): If, True, `numpy.float16` is
              omitted from candidate dtypes.
-         no_bool(bool): If, True. The test with `numpy.bool_` is skipped.
+         no_bool(bool): If, True, `numpy.bool_` is
+             omitted from candidate dtypes.
          full(bool): If True, then all combinations of dtypes will be tested.
 
     .. seealso:: :func:`testing.helper.for_dtypes_combination`
@@ -568,7 +573,8 @@ def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=None):
 
     Args:
          names(list of str): Argument names to which dtypes are passed.
-         no_bool(bool): If, True. The test with `numpy.bool_` is skipped.
+         no_bool(bool): If, True, `numpy.bool_` is
+             omitted from candidate dtypes.
          full(bool): If True, then all combinations of dtypes will be tested.
 
     .. seealso:: :func:`testing.helper.for_dtypes_combination`
