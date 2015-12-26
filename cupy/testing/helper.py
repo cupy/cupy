@@ -123,7 +123,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     Decorated test fixture is required to return the arrays whose values are
     close between ``numpy`` case and ``cupy`` case.
 
-    .. seealso:: :func:`testing.array.assert_allclose`
+    .. seealso:: :func:`cupy.testing.assert_allclose`
     """
     def check_func(cupy_result, numpy_result):
         array.assert_allclose(cupy_result, numpy_result,
@@ -149,7 +149,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
     Decorated test fixture is required to return almost same arrays
     (except the type of array module) even if xp is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`testing.array.assert_array_almost_equal`
+    .. seealso:: :func:`cupy.testing.assert_array_almost_equal`
     """
     def check_func(x, y):
         array.assert_array_almost_equal(
@@ -171,7 +171,7 @@ def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     Decorated test fixture is required to return the same arrays
     (except the type of array module) even if xp is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`testing.array.assert_arrays_almost_equal_nulp`
+    .. seealso:: :func:`cupy.testing.assert_arrays_almost_equal_nulp`
     """
     def check_func(x, y):
         array.assert_arrays_almost_equal_nulp(x, y, nulp)
@@ -196,7 +196,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
     in the sense of ``assert_array_max_ulp`` (except the type of array module)
     even if xp is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`testing.array.assert_array_max_ulp`
+    .. seealso:: :func:`cupy.testing.assert_array_max_ulp`
 
     """
     def check_func(x, y):
@@ -221,7 +221,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     in the sense of ``numpy_cupy_array_equal``
     (except the type of array module) even if xp is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`testing.array.assert_array_equal`
+    .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
@@ -240,7 +240,7 @@ def numpy_cupy_array_list_equal(err_msg='', verbose=True, name='xp'):
     Decorated test fixture is required to return the same list of arrays
     (except the type of array module) even if xp is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`testing.array.assert_array_list_equal`
+    .. seealso:: :func:`cupy.testing.assert_array_list_equal`
     """
     def decorator(impl):
         @functools.wraps(impl)
@@ -272,7 +272,7 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     Decorated test fixture is required to return less array when xp is ``cupy``
     compared to the one when xp is ``numpy``.
 
-    .. seealso:: :func:`testing.array.assert_array_less`
+    .. seealso:: :func:`cupy.testing.assert_array_less`
     """
     def check_func(x, y):
         array.assert_array_less(x, y, err_msg, verbose)
@@ -288,7 +288,7 @@ def numpy_cupy_raises(name='xp'):
     Decorated test fixture is required throw same error
     even if xp is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`testing.array.assert_array_less`
+    .. seealso:: :func:`cupy.testing.assert_array_less`
     """
 
     def decorator(impl):
@@ -381,9 +381,9 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     `numpy.float64`, `numpy.dtype('b')`, `numpy.dtype('h')`,
     `numpy.dtype('i')`, `numpy.dtype('l')`, `numpy.dtype('q')`,
     `numpy.dtype('B')`, `numpy.dtype('H')`, `numpy.dtype('I')`,
-    `numpy.dtype('L')`, `numpy.dtype('Q')`, and `numpy.bool_`(optional).
+    `numpy.dtype('L')`, `numpy.dtype('Q')`, and `numpy.bool_` (optional).
 
-    .. seealso:: :func:`testing.helper.for_dtypes`
+    .. seealso:: :func:`cupy.testing.for_dtypes`
     """
     return for_dtypes(_make_all_dtypes(no_float16, no_bool), name=name)
 
@@ -399,7 +399,7 @@ def for_float_dtypes(name='dtype', no_float16=False):
     dtypes to be tested: `numpy.float16`(optional), `numpy.float32`,
     `numpy.float64`.
 
-    .. seealso:: :func:`testing.helper.for_dtypes`
+    .. seealso:: :func:`cupy.testing.for_dtypes`
     """
     if no_float16:
         return for_dtypes(_regular_float_dtypes, name=name)
@@ -416,7 +416,7 @@ def for_signed_dtypes(name='dtype'):
     dtypes to be tested: `numpy.dtype('b')`, `numpy.dtype('h')`,
     `numpy.dtype('i')`, `numpy.dtype('l')`, `numpy.dtype('q')`.
 
-    .. seealso:: :func:`testing.helper.for_dtypes`
+    .. seealso:: :func:`cupy.testing.for_dtypes`
     """
     return for_dtypes(_signed_dtypes, name=name)
 
@@ -430,7 +430,7 @@ def for_unsigned_dtypes(name='dtype'):
      dtypes to be tested: `numpy.dtype('B')`, `numpy.dtype('H')`,
      `numpy.dtype('I')`, `numpy.dtype('L')`, `numpy.dtype('Q')`.
 
-    .. seealso:: :func:`testing.helper.for_dtypes`
+    .. seealso:: :func:`cupy.testing.for_dtypes`
     """
     return for_dtypes(_unsigned_dtypes, name=name)
 
@@ -446,9 +446,9 @@ def for_int_dtypes(name='dtype', no_bool=False):
     dtypes to be tested: `numpy.dtype('b')`, `numpy.dtype('h')`,
     `numpy.dtype('i')`, `numpy.dtype('l')`, `numpy.dtype('q')`,
     `numpy.dtype('B')`, `numpy.dtype('H')`, `numpy.dtype('I')`,
-    `numpy.dtype('L')`, `numpy.dtype('Q')`, and `numpy.bool_`(optional).
+    `numpy.dtype('L')`, `numpy.dtype('Q')`, and `numpy.bool_` (optional).
 
-    .. seealso:: :func:`testing.helper.for_dtypes`
+    .. seealso:: :func:`cupy.testing.for_dtypes`
     """
     if no_bool:
         return for_dtypes(_int_dtypes, name=name)
@@ -538,7 +538,7 @@ def for_all_dtypes_combination(names=['dtyes'],
              omitted from candidate dtypes.
          full(bool): If True, then all combinations of dtypes will be tested.
 
-    .. seealso:: :func:`testing.helper.for_dtypes_combination`
+    .. seealso:: :func:`cupy.testing.helper.for_dtypes_combination`
     """
     types = _make_all_dtypes(no_float16, no_bool)
     return for_dtypes_combination(types, names, full)
@@ -551,7 +551,7 @@ def for_signed_dtypes_combination(names=['dtype'], full=None):
          names(list of str): Argument names to which dtypes are passed.
          full(bool): If True, then all combinations of dtypes will be tested.
 
-    .. seealso:: :func:`testing.helper.for_dtypes_combination`
+    .. seealso:: :func:`cupy.testing.helper.for_dtypes_combination`
     """
     return for_dtypes_combination(_signed_dtypes, names=names, full=full)
 
@@ -563,7 +563,7 @@ def for_unsigned_dtypes_combination(names=['dtype'], full=None):
          names(list of str): Argument names to which dtypes are passed.
          full(bool): If True, then all combinations of dtypes will be tested.
 
-    .. seealso:: :func:`testing.helper.for_dtypes_combination`
+    .. seealso:: :func:`cupy.testing.helper.for_dtypes_combination`
     """
     return for_dtypes_combination(_unsigned_dtypes, names=names, full=full)
 
@@ -577,7 +577,7 @@ def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=None):
              omitted from candidate dtypes.
          full(bool): If True, then all combinations of dtypes will be tested.
 
-    .. seealso:: :func:`testing.helper.for_dtypes_combination`
+    .. seealso:: :func:`cupy.testing.helper.for_dtypes_combination`
     """
     if no_bool:
         types = _int_dtypes
