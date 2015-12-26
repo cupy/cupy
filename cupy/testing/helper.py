@@ -482,7 +482,7 @@ def for_dtypes_combination(types, names=['dtype'], full=None):
     If ``full`` is ``None``, the behaivior is switched
     by the environment variable ``CUPY_TEST_FULL_COMBINATION``.
 
-    For example, let ``types`` be ``[float16, float32, float64]
+    For example, let ``types`` be ``[float16, float32, float64]``
     and ``names`` be ``[a_type, b_type]``. If ``full`` is ``True``,
     then the decorated test fixture is executed with all
     :math:`2 ** 3` patterns. On the other hand, if ``full``is ``False``,
