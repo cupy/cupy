@@ -10,8 +10,8 @@ def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
     """Raises an AssertionError if objects are not equal up to desired tolerance.
 
     Args:
-         actual(numpy.ndarray or cupy.ndarray): Array obtained.
-         desired(numpy.ndarray or cupy.ndarray): Array desired.
+         actual(numpy.ndarray or cupy.ndarray): The actual object to check.
+         desired(numpy.ndarray or cupy.ndarray): The desired, expected object.
          rtol(float): Relative torelance.
          atol(float): Absolute torelance.
          err_msg(str): The error message to be printed in case of failure.
@@ -48,8 +48,8 @@ def assert_array_almost_equal_nulp(x, y, nulp=1):
     """Compare two arrays relatively to their spacing.
 
     Args:
-         x(numpy.ndarray or cupy.ndarray): Input arrays.
-         y(numpy.ndarray or cupy.ndarray): Input arrays.
+         x(numpy.ndarray or cupy.ndarray): The actual object to check.
+         y(numpy.ndarray or cupy.ndarray): The desired, expected object.
          nulp(int): The maximum number of unit in the last place for tolerance.
 
     .. seealso:: :func:`numpy.testing.assert_array_almost_equal_nulp`
@@ -62,8 +62,8 @@ def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
     """Check that all items of arrays differ in at most N Units in the Last Place.
 
     Args:
-         a(numpy.ndarray or cupy.ndarray): Input arrays to be compared.
-         b(numpy.ndarray or cupy.ndarray): Input arrays to be compared.
+         a(numpy.ndarray or cupy.ndarray): The actual object to check.
+         b(numpy.ndarray or cupy.ndarray): The desired, expected object.
          maxulp(int): The maximum number of units in the last place
              that elements of ``a`` and ``b`` can differ.
          dtype(numpy.dtype): Data-type to convert ``a`` and ``b`` to if given.
