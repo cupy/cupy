@@ -44,7 +44,7 @@ def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
         err_msg=err_msg, verbose=verbose)
 
 
-def assert_array_almost_equal_nulp(x, y, nulp=1):
+def assert_arrays_almost_equal_nulp(x, y, nulp=1):
     """Compare two arrays relatively to their spacing.
 
     Args:
