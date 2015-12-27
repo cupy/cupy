@@ -5,9 +5,10 @@ from chainer import cuda
 from chainer import function
 from chainer.functions.array import concat
 from chainer.functions.pooling import max_pooling_2d
+from chainer.functions.pooling import pooling_2d
 
 
-class SpatialPyramidPooling2D(function.Function):
+class SpatialPyramidPooling2D(pooling_2d.Pooling2D):
 
     """Spatial pyramid pooling over a set of 2d planes."""
 
