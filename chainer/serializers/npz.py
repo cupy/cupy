@@ -1,5 +1,3 @@
-import os
-
 import numpy
 
 from chainer import cuda

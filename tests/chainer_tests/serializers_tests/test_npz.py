@@ -54,6 +54,7 @@ class TestDictionarySerializer(unittest.TestCase):
 
         self.assertIs(ret, 10)
 
+
 class TestNPZDeserializer(unittest.TestCase):
 
     def setUp(self):
@@ -63,7 +64,8 @@ class TestNPZDeserializer(unittest.TestCase):
         os.close(fd)
         self.temp_file_path = path
         with open(path, 'w') as f:
-            numpy.savez(f, **{'x/':None, 'y':self.data, 'z':numpy.asarray(10)})
+            numpy.savez(
+                f, **{'x/': None, 'y': self.data, 'z': numpy.asarray(10)})
 
         self.npzfile = numpy.load(path)
         self.deserializer = npz.NPZDeserializer(self.npzfile)
