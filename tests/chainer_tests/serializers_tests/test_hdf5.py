@@ -168,44 +168,59 @@ class TestLoadHDF5(unittest.TestCase):
         self.assertIsInstance(serializer, hdf5.HDF5Deserializer)
 
 
-class TestUserSpecifiedGroup(unittest.TestCase):
+class TestGroupHierachy(unittest.TestCase):
 
     def setUp(self):
         fd, path = tempfile.mkstemp()
         os.close(fd)
         self.temp_file_path = path
 
-        self.h5 = h5py.File(self.temp_file_path)
-        group = self.h5.create_group('test')
-        self.serializer = hdf5.HDF5Serializer(group)
-
         child = link.Chain(linear=links.Linear(2, 3))
         child.add_param('Wc', (2, 3))
         self.parent = link.Chain(child=child)
         self.parent.add_param('Wp', (2, 3))
 
+        self.optimizer = optimizers.AdaDelta()
+        self.optimizer.setup(self.parent)
+
+    def _prepare_serializer(self):
+        self.h5 = h5py.File(self.temp_file_path)
+        group = self.h5.create_group('test')
+        return hdf5.HDF5Serializer(group)
+
     def tearDown(self):
         if hasattr(self, 'temp_file_path'):
             os.remove(self.temp_file_path)
 
-    def check_group(self, h5, state):
-        self.assertSetEqual(set(h5.keys()), set(('test',)))
-        self.assertSetEqual(set(h5['test'].keys()),
+    def _check_group(self, h5, state):
+        self.assertSetEqual(set(h5.keys()),
                             set(('child',) + state))
-        self.assertSetEqual(set(h5['test']['child'].keys()),
+        self.assertSetEqual(set(h5['child'].keys()),
                             set(('linear', 'Wc')))
-        self.assertSetEqual(set(h5['test']['child']['linear'].keys()),
+        self.assertSetEqual(set(h5['child']['linear'].keys()),
                             set(('W', 'b')))
 
     def test_save_chain(self):
-        self.serializer.save(self.parent)
-        self.check_group(self.h5, ('Wp',))
+        serializer = self._prepare_serializer()
+        serializer.save(self.parent)
+        self.assertSetEqual(set(self.h5.keys()), set(('test',)))
+        self._check_group(self.h5['test'], ('Wp',))
 
     def test_save_optimizer(self):
-        opt = optimizers.AdaDelta()
-        opt.setup(self.parent)
-        self.serializer.save(opt)
-        self.check_group(self.h5, ('Wp', 'epoch', 't'))
+        serializer = self._prepare_serializer()
+        serializer.save(self.optimizer)
+        self.assertSetEqual(set(self.h5.keys()), set(('test',)))
+        self._check_group(self.h5['test'], ('Wp', 'epoch', 't'))
+
+    def test_save_chain2(self):
+        hdf5.save_hdf5(self.temp_file_path, self.parent)
+        h5 = h5py.File(self.temp_file_path)
+        self._check_group(h5, ('Wp', ))
+
+    def test_save_optimizer2(self):
+        hdf5.save_hdf5(self.temp_file_path, self.optimizer)
+        h5 = h5py.File(self.temp_file_path)
+        self._check_group(h5, ('Wp', 'epoch', 't'))
 
 
 testing.run_module(__name__, __file__)
