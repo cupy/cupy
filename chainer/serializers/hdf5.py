@@ -30,7 +30,8 @@ class HDF5Serializer(serializer.Serializer):
         self.compression = compression
 
     def __getitem__(self, key):
-        return HDF5Serializer(self.group.require_group(key), self.compression)
+        name = self.group.name + '/' + key
+        return HDF5Serializer(self.group.require_group(name), self.compression)
 
     def __call__(self, key, value):
         ret = value

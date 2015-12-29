@@ -7,6 +7,9 @@ import mock
 import numpy
 
 from chainer import cuda
+from chainer import link
+from chainer import links
+from chainer import optimizers
 from chainer.serializers import hdf5
 from chainer import testing
 from chainer.testing import attr
@@ -163,6 +166,46 @@ class TestLoadHDF5(unittest.TestCase):
         self.assertEqual(obj.serialize.call_count, 1)
         (serializer,), _ = obj.serialize.call_args
         self.assertIsInstance(serializer, hdf5.HDF5Deserializer)
+
+
+class TestUserSpecifiedGroup(unittest.TestCase):
+
+    def setUp(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        self.temp_file_path = path
+
+        self.h5 = h5py.File(self.temp_file_path)
+        group = self.h5.create_group('test')
+        self.serializer = hdf5.HDF5Serializer(group)
+
+        child = link.Chain(linear=links.Linear(2, 3))
+        child.add_param('Wc', (2, 3))
+        self.parent = link.Chain(child=child)
+        self.parent.add_param('Wp', (2, 3))
+
+    def tearDown(self):
+        if hasattr(self, 'temp_file_path'):
+            os.remove(self.temp_file_path)
+
+    def check_group(self, h5, state):
+        self.assertSetEqual(set(h5.keys()), set(('test',)))
+        self.assertSetEqual(set(h5['test'].keys()),
+                            set(('child',) + state))
+        self.assertSetEqual(set(h5['test']['child'].keys()),
+                            set(('linear', 'Wc')))
+        self.assertSetEqual(set(h5['test']['child']['linear'].keys()),
+                            set(('W', 'b')))
+
+    def test_save_chain(self):
+        self.serializer.save(self.parent)
+        self.check_group(self.h5, ('Wp',))
+
+    def test_save_optimizer(self):
+        opt = optimizers.AdaDelta()
+        opt.setup(self.parent)
+        self.serializer.save(opt)
+        self.check_group(self.h5, ('Wp', 'epoch', 't'))
 
 
 testing.run_module(__name__, __file__)
