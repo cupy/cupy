@@ -118,11 +118,11 @@ def bilinear(e1, e2, W, V1=None, V2=None, b=None):
     outputs one variable.
 
     To be precise, denote six input arrays mathematically by
-    :math:`e^1\in \mathbb{R}^{I\cdot J}`,
-    :math:`e^2\in \mathbb{R}^{I\cdot K}`,
-    :math:`W\in \mathbb{R}^{J \cdot K \cdot L}`,
-    :math:`V^1\in \mathbb{R}^{J \cdot L}`,
-    :math:`V^2\in \mathbb{R}^{K \cdot L}`, and :math:`b\in \mathbb{R}^{L}`.
+    :math:`e^1\\in \\mathbb{R}^{I\\cdot J}`,
+    :math:`e^2\\in \\mathbb{R}^{I\\cdot K}`,
+    :math:`W\\in \\mathbb{R}^{J \\cdot K \\cdot L}`,
+    :math:`V^1\\in \\mathbb{R}^{J \\cdot L}`,
+    :math:`V^2\\in \\mathbb{R}^{K \\cdot L}`, and :math:`b\\in \\mathbb{R}^{L}`.
     where :math:`I` is mini-batch size.
     In this document, we call :math:`V^1`, :math:`V^2`, and :math:`b` linear
     parameters.
@@ -131,8 +131,8 @@ def bilinear(e1, e2, W, V1=None, V2=None, b=None):
 
     .. math::
 
-      y_{il} = \sum_{jk} e^1_{ij} e^2_{ik} W_{jkl} + \
-        \sum_{j} e^1_{ij} V^1_{jl} + \sum_{k} e^2_{ik} V^2_{kl} + b_{l}.
+      y_{il} = \\sum_{jk} e^1_{ij} e^2_{ik} W_{jkl} + \\
+        \\sum_{j} e^1_{ij} V^1_{jl} + \\sum_{k} e^2_{ik} V^2_{kl} + b_{l}.
 
     Note that V1, V2, b are optional. If these are not given, then this
     function omits the last three terms in the above equation.

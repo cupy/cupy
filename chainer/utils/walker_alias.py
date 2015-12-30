@@ -7,7 +7,7 @@ class WalkerAlias(object):
     """Implementation of Walker's alias method.
 
     This method generates a random sample from given probabilities
-    :math:`p_1, \dots, p_n` in :math:`O(1)` time.
+    :math:`p_1, \\dots, p_n` in :math:`O(1)` time.
     It is more efficient than :func:`~numpy.random.choice`.
     This class works on both CPU and GPU.
 
