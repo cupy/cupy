@@ -60,7 +60,7 @@ def linear(x, W, b=None):
 
     It accepts two or three arguments: an input minibatch ``x``, a weight
     matrix ``W``, and optionally a bias vector ``b``. It computes
-    :math:`Y = xW^\top + b`.
+    :math:`Y = xW^\\top + b`.
 
     Args:
         x (~chainer.Variable): Input variable. Its first dimension is assumed
