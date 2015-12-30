@@ -9,7 +9,8 @@ class ClippedReLU(function.Function):
 
     """Clipped Rectifier Unit function.
 
-    Clipped ReLU is written as :math:`ClippedReLU(x, z) = \\min(\\max(0, x), z)`,
+    Clipped ReLU is written as
+    :math:`ClippedReLU(x, z) = \\min(\\max(0, x), z)`,
     where :math:`z(>0)` is a parameter to cap return value of ReLU.
 
     """

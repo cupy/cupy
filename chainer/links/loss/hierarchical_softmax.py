@@ -261,10 +261,10 @@ class BinaryHierarchicalSoftmax(link.Link):
     corresponding to a word in a vocabulary.
     When a word :math:`x` is given, exactly one path from the root of the tree
     to the leaf of the word exists.
-    Let :math:`\\mbox{path}(x) = ((e_1, b_1), \\dots, (e_m, b_m))` be the path of
-    :math:`x`, where :math:`e_i` is an index of :math:`i`-th internal node, and
-    :math:`b_i \\in \\{-1, 1\\}` indicates direction to move at :math:`i`-th
-    internal node (-1 is left, and 1 is right).
+    Let :math:`\\mbox{path}(x) = ((e_1, b_1), \\dots, (e_m, b_m))` be the path
+    of :math:`x`, where :math:`e_i` is an index of :math:`i`-th internal node,
+    and :math:`b_i \\in \\{-1, 1\\}` indicates direction to move at
+    :math:`i`-th internal node (-1 is left, and 1 is right).
     Then, the probability of :math:`x` is given as below:
 
     .. math::
