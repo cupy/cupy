@@ -122,7 +122,19 @@ def broadcast_arrays(*args):
     return broadcast(*args).values
 
 
-def broadcast_to(array, shape, subok=False):
+def broadcast_to(array, shape):
+    """Broadcast an array ot a given shape.
+
+    Args:
+        array (cupy.ndarray): Array to broadcast.
+        shape (tuple of int): The shape to desired array.
+
+    Returns:
+        cupy.ndarray: Broadcasted view.
+
+    .. seealso:: :func:`numpy.broadcast_to`
+
+    """
     if array.ndim > len(shape):
         raise ValueError(
             'input operand has more dimensions than allowed by the axis '
