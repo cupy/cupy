@@ -183,10 +183,10 @@ class TestGroupHierachy(unittest.TestCase):
         self.optimizer = optimizers.AdaDelta()
         self.optimizer.setup(self.parent)
 
-    def _prepare_serializer(self):
-        self.h5 = h5py.File(self.temp_file_path)
-        group = self.h5.create_group('test')
-        return hdf5.HDF5Serializer(group)
+    def _save(self, h5, obj, name):
+        group = h5.create_group(name)
+        serializer = hdf5.HDF5Serializer(group)
+        serializer.save(obj)
 
     def tearDown(self):
         if hasattr(self, 'temp_file_path'):
@@ -201,26 +201,26 @@ class TestGroupHierachy(unittest.TestCase):
                             set(('W', 'b')))
 
     def test_save_chain(self):
-        serializer = self._prepare_serializer()
-        serializer.save(self.parent)
-        self.assertSetEqual(set(self.h5.keys()), set(('test',)))
-        self._check_group(self.h5['test'], ('Wp',))
+        with h5py.File(self.temp_file_path) as h5:
+            self._save(h5, self.parent, 'test')
+            self.assertSetEqual(set(h5.keys()), set(('test',)))
+            self._check_group(h5['test'], ('Wp',))
 
     def test_save_optimizer(self):
-        serializer = self._prepare_serializer()
-        serializer.save(self.optimizer)
-        self.assertSetEqual(set(self.h5.keys()), set(('test',)))
-        self._check_group(self.h5['test'], ('Wp', 'epoch', 't'))
+        with h5py.File(self.temp_file_path) as h5:
+            self._save(h5, self.optimizer, 'test')
+            self.assertSetEqual(set(h5.keys()), set(('test',)))
+            self._check_group(h5['test'], ('Wp', 'epoch', 't'))
 
     def test_save_chain2(self):
         hdf5.save_hdf5(self.temp_file_path, self.parent)
-        h5 = h5py.File(self.temp_file_path)
-        self._check_group(h5, ('Wp', ))
+        with h5py.File(self.temp_file_path) as h5:
+            self._check_group(h5, ('Wp', ))
 
     def test_save_optimizer2(self):
         hdf5.save_hdf5(self.temp_file_path, self.optimizer)
-        h5 = h5py.File(self.temp_file_path)
-        self._check_group(h5, ('Wp', 'epoch', 't'))
+        with h5py.File(self.temp_file_path) as h5:
+            self._check_group(h5, ('Wp', 'epoch', 't'))
 
 
 testing.run_module(__name__, __file__)
