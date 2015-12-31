@@ -45,7 +45,7 @@ def save_npz(filename, obj):
     d = {}
     s = DictionarySerializer(d, '')
     s.save(obj)
-    with open(filename, 'w') as f:
+    with open(filename, 'wb') as f:
         numpy.savez(f, **d)
 
 

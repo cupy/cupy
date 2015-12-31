@@ -63,7 +63,7 @@ class TestNPZDeserializer(unittest.TestCase):
         fd, path = tempfile.mkstemp()
         os.close(fd)
         self.temp_file_path = path
-        with open(path, 'w') as f:
+        with open(path, 'wb') as f:
             numpy.savez(
                 f, **{'x/': None, 'y': self.data, 'z': numpy.asarray(10)})
 
@@ -127,7 +127,7 @@ class TestLoadNPZ(unittest.TestCase):
         fd, path = tempfile.mkstemp()
         os.close(fd)
         self.temp_file_path = path
-        with open(path, 'w') as f:
+        with open(path, 'wb') as f:
             numpy.savez(f, None)
 
     def tearDown(self):
