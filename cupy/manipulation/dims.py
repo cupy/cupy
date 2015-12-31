@@ -123,26 +123,25 @@ def broadcast_arrays(*args):
 
 
 def broadcast_to(array, shape, subok=False):
-    rev = slice(None, None, -1)
-    shape_arr = array._shape[rev]
-    r_shape = [max(ss) for ss
-               in zip_longest(shape_arr, shape[rev], fillvalue=0)]
+    if array.ndim > len(shape):
+        raise ValueError(
+            'input operand has more dimensions than allowed by the axis '
+            'remapping')
 
-    r_strides = [
-        a_st if sh == a_sh else (0 if a_sh == 1 else None)
-        for sh, a_sh, a_st
-        in six_zip(r_shape, array._shape[rev], array._strides[rev])]
+    strides = [0] * len(shape)
+    for i in range(array.ndim):
+        j = -i - 1
+        sh = shape[j]
+        a_sh = array.shape[j]
+        if sh == a_sh:
+            strides[j] = array._strides[j]
+        elif a_sh == 1:
+            pass
+        else:
+            raise ValueError('Broadcasting failed')
 
-    if None in r_strides:
-        raise ValueError('Broadcasting failed')
-
-    offset = (0,) * (len(r_shape) - len(r_strides))
     view = array.view()
-    view._shape = shape
-    view._strides = offset + tuple(r_strides[rev])
-    view._size = core.internal_prod(r_shape)
-    view._c_contiguous = -1
-    view._f_contiguous = -1
+    view._set_shape_and_strides(shape, strides)
     return view
 
 
