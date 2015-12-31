@@ -5,7 +5,7 @@ from cupy.testing import parameterized
 
 assert_allclose = array.assert_allclose
 assert_array_almost_equal = array.assert_array_almost_equal
-assert_arrays_almost_equal_nulp = array.assert_arrays_almost_equal_nulp
+assert_array_almost_equal_nulp = array.assert_array_almost_equal_nulp
 assert_array_max_ulp = array.assert_array_max_ulp
 assert_array_equal = array.assert_array_equal
 assert_array_list_equal = array.assert_array_list_equal
