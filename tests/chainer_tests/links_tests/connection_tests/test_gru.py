@@ -143,6 +143,7 @@ class TestGRUToCPUToGPU(unittest.TestCase):
         self.link.to_gpu()
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
 
+    @attr.gpu
     def test_to_cpu_to_gpu_cpu(self):
         self.check_to_cpu_to_gpu(self.h)
 
