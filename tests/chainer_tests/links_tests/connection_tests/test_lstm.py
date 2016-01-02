@@ -57,4 +57,94 @@ class TestLSTM(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
 
+class TestLSSTMRestState(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.LSTM(5, 7)
+        self.x = chainer.Variable(
+            numpy.random.uniform(-1, 1, (3, 5)).astype(numpy.float32))
+
+    def check_state(self):
+        self.assertIsNone(self.link.c)
+        self.assertIsNone(self.link.h)
+        self.link(self.x)
+        self.assertIsNotNone(self.link.c)
+        self.assertIsNotNone(self.link.h)
+
+    def test_state_cpu(self):
+        self.check_state()
+
+    @attr.gpu
+    def test_state_gpu(self):
+        self.link.to_gpu()
+        self.x.to_gpu()
+        self.check_state()
+
+    def check_reset_state(self):
+        self.link(self.x)
+        self.link.reset_state()
+        self.assertIsNone(self.link.c)
+        self.assertIsNone(self.link.h)
+
+    def test_reset_state_cpu(self):
+        self.check_reset_state()
+
+    @attr.gpu
+    def test_reset_state_gpu(self):
+        self.link.to_gpu()
+        self.x.to_gpu()
+        self.check_reset_state()
+
+
+class TestLSTMToCPUToGPU(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.LSTM(5, 7)
+        self.x = chainer.Variable(
+            numpy.random.uniform(-1, 1, (3, 5)).astype(numpy.float32))
+
+    def check_to_cpu(self, s):
+        self.link.to_cpu()
+        self.assertIsInstance(s.data, self.link.xp.ndarray)
+        self.link.to_cpu()
+        self.assertIsInstance(s.data, self.link.xp.ndarray)
+
+    def test_to_cpu_cpu(self):
+        self.link(self.x)
+        self.check_to_cpu(self.link.c)
+        self.check_to_cpu(self.link.h)
+
+    @attr.gpu
+    def test_to_cpu_gpu(self):
+        self.link.to_gpu()
+        self.x.to_gpu()
+        self.link(self.x)
+        self.check_to_cpu(self.link.c)
+        self.check_to_cpu(self.link.h)
+
+    def check_to_cpu_to_gpu(self, s):
+        self.link.to_gpu()
+        self.assertIsInstance(s.data, self.link.xp.ndarray)
+        self.link.to_gpu()
+        self.assertIsInstance(s.data, self.link.xp.ndarray)
+        self.link.to_cpu()
+        self.assertIsInstance(s.data, self.link.xp.ndarray)
+        self.link.to_gpu()
+        self.assertIsInstance(s.data, self.link.xp.ndarray)
+
+    @attr.gpu
+    def test_to_cpu_to_gpu_cpu(self):
+        self.link(self.x)
+        self.check_to_cpu_to_gpu(self.link.c)
+        self.check_to_cpu_to_gpu(self.link.h)
+
+    @attr.gpu
+    def test_to_cpu_to_gpu_gpu(self):
+        self.link.to_gpu()
+        self.x.to_gpu()
+        self.link(self.x)
+        self.check_to_cpu_to_gpu(self.link.c)
+        self.check_to_cpu_to_gpu(self.link.h)
+
+
 testing.run_module(__name__, __file__)
