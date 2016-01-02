@@ -1,3 +1,6 @@
+import numpy
+
+import chainer
 from chainer.functions.activation import sigmoid
 from chainer.functions.activation import tanh
 from chainer import link
@@ -49,10 +52,36 @@ class GRU(link.Chain):
             W=linear.Linear(n_units, n_units),
             U=linear.Linear(n_units, n_units),
         )
+        self.state_size = n_units
+        self.reset_state()
 
-    def __call__(self, h, x):
-        r = sigmoid.sigmoid(self.W_r(x) + self.U_r(h))
-        z = sigmoid.sigmoid(self.W_z(x) + self.U_z(h))
-        h_bar = tanh.tanh(self.W(x) + self.U(r * h))
-        h_new = (1 - z) * h + z * h_bar
-        return h_new
+    def to_cpu(self):
+        super(GRU, self).to_cpu()
+        if self.h is not None:
+            self.h.to_cpu()
+
+    def to_gpu(self, device=None):
+        super(GRU, self).to_gpu(device)
+        if self.h is not None:
+            self.h.to_gpu(device)
+
+    def set_state(self, h):
+        if self.xp == numpy:
+            h = chainer.cuda.to_cpu(h)
+        else:
+            h = chainer.cuda.to_gpu(h)
+        self.h = chainer.Variable(h)
+
+    def reset_state(self):
+        self.h = None
+
+    def __call__(self, x):
+        if self.h is None:
+            self.h = chainer.Variable(
+                self.xp.zeros((len(x.data), self.state_size),
+                              dtype=x.data.dtype), volatile='auto')
+        r = sigmoid.sigmoid(self.W_r(x) + self.U_r(self.h))
+        z = sigmoid.sigmoid(self.W_z(x) + self.U_z(self.h))
+        h_bar = tanh.tanh(self.W(x) + self.U(r * self.h))
+        self.h = (1 - z) * self.h + z * h_bar
+        return self.h
