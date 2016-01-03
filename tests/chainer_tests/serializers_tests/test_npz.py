@@ -6,6 +6,9 @@ import mock
 import numpy
 
 from chainer import cuda
+from chainer import link
+from chainer import links
+from chainer import optimizers
 from chainer.serializers import npz
 from chainer import testing
 from chainer.testing import attr
@@ -141,6 +144,73 @@ class TestLoadNPZ(unittest.TestCase):
         self.assertEqual(obj.serialize.call_count, 1)
         (serializer,), _ = obj.serialize.call_args
         self.assertIsInstance(serializer, npz.NPZDeserializer)
+
+
+class TestGroupHierachy(unittest.TestCase):
+
+    def setUp(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        self.temp_file_path = path
+
+        child = link.Chain(linear=links.Linear(2, 3))
+        child.add_param('Wc', (2, 3))
+        self.parent = link.Chain(child=child)
+        self.parent.add_param('Wp', (2, 3))
+
+        self.optimizer = optimizers.AdaDelta()
+        self.optimizer.setup(self.parent)
+
+    def _save(self, dict, obj, name):
+        serializer = npz.DictionarySerializer(dict, name)
+        serializer.save(obj)
+
+    def tearDown(self):
+        if hasattr(self, 'temp_file_path'):
+            os.remove(self.temp_file_path)
+
+    def _check_chain_group(self, file, state, prefix=''):
+        keys = ('child/linear/W',
+                'child/linear/b',
+                'child/Wc') + state
+        self.assertSetEqual(set(file.keys()), set([prefix + x for x in keys]))
+
+    def _check_optimizer_group(self, file, state, prefix=''):
+        keys = ('child/linear/W/msg',
+                'child/linear/W/msdx',
+                'child/linear/b/msg',
+                'child/linear/b/msdx',
+                'child/Wc/msg',
+                'child/Wc/msdx') + state
+        self.assertSetEqual(set(file.keys()),
+                            set([prefix + x for x in keys]))
+
+    def test_save_chain(self):
+        d = {}
+        self._save(d, self.parent, 'test/')
+        with open(self.temp_file_path, 'wb') as f:
+            numpy.savez(f, **d)
+        with numpy.load(self.temp_file_path) as f:
+            self._check_chain_group(f, ('Wp',), 'test/')
+
+    def test_save_optimizer(self):
+        d = {}
+        self._save(d, self.optimizer, 'test/')
+        with open(self.temp_file_path, 'wb') as f:
+            numpy.savez(f, **d)
+        with numpy.load(self.temp_file_path) as f:
+            self._check_optimizer_group(
+                f, ('Wp/msg', 'Wp/msdx', 'epoch', 't'), 'test/')
+
+    def test_save_chain2(self):
+        npz.save_npz(self.temp_file_path, self.parent)
+        with numpy.load(self.temp_file_path) as f:
+            self._check_chain_group(f, ('Wp', ))
+
+    def test_save_optimizer2(self):
+        npz.save_npz(self.temp_file_path, self.optimizer)
+        with numpy.load(self.temp_file_path) as f:
+            self._check_optimizer_group(f, ('Wp/msg', 'Wp/msdx', 'epoch', 't'))
 
 
 testing.run_module(__name__, __file__)
