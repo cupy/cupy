@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 import numpy as np
-from . import backend as K
-
 
 #Original code forked from MIT licensed keras project https://github.com/fchollet/keras/blob/master/keras/initializations.py
 
@@ -12,11 +10,11 @@ def get_fans(shape):
 
 
 def uniform(shape, scale=0.05):
-    return K.variable(np.random.uniform(low=-scale, high=scale, size=shape))
+    return np.random.uniform(low=-scale, high=scale, size=shape)
 
 
 def normal(shape, scale=0.05):
-    return K.variable(np.random.normal(loc=0.0, scale=scale, size=shape))
+    return np.random.normal(loc=0.0, scale=scale, size=shape)
 
 
 def lecun_uniform(shape):
@@ -65,7 +63,7 @@ def orthogonal(shape, scale=1.1):
     # pick the one with the correct shape
     q = u if u.shape == flat_shape else v
     q = q.reshape(shape)
-    return K.variable(scale * q[:shape[0], :shape[1]])
+    return scale * q[:shape[0], :shape[1]]
 
 
 def identity(shape, scale=1):
@@ -73,15 +71,15 @@ def identity(shape, scale=1):
         raise Exception('Identity matrix initialization can only be used '
                         'for 2D square matrices.')
     else:
-        return K.variable(scale * np.identity(shape[0]))
+        return scale * np.identity(shape[0])
 
 
 def zero(shape):
-    return K.zeros(shape)
+    return np.zeros(shape)
 
 
 def one(shape):
-    return K.ones(shape)
+    return np.ones(shape)
 
 
 from .utils.generic_utils import get_from_module
