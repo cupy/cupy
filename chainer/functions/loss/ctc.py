@@ -35,7 +35,7 @@ def _log_dot(prob, rr, xp):
 def _move_label_to_back(path, path_length, xp):
     s1 = path.shape[1]  # TODO(okuta): Change name
     index = (xp.arange(0, path.size, s1, dtype=numpy.int32)[:, None]
-         + (xp.arange(s1) + path_length[:, None])[:, ::-1] % s1)
+             + (xp.arange(s1) + path_length[:, None])[:, ::-1] % s1)
     return xp.take(path, index)
 
 
@@ -100,7 +100,8 @@ class ConnectionistTemporalClassification(function.Function):
             rr * (path_length[:, None] > xp.arange(max_length))[..., None], xp)
 
     # path probablity to label probability
-    def label_probability(self, label_size, path, path_length, multiply_seq, xp):
+    def label_probability(self, label_size, path, path_length,
+                          multiply_seq, xp):
         labels_prob = self.log_matrix(xp.zeros((len(path), label_size),
                                                dtype=multiply_seq.dtype), xp)
         ret = xp.empty(
@@ -112,8 +113,8 @@ class ConnectionistTemporalClassification(function.Function):
                 chars = {c for c in target_path}
                 for c in chars:
                     ret[:, b, c] = _logsumexp(
-                        multiply_seq[:, b, 0:path_length[b]][:,
-                            target_path == c], numpy, axis=1)
+                        multiply_seq[:, b, 0:path_length[b]]
+                        [:, target_path == c], numpy, axis=1)
         else:
             for i, multiply in enumerate(multiply_seq):
                 # TODO(okuta): remove loop
