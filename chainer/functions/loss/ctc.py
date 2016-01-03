@@ -16,8 +16,8 @@ def _logsumexp(a, xp, axis=None):
 
 
 def _softmax(x, xp):
-    val = xp.exp(x - xp.amax(x, axis=1, keepdims=True))
-    val /= xp.sum(val, axis=1, keepdims=True)
+    val = xp.exp(x - xp.amax(x, axis=2, keepdims=True))
+    val /= xp.sum(val, axis=2, keepdims=True)
     return val
 
 
@@ -33,20 +33,17 @@ def _log_dot(prob, rr, xp):
 
 
 def _move_label_to_back(path, path_length, xp):
-    shape = path.shape
-    return xp.take(
-        path,
-        (xp.arange(0, path.size, shape[1], dtype=numpy.int32)[:, None]
-         + (xp.arange(shape[1]) + path_length[:, None])[:, ::-1] % shape[1]))
+    s1 = path.shape[1]  # TODO(okuta): Change name
+    index = (xp.arange(0, path.size, s1, dtype=numpy.int32)[:, None]
+         + (xp.arange(s1) + path_length[:, None])[:, ::-1] % s1)
+    return xp.take(path, index)
 
 
 def _move_inputs(prob, input_length, xp):
-    shape0 = len(prob)
-    shape1 = len(input_length)
-    rotate = (xp.arange(shape0)[:, None] + input_length) % shape0
-    index = rotate * shape1 + xp.arange(shape1)
-    c = xp.take(xp.vstack(prob), index, axis=0)
-    return [c[i] for i in range(len(prob))]
+    seq, batch, ch = prob.shape
+    rotate = (xp.arange(seq)[:, None] + input_length) % seq
+    index = rotate * batch + xp.arange(batch)
+    return xp.take(prob.reshape(seq * batch, ch), index, axis=0)
 
 
 class ConnectionistTemporalClassification(function.Function):
@@ -65,11 +62,11 @@ class ConnectionistTemporalClassification(function.Function):
         self.zero_padding = -10000000000.0
 
     def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() > 3)
+        type_check.expect(in_types.size() > 3)  # TODO(okuta): > 3?
         l_type = in_types[2]
         type_check.expect(l_type.dtype == numpy.int32)
 
-        x_basetype = in_types[3]
+        x_basetype = in_types[3]  # TODO(oktua): Check x_basetype size
 
         for i in six.moves.range(3, len(in_types)):
             x_type = in_types[i]
@@ -103,42 +100,48 @@ class ConnectionistTemporalClassification(function.Function):
             rr * (path_length[:, None] > xp.arange(max_length))[..., None], xp)
 
     # path probablity to label probability
-    def label_probability(self, label_size, path, path_length, multiply, xp):
+    def label_probability(self, label_size, path, path_length, multiply_seq, xp):
         labels_prob = self.log_matrix(xp.zeros((len(path), label_size),
-                                               dtype=multiply.dtype), xp)
+                                               dtype=multiply_seq.dtype), xp)
+        ret = xp.empty(
+            (len(multiply_seq),) + labels_prob.shape, dtype=labels_prob.dtype)
+        ret[...] = labels_prob
         if xp == numpy:
             for b in six.moves.range(len(path)):
                 target_path = path[b][0:path_length[b]]
                 chars = {c for c in target_path}
                 for c in chars:
-                    labels_prob[b, c] = _logsumexp(
-                        multiply[b, 0:path_length[b]][target_path == c], numpy)
+                    ret[:, b, c] = _logsumexp(
+                        multiply_seq[:, b, 0:path_length[b]][:,
+                            target_path == c], numpy, axis=1)
         else:
-            cuda.cupy.ElementwiseKernel(
-                'raw T x, raw I y, raw I l, I b_max, I c_max',
-                'T z',
-                '''
-                T value = z;
-                I c = i % b_max, b = i / b_max;
-                int ind[2] = {b, -1};
-                for (int index = 0; index < c_max; ++index) {
-                    ind[1] = index;
-                    if (ind[1] < l[ind[0]] && y[ind] == c) {
-                        T xvalue = x[ind];
-                        T at = xvalue, bt = value;
-                        if (value > xvalue) {
-                            at = value;
-                            bt = xvalue;
+            for i, multiply in enumerate(multiply_seq):
+                # TODO(okuta): remove loop
+                cuda.cupy.ElementwiseKernel(
+                    'raw T x, raw I y, raw I l, I b_max, I c_max',
+                    'T z',
+                    '''
+                    T value = z;
+                    I c = i % b_max, b = i / b_max;
+                    int ind[2] = {b, -1};
+                    for (int index = 0; index < c_max; ++index) {
+                        ind[1] = index;
+                        if (ind[1] < l[ind[0]] && y[ind] == c) {
+                            T xvalue = x[ind];
+                            T at = xvalue, bt = value;
+                            if (value > xvalue) {
+                                at = value;
+                                bt = xvalue;
+                            }
+                            value = at + log(1 + exp(bt - at));
                         }
-                        value = at + log(1 + exp(bt - at));
                     }
-                }
-                z = value;
-                ''',
-                'reduce_probability')(multiply, path, path_length,
-                                      labels_prob.shape[1],
-                                      path.shape[1], labels_prob)
-        return labels_prob
+                    z = value;
+                    ''',
+                    'reduce_probability')(multiply, path, path_length,
+                                          labels_prob.shape[1],
+                                          path.shape[1], ret[i])
+        return ret
 
     def calc_trans(self, path, yseq, xp):
         forward_prob = self.log_matrix(
@@ -148,16 +151,17 @@ class ConnectionistTemporalClassification(function.Function):
             0, yseq[0].size, yseq[0].shape[1], dtype=path.dtype)[:, None]
 
         # prob[i] := forward[i] + backward[-i-1]
-        prob = []
         index = offset + path
         frr = self.recurrence_relation(
             self.path_length, path.shape[1], numpy.float32, xp)
+        prob = xp.empty(
+            (len(yseq),) + index.shape, dtype=forward_prob.dtype)
         # forward computation.
-        for y in yseq:
+        for i, y in enumerate(yseq):
             # calc forward probability in log scale
             forward_prob = xp.take(y, index) + _log_dot(
                 forward_prob[:, None, :], frr, xp)
-            prob.append(forward_prob)
+            prob[i] = forward_prob
         r_index = offset + _move_label_to_back(path, self.path_length, xp)
 
         # rotate yseq with path_length
@@ -191,8 +195,9 @@ class ConnectionistTemporalClassification(function.Function):
         self.path_length = 2 * inputs[1] + 1
 
         batch_size = len(inputs[2])
-        self.yseq = [_softmax(y, xp) for y in inputs[3::]]
-        log_yseq = [self.log_matrix(y, xp) for y in self.yseq]
+        yseq_shape = (len(inputs) - 3,) + inputs[3].shape
+        self.yseq = _softmax(xp.vstack(inputs[3::]).reshape(yseq_shape), xp)
+        log_yseq = self.log_matrix(self.yseq, xp)
         self.path = _label_to_path(inputs[2], self.blank_symbol, xp)
         self.prob_trans = self.calc_trans(self.path, log_yseq, xp)
 
@@ -206,16 +211,15 @@ class ConnectionistTemporalClassification(function.Function):
         batch_size = len(inputs[2])
 
         total_probability = _logsumexp(self.prob_trans[0], xp, axis=1)
-        scale = grad_output[0] / batch_size
-        for i, y in enumerate(self.yseq):
-            label_prob = self.label_probability(
-                y.shape[1], self.path, self.path_length, self.prob_trans[i],
-                xp)
-            y -= xp.exp(label_prob - total_probability[:, None])
-            y *= scale
-            # mask
-            y *= (i < self.input_length)[:, None]
-        return (None, None, None) + tuple(self.yseq)
+        label_prob = self.label_probability(
+            self.yseq.shape[2], self.path, self.path_length,
+            self.prob_trans, xp)
+        self.yseq -= xp.exp(label_prob - total_probability[:, None])
+        self.yseq *= grad_output[0] / batch_size
+        # mask
+        self.yseq *= (
+            xp.arange(len(self.yseq))[:, None] < self.input_length)[..., None]
+        return (None, None, None) + tuple([y for y in self.yseq])
 
 
 def connectionist_temporal_classification(
