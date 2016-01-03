@@ -81,6 +81,7 @@ cdef void get_reduced_dims(
             index += 1
 
 
+@cython.profile(False)
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
         vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize) except *:
     cdef vector.vector[Py_ssize_t] strides
@@ -109,6 +110,7 @@ cpdef inline bint get_c_contiguity(
     return ndim == 0 or (ndim == 1 and r_strides[0] == itemsize)
 
 
+@cython.profile(False)
 cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
         vector.vector[Py_ssize_t]& shape, Py_ssize_t size) except *:
     cdef vector.vector[Py_ssize_t] ret = shape
@@ -129,6 +131,7 @@ cpdef vector.vector[Py_ssize_t] infer_unknown_dimension(
     return ret
 
 
+@cython.profile(False)
 cpdef slice complete_slice(slice slc, Py_ssize_t dim):
     cpdef Py_ssize_t start=0, stop=0, step=0
     cpdef bint start_none, stop_none
