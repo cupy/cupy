@@ -10,10 +10,10 @@ cpdef tuple get_size(object size)
 cpdef bint vector_equal(
         vector.vector[Py_ssize_t]& x, vector.vector[Py_ssize_t]& y)
 
-cpdef void get_reduced_dims(
+cdef void get_reduced_dims(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, vector.vector[Py_ssize_t]& reduced_shape,
-        vector.vector[Py_ssize_t]& reduced_strides) except *
+        vector.vector[Py_ssize_t]& reduced_strides)
 
 cpdef vector.vector[Py_ssize_t] get_contiguous_strides(
         vector.vector[Py_ssize_t]& shape, Py_ssize_t itemsize) except *

@@ -41,13 +41,13 @@ cpdef inline bint vector_equal(
     return True
 
 
-cpdef void get_reduced_dims(
+@cython.profile(False)
+cdef void get_reduced_dims(
         vector.vector[Py_ssize_t]& shape, vector.vector[Py_ssize_t]& strides,
         Py_ssize_t itemsize, vector.vector[Py_ssize_t]& reduced_shape,
-        vector.vector[Py_ssize_t]& reduced_strides) except *:
+        vector.vector[Py_ssize_t]& reduced_strides):
     cdef vector.vector[Py_ssize_t] tmp_shape, tmp_strides
     cdef Py_ssize_t i, ndim, sh, st, prev_st, index
-    assert shape.size() == strides.size()
     ndim = shape.size()
     reduced_shape.clear()
     reduced_strides.clear()
