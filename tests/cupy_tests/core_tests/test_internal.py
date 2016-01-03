@@ -50,6 +50,21 @@ class TestGetSize(unittest.TestCase):
             internal.get_size(1.0)
 
 
+class TestVectorEqual(unittest.TestCase):
+
+    def test_empty(self):
+        self.assertEqual(internal.vector_equal([], []), True)
+
+    def test_not_equal(self):
+        self.assertEqual(internal.vector_equal([1, 2, 3], [1, 2, 0]), False)
+
+    def test_equal(self):
+        self.assertEqual(internal.vector_equal([-1, 0, 1], [-1, 0, 1]), True)
+
+    def test_different_size(self):
+        self.assertEqual(internal.vector_equal([1, 2, 3], [1, 2]), False)
+
+
 class TestGetContiguousStrides(unittest.TestCase):
 
     def test_zero(self):
