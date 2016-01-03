@@ -4,6 +4,30 @@ from cupy.core import internal
 from cupy import testing
 
 
+class TestProd(unittest.TestCase):
+
+    def test_empty(self):
+        self.assertEqual(internal.prod([]), 1)
+
+    def test_one(self):
+        self.assertEqual(internal.prod([2]), 2)
+
+    def test_two(self):
+        self.assertEqual(internal.prod([2, 3]), 6)
+
+
+class TestProdSsizeT(unittest.TestCase):
+
+    def test_empty(self):
+        self.assertEqual(internal.prod([]), 1)
+
+    def test_one(self):
+        self.assertEqual(internal.prod([2]), 2)
+
+    def test_two(self):
+        self.assertEqual(internal.prod([2, 3]), 6)
+
+
 class TestGetSize(unittest.TestCase):
 
     def test_none(self):
@@ -24,18 +48,6 @@ class TestGetSize(unittest.TestCase):
     def test_invalid(self):
         with self.assertRaises(ValueError):
             internal.get_size(1.0)
-
-
-class TestInternalProd(unittest.TestCase):
-
-    def test_empty(self):
-        self.assertEqual(internal.prod([]), 1)
-
-    def test_one(self):
-        self.assertEqual(internal.prod([2]), 2)
-
-    def test_two(self):
-        self.assertEqual(internal.prod([2, 3]), 6)
 
 
 class TestGetContiguousStrides(unittest.TestCase):
