@@ -80,8 +80,3 @@ def zero(shape):
 
 def one(shape):
     return np.ones(shape)
-
-
-from .utils.generic_utils import get_from_module
-def get(identifier):
-    return get_from_module(identifier, globals(), 'initialization')
