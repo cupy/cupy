@@ -16,7 +16,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False):
-        a = testing.shaped_arange((2, 3), xp, x_type)
+        a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         if swap:
             return op(y_type(3), a)
         else:
@@ -100,7 +100,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(atol=1.0)
     def check_ipow_scalar(self, xp, x_type, y_type):
-        a = testing.shaped_arange((2, 3), xp, x_type)
+        a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         return operator.ipow(a, y_type(3))
 
     def test_ipow_scalar(self):
@@ -143,8 +143,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_array_op(self, op, xp, x_type, y_type):
-        a = testing.shaped_arange((2, 3), xp, x_type)
-        b = testing.shaped_reverse_arange((2, 3), xp, y_type)
+        a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
+        b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
         return op(a, b)
 
     def test_add_array(self):
@@ -199,8 +199,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(atol=1.0)
     def check_ipow_array(self, xp, x_type, y_type):
-        a = testing.shaped_arange((2, 3), xp, x_type)
-        b = testing.shaped_reverse_arange((2, 3), xp, y_type)
+        a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
+        b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
         return operator.ipow(a, b)
 
     def test_ipow_array(self):
@@ -235,8 +235,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_broadcasted_op(self, op, xp, x_type, y_type):
-        a = testing.shaped_arange((2, 3), dtype=x_type)
-        b = testing.shaped_arange((2, 1), dtype=y_type)
+        a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
+        b = xp.array([[1], [2]], y_type)
         return op(a, b)
 
     def test_broadcasted_add(self):
@@ -291,8 +291,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(atol=1.0)
     def check_broadcasted_ipow(self, xp, x_type, y_type):
-        a = testing.shaped_arange((2, 3), dtype=x_type)
-        b = testing.shaped_arange((2, 1), dtype=y_type)
+        a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
+        b = xp.array([[1], [2]], y_type)
         return operator.ipow(a, b)
 
     def test_broadcasted_ipow(self):
@@ -327,8 +327,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type):
-        a = testing.shaped_arange((2, 1, 3), xp, x_type)
-        b = testing.shaped_arange((3, 1), xp, y_type)
+        a = xp.array([[[1, 2, 3]], [[4, 5, 6]]], x_type)
+        b = xp.array([[1], [2], [3]], y_type)
         return op(a, b)
 
     def test_doubly_broadcasted_add(self):
@@ -388,8 +388,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose()
     def check_array_reversed_op(self, op, xp, x_type, y_type):
-        a = testing.shaped_arange((5,), xp, x_type)
-        b = testing.shaped_arange((5,), xp, y_type)
+        a = xp.array([1, 2, 3, 4, 5], x_type)
+        b = xp.array([1, 2, 3, 4, 5], y_type)
         return op(a, b[::-1])
 
     def test_array_reversed_add(self):
