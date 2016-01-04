@@ -13,15 +13,15 @@ class BinaryAccuracy(function.Function):
         type_check.expect(
             x_type.dtype == numpy.float32,
             t_type.dtype == numpy.int32,
-            t_type.shape[0] == x_type.shape[0],
+            t_type.shape == x_type.shape,
         )
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
         y, t = inputs
         # flatten
-        y = y.reshape(len(y), -1)
-        t = t.reshape(len(t), -1)
+        y = y.reshape(-1)
+        t = t.reshape(-1)
         c = (y >= 0)
         return xp.asarray((c == t).mean(dtype='f')),
 
