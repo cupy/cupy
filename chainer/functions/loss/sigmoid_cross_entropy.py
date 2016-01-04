@@ -34,7 +34,7 @@ class SigmoidCrossEntropy(function.Function):
             count = int(self.ignore_mask.sum())
         else:
             count = x.shape[0]
-        self.count = count
+        self.count = count if count > 0 else 1
         # stable computation of the cross entropy.
         loss = -xp.sum(
             self.ignore_mask * (x * (t - (x >= 0)) -
@@ -44,7 +44,7 @@ class SigmoidCrossEntropy(function.Function):
     def backward(self, inputs, grad_outputs):
         x, t = inputs
         gloss = grad_outputs[0]
-        y, = sigmoid.Sigmoid().forward((x,))
+        y, = sigmoid.Sigmoid(self.use_cudnn).forward((x,))
         dtype = y.dtype
         gx = (gloss * self.ignore_mask * (y - t.astype(dtype)) /
               dtype.type(self.count))
@@ -60,7 +60,7 @@ def sigmoid_cross_entropy(x, t, use_cudnn=True, normalize=True):
             at the i-th example.
         t (Variable): Variable holding an int32 vector of groundtruth labels.
             If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
-        normalize (Variable): Variable holding a boolean value which
+        normalize (bool): Variable holding a boolean value which
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
             it only normalizes along a batch size.
