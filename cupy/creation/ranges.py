@@ -85,9 +85,10 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
 
         if step == 0.0:
             # for underflow
-            _linspace_ufunc_underflow(start, stop - start, div, ret)
+            _linspace_ufunc_underflow(start, stop - start, div, ret,
+                                      casting='unsafe')
         else:
-            _linspace_ufunc(start, step, ret)
+            _linspace_ufunc(start, step, ret, casting='unsafe')
 
         if endpoint:
             ret[-1] = stop
