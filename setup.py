@@ -23,7 +23,7 @@ on_rtd = chainer_setup_build.check_readthedocs_environment()
 if on_rtd:
     print('Add develop command for Read the Docs')
     sys.argv.insert(1, 'develop')
-    setup_requires.append('Cython')
+    setup_requires.append('Cython>=0.23')
 
 chainer_setup_build.parse_args()
 
