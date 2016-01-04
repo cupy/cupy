@@ -20,6 +20,13 @@ minimum_cuda_version = 6050
 minimum_cudnn_version = 2000
 
 
+def print_warning(*lines):
+    print('**************************************************')
+    for line in lines:
+        print('*** WARNING: %s' % line)
+    print('**************************************************')
+
+
 def check_cuda_version(compiler, settings):
     out = build_and_run(compiler, '''
     #include <cuda.h>
@@ -30,18 +37,15 @@ def check_cuda_version(compiler, settings):
     ''', include_dirs=settings['include_dirs'])
 
     if out is None:
-        print('**************************************************')
-        print('*** Cannot check CUDA version')
-        print('**************************************************')
+        print_warning('Cannot check CUDA version')
         return False
 
     cuda_version = int(out)
 
     if cuda_version < minimum_cuda_version:
-        print('**************************************************')
-        print('*** CUDA version is too old: %d' % cuda_version)
-        print('*** CUDA v6.5 or newer is required')
-        print('**************************************************')
+        print_warning(
+            'CUDA version is too old: %d' % cuda_version,
+            'CUDA v6.5 or newer is required')
         return False
 
     return True
@@ -57,18 +61,15 @@ def check_cudnn_version(compiler, settings):
     ''', include_dirs=settings['include_dirs'])
 
     if out is None:
-        print('**************************************************')
-        print('*** Cannot check cuDNN version')
-        print('**************************************************')
+        print_warning('Cannot check cuDNN version')
         return False
 
     cudnn_version = int(out)
 
     if cudnn_version < minimum_cudnn_version:
-        print('**************************************************')
-        print('*** cuDNN version is too old: %d' % cudnn_version)
-        print('*** cuDNN v2 or newer is required')
-        print('**************************************************')
+        print_warnig(
+            'cuDNN version is too old: %d' % cudnn_version,
+            'cuDNN v2 or newer is required')
         return False
 
     return True
@@ -123,21 +124,18 @@ def get_compiler_setting():
     nvcc_path = search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
     if nvcc_path is None:
-        print('**************************************************************')
-        print('*** WARNING: nvcc not in path.')
-        print('*** WARNING: Please set path to nvcc.')
-        print('**************************************************************')
+        print_warning('nvcc not in path.',
+                      'Please set path to nvcc.')
     else:
         cuda_path_default = path.normpath(
             path.join(path.dirname(nvcc_path), '..'))
 
     cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
     if len(cuda_path) > 0 and cuda_path != cuda_path_default:
-        print('**************************************************************')
-        print('*** WARNING: nvcc path != CUDA_PATH')
-        print('*** WARNING: nvcc path: %s', cuda_path_default)
-        print('*** WARNING: CUDA_PATH: %s', cuda_path)
-        print('**************************************************************')
+        print_warning(
+            'nvcc path != CUDA_PATH',
+            'nvcc path: %s' % cuda_path_default,
+            'CUDA_PATH: %s' % cuda_path)
 
     if not path.exists(cuda_path):
         cuda_path = cuda_path_default
@@ -302,21 +300,19 @@ def make_extensions(options, compiler):
             if not check_library(compiler,
                                  includes=module['include'],
                                  include_dirs=settings['include_dirs']):
-                print('**************************************************')
-                print('*** Include files not found: %s' % module['include'])
-                print('*** Skip installing %s support' % module['name'])
-                print('*** Check your CPATH environment variable')
-                print('**************************************************')
+                print_warning(
+                    'Include files not found: %s' % module['include'],
+                    'Skip installing %s support' % module['name'],
+                    'Check your CPATH environment variable')
                 continue
 
             if not check_library(compiler,
                                  libraries=module['libraries'],
                                  library_dirs=settings['library_dirs']):
-                print('**************************************************')
-                print('*** Cannot link libraries: %s' % module['libraries'])
-                print('*** Skip installing %s support' % module['name'])
-                print('*** Check your LIBRARY_PATH environment variable')
-                print('**************************************************')
+                print_warning(
+                    'Cannot link libraries: %s' % module['libraries'],
+                    'Skip installing %s support' % module['name'],
+                    'Check your LIBRARY_PATH environment variable')
                 continue
 
             if 'check_method' in module and \
