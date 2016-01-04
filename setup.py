@@ -7,6 +7,9 @@ from setuptools import setup
 import chainer_setup_build
 
 
+setup_requires = [
+    'numpy>=1.9.0',
+]
 install_requires = [
     'filelock',
     'nose',
@@ -20,6 +23,7 @@ on_rtd = chainer_setup_build.check_readthedocs_environment()
 if on_rtd:
     print('Add develop command for Read the Docs')
     sys.argv.insert(1, 'develop')
+    setup_requires.append('Cython')
 
 chainer_setup_build.parse_args()
 
@@ -74,7 +78,7 @@ setup(
     },
     zip_safe=False,
     install_requires=install_requires,
-    setup_requires=['numpy>=1.9.0'],
+    setup_requires=setup_requires,
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext
