@@ -28,7 +28,8 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
             self.t = -numpy.ones(self.shape).astype(numpy.int32)
         else:
             self.ignore_all = False
-            self.t = numpy.random.randint(-1, 2, self.shape).astype(numpy.int32)
+            self.t = numpy.random.randint(-1, 2,
+                                          self.shape).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data, use_cudnn=True):
         x_val = chainer.Variable(x_data)
