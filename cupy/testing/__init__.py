@@ -32,6 +32,8 @@ for_signed_dtypes_combination = helper.for_signed_dtypes_combination
 for_unsigned_dtypes_combination = helper.for_unsigned_dtypes_combination
 for_int_dtypes_combination = helper.for_int_dtypes_combination
 
+with_requires = helper.with_requires
+
 parameterize = parameterized.parameterize
 product = parameterized.product
 
