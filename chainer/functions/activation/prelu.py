@@ -77,7 +77,7 @@ def prelu(x, W):
     """Parametric ReLU function.
 
     It accepts two arguments: an input ``x`` and a weight array ``W``
-    and computes the output as :math:`PReLU(x) = \max(x, W*x)`,
+    and computes the output as :math:`PReLU(x) = \\max(x, W*x)`,
     where :math:`*` is an elementwise multiplication for each sample in the
     batch.
 
