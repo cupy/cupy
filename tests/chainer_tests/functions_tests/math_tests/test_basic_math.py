@@ -124,7 +124,7 @@ class BinaryOpTestBase(object):
     @attr.gpu
     def test_add_constant_allocation(self):
         x = 0
-        y = chainer.Variable(cuda.ones((1,)))
+        y = chainer.Variable(cuda.cupy.ones((1,)))
         z = y + x
         self.assertEqual(1, z.data.get()[0])
 
@@ -278,7 +278,7 @@ class TestBinaryOpConstant(unittest.TestCase):
         x = chainer.Variable(cuda.to_gpu(lhs))
         y = func(x, rhs)
         self.assertEqual(y.data.dtype, numpy.float32)
-        y.grad = chainer.cuda.ones_like(y.data).astype(numpy.float32)
+        y.grad = chainer.cuda.cupy.ones_like(y.data).astype(numpy.float32)
         y.backward()
         self.assertEqual(x.grad.dtype, numpy.float32)
 
