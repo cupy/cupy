@@ -41,6 +41,7 @@ Array manipulations
 .. autofunction:: broadcast
 .. autofunction:: concat
 .. autofunction:: copy
+.. autofunction:: expand_dims
 .. autofunction:: reshape
 .. autofunction:: select_item
 .. autofunction:: split_axis
