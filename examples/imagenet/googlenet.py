@@ -33,7 +33,15 @@ class GoogLeNet(chainer.Chain):
         )
         self.train = True
 
+    def clear(self):
+        self.loss = None
+        self.loss1 = None
+        self.loss2 = None
+        self.loss3 = None
+        self.accuracy = None
+
     def __call__(self, x, t):
+        self.clear()
         h = F.relu(self.conv1(x))
         h = F.local_response_normalization(
             F.max_pooling_2d(h, 3, stride=2), n=5)
