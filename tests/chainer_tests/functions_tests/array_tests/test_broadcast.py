@@ -107,8 +107,6 @@ class TestBroadcastTypeError(unittest.TestCase):
     {'in_shape': (5,),      'out_shape': (3, 2, 5)},
     {'in_shape': (5,),      'out_shape': (3, 2, 5)},
     {'in_shape': (3, 2, 5), 'out_shape': (3, 2, 5)},
-    {'in_shape': (3, 2, 5), 'out_shape': (5,)},
-    {'in_shape': (3, 4, 5), 'out_shape': (3, 2, 5,)},
 )
 class TestBroadcastTo(unittest.TestCase):
 
@@ -149,6 +147,22 @@ class TestBroadcastTo(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.data),
                             cuda.to_gpu(self.grad))
+
+
+@testing.parameterize(
+    {'in_shape': (3, 2, 5), 'out_shape': (5,)},
+    {'in_shape': (3, 2, 5), 'out_shape': (3, 1, 5)},
+    {'in_shape': (3, 2, 5), 'out_shape': (1, 3, 2, 3)},
+)
+class TestBroadcastToTypeCheck(unittest.TestCase):
+    def setUp(self):
+        uniform = numpy.random.uniform
+        self.data = uniform(0, 1, self.in_shape).astype(numpy.float32)
+
+    def test_type_check(self):
+        x = chainer.Variable(self.data)
+        with self.assertRaises(type_check.InvalidType):
+            functions.broadcast_to(x, self.out_shape)
 
 
 testing.run_module(__name__, __file__)

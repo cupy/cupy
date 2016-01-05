@@ -71,6 +71,23 @@ class BroadcastTo(function.Function):
         shape = tuple(shape)
         self._shape = shape
 
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+
+        ndim = type_check.Variable(len(self._shape), 'len(shape)')
+        type_check.expect(in_types[0].ndim <= ndim)
+
+        shape = in_types[0].shape.eval()
+        for i in range(len(shape)):
+            j = -i - 1
+            if shape[j] == self._shape[j] or shape[j] == 1:
+                continue
+            expect = 'in_type[0].shape[%d] == %d' % (j, self._shape[j])
+            if self._shape[j] != 1:
+                expect += ' or in_type[0].shape[%d] == 1' % j
+            actual = 'in_type[0].shape: %s' % str(shape)
+            raise type_check.InvalidType(expect, actual)
+
     def forward(self, xs):
         xp = cuda.get_array_module(*xs)
         x = xs[0]
