@@ -83,12 +83,12 @@ def maxout(x, W, b=None):
 
     .. math::
 
-      `Y_{i} = \\mathrm{max}_{j} (x^{T}W_{\\cdot ij} + b_{ij})`
+      Y_{i} = \\mathrm{max}_{j} (x^{T}W_{\\cdot ij} + b_{ij})
 
-    where :x: is a input vector and :math:`W_{\\cdot ij}
-    is sub-vector of `W` whose second and third elements are
-    fixed to :math:`i` and :math:`j`, respectively
-    (minibatch dimension is omitted in the above equation).
+    where :math:`x` is a input vector and :math:`W_{\\cdot ij}`
+    is a sub-vector extracted from :math:`W` by fixing second
+    and third dimensions to :math:`i` and :math:`j`, respectively.
+    Minibatch dimension is omitted in the above equation.
 
     Args:
        x (~chainer.Variable): Input variable. Its first dimension is assumed
