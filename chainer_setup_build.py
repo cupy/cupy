@@ -81,6 +81,7 @@ MODULES = [
         'file': [
             'cupy.core.core',
             'cupy.core.flags',
+            'cupy.core.internal',
             'cupy.cuda.cublas',
             'cupy.cuda.curand',
             'cupy.cuda.device',
