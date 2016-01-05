@@ -35,6 +35,8 @@ class TestNonparameterizedMaxout(unittest.TestCase):
             self.b = numpy.random.uniform(
                 -1, 1, self.b_shape).astype(numpy.float32)
             self.y += self.b
+        else:
+            self.b = None
         self.y = numpy.max(self.y, axis=1)
         self.gy = numpy.random.uniform(
             -1, 1, self.y.shape).astype(numpy.float32)
@@ -51,13 +53,12 @@ class TestNonparameterizedMaxout(unittest.TestCase):
 
     @condition.retry(3)
     def test_forward_cpu(self):
-        self.check_forward(self.x, self.W, getattr(self, 'b', None),
-                           self.y)
+        self.check_forward(self.x, self.W, self.b, self.y)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
-        b = getattr(self, 'b', None)
+        b = self.b
         if b is not None:
             b = cuda.to_gpu(b)
 
@@ -94,12 +95,12 @@ class TestNonparameterizedMaxout(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.W, getattr(self, 'b', None), self.gy)
+        self.check_backward(self.x, self.W, self.b , self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        b = getattr(self, 'b', None)
+        b = self.b
         if b is not None:
             b = cuda.to_gpu(b)
 
