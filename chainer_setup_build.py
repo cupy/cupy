@@ -354,12 +354,26 @@ def get_cython_pkg():
     return pkg_resources.get_distribution('cython')
 
 
+def run_command(cmd):
+    try:
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        msg = '''Command %r failed:
+
+  command: %s
+  return code: %d
+  output:
+
+%s''' % (cmd[0], ' '.join(e.cmd), e.returncode, e.output)
+        raise distutils.errors.DistutilsExecError(msg)
+
+
 def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
     cython_location = get_cython_pkg().location
     cython_path = path.join(cython_location, 'cython.py')
     print("cython path:%s" % cython_location)
     cython_cmdbase = [sys.executable, cython_path]
-    subprocess.check_call(cython_cmdbase + ['--version'])
+    run_command(cython_cmdbase + ['--version'])
 
     cython_cmdbase.extend(['--fast-fail', '--verbose', '--cplus'])
     for ext in extensions:
@@ -367,7 +381,7 @@ def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
         for i in compiler_directives.items():
             cmd.append('--directive')
             cmd.append('%s=%s' % i)
-        subprocess.check_call(cmd + ext.sources)
+        run_command(cmd + ext.sources)
 
 
 def to_cpp_extensions(extensions):
