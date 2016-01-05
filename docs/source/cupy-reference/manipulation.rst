@@ -60,3 +60,9 @@ Repeating part of arrays along axis
 
 .. autofunction:: cupy.tile
 .. autofunction:: cupy.repeat
+
+
+Rearranging elements
+====================
+
+.. autofunction:: cupy.roll
