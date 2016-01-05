@@ -13,22 +13,6 @@ from chainer.testing import condition
 
 class BatchNormalizationTestBase(object):
 
-    aggr_axes = 0
-
-    def setUp(self):
-        self.link = links.BatchNormalization(3)
-        gamma = self.link.gamma.data
-        gamma[...] = numpy.random.uniform(.5, 1, gamma.shape)
-        beta = self.link.beta.data
-        beta[...] = numpy.random.uniform(-1, 1, beta.shape)
-        self.link.zerograds()
-
-        self.gamma = gamma.copy().reshape(1, 3)  # fixed on CPU
-        self.beta = beta.copy().reshape(1, 3)   # fixed on CPU
-
-        self.x = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (7, 3)).astype(numpy.float32)
-
     def set_avg(self):
         mean = self.x.mean(axis=self.aggr_axes)
         var = self.x.var(axis=self.aggr_axes)
@@ -41,7 +25,7 @@ class BatchNormalizationTestBase(object):
     def check_forward(self, x_data):
         if self.test:
             self.set_avg()
-        x = chainer.Variable(x_data)
+        x = chainer.Variable(x_data, volatile=self.volatile)
         y = self.link(x, test=self.test)
         self.assertEqual(y.data.dtype, numpy.float32)
 
@@ -104,10 +88,10 @@ class BatchNormalizationTestBase(object):
 
 
 # fully-connected usage
-@testing.parameterize(
-    {'test': True},
-    {'test': False},
-)
+@testing.parameterize(*testing.product({
+    'test': [True, False],
+    'volatile': ['on', 'off'],
+}))
 class TestBatchNormalization(BatchNormalizationTestBase, unittest.TestCase):
     aggr_axes = 0
 
@@ -127,10 +111,10 @@ class TestBatchNormalization(BatchNormalizationTestBase, unittest.TestCase):
 
 
 # convolutional usage
-@testing.parameterize(
-    {'test': True},
-    {'test': False},
-)
+@testing.parameterize(*testing.product({
+    'test': [True, False],
+    'volatile': ['on', 'off'],
+}))
 class TestBatchNormalization2D(BatchNormalizationTestBase, unittest.TestCase):
     aggr_axes = 0, 2, 3
 

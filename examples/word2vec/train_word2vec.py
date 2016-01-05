@@ -95,7 +95,7 @@ class SoftmaxCrossEntropyLoss(chainer.Chain):
         return F.softmax_cross_entropy(self.W(x), t)
 
 
-def calculate_loss(model, dataset, offset):
+def calculate_loss(model, dataset, position):
     # use random window size in the same way as the original word2vec
     # implementation.
     w = np.random.randint(args.window - 1) + 1
