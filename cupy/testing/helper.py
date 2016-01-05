@@ -2,8 +2,10 @@ from __future__ import print_function
 
 import functools
 import os
+import pkg_resources
 import random
 import traceback
+import unittest
 
 import numpy
 
@@ -586,6 +588,33 @@ def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=None):
     return for_dtypes_combination(types, names, full)
 
 
+def with_requires(*requirements):
+    """Run a test case only when given requirements are satisfied.
+
+    .. admonition:: Example
+
+       This test case runs only when `numpy>=1.10` is installed.
+
+       >>> @helper.with_requires('numpy>=1.10')
+       ... def test_for_numpy_1_10(self):
+       ...     pass
+
+    Args:
+        requirements: A list of string representing requirement condition to
+            run a given test case.
+
+    """
+    ws = pkg_resources.WorkingSet()
+    try:
+        ws.require(*requirements)
+        skip = False
+    except pkg_resources.VersionConflict:
+        skip = True
+
+    msg = 'requires: {}'.format(','.join(requirements))
+    return unittest.skipIf(skip, msg)
+
+
 def shaped_arange(shape, xp=cupy, dtype=numpy.float32):
     """Returns an array with given shape, array module, and dtype.
 
@@ -628,7 +657,10 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
     """
     size = internal.prod(shape)
     a = numpy.arange(size, 0, -1)
-    return xp.array(a.astype(dtype).reshape(shape))
+    if numpy.dtype(dtype).type == numpy.bool_:
+        return xp.array((a % 2 == 0).reshape(shape))
+    else:
+        return xp.array(a.astype(dtype).reshape(shape))
 
 
 def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):

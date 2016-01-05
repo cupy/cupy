@@ -27,7 +27,7 @@ class Sigmoid(function.Function):
 
     def forward_gpu(self, x):
         if cuda.cudnn_enabled and self.use_cudnn:
-            self.y = cuda.empty_like(x[0])
+            self.y = cuda.cupy.empty_like(x[0])
             dtype = x[0].dtype
             alpha = numpy.array(1, dtype=dtype).ctypes
             beta = numpy.array(0, dtype=dtype).ctypes
@@ -48,7 +48,7 @@ class Sigmoid(function.Function):
 
     def backward_gpu(self, x, gy):
         if cuda.cudnn_enabled and self.use_cudnn:
-            gx = cuda.empty_like(x[0])
+            gx = cuda.cupy.empty_like(x[0])
             dtype = x[0].dtype
             one = numpy.array(1, dtype=dtype).ctypes
             zero = numpy.array(0, dtype=dtype).ctypes

@@ -15,7 +15,8 @@ from chainer.testing import attr
 class TestHDF5Serializer(unittest.TestCase):
 
     def setUp(self):
-        _, path = tempfile.mkstemp()
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
         self.temp_file_path = path
         self.hdf5file = h5py.File(path, 'w')
         self.serializer = hdf5.HDF5Serializer(self.hdf5file, compression=3)
@@ -79,7 +80,8 @@ class TestHDF5Deserializer(unittest.TestCase):
     def setUp(self):
         self.data = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
 
-        _, path = tempfile.mkstemp()
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
         self.temp_file_path = path
         with h5py.File(path, 'w') as f:
             f.require_group('x')
@@ -123,7 +125,8 @@ class TestHDF5Deserializer(unittest.TestCase):
 class TestSaveHDF5(unittest.TestCase):
 
     def setUp(self):
-        _, path = tempfile.mkstemp()
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
         self.temp_file_path = path
 
     def tearDown(self):
@@ -143,7 +146,8 @@ class TestSaveHDF5(unittest.TestCase):
 class TestLoadHDF5(unittest.TestCase):
 
     def setUp(self):
-        _, path = tempfile.mkstemp()
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
         self.temp_file_path = path
         # Make a hdf5 file with empty data
         h5py.File(path, 'w')
