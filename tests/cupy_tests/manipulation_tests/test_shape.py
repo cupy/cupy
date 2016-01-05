@@ -48,10 +48,21 @@ class TestShape(unittest.TestCase):
             a.reshape(3, -1, -1)
 
     @testing.numpy_cupy_array_equal()
+    def test_external_reshape(self, xp):
+        a = xp.zeros((8,), dtype=xp.float32)
+        return xp.reshape(a, (1, 1, 1, 4, 1, 2))
+
+    @testing.numpy_cupy_array_equal()
     def test_ravel(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
         a = a.transpose(2, 0, 1)
         return a.ravel()
+
+    @testing.numpy_cupy_array_equal()
+    def test_external_ravel(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        a = a.transpose(2, 0, 1)
+        return xp.ravel(a)
 
     def test_reshape_contiguity(self):
         a = cupy.arange(6).reshape(2, 3)

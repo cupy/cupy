@@ -25,7 +25,7 @@ class Constant(chainer.Function):
         return tuple(map(np.zeros_like, inputs))
 
     def backward_gpu(self, inputs, grad_outputs):
-        return tuple(map(cuda.zeros_like, inputs))
+        return tuple(map(cuda.cupy.zeros_like, inputs))
 
 
 def constant(xs, value):
@@ -96,7 +96,7 @@ class TestVariable(unittest.TestCase):
         for i in six.moves.range(length):
             ret.append(constant((ret[i], ), (self.a, )))
         if gpu:
-            ret[-1].grad = cuda.zeros_like(ret[-1].data)
+            ret[-1].grad = cuda.cupy.zeros_like(ret[-1].data)
         else:
             ret[-1].grad = np.zeros_like(ret[-1].data)
         return ret
@@ -158,7 +158,7 @@ class TestVariable(unittest.TestCase):
     def test_grad_type_check_type_cpu_gpu_mixture(self):
         a = chainer.Variable(np.empty((3,), dtype=np.float32))
         with self.assertRaises(TypeError):
-            a.grad = cuda.empty((3,), dtype=np.float32)
+            a.grad = cuda.cupy.empty((3,), dtype=np.float32)
 
     def test_grad_type_check_dtype(self):
         a = chainer.Variable(np.empty((3,), dtype=np.float32))
@@ -214,6 +214,20 @@ class TestVariable(unittest.TestCase):
         a.to_gpu()
         cp.testing.assert_array_equal(a.data, cp.zeros(3, dtype=np.float32))
         cp.testing.assert_array_equal(a.grad, cp.ones(3, dtype=np.float32))
+
+    @attr.multi_gpu(2)
+    def test_to_gpu_from_another_gpu(self):
+        cp = cuda.cupy
+        a = chainer.Variable(cp.zeros(3, dtype=np.float32))
+        a.grad = cuda.cupy.ones_like(a.data)
+        b = a.data.copy()
+        gb = a.grad.copy()
+        a.to_gpu(1)
+
+        self.assertEqual(int(cuda.get_device(a.data)), 1)
+        self.assertEqual(int(cuda.get_device(a.grad)), 1)
+        cp.testing.assert_array_equal(a.data, b)
+        cp.testing.assert_array_equal(a.grad, gb)
 
     def check_zerograd(self, a_data, fill=False):
         xp = cuda.get_array_module(a_data)

@@ -30,7 +30,8 @@ class HDF5Serializer(serializer.Serializer):
         self.compression = compression
 
     def __getitem__(self, key):
-        return HDF5Serializer(self.group.require_group(key), self.compression)
+        name = self.group.name + '/' + key
+        return HDF5Serializer(self.group.require_group(name), self.compression)
 
     def __call__(self, key, value):
         ret = value
@@ -56,9 +57,9 @@ def save_hdf5(filename, obj, compression=4):
         compression (int): Gzip compression level.
 
     """
-    f = h5py.File(filename, 'w')
-    s = HDF5Serializer(f, compression=compression)
-    s.save(obj)
+    with h5py.File(filename, 'w') as f:
+        s = HDF5Serializer(f, compression=compression)
+        s.save(obj)
 
 
 class HDF5Deserializer(serializer.Deserializer):
@@ -102,6 +103,6 @@ def load_hdf5(filename, obj):
         obj: Object to be deserialized. It must support serialization protocol.
 
     """
-    f = h5py.File(filename, 'r')
-    d = HDF5Deserializer(f)
-    d.load(obj)
+    with h5py.File(filename, 'r') as f:
+        d = HDF5Deserializer(f)
+        d.load(obj)

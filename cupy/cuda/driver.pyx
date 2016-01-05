@@ -9,7 +9,7 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
-import cython
+cimport cython
 
 
 ###############################################################################

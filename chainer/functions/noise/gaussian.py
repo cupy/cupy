@@ -42,7 +42,7 @@ class Gaussian(function.Function):
             self.eps = cupy.random.standard_normal(
                 ln_var.shape, dtype=mean.dtype)
 
-        self.noise = cupy.empty_like(mean)
+        self.noise = cuda.cupy.empty_like(mean)
         self.noise = cuda.elementwise(
             'T v, T e', 'T noise',
             'noise = exp(v / 2) * e',

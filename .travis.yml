@@ -1,16 +1,54 @@
 language: python
 
-python:
-  - "2.7"
-  - "3.4"
-  - "3.5"
+matrix:
+  include:
+    - os: linux
+      python: "2.7"
+    - os: linux
+      python: "3.4"
+    - os: linux
+      python: "3.5"
+
+    - os: osx
+      language: generic
+      env:
+      - PYTHON_VERSION=2.7.10
+      - PYENV_ROOT=~/.pyenv
+      - PATH=$PYENV_ROOT/shims:$PATH:$PYENV_ROOT/bin
+    - os: osx
+      language: generic
+      env:
+      - PYTHON_VERSION=3.4.3
+      - PYENV_ROOT=~/.pyenv
+      - PATH=$PYENV_ROOT/shims:$PATH:$PYENV_ROOT/bin
+    - os: osx
+      language: generic
+      env:
+      - PYTHON_VERSION=3.5.0
+      - PYENV_ROOT=~/.pyenv
+      - PATH=$PYENV_ROOT/shims:$PATH:$PYENV_ROOT/bin
+
+before_install:
+  - if [[ $TRAVIS_OS_NAME = "osx" ]]; then
+      brew update >/dev/null;
+      brew outdated pyenv || brew upgrade --quiet pyenv;
+      brew install homebrew/boneyard/pyenv-pip-rehash;
+
+      pyenv install -ks $PYTHON_VERSION;
+      pyenv global $PYTHON_VERSION;
+      python --version;
+
+      brew install homebrew/science/hdf5;
+
+      pip install h5py;
+    fi
 
 install:
   - python setup.py install
-  - pip install nose flake8 hacking
+  - pip install nose flake8 hacking mock
 
 script:
-  - nosetests -a '!gpu' tests/chainer_tests
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' tests/chainer_tests
   - flake8
 
 sudo: false

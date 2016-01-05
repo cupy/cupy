@@ -280,7 +280,7 @@ cdef class PooledMemory(Memory):
         self.pool = pool
 
     def __dealloc__(self):
-        if self.ptr is not None:
+        if self.ptr != 0:
             self.free()
 
     cpdef free(self):
@@ -291,12 +291,11 @@ cdef class PooledMemory(Memory):
 
         """
         pool = self.pool()
-        if pool:
+        if pool and self.ptr != 0:
             pool.free(self.ptr, self.size)
         self.ptr = 0
         self.size = 0
         self.device = None
-        self.pool = None
 
 
 cdef class SingleDeviceMemoryPool:

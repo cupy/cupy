@@ -1,9 +1,11 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
 from chainer import cuda
+from chainer import testing
 from chainer.testing import attr
 
 
@@ -155,6 +157,18 @@ class TestLink(unittest.TestCase):
         gy_expect = numpy.zeros_like(l.y.grad)
         numpy.testing.assert_array_equal(self.link.x.grad, gx_expect)
         numpy.testing.assert_array_equal(self.link.y.grad, gy_expect)
+
+    def test_serialize(self):
+        serializer = mock.MagicMock(return_value=3)
+        l = chainer.Link(x=(2, 3), y=2)
+        l.add_persistent('z', 1)
+        l.serialize(serializer)
+        self.assertEqual(serializer.call_count, 3)
+        serializer.assert_any_call('x', l.x.data)
+        serializer.assert_any_call('y', l.y.data)
+        serializer.assert_any_call('z', 1)
+
+        self.assertEqual(l.z, 3)
 
 
 class TestChain(unittest.TestCase):
@@ -344,6 +358,20 @@ class TestChain(unittest.TestCase):
         numpy.testing.assert_array_equal(self.l1.x.grad, numpy.zeros((2, 3)))
         numpy.testing.assert_array_equal(self.l2.x.grad, numpy.zeros(2))
         numpy.testing.assert_array_equal(self.l3.x.grad, numpy.zeros(3))
+
+    def test_serialize(self):
+        mocks = {'l1': mock.MagicMock(), 'l2': mock.MagicMock()}
+        serializer = mock.MagicMock()
+        serializer.__getitem__.side_effect = lambda k: mocks[k]
+        self.c1.serialize(serializer)
+
+        self.assertEqual(serializer.call_count, 0)
+        self.assertEqual(serializer.__getitem__.call_count, 2)
+        serializer.__getitem__.assert_any_call('l1')
+        serializer.__getitem__.assert_any_call('l2')
+
+        mocks['l1'].assert_called_with('x', self.l1.x.data)
+        mocks['l2'].assert_called_with('x', self.l2.x.data)
 
 
 class TestChainList(unittest.TestCase):
@@ -538,3 +566,20 @@ class TestChainList(unittest.TestCase):
         numpy.testing.assert_array_equal(self.l1.x.grad, numpy.zeros((2, 3)))
         numpy.testing.assert_array_equal(self.l2.x.grad, numpy.zeros(2))
         numpy.testing.assert_array_equal(self.l3.x.grad, numpy.zeros(3))
+
+    def test_serialize(self):
+        mocks = {'0': mock.MagicMock(), '1': mock.MagicMock()}
+        serializer = mock.MagicMock()
+        serializer.__getitem__.side_effect = lambda k: mocks[k]
+        self.c1.serialize(serializer)
+
+        self.assertEqual(serializer.call_count, 0)
+        self.assertEqual(serializer.__getitem__.call_count, 2)
+        serializer.__getitem__.assert_any_call('0')
+        serializer.__getitem__.assert_any_call('1')
+
+        mocks['0'].assert_called_with('x', self.l1.x.data)
+        mocks['1'].assert_called_with('x', self.l2.x.data)
+
+
+testing.run_module(__name__, __file__)

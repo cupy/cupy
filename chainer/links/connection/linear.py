@@ -13,7 +13,7 @@ class Linear(link.Link):
     parameters.
 
     The weight matrix ``W`` is initialized with i.i.d. Gaussian samples, each
-    of which has zero mean and deviation :math:`\sqrt{1/\\text{in_size}}`. The
+    of which has zero mean and deviation :math:`\\sqrt{1/\\text{in_size}}`. The
     bias vector ``b`` is of size ``out_size``. Each element is initialized with
     the ``bias`` value. If ``nobias`` argument is set to True, then this link
     does not hold a bias vector.

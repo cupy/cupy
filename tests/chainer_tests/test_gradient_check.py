@@ -5,6 +5,7 @@ import six
 
 from chainer import cuda
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -306,3 +307,6 @@ class AssertAllCloseTest2(unittest.TestCase):
     @attr.gpu
     def test_rtol_gpu(self):
         self.check_rtol(cuda.to_gpu(self.x), cuda.to_gpu(self.y))
+
+
+testing.run_module(__name__, __file__)

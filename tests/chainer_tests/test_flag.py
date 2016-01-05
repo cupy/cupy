@@ -2,6 +2,7 @@ import unittest
 
 import chainer
 from chainer import flag
+from chainer import testing
 
 
 class TestFlag(unittest.TestCase):
@@ -48,3 +49,6 @@ class TestFlag(unittest.TestCase):
         self.assertEqual(chainer.AUTO, 'auto')
         self.assertEqual(chainer.AUTO, 'AUTO')
         self.assertEqual(chainer.AUTO, None)
+
+
+testing.run_module(__name__, __file__)

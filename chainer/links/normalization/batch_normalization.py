@@ -89,9 +89,8 @@ class BatchNormalization(link.Link):
         use_batch_mean = not test or finetune
 
         if use_batch_mean:
-            ret = batch_normalization.batch_normalization(
-                x, self.gamma, self.beta, self.eps)
-            func = ret.creator
+            func = batch_normalization.BatchNormalizationFunction(self.eps)
+            ret = func(x, self.gamma, self.beta)
 
             if finetune:
                 self.N += 1

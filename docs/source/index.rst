@@ -7,6 +7,7 @@ This is the `Chainer <http://chainer.org>`_ documentation.
 .. toctree::
    :maxdepth: 1
 
+   install
    tutorial/index
    reference/index
    cupy-reference/index

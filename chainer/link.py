@@ -70,8 +70,8 @@ class Link(object):
                       W=(n_out, n_in),
                       b=(n_out,),
                   )
-                  self.W[...] = np.random.randn(n_out, n_in)
-                  self.b.fill(0)
+                  self.W.data[...] = np.random.randn(n_out, n_in)
+                  self.b.data.fill(0)
 
               def __call__(self, x):
                   return F.linear(x, self.W, self.b)

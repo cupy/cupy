@@ -8,7 +8,6 @@ import chainer_setup_build
 
 
 install_requires = [
-    'Cython>=0.23',
     'filelock',
     'nose',
     'numpy>=1.9.0',
@@ -29,7 +28,7 @@ chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.5.0',
+    version='1.5.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -78,7 +77,7 @@ setup(
     },
     zip_safe=False,
     install_requires=install_requires,
-    setup_requires=['Cython>=0.23',
+    setup_requires=['Cython>=0.19',  # for h5py
                     'numpy>=1.9.0'],
     tests_require=['mock',
                    'nose'],

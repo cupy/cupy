@@ -19,8 +19,8 @@ Minimum requirements:
 Requirements for some features:
 - CUDA support
   - CUDA 6.5, 7.0, 7.5
-  - Cython 0.23
   - filelock
+  - g++
 - cuDNN support
   - cuDNN v2, v3
 - Caffe model support
@@ -37,6 +37,12 @@ Chainer requires libhdf5 via h5py. Anaconda distribution includes this package. 
 ```
 apt-get install libhdf5-dev
 yum install hdf5-devel
+```
+
+If you use old ``setuptools``, upgrade it:
+
+```
+pip install -U setuptools
 ```
 
 Then, install Chainer via PyPI:
@@ -56,6 +62,11 @@ In this case, you have to add the following lines to `.bashrc` or `.zshrc` (choo
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ```
+
+Chainer had `chainer-cuda-deps` module to enable CUDA in previous version.
+Recent version (>=1.3) does not require this module.
+So **you do not have to install** `chainer-cuda-deps`.
+
 If you want to enable cuDNN, add a directory containing `cudnn.h` to `CPATH`, and add a directory containing `libcudnn.so` to `LIBRARY_PATH` and `LD_LIBRARY_PATH`:
 ```
 export CPATH=/path/to/cudnn/include:$CPATH
@@ -65,12 +76,25 @@ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 Do not forget to restart your terminal session (or `source` it) to enable these changes.
 And then, reinstall Chainer.
 
+
+## Reference
+
+Tokui, S., Oono, K., Hido, S. and Clayton, J.,
+Chainer: a Next-Generation Open Source Framework for Deep Learning,
+*Proceedings of Workshop on Machine Learning Systems(LearningSys) in
+The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIPS)*, (2015)
+[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](chainer_bibtex.txt)
+
+
 ## More information
 
 - Official site: http://chainer.org/
 - Official document: http://docs.chainer.org/
 - github: https://github.com/pfnet/chainer
 - Forum: https://groups.google.com/forum/#!forum/chainer
+- Forum (Japanese): https://groups.google.com/forum/#!forum/chainer-jp
+- Twitter: https://twitter.com/ChainerOfficial
+- Twitter (Japanese): https://twitter.com/chainerjp
 
 ## License
 

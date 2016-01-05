@@ -15,14 +15,14 @@ def _mat_ptrs(a):
         GPU array of pointers to matrices
     """
     if a.shape[0] == 1:
-        return cuda.cupy.full((1,), a[0].data.ptr, dtype=numpy.intp)
+        return cuda.cupy.full((1,), a[0].data.ptr, dtype=numpy.uintp)
     else:
         stride = a[1].data.ptr - a[0].data.ptr
         return cuda.cupy.arange(
             a[0].data.ptr,
             a[0].data.ptr + stride * a.shape[0],
             stride,
-            dtype=numpy.intp)
+            dtype=numpy.uintp)
 
 
 def _as_mat(x):
@@ -236,7 +236,7 @@ class BatchMatMul(function.Function):
     def forward_gpu(self, x):
         a, b = x
         shape = self._output_shape(a, b)
-        ret = cuda.zeros(shape)
+        ret = cuda.cupy.zeros(shape, dtype=a.dtype)
         _batch_matmul_gpu(
             a, b, transa=self.transa, transb=self.transb, out=ret)
         return ret,
@@ -244,8 +244,8 @@ class BatchMatMul(function.Function):
     def backward_gpu(self, x, gy):
         a, b = x
         batch_size = a.shape[0]
-        ga = cuda.empty((batch_size,) + _as_mat(a[0]).shape)
-        gb = cuda.empty((batch_size,) + _as_mat(b[0]).shape)
+        ga = cuda.cupy.empty((batch_size,) + _as_mat(a[0]).shape, a.dtype)
+        gb = cuda.cupy.empty((batch_size,) + _as_mat(b[0]).shape, a.dtype)
         _batch_matmul_gpu(
             gy[0], b, transb=not self.transb, transout=self.transa, out=ga)
         _batch_matmul_gpu(
