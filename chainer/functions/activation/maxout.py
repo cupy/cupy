@@ -55,7 +55,7 @@ class MaxoutFunction(function.Function):
         # gradient of z = xW + b
         gz = xp.zeros((gy.shape[0], W.shape[1], gy.shape[1]), x.dtype)
         if xp == numpy:
-            idx0 = xp.arange(len(gy))[:,None]
+            idx0 = xp.arange(len(gy))[:, None]
             idx1 = xp.arange(gy.shape[1])
             gz[idx0, self.argmax, idx1] = gy
         else:
