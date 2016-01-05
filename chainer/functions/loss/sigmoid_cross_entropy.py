@@ -60,6 +60,7 @@ def sigmoid_cross_entropy(x, t, use_cudnn=True, normalize=True):
             at the i-th example.
         t (Variable): Variable holding an int32 vector of groundtruth labels.
             If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
+            Loss becomes to zero if all groundtruth labels are ``-1``.
         normalize (bool): Variable holding a boolean value which
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
