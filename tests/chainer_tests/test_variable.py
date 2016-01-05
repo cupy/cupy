@@ -367,6 +367,70 @@ class TestVariable(unittest.TestCase):
         self.check_addgrad(a, b, c)
 
 
+class TestDebugPrint(unittest.TestCase):
+
+    def test_debug_print_cpu(self):
+        arr = np.random.randn(5, 3, 5, 5).astype(np.float32)
+        v = chainer.Variable(arr)
+
+        result = v.debug_print()
+        self.assertTrue(repr(v) in result)
+        self.assertTrue('device: CPU' in result)
+        self.assertTrue('volatile: OFF' in result)
+        self.assertTrue("numpy.ndarray" in result)
+        self.assertTrue("dtype: float32" in result)
+
+        msg = "statistics: mean={mean}, std={std}".format(mean=arr.mean(),
+                                                          std=arr.std())
+        self.assertTrue(msg in result)
+        self.assertTrue("grad: None" in result)
+
+        # zero grad
+        v.zerograd()
+        result = v.debug_print()
+        self.assertTrue("grad: 0" in result)
+
+        # add grad
+        grad = np.random.randn(5, 3, 5, 5).astype(np.float32)
+        v.grad = grad
+        result = v.debug_print()
+
+        msg = "grad: mean={mean}, std={std}".format(mean=grad.mean(),
+                                                    std=grad.std())
+        self.assertTrue(msg in result)
+
+    @attr.gpu
+    def test_debug_print_gpu(self):
+        arr = np.random.randn(5, 3, 5, 5).astype(np.float32)
+        v = chainer.Variable(arr)
+        v.to_gpu(0)
+
+        result = v.debug_print()
+        self.assertTrue(repr(v) in result)
+        self.assertTrue('device: <CUDA Device 0>' in result)
+        self.assertTrue('volatile: OFF' in result)
+        msg = "cupy.core.core.ndarray"
+        self.assertTrue(msg in result)
+        self.assertTrue("dtype: float32" in result)
+
+        msg = "statistics: mean="
+        self.assertTrue(msg in result)
+        self.assertTrue("grad: None" in result)
+
+        # zero grad
+        v.zerograd()
+        result = v.debug_print()
+        self.assertTrue(repr(v) in result)
+        self.assertTrue("grad: 0" in result)
+
+        # add grad
+        v.grad = v.data
+        result = v.debug_print()
+
+        msg = "grad: mean="
+        self.assertTrue(msg in result)
+
+
 class TestVariableSetCreator(unittest.TestCase):
     class MockFunction(object):
         pass
