@@ -91,7 +91,13 @@ class BroadcastTo(function.Function):
     def forward(self, xs):
         xp = cuda.get_array_module(*xs)
         x = xs[0]
-        return xp.broadcast_to(x, self._shape),
+        if hasattr(xp, 'broadcast_to'):
+            return xp.broadcast_to(x, self._shape),
+        else:
+            # numpy 1.9 doesn't support broadcast_to method
+            dummy = xp.empty(self._shape)
+            bx, _ = xp.broadcast_arrays(x, dummy)
+            return bx,
 
     def backward(self, xs, grads):
         return tuple(_backward_one(x, g) for x, g in six.moves.zip(xs, grads))
