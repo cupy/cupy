@@ -67,7 +67,7 @@ def check_cudnn_version(compiler, settings):
     cudnn_version = int(out)
 
     if cudnn_version < minimum_cudnn_version:
-        print_warnig(
+        print_warning(
             'cuDNN version is too old: %d' % cudnn_version,
             'cuDNN v2 or newer is required')
         return False
