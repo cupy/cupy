@@ -24,10 +24,9 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
-        if hasattr(self, 'ignore_all') and self.ignore_all:
+        if getattr(self, 'ignore_all', False):
             self.t = -numpy.ones(self.shape).astype(numpy.int32)
         else:
-            self.ignore_all = False
             self.t = numpy.random.randint(-1, 2,
                                           self.shape).astype(numpy.int32)
 
@@ -42,7 +41,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
 
         # Compute expected value
         loss_expect = 0
-        if not self.ignore_all:
+        if not getattr(self, 'ignore_all', False):
             non_ignore_count = 0
             for i in six.moves.range(self.x.shape[0]):
                 for j in six.moves.range(self.x.shape[1]):
