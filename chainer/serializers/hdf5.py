@@ -118,6 +118,5 @@ def load_hdf5(filename, obj):
     """
     _check_available()
     with h5py.File(filename, 'r') as f:
-        _check_available()
         d = HDF5Deserializer(f)
         d.load(obj)
