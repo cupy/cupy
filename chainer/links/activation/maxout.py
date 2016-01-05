@@ -38,8 +38,7 @@ class Maxout(link.Link):
         super(Maxout, self).__init__(W=(in_size, num_channel, out_size))
         if initialW is None:
             initialW = numpy.random.normal(
-                0, wscale * numpy.sqrt(1. / in_size),
-                (in_size, num_channel, out_size))
+                0, wscale * numpy.sqrt(1. / in_size), self.W.data.shape)
         self.W.data[...] = initialW
 
         if initial_bias is not None:
