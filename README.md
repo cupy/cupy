@@ -76,6 +76,16 @@ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 Do not forget to restart your terminal session (or `source` it) to enable these changes.
 And then, reinstall Chainer.
 
+
+## Reference
+
+Tokui, S., Oono, K., Hido, S. and Clayton, J.,
+Chainer: a Next-Generation Open Source Framework for Deep Learning,
+*Proceedings of Workshop on Machine Learning Systems(LearningSys) in
+The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIPS)*, (2015)
+[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](chainer_bibtex.txt)
+
+
 ## More information
 
 - Official site: http://chainer.org/
