@@ -104,4 +104,13 @@ class BroadcastTo(function.Function):
 
 
 def broadcast_to(x, shape):
+    """Broadcast a given variable to a given shape.
+
+    Args:
+      x (~chainer.Variable): Variable to be broadcasted.
+      shape (tuple of int): The shape of the output variable.
+
+    Returns:
+        ~chainer.Variable: Output variable broacasted to the given shape.
+    """
     return BroadcastTo(shape)(x)
