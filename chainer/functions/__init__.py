@@ -1,6 +1,7 @@
 """Collection of :class:`~chainer.Function` implementations."""
 
 from chainer.functions.activation import clipped_relu
+from chainer.functions.activation import elu
 from chainer.functions.activation import leaky_relu
 from chainer.functions.activation import lstm
 from chainer.functions.activation import prelu
@@ -66,6 +67,8 @@ clipped_relu = clipped_relu.clipped_relu
 ConnectionistTemporalClassification = ctc.ConnectionistTemporalClassification
 connectionist_temporal_classification \
     = ctc.connectionist_temporal_classification
+ELU = elu.ELU
+elu = elu.elu
 LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LSTM = lstm.LSTM

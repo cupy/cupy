@@ -26,6 +26,7 @@ functions, which users should use.
 Activation functions
 --------------------
 .. autofunction:: clipped_relu
+.. autofunction:: elu
 .. autofunction:: leaky_relu
 .. autofunction:: lstm
 .. autofunction:: prelu
