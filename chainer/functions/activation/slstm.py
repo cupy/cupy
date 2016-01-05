@@ -41,6 +41,13 @@ template <typename T> __device__ T grad_tanh(T y) { return 1 - y * y; }
 
 class SLSTM(function.Function):
 
+    """S-LSTM unit.
+
+    It has four inputs (c1, c2, x1, x2) and two outputs (c, h), where c
+    indicates the cell state. x1 and x2 must have four times channels compared
+    to the number of units.
+
+    """
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 4)
         c1_type, c2_type, x1_type, x2_type = in_types
@@ -172,4 +179,54 @@ class SLSTM(function.Function):
 
 
 def slstm(c_prev1, c_prev2, x1, x2):
+
+    """S-LSTM units as an activation function.
+
+    This function implements S-LSTM unit. It is an extention of LSTM unit
+    applied to tree structures.
+    The function is applied to binary trees. Each node has two childlren nodes.
+    It gets four arguments, previous cell states :math:`c_1` and
+    :math:`c_2`, and incoming signals :math:`x_1` and :math:`x_2`.
+
+    First both input signals :math:`x_1` and :math:`x_2` are split into
+    eight arrays :math:`a_1, i_1, f_1, o_1`, and :math:`a_2, i_2, f_2, o_2`.
+    They has the same shapes along the second axis.
+    It means that :math:`x_1` and :math:`x_2` 's second axis must have 4 times
+    the length of :math:`c_{\\text{prev}1}` and :math:`c_{\\text{prev}1}`.
+
+    The splitted input signals are corresponding to:
+
+        - :math:`a_i` : sources of cell input
+        - :math:`i_i` : sources of input gate
+        - :math:`f_i` : sources of forget gate
+        - :math:`o_i` : sources of output gate
+
+    .. math::
+
+        c &= \\tanh(a_1 + a_2) \\text{sigmoid}(i_1 + i_2)
+           + c_{\\text{prev}1} \\text{sigmoid}(f_1)
+           + c_{\\text{prev}2} \\text{sigmoid}(f_2)
+        h &= \\tanh(c) \\text{sigmoid(o_1 + o_2)}
+
+    The function returns :math:`c` and :math:`h` as a tuple.
+
+    Args:
+        c_prev1 (~chainer.Variable): Variable that holds the previous cell
+            state of the first child node. The cell state should be a zero
+            array or the output of the  previous call of LSTM.
+        c_prev2 (~chainer.Variable): Variable that holds the previous cell
+            state of the second child node.
+        x1 (~chainer.Variable): Variable that holds the incoming signal from
+            the first child node. It must have the second dimension four times
+            of that of the cell state,
+        x2 (~chainer.Variable): Variable that holds the incoming signal from
+            the second child node.
+
+    Returns:
+        tuple: Two :class:`~chainer.Variable` objects ``c`` and ``h``. ``c`` is
+            the cell state. ``h`` indicates the outgoing signal.
+
+    See the original: `Long Short-Term Memory Over Tree Structures [ICML2015]<>`
+
+    """
     return SLSTM()(c_prev1, c_prev2, x1, x2)
