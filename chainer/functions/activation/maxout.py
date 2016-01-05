@@ -54,10 +54,16 @@ class MaxoutFunction(function.Function):
         xp = cuda.get_array_module(*inputs)
         # gradient of z = xW + b
         gz = xp.zeros((gy.shape[0], W.shape[1], gy.shape[1]), x.dtype)
-        gz_r = xp.rollaxis(gz, 1)
-        for idx in numpy.ndindex(gy.shape):
-            argmax = int(self.argmax[idx])
-            gz_r[argmax, idx[0], idx[1]] = gy[idx[0], idx[1]]
+        if xp == numpy:
+            idx0 = xp.arange(len(gy))[:,None]
+            idx1 = xp.arange(gy.shape[1])
+            gz[idx0, self.argmax, idx1] = gy
+        else:
+            gz_r = xp.rollaxis(gz, 1)
+            cuda.elementwise(
+                'T gy, S argmax, int32 n', 'raw T gz',
+                'gz[argmax * n + i] = gy', 'maxout_bwd'
+            )(gy, self.argmax, gz_r.size // len(gz_r), gz_r)
         gx = xp.tensordot(gz, W, ((1, 2), (1, 2))).reshape(inputs[0].shape)
         gW = xp.tensordot(x, gz, (0, 0))
 
