@@ -68,7 +68,7 @@ def assert_array_max_ulp(a, b, maxulp=1, dtype=None):
              that elements of ``a`` and ``b`` can differ.
          dtype(numpy.dtype): Data-type to convert ``a`` and ``b`` to if given.
 
-    .. seealso:: :func:`numpy.assert_array_max_ulp`
+    .. seealso:: :func:`numpy.testing.assert_array_max_ulp`
     """
     numpy.testing.assert_array_max_ulp(
         cupy.asnumpy(a), cupy.asnumpy(b), maxulp=maxulp, dtype=dtype)
@@ -84,7 +84,7 @@ def assert_array_equal(x, y, err_msg='', verbose=True):
          verbose(bool): If True, the conflicting values
              are appended to the error message.
 
-    .. seealso:: :func:`numpy.assert_array_equal`
+    .. seealso:: :func:`numpy.testing.assert_array_equal`
     """
     numpy.testing.assert_array_equal(
         cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
@@ -101,14 +101,14 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
          verbose(bool): If True, the conflicting values
              are appended to the error message.
 
-    Each element of ``x`` and ``y`` must be either `numpy.ndarray`
+    Each element of ``x`` and ``y`` must be either :class:`numpy.ndarray`
     or `cupy.ndarray`. ``x`` and ``y`` must have same length.
     Otherwise, this function raises ``AssertionError``.
     It compares elements of ``x`` and ``y`` pairwise
-    with ``assert_array_equal`` and raises error if at least one
+    with :func:`assert_array_equal` and raises error if at least one
     pair is not equal.
 
-    .. seealso:: :func:`numpy.assert_array_equal`
+    .. seealso:: :func:`numpy.testing.assert_array_equal`
     """
     if len(xlist) != len(ylist):
         raise AssertionError('List size is different')
@@ -128,7 +128,7 @@ def assert_array_less(x, y, err_msg='', verbose=True):
          verbose(bool): If True, the conflicting values
              are appended to the error message.
 
-    .. seealso:: :func:`numpy.assert_array_less`
+    .. seealso:: :func:`numpy.testing.assert_array_less`
     """
     numpy.testing.assert_array_less(
         cupy.asnumpy(x), cupy.asnumpy(y), err_msg=err_msg,
