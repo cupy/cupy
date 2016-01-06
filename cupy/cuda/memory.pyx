@@ -341,8 +341,11 @@ cdef class SingleDeviceMemoryPool:
     cpdef free_all_free(self):
         self._free = collections.defaultdict(list)
 
-    cpdef n_free(self):
-        return sum([len(free) for _, free in self._free.iteritems()])
+    cpdef n_free_blocks(self):
+        cdef Py_ssize_t n = 0
+        for v in self._free.itervalues():
+            n += len(v)
+        return n
 
 
 cdef class MemoryPool(object):
@@ -402,13 +405,13 @@ cdef class MemoryPool(object):
         if dev in self._pools:
             self._pools[dev].free_all_free()
 
-    cpdef n_free(self):
+    cpdef n_free_blocks(self):
         """
         :return:
         the total number of unused memory pool.
         """
         dev = device.get_device_id()
         if dev in self._pools:
-            return self._pools[dev].n_free()
+            return self._pools[dev].n_free_blocks()
         else:
             return 0

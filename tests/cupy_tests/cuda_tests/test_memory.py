@@ -162,8 +162,8 @@ class TestMemoryPool(unittest.TestCase):
             mem = self.pool.malloc(1).mem
             self.assertIsInstance(mem, memory.Memory)
             self.assertIsInstance(mem, memory.PooledMemory)
-            self.assertEqual(self.pool.n_free(), 0)
+            self.assertEqual(self.pool.n_free_blocks(), 0)
             mem.free()
-            self.assertEqual(self.pool.n_free(), 1)
+            self.assertEqual(self.pool.n_free_blocks(), 1)
             self.pool.free_all_free()
-            self.assertEqual(self.pool.n_free(), 0)
+            self.assertEqual(self.pool.n_free_blocks(), 0)
