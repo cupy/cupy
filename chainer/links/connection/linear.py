@@ -3,7 +3,6 @@ import numpy
 from chainer.functions.connection import linear
 from chainer import link
 import chainer.initializations as I
-import types
 
 
 class Linear(link.Link):
@@ -41,13 +40,12 @@ class Linear(link.Link):
 
     """
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
-                 initialW=I.glorot_uniform, initial_bias=None):
+                 initialW=None, initial_bias=None):
         super(Linear, self).__init__(W=(out_size, in_size))
         shape = self.W.data.shape
         if initialW is None:
-            initialW = numpy.random.normal(
-                0, wscale * numpy.sqrt(1. / in_size), shape)
-        elif isinstance(initialW, types.FunctionType):
+            initialW = lambda shape : I.he_normal(shape, wscale/numpy.sqrt(2))
+        if callable(initialW):
             initialW = initialW(shape)
 
         self.W.data[...] = initialW
@@ -58,6 +56,8 @@ class Linear(link.Link):
             self.add_param('b', out_size)
             if initial_bias is None:
                 initial_bias = bias
+            elif callable(initial_bias):
+                initial_bias = initial_bias(self.b.data.shape)
             self.b.data[...] = initial_bias
 
     def __call__(self, x):
