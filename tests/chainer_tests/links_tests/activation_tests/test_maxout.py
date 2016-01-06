@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -24,42 +25,47 @@ def _as_mat(x):
          'num_channel': [3],
          'out_size': [4],
          'wscale': [1],
-         'initialW': ['random', None],
-         'initial_bias': [0, None],
+         'initial_bias': ['random', None],
          'batchsize': [7]}
     )
 )
 class TestMaxout(unittest.TestCase):
 
     def setUp(self):
+        # x, W, and b are set so that the result of forward
+        # propagation gets stable, meaning that their small pertubations
+        # do not change :math:`argmax_{j} W_{\cdot ij} x + b_{ij}`.
+
         x_shape = (self.batchsize, ) + self.in_shape
         self.x = numpy.random.uniform(
-            -1, 1, x_shape).astype(numpy.float32)
+            -0.05, 0.05, x_shape).astype(numpy.float32) + 1
         self.gy = numpy.random.uniform(
-            -1, 1, (self.batchsize, self.out_size)
+            -0.05, 0.05, (self.batchsize, self.out_size)
         ).astype(numpy.float32)
 
         in_size = numpy.prod(self.in_shape)
-        initialW = None
-        if self.initialW == 'random':
-            initialW = numpy.random.uniform(
-                -1, 1, (in_size, self.num_channel, self.out_size))
+        initialW = numpy.random.uniform(
+            -0.05, 0.05, (in_size, self.num_channel, self.out_size))
+        for c in six.moves.range(self.num_channel):
+            w = numpy.arange(in_size, dtype=numpy.float32) + 1
+            for o in six.moves.range(self.out_size):
+                initialW[:, c, o] += w * o
+
+        initial_bias = None
+        if self.initial_bias == 'random':
+            initial_bias = numpy.random.uniform(
+                -0.05, 0.05, (self.num_channel, self.out_size))
 
         self.link = links.Maxout(in_size, self.num_channel, self.out_size,
-                                 self.wscale, initialW, self.initial_bias)
-        W = self.link.W.data
-        W[...] = numpy.random.uniform(-1, 1, W.shape)
-        self.y = numpy.tensordot(_as_mat(self.x), W, axes=1)
+                                 self.wscale, initialW, initial_bias)
+
+        self.W = self.link.W.data.copy()
+        self.y = numpy.tensordot(_as_mat(self.x), self.W, axes=1)
         if self.initial_bias is not None:
-            b = self.link.b.data
-            b[...] = numpy.random.uniform(-1, 1, b.shape)
-            self.y += b
+            self.b = self.link.b.data.copy()
+            self.y += self.b
         self.y = numpy.max(self.y, axis=1)
         self.link.zerograds()
-
-        self.W = W.copy()
-        if self.initial_bias is not None:
-            self.b = b.copy()
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
