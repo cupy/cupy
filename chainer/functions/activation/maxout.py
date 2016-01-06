@@ -33,7 +33,7 @@ class MaxoutFunction(function.Function):
             type_check.expect(
                 b_type.dtype.kind == 'f',
                 b_type.ndim == 2,
-                b_type.shape[0:] == w_type.shape[1:]
+                b_type.shape == w_type.shape[1:]
             )
 
     def forward(self, inputs):
