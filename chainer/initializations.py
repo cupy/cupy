@@ -17,40 +17,40 @@ def normal(shape, scale=0.05):
     return np.random.normal(loc=0.0, scale=scale, size=shape)
 
 
-def lecun_uniform(shape):
+def lecun_uniform(shape, scale=1):
     ''' Reference: LeCun 98, Efficient Backprop
         http://yann.lecun.com/exdb/publis/pdf/lecun-98b.pdf
     '''
     fan_in, fan_out = get_fans(shape)
-    scale = np.sqrt(3. / fan_in)
-    return uniform(shape, scale)
-
-
-def glorot_normal(shape):
-    ''' Reference: Glorot & Bengio, AISTATS 2010
-    '''
-    fan_in, fan_out = get_fans(shape)
-    s = np.sqrt(2. / (fan_in + fan_out))
-    return normal(shape, s)
-
-
-def glorot_uniform(shape):
-    fan_in, fan_out = get_fans(shape)
-    s = np.sqrt(6. / (fan_in + fan_out))
+    s = scale * np.sqrt(3. / fan_in)
     return uniform(shape, s)
 
 
-def he_normal(shape):
-    ''' Reference:  He et al., http://arxiv.org/abs/1502.01852
+def glorot_normal(shape, scale=1):
+    ''' Reference: Glorot & Bengio, AISTATS 2010
     '''
     fan_in, fan_out = get_fans(shape)
-    s = np.sqrt(2. / fan_in)
+    s = scale * np.sqrt(2. / (fan_in + fan_out))
     return normal(shape, s)
 
 
-def he_uniform(shape):
+def glorot_uniform(shape, scale=1):
     fan_in, fan_out = get_fans(shape)
-    s = np.sqrt(6. / fan_in)
+    s = scale * np.sqrt(6. / (fan_in + fan_out))
+    return uniform(shape, s)
+
+
+def he_normal(shape, scale=1):
+    ''' Reference:  He et al., http://arxiv.org/abs/1502.01852
+    '''
+    fan_in, fan_out = get_fans(shape)
+    s = scale * np.sqrt(2. / fan_in)
+    return normal(shape, s)
+
+
+def he_uniform(shape, scale=1):
+    fan_in, fan_out = get_fans(shape)
+    s = scale * np.sqrt(6. / fan_in)
     return uniform(shape, s)
 
 
@@ -78,5 +78,5 @@ def zero(shape):
     return np.zeros(shape)
 
 
-def one(shape):
-    return np.ones(shape)
+def one(shape, scale=1):
+    return scale * np.ones(shape)
