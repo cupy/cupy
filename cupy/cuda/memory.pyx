@@ -6,6 +6,7 @@ from cupy.cuda import runtime
 
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
+import six
 
 
 cdef class Memory:
@@ -343,7 +344,7 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef n_free_blocks(self):
         cdef Py_ssize_t n = 0
-        for v in self._free.itervalues():
+        for v in six.itervalues(self._free):
             n += len(v)
         return n
 
