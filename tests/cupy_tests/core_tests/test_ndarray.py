@@ -1,6 +1,7 @@
 import unittest
 
-import cupy
+import numpy
+
 from cupy import core
 from cupy import testing
 
@@ -34,5 +35,13 @@ class TestGetSize(unittest.TestCase):
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape(self):
-        a = cupy.ndarray(self.arg)
+        a = core.ndarray(self.arg)
         self.assertTupleEqual(a.shape, self.shape)
+
+
+class TestNdarrayInitRaise(unittest.TestCase):
+
+    def test_unsupported_type(self):
+        arr = numpy.ndarray((2, 3), dtype=object)
+        with self.assertRaises(ValueError):
+            core.array(arr)

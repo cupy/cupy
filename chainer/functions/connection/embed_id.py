@@ -45,8 +45,8 @@ def embed_id(x, W):
 
     This function implements so called *word embedding*. It takes two
     arguments: a set of IDs (words) ``x`` in :math:`B` dimensional integer
-    vector, and a set of all ID (word) embeddings ``W`` in :math:`V\times d`
-    float32 matrix. It outputs :math:`B \times d` matrix whose ``i``-th
+    vector, and a set of all ID (word) embeddings ``W`` in :math:`V \\times d`
+    float32 matrix. It outputs :math:`B \\times d` matrix whose ``i``-th
     column is the ``x[i]``-th column of ``W``.
 
     This function is only differentiable on the input ``W``.

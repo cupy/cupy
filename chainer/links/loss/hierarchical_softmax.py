@@ -161,7 +161,6 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
         return gx
 
     def forward_gpu(self, inputs):
-        cupy = cuda.cupy
         x, t, W = inputs
         max_length = cuda.reduce(
             'T t, raw T begins', 'T out', 'begins[t + 1] - begins[t]',
@@ -170,9 +169,9 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
         max_length = cuda.to_cpu(max_length)[()]
 
         length = max_length * x.shape[0]
-        ls = cupy.empty((length,), dtype=numpy.float32)
+        ls = cuda.cupy.empty((length,), dtype=numpy.float32)
         n_in = x.shape[1]
-        wxy = cupy.empty_like(ls)
+        wxy = cuda.cupy.empty_like(ls)
         cuda.elementwise(
             '''raw T x, raw T w, raw int32 ts, raw int32 paths,
             raw T codes, raw int32 begins, int32 c, int32 max_length''',
@@ -209,13 +208,12 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
         return ls.sum(),
 
     def backward_gpu(self, inputs, grad_outputs):
-        cupy = cuda.cupy
         x, t, W = inputs
         gloss, = grad_outputs
 
         n_in = x.shape[1]
-        gx = cupy.zeros_like(x)
-        gW = cupy.zeros_like(W)
+        gx = cuda.cupy.zeros_like(x)
+        gW = cuda.cupy.zeros_like(W)
         cuda.elementwise(
             '''T wxy, raw T x, raw T w, raw int32 ts, raw int32 paths,
             raw T codes, raw int32 begins, raw T gloss,
@@ -256,30 +254,30 @@ class BinaryHierarchicalSoftmax(link.Link):
     In natural language applications, vocabulary size is too large to use
     softmax loss.
     Instead, the hierarchical softmax uses product of sigmoid functions.
-    It costs only :math:`O(\log(n))` time where :math:`n` is the vocabulary
+    It costs only :math:`O(\\log(n))` time where :math:`n` is the vocabulary
     size in average.
 
     At first a user need to prepare a binary tree whose each leaf is
     corresponding to a word in a vocabulary.
     When a word :math:`x` is given, exactly one path from the root of the tree
     to the leaf of the word exists.
-    Let :math:`\mbox{path}(x) = ((e_1, b_1), \dots, (e_m, b_m))` be the path of
-    :math:`x`, where :math:`e_i` is an index of :math:`i`-th internal node, and
-    :math:`b_i \in \{-1, 1\}` indicates direction to move at :math:`i`-th
-    internal node (-1 is left, and 1 is right).
+    Let :math:`\\mbox{path}(x) = ((e_1, b_1), \\dots, (e_m, b_m))` be the path
+    of :math:`x`, where :math:`e_i` is an index of :math:`i`-th internal node,
+    and :math:`b_i \\in \\{-1, 1\\}` indicates direction to move at
+    :math:`i`-th internal node (-1 is left, and 1 is right).
     Then, the probability of :math:`x` is given as below:
 
     .. math::
 
-       P(x) &= \prod_{(e_i, b_i) \in \mbox{path}(x)}P(b_i | e_i)  \\\\
-            &= \prod_{(e_i, b_i) \in \mbox{path}(x)}\sigma(b_i x^\\top
+       P(x) &= \\prod_{(e_i, b_i) \\in \\mbox{path}(x)}P(b_i | e_i)  \\\\
+            &= \\prod_{(e_i, b_i) \\in \\mbox{path}(x)}\\sigma(b_i x^\\top
                w_{e_i}),
 
-    where :math:`\sigma(\\cdot)` is a sigmoid function, and :math:`w` is a
+    where :math:`\\sigma(\\cdot)` is a sigmoid function, and :math:`w` is a
     weight matrix.
 
-    This function costs :math:`O(\log(n))` time as an average length of paths
-    is :math:`O(\log(n))`, and :math:`O(n)` memory as the number of internal
+    This function costs :math:`O(\\log(n))` time as an average length of paths
+    is :math:`O(\\log(n))`, and :math:`O(n)` memory as the number of internal
     nodes equals :math:`n - 1`.
 
     Args:

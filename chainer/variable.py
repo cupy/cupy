@@ -93,8 +93,8 @@ class Variable(object):
         """Short text that represents the function."""
         if self.data.shape == ():
             return str(self.data.dtype)
-        return '%s, %s' % (str(self.data.shape),
-                           str(self.data.dtype))
+        return '(%s), %s' % (', '.join(map(str, self.data.shape)),
+                             str(self.data.dtype))
 
     @property
     def grad(self):
