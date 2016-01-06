@@ -127,4 +127,28 @@ class TestInvalidMaxout(unittest.TestCase):
             self.link(chainer.Variable(self.x))
 
 
+class TestInitialization(unittest.TestCase):
+
+    def setUp(self):
+        self.initialW = numpy.random.uniform(
+            -1, 1, (2, 3, 4)).astype(numpy.float32)
+        self.initial_bias = numpy.random.uniform(
+            -1, 1, (3, 4)).astype(numpy.float32)
+        self.link = links.Maxout(
+            2, 3, 4, initialW=self.initialW,
+            initial_bias=self.initial_bias)
+
+    def check_param(self):
+        gradient_check.assert_allclose(self.initialW, self.link.W.data)
+        gradient_check.assert_allclose(self.initial_bias, self.link.b.data)
+
+    def test_param_cpu(self):
+        self.check_param()
+
+    @attr.gpu
+    def test_param_gpu(self):
+        self.link.to_gpu()
+        self.check_param()
+
+
 testing.run_module(__name__, __file__)
