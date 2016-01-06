@@ -30,7 +30,8 @@ class Linear(link.Link):
             that takes a tuple of (outpu_size, input_size) and returns a 
             matrix of the same dimensions to use for initialization
         initial_bias (1-D array): Initial bias value. If ``None``, then this
-            function uses to initialize ``bias``.
+            function uses to initialize ``bias``. May also be a function
+            that behaves in the same manner as initalW
 
     .. seealso:: :func:`~chainer.functions.linear`
 
