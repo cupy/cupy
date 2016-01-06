@@ -10,8 +10,11 @@ class SigmoidCrossEntropy(function.Function):
 
     """Sigmoid activation followed by a sigmoid cross entropy loss."""
 
-    def __init__(self, use_cudnn=True):
+    ignore_label = -1
+
+    def __init__(self, use_cudnn=True, normalize=True):
         self.use_cudnn = use_cudnn
+        self.normalize = normalize
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -23,48 +26,45 @@ class SigmoidCrossEntropy(function.Function):
             x_type.shape == t_type.shape
         )
 
-    def forward_cpu(self, inputs):
+    def forward(self, inputs):
+        xp = cuda.get_array_module(*inputs)
         x, t = inputs
-        self.y, = sigmoid.Sigmoid().forward_cpu((x,))
+        self.ignore_mask = (t != self.ignore_label)
+        if self.normalize:
+            count = int(self.ignore_mask.sum())
+        else:
+            count = x.shape[0]
+        self.count = count if count > 0 else 1
         # stable computation of the cross entropy.
-        loss = -numpy.sum(
-            x * (t - (x >= 0)) - numpy.log1p(numpy.exp(-numpy.abs(x))))
-        return numpy.array(loss / t.shape[0], dtype=x.dtype),
+        loss = -xp.sum(
+            self.ignore_mask * (x * (t - (x >= 0)) -
+                                xp.log1p(xp.exp(-xp.abs(x)))))
+        return xp.array(loss / self.count, dtype=x.dtype),
 
-    def forward_gpu(self, inputs):
+    def backward(self, inputs, grad_outputs):
         x, t = inputs
-        self.y, = sigmoid.Sigmoid(self.use_cudnn).forward_gpu((x,))
-        loss = cuda.reduce(
-            'T x, S t, T inv_cnt', 'T out',
-            'x * (t - (x >= 0)) - log1p(exp(-fabs(x)))',
-            'a + b', 'out = a * inv_cnt', 0,
-            'sigmoid_crossent_fwd')(x, t, -1.0 / t.shape[0])
-        return loss,
-
-    def backward_cpu(self, inputs, grad_outputs):
-        t, gloss = inputs[1], grad_outputs[0]
-        dtype = self.y.dtype
-        gx = gloss * (self.y - t.astype(dtype)) / dtype.type(t.shape[0])
-        return gx, None
-
-    def backward_gpu(self, inputs, grad_outputs):
-        t, gloss = inputs[1], grad_outputs[0]
-        gx = cuda.elementwise(
-            'T y, S t, raw T gloss, T inv_cnt', 'T gx',
-            'gx = gloss[0] * inv_cnt * (y - t)',
-            'sigmoid_crossent_bwd')(self.y, t, gloss, 1.0 / t.shape[0])
+        gloss = grad_outputs[0]
+        y, = sigmoid.Sigmoid(self.use_cudnn).forward((x,))
+        dtype = y.dtype
+        gx = (gloss * self.ignore_mask * (y - t.astype(dtype)) /
+              dtype.type(self.count))
         return gx, None
 
 
-def sigmoid_cross_entropy(x, t, use_cudnn=True):
+def sigmoid_cross_entropy(x, t, use_cudnn=True, normalize=True):
     """Computes cross entropy loss for sigmoid activations.
 
     Args:
         x (Variable): A variable object holding a matrix whose (i, j)-th
             element indicates the unnormalized log probability of the j-th unit
             at the i-th example.
-        t (Variable): A variable object holding an int32 vector of groundtruth
-            binary labels.
+        t (Variable): Variable holding an int32 vector of groundtruth labels.
+            If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
+            Loss is zero if all groundtruth labels are ``-1``.
+        normalize (bool): Variable holding a boolean value which
+            determines the normalization constant. If true, this function
+            normalizes the cross entropy loss across all instances. If else,
+            it only normalizes along a batch size.
 
     Returns:
         Variable: A variable object holding a scalar array of the cross entropy
@@ -75,4 +75,4 @@ def sigmoid_cross_entropy(x, t, use_cudnn=True):
        This function is differentiable only by ``x``.
 
     """
-    return SigmoidCrossEntropy(use_cudnn)(x, t)
+    return SigmoidCrossEntropy(use_cudnn, normalize)(x, t)

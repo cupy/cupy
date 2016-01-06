@@ -1,6 +1,7 @@
 """Collection of :class:`~chainer.Function` implementations."""
 
 from chainer.functions.activation import clipped_relu
+from chainer.functions.activation import elu
 from chainer.functions.activation import leaky_relu
 from chainer.functions.activation import lstm
 from chainer.functions.activation import prelu
@@ -12,6 +13,7 @@ from chainer.functions.activation import tanh
 from chainer.functions.array import broadcast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
+from chainer.functions.array import expand_dims
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
@@ -66,6 +68,8 @@ clipped_relu = clipped_relu.clipped_relu
 ConnectionistTemporalClassification = ctc.ConnectionistTemporalClassification
 connectionist_temporal_classification \
     = ctc.connectionist_temporal_classification
+ELU = elu.ELU
+elu = elu.elu
 LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LSTM = lstm.LSTM
@@ -88,6 +92,8 @@ Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
+ExpandDims = expand_dims.ExpandDims
+expand_dims = expand_dims.expand_dims
 Reshape = reshape.Reshape
 reshape = reshape.reshape
 SplitAxis = split_axis.SplitAxis

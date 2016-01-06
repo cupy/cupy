@@ -376,6 +376,7 @@ class GradientMethod(Optimizer):
             self.target.zerograds()
             loss = lossfun(*args, **kwds)
             loss.backward()
+            del loss
         self.call_hooks()
         self.prepare()
 
