@@ -123,11 +123,11 @@ def broadcast_arrays(*args):
 
 
 def broadcast_to(array, shape):
-    """Broadcast an array ot a given shape.
+    """Broadcast an array to a given shape.
 
     Args:
         array (cupy.ndarray): Array to broadcast.
-        shape (tuple of int): The shape to desired array.
+        shape (tuple of int): The shape of the desired array.
 
     Returns:
         cupy.ndarray: Broadcasted view.
@@ -147,9 +147,7 @@ def broadcast_to(array, shape):
         a_sh = array.shape[j]
         if sh == a_sh:
             strides[j] = array._strides[j]
-        elif a_sh == 1:
-            pass
-        else:
+        elif a_sh != 1:
             raise ValueError('Broadcasting failed')
 
     view = array.view()
