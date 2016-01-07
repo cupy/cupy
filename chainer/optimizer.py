@@ -8,20 +8,13 @@ import chainer.link as link_module
 
 
 def _sum_sqnorm(arr):
-    sum = {}
+    sq_sum = collections.defaultdict(float)
     for x in arr:
         with cuda.get_device(x) as dev:
             x = x.ravel()
             s = x.dot(x)
-        id = int(dev)
-        if id in sum:
-            sum[id] += s
-        else:
-            sum[id] = s
-    ret = 0.0
-    for i in six.itervalues(sum):
-        ret += float(i)
-    return ret
+            sq_sum[int(dev)] += s
+    return sum([float(i) for i in six.itervalues(sq_sum)])
 
 
 class Optimizer(object):
