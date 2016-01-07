@@ -130,12 +130,21 @@ class StatefulGRU(GRUBase):
         self.h = None
 
     def __call__(self, x):
-        if self.h is None:
-            self.h = chainer.Variable(
-                self.xp.zeros((len(x.data), self.state_size),
-                              dtype=x.data.dtype), volatile='auto')
-        r = sigmoid.sigmoid(self.W_r(x) + self.U_r(self.h))
-        z = sigmoid.sigmoid(self.W_z(x) + self.U_z(self.h))
-        h_bar = tanh.tanh(self.W(x) + self.U(r * self.h))
-        self.h = (1 - z) * self.h + z * h_bar
+        r = self.W_r(x)
+        z = self.W_z(x)
+        if self.h is not None:
+            r += self.U_r(self.h)
+            z += self.U_z(self.h)
+        r = sigmoid.sigmoid(r)
+        z = sigmoid.sigmoid(z)
+
+        h_bar = self.W(x)
+        if self.h is not None:
+            h_bar += self.U(r * self.h)
+        h_bar = tanh.tanh(h_bar)
+
+        h_new = z * h_bar
+        if self.h is not None:
+            h_new += (1 - z) * self.h
+        self.h = h_new
         return self.h
