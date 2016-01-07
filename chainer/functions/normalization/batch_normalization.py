@@ -86,6 +86,14 @@ class BatchNormalizationFunction(function.Function):
         ggamma = (gy * self.x_hat).sum(axis=axis)
 
         xp = cuda.get_array_module(x)
+        if len(inputs) == 5:
+            var = inputs[4]
+            gs = gamma / self.std
+            gmean = -gs * gbeta
+            gvar = -0.5 * gamma / var * ggamma
+            gx = gs[expander] * gy
+            return gx, ggamma, gbeta, gmean, gvar
+
         if xp is numpy:
             gx = (gamma / self.std)[expander] * (
                 gy - (self.x_hat * ggamma[expander] + gbeta[expander]) / m)
@@ -97,10 +105,7 @@ class BatchNormalizationFunction(function.Function):
                 'gx = (gamma / std) * (gy - (x_hat * ggamma + gbeta) * inv_m)',
                 'bn_bwd')(gy, self.x_hat, gamma[expander], self.std[expander],
                           ggamma[expander], gbeta[expander], inv_m)
-        if len(inputs) == 5:
-            return gx, ggamma, gbeta, None, None
-        else:
-            return gx, ggamma, gbeta
+        return gx, ggamma, gbeta
 
 
 def batch_normalization(x, gamma, beta, eps=1e-5):
