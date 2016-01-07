@@ -26,22 +26,29 @@ def _gru(func, h, x):
 
 
 @testing.parameterize(
-    {'gru': links.GRU},
-    {'gru': links.StatefulGRU}
+    {'gru': links.GRU, 'state': 'random'},
+    {'gru': links.StatefulGRU, 'state': 'random'},
+    {'gru': links.StatefulGRU, 'state': 'zero'}
 )
 class TestStatefulGRU(unittest.TestCase):
 
     def setUp(self):
         self.link = self.gru(8)
         self.x = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
-        self.h = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
+        if self.state == 'random':
+            self.h = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
+        elif self.state == 'zero':
+            self.h = numpy.zeros((3, 8), dtype=numpy.float32)
+        else:
+            self.fail('Unsupported state initialization:{}'.format(self.state))
         self.gy = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
 
     def _forward(self, link, h, x):
         if isinstance(link, links.GRU):
             return link(h, x)
         else:
-            link.set_state(h.data)
+            if self.state != 'zero':
+                link.set_state(h.data)
             return link(x)
 
     def check_forward(self, h_data, x_data):
