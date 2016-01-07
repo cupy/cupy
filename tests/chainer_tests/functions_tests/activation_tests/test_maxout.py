@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -26,20 +27,25 @@ class TestNonparameterizedMaxout(unittest.TestCase):
 
     def setUp(self):
         self.W = numpy.random.uniform(
-            -1, 1, self.W_shape).astype(numpy.float32)
+            -0.01, 0.01, self.W_shape).astype(numpy.float32)
+        for c in six.moves.range(self.W.shape[1]):
+            w = numpy.arange(self.W.shape[0], dtype=numpy.float32) + 1
+            for o in six.moves.range(self.W.shape[2]):
+                self.W[:, c, o] += w * o
+
         self.x = numpy.random.uniform(
-            -1, 1, self.x_shape).astype(numpy.float32)
+            -0.01, 0.01, self.x_shape).astype(numpy.float32)
 
         self.y = numpy.tensordot(_as_mat(self.x), self.W, axes=1)
         if self.b_shape is not None:
             self.b = numpy.random.uniform(
-                -1, 1, self.b_shape).astype(numpy.float32)
+                -0.01, 0.01, self.b_shape).astype(numpy.float32)
             self.y += self.b
         else:
             self.b = None
         self.y = numpy.max(self.y, axis=1)
         self.gy = numpy.random.uniform(
-            -1, 1, self.y.shape).astype(numpy.float32)
+            -0.01, 0.01, self.y.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, W_data, b_data, y_expect):
         x = chainer.Variable(x_data)
@@ -88,10 +94,10 @@ class TestNonparameterizedMaxout(unittest.TestCase):
             gx, gW, gb = gradient_check.numerical_grad(
                 f, (x.data, W.data, b.data), (y.grad, ), eps=1e-2)
 
-        gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gW, W.grad)
+        gradient_check.assert_allclose(gx, x.grad, atol=1e-2)
+        gradient_check.assert_allclose(gW, W.grad, atol=1e-2)
         if b_data is not None:
-            gradient_check.assert_allclose(gb, b.grad)
+            gradient_check.assert_allclose(gb, b.grad, atol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

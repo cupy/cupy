@@ -45,7 +45,8 @@ class TestMaxout(unittest.TestCase):
 
         in_size = numpy.prod(self.in_shape)
         initialW = numpy.random.uniform(
-            -0.05, 0.05, (in_size, self.num_channel, self.out_size))
+            -0.05, 0.05, (in_size, self.num_channel, self.out_size)
+        ).astype(numpy.float32)
         for c in six.moves.range(self.num_channel):
             w = numpy.arange(in_size, dtype=numpy.float32) + 1
             for o in six.moves.range(self.out_size):
