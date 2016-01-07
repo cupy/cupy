@@ -32,7 +32,7 @@ between CuPy's functions and corresponding NumPy's ones.
 
 .. autofunction:: numpy_cupy_allclose
 .. autofunction:: numpy_cupy_array_almost_equal
-.. autofunction:: numpy_cupy_arrays_almost_equal_nulp
+.. autofunction:: numpy_cupy_array_almost_equal_nulp
 .. autofunction:: numpy_cupy_array_max_ulp
 .. autofunction:: numpy_cupy_array_equal
 .. autofunction:: numpy_cupy_array_list_equal
@@ -52,6 +52,7 @@ parameterized test with respect to (single or combination of) dtypes.
 .. autofunction:: for_signed_dtypes
 .. autofunction:: for_unsigned_dtypes
 .. autofunction:: for_int_dtypes
+.. autofunction:: for_dtypes_combination
 .. autofunction:: for_all_dtypes_combination
 .. autofunction:: for_signed_dtypes_combination
 .. autofunction:: for_unsigned_dtypes_combination

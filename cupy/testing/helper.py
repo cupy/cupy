@@ -131,7 +131,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     >>> @testing.gpu
     ... class TestFoo(unittest.TestCase):
     ...
-    ...     @testing.numpy_cupy_all_close()
+    ...     @testing.numpy_cupy_allclose()
     ...     def test_foo(self, xp):
     ...         # ...
     ...         # Prepare data with xp
@@ -190,7 +190,7 @@ def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     Decorated test fixture is required to return the same arrays
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
-    .. seealso:: :func:`cupy.testing.assert_arrays_almost_equal_nulp`
+    .. seealso:: :func:`cupy.testing.assert_array_almost_equal_nulp`
     """
     def check_func(x, y):
         array.assert_arrays_almost_equal_nulp(x, y, nulp)
@@ -292,7 +292,7 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
          accept_error(bool): If True, errors are not raised as long as
              the errors occured are identical between NumPy and CuPy.
 
-    Decorated test fixture is required to return less array when xp is ``cupy``
+    Decorated test fixture is required to return less array when ``xp`` is ``cupy``
     compared to the one when ``xp`` is ``numpy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_less`
@@ -401,7 +401,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
          no_bool(bool): If, True, ``numpy.bool_`` is
              omitted from candidate dtypes.
 
-    dtypes to be tested: ``numpy.float16``(optional), ``numpy.float32``,
+    dtypes to be tested: ``numpy.float16`` (optional), ``numpy.float32``,
     ``numpy.float64``, ``numpy.dtype('b')``, ``numpy.dtype('h')``,
     ``numpy.dtype('i')``, ``numpy.dtype('l')``, ``numpy.dtype('q')``,
     ``numpy.dtype('B')``, ``numpy.dtype('H')``, ``numpy.dtype('I')``,
@@ -424,7 +424,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
 
     Typically, we use this decorator in combination with
     decorators that check consistency between NumPy and CuPy like
-    :func:`cupy.testing.numpy_cupy_all_close`.
+    :func:`cupy.testing.numpy_cupy_allclose`.
     The following is such an example.
 
     >>> @testing.gpu
