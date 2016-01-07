@@ -56,11 +56,3 @@ parameterized test with respect to (single or combination of) dtypes.
 .. autofunction:: for_signed_dtypes_combination
 .. autofunction:: for_unsigned_dtypes_combination
 .. autofunction:: for_int_dtypes_combination
-
-
-Array Creation Utilities
-------------------------
-
-.. autofunction:: shaped_arange
-.. autofunction:: shaped_reverse_arange
-.. autofunction:: shaped_random
