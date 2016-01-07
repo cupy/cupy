@@ -292,8 +292,8 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
          accept_error(bool): If True, errors are not raised as long as
              the errors occured are identical between NumPy and CuPy.
 
-    Decorated test fixture is required to return less array when ``xp`` is ``cupy``
-    compared to the one when ``xp`` is ``numpy``.
+    Decorated test fixture is required to return less array when
+    ``xp`` is ``cupy`` compared to the one when ``xp`` is ``numpy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_less`
     """
