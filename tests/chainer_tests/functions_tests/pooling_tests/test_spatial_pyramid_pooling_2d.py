@@ -9,6 +9,7 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import type_check
 
 
 class TestSpatialPyramidPooling2D(unittest.TestCase):
@@ -99,6 +100,46 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
+
+
+class TestValidDtype(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.randn(5, 3, 5, 5)
+        self.v = chainer.Variable(self.x.astype(numpy.float32))
+
+    def check_valid_dtype(self):
+        functions.spatial_pyramid_pooling_2d(
+            self.v, 3, functions.MaxPooling2D)
+
+    def test_valid_dtype_cpu(self):
+        self.check_valid_dtype()
+
+    @attr.gpu
+    def test_valid_dtype_gpu(self):
+        self.v.to_gpu()
+        self.check_valid_dtype()
+
+
+class TestInvalidDtype(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.randn(5, 3, 5, 5)
+        self.v = chainer.Variable(self.x.astype(numpy.int32))
+
+    def check_invalid_dtype(self):
+        functions.spatial_pyramid_pooling_2d(
+            self.v, 3, functions.MaxPooling2D)
+
+    def test_invalid_dtype_cpu(self):
+        with self.assertRaises(type_check.InvalidType):
+            self.check_invalid_dtype()
+
+    @attr.gpu
+    def test_invalid_dtype_gpu(self):
+        self.v.to_gpu()
+        with self.assertRaises(type_check.InvalidType):
+            self.check_invalid_dtype()
 
 
 testing.run_module(__name__, __file__)
