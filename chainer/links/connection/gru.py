@@ -130,12 +130,10 @@ class StatefulGRU(GRUBase):
         self.h = None
 
     def __call__(self, x):
-        r = self.W_r(x)
         z = self.W_z(x)
         if self.h is not None:
-            r += self.U_r(self.h)
+            r = sigmoid.sigmoid(self.W_r(x) + self.U_r(self.h))
             z += self.U_z(self.h)
-        r = sigmoid.sigmoid(r)
         z = sigmoid.sigmoid(z)
 
         h_bar = self.W(x)
