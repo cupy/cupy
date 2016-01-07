@@ -124,7 +124,7 @@ class StatefulGRU(GRUBase):
             h = chainer.cuda.to_cpu(h)
         else:
             h = chainer.cuda.to_gpu(h)
-        self.h = chainer.Variable(h)
+        self.h = chainer.Variable(h, volatile='auto')
 
     def reset_state(self):
         self.h = None
