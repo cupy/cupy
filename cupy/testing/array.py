@@ -102,7 +102,7 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
              are appended to the error message.
 
     Each element of ``x`` and ``y`` must be either :class:`numpy.ndarray`
-    or `cupy.ndarray`. ``x`` and ``y`` must have same length.
+    or :class:`cupy.ndarray`. ``x`` and ``y`` must have same length.
     Otherwise, this function raises ``AssertionError``.
     It compares elements of ``x`` and ``y`` pairwise
     with :func:`assert_array_equal` and raises error if at least one
