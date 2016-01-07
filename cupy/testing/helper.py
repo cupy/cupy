@@ -124,6 +124,20 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     Decorated test fixture is required to return the arrays whose values are
     close between ``numpy`` case and ``cupy`` case.
+    For example, this test case checks ``numpy.foo`` and ``cupy.foo``
+    should return same value.
+
+    >>> @testing.gpu
+    ... class TestFoo(unittest.TestCase):
+    ...
+    ...     @testing.numpy_cupy_all_close()
+    ...     def test_foo(self, xp):
+    ...         # ...
+    ...         # Prepare data with xp
+    ...         # ...
+    ...
+    ...         xp_result = xp.foo(...)
+    ...         return xp_result
 
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
@@ -384,6 +398,34 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     `numpy.dtype('i')`, `numpy.dtype('l')`, `numpy.dtype('q')`,
     `numpy.dtype('B')`, `numpy.dtype('H')`, `numpy.dtype('I')`,
     `numpy.dtype('L')`, `numpy.dtype('Q')`, and `numpy.bool_` (optional).
+    The usage is as follows.
+    This test fixture checks if ``cPickle`` successfully reconstructs
+    :class:`cupy.ndarray` for various dtypes.
+    dtype is an argument inserted by the decorator.
+
+    >>> @testing.gpu
+    ... class TestNpz(unittest.TestCase):
+    ...
+    ...     @testing.for_all_dtypes()
+    ...     def test_pickle(self, dtype):
+    ...         a = testing.shaped_arange((2, 3, 4), dtype=dtype)
+    ...         s = six.moves.cPickle.dumps(a)
+    ...         b = six.moves.cPickle.loads(s)
+    ...         testing.assert_array_equal(a, b)
+
+    Typically, we use this decorator in combination with
+    decorators that check consistency between NumPy and CuPy like
+    :func:`cupy.testing.numpy_cupy_all_close`.
+    The following is such an example.
+
+    >>> @testing.gpu
+    ... class TestMean(unittest.TestCase):
+    ...
+    ...     @testing.for_all_dtypes()
+    ...     @testing.numpy_cupy_allclose()
+    ...     def test_mean_all(self, xp, dtype):
+    ...         a = testing.shaped_arange((2, 3), xp, dtype)
+    ...         return a.mean()
 
     .. seealso:: :func:`cupy.testing.for_dtypes`
     """
