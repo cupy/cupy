@@ -19,6 +19,13 @@ def _as_mat(x):
     return x.reshape(len(x), -1)
 
 
+def _maxout(x, W, b):
+    y = numpy.tensordot(_as_mat(x), W, axes=1)
+    if b is not None:
+        y += b
+    return numpy.max(y, axis=1)
+
+
 @testing.parameterize(
     *testing.product(
         {'in_shape': [(2, ), (2, 5)],
@@ -60,12 +67,12 @@ class TestMaxout(unittest.TestCase):
         self.link = links.Maxout(in_size, self.num_channel, self.out_size,
                                  self.wscale, initialW, initial_bias)
 
-        self.W = self.link.W.data.copy()
-        self.y = numpy.tensordot(_as_mat(self.x), self.W, axes=1)
-        if self.initial_bias is not None:
-            self.b = self.link.b.data.copy()
-            self.y += self.b
-        self.y = numpy.max(self.y, axis=1)
+        W = self.link.W.data.copy()
+        b = None
+        if self.link.b is not None:
+            b = self.link.b.data.copy()
+
+        self.y = _maxout(self.x, W, b)
         self.link.zerograds()
 
     def check_forward(self, x_data):

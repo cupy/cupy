@@ -18,6 +18,13 @@ def _as_mat(x):
     return x.reshape(len(x), -1)
 
 
+def _maxout(x, W, b):
+    y = numpy.tensordot(_as_mat(x), W, axes=1)
+    if b is not None:
+        y += b
+    return numpy.max(y, axis=1)
+
+
 @testing.parameterize(
     {'W_shape': (2, 3, 4), 'b_shape': (3, 4), 'x_shape': (7, 2)},
     {'W_shape': (10, 3, 4), 'b_shape': (3, 4), 'x_shape': (7, 2, 5)},
@@ -33,17 +40,16 @@ class TestNonparameterizedMaxout(unittest.TestCase):
             for o in six.moves.range(self.W.shape[2]):
                 self.W[:, c, o] += w * o
 
-        self.x = numpy.random.uniform(
-            -0.01, 0.01, self.x_shape).astype(numpy.float32)
-
-        self.y = numpy.tensordot(_as_mat(self.x), self.W, axes=1)
         if self.b_shape is not None:
             self.b = numpy.random.uniform(
                 -0.01, 0.01, self.b_shape).astype(numpy.float32)
-            self.y += self.b
         else:
             self.b = None
-        self.y = numpy.max(self.y, axis=1)
+
+        self.x = numpy.random.uniform(
+            -0.01, 0.01, self.x_shape).astype(numpy.float32)
+
+        self.y = _maxout(self.x, self.W, self.b)
         self.gy = numpy.random.uniform(
             -0.01, 0.01, self.y.shape).astype(numpy.float32)
 
