@@ -131,14 +131,12 @@ class StatefulGRU(GRUBase):
 
     def __call__(self, x):
         z = self.W_z(x)
+        h_bar = self.W(x)
         if self.h is not None:
             r = sigmoid.sigmoid(self.W_r(x) + self.U_r(self.h))
             z += self.U_z(self.h)
-        z = sigmoid.sigmoid(z)
-
-        h_bar = self.W(x)
-        if self.h is not None:
             h_bar += self.U(r * self.h)
+        z = sigmoid.sigmoid(z)
         h_bar = tanh.tanh(h_bar)
 
         h_new = z * h_bar
