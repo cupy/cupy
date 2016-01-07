@@ -25,6 +25,7 @@ Convolution2D = convolution_2d.Convolution2D
 Deconvolution2D = deconvolution_2d.Deconvolution2D
 EmbedID = embed_id.EmbedID
 GRU = gru.GRU
+StatefulGRU = gru.StatefulGRU
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN
 Linear = linear.Linear
