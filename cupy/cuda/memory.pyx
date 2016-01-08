@@ -1,12 +1,12 @@
 import collections
 import ctypes
 import weakref
+import six
 
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
 from cupy.cuda cimport runtime
-import six
 
 
 cdef class Memory:
@@ -400,16 +400,16 @@ cdef class MemoryPool(object):
         return self._pools[dev].malloc(size)
 
     cpdef free_all_free(self):
-        """release unused memory pool.
-        """
+        """Release free blocks."""
         dev = device.get_device_id()
         if dev in self._pools:
             self._pools[dev].free_all_free()
 
     cpdef n_free_blocks(self):
-        """
-        :return:
-        the total number of unused memory pool.
+        """Count the total number of free blocks.
+
+        Returns:
+        int: The total number of free blocks.
         """
         dev = device.get_device_id()
         if dev in self._pools:

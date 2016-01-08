@@ -1,6 +1,7 @@
 import ctypes
 import unittest
 
+import cupy.cuda
 from cupy.cuda import memory
 from cupy import testing
 
@@ -143,22 +144,19 @@ class TestMemoryPool(unittest.TestCase):
         self.pool = memory.MemoryPool()
 
     def test_zero_size_alloc(self):
-        from cupy.cuda import Device
-        with Device(0):
+        with cupy.cuda.Device(0):
             mem = self.pool.malloc(0).mem
             self.assertIsInstance(mem, memory.Memory)
             self.assertNotIsInstance(mem, memory.PooledMemory)
 
     def test_double_free(self):
-        from cupy.cuda import Device
-        with Device(0):
+        with cupy.cuda.Device(0):
             mem = self.pool.malloc(1).mem
             mem.free()
             mem.free()
 
     def test_free_all_free(self):
-        from cupy.cuda import Device
-        with Device(0):
+        with cupy.cuda.Device(0):
             mem = self.pool.malloc(1).mem
             self.assertIsInstance(mem, memory.Memory)
             self.assertIsInstance(mem, memory.PooledMemory)
