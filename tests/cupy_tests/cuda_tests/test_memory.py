@@ -165,3 +165,14 @@ class TestMemoryPool(unittest.TestCase):
             self.assertEqual(self.pool.n_free_blocks(), 1)
             self.pool.free_all_free()
             self.assertEqual(self.pool.n_free_blocks(), 0)
+
+    def test_free_all_free_without_malloc(self):
+        with cupy.cuda.Device(0):
+            # call directly without malloc.
+            self.pool.free_all_free()
+            self.assertEqual(self.pool.n_free_blocks(), 0)
+
+    def test_n_free_blocks_without_malloc(self):
+        with cupy.cuda.Device(0):
+            # call directly without malloc/free_all_free.
+            self.assertEqual(self.pool.n_free_blocks(), 0)

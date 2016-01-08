@@ -1,6 +1,7 @@
 import collections
 import ctypes
 import weakref
+
 import six
 
 from cupy.cuda import runtime
@@ -402,17 +403,13 @@ cdef class MemoryPool(object):
     cpdef free_all_free(self):
         """Release free blocks."""
         dev = device.get_device_id()
-        if dev in self._pools:
-            self._pools[dev].free_all_free()
+        self._pools[dev].free_all_free()
 
     cpdef n_free_blocks(self):
         """Count the total number of free blocks.
 
         Returns:
-        int: The total number of free blocks.
+            int: The total number of free blocks.
         """
         dev = device.get_device_id()
-        if dev in self._pools:
-            return self._pools[dev].n_free_blocks()
-        else:
-            return 0
+        return self._pools[dev].n_free_blocks()
