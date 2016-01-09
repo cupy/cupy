@@ -43,23 +43,15 @@ class Linear(link.Link):
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
                  initialW=None, initial_bias=None):
         super(Linear, self).__init__(W=(out_size, in_size))
-        shape = self.W.data.shape
-        if initialW is None:
-            initialW = lambda shape : I.he_normal(shape, wscale/numpy.sqrt(2))
-        if callable(initialW):
-            initialW = initialW(shape)
 
-        self.W.data[...] = initialW
+        I.init_weight(self.W.data, initialW, scale=wscale)
 
         if nobias:
             self.b = None
         else:
             self.add_param('b', out_size)
-            if initial_bias is None:
-                initial_bias = bias
-            elif callable(initial_bias):
-                initial_bias = initial_bias(self.b.data.shape)
-            self.b.data[...] = initial_bias
+            I.init_weight(self.b.data, initialW, scale=wscale, none_default=bias)
+
 
     def __call__(self, x):
         """Applies the linear layer.
