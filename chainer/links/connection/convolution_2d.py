@@ -1,6 +1,7 @@
 import numpy
 
 from chainer.functions.connection import convolution_2d
+from chainer import initializations
 from chainer import link
 
 
@@ -25,9 +26,13 @@ class Convolution2D(link.Link):
         nobias (bool): If True, then this link does not use the bias term.
         use_cudnn (bool): If True, then this link uses CuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
-            function uses to initialize ``wscale``.
+            function uses to initialize ``wscale``. May also be a callable
+             that takes a tuple of the matrix shape and returns a matrix
+             of the same dimensions to use for initialization.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
-            function uses to initialize ``bias``.
+            function uses to initialize ``bias``. May also be a callable 
+            that takes a tuple of the matrix shape and returns a matrix of
+            the same dimensions to use for initialization.
 
     .. seealso::
        See :func:`chainer.functions.convolution_2d` for the definition of
@@ -49,19 +54,13 @@ class Convolution2D(link.Link):
         W_shape = (out_channels, in_channels, kh, kw)
         super(Convolution2D, self).__init__(W=W_shape)
 
-        if initialW is not None:
-            self.W.data[...] = initialW
-        else:
-            std = wscale * numpy.sqrt(1. / (kh * kw * in_channels))
-            self.W.data[...] = numpy.random.normal(0, std, W_shape)
+        initializations.init_weight(self.W.data, initialW)
 
         if nobias:
             self.b = None
         else:
             self.add_param('b', out_channels)
-            if initial_bias is None:
-                initial_bias = bias
-            self.b.data[...] = initial_bias
+            initializations.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
         """Applies the convolution layer.

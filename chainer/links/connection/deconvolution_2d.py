@@ -3,6 +3,7 @@ import math
 import numpy
 
 from chainer.functions.connection import deconvolution_2d
+from chainer import initializations
 from chainer import link
 
 
@@ -31,9 +32,13 @@ class Deconvolution2D(link.Link):
             input size, stride and pad.
         use_cudnn (bool): If True, then this function uses CuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
-            function uses to initialize ``wscale``.
+            function uses to initialize ``wscale``. May also be a callable
+            that takes a tuple of the matrix shape and returns a matrix of the
+            same dimensions to use for initialization.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
-            function uses to initialize ``bias``.
+            function uses to initialize ``bias``. May also be a callable that
+            takes a tuple of the matrix shape and returns a matrix of the same
+            dimensions to use for initialization.
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`
     which indicate the number of the number of input channels, output channels,
@@ -64,23 +69,11 @@ class Deconvolution2D(link.Link):
         W_shape = (in_channels, out_channels, kh, kw)
         super(Deconvolution2D, self).__init__(W=W_shape)
 
-        if initialW is not None:
-            assert initialW.shape == \
-                (in_channels, out_channels, kh, kw)
-            self.W.data[...] = initialW
-        else:
-            self.W.data = numpy.random.normal(
-                0, wscale * math.sqrt(1. / (kh * kw * in_channels)),
-                (in_channels, out_channels, kh, kw)
-            ).astype(numpy.float32)
+        initializations.init_weight(self.W.data, initialW)
 
-        if initial_bias is not None:
-            assert initial_bias.shape == (out_channels,)
+        if not nobias:
             self.add_param('b', out_channels)
-            self.b.data[...] = initial_bias
-        elif not nobias:
-            self.add_param('b', out_channels)
-            self.b.data = numpy.repeat(numpy.float32(bias), out_channels)
+            initializations.init_weight(self.b.data, initial_bias, none_default=bias)
         else:
             self.b = None
 
