@@ -54,7 +54,7 @@ class Convolution2D(link.Link):
         W_shape = (out_channels, in_channels, kh, kw)
         super(Convolution2D, self).__init__(W=W_shape)
 
-        initializations.init_weight(self.W.data, initialW)
+        initializations.init_weight(self.W.data, initialW, scale=wscale)
 
         if nobias:
             self.b = None
