@@ -50,7 +50,7 @@ class Linear(link.Link):
             self.b = None
         else:
             self.add_param('b', out_size)
-            I.init_weight(self.b.data, initialW, scale=wscale, none_default=bias)
+            I.init_weight(self.b.data, initialW, none_default=bias)
 
 
     def __call__(self, x):
