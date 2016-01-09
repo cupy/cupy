@@ -1,6 +1,7 @@
 import numpy
 
 from chainer.functions.connection import bilinear
+from chainer import initializations
 from chainer import link
 
 
@@ -23,14 +24,20 @@ class Bilinear(link.Link):
             Shape of this argument must be
             ``(left_size, right_size, out_size)``. If ``None``,
             :math:`W` is initialized by centered Gaussian distribution properly
-            scaled according to the dimension of inputs and outputs.
+            scaled according to the dimension of inputs and outputs. May also
+            be a callable that takes in a tuple of the matrix shape and returns
+            an initialization.
         initial_bias (tuple): Intial values of :math:`V^1`, :math:`V^2`
             and :math:`b`. The length this argument must be 3.
             Each element of this tuple must have the shapes of
             ``(left_size, output_size)``, ``(right_size, output_size)``,
             and ``(output_size,)``, respectively. If ``None``, :math:`V^1`
             and :math:`V^2` is initialized by scaled centered Gaussian
-            distributions and :math:`b` is set to :math:`0`.
+            distributions and :math:`b` is set to :math:`0`. May also be 
+            a callable that takes in a tuple of the matrix shape and 
+            returns an initialization, in which case :math:`b` is set to
+            :math:`0` but :math:`V^1` and :math:`V^2` will be initialized
+            from the callable.
 
     .. seealso:: See :func:`chainer.functions.bilinear` for details.
 
@@ -48,24 +55,18 @@ class Bilinear(link.Link):
         self.in_sizes = (left_size, right_size)
         self.nobias = nobias
 
-        if initialW is not None:
-            assert initialW.shape == self.W.data.shape
-            self.W.data[...] = initialW
-        else:
-            # TODO(Kenta OONO): I do not know appropriate way of
-            # initializing weights in tensor network.
-            # This initialization is a modification of
-            # that of Linear function.
-            in_size = left_size * right_size * out_size
-            self.W.data[...] = numpy.random.normal(
-                0, numpy.sqrt(1. / in_size), self.W.data.shape)
+        # TODO(Kenta OONO): I do not know appropriate way of
+        # initializing weights in tensor network.
+        # This initialization is a modification of
+        # that of Linear function.
+        initializations.init_weight(self.W.data, initialW)#initialW=None will result int he original initialization
 
         if not self.nobias:
             self.add_param('V1', (left_size, out_size))
             self.add_param('V2', (right_size, out_size))
             self.add_param('b', out_size)
 
-            if initial_bias is not None:
+            if type(initial_bias) is tuple:
                 V1, V2, b = initial_bias
                 assert V1.shape == self.V1.data.shape
                 assert V2.shape == self.V2.data.shape
@@ -74,11 +75,9 @@ class Bilinear(link.Link):
                 self.V2.data[...] = V2
                 self.b.data[...] = b
             else:
-                self.V1.data[...] = numpy.random.normal(
-                    0, numpy.sqrt(1. / left_size), (left_size, out_size))
-                self.V2.data[...] = numpy.random.normal(
-                    0, numpy.sqrt(1. / right_size), (right_size, out_size))
-                self.b.data.fill(0)
+                initializations.init_weight(self.V1.data, initial_bias)
+                initializations.init_weight(self.V2.data, initial_bias)
+                initializations.init_weight(self.b.data, 0)
 
     def __call__(self, e1, e2):
         """Applies the bilinear function to inputs and the internal parameters.

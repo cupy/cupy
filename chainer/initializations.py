@@ -18,6 +18,8 @@ def init_weight(weights, initWith, scale=1, none_default = lambda shape : he_nor
 		initWith = none_default
 	if callable(initWith):
 		initWith = scale*initWith(weights.shape)
+	if hasattr(initWith, 'shape'):
+		assert weights.shape == initWith.shape #check needed for bilinear tests to pass
 	weights[...] = initWith
 
 def get_fans(shape):
