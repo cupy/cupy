@@ -1,8 +1,10 @@
+import numpy
+
+from chainer import initializations
 from chainer.functions.activation import lstm
 from chainer import link
 from chainer.links.connection import linear
 from chainer import variable
-
 
 class LSTM(link.Chain):
 
@@ -27,13 +29,24 @@ class LSTM(link.Chain):
         h (chainer.Variable): Output at the previous timestep.
 
     """
-    def __init__(self, in_size, out_size):
-        super(LSTM, self).__init__(
-            upward=linear.Linear(in_size, 4 * out_size),
-            lateral=linear.Linear(out_size, 4 * out_size, nobias=True),
+    def __init__(self, in_size, out_size, 
+    			lateral_init=initializations.orthogonal, upward_init=None, bias_init=0, forget_bias_init=1):
+        super(LSTM, self).__init__(#initi Linear to zero since we are changing them anyway
+            upward=linear.Linear(in_size, 4 * out_size, initialW=numpy.zeros),
+            lateral=linear.Linear(out_size, 4 * out_size, initialW=numpy.zeros, nobias=True),
         )
         self.state_size = out_size
         self.reset_state()
+        
+        for i in range(0, 4 * out_size, out_size):
+        	initializations.init_weight(self.lateral.W.data[i:i+out_size, :], lateral_init)
+        	initializations.init_weight(self.upward.W.data[i:i+out_size, :], upward_init)
+        	
+        a, i, f, o = lstm._extract_gates(self.upward.b.data.reshape(1, 4 * out_size, 1))
+        initializations.init_weight(a, bias_init)
+        initializations.init_weight(i, bias_init)
+        initializations.init_weight(f, forget_bias_init)
+        initializations.init_weight(o, bias_init)
 
     def reset_state(self):
         """Resets the internal state.
