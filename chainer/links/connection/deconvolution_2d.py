@@ -69,7 +69,7 @@ class Deconvolution2D(link.Link):
         W_shape = (in_channels, out_channels, kh, kw)
         super(Deconvolution2D, self).__init__(W=W_shape)
 
-        initializations.init_weight(self.W.data, initialW)
+        initializations.init_weight(self.W.data, initialW, scale=wscale)
 
         if not nobias:
             self.add_param('b', out_channels)
