@@ -12,11 +12,10 @@ class SoftmaxCrossEntropy(function.Function):
 
     """Softmax activation followed by a cross entropy loss."""
 
-    ignore_label = -1
     normalize = True
 
     def __init__(self, use_cudnn=True, normalize=True, cache_score=True,
-                 class_weight=None):
+                 class_weight=None, ignore_label=-1):
         self.use_cudnn = use_cudnn
         self.normalize = normalize
         self.cache_score = cache_score
@@ -29,6 +28,7 @@ class SoftmaxCrossEntropy(function.Function):
             if isinstance(self.class_weight, chainer.Variable):
                 raise ValueError('class_weight should be a numpy.ndarray or '
                                  'cupy.ndarray, not a chainer.Variable')
+        self.ignore_label = ignore_label
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -183,7 +183,7 @@ class SoftmaxCrossEntropy(function.Function):
 
 def softmax_cross_entropy(
         x, t, use_cudnn=True, normalize=True, cache_score=True,
-        class_weight=None):
+        class_weight=None, ignore_label=-1):
     """Computes cross entropy loss for pre-softmax activations.
 
     Args:
@@ -219,5 +219,6 @@ def softmax_cross_entropy(
        This function is differentiable only by ``x``.
 
     """
+
     return SoftmaxCrossEntropy(
-        use_cudnn, normalize, cache_score, class_weight)(x, t)
+        use_cudnn, normalize, cache_score, class_weight, ignore_label)(x, t)
