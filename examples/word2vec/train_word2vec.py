@@ -182,8 +182,8 @@ for epoch in range(args.epoch):
             now = time.time()
             duration = now - cur_at
             throuput = 100000. / (now - cur_at)
-            print('{} words, {:.2f} sec, {:.2f} words/sec'.format(
-                word_count, duration, throuput))
+            print('{} words, {:.2f} sec, {:.2f} Kwords/sec'.format(
+                word_count, duration, throuput / 1000.))
             next_count += 100000
             cur_at = now
 
