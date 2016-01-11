@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import initializations
 from chainer.functions.activation import lstm
 from chainer import link
@@ -32,8 +30,8 @@ class LSTM(link.Chain):
     def __init__(self, in_size, out_size, 
     			lateral_init=initializations.orthogonal, upward_init=None, bias_init=0, forget_bias_init=1):
         super(LSTM, self).__init__(#initi Linear to zero since we are changing them anyway
-            upward=linear.Linear(in_size, 4 * out_size, initialW=numpy.zeros),
-            lateral=linear.Linear(out_size, 4 * out_size, initialW=numpy.zeros, nobias=True),
+            upward=linear.Linear(in_size, 4 * out_size, initialW=0),
+            lateral=linear.Linear(out_size, 4 * out_size, initialW=0, nobias=True),
         )
         self.state_size = out_size
         self.reset_state()
