@@ -206,6 +206,6 @@ for epoch in range(args.epoch):
 with open('word2vec.model', 'w') as f:
     f.write('%d %d\n' % (len(index2word), args.unit))
     w = cuda.to_cpu(model.embed.W.data)
-    for i in range(w.shape[0]):
-        v = ' '.join(map(str, w[i]))
+    for i, wi in enumerate(w):
+        v = ' '.join(map(str, wi))
         f.write('%s %s\n' % (index2word[i], v))
