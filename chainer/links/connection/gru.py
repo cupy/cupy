@@ -1,6 +1,7 @@
 from chainer.functions.activation import sigmoid
 from chainer.functions.activation import tanh
 from chainer import link
+from chainer import initializations
 from chainer.links.connection import linear
 
 
@@ -40,15 +41,25 @@ class GRU(link.Chain):
 
     """
 
-    def __init__(self, n_units):
+    def __init__(self, n_units, init=None, inner_init=initializations.orthogonal, bias_init=0):
         super(GRU, self).__init__(
-            W_r=linear.Linear(n_units, n_units),
-            U_r=linear.Linear(n_units, n_units),
-            W_z=linear.Linear(n_units, n_units),
-            U_z=linear.Linear(n_units, n_units),
-            W=linear.Linear(n_units, n_units),
-            U=linear.Linear(n_units, n_units),
+            W_r=linear.Linear(n_units, n_units, initialW=0),
+            U_r=linear.Linear(n_units, n_units, initialW=0),
+            W_z=linear.Linear(n_units, n_units, initialW=0),
+            U_z=linear.Linear(n_units, n_units, initialW=0),
+            W=linear.Linear(n_units, n_units, initialW=0),
+            U=linear.Linear(n_units, n_units, initialW=0),
         )
+
+		#initialize mats that process raw input        
+        for mat in (self.W_r, self.W_z, self.W):
+        	initializations.init_weight(mat.W.data, init)
+        #initialize mats that take in recurrences 
+        for mat in (self.U_r, self.U_z, self.U):
+        	initializations.init_weight(mat.W.data, inner_init)
+        #initialize bias terms
+        for mat in (self.W_r, self.W_z, self.W, self.U_r, self.U_z, self.U):
+        	initializations.init_weight(mat.b.data, bias_init)
 
     def __call__(self, h, x):
         r = sigmoid.sigmoid(self.W_r(x) + self.U_r(h))
