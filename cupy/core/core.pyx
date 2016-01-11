@@ -1668,6 +1668,16 @@ cdef _take_kernel = ElementwiseKernel(
     'cupy_take')
 
 
+cdef _take_kernel_2dim_0axis = ElementwiseKernel(
+    'raw T a, S indices, S rdim',
+    'T out',
+    '''
+      int ind[] = {indices, i % rdim};
+      out = a[ind];
+    ''',
+    'cupy_take_2dim_0axis')
+
+
 cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     if axis is None:
         a = a.ravel()
@@ -1705,7 +1715,10 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     rdim = internal.prod(rshape)
     indices = indices.reshape(
         (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
-    return _take_kernel(a, indices, cdim, rdim, adim, out)
+    if a.ndim == 2 and axis == 0:
+        return _take_kernel_2dim_0axis(a, indices, rdim, out)
+    else:
+        return _take_kernel(a, indices, cdim, rdim, adim, out)
 
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
