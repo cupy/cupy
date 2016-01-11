@@ -51,15 +51,15 @@ class GRU(link.Chain):
             U=linear.Linear(n_units, n_units, initialW=0),
         )
 
-		#initialize mats that process raw input        
+        # initialize mats that process raw input
         for mat in (self.W_r, self.W_z, self.W):
-        	initializations.init_weight(mat.W.data, init)
-        #initialize mats that take in recurrences 
+            initializations.init_weight(mat.W.data, init)
+        # initialize mats that take in recurrences
         for mat in (self.U_r, self.U_z, self.U):
-        	initializations.init_weight(mat.W.data, inner_init)
-        #initialize bias terms
+            initializations.init_weight(mat.W.data, inner_init)
+        # initialize bias terms
         for mat in (self.W_r, self.W_z, self.W, self.U_r, self.U_z, self.U):
-        	initializations.init_weight(mat.b.data, bias_init)
+            initializations.init_weight(mat.b.data, bias_init)
 
     def __call__(self, h, x):
         r = sigmoid.sigmoid(self.W_r(x) + self.U_r(h))

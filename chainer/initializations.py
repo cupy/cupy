@@ -5,22 +5,33 @@ import numpy as np
 # Original code forked from MIT licensed keras project
 # https://github.com/fchollet/keras/blob/master/keras/initializations.py
 
-def init_weight(weights, initWith, scale=1, none_default = lambda shape : he_normal(shape, 1/np.sqrt(2))):
-	"""Initializes the given weight matrix
-	
-	Args:
-		weights (~numpy.ndarray): Weight matrix to be initialized. 
-		initWith (value): The value to use to initialize the data. May be `None` (in which case the none_default value will be used), a scalar to set all values to, a matrix of the same shape to copy, or a callable that takes the shape of the matrix as input and returns a matrix of the correct size. 
-		scale (scalar): A constant to multiply initWith by, if initWith was a callable. 
-		none_default (value): Same as initWith, the value here must not be `None`, as it will be used as a default when initWith is `None`.
-	"""
-	if initWith is None:
-		initWith = none_default
-	if callable(initWith):
-		initWith = scale*initWith(weights.shape)
-	if hasattr(initWith, 'shape'):
-		assert weights.shape == initWith.shape #check needed for bilinear tests to pass
-	weights[...] = initWith
+
+def init_weight(weights, initWith, scale=1, none_default=lambda shape: he_normal(shape, 1 / np.sqrt(2))):
+    """Initializes the given weight matrix.
+
+    Args:
+            weights (~numpy.ndarray): Weight matrix to be initialized.
+            initWith (value): The value to use to initialize the data. May be
+            	`None` (in which case the none_default value will be used), a
+            	scalar to set all values to, a matrix of the same shape to
+            	copy, or a callable that takes the shape of the matrix as input
+            	and returns a matrix of the correct size.
+            scale (scalar): A constant to multiply initWith by, if initWith was
+            	a callable.
+            none_default (value): Same as initWith, the value here must not be
+            	`None`, as it will be used as a default when initWith is
+            	`None`.
+
+    """
+    if initWith is None:
+        initWith = none_default
+    if callable(initWith):
+        initWith = scale * initWith(weights.shape)
+    if hasattr(initWith, 'shape'):
+        # check needed for bilinear tests to pass
+        assert weights.shape == initWith.shape
+    weights[...] = initWith
+
 
 def get_fans(shape):
     fan_in = shape[1] if len(shape) == 2 else np.prod(shape[1:])

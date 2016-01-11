@@ -31,13 +31,13 @@ class MLPConvolution2D(link.ChainList):
             Note that this function is not applied to the output of this link.
         use_cudnn (bool): If True, then this link uses CuDNN if available.
         convInit: A callable or scalar that takes a tuple of the matrix shape
-        	and returns a matrix of the same dimensions to use for 
-        	initialization of the convolution matrix weights. Maybe be `None`
-        	to use default initialization. 
+                and returns a matrix of the same dimensions to use for 
+                initialization of the convolution matrix weights. Maybe be `None`
+                to use default initialization. 
         biasInit: A callable or scalar that takes a tuple of the matrix shape
-        	and returns a matrix of the same dimensions to use for 
-        	initialization of the convolution bias weights. Maybe be `None`
-        	to use default initialization. 
+                and returns a matrix of the same dimensions to use for 
+                initialization of the convolution bias weights. Maybe be `None`
+                to use default initialization. 
 
     See: `Network in Network <http://arxiv.org/abs/1312.4400v3>`.
 
@@ -45,6 +45,7 @@ class MLPConvolution2D(link.ChainList):
         activation (function): Activation function.
 
     """
+
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, activation=relu.relu, use_cudnn=True,
                  convInit=None, biasInit=None):

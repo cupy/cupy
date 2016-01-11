@@ -55,6 +55,7 @@ class Deconvolution2D(link.Link):
     .. seealso::
        See :func:`chainer.functions.deconvolution_2d` for the definition of
        two-dimensional convolution.
+
     """
 
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
@@ -73,7 +74,8 @@ class Deconvolution2D(link.Link):
 
         if not nobias:
             self.add_param('b', out_channels)
-            initializations.init_weight(self.b.data, initial_bias, none_default=bias)
+            initializations.init_weight(
+                self.b.data, initial_bias, none_default=bias)
         else:
             self.b = None
 

@@ -30,31 +30,31 @@ class Inception(link.Chain):
         out5 (int): Output size of 5x5 convolution path.
         proj_pool (int): Projection size of max pooling path.
         convInit: A callable or scalar that takes a tuple of the matrix shape
-        	and returns a matrix of the same dimensions to use for 
-        	initialization of the convolution matrix weights. Maybe be `None`
-        	to use default initialization. 
+                and returns a matrix of the same dimensions to use for
+                initialization of the convolution matrix weights. Maybe be `None`
+                to use default initialization.
         biasInit: A callable or scalar that takes a tuple of the matrix shape
-        	and returns a matrix of the same dimensions to use for 
-        	initialization of the convolution bias weights. Maybe be `None`
-        	to use default initialization. 
+                and returns a matrix of the same dimensions to use for
+                initialization of the convolution bias weights. Maybe be `None`
+                to use default initialization.
 
     """
+
     def __init__(self, in_channels, out1, proj3, out3, proj5, out5, proj_pool, convInit=None, biasInit=None):
         super(Inception, self).__init__(
             conv1=convolution_2d.Convolution2D(in_channels, out1, 1,
-            	initialW=convInit, initial_bias=biasInit),
+                                               initialW=convInit, initial_bias=biasInit),
             proj3=convolution_2d.Convolution2D(in_channels, proj3, 1,
-            	initialW=convInit, initial_bias=biasInit),
+                                               initialW=convInit, initial_bias=biasInit),
             conv3=convolution_2d.Convolution2D(proj3, out3, 3, pad=1,
-            	initialW=convInit, initial_bias=biasInit),
+                                               initialW=convInit, initial_bias=biasInit),
             proj5=convolution_2d.Convolution2D(in_channels, proj5, 1,
-            	initialW=convInit, initial_bias=biasInit),
+                                               initialW=convInit, initial_bias=biasInit),
             conv5=convolution_2d.Convolution2D(proj5, out5, 5, pad=2,
-            	initialW=convInit, initial_bias=biasInit),
+                                               initialW=convInit, initial_bias=biasInit),
             projp=convolution_2d.Convolution2D(in_channels, proj_pool, 1,
-            	initialW=convInit, initial_bias=biasInit),
+                                               initialW=convInit, initial_bias=biasInit),
         )
-        	
 
     def __call__(self, x):
         """Computes the output of the Inception module.

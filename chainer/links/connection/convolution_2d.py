@@ -43,6 +43,7 @@ class Convolution2D(link.Link):
         b (~chainer.Variable): Bias parameter.
 
     """
+
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
                  initialW=None, initial_bias=None):

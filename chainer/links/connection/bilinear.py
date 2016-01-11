@@ -31,8 +31,8 @@ class Bilinear(link.Link):
             ``(left_size, output_size)``, ``(right_size, output_size)``,
             and ``(output_size,)``, respectively. If ``None``, :math:`V^1`
             and :math:`V^2` is initialized by scaled centered Gaussian
-            distributions and :math:`b` is set to :math:`0`. May also be 
-            a callable that takes in a tuple of the matrix shape and 
+            distributions and :math:`b` is set to :math:`0`. May also be
+            a callable that takes in a tuple of the matrix shape and
             returns an initialization, in which case :math:`b` is set to
             :math:`0` but :math:`V^1` and :math:`V^2` will be initialized
             from the callable.
@@ -47,6 +47,7 @@ class Bilinear(link.Link):
         b (~chainer.Variable): Bias parameter.
 
     """
+
     def __init__(self, left_size, right_size, out_size, nobias=False,
                  initialW=None, initial_bias=None):
         super(Bilinear, self).__init__(W=(left_size, right_size, out_size))
@@ -57,7 +58,9 @@ class Bilinear(link.Link):
         # initializing weights in tensor network.
         # This initialization is a modification of
         # that of Linear function.
-        initializations.init_weight(self.W.data, initialW)#initialW=None will result int he original initialization
+
+        # initialW=None will result in the original initialization
+        initializations.init_weight(self.W.data, initialW)
 
         if not self.nobias:
             self.add_param('V1', (left_size, out_size))

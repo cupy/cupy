@@ -40,6 +40,7 @@ class Linear(link.Link):
         b (~chainer.Variable): Bias parameter.
 
     """
+
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
                  initialW=None, initial_bias=None):
         super(Linear, self).__init__(W=(out_size, in_size))
@@ -51,7 +52,6 @@ class Linear(link.Link):
         else:
             self.add_param('b', out_size)
             I.init_weight(self.b.data, initialW, none_default=bias)
-
 
     def __call__(self, x):
         """Applies the linear layer.
