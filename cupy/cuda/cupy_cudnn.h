@@ -8,6 +8,16 @@
 #ifndef CUPY_NO_CUDA
 #include <cudnn.h>
 
+#if CUDNN_VERSION < 4000
+
+#define cudnnSetConvolutionNdDescriptor_v2 cudnnSetConvolutionNdDescriptor
+#define cudnnGetConvolutionNdDescriptor_v2 cudnnGetConvolutionNdDescriptor
+#define cudnnAddTensor_v2 cudnnAddTensor
+#define cudnnConvolutionBackwardFilter_v2 cudnnConvolutionBackwardFilter
+#define cudnnConvolutionBackwardData_v2 cudnnConvolutionBackwardData
+
+#endif
+
 #else // #ifndef CUPY_NO_CUDA
 
 
@@ -110,7 +120,7 @@ int cudnnDestroyTensorDescriptor(TensorDescriptor tensorDesc) {
     return 0;
 }
 
-int cudnnAddTensor(
+int cudnnAddTensor_v2(
         Handle handle, AddMode mode, void* alpha,
         TensorDescriptor biasDesc, void* biasData, void* beta,
         TensorDescriptor srcDestDesc, void* srcDestData) {
@@ -151,7 +161,7 @@ int cudnnSetConvolution2dDescriptor(
     return 0;
 }
 
-int cudnnSetConvolutionNdDescriptor(
+int cudnnSetConvolutionNdDescriptor_v2(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
         int* filterStrideA, int* upscaleA, ConvolutionMode mode) {
     return 0;
@@ -193,7 +203,7 @@ int cudnnConvolutionBackwardBias(
     return 0;
 }
 
-int cudnnConvolutionBackwardFilter(
+int cudnnConvolutionBackwardFilter_v2(
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor diffDesc, void* diffData,
@@ -202,7 +212,7 @@ int cudnnConvolutionBackwardFilter(
     return 0;
 }
 
-int cudnnConvolutionBackwardData(
+int cudnnConvolutionBackwardData_v2(
         Handle handle, void* alpha,
         FilterDescriptor filterDesc, void* filterData,
         TensorDescriptor diffDesc, void* diffData,

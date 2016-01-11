@@ -98,7 +98,7 @@ def create_convolution_descriptor(pad, stride,
         c_pad = _to_ctypes_array(pad)
         c_stride = _to_ctypes_array(stride)
         c_upscale = _to_ctypes_array((1,) * ndim)
-        cudnn.setConvolutionNdDescriptor(
+        cudnn.setConvolutionNdDescriptor_v2(
             desc.value, ndim, c_pad.data, c_stride.data, c_upscale.data, mode)
 
     return desc
