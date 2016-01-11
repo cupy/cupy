@@ -102,10 +102,12 @@ def calculate_loss(model, dataset, position):
     # use random window size in the same way as the original word2vec
     # implementation.
     w = np.random.randint(args.window - 1) + 1
-    pos = [position + o for o in range(-w, w + 1) if o != 0]
-    d = xp.asarray(np.take(dataset, pos))
+    # offset is [-w, ..., -1, 1, ..., w]
+    offset = np.concatenate([np.arange(-w, 0), np.arange(1, w + 1)])
+    pos = np.expand_dims(position, 0) + np.expand_dims(offset, 1)
+    d = xp.asarray(dataset.take(pos))
     context = chainer.Variable(d)
-    x_data = xp.asarray(np.take(dataset, position))
+    x_data = xp.asarray(dataset.take(position))
     x = chainer.Variable(x_data)
     return model(x, context)
 
@@ -177,6 +179,7 @@ for epoch in range(args.epoch):
     accum_loss = 0
     print('epoch: {0}'.format(epoch))
     indexes = np.random.permutation(skip)
+    position = np.arange(0, args.batchsize * skip, skip) + args.window
     for i in indexes:
         if word_count >= next_count:
             now = time.time()
@@ -187,8 +190,6 @@ for epoch in range(args.epoch):
             next_count += 100000
             cur_at = now
 
-        position = np.array(
-            range(0, args.batchsize)) * skip + (args.window + i)
         loss = calculate_loss(model, dataset, position)
         accum_loss += loss.data
         word_count += args.batchsize
@@ -197,6 +198,8 @@ for epoch in range(args.epoch):
         loss.backward()
         del loss
         optimizer.update()
+
+        position += 1
 
     print(accum_loss)
 
