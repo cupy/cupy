@@ -6,6 +6,14 @@ from chainer import function
 from chainer.utils import type_check
 
 
+if cuda.cudnn_enabled:
+    cudnn = cuda.cudnn
+    libcudnn = cudnn.cudnn
+    _algorithm = libcudnn.CUDNN_SOFTMAX_LOG
+    _mode = libcudnn.CUDNN_SOFTMAX_MODE_CHANNEL
+    _cudnn_version = libcudnn.getVersion()
+
+
 def logsumexp(x):
     xp = cuda.get_array_module(x)
     m = x.max(axis=1, keepdims=True)
@@ -14,10 +22,26 @@ def logsumexp(x):
     return xp.log(y.sum(axis=1, keepdims=True)) + m
 
 
-def softmax_log(x):
-    # TODO(unno): Use cudnn (cudnn v2 doesn't support CUDNN_SOFTMAX_LOG)
-    log_z = logsumexp(x)
-    return x - log_z
+def softmax_log(x, use_cudnn):
+    xp = cuda.get_array_module(x)
+    if xp != numpy and cuda.cudnn_enabled and use_cudnn \
+       and _cudnn_version >= 3000:
+        dtype = x.dtype
+        one = numpy.array(1, dtype=dtype).ctypes
+        zero = numpy.array(0, dtype=dtype).ctypes
+        handle = cudnn.get_handle()
+        x_cube = x.reshape(x.shape[:2] + (-1, 1))
+        desc = cudnn.create_tensor_descriptor(x_cube)
+        y = xp.empty_like(x)
+        libcudnn.softmaxForward(
+            handle, _algorithm, _mode, one.data, desc.value,
+            x_cube.data.ptr, zero.data, desc.value,
+            y.data.ptr)
+        return y
+
+    else:
+        log_z = logsumexp(x)
+        return x - log_z
 
 
 class SoftmaxCrossEntropy(function.Function):
@@ -45,7 +69,7 @@ class SoftmaxCrossEntropy(function.Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        log_y = softmax_log(x)
+        log_y = softmax_log(x, False)
         self.y = numpy.exp(log_y)
         log_yd = numpy.rollaxis(log_y, 1)
         log_yd = log_yd.reshape(len(log_yd), -1)
@@ -69,7 +93,7 @@ class SoftmaxCrossEntropy(function.Function):
     def forward_gpu(self, inputs):
         cupy = cuda.cupy
         x, t = inputs
-        log_y = softmax_log(x)
+        log_y = softmax_log(x, self.use_cudnn)
         self.y = cupy.exp(log_y)
         if getattr(self, 'normalize', True):
             count = float((t != self.ignore_label).sum())

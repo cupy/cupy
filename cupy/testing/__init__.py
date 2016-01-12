@@ -13,8 +13,8 @@ assert_array_less = array.assert_array_less
 
 numpy_cupy_allclose = helper.numpy_cupy_allclose
 numpy_cupy_array_almost_equal = helper.numpy_cupy_array_almost_equal
-numpy_cupy_arrays_almost_equal_nulp = \
-    helper.numpy_cupy_arrays_almost_equal_nulp
+numpy_cupy_array_almost_equal_nulp = \
+    helper.numpy_cupy_array_almost_equal_nulp
 numpy_cupy_array_max_ulp = helper.numpy_cupy_array_max_ulp
 numpy_cupy_array_equal = helper.numpy_cupy_array_equal
 numpy_cupy_array_list_equal = helper.numpy_cupy_array_list_equal

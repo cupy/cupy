@@ -11,6 +11,9 @@ cdef extern from "cupy_cudnn.h":
     # Error handling
     const char* cudnnGetErrorString(Status status)
 
+    # Version
+    size_t cudnnGetVersion()
+
     # Initialization and CUDA cooperation
     int cudnnCreate(Handle* handle)
     int cudnnDestroy(Handle handle)
@@ -162,6 +165,14 @@ class CuDNNError(RuntimeError):
 cpdef inline check_status(int status):
     if status != 0:
         raise CuDNNError(status)
+
+
+###############################################################################
+# Version
+###############################################################################
+
+cpdef size_t getVersion():
+    return cudnnGetVersion()
 
 
 ###############################################################################
