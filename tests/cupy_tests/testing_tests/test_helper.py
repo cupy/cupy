@@ -82,40 +82,22 @@ class TestCheckCupyNumpyError(unittest.TestCase):
                 numpy_error, numpy_tb, accept_error=False)
 
 
-def make_func(np_result, cp_result):
-    def f(self, xp):
-        if xp == numpy:
-            return np_result
-        elif xp == cupy:
-            return cp_result
-    return f
-
-
-def make_func_foo(np_result, cp_result):
-    def f(self, foo):
-        if foo == numpy:
-            return np_result
-        elif foo == cupy:
-            return cp_result
-    return f
-
-
 class NumPyCuPyDecoratorBase(object):
 
     def test_valid(self):
         decorator = getattr(testing, self.decorator)()
-        decorated_func = decorator(self.valid_func)
+        decorated_func = decorator(type(self).valid_func)
         decorated_func(self)
 
     def test_invalid(self):
         decorator = getattr(testing, self.decorator)()
-        decorated_func = decorator(self.invalid_func)
+        decorated_func = decorator(type(self).invalid_func)
         with self.assertRaises(AssertionError):
             decorated_func(self)
 
     def test_name(self):
         decorator = getattr(testing, self.decorator)(name='foo')
-        decorated_func = decorator(self.strange_kw_func)
+        decorated_func = decorator(type(self).strange_kw_func)
         decorated_func(self)
 
 
@@ -148,6 +130,13 @@ class NumPyCuPyDecoratorBase2(object):
             decorated_func(self)
 
 
+def make_result(xp, np_result, cp_result):
+    if xp == numpy:
+        return np_result
+    elif xp == cupy:
+        return cp_result
+
+
 @testing.parameterize(
     {'decorator': 'numpy_cupy_allclose'},
     {'decorator': 'numpy_cupy_array_almost_equal'},
@@ -158,10 +147,14 @@ class NumPyCuPyDecoratorBase2(object):
 class TestNumPyCuPyEqual(unittest.TestCase, NumPyCuPyDecoratorBase,
                          NumPyCuPyDecoratorBase2):
 
-    def setUp(self):
-        self.valid_func = make_func(numpy.array(1), cupy.array(1))
-        self.invalid_func = make_func(numpy.array(1), cupy.array(2))
-        self.strange_kw_func = make_func_foo(numpy.array(1), cupy.array(1))
+    def valid_func(self, xp):
+        return make_result(xp, numpy.array(1), cupy.array(1))
+
+    def invalid_func(self, xp):
+        return make_result(xp, numpy.array(1), cupy.array(2))
+
+    def strange_kw_func(self, foo):
+        return make_result(foo, numpy.array(1), cupy.array(1))
 
 
 @testing.parameterize(
@@ -169,10 +162,14 @@ class TestNumPyCuPyEqual(unittest.TestCase, NumPyCuPyDecoratorBase,
 )
 class TestNumPyCuPyListEqual(unittest.TestCase, NumPyCuPyDecoratorBase):
 
-    def setUp(self):
-        self.valid_func = make_func([numpy.array(1)], [cupy.array(1)])
-        self.invalid_func = make_func([numpy.array(1)], [cupy.array(2)])
-        self.strange_kw_func = make_func_foo([numpy.array(1)], [cupy.array(1)])
+    def valid_func(self, xp):
+        return make_result(xp, [numpy.array(1)], [cupy.array(1)])
+
+    def invalid_func(self, xp):
+        return make_result(xp, [numpy.array(1)], [cupy.array(2)])
+
+    def strange_kw_func(self, foo):
+        return make_result(foo, [numpy.array(1)], [cupy.array(1)])
 
 
 @testing.parameterize(
@@ -181,19 +178,14 @@ class TestNumPyCuPyListEqual(unittest.TestCase, NumPyCuPyDecoratorBase):
 class TestNumPyCuPyLess(unittest.TestCase, NumPyCuPyDecoratorBase,
                         NumPyCuPyDecoratorBase2):
 
-    def setUp(self):
-        self.valid_func = make_func(numpy.array(2), cupy.array(1))
-        self.invalid_func = make_func(numpy.array(1), cupy.array(2))
-        self.strange_kw_func = make_func_foo(
-            numpy.array(2), cupy.array(1))
+    def valid_func(self, xp):
+        return make_result(xp, numpy.array(2), cupy.array(1))
 
+    def invalid_func(self, xp):
+        return make_result(xp, numpy.array(1), cupy.array(2))
 
-def numpy_cupy_raise(self, xp):
-    raise ValueError()
-
-
-def numpy_cupy_raise_foo(self, foo):
-    raise ValueError()
+    def strange_kw_func(self, foo):
+        return make_result(foo, numpy.array(2), cupy.array(1))
 
 
 @testing.parameterize(
@@ -201,10 +193,14 @@ def numpy_cupy_raise_foo(self, foo):
 )
 class TestNumPyCuPyRaise(unittest.TestCase, NumPyCuPyDecoratorBase):
 
-    def setUp(self):
-        self.valid_func = numpy_cupy_raise
-        self.invalid_func = make_func(numpy.array(1), cupy.array(1))
-        self.strange_kw_func = numpy_cupy_raise_foo
+    def valid_func(self, xp):
+        raise ValueError()
+
+    def invalid_func(self, xp):
+        return make_result(xp, numpy.array(1), cupy.array(1))
+
+    def strange_kw_func(self, foo):
+        raise ValueError()
 
     def test_accept_error_numpy(self):
         decorator = getattr(testing, self.decorator)()
