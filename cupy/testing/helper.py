@@ -535,23 +535,23 @@ def for_dtypes_combination(types, names=['dtype'], full=None):
     Sometimes, such an exhaustive test can be costly.
     So, if ``full`` is ``False``, only a subset of possible
     combinations is tested. Specificially, at first,
-    the shuffled list of ``types`` are made for each argument
-    (say, :math:`D1`, :math:`D2`, ..., :math:`Dn`
-    where :math:`n` is the number of arguments).
-    Then, the combinations to be tested will be ``zip(D1, ..., Dn)``.
+    the shuffled list of ``types`` are made for each argument.
+    Let the lists be ``D1``, ``D2``, ..., `Dn`
+    where :math:`n` is the number of arguments,
+    then, the combinations to be tested will be ``zip(D1, ..., Dn)``.
     If ``full`` is ``None``, the behaivior is switched
     by setting the environment variable ``CUPY_TEST_FULL_COMBINATION=1``.
 
     For example, let ``types`` be ``[float16, float32, float64]``
     and ``names`` be ``[a_type, b_type]``. If ``full`` is ``True``,
     then the decorated test fixture is executed with all
-    :math:`2 ** 3` patterns. On the other hand, if ``full``is ``False``,
+    :math:`2^3` patterns. On the other hand, if ``full`` is ``False``,
     shuffled lists are made for ``a_type`` and ``b_type``.
-    Suppose the lists are (``16``, ``64``, ``32``) for `a` and
-    (``32``, ``64``, ``16``) for `b` (prefixes are removed for short).
+    Suppose the lists are ``(16, 64, 32)`` for ``a`` and
+    ``(32, 64, 16) for ``b`` (prefixes are removed for short).
     Then the combination to be tested are
-    (``a_type``, ``b_type``) = (``16``, ``32``), (``64``, ``64``),
-    (``32``, ``16``).
+    ``(a_type, b_type) = (16, 32), (64, 64),
+    (32, 16)``.
     """
 
     if full is None:
