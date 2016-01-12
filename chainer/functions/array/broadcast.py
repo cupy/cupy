@@ -77,13 +77,13 @@ class BroadcastTo(function.Function):
         type_check.expect(in_types[0].ndim <= ndim)
 
         shape = in_types[0].shape.eval()
-        for i in range(len(shape)):
-            j = -i - 1
-            if shape[j] == self._shape[j] or shape[j] == 1:
+        # check the shape in inverse order
+        for i in six.moves.range(-1, -len(shape) - 1, -1):
+            if shape[i] == self._shape[i] or shape[i] == 1:
                 continue
-            expect = 'in_type[0].shape[%d] == %d' % (j, self._shape[j])
-            if self._shape[j] != 1:
-                expect += ' or in_type[0].shape[%d] == 1' % j
+            expect = 'in_type[0].shape[%d] == %d' % (i, self._shape[i])
+            if self._shape[i] != 1:
+                expect += ' or in_type[0].shape[%d] == 1' % i
             actual = 'in_type[0].shape: %s' % str(shape)
             raise type_check.InvalidType(expect, actual)
 
