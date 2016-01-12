@@ -9,6 +9,7 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import type_check
 
 
 @testing.parameterize(
@@ -47,6 +48,23 @@ class TestAccuracy(unittest.TestCase):
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
+
+
+class TestBinaryAccuracyTypeError(unittest.TestCase):
+
+    def test_invalid_shape(self):
+        x = chainer.Variable(numpy.zeros((3, 2, 5), dtype=numpy.float32))
+        t = chainer.Variable(numpy.zeros((2, 3, 5), dtype=numpy.int32))
+
+        with self.assertRaises(type_check.InvalidType):
+            chainer.functions.binary_accuracy(x, t)
+
+    def test_invalid_type(self):
+        x = chainer.Variable(numpy.zeros((3, 2, 5), dtype=numpy.float32))
+        t = chainer.Variable(numpy.zeros((3, 2, 5), dtype=numpy.float32))
+
+        with self.assertRaises(type_check.InvalidType):
+            chainer.functions.binary_accuracy(x, t)
 
 
 testing.run_module(__name__, __file__)
