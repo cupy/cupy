@@ -23,21 +23,35 @@ def roll(a, shift, axis=None):
 
     """
     if axis is None:
+        if a.size == 0:
+            return a
         size = a.size
+        ra = a.ravel()
+        shift %= size
+        res = cupy.empty((size,), a.dtype)
+        res[:shift] = ra[size - shift:]
+        res[shift:] = ra[:size - shift]
+        return res.reshape(a.shape)
     else:
         axis = int(axis)
         if axis >= a.ndim:
             raise ValueError('axis must be >= 0 and < %d' % a.ndim)
         size = a.shape[axis]
-    if size == 0:
-        return a
-    shift %= size
-    indexes = cupy.concatenate(
-        (cupy.arange(size - shift, size), cupy.arange(size - shift)))
-    res = a.take(indexes, axis)
-
-    if axis is None:
-        res = res.reshape(a.shape)
-    return res
+        if size == 0:
+            return a
+        shift %= size
+        prev = (slice(None),) * axis
+        rest = (slice(None),) * (a.ndim - axis - 1)
+        # Roll only the dimensiont at the given axis
+        # ind1 is [:, ..., size-shift:, ..., :]
+        # ind2 is [:, ..., :size-shift, ..., :]
+        ind1 = prev + (slice(size - shift, None, None),) + rest
+        ind2 = prev + (slice(None, size - shift, None),) + rest
+        r_ind1 = prev + (slice(None, shift, None),) + rest
+        r_ind2 = prev + (slice(shift, None, None),) + rest
+        res = cupy.empty_like(a)
+        res[r_ind1] = a[ind1]
+        res[r_ind2] = a[ind2]
+        return res
 
 # TODO(okuta): Implement rot90
