@@ -175,8 +175,8 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
     return _make_decorator(check_func, name, type_check, accept_error)
 
 
-def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp', type_check=True,
-                                        accept_error=True):
+def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
+                                       accept_error=True):
     """Decorator that checks results of NumPy and CuPy are equal w.r.t. spacing.
 
     Args:
@@ -193,7 +193,7 @@ def numpy_cupy_arrays_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal_nulp`
     """
     def check_func(x, y):
-        array.assert_arrays_almost_equal_nulp(x, y, nulp)
+        array.assert_array_almost_equal_nulp(x, y, nulp)
     return _make_decorator(check_func, name, type_check, accept_error)
 
 

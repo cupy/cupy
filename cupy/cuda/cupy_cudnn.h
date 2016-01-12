@@ -59,6 +59,11 @@ const char* cudnnGetErrorString(Status status) {
     return NULL;
 }
 
+// Version
+size_t cudnnGetVersion() {
+    return 0;
+}
+
 // Initialization and CUDA cooperation
 int cudnnCreate(Handle* handle) {
     return 0;

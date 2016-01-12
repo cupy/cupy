@@ -1245,18 +1245,28 @@ include "reduction.pxi"
 
 cdef _id = 'out0 = in0'
 
-elementwise_copy = create_ufunc(
+_elementwise_copy = create_ufunc(
     'cupy_copy',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
     _id)
 
 
-elementwise_copy_where = create_ufunc(
+def elementwise_copy(*args, **kwargs):
+    kwargs['casting'] = 'unsafe'
+    return _elementwise_copy(*args, **kwargs)
+
+
+_elementwise_copy_where = create_ufunc(
     'cupy_copy_where',
     ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
      'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d'),
     'if (in1) out0 = in0')
+
+
+def elementwise_copy_where(*args, **kwargs):
+    kwargs['casting'] = 'unsafe'
+    return _elementwise_copy_where(*args, **kwargs)
 
 
 cdef _divmod_float = '''
