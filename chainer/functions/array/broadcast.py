@@ -68,8 +68,7 @@ class BroadcastTo(function.Function):
     """Function that broadcasts an array to a new shape."""
 
     def __init__(self, shape):
-        shape = tuple(shape)
-        self._shape = shape
+        self._shape = tuple(shape)
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -100,7 +99,7 @@ class BroadcastTo(function.Function):
             return bx,
 
     def backward(self, xs, grads):
-        return tuple(_backward_one(x, g) for x, g in six.moves.zip(xs, grads))
+        return _backward_one(xs[0], grads[0]),
 
 
 def broadcast_to(x, shape):
