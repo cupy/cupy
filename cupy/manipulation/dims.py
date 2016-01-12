@@ -122,6 +122,39 @@ def broadcast_arrays(*args):
     return broadcast(*args).values
 
 
+def broadcast_to(array, shape):
+    """Broadcast an array to a given shape.
+
+    Args:
+        array (cupy.ndarray): Array to broadcast.
+        shape (tuple of int): The shape of the desired array.
+
+    Returns:
+        cupy.ndarray: Broadcasted view.
+
+    .. seealso:: :func:`numpy.broadcast_to`
+
+    """
+    if array.ndim > len(shape):
+        raise ValueError(
+            'input operand has more dimensions than allowed by the axis '
+            'remapping')
+
+    strides = [0] * len(shape)
+    for i in range(array.ndim):
+        j = -i - 1
+        sh = shape[j]
+        a_sh = array.shape[j]
+        if sh == a_sh:
+            strides[j] = array._strides[j]
+        elif a_sh != 1:
+            raise ValueError('Broadcasting failed')
+
+    view = array.view()
+    view._set_shape_and_strides(shape, strides)
+    return view
+
+
 def expand_dims(a, axis):
     """Expands given arrays.
 
