@@ -29,8 +29,8 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual((), y.data.shape)
 
         count = 0
-        x_flatten = self.x.reshape(-1)
-        t_flatten = self.t.reshape(-1)
+        x_flatten = self.x.ravel()
+        t_flatten = self.t.ravel()
         for i in six.moves.range(t_flatten.size):
             pred = int(x_flatten[i] >= 0)
             if pred == t_flatten[i]:

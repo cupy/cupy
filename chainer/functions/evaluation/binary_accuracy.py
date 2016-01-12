@@ -20,8 +20,8 @@ class BinaryAccuracy(function.Function):
         xp = cuda.get_array_module(*inputs)
         y, t = inputs
         # flatten
-        y = y.reshape(-1)
-        t = t.reshape(-1)
+        y = y.ravel()
+        t = t.ravel()
         c = (y >= 0)
         return xp.asarray((c == t).mean(dtype='f')),
 
