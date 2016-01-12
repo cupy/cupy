@@ -192,7 +192,7 @@ def slstm(c_prev1, c_prev2, x1, x2):
     eight arrays :math:`a_1, i_1, f_1, o_1`, and :math:`a_2, i_2, f_2, o_2`.
     They has the same shapes along the second axis.
     It means that :math:`x_1` and :math:`x_2` 's second axis must have 4 times
-    the length of :math:`c_{\\text{prev}1}` and :math:`c_{\\text{prev}1}`.
+    the length of :math:`c_{1 \\text{prev}}` and :math:`c_{2 \\text{prev}}`.
 
     The splitted input signals are corresponding to:
 
@@ -201,13 +201,16 @@ def slstm(c_prev1, c_prev2, x1, x2):
         - :math:`f_i` : sources of forget gate
         - :math:`o_i` : sources of output gate
 
+    It computes outputs as:
+
     .. math::
 
-        c &= \\tanh(a_1 + a_2) \\text{sigmoid}(i_1 + i_2)
-           + c_{\\text{prev}1} \\text{sigmoid}(f_1)
-           + c_{\\text{prev}2} \\text{sigmoid}(f_2)
-        h &= \\tanh(c) \\text{sigmoid(o_1 + o_2)}
+        c &= \\tanh(a_1 + a_2) \\sigma(i_1 + i_2)
+           + c_{1 \\text{prev}} \\sigma(f_1)
+           + c_{2 \\text{prev}} \\sigma(f_2), \\\\
+        h &= \\tanh(c) \\sigma(o_1 + o_2),
 
+    where :math:`\\sigma` is the elementwise sigmoid function.
     The function returns :math:`c` and :math:`h` as a tuple.
 
     Args:
@@ -226,7 +229,8 @@ def slstm(c_prev1, c_prev2, x1, x2):
         tuple: Two :class:`~chainer.Variable` objects ``c`` and ``h``. ``c`` is
             the cell state. ``h`` indicates the outgoing signal.
 
-    See the original: `Long Short-Term Memory Over Tree Structures [ICML2015]<>`
+    See detail in paper: `Long Short-Term Memory Over Tree Structures \
+    <http://arxiv.org/abs/1503.04881>`_.
 
     """
     return SLSTM()(c_prev1, c_prev2, x1, x2)

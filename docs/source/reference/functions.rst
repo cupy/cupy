@@ -33,6 +33,7 @@ Activation functions
 .. autofunction:: prelu
 .. autofunction:: relu
 .. autofunction:: sigmoid
+.. autofunction:: slstm
 .. autofunction:: softmax
 .. autofunction:: softplus
 .. autofunction:: tanh
