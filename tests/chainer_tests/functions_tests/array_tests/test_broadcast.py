@@ -105,7 +105,6 @@ class TestBroadcastTypeError(unittest.TestCase):
 @testing.parameterize(
     {'in_shape': (3, 1, 5), 'out_shape': (3, 2, 5)},
     {'in_shape': (5,),      'out_shape': (3, 2, 5)},
-    {'in_shape': (5,),      'out_shape': (3, 2, 5)},
     {'in_shape': (3, 2, 5), 'out_shape': (3, 2, 5)},
 )
 class TestBroadcastTo(unittest.TestCase):
