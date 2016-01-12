@@ -34,8 +34,10 @@ def roll(a, shift, axis=None):
         return res.reshape(a.shape)
     else:
         axis = int(axis)
-        if axis >= a.ndim:
-            raise ValueError('axis must be >= 0 and < %d' % a.ndim)
+        if axis < 0:
+            axis += a.ndim
+        if not 0 <= axis < a.ndim:
+            raise ValueError('axis must be >= %d and < %d' % (-a.ndim, a.ndim))
         size = a.shape[axis]
         if size == 0:
             return a
