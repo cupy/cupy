@@ -78,14 +78,14 @@ def maxout(x, W, b=None):
     """non parametrized Maxout activation function
 
     It accepts two or three arguments: an input minibatch ``x``,
-    a weight tensor ``W``, and optionally a bias matrix ``b``.
-    It computes
+    a weight tensor ``W``, and optionally a bias matrix ``b``
+    and computes
 
     .. math::
 
-      Y_{i} = \\mathrm{max}_{j} (x^{T}W_{\\cdot ij} + b_{ij})
+      Y_{i} = \\mathrm{max}_{j} (x^{T}W_{\\cdot ij} + b_{ij}).
 
-    where :math:`x` is a input vector and :math:`W_{\\cdot ij}`
+    Here, :math:`x` is a input vector and :math:`W_{\\cdot ij}`
     is a sub-vector extracted from :math:`W` by fixing second
     and third dimensions to :math:`i` and :math:`j`, respectively.
     Minibatch dimension is omitted in the above equation.
@@ -94,10 +94,10 @@ def maxout(x, W, b=None):
        x (~chainer.Variable): Input variable. Its first dimension is assumed
             to be the *minibatch dimension*. The other dimensions are treated
             as concatenated one dimension whose size must be ``N``.
-       W (~chainer.Variable): Weight variable of shape ``(N, C, M)``
-       b (~chainer.Variable): Bias variable (optional) of shape ``(C, M)```
+       W (~chainer.Variable): Weight variable of shape ``(N, C, M)``.
+       b (~chainer.Variable): Bias variable (optional) of shape ``(C, M)``.
     Returns:
-        ~chainer.Variable: Outputvariable
+        ~chainer.Variable: Variable holding :math:`Y`.
 
     .. seealso:: :class:`~chainer.links.Maxout`
     """

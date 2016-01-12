@@ -13,15 +13,15 @@ class Maxout(link.Link):
         out_size (int): Dimension of output vectors.
         wscale (float): Scaling factor of the weight matrix.
         initialW (3-D array): Initial weight value. If ``None``, then this
-            function uses to initialize ``wscale``.
+            function uses ``wscale`` to initialize.
         initial_bias (2-D array): Initial bias value. If ``None``, then this
-            functions uses to initialize ``bias``.
+            functions uses ``bias`` to initialize.
 
     Attributes:
         W (~chainer.Variable): Weight tensor with shape
-            (``in_size``, ``num_channel``, ``out_size``)
+            ``(in_size, num_channel, out_size)``.
         b (~chainer.Variable): Bias vector with shape
-            (``num_channel``, ``out_size``),
+            ``(num_channel, out_size)``.
 
     .. seealso:: :func:`~chainer.functions.maxout`
 
