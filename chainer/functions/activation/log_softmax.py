@@ -86,21 +86,26 @@ def log_softmax(x, use_cudnn=True):
     This function computes its logarithm of softmax along the second axis. Let
     :math:`x = (x_1, x_2, \\dots, x_d)^{\\top}` be the d dimensional index
     array and :math:`f(x)` be the d dimensional input array. For each index
-    :math:`x` of the input array :math:`f(x)`, it computes the probability
-    :math:`\log p(x)` defined as
-    :math:`p(x) = {\\exp(f(x)) \\over \\sum_{x_2} \\exp(f(x))}`.
+    :math:`x` of the input array :math:`f(x)`, it computes the logarithm of
+    the probability :math:`\log p(x)` defined as
 
-    Note that `log(softmax(x))` may cause underflow when ``x`` is too small,
-    because ``softmax(x)`` may returns 0.
-    `log_softmax` method is more stable.
+    .. math::
+        p(x) = {\\exp(f(x)) \\over \\sum_{x'} \\exp(f(x'))}.
+
+    .. note::
+        ``log(softmax(x))`` may cause underflow when ``x`` is too small,
+        because ``softmax(x)`` may returns ``0``.
+        ``log_softmax`` method is more stable.
 
     Args:
         x (~chainer.Variable): Input variable.
-        use_cudnn (bool): If True and cuDNN is enabled, then this function uses
-            cuDNN as the core implementation.
+        use_cudnn (bool): If True, cuDNN is enabled and cuDNN ver. 3 or later
+            is used, then this function uses cuDNN as the core implementation.
 
     Returns:
         ~chainer.Variable: Output variable.
+
+    .. seealso:: :func:`~chainer.functions.softmax`
 
     """
     return LogSoftmax(use_cudnn)(x)
