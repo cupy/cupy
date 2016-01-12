@@ -4,6 +4,7 @@ from chainer.functions.activation import clipped_relu
 from chainer.functions.activation import elu
 from chainer.functions.activation import leaky_relu
 from chainer.functions.activation import lstm
+from chainer.functions.activation import maxout
 from chainer.functions.activation import prelu
 from chainer.functions.activation import relu
 from chainer.functions.activation import sigmoid
@@ -74,6 +75,7 @@ LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LSTM = lstm.LSTM
 lstm = lstm.lstm
+maxout = maxout.maxout
 prelu = prelu.prelu
 ReLU = relu.ReLU
 relu = relu.relu

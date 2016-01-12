@@ -29,6 +29,7 @@ Activation functions
 .. autofunction:: elu
 .. autofunction:: leaky_relu
 .. autofunction:: lstm
+.. autofunction:: maxout
 .. autofunction:: prelu
 .. autofunction:: relu
 .. autofunction:: sigmoid
