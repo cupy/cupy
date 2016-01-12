@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -17,6 +18,13 @@ def _as_mat(x):
     return x.reshape(len(x), -1)
 
 
+def _maxout(x, W, b):
+    y = numpy.tensordot(_as_mat(x), W, axes=1)
+    if b is not None:
+        y += b
+    return numpy.max(y, axis=1)
+
+
 @testing.parameterize(
     {'W_shape': (2, 3, 4), 'b_shape': (3, 4), 'x_shape': (7, 2)},
     {'W_shape': (10, 3, 4), 'b_shape': (3, 4), 'x_shape': (7, 2, 5)},
@@ -26,20 +34,24 @@ class TestNonparameterizedMaxout(unittest.TestCase):
 
     def setUp(self):
         self.W = numpy.random.uniform(
-            -1, 1, self.W_shape).astype(numpy.float32)
-        self.x = numpy.random.uniform(
-            -1, 1, self.x_shape).astype(numpy.float32)
+            -0.01, 0.01, self.W_shape).astype(numpy.float32)
+        for c in six.moves.range(self.W.shape[1]):
+            w = numpy.arange(self.W.shape[0], dtype=numpy.float32) + 1
+            for o in six.moves.range(self.W.shape[2]):
+                self.W[:, c, o] += w * o
 
-        self.y = numpy.tensordot(_as_mat(self.x), self.W, axes=1)
         if self.b_shape is not None:
             self.b = numpy.random.uniform(
-                -1, 1, self.b_shape).astype(numpy.float32)
-            self.y += self.b
+                -0.01, 0.01, self.b_shape).astype(numpy.float32)
         else:
             self.b = None
-        self.y = numpy.max(self.y, axis=1)
+
+        self.x = numpy.random.uniform(
+            -0.01, 0.01, self.x_shape).astype(numpy.float32)
+
+        self.y = _maxout(self.x, self.W, self.b)
         self.gy = numpy.random.uniform(
-            -1, 1, self.y.shape).astype(numpy.float32)
+            -0.01, 0.01, self.y.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, W_data, b_data, y_expect):
         x = chainer.Variable(x_data)
@@ -88,10 +100,10 @@ class TestNonparameterizedMaxout(unittest.TestCase):
             gx, gW, gb = gradient_check.numerical_grad(
                 f, (x.data, W.data, b.data), (y.grad, ), eps=1e-2)
 
-        gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gW, W.grad)
+        gradient_check.assert_allclose(gx, x.grad, atol=1e-2)
+        gradient_check.assert_allclose(gW, W.grad, atol=1e-2)
         if b_data is not None:
-            gradient_check.assert_allclose(gb, b.grad)
+            gradient_check.assert_allclose(gb, b.grad, atol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
