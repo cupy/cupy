@@ -30,6 +30,7 @@ Edit dimensionalities
 .. autofunction:: cupy.atleast_3d
 .. autoclass:: cupy.broadcast
 .. autofunction:: cupy.broadcast_arrays
+.. autofunction:: cupy.broadcast_to
 .. autofunction:: cupy.expand_dims
 .. autofunction:: cupy.squeeze
 
