@@ -100,6 +100,7 @@ class TestMaxout(unittest.TestCase):
         gradient_check.check_backward(
             self.link, x_data, y_grad, params, eps=1e-4, atol=1e-2)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
