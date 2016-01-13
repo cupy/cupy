@@ -457,8 +457,8 @@ class WeightDecay(object):
                     kernel(p, rate, g)
 
 
-class LASSO(object):
-    """Optimizer hook function for LASSO regularization.
+class Lasso(object):
+    """Optimizer hook function for Lasso regularization.
 
     This hook function adds a scaled parameter to the sign of each weight.
     It can be used as a regularization.
@@ -470,7 +470,7 @@ class LASSO(object):
         rate (float): Coefficient for the weight decay.
 
     """
-    name = 'LASSO'
+    name = 'Lasso'
 
     def __init__(self, rate):
         self.rate = rate
