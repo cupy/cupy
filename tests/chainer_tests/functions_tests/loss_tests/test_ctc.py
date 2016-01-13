@@ -39,9 +39,9 @@ class TestCTC(unittest.TestCase):
                 (self.alpha(x, l, t-1, u-1) + self.alpha(x, l, t-1, u))
         else:
             return x[t][l[u]] * \
-                (self.alpha(x, l, t-1, u-2)
-                 + self.alpha(x, l, t-1, u-1)
-                 + self.alpha(x, l, t-1, u))
+                (self.alpha(x, l, t-1, u-2) +
+                 self.alpha(x, l, t-1, u-1) +
+                 self.alpha(x, l, t-1, u))
 
     def check_forward(self, t_data, xs_data):
         x = tuple(chainer.Variable(x_data) for x_data in xs_data)
@@ -61,11 +61,11 @@ class TestCTC(unittest.TestCase):
             loss_expect += -math.log(self.alpha(xt[b],
                                                 self.l[b],
                                                 self.x.shape[0]-1,
-                                                self.l[b].shape[0]-1)
-                                     + self.alpha(xt[b],
-                                                  self.l[b],
-                                                  self.x.shape[0]-1,
-                                                  self.l[b].shape[0]-2))
+                                                self.l[b].shape[0]-1) +
+                                     self.alpha(xt[b],
+                                                self.l[b],
+                                                self.x.shape[0]-1,
+                                                self.l[b].shape[0]-2))
         loss_expect /= batch_size
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 

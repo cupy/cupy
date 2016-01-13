@@ -20,9 +20,9 @@ class TestGaussianKLDivergence(unittest.TestCase):
         # Refer to Appendix B in the original paper
         # Auto-Encoding Variational Bayes (http://arxiv.org/abs/1312.6114)
         J = self.mean.size
-        self.expect = -(J + numpy.sum(self.ln_var)
-                        - numpy.sum(self.mean * self.mean)
-                        - numpy.sum(numpy.exp(self.ln_var))) * 0.5
+        self.expect = -(J + numpy.sum(self.ln_var) -
+                        numpy.sum(self.mean * self.mean) -
+                        numpy.sum(numpy.exp(self.ln_var))) * 0.5
 
     def check_gaussian_kl_divergence(self, mean, ln_var):
         m = chainer.Variable(mean)
@@ -50,8 +50,8 @@ class TestBernoulliNLL(unittest.TestCase):
         # Refer to Appendix C.1 in the original paper
         # Auto-Encoding Variational Bayes (http://arxiv.org/abs/1312.6114)
         p = 1 / (1 + numpy.exp(-self.y))
-        self.expect = - (numpy.sum(self.x * numpy.log(p))
-                         + numpy.sum((1 - self.x) * numpy.log(1 - p)))
+        self.expect = - (numpy.sum(self.x * numpy.log(p)) +
+                         numpy.sum((1 - self.x) * numpy.log(1 - p)))
 
     def check_bernoulli_nll(self, x_data, y_data):
         x = chainer.Variable(x_data)
@@ -83,9 +83,9 @@ class TestGaussianNLL(unittest.TestCase):
         x_d = self.x - self.mean
         var = numpy.exp(self.ln_var)
 
-        self.expect = (0.5 * D * numpy.log(2 * numpy.pi)
-                       + 0.5 * numpy.sum(self.ln_var)
-                       + numpy.sum(x_d * x_d / var) * 0.5)
+        self.expect = (0.5 * D * numpy.log(2 * numpy.pi) +
+                       0.5 * numpy.sum(self.ln_var) +
+                       numpy.sum(x_d * x_d / var) * 0.5)
 
     def check_gaussian_nll(self, x_data, mean_data, ln_var_data):
         x = chainer.Variable(x_data)
