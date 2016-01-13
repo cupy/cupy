@@ -22,24 +22,24 @@ class TestArrayGet(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_contiguous_array(self, dtype):
-        contiguous_array = lambda xp: testing.shaped_arange(
-            (3,), xp=xp, dtype=dtype)
+        def contiguous_array(xp):
+            return testing.shaped_arange((3,), xp=xp, dtype=dtype)
         self.check_get(contiguous_array, None)
 
     @testing.for_all_dtypes()
     def test_non_contiguous_array(self, dtype):
-        non_contiguous_array = lambda xp: testing.shaped_arange(
-            (3,), xp=xp, dtype=dtype)[0::2]
+        def non_contiguous_array(xp):
+            return testing.shaped_arange((3,), xp=xp, dtype=dtype)[0::2]
         self.check_get(non_contiguous_array, None)
 
     @testing.for_all_dtypes()
     def test_contiguous_array_stream(self, dtype):
-        contiguous_array = lambda xp: testing.shaped_arange(
-            (3,), xp=xp, dtype=dtype)
+        def contiguous_array(xp):
+            return testing.shaped_arange((3,), xp=xp, dtype=dtype)
         self.check_get(contiguous_array, self.stream.ptr)
 
     @testing.for_all_dtypes()
     def test_non_contiguous_array_stream(self, dtype):
-        non_contiguous_array = lambda xp: testing.shaped_arange(
-            (3,), xp=xp, dtype=dtype)[0::2]
+        def non_contiguous_array(xp):
+            return testing.shaped_arange((3,), xp=xp, dtype=dtype)[0::2]
         self.check_get(non_contiguous_array, self.stream.ptr)
