@@ -32,15 +32,8 @@ class TestTanh(unittest.TestCase):
         self.test_forward_gpu(False)
 
     def check_backward(self, x_data, gy_data, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.tanh(x, use_cudnn=use_cudnn)
-        y.grad = gy_data
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            lambda x: functions.tanh(x, use_cudnn=use_cudnn), x_data, gy_data)
 
     @condition.retry(3)
     def test_backward_cpu(self):

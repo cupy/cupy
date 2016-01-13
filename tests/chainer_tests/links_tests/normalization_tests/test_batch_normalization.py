@@ -37,19 +37,9 @@ class BatchNormalizationTestBase(object):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x).data,)
-        gx, ggamma, gbeta = gradient_check.numerical_grad(
-            f, (x.data, self.link.gamma.data, self.link.beta.data),
-            (y.grad,), eps=1e-2)
-
-        gradient_check.assert_allclose(gx, x.grad, rtol=1e-3, atol=1e-4)
-        gradient_check.assert_allclose(ggamma, self.link.gamma.grad)
-        gradient_check.assert_allclose(gbeta, self.link.beta.grad)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, (self.link.gamma, self.link.beta),
+            eps=1e-2, rtol=1e-3, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):

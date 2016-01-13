@@ -72,20 +72,11 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
         self.check_forward_ones(cuda.to_gpu(self.one), False)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.spatial_pyramid_pooling_2d(
-            x, self.pyramid_height, self.pooling_class, use_cudnn=use_cudnn)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(
-            cuda.to_cpu(gx),
-            cuda.to_cpu(x.grad),
-            atol=1e-04)
+        gradient_check.check_backward(
+            lambda x: functions.spatial_pyramid_pooling_2d(
+                x, self.pyramid_height, self.pooling_class,
+                use_cudnn=use_cudnn),
+            x_data, y_grad, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):

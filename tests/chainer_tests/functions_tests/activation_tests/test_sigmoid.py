@@ -39,7 +39,8 @@ class TestSigmoid(unittest.TestCase):
         y.backward()
 
         func = y.creator
-        f = lambda: func.forward((x.data,))
+
+        def f(): return func.forward((x.data,))
         gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
 
         gradient_check.assert_allclose(gx, x.grad)

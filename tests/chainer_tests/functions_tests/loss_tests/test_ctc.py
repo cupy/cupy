@@ -79,21 +79,10 @@ class TestCTC(unittest.TestCase):
 
     # expected value(via numerical differentiation) from t_data
     def check_backward(self, t_data, xs_data):
-        xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
-        t = chainer.Variable(t_data)
-        loss = functions.connectionist_temporal_classification(xs, t, 2)
-        loss.grad = self.g
-        loss.backward()
-
-        func = loss.creator
-        xs_data = tuple(x.data for x in xs)
-        f = lambda: func.forward((t.data,) + xs_data)
-        gl_0, gx_0, gx_1, gx_2, gx_3 = gradient_check.numerical_grad(
-            f, ((t.data,) + xs_data), (self.gx,))
-        gradient_check.assert_allclose(xs[0].grad, gx_0, atol=1e-04)
-        gradient_check.assert_allclose(xs[1].grad, gx_1, atol=1e-04)
-        gradient_check.assert_allclose(xs[2].grad, gx_2, atol=1e-04)
-        gradient_check.assert_allclose(xs[3].grad, gx_3, atol=1e-04)
+        gradient_check.check_backward(
+            lambda *args: functions.connectionist_temporal_classification(
+                args[:-1], args[-1], 2),
+            xs_data + (t_data,), self.g, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):

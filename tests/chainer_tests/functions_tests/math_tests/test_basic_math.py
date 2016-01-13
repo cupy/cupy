@@ -129,18 +129,8 @@ class BinaryOpTestBase(object):
         self.assertEqual(1, z.data.get()[0])
 
     def check_backward(self, op, x1_data, x2_data, y_grad, atol):
-        x1 = chainer.Variable(x1_data)
-        x2 = chainer.Variable(x2_data)
-        y = op(x1, x2)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x1.data, x2.data))
-        gx1, gx2 = gradient_check.numerical_grad(
-            f, (x1.data, x2.data), (y.grad,))
-        gradient_check.assert_allclose(gx1, x1.grad, atol=atol)
-        gradient_check.assert_allclose(gx2, x2.grad, atol=atol)
+        gradient_check.check_backward(op, (x1_data, x2_data), y_grad,
+                                      atol=atol)
 
     def backward_cpu(self, op, atol=1e-5):
         self.check_backward(op, self.x1, self.x2, self.gy, atol)
@@ -554,16 +544,8 @@ class VariableConstantOpTestBase(object):
         self.forward_gpu(lambda x, y: y ** x)
 
     def check_backward(self, op, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = op(x, self.value)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(lambda x: op(x, self.value),
+                                      x_data, y_grad)
 
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -803,16 +785,9 @@ class TestVariableConstantArrayOp(unittest.TestCase):
             value = numpy.abs(value)
         if gpu:
             value = cuda.to_gpu(value)
-        x = chainer.Variable(x_data)
-        y = op(x, value)
-        y.grad = y_grad
-        y.backward()
 
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-4, rtol=1e-4)
+        gradient_check.check_backward(lambda x: op(x, value), x_data, y_grad,
+                                      atol=1e-4, rtol=1e-4)
 
     def backward_cpu(self, op, positive=False):
         self.check_backward(op, self.x, self.gy, False, positive)
@@ -946,16 +921,7 @@ class UnaryFunctionsTestBase(object):
         self.forward_gpu(lambda x: abs(x), lambda x: abs(x))
 
     def check_backward(self, op, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = op(x)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(op, x_data, y_grad)
 
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -1006,16 +972,8 @@ class TestNegativePow(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = x ** 2
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-4, rtol=1e-4)
+        gradient_check.check_backward(
+            lambda x: x ** 2, x_data, y_grad, atol=1e-4, rtol=1e-4)
 
     def test_cpu(self):
         self.check_backward(self.x, self.gy)

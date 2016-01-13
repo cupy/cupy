@@ -72,21 +72,13 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
 
     def check_backward(self, x_data, t_data, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        loss = functions.sigmoid_cross_entropy(x, t, use_cudnn)
-        loss.backward()
-        self.assertEqual(None, t.grad)
-
         # Skip too large case. That requires a long time.
         if self.shape[0] == 65536:
             return
 
-        func = loss.creator
-        f = lambda: func.forward((x.data, t.data))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (1,), eps=0.01)
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            lambda x, t: functions.sigmoid_cross_entropy(x, t, use_cudnn),
+            (x_data, t_data), None, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
