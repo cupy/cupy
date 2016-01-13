@@ -3,6 +3,7 @@ import six
 
 from chainer import cuda
 from chainer import utils
+from chainer import variable
 
 
 def _copy_arrays(xs):
@@ -114,3 +115,49 @@ def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
     except Exception:
         print('error:', numpy.abs(x - y).max())
         raise
+
+
+def _as_tuple(x):
+    if isinstance(x, tuple):
+        return x
+    elif isinstance(x, list):
+        return tuple(x)
+    else:
+        return (x,)
+
+
+def check_backward(func, x_data, y_grad, params=(),
+                   eps=1e-3, atol=1e-5, rtol=1e-4):
+    x_data = _as_tuple(x_data)
+    if y_grad is not None:
+        y_grad = _as_tuple(y_grad)
+    params = _as_tuple(params)
+
+    xs = [variable.Variable(x) for x in x_data]
+    y = func(*xs)
+    if isinstance(y, variable.Variable):
+        y = (y,)
+
+    if y_grad is not None:
+        for iy, igy in zip(y, y_grad):
+            iy.grad = igy
+    else:
+        y_grad = (1,)
+    y[0].backward()
+
+    def f():
+        y = func(*xs)
+        return y.data,
+
+    for x in xs:
+        if x.data.dtype.kind == 'f':
+            gx, = numerical_grad(f, (x.data,), y_grad, eps=eps)
+            assert_allclose(gx, x.grad, atol=atol, rtol=rtol)
+            assert gx.dtype is x.grad.dtype
+        else:
+            assert x.grad is None
+
+    for p in params:
+        gp, = numerical_grad(f, (p.data,), y_grad, eps=eps)
+        assert_allclose(gp, p.grad, atol=atol, rtol=rtol)
+        assert gp.dtype is p.grad.dtype
