@@ -115,12 +115,12 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
          rtol(float): Relative torelance.
          atol(float): Absolute torelance
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting values are
+         verbose(bool): If ``True``, the conflicting values are
              appended to the error message.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         type_check(bool): If True, consistency of dtype is also checked.
-         accept_error(bool): If True, errors are not raised as long as
+         type_check(bool): If ``True``, consistency of dtype is also checked.
+         accept_error(bool): If ``True``, errors are not raised as long as
              the errors occured are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the arrays whose values are
@@ -156,16 +156,17 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
     Args:
          decimal(int): Desired precision.
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting values
+         verbose(bool): If ``True``, the conflicting values
              are appended to the error message.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         type_check(bool): If True, consistency of dtype is also checked.
-         accept_error(bool): If True, errors are not raised as long as
+         type_check(bool): If ``True``, consistency of dtype is also checked.
+         accept_error(bool): If ``True``, errors are not raised as long as
              the errors occured are identical between NumPy and CuPy.
 
-    Decorated test fixture is required to return almost same arrays
-    (except the type of array module) even if xp is ``numpy`` or ``cupy``.
+    Decorated test fixture is required to return the same arrays
+    in the sense of :func:`cupy.testing.assert_array_almost_equal`
+    (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal`
     """
@@ -183,11 +184,12 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
          nulp(int): The maximum number of unit in the last place for tolerance.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         type_check(bool): If True, consistency of dtype is also checked.
-         accept_error(bool): If True, errors are not raised as long as
+         type_check(bool): If ``True``, consistency of dtype is also checked.
+         accept_error(bool): If ``True``, errors are not raised as long as
              the errors occured are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the same arrays
+    in the sense of :func:`cupy.testing.assert_array_almost_equal_nulp`
     (except the type of array module) even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal_nulp`
@@ -208,8 +210,8 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
              two array to if given.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         type_check(bool): If True, consistency of dtype is also checked.
-         accept_error(bool): If True, errors are not raised as long as
+         type_check(bool): If ``True``, consistency of dtype is also checked.
+         accept_error(bool): If ``True``, errors are not raised as long as
              the errors occured are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the same arrays
@@ -230,12 +232,12 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
 
     Args:
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting values are
+         verbose(bool): If ``True``, the conflicting values are
              appended to the error message.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         type_check(bool): If True, consistency of dtype is also checked.
-         accept_error(bool): If True, errors are not raised as long as
+         type_check(bool): If ``True``, consistency of dtype is also checked.
+         accept_error(bool): If ``True``, errors are not raised as long as
              the errors occured are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the same arrays
@@ -254,7 +256,7 @@ def numpy_cupy_array_list_equal(err_msg='', verbose=True, name='xp'):
 
     Args:
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting values are appended
+         verbose(bool): If ``True``, the conflicting values are appended
              to the error message.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
@@ -284,16 +286,16 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
 
     Args:
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting values are
+         verbose(bool): If ``True``, the conflicting values are
              appended to the error message.
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
-         type_check(bool): If True, consistency of dtype is also checked.
-         accept_error(bool): If True, errors are not raised as long as
+         type_check(bool): If ``True``, consistency of dtype is also checked.
+         accept_error(bool): If ``True``, errors are not raised as long as
              the errors occured are identical between NumPy and CuPy.
 
-    Decorated test fixture is required to return less array when
-    ``xp`` is ``cupy`` compared to the one when ``xp`` is ``numpy``.
+    Decorated test fixture is required to return the smaller array
+    when ``xp`` is ``cupy`` than the one when ``xp`` is ``numpy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_less`
     """
@@ -309,7 +311,7 @@ def numpy_cupy_raises(name='xp'):
          name(str): Argument name whose value is either
          ``numpy`` or ``cupy`` module.
 
-    Decorated test fixture is required throw same error
+    Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
 
     .. seealso:: :func:`cupy.testing.assert_array_less`
@@ -350,8 +352,9 @@ def for_dtypes(dtypes, name='dtype'):
          name(str): Argument name to which specified dtypes are passed.
 
     This decorator adds a keyword argument specified by ``name``
-    to the test fixture. Then, it runs the fixture in a parameterized manner
-    with passing the elements of ``dtypes`` to the named arugment.
+    to the test fixture. Then, it runs the fixtures in parallel
+    by passing the each element of ``dtypes`` to the named
+    arugment.
     """
     def decorator(impl):
         @functools.wraps(impl)
@@ -410,7 +413,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     The usage is as follows.
     This test fixture checks if ``cPickle`` successfully reconstructs
     :class:`cupy.ndarray` for various dtypes.
-    dtype is an argument inserted by the decorator.
+    ``dtype`` is an argument inserted by the decorator.
 
     >>> @testing.gpu
     ... class TestNpz(unittest.TestCase):
@@ -449,8 +452,8 @@ def for_float_dtypes(name='dtype', no_float16=False):
          no_float16(bool): If, True, ``numpy.float16`` is
              omitted from candidate dtypes.
 
-    dtypes to be tested: ``numpy.float16`` (optional), ``numpy.float32``,
-    ``numpy.float64``.
+    dtypes to be tested are ``numpy.float16`` (optional), ``numpy.float32``,
+    and ``numpy.float64``.
 
     .. seealso:: :func:`cupy.testing.for_dtypes`,
         :func:`cupy.testing.for_all_dtypes`
@@ -467,8 +470,8 @@ def for_signed_dtypes(name='dtype'):
     Args:
          name(str): Argument name to which specified dtypes are passed.
 
-    dtypes to be tested: ``numpy.dtype('b')``, ``numpy.dtype('h')``,
-    ``numpy.dtype('i')``, ``numpy.dtype('l')``, ``numpy.dtype('q')``.
+    dtypes to be tested are ``numpy.dtype('b')``, ``numpy.dtype('h')``,
+    ``numpy.dtype('i')``, ``numpy.dtype('l')``, and ``numpy.dtype('q')``.
 
     .. seealso:: :func:`cupy.testing.for_dtypes`,
         :func:`cupy.testing.for_all_dtypes`
@@ -482,8 +485,9 @@ def for_unsigned_dtypes(name='dtype'):
     Args:
          name(str): Argument name to which specified dtypes are passed.
 
-     dtypes to be tested: ``numpy.dtype('B')``, ``numpy.dtype('H')``,
-     ``numpy.dtype('I')``, ``numpy.dtype('L')``, ``numpy.dtype('Q')``.
+    dtypes to be tested are ``numpy.dtype('B')``, ``numpy.dtype('H')``,
+
+     ``numpy.dtype('I')``, ``numpy.dtype('L')``, and ``numpy.dtype('Q')``.
 
     .. seealso:: :func:`cupy.testing.for_dtypes`,
         :func:`cupy.testing.for_all_dtypes`
@@ -499,7 +503,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
          no_bool(bool): If ``True``, ``numpy.bool_`` is
              omitted from candidate dtypes.
 
-    dtypes to be tested: ``numpy.dtype('b')``, ``numpy.dtype('h')``,
+    dtypes to be tested are ``numpy.dtype('b')``, ``numpy.dtype('h')``,
     ``numpy.dtype('i')``, ``numpy.dtype('l')``, ``numpy.dtype('q')``,
     ``numpy.dtype('B')``, ``numpy.dtype('H')``, ``numpy.dtype('I')``,
     ``numpy.dtype('L')``, ``numpy.dtype('Q')``, and ``numpy.bool_`` (optional).
@@ -525,33 +529,33 @@ def for_dtypes_combination(types, names=['dtype'], full=None):
              (see the description below).
 
     Decorator adds the keyword arguments specified by ``names``
-    to the test fixture. Then, it runs the fixture with passing
-    (possibly, a subset of) a product set of dtypes.
+    to the test fixture. Then, it runs the fixtures in parallel
+    with passing (possibly a subset of) the product set of dtypes.
     The range of dtypes is specified by ``types``.
 
     The combination of dtypes to be tested changes depending
     on the option ``full``. If ``full`` is ``True``,
     all combinations of ``types`` are tested.
     Sometimes, such an exhaustive test can be costly.
-    So, if ``full`` is ``False``, only a subset of possible
+    So, if ``full`` is ``False``, only the subset of possible
     combinations is tested. Specificially, at first,
-    the shuffled list of ``types`` are made for each argument.
-    Let the lists be ``D1``, ``D2``, ..., `Dn`
-    where :math:`n` is the number of arguments,
-    then, the combinations to be tested will be ``zip(D1, ..., Dn)``.
+    the shuffled lists of ``types`` are made for each argument
+    name in ``names``.
+    Let the lists be ``D1``, ``D2``, ..., ``Dn``
+    where :math:`n` is the number of arguments.
+    Then, the combinations to be tested will be ``zip(D1, ..., Dn)``.
     If ``full`` is ``None``, the behaivior is switched
     by setting the environment variable ``CUPY_TEST_FULL_COMBINATION=1``.
 
     For example, let ``types`` be ``[float16, float32, float64]``
-    and ``names`` be ``[a_type, b_type]``. If ``full`` is ``True``,
+    and ``names`` be ``['a_type', 'b_type']``. If ``full`` is ``True``,
     then the decorated test fixture is executed with all
     :math:`2^3` patterns. On the other hand, if ``full`` is ``False``,
     shuffled lists are made for ``a_type`` and ``b_type``.
-    Suppose the lists are ``(16, 64, 32)`` for ``a`` and
-    ``(32, 64, 16) for ``b`` (prefixes are removed for short).
-    Then the combination to be tested are
-    ``(a_type, b_type) = (16, 32), (64, 64),
-    (32, 16)``.
+    Suppose the lists are ``(16, 64, 32)`` for ``a_type`` and
+    ``(32, 64, 16)`` for ``b_type`` (prefixes are removed for short).
+    Then the combinations of ``(a_type, b_type)`` to be tested are
+    ``(16, 32)``, ``(64, 64)`` and ``(32, 16)``.
     """
 
     if full is None:

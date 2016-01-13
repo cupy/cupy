@@ -44,7 +44,8 @@ Parameterized dtype Test
 ------------------------
 
 The following decorators offers the standard way for
-parameterized test with respect to (single or combination of) dtypes.
+parameterized test with respect to single or the
+combination of dtype(s).
 
 .. autofunction:: for_dtypes
 .. autofunction:: for_all_dtypes
