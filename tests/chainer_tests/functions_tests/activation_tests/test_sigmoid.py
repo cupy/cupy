@@ -33,17 +33,8 @@ class TestSigmoid(unittest.TestCase):
         self.test_forward_gpu(False)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.sigmoid(x, use_cudnn=use_cudnn)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-
-        def f(): return func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.Sigmoid(use_cudnn), x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):
