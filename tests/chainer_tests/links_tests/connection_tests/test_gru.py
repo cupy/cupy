@@ -48,7 +48,7 @@ class TestStatefulGRU(unittest.TestCase):
             return link(h, x)
         else:
             if self.state != 'zero':
-                link.set_state(h.data)
+                link.set_state(h)
             return link(x)
 
     def check_forward(self, h_data, x_data):
@@ -106,7 +106,8 @@ class TestGRUState(unittest.TestCase):
 
     def setUp(self):
         self.link = links.StatefulGRU(8)
-        self.h = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
+        self.h = chainer.Variable(
+            numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32))
 
     def check_set_state(self, h):
         self.link.set_state(h)
@@ -118,8 +119,8 @@ class TestGRUState(unittest.TestCase):
     @attr.gpu
     def test_set_state_gpu(self):
         getattr(self.link, self.link_array_module)()
-        h = getattr(chainer.cuda, self.state_array_module)(self.h)
-        self.check_set_state(h)
+        getattr(self.h, self.state_array_module)()
+        self.check_set_state(self.h)
 
     def check_reset_state(self):
         self.link.reset_state()
@@ -138,7 +139,8 @@ class TestGRUToCPUToGPU(unittest.TestCase):
 
     def setUp(self):
         self.link = links.StatefulGRU(8)
-        self.h = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
+        self.h = chainer.Variable(
+            numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32))
 
     def check_to_cpu(self, h):
         self.link.set_state(h)
@@ -152,7 +154,8 @@ class TestGRUToCPUToGPU(unittest.TestCase):
 
     @attr.gpu
     def test_to_cpu_gpu(self):
-        self.check_to_cpu(chainer.cuda.to_gpu(self.h))
+        self.h.to_gpu()
+        self.check_to_cpu(self.h)
 
     def check_to_cpu_to_gpu(self, h):
         self.link.set_state(h)
@@ -171,7 +174,8 @@ class TestGRUToCPUToGPU(unittest.TestCase):
 
     @attr.gpu
     def test_to_cpu_to_gpu_gpu(self):
-        self.check_to_cpu_to_gpu(chainer.cuda.to_gpu(self.h))
+        self.h.to_gpu()
+        self.check_to_cpu_to_gpu(self.h)
 
 
 testing.run_module(__name__, __file__)

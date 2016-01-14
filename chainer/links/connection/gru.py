@@ -120,11 +120,13 @@ class StatefulGRU(GRUBase):
             self.h.to_gpu(device)
 
     def set_state(self, h):
+        assert isinstance(h, chainer.Variable)
+        h_ = h
         if self.xp == numpy:
-            h = chainer.cuda.to_cpu(h)
+            h_.to_cpu()
         else:
-            h = chainer.cuda.to_gpu(h)
-        self.h = chainer.Variable(h, volatile='auto')
+            h_.to_gpu()
+        self.h = h_
 
     def reset_state(self):
         self.h = None
