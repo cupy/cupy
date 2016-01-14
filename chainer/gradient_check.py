@@ -128,6 +128,86 @@ def _as_tuple(x):
 
 def check_backward(func, x_data, y_grad, params=(),
                    eps=1e-3, atol=1e-5, rtol=1e-4):
+    """Test backward procedure of a given function.
+
+    This function automatically check backward-process of a given function.
+    For example, when you have a :class:`~chainer.Function` class ``MyFunc``,
+    that gets two arguments and returns one value, you can make its test like
+    this::
+
+    >> def test_my_func(self):
+    >>   func = MyFunc()
+    >>   x1_data = xp.array(...)
+    >>   x2_data = xp.array(...)
+    >>   gy_data = xp.array(...)
+    >>   check_backward(func, (x1_data, x2_data), gy_data)
+
+    This method creates :class:`~chainer.Variable` objects with ``x_data``,
+    and call ``func`` with the :class:`~chainer.Variable`s to get its result
+    :class:`~chainer.Variable`.
+    And then, set ``grad`` of the results with ``y_grad`` arrays and call
+    ``backward`` method to get gradients of the inputs.
+    To check correctness of the gradients, the function calls
+    :func:`numerical_grad` and compares them with :func:`assert_allclose`.
+    If an input object represents integer variable, its gradient is ignored.
+
+    You can simplify a test when ``MyFunc`` gets only one argument::
+
+    >>   check_backward(func, x1_data, gy_data)
+
+    If ``MyFunc`` is a loss function which returns zero-dimensional
+    array, pass ``None`` to ``gy_data``::
+
+    >>   check_backward(my_loss_func, (x1_data, x2_data), None)
+
+    You can also test a :class:`~chainer.Link`.
+    To check gradients of parameters of the link, set ``params`` arguments
+    with a tuple of parameters::
+
+    >>   check_backward(my_link, (x1_data, x2_data), gy_data,
+    >>                  (my_link.W, my_link.b))
+
+    Note that ``params`` are not ``ndarray``s, but ``~chainer.Variables``s.
+
+    A function object is acceptable for ``func`` argument::
+
+    >>   check_backward(lambda x1, x2: f(x1, x2),
+    >>                  (x1_data, x2_data), gy_data)
+
+    ``func`` must returns one :class:`~chainer.Variable` or a tuple of
+    `~chainer.Variable`s.
+
+    .. note::
+
+       ``func`` is called many times to get numerical gradients for all inputs.
+       This function doesn't work correctly when ``func`` behaves randomly as
+       it gets different gradients.
+
+
+    Args:
+        func (callable): A function which gets :class:`~chainer.Variable`s
+            and returns :class:`~chainer.Variable`s. ``func`` must returns
+            a tuple of :class:`~chainer.Variable`s or one
+            :class:`~chainer.Variable`. You can use :class:`~chainer.Function`
+            object, :class:`~chainer.Link` object or a function satisfying the
+            condition.
+        x_data (ndarray or tuple of ndarrays): A set of ``ndarray``s to pass
+            ``func``. If ``x_data`` is one ``ndarray`` object, it is treated
+            as ``(x_data,)``.
+        y_grad (ndarray or tuple of ndarrays or None):
+            A set of ``ndarray``s representing gradinents of return-values of
+            ``func``. If ``func`` is a loss-function, set ``y_grad = None``.
+        params (~chainer.Variable or tuple of ~chainder.Variable):
+            A set of :class:`~chainer.Variable`s whose gradients are checked.
+            When ``func`` is a ``~chainer.Link`` object, set its parameters
+            as ``params``.
+        eps (float): Epsilon value to pass :func:`numerical_grad`.
+        atol (float): Absolute tolerance to pass :func:`assert_allclose`.
+        rtol (float): Relative tolerance to pass :func:`assert_allclose`.
+
+    See:
+       :func:`numerical_grad`
+    """
     x_data = _as_tuple(x_data)
     if y_grad is not None:
         y_grad = _as_tuple(y_grad)
