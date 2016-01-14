@@ -46,8 +46,7 @@ class TestELU(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            lambda x: functions.elu(x, alpha=self.alpha),
-            x_data, y_grad)
+            functions.ELU(self.alpha), x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):
