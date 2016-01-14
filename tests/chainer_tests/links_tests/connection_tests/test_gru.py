@@ -26,32 +26,37 @@ def _gru(func, h, x):
 
 
 @testing.parameterize(
-    {'gru': links.GRU, 'state': 'random', 'n_inputs': 4, 'n_units': 8},
-    {'gru': links.GRU, 'state': 'random', 'n_units': 8},
-    {'gru': links.StatefulGRU, 'state': 'random', 'n_inputs': 4, 'n_units': 8},
-    {'gru': links.StatefulGRU, 'state': 'random', 'n_units': 8},
-    {'gru': links.StatefulGRU, 'state': 'zero', 'n_inputs': 4, 'n_units': 8},
-    {'gru': links.StatefulGRU, 'state': 'zero', 'n_units': 8}
+    {'gru': links.GRU, 'state': 'random', 'in_size': 4, 'out_size': 8},
+    {'gru': links.GRU, 'state': 'random', 'out_size': 8},
+    {'gru': links.StatefulGRU, 'state': 'random', 'in_size': 4, 'out_size': 8},
+    {'gru': links.StatefulGRU, 'state': 'zero', 'in_size': 4, 'out_size': 8},
 )
 class TestGRU(unittest.TestCase):
 
     def setUp(self):
-        if hasattr(self, 'n_inputs'):
-            self.link = self.gru(self.n_units, self.n_inputs)
+        if self.gru == links.GRU:
+            if hasattr(self, 'in_size'):
+                self.link = self.gru(self.out_size, self.in_size)
+            else:
+                self.link = self.gru(self.out_size)
+                self.in_size = self.out_size
+        elif self.gru == links.StatefulGRU:
+            self.link = self.gru(self.in_size, self.out_size)
         else:
-            self.link = self.gru(self.n_units)
-            self.n_inputs = self.n_units
+            self.fail('Unsupported link(only GRU and StatefulGRU '
+                      'are supported):{}'.format(self.gru))
+
         self.x = numpy.random.uniform(
-            -1, 1, (3, self.n_inputs)).astype(numpy.float32)
+            -1, 1, (3, self.in_size)).astype(numpy.float32)
         if self.state == 'random':
             self.h = numpy.random.uniform(
-                -1, 1, (3, self.n_units)).astype(numpy.float32)
+                -1, 1, (3, self.out_size)).astype(numpy.float32)
         elif self.state == 'zero':
-            self.h = numpy.zeros((3, self.n_units), dtype=numpy.float32)
+            self.h = numpy.zeros((3, self.out_size), dtype=numpy.float32)
         else:
             self.fail('Unsupported state initialization:{}'.format(self.state))
         self.gy = numpy.random.uniform(
-            -1, 1, (3, self.n_units)).astype(numpy.float32)
+            -1, 1, (3, self.out_size)).astype(numpy.float32)
 
     def _forward(self, link, h, x):
         if isinstance(link, links.GRU):
@@ -115,9 +120,10 @@ class TestGRU(unittest.TestCase):
 class TestGRUState(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.StatefulGRU(8)
+        in_size, out_size = 10, 8
+        self.link = links.StatefulGRU(in_size, out_size)
         self.h = chainer.Variable(
-            numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32))
+            numpy.random.uniform(-1, 1, (3, out_size)).astype(numpy.float32))
 
     def check_set_state(self, h):
         self.link.set_state(h)
@@ -148,9 +154,10 @@ class TestGRUState(unittest.TestCase):
 class TestGRUToCPUToGPU(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.StatefulGRU(8)
+        in_size, out_size = 10, 8
+        self.link = links.StatefulGRU(in_size, out_size)
         self.h = chainer.Variable(
-            numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32))
+            numpy.random.uniform(-1, 1, (3, out_size)).astype(numpy.float32))
 
     def check_to_cpu(self, h):
         self.link.set_state(h)

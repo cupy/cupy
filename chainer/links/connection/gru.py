@@ -98,9 +98,8 @@ class StatefulGRU(GRUBase):
     Use :class:`~chainer.links.GRU` as a stateless version of GRU.
 
     Args:
-        n_units(int): Dimension of hidden vector :math:`h`.
-        n_inputs(int): Dimension of input vector :math:`x`. If ``None``,
-        it is set to the same value as ``n_units``.
+        in_size(int): Dimension of input vector :math:`x`.
+        out_size(int): Dimension of hidden vector :math:`h`.
 
     Attributes:
         h(~chainer.Variable): Hidden vector that indicates the state of
@@ -109,9 +108,9 @@ class StatefulGRU(GRUBase):
     .. seealso:: :class:`~chainer.functions.GRU`
     """
 
-    def __init__(self, n_units, n_inputs=None):
-        super(StatefulGRU, self).__init__(n_units, n_inputs)
-        self.state_size = n_units
+    def __init__(self, in_size, out_size):
+        super(StatefulGRU, self).__init__(out_size, in_size)
+        self.state_size = out_size
         self.reset_state()
 
     def to_cpu(self):
