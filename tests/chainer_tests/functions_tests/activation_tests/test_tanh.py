@@ -33,7 +33,7 @@ class TestTanh(unittest.TestCase):
 
     def check_backward(self, x_data, gy_data, use_cudnn=True):
         gradient_check.check_backward(
-            lambda x: functions.tanh(x, use_cudnn=use_cudnn), x_data, gy_data)
+            functions.Tanh(use_cudnn), x_data, gy_data)
 
     @condition.retry(3)
     def test_backward_cpu(self):

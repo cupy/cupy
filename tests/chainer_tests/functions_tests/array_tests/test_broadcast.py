@@ -52,7 +52,7 @@ class TestBroadcast(unittest.TestCase):
 
     def check_backward(self, data, grads):
         gradient_check.check_backward(
-            functions.broadcast, data, grads)
+            functions.Broadcast(), data, grads)
 
     def test_backward_cpu(self):
         self.check_backward(self.data, self.grads)

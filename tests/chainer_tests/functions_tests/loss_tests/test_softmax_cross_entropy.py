@@ -62,7 +62,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
 
     def check_backward(self, x_data, t_data, use_cudnn=True):
         gradient_check.check_backward(
-            lambda x, t: functions.softmax_cross_entropy(x, t, use_cudnn),
+            functions.SoftmaxCrossEntropy(use_cudnn),
             (x_data, t_data), None, eps=0.02, atol=self.backward_atol)
 
     @condition.retry(3)

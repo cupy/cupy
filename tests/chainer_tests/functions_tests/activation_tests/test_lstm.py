@@ -73,7 +73,8 @@ class TestLSTM(unittest.TestCase):
 
     def check_backward(self, c_prev_data, x_data, c_grad, h_grad):
         gradient_check.check_backward(
-            functions.lstm, (c_prev_data, x_data), (c_grad, h_grad), eps=1e-2)
+            functions.LSTM(),
+            (c_prev_data, x_data), (c_grad, h_grad), eps=1e-2)
 
     @condition.retry(3)
     def test_full_backward_cpu(self):

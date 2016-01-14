@@ -5,6 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 import chainer.functions as F
+from chainer.functions.connection import deconvolution_2d
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -79,18 +80,14 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         self.test_forward_consistency()
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
-        if b_data is None:
-            gradient_check.check_backward(
-                lambda x, W: F.deconvolution_2d(
-                    x, W, None, stride=self.stride, pad=self.pad,
-                    use_cudnn=self.use_cudnn),
-                (x_data, W_data), y_grad, eps=1e-2)
-        else:
-            gradient_check.check_backward(
-                lambda x, W, b: F.deconvolution_2d(
-                    x, W, b, stride=self.stride, pad=self.pad,
-                    use_cudnn=self.use_cudnn),
-                (x_data, W_data, b_data), y_grad, eps=1e-2)
+        args = (x_data, W_data)
+        if b_data is not None:
+            args = args + (b_data,)
+
+        gradient_check.check_backward(
+            deconvolution_2d.Deconvolution2DFunction(
+                self.stride, self.pad, self.outsize, self.use_cudnn),
+            args, y_grad, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

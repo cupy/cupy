@@ -52,8 +52,7 @@ class TestAveragePooling2D(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
-            lambda x: functions.average_pooling_2d(
-                x, 3, stride=2, pad=1, use_cudnn=use_cudnn),
+            functions.AveragePooling2D(3, 2, 1, False, use_cudnn),
             x_data, y_grad, eps=1e-2)
 
     @condition.retry(3)

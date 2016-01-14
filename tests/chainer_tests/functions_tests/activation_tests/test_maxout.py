@@ -6,6 +6,7 @@ import six
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer.functions.activation import maxout
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -84,7 +85,7 @@ class TestNonparameterizedMaxout(unittest.TestCase):
             args = args + (b_data,)
 
         gradient_check.check_backward(
-            functions.MaxoutFunction(), args, y_grad,
+            maxout.MaxoutFunction(), args, y_grad,
             eps=1e-2, atol=1e-2)
 
     @condition.retry(3)

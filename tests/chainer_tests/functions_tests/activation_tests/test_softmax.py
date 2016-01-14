@@ -48,8 +48,7 @@ class TestSoftmax(unittest.TestCase):
 
     def check_backward(self, x_data, gy_data, use_cudnn=True):
         gradient_check.check_backward(
-            lambda x: functions.softmax(x, use_cudnn),
-            x_data, gy_data, eps=1e-2)
+            functions.Softmax(use_cudnn), x_data, gy_data, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

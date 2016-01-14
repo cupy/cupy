@@ -73,8 +73,8 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
-            lambda x: functions.spatial_pyramid_pooling_2d(
-                x, self.pyramid_height, self.pooling_class,
+            functions.SpatialPyramidPooling2D(
+                x_data.shape[1:], self.pyramid_height, self.pooling_class,
                 use_cudnn=use_cudnn),
             x_data, y_grad, atol=1e-4)
 

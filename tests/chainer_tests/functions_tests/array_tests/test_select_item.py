@@ -40,7 +40,7 @@ class TestSelectItem(unittest.TestCase):
 
     def check_backward(self, x_data, t_data, gy_data):
         gradient_check.check_backward(
-            functions.select_item,
+            functions.SelectItem(),
             (x_data, t_data), gy_data, eps=0.01)
 
     def test_backward_cpu(self):

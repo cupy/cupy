@@ -91,7 +91,7 @@ class TestSum(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, axis=None):
         gradient_check.check_backward(
-            lambda x: functions.sum(x, axis=axis), x_data, y_grad)
+            functions.Sum(axis), x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):

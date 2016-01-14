@@ -5,6 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer.functions.connection import linear
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -57,13 +58,12 @@ class TestNonparameterizedLinear(unittest.TestCase):
             cuda.to_gpu(self.x.dot(self.W.T)))
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
-        if b_data is None:
-            gradient_check.check_backward(
-                lambda x, W: functions.linear(x, W, None),
-                (x_data, W_data), y_grad, eps=1e-2)
-        else:
-            gradient_check.check_backward(
-                functions.linear, (x_data, W_data, b_data), y_grad, eps=1e-2)
+        args = (x_data, W_data)
+        if b_data is not None:
+            args = args + (b_data,)
+
+        gradient_check.check_backward(
+            linear.LinearFunction(), args, y_grad, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

@@ -48,7 +48,7 @@ class TestLocalResponseNormalization(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            functions.local_response_normalization, x_data, y_grad,
+            functions.LocalResponseNormalization(), x_data, y_grad,
             eps=1, atol=1e-4)
 
     @condition.retry(3)

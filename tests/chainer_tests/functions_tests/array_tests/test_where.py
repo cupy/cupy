@@ -50,7 +50,7 @@ class TestWhere(unittest.TestCase):
 
     def check_backward(self, c_data, x_data, y_data, g_data):
         gradient_check.check_backward(
-            F.where, (c_data, x_data, y_data), g_data)
+            F.Where(), (c_data, x_data, y_data), g_data)
 
     def test_backward_cpu(self):
         self.check_backward(self.c_data, self.x_data, self.y_data, self.g_data)

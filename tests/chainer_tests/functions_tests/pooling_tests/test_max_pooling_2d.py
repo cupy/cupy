@@ -73,8 +73,8 @@ class TestMaxPooling2D(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
-            lambda x: functions.max_pooling_2d(
-                x, 3, stride=2, pad=1, cover_all=self.cover_all,
+            functions.MaxPooling2D(
+                3, stride=2, pad=1, cover_all=self.cover_all,
                 use_cudnn=use_cudnn),
             x_data, y_grad)
 

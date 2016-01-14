@@ -67,7 +67,7 @@ class TestContrastive(unittest.TestCase):
 
     def check_backward(self, x0_data, x1_data, t_data):
         gradient_check.check_backward(
-            lambda x0, x1, t: functions.contrastive(x0, x1, t, self.margin),
+            functions.Contrastive(self.margin),
             (x0_data, x1_data, t_data), None, rtol=1e-4, atol=1e-4)
 
     @condition.retry(3)

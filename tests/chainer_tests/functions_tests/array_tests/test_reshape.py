@@ -33,8 +33,7 @@ class TestReshape(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            lambda x: functions.reshape(x, self.gy.shape),
-            x_data, y_grad)
+            functions.Reshape(self.gy.shape), x_data, y_grad)
 
 
 class TestReshapeUnknownDimension(TestReshape):

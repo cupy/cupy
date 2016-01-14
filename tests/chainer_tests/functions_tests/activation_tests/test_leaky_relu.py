@@ -46,8 +46,7 @@ class TestLeakyReLU(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            lambda x: functions.leaky_relu(x, slope=self.slope),
-            x_data, y_grad)
+            functions.LeakyReLU(self.slope), x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):

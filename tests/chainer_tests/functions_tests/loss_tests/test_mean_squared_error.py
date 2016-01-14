@@ -44,7 +44,7 @@ class TestMeanSquaredError(unittest.TestCase):
 
     def check_backward(self, x0_data, x1_data):
         gradient_check.check_backward(
-            functions.mean_squared_error,
+            functions.MeanSquaredError(),
             (x0_data, x1_data), None, eps=1e-2)
 
     @condition.retry(3)
