@@ -26,22 +26,32 @@ def _gru(func, h, x):
 
 
 @testing.parameterize(
-    {'gru': links.GRU, 'state': 'random'},
-    {'gru': links.StatefulGRU, 'state': 'random'},
-    {'gru': links.StatefulGRU, 'state': 'zero'}
+    {'gru': links.GRU, 'state': 'random', 'n_inputs': 4, 'n_units': 8},
+    {'gru': links.GRU, 'state': 'random', 'n_units': 8},
+    {'gru': links.StatefulGRU, 'state': 'random', 'n_inputs': 4, 'n_units': 8},
+    {'gru': links.StatefulGRU, 'state': 'random', 'n_units': 8},
+    {'gru': links.StatefulGRU, 'state': 'zero', 'n_inputs': 4, 'n_units': 8},
+    {'gru': links.StatefulGRU, 'state': 'zero', 'n_units': 8}
 )
-class TestStatefulGRU(unittest.TestCase):
+class TestGRU(unittest.TestCase):
 
     def setUp(self):
-        self.link = self.gru(8)
-        self.x = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
+        if hasattr(self, 'n_inputs'):
+            self.link = self.gru(self.n_units, self.n_inputs)
+        else:
+            self.link = self.gru(self.n_units)
+            self.n_inputs = self.n_units
+        self.x = numpy.random.uniform(
+            -1, 1, (3, self.n_inputs)).astype(numpy.float32)
         if self.state == 'random':
-            self.h = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
+            self.h = numpy.random.uniform(
+                -1, 1, (3, self.n_units)).astype(numpy.float32)
         elif self.state == 'zero':
-            self.h = numpy.zeros((3, 8), dtype=numpy.float32)
+            self.h = numpy.zeros((3, self.n_units), dtype=numpy.float32)
         else:
             self.fail('Unsupported state initialization:{}'.format(self.state))
-        self.gy = numpy.random.uniform(-1, 1, (3, 8)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (3, self.n_units)).astype(numpy.float32)
 
     def _forward(self, link, h, x):
         if isinstance(link, links.GRU):

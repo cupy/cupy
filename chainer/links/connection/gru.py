@@ -9,13 +9,15 @@ from chainer.links.connection import linear
 
 class GRUBase(link.Chain):
 
-    def __init__(self, n_units):
+    def __init__(self, n_units, n_inputs=None):
+        if n_inputs is None:
+            n_inputs = n_units
         super(GRUBase, self).__init__(
-            W_r=linear.Linear(n_units, n_units),
+            W_r=linear.Linear(n_inputs, n_units),
             U_r=linear.Linear(n_units, n_units),
-            W_z=linear.Linear(n_units, n_units),
+            W_z=linear.Linear(n_inputs, n_units),
             U_z=linear.Linear(n_units, n_units),
-            W=linear.Linear(n_units, n_units),
+            W=linear.Linear(n_inputs, n_units),
             U=linear.Linear(n_units, n_units),
         )
 
@@ -104,8 +106,8 @@ class StatefulGRU(GRUBase):
     .. seealso:: :class:`~chainer.functions.GRU`
     """
 
-    def __init__(self, n_units):
-        super(StatefulGRU, self).__init__(n_units)
+    def __init__(self, n_units, n_inputs=None):
+        super(StatefulGRU, self).__init__(n_units, n_inputs)
         self.state_size = n_units
         self.reset_state()
 
