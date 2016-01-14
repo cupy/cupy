@@ -84,7 +84,7 @@ class TestNonparameterizedMaxout(unittest.TestCase):
             args = args + (b_data,)
 
         gradient_check.check_backward(
-            functions.MaxOut(), args, y_grad,
+            functions.MaxoutFunction(), args, y_grad,
             eps=1e-2, atol=1e-2)
 
     @condition.retry(3)
