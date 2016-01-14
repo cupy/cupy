@@ -49,8 +49,9 @@ class GRU(GRUBase):
     Use :class:`~chainer.links.StatefulGRU` as a *stateful* GRU.
 
     Args:
-        n_units(int): Dimension of input vector :math:`x`, and hidden vector
-            :math:`h`.
+        n_units(int): Dimension of hidden vector :math:`h`.
+        n_inputs(int): Dimension of input vector :math:`x`. If ``None``,
+        it is set to the same value as ``n_units``.
 
     See:
         - `On the Properties of Neural Machine Translation: Encoder-Decoder
@@ -97,7 +98,9 @@ class StatefulGRU(GRUBase):
     Use :class:`~chainer.links.GRU` as a stateless version of GRU.
 
     Args:
-        n_units(int): Dimension of input vector :math:`x`, and hidden vector.
+        n_units(int): Dimension of hidden vector :math:`h`.
+        n_inputs(int): Dimension of input vector :math:`x`. If ``None``,
+        it is set to the same value as ``n_units``.
 
     Attributes:
         h(~chainer.Variable): Hidden vector that indicates the state of
