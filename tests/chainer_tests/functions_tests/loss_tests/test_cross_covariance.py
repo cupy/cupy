@@ -55,7 +55,7 @@ class TestCrossCovariance(unittest.TestCase):
 
     def check_backward(self, y_data, z_data):
         gradient_check.check_backward(
-            functions.cross_covariance, (y_data, z_data), None, eps=0.02)
+            functions.CrossCovariance(), (y_data, z_data), None, eps=0.02)
 
     def check_type(self, y_data, z_data):
         y = chainer.Variable(y_data)

@@ -22,8 +22,7 @@ class TestReLU(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
-            lambda x: functions.relu(x, use_cudnn=use_cudnn),
-            x_data, y_grad)
+            functions.ReLU(use_cudnn), x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):

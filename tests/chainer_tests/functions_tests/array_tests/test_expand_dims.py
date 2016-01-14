@@ -36,8 +36,7 @@ class TestExpandDims(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            lambda x: functions.expand_dims(x, self.axis),
-            x_data, y_grad)
+            functions.ExpandDims(self.axis), x_data, y_grad)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)

@@ -19,8 +19,8 @@ class TestGaussian(unittest.TestCase):
 
     def check_backward(self, m_data, v_data, y_grad):
         gradient_check.check_backward(
-            functions.gaussian, (m_data, v_data), y_grad,
-            atol=1e-4, rtol=1e-3, use_creator=True)
+            functions.Gaussian(), (m_data, v_data), y_grad,
+            atol=1e-4, rtol=1e-3)
 
     @condition.retry(3)
     def test_backward_cpu(self):

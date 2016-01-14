@@ -77,7 +77,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
             return
 
         gradient_check.check_backward(
-            lambda x, t: functions.sigmoid_cross_entropy(x, t, use_cudnn),
+            functions.SigmoidCrossEntropy(use_cudnn),
             (x_data, t_data), None, eps=1e-2)
 
     @condition.retry(3)

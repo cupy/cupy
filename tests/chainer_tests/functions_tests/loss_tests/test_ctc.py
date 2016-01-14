@@ -80,9 +80,8 @@ class TestCTC(unittest.TestCase):
     # expected value(via numerical differentiation) from t_data
     def check_backward(self, t_data, xs_data):
         gradient_check.check_backward(
-            lambda *args: functions.connectionist_temporal_classification(
-                args[:-1], args[-1], 2),
-            xs_data + (t_data,), self.g, atol=1e-4)
+            functions.ConnectionistTemporalClassification(2),
+            (t_data,) + xs_data, self.g, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
