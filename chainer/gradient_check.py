@@ -127,7 +127,7 @@ def _as_tuple(x):
 
 
 def check_backward(func, x_data, y_grad, params=(),
-                   eps=1e-3, atol=1e-5, rtol=1e-4, use_creator=False):
+                   eps=1e-3, atol=1e-5, rtol=1e-4):
     x_data = _as_tuple(x_data)
     if y_grad is not None:
         y_grad = _as_tuple(y_grad)
@@ -146,13 +146,10 @@ def check_backward(func, x_data, y_grad, params=(),
     y[0].backward()
 
     def f():
-        if use_creator:
-            return y[0].creator.forward(x_data)
-        else:
-            ys = func(*xs)
-            if not isinstance(ys, tuple):
-                ys = (ys,)
-            return tuple(y.data for y in ys)
+        ys = func(*xs)
+        if not isinstance(ys, tuple):
+            ys = (ys,)
+        return tuple(y.data for y in ys)
 
     for x in xs:
         if x.data.dtype.kind == 'f':
