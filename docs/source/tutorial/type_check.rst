@@ -78,9 +78,9 @@ Detail of type information
 
 You can access three information of ``x_type``.
 
-- ``.shape`` is a tuple of ints. Each value is size of each dimension.
-- ``.ndim`` is ``int`` value representing the number of dimensions. Note that ``ndim == len(shape)``
-- ``.dtype`` is ``numpy.dtype`` representing data type of the value.
+* ``.shape`` is a tuple of ints. Each value is size of each dimension.
+* ``.ndim`` is ``int`` value representing the number of dimensions. Note that ``ndim == len(shape)``
+* ``.dtype`` is ``numpy.dtype`` representing data type of the value.
 
 You can check all members.
 For example, the size of the first dimension must be positive, you can write like this:

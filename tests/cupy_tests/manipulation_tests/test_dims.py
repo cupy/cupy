@@ -65,6 +65,57 @@ class TestDims(unittest.TestCase):
         b = xp.zeros((3, 2))
         xp.broadcast(a, b)
 
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(accept_error=False)
+    def test_broadcast_to(self, xp, dtype):
+        # Note that broadcast_to is only supported on numpy>=1.10
+        a = testing.shaped_arange((3, 1, 4), xp, dtype)
+        b = xp.broadcast_to(a, (2, 3, 3, 4))
+        return b
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_broadcast_to_fail(self, xp, dtype):
+        # Note that broadcast_to is only supported on numpy>=1.10
+        a = testing.shaped_arange((3, 1, 4), xp, dtype)
+        xp.broadcast_to(a, (1, 3, 4))
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_broadcast_to_short_shape(self, xp, dtype):
+        # Note that broadcast_to is only supported on numpy>=1.10
+        a = testing.shaped_arange((1, 3, 4), xp, dtype)
+        xp.broadcast_to(a, (3, 4))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(accept_error=False)
+    def test_broadcast_to_numpy19(self, xp, dtype):
+        # Note that broadcast_to is only supported on numpy>=1.10
+        a = testing.shaped_arange((3, 1, 4), xp, dtype)
+        if xp is cupy:
+            b = xp.broadcast_to(a, (2, 3, 3, 4))
+        else:
+            dummy = xp.empty((2, 3, 3, 4))
+            b, _ = xp.broadcast_arrays(a, dummy)
+        return b
+
+    @testing.for_all_dtypes()
+    def test_broadcast_to_fail_numpy19(self, dtype):
+        # Note that broadcast_to is only supported on numpy>=1.10
+        a = testing.shaped_arange((3, 1, 4), cupy, dtype)
+        with self.assertRaises(ValueError):
+            cupy.broadcast_to(a, (1, 3, 4))
+
+    @testing.for_all_dtypes()
+    def test_broadcast_to_short_shape_numpy19(self, dtype):
+        # Note that broadcast_to is only supported on numpy>=1.10
+        a = testing.shaped_arange((1, 3, 4), cupy, dtype)
+        with self.assertRaises(ValueError):
+            cupy.broadcast_to(a, (3, 4))
+
     @testing.numpy_cupy_array_equal()
     def test_expand_dims0(self, xp):
         a = testing.shaped_arange((2, 3), xp)

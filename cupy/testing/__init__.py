@@ -13,8 +13,8 @@ assert_array_less = array.assert_array_less
 
 numpy_cupy_allclose = helper.numpy_cupy_allclose
 numpy_cupy_array_almost_equal = helper.numpy_cupy_array_almost_equal
-numpy_cupy_arrays_almost_equal_nulp = \
-    helper.numpy_cupy_arrays_almost_equal_nulp
+numpy_cupy_array_almost_equal_nulp = \
+    helper.numpy_cupy_array_almost_equal_nulp
 numpy_cupy_array_max_ulp = helper.numpy_cupy_array_max_ulp
 numpy_cupy_array_equal = helper.numpy_cupy_array_equal
 numpy_cupy_array_list_equal = helper.numpy_cupy_array_list_equal
@@ -31,6 +31,8 @@ for_all_dtypes_combination = helper.for_all_dtypes_combination
 for_signed_dtypes_combination = helper.for_signed_dtypes_combination
 for_unsigned_dtypes_combination = helper.for_unsigned_dtypes_combination
 for_int_dtypes_combination = helper.for_int_dtypes_combination
+
+with_requires = helper.with_requires
 
 parameterize = parameterized.parameterize
 product = parameterized.product

@@ -236,7 +236,7 @@ class BatchMatMul(function.Function):
     def forward_gpu(self, x):
         a, b = x
         shape = self._output_shape(a, b)
-        ret = cuda.zeros(shape)
+        ret = cuda.cupy.zeros(shape, dtype=a.dtype)
         _batch_matmul_gpu(
             a, b, transa=self.transa, transb=self.transb, out=ret)
         return ret,

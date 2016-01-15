@@ -36,7 +36,7 @@ If you use old ``setuptools``, upgrade it::
 Install Chainer
 ---------------
 
-Chainer depends to these Python packages:
+Chainer depends on these Python packages:
 
 * `Numpy <http://www.numpy.org/>`_ 1.9
 * `Six <https://pythonhosted.org/six/>`_ 1.9

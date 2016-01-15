@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy as np
 import six.moves.cPickle as pickle
@@ -19,6 +20,16 @@ class SimpleLink(chainer.Link):
 
 
 class TestFunctionSetBase(unittest.TestCase):
+
+    def setUp(self):
+        # FunctionSet is deprecated. To suppress warnings, we ignore
+        # DeprecationWarning.
+        self.warn = warnings.catch_warnings()
+        self.warn.__enter__()
+        warnings.filterwarnings(action='ignore', category=DeprecationWarning)
+
+    def tearDown(self):
+        self.warn.__exit__()
 
     def _check_setter(self, fs, gpu, attribute):
         expect = getattr(fs, attribute)
@@ -48,6 +59,7 @@ class TestFunctionSetBase(unittest.TestCase):
 class TestNestedFunctionSet(TestFunctionSetBase):
 
     def setUp(self):
+        super(TestNestedFunctionSet, self).setUp()
         self.fs1 = chainer.FunctionSet(
             a=SimpleLink((1, 2)))
         self.fs2 = chainer.FunctionSet(
@@ -160,6 +172,7 @@ class TestNestedFunctionSet(TestFunctionSetBase):
 class TestFunctionSet(TestFunctionSetBase):
 
     def setUp(self):
+        super(TestFunctionSet, self).setUp()
         self.fs = chainer.FunctionSet(
             a=L.Linear(3, 2),
             b=L.Linear(3, 2)

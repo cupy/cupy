@@ -52,6 +52,20 @@ class LSTM(link.Chain):
         initializations.init_weight(f, forget_bias_init)
         initializations.init_weight(o, bias_init)
 
+    def to_cpu(self):
+        super(LSTM, self).to_cpu()
+        if self.c is not None:
+            self.c.to_cpu()
+        if self.h is not None:
+            self.h.to_cpu()
+
+    def to_gpu(self, device=None):
+        super(LSTM, self).to_gpu(device)
+        if self.c is not None:
+            self.c.to_gpu(device)
+        if self.h is not None:
+            self.h.to_gpu(device)
+
     def reset_state(self):
         """Resets the internal state.
 

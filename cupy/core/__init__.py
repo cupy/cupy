@@ -1,9 +1,10 @@
 from cupy.core import core
+from cupy.core import internal
 
 ndarray = core.ndarray
 
-get_size = core.get_size
-complete_slice = core.complete_slice
+get_size = internal.get_size
+complete_slice = internal.complete_slice
 
 ufunc = core.ufunc
 create_ufunc = core.create_ufunc
