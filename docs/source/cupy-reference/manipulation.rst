@@ -30,6 +30,7 @@ Edit dimensionalities
 .. autofunction:: cupy.atleast_3d
 .. autoclass:: cupy.broadcast
 .. autofunction:: cupy.broadcast_arrays
+.. autofunction:: cupy.broadcast_to
 .. autofunction:: cupy.expand_dims
 .. autofunction:: cupy.squeeze
 
@@ -52,3 +53,10 @@ Splitting arrays along axis
 .. autofunction:: cupy.vsplit
 .. autofunction:: cupy.hsplit
 .. autofunction:: cupy.dsplit
+
+
+Repeating part of arrays along axis
+===================================
+
+.. autofunction:: cupy.tile
+.. autofunction:: cupy.repeat

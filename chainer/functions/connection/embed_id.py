@@ -5,54 +5,61 @@ from chainer import function
 from chainer.utils import type_check
 
 
-class EmbedID(function.Function):
-
-    """Efficient linear function for one-hot input.
-
-    This is a parameterized function to embed the given discrete identifier
-    (e.g. word) into a continuous vector space. This function just holds
-    embedding vectors for all identifiers as one large matrix ``W``, which is
-    learnable. The identifiers are directly used as indexes of the matrix
-    ``W``.
-
-    Args:
-        in_size (int): Number of different identifiers (a.k.a. vocabulary
-            size).
-        out_size (int): Size of embedding vector.
-
-    .. note::
-
-       This function is non-differentiable with respect to the input
-       identifiers.
-
-    """
-    parameter_names = ('W',)
-    gradient_names = ('gW',)
-
-    def __init__(self, in_size, out_size):
-        self.W = numpy.random.randn(in_size, out_size).astype(numpy.float32)
-        self.gW = numpy.full_like(self.W, numpy.nan)
+class EmbedIDFunction(function.Function):
 
     def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() == 1)
-        x_type, = in_types
-
+        type_check.expect(in_types.size() == 2)
+        x_type, w_type = in_types
         type_check.expect(
             x_type.dtype == numpy.int32,
-            x_type.ndim == 1,
+            x_type.ndim >= 1,
+        )
+        type_check.expect(
+            w_type.dtype == numpy.float32,
+            w_type.ndim == 2
         )
 
-    def forward(self, x):
-        return self.W.take(x[0], axis=0),
+    def forward(self, inputs):
+        x, W = inputs
+        return W.take(x, axis=0),
 
-    def backward_cpu(self, x, gy):
-        numpy.add.at(self.gW, x[0], gy[0])
-        return None,
+    def backward(self, inputs, grad_outputs):
+        xp = cuda.get_array_module(*inputs)
+        x, W = inputs
+        gy = grad_outputs[0]
+        gW = xp.zeros_like(W)
 
-    def backward_gpu(self, x, gy):
-        cuda.elementwise(
-            'T gy, int32 x, int32 n_out', 'raw T gW',
-            'int w_ind[] = {x, i % n_out}; atomicAdd(&gW[w_ind], gy)',
-            'embed_id_bwd')(
-                gy[0], x[0][:, numpy.newaxis], self.gW.shape[1], self.gW)
-        return None,
+        if xp is numpy:
+            numpy.add.at(gW, x, gy)
+        else:
+            cuda.elementwise(
+                'T gy, int32 x, int32 n_out', 'raw T gW',
+                'int w_ind[] = {x, i % n_out}; atomicAdd(&gW[w_ind], gy)',
+                'embed_id_bwd')(
+                    gy, xp.expand_dims(x, -1), gW.shape[1], gW)
+        return None, gW
+
+
+def embed_id(x, W):
+    """Efficient linear function for one-hot input.
+
+    This function implements so called *word embedding*. It takes two
+    arguments: a set of IDs (words) ``x`` in :math:`B` dimensional integer
+    vector, and a set of all ID (word) embeddings ``W`` in :math:`V \\times d`
+    float32 matrix. It outputs :math:`B \\times d` matrix whose ``i``-th
+    column is the ``x[i]``-th column of ``W``.
+
+    This function is only differentiable on the input ``W``.
+
+    Args:
+        x (~chainer.Variable): Input variable with one-hot representation.
+        W (~chainer.Variable): Representation of each ID (a.k.a.
+            word embeddings).
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    .. seealso:: :class:`EmbedID`
+
+    """
+    return EmbedIDFunction()(x, W)

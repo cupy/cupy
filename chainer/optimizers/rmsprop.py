@@ -4,7 +4,7 @@ from chainer import cuda
 from chainer import optimizer
 
 
-class RMSprop(optimizer.Optimizer):
+class RMSprop(optimizer.GradientMethod):
 
     """Hinton's RMSprop."""
 
@@ -13,22 +13,23 @@ class RMSprop(optimizer.Optimizer):
         self.alpha = alpha
         self.eps = eps
 
-    def init_state_cpu(self, param, grad):
-        return numpy.zeros_like(param)
+    def init_state(self, param, state):
+        xp = cuda.get_array_module(param.data)
+        state['ms'] = xp.zeros_like(param.data)
 
-    def init_state_gpu(self, param, grad):
-        return cuda.zeros_like(param)
+    def update_one_cpu(self, param, state):
+        ms = state['ms']
+        grad = param.grad
 
-    def update_one_cpu(self, param, grad, ms):
         ms *= self.alpha
         ms += (1 - self.alpha) * grad * grad
-        param -= self.lr * grad / (numpy.sqrt(ms) + self.eps)
+        param.data -= self.lr * grad / (numpy.sqrt(ms) + self.eps)
 
-    def update_one_gpu(self, param, grad, ms):
+    def update_one_gpu(self, param, state):
         cuda.elementwise(
             'T grad, T lr, T alpha, T eps',
             'T param, T ms',
             '''ms = alpha * ms + (1 - alpha) * grad * grad;
                param -= lr * grad / (sqrt(ms) + eps);''',
-            'rmsprop')(grad, self.lr, self.alpha, self.eps,
-                       param, ms)
+            'rmsprop')(param.grad, self.lr, self.alpha, self.eps,
+                       param.data, state['ms'])

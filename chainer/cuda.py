@@ -76,10 +76,15 @@ def check_cuda_available():
     Otherwise it raises ``RuntimeError``.
     """
     if not available:
-        global _resolution_error
-        msg = 'CUDA environment is not correctly set up.\n'
+        msg = ('CUDA environment is not correctly set up\n'
+               '(see https://github.com/pfnet/chainer#installation).')
         msg += str(_resolution_error)
         raise RuntimeError(msg)
+    if not cudnn_enabled:
+        warnings.warn(
+            'cuDNN is not enabled.\n'
+            'Please reinstall chainer after you install cudnn\n'
+            '(see https://github.com/pfnet/chainer#installation).')
 
 
 class DummyDeviceType(object):
@@ -118,7 +123,8 @@ DummyDevice = DummyDeviceType()
 # Global states
 # ------------------------------------------------------------------------------
 if available:
-    cuda.set_allocator(cuda.MemoryPool().malloc)
+    memory_pool = cuda.MemoryPool()
+    cuda.set_allocator(memory_pool.malloc)
 
 
 # ------------------------------------------------------------------------------
@@ -185,7 +191,12 @@ def to_gpu(array, device=None, stream=None):
     check_cuda_available()
     assert stream is None  # TODO(beam2d): FIX IT
     with get_device(device):
-        return cupy.asarray(array)
+        dev_id = int(get_device(array))
+        if dev_id != -1 and dev_id != cupy.cuda.device.get_device_id():
+            # Need to make a copy when an array is copied to another device
+            return cupy.array(array, copy=True)
+        else:
+            return cupy.asarray(array)
 
 
 def to_cpu(array, stream=None):

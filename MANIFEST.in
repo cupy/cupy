@@ -1,0 +1,2 @@
+recursive-include cupy *.pyx *.pxd *.pxi *.h
+include chainer_setup_build.py
