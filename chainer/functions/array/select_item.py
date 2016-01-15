@@ -29,11 +29,11 @@ class SelectItem(function.Function):
     def forward_gpu(self, inputs):
         x, t = inputs
         y = cuda.elementwise(
-            'S t, raw T x, int32 n_channel',
+            'S t, raw T x',
             'T y',
-            'y = x[i * n_channel + t]',
+            'int ind[] = {i, t}; y = x[ind];',
             'getitem_fwd'
-        )(t, x, x.shape[1])
+        )(t, x)
         return y,
 
     def backward_cpu(self, inputs, grad_outputs):
@@ -48,11 +48,11 @@ class SelectItem(function.Function):
         gloss = grad_outputs[0]
         gx = cuda.cupy.zeros_like(x)
         gx = cuda.elementwise(
-            'S t, T gloss, int32 n_channel',
+            'S t, T gloss',
             'raw T gx',
-            'gx[i * n_channel + t] = gloss',
+            'int ind[] = {i, t}; gx[ind] = gloss;',
             'getitem_bwd'
-        )(t, gloss, x.shape[1], gx)
+        )(t, gloss, gx)
         return gx, None
 
 
