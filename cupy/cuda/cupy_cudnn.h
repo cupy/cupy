@@ -10,13 +10,16 @@
 
 #if CUDNN_VERSION < 4000
 
+// ***_v2 functions are not declared in cuDNN v2 and v3.
+// Following definitions are for compatibility with cuDNN v4.
+
 #define cudnnSetConvolutionNdDescriptor_v2 cudnnSetConvolutionNdDescriptor
 #define cudnnGetConvolutionNdDescriptor_v2 cudnnGetConvolutionNdDescriptor
 #define cudnnAddTensor_v2 cudnnAddTensor
 #define cudnnConvolutionBackwardFilter_v2 cudnnConvolutionBackwardFilter
 #define cudnnConvolutionBackwardData_v2 cudnnConvolutionBackwardData
 
-#endif
+#endif // #if CUDNN_VERSION < 4000
 
 #else // #ifndef CUPY_NO_CUDA
 
