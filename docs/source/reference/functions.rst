@@ -81,10 +81,12 @@ Loss functions for VAE
 
 Mathematical functions
 ----------------------
+.. autofunction:: batch_inv
 .. autofunction:: batch_matmul
 .. autofunction:: cos
 .. autofunction:: exp
 .. autofunction:: identity
+.. autofunction:: inv
 .. autofunction:: log
 .. autofunction:: matmul
 .. autofunction:: max
