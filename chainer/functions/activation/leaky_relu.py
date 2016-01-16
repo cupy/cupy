@@ -47,7 +47,7 @@ class LeakyReLU(function.Function):
 def leaky_relu(x, slope=0.2):
     """Leaky Rectified Linear Unit function.
 
-    This function is expressed as :math:`f(x) = \max(x, ax)`, where :math:`a`
+    This function is expressed as :math:`f(x) = \\max(x, ax)`, where :math:`a`
     is a configurable slope value.
 
     Args:

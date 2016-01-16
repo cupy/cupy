@@ -21,6 +21,12 @@ class TestSplit(unittest.TestCase):
         return xp.concatenate(split, -1)
 
     @testing.numpy_cupy_array_equal()
+    def test_array_spliti_empty(self, xp):
+        a = testing.shaped_arange((3, 11), xp)
+        split = xp.array_split(a, [])
+        return xp.concatenate(split, -1)
+
+    @testing.numpy_cupy_array_equal()
     def test_dsplit(self, xp):
         a = testing.shaped_arange((3, 3, 12), xp)
         split = xp.dsplit(a, 4)

@@ -32,7 +32,7 @@ def numerical_grad_cpu(f, inputs, grad_outputs, eps=1e-3):
 
 
 def numerical_grad_gpu(f, inputs, grad_outputs, eps=1e-3):
-    grads = tuple(cuda.zeros_like(x) for x in inputs)
+    grads = tuple(cuda.cupy.zeros_like(x) for x in inputs)
     for x, gx in zip(inputs, grads):
         x = x.ravel()
         gx = gx.ravel()

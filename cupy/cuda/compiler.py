@@ -8,9 +8,8 @@ import tempfile
 import filelock
 import six
 
-
 from cupy.cuda import device
-from cupy.cuda import module
+from cupy.cuda import function
 
 
 def _get_arch():
@@ -33,6 +32,16 @@ class TemporaryDirectory(object):
         os.rmdir(self.path)
 
 
+def _run_nvcc(cmd, cwd):
+    try:
+        return subprocess.check_output(cmd, cwd=cwd)
+    except OSError as e:
+        msg = 'Failed to run `nvcc` command. ' \
+              'Check PATH environment variable: ' \
+              + str(e)
+        raise OSError(msg)
+
+
 def nvcc(source, options=(), arch=None):
     if not arch:
         arch = _get_arch()
@@ -47,7 +56,7 @@ def nvcc(source, options=(), arch=None):
             cu_file.write(source)
 
         cmd.append(cu_path)
-        subprocess.check_output(cmd, cwd=root_dir)
+        _run_nvcc(cmd, root_dir)
 
         with open(cubin_path, 'rb') as bin_file:
             return bin_file.read()
@@ -63,7 +72,7 @@ def preprocess(source, options=()):
             cu_file.write(source)
 
         cmd.append(cu_path)
-        pp_src = subprocess.check_output(cmd, cwd=root_dir)
+        pp_src = _run_nvcc(cmd, root_dir)
 
         if isinstance(pp_src, six.binary_type):
             pp_src = pp_src.decode('utf-8')
@@ -107,7 +116,7 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         pp_src = pp_src.encode('utf-8')
     name = '%s.cubin' % hashlib.md5(pp_src).hexdigest()
 
-    mod = module.Module()
+    mod = function.Module()
 
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)

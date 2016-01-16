@@ -1,7 +1,6 @@
-from cupy import elementwise
-from cupy.logic import ufunc
+from cupy import core
 
-logical_and = ufunc.create_comparison(
+logical_and = core.create_comparison(
     'logical_and', '&&',
     '''Computes the logical AND of two arrays.
 
@@ -10,7 +9,7 @@ logical_and = ufunc.create_comparison(
     ''')
 
 
-logical_or = ufunc.create_comparison(
+logical_or = core.create_comparison(
     'logical_or', '||',
     '''Computes the logical OR of two arrays.
 
@@ -19,7 +18,7 @@ logical_or = ufunc.create_comparison(
     ''')
 
 
-logical_not = elementwise.create_ufunc(
+logical_not = core.create_ufunc(
     'cupy_logical_not',
     ('?->?', 'b->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
@@ -31,7 +30,7 @@ logical_not = elementwise.create_ufunc(
     ''')
 
 
-logical_xor = elementwise.create_ufunc(
+logical_xor = core.create_ufunc(
     'cupy_logical_xor',
     ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?', 'll->?',
      'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?'),

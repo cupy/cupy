@@ -18,8 +18,8 @@ def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
         err_msg=err_msg, verbose=verbose)
 
 
-def assert_arrays_almost_equal_nulp(x, y, nulp=1):
-    numpy.testing.assert_arrays_almost_equal_nulp(
+def assert_array_almost_equal_nulp(x, y, nulp=1):
+    numpy.testing.assert_array_almost_equal_nulp(
         cupy.asnumpy(x), cupy.asnumpy(y), nulp=nulp)
 
 

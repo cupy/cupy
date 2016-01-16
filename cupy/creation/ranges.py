@@ -1,7 +1,7 @@
 import numpy
 
 import cupy
-from cupy import elementwise
+from cupy import core
 
 
 def arange(start, stop=None, step=1, dtype=None):
@@ -65,31 +65,34 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         cupy.ndarray: The 1-D array of ranged values.
 
     """
-    if num <= 0:
-        # TODO(beam2d): Return zero-sized array
-        raise ValueError('linspace with num<=0 is not supported')
+    if num < 0:
+        raise ValueError('linspace with num<0 is not supported')
 
     if dtype is None:
-        if any(numpy.dtype(type(val)).kind == 'f' for val in (start, stop)):
-            dtype = float
-        else:
-            dtype = int
+        # In actual implementation, only float is used
+        dtype = float
 
     ret = cupy.empty((num,), dtype=dtype)
     if num == 0:
-        return ret
+        step = float('nan')
     elif num == 1:
         ret.fill(start)
-        return ret
-
-    if endpoint:
-        step = (stop - start) / (num - 1)
+        step = float('nan')
     else:
-        step = (stop - start) / num
-        stop = start + step * (num - 1)
+        div = (num - 1) if endpoint else num
+        step = float(stop - start) / div
+        stop = float(stop)
 
-    typ = numpy.dtype(dtype).type
-    _linspace_ufunc(typ(start), stop - start, num - 1, ret)
+        if step == 0.0:
+            # for underflow
+            _linspace_ufunc_underflow(start, stop - start, div, ret,
+                                      casting='unsafe')
+        else:
+            _linspace_ufunc(start, step, ret, casting='unsafe')
+
+        if endpoint:
+            ret[-1] = stop
+
     if retstep:
         return ret, step
     else:
@@ -106,17 +109,19 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
 # ogrid
 
 
-_arange_ufunc = elementwise.create_ufunc(
+_arange_ufunc = core.create_ufunc(
     'cupy_arange',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
     'out0 = in0 + i * in1')
 
 
-_float_linspace = 'out0 = in0 + i * in1 / in2'
-_linspace_ufunc = elementwise.create_ufunc(
+_linspace_ufunc = core.create_ufunc(
     'cupy_linspace',
-    ('bbb->b', 'Bbb->B', 'hhh->h', 'Hhh->H', 'iii->i', 'Iii->I', 'lll->l',
-     'Lll->L', 'qqq->q', 'Qqq->Q', ('eel->e', _float_linspace),
-     ('ffl->f', _float_linspace), ('ddl->d', _float_linspace)),
-    'out0 = (in0_type)(in0 + _floor_divide(in1_type(i * in1), in2))')
+    ('dd->d',),
+    'out0 = in0 + i * in1')
+
+_linspace_ufunc_underflow = core.create_ufunc(
+    'cupy_linspace',
+    ('ddd->d',),
+    'out0 = in0 + i * in1 / in2')
