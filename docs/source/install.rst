@@ -49,7 +49,7 @@ CUDA support
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3
 
 Caffe model support
 
