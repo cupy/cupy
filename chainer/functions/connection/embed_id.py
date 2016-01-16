@@ -33,8 +33,8 @@ class EmbedIDFunction(function.Function):
         if xp is numpy:
             # It is equivalent to `numpy.add.at(gW, x, gy)` but ufunc.at is
             # too slow.
-            for ix, igy in six.moves.zip(x.reshape((x.size,)),
-                                         gy.reshape((x.size, gy.shape[-1]))):
+            for ix, igy in six.moves.zip(x.reshape(-1),
+                                         gy.reshape((x.size, -1))):
                 gW[ix] += igy
         else:
             cuda.elementwise(
