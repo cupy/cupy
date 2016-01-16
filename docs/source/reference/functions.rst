@@ -40,6 +40,7 @@ Activation functions
 Array manipulations
 -------------------
 .. autofunction:: broadcast
+.. autofunction:: broadcast_to
 .. autofunction:: concat
 .. autofunction:: copy
 .. autofunction:: expand_dims
