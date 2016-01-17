@@ -45,3 +45,27 @@ class TestNdarrayInitRaise(unittest.TestCase):
         arr = numpy.ndarray((2, 3), dtype=object)
         with self.assertRaises(ValueError):
             core.array(arr)
+
+
+@testing.parameterize(
+    {'shape': (3, 4, 5), 'inds': (2,), 'axis': None},
+    {'shape': (3, 4, 5), 'inds': (2,), 'axis': 0},
+    {'shape': (3, 4, 5), 'inds': (2,), 'axis': 1},
+    {'shape': (3, 4, 5), 'inds': (2,), 'axis': 2},
+    {'shape': (3, 4, 5), 'inds': (2, 3), 'axis': None},
+    {'shape': (3, 4, 5), 'inds': (2, 3), 'axis': 0},
+    {'shape': (3, 4, 5), 'inds': (2, 3), 'axis': 1},
+    {'shape': (3, 4, 5), 'inds': (2, 3), 'axis': 2},
+)
+class TestNdarrayTake(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(accept_error=False)
+    def test_take(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        if self.axis is None:
+            m = a.size
+        else:
+            m = a.shape[self.axis]
+        i = testing.shaped_arange(self.inds, xp, numpy.int32) % m
+        return a.take(i, self.axis)
