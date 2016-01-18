@@ -1,5 +1,3 @@
-import numpy
-
 from chainer.functions.connection import linear
 from chainer import link
 import chainer.initializations as I
@@ -26,8 +24,8 @@ class Linear(link.Link):
         bias (float): Initial bias value.
         nobias (bool): If True, then this function does not use the bias.
         initialW (2-D array): Initial weight value. If ``None``, then this
-            function uses to initialize ``wscale``. May also be a function 
-            that takes a tuple of (outpu_size, input_size) and returns a 
+            function uses to initialize ``wscale``. May also be a function
+            that takes a tuple of (outpu_size, input_size) and returns a
             matrix of the same dimensions to use for initialization
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``. May also be a function

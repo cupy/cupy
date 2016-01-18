@@ -10,7 +10,8 @@ from chainer.links.connection import linear
 
 class GRUBase(link.Chain):
 
-    def __init__(self, n_units, n_inputs=None, init=None, inner_init=initializations.orthogonal, bias_init=0):
+    def __init__(self, n_units, n_inputs=None, init=None,
+                 inner_init=initializations.orthogonal, bias_init=0):
         if n_inputs is None:
             n_inputs = n_units
         super(GRUBase, self).__init__(
@@ -112,6 +113,17 @@ class StatefulGRU(GRUBase):
     Args:
         in_size(int): Dimension of input vector :math:`x`.
         out_size(int): Dimension of hidden vector :math:`h`.
+        init: A callable that takes a tuple of the matrix shape and returns a
+            matrix of the same dimensions to use for initialization of the
+            GRU's input units (:math:`W`). Maybe be `None` to use default
+            initialization.
+        inner_init: A callable that takes a tuple of the matrix shape and
+            returns a matrix of the same dimensions to use for initialization
+            of the GRU's inner recurrent units (:math:`U`). Maybe be `None` to
+            use default initialization
+        bias_init: A callable or scalar used to initiate the bias values for
+            both the GRU's inner and input units. Maybe be `None` to use
+            default initialization
 
     Attributes:
         h(~chainer.Variable): Hidden vector that indicates the state of
@@ -121,7 +133,8 @@ class StatefulGRU(GRUBase):
 
     """
 
-    def __init__(self, in_size, out_size, init=None, inner_init=initializations.orthogonal, bias_init=0):
+    def __init__(self, in_size, out_size, init=None,
+                 inner_init=initializations.orthogonal, bias_init=0):
         super(StatefulGRU, self).__init__(
             out_size, in_size, init, inner_init, bias_init)
         self.state_size = out_size

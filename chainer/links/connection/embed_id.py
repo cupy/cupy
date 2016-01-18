@@ -1,5 +1,3 @@
-import numpy
-
 from chainer.functions.connection import embed_id
 from chainer import initializations
 from chainer import link
@@ -16,8 +14,8 @@ class EmbedID(link.Link):
         in_size (int): Number of different identifiers (a.k.a. vocabulary
             size).
         out_size (int): Size of embedding vector.
-        initialW (2-D array): Initial weight value. If ``None``, then the 
-                matrix is initialized from the standard normal distribution. 
+        initialW (2-D array): Initial weight value. If ``None``, then the
+                matrix is initialized from the standard normal distribution.
             May also be a callable that takes a tuple of the matrix shape
             and returns a matrix of the same dimensions to use for
             initialization.
@@ -32,7 +30,8 @@ class EmbedID(link.Link):
     def __init__(self, in_size, out_size, initialW=None):
         super(EmbedID, self).__init__(W=(in_size, out_size))
         initializations.init_weight(
-            self.W.data, initialW, none_default=lambda shape: initializations.normal(shape, scale=1.0))
+            self.W.data, initialW,
+            none_default=lambda s: initializations.normal(s, scale=1.0))
 
     def __call__(self, x):
         """Extracts the word embedding of given IDs.

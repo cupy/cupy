@@ -6,21 +6,22 @@ import numpy as np
 # https://github.com/fchollet/keras/blob/master/keras/initializations.py
 
 
-def init_weight(weights, initWith, scale=1, none_default=lambda shape: he_normal(shape, 1 / np.sqrt(2))):
+def init_weight(weights, initWith, scale=1,
+                none_default=lambda shape: he_normal(shape, 1 / np.sqrt(2))):
     """Initializes the given weight matrix.
 
     Args:
             weights (~numpy.ndarray): Weight matrix to be initialized.
             initWith (value): The value to use to initialize the data. May be
-            	`None` (in which case the none_default value will be used), a
-            	scalar to set all values to, a matrix of the same shape to
-            	copy, or a callable that takes the shape of the matrix as input
-            	and returns a matrix of the correct size.
+                `None` (in which case the none_default value will be used), a
+                scalar to set all values to, a matrix of the same shape to
+                copy, or a callable that takes the shape of the matrix as input
+                and returns a matrix of the correct size.
             scale (scalar): A constant to multiply initWith by, if initWith was
-            	a callable.
+                a callable.
             none_default (value): Same as initWith, the value here must not be
-            	`None`, as it will be used as a default when initWith is
-            	`None`.
+                `None`, as it will be used as a default when initWith is
+                `None`.
 
     """
     if initWith is None:

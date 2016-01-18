@@ -1,5 +1,3 @@
-import numpy
-
 from chainer.functions.connection import convolution_2d
 from chainer import initializations
 from chainer import link
@@ -30,7 +28,7 @@ class Convolution2D(link.Link):
              that takes a tuple of the matrix shape and returns a matrix
              of the same dimensions to use for initialization.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
-            function uses to initialize ``bias``. May also be a callable 
+            function uses to initialize ``bias``. May also be a callable
             that takes a tuple of the matrix shape and returns a matrix of
             the same dimensions to use for initialization.
 
