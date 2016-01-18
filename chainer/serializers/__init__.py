@@ -7,6 +7,6 @@ save_hdf5 = hdf5.save_hdf5
 load_hdf5 = hdf5.load_hdf5
 
 DictionarySerializer = npz.DictionarySerializer
-NPZDeserializer = npz.NPZDeserializer
+NpzDeserializer = npz.NpzDeserializer
 save_numpy = npz.save_npz
 load_numpy = npz.load_npz

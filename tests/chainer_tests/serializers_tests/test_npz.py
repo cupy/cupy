@@ -24,11 +24,11 @@ class TestDictionarySerializer(unittest.TestCase):
     def test_get_item(self):
         child = self.serializer['x']
         self.assertIsInstance(child, npz.DictionarySerializer)
-        self.assertEqual(child.path[-2:], 'x/')
+        self.assertEqual(child.path, 'x/')
 
     def check_serialize(self, data):
         ret = self.serializer('w', data)
-        dset = self.serializer.dict['w']
+        dset = self.serializer.target['w']
 
         self.assertIsInstance(dset, numpy.ndarray)
         self.assertEqual(dset.shape, data.shape)
@@ -47,7 +47,7 @@ class TestDictionarySerializer(unittest.TestCase):
 
     def test_serialize_scalar(self):
         ret = self.serializer('x', 10)
-        dset = self.serializer.dict['x']
+        dset = self.serializer.target['x']
 
         self.assertIsInstance(dset, numpy.ndarray)
         self.assertEqual(dset.shape, ())
@@ -58,7 +58,7 @@ class TestDictionarySerializer(unittest.TestCase):
         self.assertIs(ret, 10)
 
 
-class TestNPZDeserializer(unittest.TestCase):
+class TestNpzDeserializer(unittest.TestCase):
 
     def setUp(self):
         self.data = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
@@ -71,7 +71,7 @@ class TestNPZDeserializer(unittest.TestCase):
                 f, **{'x/': None, 'y': self.data, 'z': numpy.asarray(10)})
 
         self.npzfile = numpy.load(path)
-        self.deserializer = npz.NPZDeserializer(self.npzfile)
+        self.deserializer = npz.NpzDeserializer(self.npzfile)
 
     def tearDown(self):
         if hasattr(self, 'npzfile'):
@@ -81,7 +81,7 @@ class TestNPZDeserializer(unittest.TestCase):
 
     def test_get_item(self):
         child = self.deserializer['x']
-        self.assertIsInstance(child, npz.NPZDeserializer)
+        self.assertIsInstance(child, npz.NpzDeserializer)
         self.assertEqual(child.path[-2:], 'x/')
 
     def check_deserialize(self, y):
@@ -104,7 +104,7 @@ class TestNPZDeserializer(unittest.TestCase):
         self.assertEqual(ret, 10)
 
 
-class TestSaveNPZ(unittest.TestCase):
+class TestSaveNpz(unittest.TestCase):
 
     def setUp(self):
         fd, path = tempfile.mkstemp()
@@ -124,7 +124,7 @@ class TestSaveNPZ(unittest.TestCase):
         self.assertIsInstance(serializer, npz.DictionarySerializer)
 
 
-class TestLoadNPZ(unittest.TestCase):
+class TestLoadNpz(unittest.TestCase):
 
     def setUp(self):
         fd, path = tempfile.mkstemp()
@@ -143,7 +143,7 @@ class TestLoadNPZ(unittest.TestCase):
 
         self.assertEqual(obj.serialize.call_count, 1)
         (serializer,), _ = obj.serialize.call_args
-        self.assertIsInstance(serializer, npz.NPZDeserializer)
+        self.assertIsInstance(serializer, npz.NpzDeserializer)
 
 
 class TestGroupHierachy(unittest.TestCase):
@@ -161,8 +161,8 @@ class TestGroupHierachy(unittest.TestCase):
         self.optimizer = optimizers.AdaDelta()
         self.optimizer.setup(self.parent)
 
-    def _save(self, dict, obj, name):
-        serializer = npz.DictionarySerializer(dict, name)
+    def _save(self, target, obj, name):
+        serializer = npz.DictionarySerializer(target, name)
         serializer.save(obj)
 
     def tearDown(self):
