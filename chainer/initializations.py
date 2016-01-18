@@ -49,8 +49,9 @@ def normal(shape, scale=0.05):
 
 
 def lecun_uniform(shape, scale=1):
-    ''' Reference: LeCun 98, Efficient Backprop
-        http://yann.lecun.com/exdb/publis/pdf/lecun-98b.pdf
+    '''Reference: LeCun 98, Efficient Backprop
+    http://yann.lecun.com/exdb/publis/pdf/lecun-98b.pdf
+    
     '''
     fan_in, fan_out = get_fans(shape)
     s = scale * np.sqrt(3. / fan_in)
@@ -58,7 +59,8 @@ def lecun_uniform(shape, scale=1):
 
 
 def glorot_normal(shape, scale=1):
-    ''' Reference: Glorot & Bengio, AISTATS 2010
+    '''Reference: Glorot & Bengio, AISTATS 2010
+    
     '''
     fan_in, fan_out = get_fans(shape)
     s = scale * np.sqrt(2. / (fan_in + fan_out))
@@ -73,6 +75,7 @@ def glorot_uniform(shape, scale=1):
 
 def he_normal(shape, scale=1):
     ''' Reference:  He et al., http://arxiv.org/abs/1502.01852
+    
     '''
     fan_in, fan_out = get_fans(shape)
     s = scale * np.sqrt(2. / fan_in)
