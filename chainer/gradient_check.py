@@ -156,7 +156,8 @@ def check_backward(func, x_data, y_grad, params=(),
     >>   check_backward(func, x1_data, gy_data)
 
     If ``MyFunc`` is a loss function which returns zero-dimensional
-    array, pass ``None`` to ``gy_data``::
+    array, pass ``None`` to ``gy_data``. In this case, it sets ``1`` to
+    ``grad`` attribute of the result::
 
     >>   check_backward(my_loss_func, (x1_data, x2_data), None)
 
