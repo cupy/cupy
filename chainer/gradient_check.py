@@ -227,8 +227,7 @@ def check_backward(func, x_data, y_grad, params=(),
 
     xs = [variable.Variable(x) for x in x_data]
     y = func(*xs)
-    if isinstance(y, variable.Variable):
-        y = (y,)
+    y = _as_tuple(y)
 
     if y_grad is not None:
         assert len(y) == len(y_grad)
@@ -244,8 +243,7 @@ def check_backward(func, x_data, y_grad, params=(),
 
     def f():
         ys = func(*xs)
-        if not isinstance(ys, tuple):
-            ys = (ys,)
+        ys = _as_tuple(ys)
         return tuple(y.data for y in ys)
 
     for x in xs:
