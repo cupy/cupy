@@ -230,11 +230,16 @@ def check_backward(func, x_data, y_grad, params=(),
     y = _as_tuple(y)
 
     if y_grad is not None:
-        assert len(y) == len(y_grad)
+        if len(y) != len(y_grad):
+            raise ValueError(
+                '`y_grad` must have the same length of output values')
         for iy, igy in zip(y, y_grad):
             iy.grad = igy
     else:
-        assert len(y) == 1
+        if len(y) != 1:
+            raise ValueError(
+                'When `y_grad` is `None`, the function must return a'
+                'zero-dimentional array')
         y_grad = (1,)
 
     # We only need to call `backward` for one result `Variable`.
