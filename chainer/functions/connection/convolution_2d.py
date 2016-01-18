@@ -103,7 +103,7 @@ class Convolution2DFunction(function.Function):
 
             # TODO(beam2d): Support unshared bias
             if b is not None:
-                libcudnn.addTensor(
+                libcudnn.addTensor_v2(
                     handle, libcudnn.CUDNN_ADD_SAME_C, one.data,
                     self.bias_desc.value, b.data.ptr, one.data,
                     y_desc.value, y.data.ptr)
@@ -158,13 +158,13 @@ class Convolution2DFunction(function.Function):
             one = numpy.array(1, dtype=dtype).ctypes
             zero = numpy.array(0, dtype=dtype).ctypes
 
-            libcudnn.convolutionBackwardFilter(
+            libcudnn.convolutionBackwardFilter_v2(
                 handle, one.data, x_desc.value, x.data.ptr,
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
                 zero.data, self.filter_desc.value, gW.data.ptr)
 
             gx = cuda.cupy.empty_like(x)
-            libcudnn.convolutionBackwardData(
+            libcudnn.convolutionBackwardData_v2(
                 handle, one.data, self.filter_desc.value, W.data.ptr,
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
                 zero.data, x_desc.value, gx.data.ptr)

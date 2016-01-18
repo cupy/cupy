@@ -90,6 +90,8 @@ Tanh = tanh.Tanh
 tanh = tanh.tanh
 
 Broadcast = broadcast.Broadcast
+BroadcastTo = broadcast.BroadcastTo
+broadcast_to = broadcast.broadcast_to
 broadcast = broadcast.broadcast
 Concat = concat.Concat
 concat = concat.concat

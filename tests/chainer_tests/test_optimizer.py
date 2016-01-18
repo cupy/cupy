@@ -20,20 +20,36 @@ class TestOptimizerUtility(unittest.TestCase):
 
     def test_sqnorm_cpu(self):
         # \Sum_{n=0}^{5} (-1.0+0.5n)**2 = 4.75
-        self.assertAlmostEqual(optimizer._sqnorm(self.x), 4.75)
+        self.assertAlmostEqual(optimizer._sum_sqnorm([self.x]), 4.75)
 
     def test_sqnorm_scalar_cpu(self):
-        self.assertAlmostEqual(optimizer._sqnorm(self.a), 4)
+        self.assertAlmostEqual(optimizer._sum_sqnorm([self.a]), 4)
 
     @attr.gpu
     def test_sqnorm_gpu(self):
         x = cuda.to_gpu(self.x)
-        self.assertAlmostEqual(optimizer._sqnorm(x), 4.75)
+        self.assertAlmostEqual(optimizer._sum_sqnorm([x]), 4.75)
 
     @attr.gpu
     def test_sqnorm_scalar_gpu(self):
         a = cuda.to_gpu(self.a)
-        self.assertAlmostEqual(optimizer._sqnorm(a), 4)
+        self.assertAlmostEqual(optimizer._sum_sqnorm([a]), 4)
+
+    @attr.gpu
+    def test_sqnorm_array(self):
+        x = cuda.to_gpu(self.x)
+        a = cuda.to_gpu(self.a)
+        self.assertAlmostEqual(optimizer._sum_sqnorm(
+            [self.x, self.a, x, a]), 8.75 * 2)
+
+    @attr.multi_gpu(2)
+    def test_sqnorm_array_multi_gpu(self):
+        x0 = cuda.to_gpu(self.x, device=0)
+        x1 = cuda.to_gpu(self.x, device=1)
+        a0 = cuda.to_gpu(self.a, device=0)
+        a1 = cuda.to_gpu(self.a, device=1)
+        self.assertAlmostEqual(optimizer._sum_sqnorm(
+            [self.x, self.a, x0, a0, x1, a1]), 8.75 * 3)
 
 
 class TestOptimizerHook(unittest.TestCase):

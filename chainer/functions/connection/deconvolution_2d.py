@@ -110,12 +110,12 @@ class Deconvolution2DFunction(function.Function):
             one = numpy.array(1, dtype=x.dtype).ctypes
             zero = numpy.array(0, dtype=x.dtype).ctypes
 
-            libcudnn.convolutionBackwardData(
+            libcudnn.convolutionBackwardData_v2(
                 handle, one.data, self.filter_desc.value, W.data.ptr,
                 x_desc.value, x.data.ptr, self.conv_desc.value,
                 zero.data, y_desc.value, y.data.ptr)
             if len(inputs) == 3:
-                libcudnn.addTensor(
+                libcudnn.addTensor_v2(
                     handle, libcudnn.CUDNN_ADD_SAME_C,
                     one.data, self.bias_desc.value, b.data.ptr,
                     one.data, y_desc.value, y.data.ptr)
@@ -191,7 +191,7 @@ class Deconvolution2DFunction(function.Function):
                     zero.data, self.bias_desc.value, gb.data.ptr)
             gW = cuda.cupy.empty_like(W)
             # filter backward
-            libcudnn.convolutionBackwardFilter(
+            libcudnn.convolutionBackwardFilter_v2(
                 handle, one.data, gy_desc.value, gy.data.ptr,
                 gx_desc.value, x.data.ptr, self.conv_desc.value,
                 zero.data, self.filter_desc.value, gW.data.ptr)
