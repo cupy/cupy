@@ -161,6 +161,13 @@ def check_backward(func, x_data, y_grad, params=(),
 
     >>   check_backward(my_loss_func, (x1_data, x2_data), None)
 
+    It ``MyFunc`` returns multiple outputs, pass all gradients for outputs
+    as tuple::
+
+    >>   gy1_data = xp.array(...)
+    >>   gy2_data = xp.array(...)
+    >>   check_backward(func, x1_data, (gy1_data, gy2_data))
+
     You can also test a :class:`~chainer.Link`.
     To check gradients of parameters of the link, set tuple of the parameters
     to ``params`` arguments::
