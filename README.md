@@ -25,13 +25,15 @@ Requirements for some features:
 - Caffe model support
   - Python 2.7.6+ (Py3 is not supported)
   - Protocol Buffers (pip install protobuf)
-- HDF5 serialization support (optional)
+- HDF5 serialization support
   - h5py 2.5.0
 - Testing utilities
   - Mock
   - Nose
 
 ## Installation
+
+### Minimum installation
 
 If you use old ``setuptools``, upgrade it:
 
@@ -48,6 +50,9 @@ You can also install Chainer from the source code:
 ```
 python setup.py install
 ```
+
+
+### Installation with CUDA
 
 If you want to enable CUDA, first you have to install CUDA and set the environment variable `PATH` and `LD_LIBRARY_PATH` for CUDA executables and libraries.
 For example, if you are using Ubuntu and CUDA is installed by the official distribution, then CUDA is installed at `/usr/local/cuda`.
@@ -69,6 +74,9 @@ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 ```
 Do not forget to restart your terminal session (or `source` it) to enable these changes.
 And then, reinstall Chainer.
+
+
+### HDF5 Support
 
 If you want to use HDF5 serialization, please install h5py manually.
 h5py requires libhdf5.
