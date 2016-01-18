@@ -228,6 +228,9 @@ def check_backward(func, x_data, y_grad, params=(),
     else:
         assert len(y) == 1
         y_grad = (1,)
+
+    # We only need to call `backward` for one result `Variable`.
+    # `Variable.backward` method calls `Function.backward` of its creator.
     y[0].backward()
 
     def f():
