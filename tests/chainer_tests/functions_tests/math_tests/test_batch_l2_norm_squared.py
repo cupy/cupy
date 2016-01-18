@@ -11,6 +11,7 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import type_check
 
 
 @testing.parameterize(
@@ -47,7 +48,7 @@ class TestBatchL2NormSquared(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(_as_two_dim(x_data))
+        x = chainer.Variable(x_data)
         y = functions.batch_l2_norm_squared(x)
 
         y.grad = y_grad
@@ -67,6 +68,15 @@ class TestBatchL2NormSquared(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+
+class TestBatchL2NormSquaredTypeError(unittest.TestCase):
+
+    def test_invalid_shape(self):
+        x = chainer.Variable(np.zeros((4,), dtype=np.float32))
+
+        with self.assertRaises(type_check.InvalidType):
+            chainer.functions.batch_l2_norm_squared(x)
 
 
 testing.run_module(__name__, __file__)

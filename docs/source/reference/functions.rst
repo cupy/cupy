@@ -78,6 +78,7 @@ Loss functions for VAE
 
 Mathematical functions
 ----------------------
+.. autofunction:: batch_l2_norm_squared
 .. autofunction:: batch_matmul
 .. autofunction:: cos
 .. autofunction:: exp
