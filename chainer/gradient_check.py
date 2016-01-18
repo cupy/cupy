@@ -221,9 +221,11 @@ def check_backward(func, x_data, y_grad, params=(),
         y = (y,)
 
     if y_grad is not None:
+        assert len(y) == len(y_grad)
         for iy, igy in zip(y, y_grad):
             iy.grad = igy
     else:
+        assert len(y) == 1
         y_grad = (1,)
     y[0].backward()
 
