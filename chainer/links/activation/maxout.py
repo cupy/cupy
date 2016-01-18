@@ -1,27 +1,47 @@
 import numpy
 
-from chainer.functions.activation import maxout
+from chainer import cuda
+from chainer.functions.array import reshape
+from chainer.functions.math import minmax
 from chainer import link
+from chainer.links.connection import linear
 
 
-class Maxout(link.Link):
+class Maxout(link.Chain):
     """Maxout Networks
+
+    It has three dimensional weight tensor whose shape is ``(M, C, N)``
+    and optional bias vector whose shape is ``(M, C)`` where
+   ``M`` is an output dimension,``C`` the number of channel, and
+    ``N`` an input dimension . It computes
+
+    .. math::
+
+      Y_{i} = \\mathrm{max}_{j} (W_{ij\\cdot}x + b_{ij}).
+
+    Here, :math:`x` is a input vector and :math:`W_{ij\\cdot}`
+    is a sub-vector extracted from :math:`W` by fixing first
+    and second dimensions to :math:`i` and :math:`j`, respectively.
+    Minibatch dimension is omitted in the above equation.
+
+    As an actual implementation, this Chain has a linear Link with
+    a ``(M * C, N)`` weight vector and an optional ``M * C``
+    dimensional bias.
 
     Args:
         in_size (int): Dimension of input vectors.
-        num_channel (int): Number of channels.
         out_size (int): Dimension of output vectors.
+        num_channel (int): Number of channels.
         wscale (float): Scaling factor of the weight matrix.
-        initialW (3-D array): Initial weight value. If ``None``, then this
-            function uses ``wscale`` to initialize.
-        initial_bias (2-D array): Initial bias value. If ``None``, then this
-            functions uses ``bias`` to initialize.
+        initialW (3-D array or None): Initial weight value.
+            If ``None``, then this function uses ``wscale`` to initialize.
+        initial_bias (2-D array, float or None): Initial bias value.
+            If it is float, initial bias is filled with this value.
+            If it is ``None``, bias is omitted.
 
     Attributes:
-        W (~chainer.Variable): Weight tensor with shape
-            ``(in_size, num_channel, out_size)``.
-        b (~chainer.Variable): Bias vector with shape
-            ``(num_channel, out_size)``.
+        linear (~chainer.Link): The Linear Link that performs
+        affine transformation.
 
     .. seealso:: :func:`~chainer.functions.maxout`
 
@@ -33,19 +53,29 @@ class Maxout(link.Link):
          `URL <http://jmlr.org/proceedings/papers/v28/goodfellow13.html>`_
     """
 
-    def __init__(self, in_size, num_channel, out_size,
+    def __init__(self, in_size, out_size, num_channel,
                  wscale=1, initialW=None, initial_bias=0):
-        super(Maxout, self).__init__(W=(in_size, num_channel, out_size))
-        if initialW is None:
-            initialW = numpy.random.normal(
-                0, wscale * numpy.sqrt(1. / in_size), self.W.data.shape)
-        self.W.data[...] = initialW
+        linear_out_size = out_size * num_channel
+        if initialW is not None:
+            initialW = initialW.reshape(linear_out_size, in_size)
 
         if initial_bias is not None:
-            self.add_param('b', (num_channel, out_size))
-            self.b.data[...] = initial_bias
-        else:
-            self.b = None
+            if numpy.isscalar(initial_bias):
+                initial_bias = numpy.full(
+                    (linear_out_size,), initial_bias, dtype=numpy.float32)
+            elif isinstance(initial_bias, (numpy.ndarray, cuda.ndarray)):
+                initial_bias = initial_bias.reshape(linear_out_size)
+            else:
+                raise ValueError(
+                    'initial bias must be float, ndarray, or None')
+
+        super(Maxout, self).__init__(
+            linear=linear.Linear(
+                in_size, linear_out_size, wscale,
+                nobias=initial_bias is None, initialW=initialW,
+                initial_bias=initial_bias))
+        self.out_size = out_size
+        self.num_channel = num_channel
 
     def __call__(self, x):
         """Applies the maxout layer.
@@ -56,5 +86,7 @@ class Maxout(link.Link):
         Returns:
             ~chainer.Variable: Output of the maxout layer.
         """
-
-        return maxout.maxout(x, self.W, self.b)
+        b = x.data.shape[0]
+        y = self.linear(x)
+        y = reshape.reshape(y, (b, self.out_size, self.num_channel))
+        return minmax.max(y, axis=2)
