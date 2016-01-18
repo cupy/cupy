@@ -3,8 +3,8 @@ import numpy
 import chainer
 from chainer.functions.activation import sigmoid
 from chainer.functions.activation import tanh
-from chainer import link
 from chainer import initializations
+from chainer import link
 from chainer.links.connection import linear
 
 
