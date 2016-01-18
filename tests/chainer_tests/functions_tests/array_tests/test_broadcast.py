@@ -114,16 +114,8 @@ class TestBroadcastTo(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.data))
 
     def check_backward(self, data, grad):
-        x = chainer.Variable(data)
-        bx = functions.broadcast_to(x, self.out_shape)
-
-        func = bx.creator
-        f = lambda: func.forward((data,))
-
-        bx.grad = grad
-        bx.backward()
-        gx, = gradient_check.numerical_grad(f, (data,), (bx.grad,))
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.BroadcastTo(self.out_shape), data, grad)
 
     def test_backward_cpu(self):
         self.check_backward(self.data, self.grad)
