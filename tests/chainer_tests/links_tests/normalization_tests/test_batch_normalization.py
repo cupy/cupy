@@ -12,6 +12,16 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+def _batch_normalization(expander, gamma, beta, x, mean, var, eps, test):
+    mean = mean[expander]
+    if test:
+        std = numpy.sqrt(var[expander])
+    else:
+        std = numpy.sqrt(var[expander] + eps)
+    y_expect = gamma * (x - mean) / std + beta
+    return y_expect
+
+
 @testing.parameterize(*testing.product({
     'test': [True, False],
     'volatile': ['on', 'off'],
@@ -51,15 +61,11 @@ class BatchNormalizationTest(unittest.TestCase):
         y = self.link(x, test=self.test)
         self.assertEqual(y.data.dtype, numpy.float32)
 
-        mean = self.mean[self.expander]
-        if self.test:
-            std = numpy.sqrt(self.var[self.expander])
-        else:
-            std = numpy.sqrt(self.var[self.expander] + self.link.eps)
-        y_expect = self.gamma * (self.x - mean) / std + self.beta
+        y_expect = _batch_normalization(
+            self.expander, self.gamma, self.beta, self.x, self.mean,
+            self.var, self.link.eps, self.test)
 
         gradient_check.assert_allclose(y_expect, y.data, rtol=1e-3, atol=1e-4)
-        self.assertEqual(numpy.float32, y.data.dtype)
 
     @condition.retry(3)
     def test_forward_cpu(self):
