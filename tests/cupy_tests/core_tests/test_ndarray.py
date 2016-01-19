@@ -66,3 +66,27 @@ class TestNdarrayTake(unittest.TestCase):
             m = a.shape[self.axis]
         i = testing.shaped_arange(self.inds, xp, numpy.int32) % m
         return a.take(i, self.axis)
+
+
+class TestNdarrayTakeError(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_axis_overrun(self, xp, dtype):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        a.take((2,), axis=3)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_shape_mismatch(self, xp, dtype):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        i = testing.shaped_arange((2, 3), xp, numpy.int32) % 3
+        o = testing.shaped_arange((2, 4), xp, dtype)
+        a.take(i, out=o)
+
+    @testing.numpy_cupy_raises()
+    def test_output_type_mismatch(self, xp):
+        a = testing.shaped_arange((3, 4, 5), xp, numpy.int32)
+        i = testing.shaped_arange((2, 3), xp, numpy.int32) % 3
+        o = testing.shaped_arange((2, 3), xp, numpy.float32)
+        a.take(i, out=o)
