@@ -61,3 +61,55 @@ def broadcast(*args):
           broadcasted from given arguments.
     """
     return Broadcast()(*args)
+
+
+class BroadcastTo(function.Function):
+
+    """Function that broadcasts an array to a new shape."""
+
+    def __init__(self, shape):
+        self._shape = tuple(shape)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+
+        ndim = type_check.Variable(len(self._shape), 'len(shape)')
+        type_check.expect(in_types[0].ndim <= ndim)
+
+        shape = in_types[0].shape.eval()
+        # check the shape in inverse order
+        for i in six.moves.range(-1, -len(shape) - 1, -1):
+            if shape[i] == self._shape[i] or shape[i] == 1:
+                continue
+            expect = 'in_type[0].shape[%d] == %d' % (i, self._shape[i])
+            if self._shape[i] != 1:
+                expect += ' or in_type[0].shape[%d] == 1' % i
+            actual = 'in_type[0].shape: %s' % str(shape)
+            raise type_check.InvalidType(expect, actual)
+
+    def forward(self, xs):
+        xp = cuda.get_array_module(*xs)
+        x = xs[0]
+        if hasattr(xp, 'broadcast_to'):
+            return xp.broadcast_to(x, self._shape),
+        else:
+            # numpy 1.9 doesn't support broadcast_to method
+            dummy = xp.empty(self._shape)
+            bx, _ = xp.broadcast_arrays(x, dummy)
+            return bx,
+
+    def backward(self, xs, grads):
+        return _backward_one(xs[0], grads[0]),
+
+
+def broadcast_to(x, shape):
+    """Broadcast a given variable to a given shape.
+
+    Args:
+      x (~chainer.Variable): Variable to be broadcasted.
+      shape (tuple of int): The shape of the output variable.
+
+    Returns:
+        ~chainer.Variable: Output variable broacasted to the given shape.
+    """
+    return BroadcastTo(shape)(x)

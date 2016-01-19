@@ -47,16 +47,8 @@ class TestSoftmax(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), False)
 
     def check_backward(self, x_data, gy_data, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.softmax(x, use_cudnn)
-        y.grad = gy_data
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,), eps=1e-2)
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.Softmax(use_cudnn), x_data, gy_data, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

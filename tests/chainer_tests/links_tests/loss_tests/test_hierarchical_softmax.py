@@ -80,18 +80,9 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
             cpu_loss, cuda.to_cpu(gpu_loss))
 
     def check_backward(self, x_data, t_data, y_grad):
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        y = self.link(x, t)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x, t).data,)
-        gx, _, gW = gradient_check.numerical_grad(
-            f, (x.data, t.data, self.link.W.data), (y.grad,), eps=1e-2)
-
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-4)
-        gradient_check.assert_allclose(gW, self.link.W.grad, atol=1e-4)
+        gradient_check.check_backward(
+            self.link, (x_data, t_data), y_grad, self.link.W,
+            eps=1e-2, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):

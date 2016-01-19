@@ -39,18 +39,9 @@ class TestSelectItem(unittest.TestCase):
                            cuda.to_gpu(self.t_data))
 
     def check_backward(self, x_data, t_data, gy_data):
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        y = functions.select_item(x, t)
-        y.grad = gy_data
-        y.backward()
-        self.assertEqual(None, t.grad)
-
-        func = y.creator
-        f = lambda: func.forward((x.data, t.data))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (gy_data,), eps=0.01)
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.SelectItem(),
+            (x_data, t_data), gy_data, eps=0.01)
 
     def test_backward_cpu(self):
         self.check_backward(self.x_data, self.t_data, self.gy_data)

@@ -1,8 +1,10 @@
 """Collection of :class:`~chainer.Function` implementations."""
 
 from chainer.functions.activation import clipped_relu
+from chainer.functions.activation import elu
 from chainer.functions.activation import leaky_relu
 from chainer.functions.activation import lstm
+from chainer.functions.activation import maxout
 from chainer.functions.activation import prelu
 from chainer.functions.activation import relu
 from chainer.functions.activation import sigmoid
@@ -12,6 +14,7 @@ from chainer.functions.activation import tanh
 from chainer.functions.array import broadcast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
+from chainer.functions.array import expand_dims
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
@@ -24,6 +27,7 @@ from chainer.functions.connection import deconvolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
+from chainer.functions.evaluation import binary_accuracy
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
@@ -66,10 +70,13 @@ clipped_relu = clipped_relu.clipped_relu
 ConnectionistTemporalClassification = ctc.ConnectionistTemporalClassification
 connectionist_temporal_classification \
     = ctc.connectionist_temporal_classification
+ELU = elu.ELU
+elu = elu.elu
 LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LSTM = lstm.LSTM
 lstm = lstm.lstm
+maxout = maxout.maxout
 prelu = prelu.prelu
 ReLU = relu.ReLU
 relu = relu.relu
@@ -83,11 +90,15 @@ Tanh = tanh.Tanh
 tanh = tanh.tanh
 
 Broadcast = broadcast.Broadcast
+BroadcastTo = broadcast.BroadcastTo
+broadcast_to = broadcast.broadcast_to
 broadcast = broadcast.broadcast
 Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
+ExpandDims = expand_dims.ExpandDims
+expand_dims = expand_dims.expand_dims
 Reshape = reshape.Reshape
 reshape = reshape.reshape
 SplitAxis = split_axis.SplitAxis
@@ -109,6 +120,8 @@ linear = linear.linear
 
 Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
+BinaryAccuracy = binary_accuracy.BinaryAccuracy
+binary_accuracy = binary_accuracy.binary_accuracy
 
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax

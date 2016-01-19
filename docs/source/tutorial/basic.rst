@@ -503,7 +503,7 @@ It can be achieved simply by calling forward function:
    ...     t = Variable(y_test[i : i + batchsize])
    ...     loss = model(x, t)
    ...     sum_loss += loss.data * batchsize
-   ...     sum_accuracy = model.accuracy.data * batchsize
+   ...     sum_accuracy += model.accuracy.data * batchsize
    ...     
    >>> mean_loss = sum_loss / 10000
    >>> mean_accuracy = sum_accuracy / 10000

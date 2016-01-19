@@ -90,14 +90,8 @@ class TestSum(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), axis=(-2, 0))
 
     def check_backward(self, x_data, y_grad, axis=None):
-        x = chainer.Variable(x_data)
-        y = functions.sum(x, axis=axis)
-
-        y.grad = y_grad
-        y.backward()
-
-        gx_expect = numpy.full_like(self.x, self.gy)
-        gradient_check.assert_allclose(gx_expect, x.grad)
+        gradient_check.check_backward(
+            functions.Sum(axis), x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):

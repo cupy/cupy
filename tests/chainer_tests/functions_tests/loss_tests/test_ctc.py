@@ -39,9 +39,9 @@ class TestCTC(unittest.TestCase):
                 (self.alpha(x, l, t-1, u-1) + self.alpha(x, l, t-1, u))
         else:
             return x[t][l[u]] * \
-                (self.alpha(x, l, t-1, u-2)
-                 + self.alpha(x, l, t-1, u-1)
-                 + self.alpha(x, l, t-1, u))
+                (self.alpha(x, l, t-1, u-2) +
+                 self.alpha(x, l, t-1, u-1) +
+                 self.alpha(x, l, t-1, u))
 
     def check_forward(self, t_data, xs_data):
         x = tuple(chainer.Variable(x_data) for x_data in xs_data)
@@ -61,11 +61,11 @@ class TestCTC(unittest.TestCase):
             loss_expect += -math.log(self.alpha(xt[b],
                                                 self.l[b],
                                                 self.x.shape[0]-1,
-                                                self.l[b].shape[0]-1)
-                                     + self.alpha(xt[b],
-                                                  self.l[b],
-                                                  self.x.shape[0]-1,
-                                                  self.l[b].shape[0]-2))
+                                                self.l[b].shape[0]-1) +
+                                     self.alpha(xt[b],
+                                                self.l[b],
+                                                self.x.shape[0]-1,
+                                                self.l[b].shape[0]-2))
         loss_expect /= batch_size
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
@@ -79,21 +79,9 @@ class TestCTC(unittest.TestCase):
 
     # expected value(via numerical differentiation) from t_data
     def check_backward(self, t_data, xs_data):
-        xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
-        t = chainer.Variable(t_data)
-        loss = functions.connectionist_temporal_classification(xs, t, 2)
-        loss.grad = self.g
-        loss.backward()
-
-        func = loss.creator
-        xs_data = tuple(x.data for x in xs)
-        f = lambda: func.forward((t.data,) + xs_data)
-        gl_0, gx_0, gx_1, gx_2, gx_3 = gradient_check.numerical_grad(
-            f, ((t.data,) + xs_data), (self.gx,))
-        gradient_check.assert_allclose(xs[0].grad, gx_0, atol=1e-04)
-        gradient_check.assert_allclose(xs[1].grad, gx_1, atol=1e-04)
-        gradient_check.assert_allclose(xs[2].grad, gx_2, atol=1e-04)
-        gradient_check.assert_allclose(xs[3].grad, gx_3, atol=1e-04)
+        gradient_check.check_backward(
+            functions.ConnectionistTemporalClassification(2),
+            (t_data,) + xs_data, self.g, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):

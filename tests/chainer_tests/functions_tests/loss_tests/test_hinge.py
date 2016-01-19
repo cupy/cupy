@@ -61,17 +61,8 @@ class TestHinge(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), 'L2')
 
     def check_backward(self, x_data, t_data, norm):
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        loss = functions.hinge(x, t, norm)
-        loss.backward()
-        self.assertEqual(None, t.grad)
-
-        func = loss.creator
-        f = lambda: func.forward((x.data, t.data))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (1,), eps=0.01)
-
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-4)
+        gradient_check.check_backward(
+            functions.Hinge(norm), (x_data, t_data), None, eps=0.01, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu_l1(self):

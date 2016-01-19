@@ -116,6 +116,7 @@ atleast_2d = manipulation.dims.atleast_2d
 atleast_3d = manipulation.dims.atleast_3d
 broadcast = manipulation.dims.broadcast
 broadcast_arrays = manipulation.dims.broadcast_arrays
+broadcast_to = manipulation.dims.broadcast_to
 expand_dims = manipulation.dims.expand_dims
 squeeze = manipulation.dims.squeeze
 
@@ -133,6 +134,8 @@ vsplit = manipulation.split.vsplit
 
 tile = manipulation.tiling.tile
 repeat = manipulation.tiling.repeat
+
+roll = manipulation.rearrange.roll
 
 # -----------------------------------------------------------------------------
 # Binary operations

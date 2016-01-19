@@ -35,6 +35,8 @@ Learnable connections
    :members:
 .. autoclass:: MLPConvolution2D
    :members:
+.. autoclass:: StatefulGRU
+   :members:
 
 Activation/loss/normalization functions with parameters
 --------------------------------------------------------
@@ -43,6 +45,8 @@ Activation/loss/normalization functions with parameters
 .. autoclass:: BinaryHierarchicalSoftmax
    :members:
 .. autoclass:: PReLU
+   :members:
+.. autoclass:: Maxout
    :members:
 .. autoclass:: NegativeSampling
    :members:

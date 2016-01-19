@@ -24,7 +24,12 @@ class AlexBN(chainer.Chain):
         )
         self.train = True
 
+    def clear(self):
+        self.loss = None
+        self.accuracy = None
+
     def __call__(self, x, t):
+        self.clear()
         h = self.bn1(self.conv1(x), test=not self.train)
         h = F.max_pooling_2d(F.relu(h), 3, stride=2)
         h = self.bn2(self.conv2(h), test=not self.train)

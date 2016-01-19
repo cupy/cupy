@@ -2,6 +2,8 @@ import collections
 import ctypes
 import weakref
 
+import six
+
 from cupy.cuda import runtime
 
 from cupy.cuda cimport device
@@ -341,6 +343,12 @@ cdef class SingleDeviceMemoryPool:
     cpdef free_all_free(self):
         self._free = collections.defaultdict(list)
 
+    cpdef n_free_blocks(self):
+        cdef Py_ssize_t n = 0
+        for v in six.itervalues(self._free):
+            n += len(v)
+        return n
+
 
 cdef class MemoryPool(object):
 
@@ -391,3 +399,17 @@ cdef class MemoryPool(object):
         """
         dev = device.get_device_id()
         return self._pools[dev].malloc(size)
+
+    cpdef free_all_free(self):
+        """Release free blocks."""
+        dev = device.get_device_id()
+        self._pools[dev].free_all_free()
+
+    cpdef n_free_blocks(self):
+        """Count the total number of free blocks.
+
+        Returns:
+            int: The total number of free blocks.
+        """
+        dev = device.get_device_id()
+        return self._pools[dev].n_free_blocks()

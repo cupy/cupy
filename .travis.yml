@@ -39,12 +39,12 @@ before_install:
       python --version;
 
       brew install homebrew/science/hdf5;
-
-      pip install h5py;
     fi
 
 install:
+  - pip install cython
   - python setup.py install
+  - pip install h5py
   - pip install nose flake8 hacking mock
 
 script:

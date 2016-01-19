@@ -1,6 +1,7 @@
 import ctypes
 import unittest
 
+import cupy.cuda
 from cupy.cuda import memory
 from cupy import testing
 
@@ -140,14 +141,38 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
-        self.pool = memory.SingleDeviceMemoryPool()
+        self.pool = memory.MemoryPool()
 
     def test_zero_size_alloc(self):
-        mem = self.pool.malloc(0).mem
-        self.assertIsInstance(mem, memory.Memory)
-        self.assertNotIsInstance(mem, memory.PooledMemory)
+        with cupy.cuda.Device(0):
+            mem = self.pool.malloc(0).mem
+            self.assertIsInstance(mem, memory.Memory)
+            self.assertNotIsInstance(mem, memory.PooledMemory)
 
     def test_double_free(self):
-        mem = self.pool.malloc(1).mem
-        mem.free()
-        mem.free()
+        with cupy.cuda.Device(0):
+            mem = self.pool.malloc(1).mem
+            mem.free()
+            mem.free()
+
+    def test_free_all_free(self):
+        with cupy.cuda.Device(0):
+            mem = self.pool.malloc(1).mem
+            self.assertIsInstance(mem, memory.Memory)
+            self.assertIsInstance(mem, memory.PooledMemory)
+            self.assertEqual(self.pool.n_free_blocks(), 0)
+            mem.free()
+            self.assertEqual(self.pool.n_free_blocks(), 1)
+            self.pool.free_all_free()
+            self.assertEqual(self.pool.n_free_blocks(), 0)
+
+    def test_free_all_free_without_malloc(self):
+        with cupy.cuda.Device(0):
+            # call directly without malloc.
+            self.pool.free_all_free()
+            self.assertEqual(self.pool.n_free_blocks(), 0)
+
+    def test_n_free_blocks_without_malloc(self):
+        with cupy.cuda.Device(0):
+            # call directly without malloc/free_all_free.
+            self.assertEqual(self.pool.n_free_blocks(), 0)

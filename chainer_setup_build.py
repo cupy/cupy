@@ -81,6 +81,7 @@ MODULES = [
         'file': [
             'cupy.core.core',
             'cupy.core.flags',
+            'cupy.core.internal',
             'cupy.cuda.cublas',
             'cupy.cuda.curand',
             'cupy.cuda.device',
@@ -351,7 +352,10 @@ def parse_args():
 
 
 def get_cython_pkg():
-    return pkg_resources.get_distribution('cython')
+    try:
+        return pkg_resources.get_distribution('cython')
+    except pkg_resources.DistributionNotFound:
+        return None
 
 
 def run_command(cmd):
