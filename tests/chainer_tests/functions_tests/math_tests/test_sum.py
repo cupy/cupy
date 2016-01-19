@@ -91,7 +91,7 @@ class TestSum(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, axis=None):
         gradient_check.check_backward(
-            functions.Sum(axis), x_data, y_grad)
+            functions.Sum(axis), x_data, y_grad, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -121,7 +121,7 @@ class TestSum(unittest.TestCase):
     @condition.retry(3)
     def test_backward_negative_multi_axis_cpu(self):
         gy = numpy.ones_like(self.x.sum(axis=(0, -1))) * self.gy
-        self.check_backward(self.x, gy, axis=(0, -1), atol=1e-4)
+        self.check_backward(self.x, gy, axis=(0, -1))
 
     @condition.retry(3)
     def test_backward_negative_multi_axis_invert_cpu(self):
