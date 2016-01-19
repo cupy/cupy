@@ -7,25 +7,26 @@ from chainer.links.connection import linear
 
 
 class Maxout(link.Chain):
-    """Maxout Networks
+    """Fully-connected maxout layer.
 
-    It has three dimensional weight tensor whose shape is ``(M, C, N)``
-    and optional bias vector whose shape is ``(M, C)`` where
-   ``M`` is an output dimension,``C`` the number of channel, and
-    ``N`` an input dimension . It computes
+    Let ``M``, ``P`` and ``N`` be an input dimension, a pool size,
+    and an output dimension, respectively.
+    For input vector :math:`x` of size ``M``, it computes
 
     .. math::
 
       Y_{i} = \\mathrm{max}_{j} (W_{ij\\cdot}x + b_{ij}).
 
-    Here, :math:`x` is a input vector and :math:`W_{ij\\cdot}`
-    is a sub-vector extracted from :math:`W` by fixing first
-    and second dimensions to :math:`i` and :math:`j`, respectively.
+    Here :math:`W` is a weight tensor of shape ``(M, P, N)``,
+    :math:`b` an  optional bias vector of shape ``(M, P)``
+    and :math:`W_{ij\\cdot}` is a sub-vector extracted from
+    :math:`W` by fixing first and second dimensions to
+    :math:`i` and :math:`j`, respectively.
     Minibatch dimension is omitted in the above equation.
 
-    As an actual implementation, this Chain has a linear Link with
-    a ``(M * C, N)`` weight vector and an optional ``M * C``
-    dimensional bias.
+    As for the actual implementation, this Chain has a
+    linear Link with a ``(M * P, N)`` weight matrix and
+    an optional ``M * P`` dimensional bias vector.
 
     Args:
         in_size (int): Dimension of input vectors.
