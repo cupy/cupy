@@ -6,12 +6,17 @@ import six
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer.functions.math.batch_l2_norm_squared import _as_two_dim
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import type_check
+
+
+def _as_two_dim(x):
+    if x.ndim == 2:
+        return x
+    return x.reshape((len(x), -1))
 
 
 @testing.parameterize(
