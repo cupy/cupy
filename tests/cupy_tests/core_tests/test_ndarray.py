@@ -49,12 +49,13 @@ class TestNdarrayInitRaise(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'shape': [(3, 4, 5)],
-        'inds': [(2,), (2, 3)],
+        'indices_shape': [(2,), (2, 3)],
         'axis': [None, 0, 1],
     })
 )
 class TestNdarrayTake(unittest.TestCase):
+
+    shape = (3, 4, 5)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal(accept_error=False)
@@ -64,8 +65,25 @@ class TestNdarrayTake(unittest.TestCase):
             m = a.size
         else:
             m = a.shape[self.axis]
-        i = testing.shaped_arange(self.inds, xp, numpy.int32) % m
+        i = testing.shaped_arange(self.indices_shape, xp, numpy.int32) % m
         return a.take(i, self.axis)
+
+
+@testing.parameterize(
+    *testing.product({
+        'indices': [2, [0, 1]],
+        'axis': [None, 0, 1],
+    })
+)
+class TestNdarrayTakeWithInt(unittest.TestCase):
+
+    shape = (3, 4, 5)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(accept_error=False)
+    def test_take(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return a.take(self.indices, self.axis)
 
 
 class TestNdarrayTakeError(unittest.TestCase):

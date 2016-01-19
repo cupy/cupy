@@ -1682,7 +1682,8 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
         adim = a.shape[axis]
 
     if numpy.isscalar(indices):
-        a = rollaxis(a, axis)
+        if axis is not None:
+            a = rollaxis(a, axis)
         if out is None:
             return a[indices].copy()
         else:
