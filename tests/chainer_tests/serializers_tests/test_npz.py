@@ -58,6 +58,7 @@ class TestDictionarySerializer(unittest.TestCase):
         self.assertIs(ret, 10)
 
 
+@testing.parameterize(*testing.product({'compress': [False, True]}))
 class TestNpzDeserializer(unittest.TestCase):
 
     def setUp(self):
@@ -67,7 +68,8 @@ class TestNpzDeserializer(unittest.TestCase):
         os.close(fd)
         self.temp_file_path = path
         with open(path, 'wb') as f:
-            numpy.savez(
+            savez = numpy.savez_compressed if self.compress else numpy.savez
+            savez(
                 f, **{'x/': None, 'y': self.data, 'z': numpy.asarray(10)})
 
         self.npzfile = numpy.load(path)
@@ -104,6 +106,7 @@ class TestNpzDeserializer(unittest.TestCase):
         self.assertEqual(ret, 10)
 
 
+@testing.parameterize(*testing.product({'compress': [False, True]}))
 class TestSaveNpz(unittest.TestCase):
 
     def setUp(self):
@@ -117,13 +120,14 @@ class TestSaveNpz(unittest.TestCase):
 
     def test_save(self):
         obj = mock.MagicMock()
-        npz.save_npz(self.temp_file_path, obj)
+        npz.save_npz(self.temp_file_path, obj, self.compress)
 
         self.assertEqual(obj.serialize.call_count, 1)
         (serializer,), _ = obj.serialize.call_args
         self.assertIsInstance(serializer, npz.DictionarySerializer)
 
 
+@testing.parameterize(*testing.product({'compress': [False, True]}))
 class TestLoadNpz(unittest.TestCase):
 
     def setUp(self):
@@ -131,7 +135,8 @@ class TestLoadNpz(unittest.TestCase):
         os.close(fd)
         self.temp_file_path = path
         with open(path, 'wb') as f:
-            numpy.savez(f, None)
+            savez = numpy.savez_compressed if self.compress else numpy.savez
+            savez(f, None)
 
     def tearDown(self):
         if hasattr(self, 'temp_file_path'):
@@ -146,6 +151,7 @@ class TestLoadNpz(unittest.TestCase):
         self.assertIsInstance(serializer, npz.NpzDeserializer)
 
 
+@testing.parameterize(*testing.product({'compress': [False, True]}))
 class TestGroupHierachy(unittest.TestCase):
 
     def setUp(self):
@@ -160,6 +166,8 @@ class TestGroupHierachy(unittest.TestCase):
 
         self.optimizer = optimizers.AdaDelta()
         self.optimizer.setup(self.parent)
+
+        self.savez = numpy.savez_compressed if self.compress else numpy.savez
 
     def _save(self, target, obj, name):
         serializer = npz.DictionarySerializer(target, name)
@@ -189,7 +197,7 @@ class TestGroupHierachy(unittest.TestCase):
         d = {}
         self._save(d, self.parent, 'test/')
         with open(self.temp_file_path, 'wb') as f:
-            numpy.savez(f, **d)
+            self.savez(f, **d)
         with numpy.load(self.temp_file_path) as f:
             self._check_chain_group(f, ('Wp',), 'test/')
 
@@ -197,18 +205,18 @@ class TestGroupHierachy(unittest.TestCase):
         d = {}
         self._save(d, self.optimizer, 'test/')
         with open(self.temp_file_path, 'wb') as f:
-            numpy.savez(f, **d)
+            self.savez(f, **d)
         with numpy.load(self.temp_file_path) as f:
             self._check_optimizer_group(
                 f, ('Wp/msg', 'Wp/msdx', 'epoch', 't'), 'test/')
 
     def test_save_chain2(self):
-        npz.save_npz(self.temp_file_path, self.parent)
+        npz.save_npz(self.temp_file_path, self.parent, self.compress)
         with numpy.load(self.temp_file_path) as f:
             self._check_chain_group(f, ('Wp', ))
 
     def test_save_optimizer2(self):
-        npz.save_npz(self.temp_file_path, self.optimizer)
+        npz.save_npz(self.temp_file_path, self.optimizer, self.compress)
         with numpy.load(self.temp_file_path) as f:
             self._check_optimizer_group(f, ('Wp/msg', 'Wp/msdx', 'epoch', 't'))
 
