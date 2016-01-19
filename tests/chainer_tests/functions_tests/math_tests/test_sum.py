@@ -121,7 +121,7 @@ class TestSum(unittest.TestCase):
     @condition.retry(3)
     def test_backward_negative_multi_axis_cpu(self):
         gy = numpy.ones_like(self.x.sum(axis=(0, -1))) * self.gy
-        self.check_backward(self.x, gy, axis=(0, -1))
+        self.check_backward(self.x, gy, axis=(0, -1), atol=1e-4)
 
     @condition.retry(3)
     def test_backward_negative_multi_axis_invert_cpu(self):
