@@ -48,14 +48,11 @@ class TestNdarrayInitRaise(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (3, 4, 5), 'inds': (2,), 'axis': None},
-    {'shape': (3, 4, 5), 'inds': (2,), 'axis': 0},
-    {'shape': (3, 4, 5), 'inds': (2,), 'axis': 1},
-    {'shape': (3, 4, 5), 'inds': (2,), 'axis': 2},
-    {'shape': (3, 4, 5), 'inds': (2, 3), 'axis': None},
-    {'shape': (3, 4, 5), 'inds': (2, 3), 'axis': 0},
-    {'shape': (3, 4, 5), 'inds': (2, 3), 'axis': 1},
-    {'shape': (3, 4, 5), 'inds': (2, 3), 'axis': 2},
+    *testing.product({
+        'shape': [(3, 4, 5)],
+        'inds': [(2,), (2, 3)],
+        'axis': [None, 0, 1],
+    })
 )
 class TestNdarrayTake(unittest.TestCase):
 
