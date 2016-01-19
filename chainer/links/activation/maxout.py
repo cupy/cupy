@@ -11,7 +11,7 @@ class Maxout(link.Chain):
 
     Let ``M``, ``P`` and ``N`` be an input dimension, a pool size,
     and an output dimension, respectively.
-    For input vector :math:`x` of size ``M``, it computes
+    For an input vector :math:`x` of size ``M``, it computes
 
     .. math::
 
@@ -24,8 +24,8 @@ class Maxout(link.Chain):
     :math:`i` and :math:`j`, respectively.
     Minibatch dimension is omitted in the above equation.
 
-    As for the actual implementation, this Chain has a
-    linear Link with a ``(M * P, N)`` weight matrix and
+    As for the actual implementation, this chain has a
+    Linear link with a ``(M * P, N)`` weight matrix and
     an optional ``M * P`` dimensional bias vector.
 
     Args:
@@ -40,7 +40,7 @@ class Maxout(link.Chain):
             If it is ``None``, bias is omitted.
 
     Attributes:
-        linear (~chainer.Link): The Linear Link that performs
+        linear (~chainer.Link): The Linear link that performs
         affine transformation.
 
     .. seealso:: :func:`~chainer.functions.maxout`

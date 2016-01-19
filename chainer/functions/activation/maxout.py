@@ -32,10 +32,10 @@ def maxout(x, pool_size, axis=1):
     """
 
     if pool_size <= 0:
-        raise ValueError('pool_size must be positive integer.')
+        raise ValueError('pool_size must be a positive integer.')
 
     if x.data.shape[axis] % pool_size != 0:
-        expect = 'x.data.shape[axis] % pool_size != 0'
+        expect = 'x.data.shape[axis] % pool_size == 0'
         actual = 'x.data.shape[axis]={}, pool_size={}'.format(
             x.data.shape[axis], pool_size)
         msg = 'axis dimension must be divided by pool_size'
