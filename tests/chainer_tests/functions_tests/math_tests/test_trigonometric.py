@@ -50,7 +50,7 @@ class UnaryFunctionsTestBase(object):
         self.check_forward_gpu(F.sin, numpy.sin)
 
     def check_backward(self, op, x_data, y_grad):
-        gradient_check.check_backward(op, (x_data,), y_grad)
+        gradient_check.check_backward(op, x_data, y_grad)
 
     def check_backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
