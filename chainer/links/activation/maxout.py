@@ -30,7 +30,7 @@ class Maxout(link.Chain):
     Args:
         in_size (int): Dimension of input vectors.
         out_size (int): Dimension of output vectors.
-        num_channel (int): Number of channels.
+        pool_size (int): Number of channels.
         wscale (float): Scaling factor of the weight matrix.
         initialW (3-D array or None): Initial weight value.
             If ``None``, then this function uses ``wscale`` to initialize.
@@ -52,9 +52,9 @@ class Maxout(link.Chain):
          `URL <http://jmlr.org/proceedings/papers/v28/goodfellow13.html>`_
     """
 
-    def __init__(self, in_size, out_size, num_channel,
+    def __init__(self, in_size, out_size, pool_size,
                  wscale=1, initialW=None, initial_bias=0):
-        linear_out_size = out_size * num_channel
+        linear_out_size = out_size * pool_size
         if initialW is not None:
             initialW = initialW.reshape(linear_out_size, in_size)
 
@@ -74,7 +74,7 @@ class Maxout(link.Chain):
                 nobias=initial_bias is None, initialW=initialW,
                 initial_bias=initial_bias))
         self.out_size = out_size
-        self.num_channel = num_channel
+        self.pool_size = pool_size
 
     def __call__(self, x):
         """Applies the maxout layer.
@@ -86,4 +86,4 @@ class Maxout(link.Chain):
             ~chainer.Variable: Output of the maxout layer.
         """
         y = self.linear(x)
-        return maxout.maxout(y, self.num_channel)
+        return maxout.maxout(y, self.pool_size)

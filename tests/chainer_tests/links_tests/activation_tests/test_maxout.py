@@ -30,7 +30,7 @@ def _maxout(x, W, b):
 @testing.parameterize(
     *testing.product(
         {'in_shape': [(2, ), (2, 5)],
-         'num_channel': [3],
+         'pool_size': [3],
          'out_size': [4],
          'wscale': [1],
          'initial_bias': ['random', 'scalar', None],
@@ -53,23 +53,23 @@ class TestMaxout(unittest.TestCase):
 
         in_size = numpy.prod(self.in_shape)
         initialW = numpy.random.uniform(
-            -0.05, 0.05, (self.out_size, self.num_channel, in_size)
+            -0.05, 0.05, (self.out_size, self.pool_size, in_size)
         ).astype(numpy.float32)
         for o in six.moves.range(self.out_size):
             w = numpy.arange(in_size, dtype=numpy.float32) + 1
-            for c in six.moves.range(self.num_channel):
+            for c in six.moves.range(self.pool_size):
                 initialW[o, c, :] += w * c
 
         if self.initial_bias == 'random':
             initial_bias = numpy.random.uniform(
-                -0.05, 0.05, (self.out_size, self.num_channel))
+                -0.05, 0.05, (self.out_size, self.pool_size))
         elif self.initial_bias == 'scalar':
             initial_bias = numpy.full(
-                (self.out_size, self.num_channel), 5, dtype=numpy.float32)
+                (self.out_size, self.pool_size), 5, dtype=numpy.float32)
         elif self.initial_bias is None:
             initial_bias = None
 
-        self.link = links.Maxout(in_size, self.out_size, self.num_channel,
+        self.link = links.Maxout(in_size, self.out_size, self.pool_size,
                                  self.wscale, initialW, initial_bias)
 
         self.y = _maxout(self.x, initialW, initial_bias)
@@ -125,19 +125,19 @@ class TestInitialization(unittest.TestCase):
     def setUp(self):
         self.in_size = 2
         self.out_size = 3
-        self.num_channel = 4
+        self.pool_size = 4
         self.initialW = numpy.random.uniform(
-            -1, 1, (self.out_size, self.num_channel, self.in_size)
+            -1, 1, (self.out_size, self.pool_size, self.in_size)
         ).astype(numpy.float32)
         self.initial_bias = numpy.random.uniform(
-            -1, 1, (self.out_size, self.num_channel)
+            -1, 1, (self.out_size, self.pool_size)
         ).astype(numpy.float32)
         self.link = links.Maxout(
-            self.in_size, self.out_size, self.num_channel,
+            self.in_size, self.out_size, self.pool_size,
             initialW=self.initialW, initial_bias=self.initial_bias)
 
     def check_param(self):
-        linear_out_size = self.out_size * self.num_channel
+        linear_out_size = self.out_size * self.pool_size
         initialW = self.initialW.reshape((linear_out_size, -1))
         gradient_check.assert_allclose(initialW, self.link.linear.W.data)
         initial_bias = self.initial_bias.reshape((linear_out_size,))
