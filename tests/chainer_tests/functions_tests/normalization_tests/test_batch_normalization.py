@@ -12,6 +12,14 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+def _batch_normalization(expander, gamma, beta, x, mean, var):
+    mean = mean[expander]
+    std = numpy.sqrt(var)[expander]
+    y_expect = (gamma[expander] * (x - mean) / std + beta[expander])
+    return y_expect
+
+
+
 @testing.parameterize(*testing.product({
     'ndim': [0, 1, 2, 3],
 }))
@@ -37,13 +45,10 @@ class TestBatchNormalization(unittest.TestCase):
             *[chainer.Variable(i) for i in args], eps=self.eps)
         self.assertEqual(y.data.dtype, numpy.float32)
 
-        mean = self.mean[self.expander]
-        std = numpy.sqrt(self.var + self.eps)[self.expander]
-        y_expect = (self.gamma[self.expander] * (self.x - mean) / std
-                    + self.beta[self.expander])
+        y_expect = _batch_normalization(
+            self.expander, self.gamma, self.beta, self.x, self.mean, self.var)
 
         gradient_check.assert_allclose(y_expect, y.data, rtol=1e-3, atol=1e-4)
-        self.assertEqual(numpy.float32, y.data.dtype)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -107,13 +112,10 @@ class TestFixedBatchNormalization(unittest.TestCase):
             *[chainer.Variable(i) for i in args], eps=self.eps)
         self.assertEqual(y.data.dtype, numpy.float32)
 
-        mean = self.mean[self.expander]
-        std = numpy.sqrt(self.var)[self.expander]
-        y_expect = (self.gamma[self.expander] * (self.x - mean) / std
-                    + self.beta[self.expander])
+        y_expect = _batch_normalization(
+            self.expander, self.gamma, self.beta, self.x, self.mean, self.var)
 
         gradient_check.assert_allclose(y_expect, y.data, rtol=1e-3, atol=1e-4)
-        self.assertEqual(numpy.float32, y.data.dtype)
 
     @condition.retry(3)
     def test_forward_cpu(self):
