@@ -6,6 +6,7 @@ import six
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer.functions.activation import maxout
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -79,31 +80,13 @@ class TestNonparameterizedMaxout(unittest.TestCase):
             b, cuda.to_gpu(self.y))
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
-        x = chainer.Variable(x_data)
-        W = chainer.Variable(W_data)
-        if b_data is None:
-            y = functions.maxout(x, W)
-        else:
-            b = chainer.Variable(b_data)
-            y = functions.maxout(x, W, b)
-
-        y.grad = y_grad
-        y.backward()
-        func = y.creator
-
-        if b_data is None:
-            f = lambda: func.forward((x.data, W.data))
-            gx, gW = gradient_check.numerical_grad(
-                f, (x.data, W.data), (y.grad, ), eps=1e-2)
-        else:
-            f = lambda: func.forward((x.data, W.data, b.data))
-            gx, gW, gb = gradient_check.numerical_grad(
-                f, (x.data, W.data, b.data), (y.grad, ), eps=1e-2)
-
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-2)
-        gradient_check.assert_allclose(gW, W.grad, atol=1e-2)
+        args = (x_data, W_data)
         if b_data is not None:
-            gradient_check.assert_allclose(gb, b.grad, atol=1e-2)
+            args = args + (b_data,)
+
+        gradient_check.check_backward(
+            maxout.MaxoutFunction(), args, y_grad,
+            eps=1e-2, atol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

@@ -51,18 +51,8 @@ class TestPReLUSingle(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        W = self.link.W
-        link = self.link
-        f = lambda: (link(x).data,)
-        gx, gW = gradient_check.numerical_grad(f, (x.data, W.data), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gW, W.grad, atol=1e-4)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, self.link.W, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):

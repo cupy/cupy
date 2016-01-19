@@ -83,10 +83,10 @@ class ComputationalGraph(object):
             ret += DotNode(node).label
         for edge in self.edges:
             head, tail = edge
-            assert (isinstance(head, variable.Variable)
-                    and isinstance(tail, function.Function)) or \
-                   (isinstance(head, function.Function)
-                    and isinstance(tail, variable.Variable))
+            assert (isinstance(head, variable.Variable) and
+                    isinstance(tail, function.Function)) or \
+                   (isinstance(head, function.Function) and
+                    isinstance(tail, variable.Variable))
             head_node = DotNode(head)
             tail_node = DotNode(tail)
             ret += "%s -> %s;" % (head_node.id_, tail_node.id_)

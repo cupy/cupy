@@ -77,16 +77,9 @@ class TestMax(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), axis=(-2, 0))
 
     def check_backward(self, x_data, y_grad, axis=None, keepdims=False):
-        x = chainer.Variable(x_data)
-        y = functions.max(x, axis=axis, keepdims=keepdims)
-
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data.copy(),))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,), eps=1e-5)
-        gradient_check.assert_allclose(gx, x.grad, rtol=1e-3, atol=1e-3)
+        gradient_check.check_backward(
+            functions.Max(axis, keepdims),
+            x_data, y_grad, eps=1e-5, rtol=1e-3, atol=1e-3)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -249,16 +242,9 @@ class TestMin(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), axis=(-2, 0))
 
     def check_backward(self, x_data, y_grad, axis=None, keepdims=False):
-        x = chainer.Variable(x_data)
-        y = functions.min(x, axis=axis, keepdims=keepdims)
-
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data.copy(),))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,), eps=1e-5)
-        gradient_check.assert_allclose(gx, x.grad, rtol=1e-3, atol=1e-3)
+        gradient_check.check_backward(
+            functions.Min(axis=axis, keepdims=keepdims),
+            x_data, y_grad, eps=1e-4, rtol=1e-3, atol=1e-3)
 
     @condition.retry(3)
     def test_backward_cpu(self):

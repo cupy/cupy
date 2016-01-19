@@ -5,6 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
@@ -31,13 +32,8 @@ class TestReshape(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = functions.reshape(x, self.gy.shape)
-        y.grad = y_grad
-        y.backward()
-
-        shape = self.x.shepe
-        self.assertTrue((self.gy.reshape(shape) == cuda.to_cpu(x.grad)).all())
+        gradient_check.check_backward(
+            functions.Reshape(self.gy.shape), x_data, y_grad)
 
 
 class TestReshapeUnknownDimension(TestReshape):

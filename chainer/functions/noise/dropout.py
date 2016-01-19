@@ -23,8 +23,8 @@ class Dropout(function.Function):
         if xp == numpy:
             flag = xp.random.rand(*x[0].shape) >= self.dropout_ratio
         else:
-            flag = (xp.random.rand(*x[0].shape, dtype=numpy.float32)
-                    >= self.dropout_ratio)
+            flag = (xp.random.rand(*x[0].shape, dtype=numpy.float32) >=
+                    self.dropout_ratio)
         self.mask = scale * flag
         return x[0] * self.mask,
 

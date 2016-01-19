@@ -34,11 +34,9 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
     if cupy_error is None and numpy_error is None:
         self.fail('Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
-        self.fail('Only numpy raises error\n\n'
-                  + numpy_tb)
+        self.fail('Only numpy raises error\n\n' + numpy_tb)
     elif numpy_error is None:
-        self.fail('Only cupy raises error\n\n'
-                  + cupy_tb)
+        self.fail('Only cupy raises error\n\n' + cupy_tb)
     elif type(cupy_error) is not type(numpy_error):
         msg = '''Differnet types of errors occurred
 

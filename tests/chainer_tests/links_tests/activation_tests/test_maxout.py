@@ -92,25 +92,13 @@ class TestMaxout(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x).data, )
         if self.initial_bias is None:
-            gx, gW = gradient_check.numerical_grad(
-                f, (x.data, self.link.W.data),
-                (y.grad, ), eps=1e-4)
+            params = (self.link.W,)
         else:
-            gx, gW, gb = gradient_check.numerical_grad(
-                f, (x.data, self.link.W.data, self.link.b.data),
-                (y.grad, ), eps=1e-4)
+            params = (self.link.W, self.link.b)
 
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-2)
-        gradient_check.assert_allclose(gW, self.link.W.grad, atol=1e-2)
-        if self.initial_bias is not None:
-            gradient_check.assert_allclose(gb, self.link.b.grad, atol=1e-2)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, params, eps=1e-4, atol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
