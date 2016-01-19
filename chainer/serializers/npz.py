@@ -35,7 +35,7 @@ class DictionarySerializer(serializer.Serializer):
         return ret
 
 
-def save_npz(filename, obj):
+def save_npz(filename, obj, compression=True):
     """Saves an object to the file in NPZ format.
 
     This is a short-cut function to save only one object into an NPZ file.
@@ -43,12 +43,17 @@ def save_npz(filename, obj):
     Args:
         filename (str): Target file name.
         obj: Object to be serialized. It must support serialization protocol.
+        compression (bool): If True, compression in the resulting zip file is
+            enabled.
 
     """
     s = DictionarySerializer()
     s.save(obj)
     with open(filename, 'wb') as f:
-        numpy.savez(f, **s.target)
+        if compression:
+            numpy.savez_compressed(f, **s.target)
+        else:
+            numpy.savez(f, **s.target)
 
 
 class NpzDeserializer(serializer.Deserializer):
