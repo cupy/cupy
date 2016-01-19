@@ -244,6 +244,7 @@ class TestNoH5py(unittest.TestCase):
 
     def test_raise(self):
         del sys.modules['chainer.serializers.hdf5']
+        del sys.modules['chainer.serializers.npz']
         del sys.modules['chainer.serializers']
 
         import chainer.serializers
