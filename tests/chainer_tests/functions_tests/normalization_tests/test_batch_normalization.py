@@ -6,6 +6,7 @@ import six
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer.functions.normalization import batch_normalization
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -60,21 +61,9 @@ class TestBatchNormalization(unittest.TestCase):
         self.check_forward([cuda.to_gpu(i) for i in self.args])
 
     def check_backward(self, args, y_grad):
-        args = [chainer.Variable(i) for i in args]
-        y = functions.batch_normalization(*args, eps=self.eps)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: (func(*args).data,)
-        grad = gradient_check.numerical_grad(
-            f, [i.data for i in args], (y.grad,), eps=1e-2)
-
-        x, gamma, beta = args
-        gx, ggamma, gbeta = grad
-        gradient_check.assert_allclose(gx, x.grad, rtol=1e-3, atol=1e-4)
-        gradient_check.assert_allclose(ggamma, gamma.grad)
-        gradient_check.assert_allclose(gbeta, beta.grad)
+        gradient_check.check_backward(
+            batch_normalization.BatchNormalizationFunction(eps=self.eps),
+            args, y_grad, eps=1e-2, rtol=1e-3, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -127,24 +116,9 @@ class TestFixedBatchNormalization(unittest.TestCase):
         self.check_forward([cuda.to_gpu(i) for i in self.args])
 
     def check_backward(self, args, y_grad):
-        args = [chainer.Variable(i) for i in args]
-        y = functions.fixed_batch_normalization(*args, eps=self.eps)
-        y.grad = y_grad
-        y.backward()
-
-        args_data = [i.data for i in args]
-        func = y.creator
-        f = lambda: func.forward(args_data)
-        grad = gradient_check.numerical_grad(
-            f, args_data, (y.grad,), eps=1e-2)
-
-        x, gamma, beta, mean, var = args
-        gx, ggamma, gbeta, gmean, gvar = grad
-        gradient_check.assert_allclose(gx, x.grad, rtol=1e-3, atol=1e-4)
-        gradient_check.assert_allclose(ggamma, gamma.grad)
-        gradient_check.assert_allclose(gbeta, beta.grad)
-        gradient_check.assert_allclose(gmean, mean.grad)
-        gradient_check.assert_allclose(gvar, var.grad, rtol=1e-3, atol=1e-4)
+        gradient_check.check_backward(
+            batch_normalization.BatchNormalizationFunction(eps=self.eps),
+            args, y_grad, eps=1e-2, rtol=1e-3, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
