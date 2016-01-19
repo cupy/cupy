@@ -48,17 +48,8 @@ class TestBatchL2NormSquared(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = functions.batch_l2_norm_squared(x)
-
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,), eps=1)
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.BatchL2NormSquared(), x_data, y_grad, eps=1)
 
     @condition.retry(3)
     def test_backward_cpu(self):
