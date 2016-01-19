@@ -41,16 +41,8 @@ class InvFunctionTest(unittest.TestCase):
             _inv(self.x), y.data, atol=atol, rtol=rtol)
 
     def check_backward(self, x_data, y_grad, **kwargs):
-        x = chainer.Variable(x_data)
-        y = functions.inv(x)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad, **kwargs)
+        gradient_check.check_backward(
+            functions.Inv(), x_data, y_grad, **kwargs)
 
     @condition.retry(3)
     def test_identity_cpu(self):
@@ -102,16 +94,8 @@ class BatchInvFunctionTest(unittest.TestCase):
             _inv(self.x), y.data, atol=atol, rtol=rtol)
 
     def check_backward(self, x_data, y_grad, **kwargs):
-        x = chainer.Variable(x_data)
-        y = functions.batch_inv(x)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad, **kwargs)
+        gradient_check.check_backward(
+            functions.BatchInv(), x_data, y_grad, **kwargs)
 
     @condition.retry(3)
     def test_identity_cpu(self):
