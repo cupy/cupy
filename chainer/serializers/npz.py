@@ -12,11 +12,24 @@ class DictionarySerializer(serializer.Serializer):
     simply mapped to a flat dictionary with keys representing the paths to
     objects in the hierarchy.
 
+    .. note::
+       Despite of its name, this serializer DOES NOT serialize the
+       object into external files. It just build a flat dictionary of arrays
+       that can be fed into :func:`numpy.savez` and
+       :func:`numpy.savez_compressed`. If you want to use this serializer
+       directly, you have to manually send a resulting dictionary to one of
+       these functions.
+
     Args:
         target (dict): The dictionary that this serializer saves the objects
             to. If target is None, then a new dictionary is created.
         path (str): The base path in the hierarchy that this serializer
             indicates.
+
+    Attributes:
+        target (dict): The target dictionary. Once the serialization completes,
+            this dictionary can be fed into :func:`numpy.savez` or
+            :func:`numpy.savez_compressed` to serialize it in the NPZ format.
 
     """
     def __init__(self, target=None, path=''):
