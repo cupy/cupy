@@ -14,7 +14,6 @@ Minimum requirements:
 - Python 2.7.6+, 3.4.3+, 3.5.0+
 - NumPy 1.9, 1.10
 - Six 1.9
-- h5py 2.5.0
 
 Requirements for some features:
 - CUDA support
@@ -26,18 +25,15 @@ Requirements for some features:
 - Caffe model support
   - Python 2.7.6+ (Py3 is not supported)
   - Protocol Buffers (pip install protobuf)
+- HDF5 serialization support
+  - h5py 2.5.0
 - Testing utilities
   - Mock
   - Nose
 
 ## Installation
 
-Chainer requires libhdf5 via h5py. Anaconda distribution includes this package. If you are using another Python distribution, use either of the following commands to install libhdf5 depending on your Linux environment:
-
-```
-apt-get install libhdf5-dev
-yum install hdf5-devel
-```
+### Minimum installation
 
 If you use old ``setuptools``, upgrade it:
 
@@ -54,6 +50,9 @@ You can also install Chainer from the source code:
 ```
 python setup.py install
 ```
+
+
+### Installation with CUDA
 
 If you want to enable CUDA, first you have to install CUDA and set the environment variable `PATH` and `LD_LIBRARY_PATH` for CUDA executables and libraries.
 For example, if you are using Ubuntu and CUDA is installed by the official distribution, then CUDA is installed at `/usr/local/cuda`.
@@ -75,6 +74,27 @@ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 ```
 Do not forget to restart your terminal session (or `source` it) to enable these changes.
 And then, reinstall Chainer.
+
+
+### HDF5 Support
+
+If you want to use HDF5 serialization, please install h5py manually.
+h5py requires libhdf5.
+Anaconda distribution includes this package.
+If you are using another Python distribution, use either of the following commands to install libhdf5 depending on your Linux environment:
+
+```
+apt-get install libhdf5-dev
+yum install hdf5-devel
+```
+
+And then, install h5py via PyPI.
+You may need to install Cython for h5py.
+
+```
+pip install cython
+pip install h5py
+```
 
 
 ## Reference

@@ -48,14 +48,8 @@ class TestEmbedID(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x).data,)
-        gW, = gradient_check.numerical_grad(f, (self.link.W.data,), (y.grad,))
-        gradient_check.assert_allclose(gW, self.link.W.grad)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, self.link.W)
 
     @condition.retry(3)
     def test_backward_cpu(self):

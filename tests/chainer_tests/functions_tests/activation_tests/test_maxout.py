@@ -5,6 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer.functions.activation import maxout
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr

@@ -72,18 +72,11 @@ class TestMaxPooling2D(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), False)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.max_pooling_2d(x, 3, stride=2, pad=1,
-                                     cover_all=self.cover_all,
-                                     use_cudnn=use_cudnn)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
+        gradient_check.check_backward(
+            functions.MaxPooling2D(
+                3, stride=2, pad=1, cover_all=self.cover_all,
+                use_cudnn=use_cudnn),
+            x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):

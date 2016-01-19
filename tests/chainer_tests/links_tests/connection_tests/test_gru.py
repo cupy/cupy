@@ -93,7 +93,8 @@ class TestGRU(unittest.TestCase):
         y.grad = y_grad
         y.backward()
 
-        f = lambda: (_gru(self.link, h_data, x_data),)
+        def f():
+            return _gru(self.link, h_data, x_data),
         gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
         gradient_check.assert_allclose(gx, x.grad, atol=1e-3)
 

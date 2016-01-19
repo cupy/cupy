@@ -26,17 +26,8 @@ class TestSoftplus(unittest.TestCase):
         gradient_check.assert_allclose(y_exp, y.data)
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = functions.softplus(x, beta=self.beta)
-        self.assertEqual(y.data.dtype, numpy.float32)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.Softplus(beta=self.beta), x_data, y_grad)
 
     @condition.retry(3)
     def test_forward_cpu(self):

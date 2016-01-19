@@ -92,12 +92,6 @@ class TestMaxout(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x).data, )
         if self.initial_bias is None:
             gx, gW = gradient_check.numerical_grad(
                 f, (x.data, self.link.linear.W.data),

@@ -2,7 +2,6 @@ import unittest
 
 import numpy
 
-import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
@@ -19,19 +18,9 @@ class TestGaussian(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
     def check_backward(self, m_data, v_data, y_grad):
-        m = chainer.Variable(m_data)
-        v = chainer.Variable(v_data)
-        y = functions.gaussian(m, v)
-        self.assertEqual(y.data.dtype, numpy.float32)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((m.data, v.data))
-        gm, gv = gradient_check.numerical_grad(f, (m.data, v.data), (y.grad,))
-
-        gradient_check.assert_allclose(gm, m.grad, atol=1e-4, rtol=1e-3)
-        gradient_check.assert_allclose(gv, v.grad, atol=1e-4, rtol=1e-3)
+        gradient_check.check_backward(
+            functions.Gaussian(), (m_data, v_data), y_grad,
+            atol=1e-4, rtol=1e-3)
 
     @condition.retry(3)
     def test_backward_cpu(self):

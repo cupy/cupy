@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import unittest
 
@@ -221,6 +222,39 @@ class TestGroupHierachy(unittest.TestCase):
         hdf5.save_hdf5(self.temp_file_path, self.optimizer)
         with h5py.File(self.temp_file_path) as h5:
             self._check_group(h5, ('Wp', 'epoch', 't'))
+
+
+original_import = __import__
+
+
+def no_h5py(name, _globals=None, _locals=None, fromlist=(), level=0):
+    if name == 'h5py':
+        raise ImportError()
+    else:
+        return original_import(name, _globals, _locals, fromlist, level)
+
+
+class TestNoH5py(unittest.TestCase):
+
+    def setUp(self):
+        __builtins__['__import__'] = no_h5py
+
+    def tearDown(self):
+        __builtins__['__import__'] = original_import
+
+    def test_raise(self):
+        del sys.modules['chainer.serializers.hdf5']
+        del sys.modules['chainer.serializers']
+
+        import chainer.serializers
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.save_hdf5(None, None, None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.load_hdf5(None, None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.HDF5Serializer(None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.HDF5Deserializer(None)
 
 
 testing.run_module(__name__, __file__)
