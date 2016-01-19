@@ -106,3 +106,10 @@ cpdef sgemmBatched(size_t handle, int transa, int transb,
 
 cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc)
+
+cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize)
+
+cpdef sgetriBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t Carray, int ldc,
+                    size_t infoArray, int batchSize)

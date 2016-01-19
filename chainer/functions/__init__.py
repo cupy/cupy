@@ -41,6 +41,7 @@ from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared
 from chainer.functions.math import exponential
 from chainer.functions.math import identity
+from chainer.functions.math import inv
 from chainer.functions.math import matmul
 from chainer.functions.math import minmax
 from chainer.functions.math import sum
@@ -144,6 +145,8 @@ softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 
 BatchL2NormSquared = batch_l2_norm_squared.BatchL2NormSquared
 batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
+BatchInv = inv.BatchInv
+batch_inv = inv.batch_inv
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
 Cos = trigonometric.Cos
@@ -152,6 +155,8 @@ Exp = exponential.Exp
 exp = exponential.exp
 Identity = identity.Identity
 identity = identity.identity
+Inv = inv.Inv
+inv = inv.inv
 Log = exponential.Log
 log = exponential.log
 MatMul = matmul.MatMul
