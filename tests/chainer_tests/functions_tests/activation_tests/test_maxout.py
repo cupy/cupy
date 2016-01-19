@@ -9,6 +9,7 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import type_check
 
 
 def _maxout(x, pool_size, axis):
@@ -66,6 +67,27 @@ class TestNonparameterizedMaxout(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+
+@testing.parameterize(
+    {'x_shape': (2, 3, 4), 'pool_size': 5, 'error': type_check.InvalidType},
+    {'x_shape': (2, 3, 4), 'pool_size': -1, 'error': ValueError}
+)
+class InvalidArgument(unittest.TestCase):
+
+    def setUp(self):
+        self.x = chainer.Variable(
+            numpy.random.uniform(-1, 1, self.x_shape).astype(numpy.float32))
+
+    def test_invalid_shape_cpu(self):
+        with self.assertRaises(self.error):
+            functions.maxout(self.x, self.pool_size)
+
+    @attr.gpu
+    def test_invalid_shape_gpu(self):
+        self.x.to_gpu()
+        with self.assertRaises(self.error):
+            functions.maxout(self.x, self.pool_size)
 
 
 testing.run_module(__name__, __file__)

@@ -1,5 +1,6 @@
 from chainer.functions.array import reshape
 from chainer.functions.math import minmax
+from chainer.utils import type_check
 
 
 def maxout(x, pool_size, axis=1):
@@ -30,8 +31,15 @@ def maxout(x, pool_size, axis=1):
     .. seealso:: :class:`~chainer.links.Maxout`
     """
 
-    msg = 'channel dimension must be divided by num_channel'
-    assert x.data.shape[axis] % pool_size == 0, msg
+    if pool_size <= 0:
+        raise ValueError('pool_size must be positive integer.')
+
+    if x.data.shape[axis] % pool_size != 0:
+        expect = 'x.data.shape[axis] % pool_size != 0'
+        actual = 'x.data.shape[axis]={}, pool_size={}'.format(
+            x.data.shape[axis], pool_size)
+        msg = 'axis dimension must be divided by pool_size'
+        raise type_check.InvalidType(expect, actual, msg)
 
     shape = (x.data.shape[:axis] +
              (x.data.shape[axis] // pool_size, pool_size) +
