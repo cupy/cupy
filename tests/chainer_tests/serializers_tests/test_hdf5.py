@@ -3,7 +3,6 @@ import sys
 import tempfile
 import unittest
 
-import h5py
 import mock
 import numpy
 
@@ -16,6 +15,11 @@ from chainer import testing
 from chainer.testing import attr
 
 
+if hdf5._available:
+    import h5py
+
+
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestHDF5Serializer(unittest.TestCase):
 
     def setUp(self):
@@ -79,6 +83,7 @@ class TestHDF5Serializer(unittest.TestCase):
         self.assertIs(ret, 10)
 
 
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestHDF5Deserializer(unittest.TestCase):
 
     def setUp(self):
@@ -126,6 +131,7 @@ class TestHDF5Deserializer(unittest.TestCase):
         self.assertEqual(ret, 10)
 
 
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestSaveHDF5(unittest.TestCase):
 
     def setUp(self):
@@ -147,6 +153,7 @@ class TestSaveHDF5(unittest.TestCase):
         self.assertEqual(serializer.compression, 3)
 
 
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestLoadHDF5(unittest.TestCase):
 
     def setUp(self):
@@ -169,6 +176,7 @@ class TestLoadHDF5(unittest.TestCase):
         self.assertIsInstance(serializer, hdf5.HDF5Deserializer)
 
 
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestGroupHierachy(unittest.TestCase):
 
     def setUp(self):
@@ -234,6 +242,7 @@ def no_h5py(name, _globals=None, _locals=None, fromlist=(), level=0):
         return original_import(name, _globals, _locals, fromlist, level)
 
 
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestNoH5py(unittest.TestCase):
 
     def setUp(self):
