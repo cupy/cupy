@@ -20,7 +20,6 @@ def _batch_normalization(expander, gamma, beta, x, mean, var):
     return y_expect
 
 
-
 @testing.parameterize(*testing.product({
     'ndim': [0, 1, 2, 3],
 }))
