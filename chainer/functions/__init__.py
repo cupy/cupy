@@ -38,6 +38,7 @@ from chainer.functions.loss import sigmoid_cross_entropy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
+from chainer.functions.math import batch_l2_norm_squared
 from chainer.functions.math import exponential
 from chainer.functions.math import identity
 from chainer.functions.math import matmul
@@ -141,6 +142,8 @@ sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 
+BatchL2NormSquared = batch_l2_norm_squared.BatchL2NormSquared
+batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
 Cos = trigonometric.Cos
