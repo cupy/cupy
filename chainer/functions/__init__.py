@@ -143,10 +143,10 @@ sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 
-BatchL2NormSquared = batch_l2_norm_squared.BatchL2NormSquared
-batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchInv = inv.BatchInv
 batch_inv = inv.batch_inv
+BatchL2NormSquared = batch_l2_norm_squared.BatchL2NormSquared
+batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
 Cos = trigonometric.Cos
