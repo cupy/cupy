@@ -1,8 +1,7 @@
 import numpy
 
 from chainer import cuda
-from chainer.functions.array import reshape
-from chainer.functions.math import minmax
+from chainer.functions.activation import maxout
 from chainer import link
 from chainer.links.connection import linear
 
@@ -86,7 +85,5 @@ class Maxout(link.Chain):
         Returns:
             ~chainer.Variable: Output of the maxout layer.
         """
-        b = x.data.shape[0]
         y = self.linear(x)
-        y = reshape.reshape(y, (b, self.out_size, self.num_channel))
-        return minmax.max(y, axis=2)
+        return maxout.maxout(y, self.num_channel)
