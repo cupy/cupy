@@ -95,7 +95,8 @@ class TestMaxout(unittest.TestCase):
         params = [self.link.linear.W]
         if self.initial_bias is not None:
             params.append(self.link.linear.b)
-        gradient_check.check_backward(self.link, x_data, y_grad, params, atol=1e-2)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, params, atol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
