@@ -10,9 +10,12 @@ from chainer import testing
 from chainer.testing import attr
 
 
+@testing.parameterize(
+    {'in_shape': (10, 5), 'out_shape': (10,)},
+    {'in_shape': (0, 5),  'out_shape': (0,)},
+    {'in_shape': (1, 33), 'out_shape': (1,)},
+)
 class TestSelectItem(unittest.TestCase):
-    in_shape = (10, 5)
-    out_shape = (10,)
 
     def setUp(self):
         self.x_data = numpy.random.uniform(
@@ -51,11 +54,6 @@ class TestSelectItem(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x_data),
                             cuda.to_gpu(self.t_data),
                             cuda.to_gpu(self.gy_data))
-
-
-class TestSelectItemZeroSize(unittest.TestCase):
-    in_shape = (0, 5)
-    out_shape = (0,)
 
 
 testing.run_module(__name__, __file__)
