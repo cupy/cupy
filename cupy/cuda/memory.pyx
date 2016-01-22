@@ -124,7 +124,7 @@ cdef class MemoryPointer:
         if size > 0:
             _set_peer_access(src.device.id, self.device.id)
             runtime.memcpy(self.ptr, src.ptr, size,
-                           runtime.memcpyDeviceToDevice)
+                           runtime.memcpyDefault)
 
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size, stream):
         """Copies a memory sequence from a (possibly different) device asynchronously.
@@ -138,7 +138,7 @@ cdef class MemoryPointer:
         if size > 0:
             _set_peer_access(src.device.id, self.device.id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
-                                runtime.memcpyDeviceToDevice, stream)
+                                runtime.memcpyDefault, stream)
 
     cpdef copy_from_host(self, mem, size_t size):
         """Copies a memory sequence from the host memory.
