@@ -39,6 +39,27 @@ cdef class Memory:
         return self.ptr
 
 
+cdef set _peer_access = set()
+
+
+cpdef _set_peer_access(int device, int peer):
+    global _peer_access
+    device_pair = device, peer
+
+    if device_pair in _peer_access:
+        return
+    if not runtime.deviceCanAccessPeer(device, peer):
+        return
+
+    cdef int current = runtime.getDevice()
+    runtime.setDevice(device)
+    try:
+        runtime.deviceEnablePeerAccess(peer)
+    finally:
+        runtime.setDevice(current)
+    _peer_access.add(device_pair)
+
+
 cdef class MemoryPointer:
 
     """Pointer to a point on a device memory.
@@ -101,6 +122,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
+            _set_peer_access(src.device.id, self.device.id)
             runtime.memcpy(self.ptr, src.ptr, size,
                            runtime.memcpyDeviceToDevice)
 
@@ -114,6 +136,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
+            _set_peer_access(src.device.id, self.device.id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
                                 runtime.memcpyDeviceToDevice, stream)
 
