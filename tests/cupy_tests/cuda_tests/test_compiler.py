@@ -21,3 +21,11 @@ class NvccNotFoundTest(unittest.TestCase):
         # Check that error message includes command name `nvcc`
         with self.assertRaisesRegexp(OSError, 'nvcc'):
             compiler.preprocess('')
+
+
+class TestNvccStderr(unittest.TestCase):
+
+    def test(self):
+        # An error message contains the file name `kern.cu`
+        with self.assertRaisesRegexp(RuntimeError, 'kern.cu'):
+            compiler.nvcc('a')
