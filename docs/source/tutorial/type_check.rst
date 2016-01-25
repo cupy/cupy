@@ -60,7 +60,7 @@ When you want to check if the number of dimension of ``x_type`` equals to ``2``,
    utils.type_check.expect(x_type.ndim == 2)
 
 When this condition is true, nothing happens.
-Otherwise this code throws an exception, and a user gets a message like this:
+Otherwise this code throws an exception, and the user gets a message like this:
 
 .. testoutput::
    :options: -IGNORE_EXCEPTION_DETAIL
@@ -124,13 +124,13 @@ Internal mechanism of type check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 How does it show an error message like ``"in_types[0].ndim == 2"``?
-If ``x_type`` is an object containtnig ``ndim`` member variable, we cannot show such an error message because this equation is evaluated as a boolean value by Python interpreter.
+If ``x_type`` is an object containing ``ndim`` member variable, we cannot show such an error message because this equation is evaluated as a boolean value by Python interpreter.
 
 Actually ``x_type`` is a :class:`utils.type_check.Expr` objects, and doesn't have a ``ndim`` member variable itself.
 :class:`utils.type_check.Expr` represents a syntax tree.
 ``x_type.ndim`` makes a :class:`utils.type_check.Expr` object representing ``(getattr, x_type, 'ndim')``.
 ``x_type.ndim == 2`` makes an object like ``(eq, (getattr, x_type, 'ndim'), 2)``.
-:meth:`type_check.expect` gets a :class:`utils.type_check.Expr` object and evaluate it.
+:meth:`type_check.expect` gets a :class:`utils.type_check.Expr` object and evaluates it.
 When it is ``True``, it causes no error and shows nothing.
 Otherwise, this method shows a readable error message.
 
@@ -144,10 +144,10 @@ If you want to evaluate a :class:`utils.type_check.Expr` object, call :meth:`eva
 In the same way, ``x_type.shape[0].eval()`` returns an int value.
 
 
-More powerfull methods
+More powerful methods
 ~~~~~~~~~~~~~~~~~~~~~~
 
-:class:`utils.type_check.Expr` class is more powerfull.
+:class:`utils.type_check.Expr` class is more powerful.
 It supports all mathematical operators such as ``+`` and ``*``.
 You can write a condition that the first dimension of ``x_type`` is the first dimension of ``y_type`` times four:
 
@@ -185,7 +185,7 @@ This code can check the equivalent condition below:
 
    x_type.shape[0] == self.in_size
 
-However, the latter condition doesn't know meanig of this value.
+However, the latter condition doesn't know the meaning of this value.
 When this condition is not satisfied, the latter code shows unreadable error message::
 
   InvalidType: Expect: in_types[0].shape[0] == 4  # what does '4' mean?
@@ -203,8 +203,7 @@ Call functions
 ~~~~~~~~~~~~~~
 
 How to check summation of all values of shape?
-:class:`utils.type_check.Expr` also supports function call.
-:
+:class:`utils.type_check.Expr` also supports function call:
 
 .. testcode::
 
@@ -216,7 +215,7 @@ Why do we need to wrap the function ``numpy.sum`` with :class:`utils.type_check.
 Therefore, ``numpy.sum(x_type.shape)`` fails.
 We need to evaluate this function lazily.
 
-The above example makes an error message like this:
+The above example produces an error message like this:
 
 .. testoutput::
    :options: -IGNORE_EXCEPTION_DETAIL
@@ -232,7 +231,7 @@ More complicated cases
 
 How to write a more complicated condition that can't be written with these operators?
 You can evaluate :class:`utils.type_check.Expr` and get its result value with :meth:`eval` method.
-And, check the condition and show warning message by your hand:
+Then check the condition and show warning message by hand:
 
 .. testcode::
    :hide:
@@ -248,8 +247,8 @@ And, check the condition and show warning message by your hand:
       actual_msg = 'Shape is ...'
       raise utils.type_check.InvalidType(expect_msg, actual_msg)
 
-Please make a readable error message.
-This code generates an error below:
+Please write a readable error message.
+This code generates the following error message:
 
 .. testoutput::
    :options: -IGNORE_EXCEPTION_DETAIL
@@ -272,7 +271,7 @@ First check the number of arguments:
 
    utils.type_check.expect(in_types.size() == 2)
 
-``in_types.size()`` returns a :class:`utils.type_check.Expr` object representing a number of arguments.
+``in_types.size()`` returns a :class:`utils.type_check.Expr` object representing the number of arguments.
 You can check it in the same way.
 
 And then, get each type:
@@ -281,9 +280,9 @@ And then, get each type:
 
    x_type, y_type = in_types
 
-Don't get each value before check ``in_types.size()``.
-When the number of argument is illegal, this process may fail.
-For example, this code doesn't work when the size of ``in_types`` is zero:
+Don't get each value before checking ``in_types.size()``.
+When the number of argument is illegal, this will fail.
+For example, this code doesn't work when the size of ``in_types`` is 0:
 
 .. testcode::
 
