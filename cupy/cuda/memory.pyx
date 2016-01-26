@@ -139,8 +139,8 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            runtime.memcpyAsync(self.ptr, mem.value, size, stream,
-                                runtime.memcpyHostToDevice)
+            runtime.memcpyAsync(self.ptr, mem.value, size,
+                                runtime.memcpyHostToDevice, stream)
 
     cpdef copy_from(self, mem, size_t size):
         """Copies a memory sequence from a (possibly different) device or host.
