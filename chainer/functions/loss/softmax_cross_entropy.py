@@ -74,20 +74,18 @@ class SoftmaxCrossEntropy(function.Function):
         log_yd = numpy.rollaxis(log_y, 1)
         log_yd = log_yd.reshape(len(log_yd), -1)
 
-        log_p = log_yd[numpy.maximum(t.flat, 0), six.moves.range(t.size)]
+        log_p = log_yd[numpy.maximum(t.ravel(), 0), six.moves.range(t.size)]
         # deal with the case where the SoftmaxCrossEntropy is
         # unpickled from the old version
         if getattr(self, 'normalize', True):
             count = (t != self.ignore_label).sum()
         else:
-            count = x.shape[0]
-        self.count = count
+            count = len(x)
+        count = numpy.maximum(count, 1)
+        self._inv_count = 1.0 / count
 
-        if count == 0:
-            return numpy.zeros((), dtype=x.dtype),
-
-        y = (log_p * (t.flat != self.ignore_label)).sum(keepdims=True) \
-            * (-1.0 / count)
+        y = (log_p * (t.ravel() != self.ignore_label)).sum(keepdims=True) \
+            * (-self._inv_count)
         return y.reshape(()),
 
     def forward_gpu(self, inputs):
@@ -96,29 +94,24 @@ class SoftmaxCrossEntropy(function.Function):
         log_y = softmax_log(x, self.use_cudnn)
         self.y = cupy.exp(log_y)
         if getattr(self, 'normalize', True):
-            count = float((t != self.ignore_label).sum())
+            count = (t != self.ignore_label).sum()
         else:
-            count = t.shape[0]
-        self.count = count
-
-        if count == 0:
-            return cupy.zeros((), dtype=x.dtype),
+            count = len(t)
+        count = cupy.maximum(count, 1)
+        self._inv_count = cupy.divide(1.0, count, dtype=x.dtype)
 
         log_y = cupy.rollaxis(log_y, 1, log_y.ndim)
         ret = cuda.reduce(
-            'S t, raw T log_y, int32 n_channel, T inv_count', 'T out',
+            'S t, raw T log_y, int32 n_channel, raw T inv_count', 'T out',
             't == -1 ? 0 : log_y[_j * n_channel + t]',
-            'a + b', 'out = a * inv_count', '0', 'crossent_fwd'
-        )(t, log_y.reduced_view(), log_y.shape[-1], -1.0 / count)
+            'a + b', 'out = a * -inv_count[0]', '0', 'crossent_fwd'
+        )(t, log_y.reduced_view(), log_y.shape[-1], self._inv_count)
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
         x, t = inputs
-        if self.count == 0:
-            return numpy.zeros_like(x), None
-
         gloss = grad_outputs[0]
-        n_unit = t.size // t.shape[0]
+        n_unit = t.size // len(t)
         if self.y.ndim == 2:
             gx = self.y.copy()
             gx[six.moves.xrange(len(t)), numpy.maximum(t, 0)] -= 1
@@ -130,32 +123,25 @@ class SoftmaxCrossEntropy(function.Function):
             gx = self.y.copy().reshape(self.y.shape[0], self.y.shape[1], -1)
             fst_index = numpy.arange(t.size) // n_unit
             trd_index = numpy.arange(t.size) % n_unit
-            gx[fst_index, numpy.maximum(t.flat, 0), trd_index] -= 1
+            gx[fst_index, numpy.maximum(t.ravel(), 0), trd_index] -= 1
             gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
             gx = gx.reshape(self.y.shape)
 
-        gx *= gloss / self.count
+        gx *= gloss * self._inv_count
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):
         cupy = cuda.cupy
         x, t = inputs
-        if self.count == 0:
-            return cupy.zeros_like(x), None
-
         gloss = grad_outputs[0]
-        n_unit = t.size // t.shape[0]
-        coeff = cuda.cupy.divide(gloss, self.count, dtype=gloss.dtype)
+        n_unit = t.size // len(t)
+        coeff = gloss * self._inv_count
         gx = cuda.elementwise(
             'T y, S t, raw T coeff, S n_channel, S n_unit',
             'T gx',
             '''
                const int c = (i / n_unit % n_channel);
-               if (t == -1) {
-                 gx = 0;
-               } else {
-                 gx = coeff[0] * (y - (c == t));
-               }
+               gx = (t == -1) ? 0 : (coeff[0] * (y - (c == t)));
             ''',
             'softmax_crossent_bwd')(
                 self.y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit)
