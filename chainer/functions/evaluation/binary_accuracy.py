@@ -26,9 +26,7 @@ class BinaryAccuracy(function.Function):
         y = y.ravel()
         t = t.ravel()
         c = (y >= 0)
-        count = (t != self.ignore_label).sum()
-        if int(count) == 0:
-            count = 1
+        count = xp.maximum(1, (t != self.ignore_label).sum())
         return xp.asarray((c == t).sum(dtype='f') / count, dtype='f'),
 
 
