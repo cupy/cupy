@@ -80,7 +80,7 @@ class Variable(object):
 - statistics: {stats}
 - grad: {grad}"""
 
-        stats_msg = 'mean={0}, std={1}'
+        stats_msg = 'mean={0:.8f}, std={1:.8f}'
 
         try:
             device = self.data.device

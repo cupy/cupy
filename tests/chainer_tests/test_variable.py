@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import testing
 from chainer.testing import attr
 
+import re
 import six
 
 
@@ -369,66 +370,56 @@ class TestVariable(unittest.TestCase):
 
 class TestDebugPrint(unittest.TestCase):
 
-    def test_debug_print_cpu(self):
-        arr = np.random.randn(5, 3, 5, 5).astype(np.float32)
-        v = chainer.Variable(arr)
+    def setUp(self):
+        self.arr = np.random.randn(5, 3, 5, 5).astype(np.float32)
 
+    def check_debug_print(self, v, mean, std):
         result = v.debug_print()
-        self.assertTrue(repr(v) in result)
-        self.assertTrue('device: CPU' in result)
-        self.assertTrue('volatile: OFF' in result)
-        self.assertTrue("numpy.ndarray" in result)
-        self.assertTrue("dtype: float32" in result)
+        self.assertIn(repr(v), result)
+        self.assertIn('volatile: OFF', result)
+        self.assertIn('dtype: float32', result)
+        # py2.7 on win64 returns shape as long
+        self.assertTrue(re.match(r'- shape: \(5L?, 3L?, 5L?, 5L?\)',
+                        result.splitlines()[4]))
 
-        msg = "statistics: mean={mean}, std={std}".format(mean=arr.mean(),
-                                                          std=arr.std())
-        self.assertTrue(msg in result)
-        self.assertTrue("grad: None" in result)
+        # no grad
+        msg = 'statistics: mean={mean:.8f}, std={std:.8f}'
+        msg = msg.format(mean=mean, std=std)
+        self.assertIn(msg, result)
+        self.assertIn('grad: None', result)
 
         # zero grad
         v.zerograd()
         result = v.debug_print()
-        self.assertTrue("grad: 0" in result)
-
-        # add grad
-        grad = np.random.randn(5, 3, 5, 5).astype(np.float32)
-        v.grad = grad
-        result = v.debug_print()
-
-        msg = "grad: mean={mean}, std={std}".format(mean=grad.mean(),
-                                                    std=grad.std())
-        self.assertTrue(msg in result)
-
-    @attr.gpu
-    def test_debug_print_gpu(self):
-        arr = np.random.randn(5, 3, 5, 5).astype(np.float32)
-        v = chainer.Variable(arr)
-        v.to_gpu(0)
-
-        result = v.debug_print()
-        self.assertTrue(repr(v) in result)
-        self.assertTrue('device: <CUDA Device 0>' in result)
-        self.assertTrue('volatile: OFF' in result)
-        msg = "cupy.core.core.ndarray"
-        self.assertTrue(msg in result)
-        self.assertTrue("dtype: float32" in result)
-
-        msg = "statistics: mean="
-        self.assertTrue(msg in result)
-        self.assertTrue("grad: None" in result)
-
-        # zero grad
-        v.zerograd()
-        result = v.debug_print()
-        self.assertTrue(repr(v) in result)
-        self.assertTrue("grad: 0" in result)
+        self.assertIn('grad: 0', result)
 
         # add grad
         v.grad = v.data
         result = v.debug_print()
 
-        msg = "grad: mean="
-        self.assertTrue(msg in result)
+        msg = 'grad: mean={mean:.8f}, std={std:.8f}'.format(mean=mean, std=std)
+        self.assertIn(msg, result)
+
+    def test_debug_print_cpu(self):
+        v = chainer.Variable(self.arr)
+        result = v.debug_print()
+        self.assertIn('device: CPU', result)
+        self.assertIn('numpy.ndarray', result)
+
+        self.check_debug_print(v, mean=np.mean(self.arr),
+                               std=np.std(self.arr))
+
+    @attr.gpu
+    def test_debug_print_gpu(self):
+        v = chainer.Variable(self.arr)
+        v.to_gpu(0)
+
+        result = v.debug_print()
+        self.assertIn('device: <CUDA Device 0>', result)
+        self.assertIn('cupy.core.core.ndarray', result)
+
+        self.check_debug_print(v, mean=cuda.cupy.mean(self.arr),
+                               std=cuda.cupy.std(self.arr))
 
 
 class TestVariableSetCreator(unittest.TestCase):
