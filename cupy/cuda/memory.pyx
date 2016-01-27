@@ -39,15 +39,17 @@ cdef class Memory:
         return self.ptr
 
 
-cdef set _peer_access = set()
+cdef set _peer_access_checked = set()
 
 
 cpdef _set_peer_access(int device, int peer):
     device_pair = device, peer
 
-    if device_pair in _peer_access:
+    if device_pair in _peer_access_checked:
         return
-    if not runtime.deviceCanAccessPeer(device, peer):
+    cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
+    _peer_access_checked.add(device_pair)
+    if not can_access:
         return
 
     cdef int current = runtime.getDevice()
@@ -56,7 +58,6 @@ cpdef _set_peer_access(int device, int peer):
         runtime.deviceEnablePeerAccess(peer)
     finally:
         runtime.setDevice(current)
-    _peer_access.add(device_pair)
 
 
 cdef class MemoryPointer:
