@@ -24,7 +24,9 @@ class SelectItem(function.Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        return t.choose(x.T),
+        # This code is equivalent to `t.choose(x.T)`, but `numpy.choose`
+        # does not work when `x.shape[1] > 32`.
+        return x[six.moves.range(t.size), t],
 
     def forward_gpu(self, inputs):
         x, t = inputs
