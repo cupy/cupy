@@ -43,7 +43,6 @@ cdef set _peer_access = set()
 
 
 cpdef _set_peer_access(int device, int peer):
-    global _peer_access
     device_pair = device, peer
 
     if device_pair in _peer_access:
