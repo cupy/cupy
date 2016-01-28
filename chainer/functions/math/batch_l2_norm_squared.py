@@ -43,10 +43,10 @@ class BatchL2NormSquared(function.Function):
 
     def backward_gpu(self, inputs, gy):
         x = _as_two_dim(inputs[0])
-        gy_repeat = gy[0].reshape(len(gy[0]), 1).repeat(x.shape[1], axis=1)
         kernel = cuda.elementwise(
-            'T x, T gy', 'T gx', 'gx = 2 * x * gy', 'l2normsquared_bwd')
-        gx = kernel(x, gy_repeat).reshape(inputs[0].shape)
+            'T x, raw T gy, int32 N', 'T gx', 'gx = 2 * x * gy[i / N]',
+            'l2normsquared_bwd')
+        gx = kernel(x, gy[0], x.shape[1]).reshape(inputs[0].shape)
         return gx,
 
 
