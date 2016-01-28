@@ -45,7 +45,7 @@ install:
   - pip install cython
   - python setup.py install
   - pip install h5py
-  - pip install nose flake8 hacking mock
+  - pip install nose hacking mock
 
 script:
   - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' tests/chainer_tests
