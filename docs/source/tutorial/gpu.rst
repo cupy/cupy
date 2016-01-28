@@ -179,7 +179,7 @@ The :meth:`~Link.to_gpu` method also accepts a device ID like ``model.to_gpu(0)`
 In this case, the link object is transferred to the appropriate GPU device.
 The current device is used by default.
 
-Then, all we have to do is transfer each minibatch to the GPU:
+Then we have to transfer each minibatch to the GPU:
 
 .. testcode::
    :hide:
