@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -103,6 +104,48 @@ class TestConvolution2DFunction(unittest.TestCase):
         self.use_cudnn = False
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             None, cuda.to_gpu(self.gy))
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+class TestConvolution2DCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        in_channels = 3
+        out_channels = 2
+        kh, kw = (3, 3)
+        self.stride = 2
+        self.pad = 1
+        self.x = cuda.cupy.random.uniform(
+            -1, 1, (2, 3, 4, 3)).astype(numpy.float32)
+        self.W = cuda.cupy.random.normal(
+            0, numpy.sqrt(1. / (kh * kw * in_channels)),
+            (out_channels, in_channels, kh, kw)).astype(numpy.float32)
+        self.gy = cuda.cupy.random.uniform(
+            -1, 1, (2, 2, 2, 2)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        W = chainer.Variable(self.W)
+        return functions.convolution_2d(
+            x, W, None, stride=self.stride, pad=self.pad,
+            use_cudnn=self.use_cudnn)
+
+    @attr.cudnn
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    @attr.cudnn
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.convolutionBackwardData_v2') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)

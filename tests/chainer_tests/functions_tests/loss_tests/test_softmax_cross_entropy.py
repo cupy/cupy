@@ -1,6 +1,7 @@
 import math
 import unittest
 
+import mock
 import numpy
 import six
 
@@ -199,6 +200,30 @@ class TestReplicatedSoftmaxCrossEntropy2IgnoreAll(
     def setUp(self):
         super(TestReplicatedSoftmaxCrossEntropy2IgnoreAll, self).setUp()
         self.t[:] = -1
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+class TestSoftmaxCrossEntropyCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.x = cuda.cupy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        self.t = cuda.cupy.random.randint(0, 3, (4,)).astype(numpy.int32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        t = chainer.Variable(self.t)
+        return functions.softmax_cross_entropy(x, t, self.use_cudnn)
+
+    @attr.cudnn
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.softmaxForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    # Note that SoftmaxCrossEntropy does not use cudnn on backward
 
 
 testing.run_module(__name__, __file__)
