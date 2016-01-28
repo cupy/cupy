@@ -177,7 +177,8 @@ def check_backward(func, x_data, y_grad, params=(),
     >>   check_backward(my_link, (x1_data, x2_data), gy_data,
     >>                  (my_link.W, my_link.b))
 
-    Note that ``params`` are not ``ndarray`` s, but :class:`~chainer.Variables` s.
+    Note that ``params`` are not ``ndarray`` s,
+    but :class:`~chainer.Variables` s.
 
     Function objects are acceptable as ``func`` argument::
 
@@ -208,9 +209,10 @@ def check_backward(func, x_data, y_grad, params=(),
             ``y_grad`` should be set to ``None``.
         params (~chainer.Variable or tuple of ~chainder.Variable):
             A set of :class:`~chainer.Variable` s whose gradients are checked.
-            When ``func`` is a :class:`~chainer.Link` object, set its parameters
-            as ``params``. If ``params`` is one :class:`~chainer.Variable` object, it is
-            treated as ``(params,)``.
+            When ``func`` is a :class:`~chainer.Link` object,
+            set its parameters as ``params``.
+            If ``params`` is one :class:`~chainer.Variable` object,
+            it is treated as ``(params,)``.
         eps (float): Epsilon value to be passed to :func:`numerical_grad`.
         atol (float): Absolute tolerance to be passed to
             :func:`assert_allclose`.
