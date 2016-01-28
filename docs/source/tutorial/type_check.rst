@@ -281,7 +281,7 @@ And then, get each type:
    x_type, y_type = in_types
 
 Don't get each value before checking ``in_types.size()``.
-When the number of argument is illegal, this will fail.
+When the number of argument is illegal, ``type_check.expect`` might output unuseful error messages.
 For example, this code doesn't work when the size of ``in_types`` is 0:
 
 .. testcode::
