@@ -143,7 +143,7 @@ def check_backward(func, x_data, y_grad, params=(),
     >>   check_backward(func, (x1_data, x2_data), gy_data)
 
     This method creates :class:`~chainer.Variable` objects with ``x_data``
-    and calls ``func`` with the :class:`~chainer.Variable`s to get its result
+    and calls ``func`` with the :class:`~chainer.Variable` s to get its result
     as :class:`~chainer.Variable`.
     Then, it sets ``y_grad`` array to ``grad`` attribute of the result and
     calls ``backward`` method to get gradients of the inputs.
@@ -177,7 +177,8 @@ def check_backward(func, x_data, y_grad, params=(),
     >>   check_backward(my_link, (x1_data, x2_data), gy_data,
     >>                  (my_link.W, my_link.b))
 
-    Note that ``params`` are not ``ndarray``s, but ``~chainer.Variables``s.
+    Note that ``params`` are not ``ndarray`` s,
+    but :class:`~chainer.Variables` s.
 
     Function objects are acceptable as ``func`` argument::
 
@@ -192,25 +193,26 @@ def check_backward(func, x_data, y_grad, params=(),
 
 
     Args:
-        func (callable): A function which gets :class:`~chainer.Variable`s
-            and returns :class:`~chainer.Variable`s. ``func`` must returns
-            a tuple of :class:`~chainer.Variable`s or one
+        func (callable): A function which gets :class:`~chainer.Variable` s
+            and returns :class:`~chainer.Variable` s. ``func`` must returns
+            a tuple of :class:`~chainer.Variable` s or one
             :class:`~chainer.Variable`. You can use :class:`~chainer.Function`
             object, :class:`~chainer.Link` object or a function satisfying the
             condition.
-        x_data (ndarray or tuple of ndarrays): A set of ``ndarray``s to be
+        x_data (ndarray or tuple of ndarrays): A set of ``ndarray`` s to be
             passed to ``func``. If ``x_data`` is one ``ndarray`` object, it is
             treated as ``(x_data,)``.
         y_grad (ndarray or tuple of ndarrays or None):
-            A set of ``ndarray``s representing gradinents of return-values of
+            A set of ``ndarray`` s representing gradinents of return-values of
             ``func``. If ``y_grad`` is one ``ndarray`` object, it is
-            treated as ``(y_grad,)``. If ``func`` is a loss-function, set
-            ``y_grad = None``.
+            treated as ``(y_grad,)``. If ``func`` is a loss-function,
+            ``y_grad`` should be set to ``None``.
         params (~chainer.Variable or tuple of ~chainder.Variable):
-            A set of :class:`~chainer.Variable`s whose gradients are checked.
-            When ``func`` is a ``~chainer.Link`` object, set its parameters
-            as ``params``. If ``params`` is one ~chainer.Variable object, it is
-            treated as ``(params,)``.
+            A set of :class:`~chainer.Variable` s whose gradients are checked.
+            When ``func`` is a :class:`~chainer.Link` object,
+            set its parameters as ``params``.
+            If ``params`` is one :class:`~chainer.Variable` object,
+            it is treated as ``(params,)``.
         eps (float): Epsilon value to be passed to :func:`numerical_grad`.
         atol (float): Absolute tolerance to be passed to
             :func:`assert_allclose`.
