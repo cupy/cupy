@@ -175,11 +175,11 @@ A :class:`Link` object can be transferred to the specified GPU using the :meth:`
    optimizer.setup(model)
 
 This time, we make the number of input, hidden, and output units configurable.
-The :meth:`~Link.to_gpu` method also accpets a device ID like ``model.to_gpu(0)``.
+The :meth:`~Link.to_gpu` method also accepts a device ID like ``model.to_gpu(0)``.
 In this case, the link object is transferred to the appropriate GPU device.
 The current device is used by default.
 
-Then, all we have to do is transferring each minibatch to the GPU:
+Then we have to transfer each minibatch to the GPU:
 
 .. testcode::
    :hide:
@@ -189,6 +189,7 @@ Then, all we have to do is transferring each minibatch to the GPU:
 
 .. testcode::
 
+   model.to_gpu()
    batchsize = 100
    datasize = len(x_train)
    for epoch in range(20):

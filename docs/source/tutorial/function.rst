@@ -476,7 +476,7 @@ This link hides the parameters of the linear layer.
    An advanced tip to implement functions: if you want to preserve some information between forward and backward computations (e.g. to cache some arrays), you can store it as attributes.
    Be careful that it might increase the memory consumption during the whole forward-backward computation.
    If you want to train very large networks on a GPU with limited memory, it is not recommended to cache arrays between forward and backward.
-   There is one exception for this: caching the output arrays do not change the memory consumption, because they are also held by the output Variable objects.
+   There is one exception for this: caching the output arrays does not change the memory consumption, because they are also held by the output Variable objects.
 
    .. warning::
 
