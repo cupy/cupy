@@ -3,6 +3,7 @@ import six
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import array
 from chainer.utils import type_check
 
 
@@ -14,28 +15,22 @@ def _mat_ptrs(a):
     Returns:
         GPU array of pointers to matrices
     """
-    if a.shape[0] == 1:
-        return cuda.cupy.full((1,), a[0].data.ptr, dtype=numpy.uintp)
+    if len(a) == 1:
+        return cuda.cupy.full((1,), a.data.ptr, dtype=numpy.uintp)
     else:
-        stride = a[1].data.ptr - a[0].data.ptr
-        return cuda.cupy.arange(
-            a[0].data.ptr,
-            a[0].data.ptr + stride * a.shape[0],
-            stride,
-            dtype=numpy.uintp)
-
-
-def _as_mat(x):
-    return x.reshape((len(x), 1)) if len(x.shape) == 1 else x
+        stride = a.strides[0]
+        ptr = a.data.ptr
+        return cuda.cupy.arange(ptr, ptr + stride * len(a), stride,
+                                dtype=numpy.uintp)
 
 
 def _as_batch_mat(x):
-    return x.reshape((x.shape[0], x.shape[1], 1)) if len(x.shape) == 2 else x
+    return x.reshape(len(x), x.shape[1], -1)
 
 
 def _matmul(a, b, transa=False, transb=False, transout=False):
-    a = _as_mat(a)
-    b = _as_mat(b)
+    a = array.as_mat(a)
+    b = array.as_mat(b)
     if transa:
         a = a.T
     if transb:
@@ -47,10 +42,9 @@ def _matmul(a, b, transa=False, transb=False, transout=False):
 
 
 def _get_ld(a):
-    shape = a.shape[-2:]
     strides = a.strides[-2:]
     trans = numpy.argmin(strides)
-    return trans, int(max(shape[trans], max(strides) // a.itemsize))
+    return trans, int(max(a.shape[trans - 2], max(strides) // a.itemsize))
 
 
 def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
@@ -181,11 +175,9 @@ class BatchMatMul(function.Function):
         self.transb = transb
 
     def _output_shape(self, a, b):
-        batch_size = a.shape[0]
-        a_mat_shape = _as_mat(a[0]).shape
-        b_mat_shape = _as_mat(b[0]).shape
-        m = a_mat_shape[1 if self.transa else 0]
-        n = b_mat_shape[0 if self.transb else 1]
+        batch_size = len(a)
+        m = _as_batch_mat(a).shape[2 if self.transa else 1]
+        n = _as_batch_mat(b).shape[1 if self.transb else 2]
         return (batch_size, m, n)
 
     def check_type_forward(self, in_types):
@@ -244,8 +236,8 @@ class BatchMatMul(function.Function):
     def backward_gpu(self, x, gy):
         a, b = x
         batch_size = a.shape[0]
-        ga = cuda.cupy.empty((batch_size,) + _as_mat(a[0]).shape, a.dtype)
-        gb = cuda.cupy.empty((batch_size,) + _as_mat(b[0]).shape, a.dtype)
+        ga = cuda.cupy.empty(_as_batch_mat(a).shape, a.dtype)
+        gb = cuda.cupy.empty(_as_batch_mat(b).shape, a.dtype)
         _batch_matmul_gpu(
             gy[0], b, transb=not self.transb, transout=self.transa, out=ga)
         _batch_matmul_gpu(
