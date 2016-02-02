@@ -28,6 +28,13 @@ def _as_batch_mat(x):
     return x.reshape(len(x), x.shape[1], -1)
 
 
+def _get_batch_mat_shape(shape):
+    s = 1
+    for x in shape[2:]:
+        s *= x
+    return shape[:2] + (s,)
+
+
 def _matmul(a, b, transa=False, transb=False, transout=False):
     a = array.as_mat(a)
     b = array.as_mat(b)
@@ -176,8 +183,8 @@ class BatchMatMul(function.Function):
 
     def _output_shape(self, a, b):
         batch_size = len(a)
-        m = _as_batch_mat(a).shape[2 if self.transa else 1]
-        n = _as_batch_mat(b).shape[1 if self.transb else 2]
+        m = _get_batch_mat_shape(a.shape)[2 if self.transa else 1]
+        n = _get_batch_mat_shape(b.shape)[1 if self.transb else 2]
         return (batch_size, m, n)
 
     def check_type_forward(self, in_types):
@@ -213,16 +220,17 @@ class BatchMatMul(function.Function):
 
     def backward_cpu(self, x, gy):
         a, b = x
-        batch_size = a.shape[0]
         ga = numpy.empty_like(a)
         gb = numpy.empty_like(b)
-        for i in six.moves.range(batch_size):
+        a0shape = a[0].shape
+        b0shape = b[0].shape
+        for i in six.moves.range(len(a)):
             ga[i] = _matmul(
                 gy[0][i], b[i], transb=not self.transb,
-                transout=self.transa).reshape(a[0].shape)
+                transout=self.transa).reshape(a0shape)
             gb[i] = _matmul(
                 a[i], gy[0][i], transa=not self.transa,
-                transout=self.transb).reshape(b[0].shape)
+                transout=self.transb).reshape(b0shape)
         return ga, gb
 
     def forward_gpu(self, x):
@@ -235,8 +243,8 @@ class BatchMatMul(function.Function):
 
     def backward_gpu(self, x, gy):
         a, b = x
-        ga = cuda.cupy.empty(_as_batch_mat(a).shape, a.dtype)
-        gb = cuda.cupy.empty(_as_batch_mat(b).shape, a.dtype)
+        ga = cuda.cupy.empty(_get_batch_mat_shape(a.shape), a.dtype)
+        gb = cuda.cupy.empty(_get_batch_mat_shape(b.shape), a.dtype)
         _batch_matmul_gpu(
             gy[0], b, transb=not self.transb, transout=self.transa, out=ga)
         _batch_matmul_gpu(
