@@ -34,7 +34,6 @@ class Event(object):
     def __del__(self):
         if self.ptr:
             runtime.eventDestroy(self.ptr)
-            self.ptr = None
 
     @property
     def done(self):
@@ -109,7 +108,6 @@ class Stream(object):
     def __del__(self):
         if self.ptr:
             runtime.streamDestroy(self.ptr)
-            self.ptr = 0
 
     @property
     def done(self):
