@@ -1,6 +1,7 @@
 import os
 import weakref
 
+import chainer
 from chainer import cuda
 from chainer import flag
 from chainer.utils import type_check
@@ -104,6 +105,12 @@ class Function(object):
         with cuda.get_device(*in_data):
             outputs = self.forward(in_data)
             assert type(outputs) == tuple
+
+        if chainer.DEBUG:
+            if any(cuda.get_array_module(out).isnan(out).any()
+                   for out in outputs):
+                msg = 'NaN is detected on forward computation'
+                raise RuntimeError(msg)
 
         out_v = flag.aggregate_flags([x.volatile for x in inputs])
         ret = tuple([variable.Variable(y, volatile=out_v) for y in outputs])

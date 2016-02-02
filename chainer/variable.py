@@ -2,6 +2,7 @@ import heapq
 
 import numpy
 
+import chainer
 from chainer import cuda
 from chainer import flag
 
@@ -327,6 +328,11 @@ class Variable(object):
             with cuda.get_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
+
+            if chainer.DEBUG:
+                if any(cuda.get_array_module(gx).isnan(gx).any() for gx in gxs):
+                    msg = 'NaN is detected on backward computation'
+                    raise RuntimeError(msg)
 
             if not retain_grad:
                 for y in outputs:
