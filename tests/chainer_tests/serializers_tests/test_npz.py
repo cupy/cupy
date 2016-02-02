@@ -119,6 +119,7 @@ class TestNpzDeserializer(unittest.TestCase):
         y = numpy.empty((2, 3), dtype=numpy.float32)
         self.check_deserialize(y, '/y')
 
+    @attr.gpu
     def test_deserialize_gpu_strip_slashes(self):
         y = numpy.empty((2, 3), dtype=numpy.float32)
         self.check_deserialize(cuda.to_gpu(y), '/y')
