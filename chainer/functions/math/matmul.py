@@ -235,7 +235,6 @@ class BatchMatMul(function.Function):
 
     def backward_gpu(self, x, gy):
         a, b = x
-        batch_size = a.shape[0]
         ga = cuda.cupy.empty(_as_batch_mat(a).shape, a.dtype)
         gb = cuda.cupy.empty(_as_batch_mat(b).shape, a.dtype)
         _batch_matmul_gpu(
