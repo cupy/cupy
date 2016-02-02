@@ -26,8 +26,12 @@ class TestDictionarySerializer(unittest.TestCase):
         self.assertIsInstance(child, npz.DictionarySerializer)
         self.assertEqual(child.path, 'x/')
 
-    def check_serialize(self, data):
-        ret = self.serializer('w', data)
+    def test_get_item_strip_slashes(self):
+        child = self.serializer['/x/']
+        self.assertEqual(child.path, 'x/')
+
+    def check_serialize(self, data, query):
+        ret = self.serializer(query, data)
         dset = self.serializer.target['w']
 
         self.assertIsInstance(dset, numpy.ndarray)
@@ -39,11 +43,18 @@ class TestDictionarySerializer(unittest.TestCase):
         self.assertIs(ret, data)
 
     def test_serialize_cpu(self):
-        self.check_serialize(self.data)
+        self.check_serialize(self.data, 'w')
 
     @attr.gpu
     def test_serialize_gpu(self):
-        self.check_serialize(cuda.to_gpu(self.data))
+        self.check_serialize(cuda.to_gpu(self.data), 'w')
+
+    def test_serialize_cpu_strip_slashes(self):
+        self.check_serialize(self.data, '/w')
+
+    @attr.gpu
+    def test_serialize_gpu_strip_slashes(self):
+        self.check_serialize(cuda.to_gpu(self.data), '/w')
 
     def test_serialize_scalar(self):
         ret = self.serializer('x', 10)
@@ -86,19 +97,32 @@ class TestNpzDeserializer(unittest.TestCase):
         self.assertIsInstance(child, npz.NpzDeserializer)
         self.assertEqual(child.path[-2:], 'x/')
 
-    def check_deserialize(self, y):
-        ret = self.deserializer('y', y)
+    def test_get_item_strip_slashes(self):
+        child = self.deserializer['/x/']
+        self.assertEqual(child.path, 'x/')
+
+    def check_deserialize(self, y, query):
+        ret = self.deserializer(query, y)
         numpy.testing.assert_array_equal(cuda.to_cpu(y), self.data)
         self.assertIs(ret, y)
 
     def test_deserialize_cpu(self):
         y = numpy.empty((2, 3), dtype=numpy.float32)
-        self.check_deserialize(y)
+        self.check_deserialize(y, 'y')
 
     @attr.gpu
     def test_deserialize_gpu(self):
         y = numpy.empty((2, 3), dtype=numpy.float32)
-        self.check_deserialize(cuda.to_gpu(y))
+        self.check_deserialize(cuda.to_gpu(y), 'y')
+
+    def test_deserialize_cpu_strip_slashes(self):
+        y = numpy.empty((2, 3), dtype=numpy.float32)
+        self.check_deserialize(y, '/y')
+
+    @attr.gpu
+    def test_deserialize_gpu_strip_slashes(self):
+        y = numpy.empty((2, 3), dtype=numpy.float32)
+        self.check_deserialize(cuda.to_gpu(y), '/y')
 
     def test_deserialize_scalar(self):
         z = 5
@@ -219,6 +243,16 @@ class TestGroupHierachy(unittest.TestCase):
         npz.save_npz(self.temp_file_path, self.optimizer, self.compress)
         with numpy.load(self.temp_file_path) as f:
             self._check_optimizer_group(f, ('Wp/msg', 'Wp/msdx', 'epoch', 't'))
+
+    def test_load_optimizer(self):
+        for param in self.parent.params():
+            param.data.fill(1)
+        npz.save_npz(self.temp_file_path, self.parent, self.compress)
+        for param in self.parent.params():
+            param.data.fill(0)
+        npz.load_npz(self.temp_file_path, self.parent)
+        for param in self.parent.params():
+            self.assertTrue((param.data == 1).all())
 
 
 testing.run_module(__name__, __file__)
