@@ -35,11 +35,19 @@ class BatchL2NormSquared(function.Function):
         )
         return l2normsquared_kernel(x, axis=1),
 
-    def backward(self, inputs, gy):
+    def backward_cpu(self, inputs, gy):
         x = _as_two_dim(inputs[0])
         xp = cuda.get_array_module(x, gy)
         return xp.array([2 * x[i] * gy[0][i] for i in six.moves.range(len(x))],
                         dtype=np.float32).reshape(inputs[0].shape),
+
+    def backward_gpu(self, inputs, gy):
+        x = _as_two_dim(inputs[0])
+        kernel = cuda.elementwise(
+            'T x, raw T gy, int32 N', 'T gx', 'gx = 2 * x * gy[i / N]',
+            'l2normsquared_bwd')
+        gx = kernel(x, gy[0], x.shape[1]).reshape(inputs[0].shape)
+        return gx,
 
 
 def batch_l2_norm_squared(x):
