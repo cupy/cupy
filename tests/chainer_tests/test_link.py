@@ -171,12 +171,28 @@ class TestLink(unittest.TestCase):
         self.assertEqual(l.z, 3)
 
 
+class CopyCountLink(chainer.Link):
+
+    def __init__(self, **kwargs):
+        super(CopyCountLink, self).__init__(**kwargs)
+        self.count_to_cpu = 0
+        self.count_to_gpu = 0
+
+    def to_cpu(self):
+        self.count_to_cpu += 1
+        super(CopyCountLink, self).to_cpu()
+
+    def to_gpu(self, device=None):
+        self.count_to_gpu += 1
+        super(CopyCountLink, self).to_gpu()
+
+
 class TestChain(unittest.TestCase):
 
     def setUp(self):
-        self.l1 = chainer.Link(x=(2, 3))
-        self.l2 = chainer.Link(x=2)
-        self.l3 = chainer.Link(x=3)
+        self.l1 = CopyCountLink(x=(2, 3))
+        self.l2 = CopyCountLink(x=2)
+        self.l3 = CopyCountLink(x=3)
 
         self.c1 = chainer.Chain(l1=self.l1)
         self.c1.add_link('l2', self.l2)
@@ -257,6 +273,12 @@ class TestChain(unittest.TestCase):
         self.assertIsInstance(self.l2.x.grad, numpy.ndarray)
         self.assertIsInstance(self.l3.x.data, numpy.ndarray)
         self.assertIsInstance(self.l3.x.grad, numpy.ndarray)
+        self.assertEqual(self.l1.count_to_cpu, 1)
+        self.assertEqual(self.l1.count_to_gpu, 1)
+        self.assertEqual(self.l2.count_to_cpu, 1)
+        self.assertEqual(self.l2.count_to_gpu, 1)
+        self.assertEqual(self.l3.count_to_cpu, 1)
+        self.assertEqual(self.l3.count_to_gpu, 1)
 
     @attr.gpu
     def test_to_gpu(self):
@@ -273,6 +295,9 @@ class TestChain(unittest.TestCase):
         self.assertIsInstance(self.l2.x.grad, cupy.ndarray)
         self.assertIsInstance(self.l3.x.data, cupy.ndarray)
         self.assertIsInstance(self.l3.x.grad, cupy.ndarray)
+        self.assertEqual(self.l1.count_to_gpu, 1)
+        self.assertEqual(self.l2.count_to_gpu, 1)
+        self.assertEqual(self.l3.count_to_gpu, 1)
 
     def test_params(self):
         params = list(self.c2.params())
