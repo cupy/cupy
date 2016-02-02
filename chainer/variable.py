@@ -330,7 +330,8 @@ class Variable(object):
             assert len(gxs) == len(in_data)
 
             if chainer.DEBUG:
-                if any(cuda.get_array_module(gx).isnan(gx).any() for gx in gxs):
+                if any(cuda.get_array_module(gx).isnan(gx).any()
+                       for gx in gxs):
                     msg = 'NaN is detected on backward computation'
                     raise RuntimeError(msg)
 
