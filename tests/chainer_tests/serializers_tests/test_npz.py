@@ -243,5 +243,15 @@ class TestGroupHierachy(unittest.TestCase):
         with numpy.load(self.temp_file_path) as f:
             self._check_optimizer_group(f, ('Wp/msg', 'Wp/msdx', 'epoch', 't'))
 
+    def test_load_optimizer(self):
+        for param in self.parent.params():
+            param.data.fill(1)
+        npz.save_npz(self.temp_file_path, self.parent, self.compress)
+        for param in self.parent.params():
+            param.data.fill(0)
+        npz.load_npz(self.temp_file_path, self.parent)
+        for param in self.parent.params():
+            self.assertTrue((param.data == 1).all())
+
 
 testing.run_module(__name__, __file__)
