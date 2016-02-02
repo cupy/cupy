@@ -1,3 +1,4 @@
+import collections
 import numpy
 import six
 
@@ -217,6 +218,8 @@ def connectionist_temporal_classification(x, t, blank_symbol):
     <http://www.cs.toronto.edu/~graves/preprint.pdf>`_
 
     """
+    if not isinstance(x, collections.Iterable):
+        raise TypeError('x must be a list of Variables')
     if not isinstance(blank_symbol, int):
         raise TypeError('blank_symbol must be non-negative integer.')
     assert blank_symbol >= 0

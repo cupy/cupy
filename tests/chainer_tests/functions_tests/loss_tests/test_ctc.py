@@ -95,4 +95,14 @@ class TestCTC(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.t),
                             tuple(cuda.to_gpu(x_data) for x_data in self.x))
 
+
+class TestCTCError(unittest.TestCase):
+
+    def test_not_iterable(self):
+        x = chainer.Variable(numpy.zeros((4, 2, 3), numpy.float32))
+        t = chainer.Variable(numpy.zeros((2, 2), numpy.int32))
+        with self.assertRaises(TypeError):
+            functions.connectionist_temporal_classification(x, t, 0)
+
+
 testing.run_module(__name__, __file__)
