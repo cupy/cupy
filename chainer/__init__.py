@@ -29,4 +29,6 @@ ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
 
+DEBUG = False
+
 basic_math.install_variable_arithmetics()
