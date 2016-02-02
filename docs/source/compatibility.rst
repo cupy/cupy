@@ -107,7 +107,12 @@ Documentation Error
 
 Compatibility is basically determined based on the documentation, though it sometimes contains errors.
 It may make the APIs confusing to assume the documentation always stronger than the implementations.
-We therefore may fix the documentation errors in minor updates that may break the compatibility in regard to the documentation.
+We therefore may fix the documentation errors in any updates that may break the compatibility in regard to the documentation.
+
+.. note::
+   Developers MUST NOT fix the documentation and implementation of the same functionality at the same time in revision updates as "bug fix".
+   Such a change completely breaks the backward compatibility.
+   If you want to fix the bugs in both sides, first fix the documentation to fit it into the implementation, and start the API changing procedure described above.
 
 Object Attributes and Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
