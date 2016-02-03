@@ -5,10 +5,11 @@ from chainer import function
 from chainer.utils import type_check
 
 
-_hinge_fwd_kernel = cuda.elementwise(
-    'S t', 'raw T bottom_diff',
-    'int ind[] = {i, t}; bottom_diff[ind] *= -1',
-    'hinge_fwd')
+def _hinge_fwd_kernel():
+    return cuda.elementwise(
+        'S t', 'raw T bottom_diff',
+        'int ind[] = {i, t}; bottom_diff[ind] *= -1',
+        'hinge_fwd')
 
 
 class Hinge(function.Function):
@@ -52,7 +53,7 @@ class Hinge(function.Function):
         x, t = inputs
         num = x.dtype.type(len(x))
         self.bottom_diff = cuda.cupy.maximum(
-            0, 1 + _hinge_fwd_kernel(t, x.copy()))
+            0, 1 + _hinge_fwd_kernel()(t, x.copy()))
         if self.norm == 'L1':
             loss = self.bottom_diff.sum() / num
         elif self.norm == 'L2':
@@ -77,7 +78,7 @@ class Hinge(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         xp = cuda.get_array_module(*inputs)
         t, gloss = inputs[1], grad_outputs[0]
-        self.bottom_diff = _hinge_fwd_kernel(t, self.bottom_diff)
+        self.bottom_diff = _hinge_fwd_kernel()(t, self.bottom_diff)
         if self.norm == 'L1':
             gx = (gloss / len(t)) * xp.sign(self.bottom_diff)
         elif self.norm == 'L2':
