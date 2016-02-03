@@ -79,9 +79,7 @@ class SkipGram(chainer.Chain):
     def __call__(self, x, context):
         e = model.embed(context)
         shape = e.data.shape
-        dummy = chainer.Variable(
-            xp.empty((shape[0], shape[1])))
-        x, _ = F.broadcast(x, dummy)
+        x = F.broadcast_to(x, (shape[0], shape[1]))
         e = F.reshape(e, (shape[0] * shape[1], shape[2]))
         x = F.reshape(x, (shape[0] * shape[1],))
         return self.loss_func(e, x)
