@@ -37,9 +37,11 @@ class DictionarySerializer(serializer.Serializer):
         self.path = path
 
     def __getitem__(self, key):
+        key = key.strip('/')
         return DictionarySerializer(self.target, self.path + key + '/')
 
     def __call__(self, key, value):
+        key = key.lstrip('/')
         ret = value
         if isinstance(value, cuda.ndarray):
             value = value.get()
@@ -86,9 +88,11 @@ class NpzDeserializer(serializer.Deserializer):
         self.path = path
 
     def __getitem__(self, key):
+        key = key.strip('/')
         return NpzDeserializer(self.npz, self.path + key + '/')
 
     def __call__(self, key, value):
+        key = key.lstrip('/')
         dataset = self.npz[self.path + key]
         if isinstance(value, numpy.ndarray):
             numpy.copyto(value, dataset)
