@@ -33,6 +33,7 @@ def check_cuda_version(compiler, settings):
     #include <stdio.h>
     int main(int argc, char* argv[]) {
       printf("%d", CUDA_VERSION);
+      return 0;
     }
     ''', include_dirs=settings['include_dirs'])
 
@@ -57,6 +58,7 @@ def check_cudnn_version(compiler, settings):
     #include <stdio.h>
     int main(int argc, char* argv[]) {
       printf("%d", CUDNN_VERSION);
+      return 0;
     }
     ''', include_dirs=settings['include_dirs'])
 
