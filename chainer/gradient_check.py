@@ -10,23 +10,6 @@ def _copy_arrays(xs):
     return tuple(xp.copy(x) for x in xs)
 
 
-def _numerical_grad(xp, f, inputs, grad_outputs, eps=1e-3):
-    grads = tuple(xp.zeros_like(x) for x in inputs)
-    for x, gx in zip(inputs, grads):
-        for i in numpy.ndindex(x.shape):
-            orig = x[i].copy()  # hold original value
-            x[i] = orig + eps
-            ys1 = _copy_arrays(f())
-            x[i] = orig - eps
-            ys2 = _copy_arrays(f())
-            x[i] = orig
-            for y1, y2, gy in zip(ys1, ys2, grad_outputs):
-                if gy is not None:
-                    dot = ((y1 - y2) * gy).sum()
-                    gx[i] += dot / (2 * eps)
-    return grads
-
-
 def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     """Computes numerical gradient by finite differences.
 
@@ -51,15 +34,29 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     inputs = tuple(inputs)
     grad_outputs = tuple(grad_outputs)
     gpu = any(isinstance(x, cuda.ndarray) for x in inputs + grad_outputs)
-
     cpu = any(isinstance(x, numpy.ndarray) for x in inputs + grad_outputs)
 
     if gpu and cpu:
         raise RuntimeError('Do not mix GPU and CPU arrays in `numerical_grad`')
-    elif gpu:
-        return _numerical_grad(cuda.cupy, f, inputs, grad_outputs, eps)
+
+    if gpu:
+        xp = cuda.cupy
     else:
-        return _numerical_grad(numpy, f, inputs, grad_outputs, eps)
+        xp = numpy
+    grads = tuple(xp.zeros_like(x) for x in inputs)
+    for x, gx in zip(inputs, grads):
+        for i in numpy.ndindex(x.shape):
+            orig = x[i].copy()  # hold original value
+            x[i] = orig + eps
+            ys1 = _copy_arrays(f())
+            x[i] = orig - eps
+            ys2 = _copy_arrays(f())
+            x[i] = orig
+            for y1, y2, gy in zip(ys1, ys2, grad_outputs):
+                if gy is not None:
+                    dot = ((y1 - y2) * gy).sum()
+                    gx[i] += dot / (2 * eps)
+    return grads
 
 
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
