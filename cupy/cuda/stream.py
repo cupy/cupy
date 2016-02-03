@@ -22,7 +22,7 @@ class Event(object):
 
     """
     def __init__(self, block=False, disable_timing=False, interprocess=False):
-        self.ptr = None
+        self.ptr = 0
 
         if interprocess and not disable_timing:
             raise ValueError('Timing must be disabled for interprocess events')
@@ -34,7 +34,6 @@ class Event(object):
     def __del__(self):
         if self.ptr:
             runtime.eventDestroy(self.ptr)
-            self.ptr = None
 
     @property
     def done(self):
@@ -100,7 +99,7 @@ class Stream(object):
     """
     def __init__(self, null=False, non_blocking=False):
         if null:
-            self.ptr = None
+            self.ptr = 0
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
         else:
@@ -109,7 +108,6 @@ class Stream(object):
     def __del__(self):
         if self.ptr:
             runtime.streamDestroy(self.ptr)
-            self.ptr = None
 
     @property
     def done(self):
