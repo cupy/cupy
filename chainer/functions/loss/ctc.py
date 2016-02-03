@@ -185,7 +185,7 @@ def connectionist_temporal_classification(x, t, blank_symbol):
     unknown. See also [Graves2012]_
 
     Args:
-        x (list of Variable): RNN output at each time. ``x`` must be a list
+        x (sequence of Variable): RNN output at each time. ``x`` must be a list
             of :class:`~chianer.Variable` s. Each element of ``x``, ``x[i]``
             is a :class:`~chainer.Variable` representing output of RNN at time
             ``i``.
@@ -220,7 +220,7 @@ def connectionist_temporal_classification(x, t, blank_symbol):
     <http://www.cs.toronto.edu/~graves/preprint.pdf>`_
 
     """
-    if not isinstance(x, collections.Iterable):
+    if not isinstance(x, collections.Sequence):
         raise TypeError('x must be a list of Variables')
     if not isinstance(blank_symbol, int):
         raise TypeError('blank_symbol must be non-negative integer.')
