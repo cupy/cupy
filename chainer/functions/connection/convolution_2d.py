@@ -60,10 +60,10 @@ class Convolution2DFunction(function.Function):
 
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
-        out_c, _, kh, kw = W.shape
-
-        n, c, h, w = x.shape
         b = inputs[2] if len(inputs) == 3 else None
+
+        out_c, _, kh, kw = W.shape
+        n, c, h, w = x.shape
 
         out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph)
         out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw)
@@ -130,6 +130,7 @@ class Convolution2DFunction(function.Function):
 
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
         h, w = x.shape[2:]
 
@@ -138,14 +139,15 @@ class Convolution2DFunction(function.Function):
         gcol = numpy.rollaxis(gcol, 3)
         gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
 
-        if len(inputs) == 3:
+        if b is None:
+            return gx, gW
+        else:
             gb = gy.sum(axis=(0, 2, 3))
             return gx, gW, gb
-        else:
-            return gx, gW
 
     def backward_gpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
         _, out_c, out_h, out_w = gy.shape
         n, c, h, w = x.shape
@@ -175,8 +177,8 @@ class Convolution2DFunction(function.Function):
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
                 zero.data, x_desc.value, gx.data.ptr)
 
-            if len(inputs) == 3:
-                gb = cuda.cupy.empty_like(inputs[2])
+            if b is not None:
+                gb = cuda.cupy.empty_like(b)
                 libcudnn.convolutionBackwardBias(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     zero.data, self.bias_desc.value, gb.data.ptr)
@@ -198,10 +200,10 @@ class Convolution2DFunction(function.Function):
             gx = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, h, w)
 
-            if len(inputs) == 3:
+            if b is not None:
                 gb = gy.sum(axis=(0, 2, 3))
 
-        if len(inputs) == 2:
+        if b is None:
             return gx, gW
         else:
             return gx, gW, gb

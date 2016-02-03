@@ -62,6 +62,7 @@ class Deconvolution2DFunction(function.Function):
 
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         _, _, h, w = x.shape
         gcol = numpy.tensordot(W, x, (0, 1))
@@ -77,8 +78,7 @@ class Deconvolution2DFunction(function.Function):
         y = conv.col2im_cpu(
             gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
         # b, k, h, w
-        if len(inputs) == 3:
-            b = inputs[2]
+        if b is not None:
             y += b.reshape(1, b.size, 1, 1)
         return y,
 
@@ -139,6 +139,7 @@ class Deconvolution2DFunction(function.Function):
 
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
         kh, kw = W.shape[2:]
         col = conv.im2col_cpu(
@@ -147,14 +148,15 @@ class Deconvolution2DFunction(function.Function):
         gx = numpy.tensordot(col, W, ([1, 2, 3], [1, 2, 3]))
         gx = numpy.rollaxis(gx, 3, 1)
 
-        if len(inputs) == 3:
+        if b is None:
+            return gx, gW
+        else:
             gb = gy.sum(axis=(0, 2, 3))
             return gx, gW, gb
-        else:
-            return gx, gW
 
     def backward_gpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
         n, in_c, in_h, in_w = x.shape
         _, out_channels, kh, kw = W.shape
@@ -191,8 +193,8 @@ class Deconvolution2DFunction(function.Function):
                 self.conv_desc.value, algo, workspace.data.ptr, workspace_size,
                 zero.data, gx_desc.value, gx.data.ptr)
             # bias backward
-            if len(inputs) == 3:
-                gb = cuda.cupy.empty_like(inputs[2])
+            if b is not None:
+                gb = cuda.cupy.empty_like(b)
                 libcudnn.convolutionBackwardBias(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     zero.data, self.bias_desc.value, gb.data.ptr)
@@ -215,7 +217,7 @@ class Deconvolution2DFunction(function.Function):
                 gx_mats[i] = W_mat.dot(col_mats[i])
 
             # bias backward
-            if len(inputs) == 3:
+            if b is not None:
                 gb = gy.sum(axis=(0, 2, 3))
 
             # filter backward
@@ -225,7 +227,7 @@ class Deconvolution2DFunction(function.Function):
             for i in moves.range(n):
                 gW_mat += x_mats[i].dot(col_mats[i].T)
 
-        if len(inputs) == 2:
+        if b is None:
             return gx, gW
         else:
             return gx, gW, gb
