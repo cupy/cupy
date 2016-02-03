@@ -12,6 +12,17 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+def _asfortranarray(x):
+    xp = cuda.get_array_module(x)
+    if xp is numpy:
+        return xp.asfortranarray(x)
+    else:
+        return xp.ascontiguousarray(x.T).T
+
+
+@testing.parameterize(*testing.product({
+    'c_contiguous': [True, False],
+}))
 class TestConvolution2DFunction(unittest.TestCase):
 
     def setUp(self, use_cudnn=True):
@@ -61,6 +72,20 @@ class TestConvolution2DFunction(unittest.TestCase):
         self.test_forward_consistency(nobias=True)
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
+        if not self.c_contiguous:
+            x_data = _asfortranarray(x_data)
+            W_data = _asfortranarray(W_data)
+            y_grad = _asfortranarray(y_grad)
+            self.assertFalse(x_data.flags.c_contiguous)
+            self.assertFalse(W_data.flags.c_contiguous)
+            self.assertFalse(y_grad.flags.c_contiguous)
+            if b_data is not None:
+                xp = cuda.get_array_module(b_data)
+                b = xp.empty((len(b_data) * 2,), dtype=self.b.dtype)
+                b[::2] = b_data
+                b_data = b[::2]
+                self.assertFalse(b_data.flags.c_contiguous)
+
         args = (x_data, W_data)
         if b_data is not None:
             args = args + (b_data,)

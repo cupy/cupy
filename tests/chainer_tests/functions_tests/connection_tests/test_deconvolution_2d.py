@@ -20,6 +20,14 @@ def _pair(x):
     return (x, x)
 
 
+def _asfortranarray(x):
+    xp = cuda.get_array_module(x)
+    if xp is numpy:
+        return xp.asfortranarray(x)
+    else:
+        return xp.ascontiguousarray(x.T).T
+
+
 @parameterize(
     *testing.product({
         'in_channels': [3],
@@ -31,6 +39,7 @@ def _pair(x):
         'nobias': [True, False],
         'use_cudnn': [True, False],
         'test_outsize': [True, False],
+        'c_contiguous': [True, False],
     })
 )
 class TestDeconvolution2DFunction(unittest.TestCase):
@@ -80,6 +89,20 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         self.test_forward_consistency()
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
+        if not self.c_contiguous:
+            x_data = _asfortranarray(x_data)
+            W_data = _asfortranarray(W_data)
+            y_grad = _asfortranarray(y_grad)
+            self.assertFalse(x_data.flags.c_contiguous)
+            self.assertFalse(W_data.flags.c_contiguous)
+            self.assertFalse(y_grad.flags.c_contiguous)
+            if b_data is not None:
+                xp = cuda.get_array_module(b_data)
+                b = xp.empty((len(b_data) * 2,), dtype=self.b.dtype)
+                b[::2] = b_data
+                b_data = b[::2]
+                self.assertFalse(b_data.flags.c_contiguous)
+
         args = (x_data, W_data)
         if b_data is not None:
             args = args + (b_data,)
