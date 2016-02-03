@@ -185,8 +185,10 @@ def connectionist_temporal_classification(x, t, blank_symbol):
     unknown. See also [Graves2012]_
 
     Args:
-        x (list of Variable): RNN output at each time.
-                      (ex. :math:`(y_1, y_2, ..., y_T)`)
+        x (list of Variable): RNN output at each time. ``x`` must be a list
+            of :class:`~chianer.Variable` s. Each element of ``x``, ``x[i]``
+            is a :class:`~chainer.Variable` representing output of RNN at time
+            ``i``.
         t (Variable): Expected label sequence.
         blank_symbol (int): Index of blank_symbol.
                             This value must be non-negative.
