@@ -81,8 +81,7 @@ class SoftmaxCrossEntropy(function.Function):
             count = (t != self.ignore_label).sum()
         else:
             count = len(x)
-        count = max(count, 1)
-        self._coeff = 1.0 / count
+        self._coeff = 1.0 / max(count, 1)
 
         y = (log_p * (t.ravel() != self.ignore_label)).sum(keepdims=True) \
             * (-self._coeff)
