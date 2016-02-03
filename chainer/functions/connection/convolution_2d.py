@@ -70,6 +70,11 @@ class Convolution2DFunction(function.Function):
 
         y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
         if cuda.cudnn_enabled and self.use_cudnn:
+            x = cuda.cupy.ascontiguousarray(x)
+            W = cuda.cupy.ascontiguousarray(W)
+            if b is not None:
+                b = cuda.cupy.ascontiguousarray(b)
+
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
             y_desc = cudnn.create_tensor_descriptor(y)
@@ -141,7 +146,6 @@ class Convolution2DFunction(function.Function):
 
     def backward_gpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
-        b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
         _, out_c, out_h, out_w = gy.shape
         n, c, h, w = x.shape
@@ -149,10 +153,12 @@ class Convolution2DFunction(function.Function):
 
         gW = cuda.cupy.empty_like(W)
         if cuda.cudnn_enabled and self.use_cudnn:
+            x = cuda.cupy.ascontiguousarray(x)
+            W = cuda.cupy.ascontiguousarray(W)
+            gy = cuda.cupy.ascontiguousarray(gy)
+
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
-            if not gy.flags.c_contiguous:
-                gy = cuda.cupy.ascontiguousarray(gy)
             gy_desc = cudnn.create_tensor_descriptor(gy)
             dtype = x.dtype
             one = numpy.array(1, dtype=dtype).ctypes
@@ -169,7 +175,7 @@ class Convolution2DFunction(function.Function):
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
                 zero.data, x_desc.value, gx.data.ptr)
 
-            if b is not None:
+            if len(inputs) == 3:
                 gb = cuda.cupy.empty_like(inputs[2])
                 libcudnn.convolutionBackwardBias(
                     handle, one.data, gy_desc.value, gy.data.ptr,
@@ -192,10 +198,10 @@ class Convolution2DFunction(function.Function):
             gx = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, h, w)
 
-            if b is not None:
+            if len(inputs) == 3:
                 gb = gy.sum(axis=(0, 2, 3))
 
-        if b is None:
+        if len(inputs) == 2:
             return gx, gW
         else:
             return gx, gW, gb

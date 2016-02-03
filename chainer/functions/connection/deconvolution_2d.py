@@ -84,6 +84,7 @@ class Deconvolution2DFunction(function.Function):
 
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         n, in_c, in_h, in_w = x.shape
         c = W.shape[1]  # out_c
@@ -91,9 +92,12 @@ class Deconvolution2DFunction(function.Function):
             self.outh = conv.get_deconv_outsize(in_h, kh, self.sy, self.ph)
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(in_w, kw, self.sx, self.pw)
-        if len(inputs) == 3:
-            b = inputs[2]
         if cuda.cudnn_enabled and self.use_cudnn:
+            x = cuda.cupy.ascontiguousarray(x)
+            W = cuda.cupy.ascontiguousarray(W)
+            if b is not None:
+                b = cuda.cupy.ascontiguousarray(b)
+
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
             y = cuda.cupy.empty((n, c, self.outh, self.outw),
@@ -103,7 +107,7 @@ class Deconvolution2DFunction(function.Function):
             self.filter_desc = cudnn.create_filter_descriptor(W)
             self.conv_desc = cudnn.create_convolution_descriptor(
                 (self.ph, self.pw), (self.sy, self.sx))
-            if len(inputs) == 3:
+            if b is not None:
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
 
@@ -114,7 +118,7 @@ class Deconvolution2DFunction(function.Function):
                 handle, one.data, self.filter_desc.value, W.data.ptr,
                 x_desc.value, x.data.ptr, self.conv_desc.value,
                 zero.data, y_desc.value, y.data.ptr)
-            if len(inputs) == 3:
+            if b is not None:
                 libcudnn.addTensor_v2(
                     handle, libcudnn.CUDNN_ADD_SAME_C,
                     one.data, self.bias_desc.value, b.data.ptr,
@@ -129,7 +133,7 @@ class Deconvolution2DFunction(function.Function):
                 cuda.cupy.dot(W_mat.T, x_mats[i], gcol_mats[i])
             y = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
-            if len(inputs) == 3:
+            if b is not None:
                 y += b.reshape(1, b.size, 1, 1)
         return y,
 
@@ -158,6 +162,10 @@ class Deconvolution2DFunction(function.Function):
         gx = cuda.cupy.empty((n, in_c, in_h, in_w), dtype=numpy.float32)
 
         if cuda.cudnn_enabled and self.use_cudnn:
+            x = cuda.cupy.ascontiguousarray(x)
+            W = cuda.cupy.ascontiguousarray(W)
+            gy = cuda.cupy.ascontiguousarray(gy)
+
             handle = cudnn.get_handle()
             gy_desc = cudnn.create_tensor_descriptor(gy)
             gx_desc = cudnn.create_tensor_descriptor(gx)
@@ -184,8 +192,7 @@ class Deconvolution2DFunction(function.Function):
                 zero.data, gx_desc.value, gx.data.ptr)
             # bias backward
             if len(inputs) == 3:
-                b = inputs[2]
-                gb = cuda.cupy.empty_like(b)
+                gb = cuda.cupy.empty_like(inputs[2])
                 libcudnn.convolutionBackwardBias(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     zero.data, self.bias_desc.value, gb.data.ptr)
@@ -217,10 +224,11 @@ class Deconvolution2DFunction(function.Function):
             x_mats = x.reshape(n, in_c, in_h * in_w)
             for i in moves.range(n):
                 gW_mat += x_mats[i].dot(col_mats[i].T)
-        if len(inputs) == 3:
-            return gx, gW, gb
-        else:
+
+        if len(inputs) == 2:
             return gx, gW
+        else:
+            return gx, gW, gb
 
 
 def deconvolution_2d(x, W, b=None, stride=1, pad=0,
