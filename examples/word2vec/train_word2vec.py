@@ -88,12 +88,12 @@ class SkipGram(chainer.Chain):
 class SoftmaxCrossEntropyLoss(chainer.Chain):
     def __init__(self, n_in, n_out):
         super(SoftmaxCrossEntropyLoss, self).__init__(
-            W=L.Linear(n_in, n_out),
+            out=L.Linear(n_in, n_out),
         )
-        self.W.W.data[...] = 0
+        self.out.W.data[...] = 0
 
     def __call__(self, x, t):
-        return F.softmax_cross_entropy(self.W(x), t)
+        return F.softmax_cross_entropy(self.out(x), t)
 
 
 def calculate_loss(model, dataset, position):
