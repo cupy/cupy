@@ -33,7 +33,7 @@ class InvFunctionTest(unittest.TestCase):
     def setUp(self):
         self.x = (numpy.eye(self.shape[-1]) +
                   numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
-                    numpy.float32)
+            numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, atol=1e-7, rtol=1e-7):
@@ -87,8 +87,8 @@ class InvFunctionTest(unittest.TestCase):
 class BatchInvFunctionTest(unittest.TestCase):
     def setUp(self):
         self.x = (numpy.eye(self.shape[-1]) +
-              numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
-                numpy.float32)
+                  numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
+            numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, atol=1e-7, rtol=1e-7):
