@@ -206,6 +206,7 @@ class TestReplicatedSoftmaxCrossEntropy2IgnoreAll(
     {'use_cudnn': True},
     {'use_cudnn': False},
 )
+@attr.cudnn
 class TestSoftmaxCrossEntropyCudnnCall(unittest.TestCase):
 
     def setUp(self):
@@ -217,7 +218,6 @@ class TestSoftmaxCrossEntropyCudnnCall(unittest.TestCase):
         t = chainer.Variable(self.t)
         return functions.softmax_cross_entropy(x, t, self.use_cudnn)
 
-    @attr.cudnn
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.softmaxForward') as func:
             self.forward()

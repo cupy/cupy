@@ -55,6 +55,7 @@ class TestTanh(unittest.TestCase):
     {'use_cudnn': True},
     {'use_cudnn': False},
 )
+@attr.cudnn
 class TestTanhCudnnCall(unittest.TestCase):
 
     def setUp(self):
@@ -65,13 +66,11 @@ class TestTanhCudnnCall(unittest.TestCase):
         x = chainer.Variable(self.x)
         return functions.tanh(x, use_cudnn=self.use_cudnn)
 
-    @attr.cudnn
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.activationForward') as func:
             self.forward()
             self.assertEqual(func.called, self.use_cudnn)
 
-    @attr.cudnn
     def test_call_cudnn_backrward(self):
         y = self.forward()
         y.grad = self.gy

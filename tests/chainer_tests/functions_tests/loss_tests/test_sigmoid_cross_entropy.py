@@ -100,6 +100,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
     {'use_cudnn': True},
     {'use_cudnn': False},
 )
+@attr.cudnn
 class TestSgimoidCrossEntropyCudnnCall(unittest.TestCase):
 
     def setUp(self):
@@ -111,7 +112,6 @@ class TestSgimoidCrossEntropyCudnnCall(unittest.TestCase):
         t = chainer.Variable(self.t)
         return functions.sigmoid_cross_entropy(x, t, self.use_cudnn)
 
-    @attr.cudnn
     def test_call_cudnn_backward(self):
         y = self.forward()
         with mock.patch('cupy.cudnn.cudnn.activationForward') as func:

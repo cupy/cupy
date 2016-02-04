@@ -110,6 +110,7 @@ class TestConvolution2DFunction(unittest.TestCase):
     {'use_cudnn': True},
     {'use_cudnn': False},
 )
+@attr.cudnn
 class TestConvolution2DCudnnCall(unittest.TestCase):
 
     def setUp(self):
@@ -133,13 +134,11 @@ class TestConvolution2DCudnnCall(unittest.TestCase):
             x, W, None, stride=self.stride, pad=self.pad,
             use_cudnn=self.use_cudnn)
 
-    @attr.cudnn
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
             self.forward()
             self.assertEqual(func.called, self.use_cudnn)
 
-    @attr.cudnn
     def test_call_cudnn_backrward(self):
         y = self.forward()
         y.grad = self.gy

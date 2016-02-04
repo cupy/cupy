@@ -138,6 +138,7 @@ class TestInvalidDtype(unittest.TestCase):
     {'use_cudnn': True},
     {'use_cudnn': False},
 )
+@attr.cudnn
 class TestMaxPooling2DCudnnCall(unittest.TestCase):
 
     def setUp(self):
@@ -153,13 +154,11 @@ class TestMaxPooling2DCudnnCall(unittest.TestCase):
             x, 3, functions.MaxPooling2D,
             use_cudnn=self.use_cudnn)
 
-    @attr.cudnn
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.poolingForward') as func:
             self.forward()
             self.assertEqual(func.called, self.use_cudnn)
 
-    @attr.cudnn
     def test_call_cudnn_backrward(self):
         y = self.forward()
         y.grad = self.gy
