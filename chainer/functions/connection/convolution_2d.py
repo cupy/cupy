@@ -49,12 +49,12 @@ class Convolution2DFunction(function.Function):
 
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         self.col = conv.im2col_cpu(
             x, kh, kw, self.sy, self.sx, self.ph, self.pw)
         y = numpy.tensordot(self.col, W, ((1, 2, 3), (1, 2, 3)))
-        if len(inputs) == 3:
-            b = inputs[2]
+        if b is not None:
             y += b
         return numpy.rollaxis(y, 3, 1),
 
