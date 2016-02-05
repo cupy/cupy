@@ -35,6 +35,12 @@ Edit dimensionalities
 .. autofunction:: cupy.squeeze
 
 
+Changing kind of array
+----------------------
+
+.. autofunction:: cupy.asfortranarray
+
+
 Joining arrays along axis
 -------------------------
 
