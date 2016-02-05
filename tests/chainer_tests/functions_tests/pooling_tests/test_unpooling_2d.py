@@ -15,7 +15,6 @@ from chainer.testing import condition
 class TestUnpooling2D(unittest.TestCase):
 
     def setUp(self):
-        # Avoid unstability of numerical gradient
         self.x = numpy.arange(
             2 * 3 * 2 * 1, dtype=numpy.float32).reshape(2, 3, 2, 1)
         numpy.random.shuffle(self.x)
