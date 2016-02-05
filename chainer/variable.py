@@ -308,6 +308,7 @@ https://github.com/pfnet/chainer/issues/new.
                             need_copy.remove(id_x)
                         else:  # 3rd or later visit
                             x._grad += gx
+            del gxs  # for reduce memory usage
 
     def unchain_backward(self):
         """Deletes references between variables and functions backward.
