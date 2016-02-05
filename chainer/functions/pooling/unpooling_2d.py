@@ -3,6 +3,7 @@ import numpy
 from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
+from chainer.utils import type_check
 
 
 class Unpooling2D(pooling_2d.Pooling2D):
@@ -14,6 +15,27 @@ class Unpooling2D(pooling_2d.Pooling2D):
         super(Unpooling2D, self).__init__(
             ksize, stride, pad, cover_all, use_cudnn)
         self.outh, self.outw = (None, None) if outsize is None else outsize
+
+    def check_type_forward(self, in_types):
+        n_in = in_types.size()
+        type_check.expect(n_in == 1)
+        x_type = in_types[0]
+
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim == 4,
+        )
+
+        if self.outh is not None:
+            type_check.expect(
+                x_type.shape[2] ==
+                conv.get_conv_outsize(self.outh, self.kh, self.sy, self.ph)
+            )
+        if self.outw is not None:
+            type_check.expect(
+                x_type.shape[3] ==
+                conv.get_conv_outsize(self.outw, self.kw, self.sx, self.pw),
+            )
 
     def forward_cpu(self, x):
         h, w = x[0].shape[2:]
