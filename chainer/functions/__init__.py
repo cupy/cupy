@@ -38,8 +38,8 @@ from chainer.functions.loss import sigmoid_cross_entropy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
-from chainer.functions.math import det
 from chainer.functions.math import batch_l2_norm_squared
+from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import identity
 from chainer.functions.math import inv
@@ -173,8 +173,6 @@ Sin = trigonometric.Sin
 sin = trigonometric.sin
 Sum = sum.Sum
 sum = sum.sum
-BatchInv = inv.BatchInv
-batch_inv = inv.batch_inv
 
 Dropout = dropout.Dropout
 dropout = dropout.dropout
