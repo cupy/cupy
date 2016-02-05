@@ -119,6 +119,7 @@ They are symbols imported by packages and subpackages of ``chainer``.
 For example, ``chainer.Variable`` is a shortcut of ``chainer.variable.Variable``.
 **It is not allowed to use such shortcuts in the ``chainer`` library implementation**.
 Note that you can still use them in ``tests`` and ``examples`` directories.
+Also note that you should use shortcut names of CuPy APIs in Chainer implementation.
 
 Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_.
 The reviewing process starts after the check passes.
@@ -129,16 +130,31 @@ Testing Guidelines
 
 Testing is one of the most important part of your code.
 You must test your code by unit tests following our testing guidelines.
+Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your codes::
 
-We are using ``nose`` package to run unit tests.
-You can run unit tests simply by running ``nosetests`` command under the repository root.
+  $ pip install nose mock
+
+In order to run unittests at the repository root, you first have to build Cython files in place by running the following command::
+
+  $ python setup.py develop
+
+Once the Cython modules are built, you can run unit tests simply by running ``nosetests`` command at the repository root::
+
+  $ nosetests
+
 It requires CUDA by default.
 In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the nosetests command::
 
   $ nosetests path/to/your/test.py --attr='!gpu'
 
-Tests are put into the ``tests`` directory.
-This directory has the same structure as the ``chainer`` directory.
+Some GPU tests involve multiple GPUs.
+If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--attr='gpu<N'`` where ``N`` is a concrete integer.
+For example, if you have only one GPU, launch nosetests by the following command to skip multi-GPU tests::
+
+  $ nosetests path/to/gpu/test.py --attr='gpu<2'
+
+Tests are put into the ``tests/chainer_tests`` and ``tests/cupy_tests`` directories.
+These have the same structure as that of ``chainer`` and ``cupy`` directories, respectively.
 In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
 
 * The name of each subdirectory of ``tests`` must end with the ``_tests`` suffix.
@@ -148,13 +164,28 @@ Following this naming convention, you can run all the tests by just typing ``nos
 
   $ nosetests
 
-If you modify the code related to existing unit tests, you must run this command.
+Or you can also specify a root directory to search test scripts from::
+
+  $ nosetests tests/chainer_tests  # to just run tests of Chainer
+  $ nosetests tests/cupy_tests     # to just run tests of CuPy
+
+If you modify the code related to existing unit tests, you must run appropriate commands.
+
+.. note::
+   CuPy tests include type-exhaustive test functions which take long time to execute.
+   If you are running tests on a multi-core machine, you can parallelize the tests by following options::
+
+     $ nosetests --processes=12 --process-timeout=1000 tests/cupy_tests
+
+   The magic numbers can be modified for your usage.
+   Note that some tests require many CUDA compilations, which require a bit long time.
+   Without the ``process-timeout`` option, the timeout is set shorter, causing timeout failures for many test cases.
 
 There are many examples of unit tests under the ``tests`` directory.
 They simply use the ``unittest`` package of the standard library.
 
-If your patch includes GPU-related code, your tests must run with and without GPU capability.
-Test functions that requires CUDA must be tagged by the ``chainer.testing.attr.gpu`` decorator::
+Even if your patch includes GPU-related code, your tests should not fail without GPU capability.
+Test functions that require CUDA must be tagged by the ``chainer.testing.attr.gpu`` decorator (or ``cupy.testing.attr.gpu`` for testing CuPy APIs)::
 
   import unittest
   from chainer.testing import attr
@@ -166,10 +197,27 @@ Test functions that requires CUDA must be tagged by the ``chainer.testing.attr.g
       def test_my_gpu_func(self):
           ...
 
-The functions tagged by the ``chainer.testing.attr.gpu`` decorator are skipped if ``--attr='!gpu'`` is given.
+The functions tagged by the ``gpu`` decorator are skipped if ``--attr='!gpu'`` is given.
 We also have the ``chainer.testing.attr.cudnn`` decorator to let nosetests know that the test depends on CuDNN.
 
+The test functions decorated by ``gpu`` must not depend on multiple GPUs.
+In order to write tests for multiple GPUs, use ``chainer.testing.attr.multi_gpu()`` or ``cupy.testing.attr.multi_gpu()`` decorators instead::
+
+  import unittest
+  from chainer.testing import attr
+
+  class TestMyFunc(unittest.TestCase):
+      ...
+
+      @attr.multi_gpu(2)  # specify the number of required GPUs here
+      def test_my_two_gpu_func(self):
+          ...
+
 Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_ **with --attr='!gpu' option**.
-Since Travis-CI does not support CUDA, we cannot check you CUDA-related code automatically.
+Since Travis-CI does not support CUDA, we cannot check your CUDA-related code automatically.
 The reviewing process starts after the test passes.
 Note that reviewers will test your code without the option to check CUDA-related code.
+
+.. note::
+   Some of numerically unstable tests might cause errors irrelevant to your changes.
+   In such a case, we ignore the failures and go on to the review process, so do not worry about it.

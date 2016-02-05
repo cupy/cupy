@@ -1,3 +1,5 @@
+import numpy
+
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -18,8 +20,12 @@ class Dropout(function.Function):
     def forward(self, x):
         scale = x[0].dtype.type(1. / (1 - self.dropout_ratio))
         xp = cuda.get_array_module(*x)
-        self.mask = scale * \
-            (xp.random.rand(*x[0].shape) >= self.dropout_ratio)
+        if xp == numpy:
+            flag = xp.random.rand(*x[0].shape) >= self.dropout_ratio
+        else:
+            flag = (xp.random.rand(*x[0].shape, dtype=numpy.float32) >=
+                    self.dropout_ratio)
+        self.mask = scale * flag
         return x[0] * self.mask,
 
     def backward(self, x, gy):

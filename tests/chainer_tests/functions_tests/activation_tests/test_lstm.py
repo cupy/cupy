@@ -72,20 +72,9 @@ class TestLSTM(unittest.TestCase):
         self.test_forward_gpu()
 
     def check_backward(self, c_prev_data, x_data, c_grad, h_grad):
-        c_prev = chainer.Variable(c_prev_data)
-        x = chainer.Variable(x_data)
-        c, h = functions.lstm(c_prev, x)
-        c.grad = c_grad
-        h.grad = h_grad
-        c.backward()
-
-        func = c.creator
-        f = lambda: func.forward((c_prev.data, x.data))
-        gc_prev, gx = gradient_check.numerical_grad(
-            f, (c_prev.data, x.data), (c_grad, h_grad), eps=1e-2)
-
-        gradient_check.assert_allclose(gc_prev, c_prev.grad)
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.LSTM(),
+            (c_prev_data, x_data), (c_grad, h_grad), eps=1e-2)
 
     @condition.retry(3)
     def test_full_backward_cpu(self):

@@ -1,4 +1,5 @@
-from chainer.functions.caffe import caffe_function
+from chainer.links.caffe import caffe_function
 
 
+# for backward compatibility
 CaffeFunction = caffe_function.CaffeFunction

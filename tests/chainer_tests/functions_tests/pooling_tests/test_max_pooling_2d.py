@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 import six
 
@@ -72,18 +73,11 @@ class TestMaxPooling2D(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), False)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.max_pooling_2d(x, 3, stride=2, pad=1,
-                                     cover_all=self.cover_all,
-                                     use_cudnn=use_cudnn)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
+        gradient_check.check_backward(
+            functions.MaxPooling2D(
+                3, stride=2, pad=1, cover_all=self.cover_all,
+                use_cudnn=use_cudnn),
+            x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -107,6 +101,37 @@ class TestMaxPooling2DCoverAll(TestMaxPooling2D):
         super(TestMaxPooling2DCoverAll, self).setUp()
         self.gy = numpy.random.uniform(-1, 1,
                                        (2, 3, 3, 2)).astype(numpy.float32)
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestMaxPooling2DCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.x = cuda.cupy.arange(
+            2 * 3 * 4 * 3, dtype=numpy.float32).reshape(2, 3, 4, 3)
+        self.gy = cuda.cupy.random.uniform(-1, 1,
+                                           (2, 3, 2, 2)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        return functions.max_pooling_2d(
+            x, 3, stride=2, pad=1, cover_all=False, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.poolingForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.poolingBackward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)

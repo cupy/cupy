@@ -9,4 +9,5 @@ Optimizers
 .. autoclass:: MomentumSGD
 .. autoclass:: NesterovAG
 .. autoclass:: RMSprop
+.. autoclass:: RMSpropGraves
 .. autoclass:: SGD

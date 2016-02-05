@@ -10,9 +10,12 @@ from chainer import testing
 from chainer.testing import attr
 
 
+@testing.parameterize(
+    {'in_shape': (10, 5), 'out_shape': (10,)},
+    {'in_shape': (0, 5),  'out_shape': (0,)},
+    {'in_shape': (1, 33), 'out_shape': (1,)},
+)
 class TestSelectItem(unittest.TestCase):
-    in_shape = (10, 5)
-    out_shape = (10,)
 
     def setUp(self):
         self.x_data = numpy.random.uniform(
@@ -39,18 +42,9 @@ class TestSelectItem(unittest.TestCase):
                            cuda.to_gpu(self.t_data))
 
     def check_backward(self, x_data, t_data, gy_data):
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        y = functions.select_item(x, t)
-        y.grad = gy_data
-        y.backward()
-        self.assertEqual(None, t.grad)
-
-        func = y.creator
-        f = lambda: func.forward((x.data, t.data))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (gy_data,), eps=0.01)
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.SelectItem(),
+            (x_data, t_data), gy_data, eps=0.01)
 
     def test_backward_cpu(self):
         self.check_backward(self.x_data, self.t_data, self.gy_data)
@@ -60,11 +54,6 @@ class TestSelectItem(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x_data),
                             cuda.to_gpu(self.t_data),
                             cuda.to_gpu(self.gy_data))
-
-
-class TestSelectItemZeroSize(unittest.TestCase):
-    in_shape = (0, 5)
-    out_shape = (0,)
 
 
 testing.run_module(__name__, __file__)

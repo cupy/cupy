@@ -23,6 +23,9 @@ def array_split(ary, indices_or_sections, axis=0):
     else:
         indices = indices_or_sections
 
+    if len(indices) == 0:
+        return [ary]
+
     skip = (slice(None),) * axis
     ret = []
     i = 0
