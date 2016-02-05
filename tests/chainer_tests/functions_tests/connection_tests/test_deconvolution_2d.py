@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -122,6 +123,51 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         b = None if self.b is None else cuda.to_gpu(self.b)
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             b, cuda.to_gpu(self.gy))
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestDeconvolution2DCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.in_channels = 3
+        self.out_channels = 2
+        kh, kw = _pair(3)
+        sh, sw = _pair(1)
+        ph, pw = _pair(1)
+        self.W = cuda.cupy.random.normal(
+            0, numpy.sqrt(1. / (kh * kw * self.in_channels)),
+            (self.in_channels, self.out_channels, kh, kw)
+        ).astype(numpy.float32)
+        N = 2
+        inh, inw = 4, 3
+        outh = conv.get_deconv_outsize(inh, kh, sh, ph)
+        outw = conv.get_deconv_outsize(inw, kw, sw, pw)
+        self.x = cuda.cupy.random.uniform(
+            -1, 1, (N, self.in_channels, inh, inw)).astype(numpy.float32)
+        self.gy = cuda.cupy.random.uniform(
+            -1, 1, (N, self.out_channels, outh, outw)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        W = chainer.Variable(self.W)
+        return F.deconvolution_2d(
+            x, W, None, stride=1, pad=1, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.convolutionBackwardData_v2') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)
