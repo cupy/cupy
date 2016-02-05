@@ -1,4 +1,5 @@
 [run]
+plugins = Cython.Coverage
 omit = chainer/functions/caffe/caffe_pb2.py
 
 [report]

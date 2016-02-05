@@ -30,18 +30,8 @@ class _TestMatMul(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
 
     def check_backward(self, x1_data, x2_data, y_grad, atol):
-        x1 = chainer.Variable(x1_data)
-        x2 = chainer.Variable(x2_data)
-        y = self.op(x1, x2)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x1.data, x2.data))
-        gx1, gx2 = gradient_check.numerical_grad(
-            f, (x1.data, x2.data), (y.grad,))
-        gradient_check.assert_allclose(gx1, x1.grad, atol=atol)
-        gradient_check.assert_allclose(gx2, x2.grad, atol=atol)
+        gradient_check.check_backward(
+            self.op, (x1_data, x2_data), y_grad, atol=atol)
 
     @condition.retry(3)
     def test_matmul_backward_cpu(self):

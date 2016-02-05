@@ -5,169 +5,152 @@ from chainer import function
 from chainer.utils import type_check
 
 
-class BatchNormalization(function.Function):
+class BatchNormalizationFunction(function.Function):
 
-    """Batch normalization on outputs of linear or convolution functions.
+    def __init__(self, eps=1e-5):
+        self.eps = eps
+
+    def check_type_forward(self, in_types):
+        n_in = in_types.size().eval()
+        if n_in != 3 and n_in != 5:
+            raise type_check.InvalidType(
+                '%s or %s' % (in_types.size() == 3, in_types.size() == 5),
+                '%s == %s' % (in_types.size(), n_in))
+
+        x_type, gamma_type, beta_type = in_types[:3]
+        type_check.expect(
+            x_type.dtype == numpy.float32,
+            x_type.ndim >= gamma_type.ndim + 1,
+            # TODO(beam2d): Check shape
+            gamma_type.dtype == numpy.float32,
+            beta_type.dtype == numpy.float32,
+            gamma_type.shape == beta_type.shape,
+        )
+
+        if len(in_types) == 5:
+            mean_type, var_type = in_types[3:]
+            type_check.expect(
+                mean_type.dtype == numpy.float32,
+                mean_type.shape == gamma_type.shape,
+                var_type.dtype == numpy.float32,
+                var_type.shape == gamma_type.shape,
+            )
+
+    def forward(self, inputs):
+        xp = cuda.get_array_module(*inputs)
+        x, gamma, beta = inputs[:3]
+
+        head_ndim = gamma.ndim + 1
+        expander = (None, Ellipsis) + (None,) * (x.ndim - head_ndim)
+        gamma = gamma[expander]
+        beta = beta[expander]
+
+        if len(inputs) == 5:
+            mean = inputs[3]
+            var = inputs[4]
+        else:
+            axis = (0,) + tuple(range(head_ndim, x.ndim))
+            mean = x.mean(axis=axis)
+            var = x.var(axis=axis)
+            var += self.eps
+            self.mean = mean
+            self.var = var
+
+        self.std = xp.sqrt(var, dtype=var.dtype)
+
+        if xp is numpy:
+            x_mu = x - mean[expander]
+            self.x_hat = x_mu / self.std[expander]
+            y = gamma * self.x_hat
+            y += beta
+        else:
+            self.x_hat, y = cuda.elementwise(
+                'T x, T mean, T std, T gamma, T beta', 'T x_hat, T y',
+                '''
+                   x_hat = (x - mean) / std;
+                   y = gamma * x_hat + beta;
+                ''',
+                'bn_fwd')(x, mean[expander], self.std[expander], gamma, beta)
+        return y,
+
+    def backward(self, inputs, grad_outputs):
+        x, gamma = inputs[:2]
+        gy = grad_outputs[0]
+
+        head_ndim = gamma.ndim + 1
+        expander = (None, Ellipsis) + (None,) * (x.ndim - head_ndim)
+        m = gamma.dtype.type(x.size // gamma.size)
+
+        axis = (0,) + tuple(range(head_ndim, x.ndim))
+        gbeta = gy.sum(axis=axis)
+        ggamma = (gy * self.x_hat).sum(axis=axis)
+
+        xp = cuda.get_array_module(x)
+        if len(inputs) == 5:
+            var = inputs[4]
+            gs = gamma / self.std
+            gmean = -gs * gbeta
+            gvar = -0.5 * gamma / var * ggamma
+            gx = gs[expander] * gy
+            return gx, ggamma, gbeta, gmean, gvar
+
+        if xp is numpy:
+            gx = (gamma / self.std)[expander] * (
+                gy - (self.x_hat * ggamma[expander] + gbeta[expander]) / m)
+        else:
+            inv_m = numpy.float32(1) / m
+            gx = cuda.elementwise(
+                'T gy, T x_hat, T gamma, T std, T ggamma, T gbeta, T inv_m',
+                'T gx',
+                'gx = (gamma / std) * (gy - (x_hat * ggamma + gbeta) * inv_m)',
+                'bn_bwd')(gy, self.x_hat, gamma[expander], self.std[expander],
+                          ggamma[expander], gbeta[expander], inv_m)
+        return gx, ggamma, gbeta
+
+
+def batch_normalization(x, gamma, beta, eps=1e-5):
+    """Batch normalization function.
+
+    It takes the input variable ``x`` and two parameter variables ``gamma`` and
+    ``beta``. The input must have the batch size and the features (or channels)
+    as the first two dimensions of its shape. The input can have more than two
+    dimensions, where the remained dimensions are considered as spatial
+    dimensions, which are considered as a part of the batch size.
 
     Args:
-        size (int or tuple of ints): Size (or shape) of channel
-            dimensions.
-        decay (float): Decay rate of moving average.
+        x (Variable): The input variable.
+        gamma (Variable): The scaling parameter of normalized data.
+        beta (Variable): The shifting parameter of scaled normalized data.
         eps (float): Epsilon value for numerical stability.
-        dtype (numpy.dtype): Type to use in computing.
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
           Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
 
+    .. seealso:: :class:`links.BatchNormalization`
+
     """
-    parameter_names = ('gamma',  'beta')
-    gradient_names = ('ggamma', 'gbeta')
+    return BatchNormalizationFunction(eps)(x, gamma, beta)
 
-    def __init__(self, size, decay=0.9, eps=1e-5, dtype=numpy.float32):
-        if isinstance(size, tuple):
-            self.size = size
-        elif isinstance(size, int):
-            self.size = (size, )
-        else:
-            raise TypeError('size must be tuple or int')
 
-        size = numpy.prod(size, dtype=int)
-        self.dtype = numpy.dtype(dtype)
+def fixed_batch_normalization(x, gamma, beta, mean, var, eps=1e-5):
+    """Batch normalization function with fixed statistics.
 
-        self.avg_mean = numpy.zeros((1, size, 1), dtype=self.dtype)
-        self.avg_var = numpy.zeros_like(self.avg_mean)
+    This is a variant of batch normalization, where the mean and variance
+    statistics are given by the caller as variables. This is used on testing
+    mode of the batch normalization layer, where batch statistics cannot be
+    used for prediction consistency.
 
-        self.gamma = numpy.ones_like(self.avg_mean)
-        self.ggamma = numpy.full_like(self.gamma, numpy.nan)
-        self.beta = numpy.zeros_like(self.avg_mean)
-        self.gbeta = numpy.full_like(self.beta, numpy.nan)
+    Args:
+        x (Variable): The input variable.
+        gamma (Variable): The scaling parameter of normalized data.
+        beta (Variable): The shifting parameter of scaled normalized data.
+        mean (Variable): The shifting parameter of input.
+        var (Variable): The square of scaling parameter of input.
+        eps (float): Epsilon value for numerical stability.
 
-        self.decay = decay
-        self.N = [0]  # as a reference
-        self.eps = eps
+    .. seealso::
+       :func:`functions.batch_normalization`,
+       :class:`links.BatchNormalization`
 
-    def __call__(self, x, test=False, finetune=False):
-        """Invokes the forward propagation of BatchNormalization.
-
-        BatchNormalization accepts additional arguments, which controlls three
-        different running mode.
-
-        Args:
-            x (Variable): An input variable.
-            test (bool): If ``True``, BatchNormalization runs in testing mode;
-                it normalizes the input using precomputed statistics.
-            finetune (bool): If ``True``, BatchNormalization runs in finetuning
-                mode; it accumulates the input array to compute population
-                statistics for normalization, and normalizes the input using
-                batch statistics.
-
-        If ``test`` and ``finetune`` are both ``False``, then
-        BatchNormalization runs in training mode; it computes moving averages
-        of mean and variance for evaluation during training, and normalizes the
-        input using batch statistics.
-
-        """
-        self.use_batch_mean = not test or finetune
-        self.is_finetune = finetune
-        return function.Function.__call__(self, x)
-
-    def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() == 1)
-        x_type, = in_types
-
-        self_ = type_check.Variable(self, 'self')
-        type_check.expect(
-            x_type.dtype == numpy.float32,
-            x_type.ndim >= self_.size.__len__() + 1,
-            x_type.shape[1:len(self.size)+1] == self_.size
-        )
-
-    def start_finetuning(self):
-        self.N[0] = numpy.array(0)
-
-    def forward(self, x_orig):
-        xp = cuda.get_array_module(*x_orig)
-        ldim, cdim, rdim = self._internal_shape(x_orig[0])
-        x = x_orig[0].reshape(ldim, cdim, rdim)
-
-        if self.use_batch_mean:
-            mean = x.mean(axis=(0, 2), keepdims=True)
-            var = x.var(axis=(0, 2), keepdims=True)
-            var += self.eps
-        else:
-            mean = self.avg_mean
-            var = self.avg_var
-
-        self.std = xp.sqrt(var, dtype=var.dtype)
-
-        if xp == numpy:
-            self.x_hat = (x - mean) / self.std
-            y = self.gamma * self.x_hat
-            y += self.beta
-        else:
-            self.x_hat, y = cuda.elementwise(
-                'T x, T mean, T std, T gamma, T beta', 'T x_hat, T y', '''
-                T x_hat_ = (x - mean) / std;
-                x_hat = x_hat_;
-                y = gamma * x_hat_ + beta;''', 'bn_fwd1')(
-                    x, mean, self.std, self.gamma, self.beta)
-
-        # Compute exponential moving average
-        if self.use_batch_mean:
-            if self.is_finetune:
-                self.N[0] += 1
-                decay = 1. / self.N[0]
-            else:
-                decay = self.decay
-
-            m = ldim * rdim
-            adjust = m / max(m - 1., 1.)  # unbiased estimation
-            if xp == numpy:
-                self.avg_mean *= decay
-                self.avg_mean += (1 - decay) * mean
-                self.avg_var *= decay
-                self.avg_var += (1 - decay) * adjust * var
-            else:
-                cuda.elementwise(
-                    'T mean, T var, T decay, T adjust',
-                    'T avg_mean, T avg_var', '''
-                    avg_mean = decay * avg_mean + (1 - decay) * mean;
-                    avg_var = decay * avg_var + (1 - decay) * adjust * var;''',
-                    'bn_fwd2')(
-                        mean, var, decay, adjust, self.avg_mean, self.avg_var)
-
-        return y.reshape(x_orig[0].shape),
-
-    def backward(self, x_orig, gy):
-        # TODO(beam2d): Support backprop on inference mode
-        assert self.use_batch_mean and not self.is_finetune
-
-        ldim, cdim, rdim = self._internal_shape(x_orig[0])
-        gy = gy[0].reshape(ldim, cdim, rdim)
-        inv_m = 1. / (ldim * rdim)
-
-        gbeta = gy.sum(axis=(0, 2), keepdims=True)
-        self.gbeta += gbeta
-
-        ggamma = (gy * self.x_hat).sum(axis=(0, 2), keepdims=True)
-        self.ggamma += ggamma
-
-        if cuda.get_array_module(*x_orig) == numpy:
-            coeff = self.gamma / self.std
-            gx = coeff * (gy - (self.x_hat * ggamma + gbeta) * inv_m)
-        else:
-            gx = cuda.elementwise(
-                'T gy, T gbeta, T ggamma, T x_hat, T gamma, T std, T inv_m',
-                'T gx',
-                'gx = gamma / std * (gy - (x_hat * ggamma + gbeta) * inv_m)',
-                'bn_bwd')(
-                    gy, gbeta, ggamma, self.x_hat, self.gamma, self.std, inv_m)
-
-        return gx.reshape(x_orig[0].shape),
-
-    def _internal_shape(self, x):
-        ldim = x.shape[0]
-        cdim = self.gamma.size
-        rdim = x.size // (ldim * cdim)
-        assert ldim * cdim * rdim == x.size
-        return map(numpy.int32, (ldim, cdim, rdim))
+    """
+    return BatchNormalizationFunction(eps)(x, gamma, beta, mean, var)

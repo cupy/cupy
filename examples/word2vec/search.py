@@ -1,15 +1,25 @@
 #!/usr/bin/env python
 import numpy
 import six
-import six.moves.cPickle as pickle
 
 n_result = 5  # number of search result to show
 
 
-with open('model.pickle', 'rb') as f:
-    model, index2word, word2index = pickle.load(f)
+with open('word2vec.model', 'r') as f:
+    ss = f.readline().split()
+    n_vocab, n_units = int(ss[0]), int(ss[1])
+    word2index = {}
+    index2word = {}
+    w = numpy.empty((n_vocab, n_units), dtype=numpy.float32)
+    for i, line in enumerate(f):
+        ss = line.split()
+        assert len(ss) == n_units + 1
+        word = ss[0]
+        word2index[word] = i
+        index2word[i] = word
+        w[i] = numpy.array([float(s) for s in ss[1:]], dtype=numpy.float32)
 
-w = model.embed.W
+
 s = numpy.sqrt((w * w).sum(1))
 w /= s.reshape((s.shape[0], 1))  # normalize
 

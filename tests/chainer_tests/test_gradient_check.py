@@ -5,6 +5,7 @@ import six
 
 from chainer import cuda
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -48,7 +49,8 @@ class NumericalGradientTest(unittest.TestCase):
         # matrix-vector multiplication of dfxs and dys
         dx_expect = tuple(map(lambda dfx: _dot(dfx, gys), dfxs))
 
-        func = lambda: f(xs)
+        def func():
+            return f(xs)
         dx_actual = gradient_check.numerical_grad(func, xs, gys, eps)
 
         print('eps: {}'.format(eps))
@@ -83,8 +85,11 @@ class NumericalGradientTest(unittest.TestCase):
 
 class NumericalGradientTest2(NumericalGradientTest):
 
-    f = lambda self, xs: (1,)
-    df = lambda self, xs: ((0,),)
+    def f(self, xs):
+        return (1,)
+
+    def df(self, xs):
+        return ((0,),)
 
 
 class NumericalGradientTest3(NumericalGradientTest):
@@ -158,7 +163,8 @@ class NumericalGradientReferenceTest(unittest.TestCase):
     def check_reference(self, x):
         # A returned value and an input refers the same memory.
         # See issue #488
-        func = lambda: (x,)
+        def func():
+            return (x,)
         gx, = gradient_check.numerical_grad(func, (x,), (1,))
         gradient_check.assert_allclose(cuda.to_cpu(gx), 1)
 
@@ -306,3 +312,6 @@ class AssertAllCloseTest2(unittest.TestCase):
     @attr.gpu
     def test_rtol_gpu(self):
         self.check_rtol(cuda.to_gpu(self.x), cuda.to_gpu(self.y))
+
+
+testing.run_module(__name__, __file__)

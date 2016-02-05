@@ -1,4 +1,3 @@
-import ctypes
 import numpy
 
 from chainer import cuda
@@ -39,13 +38,16 @@ class ReLU(function.Function):
         return utils.force_array(numpy.maximum(zero, x[0])),
 
     def forward_gpu(self, x):
-        y = cuda.empty_like(x[0])
+        y = cuda.cupy.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
+            dtype = x[0].dtype
+            one = numpy.array(1, dtype=dtype).ctypes
+            zero = numpy.array(0, dtype=dtype).ctypes
             handle = cudnn.get_handle()
             desc = cudnn.create_tensor_descriptor(_as4darray(x[0]))
             libcudnn.activationForward(
-                handle, _mode, ctypes.c_float(1), desc.value, x[0].data.ptr,
-                ctypes.c_float(0), desc.value, y.data.ptr)
+                handle, _mode, one.data, desc.value, x[0].data.ptr,
+                zero.data, desc.value, y.data.ptr)
             self.y = y
         else:
             y = cuda.cupy.maximum(x[0].dtype.type(0), x[0])
@@ -56,13 +58,16 @@ class ReLU(function.Function):
 
     def backward_gpu(self, x, gy):
         if cuda.cudnn_enabled and self.use_cudnn:
-            gx = cuda.empty_like(x[0])
+            gx = cuda.cupy.empty_like(x[0])
+            dtype = gx.dtype
+            one = numpy.array(1, dtype=dtype).ctypes
+            zero = numpy.array(0, dtype=dtype).ctypes
             handle = cudnn.get_handle()
             desc = cudnn.create_tensor_descriptor(_as4darray(self.y))
             libcudnn.activationBackward(
-                handle, _mode, ctypes.c_float(1), desc.value, self.y.data.ptr,
+                handle, _mode, one.data, desc.value, self.y.data.ptr,
                 desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
-                ctypes.c_float(0), desc.value, gx.data.ptr)
+                zero.data, desc.value, gx.data.ptr)
         else:
             gx = cuda.elementwise(
                 'T x, T gy', 'T gx',

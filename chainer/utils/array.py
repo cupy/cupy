@@ -4,15 +4,15 @@ from chainer import cuda
 
 
 def as_vec(x):
-    return x.reshape(x.size)
+    return x.ravel()
 
 
 def as_mat(x):
-    return x.reshape(x.shape[0], x.size // x.shape[0])
+    return x.reshape(len(x), -1)
 
 
 def empty_like(x):
     if cuda.available and isinstance(x, cuda.ndarray):
-        return cuda.empty_like(x)
+        return cuda.cupy.empty_like(x)
     else:
         return numpy.empty_like(x)

@@ -35,8 +35,8 @@ class MaxPooling2D(pooling_2d.Pooling2D):
             h, self.kh, self.sy, self.ph, self.cover_all)
         y_w = conv.get_conv_outsize(
             w, self.kw, self.sx, self.pw, self.cover_all)
-        y = cuda.empty((n, c, y_h, y_w), dtype=x[0].dtype)
-        self.indexes = cuda.empty((n, c, y_h, y_w), dtype=numpy.int32)
+        y = cuda.cupy.empty((n, c, y_h, y_w), dtype=x[0].dtype)
+        self.indexes = cuda.cupy.empty((n, c, y_h, y_w), dtype=numpy.int32)
 
         cuda.elementwise(
             'raw T in, int32 h, int32 w, int32 out_h, int32 out_w,'
@@ -51,7 +51,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
                int in_x_0 = max(0, out_x * sx - pw);
                int in_x_1 = min(w, out_x * sx + kw - pw);
 
-               float maxval = in[in_x_0 + w * (in_y_0 + h * c0)];
+               T maxval = in[in_x_0 + w * (in_y_0 + h * c0)];
                int argmax_y = in_y_0;
                int argmax_x = in_x_0;
                for (int y = in_y_0; y < in_y_1; ++y) {
@@ -96,7 +96,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
 
         n, c, h, w = x[0].shape
         y_h, y_w = gy[0].shape[2:]
-        gx = cuda.empty_like(x[0])
+        gx = cuda.cupy.empty_like(x[0])
 
         cuda.elementwise(
             'raw T gy, raw S indexes, int32 h, int32 w,'
@@ -112,7 +112,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
                int out_x_0 = max(0,     (x - kw + sx) / sx);
                int out_x_1 = min(out_w, (x      + sx) / sx);
 
-               float val = 0;
+               T val = 0;
                for (int out_y = out_y_0; out_y < out_y_1; ++out_y) {
                  int ky = y - out_y * sy;
                  for (int out_x = out_x_0; out_x < out_x_1; ++out_x) {

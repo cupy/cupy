@@ -1,7 +1,7 @@
 import six
 
 import cupy
-from cupy import internal
+from cupy import core
 
 
 zip_longest = six.moves.zip_longest
@@ -104,63 +104,7 @@ def atleast_3d(*arys):
     return res
 
 
-class broadcast(object):
-    """Object that performs broadcasting.
-
-    CuPy actually uses this class to support broadcasting in various
-    operations. Note that this class does not provide an iterator.
-
-    Args:
-        arrays (tuple of arrays): Arrays to be broadcasted.
-
-    Attributes:
-        shape (tuple of ints): The broadcasted shape.
-        nd (int): Number of dimensions of the broadcasted shape.
-        size (int): Total size of the broadcasted shape.
-        values (list of arrays): The broadcasted arrays.
-
-    .. seealso:: :class:`numpy.broadcast`
-
-    """
-
-    def __init__(self, *arrays):
-        ndarray = cupy.ndarray
-        rev = slice(None, None, -1)
-        shape_arr = [a._shape[rev] for a in arrays
-                     if isinstance(a, ndarray)]
-        r_shape = [max(ss) for ss in zip_longest(*shape_arr, fillvalue=0)]
-
-        self.shape = shape = tuple(r_shape[rev])
-        self.size = size = internal.prod(shape)
-        self.nd = ndim = len(shape)
-
-        broadcasted = list(arrays)
-        for i, a in enumerate(broadcasted):
-            if not isinstance(a, ndarray):
-                continue
-
-            a_shape = a.shape
-            if a_shape == shape:
-                continue
-
-            r_strides = [
-                a_st if sh == a_sh else (0 if a_sh == 1 else None)
-                for sh, a_sh, a_st
-                in six_zip(r_shape, a._shape[rev], a._strides[rev])]
-
-            if None in r_strides:
-                raise ValueError('Broadcasting failed')
-
-            offset = (0,) * (ndim - len(r_strides))
-
-            broadcasted[i] = view = a.view()
-            view._shape = shape
-            view._strides = offset + tuple(r_strides[rev])
-            view._size = size
-            view._c_contiguous = -1
-            view._f_contiguous = -1
-
-        self.values = tuple(broadcasted)
+broadcast = core.broadcast
 
 
 def broadcast_arrays(*args):
@@ -178,6 +122,39 @@ def broadcast_arrays(*args):
     return broadcast(*args).values
 
 
+def broadcast_to(array, shape):
+    """Broadcast an array to a given shape.
+
+    Args:
+        array (cupy.ndarray): Array to broadcast.
+        shape (tuple of int): The shape of the desired array.
+
+    Returns:
+        cupy.ndarray: Broadcasted view.
+
+    .. seealso:: :func:`numpy.broadcast_to`
+
+    """
+    if array.ndim > len(shape):
+        raise ValueError(
+            'input operand has more dimensions than allowed by the axis '
+            'remapping')
+
+    strides = [0] * len(shape)
+    for i in range(array.ndim):
+        j = -i - 1
+        sh = shape[j]
+        a_sh = array.shape[j]
+        if sh == a_sh:
+            strides[j] = array._strides[j]
+        elif a_sh != 1:
+            raise ValueError('Broadcasting failed')
+
+    view = array.view()
+    view._set_shape_and_strides(shape, strides)
+    return view
+
+
 def expand_dims(a, axis):
     """Expands given arrays.
 
@@ -192,6 +169,7 @@ def expand_dims(a, axis):
     .. seealso:: :func:`numpy.expand_dims`
 
     """
+    # TODO(okuta): check type
     shape = a.shape
     if axis < 0:
         axis = axis + len(shape) + 1
@@ -213,26 +191,5 @@ def squeeze(a, axis=None):
     .. seealso:: :func:`numpy.squeeze`
 
     """
-    if axis is None:
-        axis = tuple(i for i, n in enumerate(a._shape) if n == 1)
-    elif isinstance(axis, int):
-        axis = axis,
-
-    new_shape = []
-    new_strides = []
-    j = 0
-    for i, n in enumerate(a._shape):
-        if j < len(axis) and i == axis[j]:
-            if n != 1:
-                raise RuntimeError('Cannot squeeze dimension of size > 1')
-            j += 1
-        else:
-            new_shape.append(n)
-            new_strides.append(a._strides[i])
-
-    v = a.view()
-    v._shape = tuple(new_shape)
-    v._strides = tuple(new_strides)
-    v._c_contiguous = -1
-    v._f_contiguous = -1
-    return v
+    # TODO(okuta): check type
+    return a.squeeze(axis)

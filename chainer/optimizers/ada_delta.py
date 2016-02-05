@@ -4,7 +4,7 @@ from chainer import cuda
 from chainer import optimizer
 
 
-class AdaDelta(optimizer.Optimizer):
+class AdaDelta(optimizer.GradientMethod):
 
     """Zeiler's ADADELTA.
 
@@ -16,23 +16,24 @@ class AdaDelta(optimizer.Optimizer):
         self.rho = rho
         self.eps = eps
 
-    def init_state_cpu(self, param, grad):
-        return numpy.zeros_like(param), numpy.zeros_like(param)
+    def init_state(self, param, state):
+        data = param.data
+        xp = cuda.get_array_module(data)
+        state['msg'] = xp.zeros_like(data)
+        state['msdx'] = xp.zeros_like(data)
 
-    def init_state_gpu(self, param, grad):
-        return cuda.zeros_like(param), cuda.zeros_like(param)
+    def update_one_cpu(self, param, state):
+        grad = param.grad
+        msg, msdx = state['msg'], state['msdx']
 
-    def update_one_cpu(self, param, grad, state):
-        msg, msdx = state
         msg *= self.rho
         msg += (1 - self.rho) * grad * grad
         dx = numpy.sqrt((msdx + self.eps) / (msg + self.eps)) * grad
         msdx *= self.rho
         msdx += (1 - self.rho) * dx * dx
-        param -= dx
+        param.data -= dx
 
-    def update_one_gpu(self, param, grad, state):
-        msg, msdx = state
+    def update_one_gpu(self, param, state):
         cuda.elementwise(
             'T grad, T one_minus_rho, T eps',
             'T param, T msg, T msdx',
@@ -40,5 +41,5 @@ class AdaDelta(optimizer.Optimizer):
                T dx  = sqrt((msdx + eps) / (msg + eps)) * grad;
                msdx  += one_minus_rho * (dx * dx - msdx);
                param -= dx;''',
-            'adadelta')(grad, 1 - self.rho, self.eps,
-                        param, msg, msdx)
+            'adadelta')(param.grad, 1 - self.rho, self.eps,
+                        param.data, state['msg'], state['msdx'])

@@ -1,8 +1,8 @@
-from cupy import elementwise
+from cupy import core
 
 
 def _create_float_test_ufunc(name, doc):
-    return elementwise.create_ufunc(
+    return core.create_ufunc(
         'cupy_' + name, ('e->?', 'f->?', 'd->?'), 'out0 = %s(in0)' % name,
         doc=doc)
 

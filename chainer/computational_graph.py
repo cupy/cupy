@@ -9,15 +9,15 @@ class DotNode(object):
 
     This class represents a node of computational graph,
     with some utilities for dot language.
-    """
 
+    """
     def __init__(self, node):
         """Initializes DotNode.
 
         Args:
             node: :class: `Variable` object or :class: `Function` object.
-        """
 
+        """
         assert isinstance(node, (variable.Variable, function.Function))
         self.node = node
         self.id_ = id(node)
@@ -31,8 +31,6 @@ class DotNode(object):
 
         if isinstance(self.node, variable.Variable):
             return "oval"
-        elif isinstance(self.node, function.Split):
-            return "hexagon"
         else:
             return "box"
 
@@ -51,13 +49,14 @@ class DotNode(object):
 
 
 class ComputationalGraph(object):
+
     """Class that represents computational graph.
 
     .. note::
 
       We assume that the computational graph is directed and acyclic.
-    """
 
+    """
     def __init__(self, nodes, edges):
         """Initializes computational graph.
 
@@ -65,6 +64,7 @@ class ComputationalGraph(object):
             nodes (list): List of nodes. Each node is either
                  :class:`Variable` object or :class:`Function` object.
             edges (list): List of edges. Each edge consists of pair of nodes.
+
         """
         self.nodes = nodes
         self.edges = edges
@@ -75,18 +75,18 @@ class ComputationalGraph(object):
         `label` property of is used as short description of each node.
         Returns:
             str: The graph in dot format.
-        """
 
+        """
         ret = "digraph graphname{"
         for node in self.nodes:
             assert isinstance(node, (variable.Variable, function.Function))
             ret += DotNode(node).label
         for edge in self.edges:
             head, tail = edge
-            assert (isinstance(head, variable.Variable)
-                    and isinstance(tail, function.Function)) or \
-                   (isinstance(head, function.Function)
-                    and isinstance(tail, variable.Variable))
+            assert (isinstance(head, variable.Variable) and
+                    isinstance(tail, function.Function)) or \
+                   (isinstance(head, function.Function) and
+                    isinstance(tail, variable.Variable))
             head_node = DotNode(head)
             tail_node = DotNode(tail)
             ret += "%s -> %s;" % (head_node.id_, tail_node.id_)
@@ -102,6 +102,7 @@ class ComputationalGraph(object):
 
         Returns
             str: The graph in specified format.
+
         """
         if format == 'dot':
             return self._to_dot()
@@ -116,8 +117,8 @@ def build_computational_graph(outputs, remove_split=True):
         outputs(list): nodes from which the graph is constructed.
             Each element of outputs must be either :class:`Variable`
             object or :class:`Function` object.
-        remove_split(bool): If it is ``True``, this function hides
-            :class:`Split` functions and related variables from the graph.
+        remove_split(bool): It must be True. This argument is left for
+            backward compatibility.
 
     Returns:
         ComputationalGraph: A graph consisting of nodes and edges that
@@ -129,36 +130,24 @@ def build_computational_graph(outputs, remove_split=True):
 
         For example, suppose that computational graph is as follows::
 
-                                |--> x'  ---> f ---> y
-            x ---> (splitter) --+
-                                |--> x'' ---> g ---> z
+                |--> f ---> y
+            x --+
+                |--> g ---> z
 
         Let ``outputs = [y, z]``.
-        If ``remove_split`` is ``False``, this method generates the graph
-        itself. On the other hand, if ``remove_split`` is ``True``,
-        ``splitter``, ``x'`` and ``x''`` are removed from the graph
-        and ``x`` is directly connected to ``f`` and ``g``.
-        Resulting graph will be::
+        Then the full graph is emitted.
 
-               |--> f ---> y
-            x -+
-               |--> g ---> z
-
-        Next, let ``outputs = [y]``. Note that ``z``, ``g``, and ``x''``
+        Next, let ``outputs = [y]``. Note that ``z`` and ``g``
         are not backward-reachable from ``y``.
-        If ``remove_split`` is ``False``, this function removes
-        these unreachable nodes to get::
-
-            x ---> (splitter) ---> x' ---> f ---> y
-
-        If ``remove_split`` is ``True``, we further remove splitter
-        and ``x'`` to get::
+        The resulting graph would be following::
 
             x ---> f ---> y
 
         See :class:`TestGraphBuilder` for details.
 
     """
+    if not remove_split:
+        raise ValueError('remove_split=False is not supported anymore')
 
     cands = []
     seen_edges = set()
@@ -189,28 +178,15 @@ def build_computational_graph(outputs, remove_split=True):
         _, _, cand = heapq.heappop(cands)
         if isinstance(cand, variable.Variable):
             creator = cand.creator
-            if remove_split and isinstance(creator, function.Split):
-                # assume that function.Split has only one input
-                next_cand = creator.inputs[0]
-                add_cand(next_cand)
-                continue
             if creator is not None and (creator, cand) not in seen_edges:
                 add_cand(creator)
                 seen_edges.add((creator, cand))
                 nodes.add(HashableObject(creator))
                 nodes.add(HashableObject(cand))
         elif isinstance(cand, function.Function):
-            if remove_split and isinstance(cand, function.Split):
-                next_cand = creator.inputs[0]
-                add_cand(next_cand)
-                continue
             for input_ in cand.inputs:
                 if input_ is not cand and (input_, cand) not in seen_edges:
                     creator = input_.creator
-                    if remove_split and \
-                       creator is not None and \
-                       isinstance(creator, function.Split):
-                        input_ = creator.inputs[0]
                     add_cand(input_)
                     seen_edges.add((input_, cand))
                     nodes.add(HashableObject(input_))

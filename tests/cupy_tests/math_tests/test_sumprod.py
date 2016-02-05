@@ -19,6 +19,12 @@ class TestSumprod(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_external_sum_all(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.sum(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_sum_all2(self, xp, dtype):
         a = testing.shaped_arange((20, 30, 40), xp, dtype)
         return a.sum()
@@ -40,6 +46,12 @@ class TestSumprod(unittest.TestCase):
     def test_sum_axis(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.sum(axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_external_sum_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.sum(a, axis=1)
 
     # float16 is omitted, since NumPy's sum on float16 arrays has more error
     # than CuPy's.
@@ -121,6 +133,18 @@ class TestSumprod(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_external_prod_all(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.prod(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_prod_axis(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return a.prod(axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_external_prod_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.prod(a, axis=1)

@@ -2,9 +2,10 @@ import math
 
 import chainer
 import chainer.functions as F
+import chainer.links as L
 
 
-class NIN(chainer.FunctionSet):
+class NIN(chainer.Chain):
 
     """Network-in-Network example model."""
 
@@ -13,39 +14,29 @@ class NIN(chainer.FunctionSet):
     def __init__(self):
         w = math.sqrt(2)  # MSRA scaling
         super(NIN, self).__init__(
-            conv1=F.Convolution2D(3,   96, 11, wscale=w, stride=4),
-            conv1a=F.Convolution2D(96,   96,  1, wscale=w),
-            conv1b=F.Convolution2D(96,   96,  1, wscale=w),
-            conv2=F.Convolution2D(96,  256,  5, wscale=w, pad=2),
-            conv2a=F.Convolution2D(256,  256,  1, wscale=w),
-            conv2b=F.Convolution2D(256,  256,  1, wscale=w),
-            conv3=F.Convolution2D(256,  384,  3, wscale=w, pad=1),
-            conv3a=F.Convolution2D(384,  384,  1, wscale=w),
-            conv3b=F.Convolution2D(384,  384,  1, wscale=w),
-            conv4=F.Convolution2D(384, 1024,  3, wscale=w, pad=1),
-            conv4a=F.Convolution2D(1024, 1024,  1, wscale=w),
-            conv4b=F.Convolution2D(1024, 1000,  1, wscale=w),
+            mlpconv1=L.MLPConvolution2D(
+                3, (96, 96, 96), 11, stride=4, wscale=w),
+            mlpconv2=L.MLPConvolution2D(
+                96, (256, 256, 256), 5, pad=2, wscale=w),
+            mlpconv3=L.MLPConvolution2D(
+                256, (384, 384, 384), 3, pad=1, wscale=w),
+            mlpconv4=L.MLPConvolution2D(
+                384, (1024, 1024, 1000), 3, pad=1, wscale=w),
         )
+        self.train = True
 
-    def forward(self, x_data, y_data, train=True):
-        x = chainer.Variable(x_data, volatile=not train)
-        t = chainer.Variable(y_data, volatile=not train)
+    def clear(self):
+        self.loss = None
+        self.accuracy = None
 
-        h = F.relu(self.conv1(x))
-        h = F.relu(self.conv1a(h))
-        h = F.relu(self.conv1b(h))
-        h = F.max_pooling_2d(h, 3, stride=2)
-        h = F.relu(self.conv2(h))
-        h = F.relu(self.conv2a(h))
-        h = F.relu(self.conv2b(h))
-        h = F.max_pooling_2d(h, 3, stride=2)
-        h = F.relu(self.conv3(h))
-        h = F.relu(self.conv3a(h))
-        h = F.relu(self.conv3b(h))
-        h = F.max_pooling_2d(h, 3, stride=2)
-        h = F.dropout(h, train=train)
-        h = F.relu(self.conv4(h))
-        h = F.relu(self.conv4a(h))
-        h = F.relu(self.conv4b(h))
-        h = F.reshape(F.average_pooling_2d(h, 6), (x_data.shape[0], 1000))
-        return F.softmax_cross_entropy(h, t), F.accuracy(h, t)
+    def __call__(self, x, t):
+        self.clear()
+        h = F.max_pooling_2d(F.relu(self.mlpconv1(x)), 3, stride=2)
+        h = F.max_pooling_2d(F.relu(self.mlpconv2(h)), 3, stride=2)
+        h = F.max_pooling_2d(F.relu(self.mlpconv3(h)), 3, stride=2)
+        h = self.mlpconv4(F.dropout(h, train=self.train))
+        h = F.reshape(F.average_pooling_2d(h, 6), (x.data.shape[0], 1000))
+
+        self.loss = F.softmax_cross_entropy(h, t)
+        self.accuracy = F.accuracy(h, t)
+        return self.loss

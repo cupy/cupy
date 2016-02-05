@@ -11,6 +11,8 @@ Chainer Reference Manual
    util
    check
    functions
+   links
    optimizers
+   serializers
    caffe
    graph
