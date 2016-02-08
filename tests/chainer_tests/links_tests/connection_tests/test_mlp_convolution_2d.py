@@ -41,7 +41,8 @@ class TestMLPConvolution2D(unittest.TestCase):
         actual = self.mlp(x)
         act = functions.sigmoid
         expect = self.mlp[2](act(self.mlp[1](act(self.mlp[0](x)))))
-        cuda.cupy.testing.assert_array_equal(expect.data, actual.data)
+        numpy.testing.assert_array_equal(
+            cuda.to_cpu(expect.data), cuda.to_cpu(actual.data))
 
     def test_call_cpu(self):
         self.check_call(self.x)
