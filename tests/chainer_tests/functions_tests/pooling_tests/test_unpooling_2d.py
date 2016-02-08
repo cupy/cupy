@@ -56,8 +56,8 @@ class TestUnpooling2D(unittest.TestCase):
         y.backward()
 
         func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
+        gx, = gradient_check.numerical_grad(
+            func.forward((x.data,)), (x.data,), (y.grad,))
 
         gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
 
