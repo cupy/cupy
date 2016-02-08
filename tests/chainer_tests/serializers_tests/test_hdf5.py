@@ -1,17 +1,25 @@
 import os
+import sys
 import tempfile
 import unittest
 
-import h5py
 import mock
 import numpy
 
 from chainer import cuda
+from chainer import link
+from chainer import links
+from chainer import optimizers
 from chainer.serializers import hdf5
 from chainer import testing
 from chainer.testing import attr
 
 
+if hdf5._available:
+    import h5py
+
+
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestHDF5Serializer(unittest.TestCase):
 
     def setUp(self):
@@ -75,6 +83,7 @@ class TestHDF5Serializer(unittest.TestCase):
         self.assertIs(ret, 10)
 
 
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestHDF5Deserializer(unittest.TestCase):
 
     def setUp(self):
@@ -122,6 +131,7 @@ class TestHDF5Deserializer(unittest.TestCase):
         self.assertEqual(ret, 10)
 
 
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestSaveHDF5(unittest.TestCase):
 
     def setUp(self):
@@ -143,6 +153,7 @@ class TestSaveHDF5(unittest.TestCase):
         self.assertEqual(serializer.compression, 3)
 
 
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
 class TestLoadHDF5(unittest.TestCase):
 
     def setUp(self):
@@ -163,6 +174,97 @@ class TestLoadHDF5(unittest.TestCase):
         self.assertEqual(obj.serialize.call_count, 1)
         (serializer,), _ = obj.serialize.call_args
         self.assertIsInstance(serializer, hdf5.HDF5Deserializer)
+
+
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
+class TestGroupHierachy(unittest.TestCase):
+
+    def setUp(self):
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        self.temp_file_path = path
+
+        child = link.Chain(linear=links.Linear(2, 3))
+        child.add_param('Wc', (2, 3))
+        self.parent = link.Chain(child=child)
+        self.parent.add_param('Wp', (2, 3))
+
+        self.optimizer = optimizers.AdaDelta()
+        self.optimizer.setup(self.parent)
+
+    def _save(self, h5, obj, name):
+        group = h5.create_group(name)
+        serializer = hdf5.HDF5Serializer(group)
+        serializer.save(obj)
+
+    def tearDown(self):
+        if hasattr(self, 'temp_file_path'):
+            os.remove(self.temp_file_path)
+
+    def _check_group(self, h5, state):
+        self.assertSetEqual(set(h5.keys()),
+                            set(('child',) + state))
+        self.assertSetEqual(set(h5['child'].keys()),
+                            set(('linear', 'Wc')))
+        self.assertSetEqual(set(h5['child']['linear'].keys()),
+                            set(('W', 'b')))
+
+    def test_save_chain(self):
+        with h5py.File(self.temp_file_path) as h5:
+            self._save(h5, self.parent, 'test')
+            self.assertSetEqual(set(h5.keys()), set(('test',)))
+            self._check_group(h5['test'], ('Wp',))
+
+    def test_save_optimizer(self):
+        with h5py.File(self.temp_file_path) as h5:
+            self._save(h5, self.optimizer, 'test')
+            self.assertSetEqual(set(h5.keys()), set(('test',)))
+            self._check_group(h5['test'], ('Wp', 'epoch', 't'))
+
+    def test_save_chain2(self):
+        hdf5.save_hdf5(self.temp_file_path, self.parent)
+        with h5py.File(self.temp_file_path) as h5:
+            self._check_group(h5, ('Wp', ))
+
+    def test_save_optimizer2(self):
+        hdf5.save_hdf5(self.temp_file_path, self.optimizer)
+        with h5py.File(self.temp_file_path) as h5:
+            self._check_group(h5, ('Wp', 'epoch', 't'))
+
+
+original_import = __import__
+
+
+def no_h5py(name, _globals=None, _locals=None, fromlist=(), level=0):
+    if name == 'h5py':
+        raise ImportError()
+    else:
+        return original_import(name, _globals, _locals, fromlist, level)
+
+
+@unittest.skipUnless(hdf5._available, 'h5py is not available')
+class TestNoH5py(unittest.TestCase):
+
+    def setUp(self):
+        __builtins__['__import__'] = no_h5py
+
+    def tearDown(self):
+        __builtins__['__import__'] = original_import
+
+    def test_raise(self):
+        del sys.modules['chainer.serializers.hdf5']
+        del sys.modules['chainer.serializers.npz']
+        del sys.modules['chainer.serializers']
+
+        import chainer.serializers
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.save_hdf5(None, None, None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.load_hdf5(None, None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.HDF5Serializer(None)
+        with self.assertRaises(RuntimeError):
+            chainer.serializers.HDF5Deserializer(None)
 
 
 testing.run_module(__name__, __file__)

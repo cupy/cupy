@@ -49,22 +49,8 @@ class TestWhere(unittest.TestCase):
                            cuda.to_gpu(self.y_data))
 
     def check_backward(self, c_data, x_data, y_data, g_data):
-        c = chainer.Variable(c_data)
-        x = chainer.Variable(x_data)
-        y = chainer.Variable(y_data)
-
-        z = F.where(c, x, y)
-        z.grad = g_data
-
-        z.backward()
-
-        func = z.creator
-        f = lambda: func.forward((c.data, x.data, y.data))
-
-        gx, gy = gradient_check.numerical_grad(f, (x_data, y.data), (g_data,))
-        gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gy, y.grad)
-        self.assertIs(c.grad, None)
+        gradient_check.check_backward(
+            F.Where(), (c_data, x_data, y_data), g_data)
 
     def test_backward_cpu(self):
         self.check_backward(self.c_data, self.x_data, self.y_data, self.g_data)

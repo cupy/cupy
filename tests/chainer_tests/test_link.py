@@ -171,6 +171,23 @@ class TestLink(unittest.TestCase):
         self.assertEqual(l.z, 3)
 
 
+class CopyCountVariable(chainer.Variable):
+
+    def __init__(self, v):
+        super(CopyCountVariable, self).__init__(v.data, v.volatile, v.name)
+        self.grad = v.grad
+        self.count_to_cpu = 0
+        self.count_to_gpu = 0
+
+    def to_cpu(self):
+        self.count_to_cpu += 1
+        super(CopyCountVariable, self).to_cpu()
+
+    def to_gpu(self, device=None):
+        self.count_to_gpu += 1
+        super(CopyCountVariable, self).to_gpu(device)
+
+
 class TestChain(unittest.TestCase):
 
     def setUp(self):
@@ -242,8 +259,14 @@ class TestChain(unittest.TestCase):
         self.assertIs(self.l3.x.data, x3)
         self.assertIs(self.l3.x.grad, gx3)
 
+    def set_copy_count_variables(self):
+        self.l1.x = CopyCountVariable(self.l1.x)
+        self.l2.x = CopyCountVariable(self.l2.x)
+        self.l3.x = CopyCountVariable(self.l3.x)
+
     @attr.gpu
     def test_to_cpu(self):
+        self.set_copy_count_variables()
         self.c2.to_gpu()
         self.c2.to_cpu()
         self.assertIs(self.c2.xp, numpy)
@@ -257,9 +280,16 @@ class TestChain(unittest.TestCase):
         self.assertIsInstance(self.l2.x.grad, numpy.ndarray)
         self.assertIsInstance(self.l3.x.data, numpy.ndarray)
         self.assertIsInstance(self.l3.x.grad, numpy.ndarray)
+        self.assertEqual(self.l1.x.count_to_cpu, 1)
+        self.assertEqual(self.l1.x.count_to_gpu, 1)
+        self.assertEqual(self.l2.x.count_to_cpu, 1)
+        self.assertEqual(self.l2.x.count_to_gpu, 1)
+        self.assertEqual(self.l3.x.count_to_cpu, 1)
+        self.assertEqual(self.l3.x.count_to_gpu, 1)
 
     @attr.gpu
     def test_to_gpu(self):
+        self.set_copy_count_variables()
         cupy = cuda.cupy
         self.c2.to_gpu()
         self.assertIs(self.c2.xp, cupy)
@@ -273,6 +303,9 @@ class TestChain(unittest.TestCase):
         self.assertIsInstance(self.l2.x.grad, cupy.ndarray)
         self.assertIsInstance(self.l3.x.data, cupy.ndarray)
         self.assertIsInstance(self.l3.x.grad, cupy.ndarray)
+        self.assertEqual(self.l1.x.count_to_gpu, 1)
+        self.assertEqual(self.l2.x.count_to_gpu, 1)
+        self.assertEqual(self.l3.x.count_to_gpu, 1)
 
     def test_params(self):
         params = list(self.c2.params())

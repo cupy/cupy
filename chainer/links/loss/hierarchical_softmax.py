@@ -254,30 +254,30 @@ class BinaryHierarchicalSoftmax(link.Link):
     In natural language applications, vocabulary size is too large to use
     softmax loss.
     Instead, the hierarchical softmax uses product of sigmoid functions.
-    It costs only :math:`O(\log(n))` time where :math:`n` is the vocabulary
+    It costs only :math:`O(\\log(n))` time where :math:`n` is the vocabulary
     size in average.
 
     At first a user need to prepare a binary tree whose each leaf is
     corresponding to a word in a vocabulary.
     When a word :math:`x` is given, exactly one path from the root of the tree
     to the leaf of the word exists.
-    Let :math:`\mbox{path}(x) = ((e_1, b_1), \dots, (e_m, b_m))` be the path of
-    :math:`x`, where :math:`e_i` is an index of :math:`i`-th internal node, and
-    :math:`b_i \in \{-1, 1\}` indicates direction to move at :math:`i`-th
-    internal node (-1 is left, and 1 is right).
+    Let :math:`\\mbox{path}(x) = ((e_1, b_1), \\dots, (e_m, b_m))` be the path
+    of :math:`x`, where :math:`e_i` is an index of :math:`i`-th internal node,
+    and :math:`b_i \\in \\{-1, 1\\}` indicates direction to move at
+    :math:`i`-th internal node (-1 is left, and 1 is right).
     Then, the probability of :math:`x` is given as below:
 
     .. math::
 
-       P(x) &= \prod_{(e_i, b_i) \in \mbox{path}(x)}P(b_i | e_i)  \\\\
-            &= \prod_{(e_i, b_i) \in \mbox{path}(x)}\sigma(b_i x^\\top
+       P(x) &= \\prod_{(e_i, b_i) \\in \\mbox{path}(x)}P(b_i | e_i)  \\\\
+            &= \\prod_{(e_i, b_i) \\in \\mbox{path}(x)}\\sigma(b_i x^\\top
                w_{e_i}),
 
-    where :math:`\sigma(\\cdot)` is a sigmoid function, and :math:`w` is a
+    where :math:`\\sigma(\\cdot)` is a sigmoid function, and :math:`w` is a
     weight matrix.
 
-    This function costs :math:`O(\log(n))` time as an average length of paths
-    is :math:`O(\log(n))`, and :math:`O(n)` memory as the number of internal
+    This function costs :math:`O(\\log(n))` time as an average length of paths
+    is :math:`O(\\log(n))`, and :math:`O(n)` memory as the number of internal
     nodes equals :math:`n - 1`.
 
     Args:

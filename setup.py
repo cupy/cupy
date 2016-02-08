@@ -7,6 +7,9 @@ from setuptools import setup
 import chainer_setup_build
 
 
+setup_requires = [
+    'numpy>=1.9.0',
+]
 install_requires = [
     'filelock',
     'nose',
@@ -17,18 +20,16 @@ install_requires = [
 
 # Hack for Read the Docs
 on_rtd = chainer_setup_build.check_readthedocs_environment()
-if not on_rtd:
-    install_requires.append('h5py>=2.5.0')
-
 if on_rtd:
     print('Add develop command for Read the Docs')
     sys.argv.insert(1, 'develop')
+    setup_requires = ['Cython>=0.23'] + setup_requires
 
 chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.5.1',
+    version='1.6.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -77,8 +78,7 @@ setup(
     },
     zip_safe=False,
     install_requires=install_requires,
-    setup_requires=['Cython>=0.19',  # for h5py
-                    'numpy>=1.9.0'],
+    setup_requires=setup_requires,
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext

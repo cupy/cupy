@@ -19,3 +19,4 @@ This is the official documentation of CuPy, a multi-dimensional array on CUDA wi
    cuda
    memoize
    kernel
+   testing

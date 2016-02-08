@@ -77,10 +77,10 @@ optimizer.add_hook(chainer.optimizer.GradientClipping(grad_clip))
 # Init/Resume
 if args.initmodel:
     print('Load model from', args.initmodel)
-    serializers.load_hdf5(args.initmodel, model)
+    serializers.load_npz(args.initmodel, model)
 if args.resume:
     print('Load optimizer state from', args.resume)
-    serializers.load_hdf5(args.resume, optimizer)
+    serializers.load_npz(args.resume, optimizer)
 
 
 def evaluate(dataset):
@@ -154,6 +154,6 @@ print('test perplexity:', test_perp)
 
 # Save the model and the optimizer
 print('save the model')
-serializers.save_hdf5('rnnlm.model', model)
+serializers.save_npz('rnnlm.model', model)
 print('save the optimizer')
-serializers.save_hdf5('rnnlm.state', optimizer)
+serializers.save_npz('rnnlm.state', optimizer)

@@ -70,8 +70,8 @@ class Link(object):
                       W=(n_out, n_in),
                       b=(n_out,),
                   )
-                  self.W[...] = np.random.randn(n_out, n_in)
-                  self.b.fill(0)
+                  self.W.data[...] = np.random.randn(n_out, n_in)
+                  self.b.data.fill(0)
 
               def __call__(self, x):
                   return F.linear(x, self.W, self.b)
@@ -192,9 +192,9 @@ class Link(object):
         """
         if self._cpu:
             return self
-        for param in self.params():
-            param.to_cpu()
         d = self.__dict__
+        for name in self._params:
+            d[name].to_cpu()
         for name in self._persistent:
             value = d[name]
             if isinstance(value, cuda.ndarray):
@@ -219,10 +219,10 @@ class Link(object):
         cuda.check_cuda_available()
         if not self._cpu:
             return self
+        d = self.__dict__
         with cuda.get_device(device):
-            for param in self.params():
-                param.to_gpu()
-            d = self.__dict__
+            for name in self._params:
+                d[name].to_gpu()
             for name in self._persistent:
                 value = d[name]
                 if isinstance(value, numpy.ndarray):

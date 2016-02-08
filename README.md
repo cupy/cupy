@@ -12,32 +12,28 @@ Chainer is tested on Ubuntu 14.04 and CentOS 7. We recommend them to use Chainer
 
 Minimum requirements:
 - Python 2.7.6+, 3.4.3+, 3.5.0+
-- NumPy 1.9
+- NumPy 1.9, 1.10
 - Six 1.9
-- h5py 2.5.0
 
 Requirements for some features:
 - CUDA support
   - CUDA 6.5, 7.0, 7.5
   - filelock
-  - g++
+  - g++ 4.8.4+
 - cuDNN support
   - cuDNN v3, v4
 - Caffe model support
   - Python 2.7.6+ (Py3 is not supported)
   - Protocol Buffers (pip install protobuf)
+- HDF5 serialization support
+  - h5py 2.5.0
 - Testing utilities
   - Mock
   - Nose
 
 ## Installation
 
-Chainer requires libhdf5 via h5py. Anaconda distribution includes this package. If you are using another Python distribution, use either of the following commands to install libhdf5 depending on your Linux environment:
-
-```
-apt-get install libhdf5-dev
-yum install hdf5-devel
-```
+### Minimum installation
 
 If you use old ``setuptools``, upgrade it:
 
@@ -54,6 +50,9 @@ You can also install Chainer from the source code:
 ```
 python setup.py install
 ```
+
+
+### Installation with CUDA
 
 If you want to enable CUDA, first you have to install CUDA and set the environment variable `PATH` and `LD_LIBRARY_PATH` for CUDA executables and libraries.
 For example, if you are using Ubuntu and CUDA is installed by the official distribution, then CUDA is installed at `/usr/local/cuda`.
@@ -76,12 +75,46 @@ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 Do not forget to restart your terminal session (or `source` it) to enable these changes.
 And then, reinstall Chainer.
 
+
+### HDF5 Support
+
+If you want to use HDF5 serialization, please install h5py manually.
+h5py requires libhdf5.
+Anaconda distribution includes this package.
+If you are using another Python distribution, use either of the following commands to install libhdf5 depending on your Linux environment:
+
+```
+apt-get install libhdf5-dev
+yum install hdf5-devel
+```
+
+And then, install h5py via PyPI.
+You may need to install Cython for h5py.
+
+```
+pip install cython
+pip install h5py
+```
+
+
+## Reference
+
+Tokui, S., Oono, K., Hido, S. and Clayton, J.,
+Chainer: a Next-Generation Open Source Framework for Deep Learning,
+*Proceedings of Workshop on Machine Learning Systems(LearningSys) in
+The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIPS)*, (2015)
+[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](chainer_bibtex.txt)
+
+
 ## More information
 
 - Official site: http://chainer.org/
 - Official document: http://docs.chainer.org/
 - github: https://github.com/pfnet/chainer
 - Forum: https://groups.google.com/forum/#!forum/chainer
+- Forum (Japanese): https://groups.google.com/forum/#!forum/chainer-jp
+- Twitter: https://twitter.com/ChainerOfficial
+- Twitter (Japanese): https://twitter.com/chainerjp
 
 ## License
 

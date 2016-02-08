@@ -26,8 +26,10 @@ functions, which users should use.
 Activation functions
 --------------------
 .. autofunction:: clipped_relu
+.. autofunction:: elu
 .. autofunction:: leaky_relu
 .. autofunction:: lstm
+.. autofunction:: maxout
 .. autofunction:: prelu
 .. autofunction:: relu
 .. autofunction:: sigmoid
@@ -38,8 +40,10 @@ Activation functions
 Array manipulations
 -------------------
 .. autofunction:: broadcast
+.. autofunction:: broadcast_to
 .. autofunction:: concat
 .. autofunction:: copy
+.. autofunction:: expand_dims
 .. autofunction:: reshape
 .. autofunction:: select_item
 .. autofunction:: split_axis
@@ -78,10 +82,13 @@ Loss functions for VAE
 
 Mathematical functions
 ----------------------
+.. autofunction:: batch_inv
+.. autofunction:: batch_l2_norm_squared
 .. autofunction:: batch_matmul
 .. autofunction:: cos
 .. autofunction:: exp
 .. autofunction:: identity
+.. autofunction:: inv
 .. autofunction:: log
 .. autofunction:: matmul
 .. autofunction:: max

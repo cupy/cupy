@@ -51,27 +51,32 @@ class Convolution2DFunction(function.Function):
 
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         self.col = conv.im2col_cpu(
             x, kh, kw, self.sy, self.sx, self.ph, self.pw)
         y = numpy.tensordot(self.col, W, ((1, 2, 3), (1, 2, 3)))
-        if len(inputs) == 3:
-            b = inputs[2]
+        if b is not None:
             y += b
         return numpy.rollaxis(y, 3, 1),
 
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
-        out_c, _, kh, kw = W.shape
-
-        n, c, h, w = x.shape
         b = inputs[2] if len(inputs) == 3 else None
+
+        out_c, _, kh, kw = W.shape
+        n, c, h, w = x.shape
 
         out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph)
         out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw)
 
         y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
         if cuda.cudnn_enabled and self.use_cudnn:
+            x = cuda.cupy.ascontiguousarray(x)
+            W = cuda.cupy.ascontiguousarray(W)
+            if b is not None:
+                b = cuda.cupy.ascontiguousarray(b)
+
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
             y_desc = cudnn.create_tensor_descriptor(y)
@@ -105,9 +110,10 @@ class Convolution2DFunction(function.Function):
 
             # TODO(beam2d): Support unshared bias
             if b is not None:
-                libcudnn.addTensor(
-                    handle, one.data, self.bias_desc.value, b.data.ptr,
-                    one.data, y_desc.value, y.data.ptr)
+                libcudnn.addTensor_v2(
+                    handle, libcudnn.CUDNN_ADD_SAME_C, one.data,
+                    self.bias_desc.value, b.data.ptr, one.data,
+                    y_desc.value, y.data.ptr)
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(
@@ -126,6 +132,7 @@ class Convolution2DFunction(function.Function):
 
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
         h, w = x.shape[2:]
 
@@ -134,11 +141,11 @@ class Convolution2DFunction(function.Function):
         gcol = numpy.rollaxis(gcol, 3)
         gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
 
-        if len(inputs) == 3:
+        if b is None:
+            return gx, gW
+        else:
             gb = gy.sum(axis=(0, 2, 3))
             return gx, gW, gb
-        else:
-            return gx, gW
 
     def backward_gpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
@@ -150,10 +157,12 @@ class Convolution2DFunction(function.Function):
 
         gW = cuda.cupy.empty_like(W)
         if cuda.cudnn_enabled and self.use_cudnn:
+            x = cuda.cupy.ascontiguousarray(x)
+            W = cuda.cupy.ascontiguousarray(W)
+            gy = cuda.cupy.ascontiguousarray(gy)
+
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
-            if not gy.flags.c_contiguous:
-                gy = cuda.cupy.ascontiguousarray(gy)
             gy_desc = cudnn.create_tensor_descriptor(gy)
             dtype = x.dtype
             one = numpy.array(1, dtype=dtype).ctypes
@@ -170,7 +179,8 @@ class Convolution2DFunction(function.Function):
             workspace = cuda.cupy.empty(
                 (max(workspace_size // 4, 1),), dtype=x.dtype)
 
-            libcudnn.convolutionBackwardFilter(
+
+            libcudnn.convolutionBackwardFilter_v2(
                 handle, one.data, x_desc.value, x.data.ptr,
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
                 algo, workspace.data.ptr, workspace_size,
@@ -187,14 +197,14 @@ class Convolution2DFunction(function.Function):
                 (max(workspace_size // 4, 1),), dtype=x.dtype)
 
             gx = cuda.cupy.empty_like(x)
-            libcudnn.convolutionBackwardData(
+            libcudnn.convolutionBackwardData_v2(
                 handle, one.data, self.filter_desc.value, W.data.ptr,
                 gy_desc.value, gy.data.ptr, self.conv_desc.value,
                 algo, workspace.data.ptr, workspace_size,
                 zero.data, x_desc.value, gx.data.ptr)
 
             if b is not None:
-                gb = cuda.cupy.empty_like(inputs[2])
+                gb = cuda.cupy.empty_like(b)
                 libcudnn.convolutionBackwardBias(
                     handle, one.data, gy_desc.value, gy.data.ptr,
                     zero.data, self.bias_desc.value, gb.data.ptr)

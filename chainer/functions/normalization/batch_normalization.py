@@ -74,11 +74,6 @@ class BatchNormalizationFunction(function.Function):
         return y,
 
     def backward(self, inputs, grad_outputs):
-        if len(inputs) == 5:
-            # TODO(beam2d): Support it
-            raise RuntimeError('BatchNormalization does not support backprop '
-                               'with fixed mean/var.')
-
         x, gamma = inputs[:2]
         gy = grad_outputs[0]
 
@@ -91,6 +86,14 @@ class BatchNormalizationFunction(function.Function):
         ggamma = (gy * self.x_hat).sum(axis=axis)
 
         xp = cuda.get_array_module(x)
+        if len(inputs) == 5:
+            var = inputs[4]
+            gs = gamma / self.std
+            gmean = -gs * gbeta
+            gvar = -0.5 * gamma / var * ggamma
+            gx = gs[expander] * gy
+            return gx, ggamma, gbeta, gmean, gvar
+
         if xp is numpy:
             gx = (gamma / self.std)[expander] * (
                 gy - (self.x_hat * ggamma[expander] + gbeta[expander]) / m)

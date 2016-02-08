@@ -50,16 +50,7 @@ class UnaryFunctionsTestBase(object):
         self.check_forward_gpu(F.log, numpy.log)
 
     def check_backward(self, op, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = op(x)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(op, x_data, y_grad)
 
     def check_backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)

@@ -110,10 +110,10 @@ optimizer.setup(model)
 # Init/Resume
 if args.initmodel:
     print('Load model from', args.initmodel)
-    serializers.load_hdf5(args.initmodel, model)
+    serializers.load_npz(args.initmodel, model)
 if args.resume:
     print('Load optimizer state from', args.resume)
-    serializers.load_hdf5(args.resume, optimizer)
+    serializers.load_npz(args.resume, optimizer)
 
 
 # ------------------------------------------------------------------------------
@@ -283,8 +283,8 @@ def train_loop():
             continue
         elif inp == 'val':  # start validation
             res_q.put('val')
-            serializers.save_hdf5(args.out, model)
-            serializers.save_hdf5(args.outstate, optimizer)
+            serializers.save_npz(args.out, model)
+            serializers.save_npz(args.outstate, optimizer)
             model.train = False
             continue
 
@@ -319,5 +319,5 @@ feeder.join()
 logger.join()
 
 # Save final model
-serializers.save_hdf5(args.out, model)
-serializers.save_hdf5(args.outstate, optimizer)
+serializers.save_npz(args.out, model)
+serializers.save_npz(args.outstate, optimizer)

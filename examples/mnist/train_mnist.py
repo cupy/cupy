@@ -67,10 +67,10 @@ optimizer.setup(model)
 # Init/Resume
 if args.initmodel:
     print('Load model from', args.initmodel)
-    serializers.load_hdf5(args.initmodel, model)
+    serializers.load_npz(args.initmodel, model)
 if args.resume:
     print('Load optimizer state from', args.resume)
-    serializers.load_hdf5(args.resume, optimizer)
+    serializers.load_npz(args.resume, optimizer)
 
 # Learning loop
 for epoch in six.moves.range(1, n_epoch + 1):
@@ -117,6 +117,6 @@ for epoch in six.moves.range(1, n_epoch + 1):
 
 # Save the model and the optimizer
 print('save the model')
-serializers.save_hdf5('mlp.model', model)
+serializers.save_npz('mlp.model', model)
 print('save the optimizer')
-serializers.save_hdf5('mlp.state', optimizer)
+serializers.save_npz('mlp.state', optimizer)

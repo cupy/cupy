@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -30,7 +31,11 @@ class EmbedIDFunction(function.Function):
         gW = xp.zeros_like(W)
 
         if xp is numpy:
-            numpy.add.at(gW, x, gy)
+            # It is equivalent to `numpy.add.at(gW, x, gy)` but ufunc.at is
+            # too slow.
+            for ix, igy in six.moves.zip(x.ravel(),
+                                         gy.reshape(x.size, -1)):
+                gW[ix] += igy
         else:
             cuda.elementwise(
                 'T gy, int32 x, int32 n_out', 'raw T gW',
@@ -45,8 +50,8 @@ def embed_id(x, W):
 
     This function implements so called *word embedding*. It takes two
     arguments: a set of IDs (words) ``x`` in :math:`B` dimensional integer
-    vector, and a set of all ID (word) embeddings ``W`` in :math:`V\times d`
-    float32 matrix. It outputs :math:`B \times d` matrix whose ``i``-th
+    vector, and a set of all ID (word) embeddings ``W`` in :math:`V \\times d`
+    float32 matrix. It outputs :math:`B \\times d` matrix whose ``i``-th
     column is the ``x[i]``-th column of ``W``.
 
     This function is only differentiable on the input ``W``.

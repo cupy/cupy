@@ -334,20 +334,20 @@ Serializer is a simple interface to serialize or deserialize an object.
 :class:`Link` and :class:`Optimizer` supports serialization by serializers.
 
 Concrete serializers are defined in the :mod:`serializers` module.
-Currently, it only contains a serializer and a deserializer for HDF5 format.
+It supports NumPy NPZ and HDF5 formats.
 
-We can serialize a link object into HDF5 file by the :func:`serializers.save_hdf5` function:
-
-.. doctest::
-
-   >>> serializers.save_hdf5('my.model', model)
-
-It saves the parameters of ``model`` into the file ``'my.model'`` in HDF5 format.
-The saved model can be read by the :func:`serializers.load_hdf5` function:
+For example, we can serialize a link object into NPZ file by the :func:`serializers.save_npz` function:
 
 .. doctest::
 
-   >>> serializers.load_hdf5('my.model', model)
+   >>> serializers.save_npz('my.model', model)
+
+It saves the parameters of ``model`` into the file ``'my.model'`` in NPZ format.
+The saved model can be read by the :func:`serializers.load_npz` function:
+
+.. doctest::
+
+   >>> serializers.load_npz('my.model', model)
 
 .. note::
    Note that only the parameters and the *persistent values* are serialized by these serialization code.
@@ -359,14 +359,17 @@ The state of an optimizer can also be saved by the same functions:
 
 .. doctest::
 
-   >>> serializers.save_hdf5('my.state', optimizer)
-   >>> serializers.load_hdf5('my.state', optimizer)
+   >>> serializers.save_npz('my.state', optimizer)
+   >>> serializers.load_npz('my.state', optimizer)
 
 .. note::
    Note that serialization of optimizer only saves its internal states including number of iterations, momentum vectors of MomentumSGD, etc.
    It does not save the parameters and persistent values of the target link.
    We have to explicitly save the target link with the optimizer to resume the optimization from saved states.
 
+Support of the HDF5 format is enabled if the h5py package is installed.
+Serialization and deserialization with the HDF5 format are almost identical to those with the NPZ format;
+just replace :func:`~serializers.save_npz` and :func:`~serializers.load_npz` by :func:`~serializers.save_hdf5` and :func:`~serializers.load_hdf5`, respectively.
 
 .. _mnist_mlp_example:
 
@@ -503,7 +506,7 @@ It can be achieved simply by calling forward function:
    ...     t = Variable(y_test[i : i + batchsize])
    ...     loss = model(x, t)
    ...     sum_loss += loss.data * batchsize
-   ...     sum_accuracy = model.accuracy.data * batchsize
+   ...     sum_accuracy += model.accuracy.data * batchsize
    ...     
    >>> mean_loss = sum_loss / 10000
    >>> mean_accuracy = sum_accuracy / 10000

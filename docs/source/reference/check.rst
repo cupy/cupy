@@ -34,4 +34,5 @@ Gradient checking utilities
 .. automodule:: chainer.gradient_check
 
 .. autofunction:: assert_allclose
+.. autofunction:: check_backward
 .. autofunction:: numerical_grad

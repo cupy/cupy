@@ -66,20 +66,9 @@ class TestContrastive(unittest.TestCase):
                            cuda.to_gpu(self.t))
 
     def check_backward(self, x0_data, x1_data, t_data):
-        x0 = chainer.Variable(x0_data)
-        x1 = chainer.Variable(x1_data)
-        t = chainer.Variable(t_data)
-        loss = functions.contrastive(x0, x1, t, self.margin)
-        loss.backward()
-        self.assertEqual(None, t.grad)
-
-        func = loss.creator
-        f = lambda: func.forward((x0.data, x1.data, t.data))
-        gx0, = gradient_check.numerical_grad(f, (x0.data,), (1,))
-        gx1, = gradient_check.numerical_grad(f, (x1.data,), (1,))
-
-        gradient_check.assert_allclose(gx0, x0.grad, rtol=1e-4, atol=1e-4)
-        gradient_check.assert_allclose(gx1, x1.grad, rtol=1e-4, atol=1e-4)
+        gradient_check.check_backward(
+            functions.Contrastive(self.margin),
+            (x0_data, x1_data, t_data), None, rtol=1e-4, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):

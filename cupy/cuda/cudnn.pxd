@@ -130,8 +130,8 @@ cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
 cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
                             size_t dimA, size_t strideA)
 cpdef destroyTensorDescriptor(size_t tensorDesc)
-cpdef addTensor(
-        size_t handle, size_t alpha, size_t biasDesc,
+cpdef addTensor_v2(
+        size_t handle, int mode, size_t alpha, size_t biasDesc,
         size_t biasData, size_t beta, size_t srcDestDesc, size_t srcDestData)
 
 
@@ -155,7 +155,7 @@ cpdef size_t createConvolutionDescriptor() except *
 cpdef setConvolution2dDescriptor(
         size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
         int upscaley, int mode)
-cpdef setConvolutionNdDescriptor(
+cpdef setConvolutionNdDescriptor_v2(
         size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
         size_t upscaleA, int mode, int dataType)
 cpdef destroyConvolutionDescriptor(size_t convDesc)
@@ -181,7 +181,7 @@ cpdef int getConvolutionBackwardFilterAlgorithm(
 cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
         size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
         size_t filterDesc, int algo) except *
-cpdef convolutionBackwardFilter(
+cpdef convolutionBackwardFilter_v2(
         size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
         size_t diffDesc, size_t diffData, size_t convDesc, int algo,
         size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
@@ -193,7 +193,7 @@ cpdef int getConvolutionBackwardDataAlgorithm(
 cpdef size_t getConvolutionBackwardDataWorkspaceSize(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
         size_t gradDesc, int algo) except *
-cpdef convolutionBackwardData(
+cpdef convolutionBackwardData_v2(
         size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
         size_t diffDesc, size_t diffData, size_t convDesc, int algo,
         size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
