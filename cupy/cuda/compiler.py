@@ -34,7 +34,14 @@ class TemporaryDirectory(object):
 
 def _run_nvcc(cmd, cwd):
     try:
-        return subprocess.check_output(cmd, cwd=cwd)
+        return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        msg = ('`nvcc` command returns non-zero exit status. \n'
+               'command: {0}\n'
+               'return-code: {1}\n'
+               'stdout/stderr: \n'
+               '{2}'.format(e.cmd, e.returncode, e.output))
+        raise RuntimeError(msg)
     except OSError as e:
         msg = 'Failed to run `nvcc` command. ' \
               'Check PATH environment variable: ' \
