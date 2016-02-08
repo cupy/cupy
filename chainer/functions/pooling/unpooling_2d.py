@@ -11,9 +11,8 @@ class Unpooling2D(pooling_2d.Pooling2D):
     """Unpooling over a set of 2d planes."""
 
     def __init__(self, ksize, stride=None, pad=0,
-                 outsize=None, cover_all=True, use_cudnn=True):
-        super(Unpooling2D, self).__init__(
-            ksize, stride, pad, cover_all, use_cudnn)
+                 outsize=None, cover_all=True):
+        super(Unpooling2D, self).__init__(ksize, stride, pad, cover_all)
         self.outh, self.outw = (None, None) if outsize is None else outsize
 
     def check_type_forward(self, in_types):
@@ -27,22 +26,22 @@ class Unpooling2D(pooling_2d.Pooling2D):
         )
 
         if self.outh is not None:
-            type_check.expect(
-                x_type.shape[2] ==
-                conv.get_conv_outsize(self.outh, self.kh, self.sy, self.ph)
-            )
+            expected_h = conv.get_conv_outsize(
+                self.outh, self.kh, self.sy, self.ph, cover_all=self.cover_all)
+            type_check.expect(x_type.shape[2] == expected_h)
         if self.outw is not None:
-            type_check.expect(
-                x_type.shape[3] ==
-                conv.get_conv_outsize(self.outw, self.kw, self.sx, self.pw),
-            )
+            expected_w = conv.get_conv_outsize(
+                self.outw, self.kw, self.sx, self.pw, cover_all=self.cover_all)
+            type_check.expect(x_type.shape[3] == expected_w)
 
     def forward(self, x):
         h, w = x[0].shape[2:]
         if self.outh is None:
-            self.outh = conv.get_deconv_outsize(h, self.kh, self.sy, self.ph)
+            self.outh = conv.get_deconv_outsize(
+                h, self.kh, self.sy, self.ph, cover_all=self.cover_all)
         if self.outw is None:
-            self.outw = conv.get_deconv_outsize(w, self.kw, self.sx, self.pw)
+            self.outw = conv.get_deconv_outsize(
+                w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
         xp = cuda.get_array_module(x)
         col = xp.tile(x[0][:, :, xp.newaxis, xp.newaxis],
                       (1, 1, self.kh, self.kw, 1, 1))
@@ -65,6 +64,5 @@ class Unpooling2D(pooling_2d.Pooling2D):
         return gx,
 
 
-def unpooling_2d(x, ksize, stride=None, pad=0,
-                 outsize=None, cover_all=True, use_cudnn=True):
-    return Unpooling2D(ksize, stride, pad, outsize, cover_all, use_cudnn)(x)
+def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
+    return Unpooling2D(ksize, stride, pad, outsize, cover_all)(x)
