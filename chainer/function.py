@@ -1,4 +1,5 @@
 import os
+import traceback
 import weakref
 
 import chainer
@@ -99,6 +100,9 @@ class Function(object):
 
         """
         in_data = tuple([x.data for x in inputs])
+        if chainer.DEBUG:
+            self._stack = traceback.extract_stack()
+
         if self.type_check_enable:
             self._check_data_type_forward(in_data)
         # Forward prop
