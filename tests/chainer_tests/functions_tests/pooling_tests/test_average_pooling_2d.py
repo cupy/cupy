@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 import six
 
@@ -68,6 +69,37 @@ class TestAveragePooling2D(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestAveragePooling2DCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.x = cuda.cupy.arange(
+            2 * 3 * 4 * 3, dtype=numpy.float32).reshape(2, 3, 4, 3)
+        self.gy = cuda.cupy.random.uniform(-1, 1,
+                                           (2, 3, 2, 2)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        return functions.max_pooling_2d(
+            x, 3, stride=2, pad=1, cover_all=False, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.poolingForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.poolingBackward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)

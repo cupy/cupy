@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -49,6 +50,34 @@ class TestSigmoid(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestSigmoidCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.x = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.gy = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        return functions.tanh(x, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.activationForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.activationBackward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)
