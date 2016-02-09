@@ -174,11 +174,14 @@ def evaluate(model, test_trees):
 
 vocab = {}
 train_trees = read_corpus('trees/train.txt', vocab)
-if args.test: train_trees = train_trees[:10]
+if args.test:
+    train_trees = train_trees[:10]
 test_trees = read_corpus('trees/test.txt', vocab)
-if args.test: train_trees = train_trees[:10]
+if args.test:
+    train_trees = train_trees[:10]
 develop_trees = read_corpus('trees/dev.txt', vocab)
-if args.test: train_trees = train_trees[:10]
+if args.test:
+    train_trees = train_trees[:10]
 
 model = RecursiveNet(len(vocab), n_units)
 

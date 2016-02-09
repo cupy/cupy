@@ -67,11 +67,14 @@ def load_data(filename):
     return dataset
 
 train_data = load_data('ptb.train.txt')
-if args.test: train_data = train_data[:100]
+if args.test:
+    train_data = train_data[:100]
 valid_data = load_data('ptb.valid.txt')
-if args.test: valid_data = valid_data[:100]
+if args.test:
+    valid_data = valid_data[:100]
 test_data = load_data('ptb.test.txt')
-if args.test: test_data = test_data[:100]
+if args.test:
+    test_data = test_data[:100]
 
 print('#vocab =', len(vocab))
 

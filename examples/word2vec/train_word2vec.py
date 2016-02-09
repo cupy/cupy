@@ -132,7 +132,8 @@ with open('ptb.train.txt') as f:
             dataset.append(word2index[word])
 
 n_vocab = len(word2index)
-if args.test: dataset = dataset[:100]
+if args.test:
+    dataset = dataset[:100]
 
 print('n_vocab: %d' % n_vocab)
 print('data length: %d' % len(dataset))

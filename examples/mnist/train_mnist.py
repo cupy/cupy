@@ -37,9 +37,9 @@ parser.add_argument('--batchsize', '-b', type=int, default=100,
                     help='learning minibatch size')
 args = parser.parse_args()
 
-batchsize = args.batchsize 
-n_epoch = args.epoch 
-n_units = args.unit 
+batchsize = args.batchsize
+n_epoch = args.epoch
+n_units = args.unit
 
 print('GPU: {}'.format(args.gpu))
 print('# unit: {}'.format(args.unit))

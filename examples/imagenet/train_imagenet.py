@@ -69,8 +69,11 @@ xp = cuda.cupy if args.gpu >= 0 else np
 
 assert 50000 % args.val_batchsize == 0
 
-if args.test: denominator = 1
-else: denominator = 100000
+if args.test:
+    denominator = 1
+else:
+    denominator = 100000
+
 
 def load_image_list(path, root):
     tuples = []
