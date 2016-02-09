@@ -323,6 +323,20 @@ https://github.com/pfnet/chainer/issues/new.
             for x, gx in zip(func.inputs, gxs):
                 if gx is None:
                     continue
+
+                if not isinstance(gx, type(x.data)):
+                    raise TypeError(
+                        'Type of data and grad mismatch in %s:\n%s != %s'
+                        % (func.label, type(x.data), type(gx)))
+                if gx.dtype != x.data.dtype:
+                    raise TypeError(
+                        'Dtype of data and grad mismatch in %s:\n%s != %s'
+                        % (func.label, x.data.dtype, gx.dtype))
+                if gx.shape != x.data.shape:
+                    raise ValueError(
+                        'Shape of data and grad mismatch in %s:\n%s != %s'
+                        % (func.label, x.data.shape, gx.shape))
+
                 # Accumulate the graident to x. It is a bit tricky to handle
                 # branches and parameter gradient accumulation correctly.
                 with cuda.get_device(gx):

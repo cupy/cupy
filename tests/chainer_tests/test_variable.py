@@ -445,4 +445,80 @@ class TestVariableSetCreator(unittest.TestCase):
         self.check_set_creator(cuda.to_gpu(self.x))
 
 
+class TestVariableBackwardError(unittest.TestCase):
+
+    def setUp(self):
+        self.x = np.array([1], np.float32)
+
+    def check_type_mismatch(self, x_data):
+        xp = cuda.get_array_module(x_data)
+
+        class DummyFunction(chainer.Function):
+            label = 'dummy_function'
+
+            def forward(self, inputs):
+                return xp.array(1, np.float32),
+
+            def backward(self, inputs, grads):
+                yp = np if xp is cuda.cupy else cuda.cupy
+                return yp.array([1], np.float32),
+
+        x = chainer.Variable(x_data)
+        y = DummyFunction()(x)
+        with self.assertRaisesRegexp(TypeError, 'dummy_function'):
+            y.backward()
+
+    def test_type_mismatch_cpu(self):
+        self.check_type_mismatch(self.x)
+
+    def test_type_mismatch_gpu(self):
+        self.check_type_mismatch(cuda.to_gpu(self.x))
+
+    def check_dtype_mismatch(self, x_data):
+        xp = cuda.get_array_module(x_data)
+
+        class DummyFunction(chainer.Function):
+            label = 'dummy_function'
+
+            def forward(self, inputs):
+                return xp.array(1, np.float32),
+
+            def backward(self, inputs, grads):
+                return xp.array([1], np.int32),
+
+        x = chainer.Variable(x_data)
+        y = DummyFunction()(x)
+        with self.assertRaisesRegexp(TypeError, 'dummy_function'):
+            y.backward()
+
+    def test_dtype_mismatch_cpu(self):
+        self.check_dtype_mismatch(self.x)
+
+    def test_dtype_mismatch_gpu(self):
+        self.check_dtype_mismatch(cuda.to_gpu(self.x))
+
+    def check_shape_mismatch(self, x_data):
+        xp = cuda.get_array_module(x_data)
+
+        class DummyFunction(chainer.Function):
+            label = 'dummy_function'
+
+            def forward(self, inputs):
+                return xp.array(1, np.float32),
+
+            def backward(self, inputs, grads):
+                return xp.array([1, 2], np.float32),
+
+        x = chainer.Variable(x_data)
+        y = DummyFunction()(x)
+        with self.assertRaisesRegexp(ValueError, 'dummy_function'):
+            y.backward()
+
+    def test_shape_mismatch_cpu(self):
+        self.check_shape_mismatch(self.x)
+
+    def test_shape_mismatch_gpu(self):
+        self.check_shape_mismatch(cuda.to_gpu(self.x))
+
+
 testing.run_module(__name__, __file__)
