@@ -43,7 +43,8 @@ before_install:
 
 install:
   - pip install cython
-  - python setup.py install
+  - python setup.py sdist
+  - pip install dist/*.tar.gz
   - pip install h5py
   - pip install nose hacking mock
 
