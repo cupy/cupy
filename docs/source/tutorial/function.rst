@@ -86,7 +86,22 @@ Recall the rule of differentiation of multiplication.
 This example just implements the rule.
 Look at the return values, the function just packs the gradient of each input in same order and returns them.
 
-By just defining the core computation of forward and backward, Function class provides a chaining logic on it (i.e. storing the history of computation, etc.).
+By just defining the core computation of forward and backward,
+Function class provides a chaining logic on it (i.e. storing the
+history of computation, etc.).
+
+.. note::
+   Assuming we implement a (forward) function :math:`f(x)=y` which takes as input the
+   vector :math:`x \in \mathbb{R}^n` and produces as output a vector
+   :math:`y \in \mathbb{R}^m`. Then the ``backward`` method has to
+	 compute
+   .. math::
+      \lambda_i = \sum_{j=1}^m \frac{\partial y_j}{\partial x_i} \,
+      \gamma_j \,\, \text{for} i = 1 \dots n
+    where :math:`\gamma` are the ``grad_outputs``. Note, that the
+    resulting vector :math:`lambda` must have the same shape as the inputs of the ``forward`` method.
+
+
 
 Now let's define the corresponding GPU methods.
 You can easily predict that the methods we have to write are named :meth:`~Function.forward_gpu` and :meth:`~Function.backward_gpu`::
