@@ -175,8 +175,7 @@ int cudnnSetConvolution2dDescriptor(
 
 int cudnnSetConvolutionNdDescriptor_v2(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
-        int* filterStrideA, int* upscaleA, ConvolutionMode mode,
-        DataType dataType) {
+        int* filterStrideA, int* upscaleA, ConvolutionMode mode) {
     return 0;
 }
 
@@ -237,11 +236,20 @@ int cudnnConvolutionBackwardFilter_v2(
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor diffDesc, void* diffData,
-        ConvolutionDescriptor convDesc, ConvolutionBwdFilterAlgo algo,
-        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+        ConvolutionDescriptor convDesc, void* beta,
         FilterDescriptor gradDesc, void* gradData) {
     return 0;
 }
+
+int cudnnConvolutionBackwardFilter_v3(
+         Handle handle, void* alpha,
+         TensorDescriptor srcDesc, void* srcData,
+         TensorDescriptor diffDesc, void* diffData,
+         ConvolutionDescriptor convDesc, ConvolutionBwdFilterAlgo algo,
+         void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+         FilterDescriptor gradDesc, void* gradData) {
+     return 0;
+ }
 
 int cudnnGetConvolutionBackwardDataAlgorithm(
         Handle handle, FilterDescriptor filterDesc,
@@ -264,11 +272,20 @@ int cudnnConvolutionBackwardData_v2(
         Handle handle, void* alpha,
         FilterDescriptor filterDesc, void* filterData,
         TensorDescriptor diffDesc, void* diffData,
-        ConvolutionDescriptor convDesc, ConvolutionBwdDataAlgo algo,
-        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+        ConvolutionDescriptor convDesc, void* beta,
         TensorDescriptor gradDesc, void* gradData) {
     return 0;
 }
+
+int cudnnConvolutionBackwardData_v3(
+         Handle handle, void* alpha,
+         FilterDescriptor filterDesc, void* filterData,
+         TensorDescriptor diffDesc, void* diffData,
+         ConvolutionDescriptor convDesc, ConvolutionBwdDataAlgo algo,
+         void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+         TensorDescriptor gradDesc, void* gradData) {
+     return 0;
+ }
 
 
 // Pooling

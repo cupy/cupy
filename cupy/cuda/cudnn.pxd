@@ -157,7 +157,7 @@ cpdef setConvolution2dDescriptor(
         int upscaley, int mode)
 cpdef setConvolutionNdDescriptor_v2(
         size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-        size_t upscaleA, int mode, int dataType)
+        size_t upscaleA, int mode)
 cpdef destroyConvolutionDescriptor(size_t convDesc)
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
@@ -183,6 +183,10 @@ cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
         size_t filterDesc, int algo) except *
 cpdef convolutionBackwardFilter_v2(
         size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
+        size_t diffDesc, size_t diffData, size_t convDesc, size_t beta,
+        size_t gradDesc, size_t gradData)
+cpdef convolutionBackwardFilter_v3(
+        size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
         size_t diffDesc, size_t diffData, size_t convDesc, int algo,
         size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
         size_t gradDesc, size_t gradData)
@@ -194,6 +198,10 @@ cpdef size_t getConvolutionBackwardDataWorkspaceSize(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
         size_t gradDesc, int algo) except *
 cpdef convolutionBackwardData_v2(
+        size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
+        size_t diffDesc, size_t diffData, size_t convDesc, size_t beta,
+        size_t gradDesc, size_t gradData)
+cpdef convolutionBackwardData_v3(
         size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
         size_t diffDesc, size_t diffData, size_t convDesc, int algo,
         size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
