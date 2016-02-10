@@ -12,8 +12,11 @@ if cuda.cudnn_enabled:
     _cudnn_version = libcudnn.getVersion()
     _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
     if _cudnn_version >= 4000:
-        _bwd_filter_pref = libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
-        _bwd_data_pref = libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
+        _bwd_filter_pref = \
+            libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
+        _bwd_data_pref = \
+            libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
+
 
 def _pair(x):
     if hasattr(x, '__getitem__'):
@@ -123,9 +126,10 @@ class Deconvolution2DFunction(function.Function):
                     handle, self.filter_desc.value, x_desc.value,
                     self.conv_desc.value, y_desc.value, _bwd_data_pref,
                     self.max_workspace_size)
-                workspace_size = libcudnn.getConvolutionBackwardDataWorkspaceSize(
-                    handle, self.filter_desc.value, x_desc.value,
-                    self.conv_desc.value, y_desc.value, algo)
+                workspace_size = \
+                    libcudnn.getConvolutionBackwardDataWorkspaceSize(
+                        handle, self.filter_desc.value, x_desc.value,
+                        self.conv_desc.value, y_desc.value, algo)
                 workspace = cuda.cupy.empty(
                     (max(workspace_size // 4, 1),), dtype=x.dtype)
 
@@ -226,11 +230,12 @@ class Deconvolution2DFunction(function.Function):
                 self.max_workspace_size = c * kh * kw * 4
                 algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
                     handle, gy_desc.value, gx_desc.value,
-                    self.conv_desc.value, self.filter_desc.value, _bwd_filter_pref,
-                    self.max_workspace_size)
-                workspace_size = libcudnn.getConvolutionBackwardFilterWorkspaceSize(
-                    handle, gy_desc.value, gx_desc.value, self.conv_desc.value,
-                    self.filter_desc.value, algo)
+                    self.conv_desc.value, self.filter_desc.value,
+                    _bwd_filter_pref, self.max_workspace_size)
+                workspace_size = \
+                    libcudnn.getConvolutionBackwardFilterWorkspaceSize(
+                        handle, gy_desc.value, gx_desc.value,
+                        self.conv_desc.value, self.filter_desc.value, algo)
                 workspace = cuda.cupy.empty(
                     (max(workspace_size // 4, 1),), dtype=x.dtype)
 
