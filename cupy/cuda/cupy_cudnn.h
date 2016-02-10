@@ -231,7 +231,6 @@ int cudnnGetConvolutionBackwardFilterWorkspaceSize(
     return 0;
 }
 
-
 int cudnnConvolutionBackwardFilter_v2(
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
@@ -266,7 +265,6 @@ int cudnnGetConvolutionBackwardDataWorkspaceSize(
         size_t* sizeInBytes) {
     return 0;
 }
-
 
 int cudnnConvolutionBackwardData_v2(
         Handle handle, void* alpha,
