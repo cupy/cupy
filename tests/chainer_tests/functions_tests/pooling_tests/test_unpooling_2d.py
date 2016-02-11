@@ -15,15 +15,19 @@ from chainer.testing import condition
 class TestUnpooling2D(unittest.TestCase):
 
     def setUp(self):
+        self.N = 2
+        self.n_channels = 3
+        inh, inw = (2, 1)
         self.x = numpy.arange(
-            2 * 3 * 2 * 1, dtype=numpy.float32).reshape(2, 3, 2, 1)
+            self.N * self.n_channels * inh * inw, dtype=numpy.float32)\
+            .reshape(self.N, self.n_channels, inh, inw)
         numpy.random.shuffle(self.x)
         self.x = 2 * self.x / self.x.size - 1
 
         self.ksize = 2
-        self.outsize = (4, 2)
-        self.gy = numpy.random.uniform(-1, 1,
-                                       (2, 3, 4, 2)).astype(numpy.float32)
+        outh, outw = self.outsize = (4, 2)
+        self.gy = numpy.random.uniform(
+            -1, 1, (self.N, self.n_channels, outh, outw)).astype(numpy.float32)
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
@@ -32,15 +36,15 @@ class TestUnpooling2D(unittest.TestCase):
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
-        for k in six.moves.range(2):
-            for c in six.moves.range(3):
+        for i in six.moves.range(self.N):
+            for c in six.moves.range(self.n_channels):
                 expect = numpy.array([
-                    [self.x[k, c, 0, 0], self.x[k, c, 0, 0]],
-                    [self.x[k, c, 0, 0], self.x[k, c, 0, 0]],
-                    [self.x[k, c, 1, 0], self.x[k, c, 1, 0]],
-                    [self.x[k, c, 1, 0], self.x[k, c, 1, 0]],
+                    [self.x[i, c, 0, 0], self.x[i, c, 0, 0]],
+                    [self.x[i, c, 0, 0], self.x[i, c, 0, 0]],
+                    [self.x[i, c, 1, 0], self.x[i, c, 1, 0]],
+                    [self.x[i, c, 1, 0], self.x[i, c, 1, 0]],
                 ])
-                gradient_check.assert_allclose(expect, y_data[k, c])
+                gradient_check.assert_allclose(expect, y_data[i, c])
 
     @condition.retry(3)
     def test_forward_cpu(self):
