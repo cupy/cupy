@@ -12,6 +12,9 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(*testing.product({
+    'cover_all': [True, False],
+}))
 class TestUnpooling2D(unittest.TestCase):
 
     def setUp(self):
@@ -31,7 +34,8 @@ class TestUnpooling2D(unittest.TestCase):
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = functions.unpooling_2d(x, self.ksize, outsize=self.outsize)
+        y = functions.unpooling_2d(x, self.ksize, outsize=self.outsize,
+                                   cover_all=self.cover_all)
         self.assertEqual(y.data.dtype, numpy.float32)
         y_data = cuda.to_cpu(y.data)
 
@@ -57,7 +61,8 @@ class TestUnpooling2D(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            functions.Unpooling2D(self.ksize, outsize=self.outsize),
+            functions.Unpooling2D(self.ksize, outsize=self.outsize,
+                                  cover_all=self.cover_all),
             x_data, y_grad)
 
     @condition.retry(3)
