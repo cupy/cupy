@@ -20,12 +20,14 @@ class TestUnpooling2D(unittest.TestCase):
         numpy.random.shuffle(self.x)
         self.x = 2 * self.x / self.x.size - 1
 
+        self.ksize = 2
+        self.outsize = (4, 2)
         self.gy = numpy.random.uniform(-1, 1,
                                        (2, 3, 4, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = functions.unpooling_2d(x, 2)
+        y = functions.unpooling_2d(x, self.ksize, outsize=self.outsize)
         self.assertEqual(y.data.dtype, numpy.float32)
         y_data = cuda.to_cpu(y.data)
 
@@ -50,16 +52,9 @@ class TestUnpooling2D(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = functions.unpooling_2d(x, 2)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        gx, = gradient_check.numerical_grad(
-            func.forward((x.data,)), (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
+        gradient_check.check_backward(
+            functions.Unpooling2D(self.ksize, outsize=self.outsize),
+            x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):
