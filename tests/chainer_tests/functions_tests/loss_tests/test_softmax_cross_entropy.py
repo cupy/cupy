@@ -218,6 +218,9 @@ class TestSoftmaxCrossEntropyCudnnCall(unittest.TestCase):
         t = chainer.Variable(self.t)
         return functions.softmax_cross_entropy(x, t, self.use_cudnn)
 
+    @unittest.skipIf(cuda.cudnn_enabled and
+                     cuda.cudnn.cudnn.getVersion() < 3000,
+                     'Only cudnn ver>=3 supports softmax-log')
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.softmaxForward') as func:
             self.forward()

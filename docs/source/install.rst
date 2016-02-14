@@ -122,7 +122,7 @@ We recommend you to install cuDNN to CUDA directory.
 For example if you uses Ubuntu linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
   $ cp /path/to/cudnn.h $CUDA_PATH/include
-  $ cp /path/to/cudnn.so $CUDA_PATH/lib64
+  $ cp /path/to/libcudnn.so* $CUDA_PATH/lib64
 
 The destination directories depend on your environment.
 
