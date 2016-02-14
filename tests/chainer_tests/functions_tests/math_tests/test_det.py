@@ -139,3 +139,21 @@ class TestSquareMinibatch(DetFunctionTestBase, unittest.TestCase):
         y = numpy.random.uniform(.5, 1, (6, 5, 5)).astype(numpy.float32)
         gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
         return x, y, gy
+
+
+class DetFunctionRaiseTest(unittest.TestCase):
+
+    def test_invalid_ndim(self):
+        with self.assertRaises(TypeError):
+            F.batch_det(chainer.Variable(numpy.zeros((1, 2, 2))))
+
+    def test_invalid_shape(self):
+        with self.assertRaises(TypeError):
+            F.batch_det(chainer.Variable(numpy.zeros((1, 2))))
+
+    def test_singular(self):
+        with self.assertRaises(ValueError):
+            x = numpy.zeros((1, 2, 2))
+            x[0, 1, 1] = 1.0
+            singular = chainer.Variable(x)
+            F.batch_det(singular)

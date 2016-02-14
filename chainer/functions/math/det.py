@@ -1,11 +1,9 @@
 import numpy.linalg
 
-from chainer import cuda
-from chainer import function
-from chainer.functions.array.reshape import Reshape
-from chainer.functions.math import inv
-from chainer.functions.math import matmul
-from chainer import utils
+from chainer import cuda, function, utils
+from chainer.functions.array import reshape
+from chainer.functions.math import inv, matmul
+from chainer.utils import type_check
 
 
 def _det_gpu(b):
@@ -29,10 +27,12 @@ def _det_gpu(b):
     # The determinant is the result of the diagonal entries multiplied
     # in each row of the minibatch
     det = cuda.cupy.prod(a.diagonal(axis1=1, axis2=2), axis=1)
-    return det
+    success = cuda.cupy.prod(info1)
+    return det, success
 
 
 class BatchDet(function.Function):
+
     @property
     def label(self):
         return 'det'
@@ -43,7 +43,7 @@ class BatchDet(function.Function):
         a_type = matmul._convert_type(a_type)
         utils.type_check.expect(a_type.dtype.kind == 'f')
         # Only a minibatch of 2D array shapes allowed
-        matmul._check_ndim(a_type, lower=3, upper=3)
+        type_check.expect(a_type.ndim == 3)
         # Matrix inversion only allowed for square matrices
         # so assert the last two dimensions are equal
         utils.type_check.expect(a_type.shape[-1] == a_type.shape[-2])
@@ -53,23 +53,24 @@ class BatchDet(function.Function):
         return self.detx,
 
     def forward_gpu(self, x):
-        self.detx = _det_gpu(x[0])
+        self.detx, success = _det_gpu(x[0])
+        if success.__nonzero__():
+            import pdb; pdb.set_trace()
+            raise ValueError('Singular Matrix')
         return self.detx,
-
-    def backward_gpu(self, x, gy):
-        # For matrix x, z, y the gradient is
-        # d[det(x)]/dz = gy det(x) (x^-1).T
-        x, = x
-        gy, = gy
-        grad = (gy[:, None, None] * self.detx[:, None, None] *
-                inv._inv_gpu(x.transpose([0, 2, 1])))
-        return utils.force_array(grad),
 
     def backward_cpu(self, x, gy):
         x, = x
         gy, = gy
         grad = (gy[:, None, None] * self.detx[:, None, None] *
                 numpy.linalg.inv(x.transpose([0, 2, 1])))
+        return utils.force_array(grad),
+
+    def backward_gpu(self, x, gy):
+        x, = x
+        gy, = gy
+        grad = (gy[:, None, None] * self.detx[:, None, None] *
+                inv._inv_gpu(x.transpose([0, 2, 1])))
         return utils.force_array(grad),
 
 
@@ -84,6 +85,7 @@ def batch_det(a):
     Returns:
         ~chainer.Variable: vector of determinants for every matrix
         in the batch.
+
     """
     return BatchDet()(a)
 
@@ -96,7 +98,9 @@ def det(a):
 
     Returns:
         ~chainer.Variable: Scalar determinant of the matrix a.
+
     """
     shape = (1, a.data.shape[0], a.data.shape[1])
-    batched_a = Reshape(shape)(a)
-    return BatchDet()(batched_a)
+    batched_a = reshape.Reshape(shape)(a)
+    batched_det = BatchDet()(batched_a)
+    return reshape.Reshape((1, ))(batched_det)
