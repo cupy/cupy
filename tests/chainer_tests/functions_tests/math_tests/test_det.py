@@ -8,6 +8,7 @@ from chainer import functions as F
 from chainer import gradient_check
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import type_check
 
 
 class DetFunctionTestBase(object):
@@ -26,8 +27,8 @@ class DetFunctionTestBase(object):
             ct = self.ct.copy()
         xn = chainer.Variable(cx)
         xt = chainer.Variable(ct)
-        yn = F.batch_det(xn)
-        yt = F.batch_det(xt)
+        yn = self.det(xn)
+        yt = self.det(xt)
         gradient_check.assert_allclose(yn.data, yt.data, rtol=1e-4, atol=1)
 
     @attr.gpu
@@ -50,8 +51,8 @@ class DetFunctionTestBase(object):
         c = float(scaling ** self.x.shape[1])
         cxv = chainer.Variable(cx)
         sxv = chainer.Variable(sx)
-        cxd = F.batch_det(cxv)
-        sxd = F.batch_det(sxv)
+        cxd = self.det(cxv)
+        sxd = self.det(sxv)
         gradient_check.assert_allclose(cxd.data * c, sxd.data)
 
     @attr.gpu
@@ -64,23 +65,25 @@ class DetFunctionTestBase(object):
         self.det_scaling(gpu=False)
 
     def det_identity(self, gpu=False):
-        idt = [numpy.identity(self.x.shape[1]).astype(numpy.float32)
-               for _ in range(self.x.shape[0])]
-        idt = numpy.array(idt).astype(numpy.float32)
-        chk = numpy.ones(self.x.shape[0]).astype(numpy.float32)
+        if self.x.ndim == 3:
+            idt = [numpy.identity(self.x.shape[1]).astype(numpy.float32)
+                   for _ in range(self.x.shape[0])]
+            idt = numpy.array(idt).astype(numpy.float32)
+            chk = numpy.ones(self.x.shape[0]).astype(numpy.float32)
+        else:
+            idt = numpy.identity(self.x.shape[1]).astype(numpy.float32)
+            chk = numpy.ones(1).astype(numpy.float32)
         if gpu:
             chk = cuda.to_gpu(chk)
             idt = cuda.to_gpu(idt)
         idtv = chainer.Variable(idt)
-        idtd = F.batch_det(idtv)
+        idtd = self.det(idtv)
         gradient_check.assert_allclose(idtd.data, chk, rtol=1e-4, atol=1e-4)
 
     @attr.gpu
-    @condition.retry(3)
     def test_det_identity_gpu(self):
         self.det_identity(gpu=True)
 
-    @condition.retry(3)
     def test_det_identity_cpu(self):
         self.det_identity(gpu=False)
 
@@ -93,8 +96,8 @@ class DetFunctionTestBase(object):
             cy = self.y.copy()
         vx = chainer.Variable(cx)
         vy = chainer.Variable(cy)
-        dxy1 = F.batch_det(F.batch_matmul(vx, vy))
-        dxy2 = F.batch_det(vx) * F.batch_det(vy)
+        dxy1 = self.det(self.matmul(vx, vy))
+        dxy2 = self.det(vx) * self.det(vy)
         gradient_check.assert_allclose(dxy1.data, dxy2.data, rtol=1e-4,
                                        atol=1e-4)
 
@@ -112,27 +115,34 @@ class DetFunctionTestBase(object):
     def test_batch_backward_gpu(self):
         x_data = cuda.to_gpu(self.x.copy())
         y_grad = cuda.to_gpu(self.gy.copy())
-        gradient_check.check_backward(F.batch_det, x_data, y_grad)
+        gradient_check.check_backward(self.det, x_data, y_grad)
 
     @condition.retry(3)
     def test_batch_backward_cpu(self):
         x_data, y_grad = self.x.copy(), self.gy.copy()
-        gradient_check.check_backward(F.batch_det, x_data, y_grad)
+        gradient_check.check_backward(self.det, x_data, y_grad)
 
     @attr.gpu
     @condition.retry(3)
-    def test_backward_gpu(self):
+    def test_nobatch_backward_gpu(self):
         x_data = cuda.to_gpu(self.x[0].copy())
         y_grad = cuda.to_gpu(self.gy[0][None].copy())
         gradient_check.check_backward(F.det, x_data, y_grad)
 
     @condition.retry(3)
-    def test_backward_cpu(self):
+    def test_nobatch_backward_cpu(self):
         x_data, y_grad = self.x[0].copy(), self.gy[0][None].copy()
         gradient_check.check_backward(F.det, x_data, y_grad)
 
+    def test_expect_scalar(self):
+        x = chainer.Variable(numpy.zeros((2, 2)))
+        y = F.det(x)
+        self.assertEqual(y.data.ndim, 1)
 
-class TestSquareMinibatch(DetFunctionTestBase, unittest.TestCase):
+
+class TestSquareMinibatchBatchDet(DetFunctionTestBase, unittest.TestCase):
+    det = lambda _, x: F.batch_det(x)
+    matmul = lambda _, x, y: F.batch_matmul(x, y)
 
     def make_data(self):
         x = numpy.random.uniform(.5, 1, (6, 5, 5)).astype(numpy.float32)
@@ -141,19 +151,31 @@ class TestSquareMinibatch(DetFunctionTestBase, unittest.TestCase):
         return x, y, gy
 
 
+class TestSquareMinibatchDet(DetFunctionTestBase, unittest.TestCase):
+    det = lambda _, x: F.det(x)
+    matmul = lambda _, x, y: F.matmul(x, y)
+
+    def make_data(self):
+        x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
+        y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, (1,)).astype(numpy.float32)
+        return x, y, gy
+
+    def test_nobatch_backward_gpu(self):
+        # Override and remove this test when not doing a batched det
+        pass
+
+    def test_nobatch_backward_cpu(self):
+        # Override and remove this test when not doing a batched det
+        pass
+
+
 class DetFunctionRaiseTest(unittest.TestCase):
 
     def test_invalid_ndim(self):
-        with self.assertRaises(TypeError):
-            F.batch_det(chainer.Variable(numpy.zeros((1, 2, 2))))
+        with self.assertRaises(type_check.InvalidType):
+            F.batch_det(chainer.Variable(numpy.zeros((2, 2))))
 
     def test_invalid_shape(self):
-        with self.assertRaises(TypeError):
+        with self.assertRaises(type_check.InvalidType):
             F.batch_det(chainer.Variable(numpy.zeros((1, 2))))
-
-    def test_singular(self):
-        with self.assertRaises(ValueError):
-            x = numpy.zeros((1, 2, 2))
-            x[0, 1, 1] = 1.0
-            singular = chainer.Variable(x)
-            F.batch_det(singular)

@@ -55,7 +55,6 @@ class BatchDet(function.Function):
     def forward_gpu(self, x):
         self.detx, success = _det_gpu(x[0])
         if success.__nonzero__():
-            import pdb; pdb.set_trace()
             raise ValueError('Singular Matrix')
         return self.detx,
 
