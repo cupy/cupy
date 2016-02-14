@@ -91,15 +91,16 @@ Function class provides a chaining logic on it (i.e. storing the
 history of computation, etc.).
 
 .. note::
-   Assuming we implement a (forward) function :math:`f(x)=y` which takes as input the
+   Assuming we implement a (forward) function :math:`y=f(x)` which takes as input the
    vector :math:`x \in \mathbb{R}^n` and produces as output a vector
-   :math:`y \in \mathbb{R}^m`. Then the ``backward`` method has to
-	 compute
+   :math:`y \in \mathbb{R}^m`. Then the ``backward`` method has to compute
+
    .. math::
       \lambda_i = \sum_{j=1}^m \frac{\partial y_j}{\partial x_i} \,
-      \gamma_j \,\, \text{for} i = 1 \dots n
-    where :math:`\gamma` are the ``grad_outputs``. Note, that the
-    resulting vector :math:`lambda` must have the same shape as the inputs of the ``forward`` method.
+      \gamma_j \,\, \text{for}\, i = 1 \dots n
+
+   where :math:`\gamma_j` are the ``grad_outputs``. Note, that the
+   resulting vector :math:`\lambda` must have the same shape as the arguments of the ``forward`` method.
 
 
 
