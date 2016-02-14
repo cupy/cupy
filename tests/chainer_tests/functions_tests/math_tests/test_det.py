@@ -122,25 +122,33 @@ class DetFunctionTestBase(object):
         x_data, y_grad = self.x.copy(), self.gy.copy()
         gradient_check.check_backward(self.det, x_data, y_grad)
 
-    @attr.gpu
-    @condition.retry(3)
-    def test_nobatch_backward_gpu(self):
-        x_data = cuda.to_gpu(self.x[0].copy())
-        y_grad = cuda.to_gpu(self.gy[0][None].copy())
-        gradient_check.check_backward(F.det, x_data, y_grad)
-
-    @condition.retry(3)
-    def test_nobatch_backward_cpu(self):
-        x_data, y_grad = self.x[0].copy(), self.gy[0][None].copy()
-        gradient_check.check_backward(F.det, x_data, y_grad)
-
     def test_expect_scalar(self):
         x = chainer.Variable(numpy.zeros((2, 2)))
         y = F.det(x)
         self.assertEqual(y.data.ndim, 1)
 
+    def test_zero_det_cpu(self):
+        x_data, y_grad = self.x.copy(), self.gy.copy()
+        if x_data.ndim == 3:
+            x_data[0, :, :] = 0.0
+        else:
+            x_data[:, :] = 0.0
+        with self.assertRaises(numpy.linalg.LinAlgError):
+            gradient_check.check_backward(self.det, x_data, y_grad)
 
-class TestSquareMinibatchBatchDet(DetFunctionTestBase, unittest.TestCase):
+    @attr.gpu
+    def test_zero_det_gpu(self):
+        x_data = cuda.to_gpu(self.x.copy())
+        y_grad = cuda.to_gpu(self.gy.copy())
+        if x_data.ndim == 3:
+            x_data[0, :, :] = 0.0
+        else:
+            x_data[:, :] = 0.0
+        with self.assertRaises(ValueError):
+            gradient_check.check_backward(self.det, x_data, y_grad)
+
+
+class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
     det = lambda _, x: F.batch_det(x)
     matmul = lambda _, x, y: F.batch_matmul(x, y)
 
@@ -151,7 +159,7 @@ class TestSquareMinibatchBatchDet(DetFunctionTestBase, unittest.TestCase):
         return x, y, gy
 
 
-class TestSquareMinibatchDet(DetFunctionTestBase, unittest.TestCase):
+class TestSquareDet(DetFunctionTestBase, unittest.TestCase):
     det = lambda _, x: F.det(x)
     matmul = lambda _, x, y: F.matmul(x, y)
 
@@ -160,14 +168,6 @@ class TestSquareMinibatchDet(DetFunctionTestBase, unittest.TestCase):
         y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
         gy = numpy.random.uniform(-1, 1, (1,)).astype(numpy.float32)
         return x, y, gy
-
-    def test_nobatch_backward_gpu(self):
-        # Override and remove this test when not doing a batched det
-        pass
-
-    def test_nobatch_backward_cpu(self):
-        # Override and remove this test when not doing a batched det
-        pass
 
 
 class DetFunctionRaiseTest(unittest.TestCase):

@@ -27,7 +27,7 @@ def _det_gpu(b):
     # The determinant is the result of the diagonal entries multiplied
     # in each row of the minibatch
     det = cuda.cupy.prod(a.diagonal(axis1=1, axis2=2), axis=1)
-    success = cuda.cupy.prod(info1)
+    success = cuda.cupy.sum(info1)
     return det, success
 
 
