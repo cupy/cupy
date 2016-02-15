@@ -99,7 +99,7 @@ history of computation, etc.).
       \lambda_i = \sum_{j=1}^m \frac{\partial y_j}{\partial x_i} \,
       \gamma_j \,\, \text{for}\, i = 1 \dots n
 
-   where :math:`\gamma_j` are the ``grad_outputs``. Note, that the
+   where :math:`\gamma` is the ``grad_outputs``. Note, that the
    resulting vector :math:`\lambda` must have the same shape as the arguments of the ``forward`` method.
 
 
