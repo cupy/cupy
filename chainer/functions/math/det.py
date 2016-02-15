@@ -1,8 +1,11 @@
 import numpy.linalg
 
-from chainer import cuda, function, utils
+from chainer import cuda
+from chainer import function
 from chainer.functions.array import reshape
-from chainer.functions.math import inv, matmul
+from chainer.functions.math import inv
+from chainer.functions.math import matmul
+from chainer import utils
 from chainer.utils import type_check
 
 
