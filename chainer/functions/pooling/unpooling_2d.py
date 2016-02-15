@@ -56,10 +56,12 @@ class Unpooling2D(pooling_2d.Pooling2D):
     def backward(self, x, gy):
         if isinstance(gy[0], cuda.ndarray):
             gcol = conv.im2col_gpu(
-                gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
+                gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
+                cover_all=self.cover_all)
         else:
             gcol = conv.im2col_cpu(
-                gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
+                gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
+                cover_all=self.cover_all)
         gx = gcol.sum(axis=(2, 3))
         return gx,
 
