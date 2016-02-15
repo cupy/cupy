@@ -6,6 +6,7 @@ import chainer
 from chainer import cuda
 from chainer import functions as F
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import type_check
@@ -179,3 +180,6 @@ class DetFunctionRaiseTest(unittest.TestCase):
     def test_invalid_shape(self):
         with self.assertRaises(type_check.InvalidType):
             F.batch_det(chainer.Variable(numpy.zeros((1, 2))))
+
+
+testing.run_module(__name__, __file__)
