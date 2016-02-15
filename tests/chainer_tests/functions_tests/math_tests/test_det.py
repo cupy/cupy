@@ -123,8 +123,16 @@ class DetFunctionTestBase(object):
         x_data, y_grad = self.x.copy(), self.gy.copy()
         gradient_check.check_backward(self.det, x_data, y_grad)
 
-    def test_expect_scalar(self):
-        x = chainer.Variable(numpy.zeros((2, 2)))
+    def test_expect_scalar_cpu(self):
+        x = numpy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
+        x = chainer.Variable(x)
+        y = F.det(x)
+        self.assertEqual(y.data.ndim, 1)
+
+    @attr.gpu
+    def test_expect_scalar_gpu(self):
+        x = cuda.cupy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
+        x = chainer.Variable(x)
         y = F.det(x)
         self.assertEqual(y.data.ndim, 1)
 
@@ -147,6 +155,22 @@ class DetFunctionTestBase(object):
             x_data[:, :] = 0.0
         with self.assertRaises(ValueError):
             gradient_check.check_backward(self.det, x_data, y_grad)
+
+    def test_answer_cpu(self):
+        x = numpy.array([[-0.79910903,  0.79850769],
+                         [0.24345008,  0.07751049]]).astype('float32')
+        ans = F.det(chainer.Variable(x)).data
+        y = numpy.array([-0.25633609348])
+        gradient_check.assert_allclose(ans, y)
+
+    @attr.gpu
+    def test_answer_gpu(self):
+        x = cuda.cupy.array([[-0.79910903,  0.79850769],
+                             [0.24345008,  0.07751049]]).astype('float32')
+        ans = F.det(chainer.Variable(x)).data
+        y = numpy.array([-0.25633609348])
+        y = cuda.to_gpu(y)
+        gradient_check.assert_allclose(ans, y)
 
 
 class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
