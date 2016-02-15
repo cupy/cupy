@@ -11,24 +11,24 @@ from chainer.utils import type_check
 
 def _det_gpu(b):
     # We do a batched LU decomposition on the GPU to compute
-    # and compute the determinant by multiplying the diagonal
-    # Change the shape of the array to be size=1 minibatch if necessary
-    # Also copy the matrix as the elments will be modified in-place
+    # and compute the determinant by multiplying the diagonal.
+    # Change the shape of the array to be size=1 minibatch if necessary.
+    # Also copy the matrix as the elments will be modified in-place.
     a = matmul._as_batch_mat(b).copy()
-    n = int(a.shape[1])
-    n_matrices = int(a.shape[0])
+    n = a.shape[1]
+    n_matrices = len(a)
     # Pivot array
     p = cuda.cupy.zeros((n, n_matrices), dtype='int32')
     # Output array
     # These arrays hold information on the execution success
-    # or if the matrix was singular
+    # or if the matrix was singular.
     info1 = cuda.cupy.zeros(n_matrices, dtype=numpy.intp)
     ap = matmul._mat_ptrs(a)
     _, lda = matmul._get_ld(a)
     cuda.cublas.sgetrfBatched(cuda.Device().cublas_handle, n, ap.data.ptr, lda,
                               p.data.ptr, info1.data.ptr, n_matrices)
     # The determinant is the result of the diagonal entries multiplied
-    # in each row of the minibatch
+    # in each row of the minibatch.
     det = cuda.cupy.prod(a.diagonal(axis1=1, axis2=2), axis=1)
     success = cuda.cupy.sum(info1)
     return det, success
@@ -41,15 +41,15 @@ class BatchDet(function.Function):
         return 'det'
 
     def check_type_forward(self, in_types):
-        utils.type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types.size() == 1)
         a_type, = in_types
         a_type = matmul._convert_type(a_type)
-        utils.type_check.expect(a_type.dtype.kind == 'f')
-        # Only a minibatch of 2D array shapes allowed
+        type_check.expect(a_type.dtype.kind == 'f')
+        # Only a minibatch of 2D array shapes allowed.
         type_check.expect(a_type.ndim == 3)
         # Matrix inversion only allowed for square matrices
-        # so assert the last two dimensions are equal
-        utils.type_check.expect(a_type.shape[-1] == a_type.shape[-2])
+        # so assert the last two dimensions are equal.
+        type_check.expect(a_type.shape[-1] == a_type.shape[-2])
 
     def forward_cpu(self, x):
         self.detx = utils.force_array(numpy.linalg.det(x[0]))
