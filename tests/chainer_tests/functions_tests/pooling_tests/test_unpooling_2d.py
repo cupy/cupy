@@ -12,9 +12,17 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(*testing.product({
-    'cover_all': [True, False],
-}))
+@testing.parameterize(
+    # we assume insize as (2, 1)
+    # standard output size which is estimated with get_deconv_outsize function
+    {'cover_all': False, 'outsize': (4, 2)},
+    {'cover_all': True, 'outsize': (3, 1)},
+    {'cover_all': False, 'outsize': None, 'expected_outsize': (4, 2)},
+    {'cover_all': True, 'outsize': None, 'expected_outsize': (3, 1)},
+    # another sizes which can be outsize of insize (2, 1)
+    {'cover_all': False, 'outsize': (5, 2)},
+    {'cover_all': True, 'outsize': (4, 2)},
+)
 class TestUnpooling2D(unittest.TestCase):
 
     def setUp(self):
@@ -28,7 +36,7 @@ class TestUnpooling2D(unittest.TestCase):
         self.x = 2 * self.x / self.x.size - 1
 
         self.ksize = 2
-        outh, outw = self.outsize = (4, 2)
+        outh, outw = self.outsize or self.expected_outsize
         self.gy = numpy.random.uniform(
             -1, 1, (self.N, self.n_channels, outh, outw)).astype(numpy.float32)
 
@@ -42,12 +50,27 @@ class TestUnpooling2D(unittest.TestCase):
         self.assertEqual(self.gy.shape, y_data.shape)
         for i in six.moves.range(self.N):
             for c in six.moves.range(self.n_channels):
-                expect = numpy.array([
-                    [self.x[i, c, 0, 0], self.x[i, c, 0, 0]],
-                    [self.x[i, c, 0, 0], self.x[i, c, 0, 0]],
-                    [self.x[i, c, 1, 0], self.x[i, c, 1, 0]],
-                    [self.x[i, c, 1, 0], self.x[i, c, 1, 0]],
-                ])
+                outsize = self.outsize or self.expected_outsize
+                assert y_data.shape[2:] == outsize
+                if outsize == (5, 2):
+                    expect = numpy.zeros(outsize, dtype=numpy.float32)
+                    expect[:2, :] = self.x[i, c, 0, 0]
+                    expect[2:4, :] = self.x[i, c, 1, 0]
+                elif outsize == (4, 2):
+                    expect = numpy.array([
+                        [self.x[i, c, 0, 0], self.x[i, c, 0, 0]],
+                        [self.x[i, c, 0, 0], self.x[i, c, 0, 0]],
+                        [self.x[i, c, 1, 0], self.x[i, c, 1, 0]],
+                        [self.x[i, c, 1, 0], self.x[i, c, 1, 0]],
+                    ])
+                elif outsize == (3, 1):
+                    expect = numpy.array([
+                        [self.x[i, c, 0, 0]],
+                        [self.x[i, c, 0, 0]],
+                        [self.x[i, c, 1, 0]],
+                    ])
+                else:
+                    raise ValueError('Unsupported outsize: {}'.format(outsize))
                 gradient_check.assert_allclose(expect, y_data[i, c])
 
     @condition.retry(3)
