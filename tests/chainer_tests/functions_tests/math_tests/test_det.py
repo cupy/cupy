@@ -150,8 +150,12 @@ class DetFunctionTestBase(object):
 
 
 class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
-    det = lambda _, x: F.batch_det(x)
-    matmul = lambda _, x, y: F.batch_matmul(x, y)
+
+    def det(self, x):
+        return F.batch_det(x)
+
+    def matmul(self, x, y):
+        return F.batch_matmul(x, y)
 
     def make_data(self):
         x = numpy.random.uniform(.5, 1, (6, 5, 5)).astype(numpy.float32)
@@ -161,8 +165,12 @@ class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
 
 
 class TestSquareDet(DetFunctionTestBase, unittest.TestCase):
-    det = lambda _, x: F.det(x)
-    matmul = lambda _, x, y: F.matmul(x, y)
+
+    def det(self, x):
+        return F.det(x)
+
+    def matmul(self, x, y):
+        return F.matmul(x, y)
 
     def make_data(self):
         x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
