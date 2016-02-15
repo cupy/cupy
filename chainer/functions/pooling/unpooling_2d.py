@@ -42,10 +42,10 @@ class Unpooling2D(pooling_2d.Pooling2D):
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
-        xp = cuda.get_array_module(x)
+        xp = cuda.get_array_module(*x)
         col = xp.tile(x[0][:, :, xp.newaxis, xp.newaxis],
                       (1, 1, self.kh, self.kw, 1, 1))
-        if any(isinstance(xi, cuda.ndarray) for xi in x):
+        if isinstance(x[0], cuda.ndarray):
             y = conv.col2im_gpu(col, self.sy, self.sx, self.ph, self.pw,
                                 self.outh, self.outw)
         else:
@@ -54,7 +54,7 @@ class Unpooling2D(pooling_2d.Pooling2D):
         return y,
 
     def backward(self, x, gy):
-        if any(isinstance(xi, cuda.ndarray) for xi in x):
+        if isinstance(gy[0], cuda.ndarray):
             gcol = conv.im2col_gpu(
                 gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
         else:

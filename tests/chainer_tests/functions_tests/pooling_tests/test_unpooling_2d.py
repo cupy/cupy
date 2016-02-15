@@ -20,7 +20,7 @@ class TestUnpooling2D(unittest.TestCase):
     def setUp(self):
         self.N = 2
         self.n_channels = 3
-        inh, inw = (2, 1)
+        inh, inw = 2, 1
         self.x = numpy.arange(
             self.N * self.n_channels * inh * inw, dtype=numpy.float32)\
             .reshape(self.N, self.n_channels, inh, inw)
