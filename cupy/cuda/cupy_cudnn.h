@@ -30,12 +30,12 @@
 
 typedef int cudnnActivationMode_t;
 typedef int cudnnAddMode_t;
+typedef int cudnnConvolutionBwdDataAlgo_t;
+typedef int cudnnConvolutionBwdDataPreference_t;
+typedef int cudnnConvolutionBwdFilterAlgo_t;
+typedef int cudnnConvolutionBwdFilterPreference_t;
 typedef int cudnnConvolutionFwdAlgo_t;
 typedef int cudnnConvolutionFwdPreference_t;
-typedef int cudnnConvolutionBwdFilterPreference_t;
-typedef int cudnnConvolutionBwdFilterAlgo_t;
-typedef int cudnnConvolutionBwdDataPreference_t;
-typedef int cudnnConvolutionBwdDataAlgo_t;
 typedef int cudnnConvolutionMode_t;
 typedef int cudnnDataType_t;
 typedef int cudnnNanPropagation_t;
@@ -47,11 +47,12 @@ typedef int cudnnTensorFormat_t;
 
 typedef int ActivationMode;
 typedef int AddMode;
+typedef int ConvolutionBwdDataAlgo;
+typedef int ConvolutionBwdDataPreference;
+typedef int ConvolutionBwdFilterAlgo;
+typedef int ConvolutionBwdFilterPreference;
 typedef int ConvolutionFwdAlgo;
 typedef int ConvolutionFwdPreference;
-typedef int ConvolutionBwdFilterAlgo;
-typedef int ConvolutionBwdDataAlgo;
-typedef int ConvolutionBwdFilterPreference;
 typedef int ConvolutionMode;
 typedef int DataType;
 typedef int PoolingMode;
