@@ -268,6 +268,7 @@ def get_numpy_include_path():
     if hasattr(six.moves.builtins, '__NUMPY_SETUP__'):
         del six.moves.builtins.__NUMPY_SETUP__
     import numpy
+    six.moves.reload_module(numpy)
     try:
         numpy_include = numpy.get_include()
     except AttributeError:
