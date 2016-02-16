@@ -67,7 +67,7 @@ def _move_inputs(prob, input_length, xp):
         * (rotate * concatenated.shape[1]
            + xp.arange(0, concatenated.shape[1])[None, :])[:, :, None]\
         + xp.arange(concatenated.shape[2])[None, None, :]
-    result = [xp.squeeze(a)
+    result = [xp.squeeze(a).reshape(prob[0].shape)
               for a in xp.vsplit(xp.take(concatenated, index), len(prob))]
     return result
 
@@ -302,7 +302,7 @@ def connectionist_temporal_classification(x, t, blank_symbol,
     if input_length is None:
         xp = cuda.get_array_module(x[0].data)
         input_length = chainer.Variable(xp.full((len(x[0].data),),
-                                                len(x[0].data[0]),
+                                                len(x),
                                                 dtype=int))
         label_length = chainer.Variable(xp.full((len(t.data),),
                                                 len(t.data[0]),
