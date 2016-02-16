@@ -1,9 +1,15 @@
 import numpy
-import six
 
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
+
+
+def _hinge_fwd_kernel():
+    return cuda.elementwise(
+        'S t', 'raw T bottom_diff',
+        'int ind[] = {i, t}; bottom_diff[ind] *= -1',
+        'hinge_fwd')
 
 
 class Hinge(function.Function):
@@ -30,48 +36,40 @@ class Hinge(function.Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        num, dim = x.shape
+        num = len(x)
         self.bottom_diff = numpy.copy(x)
-        for i in six.moves.range(num):
-            self.bottom_diff[i, t[i]] *= -1
+        self.bottom_diff[numpy.arange(num), t] *= -1
         self.bottom_diff = numpy.maximum(0, 1 + self.bottom_diff)
-        loss = 0
         if self.norm == 'L1':
-            loss = numpy.sum(self.bottom_diff) / num
+            loss = self.bottom_diff.sum() / num
         elif self.norm == 'L2':
-            loss = numpy.sum(self.bottom_diff ** 2) / num
+            loss = (self.bottom_diff ** 2).sum() / num
         else:
             raise NotImplementedError()
 
-        return numpy.array(loss, dtype=numpy.float32),
+        return numpy.array(loss, dtype=x.dtype),
 
     def forward_gpu(self, inputs):
         x, t = inputs
-        num, dim = x.shape
-        self.bottom_diff = cuda.cupy.copy(x)
-        self.bottom_diff = cuda.elementwise(
-            'S t, int32 dim', 'raw T bottom_diff',
-            'bottom_diff[i * dim + t] *= -1',
-            'hinge_fwd')(t, dim, self.bottom_diff)
-        self.bottom_diff = cuda.cupy.maximum(0, 1 + self.bottom_diff)
-        loss = 0
+        num = x.dtype.type(len(x))
+        self.bottom_diff = cuda.cupy.maximum(
+            0, 1 + _hinge_fwd_kernel()(t, x.copy()))
         if self.norm == 'L1':
-            loss = cuda.cupy.sum(self.bottom_diff) / num
+            loss = self.bottom_diff.sum() / num
         elif self.norm == 'L2':
-            loss = cuda.cupy.sum(self.bottom_diff ** 2) / num
+            loss = (self.bottom_diff ** 2).sum() / num
         else:
             raise NotImplementedError()
 
-        return cuda.cupy.array(loss, dtype=cuda.cupy.float32),
+        return loss,
 
     def backward_cpu(self, inputs, grad_outputs):
         t, gloss = inputs[1], grad_outputs[0]
-        for i in six.moves.range(t.shape[0]):
-            self.bottom_diff[i, t[i]] *= -1
+        self.bottom_diff[numpy.arange(len(t)), t] *= -1
         if self.norm == 'L1':
-            gx = (gloss / t.shape[0]) * numpy.sign(self.bottom_diff)
+            gx = (gloss / len(t)) * numpy.sign(self.bottom_diff)
         elif self.norm == 'L2':
-            gx = (2 * gloss / t.shape[0]) * self.bottom_diff
+            gx = (2 * gloss / len(t)) * self.bottom_diff
         else:
             raise NotImplementedError()
 
@@ -80,14 +78,11 @@ class Hinge(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         xp = cuda.get_array_module(*inputs)
         t, gloss = inputs[1], grad_outputs[0]
-        self.bottom_diff = cuda.elementwise(
-            'S t, int32 dim', 'raw T bottom_diff',
-            'bottom_diff[i * dim + t] *= -1',
-            'hinge_bwd')(t, inputs[0].shape[1], self.bottom_diff)
+        self.bottom_diff = _hinge_fwd_kernel()(t, self.bottom_diff)
         if self.norm == 'L1':
-            gx = (gloss / t.shape[0]) * xp.sign(self.bottom_diff)
+            gx = (gloss / len(t)) * xp.sign(self.bottom_diff)
         elif self.norm == 'L2':
-            gx = (2 * gloss / t.shape[0]) * self.bottom_diff
+            gx = (2 * gloss / len(t)) * self.bottom_diff
         else:
             raise NotImplementedError()
 
