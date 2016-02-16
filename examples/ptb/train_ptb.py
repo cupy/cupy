@@ -36,10 +36,10 @@ parser.add_argument('--unit', '-u', default=650, type=int,
                     help='number of units')
 parser.add_argument('--batchsize', '-b', type=int, default=20,
                     help='learning minibatch size')
-parser.add_argument('--bploplen', '-l', type=int, default=35,
+parser.add_argument('--bproplen', '-l', type=int, default=35,
                     help='length of truncated BPTT')
 parser.add_argument('--gradclip', '-c', type=int, default=5,
-                    help='graddient norm threshold to clip')
+                    help='gradient norm threshold to clip')
 parser.add_argument('--test', dest='test', action='store_true')
 parser.set_defaults(test=False)
 
@@ -49,7 +49,7 @@ xp = cuda.cupy if args.gpu >= 0 else np
 n_epoch = args.epoch   # number of epochs
 n_units = args.unit  # number of units per layer
 batchsize = args.batchsize   # minibatch size
-bprop_len = args.bploplen   # length of truncated BPTT
+bprop_len = args.bproplen   # length of truncated BPTT
 grad_clip = args.gradclip    # gradient norm threshold to clip
 
 # Prepare dataset (preliminary download dataset by ./download.py)
