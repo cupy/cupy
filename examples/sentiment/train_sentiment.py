@@ -27,16 +27,28 @@ from chainer import optimizers
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
+parser.add_argument('--epoch', '-e', default=400, type=int,
+                    help='number of epochs to learn')
+parser.add_argument('--unit', '-u', default=30, type=int,
+                    help='number of units')
+parser.add_argument('--batchsize', '-b', type=int, default=25,
+                    help='learning minibatch size')
+parser.add_argument('--label', '-l', type=int, default=5,
+                    help='number of labels')
+parser.add_argument('--epocheval', '-p', type=int, default=5,
+                    help='number of epochs per evaluation')
+parser.add_argument('--test', dest='test', action='store_true')
+parser.set_defaults(test=False)
 args = parser.parse_args()
 if args.gpu >= 0:
     cuda.check_cuda_available()
 xp = cuda.cupy if args.gpu >= 0 else np
 
-n_epoch = 400       # number of epochs
-n_units = 30        # number of units per layer
-batchsize = 25      # minibatch size
-n_label = 5         # number of labels
-epoch_per_eval = 5  # number of epochs per evaluation
+n_epoch = args.epoch       # number of epochs
+n_units = args.unit        # number of units per layer
+batchsize = args.batchsize      # minibatch size
+n_label = args.label         # number of labels
+epoch_per_eval = args.epocheval  # number of epochs per evaluation
 
 
 class SexpParser(object):
@@ -162,8 +174,14 @@ def evaluate(model, test_trees):
 
 vocab = {}
 train_trees = read_corpus('trees/train.txt', vocab)
+if args.test:
+    train_trees = train_trees[:10]
 test_trees = read_corpus('trees/test.txt', vocab)
+if args.test:
+    train_trees = train_trees[:10]
 develop_trees = read_corpus('trees/dev.txt', vocab)
+if args.test:
+    train_trees = train_trees[:10]
 
 model = RecursiveNet(len(vocab), n_units)
 
