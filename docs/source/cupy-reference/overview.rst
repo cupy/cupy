@@ -221,6 +221,7 @@ Array manipulation routines
 :func:`atleast_3d`
 :class:`broadcast`
 :func:`broadcast_arrays`
+:func:`broadcast_to`
 :func:`expand_dims`
 :func:`squeeze`
 
@@ -235,6 +236,8 @@ Array manipulation routines
 :func:`hsplit`
 :func:`split`
 :func:`vsplit`
+
+:func:`roll`
 
 Binary operations
 ~~~~~~~~~~~~~~~~~

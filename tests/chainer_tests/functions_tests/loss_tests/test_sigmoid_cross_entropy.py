@@ -1,6 +1,7 @@
 import math
 import unittest
 
+import mock
 import numpy
 import six
 
@@ -72,21 +73,13 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
 
     def check_backward(self, x_data, t_data, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        loss = functions.sigmoid_cross_entropy(x, t, use_cudnn)
-        loss.backward()
-        self.assertEqual(None, t.grad)
-
         # Skip too large case. That requires a long time.
         if self.shape[0] == 65536:
             return
 
-        func = loss.creator
-        f = lambda: func.forward((x.data, t.data))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (1,), eps=0.01)
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.SigmoidCrossEntropy(use_cudnn),
+            (x_data, t_data), None, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -101,6 +94,31 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestSgimoidCrossEntropyCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.x = cuda.cupy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        self.t = cuda.cupy.random.randint(0, 3, (4, 3)).astype(numpy.int32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        t = chainer.Variable(self.t)
+        return functions.sigmoid_cross_entropy(x, t, self.use_cudnn)
+
+    def test_call_cudnn_backward(self):
+        y = self.forward()
+        with mock.patch('cupy.cudnn.cudnn.activationForward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    # Note that SoftmaxCrossEntropy does not use cudnn on backward
 
 
 testing.run_module(__name__, __file__)

@@ -39,13 +39,14 @@ before_install:
       python --version;
 
       brew install homebrew/science/hdf5;
-
-      pip install h5py;
     fi
 
 install:
-  - python setup.py install
-  - pip install nose flake8 hacking mock
+  - pip install cython
+  - python setup.py sdist
+  - pip install dist/*.tar.gz
+  - pip install h5py
+  - pip install nose hacking mock
 
 script:
   - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' tests/chainer_tests

@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -22,17 +23,8 @@ class TestReLU(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.relu(x, use_cudnn=use_cudnn)
-        self.assertEqual(y.data.dtype, numpy.float32)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.ReLU(use_cudnn), x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -54,6 +46,34 @@ class TestReLUZeroDim(TestReLU):
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestTanhCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.x = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.gy = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        return functions.relu(x, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.activationForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.activationBackward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)

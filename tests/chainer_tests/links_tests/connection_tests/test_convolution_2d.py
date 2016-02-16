@@ -64,19 +64,8 @@ class TestConvolution2D(unittest.TestCase):
         self.check_forward_consistency()
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x).data,)
-        gx, gW, gb = gradient_check.numerical_grad(
-            f, (x.data, self.link.W.data, self.link.b.data), (y.grad,),
-            eps=1e-2)
-
-        gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gW, self.link.W.grad)
-        gradient_check.assert_allclose(gb, self.link.b.grad)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, (self.link.W, self.link.b), eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

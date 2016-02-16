@@ -70,6 +70,13 @@ cdef extern from 'cupy_cuda.h':
     int cublasSdgmm(
             Handle handle, SideMode mode, int m, int n, float* A, int lda,
             float* x, int incx, float* C, int ldc)
+    int cublasSgetrfBatched(
+            Handle handle, int n, float **Aarray, int lda,
+            int *PivotArray, int *infoArray, int batchSize)
+    int cublasSgetriBatched(
+            Handle handle, int n, const float **Aarray, int lda,
+            int *PivotArray, float *Carray[], int ldc, int *infoArray,
+            int batchSize)
 
 
 ###############################################################################
@@ -300,4 +307,21 @@ cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
     status = cublasSdgmm(
         <Handle>handle, <SideMode>mode, m, n, <float*>A, lda, <float*>x, incx,
         <float*>C, ldc)
+    check_status(status)
+
+
+cpdef sgetrfBatched(size_t handle, int n, size_t Aarray, int lda,
+                    size_t PivotArray, size_t infoArray, int batchSize):
+    status = cublasSgetrfBatched(
+        <Handle>handle, n, <float**>Aarray, lda, <int*>PivotArray,
+        <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef sgetriBatched(
+        size_t handle, int n, size_t Aarray, int lda, size_t PivotArray,
+        size_t Carray, int ldc, size_t infoArray, int batchSize):
+    status = cublasSgetriBatched(
+        <Handle>handle, n, <const float**>Aarray, lda, <int*>PivotArray,
+        <float**>Carray, ldc, <int*>infoArray, batchSize)
     check_status(status)

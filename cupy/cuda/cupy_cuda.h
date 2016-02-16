@@ -409,6 +409,18 @@ int cublasSdgmm(
     return 0;
 }
 
+int cublasSgetrfBatched(
+        Handle handle, int n, float *Aarray[], int lda, int *PivotArray,
+        int *infoArray, int batchSize) {
+    return 0;
+}
+
+int cublasSgetriBatched(
+        Handle handle, int n, const float *Aarray[], int lda, int *PivotArray,
+        float *Carray[], int ldc, int *infoArray, int batchSize) {
+    return 0;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // cublas_v2.h

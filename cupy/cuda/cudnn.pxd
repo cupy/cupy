@@ -56,6 +56,7 @@ cpdef enum:
 
     CUDNN_SOFTMAX_FAST = 0
     CUDNN_SOFTMAX_ACCURATE = 1
+    CUDNN_SOFTMAX_LOG = 2
 
     CUDNN_SOFTMAX_MODE_INSTANCE = 0
     CUDNN_SOFTMAX_MODE_CHANNEL = 1
@@ -92,7 +93,7 @@ cpdef setTensor4dDescriptorEx(size_t tensorDesc, int dataType,
 cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
                             size_t dimA, size_t strideA)
 cpdef destroyTensorDescriptor(size_t tensorDesc)
-cpdef addTensor(
+cpdef addTensor_v2(
         size_t handle, int mode, size_t alpha, size_t biasDesc,
         size_t biasData, size_t beta, size_t srcDestDesc, size_t srcDestData)
 
@@ -117,7 +118,7 @@ cpdef size_t createConvolutionDescriptor() except *
 cpdef setConvolution2dDescriptor(
         size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
         int upscaley, int mode)
-cpdef setConvolutionNdDescriptor(
+cpdef setConvolutionNdDescriptor_v2(
         size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
         size_t upscaleA, int mode)
 cpdef destroyConvolutionDescriptor(size_t convDesc)
@@ -135,11 +136,11 @@ cpdef convolutionForward(
 cpdef convolutionBackwardBias(
         size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
         size_t beta, size_t destDesc, size_t destData)
-cpdef convolutionBackwardFilter(
+cpdef convolutionBackwardFilter_v2(
         size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
         size_t diffDesc, size_t diffData, size_t convDesc, size_t beta,
         size_t gradDesc, size_t gradData)
-cpdef convolutionBackwardData(
+cpdef convolutionBackwardData_v2(
         size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
         size_t diffDesc, size_t diffData, size_t convDesc, size_t beta,
         size_t gradDesc, size_t gradData)

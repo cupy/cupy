@@ -8,6 +8,19 @@
 #ifndef CUPY_NO_CUDA
 #include <cudnn.h>
 
+#if CUDNN_VERSION < 4000
+
+// ***_v2 functions are not declared in cuDNN v2 and v3.
+// Following definitions are for compatibility with cuDNN v4.
+
+#define cudnnSetConvolutionNdDescriptor_v2 cudnnSetConvolutionNdDescriptor
+#define cudnnGetConvolutionNdDescriptor_v2 cudnnGetConvolutionNdDescriptor
+#define cudnnAddTensor_v2 cudnnAddTensor
+#define cudnnConvolutionBackwardFilter_v2 cudnnConvolutionBackwardFilter
+#define cudnnConvolutionBackwardData_v2 cudnnConvolutionBackwardData
+
+#endif // #if CUDNN_VERSION < 4000
+
 #else // #ifndef CUPY_NO_CUDA
 
 
@@ -59,6 +72,11 @@ const char* cudnnGetErrorString(Status status) {
     return NULL;
 }
 
+// Version
+size_t cudnnGetVersion() {
+    return 0;
+}
+
 // Initialization and CUDA cooperation
 int cudnnCreate(Handle* handle) {
     return 0;
@@ -105,7 +123,7 @@ int cudnnDestroyTensorDescriptor(TensorDescriptor tensorDesc) {
     return 0;
 }
 
-int cudnnAddTensor(
+int cudnnAddTensor_v2(
         Handle handle, AddMode mode, void* alpha,
         TensorDescriptor biasDesc, void* biasData, void* beta,
         TensorDescriptor srcDestDesc, void* srcDestData) {
@@ -146,7 +164,7 @@ int cudnnSetConvolution2dDescriptor(
     return 0;
 }
 
-int cudnnSetConvolutionNdDescriptor(
+int cudnnSetConvolutionNdDescriptor_v2(
         ConvolutionDescriptor convDesc, int arrayLength, int* padA,
         int* filterStrideA, int* upscaleA, ConvolutionMode mode) {
     return 0;
@@ -188,7 +206,7 @@ int cudnnConvolutionBackwardBias(
     return 0;
 }
 
-int cudnnConvolutionBackwardFilter(
+int cudnnConvolutionBackwardFilter_v2(
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor diffDesc, void* diffData,
@@ -197,7 +215,7 @@ int cudnnConvolutionBackwardFilter(
     return 0;
 }
 
-int cudnnConvolutionBackwardData(
+int cudnnConvolutionBackwardData_v2(
         Handle handle, void* alpha,
         FilterDescriptor filterDesc, void* filterData,
         TensorDescriptor diffDesc, void* diffData,

@@ -32,17 +32,9 @@ class TestTranspose(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = functions.transpose(x, self.axes)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data.copy(),))
-
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,), eps=1e-5)
-
-        gradient_check.assert_allclose(gx, x.grad, rtol=1e-5)
+        gradient_check.check_backward(
+            functions.Transpose(self.axes),
+            x_data, y_grad, eps=1e-5, rtol=1e-5)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)

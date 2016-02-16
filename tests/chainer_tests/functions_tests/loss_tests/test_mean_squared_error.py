@@ -43,20 +43,9 @@ class TestMeanSquaredError(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x0), cuda.to_gpu(self.x1))
 
     def check_backward(self, x0_data, x1_data):
-        x0 = chainer.Variable(x0_data)
-        x1 = chainer.Variable(x1_data)
-        loss = functions.mean_squared_error(x0, x1)
-        loss.backward()
-
-        func = loss.creator
-        f = lambda: func.forward((x0.data, x1.data))
-        gx0, gx1 = gradient_check.numerical_grad(
-            f, (x0.data, x1.data), (1,), eps=1e-2)
-
-        gradient_check.assert_allclose(gx0, x0.grad)
-        gradient_check.assert_allclose(gx1, x1.grad)
-        self.assertEqual(x0.grad.dtype, numpy.float32)
-        self.assertEqual(x1.grad.dtype, numpy.float32)
+        gradient_check.check_backward(
+            functions.MeanSquaredError(),
+            (x0_data, x1_data), None, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

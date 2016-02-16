@@ -6,6 +6,14 @@ from chainer import function
 from chainer.utils import type_check
 
 
+if cuda.cudnn_enabled:
+    cudnn = cuda.cudnn
+    libcudnn = cudnn.cudnn
+    _algorithm = libcudnn.CUDNN_SOFTMAX_LOG
+    _mode = libcudnn.CUDNN_SOFTMAX_MODE_CHANNEL
+    _cudnn_version = libcudnn.getVersion()
+
+
 def logsumexp(x):
     xp = cuda.get_array_module(x)
     m = x.max(axis=1, keepdims=True)
@@ -14,10 +22,26 @@ def logsumexp(x):
     return xp.log(y.sum(axis=1, keepdims=True)) + m
 
 
-def softmax_log(x):
-    # TODO(unno): Use cudnn (cudnn v2 doesn't support CUDNN_SOFTMAX_LOG)
-    log_z = logsumexp(x)
-    return x - log_z
+def softmax_log(x, use_cudnn):
+    xp = cuda.get_array_module(x)
+    if xp != numpy and cuda.cudnn_enabled and use_cudnn \
+       and _cudnn_version >= 3000:
+        dtype = x.dtype
+        one = numpy.array(1, dtype=dtype).ctypes
+        zero = numpy.array(0, dtype=dtype).ctypes
+        handle = cudnn.get_handle()
+        x_cube = x.reshape(x.shape[:2] + (-1, 1))
+        desc = cudnn.create_tensor_descriptor(x_cube)
+        y = xp.empty_like(x)
+        libcudnn.softmaxForward(
+            handle, _algorithm, _mode, one.data, desc.value,
+            x_cube.data.ptr, zero.data, desc.value,
+            y.data.ptr)
+        return y
+
+    else:
+        log_z = logsumexp(x)
+        return x - log_z
 
 
 class SoftmaxCrossEntropy(function.Function):
@@ -45,56 +69,47 @@ class SoftmaxCrossEntropy(function.Function):
 
     def forward_cpu(self, inputs):
         x, t = inputs
-        log_y = softmax_log(x)
+        log_y = softmax_log(x, False)
         self.y = numpy.exp(log_y)
         log_yd = numpy.rollaxis(log_y, 1)
         log_yd = log_yd.reshape(len(log_yd), -1)
 
-        log_p = log_yd[numpy.maximum(t.flat, 0), six.moves.range(t.size)]
+        log_p = log_yd[numpy.maximum(t.ravel(), 0), six.moves.range(t.size)]
         # deal with the case where the SoftmaxCrossEntropy is
         # unpickled from the old version
         if getattr(self, 'normalize', True):
             count = (t != self.ignore_label).sum()
         else:
-            count = x.shape[0]
-        self.count = count
+            count = len(x)
+        self._coeff = 1.0 / max(count, 1)
 
-        if count == 0:
-            return numpy.zeros((), dtype=x.dtype),
-
-        y = (log_p * (t.flat != self.ignore_label)).sum(keepdims=True) \
-            * (-1.0 / count)
+        y = (log_p * (t.ravel() != self.ignore_label)).sum(keepdims=True) \
+            * (-self._coeff)
         return y.reshape(()),
 
     def forward_gpu(self, inputs):
         cupy = cuda.cupy
         x, t = inputs
-        log_y = softmax_log(x)
+        log_y = softmax_log(x, self.use_cudnn)
         self.y = cupy.exp(log_y)
         if getattr(self, 'normalize', True):
-            count = float((t != self.ignore_label).sum())
+            coeff = cupy.maximum(1, (t != self.ignore_label).sum())
         else:
-            count = t.shape[0]
-        self.count = count
-
-        if count == 0:
-            return cupy.zeros((), dtype=x.dtype),
+            coeff = max(1, len(t))
+        self._coeff = cupy.divide(1.0, coeff, dtype=x.dtype)
 
         log_y = cupy.rollaxis(log_y, 1, log_y.ndim)
         ret = cuda.reduce(
-            'S t, raw T log_y, int32 n_channel, T inv_count', 'T out',
+            'S t, raw T log_y, int32 n_channel, raw T coeff', 'T out',
             't == -1 ? 0 : log_y[_j * n_channel + t]',
-            'a + b', 'out = a * inv_count', '0', 'crossent_fwd'
-        )(t, log_y.reduced_view(), log_y.shape[-1], -1.0 / count)
+            'a + b', 'out = a * -coeff[0]', '0', 'crossent_fwd'
+        )(t, log_y.reduced_view(), log_y.shape[-1], self._coeff)
         return ret,
 
     def backward_cpu(self, inputs, grad_outputs):
         x, t = inputs
-        if self.count == 0:
-            return numpy.zeros_like(x), None
-
         gloss = grad_outputs[0]
-        n_unit = t.size // t.shape[0]
+        n_unit = t.size // len(t)
         if self.y.ndim == 2:
             gx = self.y.copy()
             gx[six.moves.xrange(len(t)), numpy.maximum(t, 0)] -= 1
@@ -106,32 +121,25 @@ class SoftmaxCrossEntropy(function.Function):
             gx = self.y.copy().reshape(self.y.shape[0], self.y.shape[1], -1)
             fst_index = numpy.arange(t.size) // n_unit
             trd_index = numpy.arange(t.size) % n_unit
-            gx[fst_index, numpy.maximum(t.flat, 0), trd_index] -= 1
+            gx[fst_index, numpy.maximum(t.ravel(), 0), trd_index] -= 1
             gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
             gx = gx.reshape(self.y.shape)
 
-        gx *= gloss / self.count
+        gx *= gloss * self._coeff
         return gx, None
 
     def backward_gpu(self, inputs, grad_outputs):
         cupy = cuda.cupy
         x, t = inputs
-        if self.count == 0:
-            return cupy.zeros_like(x), None
-
         gloss = grad_outputs[0]
-        n_unit = t.size // t.shape[0]
-        coeff = cuda.cupy.divide(gloss, self.count, dtype=gloss.dtype)
+        n_unit = t.size // len(t)
+        coeff = gloss * self._coeff
         gx = cuda.elementwise(
             'T y, S t, raw T coeff, S n_channel, S n_unit',
             'T gx',
             '''
                const int c = (i / n_unit % n_channel);
-               if (t == -1) {
-                 gx = 0;
-               } else {
-                 gx = coeff[0] * (y - (c == t));
-               }
+               gx = (t == -1) ? 0 : (coeff[0] * (y - (c == t)));
             ''',
             'softmax_crossent_bwd')(
                 self.y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit)

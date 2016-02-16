@@ -22,7 +22,12 @@ class Alex(chainer.Chain):
         )
         self.train = True
 
+    def clear(self):
+        self.loss = None
+        self.accuracy = None
+
     def __call__(self, x, t):
+        self.clear()
         h = F.max_pooling_2d(F.relu(
             F.local_response_normalization(self.conv1(x))), 3, stride=2)
         h = F.max_pooling_2d(F.relu(

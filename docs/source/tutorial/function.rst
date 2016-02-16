@@ -86,7 +86,23 @@ Recall the rule of differentiation of multiplication.
 This example just implements the rule.
 Look at the return values, the function just packs the gradient of each input in same order and returns them.
 
-By just defining the core computation of forward and backward, Function class provides a chaining logic on it (i.e. storing the history of computation, etc.).
+By just defining the core computation of forward and backward,
+Function class provides a chaining logic on it (i.e. storing the
+history of computation, etc.).
+
+.. note::
+   Assuming we implement a (forward) function :math:`y=f(x)` which takes as input the
+   vector :math:`x \in \mathbb{R}^n` and produces as output a vector
+   :math:`y \in \mathbb{R}^m`. Then the ``backward`` method has to compute
+
+   .. math::
+      \lambda_i = \sum_{j=1}^m \frac{\partial y_j}{\partial x_i} \,
+      \gamma_j \,\, \text{for}\, i = 1 \dots n
+
+   where :math:`\gamma` is the ``grad_outputs``. Note, that the
+   resulting vector :math:`\lambda` must have the same shape as the arguments of the ``forward`` method.
+
+
 
 Now let's define the corresponding GPU methods.
 You can easily predict that the methods we have to write are named :meth:`~Function.forward_gpu` and :meth:`~Function.backward_gpu`::
@@ -476,7 +492,7 @@ This link hides the parameters of the linear layer.
    An advanced tip to implement functions: if you want to preserve some information between forward and backward computations (e.g. to cache some arrays), you can store it as attributes.
    Be careful that it might increase the memory consumption during the whole forward-backward computation.
    If you want to train very large networks on a GPU with limited memory, it is not recommended to cache arrays between forward and backward.
-   There is one exception for this: caching the output arrays do not change the memory consumption, because they are also held by the output Variable objects.
+   There is one exception for this: caching the output arrays does not change the memory consumption, because they are also held by the output Variable objects.
 
    .. warning::
 

@@ -1,3 +1,4 @@
+import collections
 import numpy
 import six
 
@@ -250,8 +251,10 @@ def connectionist_temporal_classification(x, t, blank_symbol,
     unknown. See also [Graves2012]_
 
     Args:
-        x (Variable): RNN output at each time.
-                      (ex. :math:`(y_1, y_2, ..., y_T)`)
+        x (sequence of Variable): RNN output at each time. ``x`` must be a list
+            of :class:`~chianer.Variable` s. Each element of ``x``, ``x[i]``
+            is a :class:`~chainer.Variable` representing output of RNN at time
+            ``i``.
         t (Variable): Expected label sequence.
         blank_symbol (int): Index of blank_symbol.
                             This value must be non-negative.
@@ -291,6 +294,8 @@ def connectionist_temporal_classification(x, t, blank_symbol,
     <http://www.cs.toronto.edu/~graves/preprint.pdf>`_
 
     """
+    if not isinstance(x, collections.Sequence):
+        raise TypeError('x must be a list of Variables')
     if not isinstance(blank_symbol, int):
         raise TypeError('blank_symbol must be non-negative integer.')
     assert blank_symbol >= 0

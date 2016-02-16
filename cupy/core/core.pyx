@@ -1245,18 +1245,28 @@ include "reduction.pxi"
 
 cdef _id = 'out0 = in0'
 
-elementwise_copy = create_ufunc(
+_elementwise_copy = create_ufunc(
     'cupy_copy',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
     _id)
 
 
-elementwise_copy_where = create_ufunc(
+def elementwise_copy(*args, **kwargs):
+    kwargs['casting'] = 'unsafe'
+    return _elementwise_copy(*args, **kwargs)
+
+
+_elementwise_copy_where = create_ufunc(
     'cupy_copy_where',
     ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
      'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d'),
     'if (in1) out0 = in0')
+
+
+def elementwise_copy_where(*args, **kwargs):
+    kwargs['casting'] = 'unsafe'
+    return _elementwise_copy_where(*args, **kwargs)
 
 
 cdef _divmod_float = '''
@@ -1648,14 +1658,23 @@ right_shift = _create_bit_op(
 # -----------------------------------------------------------------------------
 
 cdef _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, int64 cdim, int64 rdim',
+    'raw T a, S indices, int32 cdim, int32 rdim, int32 adim',
     'T out',
     '''
-      long long li = i / (rdim * cdim);
-      long long ri = i % rdim;
-      out = a[(li * cdim + indices) * rdim + ri];
+      int li = i / (rdim * cdim);
+      int ri = i % rdim;
+      out = a[(li * adim + indices) * rdim + ri];
     ''',
     'cupy_take')
+
+
+cdef _take_kernel_0axis = ElementwiseKernel(
+    'raw T a, S indices, int32 rdim',
+    'T out',
+    '''
+      out = a[indices * rdim + i % rdim];
+    ''',
+    'cupy_take_0axis')
 
 
 cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
@@ -1663,14 +1682,17 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
         a = a.ravel()
         lshape = ()
         rshape = ()
+        adim = 1
     else:
         if axis >= a.ndim:
             raise ValueError('Axis overrun')
         lshape = a.shape[:axis]
         rshape = a.shape[axis + 1:]
+        adim = a.shape[axis]
 
     if numpy.isscalar(indices):
-        a = rollaxis(a, axis)
+        if axis is not None:
+            a = rollaxis(a, axis)
         if out is None:
             return a[indices].copy()
         else:
@@ -1692,7 +1714,10 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     rdim = internal.prod(rshape)
     indices = indices.reshape(
         (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
-    return _take_kernel(a, indices, cdim, rdim, out)
+    if axis == 0 or axis is None:
+        return _take_kernel_0axis(a.reduced_view(), indices, rdim, out)
+    else:
+        return _take_kernel(a.reduced_view(), indices, cdim, rdim, adim, out)
 
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,

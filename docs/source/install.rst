@@ -12,21 +12,15 @@ We recommend these platforms.
 * `CentOS <https://www.centos.org/>`_ 7 64bit
 
 Chainer is supported on Python 2.7.6+, 3.4.3+, 3.5.0+.
-Chainer and dependent libraries use these tools and libraries.
-
-* g++
-* libhdf5
-
-You need to install them before installing Chainer.
+Chainer uses C++ compiler such as g++.
+You need to install it before installing Chainer.
 This is typical installation method for each platform::
 
-
   # Ubuntu 14.04
-  $ apt-get install gcc libhdf5-dev
+  $ apt-get install g++
 
   # CentOS 7
-  $ yum -y install epel-release
-  $ yum install gcc hdf5-devel
+  $ yum install gcc-c++
 
 If you use old ``setuptools``, upgrade it::
 
@@ -36,11 +30,10 @@ If you use old ``setuptools``, upgrade it::
 Install Chainer
 ---------------
 
-Chainer depends to these Python packages:
+Chainer depends on these Python packages:
 
-* `Numpy <http://www.numpy.org/>`_ 1.9
+* `Numpy <http://www.numpy.org/>`_ 1.9, 1.10
 * `Six <https://pythonhosted.org/six/>`_ 1.9
-* `h5py <http://www.h5py.org/>`_ 2.5.0
 
 CUDA support
 
@@ -57,6 +50,10 @@ Caffe model support
 * `Protocol Buffers <https://developers.google.com/protocol-buffers/>`_
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
+
+HDF5 serialization is optional
+
+* `h5py <http://www.h5py.org/>`_ 2.5.0
 
 
 Install Chainer via pip
@@ -81,13 +78,6 @@ You can use ``setup.py`` to install Chainer from source::
 
 When an error occurs...
 ~~~~~~~~~~~~~~~~~~~~~~~
-
-Note that Chainer install script (``setup.py``) has unknown bug yet.
-When you failed to install Chainer, please try to install dependent libraries manually::
-
-  $ pip install -U cython
-  $ pip install -U h5py
-  $ pip install chainer
 
 Use ``-vvvv`` option with ``pip`` command.
 That shows all logs of installation. It may helps you::
@@ -132,7 +122,7 @@ We recommend you to install cuDNN to CUDA directory.
 For example if you uses Ubuntu linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
   $ cp /path/to/cudnn.h $CUDA_PATH/include
-  $ cp /path/to/cudnn.so $CUDA_PATH/lib64
+  $ cp /path/to/libcudnn.so* $CUDA_PATH/lib64
 
 The destination directories depend on your environment.
 
@@ -149,6 +139,25 @@ We recommend to use ``pip`` with ``-e`` option for editable mode::
   $ pip install -e .
 
 Users need not to install Cython as a distribution package of Chainer only contains generated sources.
+
+
+Support HDF5 serialization
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install h5py manually to activate HDF5 serialization.
+This feature is optional::
+
+  $ pip install h5py
+
+Before installing h5py, you need to install libhdf5.
+It depends on your environment::
+
+  # Ubuntu 14.04
+  $ apt-get install libhdf5-dev
+
+  # CentOS 7
+  $ yum -y install epel-release
+  $ yum install hdf5-devel
 
 
 Uninstall Chainer

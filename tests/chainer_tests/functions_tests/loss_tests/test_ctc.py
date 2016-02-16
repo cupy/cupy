@@ -45,9 +45,9 @@ class TestCTC(unittest.TestCase):
                 (self.alpha(x, l, t-1, u-1) + self.alpha(x, l, t-1, u))
         else:
             return x[t][l[u]] * \
-                (self.alpha(x, l, t-1, u-2)
-                 + self.alpha(x, l, t-1, u-1)
-                 + self.alpha(x, l, t-1, u))
+                (self.alpha(x, l, t-1, u-2) +
+                 self.alpha(x, l, t-1, u-1) +
+                 self.alpha(x, l, t-1, u))
 
     def check_forward(self, t_data, xs_data, l_length, x_length):
         x = tuple(chainer.Variable(x_data) for x_data in xs_data)
@@ -189,6 +189,15 @@ class TestCTCWithAllPadding(TestCTC):
                                    dtype=numpy.int32)
         self.l_length[0] = 1
         self.l_length[1] = 1
+
+
+class TestCTCError(unittest.TestCase):
+
+    def test_not_iterable(self):
+        x = chainer.Variable(numpy.zeros((4, 2, 3), numpy.float32))
+        t = chainer.Variable(numpy.zeros((2, 2), numpy.int32))
+        with self.assertRaises(TypeError):
+            functions.connectionist_temporal_classification(x, t, 0)
 
 
 testing.run_module(__name__, __file__)
