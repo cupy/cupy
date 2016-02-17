@@ -32,7 +32,7 @@ chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.6.2',
+    version='1.6.2.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
