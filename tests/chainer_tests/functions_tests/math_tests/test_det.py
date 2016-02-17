@@ -157,20 +157,23 @@ class DetFunctionTestBase(object):
             gradient_check.check_backward(self.det, x_data, y_grad)
 
     def test_answer_cpu(self):
-        x = numpy.array([[-0.79910903,  0.79850769],
-                         [0.24345008,  0.07751049]]).astype('float32')
-        ans = F.det(chainer.Variable(x)).data
-        y = numpy.array([-0.25633609348])
-        gradient_check.assert_allclose(ans, y)
+        for _ in range(5):
+            x = numpy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
+            ans = F.det(chainer.Variable(x)).data
+            y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
+            gradient_check.assert_allclose(ans, y)
 
     @attr.gpu
     def test_answer_gpu(self):
-        x = cuda.cupy.array([[-0.79910903,  0.79850769],
-                             [0.24345008,  0.07751049]]).astype('float32')
-        ans = F.det(chainer.Variable(x)).data
-        y = numpy.array([-0.25633609348])
-        y = cuda.to_gpu(y)
-        gradient_check.assert_allclose(ans, y)
+        for _ in range(5):
+            x = cuda.cupy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
+            ans = F.det(chainer.Variable(x)).data
+            y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
+            gradient_check.assert_allclose(ans, y)
+            ygpu = cuda.to_cpu(y)
+            xcpu = cuda.to_cpu(x)
+            ycpu = numpy.linalg.det(xcpu)
+            gradient_check.assert_allclose(ycpu, ygpu)
 
 
 class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
@@ -182,8 +185,8 @@ class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
         return F.batch_matmul(x, y)
 
     def make_data(self):
-        x = numpy.random.uniform(.5, 1, (6, 5, 5)).astype(numpy.float32)
-        y = numpy.random.uniform(.5, 1, (6, 5, 5)).astype(numpy.float32)
+        x = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
+        y = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
         gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
         return x, y, gy
 

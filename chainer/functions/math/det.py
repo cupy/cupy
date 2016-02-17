@@ -1,4 +1,4 @@
-import numpy.linalg
+import numpy
 
 from chainer import cuda
 from chainer import function
@@ -27,10 +27,18 @@ def _det_gpu(b):
     _, lda = matmul._get_ld(a)
     cuda.cublas.sgetrfBatched(cuda.Device().cublas_handle, n, ap.data.ptr, lda,
                               p.data.ptr, info1.data.ptr, n_matrices)
-    # The determinant is the result of the diagonal entries multiplied
-    # in each row of the minibatch.
-    det = cuda.cupy.prod(a.diagonal(axis1=1, axis2=2), axis=1)
-    success = cuda.cupy.sum(info1)
+    # The determinant is equal to the product of the diagonal entries
+    # of `a` where the sign of `a` is flipped depending on whether
+    # the pivot array is equal to its index.
+    flags = cuda.cupy.tile(cuda.cupy.arange(1, n + 1), (n_matrices, 1)).T
+    one = cuda.cupy.float32(1.0)
+    two = cuda.cupy.float32(2.0)
+    # `sign` will be 1.0 if the pivot equals the index; -1.0 otherwise.
+    sign = one - two * (cuda.cupy.prod(p != flags, axis=0)).astype('float32')
+    det = cuda.cupy.prod(a.diagonal(axis1=1, axis2=2), axis=1) * sign
+    success = cuda.cupy.all(info1 == 0)
+    # Results should match
+    # numpy.linalg.det(cuda.to_cpu(b))
     return det, success
 
 
@@ -57,7 +65,7 @@ class BatchDet(function.Function):
 
     def forward_gpu(self, x):
         self.detx, success = _det_gpu(x[0])
-        if success.__nonzero__():
+        if not success:
             raise ValueError('Singular Matrix')
         return self.detx,
 
