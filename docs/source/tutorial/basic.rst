@@ -423,7 +423,7 @@ We use a simple three-layer rectifier network with 100 units per layer as an exa
 This link uses :func:`~functions.relu` as an activation function.
 Note that the ``'l3'`` link is the final linear layer whose output corresponds to scores for the ten digits.
 
-In order to compute loss values or evalute the accuracy of the predictions, we define a classifier chain on top of the above MLP chain:
+In order to compute loss values or evaluate the accuracy of the predictions, we define a classifier chain on top of the above MLP chain:
 
 .. doctest::
 

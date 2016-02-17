@@ -337,7 +337,7 @@ Our MulAdd implementation can be improved as follows::
           gz = gw
           return gx, gy, gz
 
-:func:`cuda.elementwise` function accepts the essential implementation of the kernel function, and returns a kernel invokation function (actually, it returns :class:`~cupy.elementwise.ElementwiseKernel` object, which is callable).
+:func:`cuda.elementwise` function accepts the essential implementation of the kernel function, and returns a kernel invocation function (actually, it returns :class:`~cupy.elementwise.ElementwiseKernel` object, which is callable).
 In typical usage, we pass four arguments to this function as follows:
 
 1. Input argument list. This is a comma-separated string each entry of which consists of a type specification and an argument name.
@@ -353,7 +353,7 @@ This caching mechanism is actually implemented in CuPy.
 
 The second one is *upload caching*:
 Given a compiled binary code, we have to upload it to the current GPU in order to execute it.
-:func:`cuda.elementwise` function memoizes the arguments and the curent device, and if it is called with the same arguments for the same device, it reuses the previously uploaded kernel code.
+:func:`cuda.elementwise` function memoizes the arguments and the current device, and if it is called with the same arguments for the same device, it reuses the previously uploaded kernel code.
 
 The above MulAdd code only works for float32 arrays.
 The :class:`~cupy.elementwise.ElementwiseKernel` also supports the type-variadic kernel definition.

@@ -170,7 +170,7 @@ Use pip to uninstall Chainer::
 .. note::
 
    When you upgrade Chainer, ``pip`` sometimes installed various version of Chainer in ``site-packages``.
-   Plese uninstall it repeatedly until ``pip`` returns an error.
+   Please uninstall it repeatedly until ``pip`` returns an error.
 
 
 Upgrade Chainer

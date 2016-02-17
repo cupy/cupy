@@ -6,7 +6,7 @@ Serializers
 Serialization in Numpy NPZ format
 ---------------------------------
 
-NumPy seriazliers can be used in arbitrary environments that Chainer runs with.
+NumPy serializers can be used in arbitrary environments that Chainer runs with.
 It consists of asymmetric serializer/deserializer due to the fact that :func:`numpy.savez` does not support online serialization.
 Therefore, serialization requires two-step manipulation: first packing the objects into a flat dictionary, and then serializing it into npz format.
 
