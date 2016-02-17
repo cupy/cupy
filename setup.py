@@ -6,16 +6,19 @@ from setuptools import setup
 
 import chainer_setup_build
 
-
+numpy_version = 'numpy>=1.9.0'
+six_version = 'six>=1.9.0'
 setup_requires = [
-    'numpy>=1.9.0',
+    numpy_version,
+    six_version,
 ]
 install_requires = [
     'filelock',
     'nose',
-    'numpy>=1.9.0',
+    numpy_version,
     'protobuf',
-    'six>=1.9.0']
+    six_version,
+]
 
 
 # Hack for Read the Docs
