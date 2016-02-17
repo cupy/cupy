@@ -160,7 +160,7 @@ A linear link from three-dimensional space to two-dimensional space is defined b
    Most functions and links only accept minibatch input, where the first dimension of input arrays is considered as the *batch dimension*.
    In the above Linear link case, input must have shape of (N, 3), where N is the minibatch size.
 
-Parameters of a link is stored as attributres.
+The parameters of a link are stored as attributes.
 Each parameter is an instance of :class:`~chainer.Variable`.
 In the case of Linear link, two parameters, ``W`` and ``b``, are stored.
 By default, the matrix ``W`` is initialized randomly, while the vector ``b`` is initialized with zeros.
