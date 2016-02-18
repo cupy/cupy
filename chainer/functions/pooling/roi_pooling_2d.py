@@ -1,3 +1,33 @@
+# Modified work:
+# -----------------------------------------------------------------------------
+# Copyright (c) 2015 Preferred Infrastructure, Inc.
+# Copyright (c) 2015 Preferred Networks, Inc.
+# -----------------------------------------------------------------------------
+
+# Original work of _roi_pooling_slice, forward_cpu and backward_cpu:
+# -----------------------------------------------------------------------------
+# Copyright 2014 Nervana Systems Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# -----------------------------------------------------------------------------
+
+# Original work of forward_gpu and backward_gpu:
+# -----------------------------------------------------------------------------
+# Fast R-CNN
+# Copyright (c) 2015 Microsoft
+# Licensed under The MIT License [see fast-rcnn/LICENSE for details]
+# Written by Ross Girshick
+# -----------------------------------------------------------------------------
+
 import numpy
 import six
 
@@ -296,6 +326,9 @@ def roi_pooling_2d(x, rois, outh, outw, spatial_scale):
 
     Returns:
         ~chainer.Variable: Ouptut variable.
+
+    See the original paper proposing ROIPooling:
+    `Fast R-CNN <http://arxiv.org/abs/1504.08083>`_.
 
     """
     return ROIPooling2D(outh, outw, spatial_scale)(x, rois)
