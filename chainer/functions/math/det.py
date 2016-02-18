@@ -18,7 +18,7 @@ def _det_gpu(b):
     n = a.shape[1]
     n_matrices = len(a)
     # Pivot array
-    p = cuda.cupy.zeros((n, n_matrices), dtype='int32')
+    p = cuda.cupy.zeros((n_matrices, n), dtype='int32')
     # Output array
     # These arrays hold information on the execution success
     # or if the matrix was singular.
@@ -27,19 +27,14 @@ def _det_gpu(b):
     _, lda = matmul._get_ld(a)
     cuda.cublas.sgetrfBatched(cuda.Device().cublas_handle, n, ap.data.ptr, lda,
                               p.data.ptr, info1.data.ptr, n_matrices)
+    det = cuda.cupy.prod(a.diagonal(axis1=1, axis2=2), axis=1)
     # The determinant is equal to the product of the diagonal entries
     # of `a` where the sign of `a` is flipped depending on whether
     # the pivot array is equal to its index.
-    flags = cuda.cupy.tile(cuda.cupy.arange(1, n + 1), (n_matrices, 1)).T
-    one = cuda.cupy.float32(1.0)
-    two = cuda.cupy.float32(2.0)
-    # `sign` will be 1.0 if the pivot equals the index; -1.0 otherwise.
-    sign = one - two * (cuda.cupy.prod(p != flags, axis=0)).astype('float32')
-    det = cuda.cupy.prod(a.diagonal(axis1=1, axis2=2), axis=1) * sign
+    parity = (p.sum(axis=1, dtype='float32') - (n * (n + 1) / 2)) % 2
+    sign = -parity * 2.0 + 1.0
     success = cuda.cupy.all(info1 == 0)
-    # Results should match
-    # numpy.linalg.det(cuda.to_cpu(b))
-    return det, success
+    return det * sign, success
 
 
 class BatchDet(function.Function):
@@ -73,14 +68,14 @@ class BatchDet(function.Function):
         x, = x
         gy, = gy
         grad = (gy[:, None, None] * self.detx[:, None, None] *
-                numpy.linalg.inv(x.transpose([0, 2, 1])))
+                numpy.linalg.inv(x.transpose((0, 2, 1))))
         return utils.force_array(grad),
 
     def backward_gpu(self, x, gy):
         x, = x
         gy, = gy
         grad = (gy[:, None, None] * self.detx[:, None, None] *
-                inv._inv_gpu(x.transpose([0, 2, 1])))
+                inv._inv_gpu(x.transpose((0, 2, 1))))
         return utils.force_array(grad),
 
 
