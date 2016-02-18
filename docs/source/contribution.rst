@@ -44,7 +44,7 @@ Issues and PRs
 
 Issues and PRs are classified into following categories:
 
-* **Bug**: bug reports (isseus) and bug fixes (PRs)
+* **Bug**: bug reports (issues) and bug fixes (PRs)
 * **Enhancement**: implementation improvements without breaking the interface
 * **Feature**: feature requests (issues) and their implementations (PRs)
 * **Test**: test fixes and updates
