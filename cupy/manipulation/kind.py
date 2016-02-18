@@ -18,7 +18,7 @@ def asfortranarray(a, dtype=None):
     .. seealso:: :func:`numpy.asfortranarray`
 
     """
-    ret = cupy.empty(a.shape.T, a.dtype if dtype is None else dtype)
+    ret = cupy.empty(a.shape[::-1], a.dtype if dtype is None else dtype).T
     ret[...] = a
     return ret
 
