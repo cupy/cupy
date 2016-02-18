@@ -10,7 +10,7 @@ It seems you have actually seen on-the-fly compilations of CUDA kernels.
 CuPy compiles kernels on demand to make kernels optimized to the number of dimensions and element types of input arguments.
 Precompilation is not available, because we have to compile an exponential number of kernels to support all CuPy functionalities.
 This restriction is unavoidable because Python cannot call CUDA/C++ template functions in generic way.
-Note that every framework using CUDA require compilation at some point; the difference between other statically-compiled frameworks (such as cutorch) and Chainer is whether a kernel is compiled at installtion or at the first use.
+Note that every framework using CUDA require compilation at some point; the difference between other statically-compiled frameworks (such as cutorch) and Chainer is whether a kernel is compiled at installation or at the first use.
 
 These compilations should run only at the first use of the kernels.
 The compiled binaries are cached to the ``$(HOME)/.cupy/kernel_cache`` directory by default.

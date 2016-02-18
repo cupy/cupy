@@ -34,6 +34,9 @@ parser.add_argument('--out-type', '-o', choices=['hsm', 'ns', 'original'],
                     default='hsm',
                     help='output model type ("hsm": hierarchical softmax, '
                     '"ns": negative sampling, "original": no approximation)')
+parser.add_argument('--test', dest='test', action='store_true')
+parser.set_defaults(test=False)
+
 args = parser.parse_args()
 if args.gpu >= 0:
     cuda.check_cuda_available()
@@ -129,6 +132,8 @@ with open('ptb.train.txt') as f:
             dataset.append(word2index[word])
 
 n_vocab = len(word2index)
+if args.test:
+    dataset = dataset[:100]
 
 print('n_vocab: %d' % n_vocab)
 print('data length: %d' % len(dataset))

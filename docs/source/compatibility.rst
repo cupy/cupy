@@ -10,7 +10,7 @@ Developers should read through this document before creating pull requests that 
 Note that this document may contain ambiguities on the level of supported compatibilities.
 
 
-Targetted Versions
+Targeted Versions
 ------------------
 
 This policy is applied to Chainer of versions v1.5.1 and higher.
