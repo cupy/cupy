@@ -170,13 +170,28 @@ class DetFunctionTestBase(object):
             ans = F.det(chainer.Variable(x)).data
             y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
             gradient_check.assert_allclose(ans, y)
-            ygpu = cuda.to_cpu(y)
-            xcpu = cuda.to_cpu(x)
-            ycpu = numpy.linalg.det(xcpu)
-            gradient_check.assert_allclose(ycpu, ygpu)
+
+    def check_answer_gpu_cpu(self, shape, repeat=10):
+        for _ in range(repeat):
+            x = cuda.cupy.random.uniform(.5, 1, shape, dtype='float32')
+            gpu = cuda.to_cpu(self.det(chainer.Variable(x)).data)
+            cpu = numpy.linalg.det(cuda.to_cpu(x))
+            gradient_check.assert_allclose(gpu, cpu)
+
+    @attr.gpu
+    def test_answer_gpu_cpu(self):
+        if self.batched:
+            for w in range(1, 5):
+                for s in range(2, 5):
+                    self.check_answer_gpu_cpu((w, s, s))
+        else:
+            w = 1
+            for s in range(2, 5):
+                self.check_answer_gpu_cpu((s, s))
 
 
 class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
+    batched = True
 
     def det(self, x):
         return F.batch_det(x)
@@ -192,6 +207,7 @@ class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
 
 
 class TestSquareDet(DetFunctionTestBase, unittest.TestCase):
+    batched = False
 
     def det(self, x):
         return F.det(x)

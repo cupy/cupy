@@ -31,8 +31,10 @@ def _det_gpu(b):
     # The determinant is equal to the product of the diagonal entries
     # of `a` where the sign of `a` is flipped depending on whether
     # the pivot array is equal to its index.
-    parity = (p.sum(axis=1, dtype='float32') - (n * (n + 1) / 2)) % 2
-    sign = -parity * 2.0 + 1.0
+    rng = cuda.cupy.arange(1, n + 1, dtype='int32')
+    flags = cuda.cupy.tile(rng, (n_matrices, 1))
+    parity = cuda.cupy.sum(p != flags, axis=1) % 2
+    sign = 1. - 2. * parity.astype('float32')
     success = cuda.cupy.all(info1 == 0)
     return det * sign, success
 
