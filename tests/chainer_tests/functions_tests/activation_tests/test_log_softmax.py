@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import six
 
 import chainer
 from chainer import cuda
@@ -12,11 +11,17 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    {'x': numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)},
+    {'x': numpy.array([[-1000, 1]], dtype=numpy.float32)},
+    {'x': numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)},
+    {'x': numpy.random.uniform(-1, 1, (2, 3, 4, 5)).astype(numpy.float32)},
+)
 class TestLogSoftmax(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, self.x.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -24,10 +29,9 @@ class TestLogSoftmax(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = numpy.empty_like(self.x)
-        for i in six.moves.range(y_expect.shape[0]):
-            x = self.x[i]
-            log_z = numpy.ufunc.reduce(numpy.logaddexp, x)
-            y_expect[i] = x - log_z
+        log_z = numpy.ufunc.reduce(
+            numpy.logaddexp, self.x, axis=1, keepdims=True)
+        y_expect = self.x - log_z
 
         gradient_check.assert_allclose(y_expect, y.data)
 
@@ -63,56 +67,6 @@ class TestLogSoftmax(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
-
-
-class TestLogSoftmaxUnstable(TestLogSoftmax):
-
-    def setUp(self):
-        self.x = numpy.array([[-1000, 1]], dtype=numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (1, 2)).astype(numpy.float32)
-
-
-class TestReplicatedLogSoftmax1(TestLogSoftmax):
-
-    def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
-
-    def check_forward(self, x_data, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.log_softmax(x, use_cudnn)
-        self.assertEqual(y.data.dtype, numpy.float32)
-
-        y_expect = numpy.exp(self.x)
-        for i in six.moves.range(y_expect.shape[0]):
-            for k in six.moves.range(y_expect.shape[2]):
-                y_expect[i, :, k] /= y_expect[i, :, k].sum()
-
-        y_expect = numpy.log(y_expect)
-        gradient_check.assert_allclose(y_expect, y.data)
-
-
-class TestReplicatedLogSoftmax2(TestLogSoftmax):
-
-    def setUp(self):
-        self.x = numpy.random.uniform(
-            -1, 1, (2, 3, 4, 5)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(
-            -1, 1, (2, 3, 4, 5)).astype(numpy.float32)
-
-    def check_forward(self, x_data, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        y = functions.log_softmax(x, use_cudnn)
-        self.assertEqual(y.data.dtype, numpy.float32)
-
-        y_expect = numpy.exp(self.x)
-        for i in six.moves.range(y_expect.shape[0]):
-            for k in six.moves.range(y_expect.shape[2]):
-                for l in six.moves.range(y_expect.shape[3]):
-                    y_expect[i, :, k, l] /= y_expect[i, :, k, l].sum()
-
-        y_expect = numpy.log(y_expect)
-        gradient_check.assert_allclose(y_expect, y.data)
 
 
 testing.run_module(__name__, __file__)
