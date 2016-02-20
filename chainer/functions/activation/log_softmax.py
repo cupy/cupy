@@ -84,10 +84,15 @@ def log_softmax(x, use_cudnn=True):
     """Channelwise log-softmax function.
 
     This function computes its logarithm of softmax along the second axis. Let
-    :math:`x = (x_1, x_2, \\dots, x_d)^{\\top}` be the d dimensional index
-    array and :math:`f(x)` be the d dimensional input array. For each index
-    :math:`x` of the input array :math:`f(x)`, it computes the logarithm of
-    the probability :math:`\log p(x)` defined as
+    :math:`i = (i_1, i_2, \\dots, i_d)^{\\top}` be the d dimensional index
+    array and :math:`x = f(i)` be the corresponding d dimensional input array.
+    For each index :math:`i` of the input array :math:`f(i)`, it computes the
+    logarithm of the probability :math:`\log p(x)` defined as
+
+    .. math::
+        p(i) = {\\exp(f(i)) \\over \\sum_{i'_2} \\exp(f(i'))},
+
+    where :math:`i' = (i_1, i'_2, \\dots, i_d)`.
 
     .. math::
         p(x) = {\\exp(f(x)) \\over \\sum_{x'} \\exp(f(x'))}.
