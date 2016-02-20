@@ -92,6 +92,9 @@ def log_softmax(x, use_cudnn=True):
     .. math::
         p(x) = {\\exp(f(x)) \\over \\sum_{x'} \\exp(f(x'))}.
 
+    This method is theorecically equivalent to ``log(softmax(x))`` but is more
+    stable.
+
     .. note::
         ``log(softmax(x))`` may cause underflow when ``x`` is too small,
         because ``softmax(x)`` may returns ``0``.
