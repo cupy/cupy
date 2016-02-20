@@ -169,22 +169,22 @@ class TestFunction(unittest.TestCase):
         ret = self.f(x1, x2)
         self.assertIsInstance(ret, chainer.Variable)
 
-    def test_call_sigle_return_value_cpu(self):
+    def test_call_single_return_value_cpu(self):
         self.f.forward_cpu.return_value = (cuda.to_cpu(self.y1),)
         self.check_call_single_return_value(False)
 
     @attr.gpu
-    def test_call_sigle_return_value_gpu(self):
+    def test_call_single_return_value_gpu(self):
         self.setup_gpu()
         self.f.forward_gpu.return_value = (cuda.to_gpu(self.y1),)
         self.check_call_single_return_value(False)
 
-    def test_call_sigle_return_value_volatile_cpu(self):
+    def test_call_single_return_value_volatile_cpu(self):
         self.f.forward_cpu.return_value = (cuda.to_cpu(self.y1),)
         self.check_call_single_return_value(True)
 
     @attr.gpu
-    def test_call_sigle_return_value_volatile_gpu(self):
+    def test_call_single_return_value_volatile_gpu(self):
         self.setup_gpu()
         self.f.forward_gpu.return_value = (cuda.to_gpu(self.y1),)
         self.check_call_single_return_value(True)
