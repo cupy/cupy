@@ -1,7 +1,10 @@
+import contextlib
+
 from cupy.cuda import compiler
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda import memory
+from cupy.cuda import profiler
 from cupy.cuda import stream
 
 compile_with_cache = compiler.compile_with_cache
@@ -22,3 +25,10 @@ Module = function.Module
 Event = stream.Event
 Stream = stream.Stream
 get_elapsed_time = stream.get_elapsed_time
+
+
+@contextlib.contextmanager
+def profile():
+    profiler.start()
+    yield
+    profiler.stop()
