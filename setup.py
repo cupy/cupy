@@ -6,16 +6,19 @@ from setuptools import setup
 
 import chainer_setup_build
 
-
+numpy_version = 'numpy>=1.9.0'
+six_version = 'six>=1.9.0'
 setup_requires = [
-    'numpy>=1.9.0',
+    numpy_version,
+    six_version,
 ]
 install_requires = [
     'filelock',
     'nose',
-    'numpy>=1.9.0',
+    numpy_version,
     'protobuf',
-    'six>=1.9.0']
+    six_version,
+]
 
 
 # Hack for Read the Docs
@@ -29,7 +32,7 @@ chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.6.1',
+    version='1.6.2.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',

@@ -166,7 +166,7 @@ class Optimizer(object):
         gradients. The implementation might call ``lossfun`` more than once.
 
         If ``lossfun`` is not given, then this method assumes that the
-        gardients of all parameters are already computed. An implementation
+        gradients of all parameters are already computed. An implementation
         that requires multiple gradient computations might raise an error on
         this case.
 

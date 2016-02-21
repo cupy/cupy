@@ -60,12 +60,19 @@ parser.add_argument('--initmodel', default='',
                     help='Initialize the model from given file')
 parser.add_argument('--resume', default='',
                     help='Resume the optimization from snapshot')
+parser.add_argument('--test', dest='test', action='store_true')
+parser.set_defaults(test=False)
 args = parser.parse_args()
 if args.gpu >= 0:
     cuda.check_cuda_available()
 xp = cuda.cupy if args.gpu >= 0 else np
 
 assert 50000 % args.val_batchsize == 0
+
+if args.test:
+    denominator = 1
+else:
+    denominator = 100000
 
 
 def load_image_list(path, root):
@@ -178,7 +185,7 @@ def feed_data():
                 i = 0
 
             count += 1
-            if count % 100000 == 0:
+            if count % denominator == 0:
                 data_q.put('val')
                 j = 0
                 for path, label in val_list:

@@ -1,3 +1,5 @@
+import numpy
+
 import cupy
 
 
@@ -53,7 +55,7 @@ def bincount(x, weights=None, minlength=None):
             'atomicAdd(&bin[x], 1)',
             'bincount_kernel'
         )(x, b)
-        b = b.astype(cupy.int64)
+        b = b.astype(numpy.intp)
     else:
         # atomicAdd for float64 is not provided
         b = cupy.zeros((size,), dtype=cupy.float32)
