@@ -75,14 +75,14 @@ def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
 
     Args:
         x (~chainer.Variable): Input variable.
-        ksize (int or (int, int)): Size of pooling window. ``ksize=k`` and
+        ksize (int or pair of ints): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k)`` are equivalent.
-        stride (int or (int, int) or None): Stride of pooling applications.
+        stride (int, pair of ints or None): Stride of pooling applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent. If ``None`` is
             specified, then it uses same stride as the pooling window size.
-        pad (int or (int, int)): Spatial padding width for the input array.
+        pad (int or pair of ints): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        outsize (None or (int, int)): Expected output size (height, width)
+        outsize (None or pair of ints): Expected output size (height, width)
             of array after the operation.  If ``None``, the size
             (height or width) is estimated from input array size from the first
             batch of inputs with
