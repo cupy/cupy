@@ -17,15 +17,15 @@ class DetFunctionTestBase(object):
     def setUp(self):
         self.x, self.y, self.gy = self.make_data()
         self.ct = numpy.array(
-            [ix.T for ix in self.x.copy()]).astype(numpy.float32)
+            [ix.T for ix in self.x], dtype=numpy.float32)
 
     def det_transpose(self, gpu=False):
         if gpu:
-            cx = cuda.to_gpu(self.x.copy())
-            ct = cuda.to_gpu(self.ct.copy())
+            cx = cuda.to_gpu(self.x)
+            ct = cuda.to_gpu(self.ct)
         else:
-            cx = self.x.copy()
-            ct = self.ct.copy()
+            cx = self.x
+            ct = self.ct
         xn = chainer.Variable(cx)
         xt = chainer.Variable(ct)
         yn = self.det(xn)
@@ -44,11 +44,11 @@ class DetFunctionTestBase(object):
     def det_scaling(self, gpu=False):
         scaling = numpy.random.randn(1).astype('float32')
         if gpu:
-            cx = cuda.to_gpu(self.x.copy())
-            sx = cuda.to_gpu(scaling * self.x.copy())
+            cx = cuda.to_gpu(self.x)
+            sx = cuda.to_gpu(scaling * self.x)
         else:
-            cx = self.x.copy()
-            sx = scaling * self.x.copy()
+            cx = self.x
+            sx = scaling * self.x
         c = float(scaling ** self.x.shape[1])
         cxv = chainer.Variable(cx)
         sxv = chainer.Variable(sx)
@@ -67,13 +67,12 @@ class DetFunctionTestBase(object):
 
     def det_identity(self, gpu=False):
         if self.x.ndim == 3:
-            idt = [numpy.identity(self.x.shape[1]).astype(numpy.float32)
-                   for _ in range(self.x.shape[0])]
-            idt = numpy.array(idt).astype(numpy.float32)
-            chk = numpy.ones(self.x.shape[0]).astype(numpy.float32)
+            chk = numpy.ones(len(self.x), dtype=numpy.float32)
+            dt = numpy.identity(self.x.shape[1], dtype=numpy.float32)
+            idt = numpy.repeat(dt[None], len(self.x), axis=0)
         else:
-            idt = numpy.identity(self.x.shape[1]).astype(numpy.float32)
-            chk = numpy.ones(1).astype(numpy.float32)
+            idt = numpy.identity(self.x.shape[1], dtype=numpy.float32)
+            chk = numpy.ones(1, dtype=numpy.float32)
         if gpu:
             chk = cuda.to_gpu(chk)
             idt = cuda.to_gpu(idt)
@@ -90,11 +89,11 @@ class DetFunctionTestBase(object):
 
     def det_product(self, gpu=False):
         if gpu:
-            cx = cuda.to_gpu(self.x.copy())
-            cy = cuda.to_gpu(self.y.copy())
+            cx = cuda.to_gpu(self.x)
+            cy = cuda.to_gpu(self.y)
         else:
-            cx = self.x.copy()
-            cy = self.y.copy()
+            cx = self.x
+            cy = self.y
         vx = chainer.Variable(cx)
         vy = chainer.Variable(cy)
         dxy1 = self.det(self.matmul(vx, vy))
@@ -114,13 +113,13 @@ class DetFunctionTestBase(object):
     @attr.gpu
     @condition.retry(3)
     def test_batch_backward_gpu(self):
-        x_data = cuda.to_gpu(self.x.copy())
-        y_grad = cuda.to_gpu(self.gy.copy())
+        x_data = cuda.to_gpu(self.x)
+        y_grad = cuda.to_gpu(self.gy)
         gradient_check.check_backward(self.det, x_data, y_grad)
 
     @condition.retry(3)
     def test_batch_backward_cpu(self):
-        x_data, y_grad = self.x.copy(), self.gy.copy()
+        x_data, y_grad = self.x, self.gy
         gradient_check.check_backward(self.det, x_data, y_grad)
 
     def test_expect_scalar_cpu(self):
@@ -137,7 +136,7 @@ class DetFunctionTestBase(object):
         self.assertEqual(y.data.ndim, 1)
 
     def test_zero_det_cpu(self):
-        x_data, y_grad = self.x.copy(), self.gy.copy()
+        x_data, y_grad = self.x, self.gy
         if x_data.ndim == 3:
             x_data[0, :, :] = 0.0
         else:
@@ -147,8 +146,8 @@ class DetFunctionTestBase(object):
 
     @attr.gpu
     def test_zero_det_gpu(self):
-        x_data = cuda.to_gpu(self.x.copy())
-        y_grad = cuda.to_gpu(self.gy.copy())
+        x_data = cuda.to_gpu(self.x)
+        y_grad = cuda.to_gpu(self.gy)
         if x_data.ndim == 3:
             x_data[0, :, :] = 0.0
         else:
