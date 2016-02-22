@@ -67,6 +67,9 @@ cpdef int getDeviceCount() except *
 cpdef setDevice(int device)
 cpdef deviceSynchronize()
 
+cpdef int deviceCanAccessPeer(int device, int peerDevice) except *
+cpdef deviceEnablePeerAccess(int peerDevice)
+
 
 ###############################################################################
 # Memory management
