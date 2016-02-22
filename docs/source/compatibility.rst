@@ -1,7 +1,7 @@
 API Compatibility Policy
 ========================
 
-This document expresses the design policy on compatilibities of Chainer APIs.
+This document expresses the design policy on compatibilities of Chainer APIs.
 Dev team should obey this policy on deciding to add, extend, and change APIs and their behaviors.
 
 This document is written for both users and developers.
@@ -72,7 +72,7 @@ The actual change should be done in the following steps:
 Supported Backward Compatibility
 --------------------------------
 
-This section defines backward compatibilites that minor updates must maintain.
+This section defines backward compatibilities that minor updates must maintain.
 
 Documented Interface
 ~~~~~~~~~~~~~~~~~~~~

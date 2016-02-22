@@ -32,7 +32,7 @@ Install Chainer
 
 Chainer depends on these Python packages:
 
-* `Numpy <http://www.numpy.org/>`_ 1.9, 1.10
+* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10
 * `Six <https://pythonhosted.org/six/>`_ 1.9
 
 CUDA support
@@ -127,7 +127,7 @@ For example if you uses Ubuntu linux, copy ``.h`` files to ``include`` directory
 The destination directories depend on your environment.
 
 
-Install Chainer for developes
+Install Chainer for developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Chainer uses Cython (>=0.23).
