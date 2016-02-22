@@ -1,4 +1,5 @@
 import collections
+import pkg_resources
 import sys
 import warnings
 
@@ -8,10 +9,28 @@ import six
 from chainer import functions
 from chainer import link
 from chainer import links
-# caffe_pb2 does not support Py3
-if sys.version_info < (3, 0, 0):
-    from chainer.links.caffe import caffe_pb2
 
+
+def _protobuf3():
+    ws = pkg_resources.WorkingSet()
+    try:
+        ws.require('protobuf>=3.0.0a')
+        return True
+    except pkg_resources.VersionConflict:
+        return False
+
+
+if _protobuf3():
+    from chainer.links.caffe import caffe_pb3 as caffe_pb
+    available = True
+elif sys.version_info < (3, 0, 0):
+    # caffe_pb2 does not support Py3
+    from chainer.links.caffe import caffe_pb2 as caffe_pb
+    available = True
+else:
+    available = False
+
+if available:
     _type_to_method = {}
     _oldname_to_method = {}
 
@@ -19,19 +38,15 @@ if sys.version_info < (3, 0, 0):
         def decorator(meth):
             global _type_to_method
             _type_to_method[typ] = meth
-            typevalue = getattr(caffe_pb2.V1LayerParameter, oldname)
+            typevalue = getattr(caffe_pb.V1LayerParameter, oldname)
             _oldname_to_method[typevalue] = meth
             return meth
         return decorator
-
-    available = True
 else:
     def _layer(typ, oldname):  # fallback
         def decorator(meth):
             return meth
         return decorator
-
-    available = False
 
 
 class CaffeFunction(link.Chain):
@@ -102,11 +117,13 @@ class CaffeFunction(link.Chain):
     """
     def __init__(self, model_path):
         if not available:
-            raise RuntimeError('CaffeFunction is not supported on Python 3')
+            msg = ('CaffeFunction is only supported on protobuf>=3 is '
+                   'required for Python 3')
+            raise RuntimeError(msg)
 
         super(CaffeFunction, self).__init__()
 
-        net = caffe_pb2.NetParameter()
+        net = caffe_pb.NetParameter()
         with open(model_path, 'rb') as model_file:
             net.MergeFromString(model_file.read())
 

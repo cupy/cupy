@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 
+import google.protobuf
 import mock
 import numpy
 import six
@@ -10,8 +11,8 @@ import chainer
 from chainer import links
 from chainer.links import caffe
 from chainer import testing
-if six.PY2:
-    from chainer.links.caffe import caffe_pb2
+if links.caffe.caffe_function.available:
+    from chainer.links.caffe.caffe_function import caffe_pb
 
 
 def _iter_init(param, data):
@@ -38,12 +39,13 @@ def _iter_init(param, data):
 
 
 def _make_param(data):
-    param = caffe_pb2.NetParameter()
+    param = caffe_pb.NetParameter()
     _iter_init(param, data)
     return param
 
 
-@unittest.skipUnless(six.PY2, 'Only py2 supports caffe_function')
+@unittest.skipUnless(links.caffe.caffe_function.available,
+                     'protobuf>=3.0.0 is required for py3')
 class TestCaffeFunctionBase(unittest.TestCase):
 
     def setUp(self):
@@ -608,18 +610,21 @@ class TestSplit(TestCaffeFunctionBase):
 
 class TestCaffeFunctionAvailable(unittest.TestCase):
 
-    @unittest.skipUnless(six.PY2, 'CaffeFunction is available on Py2')
+    @unittest.skipUnless(six.PY2, 'Only for Py2')
     def test_py2_available(self):
         self.assertTrue(links.caffe.caffe_function.available)
 
-    @unittest.skipUnless(six.PY3, 'CaffeFunction is unavailable on Py3')
-    def test_py3_unavailable(self):
-        self.assertFalse(links.caffe.caffe_function.available)
+    @unittest.skipUnless(six.PY3, 'Only for Py3')
+    def test_py3_available(self):
+        ver = int(google.protobuf.__version__[
+            :google.protobuf.__version__.find('.')])
+        if ver >= 3:
+            self.assertTrue(links.caffe.caffe_function.available)
+        else:
+            self.assertFalse(links.caffe.caffe_function.available)
 
-    @unittest.skipUnless(six.PY3, 'CaffeFunction is unavailable on Py3')
-    def test_py3_init_error(self):
-        with self.assertRaises(RuntimeError):
-            caffe.CaffeFunction('')
+            with self.assertRaises(RuntimeError):
+                caffe.CaffeFunction('')
 
 
 testing.run_module(__name__, __file__)
