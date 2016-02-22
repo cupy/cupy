@@ -78,19 +78,21 @@ def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
         ksize (int or (int, int)): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k)`` are equivalent.
         stride (int or (int, int) or None): Stride of pooling applications.
-            ``stride=s`` and ``stride=(s, s)`` are equivalent. If None is
+            ``stride=s`` and ``stride=(s, s)`` are equivalent. If ``None`` is
             specified, then it uses same stride as the pooling window size.
         pad (int or (int, int)): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        outsize (None, or (int, int)): Expected output size (height, width)
-            of array after the operation. If None, the size (height or width)
-            is estimated from input array size from the first batch of inputs
-            with chainer.utils.conv.get_deconv_outsize.
+        outsize (None or (int, int)): Expected output size (height, width)
+            of array after the operation.  If ``None``, the size
+            (height or width) is estimated from input array size from the first
+            batch of inputs with
+            :func:`~chainer.utils.conv.get_deconv_outsize`.
             Note that pooled size with above variables for outsize
-            which is return value of chainer.utils.conv.get_conv_outsize
-            must be same as insize
-        cover_all (bool): If True, all spatial locations are pooled into some
-            output pixels. It may make the output size larger.
+            which is return value of
+            :func:`~chainer.utils.conv.get_conv_outsize`
+            must be same as insize.
+        cover_all (bool): If ``True``, all spatial locations are pooled
+            into some output pixels. It may make the output size larger.
 
     Returns:
         ~chainer.Variable: Ouptut variable.
