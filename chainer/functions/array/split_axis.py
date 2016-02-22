@@ -2,6 +2,7 @@ import collections
 
 import six
 
+import chainer
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -58,7 +59,7 @@ class SplitAxis(function.Function):
             return xp.concatenate(gys, axis=self.axis),
 
 
-def split_axis(x, indices_or_sections, axis):
+def split_axis(x, indices_or_sections, axis, force_tuple=False):
     """Splits given variables along an axis.
 
     Args:
@@ -68,11 +69,14 @@ def split_axis(x, indices_or_sections, axis):
             If it is a 1-D array of sorted integers, it
             indicates the positions where the array is split.
         axis (int): Axis that the input array is split along.
+        force_tuple (bool): If True, this method returns a tuple even when the
+            number of outputs is one.
 
     Returns:
         tuple or Variable: Tuple of :class:`~chainer.Variable` objects
              if the number of outputs is more than 1 or
              :class:`~chainer.Variable` otherwise.
+             When `force_tuple` is True, return value is always a tuple.
 
     .. note::
         This function raises :class:`ValueError` if at least
@@ -80,4 +84,7 @@ def split_axis(x, indices_or_sections, axis):
         (i.e. `axis`-th value of its shape is zero).
 
     """
-    return SplitAxis(indices_or_sections, axis)(x)
+    res = SplitAxis(indices_or_sections, axis)(x)
+    if force_tuple and isinstance(res, chainer.Variable):
+        res = (res,)
+    return res
