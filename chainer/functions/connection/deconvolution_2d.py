@@ -246,9 +246,9 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
         W (~chainer.Variable): Weight variable of shape
         :math:`(c_I, c_O, k_H, k_W)`.
         b (~chainer.Variable): Bias variable of length :math:`c_O` (optional).
-        stride (int or (int, int)): Stride of filter applications.
+        stride (int or pair of ints): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
-        pad (int or (int, int)): Spatial padding width for input arrays.
+        pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         outsize (tuple): Expected output size of deconvolutional operation.
             It should be pair of height and width :math:`(out_H, out_W)`.
