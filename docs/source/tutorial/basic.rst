@@ -438,7 +438,7 @@ In order to compute loss values or evaluate the accuracy of the predictions, we 
    ...         return self.loss
 
 This Classifier class computes accuracy and loss, and returns the loss value.
-:func:`~functions.softmax_cross_entropy` computes the loss value given prediction and groundtruth labels.
+:func:`~functions.softmax_cross_entropy` computes the loss value given prediction and ground truth labels.
 :func:`~functions.accuracy` computes the prediction accuracy.
 We can set an arbitrary predictor link to an instance of the classifier.
 
