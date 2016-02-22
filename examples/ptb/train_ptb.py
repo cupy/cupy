@@ -57,7 +57,7 @@ vocab = {}
 
 
 def load_data(filename):
-    global vocab, n_vocab
+    global vocab
     words = open(filename).read().replace('\n', '<eos>').strip().split()
     dataset = np.ndarray((len(words),), dtype=np.int32)
     for i, word in enumerate(words):
