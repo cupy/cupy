@@ -84,13 +84,12 @@ def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         outsize (None or pair of ints): Expected output size (height, width)
             of array after the operation.  If ``None``, the size
-            (height or width) is estimated from input array size from the first
-            batch of inputs with
+            (height or width) is estimated from the size of input array
+            in first batch with
             :func:`~chainer.utils.conv.get_deconv_outsize`.
-            Note that pooled size with above variables for outsize
-            which is return value of
-            :func:`~chainer.utils.conv.get_conv_outsize`
-            must be same as insize.
+            If outsize is not ``None``, the result of outsize applied to
+            :func:`~chainer.utils.conv.get_conv_outsize` must be equal to
+            the shape of the 2d array in the input batch ``x``.
         cover_all (bool): If ``True``, all spatial locations are pooled
             into some output pixels, and the output size is larger than that
             when cover_all is ``False``.
