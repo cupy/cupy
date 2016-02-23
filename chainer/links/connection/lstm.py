@@ -7,7 +7,59 @@ from chainer.links.connection import linear
 from chainer import variable
 
 
-class LSTM(link.Chain):
+class LSTMBase(link.Chain):
+
+    def __init__(self, in_size, out_size):
+        super(LSTMBase, self).__init__(
+            upward=linear.Linear(in_size, 4 * out_size),
+            lateral=linear.Linear(out_size, 4 * out_size, nobias=True),
+        )
+        self.state_size = out_size
+
+
+class StatelessLSTM(LSTMBase):
+
+    """Stateless LSTM layer.
+
+    This is a fully-connected LSTM layer as a chain. Unlike the
+    :func:`~chainer.functions.lstm` function, this chain holds upward and
+    lateral connections as child links. This link doesn't keep cell and
+    hidden states.
+
+    Args:
+        in_size (int): Dimensionality of input vectors.
+        out_size (int): Dimensionality of output vectors.
+
+    Attributes:
+        upward (chainer.links.Linear): Linear layer of upward connections.
+        lateral (chainer.links.Linear): Linear layer of lateral connections.
+
+    """
+
+    def __call__(self, c, h, x):
+        """Updates the internal state and returns the LSTM outputs.
+
+        Args:
+            c (~chainer.Variable): Cell states of LSTM units.
+            h (~chainer.Variable): Output at the previous timestep.
+            x (~chainer.Variable): A new batch from the input sequence.
+
+        Returns:
+            ~chainer.Variable: Outputs of updated LSTM units.
+
+        """
+        lstm_in = self.upward(x)
+        if h is not None:
+            lstm_in += self.lateral(h)
+        if c is None:
+            xp = self.xp
+            c = variable.Variable(
+                xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
+                volatile='auto')
+        return lstm.lstm(c, lstm_in)
+
+
+class LSTM(LSTMBase):
 
     """Fully-connected LSTM layer.
 
