@@ -21,11 +21,11 @@ class MLPConvolution2D(link.ChainList):
         ksize (int or pair of ints): Size of filters (a.k.a. kernels) of the
             first convolution layer. ``ksize=k`` and ``ksize=(k, k)`` are
             equivalent.
-        stride (int or pair of ints): Stride of filter applications at the first
-            convolution layer. ``stride=s`` and ``stride=(s, s)`` are
+        stride (int or pair of ints): Stride of filter applications at the
+            first convolution layer. ``stride=s`` and ``stride=(s, s)`` are
             equivalent.
-        pad (int or pair of ints): Spatial padding width for input arrays at the
-            first convolution layer. ``pad=p`` and ``pad=(p, p)`` are
+        pad (int or pair of ints): Spatial padding width for input arrays at
+            the first convolution layer. ``pad=p`` and ``pad=(p, p)`` are
             equivalent.
         activation (function): Activation function for internal hidden units.
             Note that this function is not applied to the output of this link.
