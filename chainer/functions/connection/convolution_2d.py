@@ -231,9 +231,9 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
         W (~chainer.Variable): Weight variable of shape
             :math:`(c_O, c_I, k_H, k_W)`.
         b (~chainer.Variable): Bias variable of length :math:`c_O` (optional).
-        stride (int or (int, int)): Stride of filter applications.
+        stride (int or pair of ints): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
-        pad (int or (int, int)): Spatial padding width for input arrays.
+        pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         use_cudnn (bool): If True, then this function uses CuDNN if available.
 

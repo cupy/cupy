@@ -18,13 +18,13 @@ class MLPConvolution2D(link.ChainList):
         in_channels (int): Number of channels of input arrays.
         out_channels (tuple of ints): Tuple of number of channels. The i-th
             integer indicates the number of filters of the i-th convolution.
-        ksize (int or (int, int)): Size of filters (a.k.a. kernels) of the
+        ksize (int or pair of ints): Size of filters (a.k.a. kernels) of the
             first convolution layer. ``ksize=k`` and ``ksize=(k, k)`` are
             equivalent.
-        stride (int or (int, int)): Stride of filter applications at the first
+        stride (int or pair of ints): Stride of filter applications at the first
             convolution layer. ``stride=s`` and ``stride=(s, s)`` are
             equivalent.
-        pad (int or (int, int)): Spatial padding width for input arrays at the
+        pad (int or pair of ints): Spatial padding width for input arrays at the
             first convolution layer. ``pad=p`` and ``pad=(p, p)`` are
             equivalent.
         activation (function): Activation function for internal hidden units.
