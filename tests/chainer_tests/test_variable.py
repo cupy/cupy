@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import testing
 from chainer.testing import attr
 
+import re
 import six
 
 
@@ -365,6 +366,60 @@ class TestVariable(unittest.TestCase):
             b = cp.full(3, 20, dtype=np.float32)
             c = cp.full(3, 30, dtype=np.float32)
         self.check_addgrad(a, b, c)
+
+
+class TestDebugPrint(unittest.TestCase):
+
+    def setUp(self):
+        self.arr = np.random.randn(5, 3, 5, 5).astype(np.float32)
+
+    def check_debug_print(self, v, mean, std):
+        result = v.debug_print()
+        self.assertIn(repr(v), result)
+        self.assertIn('volatile: OFF', result)
+        self.assertIn('dtype: float32', result)
+        # py2.7 on win64 returns shape as long
+        self.assertTrue(re.match(r'- shape: \(5L?, 3L?, 5L?, 5L?\)',
+                        result.splitlines()[4]))
+
+        # no grad
+        msg = 'statistics: mean={mean:.8f}, std={std:.8f}'
+        msg = msg.format(mean=mean, std=std)
+        self.assertIn(msg, result)
+        self.assertIn('grad: None', result)
+
+        # zero grad
+        v.zerograd()
+        result = v.debug_print()
+        self.assertIn('grad: 0', result)
+
+        # add grad
+        v.grad = v.data
+        result = v.debug_print()
+
+        msg = 'grad: mean={mean:.8f}, std={std:.8f}'.format(mean=mean, std=std)
+        self.assertIn(msg, result)
+
+    def test_debug_print_cpu(self):
+        v = chainer.Variable(self.arr)
+        result = v.debug_print()
+        self.assertIn('device: CPU', result)
+        self.assertIn('numpy.ndarray', result)
+
+        self.check_debug_print(v, mean=np.mean(self.arr),
+                               std=np.std(self.arr))
+
+    @attr.gpu
+    def test_debug_print_gpu(self):
+        v = chainer.Variable(self.arr)
+        v.to_gpu(0)
+
+        result = v.debug_print()
+        self.assertIn('device: <CUDA Device 0>', result)
+        self.assertIn('cupy.core.core.ndarray', result)
+
+        self.check_debug_print(v, mean=cuda.cupy.mean(self.arr),
+                               std=cuda.cupy.std(self.arr))
 
 
 class TestVariableSetCreator(unittest.TestCase):
