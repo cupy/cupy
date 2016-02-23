@@ -12,13 +12,16 @@ from chainer.testing import condition
 
 
 @testing.parameterize(
-    {'x_data': [0, 1, 0]},
-    {'x_data': [[0, 1, 0], [1, 0, 1]]},
+    {'x_data': [0, 1, 0], 'ignore_label': None},
+    {'x_data': [[0, 1, 0], [1, 0, 1]], 'ignore_label': None},
+    {'x_data': [0, 1, -1], 'ignore_label': -1},
+    {'x_data': [[0, 1, -1], [-1, 0, 1]], 'ignore_label': -1},
 )
 class TestEmbedID(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.EmbedID(3, 2)
+        self.link = links.EmbedID(3, 2, ignore_label=self.ignore_label)
+        self.link.ignore_label
         self.link.zerograds()
 
         self.W = self.link.W.data.copy()  # fixed on CPU
@@ -33,7 +36,10 @@ class TestEmbedID(unittest.TestCase):
 
         y_expect = numpy.empty_like(self.gy)
         for i in numpy.ndindex(self.x.shape):
-            y_expect[i] = self.W[int(self.x[i])]
+            if self.x[i] == -1:
+                y_expect[i] = 0
+            else:
+                y_expect[i] = self.W[int(self.x[i])]
 
         gradient_check.assert_allclose(y_expect, y.data, atol=0, rtol=0)
 
