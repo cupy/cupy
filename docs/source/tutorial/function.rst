@@ -329,8 +329,8 @@ Our MulAdd implementation can be improved as follows::
               'float32 x, float32 y, float32 gw',
               'float32 gx, float32 gy',
               '''
-                 gx = gy * gw;
-                 gy = gx * gw;
+                 gx = y * gw;
+                 gy = x * gw;
               ''',
               'muladd_bwd')(x, y, gw)
 
@@ -384,8 +384,8 @@ In order to define variadic kernel functions, you can use *type placeholder* by 
               'T x, T y, T gw',
               'T gx, T gy',
               '''
-                 gx = gy * gw;
-                 gy = gx * gw;
+                 gx = y * gw;
+                 gy = x * gw;
               ''',
               'muladd_bwd')(x, y, gw)
 
