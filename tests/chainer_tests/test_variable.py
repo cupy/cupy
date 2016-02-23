@@ -406,8 +406,8 @@ class TestDebugPrint(unittest.TestCase):
         self.assertIn('device: CPU', result)
         self.assertIn('numpy.ndarray', result)
 
-        self.check_debug_print(v, mean=np.mean(self.arr),
-                               std=np.std(self.arr))
+        self.check_debug_print(v, mean=float(np.mean(v.data)),
+                               std=float(np.std(v.data)))
 
     @attr.gpu
     def test_debug_print_gpu(self):
@@ -418,8 +418,8 @@ class TestDebugPrint(unittest.TestCase):
         self.assertIn('device: <CUDA Device 0>', result)
         self.assertIn('cupy.core.core.ndarray', result)
 
-        self.check_debug_print(v, mean=cuda.cupy.mean(self.arr),
-                               std=cuda.cupy.std(self.arr))
+        self.check_debug_print(v, mean=float(cuda.cupy.mean(v.data)),
+                               std=float(cuda.cupy.std(v.data)))
 
 
 class TestVariableSetCreator(unittest.TestCase):
