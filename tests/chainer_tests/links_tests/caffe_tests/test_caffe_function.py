@@ -1,8 +1,8 @@
 import os
+import pkg_resources
 import tempfile
 import unittest
 
-import google.protobuf
 import mock
 import numpy
 import six
@@ -616,8 +616,13 @@ class TestCaffeFunctionAvailable(unittest.TestCase):
 
     @unittest.skipUnless(six.PY3, 'Only for Py3')
     def test_py3_available(self):
-        ver = int(google.protobuf.__version__[
-            :google.protobuf.__version__.find('.')])
+        ws = pkg_resources.WorkingSet()
+        try:
+            ws.require('protobuf<3.0.0')
+            ver = 2
+        except pkg_resources.VersionConflict:
+            ver = 3
+
         if ver >= 3:
             self.assertTrue(links.caffe.caffe_function.available)
         else:
