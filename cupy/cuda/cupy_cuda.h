@@ -147,6 +147,14 @@ int cudaDeviceSynchronize() {
     return 0;
 }
 
+int cudaDeviceCanAccessPeer(int* canAccessPeer, int device, int peerDevice) {
+    return 0;
+}
+
+int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags) {
+    return 0;
+}
+
 
 // Memory management
 int cudaMalloc(void** devPtr, size_t size) {
