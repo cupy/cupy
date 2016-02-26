@@ -68,6 +68,45 @@ class Variable(object):
     def __str__(self):
         return self.name or ('<var@%x>' % id(self))
 
+    def debug_print(self):
+        """Display a summary of the stored data and location of the Variable"""
+
+        msg = """{summary}
+- device: {device}
+- volatile: {volatile}
+- backend: {background}
+- shape: {shape}
+- dtype: {dtype}
+- statistics: {stats}
+- grad: {grad}"""
+
+        stats_msg = 'mean={0:.8f}, std={1:.8f}'
+
+        try:
+            device = self.data.device
+        except AttributeError:
+            device = 'CPU'
+
+        with cuda.get_device(self.data) as dev:
+            xp = numpy if int(dev) == -1 else cuda.cupy
+
+            if self.grad is None:
+                grad = None
+            elif xp.all(self.grad == 0):
+                grad = 0
+            else:
+                grad = stats_msg.format(float(xp.mean(self.grad)),
+                                        float(xp.std(self.grad)))
+
+            stats = stats_msg.format(float(xp.mean(self.data)),
+                                     float(xp.std(self.data)))
+
+        return msg.format(summary=repr(self), volatile=self.volatile,
+                          grad=grad, shape=self.data.shape,
+                          background=type(self.data),
+                          dtype=self.data.dtype, device=device,
+                          stats=stats)
+
     def __pos__(self):
         return self
 

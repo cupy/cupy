@@ -126,6 +126,8 @@ dstack = manipulation.join.dstack
 hstack = manipulation.join.hstack
 vstack = manipulation.join.vstack
 
+asfortranarray = manipulation.kind.asfortranarray
+
 array_split = manipulation.split.array_split
 dsplit = manipulation.split.dsplit
 hsplit = manipulation.split.hsplit

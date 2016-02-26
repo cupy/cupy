@@ -14,11 +14,11 @@ class Convolution2D(link.Link):
     Args:
         in_channels (int): Number of channels of input arrays.
         out_channels (int): Number of channels of output arrays.
-        ksize (int or (int, int)): Size of filters (a.k.a. kernels).
+        ksize (int or pair of ints): Size of filters (a.k.a. kernels).
             ``ksize=k`` and ``ksize=(k, k)`` are equivalent.
-        stride (int or (int, int)): Stride of filter applications.
+        stride (int or pair of ints): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
-        pad (int or (int, int)): Spatial padding width for input arrays.
+        pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         wscale (float): Scaling factor of the initial weight.
         bias (float): Initial bias value.
