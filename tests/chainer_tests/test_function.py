@@ -319,13 +319,13 @@ Actual: 1 < 2"""
 class TestFunctionDebug(unittest.TestCase):
 
     def setUp(self):
-        chainer.DEBUG = True
+        chainer.set_debug(True)
         self.one = numpy.array([1], numpy.float32)
         self.nan = numpy.array([float('nan')], numpy.float32)
         self.f = chainer.Function()
 
     def tearDown(self):
-        chainer.DEBUG = False
+        chainer.set_debug(False)
 
     def check_debug_forward(self, x_data):
         x = chainer.Variable(x_data)

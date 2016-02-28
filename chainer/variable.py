@@ -329,7 +329,7 @@ class Variable(object):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
 
-            if chainer.DEBUG:
+            if chainer.get_debug():
                 if any(cuda.get_array_module(gx).isnan(gx).any()
                        for gx in gxs):
                     msg = 'NaN is detected on backward computation'

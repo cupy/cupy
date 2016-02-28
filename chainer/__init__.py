@@ -29,6 +29,16 @@ ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
 
-DEBUG = False
+_debug = False
+
+
+def get_debug():
+    return _debug
+
+
+def set_debug(debug):
+    global _debug
+    _debug = debug
+
 
 basic_math.install_variable_arithmetics()
