@@ -33,10 +33,20 @@ _debug = False
 
 
 def get_debug():
+    """Get the debug mode.
+
+    Returns:
+        bool: Return True if Chainer is in debug mode.
+    """
     return _debug
 
 
 def set_debug(debug):
+    """Set the debug mode.
+
+    Args:
+        debug (bool): New debug mode.
+    """
     global _debug
     _debug = debug
 
