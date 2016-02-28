@@ -344,8 +344,8 @@ class TestFunctionDebug(unittest.TestCase):
 
     def check_debug_backward(self, x_data):
         x = chainer.Variable(x_data)
+        y = self.f(x)
         with self.assertRaises(RuntimeError):
-            y = self.f(x)
             y.backward()
 
     def test_debug_backward_cpu(self):
