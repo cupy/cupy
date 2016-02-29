@@ -149,7 +149,8 @@ class DetFunctionTestBase(object):
 
     @attr.gpu
     def test_zero_det_gpu(self):
-        self.check_zero_det(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), ValueError)
+        self.check_zero_det(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.gy), ValueError)
 
 
 class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
