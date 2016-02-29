@@ -15,11 +15,6 @@ from chainer.utils import type_check
 
 class DetFunctionTestBase(object):
 
-    def setUp(self):
-        self.x, self.y, self.gy = self.make_data()
-        self.ct = numpy.array(
-            [ix.T for ix in self.x], dtype=numpy.float32)
-
     def det_transpose(self, gpu=False):
         if gpu:
             cx = cuda.to_gpu(self.x)
@@ -123,18 +118,20 @@ class DetFunctionTestBase(object):
         x_data, y_grad = self.x, self.gy
         gradient_check.check_backward(self.det, x_data, y_grad)
 
-    def test_expect_scalar_cpu(self):
-        x = numpy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
+    def check_single_matrix(self, x):
         x = chainer.Variable(x)
-        y = F.det(x)
-        self.assertEqual(y.data.ndim, 1)
+        y = self.det(x)
+        if self.batched:
+            self.assertEqual(y.data.ndim, 1)
+        else:
+            self.assertEqual(y.data.ndim, 0)
+
+    def test_single_matrix_cpu(self):
+        self.check_single_matrix(self.x)
 
     @attr.gpu
     def test_expect_scalar_gpu(self):
-        x = cuda.cupy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
-        x = chainer.Variable(x)
-        y = F.det(x)
-        self.assertEqual(y.data.ndim, 1)
+        self.check_single_matrix(cuda.to_gpu(self.x))
 
     def check_zero_det(self, x, gy, err):
         if self.batched:

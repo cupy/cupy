@@ -47,8 +47,10 @@ def get_data_type(dtype):
         return cudnn.CUDNN_DATA_FLOAT
     elif dtype.type == numpy.float64:
         return cudnn.CUDNN_DATA_DOUBLE
+    elif dtype.type == numpy.float16:
+        return cudnn.CUDNN_DATA_HALF
     else:
-        raise TypeError('Dtype {} is not supported in CuDNN v2'.format(dtype))
+        raise TypeError('Dtype {} is not supported in cuDNN'.format(dtype))
 
 
 def _to_ctypes_array(tup, dtype=numpy.intc):

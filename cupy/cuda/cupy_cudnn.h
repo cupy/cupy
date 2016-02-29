@@ -19,6 +19,46 @@
 #define cudnnConvolutionBackwardFilter_v2 cudnnConvolutionBackwardFilter
 #define cudnnConvolutionBackwardData_v2 cudnnConvolutionBackwardData
 
+int cudnnConvolutionBackwardFilter_v3(
+        void* handle, void* alpha,
+        void* srcDesc, void* srcData,
+        void* diffDesc, void* diffData,
+        void* convDesc, int algo,
+        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+        void* gradDesc, void* gradData);
+
+int cudnnGetConvolutionBackwardFilterWorkspaceSize(
+        void* handle, void* srcDesc,
+        void* filterDesc, void* convDesc,
+        void* destDesc, int algo,
+        size_t* sizeInBytes);
+
+int cudnnGetConvolutionBackwardFilterAlgorithm(
+        void* handle, void* srcDesc,
+        void* filterDesc, void* convDesc,
+        void* destDesc, int preference,
+        size_t memoryLimitInbytes, int* algo);
+
+int cudnnConvolutionBackwardData_v3(
+        void* handle, void* alpha,
+        void* filterDesc, void* filterData,
+        void* diffDesc, void* diffData,
+        void* convDesc, int algo,
+        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+        void* gradDesc, void* gradData);
+
+int cudnnGetConvolutionBackwardDataAlgorithm(
+        void* handle, void* filterDesc,
+        void* diffDesc, void* convDesc,
+        void* gradDesc, int preference,
+        size_t memoryLimitInbytes, int* algo);
+
+int cudnnGetConvolutionBackwardDataWorkspaceSize(
+        void* handle, void* filterDesc,
+        void* diffDesc, void* convDesc,
+        void* gradDesc, int algo,
+        size_t* sizeInBytes);
+
 #endif // #if CUDNN_VERSION < 4000
 
 #else // #ifndef CUPY_NO_CUDA
@@ -30,10 +70,15 @@
 
 typedef int cudnnActivationMode_t;
 typedef int cudnnAddMode_t;
+typedef int cudnnConvolutionBwdDataAlgo_t;
+typedef int cudnnConvolutionBwdDataPreference_t;
+typedef int cudnnConvolutionBwdFilterAlgo_t;
+typedef int cudnnConvolutionBwdFilterPreference_t;
 typedef int cudnnConvolutionFwdAlgo_t;
 typedef int cudnnConvolutionFwdPreference_t;
 typedef int cudnnConvolutionMode_t;
 typedef int cudnnDataType_t;
+typedef int cudnnNanPropagation_t;
 typedef int cudnnPoolingMode_t;
 typedef int cudnnSoftmaxAlgorithm_t;
 typedef int cudnnSoftmaxMode_t;
@@ -42,6 +87,10 @@ typedef int cudnnTensorFormat_t;
 
 typedef int ActivationMode;
 typedef int AddMode;
+typedef int ConvolutionBwdDataAlgo;
+typedef int ConvolutionBwdDataPreference;
+typedef int ConvolutionBwdFilterAlgo;
+typedef int ConvolutionBwdFilterPreference;
 typedef int ConvolutionFwdAlgo;
 typedef int ConvolutionFwdPreference;
 typedef int ConvolutionMode;
@@ -123,6 +172,7 @@ int cudnnDestroyTensorDescriptor(TensorDescriptor tensorDesc) {
     return 0;
 }
 
+
 int cudnnAddTensor_v2(
         Handle handle, AddMode mode, void* alpha,
         TensorDescriptor biasDesc, void* biasData, void* beta,
@@ -177,7 +227,7 @@ int cudnnDestroyConvolutionDescriptor(ConvolutionDescriptor conDesc) {
 int cudnnGetConvolutionForwardAlgorithm(
         Handle handle, TensorDescriptor srcDesc,
         FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
-        TensorDescriptor destDesc, int preference,
+        TensorDescriptor destDesc, ConvolutionFwdPreference preference,
         size_t memoryLimitInbytes, ConvolutionFwdAlgo* algo) {
     return 0;
 }
@@ -206,12 +256,54 @@ int cudnnConvolutionBackwardBias(
     return 0;
 }
 
+int cudnnGetConvolutionBackwardFilterAlgorithm(
+        Handle handle, TensorDescriptor srcDesc,
+        FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
+        TensorDescriptor destDesc, ConvolutionBwdFilterPreference preference,
+        size_t memoryLimitInbytes, ConvolutionBwdFilterAlgo* algo) {
+    return 0;
+}
+
+int cudnnGetConvolutionBackwardFilterWorkspaceSize(
+        Handle handle, TensorDescriptor srcDesc,
+        FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
+        FilterDescriptor destDesc, ConvolutionBwdFilterAlgo algo,
+        size_t* sizeInBytes) {
+    return 0;
+}
+
 int cudnnConvolutionBackwardFilter_v2(
         Handle handle, void* alpha,
         TensorDescriptor srcDesc, void* srcData,
         TensorDescriptor diffDesc, void* diffData,
         ConvolutionDescriptor convDesc, void* beta,
         FilterDescriptor gradDesc, void* gradData) {
+    return 0;
+}
+
+int cudnnConvolutionBackwardFilter_v3(
+         Handle handle, void* alpha,
+         TensorDescriptor srcDesc, void* srcData,
+         TensorDescriptor diffDesc, void* diffData,
+         ConvolutionDescriptor convDesc, ConvolutionBwdFilterAlgo algo,
+         void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+         FilterDescriptor gradDesc, void* gradData) {
+     return 0;
+ }
+
+int cudnnGetConvolutionBackwardDataAlgorithm(
+        Handle handle, FilterDescriptor filterDesc,
+        TensorDescriptor diffDesc, ConvolutionDescriptor convDesc,
+        TensorDescriptor gradDesc, ConvolutionBwdDataPreference preference,
+        size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo) {
+    return 0;
+}
+
+int cudnnGetConvolutionBackwardDataWorkspaceSize(
+        Handle handle, FilterDescriptor filterDesc,
+        TensorDescriptor diffDesc, ConvolutionDescriptor convDesc,
+        TensorDescriptor gradDesc, ConvolutionBwdDataAlgo algo,
+        size_t* sizeInBytes) {
     return 0;
 }
 
@@ -223,6 +315,16 @@ int cudnnConvolutionBackwardData_v2(
         TensorDescriptor gradDesc, void* gradData) {
     return 0;
 }
+
+int cudnnConvolutionBackwardData_v3(
+         Handle handle, void* alpha,
+         FilterDescriptor filterDesc, void* filterData,
+         TensorDescriptor diffDesc, void* diffData,
+         ConvolutionDescriptor convDesc, ConvolutionBwdDataAlgo algo,
+         void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+         TensorDescriptor gradDesc, void* gradData) {
+     return 0;
+ }
 
 
 // Pooling
