@@ -102,7 +102,7 @@ for epoch in six.moves.range(1, n_epoch + 1):
         if epoch == 1 and i == 0:
             with open('graph.dot', 'w') as o:
                 g = computational_graph.build_computational_graph(
-                    (model.loss, ), remove_split=True)
+                    (model.loss, ))
                 o.write(g.dump())
             print('graph generated')
 
