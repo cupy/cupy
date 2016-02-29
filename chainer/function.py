@@ -387,17 +387,6 @@ class FunctionHook(object):
     to implement these four functions.
     In default setting, these methods does not do anything.
 
-    If we want to use same preprocessing (resp. postprocessing) method
-    for both forward and backward processing,
-    we should override :meth:`~chainer.function.FunctionHook.preprocess`
-    (resp. :meth:`~chainer.function.FunctionHook.postprocess`) method instead
-    and keep the two preprocess methods (resp. two post process methods)
-    as it is.
-
-    Further, if we want to use same method for preprocessing and
-    postprocessing, we should overwride
-    :meth:`~chainer.functioin.FunctionHook.__call__`.
-
     There are two ways to register :class:`~chainer.function.FunctionHook`
     objects to :class:`chainer.function.Function` objects.
     First one is to add the :class:`~chainer.function.FunctionHook`
@@ -453,49 +442,6 @@ class FunctionHook(object):
     def __exit__(self, exc_type, exc_value, traceback):
         del chainer.global_function_hooks[self.name]
 
-    # unified functions
-    def __call__(self, function, in_data, out_grad=None):
-        """Unfied postprocessing function for preprocessing and postprocessing.
-
-        Args:
-            function(~chainer.function.Function): Function object to which
-                the function hook is registered.
-            in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
-                Arrays for input data.
-            out_grad(tuple of numpy.ndarray or tuple of cupy.ndarray or None):
-                Arrays for gradients. If this function is invoked
-                during backpropagation, this argument should be ``None``.
-        """
-        pass
-
-    def preprocess(self, function, in_data, out_grad=None):
-        """Unfied preprocessing function for forward and backward propagation.
-
-        Args:
-            function(~chainer.function.Function): Function object to which
-                the function hook is registered.
-            in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
-                Arrays for input data.
-            out_grad(tuple of numpy.ndarray or tuple of cupy.ndarray or None):
-                Arrays for gradients. If this function is invoked
-                during backpropagation, this argument should be ``None``.
-        """
-        self.__call__(function, in_data, out_grad)
-
-    def postprocess(self, function, in_data, out_grad=None):
-        """Unfied postprocessing function for forward and backward propagation.
-
-        Args:
-            function(~chainer.function.Function): Function object to which
-                the function hook is registered.
-            in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
-                Arrays for input data.
-            out_grad(tuple of numpy.ndarray or tuple of cupy.ndarray or None):
-                Arrays for gradients. If this function is invoked during
-                backpropagation, this argument should be ``None``.
-        """
-        self.__call__(function, in_data, out_grad)
-
     # forward
     def forward_preprocess(self, function, in_data):
         """Callback function invoked before forward propagation.
@@ -506,7 +452,7 @@ class FunctionHook(object):
             in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
                 Input of forward propagation.
         """
-        self.preprocess(function, in_data)
+        pass
 
     def forward_postprocess(self, function, in_data):
         """Callback function invoked after forward propagation.
@@ -517,7 +463,7 @@ class FunctionHook(object):
             in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
                 Input of forward propagation.
         """
-        self.postprocess(function, in_data)
+        pass
 
     # backward
     def backward_preprocess(self, function, in_data, out_grad):
@@ -529,7 +475,7 @@ class FunctionHook(object):
             in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
                 Input of forward propagation.
         """
-        self.preprocess(function, in_data)
+        pass
 
     def backward_postprocess(self, function, in_data, out_grad):
         """Callback function invoked after backward propagation.
@@ -540,4 +486,4 @@ class FunctionHook(object):
             in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
                 Input of forward propagation.
         """
-        self.postprocess(function, in_data)
+        pass
