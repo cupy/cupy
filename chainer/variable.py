@@ -1,4 +1,5 @@
 import heapq
+import traceback
 
 import numpy
 
@@ -10,11 +11,21 @@ from chainer import flag
 def _check_grad_type(func, x, gx):
     def make_message(message):
         if func:
-            detail = '''Function {0} ({1}) has a bug.
+            detail = 'Function `{0}` ({1}) has a bug.\n'.format(
+                type(func).__name__, func.label)
+
+            stack = func.stack
+            if stack:
+                detail += 'Stacktrace of the function is below:\n'
+                for line in traceback.format_list(func._stack):
+                    detail += line
+
+            detail += '''
 Please report this error to the issue tracker with the stack trace,
 the information of your environment, and your script:
 https://github.com/pfnet/chainer/issues/new.
 '''.format(type(func).__name__, func.label)
+
         else:
             detail = ''
 

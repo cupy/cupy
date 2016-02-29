@@ -143,6 +143,13 @@ class Function(object):
         """
         return self.__class__.__name__
 
+    @property
+    def stack(self):
+        if hasattr(self, '_stack'):
+            return self._stack
+        else:
+            return None
+
     def _check_data_type_forward(self, in_data):
         in_type = type_check.get_types(in_data, 'in_types', False)
         try:
