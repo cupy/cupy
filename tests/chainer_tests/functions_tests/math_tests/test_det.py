@@ -146,6 +146,7 @@ class DetFunctionTestBase(object):
     def test_singular_matrix_cpu(self):
         self.check_singular_matrix(self.x)
 
+    @attr.gpu
     def test_singular_matrix_gpu(self):
         self.check_singular_matrix(cuda.to_gpu(self.x))
 
