@@ -7,24 +7,31 @@ from chainer import flag
 
 
 def _check_grad_type(func, x, gx):
+    def make_message(message):
+        if func:
+            detail = '''Function {0} ({1}) has a bug.
+Please report this error to the issue tracker with the stack trace,
+the information of your environment, and your script:
+https://github.com/pfnet/chainer/issues/new.
+'''.format(type(func).__name__, func.label)
+        else:
+            detail = ''
+
+        detail += message
+        return detail
+
     if not isinstance(gx, type(x.data)):
-        msg = 'Type of data and grad mismatch'
-        if func:
-            msg += ' in %s' % func.label
-        msg += '\n%s != %s' % (type(x.data), type(gx))
-        raise TypeError(msg)
+        msg = ('Type of data and grad mismatch\n%s != %s' %
+               (type(x.data), type(gx)))
+        raise TypeError(make_message(msg))
     if gx.dtype != x.data.dtype:
-        msg = 'Dtype of data and grad mismatch'
-        if func:
-            msg += ' in %s' % func.label
-        msg += '\n%s != %s' % (x.data.dtype, gx.dtype)
-        raise TypeError(msg)
+        msg = ('Dtype of data and grad mismatch\n%s != %s' %
+               (x.data.dtype, gx.dtype))
+        raise TypeError(make_message(msg))
     if gx.shape != x.data.shape:
-        msg = 'Shape of data and grad mismatch'
-        if func:
-            msg += ' in %s' % func.label
-        msg += '\n%s != %s' % (x.data.shape, gx.shape)
-        raise ValueError(msg)
+        msg = ('Shape of data and grad mismatch\n%s != %s' %
+               (x.data.shape, gx.shape))
+        raise ValueError(make_message(msg))
 
 
 class Variable(object):
