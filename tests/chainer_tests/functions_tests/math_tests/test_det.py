@@ -150,21 +150,6 @@ class DetFunctionTestBase(object):
     def test_zero_det_gpu(self):
         self.check_zero_det(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), ValueError)
 
-    def test_answer_cpu(self):
-        for _ in range(5):
-            x = numpy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
-            ans = F.det(chainer.Variable(x)).data
-            y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
-            gradient_check.assert_allclose(ans, y)
-
-    @attr.gpu
-    def test_answer_gpu(self):
-        for _ in range(5):
-            x = cuda.cupy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
-            ans = F.det(chainer.Variable(x)).data
-            y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
-            gradient_check.assert_allclose(ans, y)
-
     def check_answer_gpu_cpu(self, shape, repeat=10):
         for _ in range(repeat):
             x = cuda.cupy.random.uniform(.5, 1, shape, dtype='float32')
@@ -182,6 +167,27 @@ class DetFunctionTestBase(object):
             w = 1
             for s in range(2, 5):
                 self.check_answer_gpu_cpu((s, s))
+
+
+class TestDetSmallCase(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
+
+    def check_by_definition(self, x):
+        ans = F.det(chainer.Variable(x)).data
+        y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
+        gradient_check.assert_allclose(ans, y)
+
+    @condition.retry(3)
+    def test_answer_cpu(self):
+        self.check_by_definition(self.x)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_answer_gpu(self):
+        self.check_by_definition(cuda.to_gpu(self.x))
+
 
 
 class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
