@@ -1,37 +1,11 @@
+import collections
 import heapq
 
 import numpy
 
+import chainer
 from chainer import cuda
 from chainer import flag
-
-
-def _check_grad_type(func, x, gx):
-    def make_message(message):
-        if func:
-            detail = '''Function {0} ({1}) has a bug.
-Please report this error to the issue tracker with the stack trace,
-the information of your environment, and your script:
-https://github.com/pfnet/chainer/issues/new.
-'''.format(type(func).__name__, func.label)
-        else:
-            detail = ''
-
-        detail += message
-        return detail
-
-    if not isinstance(gx, type(x.data)):
-        msg = ('Type of data and grad mismatch\n%s != %s' %
-               (type(x.data), type(gx)))
-        raise TypeError(make_message(msg))
-    if gx.dtype != x.data.dtype:
-        msg = ('Dtype of data and grad mismatch\n%s != %s' %
-               (x.data.dtype, gx.dtype))
-        raise TypeError(make_message(msg))
-    if gx.shape != x.data.shape:
-        msg = ('Shape of data and grad mismatch\n%s != %s' %
-               (x.data.shape, gx.shape))
-        raise ValueError(make_message(msg))
 
 
 class Variable(object):
@@ -169,8 +143,24 @@ class Variable(object):
 
     @grad.setter
     def grad(self, g):
+        error_msg = '''
+This error is occured in two cases. The first case is when the user manually
+sets the Variable.grad incorrectly. The second case is when some Function
+implementation has a bug. If you do not manually set the Variable.grad in your
+script, please report this error to the issue tracker with the stack trace,
+the information of your environment, and your script:
+https://github.com/pfnet/chainer/issues/new.
+'''
         if g is not None:
-            _check_grad_type(None, self, g)
+            if not isinstance(g, type(self.data)):
+                raise TypeError('Type of data and grad mismatch: %s != %s%s'
+                                % (type(self.data), type(g), error_msg))
+            if g.dtype != self.data.dtype:
+                raise TypeError('Dtype of data and grad mismatch: %s != %s%s'
+                                % (self.data.dtype, g.dtype, error_msg))
+            if g.shape != self.data.shape:
+                raise ValueError('Shape of data and grad mismatch: %s != %s%s'
+                                 % (self.data.shape, g.shape, error_msg))
         self._grad = g
 
     def to_cpu(self):
@@ -324,9 +314,15 @@ class Variable(object):
 
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
+            hooks = collections.OrderedDict(chainer.global_function_hooks)
+            hooks.update(func.local_function_hooks)
+            for hook in hooks.values():
+                hook.backward_preprocess(func, in_data, out_grad)
             with cuda.get_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
+            for hook in hooks.values():
+                hook.backward_postprocess(func, in_data, out_grad)
 
             if not retain_grad:
                 for y in outputs:
@@ -335,9 +331,6 @@ class Variable(object):
             for x, gx in zip(func.inputs, gxs):
                 if gx is None:
                     continue
-
-                _check_grad_type(func, x, gx)
-
                 # Accumulate the graident to x. It is a bit tricky to handle
                 # branches and parameter gradient accumulation correctly.
                 with cuda.get_device(gx):

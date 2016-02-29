@@ -1,4 +1,5 @@
 import pkg_resources
+import collections
 
 from chainer import flag
 from chainer import function
@@ -28,5 +29,7 @@ Variable = variable.Variable
 ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
+
+global_function_hooks = collections.OrderedDict()
 
 basic_math.install_variable_arithmetics()
