@@ -152,7 +152,7 @@ class DetFunctionTestBase(object):
             x_data[0, :, :] = 0.0
         else:
             x_data[:, :] = 0.0
-        with self.assertRaises(ValueError):
+        with self.assertRaises(numpy.linalg.LinAlgError):
             gradient_check.check_backward(self.det, x_data, y_grad)
 
     def test_answer_cpu(self):

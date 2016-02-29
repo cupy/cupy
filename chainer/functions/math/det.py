@@ -72,8 +72,10 @@ class BatchDet(function.Function):
     def backward_gpu(self, x, gy):
         x, = x
         gy, = gy
-        grad = (gy[:, None, None] * self.detx[:, None, None] *
-                inv._inv_gpu(x.transpose((0, 2, 1))))
+        inv_x, info = inv._inv_gpu(x.transpose((0, 2, 1)))
+        if cuda.cupy.any(info != 0):
+            raise numpy.linalg.LinAlgError('Singular Matrix')
+        grad = gy[:, None, None] * self.detx[:, None, None] * inv_x
         return utils.force_array(grad),
 
 
