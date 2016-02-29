@@ -194,7 +194,7 @@ def slstm(c_prev1, c_prev2, x1, x2):
     It means that :math:`x_1` and :math:`x_2` 's second axis must have 4 times
     the length of :math:`c_{1 \\text{prev}}` and :math:`c_{2 \\text{prev}}`.
 
-    The splitted input signals are corresponding to:
+    The split input signals are corresponding to:
 
         - :math:`a_i` : sources of cell input
         - :math:`i_i` : sources of input gate
