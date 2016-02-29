@@ -192,7 +192,7 @@ cpdef convolutionBackwardFilter_v3(
         size_t gradDesc, size_t gradData)
 cpdef int getConvolutionBackwardDataAlgorithm(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
-        size_t gradDesc, ConvolutionBwdDataPreference preference,
+        size_t gradDesc, size_t preference,
         size_t memoryLimitInbytes) except *
 cpdef size_t getConvolutionBackwardDataWorkspaceSize(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
