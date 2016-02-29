@@ -174,7 +174,7 @@ class TestDetSmallCase(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'shape': [s for s in six.moves.range(2, 5)],
+        'shape': [s for s in six.moves.range(1, 5)],
     }))
 class TestDetGPUCPUConsistency(unittest.TestCase):
 
@@ -193,7 +193,7 @@ class TestDetGPUCPUConsistency(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'shape': [s for s in six.moves.range(2, 5)],
+        'shape': [s for s in six.moves.range(1, 5)],
         'batchsize': [w for w in six.moves.range(1, 5)]
     }))
 class TestBatchDetGPUCPUConsistency(unittest.TestCase):
