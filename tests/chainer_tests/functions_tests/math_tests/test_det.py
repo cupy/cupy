@@ -21,8 +21,10 @@ class DetFunctionTest(unittest.TestCase):
 
     def setUp(self):
         if self.batched:
-            self.x = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
-            self.y = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
+            self.x = numpy.random.uniform(
+                .5, 1, (6, 3, 3)).astype(numpy.float32)
+            self.y = numpy.random.uniform(
+                .5, 1, (6, 3, 3)).astype(numpy.float32)
             self.gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
             self.ct = self.x.transpose(0, 2, 1)
             self.det = F.batch_det
