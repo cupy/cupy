@@ -89,26 +89,10 @@ class TestSLSTM(unittest.TestCase):
 
     def check_backward(self, c_prev1_data, c_prev2_data, x1_data, x2_data,
                        c_grad, h_grad):
-        c_prev1 = chainer.Variable(c_prev1_data)
-        c_prev2 = chainer.Variable(c_prev2_data)
-        x1 = chainer.Variable(x1_data)
-        x2 = chainer.Variable(x2_data)
-        c, h = functions.slstm(c_prev1, c_prev2, x1, x2)
-        c.grad = c_grad
-        h.grad = h_grad
-        c.backward()
-
-        func = c.creator
-        f = lambda: func.forward(
-            (c_prev1.data, c_prev2.data, x1.data, x2.data))
-        gc_prev1, gc_prev2, gx1, gx2 = gradient_check.numerical_grad(
-            f, (c_prev1.data, c_prev2.data, x1.data, x2.data),
+        gradient_check.check_backward(
+            functions.SLSTM(),
+            (c_prev1_data, c_prev2_data, x1_data, x2_data),
             (c_grad, h_grad), eps=1e-2)
-
-        gradient_check.assert_allclose(gc_prev1, c_prev1.grad)
-        gradient_check.assert_allclose(gc_prev2, c_prev2.grad)
-        gradient_check.assert_allclose(gx1, x1.grad)
-        gradient_check.assert_allclose(gx2, x2.grad)
 
     @condition.retry(3)
     def test_full_backward_cpu(self):
