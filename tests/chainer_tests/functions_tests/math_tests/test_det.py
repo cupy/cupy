@@ -13,7 +13,27 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
-class DetFunctionTestBase(object):
+@testing.parameterize(*[
+    {'batched': True},
+    {'batched': False}
+])
+class DetFunctionTest(unittest.TestCase):
+
+    def setUp(self):
+        if self.batched:
+            self.x = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
+            self.y = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
+            self.gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
+            self.ct = self.x.transpose(0, 2, 1)
+            self.det = F.batch_det
+            self.matmul = F.batch_matmul
+        else:
+            self.x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
+            self.y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
+            self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+            self.ct = self.x.transpose()
+            self.det = F.det
+            self.matmul = F.matmul
 
     def det_transpose(self, gpu=False):
         if gpu:
@@ -148,30 +168,6 @@ class DetFunctionTestBase(object):
     def test_zero_det_gpu(self):
         self.check_zero_det(
             cuda.to_gpu(self.x), cuda.to_gpu(self.gy), ValueError)
-
-
-class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
-
-    def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
-        self.y = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
-        self.ct = self.x.transpose(0, 2, 1)
-        self.det = F.batch_det
-        self.matmul = F.batch_matmul
-        self.batched = True
-
-
-class TestSquareDet(DetFunctionTestBase, unittest.TestCase):
-
-    def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
-        self.y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        self.ct = self.x.transpose()
-        self.det = F.det
-        self.matmul = F.matmul
-        self.batched = False
 
 
 class TestDetSmallCase(unittest.TestCase):
