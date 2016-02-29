@@ -67,7 +67,7 @@ class BatchDet(function.Function):
         gy, = gy
         try:
             inv_x = numpy.linalg.inv(x.transpose((0, 2, 1)))
-        except numpy.linalg.LinAlgError as e:
+        except numpy.linalg.LinAlgError:
             raise ValueError('Input has singular matrices.')
         grad = gy[:, None, None] * self.detx[:, None, None] * inv_x
         return utils.force_array(grad),
