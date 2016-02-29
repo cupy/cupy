@@ -8,6 +8,61 @@
 #ifndef CUPY_NO_CUDA
 #include <cudnn.h>
 
+#if CUDNN_VERSION < 3000
+
+// ***_v3 functions are not declared in cuDNN v4.
+// Following definitions are for compatibility with cuDNN v2 and v3.
+
+cudnnStatus_t cudnnConvolutionBackwardFilter_v3(
+        cudnnHandle_t handle, const void* alpha,
+        const cudnnTensorDescriptor_t xDesc, const void* x,
+        const cudnnTensorDescriptor_t dyDesc, const void* dy,
+        const cudnnConvolutionDescriptor_t convDesc,
+        cudnnConvolutionBwdFilterAlgo_t algo,
+        void* workSpace, size_t workSpaceSizeInBytes, constt void* beta,
+        const cudnnFilterDescriptor_t dwDesc, void* dw);
+
+cudnnStatus_t CUDNNWINAPI cudnnGetConvolutionBackwardFilterWorkspaceSize(
+        cudnnHandle_t handle, const cudnnTensorDescriptor_t xDesc,
+        const cudnnTensorDescriptor_t dyDesc,
+        const cudnnConvolutionDescriptor_t convDes,
+        const cudnnFilterDescriptor_t gradDes,
+        cudnnConvolutionBwdFilterAlgo_t algo,size_t* sizeInBytes);
+
+cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(
+        cudnnHandle_t handle, const cudnnTensorDescriptor_t xDesc,
+        const cudnnTensorDescriptor_t dyDesc,
+        const cudnnConvolutionDescriptor_t convDesc,
+        const cudnnFilterDescriptor_t dwDesc,
+        cudnnConvolutionBwdFilterPreference_t preference,
+        size_t memoryLimitInBytes, cudnnConvolutionBwdFilterAlgo_t* algo);
+
+cudnnStatus_t cudnnConvolutionBackwardData_v3(
+        cudnnHandle_t handle, const void* alpha,
+        const cudnnFilterDescriptor_t wDesc, const void* w,
+        const cudnnTensorDescriptor_t dyDesc, const void* dy,
+        const cudnnConvolutionDescriptor_t convDesc,
+        cudnnConvolutionBwdDataAlgo_t algo, void* workSpace,
+        size_t workSpaceSizeInBytes, const void* beta,
+        const cudnnTensorDescriptor_t dxDesc,void* dx);
+
+cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm(
+        cudnnHandle_t handle, const cudnnFilterDescriptor_t wDesc,
+        const cudnnTensorDescriptor_t dyDesc,
+        const cudnnConvolutionDescriptor_t convDesc,
+        const cudnnTensorDescriptor_t dxDesc,
+        cudnnConvolutionBwdDataPreference_t preference,
+        size_t memoryLimitInBytes, cudnnConvolutionBwdDataAlgo_t* algo);
+
+cudnnStatus_t cudnnGetConvolutionBackwardDataWorkspaceSize(
+        cudnnHandle_t handle, const cudnnFilterDescriptor_t wDesc,
+        const cudnnTensorDescriptor_t dyDesc,
+        const cudnnConvolutionDescriptor_t convDesc,
+        const cudnnTensorDescriptor_t dxDesc,
+        cudnnConvolutionBwdDataAlgo_t algo, size_t* sizeInBytes);
+
+#endif // CUDNN_VERSION < 3000
+
 #if CUDNN_VERSION < 4000
 
 // ***_v2 functions are not declared in cuDNN v2 and v3.
@@ -18,46 +73,6 @@
 #define cudnnAddTensor_v2 cudnnAddTensor
 #define cudnnConvolutionBackwardFilter_v2 cudnnConvolutionBackwardFilter
 #define cudnnConvolutionBackwardData_v2 cudnnConvolutionBackwardData
-
-int cudnnConvolutionBackwardFilter_v3(
-        void* handle, void* alpha,
-        void* srcDesc, void* srcData,
-        void* diffDesc, void* diffData,
-        void* convDesc, int algo,
-        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
-        void* gradDesc, void* gradData);
-
-int cudnnGetConvolutionBackwardFilterWorkspaceSize(
-        void* handle, void* srcDesc,
-        void* filterDesc, void* convDesc,
-        void* destDesc, int algo,
-        size_t* sizeInBytes);
-
-int cudnnGetConvolutionBackwardFilterAlgorithm(
-        void* handle, void* srcDesc,
-        void* filterDesc, void* convDesc,
-        void* destDesc, int preference,
-        size_t memoryLimitInbytes, int* algo);
-
-int cudnnConvolutionBackwardData_v3(
-        void* handle, void* alpha,
-        void* filterDesc, void* filterData,
-        void* diffDesc, void* diffData,
-        void* convDesc, int algo,
-        void* workSpace, size_t workSpaceSizeInBytes, void* beta,
-        void* gradDesc, void* gradData);
-
-int cudnnGetConvolutionBackwardDataAlgorithm(
-        void* handle, void* filterDesc,
-        void* diffDesc, void* convDesc,
-        void* gradDesc, int preference,
-        size_t memoryLimitInbytes, int* algo);
-
-int cudnnGetConvolutionBackwardDataWorkspaceSize(
-        void* handle, void* filterDesc,
-        void* diffDesc, void* convDesc,
-        void* gradDesc, int algo,
-        size_t* sizeInBytes);
 
 #endif // #if CUDNN_VERSION < 4000
 
