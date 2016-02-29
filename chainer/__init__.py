@@ -1,5 +1,5 @@
-import pkg_resources
 import collections
+import pkg_resources
 
 from chainer import flag
 from chainer import function
