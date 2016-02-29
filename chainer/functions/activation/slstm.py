@@ -184,13 +184,13 @@ def slstm(c_prev1, c_prev2, x1, x2):
 
     This function implements S-LSTM unit. It is an extention of LSTM unit
     applied to tree structures.
-    The function is applied to binary trees. Each node has two childlren nodes.
+    The function is applied to binary trees. Each node has two child nodes.
     It gets four arguments, previous cell states :math:`c_1` and
     :math:`c_2`, and incoming signals :math:`x_1` and :math:`x_2`.
 
     First both input signals :math:`x_1` and :math:`x_2` are split into
     eight arrays :math:`a_1, i_1, f_1, o_1`, and :math:`a_2, i_2, f_2, o_2`.
-    They has the same shapes along the second axis.
+    They have the same shape along the second axis.
     It means that :math:`x_1` and :math:`x_2` 's second axis must have 4 times
     the length of :math:`c_{1 \\text{prev}}` and :math:`c_{2 \\text{prev}}`.
 
