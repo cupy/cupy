@@ -199,39 +199,39 @@ class TestDetSmallCase(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'shape': [s for s in six.moves.range(1, 5)],
+        'shape': [(s, s) for s in six.moves.range(1, 5)],
     }))
 class TestDetGPUCPUConsistency(unittest.TestCase):
 
     def setUp(self):
-        shape = (self.shape, self.shape)
-        self.x = numpy.random.uniform(.5, 1, shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
 
     @attr.gpu
     @condition.retry(3)
     def test_answer_gpu_cpu(self):
         x = cuda.to_gpu(self.x)
-        gpu = cuda.to_cpu(F.det(chainer.Variable(x)).data)
+        y = F.det(chainer.Variable(x))
+        gpu = cuda.to_cpu(y.data)
         cpu = numpy.linalg.det(self.x)
         gradient_check.assert_allclose(gpu, cpu)
 
 
 @testing.parameterize(
     *testing.product({
-        'shape': [s for s in six.moves.range(1, 5)],
-        'batchsize': [w for w in six.moves.range(1, 5)]
+        'shape': [(w, s, s) for s in six.moves.range(1, 5)
+                  for w in six.moves.range(1, 5)],
     }))
 class TestBatchDetGPUCPUConsistency(unittest.TestCase):
 
     def setUp(self):
-        shape = (self.batchsize, self.shape, self.shape)
-        self.x = numpy.random.uniform(.5, 1, shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
 
     @attr.gpu
     @condition.retry(3)
     def test_answer_gpu_cpu(self):
         x = cuda.to_gpu(self.x)
-        gpu = cuda.to_cpu(F.batch_det(chainer.Variable(x)).data)
+        y = F.batch_det(chainer.Variable(x))
+        gpu = cuda.to_cpu(y.data)
         cpu = numpy.linalg.det(self.x)
         gradient_check.assert_allclose(gpu, cpu)
 
