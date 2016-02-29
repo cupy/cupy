@@ -19,18 +19,24 @@ class TimerHook(function.FunctionHook):
     def __init__(self):
         self.call_history = []
 
-    def preprocess(self, function, in_data, out_grad=None):
-        xp = cuda.get_array_module(*in_data)
-        if xp == numpy:
+    def _preprocess(self):
+        if self.xp == numpy:
             self.start = time.time()
         else:
             self.start = cuda.Event()
             self.stop = cuda.Event()
             self.start.record()
 
-    def postprocess(self, function, in_data, out_grad=None):
-        xp = cuda.get_array_module(*in_data)
-        if xp == numpy:
+    def forward_preprocess(self, function, in_data):
+        self.xp = cuda.get_array_module(*in_data)
+        self._preprocess()
+
+    def backward_preprocess(self, function, in_data, out_grad):
+        self.xp = cuda.get_array_module(*(in_data + out_grad))
+        self._preprocess()
+
+    def _postprocess(self, function):
+        if self.xp == numpy:
             self.stop = time.time()
             elapsed_time = self.stop - self.start
         else:
@@ -39,6 +45,16 @@ class TimerHook(function.FunctionHook):
             elapsed_time = cuda.cupy.cuda.get_elapsed_time(
                 self.start, self.stop)
         self.call_history.append((function, elapsed_time))
+
+    def forward_postprocess(self, function, in_data):
+        xp = cuda.get_array_module(*in_data)
+        assert xp == self.xp
+        self._postprocess(function)
+
+    def backward_postprocess(self, function, in_data, out_grad):
+        xp = cuda.get_array_module(*(in_data + out_grad))
+        assert xp == self.xp
+        self._postprocess(function)
 
     def total_time(self):
         """Returns total elapsed time."""
