@@ -13,10 +13,10 @@
 // ***_v3 functions are not declared in cuDNN v4.
 // Following definitions are for compatibility with cuDNN v2 and v3.
 
-typedef void* cudnnConvolutionBwdDataAlgo_t;
-typedef void* cudnnConvolutionBwdDataPreference_t;
-typedef void* cudnnConvolutionBwdFilterAlgo_t;
-typedef void* cudnnConvolutionBwdFilterPreference_t;
+typedef int cudnnConvolutionBwdDataAlgo_t;
+typedef int cudnnConvolutionBwdDataPreference_t;
+typedef int cudnnConvolutionBwdFilterAlgo_t;
+typedef int cudnnConvolutionBwdFilterPreference_t;
 
 cudnnStatus_t cudnnConvolutionBackwardFilter_v3(
         cudnnHandle_t handle, const void* alpha,
