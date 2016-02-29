@@ -65,8 +65,11 @@ class BatchDet(function.Function):
     def backward_cpu(self, x, gy):
         x, = x
         gy, = gy
-        grad = (gy[:, None, None] * self.detx[:, None, None] *
-                numpy.linalg.inv(x.transpose((0, 2, 1))))
+        try:
+            inv_x = numpy.linalg.inv(x.transpose((0, 2, 1)))
+        except numpy.linalg.LinAlgError as e:
+            raise ValueError('Input has singular matrices.')
+        grad = gy[:, None, None] * self.detx[:, None, None] * inv_x
         return utils.force_array(grad),
 
     def backward_gpu(self, x, gy):
@@ -74,7 +77,7 @@ class BatchDet(function.Function):
         gy, = gy
         inv_x, info = inv._inv_gpu(x.transpose((0, 2, 1)))
         if cuda.cupy.any(info != 0):
-            raise numpy.linalg.LinAlgError('Singular Matrix')
+            raise ValueError('Input has singular matrices.')
         grad = gy[:, None, None] * self.detx[:, None, None] * inv_x
         return utils.force_array(grad),
 
