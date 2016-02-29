@@ -26,7 +26,7 @@ cudnnStatus_t cudnnConvolutionBackwardFilter_v3(
         cudnnConvolutionBwdFilterAlgo_t algo,
         void* workSpace, size_t workSpaceSizeInBytes, const void* beta,
         const cudnnFilterDescriptor_t dwDesc, void* dw) {
-  return CUDNN_STATUS_SUCCESS;
+  return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
 cudnnStatus_t cudnnGetConvolutionBackwardFilterWorkspaceSize(
@@ -35,7 +35,7 @@ cudnnStatus_t cudnnGetConvolutionBackwardFilterWorkspaceSize(
         const cudnnConvolutionDescriptor_t convDes,
         const cudnnFilterDescriptor_t gradDes,
         cudnnConvolutionBwdFilterAlgo_t algo, size_t* sizeInBytes) {
-  return CUDNN_STATUS_SUCCESS;
+  return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
 cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(
@@ -45,7 +45,7 @@ cudnnStatus_t cudnnGetConvolutionBackwardFilterAlgorithm(
         const cudnnFilterDescriptor_t dwDesc,
         cudnnConvolutionBwdFilterPreference_t preference,
         size_t memoryLimitInBytes, cudnnConvolutionBwdFilterAlgo_t* algo) {
-  return CUDNN_STATUS_SUCCESS;
+  return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
 cudnnStatus_t cudnnConvolutionBackwardData_v3(
@@ -55,8 +55,8 @@ cudnnStatus_t cudnnConvolutionBackwardData_v3(
         const cudnnConvolutionDescriptor_t convDesc,
         cudnnConvolutionBwdDataAlgo_t algo, void* workSpace,
         size_t workSpaceSizeInBytes, const void* beta,
-        const cudnnTensorDescriptor_t dxDesc,void* dx) {
-  return CUDNN_STATUS_SUCCESS;
+        const cudnnTensorDescriptor_t dxDesc, void* dx) {
+  return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
 cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm(
@@ -66,7 +66,7 @@ cudnnStatus_t cudnnGetConvolutionBackwardDataAlgorithm(
         const cudnnTensorDescriptor_t dxDesc,
         cudnnConvolutionBwdDataPreference_t preference,
         size_t memoryLimitInBytes, cudnnConvolutionBwdDataAlgo_t* algo) {
-  return CUDNN_STATUS_SUCCESS;
+  return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
 cudnnStatus_t cudnnGetConvolutionBackwardDataWorkspaceSize(
@@ -75,7 +75,7 @@ cudnnStatus_t cudnnGetConvolutionBackwardDataWorkspaceSize(
         const cudnnConvolutionDescriptor_t convDesc,
         const cudnnTensorDescriptor_t dxDesc,
         cudnnConvolutionBwdDataAlgo_t algo, size_t* sizeInBytes) {
-  return CUDNN_STATUS_SUCCESS;
+  return CUDNN_STATUS_NOT_SUPPORTED;
 }
 #endif // CUDNN_VERSION < 3000
 
