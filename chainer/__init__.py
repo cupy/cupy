@@ -1,4 +1,5 @@
 import collections
+import threading
 import pkg_resources
 
 from chainer import flag
@@ -30,6 +31,21 @@ ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
 
-global_function_hooks = collections.OrderedDict()
+
+class ThreadSafeOrderedDict(collections.OrderedDict):
+
+    def __init__(self, *args, **kwargs):
+        super(ThreadSafeOrderedDict, self).__init__(*args, **kwargs)
+        self._lock = threading.Lock()
+
+    def __enter__(self):
+        self._lock.acquire()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self._lock.release()
+
+
+global_function_hooks = ThreadSafeOrderedDict()
 
 basic_math.install_variable_arithmetics()

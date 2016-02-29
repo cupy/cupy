@@ -104,7 +104,8 @@ class Function(object):
         if self.type_check_enable:
             self._check_data_type_forward(in_data)
 
-        hooks = collections.OrderedDict(chainer.global_function_hooks)
+        with chainer.global_function_hooks:
+            hooks = collections.OrderedDict(chainer.global_function_hooks)
         hooks.update(self.local_function_hooks)
         for hook in hooks.values():
             hook.forward_preprocess(self, in_data)
@@ -436,11 +437,13 @@ class FunctionHook(object):
         if self.name in chainer.global_function_hooks:
             raise KeyError('hook %s already exists' % self.name)
 
-        chainer.global_function_hooks[self.name] = self
+        with chainer.global_function_hooks:
+            chainer.global_function_hooks[self.name] = self
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        del chainer.global_function_hooks[self.name]
+        with chainer.global_function_hooks:
+            del chainer.global_function_hooks[self.name]
 
     # forward
     def forward_preprocess(self, function, in_data):
