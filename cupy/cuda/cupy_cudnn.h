@@ -27,7 +27,7 @@ cudnnStatus_t cudnnConvolutionBackwardFilter_v3(
         void* workSpace, size_t workSpaceSizeInBytes, const void* beta,
         const cudnnFilterDescriptor_t dwDesc, void* dw);
 
-cudnnStatus_t CUDNNWINAPI cudnnGetConvolutionBackwardFilterWorkspaceSize(
+cudnnStatus_t cudnnGetConvolutionBackwardFilterWorkspaceSize(
         cudnnHandle_t handle, const cudnnTensorDescriptor_t xDesc,
         const cudnnTensorDescriptor_t dyDesc,
         const cudnnConvolutionDescriptor_t convDes,
