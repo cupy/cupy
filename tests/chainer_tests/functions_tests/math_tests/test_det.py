@@ -154,36 +154,26 @@ class DetFunctionTestBase(object):
 
 class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
 
-    batched = True
-
-    def det(self, x):
-        return F.batch_det(x)
-
-    def matmul(self, x, y):
-        return F.batch_matmul(x, y)
-
     def setUp(self):
         self.x = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
         self.y = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
         self.ct = self.x.transpose(0, 2, 1)
+        self.det = F.batch_det
+        self.matmul = F.batch_matmul
+        self.batched = True
 
 
 class TestSquareDet(DetFunctionTestBase, unittest.TestCase):
-
-    batched = False
-
-    def det(self, x):
-        return F.det(x)
-
-    def matmul(self, x, y):
-        return F.matmul(x, y)
 
     def setUp(self):
         self.x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
         self.y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         self.ct = self.x.transpose()
+        self.det = F.det
+        self.matmul = F.matmul
+        self.batched = False
 
 
 class TestDetSmallCase(unittest.TestCase):
