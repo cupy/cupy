@@ -135,6 +135,20 @@ class DetFunctionTestBase(object):
         y = F.det(x)
         self.assertEqual(y.data.ndim, 1)
 
+    def check_singular_matrix(self, x):
+        if self.batched:
+            x[0, ...] = 0.0
+        else:
+            x[...] = 0.0
+        x = chainer.Variable(x)
+        self.det(x)
+
+    def test_singular_matrix_cpu(self):
+        self.check_singular_matrix(self.x)
+
+    def test_singular_matrix_gpu(self):
+        self.check_singular_matrix(cuda.to_gpu(self.x))
+
     def test_zero_det_cpu(self):
         x_data, y_grad = self.x, self.gy
         if x_data.ndim == 3:
