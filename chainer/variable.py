@@ -8,6 +8,34 @@ from chainer import cuda
 from chainer import flag
 
 
+def _check_grad_type(func, x, gx):
+    def make_message(message):
+        if func:
+            detail = '''Function {0} ({1}) has a bug.
+Please report this error to the issue tracker with the stack trace,
+the information of your environment, and your script:
+https://github.com/pfnet/chainer/issues/new.
+'''.format(type(func).__name__, func.label)
+        else:
+            detail = ''
+
+        detail += message
+        return detail
+
+    if not isinstance(gx, type(x.data)):
+        msg = ('Type of data and grad mismatch\n%s != %s' %
+               (type(x.data), type(gx)))
+        raise TypeError(make_message(msg))
+    if gx.dtype != x.data.dtype:
+        msg = ('Dtype of data and grad mismatch\n%s != %s' %
+               (x.data.dtype, gx.dtype))
+        raise TypeError(make_message(msg))
+    if gx.shape != x.data.shape:
+        msg = ('Shape of data and grad mismatch\n%s != %s' %
+               (x.data.shape, gx.shape))
+        raise ValueError(make_message(msg))
+
+
 class Variable(object):
 
     """Array with a structure to keep track of computation.
@@ -143,24 +171,8 @@ class Variable(object):
 
     @grad.setter
     def grad(self, g):
-        error_msg = '''
-This error is occured in two cases. The first case is when the user manually
-sets the Variable.grad incorrectly. The second case is when some Function
-implementation has a bug. If you do not manually set the Variable.grad in your
-script, please report this error to the issue tracker with the stack trace,
-the information of your environment, and your script:
-https://github.com/pfnet/chainer/issues/new.
-'''
         if g is not None:
-            if not isinstance(g, type(self.data)):
-                raise TypeError('Type of data and grad mismatch: %s != %s%s'
-                                % (type(self.data), type(g), error_msg))
-            if g.dtype != self.data.dtype:
-                raise TypeError('Dtype of data and grad mismatch: %s != %s%s'
-                                % (self.data.dtype, g.dtype, error_msg))
-            if g.shape != self.data.shape:
-                raise ValueError('Shape of data and grad mismatch: %s != %s%s'
-                                 % (self.data.shape, g.shape, error_msg))
+            _check_grad_type(None, self, g)
         self._grad = g
 
     def to_cpu(self):
@@ -331,6 +343,9 @@ https://github.com/pfnet/chainer/issues/new.
             for x, gx in zip(func.inputs, gxs):
                 if gx is None:
                     continue
+
+                _check_grad_type(func, x, gx)
+
                 # Accumulate the graident to x. It is a bit tricky to handle
                 # branches and parameter gradient accumulation correctly.
                 with cuda.get_device(gx):
