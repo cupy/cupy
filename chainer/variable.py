@@ -326,7 +326,8 @@ class Variable(object):
 
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
-            hooks = collections.OrderedDict(chainer.global_function_hooks)
+            with chainer.global_function_hooks:
+                hooks = collections.OrderedDict(chainer.global_function_hooks)
             hooks.update(func.local_function_hooks)
             for hook in hooks.values():
                 hook.backward_preprocess(func, in_data, out_grad)
