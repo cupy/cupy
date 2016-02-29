@@ -66,7 +66,7 @@ class DetFunctionTestBase(object):
         self.det_scaling(gpu=False)
 
     def det_identity(self, gpu=False):
-        if self.x.ndim == 3:
+        if self.batched:
             chk = numpy.ones(len(self.x), dtype=numpy.float32)
             dt = numpy.identity(self.x.shape[1], dtype=numpy.float32)
             idt = numpy.repeat(dt[None], len(self.x), axis=0)
@@ -135,25 +135,20 @@ class DetFunctionTestBase(object):
         y = F.det(x)
         self.assertEqual(y.data.ndim, 1)
 
-    def test_zero_det_cpu(self):
-        x_data, y_grad = self.x, self.gy
-        if x_data.ndim == 3:
-            x_data[0, :, :] = 0.0
+    def check_zero_det(self, x, gy, err):
+        if self.batched:
+            x[0, ...] = 0.0
         else:
-            x_data[:, :] = 0.0
-        with self.assertRaises(numpy.linalg.LinAlgError):
-            gradient_check.check_backward(self.det, x_data, y_grad)
+            x[...] = 0.0
+        with self.assertRaises(err):
+            gradient_check.check_backward(self.det, x, gy)
+
+    def test_zero_det_cpu(self):
+        self.check_zero_det(self.x, self.gy, numpy.linalg.LinAlgError)
 
     @attr.gpu
     def test_zero_det_gpu(self):
-        x_data = cuda.to_gpu(self.x)
-        y_grad = cuda.to_gpu(self.gy)
-        if x_data.ndim == 3:
-            x_data[0, :, :] = 0.0
-        else:
-            x_data[:, :] = 0.0
-        with self.assertRaises(ValueError):
-            gradient_check.check_backward(self.det, x_data, y_grad)
+        self.check_zero_det(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), ValueError)
 
     def test_answer_cpu(self):
         for _ in range(5):
