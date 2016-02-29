@@ -152,6 +152,40 @@ class DetFunctionTestBase(object):
         self.check_zero_det(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), ValueError)
 
 
+class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
+
+    batched = True
+
+    def det(self, x):
+        return F.batch_det(x)
+
+    def matmul(self, x, y):
+        return F.batch_matmul(x, y)
+
+    def setUp(self):
+        self.x = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
+        self.y = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
+        self.ct = self.x.transpose(0, 2, 1)
+
+
+class TestSquareDet(DetFunctionTestBase, unittest.TestCase):
+
+    batched = False
+
+    def det(self, x):
+        return F.det(x)
+
+    def matmul(self, x, y):
+        return F.matmul(x, y)
+
+    def setUp(self):
+        self.x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
+        self.y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.ct = self.x.transpose()
+
+
 class TestDetSmallCase(unittest.TestCase):
 
     def setUp(self):
@@ -209,38 +243,6 @@ class TestBatchDetGPUCPUConsistency(unittest.TestCase):
         gpu = cuda.to_cpu(F.batch_det(chainer.Variable(x)).data)
         cpu = numpy.linalg.det(self.x)
         gradient_check.assert_allclose(gpu, cpu)
-
-
-class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
-    batched = True
-
-    def det(self, x):
-        return F.batch_det(x)
-
-    def matmul(self, x, y):
-        return F.batch_matmul(x, y)
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
-        y = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
-        return x, y, gy
-
-
-class TestSquareDet(DetFunctionTestBase, unittest.TestCase):
-    batched = False
-
-    def det(self, x):
-        return F.det(x)
-
-    def matmul(self, x, y):
-        return F.matmul(x, y)
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
-        y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, (1,)).astype(numpy.float32)
-        return x, y, gy
 
 
 class DetFunctionRaiseTest(unittest.TestCase):
