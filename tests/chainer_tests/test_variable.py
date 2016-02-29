@@ -546,7 +546,7 @@ class TestVariableBackwardErrorTraceback(unittest.TestCase):
                 return xp.array([1, 2], np.float32),
 
         x = chainer.Variable(x_data)
-        line = inspect.currentframe(0).f_lineno + 1
+        line = inspect.currentframe().f_lineno + 1
         y = DummyFunction()(x)  # `line` is THIS line
         try:
             y.backward()
