@@ -36,7 +36,7 @@ def is_debug():
     """Get the debug mode.
 
     Returns:
-        bool: Return True if Chainer is in debug mode.
+        bool: Return ``True`` if Chainer is in debug mode.
     """
     return _debug
 
