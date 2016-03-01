@@ -161,6 +161,7 @@ class DetFunctionTest(unittest.TestCase):
         else:
             x[...] = 0.0
         x = chainer.Variable(x)
+        # it checks no errors are raised
         self.det(x)
 
     def test_singular_matrix_cpu(self):
