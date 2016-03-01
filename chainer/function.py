@@ -100,7 +100,7 @@ class Function(object):
 
         """
         in_data = tuple([x.data for x in inputs])
-        if chainer.get_debug():
+        if chainer.is_debug():
             self._stack = traceback.extract_stack()
 
         if self.type_check_enable:
@@ -110,7 +110,7 @@ class Function(object):
             outputs = self.forward(in_data)
             assert type(outputs) == tuple
 
-        if chainer.get_debug():
+        if chainer.is_debug():
             if any(cuda.get_array_module(out).isnan(out).any()
                    for out in outputs):
                 msg = 'NaN is detected on forward computation'

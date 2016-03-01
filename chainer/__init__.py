@@ -32,7 +32,7 @@ AUTO = flag.AUTO
 _debug = False
 
 
-def get_debug():
+def is_debug():
     """Get the debug mode.
 
     Returns:
