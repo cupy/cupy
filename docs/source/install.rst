@@ -11,7 +11,7 @@ We recommend these platforms.
 * `Ubuntu <http://www.ubuntu.com/>`_ 14.04 LTS 64bit
 * `CentOS <https://www.centos.org/>`_ 7 64bit
 
-Chainer is supported on Python 2.7.6+, 3.4.3+, 3.5.0+.
+Chainer is supported on Python 2.7.6+, 3.4.3+, 3.5.1+.
 Chainer uses C++ compiler such as g++.
 You need to install it before installing Chainer.
 This is typical installation method for each platform::
