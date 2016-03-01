@@ -28,6 +28,7 @@ Activation functions
 .. autofunction:: clipped_relu
 .. autofunction:: elu
 .. autofunction:: leaky_relu
+.. autofunction:: log_softmax
 .. autofunction:: lstm
 .. autofunction:: maxout
 .. autofunction:: prelu
