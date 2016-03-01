@@ -55,8 +55,8 @@ def _get_ld(a):
 
 
 def _batch_matmul_gpu(a, b, out, transa=False, transb=False, transout=False):
-    a = _as_batch_mat(a)
-    b = _as_batch_mat(b)
+    a = _as_batch_mat(cuda.cupy.ascontiguousarray(a))
+    b = _as_batch_mat(cuda.cupy.ascontiguousarray(b))
     trans_axis = (0, 2, 1)
     if transout:
         out = out.transpose(trans_axis)
