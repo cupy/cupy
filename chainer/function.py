@@ -156,14 +156,6 @@ class Function(object):
             self._local_function_hooks = collections.OrderedDict()
         return self._local_function_hooks
 
-    @local_function_hooks.setter
-    def local_function_hooks(self, val):
-        self._local_function_hooks = val
-
-    @local_function_hooks.deleter
-    def local_function_hooks(self):
-        del self._local_function_hooks
-
     @property
     def label(self):
         """Short text that represents the function.
