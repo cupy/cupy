@@ -65,6 +65,7 @@ class TestEmbedID(unittest.TestCase):
 @testing.parameterize(
     {'t_value': -1, 'valid': False},
     {'t_value': 3,  'valid': False},
+    {'t_value': 0,  'valid': True},
 )
 class TestEmbedIDValueCheck(unittest.TestCase):
 
