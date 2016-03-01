@@ -72,10 +72,11 @@ class TestEmbedIDValueCheck(unittest.TestCase):
     def setUp(self):
         self.link = links.EmbedID(2, 2)
         self.t = numpy.array([self.t_value], dtype=numpy.int32)
+        self.original_debug = chainer.is_debug()
         chainer.set_debug(True)
 
     def tearDown(self):
-        chainer.set_debug(False)
+        chainer.set_debug(self.original_debug)
 
     def check_value_check(self, t_data):
         t = chainer.Variable(t_data)

@@ -66,10 +66,11 @@ class TestSelectItemValueCheck(unittest.TestCase):
     def setUp(self):
         self.x = numpy.empty((1, 2), dtype=numpy.float32)
         self.t = numpy.array([self.t_value], dtype=numpy.int32)
+        self.original_debug = chainer.is_debug()
         chainer.set_debug(True)
 
     def tearDown(self):
-        chainer.set_debug(False)
+        chainer.set_debug(self.original_debug)
 
     def check_value_check(self, x_data, t_data):
         x = chainer.Variable(x_data)

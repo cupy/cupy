@@ -213,10 +213,11 @@ class TestSoftmaxCrossEntropyValueCheck(unittest.TestCase):
         self.x = numpy.empty((2, 2), dtype=numpy.float32)
         # `0` is required to avoid NaN
         self.t = numpy.array([self.t_value, 0], dtype=numpy.int32)
+        self.original_debug = chainer.is_debug()
         chainer.set_debug(True)
 
     def tearDown(self):
-        chainer.set_debug(False)
+        chainer.set_debug(self.original_debug)
 
     def check_value_check(self, x_data, t_data, use_cudnn):
         x = chainer.Variable(x_data)
