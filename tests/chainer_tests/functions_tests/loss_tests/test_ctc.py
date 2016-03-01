@@ -88,7 +88,7 @@ class TestCTC(unittest.TestCase):
     def check_backward(self, t_data, xs_data, l_length, x_length):
         gradient_check.check_backward(
             functions.ConnectionistTemporalClassification(self.blank_symbol),
-            (x_length, l_length, t_data) + xs_data, None, eps=1e-2)
+            (x_length, l_length, t_data) + xs_data, None, eps=1e-2, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
