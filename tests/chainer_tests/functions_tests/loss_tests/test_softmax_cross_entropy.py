@@ -210,7 +210,7 @@ class TestReplicatedSoftmaxCrossEntropy2IgnoreAll(
 class TestSoftmaxCrossEntropyValueCheck(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.empty((2, 2), dtype=numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (2, 2)).astype(numpy.float32)
         # `0` is required to avoid NaN
         self.t = numpy.array([self.t_value, 0], dtype=numpy.int32)
         self.original_debug = chainer.is_debug()
