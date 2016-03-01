@@ -1,4 +1,6 @@
+import collections
 import pkg_resources
+import threading
 
 from chainer import flag
 from chainer import function
@@ -29,6 +31,15 @@ ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
 
+
+thread_local = threading.local()
+
+
+def get_function_hooks():
+    if not hasattr(thread_local, 'function_hooks'):
+        thread_local.function_hooks = collections.OrderedDict()
+    return thread_local.function_hooks
+
 _debug = False
 
 
@@ -54,6 +65,5 @@ def set_debug(debug):
     """
     global _debug
     _debug = debug
-
 
 basic_math.install_variable_arithmetics()

@@ -1,7 +1,9 @@
+import collections
 import heapq
 import traceback
 
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -336,9 +338,15 @@ class Variable(object):
 
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
+            hooks = collections.OrderedDict(chainer.get_function_hooks())
+            hooks.update(func.local_function_hooks)
+            for hook in six.itervalues(hooks):
+                hook.backward_preprocess(func, in_data, out_grad)
             with cuda.get_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
+            for hook in six.itervalues(hooks):
+                hook.backward_postprocess(func, in_data, out_grad)
 
             if chainer.is_debug():
                 if any(cuda.get_array_module(gx).isnan(gx).any()
