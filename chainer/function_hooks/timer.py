@@ -43,8 +43,9 @@ class TimerHook(function.FunctionHook):
         else:
             self.stop.record()
             self.stop.synchronize()
+            # Note that `get_elapsed_time` returns result in milliseconds
             elapsed_time = cuda.cupy.cuda.get_elapsed_time(
-                self.start, self.stop)
+                self.start, self.stop) * 1000
         self.call_history.append((function, elapsed_time))
 
     def forward_postprocess(self, function, in_data):
@@ -58,5 +59,5 @@ class TimerHook(function.FunctionHook):
         self._postprocess(function)
 
     def total_time(self):
-        """Returns total elapsed time."""
+        """Returns total elapsed time in seconds."""
         return sum(t for (_, t) in self.call_history)
