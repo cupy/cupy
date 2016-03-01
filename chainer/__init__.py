@@ -31,21 +31,8 @@ ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
 
-
-class ThreadSafeOrderedDict(collections.OrderedDict):
-
-    def __init__(self, *args, **kwargs):
-        super(ThreadSafeOrderedDict, self).__init__(*args, **kwargs)
-        self._lock = threading.Lock()
-
-    def __enter__(self):
-        self._lock.acquire()
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self._lock.release()
-
-
-global_function_hooks = ThreadSafeOrderedDict()
+thread_local_objects = threading.local()
+thread_local_objects.registered_function_hooks = collections.OrderedDict()
+registered_function_hooks = thread_local_objects.registered_function_hooks
 
 basic_math.install_variable_arithmetics()

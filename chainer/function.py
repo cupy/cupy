@@ -104,8 +104,7 @@ class Function(object):
         if self.type_check_enable:
             self._check_data_type_forward(in_data)
 
-        with chainer.global_function_hooks:
-            hooks = collections.OrderedDict(chainer.global_function_hooks)
+        hooks = collections.OrderedDict(chainer.registered_function_hooks)
         hooks.update(self.local_function_hooks)
         for hook in hooks.values():
             hook.forward_preprocess(self, in_data)
@@ -138,7 +137,7 @@ class Function(object):
     def local_function_hooks(self):
         """Ordered Dictionary of registered function hooks.
 
-        Contrary to ``~chainer.global_function_hooks``,
+        Contrary to ``~chainer.registered_function_hooks``,
         which registers its elements to all functions,
         Function hooks in this property is specific to this function.
         """
@@ -434,16 +433,14 @@ class FunctionHook(object):
     name = 'FunctionHook'
 
     def __enter__(self):
-        if self.name in chainer.global_function_hooks:
+        if self.name in chainer.registered_function_hooks:
             raise KeyError('hook %s already exists' % self.name)
 
-        with chainer.global_function_hooks:
-            chainer.global_function_hooks[self.name] = self
+        chainer.registered_function_hooks[self.name] = self
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        with chainer.global_function_hooks:
-            del chainer.global_function_hooks[self.name]
+        del chainer.registered_function_hooks[self.name]
 
     # forward
     def forward_preprocess(self, function, in_data):
