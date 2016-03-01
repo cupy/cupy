@@ -35,11 +35,6 @@ _debug = False
 def is_debug():
     """Get the debug mode.
 
-    note::
-
-        This method is not thread safe. Don't call the method in
-        multi-threading environment.
-
     Returns:
         bool: Return ``True`` if Chainer is in debug mode.
     """
@@ -51,8 +46,8 @@ def set_debug(debug):
 
     note::
 
-        This method is not thread safe. Don't call the method in
-        multi-threading environment.
+        This method changes global state. When you use this method on
+        multi-threading environment, it may affects other threads.
 
     Args:
         debug (bool): New debug mode.
