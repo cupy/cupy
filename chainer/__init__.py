@@ -31,9 +31,14 @@ ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
 
-thread_local_objects = threading.local()
-thread_local_objects.registered_function_hooks = collections.OrderedDict()
-registered_function_hooks = thread_local_objects.registered_function_hooks
+
+thread_local = threading.local()
+
+
+def get_function_hooks():
+    if not hasattr(thread_local, 'function_hooks'):
+        thread_local.function_hooks = collections.OrderedDict()
+    return thread_local.function_hooks
 
 _debug = False
 

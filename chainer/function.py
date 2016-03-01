@@ -108,7 +108,7 @@ class Function(object):
         if self.type_check_enable:
             self._check_data_type_forward(in_data)
 
-        hooks = collections.OrderedDict(chainer.registered_function_hooks)
+        hooks = collections.OrderedDict(chainer.get_function_hooks())
         hooks.update(self.local_function_hooks)
         for hook in hooks.values():
             hook.forward_preprocess(self, in_data)
@@ -147,7 +147,7 @@ class Function(object):
     def local_function_hooks(self):
         """Ordered Dictionary of registered function hooks.
 
-        Contrary to ``~chainer.registered_function_hooks``,
+        Contrary to ``chainer.thread_local.function_hooks``,
         which registers its elements to all functions,
         Function hooks in this property is specific to this function.
         """
@@ -408,11 +408,16 @@ class FunctionHook(object):
     There are two ways to register :class:`~chainer.function.FunctionHook`
     objects to :class:`chainer.function.Function` objects.
     First one is to add the :class:`~chainer.function.FunctionHook`
-    to ``chainer.registered_function_hooks``.
+    to ``chainer.thread_local.function_hooks``.
     This is a thread local dictionary whose keys are strings that represent
     the names of function hooks.
-    Function hooks in ``chainer.registered_function_hooks`` are regared
+    Function hooks in ``chainer.thread_local.function_hooks`` are regared
     to be registered to all functions.
+
+    .. note::
+
+       We must access ``chainer.thread_local.function_hooks`` via
+       ``chainer.get_function_hooks()`` method.
 
     The other one is to register directly to
     :class:`~chainer.function.Function` object with
@@ -421,7 +426,7 @@ class FunctionHook(object):
     :meth:`~chainer.function.remove_hook` method.
 
     We can regsiter and unregister function hooks globally (i.e. register
-    function hooks to ``chainer.registered_function_hooks``) with
+    function hooks to ``chainer.thread_local.function_hooks``) with
     ``with`` statement.
     The following code is a simple example in which
     we measure the elapsed time of a part of forward propagation procedure
@@ -457,14 +462,15 @@ class FunctionHook(object):
     name = 'FunctionHook'
 
     def __enter__(self):
-        if self.name in chainer.registered_function_hooks:
+        function_hooks = chainer.get_function_hooks()
+        if self.name in function_hooks:
             raise KeyError('hook %s already exists' % self.name)
 
-        chainer.registered_function_hooks[self.name] = self
+        function_hooks[self.name] = self
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        del chainer.registered_function_hooks[self.name]
+        del chainer.get_function_hooks()[self.name]
 
     # forward
     def forward_preprocess(self, function, in_data):
