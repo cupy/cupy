@@ -1,7 +1,9 @@
 import heapq
+import traceback
 
 import numpy
 
+import chainer
 from chainer import cuda
 from chainer import flag
 
@@ -9,11 +11,21 @@ from chainer import flag
 def _check_grad_type(func, x, gx):
     def make_message(message):
         if func:
-            detail = '''Function {0} ({1}) has a bug.
+            detail = 'Function `{0}` ({1}) has a bug.\n'.format(
+                type(func).__name__, func.label)
+
+            stack = func.stack
+            if stack:
+                detail += 'Stacktrace of the function is below:\n'
+                for line in traceback.format_list(func._stack):
+                    detail += line
+
+            detail += '''
 Please report this error to the issue tracker with the stack trace,
 the information of your environment, and your script:
 https://github.com/pfnet/chainer/issues/new.
 '''.format(type(func).__name__, func.label)
+
         else:
             detail = ''
 
@@ -327,6 +339,12 @@ class Variable(object):
             with cuda.get_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
+
+            if chainer.is_debug():
+                if any(cuda.get_array_module(gx).isnan(gx).any()
+                       for gx in gxs):
+                    msg = 'NaN is detected on backward computation'
+                    raise RuntimeError(msg)
 
             if not retain_grad:
                 for y in outputs:
