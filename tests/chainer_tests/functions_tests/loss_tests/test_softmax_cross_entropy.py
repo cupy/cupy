@@ -203,6 +203,45 @@ class TestReplicatedSoftmaxCrossEntropy2IgnoreAll(
 
 
 @testing.parameterize(
+    {'t_value': -2, 'valid': False},
+    {'t_value': 3,  'valid': False},
+    {'t_value': -1, 'valid': True},  # -1 is ignore_label
+)
+class TestSoftmaxCrossEntropyValueCheck(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.empty((2, 2), dtype=numpy.float32)
+        # `0` is required to avoid NaN
+        self.t = numpy.array([self.t_value, 0], dtype=numpy.int32)
+        chainer.set_debug(True)
+
+    def tearDown(self):
+        chainer.set_debug(False)
+
+    def check_value_check(self, x_data, t_data, use_cudnn):
+        x = chainer.Variable(x_data)
+        t = chainer.Variable(t_data)
+
+        if self.valid:
+            # Check if it throws nothing
+            functions.softmax_cross_entropy(x, t, use_cudnn)
+        else:
+            with self.assertRaises(ValueError):
+                functions.softmax_cross_entropy(x, t, use_cudnn)
+
+    def test_value_check_cpu(self):
+        self.check_value_check(self.x, self.t, False)
+
+    @attr.gpu
+    def test_value_check_gpu(self):
+        self.check_value_check(self.x, self.t, False)
+
+    @attr.cudnn
+    def test_value_check_gpu_cudnn(self):
+        self.check_value_check(cuda.to_gpu(self.x), cuda.to_gpu(self.t), True)
+
+
+@testing.parameterize(
     {'use_cudnn': True},
     {'use_cudnn': False},
 )
