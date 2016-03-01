@@ -378,11 +378,12 @@ class FunctionHook(object):
     forward and backward operations of each function.
 
     Function hooks that derive :class:`FunctionHook` are required
-    to implement four functions:
+    to implement four methods:
     :meth:`~chainer.function.FunctionHook.forward_preprocess`,
     :meth:`~chainer.function.FunctionHook.forward_postprocess`,
     :meth:`~chainer.function.FunctionHook.backward_preprocess`, and
     :meth:`~chainer.function.FunctionHook.backward_postprocess`.
+    By default, these methods do nothing.
 
     Specifically, when :meth:`~chainer.function.Function.__call__`
     method of some function is invoked,
@@ -400,27 +401,11 @@ class FunctionHook(object):
 
     There are two ways to register :class:`~chainer.function.FunctionHook`
     objects to :class:`chainer.function.Function` objects.
-    First one is to add the :class:`~chainer.function.FunctionHook`
-    to ``chainer.thread_local.function_hooks``.
-    This is a thread local dictionary whose keys are strings that represent
-    the names of function hooks.
-    Function hooks in ``chainer.thread_local.function_hooks`` are regared
-    to be registered to all functions.
 
-    .. note::
+    First one is to use ``with`` statement. Function hooks hooked
+    in this way are registered to all functions within ``with`` statement
+    and are unregistered at the end of ``with`` statement.
 
-       We must access ``chainer.thread_local.function_hooks`` via
-       ``chainer.get_function_hooks()`` method.
-
-    The other one is to register directly to
-    :class:`~chainer.function.Function` object with
-    :meth:`~chainer.functon.Function.add_hook` method.
-    Registered function hooks in this way can be removed by
-    :meth:`~chainer.function.remove_hook` method.
-
-    We can regsiter and unregister function hooks globally (i.e. register
-    function hooks to ``chainer.thread_local.function_hooks``) with
-    ``with`` statement.
     The following code is a simple example in which
     we measure the elapsed time of a part of forward propagation procedure
     with :class:`~chainer.function_hooks.TimerHook`, which is a subclass of
@@ -434,9 +419,10 @@ class FunctionHook(object):
     ... model1 = chainer.Model(l=L.Linear(10, 10))
     ... model2 = chainer.Model(l=L.Linear(10, 10))
     ... x = chainer.Variable(...)
-    ... with TimerHook():
+    ... with TimerHook() as m:
     ...     y = model1(x)
     ...     y = model2(x)
+    ...     print(m.total_time())
     ... model3 = chainer.Model(l=L.Linear(10, 10))
     ... z = model3(y)
 
@@ -446,7 +432,22 @@ class FunctionHook(object):
     :class:`~chainer.functions.Exp` of ``model1`` and ``model2``).
     Note that ``model3`` is not a target of measurement
     as :class:`~chainer.function_hooks.TimerHook` is unregistered
-    from ``chainer.global_hooks`` before its forward propagation.
+    before forward propagation of ``model3``.
+
+    .. note::
+
+       Chainer stores the dictionary of registered function hooks
+       as a thread local object. So, function hooks registered
+       are different depending on threads.
+
+    The other one is to register directly to
+    :class:`~chainer.function.Function` object with
+    :meth:`~chainer.functon.Function.add_hook` method.
+    Function hooks registered in this way can be removed by
+    :meth:`~chainer.function.remove_hook` method.
+    Contrary to former registration method, function hooks are registered
+    only to the function which :meth:`~chainer.function.Function.add_hook`
+    is called.
 
     Args:
         name(str): Name of this function hook.
