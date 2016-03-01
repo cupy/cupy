@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -12,7 +13,29 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
-class DetFunctionTestBase(object):
+@testing.parameterize(*[
+    {'batched': True},
+    {'batched': False}
+])
+class DetFunctionTest(unittest.TestCase):
+
+    def setUp(self):
+        if self.batched:
+            self.x = numpy.random.uniform(
+                .5, 1, (6, 3, 3)).astype(numpy.float32)
+            self.y = numpy.random.uniform(
+                .5, 1, (6, 3, 3)).astype(numpy.float32)
+            self.gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
+            self.ct = self.x.transpose(0, 2, 1)
+            self.det = F.batch_det
+            self.matmul = F.batch_matmul
+        else:
+            self.x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
+            self.y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
+            self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+            self.ct = self.x.transpose()
+            self.det = F.det
+            self.matmul = F.matmul
 
     def det_transpose(self, gpu=False):
         if gpu:
@@ -61,7 +84,7 @@ class DetFunctionTestBase(object):
         self.det_scaling(gpu=False)
 
     def det_identity(self, gpu=False):
-        if self.x.ndim == 3:
+        if self.batched:
             chk = numpy.ones(len(self.x), dtype=numpy.float32)
             dt = numpy.identity(self.x.shape[1], dtype=numpy.float32)
             idt = numpy.repeat(dt[None], len(self.x), axis=0)
@@ -132,90 +155,80 @@ class DetFunctionTestBase(object):
     def test_expect_scalar_gpu(self):
         self.check_single_matrix(cuda.to_gpu(self.x))
 
-    def test_zero_det_cpu(self):
-        x_data, y_grad = self.x, self.gy
-        if x_data.ndim == 3:
-            x_data[0, :, :] = 0.0
+    def check_zero_det(self, x, gy, err):
+        if self.batched:
+            x[0, ...] = 0.0
         else:
-            x_data[:, :] = 0.0
-        with self.assertRaises(numpy.linalg.LinAlgError):
-            gradient_check.check_backward(self.det, x_data, y_grad)
+            x[...] = 0.0
+        with self.assertRaises(err):
+            gradient_check.check_backward(self.det, x, gy)
+
+    def test_zero_det_cpu(self):
+        self.check_zero_det(self.x, self.gy, numpy.linalg.LinAlgError)
 
     @attr.gpu
     def test_zero_det_gpu(self):
-        x_data = cuda.to_gpu(self.x)
-        y_grad = cuda.to_gpu(self.gy)
-        if x_data.ndim == 3:
-            x_data[0, :, :] = 0.0
-        else:
-            x_data[:, :] = 0.0
-        with self.assertRaises(ValueError):
-            gradient_check.check_backward(self.det, x_data, y_grad)
+        self.check_zero_det(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.gy), ValueError)
 
+
+class TestDetSmallCase(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
+
+    def check_by_definition(self, x):
+        ans = F.det(chainer.Variable(x)).data
+        y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
+        gradient_check.assert_allclose(ans, y)
+
+    @condition.retry(3)
     def test_answer_cpu(self):
-        for _ in range(5):
-            x = numpy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
-            ans = F.det(chainer.Variable(x)).data
-            y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
-            gradient_check.assert_allclose(ans, y)
+        self.check_by_definition(self.x)
 
     @attr.gpu
+    @condition.retry(3)
     def test_answer_gpu(self):
-        for _ in range(5):
-            x = cuda.cupy.random.uniform(.5, 1, (2, 2)).astype(numpy.float32)
-            ans = F.det(chainer.Variable(x)).data
-            y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
-            gradient_check.assert_allclose(ans, y)
+        self.check_by_definition(cuda.to_gpu(self.x))
 
-    def check_answer_gpu_cpu(self, shape, repeat=10):
-        for _ in range(repeat):
-            x = cuda.cupy.random.uniform(.5, 1, shape, dtype='float32')
-            gpu = cuda.to_cpu(self.det(chainer.Variable(x)).data)
-            cpu = numpy.linalg.det(cuda.to_cpu(x))
-            gradient_check.assert_allclose(gpu, cpu)
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(s, s) for s in six.moves.range(1, 5)],
+    }))
+class TestDetGPUCPUConsistency(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
 
     @attr.gpu
+    @condition.retry(3)
     def test_answer_gpu_cpu(self):
-        if self.batched:
-            for w in range(1, 5):
-                for s in range(2, 5):
-                    self.check_answer_gpu_cpu((w, s, s))
-        else:
-            w = 1
-            for s in range(2, 5):
-                self.check_answer_gpu_cpu((s, s))
+        x = cuda.to_gpu(self.x)
+        y = F.det(chainer.Variable(x))
+        gpu = cuda.to_cpu(y.data)
+        cpu = numpy.linalg.det(self.x)
+        gradient_check.assert_allclose(gpu, cpu)
 
 
-class TestSquareBatchDet(DetFunctionTestBase, unittest.TestCase):
-    batched = True
-
-    def det(self, x):
-        return F.batch_det(x)
-
-    def matmul(self, x, y):
-        return F.batch_matmul(x, y)
+@testing.parameterize(
+    *testing.product({
+        'shape': [(w, s, s) for s in six.moves.range(1, 5)
+                  for w in six.moves.range(1, 5)],
+    }))
+class TestBatchDetGPUCPUConsistency(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
-        self.y = numpy.random.uniform(.5, 1, (6, 3, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (6,)).astype(numpy.float32)
-        self.ct = self.x.transpose(0, 2, 1)
+        self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
 
-
-class TestSquareDet(DetFunctionTestBase, unittest.TestCase):
-    batched = False
-
-    def det(self, x):
-        return F.det(x)
-
-    def matmul(self, x, y):
-        return F.matmul(x, y)
-
-    def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
-        self.y = numpy.random.uniform(.5, 1, (5, 5)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        self.ct = self.x.transpose()
+    @attr.gpu
+    @condition.retry(3)
+    def test_answer_gpu_cpu(self):
+        x = cuda.to_gpu(self.x)
+        y = F.batch_det(chainer.Variable(x))
+        gpu = cuda.to_cpu(y.data)
+        cpu = numpy.linalg.det(self.x)
+        gradient_check.assert_allclose(gpu, cpu)
 
 
 class DetFunctionRaiseTest(unittest.TestCase):

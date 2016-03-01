@@ -453,13 +453,13 @@ cpdef convolutionBackwardFilter_v3(
 
 cpdef int getConvolutionBackwardDataAlgorithm(
         size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
-        size_t gradDesc, ConvolutionBwdDataPreference preference,
+        size_t gradDesc, size_t preference,
         size_t memoryLimitInbytes) except *:
       cdef ConvolutionBwdDataAlgo algo
       status = cudnnGetConvolutionBackwardDataAlgorithm(
-          <Handle>handle, <FilterDescriptor>filterDesc, <TensorDescriptor>diffDesc,
-          <ConvolutionDescriptor>convDesc, <TensorDescriptor>gradDesc,
-          <ConvolutionBwdDataPreference>preference,
+          <Handle>handle, <FilterDescriptor>filterDesc,
+          <TensorDescriptor>diffDesc, <ConvolutionDescriptor>convDesc,
+          <TensorDescriptor>gradDesc, <ConvolutionBwdDataPreference>preference,
           memoryLimitInbytes, &algo)
       check_status(status)
       return algo
