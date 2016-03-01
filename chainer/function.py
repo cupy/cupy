@@ -1,6 +1,8 @@
 import os
+import traceback
 import weakref
 
+import chainer
 from chainer import cuda
 from chainer import flag
 from chainer.utils import type_check
@@ -98,12 +100,21 @@ class Function(object):
 
         """
         in_data = tuple([x.data for x in inputs])
+        if chainer.is_debug():
+            self._stack = traceback.extract_stack()
+
         if self.type_check_enable:
             self._check_data_type_forward(in_data)
         # Forward prop
         with cuda.get_device(*in_data):
             outputs = self.forward(in_data)
             assert type(outputs) == tuple
+
+        if chainer.is_debug():
+            if any(cuda.get_array_module(out).isnan(out).any()
+                   for out in outputs):
+                msg = 'NaN is detected on forward computation'
+                raise RuntimeError(msg)
 
         out_v = flag.aggregate_flags([x.volatile for x in inputs])
         ret = tuple([variable.Variable(y, volatile=out_v) for y in outputs])
@@ -131,6 +142,13 @@ class Function(object):
         Each function should override it to give more information.
         """
         return self.__class__.__name__
+
+    @property
+    def stack(self):
+        if hasattr(self, '_stack'):
+            return self._stack
+        else:
+            return None
 
     def _check_data_type_forward(self, in_data):
         in_type = type_check.get_types(in_data, 'in_types', False)

@@ -9,7 +9,13 @@ from chainer.utils import type_check
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cuda.cudnn.cudnn
+    _cudnn_version = libcudnn.getVersion()
     _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
+    if _cudnn_version >= 4000:
+        _bwd_filter_pref = \
+            libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
+        _bwd_data_pref = \
+            libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
 def _pair(x):
@@ -114,10 +120,30 @@ class Deconvolution2DFunction(function.Function):
             one = numpy.array(1, dtype=x.dtype).ctypes
             zero = numpy.array(0, dtype=x.dtype).ctypes
 
-            libcudnn.convolutionBackwardData_v2(
-                handle, one.data, self.filter_desc.value, W.data.ptr,
-                x_desc.value, x.data.ptr, self.conv_desc.value,
-                zero.data, y_desc.value, y.data.ptr)
+            if _cudnn_version >= 4000:
+                self.max_workspace_size = c * kh * kw * 4
+                algo = libcudnn.getConvolutionBackwardDataAlgorithm(
+                    handle, self.filter_desc.value, x_desc.value,
+                    self.conv_desc.value, y_desc.value, _bwd_data_pref,
+                    self.max_workspace_size)
+                workspace_size = \
+                    libcudnn.getConvolutionBackwardDataWorkspaceSize(
+                        handle, self.filter_desc.value, x_desc.value,
+                        self.conv_desc.value, y_desc.value, algo)
+                workspace = cuda.cupy.empty(
+                    (max(workspace_size // 4, 1),), dtype=x.dtype)
+
+                libcudnn.convolutionBackwardData_v3(
+                    handle, one.data, self.filter_desc.value, W.data.ptr,
+                    x_desc.value, x.data.ptr, self.conv_desc.value,
+                    algo, workspace.data.ptr, workspace_size,
+                    zero.data, y_desc.value, y.data.ptr)
+            else:
+                libcudnn.convolutionBackwardData_v2(
+                    handle, one.data, self.filter_desc.value, W.data.ptr,
+                    x_desc.value, x.data.ptr, self.conv_desc.value,
+                    zero.data, y_desc.value, y.data.ptr)
+
             if b is not None:
                 libcudnn.addTensor_v2(
                     handle, libcudnn.CUDNN_ADD_SAME_C,
@@ -200,10 +226,29 @@ class Deconvolution2DFunction(function.Function):
                     zero.data, self.bias_desc.value, gb.data.ptr)
             gW = cuda.cupy.empty_like(W)
             # filter backward
-            libcudnn.convolutionBackwardFilter_v2(
-                handle, one.data, gy_desc.value, gy.data.ptr,
-                gx_desc.value, x.data.ptr, self.conv_desc.value,
-                zero.data, self.filter_desc.value, gW.data.ptr)
+            if _cudnn_version >= 4000:
+                self.max_workspace_size = c * kh * kw * 4
+                algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
+                    handle, gy_desc.value, gx_desc.value,
+                    self.conv_desc.value, self.filter_desc.value,
+                    _bwd_filter_pref, self.max_workspace_size)
+                workspace_size = \
+                    libcudnn.getConvolutionBackwardFilterWorkspaceSize(
+                        handle, gy_desc.value, gx_desc.value,
+                        self.conv_desc.value, self.filter_desc.value, algo)
+                workspace = cuda.cupy.empty(
+                    (max(workspace_size // 4, 1),), dtype=x.dtype)
+
+                libcudnn.convolutionBackwardFilter_v3(
+                    handle, one.data, gy_desc.value, gy.data.ptr,
+                    gx_desc.value, x.data.ptr, self.conv_desc.value,
+                    algo, workspace.data.ptr, workspace_size,
+                    zero.data, self.filter_desc.value, gW.data.ptr)
+            else:
+                libcudnn.convolutionBackwardFilter_v2(
+                    handle, one.data, gy_desc.value, gy.data.ptr,
+                    gx_desc.value, x.data.ptr, self.conv_desc.value,
+                    zero.data, self.filter_desc.value, gW.data.ptr)
         else:
             # Implementation using im2col
             col = conv.im2col_gpu(

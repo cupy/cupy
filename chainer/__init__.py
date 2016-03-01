@@ -29,4 +29,31 @@ ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
 
+_debug = False
+
+
+def is_debug():
+    """Get the debug mode.
+
+    Returns:
+        bool: Return ``True`` if Chainer is in debug mode.
+    """
+    return _debug
+
+
+def set_debug(debug):
+    """Set the debug mode.
+
+    note::
+
+        This method changes global state. When you use this method on
+        multi-threading environment, it may affects other threads.
+
+    Args:
+        debug (bool): New debug mode.
+    """
+    global _debug
+    _debug = debug
+
+
 basic_math.install_variable_arithmetics()

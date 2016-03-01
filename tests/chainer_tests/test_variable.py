@@ -1,3 +1,4 @@
+import inspect
 import unittest
 
 import numpy as np
@@ -443,6 +444,123 @@ class TestVariableSetCreator(unittest.TestCase):
     @attr.gpu
     def test_set_creator_gpu(self):
         self.check_set_creator(cuda.to_gpu(self.x))
+
+
+class TestVariableBackwardError(unittest.TestCase):
+
+    def setUp(self):
+        self.x = np.array([1], np.float32)
+
+    def check_type_mismatch(self, x_data):
+        xp = cuda.get_array_module(x_data)
+
+        class DummyFunction(chainer.Function):
+            label = 'dummy_function'
+
+            def forward(self, inputs):
+                return xp.array(1, np.float32),
+
+            def backward(self, inputs, grads):
+                return [1]
+
+        x = chainer.Variable(x_data)
+        y = DummyFunction()(x)
+        with self.assertRaisesRegexp(TypeError, 'dummy_function'):
+            y.backward()
+
+    def test_type_mismatch_cpu(self):
+        self.check_type_mismatch(self.x)
+
+    @attr.gpu
+    def test_type_mismatch_gpu(self):
+        self.check_type_mismatch(cuda.to_gpu(self.x))
+
+    def check_dtype_mismatch(self, x_data):
+        xp = cuda.get_array_module(x_data)
+
+        class DummyFunction(chainer.Function):
+            label = 'dummy_function'
+
+            def forward(self, inputs):
+                return xp.array(1, np.float32),
+
+            def backward(self, inputs, grads):
+                return xp.array([1], np.int32),
+
+        x = chainer.Variable(x_data)
+        y = DummyFunction()(x)
+        with self.assertRaisesRegexp(TypeError, 'dummy_function'):
+            y.backward()
+
+    def test_dtype_mismatch_cpu(self):
+        self.check_dtype_mismatch(self.x)
+
+    @attr.gpu
+    def test_dtype_mismatch_gpu(self):
+        self.check_dtype_mismatch(cuda.to_gpu(self.x))
+
+    def check_shape_mismatch(self, x_data):
+        xp = cuda.get_array_module(x_data)
+
+        class DummyFunction(chainer.Function):
+            label = 'dummy_function'
+
+            def forward(self, inputs):
+                return xp.array(1, np.float32),
+
+            def backward(self, inputs, grads):
+                return xp.array([1, 2], np.float32),
+
+        x = chainer.Variable(x_data)
+        y = DummyFunction()(x)
+        with self.assertRaisesRegexp(ValueError, 'dummy_function'):
+            y.backward()
+
+    def test_shape_mismatch_cpu(self):
+        self.check_shape_mismatch(self.x)
+
+    @attr.gpu
+    def test_shape_mismatch_gpu(self):
+        self.check_shape_mismatch(cuda.to_gpu(self.x))
+
+
+class TestVariableBackwardErrorTraceback(unittest.TestCase):
+
+    def setUp(self):
+        self.x = np.array([1], np.float32)
+        chainer.set_debug(True)
+
+    def tearDown(self):
+        chainer.set_debug(False)
+
+    def check_traceback(self, x_data):
+        xp = cuda.get_array_module(x_data)
+
+        class DummyFunction(chainer.Function):
+            label = 'dummy_function'
+
+            def forward(self, inputs):
+                return xp.array(1, np.float32),
+
+            def backward(self, inputs, grads):
+                return xp.array([1, 2], np.float32),
+
+        x = chainer.Variable(x_data)
+        line = inspect.currentframe().f_lineno + 1
+        y = DummyFunction()(x)  # `line` is THIS line
+        try:
+            y.backward()
+            self.fail()
+        except ValueError as e:
+            self.assertIn('Stacktrace', str(e))
+            self.assertIn('line %d' % line, str(e))
+
+    def test_traceback_cpu(self):
+        self.check_traceback(self.x)
+
+    @attr.gpu
+    def test_traceback_gpu(self):
+        self.check_traceback(cuda.to_gpu(self.x))
 
 
 testing.run_module(__name__, __file__)
