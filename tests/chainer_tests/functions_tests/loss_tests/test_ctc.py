@@ -67,8 +67,8 @@ class TestCTC(unittest.TestCase):
         for b in range(batch_size):
             loss_expect += -math.log(
                 self.alpha(
-                    xt[b], self.l[b], x_length[b] - 1, path_length[b] - 1)
-                + self.alpha(
+                    xt[b], self.l[b], x_length[b] - 1, path_length[b] - 1) +
+                self.alpha(
                     xt[b], self.l[b], x_length[b] - 1, path_length[b] - 2))
         loss_expect /= batch_size
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
