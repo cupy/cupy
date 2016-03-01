@@ -1,6 +1,6 @@
 import collections
-import threading
 import pkg_resources
+import threading
 
 from chainer import flag
 from chainer import function
