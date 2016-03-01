@@ -365,45 +365,51 @@ class FunctionHook(object):
     :class:`~chainer.function.FunctionsHook` is an callback object
     that is registered to :class:`~chainer.function.Function`.
     Registered function hooks are invoked before and after
-    forward and backward operation of each function.
+    forward and backward operations of each function.
 
-    Specifically, when :meth:`~chainer.function.Function.__call__` is invoked,
-    all function hooks registered to this function are called
-    before and after forward propagation.
-    Before forward propagation,
-    :meth:`~chainer.function.FunctionHook.forward_preprocess` is called and
-    after forward propagation,
-    :meth:`~chainer.function.FunctionHook.forward_postprocess` is called.
+    Function hooks that derive :class:`FunctionHook` are required
+    to implement four functions:
+    :meth:`~chainer.function.FunctionHook.forward_preprocess`, 
+    :meth:`~chainer.function.FunctionHook.forward_postprocess`,
+    :meth:`~chainer.function.FunctionHook.backward_preprocess`, and
+    :meth:`~chainer.function.FunctionHook.backward_postprocess`.
 
-    Likewise, when :method:`~chainer.variable.Variable.backward` is invoked,
-    all function hooks registered to the function which holds this variable
-    as a gradient are called before and after backward propagation.
-    Before backward propagation,
-    :meth:`~chainer.function.FunctionHook.backward_preprocess` is called and
-    after backward propagation,
-    :meth:`~chainer.function.FunctionHook.backward_postprocess` is called.
+    Specifically, when :meth:`~chainer.function.Function.__call__`
+    method of some function is invoked,
+    :meth:`~chainer.function.FunctionHook.forward_preprocess`
+    (resp. :meth:`~chainer.function.FunctionHook.forward_postprocess`)
+    of all function hooks registered to this function are called before
+    (resp. after) forward propagation.
 
-    So, function hooks that derive :class:`FunctionHook` are required
-    to implement these four functions.
-    In default setting, these methods does not do anything.
+    Likewise, when :meth:`~chainer.variable.Variable.backward` of some
+    :class:`~chainer.variable.Variable` is invoked,
+    :meth:`~chainer.function.FunctionHook.backward_preprocess`
+    (resp. :meth:`~chainer.function.FunctionHook.backward_postprocess`)
+    of all function hooks registered to the function which holds this variable
+    as a gradient are called before (resp. after) backward propagation.
 
     There are two ways to register :class:`~chainer.function.FunctionHook`
     objects to :class:`chainer.function.Function` objects.
     First one is to add the :class:`~chainer.function.FunctionHook`
-    to ``chainer.global_function_hooks``.
-    Function hooks in ``chainer.global_function_hooks`` are regared
+    to ``chainer.registered_function_hooks``.
+    This is a thread local dictionary whose keys are strings that represent
+    the names of function hooks.
+    Function hooks in ``chainer.registered_function_hooks`` are regared
     to be registered to all functions.
+
     The other one is to register directly to
     :class:`~chainer.function.Function` object with
     :meth:`~chainer.functon.Function.add_hook` method.
     Registered function hooks in this way can be removed by
     :meth:`~chainer.function.remove_hook` method.
 
-    We can regsiter and unregister function hooks globally (i.e. to register
-    function hooks to ``~chainer.global_function_hooks``) with
+    We can regsiter and unregister function hooks globally (i.e. register
+    function hooks to ``chainer.registered_function_hooks``) with
     ``with`` statement.
     The following code is a simple example in which
-    we measure elapsed times of a part of forward propagation.
+    we measure the elapsed time of a part of forward propagation procedure
+    with :class:`~chainer.function_hooks.TimerHook`, which is a subclass of
+    :class:`~chainer.function.FunctionHook`.
 
     >>> class Model(chainer.Chain):
     ...     def __call__(x):
@@ -423,8 +429,9 @@ class FunctionHook(object):
     of all functions in ``model1`` and ``model2`` (specifically,
     :class:`~chainer.functions.LinearFunction` and
     :class:`~chainer.functions.Exp` of ``model1`` and ``model2``).
-    Note that as :class:`~chainer.function_hooks.TimerHook` is unregistered
-    from ``chainer.global_hooks``, ``model3`` is not a target of measurement.
+    Note that ``model3`` is not a target of measurement
+    as :class:`~chainer.function_hooks.TimerHook` is unregistered
+    from ``chainer.global_hooks`` before its forward propagation.
 
     Args:
         name(str): Name of this function hook.
@@ -450,7 +457,7 @@ class FunctionHook(object):
             function(~chainer.function.Function): Function object to which
                 the function hook is registered.
             in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
-                Input of forward propagation.
+                Input data of forward propagation.
         """
         pass
 
@@ -461,7 +468,7 @@ class FunctionHook(object):
             function(~chainer.function.Function): Function object to which
                 the function hook is registered.
             in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
-                Input of forward propagation.
+                Input data of forward propagation.
         """
         pass
 
@@ -473,7 +480,9 @@ class FunctionHook(object):
             function(~chainer.function.Function): Function object to which
                 the function hook is registered.
             in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
-                Input of forward propagation.
+                Input data of forward propagation.
+            out_grad(tuple of numpy.ndarray or tuple of cupy.ndarray):
+                Gradient data of backward propagation.
         """
         pass
 
@@ -485,5 +494,7 @@ class FunctionHook(object):
                 the function hook is registered.
             in_data(tuple of numpy.ndarray or tuple of cupy.ndarray):
                 Input of forward propagation.
+            out_grad(tuple of numpy.ndarray or tuple of cupy.ndarray):
+                Gradient data of backward propagation.
         """
         pass

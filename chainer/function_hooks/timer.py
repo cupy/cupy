@@ -11,7 +11,8 @@ class TimerHook(function.FunctionHook):
 
     Attributes:
         call_history: List of measurement results. It consists of pairs of
-            the function that calls this hook and the elapsed time.
+            the function that calls this hook and the elapsed time
+            the function consumes.
     """
 
     name = 'TimerHook'
