@@ -161,7 +161,7 @@ class Function(object):
 
     @local_function_hooks.deleter
     def local_function_hooks(self):
-        del self._hook_history
+        del self._local_function_hooks
 
     @property
     def label(self):
