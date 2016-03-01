@@ -323,15 +323,20 @@ class TestFunctionDebug(unittest.TestCase):
         chainer.set_debug(True)
         self.one = numpy.array([1], numpy.float32)
         self.nan = numpy.array([float('nan')], numpy.float32)
+        self.int_one = numpy.array([1], numpy.int32)
         self.f = chainer.Function()
 
     def tearDown(self):
         chainer.set_debug(self.original_debug)
 
-    def check_debug_forward(self, x_data):
+    def check_debug_forward(self, x_data, valid=False):
         x = chainer.Variable(x_data)
-        with self.assertRaises(RuntimeError):
+        if valid:
+            # check if forward throws nothing
             self.f(x)
+        else:
+            with self.assertRaises(RuntimeError):
+                self.f(x)
 
     def test_debug_forward_cpu(self):
         self.f.forward_cpu = mock.MagicMock(return_value=(self.nan,))
@@ -343,11 +348,25 @@ class TestFunctionDebug(unittest.TestCase):
             return_value=(cuda.to_gpu(self.nan),))
         self.check_debug_forward(cuda.to_gpu(self.one))
 
-    def check_debug_backward(self, x_data):
+    def test_debug_forward_int_cpu(self):
+        self.f.forward_cpu = mock.MagicMock(return_value=(self.int_one,))
+        self.check_debug_forward(self.one, valid=True)
+
+    @attr.gpu
+    def test_debug_forward_int_gpu(self):
+        self.f.forward_gpu = mock.MagicMock(
+            return_value=(cuda.to_gpu(self.int_one),))
+        self.check_debug_forward(cuda.to_gpu(self.one), valid=True)
+
+    def check_debug_backward(self, x_data, valid=False):
         x = chainer.Variable(x_data)
         y = self.f(x)
-        with self.assertRaises(RuntimeError):
+        if valid:
+            # check if backard throws nothing
             y.backward()
+        else:
+            with self.assertRaises(RuntimeError):
+                y.backward()
 
     def test_debug_backward_cpu(self):
         self.f.forward_cpu = mock.MagicMock(return_value=(self.one,))
@@ -361,6 +380,19 @@ class TestFunctionDebug(unittest.TestCase):
         self.f.backward_gpu = mock.MagicMock(
             return_value=(cuda.to_gpu(self.nan),))
         self.check_debug_backward(cuda.to_gpu(self.one))
+
+    def test_debug_backward_none_cpu(self):
+        self.f.forward_cpu = mock.MagicMock(return_value=(self.one,))
+        self.f.backward_cpu = mock.MagicMock(return_value=(None,))
+        self.check_debug_backward(self.one, valid=True)
+
+    @attr.gpu
+    def test_debug_backward_none_gpu(self):
+        self.f.forward_gpu = mock.MagicMock(
+            return_value=(cuda.to_gpu(self.one),))
+        self.f.backward_gpu = mock.MagicMock(
+            return_value=(None,))
+        self.check_debug_backward(cuda.to_gpu(self.one), valid=True)
 
 
 testing.run_module(__name__, __file__)

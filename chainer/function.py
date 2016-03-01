@@ -121,7 +121,8 @@ class Function(object):
             hook.forward_postprocess(self, in_data)
 
         if chainer.is_debug():
-            if any(cuda.get_array_module(out).isnan(out).any()
+            if any(out.dtype.kind == 'f' and
+                   cuda.get_array_module(out).isnan(out).any()
                    for out in outputs):
                 msg = 'NaN is detected on forward computation'
                 raise RuntimeError(msg)
