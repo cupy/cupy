@@ -155,6 +155,22 @@ class DetFunctionTest(unittest.TestCase):
     def test_expect_scalar_gpu(self):
         self.check_single_matrix(cuda.to_gpu(self.x))
 
+    def check_singular_matrix(self, x):
+        if self.batched:
+            x[0, ...] = 0.0
+        else:
+            x[...] = 0.0
+        x = chainer.Variable(x)
+        # it checks no errors are raised
+        self.det(x)
+
+    def test_singular_matrix_cpu(self):
+        self.check_singular_matrix(self.x)
+
+    @attr.gpu
+    def test_singular_matrix_gpu(self):
+        self.check_singular_matrix(cuda.to_gpu(self.x))
+
     def check_zero_det(self, x, gy, err):
         if self.batched:
             x[0, ...] = 0.0
@@ -164,7 +180,7 @@ class DetFunctionTest(unittest.TestCase):
             gradient_check.check_backward(self.det, x, gy)
 
     def test_zero_det_cpu(self):
-        self.check_zero_det(self.x, self.gy, numpy.linalg.LinAlgError)
+        self.check_zero_det(self.x, self.gy, ValueError)
 
     @attr.gpu
     def test_zero_det_gpu(self):

@@ -22,11 +22,11 @@ def _det_gpu(b):
     # Output array
     # These arrays hold information on the execution success
     # or if the matrix was singular.
-    info1 = cuda.cupy.zeros(n_matrices, dtype=numpy.intp)
+    info = cuda.cupy.zeros(n_matrices, dtype=numpy.intp)
     ap = matmul._mat_ptrs(a)
     _, lda = matmul._get_ld(a)
     cuda.cublas.sgetrfBatched(cuda.Device().cublas_handle, n, ap.data.ptr, lda,
-                              p.data.ptr, info1.data.ptr, n_matrices)
+                              p.data.ptr, info.data.ptr, n_matrices)
     det = cuda.cupy.prod(a.diagonal(axis1=1, axis2=2), axis=1)
     # The determinant is equal to the product of the diagonal entries
     # of `a` where the sign of `a` is flipped depending on whether
@@ -34,8 +34,7 @@ def _det_gpu(b):
     rng = cuda.cupy.arange(1, n + 1, dtype='int32')
     parity = cuda.cupy.sum(p != rng, axis=1) % 2
     sign = 1. - 2. * parity.astype('float32')
-    success = cuda.cupy.all(info1 == 0)
-    return det * sign, success
+    return det * sign, info
 
 
 class BatchDet(function.Function):
@@ -60,23 +59,26 @@ class BatchDet(function.Function):
         return self.detx,
 
     def forward_gpu(self, x):
-        self.detx, success = _det_gpu(x[0])
-        if not success:
-            raise ValueError('Singular Matrix')
+        self.detx, _ = _det_gpu(x[0])
         return self.detx,
 
     def backward_cpu(self, x, gy):
         x, = x
         gy, = gy
-        grad = (gy[:, None, None] * self.detx[:, None, None] *
-                numpy.linalg.inv(x.transpose((0, 2, 1))))
+        try:
+            inv_x = numpy.linalg.inv(x.transpose((0, 2, 1)))
+        except numpy.linalg.LinAlgError:
+            raise ValueError('Input has singular matrices.')
+        grad = gy[:, None, None] * self.detx[:, None, None] * inv_x
         return utils.force_array(grad),
 
     def backward_gpu(self, x, gy):
         x, = x
         gy, = gy
-        grad = (gy[:, None, None] * self.detx[:, None, None] *
-                inv._inv_gpu(x.transpose((0, 2, 1))))
+        inv_x, info = inv._inv_gpu(x.transpose((0, 2, 1)))
+        if cuda.cupy.any(info != 0):
+            raise ValueError('Input has singular matrices.')
+        grad = gy[:, None, None] * self.detx[:, None, None] * inv_x
         return utils.force_array(grad),
 
 
