@@ -17,7 +17,10 @@ def logsumexp(x):
     m = x.max(axis=1, keepdims=True)
     y = x - m
     xp.exp(y, out=y)
-    return xp.log(y.sum(axis=1, keepdims=True)) + m
+    s = y.sum(axis=1, keepdims=True)
+    xp.log(s, out=s)
+    m += s
+    return m
 
 
 class LogSoftmax(function.Function):
