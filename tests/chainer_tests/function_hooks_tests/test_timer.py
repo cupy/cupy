@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 import chainer
 from chainer import cuda
 from chainer import function_hooks
@@ -8,7 +10,6 @@ from chainer.functions.connection import linear
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
-import numpy
 
 
 def check_history(self, t, function_type, return_type):
