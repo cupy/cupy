@@ -369,7 +369,7 @@ class FunctionHook(object):
 
     Function hooks that derive :class:`FunctionHook` are required
     to implement four functions:
-    :meth:`~chainer.function.FunctionHook.forward_preprocess`, 
+    :meth:`~chainer.function.FunctionHook.forward_preprocess`,
     :meth:`~chainer.function.FunctionHook.forward_postprocess`,
     :meth:`~chainer.function.FunctionHook.backward_preprocess`, and
     :meth:`~chainer.function.FunctionHook.backward_postprocess`.
