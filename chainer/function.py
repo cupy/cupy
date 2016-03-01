@@ -344,7 +344,7 @@ Invalid operation is performed in: {0} (Forward)
         """Registers the function hook.
 
         Args:
-            hook(~chainer.functions.FunctionHook):
+            hook(~chainer.function.FunctionHook):
                 the function hook to be registered.
             name(str): The name of the function hook.
                 name must be unique among function hooks
@@ -352,11 +352,11 @@ Invalid operation is performed in: {0} (Forward)
                 default name of the function hook is used.
         """
         if not isinstance(hook, FunctionHook):
-            raise TypeError('hook must be a FunctionHook')
+            raise TypeError('Hook must be a FunctionHook')
         if name is None:
             name = hook.name
         if name in self.local_function_hooks:
-            raise KeyError('hook %s already exists' % name)
+            raise KeyError('Hook %s already exists' % name)
         self.local_function_hooks[name] = hook
 
     def delete_hook(self, name):
