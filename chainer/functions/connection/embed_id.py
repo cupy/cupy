@@ -1,6 +1,7 @@
 import numpy
 import six
 
+import chainer
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -22,6 +23,12 @@ class EmbedIDFunction(function.Function):
 
     def forward(self, inputs):
         x, W = inputs
+        if chainer.is_debug():
+            if not ((0 <= x).all() and
+                    (x < len(W)).all()):
+                msg = 'Each `x` value need to satisfty `0 <= x < len(W)`'
+                raise ValueError(msg)
+
         return W.take(x, axis=0),
 
     def backward(self, inputs, grad_outputs):

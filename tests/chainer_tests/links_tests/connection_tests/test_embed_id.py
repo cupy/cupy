@@ -62,4 +62,38 @@ class TestEmbedID(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
+@testing.parameterize(
+    {'t_value': -1, 'valid': False},
+    {'t_value': 3,  'valid': False},
+    {'t_value': 0,  'valid': True},
+)
+class TestEmbedIDValueCheck(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.EmbedID(2, 2)
+        self.t = numpy.array([self.t_value], dtype=numpy.int32)
+        self.original_debug = chainer.is_debug()
+        chainer.set_debug(True)
+
+    def tearDown(self):
+        chainer.set_debug(self.original_debug)
+
+    def check_value_check(self, t_data):
+        t = chainer.Variable(t_data)
+
+        if self.valid:
+            # Check if it throws nothing
+            self.link(t)
+        else:
+            with self.assertRaises(ValueError):
+                self.link(t)
+
+    def test_value_check_cpu(self):
+        self.check_value_check(self.t)
+
+    @attr.gpu
+    def test_value_check_gpu(self):
+        self.check_value_check(self.t)
+
+
 testing.run_module(__name__, __file__)
