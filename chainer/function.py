@@ -1,5 +1,6 @@
 import collections
 import os
+import six
 import traceback
 import weakref
 
@@ -110,13 +111,13 @@ class Function(object):
 
         hooks = collections.OrderedDict(chainer.get_function_hooks())
         hooks.update(self.local_function_hooks)
-        for hook in hooks.values():
+        for hook in six.itervalues(hooks):
             hook.forward_preprocess(self, in_data)
         # Forward prop
         with cuda.get_device(*in_data):
             outputs = self.forward(in_data)
             assert type(outputs) == tuple
-        for hook in hooks.values():
+        for hook in six.itervalues(hooks):
             hook.forward_postprocess(self, in_data)
 
         if chainer.is_debug():
