@@ -66,7 +66,7 @@ build_script:
 
 test_script:
   # Run the project tests
-  - "%CMD_IN_ENV% pip install nose mock flake8 hacking"
+  - "%CMD_IN_ENV% pip install nose mock hacking"
   - "%CMD_IN_ENV% flake8"
   - "%CMD_IN_ENV% nosetests -A \"gpu<1\" tests\\chainer_tests"
 
