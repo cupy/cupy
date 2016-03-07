@@ -107,6 +107,7 @@ def evaluate(dataset):
     # Evaluation routine
     evaluator = model.copy()  # to use different state
     evaluator.predictor.reset_state()  # initialize state
+    evaluator.predictor.train = False  # dropout does nothing
 
     sum_log_perp = 0
     for i in six.moves.range(dataset.size - 1):
