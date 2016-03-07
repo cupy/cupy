@@ -1,14 +1,42 @@
 import numpy
 
-from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer.utils import type_check
 
 
 class Clip(function.Function):
     """Clips (limits) elements of input variable."""
 
-    def __init__(self, x_min, xmax):
+    def __init__(self, x_min, x_max):
+        if not isinstance(x_min, float):
+            raise TypeError('x_min must be float value')
+        if not isinstance(x_max, float):
+            raise TypeError('x_max must be float value')
+        # x_min must be lesser than x_max.
+        assert x_min < x_max
+        self.x_min = x_min
+        self.x_max = x_max
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+        type_check.expect(x_type.dtype == numpy.float32)
+
+    def forward_cpu(self, x):
+        return utils.force_array(
+            numpy.minimum(numpy.maximum(self.x_min, x[0]), self.x_max)
+        ).astype(numpy.float32),
+
+    def backward_cpu(self, x, gy):
+        return utils.force_array(
+            gy[0] * (self.x_min < x[0]) * (x[0] < self.x_max)
+        ).astype(numpy.float32),
+
+    def forward_gpu(self, x):
+        raise NotImplementedError()
+
+    def backward_gpu(self, x, gy):
         raise NotImplementedError()
 
 
