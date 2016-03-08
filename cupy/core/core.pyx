@@ -979,6 +979,8 @@ cdef class ndarray:
                     strides.push_back(self._strides[ndim - 1])
                 else:
                     strides.push_back(self.itemsize)
+            elif ndim <= j:
+                raise IndexError("too many indices for array")
             elif isinstance(s, slice):
                 s = internal.complete_slice(s, self._shape[j])
                 s_start = s.start
