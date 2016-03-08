@@ -35,7 +35,7 @@ class TestCTC(unittest.TestCase):
                 return x[0][l[1]]
             else:
                 return 0.0
-        elif l[u] == self.blank_symbol or l[u] == l[u-2]:
+        elif l[u] == self.blank_symbol or l[u] == l[u - 2]:
             return (x[t][l[u]] *
                     (self.alpha(x, l, t - 1, u - 1) +
                      self.alpha(x, l, t - 1, u)))
@@ -72,7 +72,7 @@ class TestCTC(unittest.TestCase):
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
     def test_forward_cpu(self):
-        self.check_forward(self.t, tuple(x_data for x_data in self.x),
+        self.check_forward(self.t, tuple(self.x),
                            self.l_length, self.x_length)
 
     @attr.gpu
@@ -90,7 +90,7 @@ class TestCTC(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.t, tuple(x_data for x_data in self.x),
+        self.check_backward(self.t, tuple(self.x),
                             self.l_length, self.x_length)
 
     @condition.retry(3)
@@ -110,12 +110,10 @@ class TestCTCWithoutLength(TestCTC):
         self.l = numpy.array([[2, 0, 2, 1, 2],
                               [2, 1, 2, 0, 2]]).astype(numpy.int32)
         self.blank_symbol = 2
-        self.x_length = numpy.full((len(self.x[0]),),
-                                   len(self.x),
-                                   dtype='i')
-        self.l_length = numpy.full((len(self.t),),
-                                   len(self.t[0]),
-                                   dtype='i')
+        self.x_length = numpy.full(
+            (len(self.x[0]),), len(self.x), dtype='i')
+        self.l_length = numpy.full(
+            (len(self.t),), len(self.t[0]), dtype='i')
         self.use_length = False
 
 
@@ -127,12 +125,10 @@ class TestCTCWithLabelPadding(TestCTC):
         self.l = numpy.array([[2, 0, 2, 3, 2],
                               [2, 1, 2, 0, 2]]).astype(numpy.int32)
         self.blank_symbol = 2
-        self.x_length = numpy.full((len(self.x[0]),),
-                                   len(self.x),
-                                   dtype=numpy.int32)
-        self.l_length = numpy.full((len(self.t),),
-                                   len(self.t[0]),
-                                   dtype=numpy.int32)
+        self.x_length = numpy.full(
+            (len(self.x[0]),), len(self.x), dtype=numpy.int32)
+        self.l_length = numpy.full(
+            (len(self.t),), len(self.t[0]), dtype=numpy.int32)
         self.l_length[0] = 1
         self.use_length = True
 
@@ -145,13 +141,11 @@ class TestCTCWithInputPadding(TestCTC):
         self.l = numpy.array([[2, 0, 2, 1, 2],
                               [2, 1, 2, 0, 2]]).astype(numpy.int32)
         self.blank_symbol = 2
-        self.x_length = numpy.full((len(self.x[0]),),
-                                   len(self.x),
-                                   dtype=numpy.int32)
+        self.x_length = numpy.full(
+            (len(self.x[0]),), len(self.x), dtype=numpy.int32)
         self.x_length[0] = 3
-        self.l_length = numpy.full((len(self.t),),
-                                   len(self.t[0]),
-                                   dtype=numpy.int32)
+        self.l_length = numpy.full(
+            (len(self.t),), len(self.t[0]), dtype=numpy.int32)
         self.use_length = True
 
 
@@ -163,14 +157,12 @@ class TestCTCWithAllPadding(TestCTC):
         self.l = numpy.array([[2, 0, 2, 1, 2],
                               [2, 1, 2, 0, 2]]).astype(numpy.int32)
         self.blank_symbol = 2
-        self.x_length = numpy.full((len(self.x[0]),),
-                                   len(self.x),
-                                   dtype=numpy.int32)
+        self.x_length = numpy.full(
+            (len(self.x[0]),), len(self.x), dtype=numpy.int32)
         self.x_length[0] = 3
         self.x_length[1] = 3
-        self.l_length = numpy.full((len(self.t),),
-                                   len(self.t[0]),
-                                   dtype=numpy.int32)
+        self.l_length = numpy.full(
+            (len(self.t),), len(self.t[0]), dtype=numpy.int32)
         self.l_length[0] = 1
         self.l_length[1] = 1
         self.use_length = True
