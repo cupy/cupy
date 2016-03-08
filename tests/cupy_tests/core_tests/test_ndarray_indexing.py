@@ -43,6 +43,9 @@ class TestArrayIndexingParameterized(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'shape': (), 'transpose': None, 'indexes': 0},
+    {'shape': (), 'transpose': None, 'indexes': (slice(0, 1, 0),)},
+    {'shape': (2, 3), 'transpose': None, 'indexes': (0, 0, 0)},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': -3},
     {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': -5},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': 3},
