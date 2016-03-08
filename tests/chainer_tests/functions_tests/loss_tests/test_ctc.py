@@ -64,12 +64,10 @@ class TestCTC(unittest.TestCase):
         loss_expect = 0
         batch_size = xt.shape[0]
         path_length = 2 * l_length + 1
-        for b in range(batch_size):
+        for xtb, lb, xlb, plb in zip(xt, self.l, x_length, path_length):
             loss_expect += -math.log(
-                self.alpha(
-                    xt[b], self.l[b], x_length[b] - 1, path_length[b] - 1) +
-                self.alpha(
-                    xt[b], self.l[b], x_length[b] - 1, path_length[b] - 2))
+                self.alpha(xtb, lb, int(xlb - 1), int(plb - 1)) +
+                self.alpha(xtb, lb, int(xlb - 1), int(plb - 2)))
         loss_expect /= batch_size
         self.assertAlmostEqual(loss_expect, loss_value, places=5)
 
