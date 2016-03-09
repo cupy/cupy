@@ -1680,17 +1680,25 @@ cdef _take_kernel_0axis = ElementwiseKernel(
 
 
 cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
+    if a.ndim == 0:
+        a = a[None]
+
     if axis is None:
         a = a.ravel()
         lshape = ()
         rshape = ()
         adim = 1
+        index_range = a.size
     else:
-        if axis >= a.ndim:
+        if not (-a.ndim <= axis < a.ndim):
             raise ValueError('Axis overrun')
+        if a.ndim != 0:
+            axis %= a.ndim
+
         lshape = a.shape[:axis]
         rshape = a.shape[axis + 1:]
         adim = a.shape[axis]
+        index_range = adim
 
     if numpy.isscalar(indices):
         if axis is not None:
@@ -1698,10 +1706,20 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
         if out is None:
             return a[indices].copy()
         else:
-            out[:] = a[indices]
+            if out.dtype != a.dtype:
+                raise TypeError('Output dtype mismatch')
+            if out.shape != a.shape[1:]:
+                raise ValueError('Output shape mismatch')
+            out[()] = a[indices]
             return out
     elif not isinstance(indices, ndarray):
         indices = array(indices, dtype=int)
+
+    if not ((-index_range <= indices) & (indices < index_range)).all():
+        msg = "Index %s is out of bounds for axis %s with size %s" \
+              % (indices, axis, index_range)
+        raise IndexError(msg)
+    indices %= index_range
 
     out_shape = lshape + indices.shape + rshape
     if out is None:
