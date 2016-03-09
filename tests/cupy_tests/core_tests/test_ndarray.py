@@ -85,6 +85,7 @@ class TestNdarrayTakeWithInt(unittest.TestCase):
         a = testing.shaped_arange(self.shape, xp, dtype)
         return a.take(self.indices, self.axis)
 
+
 @testing.parameterize(
     *testing.product({
         'indices': [2, [0, 1], -1, [-1, -2]],
@@ -104,6 +105,7 @@ class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
         a.take(self.indices, self.axis, out=r2)
         assert (r1 == r2).all()
         return r2
+
 
 @testing.parameterize(
     *testing.product({
@@ -125,8 +127,9 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
         assert (r1 == r2).all()
         return r2
 
+
 @testing.parameterize(
-    {"shape": (3,4,5), "indices": (2,), "axis": 3},
+    {"shape": (3, 4, 5), "indices": (2,), "axis": 3},
     {"shape": (), "indices": (0,), "axis": 2}
 )
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
@@ -139,7 +142,7 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (3,4,5), "indices": (2, 3), "out_shape": (2, 4)},
+    {"shape": (3, 4, 5), "indices": (2, 3), "out_shape": (2, 4)},
     {"shape": (), "indices": 0, "out_shape": (1,)}
 )
 class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
@@ -154,7 +157,7 @@ class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {"shape": (3,4,5), "indices": (2, 3), "out_shape": (2, 3)},
+    {"shape": (3, 4, 5), "indices": (2, 3), "out_shape": (2, 3)},
     {"shape": (), "indices": 0, "out_shape": ()}
 )
 class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
