@@ -1,5 +1,6 @@
 import numpy
 
+from chainer import cuda
 from chainer import function
 from chainer import utils
 from chainer.utils import type_check
@@ -34,10 +35,16 @@ class Clip(function.Function):
         ).astype(numpy.float32),
 
     def forward_gpu(self, x):
-        raise NotImplementedError()
+        return cuda.elementwise(
+            'T x, T x_min, T x_max', 'T y', 'y = min(max(x, x_min), x_max)',
+            'clip_fwd')(x[0], self.x_min, self.x_max),
 
     def backward_gpu(self, x, gy):
-        raise NotImplementedError()
+        gx = cuda.elementwise(
+            'T x, T gy, T x_min, T x_max', 'T gx',
+            'gx = ((x > x_min) & (x < x_max)) ? gy : 0',
+            'clip_bwd')(x[0], gy[0], self.x_min, self.x_max)
+        return gx,
 
 
 def clip(x, x_min, x_max):
