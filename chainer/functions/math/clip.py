@@ -26,7 +26,7 @@ class Clip(function.Function):
 
     def forward_cpu(self, x):
         return utils.force_array(
-            numpy.minimum(numpy.maximum(self.x_min, x[0]), self.x_max)
+            numpy.clip(x[0], self.x_min, self.x_max)
         ).astype(numpy.float32),
 
     def backward_cpu(self, x, gy):
@@ -35,9 +35,7 @@ class Clip(function.Function):
         ).astype(numpy.float32),
 
     def forward_gpu(self, x):
-        return cuda.elementwise(
-            'T x, T x_min, T x_max', 'T y', 'y = min(max(x, x_min), x_max)',
-            'clip_fwd')(x[0], self.x_min, self.x_max),
+        return cuda.clip(x[0], self.x_min, self.x_max),
 
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
