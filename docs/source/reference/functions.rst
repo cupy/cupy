@@ -87,6 +87,7 @@ Mathematical functions
 .. autofunction:: batch_inv
 .. autofunction:: batch_l2_norm_squared
 .. autofunction:: batch_matmul
+.. autofunction:: clip
 .. autofunction:: cos
 .. autofunction:: exp
 .. autofunction:: identity
