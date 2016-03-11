@@ -343,7 +343,7 @@ class GradientMethod(Optimizer):
 
     """Base class of all single gradient-based optimizers.
 
-    This is an extention of the :class:`Optimizer` class. Typical gradient
+    This is an extension of the :class:`Optimizer` class. Typical gradient
     methods that just require the gradient at the current parameter vector on
     an update can be implemented as its child class.
 
