@@ -193,6 +193,8 @@ mintypecode = numpy.mintypecode
 # -----------------------------------------------------------------------------
 take = indexing.indexing.take
 diagonal = indexing.indexing.diagonal
+r_ = indexing.generate.r_
+c_ = indexing.generate.c_
 
 # -----------------------------------------------------------------------------
 # Input and output
