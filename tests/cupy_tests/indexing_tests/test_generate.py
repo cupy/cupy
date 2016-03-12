@@ -17,13 +17,14 @@ class TestGanerate(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_r_2(self, xp):
-        return xp.r_[xp.array([1, 2, 3]), 0, 0, xp.array([4,5,6])]
+        return xp.r_[xp.array([1, 2, 3]), 0, 0, xp.array([4, 5, 6])]
 
     def test_r_3(self, xp):
         with self.assertRaises(NotImplementedError):
             testing.r_[-1:1:6j, [0]*3, 5, 6]
 
-    def test_r_4(self, xp):
+    @testing.for_all_dtypes(name='dtype')
+    def test_r_4(self, xp, dtype):
         a = testing.shaped_arange((1, 3), xp, dtype)
         with self.assertRaises(NotImplementedError):
             testing.r_['-1', a, a]
@@ -38,7 +39,7 @@ class TestGanerate(unittest.TestCase):
 
     def test_r_7(self, xp):
         with self.assertRaises(NotImplementedError):
-            testing.r_['r',[1, 2, 3], [4, 5, 6]]
+            testing.r_['r', [1, 2, 3], [4, 5, 6]]
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
