@@ -265,19 +265,6 @@ def build_and_run(compiler, source, libraries=[],
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def get_numpy_include_path():
-    import six
-    if hasattr(six.moves.builtins, '__NUMPY_SETUP__'):
-        del six.moves.builtins.__NUMPY_SETUP__
-    import numpy
-    six.moves.reload_module(numpy)
-    try:
-        numpy_include = numpy.get_include()
-    except AttributeError:
-        numpy_include = numpy.get_numpy_include()
-    return numpy_include
-
-
 def make_extensions(options, compiler):
 
     """Produce a list of Extension instances which passed to cythonize()."""
@@ -286,7 +273,6 @@ def make_extensions(options, compiler):
     settings = get_compiler_setting()
 
     include_dirs = settings['include_dirs']
-    include_dirs.append(get_numpy_include_path())
 
     settings['include_dirs'] = [
         x for x in include_dirs if path.exists(x)]
