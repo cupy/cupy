@@ -218,7 +218,7 @@ Model-parallel means parallelizations of the computations inside the model.
 In contrast, data-parallel means parallelizations using data sharding.
 In this subsection, we show how to use the model-parallel approach on multiple GPUs in Chainer.
 
-`Recall the MNIST example <mnist_mlp_example>`_.
+:ref:`Recall the MNIST example <mnist_mlp_example>`.
 Now suppose that we want to modify this example by expanding the network to 6 layers with 2000 units each using two GPUs.
 In order to make multi-GPU computation efficient, we only make the two GPUs communicate at the third and sixth layer.
 The overall architecture looks like the following diagram::
