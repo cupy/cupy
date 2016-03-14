@@ -6,18 +6,13 @@ from setuptools import setup
 
 import chainer_setup_build
 
-numpy_version = 'numpy>=1.9.0'
-six_version = 'six>=1.9.0'
-setup_requires = [
-    numpy_version,
-    six_version,
-]
+
 install_requires = [
     'filelock',
     'nose',
-    numpy_version,
+    'numpy>=1.9.0',
     'protobuf',
-    six_version,
+    'six>=1.9.0',
 ]
 
 
@@ -81,7 +76,6 @@ setup(
     },
     zip_safe=False,
     install_requires=install_requires,
-    setup_requires=setup_requires,
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext
