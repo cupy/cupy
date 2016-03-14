@@ -349,7 +349,8 @@ class Variable(object):
                 hook.backward_postprocess(func, in_data, out_grad)
 
             if chainer.is_debug():
-                if any(cuda.get_array_module(gx).isnan(gx).any()
+                if any(gx is not None and
+                       cuda.get_array_module(gx).isnan(gx).any()
                        for gx in gxs):
                     msg = 'NaN is detected on backward computation'
                     raise RuntimeError(msg)
