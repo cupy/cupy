@@ -45,7 +45,7 @@ Here is an instruction to install NumPy with OpneBLAS using `Homebrew <http://br
 If you want to install NumPy with pip, use `site.cfg <https://github.com/numpy/numpy/blob/master/site.cfg.example>`_ file.
 
 You can check if NumPy uses OpenBLAS with ``numpy.show_config`` method.
-Check if `blas_opt_info` refers `openblas`.
+Check if `blas_opt_info` refers to `openblas`.
 
 ::
 
