@@ -7,6 +7,7 @@ from setuptools import setup
 import chainer_setup_build
 
 
+setup_requires = []
 install_requires = [
     'filelock',
     'nose',
@@ -75,6 +76,7 @@ setup(
         'cupy': ['core/carray.cuh'],
     },
     zip_safe=False,
+    setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=['mock',
                    'nose'],
