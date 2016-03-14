@@ -191,6 +191,16 @@ class TestCTCWithAllPadding(TestCTC):
         self.l_length[1] = 1
 
 
+class TestCTCUseVolatile(unittest.TestCase):
+
+    def test_volatile(self):
+        xs_data = numpy.random.uniform(-1, 1, (4, 2, 3)).astype(numpy.float32)
+        t_data = numpy.array([[0, 1], [1, 0]]).astype(numpy.int32)
+        x = [chainer.Variable(x_data, volatile=True) for x_data in xs_data]
+        t = chainer.Variable(t_data, volatile=True)
+        functions.connectionist_temporal_classification(x, t, 2)
+
+
 class TestCTCError(unittest.TestCase):
 
     def test_not_iterable(self):
