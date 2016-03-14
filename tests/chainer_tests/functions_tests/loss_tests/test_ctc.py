@@ -105,67 +105,32 @@ class TestCTC(unittest.TestCase):
 class TestCTCWithoutLength(TestCTC):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 2, 3)).astype(numpy.float32)
-        self.t = numpy.array([[0, 1], [1, 0]]).astype(numpy.int32)
-        self.l = numpy.array([[2, 0, 2, 1, 2],
-                              [2, 1, 2, 0, 2]]).astype(numpy.int32)
-        self.blank_symbol = 2
-        self.x_length = numpy.full(
-            (len(self.x[0]),), len(self.x), dtype='i')
-        self.l_length = numpy.full(
-            (len(self.t),), len(self.t[0]), dtype='i')
+        super(TestCTCWithoutLength, self).setUp()
         self.use_length = False
 
 
 class TestCTCWithLabelPadding(TestCTC):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 2, 3)).astype(numpy.float32)
-        self.t = numpy.array([[0, 3], [1, 0]]).astype(numpy.int32)
-        self.l = numpy.array([[2, 0, 2, 3, 2],
-                              [2, 1, 2, 0, 2]]).astype(numpy.int32)
-        self.blank_symbol = 2
-        self.x_length = numpy.full(
-            (len(self.x[0]),), len(self.x), dtype=numpy.int32)
-        self.l_length = numpy.full(
-            (len(self.t),), len(self.t[0]), dtype=numpy.int32)
+        super(TestCTCWithLabelPadding, self).setUp()
         self.l_length[0] = 1
-        self.use_length = True
 
 
 class TestCTCWithInputPadding(TestCTC):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 2, 3)).astype(numpy.float32)
-        self.t = numpy.array([[0, 1], [1, 0]]).astype(numpy.int32)
-        self.l = numpy.array([[2, 0, 2, 1, 2],
-                              [2, 1, 2, 0, 2]]).astype(numpy.int32)
-        self.blank_symbol = 2
-        self.x_length = numpy.full(
-            (len(self.x[0]),), len(self.x), dtype=numpy.int32)
+        super(TestCTCWithInputPadding, self).setUp()
         self.x_length[0] = 3
-        self.l_length = numpy.full(
-            (len(self.t),), len(self.t[0]), dtype=numpy.int32)
-        self.use_length = True
 
 
 class TestCTCWithAllPadding(TestCTC):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 2, 3)).astype(numpy.float32)
-        self.t = numpy.array([[0, 1], [1, 0]]).astype(numpy.int32)
-        self.l = numpy.array([[2, 0, 2, 1, 2],
-                              [2, 1, 2, 0, 2]]).astype(numpy.int32)
-        self.blank_symbol = 2
-        self.x_length = numpy.full(
-            (len(self.x[0]),), len(self.x), dtype=numpy.int32)
+        super(TestCTCWithAllPadding, self).setUp()
         self.x_length[0] = 3
         self.x_length[1] = 3
-        self.l_length = numpy.full(
-            (len(self.t),), len(self.t[0]), dtype=numpy.int32)
         self.l_length[0] = 1
         self.l_length[1] = 1
-        self.use_length = True
 
 
 class TestCTCError(unittest.TestCase):
