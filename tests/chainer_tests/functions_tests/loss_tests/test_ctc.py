@@ -127,10 +127,8 @@ class TestCTCWithAllPadding(TestCTC):
 
     def setUp(self):
         super(TestCTCWithAllPadding, self).setUp()
-        self.x_length[0] = 3
-        self.x_length[1] = 3
-        self.l_length[0] = 1
-        self.l_length[1] = 1
+        self.x_length[...] = 3
+        self.l_length[...] = 1
 
 
 class TestCTCError(unittest.TestCase):
