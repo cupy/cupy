@@ -17,23 +17,23 @@ cdef class CInt8(CPointer):
     cdef:
         stdint.int8_t val
 
-    def __init__(self,  stdint.int8_t v):
+    def __init__(self, stdint.int8_t v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
 cdef class CInt16(CPointer):
     cdef:
-         stdint.int16_t val
+        stdint.int16_t val
 
-    def __init__(self,  stdint.int16_t v):
+    def __init__(self, stdint.int16_t v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
 cdef class CInt32(CPointer):
     cdef:
-         stdint.int32_t val
+        stdint.int32_t val
 
     def __init__(self, stdint.int32_t v):
         self.val = v
@@ -42,7 +42,7 @@ cdef class CInt32(CPointer):
 
 cdef class CInt64(CPointer):
     cdef:
-         stdint.int64_t val
+        stdint.int64_t val
 
     def __init__(self, stdint.int64_t v):
         self.val = v
