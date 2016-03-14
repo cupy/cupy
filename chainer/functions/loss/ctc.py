@@ -35,8 +35,8 @@ def _log_dot(prob, rr, xp):
 
 def _move_label_to_back(path, path_length, xp):
     s1 = path.shape[1]  # TODO(okuta): Change name
-    index = (xp.arange(0, path.size, s1, dtype=numpy.int32)[:, None]
-             + (xp.arange(s1) + path_length[:, None])[:, ::-1] % s1)
+    index = (xp.arange(0, path.size, s1, dtype=numpy.int32)[:, None] +
+             (xp.arange(s1) + path_length[:, None])[:, ::-1] % s1)
     return xp.take(path, index)
 
 
@@ -177,8 +177,8 @@ class ConnectionistTemporalClassification(function.Function):
         # backward computation.
         ps1 = path.shape[1]
         backward_prob_index = (
-            xp.arange(0, path.size, ps1, dtype=numpy.int32)[:, None]
-            + (xp.arange(ps1) - self.path_length[:, None]) % ps1)
+            xp.arange(0, path.size, ps1, dtype=numpy.int32)[:, None] +
+            (xp.arange(ps1) - self.path_length[:, None]) % ps1)
         for i, y_inv in enumerate(yseq_inv):
             # calc backward probability
             backward_prob = _log_dot(backward_prob[:, None, :], brr, xp)
