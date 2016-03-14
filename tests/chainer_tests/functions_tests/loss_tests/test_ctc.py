@@ -49,7 +49,7 @@ class TestCTC(unittest.TestCase):
         x = tuple(chainer.Variable(x_data) for x_data in xs_data)
         t = chainer.Variable(t_data)
 
-        args = (x, t, 2)
+        args = (x, t, self.blank_symbol)
         if self.use_length:
             args += (chainer.Variable(x_length), chainer.Variable(l_length))
         loss = functions.connectionist_temporal_classification(*args)
