@@ -130,6 +130,8 @@ with open('ptb.train.txt') as f:
                 index2word[ind] = word
             counts[word2index[word]] += 1
             dataset.append(word2index[word])
+            if args.test and len(dataset) >= 100:
+                break
         if args.test and len(dataset) >= 100:
             break
 
