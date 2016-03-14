@@ -615,6 +615,7 @@ class ChainList(Link):
 
     def copy(self):
         ret = super(ChainList, self).copy()
+        ret._children = list(ret._children)  # copy
         children = ret._children
         for i, child in enumerate(children):
             child = child.copy()
