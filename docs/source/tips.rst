@@ -33,8 +33,8 @@ We are suspecting it is caused by vecLib, that is a default BLAS library install
 
 We recommend to use other BLAS libraries such as `OpenBLAS <http://www.openblas.net/>`_.
 We empirically found that it fixes this problem.
-Please reinstall NumPy with other BLAS library.
-Here is a instruction to install NumPy with OpneBLAS using `Homebrew <http://brew.sh/>`_.
+It is necessary to reinstall NumPy to use replaced BLAS library.
+Here is an instruction to install NumPy with OpneBLAS using `Homebrew <http://brew.sh/>`_.
 
 ::
 
@@ -44,7 +44,8 @@ Here is a instruction to install NumPy with OpneBLAS using `Homebrew <http://bre
 
 If you want to install NumPy with pip, use `site.cfg <https://github.com/numpy/numpy/blob/master/site.cfg.example>`_ file.
 
-After that, you can check if NumPy uses OpenBLAS with ``numpy.show_config`` method.
+You can check if NumPy uses OpenBLAS with ``numpy.show_config`` method.
+Check if `blas_opt_info` refers `openblas`.
 
 ::
 
@@ -72,6 +73,5 @@ After that, you can check if NumPy uses OpenBLAS with ``numpy.show_config`` meth
        language = c
    blas_mkl_info:
        NOT AVAILABLE
-
 
 See detail about this problem in `issue #704 <https://github.com/pfnet/chainer/issues/704>`_.
