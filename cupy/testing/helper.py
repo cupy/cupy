@@ -60,7 +60,7 @@ numpy
 def _make_positive_indices(self, impl, args, kw):
     ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
     for k in ks:
-        kw[k] = numpy.int64
+        kw[k] = numpy.intp
     mask = cupy.asnumpy(impl(self, *args, **kw)) >= 0
     return numpy.nonzero(mask)
 

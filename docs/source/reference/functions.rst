@@ -28,11 +28,13 @@ Activation functions
 .. autofunction:: clipped_relu
 .. autofunction:: elu
 .. autofunction:: leaky_relu
+.. autofunction:: log_softmax
 .. autofunction:: lstm
 .. autofunction:: maxout
 .. autofunction:: prelu
 .. autofunction:: relu
 .. autofunction:: sigmoid
+.. autofunction:: slstm
 .. autofunction:: softmax
 .. autofunction:: softplus
 .. autofunction:: tanh
@@ -112,3 +114,4 @@ Spatial pooling
 .. autofunction:: average_pooling_2d
 .. autofunction:: max_pooling_2d
 .. autofunction:: spatial_pyramid_pooling_2d
+.. autofunction:: unpooling_2d

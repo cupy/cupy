@@ -1,7 +1,9 @@
 import unittest
 
+import mock
 import numpy
 
+import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
@@ -44,6 +46,34 @@ class TestReLUZeroDim(TestReLU):
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestTanhCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.x = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.gy = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        return functions.relu(x, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.activationForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.activationBackward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)

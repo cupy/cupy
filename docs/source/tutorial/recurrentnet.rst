@@ -48,7 +48,7 @@ Then, call on this instance ``l(x)`` executes *one step of LSTM layer*:
 Do not forget to reset the internal state of the LSTM layer before the forward computation!
 Every recurrent layer holds its internal state (i.e. the output of the previous call).
 At the first application of the recurrent layer, you must reset the internal state.
-Then, the next input can be direclty fed to the LSTM instance:
+Then, the next input can be directly fed to the LSTM instance:
 
 .. doctest::
 

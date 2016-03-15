@@ -32,7 +32,7 @@ def _inv_gpu(b):
     cuda.cublas.sgetriBatched(
         handle, n, ap.data.ptr, lda, p.data.ptr, cp.data.ptr, ldc,
         info.data.ptr, n_matrices)
-    return c
+    return c, info
 
 
 class Inv(function.Function):
@@ -52,7 +52,7 @@ class Inv(function.Function):
 
     def forward_gpu(self, x):
         shape = x[0].shape
-        self.invx = _inv_gpu(x[0].reshape(1, *shape)).reshape(shape)
+        self.invx = _inv_gpu(x[0].reshape(1, *shape))[0].reshape(shape)
         return self.invx,
 
     def backward(self, x, gy):
@@ -80,7 +80,7 @@ class BatchInv(function.Function):
         return self.invx,
 
     def forward_gpu(self, x):
-        self.invx = _inv_gpu(x[0])
+        self.invx, _ = _inv_gpu(x[0])
         return self.invx,
 
     def backward_cpu(self, x, gy):

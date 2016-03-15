@@ -1,6 +1,7 @@
 import numpy
 import six
 
+import chainer
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -22,21 +23,27 @@ class SelectItem(function.Function):
             x_type.shape[0] == t_type.shape[0],
         )
 
-    def forward_cpu(self, inputs):
+    def forward(self, inputs):
         x, t = inputs
-        # This code is equivalent to `t.choose(x.T)`, but `numpy.choose`
-        # does not work when `x.shape[1] > 32`.
-        return x[six.moves.range(t.size), t],
+        if chainer.is_debug():
+            if not ((0 <= t).all() and
+                    (t < x.shape[1]).all()):
+                msg = 'Each label `t` need to satisfty `0 <= t < x.shape[1]`'
+                raise ValueError(msg)
 
-    def forward_gpu(self, inputs):
-        x, t = inputs
-        y = cuda.elementwise(
-            'S t, raw T x',
-            'T y',
-            'int ind[] = {i, t}; y = x[ind];',
-            'getitem_fwd'
-        )(t, x)
-        return y,
+        xp = cuda.get_array_module(x)
+        if xp is numpy:
+            # This code is equivalent to `t.choose(x.T)`, but `numpy.choose`
+            # does not work when `x.shape[1] > 32`.
+            return x[six.moves.range(t.size), t],
+        else:
+            y = cuda.elementwise(
+                'S t, raw T x',
+                'T y',
+                'int ind[] = {i, t}; y = x[ind];',
+                'getitem_fwd'
+            )(t, x)
+            return y,
 
     def backward_cpu(self, inputs, grad_outputs):
         x, t = inputs

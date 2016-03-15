@@ -166,7 +166,7 @@ class Optimizer(object):
         gradients. The implementation might call ``lossfun`` more than once.
 
         If ``lossfun`` is not given, then this method assumes that the
-        gardients of all parameters are already computed. An implementation
+        gradients of all parameters are already computed. An implementation
         that requires multiple gradient computations might raise an error on
         this case.
 
@@ -343,7 +343,7 @@ class GradientMethod(Optimizer):
 
     """Base class of all single gradient-based optimizers.
 
-    This is an extention of the :class:`Optimizer` class. Typical gradient
+    This is an extension of the :class:`Optimizer` class. Typical gradient
     methods that just require the gradient at the current parameter vector on
     an update can be implemented as its child class.
 

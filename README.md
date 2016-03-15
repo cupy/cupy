@@ -3,6 +3,7 @@
 [![GitHub license](https://img.shields.io/github/license/pfnet/chainer.svg)](https://github.com/pfnet/chainer)
 [![travis](https://img.shields.io/travis/pfnet/chainer.svg)](https://travis-ci.org/pfnet/chainer)
 [![coveralls](https://img.shields.io/coveralls/pfnet/chainer.svg)](https://coveralls.io/github/pfnet/chainer)
+[![Read the Docs](https://readthedocs.org/projects/chainer/badge/?version=stable)](http://docs.chainer.org/en/stable/?badge=stable)
 
 # Chainer: a neural network framework
 
@@ -11,7 +12,7 @@
 Chainer is tested on Ubuntu 14.04 and CentOS 7. We recommend them to use Chainer, though it may run on other systems as well.
 
 Minimum requirements:
-- Python 2.7.6+, 3.4.3+, 3.5.0+
+- Python 2.7.6+, 3.4.3+, 3.5.1+
 - NumPy 1.9, 1.10
 - Six 1.9
 
@@ -19,9 +20,9 @@ Requirements for some features:
 - CUDA support
   - CUDA 6.5, 7.0, 7.5
   - filelock
-  - g++
+  - g++ 4.8.4+
 - cuDNN support
-  - cuDNN v2, v3
+  - cuDNN v2, v3, v4
 - Caffe model support
   - Python 2.7.6+ (Py3 is not supported)
   - Protocol Buffers (pip install protobuf)

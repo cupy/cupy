@@ -11,7 +11,7 @@ We recommend these platforms.
 * `Ubuntu <http://www.ubuntu.com/>`_ 14.04 LTS 64bit
 * `CentOS <https://www.centos.org/>`_ 7 64bit
 
-Chainer is supported on Python 2.7.6+, 3.4.3+, 3.5.0+.
+Chainer is supported on Python 2.7.6+, 3.4.3+, 3.5.1+.
 Chainer uses C++ compiler such as g++.
 You need to install it before installing Chainer.
 This is typical installation method for each platform::
@@ -32,7 +32,7 @@ Install Chainer
 
 Chainer depends on these Python packages:
 
-* `Numpy <http://www.numpy.org/>`_ 1.9, 1.10
+* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10
 * `Six <https://pythonhosted.org/six/>`_ 1.9
 
 CUDA support
@@ -42,7 +42,7 @@ CUDA support
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4
 
 Caffe model support
 
@@ -122,12 +122,12 @@ We recommend you to install cuDNN to CUDA directory.
 For example if you uses Ubuntu linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
   $ cp /path/to/cudnn.h $CUDA_PATH/include
-  $ cp /path/to/cudnn.so $CUDA_PATH/lib64
+  $ cp /path/to/libcudnn.so* $CUDA_PATH/lib64
 
 The destination directories depend on your environment.
 
 
-Install Chainer for developes
+Install Chainer for developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Chainer uses Cython (>=0.23).
@@ -170,7 +170,7 @@ Use pip to uninstall Chainer::
 .. note::
 
    When you upgrade Chainer, ``pip`` sometimes installed various version of Chainer in ``site-packages``.
-   Plese uninstall it repeatedly until ``pip`` returns an error.
+   Please uninstall it repeatedly until ``pip`` returns an error.
 
 
 Upgrade Chainer

@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -12,6 +13,17 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+def _asfortranarray(x):
+    xp = cuda.get_array_module(x)
+    if xp is numpy:
+        return xp.asfortranarray(x)
+    else:
+        return xp.ascontiguousarray(x.T).T
+
+
+@testing.parameterize(*testing.product({
+    'c_contiguous': [True, False],
+}))
 class TestConvolution2DFunction(unittest.TestCase):
 
     def setUp(self, use_cudnn=True):
@@ -61,6 +73,20 @@ class TestConvolution2DFunction(unittest.TestCase):
         self.test_forward_consistency(nobias=True)
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
+        if not self.c_contiguous:
+            x_data = _asfortranarray(x_data)
+            W_data = _asfortranarray(W_data)
+            y_grad = _asfortranarray(y_grad)
+            self.assertFalse(x_data.flags.c_contiguous)
+            self.assertFalse(W_data.flags.c_contiguous)
+            self.assertFalse(y_grad.flags.c_contiguous)
+            if b_data is not None:
+                xp = cuda.get_array_module(b_data)
+                b = xp.empty((len(b_data) * 2,), dtype=self.b.dtype)
+                b[::2] = b_data
+                b_data = b[::2]
+                self.assertFalse(b_data.flags.c_contiguous)
+
         args = (x_data, W_data)
         if b_data is not None:
             args = args + (b_data,)
@@ -103,6 +129,49 @@ class TestConvolution2DFunction(unittest.TestCase):
         self.use_cudnn = False
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             None, cuda.to_gpu(self.gy))
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestConvolution2DCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        in_channels = 3
+        out_channels = 2
+        kh, kw = (3, 3)
+        self.stride = 2
+        self.pad = 1
+        self.x = cuda.cupy.random.uniform(
+            -1, 1, (2, 3, 4, 3)).astype(numpy.float32)
+        self.W = cuda.cupy.random.normal(
+            0, numpy.sqrt(1. / (kh * kw * in_channels)),
+            (out_channels, in_channels, kh, kw)).astype(numpy.float32)
+        self.gy = cuda.cupy.random.uniform(
+            -1, 1, (2, 2, 2, 2)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        W = chainer.Variable(self.W)
+        return functions.convolution_2d(
+            x, W, None, stride=self.stride, pad=self.pad,
+            use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        v2 = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
+        v3 = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
+        with mock.patch(v2) as func_v2, mock.patch(v3) as func_v3:
+            y.backward()
+            self.assertEqual(func_v2.called or func_v3.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)

@@ -7,15 +7,14 @@ from setuptools import setup
 import chainer_setup_build
 
 
-setup_requires = [
-    'numpy>=1.9.0',
-]
+setup_requires = []
 install_requires = [
     'filelock',
     'nose',
     'numpy>=1.9.0',
     'protobuf',
-    'six>=1.9.0']
+    'six>=1.9.0',
+]
 
 
 # Hack for Read the Docs
@@ -29,7 +28,7 @@ chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.6.0',
+    version='1.7.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -77,8 +76,8 @@ setup(
         'cupy': ['core/carray.cuh'],
     },
     zip_safe=False,
-    install_requires=install_requires,
     setup_requires=setup_requires,
+    install_requires=install_requires,
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext

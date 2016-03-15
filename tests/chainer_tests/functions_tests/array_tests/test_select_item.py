@@ -56,4 +56,39 @@ class TestSelectItem(unittest.TestCase):
                             cuda.to_gpu(self.gy_data))
 
 
+@testing.parameterize(
+    {'t_value': -1, 'valid': False},
+    {'t_value': 3,  'valid': False},
+    {'t_value': 0,  'valid': True},
+)
+class TestSelectItemValueCheck(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (1, 2)).astype(numpy.float32)
+        self.t = numpy.array([self.t_value], dtype=numpy.int32)
+        self.original_debug = chainer.is_debug()
+        chainer.set_debug(True)
+
+    def tearDown(self):
+        chainer.set_debug(self.original_debug)
+
+    def check_value_check(self, x_data, t_data):
+        x = chainer.Variable(x_data)
+        t = chainer.Variable(t_data)
+
+        if self.valid:
+            # Check if it throws nothing
+            functions.select_item(x, t)
+        else:
+            with self.assertRaises(ValueError):
+                functions.select_item(x, t)
+
+    def test_value_check_cpu(self):
+        self.check_value_check(self.x, self.t)
+
+    @attr.gpu
+    def test_value_check_gpu(self):
+        self.check_value_check(self.x, self.t)
+
+
 testing.run_module(__name__, __file__)
