@@ -3,6 +3,7 @@ import unittest
 import numpy
 
 from cupy import core
+from cupy import get_array_module
 from cupy import testing
 
 
@@ -26,6 +27,13 @@ class TestGetSize(unittest.TestCase):
     def test_float(self):
         with self.assertRaises(ValueError):
             core.get_size(1.0)
+
+
+def wrap_take(array, *args, **kwargs):
+    if get_array_module(array) == numpy:
+        kwargs["mode"] = "wrap"
+
+    return array.take(*args, **kwargs)
 
 
 @testing.parameterize(
@@ -66,7 +74,7 @@ class TestNdarrayTake(unittest.TestCase):
         else:
             m = a.shape[self.axis]
         i = testing.shaped_arange(self.indices_shape, xp, numpy.int32) % m
-        return a.take(i, self.axis)
+        return wrap_take(a, i, self.axis)
 
 
 @testing.parameterize(
@@ -83,7 +91,7 @@ class TestNdarrayTakeWithInt(unittest.TestCase):
     @testing.numpy_cupy_array_equal(accept_error=False)
     def test_take(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        return a.take(self.indices, self.axis)
+        return wrap_take(a, self.indices, self.axis)
 
 
 @testing.parameterize(
@@ -100,10 +108,10 @@ class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
     @testing.numpy_cupy_array_equal(accept_error=False)
     def test_take(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        r1 = a.take(self.indices, self.axis)
+        r1 = wrap_take(a, self.indices, self.axis)
         r2 = xp.zeros_like(r1)
-        a.take(self.indices, self.axis, out=r2)
-        assert (r1 == r2).all()
+        wrap_take(a, self.indices, self.axis, out=r2)
+        testing.assert_array_equal(r1, r2)
         return r2
 
 
@@ -121,10 +129,10 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
     @testing.numpy_cupy_array_equal(accept_error=False)
     def test_take(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        r1 = a.take(self.indices, self.axis)
+        r1 = wrap_take(a, self.indices, self.axis)
         r2 = xp.zeros_like(r1)
-        a.take(self.indices, self.axis, out=r2)
-        assert (r1 == r2).all()
+        wrap_take(a, self.indices, self.axis, out=r2)
+        testing.assert_array_equal(r1, r2)
         return r2
 
 
@@ -138,7 +146,7 @@ class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
     @testing.numpy_cupy_raises()
     def test_axis_overrun(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        a.take(self.indices, axis=self.axis)
+        wrap_take(a, self.indices, axis=self.axis)
 
 
 @testing.parameterize(
@@ -153,7 +161,7 @@ class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
         a = testing.shaped_arange(self.shape, xp, dtype)
         i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
         o = testing.shaped_arange(self.out_shape, xp, dtype)
-        a.take(i, out=o)
+        wrap_take(a, i, out=o)
 
 
 @testing.parameterize(
@@ -167,4 +175,4 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
         a = testing.shaped_arange(self.shape, xp, numpy.int32)
         i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
         o = testing.shaped_arange(self.out_shape, xp, numpy.float32)
-        a.take(i, out=o)
+        wrap_take(a, i, out=o)

@@ -1660,21 +1660,24 @@ right_shift = _create_bit_op(
 # -----------------------------------------------------------------------------
 
 cdef _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, int32 cdim, int32 rdim, int32 adim',
+    'raw T a, S indices, int32 cdim, int32 rdim, int32 adim, S index_range',
     'T out',
     '''
+      S wrap_indices = (indices - _floor_divide(indices, index_range) * index_range) * (index_range != 0);
+
       int li = i / (rdim * cdim);
       int ri = i % rdim;
-      out = a[(li * adim + indices) * rdim + ri];
+      out = a[(li * adim + wrap_indices) * rdim + ri];
     ''',
     'cupy_take')
 
 
 cdef _take_kernel_0axis = ElementwiseKernel(
-    'raw T a, S indices, int32 rdim',
+    'raw T a, S indices, int32 rdim, S index_range',
     'T out',
     '''
-      out = a[indices * rdim + i % rdim];
+      S wrap_indices = (indices - _floor_divide(indices, index_range) * index_range) * (index_range != 0);
+      out = a[wrap_indices * rdim + i % rdim];
     ''',
     'cupy_take_0axis')
 
@@ -1701,6 +1704,7 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
         index_range = adim
 
     if numpy.isscalar(indices):
+        indices %= index_range
         if axis is not None:
             a = rollaxis(a, axis)
         if out is None:
@@ -1714,12 +1718,6 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
             return out
     elif not isinstance(indices, ndarray):
         indices = array(indices, dtype=int)
-
-    if not ((-index_range <= indices) & (indices < index_range)).all():
-        msg = "Index %s is out of bounds for axis %s with size %s" \
-              % (indices, axis, index_range)
-        raise IndexError(msg)
-    indices %= index_range
 
     out_shape = lshape + indices.shape + rshape
     if out is None:
@@ -1735,9 +1733,9 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     indices = indices.reshape(
         (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
     if axis == 0 or axis is None:
-        return _take_kernel_0axis(a.reduced_view(), indices, rdim, out)
+        return _take_kernel_0axis(a.reduced_view(), indices, rdim, index_range, out)
     else:
-        return _take_kernel(a.reduced_view(), indices, cdim, rdim, adim, out)
+        return _take_kernel(a.reduced_view(), indices, cdim, rdim, adim, index_range, out)
 
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
