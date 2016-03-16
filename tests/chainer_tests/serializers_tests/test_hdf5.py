@@ -238,6 +238,13 @@ class TestGroupHierachy(unittest.TestCase):
 
     def test_load_chain(self):
         with h5py.File(self.temp_file_path) as h5:
+            self._save(h5, self.parent, 'test')
+
+        with h5py.File(self.temp_file_path) as h5:
+            self._load(h5, self.parent, 'test')
+
+    def test_load_optimizer(self):
+        with h5py.File(self.temp_file_path) as h5:
             self._save(h5, self.optimizer, 'test')
 
         with h5py.File(self.temp_file_path) as h5:
