@@ -57,7 +57,7 @@ class Function(object):
            x <-+
                |--- g <--- z
 
-       Note that the branching is correctly managed on backward compuatation,
+       Note that the branching is correctly managed on backward computation,
        i.e. the gradients from ``f`` and ``g`` are accumulated to the gradient
        of ``x``.
 
