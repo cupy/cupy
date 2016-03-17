@@ -315,7 +315,7 @@ class Variable(object):
         seen_vars = set()
         need_copy = set()
 
-        # Initilize error by 1, if this is a loss variable
+        # Initialize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
             with cuda.get_device(self.data) as device:
                 if device is cuda.DummyDevice:
@@ -365,7 +365,7 @@ class Variable(object):
 
                 _check_grad_type(func, x, gx)
 
-                # Accumulate the graident to x. It is a bit tricky to handle
+                # Accumulate the gradient to x. It is a bit tricky to handle
                 # branches and parameter gradient accumulation correctly.
                 with cuda.get_device(gx):
                     id_x = id(x)
