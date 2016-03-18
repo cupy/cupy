@@ -35,7 +35,7 @@ class Clip(function.Function):
         ).astype(numpy.float32),
 
     def forward_gpu(self, x):
-        return cuda.clip(x[0], self.x_min, self.x_max),
+        return cuda.cupy.clip(x[0], self.x_min, self.x_max),
 
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
