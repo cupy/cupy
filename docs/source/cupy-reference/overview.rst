@@ -79,7 +79,7 @@ Array conversion
 :meth:`~ndarray.fill`
 
 Shape manipulation
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 :meth:`~ndarray.reshape`
 :meth:`~ndarray.transpose`
@@ -205,7 +205,7 @@ Array creation routines
 :func:`diagflat`
 
 Array manipulation routines
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :func:`copyto`
 

@@ -39,7 +39,7 @@ Learnable connections
    :members:
 
 Activation/loss/normalization functions with parameters
---------------------------------------------------------
+-------------------------------------------------------
 .. autoclass:: BatchNormalization
    :members:
 .. autoclass:: BinaryHierarchicalSoftmax

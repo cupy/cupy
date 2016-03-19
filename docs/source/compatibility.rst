@@ -11,7 +11,7 @@ Note that this document may contain ambiguities on the level of supported compat
 
 
 Targeted Versions
-------------------
+-----------------
 
 This policy is applied to Chainer of versions v1.5.1 and higher.
 Note that this policy is not applied to Chainer of lower versions.
