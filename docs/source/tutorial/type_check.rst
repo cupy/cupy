@@ -145,7 +145,7 @@ In the same way, ``x_type.shape[0].eval()`` returns an int value.
 
 
 More powerful methods
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 :class:`utils.type_check.Expr` class is more powerful.
 It supports all mathematical operators such as ``+`` and ``*``.
