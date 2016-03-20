@@ -34,7 +34,7 @@ before_install:
       brew outdated pyenv || brew upgrade --quiet pyenv;
       brew install homebrew/boneyard/pyenv-pip-rehash;
 
-      pyenv install -ks $PYTHON_VERSION;
+      PYTHON_CONFIGURE_OPTS="--enable-unicode=ucs2" pyenv install -ks $PYTHON_VERSION;
       pyenv global $PYTHON_VERSION;
       python --version;
 
