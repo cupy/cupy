@@ -59,18 +59,21 @@ class NegativeSamplingFunction(function.Function):
         self._make_samples(t)
 
         self.wx = cuda.elementwise(
-            'raw T W, raw T x, S k, int32 c, int32 m', 'T wx',
+            'raw T W, raw T x, bool mask, S k, int32 c, int32 m', 'T wx',
             '''
             T f = 0;
-            for (int j = 0; j < c; ++j) {
-              int x_ind[] = {(i / m), j};
-              int w_ind[] = {k, j};
-              f += x[x_ind] * W[w_ind];
+            if (mask == 1){
+                for (int j = 0; j < c; ++j) {
+                  int x_ind[] = {(i / m), j};
+                  int w_ind[] = {k, j};
+                  f += x[x_ind] * W[w_ind];
+                }
             }
             wx = f;
             ''',
             'negative_sampling_wx'
-        )(W, x, self.samples, n_in, self.sample_size + 1)
+            )(W, x, self.ignore_mask[:, None], self.samples, n_in,
+              self.sample_size + 1)
 
         y = cuda.elementwise(
             'T wx, int32 c, int32 m', 'T y',
@@ -90,7 +93,7 @@ class NegativeSamplingFunction(function.Function):
             'negative_sampling_forward'
         )(self.wx, n_in, self.sample_size + 1)
         # TODO(okuta): merge elementwise
-        loss = cuda.cupy.sum(y * self.ignore_mask)
+        loss = cuda.cupy.sum(y * self.ignore_mask[:, None].astype('float32'))
         return loss,
 
     def backward_cpu(self, inputs, grads):
@@ -136,29 +139,35 @@ class NegativeSamplingFunction(function.Function):
         )(self.wx, gloss, self.sample_size + 1)
         gx = cupy.zeros_like(x)
         cuda.elementwise(
-            'raw T g, raw T W, raw S k, int32 c, int32 m', 'T gx',
+            'raw T g, raw T W, bool mask, raw S k, int32 c, int32 m', 'T gx',
             '''
             int d = i / c;
             T w = 0;
-            for (int j = 0; j < m; ++j) {
-              w += g[d * m + j] * W[k[d * m + j] * c + i % c];
+            if (mask == 1){
+                for (int j = 0; j < m; ++j) {
+                  w += g[d * m + j] * W[k[d * m + j] * c + i % c];
+                }
             }
             gx = w;
             ''',
             'negative_sampling_calculate_gx'
-        )(g, W, self.samples, n_in, self.sample_size + 1, gx)
+            )(g, W, self.ignore_mask[:, None], self.samples, n_in,
+              self.sample_size + 1, gx)
         gW = cupy.zeros_like(W)
         cuda.elementwise(
-            'T g, raw T x, S k, int32 mask, int32 c, int32 m',
+            'T g, raw T x, S k, bool mask, int32 c, int32 m',
             'raw T gW',
             '''
             T gi = g;
-            for (int j = 0; j < c; ++j) {
-              atomicAdd(&gW[k * c + j], gi * x[(i / m) * c + j]);
+            if (mask == 1) {
+                for (int j = 0; j < c; ++j) {
+                  atomicAdd(&gW[k * c + j], gi * x[(i / m) * c + j]);
+                }
             }
             ''',
             'negative_sampling_calculate_gw'
-        )(g, x, self.samples, self.ignore_mask, n_in, self.sample_size + 1, gW)
+            )(g, x, self.samples, self.ignore_mask[:, None], n_in,
+              self.sample_size + 1, gW)
         return gx, None, gW
 
 

@@ -42,6 +42,7 @@ class TestNegativeSampling(unittest.TestCase):
             cuda.to_cpu(gx), cuda.to_cpu(x.grad), atol=1.e-4)
         gradient_check.assert_allclose(
             cuda.to_cpu(gW), cuda.to_cpu(W.grad), atol=1.e-4)
+        return x.grad, W.grad
 
     @attr.gpu
     @condition.retry(3)
@@ -65,6 +66,7 @@ class TestNegativeSampling(unittest.TestCase):
         self.assertEqual(y_g.data.shape, ())
 
         gradient_check.assert_allclose(y.data, y_g.data, atol=1.e-4)
+        return y.data, y_g.data
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -84,6 +86,66 @@ class TestNegativeSampling(unittest.TestCase):
         self.assertTrue(self.link.sampler.use_gpu)
         self.link.to_cpu()
         self.assertFalse(self.link.sampler.use_gpu)
+
+    @attr.gpu
+    def test_backward_cpu_gpu(self):
+        x = chainer.Variable(self.x)
+        t = chainer.Variable(self.t)
+        y = self.link(x, t)
+        y.backward()
+
+        # fix samples
+        negative_sampling.NegativeSamplingFunction.samples = cuda.to_gpu(
+            y.creator.samples)
+        self.link.to_gpu()
+        del negative_sampling.NegativeSamplingFunction.samples
+        xg = chainer.Variable(cuda.to_gpu(self.x))
+        tg = chainer.Variable(cuda.to_gpu(self.t))
+        y_g = self.link(xg, tg)
+        y_g.backward()
+
+        gradient_check.assert_allclose(x.grad, xg.grad, atol=1.e-4)
+
+
+class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
+    def setUp(self):
+        # Create two identical datasets except that 2nd dataset has the
+        # negative targets explicitly removed. Both cases should have identical
+        # outcomes.
+        self.link = links.NegativeSampling(3, [10, 5, 2, 5, 2], 2)
+        self.link.zerograds()
+        self.x = numpy.random.uniform(-1, 1, (3, 3)).astype(numpy.float32)
+        self.t = numpy.array([-1, 1, 2]).astype(numpy.int32)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.idx = self.t > -1
+        self.x0 = self.x.copy()[self.idx]
+        self.t0 = self.t.copy()[self.idx]
+        self.gy0 = self.gy.copy()
+
+    def test_ignore_forward(self):
+        # Ensure that the loss when an ignore target is included is the same
+        # as when it is excluded explicitly.
+        x = chainer.Variable(self.link.xp.asarray(self.x))
+        t = chainer.Variable(self.link.xp.asarray(self.t))
+        y = self.link(x, t)
+        x0 = chainer.Variable(self.link.xp.asarray(self.x0))
+        t0 = chainer.Variable(self.link.xp.asarray(self.t0))
+        y0 = self.link(x0, t0)
+        gradient_check.assert_allclose(y.data, y0.data, atol=1.e-4)
+
+    @attr.gpu
+    def test_ignore_forward_gpu(self):
+        self.test_ignore_forward()
+
+    @attr.gpu
+    def test_ignore_backward(self):
+        # Ensure that the gradient when an ignore target is included is the
+        # same as when it is excluded explicitly.
+        gx, gw = self.check_backward(self.x, self.t, self.gy)
+        self.link.zerograds()
+        gx0, gw0 = self.check_backward(self.x0, self.t0, self.gy0)
+        gradient_check.assert_allclose(gx[self.idx, :], gx0, atol=1.e-4)
+        gradient_check.assert_allclose(gw, gw0, atol=1.e-4)
 
 
 testing.run_module(__name__, __file__)
