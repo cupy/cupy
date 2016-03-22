@@ -16,11 +16,11 @@ class TestClip(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         # Avoid values around x_min and x_max for stability of numerical
         # gradient
-        for i in range(self.x.size):
-            if -0.76 < self.x.flat[i] < -0.74:
-                self.x.flat[i] = -0.5
-            elif 0.74 < self.x.flat[i] < 0.76:
-                self.x.flat[i] = 0.5
+        for i, j in numpy.ndindex(self.x.shape):
+            if -0.76 < self.x[i][j] < -0.74:
+                self.x[i][j] = -0.5
+            elif 0.74 < self.x[i][j] < 0.76:
+                self.x[i][j] = 0.5
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
         self.x_min = -0.75
         self.x_max = 0.75
