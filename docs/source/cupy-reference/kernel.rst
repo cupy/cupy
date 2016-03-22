@@ -114,7 +114,7 @@ We can use the special variable ``i`` and ``_ind`` for the manual indexing.
 
 * ``_ind.size()`` returns the number of elements to apply the elementwise operation.
 * ``_ind.shape`` is the array that represents the shape of the array.
-* ``_ind.ndim`` is the array that indicates the current index in the array.
+* ``_ind.index`` is the array that indicates the current index in the array.
 
 The shape which ``_ind`` represents is the one **after** broadcast operation.
 
