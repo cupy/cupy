@@ -99,6 +99,7 @@ class TestSearch(unittest.TestCase):
     {'cond_shape': (2, 3, 4), 'x_shape': (2, 3, 4), 'y_shape': (3, 4)},
     {'cond_shape': (3, 4),    'x_shape': (2, 3, 4), 'y_shape': (4,)},
 )
+@testing.gpu
 class TestWhere(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
@@ -114,6 +115,7 @@ class TestWhere(unittest.TestCase):
         return xp.where(cond, x, y)
 
 
+@testing.gpu
 class TestWhereError(unittest.TestCase):
 
     @testing.numpy_cupy_raises()

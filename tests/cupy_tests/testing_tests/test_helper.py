@@ -115,6 +115,7 @@ def cupy_error(self, xp):
         raise ValueError()
 
 
+@testing.gpu
 class NumPyCuPyDecoratorBase2(object):
 
     def test_accept_error_numpy(self):
@@ -160,6 +161,7 @@ class TestNumPyCuPyEqual(unittest.TestCase, NumPyCuPyDecoratorBase,
 @testing.parameterize(
     {'decorator': 'numpy_cupy_array_list_equal'}
 )
+@testing.gpu
 class TestNumPyCuPyListEqual(unittest.TestCase, NumPyCuPyDecoratorBase):
 
     def valid_func(self, xp):

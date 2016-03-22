@@ -32,6 +32,7 @@ class TestGetSize(unittest.TestCase):
     {'arg': None, 'shape': ()},
     {'arg': 3, 'shape': (3,)},
 )
+@testing.gpu
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape(self):
@@ -39,6 +40,7 @@ class TestNdarrayInit(unittest.TestCase):
         self.assertTupleEqual(a.shape, self.shape)
 
 
+@testing.gpu
 class TestNdarrayInitRaise(unittest.TestCase):
 
     def test_unsupported_type(self):
@@ -53,6 +55,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
         'axis': [None, 0, 1],
     })
 )
+@testing.gpu
 class TestNdarrayTake(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -75,6 +78,7 @@ class TestNdarrayTake(unittest.TestCase):
         'axis': [None, 0, 1],
     })
 )
+@testing.gpu
 class TestNdarrayTakeWithInt(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -86,6 +90,7 @@ class TestNdarrayTakeWithInt(unittest.TestCase):
         return a.take(self.indices, self.axis)
 
 
+@testing.gpu
 class TestNdarrayTakeError(unittest.TestCase):
 
     @testing.for_all_dtypes()
