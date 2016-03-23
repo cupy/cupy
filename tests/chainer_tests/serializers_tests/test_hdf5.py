@@ -203,22 +203,22 @@ class TestGroupHierachy(unittest.TestCase):
 
     def _check_group(self, h5, state):
         self.assertSetEqual(set(h5.keys()),
-                            set(('child',) + state))
+                            ('child',) + state)
         self.assertSetEqual(set(h5['child'].keys()),
-                            set(('linear', 'Wc')))
+                            ('linear', 'Wc'))
         self.assertSetEqual(set(h5['child']['linear'].keys()),
-                            set(('W', 'b')))
+                            ('W', 'b'))
 
     def test_save_chain(self):
         with h5py.File(self.temp_file_path) as h5:
             self._save(h5, self.parent, 'test')
-            self.assertSetEqual(set(h5.keys()), set(('test',)))
+            self.assertSetEqual(set(h5.keys()), ('test',))
             self._check_group(h5['test'], ('Wp',))
 
     def test_save_optimizer(self):
         with h5py.File(self.temp_file_path) as h5:
             self._save(h5, self.optimizer, 'test')
-            self.assertSetEqual(set(h5.keys()), set(('test',)))
+            self.assertSetEqual(set(h5.keys()), ('test',))
             self._check_group(h5['test'], ('Wp', 'epoch', 't'))
 
     def test_save_chain2(self):
