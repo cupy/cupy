@@ -144,7 +144,7 @@ class TestVariable(unittest.TestCase):
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
 
     def test_invalid_value_type(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaisesRegexp(TypeError, 'int'):
             chainer.Variable(1)
 
     def test_grad_type_check_pass(self):
