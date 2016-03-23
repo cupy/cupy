@@ -16,7 +16,7 @@ if cuda.cudnn_enabled:
 def _pair(x):
     if isinstance(x, collections.Iterable):
         return x
-    return (x, x)
+    return x, x
 
 
 class Pooling2D(function.Function):

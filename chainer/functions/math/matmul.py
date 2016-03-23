@@ -185,7 +185,7 @@ class BatchMatMul(function.Function):
         batch_size = len(a)
         m = _get_batch_mat_shape(a.shape)[2 if self.transa else 1]
         n = _get_batch_mat_shape(b.shape)[1 if self.transb else 2]
-        return (batch_size, m, n)
+        return batch_size, m, n
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)

@@ -16,7 +16,7 @@ from chainer.utils import conv
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x
 
 
 @parameterize(

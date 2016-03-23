@@ -33,7 +33,7 @@ class TestNegativeSampling(unittest.TestCase):
         negative_sampling.NegativeSamplingFunction.samples = y.creator.samples
 
         def f():
-            return (self.link(x, t).data,)
+            return self.link(x, t).data,
         gx, gW = gradient_check.numerical_grad(
             f, (x.data, W.data), (y.grad,), eps=1e-2)
         del negative_sampling.NegativeSamplingFunction.samples  # clean up

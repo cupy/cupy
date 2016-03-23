@@ -21,7 +21,7 @@ if cuda.cudnn_enabled:
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x
 
 
 class Convolution2DFunction(function.Function):

@@ -76,7 +76,7 @@ class TestBroadcastTypeError(unittest.TestCase):
 
     def test_invalid_shape_fill(self):
         x_data = numpy.zeros((3, 2, 5), dtype=numpy.int32)
-        y_data = numpy.zeros((4), dtype=numpy.float32)
+        y_data = numpy.zeros(4, dtype=numpy.float32)
         x = chainer.Variable(x_data)
         y = chainer.Variable(y_data)
 
