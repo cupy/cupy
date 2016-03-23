@@ -155,7 +155,7 @@ class TestGradientMethod(unittest.TestCase):
         self.optimizer.setup(self.target)
 
     def setup_gpu(self, dst_id=None):
-        self.target.to_gpu()
+        self.target.to_gpu(dst_id)
         self.optimizer.setup(self.target)
 
     def check_init_state(self, gpu):

@@ -464,7 +464,7 @@ class FunctionHook(object):
         function_hooks[self.name] = self
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         del chainer.get_function_hooks()[self.name]
 
     # forward

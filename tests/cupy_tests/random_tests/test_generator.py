@@ -25,7 +25,7 @@ class FunctionSwitcher(object):
     def __enter__(self):
         setattr(curand, self.func_name, mock.Mock())
 
-    def __exit__(self, *args):
+    def __exit__(self, *_):
         setattr(curand, self.func_name, self.tmp)
 
 

@@ -772,5 +772,5 @@ class NumpyError(object):
         self.err = numpy.geterr()
         numpy.seterr(**self.kw)
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         numpy.seterr(**self.err)
