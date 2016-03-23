@@ -87,7 +87,10 @@ class Variable(object):
 
     """
     def __init__(self, data, volatile=flag.OFF, name=None):
-        assert isinstance(data, (numpy.ndarray, cuda.ndarray))
+        if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
+            msg = '''numpy.ndarray or cuda.ndarray are expected.
+Actual: {0}'''.format(type(data))
+            raise TypeError(msg)
 
         self.data = data
         self.rank = 0
