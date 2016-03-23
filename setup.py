@@ -45,6 +45,7 @@ setup(
               'chainer.functions.noise',
               'chainer.functions.normalization',
               'chainer.functions.pooling',
+              'chainer.function_hooks',
               'chainer.links',
               'chainer.links.activation',
               'chainer.links.caffe',
