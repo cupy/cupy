@@ -133,7 +133,7 @@ class CaffeFunction(link.Chain):
                         'Skip the layer "%s", since CaffeFunction does not'
                         'support it' % layer.name)
 
-    def __call__(self, inputs, outputs, disable=[], train=True):
+    def __call__(self, inputs, outputs, disable=(), train=True):
         """Executes a subnetwork of the network.
 
         This function acts as an interpreter of the network definition for
