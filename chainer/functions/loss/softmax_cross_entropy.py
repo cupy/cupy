@@ -192,6 +192,9 @@ def softmax_cross_entropy(
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
             it only normalizes along a batch size.
+        store_forward (bool): When it is ``True``, the function stores result
+            of forward computation to use it on backward computation. It reduces
+            computational cost though consumes more memories.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.
