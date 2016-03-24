@@ -32,8 +32,11 @@ class Forget(function.Function):
             for i, out in enumerate(outs):
                 if isinstance(out, variable.Variable):
                     continue
-                msg = ('{}-th element of a returned tuple is not Variable, '
-                       'but is {}').format(i + 1, type(out))
+                n = i + 1
+                suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(
+                    n if n < 20 else n % 10, 'th')
+                msg = ('{}{} element of a returned tuple is not Variable, '
+                       'but is {}').format(n, suffix, type(out))
                 raise RuntimeError(msg)
         elif isinstance(outs, variable.Variable):
             outs = (outs,)

@@ -40,6 +40,9 @@ class TestForget(unittest.TestCase):
 
 class TestForgetError(unittest.TestCase):
 
+    def setUp(self):
+        self.v = chainer.Variable(numpy.zeros(1))
+
     def test_not_callable(self):
         with self.assertRaises(TypeError):
             functions.forget(1)
@@ -48,9 +51,33 @@ class TestForgetError(unittest.TestCase):
         with self.assertRaisesRegexp(RuntimeError, 'int'):
             functions.forget(lambda: 1)
 
-    def test_invalid_tuple_type(self):
-        with self.assertRaisesRegexp(RuntimeError, '1-th.*int'):
+    def test_invalid_tuple_type_1st(self):
+        with self.assertRaisesRegexp(RuntimeError, '1st.*int'):
             functions.forget(lambda: (1,))
+
+    def test_invalid_tuple_type_2nd(self):
+        with self.assertRaisesRegexp(RuntimeError, '2nd.*int'):
+            functions.forget(lambda: (self.v, 1))
+
+    def test_invalid_tuple_type_3rd(self):
+        with self.assertRaisesRegexp(RuntimeError, '3rd.*int'):
+            functions.forget(lambda: (self.v, self.v, 1))
+
+    def test_invalid_tuple_type_4th(self):
+        with self.assertRaisesRegexp(RuntimeError, '4th.*int'):
+            functions.forget(lambda: (self.v,) * 3 + (1,))
+
+    def test_invalid_tuple_type_11th(self):
+        with self.assertRaisesRegexp(RuntimeError, '11th.*int'):
+            functions.forget(lambda: (self.v,) * 10 + (1,))
+
+    def test_invalid_tuple_type_12th(self):
+        with self.assertRaisesRegexp(RuntimeError, '12th.*int'):
+            functions.forget(lambda: (self.v,) * 11 + (1,))
+
+    def test_invalid_tuple_type_13th(self):
+        with self.assertRaisesRegexp(RuntimeError, '13th.*int'):
+            functions.forget(lambda: (self.v,) * 12 + (1,))
 
 
 testing.run_module(__name__, __file__)
