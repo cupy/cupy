@@ -27,6 +27,10 @@ from cupy import testing
     {'shape': (2,), 'transpose': None, 'indexes': (slice(None,), None)},
     {'shape': (), 'transpose': None, 'indexes': (None,)},
     {'shape': (), 'transpose': None, 'indexes': (None, None)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(10, -9, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-1, -11, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(10, -9, -3),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-1, -11, -3),)},
 )
 @testing.gpu
 class TestArrayIndexingParameterized(unittest.TestCase):
