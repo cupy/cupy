@@ -51,9 +51,10 @@ class SoftmaxCrossEntropy(function.Function):
 
     ignore_label = -1
 
-    def __init__(self, use_cudnn=True, normalize=True):
+    def __init__(self, use_cudnn=True, normalize=True, store_forward=True):
         self.use_cudnn = use_cudnn
         self.normalize = normalize
+        self.store_forward = store_forward
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -82,7 +83,8 @@ class SoftmaxCrossEntropy(function.Function):
             self._check_input_values(x, t)
 
         log_y = softmax_log(x, False)
-        self.y = numpy.exp(log_y)
+        if self.store_forward:
+            self.y = numpy.exp(log_y)
         log_yd = numpy.rollaxis(log_y, 1)
         log_yd = log_yd.reshape(len(log_yd), -1)
 
@@ -106,7 +108,8 @@ class SoftmaxCrossEntropy(function.Function):
             self._check_input_values(x, t)
 
         log_y = softmax_log(x, self.use_cudnn)
-        self.y = cupy.exp(log_y)
+        if self.store_forward:
+            self.y = cupy.exp(log_y)
         if getattr(self, 'normalize', True):
             coeff = cupy.maximum(1, (t != self.ignore_label).sum())
         else:
@@ -125,20 +128,25 @@ class SoftmaxCrossEntropy(function.Function):
         x, t = inputs
         gloss = grad_outputs[0]
         n_unit = t.size // len(t)
-        if self.y.ndim == 2:
-            gx = self.y.copy()
+        if hasattr(self, 'y'):
+            y = self.y.copy()
+        else:
+            log_y = softmax_log(x, self.use_cudnn)
+            y = numpy.exp(log_y)
+        if y.ndim == 2:
+            gx = y
             gx[six.moves.xrange(len(t)), numpy.maximum(t, 0)] -= 1
             gx *= (t != self.ignore_label).reshape((len(t), 1))
         else:
             # in the case where y.ndim is higher than 2,
             # we think that a current implementation is inefficient
             # because it yields two provisional arrays for indexing.
-            gx = self.y.copy().reshape(self.y.shape[0], self.y.shape[1], -1)
+            gx = y.reshape(y.shape[0], y.shape[1], -1)
             fst_index = numpy.arange(t.size) // n_unit
             trd_index = numpy.arange(t.size) % n_unit
             gx[fst_index, numpy.maximum(t.ravel(), 0), trd_index] -= 1
             gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
-            gx = gx.reshape(self.y.shape)
+            gx = gx.reshape(y.shape)
 
         gx *= gloss * self._coeff
         return gx, None
@@ -146,6 +154,11 @@ class SoftmaxCrossEntropy(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         cupy = cuda.cupy
         x, t = inputs
+        if hasattr(self, 'y'):
+            y = self.y
+        else:
+            y = softmax_log(x, self.use_cudnn)
+            cupy.exp(y, out=y)
         gloss = grad_outputs[0]
         n_unit = t.size // len(t)
         coeff = gloss * self._coeff
@@ -157,11 +170,12 @@ class SoftmaxCrossEntropy(function.Function):
                gx = (t == -1) ? 0 : (coeff[0] * (y - (c == t)));
             ''',
             'softmax_crossent_bwd')(
-                self.y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit)
+                y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit)
         return gx, None
 
 
-def softmax_cross_entropy(x, t, use_cudnn=True, normalize=True):
+def softmax_cross_entropy(
+        x, t, use_cudnn=True, normalize=True, store_forward=True):
     """Computes cross entropy loss for pre-softmax activations.
 
     Args:
@@ -187,4 +201,4 @@ def softmax_cross_entropy(x, t, use_cudnn=True, normalize=True):
        This function is differentiable only by ``x``.
 
     """
-    return SoftmaxCrossEntropy(use_cudnn, normalize)(x, t)
+    return SoftmaxCrossEntropy(use_cudnn, normalize, store_forward)(x, t)
