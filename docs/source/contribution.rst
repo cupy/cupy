@@ -28,8 +28,8 @@ Releases are classified into three groups: major, minor, and revision.
 This classification is based on following criteria:
 
 - **Major update** contains disruptive changes that break the backward compatibility.
-- **Minor update** contains addition and extension to the APIs keeping the supported backward compatibility.
-- **Revision update** contains improvements on the API implementations without changing any API specifications.
+- **Minor update** contains additions and extensions to the APIs keeping the supported backward compatibility.
+- **Revision update** contains improvements on the API implementations without changing any API specification.
 
 The release classification is reflected into the version number x.y.z, where x, y, and z corresponds to major, minor, and revision updates, respectively.
 
