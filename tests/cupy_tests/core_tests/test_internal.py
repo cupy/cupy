@@ -126,10 +126,10 @@ class TestInferUnknownDimension(unittest.TestCase):
 
     {'slice': (None, 8, -1),  'expect': (9, 8, -1)},
     {'slice': (-3, 6, -1),    'expect': (7, 6, -1)},
-    {'slice': (11, 8, -1),    'expect': (10, 8, -1)},
-    {'slice': (11, 11, -1),   'expect': (10, 10, -1)},
+    {'slice': (11, 8, -1),    'expect': (9, 8, -1)},
+    {'slice': (11, 11, -1),   'expect': (9, 9, -1)},
     {'slice': (-11, 8, -1),   'expect': (0, 0, -1)},
-    {'slice': (-11, -11, -1), 'expect': (0, 0, -1)},
+    {'slice': (-11, -11, -1), 'expect': (0, -1, -1)},
 )
 class TestCompleteSlice(unittest.TestCase):
 
