@@ -197,6 +197,11 @@ class TestGroupHierachy(unittest.TestCase):
         serializer = hdf5.HDF5Serializer(group)
         serializer.save(obj)
 
+    def _load(self, h5, obj, name):
+        group = h5[name]
+        serializer = hdf5.HDF5Deserializer(group)
+        serializer.load(obj)
+
     def tearDown(self):
         if hasattr(self, 'temp_file_path'):
             os.remove(self.temp_file_path)
@@ -231,6 +236,19 @@ class TestGroupHierachy(unittest.TestCase):
         with h5py.File(self.temp_file_path) as h5:
             self._check_group(h5, ('Wp', 'epoch', 't'))
 
+    def test_load_chain(self):
+        with h5py.File(self.temp_file_path) as h5:
+            self._save(h5, self.parent, 'test')
+
+        with h5py.File(self.temp_file_path) as h5:
+            self._load(h5, self.parent, 'test')
+
+    def test_load_optimizer(self):
+        with h5py.File(self.temp_file_path) as h5:
+            self._save(h5, self.optimizer, 'test')
+
+        with h5py.File(self.temp_file_path) as h5:
+            self._load(h5, self.optimizer, 'test')
 
 original_import = __import__
 
