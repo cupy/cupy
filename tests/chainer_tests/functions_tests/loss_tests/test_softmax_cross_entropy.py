@@ -32,6 +32,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
             x, t, use_cudnn=use_cudnn, store_forward=self.store_forward)
         self.assertEqual(loss.data.shape, ())
         self.assertEqual(loss.data.dtype, numpy.float32)
+        self.assertEqual(hasattr(loss.creator, 'y'), self.store_forward)
         loss_value = float(cuda.to_cpu(loss.data))
 
         # Compute expected value
