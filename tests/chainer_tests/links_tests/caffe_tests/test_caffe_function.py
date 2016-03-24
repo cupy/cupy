@@ -547,6 +547,49 @@ class TestLeakyReLU(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0], slope=0.5)
 
 
+class TestSoftmax(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.softmax'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Softmax',
+                'bottom': ['x'],
+                'top': ['y'],
+            }
+        ]
+    }
+
+    def test_softmax(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.asert_called_once_with(self.inputs[0])
+
+
+class TestSoftmaxInvalidAxis(TestCaffeFunctionBase):
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Softmax',
+                'softmax_param': {
+                    'axis': 0,  # invalid axis
+                }
+            }
+        ]
+    }
+
+    def test_softmax_invalid_axis(self):
+        with self.assertRaises(RuntimeError):
+            self.init_func()
+
+
 class TestSoftmaxWithLoss(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.softmax_cross_entropy'

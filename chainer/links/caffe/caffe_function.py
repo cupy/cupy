@@ -318,6 +318,15 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = fw
         self._add_layer(layer)
 
+    @_layer('Softmax', 'SOFTMAX_LOSS')
+    def _setup_softmax(self, layer):
+        if layer.softmax_param.axis != 1:
+            raise RuntimeError(
+                'Softmax along non-channel axis is not supported')
+
+        self.forwards[layer.name] = functions.softmax
+        self._add_layer(layer)
+
     @_layer('SoftmaxWithLoss', 'SOFTMAX_LOSS')
     def _setup_softmax_with_loss(self, layer):
         if layer.softmax_param.axis != 1:
