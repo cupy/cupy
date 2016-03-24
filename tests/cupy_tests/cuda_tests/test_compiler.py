@@ -2,8 +2,10 @@ import os
 import unittest
 
 from cupy.cuda import compiler
+from cupy import testing
 
 
+@testing.gpu
 class NvccNotFoundTest(unittest.TestCase):
 
     def setUp(self):
@@ -23,6 +25,7 @@ class NvccNotFoundTest(unittest.TestCase):
             compiler.preprocess('')
 
 
+@testing.gpu
 class TestNvccStderr(unittest.TestCase):
 
     def test(self):
