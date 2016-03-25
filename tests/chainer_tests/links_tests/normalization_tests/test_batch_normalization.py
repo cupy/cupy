@@ -30,7 +30,7 @@ def _batch_normalization(expander, gamma, beta, x, mean, var, eps, test):
 class BatchNormalizationTest(unittest.TestCase):
 
     def setUp(self):
-        self.expander = (None, Ellipsis) + (None,) * (self.ndim)
+        self.expander = (None, Ellipsis) + (None,) * self.ndim
         self.aggr_axes = (0,) + tuple(six.moves.range(2, self.ndim + 2))
 
         self.link = links.BatchNormalization(3)

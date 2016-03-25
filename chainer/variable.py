@@ -102,7 +102,7 @@ Actual: {0}'''.format(type(data))
         self.name = name
 
     def __reduce__(self):
-        return (Variable, (self.data, self.volatile, self.name))
+        return Variable, (self.data, self.volatile, self.name)
 
     def __repr__(self):
         if self.name:

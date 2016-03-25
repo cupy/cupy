@@ -25,7 +25,7 @@ def _batch_normalization(expander, gamma, beta, x, mean, var):
 }))
 class TestBatchNormalization(unittest.TestCase):
     def setUp(self):
-        self.expander = (None, Ellipsis) + (None,) * (self.ndim)
+        self.expander = (None, Ellipsis) + (None,) * self.ndim
         self.aggr_axes = (0,) + tuple(six.moves.range(2, self.ndim + 2))
         self.eps = 1e-5
 
@@ -82,7 +82,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
     def setUp(self):
         self.gamma = numpy.random.uniform(.5, 1, (3,)).astype(numpy.float32)
         self.beta = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
-        self.expander = (None, Ellipsis) + (None,) * (self.ndim)
+        self.expander = (None, Ellipsis) + (None,) * self.ndim
 
         shape = (7, 3) + (2,) * self.ndim
         self.x = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
