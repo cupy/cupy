@@ -123,7 +123,7 @@ todo_include_todos = False
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-if not os.environ.get('READTHEDOCS'):
+if not on_rtd:
     html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -157,7 +157,6 @@ html_static_path = ['_static']
 
 html_style = 'css/modified_theme.css'
 
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
     html_context = {
         'css_files': [
