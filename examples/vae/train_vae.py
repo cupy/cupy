@@ -83,10 +83,7 @@ for epoch in six.moves.range(1, n_epoch + 1):
     sum_rec_loss = 0   # reconstruction loss
     for i in six.moves.range(0, N, batchsize):
         x = chainer.Variable(xp.asarray(x_train[perm[i:i + batchsize]]))
-
-        # Pass the loss function (Classifier defines it) and its arguments
         optimizer.update(model.get_loss_func(), x)
-
         if epoch == 1 and i == 0:
             with open('graph.dot', 'w') as o:
                 g = computational_graph.build_computational_graph(
@@ -106,7 +103,7 @@ for epoch in six.moves.range(1, n_epoch + 1):
     for i in six.moves.range(0, N_test, batchsize):
         x = chainer.Variable(xp.asarray(x_test[i:i + batchsize]),
                              volatile='on')
-        loss_func = model.get_loss_func(L=10, train=False)
+        loss_func = model.get_loss_func(k=10, train=False)
         loss_func(x)
         sum_loss += float(model.loss.data) * len(x.data)
         sum_rec_loss += float(model.rec_loss.data) * len(x.data)
@@ -130,7 +127,7 @@ if args.gpu >= 0:
 # original images and reconstructed images
 def save_images(x, filename):
     fig, ax = plt.subplots(3, 3, figsize=(9, 9), dpi=100)
-    for (ai, xi) in zip(ax.flatten(), x):
+    for ai, xi in zip(ax.flatten(), x):
         ai.imshow(xi.reshape(28, 28))
     fig.savefig(filename)
 
@@ -145,3 +142,9 @@ x = chainer.Variable(np.asarray(x_test[test_ind]), volatile='on')
 x1 = model(x)
 save_images(x.data, 'test')
 save_images(x1.data, 'test_ae')
+
+
+# draw images from randomly sampled z
+z = chainer.Variable(np.random.normal(0, 1, (9, n_latent)).astype(np.float32))
+x = model.decode(z)
+save_images(x.data, 'sampled')

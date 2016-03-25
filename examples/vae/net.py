@@ -1,3 +1,5 @@
+import six
+
 import chainer
 import chainer.functions as F
 from chainer.functions.loss.vae import gaussian_kl_divergence
@@ -36,29 +38,28 @@ class VAE(chainer.Chain):
         else:
             return h2
 
-    def get_loss_func(self, C=1.0, L=1, train=True):
+    def get_loss_func(self, C=1.0, k=1, train=True):
         """Get loss function of VAE.
 
         The loss value is equal to ELBO (Evidence Lower Bound)
         multiplied by -1.
 
         Args:
-            C (int): Usually this is 1.0. Can be changed to controll the
+            C (int): Usually this is 1.0. Can be changed to control the
                 second term of ELBO bound, which works as regularization.
-            L (int): Number of Monte Carlo samples used in encoded vector.
-            train (bool): if true loss_function is used for training.
+            k (int): Number of Monte Carlo samples used in encoded vector.
+            train (bool): If true loss_function is used for training.
         """
         def lf(x):
-            n_in = x.data.shape[1]
             mu, ln_var = self.encode(x)
             batchsize = len(mu.data)
             # reconstruction loss
             rec_loss = 0
-            for l in range(L):
+            for l in six.moves.range(k):
                 z = F.gaussian(mu, ln_var)
                 rec_loss += F.bernoulli_nll(x, self.decode(z, sigmoid=False)) / \
-                    (L * batchsize * n_in)
-            self.rec_loss = rec_loss * n_in
+                    (k * batchsize)
+            self.rec_loss = rec_loss
             self.loss = self.rec_loss + \
                 C * gaussian_kl_divergence(mu, ln_var) / batchsize
             return self.loss
