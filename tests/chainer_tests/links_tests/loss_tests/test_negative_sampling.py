@@ -20,7 +20,7 @@ class TestNegativeSampling(unittest.TestCase):
         self.t = numpy.array([0, 2]).astype(numpy.int32)
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
 
-    def check_backward(self, x_data, t_data, y_grad, use_cudnn=True):
+    def check_backward(self, x_data, t_data, y_grad):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
         W = self.link.W
