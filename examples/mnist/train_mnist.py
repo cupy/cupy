@@ -113,7 +113,7 @@ for epoch in six.moves.range(1, n_epoch + 1):
     end = time.time()
     elapsed_time = end - start
     throughput = N / elapsed_time
-    print('train mean loss={}, accuracy={}, throughput={}'.format(
+    print('train mean loss={}, accuracy={}, throughput={} images/sec'.format(
         sum_loss / N, sum_accuracy / N, throughput))
 
     # evaluation
