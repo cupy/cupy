@@ -372,11 +372,10 @@ def cythonize(
     cython_location = get_cython_pkg().location
     cython_path = path.join(cython_location, 'cython.py')
     print("cython path:%s" % cython_location)
-    cython_cmdbase = [sys.executable, cython_path]
-    run_command(cython_cmdbase + ['--version'])
+    cmd = [sys.executable, cython_path]
+    run_command(cmd + ['--version'])
 
-    cython_cmdbase.extend(['--fast-fail', '--verbose', '--cplus'])
-    cmd = list(cython_cmdbase)
+    cmd.extend(['--fast-fail', '--verbose', '--cplus'])
     if compiler_directives is not None:
         for i in compiler_directives.items():
             cmd.append('--directive')
