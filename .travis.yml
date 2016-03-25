@@ -7,7 +7,7 @@ matrix:
     - os: linux
       python: "3.4"
     - os: linux
-      python: "3.5"
+      python: "3.5.1"
 
     - os: osx
       language: generic
@@ -24,7 +24,7 @@ matrix:
     - os: osx
       language: generic
       env:
-      - PYTHON_VERSION=3.5.0
+      - PYTHON_VERSION=3.5.1
       - PYENV_ROOT=~/.pyenv
       - PATH=$PYENV_ROOT/shims:$PATH:$PYENV_ROOT/bin
 
@@ -34,7 +34,7 @@ before_install:
       brew outdated pyenv || brew upgrade --quiet pyenv;
       brew install homebrew/boneyard/pyenv-pip-rehash;
 
-      pyenv install -ks $PYTHON_VERSION;
+      PYTHON_CONFIGURE_OPTS="--enable-unicode=ucs2" pyenv install -ks $PYTHON_VERSION;
       pyenv global $PYTHON_VERSION;
       python --version;
 
@@ -43,7 +43,8 @@ before_install:
 
 install:
   - pip install cython
-  - python setup.py install
+  - python setup.py sdist
+  - pip install dist/*.tar.gz
   - pip install h5py
   - pip install nose hacking mock
 

@@ -219,7 +219,8 @@ def to_cpu(array, stream=None):
         return array
     else:
         raise TypeError(
-            'The array sent to cpu must be numpy.ndarray or cupy.ndarray')
+            'The array sent to cpu must be numpy.ndarray or cupy.ndarray.'
+            '\nActual type: {0}.'.format(type(array)))
 
 
 def empty(shape, dtype=numpy.float32):

@@ -22,7 +22,7 @@ class Sigmoid(function.Function):
         type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward_cpu(self, x):
-        self.y = 1 / (1 + numpy.exp(-x[0]))
+        self.y = numpy.tanh(x[0] * 0.5) * 0.5 + 0.5
         return self.y,
 
     def forward_gpu(self, x):

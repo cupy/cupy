@@ -86,7 +86,23 @@ Recall the rule of differentiation of multiplication.
 This example just implements the rule.
 Look at the return values, the function just packs the gradient of each input in same order and returns them.
 
-By just defining the core computation of forward and backward, Function class provides a chaining logic on it (i.e. storing the history of computation, etc.).
+By just defining the core computation of forward and backward,
+Function class provides a chaining logic on it (i.e. storing the
+history of computation, etc.).
+
+.. note::
+   Assuming we implement a (forward) function :math:`y=f(x)` which takes as input the
+   vector :math:`x \in \mathbb{R}^n` and produces as output a vector
+   :math:`y \in \mathbb{R}^m`. Then the ``backward`` method has to compute
+
+   .. math::
+      \lambda_i = \sum_{j=1}^m \frac{\partial y_j}{\partial x_i} \,
+      \gamma_j \,\, \text{for}\, i = 1 \dots n
+
+   where :math:`\gamma` is the ``grad_outputs``. Note, that the
+   resulting vector :math:`\lambda` must have the same shape as the arguments of the ``forward`` method.
+
+
 
 Now let's define the corresponding GPU methods.
 You can easily predict that the methods we have to write are named :meth:`~Function.forward_gpu` and :meth:`~Function.backward_gpu`::
@@ -313,15 +329,15 @@ Our MulAdd implementation can be improved as follows::
               'float32 x, float32 y, float32 gw',
               'float32 gx, float32 gy',
               '''
-                 gx = gy * gw;
-                 gy = gx * gw;
+                 gx = y * gw;
+                 gy = x * gw;
               ''',
               'muladd_bwd')(x, y, gw)
 
           gz = gw
           return gx, gy, gz
 
-:func:`cuda.elementwise` function accepts the essential implementation of the kernel function, and returns a kernel invokation function (actually, it returns :class:`~cupy.elementwise.ElementwiseKernel` object, which is callable).
+:func:`cuda.elementwise` function accepts the essential implementation of the kernel function, and returns a kernel invocation function (actually, it returns :class:`~cupy.elementwise.ElementwiseKernel` object, which is callable).
 In typical usage, we pass four arguments to this function as follows:
 
 1. Input argument list. This is a comma-separated string each entry of which consists of a type specification and an argument name.
@@ -337,7 +353,7 @@ This caching mechanism is actually implemented in CuPy.
 
 The second one is *upload caching*:
 Given a compiled binary code, we have to upload it to the current GPU in order to execute it.
-:func:`cuda.elementwise` function memoizes the arguments and the curent device, and if it is called with the same arguments for the same device, it reuses the previously uploaded kernel code.
+:func:`cuda.elementwise` function memoizes the arguments and the current device, and if it is called with the same arguments for the same device, it reuses the previously uploaded kernel code.
 
 The above MulAdd code only works for float32 arrays.
 The :class:`~cupy.elementwise.ElementwiseKernel` also supports the type-variadic kernel definition.
@@ -368,8 +384,8 @@ In order to define variadic kernel functions, you can use *type placeholder* by 
               'T x, T y, T gw',
               'T gx, T gy',
               '''
-                 gx = gy * gw;
-                 gy = gx * gw;
+                 gx = y * gw;
+                 gy = x * gw;
               ''',
               'muladd_bwd')(x, y, gw)
 

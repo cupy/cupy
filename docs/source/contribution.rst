@@ -27,11 +27,9 @@ In particular, we are using the master branch for our development, and releases 
 Releases are classified into three groups: major, minor, and revision.
 This classification is based on following criteria:
 
-* A **major** release contains catastrophic changes on the interface that may break existing user codes.
-* A **minor** release contains additions and modifications on the interface.
-  It may break some existing user codes, though they must be fixed by small efforts.
-* A **revision** release contains changes that does not affect the documented interface.
-  It mainly consists of bug fixes, implementation improvements, and test/document/example updates.
+- **Major update** contains disruptive changes that break the backward compatibility.
+- **Minor update** contains additions and extensions to the APIs keeping the supported backward compatibility.
+- **Revision update** contains improvements on the API implementations without changing any API specification.
 
 The release classification is reflected into the version number x.y.z, where x, y, and z corresponds to major, minor, and revision updates, respectively.
 
@@ -39,21 +37,25 @@ We sets milestones for some future releases.
 A milestone for a revision release is set right after the last release.
 On the other hand, a milestone for a minor or major release is set four weeks prior to its due.
 
+See also :doc:`compatibility`.
+
 Issues and PRs
 --------------
 
 Issues and PRs are classified into following categories:
 
-* **Bug**: bug reports (isseus) and bug fixes (PRs)
+* **Bug**: bug reports (issues) and bug fixes (PRs)
 * **Enhancement**: implementation improvements without breaking the interface
 * **Feature**: feature requests (issues) and their implementations (PRs)
+* **NoCompat**: distrupts backward compatibility
 * **Test**: test fixes and updates
 * **Document**: document fixes and improvements
 * **Example**: fixes and improvements on the examples
+* **Install**: fixes installation script
 * **Other**: other issues and PRs
 
 Issues and PRs are labeled by these categories.
-This classification is often reflected into its corresponding release category: Feature issues/PRs are contained into minor/major releases, while other issues/PRs can be contained into any releases including revision ones.
+This classification is often reflected into its corresponding release category: Feature issues/PRs are contained into minor/major releases and NoCompat issues/PRs are contained into major releases, while other issues/PRs can be contained into any releases including revision ones.
 
 On registering an issue, write precise explanations on what you want Chainer to be.
 Bug reports must include necessary and sufficient conditions to reproduce the bugs.
@@ -70,7 +72,8 @@ If you can write codes to fix an issue, send a PR to the master branch.
 Before writing your codes for PRs, read through the :ref:`coding-guide`.
 The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your codes for developers, a very important part of your PR.
 
-Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/chainer/>`_.
+Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/chainer/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/pfnet/chainer>`_ for Windows.
+Your PR need to pass at least the test for Linux on Travis CI.
 After the automatic test passes, some of the core developers will start reviewing your codes.
 Note that this automatic PR test only includes CPU tests.
 
@@ -89,14 +92,6 @@ Coding Guidelines
 -----------------
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <http://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
-
-Before checking your code, you can use automatic formatter to set appropriate spacing, etc.
-We recommend you to install the ``pyformat`` and ``isort`` packages, and run the following commands::
-
-  $ pyformat -i path/to/your/code.py
-  $ isort path/to/your/code.py
-
-Note that these formatters do not cover all part of the style guidelines.
 
 To check your code, use ``flake8`` command installed by ``hacking`` package::
 

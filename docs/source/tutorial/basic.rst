@@ -160,7 +160,7 @@ A linear link from three-dimensional space to two-dimensional space is defined b
    Most functions and links only accept minibatch input, where the first dimension of input arrays is considered as the *batch dimension*.
    In the above Linear link case, input must have shape of (N, 3), where N is the minibatch size.
 
-Parameters of a link is stored as attributres.
+The parameters of a link are stored as attributes.
 Each parameter is an instance of :class:`~chainer.Variable`.
 In the case of Linear link, two parameters, ``W`` and ``b``, are stored.
 By default, the matrix ``W`` is initialized randomly, while the vector ``b`` is initialized with zeros.
@@ -423,7 +423,7 @@ We use a simple three-layer rectifier network with 100 units per layer as an exa
 This link uses :func:`~functions.relu` as an activation function.
 Note that the ``'l3'`` link is the final linear layer whose output corresponds to scores for the ten digits.
 
-In order to compute loss values or evalute the accuracy of the predictions, we define a classifier chain on top of the above MLP chain:
+In order to compute loss values or evaluate the accuracy of the predictions, we define a classifier chain on top of the above MLP chain:
 
 .. doctest::
 
@@ -438,7 +438,7 @@ In order to compute loss values or evalute the accuracy of the predictions, we d
    ...         return self.loss
 
 This Classifier class computes accuracy and loss, and returns the loss value.
-:func:`~functions.softmax_cross_entropy` computes the loss value given prediction and groundtruth labels.
+:func:`~functions.softmax_cross_entropy` computes the loss value given prediction and ground truth labels.
 :func:`~functions.accuracy` computes the prediction accuracy.
 We can set an arbitrary predictor link to an instance of the classifier.
 

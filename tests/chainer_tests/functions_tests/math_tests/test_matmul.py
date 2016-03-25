@@ -217,4 +217,36 @@ class TestBatchMatMulMatrixMatrixBatchSize1(_TestMatMul):
             for i in six.moves.range(1)])
 
 
+class TestBatchMatMulBroadcastedMatrix1(_TestMatMul):
+
+    def setUp(self):
+        self.x1 = numpy.random.uniform(
+            .5, 1, (batch_size, m, k)).astype(numpy.float32)
+        self.x2 = numpy.random.uniform(
+            .5, 1, (1, k, n)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (batch_size, m, n)).astype(numpy.float32)
+        self.op = lambda x, y: F.batch_matmul(
+            x, F.broadcast_to(y, (batch_size, k, n)))
+        self.forward_answer = numpy.array([
+            numpy.dot(self.x1[i], self.x2[0])
+            for i in six.moves.range(batch_size)])
+
+
+class TestBatchMatMulBroadcastedMatrix2(_TestMatMul):
+
+    def setUp(self):
+        self.x1 = numpy.random.uniform(
+            .5, 1, (batch_size, m, k)).astype(numpy.float32)
+        self.x2 = numpy.random.uniform(
+            .5, 1, (k, n)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (batch_size, m, n)).astype(numpy.float32)
+        self.op = lambda x, y: F.batch_matmul(
+            x, F.broadcast_to(F.expand_dims(y, 0), (batch_size, k, n)))
+        self.forward_answer = numpy.array([
+            numpy.dot(self.x1[i], self.x2)
+            for i in six.moves.range(batch_size)])
+
+
 testing.run_module(__name__, __file__)

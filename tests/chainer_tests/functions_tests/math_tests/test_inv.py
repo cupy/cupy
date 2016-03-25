@@ -31,7 +31,9 @@ def _make_eye(shape):
 }))
 class InvFunctionTest(unittest.TestCase):
     def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
+        self.x = (numpy.eye(self.shape[-1]) +
+                  numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
+            numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, atol=1e-7, rtol=1e-7):
@@ -66,17 +68,17 @@ class InvFunctionTest(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
-        self.check_forward(cuda.to_gpu(self.x), atol=1e-5, rtol=1e-5)
+        self.check_forward(cuda.to_gpu(self.x), atol=1e-4, rtol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.gy, atol=1e-2, rtol=1e-2)
+        self.check_backward(self.x, self.gy, atol=1e-4, rtol=1e-4)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy),
-                            atol=1e-2, rtol=1e-2)
+                            atol=1e-4, rtol=1e-4)
 
 
 @testing.parameterize(*testing.product({
@@ -84,7 +86,9 @@ class InvFunctionTest(unittest.TestCase):
 }))
 class BatchInvFunctionTest(unittest.TestCase):
     def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
+        self.x = (numpy.eye(self.shape[-1]) +
+                  numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
+            numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
 
     def check_forward(self, x_data, atol=1e-7, rtol=1e-7):
@@ -123,13 +127,13 @@ class BatchInvFunctionTest(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.gy, atol=1e-2, rtol=1e-2)
+        self.check_backward(self.x, self.gy, atol=1e-4, rtol=1e-4)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy),
-                            atol=1e-2, rtol=1e-2)
+                            atol=1e-4, rtol=1e-4)
 
 
 class InvFunctionRaiseTest(unittest.TestCase):

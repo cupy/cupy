@@ -51,7 +51,7 @@ We hope it helps you to choose an appropriate framework for the demand.
 +-------+-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
 | Misc  | Type checking               | Y                 | Y                      | Y                 | N/A                                                |
 |       +-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
-|       | Model serialization         | Y (pickle)        | Y (pickle)             | Y                 | Y                                                  |
+|       | Model serialization         | Y                 | Y (pickle)             | Y                 | Y                                                  |
 |       +-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
 |       | Caffe reference model       | Y                 | [5]_                   | Y (loadcaffe)     | Y                                                  |
 +-------+-----------------------------+-------------------+------------------------+-------------------+----------------------------------------------------+
@@ -59,7 +59,7 @@ We hope it helps you to choose an appropriate framework for the demand.
 .. [1] They are also developing `libgpuarray <http://deeplearning.net/software/libgpuarray/>`_
 .. [2] Stateful RNN is a type of RNN implementation that maintains states in the loops. It should enable us to use the states arbitrarily to update them.
 .. [3] This row shows whether each array API supports unified codes for CPU and GPU.
-.. [4] The array backend of Theano does not have compatible interface with NumPy, though most users write code on theano variables, which is generic for CPU and GPU.
+.. [4] The array backend of Theano does not have compatible interface with NumPy, though most users write code on Theano variables, which is generic for CPU and GPU.
 .. [5] Depending on the frameworks.
 .. [6] Also available in the `Torch RNN package <https://github.com/Element-Research/rnn>`
 

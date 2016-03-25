@@ -20,7 +20,6 @@ from chainer import serializers
 import data
 import net
 
-
 parser = argparse.ArgumentParser(description='Chainer example: MNIST')
 parser.add_argument('--initmodel', '-m', default='',
                     help='Initialize the model from given file')
@@ -30,11 +29,24 @@ parser.add_argument('--net', '-n', choices=('simple', 'parallel'),
                     default='simple', help='Network type')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
+parser.add_argument('--epoch', '-e', default=20, type=int,
+                    help='number of epochs to learn')
+parser.add_argument('--unit', '-u', default=1000, type=int,
+                    help='number of units')
+parser.add_argument('--batchsize', '-b', type=int, default=100,
+                    help='learning minibatch size')
 args = parser.parse_args()
 
-batchsize = 100
-n_epoch = 20
-n_units = 1000
+batchsize = args.batchsize
+n_epoch = args.epoch
+n_units = args.unit
+
+print('GPU: {}'.format(args.gpu))
+print('# unit: {}'.format(args.unit))
+print('# Minibatch-size: {}'.format(args.batchsize))
+print('# epoch: {}'.format(args.epoch))
+print('Network type: {}'.format(args.net))
+print('')
 
 # Prepare dataset
 print('load MNIST dataset')
@@ -90,7 +102,7 @@ for epoch in six.moves.range(1, n_epoch + 1):
         if epoch == 1 and i == 0:
             with open('graph.dot', 'w') as o:
                 g = computational_graph.build_computational_graph(
-                    (model.loss, ), remove_split=True)
+                    (model.loss, ))
                 o.write(g.dump())
             print('graph generated')
 

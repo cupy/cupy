@@ -192,9 +192,9 @@ class Link(object):
         """
         if self._cpu:
             return self
-        for param in self.params():
-            param.to_cpu()
         d = self.__dict__
+        for name in self._params:
+            d[name].to_cpu()
         for name in self._persistent:
             value = d[name]
             if isinstance(value, cuda.ndarray):
@@ -219,10 +219,10 @@ class Link(object):
         cuda.check_cuda_available()
         if not self._cpu:
             return self
+        d = self.__dict__
         with cuda.get_device(device):
-            for param in self.params():
-                param.to_gpu()
-            d = self.__dict__
+            for name in self._params:
+                d[name].to_gpu()
             for name in self._persistent:
                 value = d[name]
                 if isinstance(value, numpy.ndarray):
@@ -615,6 +615,7 @@ class ChainList(Link):
 
     def copy(self):
         ret = super(ChainList, self).copy()
+        ret._children = list(ret._children)  # copy
         children = ret._children
         for i, child in enumerate(children):
             child = child.copy()

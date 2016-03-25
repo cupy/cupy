@@ -30,21 +30,34 @@ parser.add_argument('--resume', '-r', default='',
                     help='Resume the optimization from snapshot')
 parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
+parser.add_argument('--epoch', '-e', default=39, type=int,
+                    help='number of epochs to learn')
+parser.add_argument('--unit', '-u', default=650, type=int,
+                    help='number of units')
+parser.add_argument('--batchsize', '-b', type=int, default=20,
+                    help='learning minibatch size')
+parser.add_argument('--bproplen', '-l', type=int, default=35,
+                    help='length of truncated BPTT')
+parser.add_argument('--gradclip', '-c', type=int, default=5,
+                    help='gradient norm threshold to clip')
+parser.add_argument('--test', dest='test', action='store_true')
+parser.set_defaults(test=False)
+
 args = parser.parse_args()
 xp = cuda.cupy if args.gpu >= 0 else np
 
-n_epoch = 39   # number of epochs
-n_units = 650  # number of units per layer
-batchsize = 20   # minibatch size
-bprop_len = 35   # length of truncated BPTT
-grad_clip = 5    # gradient norm threshold to clip
+n_epoch = args.epoch   # number of epochs
+n_units = args.unit  # number of units per layer
+batchsize = args.batchsize   # minibatch size
+bprop_len = args.bproplen   # length of truncated BPTT
+grad_clip = args.gradclip    # gradient norm threshold to clip
 
 # Prepare dataset (preliminary download dataset by ./download.py)
 vocab = {}
 
 
 def load_data(filename):
-    global vocab, n_vocab
+    global vocab
     words = open(filename).read().replace('\n', '<eos>').strip().split()
     dataset = np.ndarray((len(words),), dtype=np.int32)
     for i, word in enumerate(words):
@@ -54,8 +67,15 @@ def load_data(filename):
     return dataset
 
 train_data = load_data('ptb.train.txt')
+if args.test:
+    train_data = train_data[:100]
 valid_data = load_data('ptb.valid.txt')
+if args.test:
+    valid_data = valid_data[:100]
 test_data = load_data('ptb.test.txt')
+if args.test:
+    test_data = test_data[:100]
+
 print('#vocab =', len(vocab))
 
 # Prepare RNNLM model, defined in net.py
@@ -87,6 +107,7 @@ def evaluate(dataset):
     # Evaluation routine
     evaluator = model.copy()  # to use different state
     evaluator.predictor.reset_state()  # initialize state
+    evaluator.predictor.train = False  # dropout does nothing
 
     sum_log_perp = 0
     for i in six.moves.range(dataset.size - 1):

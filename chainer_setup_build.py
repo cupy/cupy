@@ -177,16 +177,7 @@ def make_extensions(options, compiler):
     no_cuda = options['no_cuda']
     settings = get_compiler_setting()
 
-    try:
-        import numpy
-        numpy_include = numpy.get_include()
-    except AttributeError:
-        # if numpy is not installed get the headers from the .egg directory
-        import numpy.core
-        numpy_include = path.join(
-            path.dirname(numpy.core.__file__), 'include')
     include_dirs = settings['include_dirs']
-    include_dirs.append(numpy_include)
 
     settings['include_dirs'] = [
         x for x in include_dirs if path.exists(x)]

@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -131,6 +132,39 @@ class TestInvalidDtype(unittest.TestCase):
         self.v.to_gpu()
         with self.assertRaises(type_check.InvalidType):
             self.check_invalid_dtype()
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestMaxPooling2DCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        shape = (2, 3, 9, 8)
+        size = 2 * 3 * 9 * 8
+        self.x = cuda.cupy.arange(size, dtype=numpy.float32).reshape(shape)
+        self.gy = cuda.cupy.random.uniform(
+            -1, 1, (2, 63, 1, 1)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        return functions.spatial_pyramid_pooling_2d(
+            x, 3, functions.MaxPooling2D,
+            use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.poolingForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.poolingBackward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)
