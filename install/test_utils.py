@@ -1,6 +1,6 @@
 import unittest
 
-import utils
+from install import utils
 
 
 class TestPrintWarning(unittest.TestCase):

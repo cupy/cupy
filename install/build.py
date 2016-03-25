@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import tempfile
 
-import utils
+from install import utils
 
 
 minimum_cuda_version = 6050

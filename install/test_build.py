@@ -2,7 +2,7 @@ import distutils
 import setuptools  # NOQA
 import unittest
 
-import build
+from install import build
 
 
 class TestCheckVersion(unittest.TestCase):
