@@ -281,7 +281,7 @@ Data-parallel computation is another strategy to parallelize online processing.
 In the context of neural networks, it means that a different device does computation on a different subset of the input data.
 In this subsection, we review the way to achieve data-parallel learning on two GPUs.
 
-Suppose again our task is `the MNIST example <mnist_mlp_example>`_.
+Suppose again our task is :ref:`the MNIST example <mnist_mlp_example>`.
 This time we want to directly parallelize the three-layer network.
 The most simple form of data-parallelization is parallelizing the gradient computation for a distinct set of data.
 First, define a model instance:
