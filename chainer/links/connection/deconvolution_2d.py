@@ -10,8 +10,8 @@ class Deconvolution2D(link.Link):
 
     """Two dimensional deconvolution function.
 
-    This link wraps the :func:`~chainer.functions.convolution_2d` function and
-    holds the filter weight and bias vector as parameters.
+    This link wraps the :func:`~chainer.functions.deconvolution_2d` function
+    and holds the filter weight and bias vector as parameters.
 
     Args:
         in_channels (int): Number of channels of input arrays.

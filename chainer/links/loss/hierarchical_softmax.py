@@ -68,7 +68,7 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
     implementation of :class:`BinaryHierarchicalSoftmax` for details.
 
     Args:
-        tree: A binary tree made with tuples like `((1, 2), 3)`.
+        tree: A binary tree made with tuples like ``((1, 2), 3)``.
 
     .. seealso::
        See :class:`BinaryHierarchicalSoftmax` for details.
@@ -344,11 +344,11 @@ class BinaryHierarchicalSoftmax(link.Link):
         return q.get()[2]
 
     def __call__(self, x, t):
-        """Computes the loss value for given input and groundtruth labels.
+        """Computes the loss value for given input and ground truth labels.
 
         Args:
             x (~chainer.Variable): Input to the classifier at each node.
-            t (~chainer.Variable): Batch of groundtruth labels.
+            t (~chainer.Variable): Batch of ground truth labels.
 
         Returns:
             ~chainer.Variable: Loss value.

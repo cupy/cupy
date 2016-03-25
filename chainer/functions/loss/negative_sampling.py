@@ -170,17 +170,17 @@ def negative_sampling(x, t, W, sampler, sample_size):
 
     .. math::
 
-       f(x, p) = \\log \\sigma(x^\\top w_p) + \\
+       f(x, p) = \\log \\sigma(x^\\top w_p) +  \\\\
        k E_{i \\sim P(i)}[\\log \\sigma(- x^\\top w_i)],
 
-    where :math:`\sigma(\cdot)` is a sigmoid function, :math:`w_i` is the
+    where :math:`\\sigma(\\cdot)` is a sigmoid function, :math:`w_i` is the
     weight vector for the word :math:`i`, and :math:`p` is a positive example.
     It is approximeted with :math:`k` examples :math:`N` sampled from
     probability :math:`P(i)`, like this:
 
     .. math::
 
-       f(x, p) \\approx \\log \\sigma(x^\\top w_p) + \\
+       f(x, p) \\approx \\log \\sigma(x^\\top w_p) +  \\\\
        \\sum_{n \\in N} \\log \\sigma(-x^\\top w_n).
 
     Each sample of :math:`N` is drawn from the word distribution :math:`P(w)`.
@@ -190,13 +190,13 @@ def negative_sampling(x, t, W, sampler, sample_size):
 
     Args:
         x (~chainer.Variable): Batch of input vectors.
-        t (~chainer.Variable): Vector of groundtruth labels.
+        t (~chainer.Variable): Vector of ground truth labels.
         W (~chainer.Variable): Weight matrix.
-        sampler (function): Sampling function. It takes a shape and returns an
-            integer array of the shape. Each element of this array is a sample
-            from the word distribution. A :class:`~chainer.utils.WalkerAlias`
-            object built with the power distribution of word frequency is
-            recommended.
+        sampler (~types.FunctionType): Sampling function. It takes a shape and
+            returns an integer array of the shape. Each element of this array
+            is a sample from the word distribution.
+            A :class:`~chainer.utils.WalkerAlias` object built with the power
+            distribution of word frequency is recommended.
         sample_size (int): Number of samples.
 
     See: `Distributed Representations of Words and Phrases and their\

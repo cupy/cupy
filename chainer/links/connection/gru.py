@@ -51,7 +51,7 @@ class GRU(GRUBase):
     Args:
         n_units(int): Dimension of hidden vector :math:`h`.
         n_inputs(int): Dimension of input vector :math:`x`. If ``None``,
-        it is set to the same value as ``n_units``.
+            it is set to the same value as ``n_units``.
 
     See:
         - `On the Properties of Neural Machine Translation: Encoder-Decoder
@@ -103,7 +103,7 @@ class StatefulGRU(GRUBase):
 
     Attributes:
         h(~chainer.Variable): Hidden vector that indicates the state of
-        :class:`~chainer.links.StatefulGRU`.
+            :class:`~chainer.links.StatefulGRU`.
 
     .. seealso:: :class:`~chainer.functions.GRU`
     """

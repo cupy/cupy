@@ -67,7 +67,7 @@ def linear(x, W, b=None):
             to be the *minibatch dimension*. The other dimensions are treated
             as concatenated one dimension whose size must be ``N``.
         W (~chainer.Variable): Weight variable of shape ``(M, N)``.
-        b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``..
+        b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``.
 
     Returns:
         ~chainer.Variable: Output variable.

@@ -287,9 +287,9 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
     the filter weight ``W``, and the bias vector ``b``.
 
     Args:
-        x (~chainer.Variable): Input variable of shape :math:`(n, c_I, h, w)`
+        x (~chainer.Variable): Input variable of shape :math:`(n, c_I, h, w)`.
         W (~chainer.Variable): Weight variable of shape
-        :math:`(c_I, c_O, k_H, k_W)`.
+            :math:`(c_I, c_O, k_H, k_W)`.
         b (~chainer.Variable): Bias variable of length :math:`c_O` (optional).
         stride (int or pair of ints): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
