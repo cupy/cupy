@@ -160,7 +160,7 @@ def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True,
             uses cuDNN as the core implementation.
 
     Returns:
-        ~chainer.Variable: Ouptut variable.
+        ~chainer.Variable: Output variable.
 
     """
     return MaxPooling2D(ksize, stride, pad, cover_all, use_cudnn)(x)
