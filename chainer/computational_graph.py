@@ -117,7 +117,7 @@ def build_computational_graph(outputs, remove_split=True):
         outputs(list): nodes from which the graph is constructed.
             Each element of outputs must be either :class:`Variable`
             object or :class:`Function` object.
-        remove_split(bool): It must be True. This argument is left for
+        remove_split(bool): It must be ``True``. This argument is left for
             backward compatibility.
 
     Returns:

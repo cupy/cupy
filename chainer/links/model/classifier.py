@@ -21,7 +21,7 @@ class Classifier(link.Chain):
         loss (~chainer.Variable): Loss value for the last minibatch.
         accuracy (~chainer.Variable): Accuracy for the last minibatch.
         compute_accuracy (bool): If ``True``, compute accuracy on the forward
-            computation. The default value is True.
+            computation. The default value is ``True``.
 
     """
 

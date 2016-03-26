@@ -10,8 +10,8 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
             default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis ``axis`` is preserved as an axis of
-            length one.
+        keepdims (bool): If ``True``, the axis ``axis`` is preserved as an axis
+            of length one.
 
     Returns:
         cupy.ndarray: The indices of the maximum of ``a`` along an axis.
@@ -35,8 +35,8 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
             default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis ``axis`` is preserved as an axis of
-            length one.
+        keepdims (bool): If ``True``, the axis ``axis`` is preserved as an axis
+            of length one.
 
     Returns:
         cupy.ndarray: The indices of the minimum of ``a`` along an axis.

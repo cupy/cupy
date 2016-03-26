@@ -100,7 +100,7 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
         pyramid_height (int): the number of pyramid levels
         pooling_class (MaxPooling2D or AveragePooling2D):
             Only MaxPooling2D class can be available for now.
-        use_cudnn (bool): If True and cuDNN is enabled, then this function
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
             uses cuDNN as the core implementation.
 
     Returns:

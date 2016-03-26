@@ -23,7 +23,7 @@ class Linear(link.Link):
         out_size (int): Dimension of output vectors.
         wscale (float): Scaling factor of the weight matrix.
         bias (float): Initial bias value.
-        nobias (bool): If True, then this function does not use the bias.
+        nobias (bool): If ``True``, then this function does not use the bias.
         initialW (2-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``.
         initial_bias (1-D array): Initial bias value. If ``None``, then this

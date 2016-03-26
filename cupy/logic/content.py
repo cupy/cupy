@@ -11,7 +11,7 @@ isfinite = _create_float_test_ufunc(
     'isfinite',
     '''Tests finiteness elementwise.
 
-    Each element of returned array is True only if the corresponding element
+    Each element of returned array is ``True`` only if the corresponding element
     of the input is finite (i.e. not an infinity nor NaN).
 
     .. seealso:: :data:`numpy.isfinite`

@@ -12,7 +12,7 @@ def array(obj, dtype=None, copy=True, ndmin=0):
         obj: cupy.ndarray object or any other object that can be passed to
             :func:`numpy.array`.
         dtype: Data type specifier.
-        copy (bool): If False, this function returns ``obj`` if possible.
+        copy (bool): If ``False``, this function returns ``obj`` if possible.
             Otherwise this function always returns a new array.
         ndmin (int): Minimum number of dimensions. Ones are inserted to the
             head of the shape if needed.

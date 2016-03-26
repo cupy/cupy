@@ -22,8 +22,8 @@ class Convolution2D(link.Link):
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         wscale (float): Scaling factor of the initial weight.
         bias (float): Initial bias value.
-        nobias (bool): If True, then this link does not use the bias term.
-        use_cudnn (bool): If True, then this link uses cuDNN if available.
+        nobias (bool): If ``True``, then this link does not use the bias term.
+        use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``.
         initial_bias (1-D array): Initial bias value. If ``None``, then this

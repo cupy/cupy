@@ -299,7 +299,7 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
             It should be pair of height and width :math:`(out_H, out_W)`.
             Default value is ``None`` and the outsize is estimated by
             input size, stride and pad.
-        use_cudnn (bool): If True, then this function uses cuDNN if available.
+        use_cudnn (bool): If ``True``, then this function uses cuDNN if available.
 
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`

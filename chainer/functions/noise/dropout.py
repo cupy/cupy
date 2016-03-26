@@ -42,7 +42,7 @@ def dropout(x, ratio=.5, train=True):
     Args:
         x (~chainer.Variable): Input variable.
         ratio (float): Dropout ratio.
-        train (bool): If True, executes dropout. Otherwise, does nothing.
+        train (bool): If ``True``, executes dropout. Otherwise, does nothing.
 
     Returns:
         ~chainer.Variable: Output variable.

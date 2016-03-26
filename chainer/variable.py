@@ -300,7 +300,7 @@ Actual: {0}'''.format(type(data))
         loss value.
 
         Args:
-            retain_grad (bool): If True, the gradient arrays of all
+            retain_grad (bool): If ``True``, the gradient arrays of all
                 intermediate variables are kept. Otherwise, :data:`grad` of the
                 intermediate variables are set to ``None`` on appropriate
                 timing, which may reduce the maximum memory consumption.

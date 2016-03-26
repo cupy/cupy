@@ -81,7 +81,7 @@ def relu(x, use_cudnn=True):
 
     Args:
         x (~chainer.Variable): Input variable.
-        use_cudnn (bool): If True and cuDNN is enabled, then this function uses
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function uses
             cuDNN as the core implementation.
 
     Returns:
