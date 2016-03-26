@@ -58,8 +58,8 @@ def save_npz(filename, obj, compression=True):
     Args:
         filename (str): Target file name.
         obj: Object to be serialized. It must support serialization protocol.
-        compression (bool): If ``True``, compression in the resulting zip file is
-            enabled.
+        compression (bool): If ``True``, compression in the resulting zip file
+            is enabled.
 
     """
     s = DictionarySerializer()

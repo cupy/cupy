@@ -6,8 +6,8 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
         axis (int or sequence of ints): Axes along which the sum is taken.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If ``True``, the specified axes are remained as axes of
-            length one.
+        keepdims (bool): If ``True``, the specified axes are remained as axes
+            of length one.
 
     Returns:
         cupy.ndarray: The result array.
@@ -27,8 +27,8 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
         axis (int or sequence of ints): Axes along which the product is taken.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If ``True``, the specified axes are remained as axes of
-            length one.
+        keepdims (bool): If ``True``, the specified axes are remained as axes
+            of length one.
 
     Returns:
         cupy.ndarray: The result array.

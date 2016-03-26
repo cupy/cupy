@@ -11,8 +11,8 @@ class Event(object):
     Args:
         block (bool): If ``True``, the event blocks on the
             :meth:`~cupy.cuda.Event.synchronize` method.
-        disable_timing (bool): If ``True``, the event does not prepare the timing
-            data.
+        disable_timing (bool): If ``True``, the event does not prepare the
+            timing data.
         interprocess (bool): If ``True``, the event can be passed to other
             processes.
 

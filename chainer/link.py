@@ -257,8 +257,8 @@ class Link(object):
         """Returns a generator of all links under the hierarchy.
 
         Args:
-            skipself (bool): If ``True``, then the generator skips this link and
-                starts with the first child link.
+            skipself (bool): If ``True``, then the generator skips this link
+                and starts with the first child link.
 
         Returns:
             A generator object that generates all links.
@@ -271,8 +271,8 @@ class Link(object):
         """Returns a generator of all (path, link) pairs under the hierarchy.
 
         Args:
-            skipself (bool): If ``True``, then the generator skips this link and
-                starts with the first child link.
+            skipself (bool): If ``True``, then the generator skips this link
+                and starts with the first child link.
 
         Returns:
             A generator object that generates all (path, link) pairs.

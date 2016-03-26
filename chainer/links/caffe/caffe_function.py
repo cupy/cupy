@@ -149,8 +149,8 @@ class CaffeFunction(link.Chain):
                 :class:`~chainer.Variable` objects are returned.
             disable (Iterable): A list of layer names that will be ignored
                 during the forward computation.
-            train (bool): If ``True``, this function emulates the TRAIN phase of
-                the Caffe layers. Otherwise, it emulates the TEST phase.
+            train (bool): If ``True``, this function emulates the TRAIN phase
+                of the Caffe layers. Otherwise, it emulates the TEST phase.
 
         Returns:
             tuple: A tuple of output :class:`~chainer.Variable` objects
