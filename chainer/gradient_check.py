@@ -168,7 +168,7 @@ def check_backward(func, x_data, y_grad, params=(),
             passed to ``func``. If ``x_data`` is one ``ndarray`` object, it is
             treated as ``(x_data,)``.
         y_grad (ndarray or tuple of ndarrays or None):
-            A set of ``ndarray`` s representing gradinents of return-values of
+            A set of ``ndarray`` s representing gradients of return-values of
             ``func``. If ``y_grad`` is one ``ndarray`` object, it is
             treated as ``(y_grad,)``. If ``func`` is a loss-function,
             ``y_grad`` should be set to ``None``.

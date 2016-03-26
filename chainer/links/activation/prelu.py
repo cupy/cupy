@@ -4,7 +4,7 @@ from chainer import link
 
 class PReLU(link.Link):
 
-    """Parameteric ReLU function as a link.
+    """Parametric ReLU function as a link.
 
     Args:
         shape (tuple of ints): Shape of the parameter array.

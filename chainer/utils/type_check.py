@@ -26,7 +26,7 @@ class TypeInfoTuple(tuple):
     """Type information of input/gradient tuples.
 
     It is a sub-class of tuple containing :class:`TypeInfo`. The i-th element
-    of this object contains type information of the i-th input/gradinent data.
+    of this object contains type information of the i-th input/gradient data.
     As each element is :class:`Expr`, you can easily check its validity.
     """
 
@@ -34,7 +34,7 @@ class TypeInfoTuple(tuple):
         """Returns an expression representing its length.
 
         Returns:
-            Expr: An expression object representig length of the tuple.
+            Expr: An expression object representing length of the tuple.
         """
         return Variable(len(self), '{0}.size'.format(self.name))
 
@@ -106,7 +106,7 @@ class Expr(object):
           True   # when x.eval() == y.eval()
 
        Call ``str`` function to get a representation of the original
-       equaltion::
+       equation::
 
           >>> str(c)
           'x + y'   # when str(x) == 'x' and str(y) == 'y'
@@ -130,7 +130,7 @@ class Expr(object):
 
         Behavior of this function depends on an implementation class.
         For example, a binary operator ``+`` calls the ``__add__`` function
-        with the two results of :meth:`eval` funciton.
+        with the two results of :meth:`eval` function.
         """
         raise NotImplementedError()
 

@@ -47,7 +47,7 @@ Issues and PRs are classified into following categories:
 * **Bug**: bug reports (issues) and bug fixes (PRs)
 * **Enhancement**: implementation improvements without breaking the interface
 * **Feature**: feature requests (issues) and their implementations (PRs)
-* **NoCompat**: distrupts backward compatibility
+* **NoCompat**: disrupts backward compatibility
 * **Test**: test fixes and updates
 * **Document**: document fixes and improvements
 * **Example**: fixes and improvements on the examples
@@ -79,7 +79,7 @@ Note that this automatic PR test only includes CPU tests.
 
 .. note::
 
-   We are also running continuous integrations with GPU tests for the master branch.
+   We are also running continuous integration with GPU tests for the master branch.
    Since this service is running on our internal server, we do not use it for automatic PR tests to keep the server secure.
 
 
@@ -110,7 +110,7 @@ Here is a (not-complete) list of the rules that ``flake8`` cannot check.
 * Import statements must be organized into three parts: standard libraries, third-party libraries, and internal imports. [H306]
 
 In addition, we restrict the usage of *shortcut symbols* in our code base.
-They are symbols imported by packages and subpackages of ``chainer``.
+They are symbols imported by packages and sub-packages of ``chainer``.
 For example, ``chainer.Variable`` is a shortcut of ``chainer.variable.Variable``.
 **It is not allowed to use such shortcuts in the ``chainer`` library implementation**.
 Note that you can still use them in ``tests`` and ``examples`` directories.
@@ -129,7 +129,7 @@ Note that we are using the nose package and the mock package for testing, so ins
 
   $ pip install nose mock
 
-In order to run unittests at the repository root, you first have to build Cython files in place by running the following command::
+In order to run unit tests at the repository root, you first have to build Cython files in place by running the following command::
 
   $ python setup.py develop
 
@@ -138,13 +138,13 @@ Once the Cython modules are built, you can run unit tests simply by running ``no
   $ nosetests
 
 It requires CUDA by default.
-In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the nosetests command::
+In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the ``nosetests`` command::
 
   $ nosetests path/to/your/test.py --attr='!gpu'
 
 Some GPU tests involve multiple GPUs.
 If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--attr='gpu<N'`` where ``N`` is a concrete integer.
-For example, if you have only one GPU, launch nosetests by the following command to skip multi-GPU tests::
+For example, if you have only one GPU, launch ``nosetests`` by the following command to skip multi-GPU tests::
 
   $ nosetests path/to/gpu/test.py --attr='gpu<2'
 
@@ -193,7 +193,7 @@ Test functions that require CUDA must be tagged by the ``chainer.testing.attr.gp
           ...
 
 The functions tagged by the ``gpu`` decorator are skipped if ``--attr='!gpu'`` is given.
-We also have the ``chainer.testing.attr.cudnn`` decorator to let nosetests know that the test depends on cuDNN.
+We also have the ``chainer.testing.attr.cudnn`` decorator to let ``nosetests`` know that the test depends on cuDNN.
 
 The test functions decorated by ``gpu`` must not depend on multiple GPUs.
 In order to write tests for multiple GPUs, use ``chainer.testing.attr.multi_gpu()`` or ``cupy.testing.attr.multi_gpu()`` decorators instead::

@@ -81,13 +81,13 @@ class CaffeFunction(link.Chain):
           x_data = numpy.ndarray((10, 3, 227, 227), dtype=numpy.float32)
           ...  # (Fill the minibatch here)
 
-          # Forward the pretrained net
+          # Forward the pre-trained net
           x = Variable(x_data)
           y, = func(inputs={'data': x}, outputs=['fc8'])
 
        The result ``y`` contains the Variable corresponding to the ``fc8``
        blob. The computational graph is memorized as a usual forward
-       computation in Chainer, so we can run backprop through this pretrained
+       computation in Chainer, so we can run backprop through this pre-trained
        net.
 
     Args:
@@ -134,7 +134,7 @@ class CaffeFunction(link.Chain):
                         'support it' % layer.name)
 
     def __call__(self, inputs, outputs, disable=(), train=True):
-        """Executes a subnetwork of the network.
+        """Executes a sub-network of the network.
 
         This function acts as an interpreter of the network definition for
         Caffe. On execution, it interprets each layer one by one, and if the

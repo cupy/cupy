@@ -76,7 +76,7 @@ def split_axis(x, indices_or_sections, axis):
 
     .. note::
         This function raises :class:`ValueError` if at least
-        one of the outputs is splitted to zero-size
+        one of the outputs is split to zero-size
         (i.e. `axis`-th value of its shape is zero).
 
     """

@@ -45,8 +45,8 @@ In order to avoid memory allocation and deallocation during the computation, Cha
 Chainer changes the default allocator of CuPy to the memory pool, so user can use functions of CuPy directly without dealing with the memory allocator.
 
 
-Basics of cupy.ndarray
-~~~~~~~~~~~~~~~~~~~~~~
+Basics of :class:`cupy.ndarray`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
@@ -54,7 +54,7 @@ Basics of cupy.ndarray
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
 The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
-CuPy implements many functions on cupy.ndarray objects.
+CuPy implements many functions on :class:`cupy.ndarray` objects.
 :ref:`See the reference for the supported subset of NumPy API <cupy_reference>`.
 Understanding NumPy might help utilizing most features of CuPy.
 `See the NumPy documentation for learning it <http://docs.scipy.org/doc/numpy/index.html>`_.

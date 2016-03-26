@@ -53,7 +53,7 @@ class RandomState(object):
         curand.setStream(self._generator, stream.ptr)
 
     def _generate_normal(self, func, size, dtype, *args):
-        # curand funcitons below don't support odd size.
+        # curand functions below don't support odd size.
         # * curand.generateNormal
         # * curand.generateNormalDouble
         # * curand.generateLogNormal
