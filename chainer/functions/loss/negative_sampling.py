@@ -170,7 +170,7 @@ def negative_sampling(x, t, W, sampler, sample_size):
 
     .. math::
 
-       f(x, p) = \\log \\sigma(x^\\top w_p) +  \\\\
+       f(x, p) = \\log \\sigma(x^\\top w_p) +  \\
        k E_{i \\sim P(i)}[\\log \\sigma(- x^\\top w_i)],
 
     where :math:`\\sigma(\\cdot)` is a sigmoid function, :math:`w_i` is the
