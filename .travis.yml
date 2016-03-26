@@ -51,7 +51,7 @@ install:
 script:
   - flake8
   - cd tests
-  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' chainer_tests
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest chainer_tests
 
 sudo: false
 
