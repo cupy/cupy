@@ -315,8 +315,8 @@ class ReductionKernel(object):
             readability of the performance profiling.
         reduce_type (str): Type of values to be used for reduction. This type
             is used to store the special variables ``a``.
-        reduce_dims (bool): If True, input arrays are reshaped without copy to
-            smaller dimensions for efficiency.
+        reduce_dims (bool): If ``True``, input arrays are reshaped without copy
+            to smaller dimensions for efficiency.
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
             top of the cu file.
         options (tuple of str): Additional compilation options.

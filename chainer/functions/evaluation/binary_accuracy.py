@@ -36,9 +36,9 @@ def binary_accuracy(y, t):
     Args:
         y (Variable): Variable holding a matrix whose i-th element
             indicates the score of positive at the i-th example.
-        t (Variable): Variable holding an int32 vector of groundtruth labels.
-            If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
-            Accuracy is zero if all groundtruth labels are ``-1``.
+        t (Variable): Variable holding an int32 vector of ground truth labels.
+            If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
+            Accuracy is zero if all ground truth labels are ``-1``.
 
     Returns:
         Variable: A variable holding a scalar array of the accuracy.

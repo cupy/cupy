@@ -427,7 +427,7 @@ cdef class ElementwiseKernel:
         operation (str): The body in the loop written in CUDA-C/C++.
         name (str): Name of the kernel function. It should be set for
             readability of the performance profiling.
-        reduce_dims (bool): If False, the shapes of array arguments are
+        reduce_dims (bool): If ``False``, the shapes of array arguments are
             kept within the kernel invocation. The shapes are reduced
             (i.e., the arrays are reshaped without copy to the minimum
             ndims) by default. It may make the kernel fast by reducing the

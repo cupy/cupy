@@ -118,6 +118,8 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
+# Napoleon settings
+napoleon_use_ivar = True
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -313,7 +315,7 @@ texinfo_documents = [
 autosummary_generate = True
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/2/', None),
+    'python': ('https://docs.python.org/3/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
 }
 

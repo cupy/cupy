@@ -47,11 +47,11 @@ class NegativeSampling(link.Link):
             self.sampler.to_gpu()
 
     def __call__(self, x, t):
-        """Computes the loss value for given input and groundtruth labels.
+        """Computes the loss value for given input and ground truth labels.
 
         Args:
             x (~chainer.Variable): Input of the weight matrix multiplication.
-            t (~chainer.Variable): Batch of groundtruth labels.
+            t (~chainer.Variable): Batch of ground truth labels.
 
         Returns:
             ~chainer.Variable: Loss value.

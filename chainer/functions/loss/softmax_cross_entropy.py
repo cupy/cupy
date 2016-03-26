@@ -172,8 +172,8 @@ def softmax_cross_entropy(x, t, use_cudnn=True, normalize=True):
             a usual softmax cross entropy if the number of dimensions is equal
             to 2, it computes a cross entropy of the replicated softmax if the
             number of dimensions is greater than 2.
-        t (Variable): Variable holding an int32 vector of groundtruth labels.
-            If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
+        t (Variable): Variable holding an int32 vector of ground truth labels.
+            If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
         normalize (Variable): Variable holding a boolean value which
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,

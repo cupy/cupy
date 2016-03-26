@@ -35,7 +35,7 @@ def accuracy(y, t):
     Args:
         y (Variable): Variable holding a matrix whose (i, j)-th element
             indicates the score of the class j at the i-th example.
-        t (Variable): Variable holding an int32 vector of groundtruth labels.
+        t (Variable): Variable holding an int32 vector of ground truth labels.
 
     Returns:
         Variable: A variable holding a scalar array of the accuracy.
