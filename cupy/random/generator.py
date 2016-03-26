@@ -116,7 +116,7 @@ class RandomState(object):
         return self.random_sample(size=size, dtype=dtype)
 
     def randn(self, *size, **kwarg):
-        """Returns an array of standand normal random values.
+        """Returns an array of standard normal random values.
 
         .. seealso::
             :func:`cupy.random.randn` for full documentation,
@@ -193,7 +193,7 @@ class RandomState(object):
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
 
-        ..seealso::
+        .. seealso::
             :func:`cupy.random.seed` for full documentation,
             :meth:`numpy.random.RandomState.seed`
 
@@ -221,7 +221,7 @@ class RandomState(object):
         return self.normal(size=size, dtype=dtype)
 
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
-        """Returns an array of uniformlly-distributed samples over an interval.
+        """Returns an array of uniformly-distributed samples over an interval.
 
         .. seealso::
             :func:`cupy.random.uniform` for full documentation,

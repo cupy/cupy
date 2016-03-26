@@ -5,7 +5,7 @@ from cupy import core
 
 
 def arange(start, stop=None, step=1, dtype=None):
-    """Rerurns an array with evenly spaced values within a given interval.
+    """Returns an array with evenly spaced values within a given interval.
 
     Values are generated within the half-open interval [start, stop). The first
     three arguments are mapped like the ``range`` built-in function, i.e. start

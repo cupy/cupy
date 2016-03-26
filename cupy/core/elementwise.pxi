@@ -483,7 +483,7 @@ cdef class ElementwiseKernel:
         multiple kernel binaries.
 
         Args:
-            args: Argumens of the kernel.
+            args: Arguments of the kernel.
             size (int): Range size of the indices. If specified, the variable
                 ``n`` is set to this value. Otherwise, the result of
                 broadcasting is used to determine the value of ``n``.

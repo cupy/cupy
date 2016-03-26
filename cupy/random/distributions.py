@@ -67,9 +67,9 @@ def standard_normal(size=None, dtype=float):
 
 
 def uniform(low=0.0, high=1.0, size=None, dtype=float):
-    """Returns an array of uniformlly-distributed samples over an interval.
+    """Returns an array of uniformly-distributed samples over an interval.
 
-    Samples are drawn from a uniform distribution over the half-open interaval
+    Samples are drawn from a uniform distribution over the half-open interval
     ``[low, high)``.
 
     Args:

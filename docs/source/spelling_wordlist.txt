@@ -54,6 +54,7 @@ GPU
 grayscale
 gzip
 hdf
+hypoteneous
 implementers
 indices
 infeasible
@@ -67,6 +68,7 @@ Linux
 maxout
 memoization
 memoize
+memoized
 memoizes
 memoizing
 minibatch
@@ -117,6 +119,7 @@ tuples
 ufunc
 ufuncs
 unigram
+uninstall
 unnormalize
 unnormalized
 unpooling

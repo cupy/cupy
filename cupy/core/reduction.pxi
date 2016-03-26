@@ -302,7 +302,7 @@ class ReductionKernel(object):
     :meth:`~ReductionKernel.__call__` method, which is cached for each device.
     The compiled binary is also cached into a file under the
     ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
-    binary is resued by other processes.
+    binary is reused by other processes.
 
     Args:
         in_params (str): Input argument list.
