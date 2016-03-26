@@ -39,12 +39,12 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         count = 0
         x = numpy.rollaxis(self.x, 1, self.x.ndim).reshape(
             (self.t.size, self.x.shape[1]))
-        t = self.t.reshape(self.t.size)
-        for i in six.moves.range(x.shape[0]):
-            if t[i] == -1:
+        t = self.t.ravel()
+        for xi, ti in six.moves.zip(x, t):
+            if ti == -1:
                 continue
-            log_z = numpy.ufunc.reduce(numpy.logaddexp, x[i])
-            loss_expect -= (x[i] - log_z)[t[i]]
+            log_z = numpy.ufunc.reduce(numpy.logaddexp, xi)
+            loss_expect -= (xi - log_z)[ti]
             count += 1
 
         if count == 0:
