@@ -75,10 +75,10 @@ class BatchNormalization(link.Link):
             x (Variable): An input variable.
             test (bool): If ``True``, BatchNormalization runs in testing mode;
                 it normalizes the input using pre-computed statistics.
-            finetune (bool): If ``True``, BatchNormalization runs in fine-tuning
-                mode; it accumulates the input array to compute population
-                statistics for normalization, and normalizes the input using
-                batch statistics.
+            finetune (bool): If ``True``, BatchNormalization runs in
+                fine-tuning mode; it accumulates the input array to compute
+                population statistics for normalization, and normalizes the
+                input using batch statistics.
 
         If ``test`` and ``finetune`` are both ``False``, then
         BatchNormalization runs in training mode; it computes moving averages
