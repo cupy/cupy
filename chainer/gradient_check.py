@@ -88,7 +88,7 @@ def _as_tuple(x):
     elif isinstance(x, list):
         return tuple(x)
     else:
-        return (x,)
+        return x,
 
 
 def check_backward(func, x_data, y_grad, params=(),

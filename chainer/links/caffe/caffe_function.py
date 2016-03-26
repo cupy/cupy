@@ -133,7 +133,7 @@ class CaffeFunction(link.Chain):
                         'Skip the layer "%s", since CaffeFunction does not'
                         'support it' % layer.name)
 
-    def __call__(self, inputs, outputs, disable=[], train=True):
+    def __call__(self, inputs, outputs, disable=(), train=True):
         """Executes a subnetwork of the network.
 
         This function acts as an interpreter of the network definition for
@@ -321,21 +321,21 @@ class CaffeFunction(link.Chain):
 
 def _get_ksize(param):
     if param.kernel_h > 0:
-        return (param.kernel_h, param.kernel_w)
+        return param.kernel_h, param.kernel_w
     else:
         return param.kernel_size
 
 
 def _get_stride(param):
     if param.stride_h > 0:
-        return (param.stride_h, param.stride_w)
+        return param.stride_h, param.stride_w
     else:
         return param.stride
 
 
 def _get_pad(param):
     if param.pad_h > 0:
-        return (param.pad_h, param.pad_w)
+        return param.pad_h, param.pad_w
     else:
         return param.pad
 

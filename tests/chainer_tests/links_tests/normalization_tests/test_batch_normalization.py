@@ -30,7 +30,7 @@ def _batch_normalization(expander, gamma, beta, x, mean, var, eps, test):
 class BatchNormalizationTest(unittest.TestCase):
 
     def setUp(self):
-        self.expander = (None, Ellipsis) + (None,) * (self.ndim)
+        self.expander = (None, Ellipsis) + (None,) * self.ndim
         self.aggr_axes = (0,) + tuple(six.moves.range(2, self.ndim + 2))
 
         self.link = links.BatchNormalization(3)
@@ -78,8 +78,6 @@ class BatchNormalizationTest(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        def f(x):
-            self.link(x, test=self.test)
         gradient_check.check_backward(
             self.link, x_data, y_grad, (self.link.gamma, self.link.beta),
             eps=1e-2, rtol=1e-3, atol=1e-4)

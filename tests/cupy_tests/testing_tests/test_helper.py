@@ -101,14 +101,14 @@ class NumPyCuPyDecoratorBase(object):
         decorated_func(self)
 
 
-def numpy_error(self, xp):
+def numpy_error(_, xp):
     if xp == numpy:
         raise ValueError()
     elif xp == cupy:
         return cupy.array(1)
 
 
-def cupy_error(self, xp):
+def cupy_error(_, xp):
     if xp == numpy:
         return numpy.array(1)
     elif xp == cupy:
