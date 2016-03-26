@@ -17,7 +17,7 @@ class PReLU(link.Link):
     .. seealso:: :func:`chainer.functions.prelu`
 
     Attributes:
-        W (~chainer.Variable): Coefficient of parameteric ReLU.
+        W (~chainer.Variable): Coefficient of parametric ReLU.
 
     """
     def __init__(self, shape=(), init=0.25):

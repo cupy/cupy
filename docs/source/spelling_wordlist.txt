@@ -70,6 +70,7 @@ memoize
 memoizes
 memoizing
 minibatch
+mlpconv
 mnist
 multi
 multiclass
@@ -89,6 +90,7 @@ parameterize
 parameterized
 perceptron
 Perf
+pre
 preprocessing
 profilers
 proto
@@ -127,6 +129,7 @@ versioning
 Bengio
 Cho
 Courville
+farley
 Goodfellow
 Jurgen
 Mirza

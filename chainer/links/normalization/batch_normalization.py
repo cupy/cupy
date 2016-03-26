@@ -68,7 +68,7 @@ class BatchNormalization(link.Link):
     def __call__(self, x, test=False, finetune=False):
         """Invokes the forward propagation of BatchNormalization.
 
-        BatchNormalization accepts additional arguments, which controlls three
+        BatchNormalization accepts additional arguments, which controls three
         different running mode.
 
         Args:
