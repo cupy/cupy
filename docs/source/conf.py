@@ -337,5 +337,5 @@ np.random.seed(0)
 '''
 doctest_test_doctest_blocks = None
 
-spelling_lang='en_US'
-spelling_word_list_filename='spelling_wordlist.txt'
+spelling_lang = 'en_US'
+spelling_word_list_filename = 'spelling_wordlist.txt'
