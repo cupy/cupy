@@ -180,7 +180,7 @@ def negative_sampling(x, t, W, sampler, sample_size):
 
     .. math::
 
-       f(x, p) \\approx \\log \\sigma(x^\\top w_p) +  \\\\
+       f(x, p) \\approx \\log \\sigma(x^\\top w_p) +  \\
        \\sum_{n \\in N} \\log \\sigma(-x^\\top w_n).
 
     Each sample of :math:`N` is drawn from the word distribution :math:`P(w)`.
