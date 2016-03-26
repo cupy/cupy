@@ -259,7 +259,7 @@ def batch_matmul(a, b, transa=False, transb=False):
 
     Args:
         a (Variable): The left operand of the batch matrix multiplications.
-            A 2-D array of shape ``(B, N,)`` is considered as B Nx1 matrices.
+            A 2-D array of shape ``(B, N)`` is considered as B Nx1 matrices.
             A 3-D array of shape ``(B, M, N)`` is considered as B MxN matrices.
         b (Variable): The right operand of the batch matrix multiplications.
             Its array is treated as matrices in the same way as ``a``'s array.
