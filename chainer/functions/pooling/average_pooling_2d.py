@@ -123,8 +123,8 @@ def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
             specified, then it uses same stride as the pooling window size.
         pad (int or pair of ints): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        use_cudnn (bool): If ``True`` and CuDNN is enabled, then this function
-            uses CuDNN as the core implementation.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     Returns:
         ~chainer.Variable: Output variable.

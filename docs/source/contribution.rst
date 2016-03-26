@@ -193,7 +193,7 @@ Test functions that require CUDA must be tagged by the ``chainer.testing.attr.gp
           ...
 
 The functions tagged by the ``gpu`` decorator are skipped if ``--attr='!gpu'`` is given.
-We also have the ``chainer.testing.attr.cudnn`` decorator to let nosetests know that the test depends on CuDNN.
+We also have the ``chainer.testing.attr.cudnn`` decorator to let nosetests know that the test depends on cuDNN.
 
 The test functions decorated by ``gpu`` must not depend on multiple GPUs.
 In order to write tests for multiple GPUs, use ``chainer.testing.attr.multi_gpu()`` or ``cupy.testing.attr.multi_gpu()`` decorators instead::

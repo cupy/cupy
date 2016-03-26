@@ -156,8 +156,8 @@ def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True,
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         cover_all (bool): If ``True``, all spatial locations are pooled into
             some output pixels. It may make the output size larger.
-        use_cudnn (bool): If ``True`` and CuDNN is enabled, then this function
-            uses CuDNN as the core implementation.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     Returns:
         ~chainer.Variable: Ouptut variable.
