@@ -79,7 +79,7 @@ class NpzDeserializer(serializer.Deserializer):
     to read an object serialized by :func:`save_npz`.
 
     Args:
-        npz: `npz` file opbject.
+        npz: `npz` file object.
         path: The base path that the deserialization starts from.
 
     """
