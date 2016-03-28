@@ -318,7 +318,7 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = fw
         self._add_layer(layer)
 
-    @_layer('Softmax', 'SOFTMAX_LOSS')
+    @_layer('Softmax', 'SOFTMAX')
     def _setup_softmax(self, layer):
         if layer.softmax_param.axis != 1:
             raise RuntimeError(
