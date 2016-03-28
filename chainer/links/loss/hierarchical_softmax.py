@@ -309,9 +309,9 @@ class BinaryHierarchicalSoftmax(link.Link):
 
     @staticmethod
     def create_huffman_tree(word_counts):
-        """Makes a huffman tree from a dictionary containing word counts.
+        """Makes a Huffman tree from a dictionary containing word counts.
 
-        This method creates a binary huffman tree, that is required for
+        This method creates a binary Huffman tree, that is required for
         :class:`BinaryHierarchicalSoftmax`.
         For example, ``{0: 8, 1: 5, 2: 6, 3: 4}`` is converted to
         ``((3, 1), (2, 0))``.
@@ -321,7 +321,7 @@ class BinaryHierarchicalSoftmax(link.Link):
                 Dictionary representing counts of words.
 
         Returns:
-            Binary huffman tree with tuples and keys of ``word_coutns``.
+            Binary Huffman tree with tuples and keys of ``word_coutns``.
 
         """
         if len(word_counts) == 0:

@@ -254,7 +254,7 @@ def connectionist_temporal_classification(
        You need to input ``x`` without applying to activation functions(e.g.
        softmax function), because this function applies softmax functions
        to ``x`` before calculating CTC loss to avoid numerical limitations.
-       You also need to apply softmax function to fowarded values before you
+       You also need to apply softmax function to forwarded values before you
        decode it.
 
     .. note::

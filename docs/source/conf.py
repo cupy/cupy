@@ -46,6 +46,12 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.viewcode']
 
+try:
+    import sphinxcontrib.spelling  # noqa
+    extensions.append('sphinxcontrib.spelling')
+except ImportError:
+    pass
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -330,3 +336,6 @@ import chainer.links as L
 np.random.seed(0)
 '''
 doctest_test_doctest_blocks = None
+
+spelling_lang = 'en_US'
+spelling_word_list_filename = 'spelling_wordlist.txt'

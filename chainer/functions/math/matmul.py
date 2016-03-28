@@ -162,8 +162,10 @@ def matmul(a, b, transa=False, transb=False):
 
     Args:
         a (Variable): The left operand of the matrix multiplication.
-            A 1-D array of shape ``(N,)`` is considered as an Nx1 matrix.
-            A 2-D array of shape ``(M, N)`` is considered as an MxN matrix.
+            A 1-D array of shape ``(N,)`` is considered as an
+            :math:`N \\times 1` matrix.
+            A 2-D array of shape ``(M, N)`` is considered as an
+            :math:`M \\times N` matrix.
         b (Variable): The right operand of the matrix multiplication.
             Its array is treated as a matrix in the same way as ``a``'s array.
         transa (bool): If ``True``, transpose a.
@@ -259,8 +261,10 @@ def batch_matmul(a, b, transa=False, transb=False):
 
     Args:
         a (Variable): The left operand of the batch matrix multiplications.
-            A 2-D array of shape ``(B, N)`` is considered as B Nx1 matrices.
-            A 3-D array of shape ``(B, M, N)`` is considered as B MxN matrices.
+            A 2-D array of shape ``(B, N)`` is considered as B
+            :math:`N \\times 1` matrices.
+            A 3-D array of shape ``(B, M, N)`` is considered as B
+            :math:`M \\times N` matrices.
         b (Variable): The right operand of the batch matrix multiplications.
             Its array is treated as matrices in the same way as ``a``'s array.
         transa (bool): If ``True``, transpose each matrix in a.

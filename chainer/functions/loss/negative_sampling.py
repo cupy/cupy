@@ -175,7 +175,7 @@ def negative_sampling(x, t, W, sampler, sample_size):
 
     where :math:`\\sigma(\\cdot)` is a sigmoid function, :math:`w_i` is the
     weight vector for the word :math:`i`, and :math:`p` is a positive example.
-    It is approximeted with :math:`k` examples :math:`N` sampled from
+    It is approximated with :math:`k` examples :math:`N` sampled from
     probability :math:`P(i)`, like this:
 
     .. math::

@@ -93,7 +93,7 @@ def savez(file, *args, **kwds):
 def savez_compressed(file, *args, **kwds):
     """Saves one or more arrays into a file in compressed ``.npz`` format.
 
-    It is equivalent to :func:`cupy.savez` function except the outptu file is
+    It is equivalent to :func:`cupy.savez` function except the output file is
     compressed.
 
     .. seealso::

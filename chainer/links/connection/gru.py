@@ -28,7 +28,7 @@ class GRU(GRUBase):
 
     GRU function has six parameters :math:`W_r`, :math:`W_z`, :math:`W`,
     :math:`U_r`, :math:`U_z`, and :math:`U`. All these parameters are
-    :math:`n \\times n` matricies, where :math:`n` is the dimension of
+    :math:`n \\times n` matrices, where :math:`n` is the dimension of
     hidden vectors.
 
     Given two inputs a previous hidden vector :math:`h` and an input vector
@@ -78,7 +78,7 @@ class StatefulGRU(GRUBase):
 
     Stateful GRU function has six parameters :math:`W_r`, :math:`W_z`,
     :math:`W`, :math:`U_r`, :math:`U_z`, and :math:`U`.
-    All these parameters are :math:`n \\times n` matricies,
+    All these parameters are :math:`n \\times n` matrices,
     where :math:`n` is the dimension of hidden vectors.
 
     Given input vector :math:`x`, Stateful GRU returns the next

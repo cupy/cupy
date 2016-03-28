@@ -122,7 +122,7 @@ For example, a kernel that adds two vectors with reversing one of them can be wr
 
 (Note that this is an artificial example and you can write such operation just by ``z = x + y[::-1]`` without defining a new kernel).
 A raw argument can be used like an array.
-The indexing operator ``y[n - i]`` involves an indexing computation on ``y``, so ``y`` can be arbitrarily shaped and strided.
+The indexing operator ``y[n - i]`` involves an indexing computation on ``y``, so ``y`` can be arbitrarily shaped and strode.
 
 Note that raw arguments are not involved in the broadcasting and the determination of ``n``.
 If you want to mark all arguments as ``raw``, you must specify the ``size`` argument on invocation, which defines the value of ``n``.
@@ -135,7 +135,7 @@ Reduction kernels can be defined by the :class:`~cupy.ReductionKernel` class.
 We can use it by defining four parts of the kernel code:
 
 1. Identity value: This value is used for the initial value of reduction.
-2. Mapping expression: It is used for the preprocessing of each element to be reduced.
+2. Mapping expression: It is used for the pre-processing of each element to be reduced.
 3. Reduction expression: It is an operator to reduce the multiple mapped values.
    The special variables ``a`` and ``b`` are used for its operands.
 4. Post mapping expression: It is used to transform the resulting reduced values.

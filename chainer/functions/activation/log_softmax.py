@@ -100,7 +100,7 @@ def log_softmax(x, use_cudnn=True):
     .. math::
         p(x) = {\\exp(f(x)) \\over \\sum_{x'} \\exp(f(x'))}.
 
-    This method is theorecically equivalent to ``log(softmax(x))`` but is more
+    This method is theoretically equivalent to ``log(softmax(x))`` but is more
     stable.
 
     .. note::

@@ -9,7 +9,7 @@ from chainer.utils import type_check
 
 class SelectItem(function.Function):
 
-    """Select elements stored in given indicies."""
+    """Select elements stored in given indices."""
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -66,7 +66,7 @@ class SelectItem(function.Function):
 
 
 def select_item(x, t):
-    """Select elements stored in given indicies.
+    """Select elements stored in given indices.
 
     This function returns ``t.choose(x.T)``, that means
     ``y[i] == x[i, t[i]]`` for all ``i``.

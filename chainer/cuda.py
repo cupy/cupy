@@ -140,11 +140,12 @@ def get_device(*args):
 
     Args:
         args: Values to specify a GPU device. :class:`numpy.ndarray` objects
-            are skipped. If all arguments are numpy.ndarray objects, it returns
-            a dummy device object. Otherwise, the first non-numpy object is
-            used to select a device. If it is a :class:`cupy.ndarray` object,
-            its device is returned. Otherwise, the argument is passed to the
-            initializer of :class:`~cupy.cuda.Device` and it is returned.
+            are skipped. If all arguments are :class:`numpy.ndarray` objects,
+            it returns a dummy device object. Otherwise, the first non-numpy
+            object is used to select a device. If it is a :class:`cupy.ndarray`
+            object, its device is returned. Otherwise, the argument is passed
+            to the initializer of :class:`~cupy.cuda.Device` and it is
+            returned.
 
     Returns:
         Device object specified by given ``args``.

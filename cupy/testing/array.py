@@ -12,8 +12,8 @@ def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
     Args:
          actual(numpy.ndarray or cupy.ndarray): The actual object to check.
          desired(numpy.ndarray or cupy.ndarray): The desired, expected object.
-         rtol(float): Relative torelance.
-         atol(float): Absolute torelance.
+         rtol(float): Relative tolerance.
+         atol(float): Absolute tolerance.
          err_msg(str): The error message to be printed in case of failure.
          verbose(bool): If ``True``, the conflicting
              values are appended to the error message.
