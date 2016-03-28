@@ -568,7 +568,7 @@ class TestSoftmax(TestCaffeFunctionBaseMock):
         self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
-        self.mock.asert_called_once_with(self.inputs[0])
+        self.mock.assert_called_once_with(self.inputs[0])
 
 
 class TestSoftmaxCaffeEngine(TestCaffeFunctionBaseMock):
@@ -594,7 +594,7 @@ class TestSoftmaxCaffeEngine(TestCaffeFunctionBaseMock):
     def test_softmax_caffe_engine(self):
         self.init_func()
         self.call(['x'], ['y'])
-        self.mock.asert_called_once_with(self.inputs[0], use_cudnn=False)
+        self.mock.assert_called_once_with(self.inputs[0], use_cudnn=False)
 
 
 class TestSoftmaxcuDnnEngine(TestCaffeFunctionBaseMock):
@@ -620,7 +620,7 @@ class TestSoftmaxcuDnnEngine(TestCaffeFunctionBaseMock):
     def test_softmax_caffe_engine(self):
         self.init_func()
         self.call(['x'], ['y'])
-        self.mock.asert_called_once_with(self.inputs[0], use_cudnn=True)
+        self.mock.assert_called_once_with(self.inputs[0], use_cudnn=True)
 
 
 class TestSoftmaxInvalidAxis(TestCaffeFunctionBase):
