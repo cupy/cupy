@@ -609,7 +609,7 @@ class TestSoftmaxcuDnnEngine(TestCaffeFunctionBaseMock):
                 'name': 'l1',
                 'type': 'Softmax',
                 'softmax_param': {
-                    'engine': 2,  # cuDNN
+                    'engine': 2,  # CUDNN
                 },
                 'bottom': ['x'],
                 'top': ['y'],
