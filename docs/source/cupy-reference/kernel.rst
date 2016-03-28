@@ -108,15 +108,10 @@ The ElementwiseKernel class does the indexing with broadcasting automatically, w
 On the other hand, we sometimes want to write a kernel with manual indexing for some arguments.
 We can tell the ElementwiseKernel class to use manual indexing by adding the ``raw`` keyword preceding the type specifier.
 
-We can use the special variable ``i`` and ``_ind`` for the manual indexing.
+We can use the special variable ``i`` and method ``_ind.size()`` for the manual indexing.
 ``i`` indicates the index within the loop.
-``_ind`` holds the infromation about the shape of the underlying array.
-
-* ``_ind.size()`` returns the number of elements to apply the elementwise operation.
-* ``_ind.shape`` is the array that represents the shape of the array.
-* ``_ind.index`` is the array that indicates the current index in the array.
-
-The shape which ``_ind`` represents is the one **after** broadcast operation.
+``_ind.size()`` indicates total number of elements to apply the elementwise operation.
+Note that it represents the size **after** broadcast operation.
 
 For example, a kernel that adds two vectors with reversing one of them can be written as follows:
 
@@ -132,8 +127,7 @@ A raw argument can be used like an array.
 The indexing operator ``y[_ind.size() - i - 1]`` involves an indexing computation on ``y``, so ``y`` can be arbitrarily shaped and strided.
 
 Note that raw arguments are not involved in the broadcasting.
-If you want to mark all arguments as ``raw``, you must specify the ``size`` argument when the kernel is invoked.
-In this case, ``_ind.size()`` is set to ``size``.
+If you want to mark all arguments as ``raw``, you must specify the ``size`` argument on invocation, which defines the value of ``_ind.size()``.
 
 
 Reduction kernels
