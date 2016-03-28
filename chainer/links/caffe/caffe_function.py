@@ -325,13 +325,13 @@ class CaffeFunction(link.Chain):
                 'Softmax along non-channel axis is not supported')
 
         if layer.softmax_param.engine == 0:  # DEFAULT
-            self.forwards[layer.name] = functions.softmax
+            fw = functions.softmax
         elif layer.softmax_param.engine == 1:  # CAFFE
-            self.forwards[layer.name] = lambda x: functions.softmax(
-                x, use_cudnn=False)
+            fw = _SingleArgumentFunction(functions.softmax, use_cudnn=False)
         elif layer.softmax_param.engine == 2:  # CUDNN
-            self.forwards[layer.name] = lambda x: functions.softmax(
-                x, use_cudnn=True)
+            fw = _SingleArgumentFunction(functions.softmax, use_cudnn=True)
+
+        self.forwards[layer.name] = fw
         self._add_layer(layer)
 
     @_layer('SoftmaxWithLoss', 'SOFTMAX_LOSS')
