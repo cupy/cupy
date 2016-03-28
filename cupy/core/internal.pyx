@@ -171,7 +171,7 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim):
         start = 0 if start_none else max(0, min(dim, start))
         stop = dim if stop_none else max(start, min(dim, stop))
     else:
-        start = dim - 1 if start_none else max(0, min(dim, start))
-        stop = -1 if stop_none else max(0, min(start, stop))
+        start = dim - 1 if start_none else max(-1, min(dim - 1, start))
+        stop = -1 if stop_none else max(-1, min(start, stop))
 
     return slice(start, stop, step)
