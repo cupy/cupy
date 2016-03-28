@@ -8,10 +8,10 @@ from cupy.cuda cimport driver
 
 
 cdef extern from "cupy_stdint.h" nogil:
-    ctypedef   signed char  int8_t
-    ctypedef   signed short int16_t
-    ctypedef   signed int   int32_t
-    ctypedef   signed long  int64_t
+    ctypedef signed char int8_t
+    ctypedef signed short int16_t
+    ctypedef signed int int32_t
+    ctypedef signed long long int64_t
 
 
 cdef class CPointer:
