@@ -571,6 +571,58 @@ class TestSoftmax(TestCaffeFunctionBaseMock):
         self.mock.asert_called_once_with(self.inputs[0])
 
 
+class TestSoftmaxCaffeEngine(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.softmax'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Softmax',
+                'softmax_param': {
+                    'engine': 1,  # CAFFE
+                },
+                'bottom': ['x'],
+                'top': ['y'],
+            }
+        ]
+    }
+
+    def test_softmax_caffe_engine(self):
+        self.init_func()
+        self.call(['x'], ['y'])
+        self.mock.asert_called_once_with(self.inputs[0], use_cudnn=False)
+
+
+class TestSoftmaxcuDnnEngine(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.softmax'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Softmax',
+                'softmax_param': {
+                    'engine': 2,  # cuDNN
+                },
+                'bottom': ['x'],
+                'top': ['y'],
+            }
+        ]
+    }
+
+    def test_softmax_caffe_engine(self):
+        self.init_func()
+        self.call(['x'], ['y'])
+        self.mock.asert_called_once_with(self.inputs[0], use_cudnn=True)
+
+
 class TestSoftmaxInvalidAxis(TestCaffeFunctionBase):
 
     data = {
