@@ -73,7 +73,7 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
     It performs pooling operation to the input 4D-array ``x`` with different
     kernel sizes and padding sizes, and then flattens all dimensions except
     first dimension of all pooling results, and finally concatenates them along
-    2nd dimension.
+    second dimension.
 
     At :math:`i`-th pyramid level, the kernel size
     :math:`(k_h^{(i)}, k_w^{(i)})` and padding size

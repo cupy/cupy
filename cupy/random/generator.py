@@ -158,7 +158,7 @@ class RandomState(object):
             size (None or int or tuple): Shape of the array or the scalar
                 returned.
         Returns:
-            int or cupy.ndarray: If ``None``, an ndarray with
+            int or cupy.ndarray: If ``None``, an :class:`cupy.ndarray` with
             shape ``()`` is returned.
             If ``int``, 1-D array of length size is returned.
             If ``tuple``, multi-dimensional array with shape
@@ -241,8 +241,8 @@ def seed(seed=None):
     affected.
 
     Args:
-        seed (None or int): Seed for the random number generator. If None, it
-            uses :func:`os.urandom` if available or :func:`time.clock`
+        seed (None or int): Seed for the random number generator. If ``None``,
+            it uses :func:`os.urandom` if available or :func:`time.clock`
             otherwise. Note that this function does not support seeding by an
             integer array.
 

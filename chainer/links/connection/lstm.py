@@ -24,7 +24,7 @@ class LSTM(link.Chain):
         upward (~chainer.links.Linear): Linear layer of upward connections.
         lateral (~chainer.links.Linear): Linear layer of lateral connections.
         c (~chainer.Variable): Cell states of LSTM units.
-        h (~chainer.Variable): Output at the previous timestep.
+        h (~chainer.Variable): Output at the previous time step.
 
     """
     def __init__(self, in_size, out_size):
@@ -52,7 +52,7 @@ class LSTM(link.Chain):
     def reset_state(self):
         """Resets the internal state.
 
-        It sets None to the :attr:`c` and :attr:`h` attributes.
+        It sets ``None`` to the :attr:`c` and :attr:`h` attributes.
 
         """
         self.c = self.h = None

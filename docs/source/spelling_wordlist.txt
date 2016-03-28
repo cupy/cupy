@@ -1,5 +1,6 @@
 acyclic
 allocator
+arccosine
 backend
 backprop
 backpropagation
@@ -47,7 +48,6 @@ dtype
 dtypes
 elementwise
 embeddings
-fbcunn
 FFT
 gaussian
 GPU
@@ -78,10 +78,10 @@ multi
 multiclass
 namespace
 NaN
-nnx
 normalizer
 npz
 NumPy
+online
 optimizer
 optimizers
 parallelization
