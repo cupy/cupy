@@ -14,7 +14,7 @@ import time
 import numpy as np
 import six
 
-import cPickle as pickle
+import six.moves.cPickle as pickle
 
 import chainer
 from chainer import cuda
@@ -79,7 +79,8 @@ if args.test:
     test_data = test_data[:100]
 
 print('#vocab =', len(vocab))
-pickle.dump(vocab, open('vocab.bin', 'wb'))
+with open("vocab.bin", "wb") as f:
+    pickle.dump(vocab, f)
 
 # Prepare RNNLM model, defined in net.py
 lm = net.RNNLM(len(vocab), n_units)
