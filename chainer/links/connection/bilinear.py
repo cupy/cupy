@@ -24,7 +24,7 @@ class Bilinear(link.Link):
             ``(left_size, right_size, out_size)``. If ``None``,
             :math:`W` is initialized by centered Gaussian distribution properly
             scaled according to the dimension of inputs and outputs.
-        initial_bias (tuple): Intial values of :math:`V^1`, :math:`V^2`
+        initial_bias (tuple): Initial values of :math:`V^1`, :math:`V^2`
             and :math:`b`. The length this argument must be 3.
             Each element of this tuple must have the shapes of
             ``(left_size, output_size)``, ``(right_size, output_size)``,

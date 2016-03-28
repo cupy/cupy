@@ -4,7 +4,7 @@ from chainer import optimizer
 
 class NesterovAG(optimizer.GradientMethod):
 
-    """Nesterov's Accelarated Gradient.
+    """Nesterov's Accelerated Gradient.
 
     Formulated as the linear combination coefficients of the velocity and
     gradient contributions at each iteration.

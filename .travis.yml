@@ -49,8 +49,9 @@ install:
   - pip install nose hacking mock
 
 script:
-  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' tests/chainer_tests
   - flake8
+  - cd tests
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' chainer_tests
 
 sudo: false
 

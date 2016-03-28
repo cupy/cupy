@@ -87,7 +87,10 @@ class Variable(object):
 
     """
     def __init__(self, data, volatile=flag.OFF, name=None):
-        assert isinstance(data, (numpy.ndarray, cuda.ndarray))
+        if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
+            msg = '''numpy.ndarray or cuda.ndarray are expected.
+Actual: {0}'''.format(type(data))
+            raise TypeError(msg)
 
         self.data = data
         self.rank = 0
@@ -99,7 +102,7 @@ class Variable(object):
         self.name = name
 
     def __reduce__(self):
-        return (Variable, (self.data, self.volatile, self.name))
+        return Variable, (self.data, self.volatile, self.name)
 
     def __repr__(self):
         if self.name:
@@ -297,7 +300,7 @@ class Variable(object):
         loss value.
 
         Args:
-            retain_grad (bool): If True, the gradient arrays of all
+            retain_grad (bool): If ``True``, the gradient arrays of all
                 intermediate variables are kept. Otherwise, :data:`grad` of the
                 intermediate variables are set to ``None`` on appropriate
                 timing, which may reduce the maximum memory consumption.

@@ -150,17 +150,17 @@ def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True,
         ksize (int or pair of ints): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k)`` are equivalent.
         stride (int or pair of ints or None): Stride of pooling applications.
-            ``stride=s`` and ``stride=(s, s)`` are equivalent. If None is
+            ``stride=s`` and ``stride=(s, s)`` are equivalent. If ``None`` is
             specified, then it uses same stride as the pooling window size.
         pad (int or pair of ints): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        cover_all (bool): If True, all spatial locations are pooled into some
-            output pixels. It may make the output size larger.
-        use_cudnn (bool): If True and CuDNN is enabled, then this function
-            uses CuDNN as the core implementation.
+        cover_all (bool): If ``True``, all spatial locations are pooled into
+            some output pixels. It may make the output size larger.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     Returns:
-        ~chainer.Variable: Ouptut variable.
+        ~chainer.Variable: Output variable.
 
     """
     return MaxPooling2D(ksize, stride, pad, cover_all, use_cudnn)(x)

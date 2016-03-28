@@ -28,7 +28,7 @@ def rand(*size, **kwarg):
 
 
 def randn(*size, **kwarg):
-    """Returns an array of standand normal random values.
+    """Returns an array of standard normal random values.
 
     Each element of the array is normally distributed with zero mean and unit
     variance. All elements are identically and independently distributed
@@ -40,7 +40,7 @@ def randn(*size, **kwarg):
             The default is float64.
 
     Returns:
-        cupy.ndarray: An array of standanr normal random values.
+        cupy.ndarray: An array of standard normal random values.
 
     .. seealso:: :func:`numpy.random.randn`
 

@@ -21,10 +21,10 @@ class LSTM(link.Chain):
         out_size (int): Dimensionality of output vectors.
 
     Attributes:
-        upward (chainer.links.Linear): Linear layer of upward connections.
-        lateral (chainer.links.Linear): Linear layer of lateral connections.
-        c (chainer.Variable): Cell states of LSTM units.
-        h (chainer.Variable): Output at the previous timestep.
+        upward (~chainer.links.Linear): Linear layer of upward connections.
+        lateral (~chainer.links.Linear): Linear layer of lateral connections.
+        c (~chainer.Variable): Cell states of LSTM units.
+        h (~chainer.Variable): Output at the previous timestep.
 
     """
     def __init__(self, in_size, out_size):

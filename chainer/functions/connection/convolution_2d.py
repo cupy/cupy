@@ -21,7 +21,7 @@ if cuda.cudnn_enabled:
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x
 
 
 class Convolution2DFunction(function.Function):
@@ -279,7 +279,8 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
         pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        use_cudnn (bool): If True, then this function uses CuDNN if available.
+        use_cudnn (bool): If ``True``, then this function uses cuDNN if
+            available.
 
 
     Returns:

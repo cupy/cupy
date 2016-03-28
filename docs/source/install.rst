@@ -119,7 +119,7 @@ cuDNN is a library for Deep Neural Networks that NVIDIA provides.
 Chainer can use cuDNN.
 If you want to enable cuDNN, install cuDNN and CUDA before installing Chainer.
 We recommend you to install cuDNN to CUDA directory.
-For example if you uses Ubuntu linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
+For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
   $ cp /path/to/cudnn.h $CUDA_PATH/include
   $ cp /path/to/libcudnn.so* $CUDA_PATH/lib64

@@ -27,7 +27,7 @@ def tile(A, reps):
         # Note that no copy of zero-sized arrays is made. However since they
         # have no data there is no risk of an inadvertent overwrite.
         c = cupy.array(A, copy=False, ndmin=d)
-    if (d < c.ndim):
+    if d < c.ndim:
         tup = (1,) * (c.ndim - d) + tup
     shape_out = tuple(s * t for s, t in zip(c.shape, tup))
     if c.size == 0:

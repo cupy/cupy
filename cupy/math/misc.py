@@ -141,7 +141,7 @@ fmin = core.create_ufunc(
     'out0 = min(in0, in1)',
     doc='''Takes the minimum of two arrays elementwise.
 
-    If NaN apperas, it returns the other operand.
+    If NaN appears, it returns the other operand.
 
     .. seealso:: :data:`numpy.fmin`
 
