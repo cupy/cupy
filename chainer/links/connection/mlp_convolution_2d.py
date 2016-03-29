@@ -29,7 +29,7 @@ class MLPConvolution2D(link.ChainList):
             equivalent.
         activation (function): Activation function for internal hidden units.
             Note that this function is not applied to the output of this link.
-        use_cudnn (bool): If True, then this link uses CuDNN if available.
+        use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
 
     See: `Network in Network <http://arxiv.org/abs/1312.4400v3>`.
 

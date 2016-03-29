@@ -26,7 +26,7 @@ class TypeInfoTuple(tuple):
     """Type information of input/gradient tuples.
 
     It is a sub-class of tuple containing :class:`TypeInfo`. The i-th element
-    of this object contains type information of the i-th input/gradinent data.
+    of this object contains type information of the i-th input/gradient data.
     As each element is :class:`Expr`, you can easily check its validity.
     """
 
@@ -34,7 +34,7 @@ class TypeInfoTuple(tuple):
         """Returns an expression representing its length.
 
         Returns:
-            Expr: An expression object representig length of the tuple.
+            Expr: An expression object representing length of the tuple.
         """
         return Variable(len(self), '{0}.size'.format(self.name))
 
@@ -97,28 +97,36 @@ class Expr(object):
 
        Let ``x`` and ``y`` be instances of :class:`Expr`, then ::
 
+          >>> x = Variable(1, 'x')
+          >>> y = Variable(1, 'y')
           >>> c = (x == y)
 
        is also an instance of :class:`Expr`. To evaluate and get its value,
        call :meth:`eval` method::
 
           >>> c.eval()
-          True   # when x.eval() == y.eval()
+          True
 
        Call ``str`` function to get a representation of the original
-       equaltion::
+       equation::
 
           >>> str(c)
-          'x + y'   # when str(x) == 'x' and str(y) == 'y'
+          'x == y'
 
        You can actually compare an expression with a value::
 
           >>> (x == 1).eval()
+          True
 
        Note that you can't use boolean operators such as ``and``, as they try
        to cast expressions to boolean values::
 
+          >>> z = Variable(1, 'z')
           >>> x == y and y == z  # raises an error
+          Traceback (most recent call last):
+          RuntimeError: Don't convert Expr to bool. Please call Expr.eval \
+method to evaluate expression.
+
 
     """
 
@@ -130,7 +138,7 @@ class Expr(object):
 
         Behavior of this function depends on an implementation class.
         For example, a binary operator ``+`` calls the ``__add__`` function
-        with the two results of :meth:`eval` funciton.
+        with the two results of :meth:`eval` function.
         """
         raise NotImplementedError()
 

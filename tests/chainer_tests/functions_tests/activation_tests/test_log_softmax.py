@@ -28,7 +28,6 @@ class TestLogSoftmax(unittest.TestCase):
         y = functions.log_softmax(x, use_cudnn)
         self.assertEqual(y.data.dtype, numpy.float32)
 
-        y_expect = numpy.empty_like(self.x)
         log_z = numpy.ufunc.reduce(
             numpy.logaddexp, self.x, axis=1, keepdims=True)
         y_expect = self.x - log_z

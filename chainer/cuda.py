@@ -9,11 +9,11 @@ codes).
  imported name                original name
 ============================ =================================
  ``chainer.cuda.cupy``        :mod:`cupy`
- ``chainer.cuda.ndarray``     :mod:`cupy.ndarray`
+ ``chainer.cuda.ndarray``     :class:`cupy.ndarray`
  ``chainer.cuda.cupy.cuda``   :mod:`cupy.cuda`
- ``chainer.cuda.Device``      :mod:`cupy.cuda.Device`
- ``chainer.cuda.Event``       :mod:`cupy.cuda.Event`
- ``chainer.cuda.Stream``      :mod:`cupy.cuda.Stream`
+ ``chainer.cuda.Device``      :class:`cupy.cuda.Device`
+ ``chainer.cuda.Event``       :class:`cupy.cuda.Event`
+ ``chainer.cuda.Stream``      :class:`cupy.cuda.Stream`
 ============================ =================================
 
 Chainer replaces the default allocator of CuPy by its memory pool
@@ -140,11 +140,12 @@ def get_device(*args):
 
     Args:
         args: Values to specify a GPU device. :class:`numpy.ndarray` objects
-            are skipped. If all arguments are numpy.ndarray objects, it returns
-            a dummy device object. Otherwise, the first non-numpy object is
-            used to select a device. If it is a :class:`cupy.ndarray` object,
-            its device is returned. Otherwise, the argument is passed to the
-            initializer of :class:`~cupy.cuda.Device` and it is returned.
+            are skipped. If all arguments are :class:`numpy.ndarray` objects,
+            it returns a dummy device object. Otherwise, the first
+            non-:mod:`numpy` object is used to select a device. If it is a
+            :class:`cupy.ndarray` object, its device is returned. Otherwise,
+            the argument is passed to the initializer of
+            :class:`~cupy.cuda.Device` and it is returned.
 
     Returns:
         Device object specified by given ``args``.
@@ -185,7 +186,7 @@ def to_gpu(array, device=None, stream=None):
 
         If ``array`` is already on GPU, then this function just returns
         ``array`` without performing any copy. Note that this function does not
-        copy cupy.ndarray into specified device.
+        copy :class:`cupy.ndarray` into specified device.
 
     """
     check_cuda_available()
@@ -219,11 +220,12 @@ def to_cpu(array, stream=None):
         return array
     else:
         raise TypeError(
-            'The array sent to cpu must be numpy.ndarray or cupy.ndarray')
+            'The array sent to cpu must be numpy.ndarray or cupy.ndarray.'
+            '\nActual type: {0}.'.format(type(array)))
 
 
 def empty(shape, dtype=numpy.float32):
-    """Creates an uninitialized cupy.ndarray object.
+    """Creates an uninitialized :class:`cupy.ndarray` object.
 
     Args:
         shape (tuple of ints): The shape of array.
@@ -241,7 +243,7 @@ def empty(shape, dtype=numpy.float32):
 
 
 def full(shape, fill_value, dtype=numpy.float32, stream=None):
-    """Creates a constant-filled cupy.ndarray object.
+    """Creates a constant-filled :class:`cupy.ndarray` object.
 
     Args:
         shape (tuple of ints): The shape of array.
@@ -262,7 +264,7 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
 
 
 def zeros(shape, dtype=numpy.float32, stream=None):
-    """Creates a zero-filled cupy.ndarray object.
+    """Creates a zero-filled :class:`cupy.ndarray` object.
 
     This function is equivalent to ``full(shape, 0, dtype, stream)``.
 
@@ -276,7 +278,7 @@ def zeros(shape, dtype=numpy.float32, stream=None):
 
 
 def ones(shape, dtype=numpy.float32, stream=None):
-    """Creates a zero-filled cupy.ndarray object.
+    """Creates a zero-filled :class:`cupy.ndarray` object.
 
     This function is equivalent to ``full(shape, 1, dtype, stream)``.
 
@@ -309,7 +311,7 @@ def empty_like(array):
 
 
 def full_like(array, fill_value, stream=None):
-    """Creates a constant-filled cupy.ndarray object like the given array.
+    """Creates a constant-filled :class:`cupy.ndarray` object like the given array.
 
     Args:
         array (cupy.ndarray or numpy.ndarray): Base array.
@@ -331,7 +333,7 @@ def full_like(array, fill_value, stream=None):
 
 
 def zeros_like(array, stream=None):
-    """Creates a zero-filled cupy.ndarray object like the given array.
+    """Creates a zero-filled :class:`cupy.ndarray` object like the given array.
 
     Args:
         array (cupy.ndarray or numpy.ndarray): Base array.
@@ -352,7 +354,7 @@ def zeros_like(array, stream=None):
 
 
 def ones_like(array, stream=None):
-    """Creates a one-filled cupy.ndarray object like the given array.
+    """Creates a one-filled :class:`cupy.ndarray` object like the given array.
 
     Args:
         array (cupy.ndarray or numpy.ndarray): Base array.
@@ -373,7 +375,7 @@ def ones_like(array, stream=None):
 
 
 def copy(array, out=None, out_device=None, stream=None):
-    """Copies a cupy.ndarray object using the default stream.
+    """Copies a :class:`cupy.ndarray` object using the default stream.
 
     This function can copy the device array to the destination array on another
     device.

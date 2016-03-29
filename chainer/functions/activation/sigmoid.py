@@ -22,7 +22,7 @@ class Sigmoid(function.Function):
         type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward_cpu(self, x):
-        self.y = 1 / (1 + numpy.exp(-x[0]))
+        self.y = numpy.tanh(x[0] * 0.5) * 0.5 + 0.5
         return self.y,
 
     def forward_gpu(self, x):
@@ -72,8 +72,8 @@ def sigmoid(x, use_cudnn=True):
 
     Args:
         x (~chainer.Variable): Input variable.
-        use_cudnn (bool): If True and CuDNN is enabled, then this function uses
-            CuDNN as the core implementation.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     Returns:
         ~chainer.Variable: Output variable.

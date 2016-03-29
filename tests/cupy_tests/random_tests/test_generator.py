@@ -25,7 +25,7 @@ class FunctionSwitcher(object):
     def __enter__(self):
         setattr(curand, self.func_name, mock.Mock())
 
-    def __exit__(self, *args):
+    def __exit__(self, *_):
         setattr(curand, self.func_name, self.tmp)
 
 
@@ -219,8 +219,10 @@ class TestInterval(unittest.TestCase):
     @condition.repeat(10)
     def test_within_interval(self):
         val = self.rs.interval(10, (2, 3)).get()
-        numpy.testing.assert_array_less(numpy.full((2, 3), -1), val)
-        numpy.testing.assert_array_less(val, numpy.full((2, 3), 11))
+        numpy.testing.assert_array_less(
+            numpy.full((2, 3), -1, dtype=numpy.int64), val)
+        numpy.testing.assert_array_less(
+            val, numpy.full((2, 3), 11, dtype=numpy.int64))
 
     @condition.retry(20)
     def test_lower_bound(self):

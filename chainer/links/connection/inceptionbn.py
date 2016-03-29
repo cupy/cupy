@@ -27,14 +27,14 @@ class InceptionBN(link.Chain):
         proj33 (int): Projection size of the double 3x3 convolutions path.
         out33 (int): Output size of the double 3x3 convolutions path.
         pooltype (str): Pooling type. It must be either ``'max'`` or ``'avg'``.
-        proj_pool (bool): If True, do projection in the pooling path.
+        proj_pool (bool): If ``True``, do projection in the pooling path.
         stride (int): Stride parameter of the last convolution of each path.
 
     .. seealso:: :class:`Inception`
 
     Attributes:
-        train (bool): If True, then batch normalization layers are used in
-            training mode. If False, they are used in testing mode.
+        train (bool): If ``True``, then batch normalization layers are used in
+            training mode. If ``False``, they are used in testing mode.
 
     """
     def __init__(self, in_channels, out1, proj3, out3, proj33, out33,

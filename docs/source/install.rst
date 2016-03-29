@@ -46,7 +46,7 @@ cuDNN support
 
 Caffe model support
 
-* Python 2.7.6+ (Py3 is not supported)
+* Python 2.7.6+ (Python 3 is not supported)
 * `Protocol Buffers <https://developers.google.com/protocol-buffers/>`_
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
@@ -119,7 +119,7 @@ cuDNN is a library for Deep Neural Networks that NVIDIA provides.
 Chainer can use cuDNN.
 If you want to enable cuDNN, install cuDNN and CUDA before installing Chainer.
 We recommend you to install cuDNN to CUDA directory.
-For example if you uses Ubuntu linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
+For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
   $ cp /path/to/cudnn.h $CUDA_PATH/include
   $ cp /path/to/libcudnn.so* $CUDA_PATH/lib64
@@ -128,7 +128,7 @@ The destination directories depend on your environment.
 
 
 Install Chainer for developers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Chainer uses Cython (>=0.23).
 Developers need to use Cython to regenerate C++ sources from ``pyx`` files.

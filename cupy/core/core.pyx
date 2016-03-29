@@ -244,7 +244,7 @@ cdef class ndarray:
     cpdef dump(self, file):
         """Dumps a pickle of the array to a file.
 
-        Dumped file can be read back to cupy.ndarray by
+        Dumped file can be read back to :class:`cupy.ndarray` by
         :func:`cupy.load`.
 
         """
@@ -497,7 +497,7 @@ cdef class ndarray:
         return newarray
 
     cpdef ndarray ravel(self):
-        """Returns an array flattend into one dimension.
+        """Returns an array flattened into one dimension.
 
         .. seealso::
            :func:`cupy.ravel` for full documentation,
@@ -979,6 +979,8 @@ cdef class ndarray:
                     strides.push_back(self._strides[ndim - 1])
                 else:
                     strides.push_back(self.itemsize)
+            elif ndim <= j:
+                raise IndexError("too many indices for array")
             elif isinstance(s, slice):
                 s = internal.complete_slice(s, self._shape[j])
                 s_start = s.start
@@ -1101,7 +1103,7 @@ cdef class ndarray:
         return a_cpu
 
     cpdef set(self, arr, stream=None):
-        """Copies an array on the host memory to cuda.ndarray.
+        """Copies an array on the host memory to :class:`cupy.ndarray`.
 
         Args:
             arr (numpy.ndarray): The source array on the host memory.

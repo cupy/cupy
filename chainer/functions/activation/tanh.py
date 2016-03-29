@@ -70,8 +70,8 @@ def tanh(x, use_cudnn=True):
 
     Args:
         x (~chainer.Variable): Input variable.
-        use_cudnn (bool): If True and CuDNN is enabled, then this function uses
-            CuDNN as the core implementation.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     Returns:
         ~chainer.Variable: Output variable.

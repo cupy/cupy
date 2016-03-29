@@ -70,13 +70,13 @@ def split_axis(x, indices_or_sections, axis):
         axis (int): Axis that the input array is split along.
 
     Returns:
-        ``tuple`` or ``Variable``: Tuple of :class:`~chainer.Variable` objects
+        tuple or Variable: Tuple of :class:`~chainer.Variable` objects
              if the number of outputs is more than 1 or
              :class:`~chainer.Variable` otherwise.
 
     .. note::
-        This function raises ``ValueError`` if at least
-        one of the outputs is splitted to zero-size
+        This function raises :class:`ValueError` if at least
+        one of the outputs is split to zero-size
         (i.e. `axis`-th value of its shape is zero).
 
     """

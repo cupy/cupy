@@ -56,7 +56,7 @@ class ContinuousBoW(chainer.Chain):
 
     def __init__(self, n_vocab, n_units, loss_func):
         super(ContinuousBoW, self).__init__(
-            embed=F.EmbedID(n_vocab, args.unit),
+            embed=F.EmbedID(n_vocab, n_units),
             loss_func=loss_func,
         )
 
@@ -130,10 +130,12 @@ with open('ptb.train.txt') as f:
                 index2word[ind] = word
             counts[word2index[word]] += 1
             dataset.append(word2index[word])
+            if args.test and len(dataset) >= 100:
+                break
+        if args.test and len(dataset) >= 100:
+            break
 
 n_vocab = len(word2index)
-if args.test:
-    dataset = dataset[:100]
 
 print('n_vocab: %d' % n_vocab)
 print('data length: %d' % len(dataset))

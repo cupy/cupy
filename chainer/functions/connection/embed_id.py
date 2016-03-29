@@ -64,7 +64,7 @@ def embed_id(x, W):
     This function is only differentiable on the input ``W``.
 
     Args:
-        x (~chainer.Variable): Input variable with one-hot representation.
+        x (~chainer.Variable): Batch vectors of IDs.
         W (~chainer.Variable): Representation of each ID (a.k.a.
             word embeddings).
 

@@ -35,8 +35,8 @@ def _log_dot(prob, rr, xp):
 
 def _move_label_to_back(path, path_length, xp):
     s1 = path.shape[1]  # TODO(okuta): Change name
-    index = (xp.arange(0, path.size, s1, dtype=numpy.int32)[:, None]
-             + (xp.arange(s1) + path_length[:, None])[:, ::-1] % s1)
+    index = (xp.arange(0, path.size, s1, dtype=numpy.int32)[:, None] +
+             (xp.arange(s1) + path_length[:, None])[:, ::-1] % s1)
     return xp.take(path, index)
 
 
@@ -177,8 +177,8 @@ class ConnectionistTemporalClassification(function.Function):
         # backward computation.
         ps1 = path.shape[1]
         backward_prob_index = (
-            xp.arange(0, path.size, ps1, dtype=numpy.int32)[:, None]
-            + (xp.arange(ps1) - self.path_length[:, None]) % ps1)
+            xp.arange(0, path.size, ps1, dtype=numpy.int32)[:, None] +
+            (xp.arange(ps1) - self.path_length[:, None]) % ps1)
         for i, y_inv in enumerate(yseq_inv):
             # calc backward probability
             backward_prob = _log_dot(backward_prob[:, None, :], brr, xp)
@@ -234,7 +234,7 @@ def connectionist_temporal_classification(
 
     Args:
         x (sequence of Variable): RNN output at each time. ``x`` must be a list
-            of :class:`~chianer.Variable` s. Each element of ``x``, ``x[i]``
+            of :class:`~chainer.Variable` s. Each element of ``x``, ``x[i]``
             is a :class:`~chainer.Variable` representing output of RNN at time
             ``i``.
         t (Variable): Expected label sequence.
@@ -254,7 +254,7 @@ def connectionist_temporal_classification(
        You need to input ``x`` without applying to activation functions(e.g.
        softmax function), because this function applies softmax functions
        to ``x`` before calculating CTC loss to avoid numerical limitations.
-       You also need to apply softmax function to fowarded values before you
+       You also need to apply softmax function to forwarded values before you
        decode it.
 
     .. note::
@@ -287,9 +287,11 @@ def connectionist_temporal_classification(
     if input_length is None:
         xp = cuda.get_array_module(x[0].data)
         input_length = chainer.Variable(
-            xp.full((len(x[0].data),), len(x), dtype=numpy.int32))
+            xp.full((len(x[0].data),), len(x), dtype=numpy.int32),
+            volatile='auto')
         label_length = chainer.Variable(
-            xp.full((len(t.data),), len(t.data[0]), dtype=numpy.int32))
+            xp.full((len(t.data),), len(t.data[0]), dtype=numpy.int32),
+            volatile='auto')
 
     # Batch size check.
     assert len(x[0].data) == len(t.data)

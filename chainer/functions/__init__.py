@@ -218,7 +218,6 @@ InceptionBN = inceptionbn.InceptionBN
 Linear = links_linear.Linear
 Parameter = parameter.Parameter
 
-BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = links_negative_sampling.NegativeSampling
 
 BatchNormalization = links_batch_normalization.BatchNormalization
