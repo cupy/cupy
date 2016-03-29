@@ -79,10 +79,12 @@ def build_and_run(compiler, source, libraries=[],
             return None
 
         try:
+            postargs = ['/MANIFEST'] if sys.platform == 'win32' else []
             compiler.link_executable(objects,
                                      os.path.join(temp_dir, 'a'),
                                      libraries=libraries,
-                                     library_dirs=library_dirs)
+                                     library_dirs=library_dirs,
+                                     extra_postargs=postargs)
         except (distutils.errors.LinkError, TypeError):
             return None
 
