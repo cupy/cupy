@@ -97,28 +97,36 @@ class Expr(object):
 
        Let ``x`` and ``y`` be instances of :class:`Expr`, then ::
 
+          >>> x = Variable(1, 'x')
+          >>> y = Variable(1, 'y')
           >>> c = (x == y)
 
        is also an instance of :class:`Expr`. To evaluate and get its value,
        call :meth:`eval` method::
 
           >>> c.eval()
-          True   # when x.eval() == y.eval()
+          True
 
        Call ``str`` function to get a representation of the original
        equation::
 
           >>> str(c)
-          'x + y'   # when str(x) == 'x' and str(y) == 'y'
+          'x == y'
 
        You can actually compare an expression with a value::
 
           >>> (x == 1).eval()
+          True
 
        Note that you can't use boolean operators such as ``and``, as they try
        to cast expressions to boolean values::
 
+          >>> z = Variable(1, 'z')
           >>> x == y and y == z  # raises an error
+          Traceback (most recent call last):
+          RuntimeError: Don't convert Expr to bool. Please call Expr.eval \
+method to evaluate expression.
+
 
     """
 

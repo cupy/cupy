@@ -123,10 +123,11 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     Decorated test fixture is required to return the arrays whose values are
     close between ``numpy`` case and ``cupy`` case.
-    For example, this test case checks ``numpy.foo`` and ``cupy.foo``
+    For example, this test case checks ``numpy.zeros`` and ``cupy.zeros``
     should return same value.
 
-    >>> @testing.gpu
+    >>> from cupy import testing
+    ... @testing.gpu
     ... class TestFoo(unittest.TestCase):
     ...
     ...     @testing.numpy_cupy_allclose()
@@ -135,7 +136,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     ...         # Prepare data with xp
     ...         # ...
     ...
-    ...         xp_result = xp.foo(...)
+    ...         xp_result = xp.zeros(10)
     ...         return xp_result
 
     .. seealso:: :func:`cupy.testing.assert_allclose`
@@ -413,6 +414,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     :class:`cupy.ndarray` for various dtypes.
     ``dtype`` is an argument inserted by the decorator.
 
+    >>> from cupy import testing
     >>> @testing.gpu
     ... class TestNpz(unittest.TestCase):
     ...
@@ -428,6 +430,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     :func:`cupy.testing.numpy_cupy_allclose`.
     The following is such an example.
 
+    >>> from cupy import testing
     >>> @testing.gpu
     ... class TestMean(unittest.TestCase):
     ...
@@ -667,9 +670,11 @@ def with_requires(*requirements):
 
        This test case runs only when `numpy>=1.10` is installed.
 
-       >>> @helper.with_requires('numpy>=1.10')
-       ... def test_for_numpy_1_10(self):
-       ...     pass
+       >>> from cupy import testing
+       ... class Test(unittest.TestCase):
+       ...     @testing.with_requires('numpy>=1.10')
+       ...     def test_for_numpy_1_10(self):
+       ...         pass
 
     Args:
         requirements: A list of string representing requirement condition to

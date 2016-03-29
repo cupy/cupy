@@ -380,9 +380,9 @@ def get_array_module(*args):
 
        A NumPy/CuPy generic function can be written as follows::
 
-           def softplus(x):
-               xp = cupy.get_array_module(x)
-               return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
+       >>> def softplus(x):
+       ...     xp = cupy.get_array_module(x)
+       ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
     if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):
