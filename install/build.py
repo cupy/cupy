@@ -2,9 +2,8 @@ import distutils
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
-
-import setuptools
 
 from install import utils
 

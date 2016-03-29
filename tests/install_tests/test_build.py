@@ -1,8 +1,6 @@
 import distutils
 import unittest
 
-import setuptools
-
 from install import build
 
 
