@@ -12,73 +12,12 @@ import pkg_resources
 import setuptools
 from setuptools.command import build_ext
 
+from install import build
+from install import utils
+
 
 dummy_extension = setuptools.Extension('chainer', ['chainer.c'])
-
 cython_version = '0.23.0'
-minimum_cuda_version = 6050
-minimum_cudnn_version = 2000
-
-
-def print_warning(*lines):
-    print('**************************************************')
-    for line in lines:
-        print('*** WARNING: %s' % line)
-    print('**************************************************')
-
-
-def check_cuda_version(compiler, settings):
-    try:
-        out = build_and_run(compiler, '''
-        #include <cuda.h>
-        #include <stdio.h>
-        int main(int argc, char* argv[]) {
-          printf("%d", CUDA_VERSION);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
-
-    except Exception as e:
-        print_warning('Cannot check CUDA version', str(e))
-        return False
-
-    cuda_version = int(out)
-
-    if cuda_version < minimum_cuda_version:
-        print_warning(
-            'CUDA version is too old: %d' % cuda_version,
-            'CUDA v6.5 or newer is required')
-        return False
-
-    return True
-
-
-def check_cudnn_version(compiler, settings):
-    try:
-        out = build_and_run(compiler, '''
-        #include <cudnn.h>
-        #include <stdio.h>
-        int main(int argc, char* argv[]) {
-          printf("%d", CUDNN_VERSION);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
-
-    except Exception as e:
-        print_warning('Cannot check cuDNN version\n{0}'.format(e))
-        return False
-
-    cudnn_version = int(out)
-
-    if cudnn_version < minimum_cudnn_version:
-        print_warning(
-            'cuDNN version is too old: %d' % cudnn_version,
-            'cuDNN v2 or newer is required')
-        return False
-
-    return True
-
-
 MODULES = [
     {
         'name': 'cuda',
@@ -107,7 +46,7 @@ MODULES = [
             'cudart',
             'curand',
         ],
-        'check_method': check_cuda_version,
+        'check_method': build.check_cuda_version,
     },
     {
         'name': 'cudnn',
@@ -120,7 +59,7 @@ MODULES = [
         'libraries': [
             'cudnn',
         ],
-        'check_method': check_cudnn_version,
+        'check_method': build.check_cudnn_version,
     }
 ]
 
@@ -129,15 +68,15 @@ def get_compiler_setting():
     nvcc_path = search_on_path(('nvcc', 'nvcc.exe'))
     cuda_path_default = None
     if nvcc_path is None:
-        print_warning('nvcc not in path.',
-                      'Please set path to nvcc.')
+        utils.print_warning('nvcc not in path.',
+                            'Please set path to nvcc.')
     else:
         cuda_path_default = path.normpath(
             path.join(path.dirname(nvcc_path), '..'))
 
     cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
     if len(cuda_path) > 0 and cuda_path != cuda_path_default:
-        print_warning(
+        utils.print_warning(
             'nvcc path != CUDA_PATH',
             'nvcc path: %s' % cuda_path_default,
             'CUDA_PATH: %s' % cuda_path)
@@ -231,44 +170,6 @@ def check_library(compiler, includes=(), libraries=(),
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def build_and_run(compiler, source, libraries=(),
-                  include_dirs=(), library_dirs=()):
-    temp_dir = tempfile.mkdtemp()
-
-    try:
-        fname = os.path.join(temp_dir, 'a.cpp')
-        with open(fname, 'w') as f:
-            f.write(source)
-
-        try:
-            objects = compiler.compile([fname], output_dir=temp_dir,
-                                       include_dirs=include_dirs)
-        except distutils.errors.CompileError:
-            return None
-
-        try:
-            postargs = ['/MANIFEST'] if sys.platform == 'win32' else []
-            compiler.link_executable(objects,
-                                     os.path.join(temp_dir, 'a'),
-                                     libraries=libraries,
-                                     library_dirs=library_dirs,
-                                     extra_postargs=postargs)
-        except Exception as e:
-            msg = 'Cannot build a stub file.\nOriginal error: {0}'.format(e)
-            raise Exception(msg)
-
-        try:
-            out = subprocess.check_output(os.path.join(temp_dir, 'a'))
-            return out
-
-        except Exception as e:
-            msg = 'Cannot execute a stub file.\nOriginal error: {0}'.format(e)
-            raise Exception(msg)
-
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-
 def make_extensions(options, compiler):
 
     """Produce a list of Extension instances which passed to cythonize()."""
@@ -300,7 +201,7 @@ def make_extensions(options, compiler):
             if not check_library(compiler,
                                  includes=module['include'],
                                  include_dirs=settings['include_dirs']):
-                print_warning(
+                utils.print_warning(
                     'Include files not found: %s' % module['include'],
                     'Skip installing %s support' % module['name'],
                     'Check your CPATH environment variable')
@@ -309,7 +210,7 @@ def make_extensions(options, compiler):
             if not check_library(compiler,
                                  libraries=module['libraries'],
                                  library_dirs=settings['library_dirs']):
-                print_warning(
+                utils.print_warning(
                     'Cannot link libraries: %s' % module['libraries'],
                     'Skip installing %s support' % module['name'],
                     'Check your LIBRARY_PATH environment variable')

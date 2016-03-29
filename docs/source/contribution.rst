@@ -148,8 +148,8 @@ For example, if you have only one GPU, launch ``nosetests`` by the following com
 
   $ nosetests path/to/gpu/test.py --attr='gpu<2'
 
-Tests are put into the ``tests/chainer_tests`` and ``tests/cupy_tests`` directories.
-These have the same structure as that of ``chainer`` and ``cupy`` directories, respectively.
+Tests are put into the ``tests/chainer_tests``, ``tests/cupy_tests`` and ``tests/install_tests`` directories.
+These have the same structure as that of ``chainer``, ``cupy`` and ``install`` directories, respectively.
 In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
 
 * The name of each subdirectory of ``tests`` must end with the ``_tests`` suffix.
@@ -163,6 +163,7 @@ Or you can also specify a root directory to search test scripts from::
 
   $ nosetests tests/chainer_tests  # to just run tests of Chainer
   $ nosetests tests/cupy_tests     # to just run tests of CuPy
+  $ nosetests tests/install_tests  # to just run tests of installation modules
 
 If you modify the code related to existing unit tests, you must run appropriate commands.
 
