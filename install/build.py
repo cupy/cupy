@@ -14,17 +14,18 @@ minimum_cudnn_version = 2000
 
 
 def check_cuda_version(compiler, settings):
-    out = build_and_run(compiler, '''
-    #include <cuda.h>
-    #include <stdio.h>
-    int main(int argc, char* argv[]) {
-      printf("%d", CUDA_VERSION);
-      return 0;
-    }
-    ''', include_dirs=settings['include_dirs'])
+    try:
+        out = build_and_run(compiler, '''
+        #include <cuda.h>
+        #include <stdio.h>
+        int main(int argc, char* argv[]) {
+          printf("%d", CUDA_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
 
-    if out is None:
-        utils.print_warning('Cannot check CUDA version')
+    except Exception as e:
+        utils.print_warning('Cannot check CUDA version', str(e))
         return False
 
     cuda_version = int(out)
@@ -39,17 +40,18 @@ def check_cuda_version(compiler, settings):
 
 
 def check_cudnn_version(compiler, settings):
-    out = build_and_run(compiler, '''
-    #include <cudnn.h>
-    #include <stdio.h>
-    int main(int argc, char* argv[]) {
-      printf("%d", CUDNN_VERSION);
-      return 0;
-    }
-    ''', include_dirs=settings['include_dirs'])
+    try:
+        out = build_and_run(compiler, '''
+        #include <cudnn.h>
+        #include <stdio.h>
+        int main(int argc, char* argv[]) {
+          printf("%d", CUDNN_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
 
-    if out is None:
-        utils.print_warning('Cannot check cuDNN version')
+    except Exception as e:
+        utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
         return False
 
     cudnn_version = int(out)
@@ -85,15 +87,17 @@ def build_and_run(compiler, source, libraries=[],
                                      libraries=libraries,
                                      library_dirs=library_dirs,
                                      extra_postargs=postargs)
-        except (distutils.errors.LinkError, TypeError):
-            return None
+        except Exception as e:
+            msg = 'Cannot build a stub file.\nOriginal error: {0}'.format(e)
+            raise Exception(msg)
 
         try:
             out = subprocess.check_output(os.path.join(temp_dir, 'a'))
             return out
 
-        except Exception:
-            return None
+        except Exception as e:
+            msg = 'Cannot execute a stub file.\nOriginal error: {0}'.format(e)
+            raise Exception(msg)
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
