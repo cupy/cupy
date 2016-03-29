@@ -31,7 +31,7 @@ floor = ufunc.create_math_ufunc(
 
 ceil = ufunc.create_math_ufunc(
     'ceil', 1, 'cupy_ceil',
-    '''Rounds each element of an array to its ceil integer.
+    '''Rounds each element of an array to its ceiling integer.
 
     .. seealso:: :data:`numpy.ceil`
 

@@ -11,8 +11,9 @@ def rand(*size, **kwarg):
 
     Args:
         size (tuple of ints): The shape of the array.
-        dtype: Data type specifier. Only float32 and float64 types are allowed.
-            The default is float64.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed. The default is
+            :class:`numpy.float64`.
 
     Returns:
         cupy.ndarray: A random array.
@@ -36,8 +37,9 @@ def randn(*size, **kwarg):
 
     Args:
         size (tuple of ints): The shape of the array.
-        dtype: Data type specifier. Only float32 and float64 types are allowed.
-            The default is float64.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+            The default is :class:`numpy.float64`.
 
     Returns:
         cupy.ndarray: An array of standard normal random values.
@@ -63,7 +65,7 @@ def randint(low, high=None, size=None):
         low (int): If ``high`` is not ``None``,
             it is the lower bound of the interval.
             Otherwise, it is the **upper** bound of the interval
-            and lower bound of the inteval is set to ``0``.
+            and lower bound of the interval is set to ``0``.
         high (int): Upper bound of the interval.
         size (None or int or tuple of ints): The shape of returned value.
 
@@ -89,7 +91,7 @@ def randint(low, high=None, size=None):
 
 
 def random_integers(low, high=None, size=None):
-    """Return a scalar or an array of interger values over ``[low, high]``
+    """Return a scalar or an array of integer values over ``[low, high]``
 
     Each element of returned values are independently sampled from
     uniform distribution over closed interval ``[low, high]``.
@@ -121,7 +123,8 @@ def random_sample(size=None, dtype=float):
 
     Args:
         size (int or tuple of ints): The shape of the array.
-        dtype: Data type specifier. Only float32 and float64 types are allowed.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
 
     Returns:
         cupy.ndarray: An array of uniformly distributed random values.

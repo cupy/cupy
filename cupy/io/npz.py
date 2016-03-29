@@ -32,8 +32,8 @@ def load(file, mmap_mode=None):
 
     Args:
         file (file-like object or string): The file to read.
-        mmap_mode (None, 'r+', 'r', 'w+', 'c'): If not None, memory-map the
-            file to construct an intermediate ``numpy.ndarray`` object and
+        mmap_mode (None, 'r+', 'r', 'w+', 'c'): If not ``None``, memory-map the
+            file to construct an intermediate :class:`numpy.ndarray` object and
             transfer it to the current device.
 
     Returns:

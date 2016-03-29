@@ -38,7 +38,7 @@ class CaffeFunction(link.Chain):
 
     """Caffe emulator based on the model file of Caffe.
 
-    Given a binary protobuf file of a Caffe model, this class loads and
+    Given a protocol buffers file of a Caffe model, this class loads and
     emulates it on :class:`~chainer.Variable` objects. It supports the official
     reference models provided by BVLC.
 

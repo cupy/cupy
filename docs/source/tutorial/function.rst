@@ -532,7 +532,7 @@ The summation can be weighted by changing ``gy``.
 Another utility is :func:`~gradient_check.assert_allclose` function.
 This is similar to :func:`numpy.testing.assert_allclose` function.
 The difference is that Chainer's version accepts CPU and GPU arrays as inputs.
-We can mix them in one invocation of assert_allclose.
+We can mix them in one invocation of :func:`~gradient_check.assert_allclose`.
 The default values of optional arguments are also different.
 
 Here is a typical usage of gradient checking utilities.

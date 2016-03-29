@@ -46,7 +46,7 @@ cuDNN support
 
 Caffe model support
 
-* Python 2.7.6+ (Py3 is not supported)
+* Python 2.7.6+ (Python 3 is not supported)
 * `Protocol Buffers <https://developers.google.com/protocol-buffers/>`_
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.

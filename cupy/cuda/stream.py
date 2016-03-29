@@ -134,8 +134,8 @@ class Stream(object):
         """Records an event on the stream.
 
         Args:
-            event (None or cupy.cuda.Event): CUDA event. If None, then a new
-                plain event is created and used.
+            event (None or cupy.cuda.Event): CUDA event. If ``None``, then a
+                new plain event is created and used.
 
         Returns:
             cupy.cuda.Event: The recorded event.
