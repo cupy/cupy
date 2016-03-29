@@ -110,9 +110,9 @@ def inv(a):
     """Computes the inverse of of square matrix.
 
     Args:
-        a (Variable): Input array to compute the determinant for.
-        Shape of the array should be ``(n, n)`` where ``n`` is the
-        dimensionality of a square matrix.
+        a (Variable): Input array to compute the determinant for. Shape of
+            the array should be ``(n, n)`` where ``n`` is the dimensionality of
+            a square matrix.
 
     Returns:
         ~chainer.Variable: Matrix inverse of ``a``.
@@ -124,10 +124,9 @@ def batch_inv(a):
     """Computes the inverse of a batch of square matrices.
 
     Args:
-        a (Variable): Input array to compute the determinant for.
-        Shape of the array should be ``(m, n, n)`` where m is the number
-        of matrices in the batch, and ``n`` is the dimensionality of a square
-        matrix.
+        a (Variable): Input array to compute the determinant for. Shape of
+            the array should be ``(m, n, n)`` where m is the number of matrices
+            in the batch, and ``n`` is the dimensionality of a square matrix.
 
     Returns:
         ~chainer.Variable: Inverse of every matrix in the batch of matrices.

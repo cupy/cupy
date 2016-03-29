@@ -1,7 +1,7 @@
 .. module:: cupy.random
 
-Random Sampling (cupy.random)
-=============================
+Random Sampling (``cupy.random``)
+=================================
 
 CuPy's random number generation routines are based on cuRAND.
 They cover a small fraction of :mod:`numpy.random`.

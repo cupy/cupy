@@ -26,7 +26,7 @@ As mentioned on the front page, Chainer is a flexible framework for neural netwo
 One major goal is flexibility, so it must enable us to write complex architectures simply and intuitively.
 
 Most existing deep learning frameworks are based on the **"Define-and-Run"** scheme.
-That is, first a network is defined and fixed, and then the user periodically feeds it with minibatches.
+That is, first a network is defined and fixed, and then the user periodically feeds it with mini-batches.
 Since the network is statically defined before any forward/backward computation, all the logic must be embedded into the network architecture as *data*.
 Consequently, defining a network architecture in such systems (e.g. Caffe) follows a declarative approach.
 Note that one can still produce such a static network definition using imperative languages (e.g. Torch7 and Theano-based frameworks).
@@ -157,8 +157,8 @@ A linear link from three-dimensional space to two-dimensional space is defined b
    >>> f = F.Linear(3, 2)
 
 .. note::
-   Most functions and links only accept minibatch input, where the first dimension of input arrays is considered as the *batch dimension*.
-   In the above Linear link case, input must have shape of (N, 3), where N is the minibatch size.
+   Most functions and links only accept mini-batch input, where the first dimension of input arrays is considered as the *batch dimension*.
+   In the above Linear link case, input must have shape of (N, 3), where N is the mini-batch size.
 
 The parameters of a link are stored as attributes.
 Each parameter is an instance of :class:`~chainer.Variable`.
@@ -307,7 +307,7 @@ Do not forget resetting gradients beforehand!
    >>> optimizer.update()
 
 The other way is just passing a loss function to the :meth:`~Optimizer.update` method.
-In this case, zerograds is automatically called by the update method, so user do not have to call it manually.
+In this case, :meth:`~Link.zerograds` is automatically called by the update method, so user do not have to call it manually.
 
    >>> def lossfun(args...):
    ...     ...
@@ -377,7 +377,7 @@ Example: Multi-layer Perceptron on MNIST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now you can solve a multiclass classification task using a multi-layer perceptron.
-Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing de-facto "hello world" of machine learning.
+Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing defacto "hello world" of machine learning.
 This MNIST example is also found in ``examples/mnist`` directory of the official repository.
 
 In order to use MNIST, we prepared ``load_mnist_data`` function at ``examples/mnist/data.py``::

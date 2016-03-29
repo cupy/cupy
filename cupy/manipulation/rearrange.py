@@ -13,8 +13,8 @@ def roll(a, shift, axis=None):
         a (~cupy.ndarray): Array to be rolled.
         shift (int): The number of places by which elements are shifted.
         axis (int or None): The axis along which elements are shifted.
-            If ``axis`` is ``None``, the array is flattend before shifting,
-            and afther that it is reshaped to the original shape.
+            If ``axis`` is ``None``, the array is flattened before shifting,
+            and after that it is reshaped to the original shape.
 
     Returns:
         ~cupy.ndarray: Output array.

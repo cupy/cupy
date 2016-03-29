@@ -142,7 +142,7 @@ def lstm(c_prev, x):
     It means that :math:`x` 's second axis must have 4 times the length of
     :math:`c_{\\text{prev}}`.
 
-    The splitted input signals are corresponding to:
+    The split input signals are corresponding to:
 
         - :math:`a` : sources of cell input
         - :math:`i` : sources of input gate

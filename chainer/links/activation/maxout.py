@@ -41,7 +41,7 @@ class Maxout(link.Chain):
 
     Attributes:
         linear (~chainer.Link): The Linear link that performs
-        affine transformation.
+            affine transformation.
 
     .. seealso:: :func:`~chainer.functions.maxout`
 

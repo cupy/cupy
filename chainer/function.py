@@ -203,7 +203,7 @@ Invalid operation is performed in: {0} (Forward)
         It delegates the procedure to :meth:`forward_cpu` or
         :meth:`forward_gpu` by default. Which it selects is determined by the
         type of input arrays.
-        Implementations of :class:`Function` must implement either cpu/gpu
+        Implementations of :class:`Function` must implement either CPU/GPU
         methods or this method.
 
         Args:
@@ -263,7 +263,7 @@ Invalid operation is performed in: {0} (Forward)
         It delegates the procedure to :meth:`backward_cpu` or
         :meth:`backward_gpu` by default. Which it selects is determined by the
         type of input arrays and output gradient arrays. Implementations of
-        :class:`Function` must implement either cpu/gpu methods or this method,
+        :class:`Function` must implement either CPU/GPU methods or this method,
         if the function is intended to be backprop-ed.
 
         Args:
@@ -464,7 +464,7 @@ class FunctionHook(object):
         function_hooks[self.name] = self
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         del chainer.get_function_hooks()[self.name]
 
     # forward

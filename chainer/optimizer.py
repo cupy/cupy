@@ -198,7 +198,7 @@ class Optimizer(object):
         """Registers a hook function.
 
         Hook function is typically called right after the gradient computation,
-        though the timing depdns on the optimization method.
+        though the timing depends on the optimization method.
 
         Args:
             hook (function): Hook function. It accepts the optimizer object.

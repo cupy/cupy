@@ -11,9 +11,9 @@ def _mat_ptrs(a):
     """Creates an array of pointers to matrices
 
     Args:
-        a: A batch of matrices on GPU
+        a: A batch of matrices on GPU.
     Returns:
-        GPU array of pointers to matrices
+        GPU array of pointers to matrices.
     """
     if len(a) == 1:
         return cuda.cupy.full((1,), a.data.ptr, dtype=numpy.uintp)
@@ -162,12 +162,14 @@ def matmul(a, b, transa=False, transb=False):
 
     Args:
         a (Variable): The left operand of the matrix multiplication.
-            A 1-D array of shape (N,) is considered as an Nx1 matrix.
-            A 2-D array of shape (M, N) is considered as an MxN matrix.
+            A 1-D array of shape ``(N,)`` is considered as an
+            :math:`N \\times 1` matrix.
+            A 2-D array of shape ``(M, N)`` is considered as an
+            :math:`M \\times N` matrix.
         b (Variable): The right operand of the matrix multiplication.
             Its array is treated as a matrix in the same way as ``a``'s array.
-        transa (bool): If true, transpose a.
-        transb (bool): If true, transpose b.
+        transa (bool): If ``True``, transpose a.
+        transb (bool): If ``True``, transpose b.
 
     Returns:
         ~chainer.Variable: The result of the matrix multiplication as a 2-D
@@ -185,7 +187,7 @@ class BatchMatMul(function.Function):
         batch_size = len(a)
         m = _get_batch_mat_shape(a.shape)[2 if self.transa else 1]
         n = _get_batch_mat_shape(b.shape)[1 if self.transb else 2]
-        return (batch_size, m, n)
+        return batch_size, m, n
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -259,12 +261,14 @@ def batch_matmul(a, b, transa=False, transb=False):
 
     Args:
         a (Variable): The left operand of the batch matrix multiplications.
-            A 2-D array of shape (B, N,) is considered as B Nx1 matrices.
-            A 3-D array of shape (B, M, N) is considered as B MxN matrices.
+            A 2-D array of shape ``(B, N)`` is considered as B
+            :math:`N \\times 1` matrices.
+            A 3-D array of shape ``(B, M, N)`` is considered as B
+            :math:`M \\times N` matrices.
         b (Variable): The right operand of the batch matrix multiplications.
             Its array is treated as matrices in the same way as ``a``'s array.
-        transa (bool): If true, transpose each matrix in a.
-        transb (bool): If true, transpose each matrix in b.
+        transa (bool): If ``True``, transpose each matrix in a.
+        transb (bool): If ``True``, transpose each matrix in b.
 
     Returns:
         ~chainer.Variable: The result of the batch matrix multiplications as a

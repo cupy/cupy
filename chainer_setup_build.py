@@ -134,8 +134,8 @@ def check_readthedocs_environment():
     return os.environ.get('READTHEDOCS', None) == 'True'
 
 
-def check_library(compiler, includes=[], libraries=[],
-                  include_dirs=[], library_dirs=[]):
+def check_library(compiler, includes=(), libraries=(),
+                  include_dirs=(), library_dirs=()):
     temp_dir = tempfile.mkdtemp()
 
     try:
@@ -272,19 +272,21 @@ def run_command(cmd):
         raise distutils.errors.DistutilsExecError(msg)
 
 
-def cythonize(extensions, force=False, annotate=False, compiler_directives={}):
+def cythonize(
+        extensions, force=False, annotate=False, compiler_directives=None):
     cython_location = get_cython_pkg().location
     cython_path = path.join(cython_location, 'cython.py')
     print("cython path:%s" % cython_location)
-    cython_cmdbase = [sys.executable, cython_path]
-    run_command(cython_cmdbase + ['--version'])
+    cmd = [sys.executable, cython_path]
+    run_command(cmd + ['--version'])
 
-    cython_cmdbase.extend(['--fast-fail', '--verbose', '--cplus'])
-    for ext in extensions:
-        cmd = list(cython_cmdbase)
+    cmd.extend(['--fast-fail', '--verbose', '--cplus'])
+    if compiler_directives is not None:
         for i in compiler_directives.items():
             cmd.append('--directive')
             cmd.append('%s=%s' % i)
+
+    for ext in extensions:
         run_command(cmd + ext.sources)
 
 

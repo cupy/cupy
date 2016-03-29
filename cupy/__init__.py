@@ -343,11 +343,11 @@ def asnumpy(a, stream=None):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
-        a: Arbitrary object that can be converted to numpy.ndarray.
+        a: Arbitrary object that can be converted to :class:`numpy.ndarray`.
         stream (cupy.cuda.Stream): CUDA stream object. If it is specified, then
             the device-to-host copy runs asynchronously. Otherwise, the copy is
-            synchronous. Note that if ``a`` is not a cupy.ndarray object, then
-            this argument has no effect.
+            synchronous. Note that if ``a`` is not a :class:`cupy.ndarray`
+            object, then this argument has no effect.
 
     Returns:
         numpy.ndarray: Converted array on the host memory.

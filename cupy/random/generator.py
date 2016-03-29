@@ -53,7 +53,7 @@ class RandomState(object):
         curand.setStream(self._generator, stream.ptr)
 
     def _generate_normal(self, func, size, dtype, *args):
-        # curand funcitons below don't support odd size.
+        # curand functions below don't support odd size.
         # * curand.generateNormal
         # * curand.generateNormalDouble
         # * curand.generateLogNormal
@@ -116,7 +116,7 @@ class RandomState(object):
         return self.random_sample(size=size, dtype=dtype)
 
     def randn(self, *size, **kwarg):
-        """Returns an array of standand normal random values.
+        """Returns an array of standard normal random values.
 
         .. seealso::
             :func:`cupy.random.randn` for full documentation,
@@ -158,7 +158,7 @@ class RandomState(object):
             size (None or int or tuple): Shape of the array or the scalar
                 returned.
         Returns:
-            int or cupy.ndarray: If ``None``, an ndarray with
+            int or cupy.ndarray: If ``None``, an :class:`cupy.ndarray` with
             shape ``()`` is returned.
             If ``int``, 1-D array of length size is returned.
             If ``tuple``, multi-dimensional array with shape
@@ -193,7 +193,7 @@ class RandomState(object):
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
 
-        ..seealso::
+        .. seealso::
             :func:`cupy.random.seed` for full documentation,
             :meth:`numpy.random.RandomState.seed`
 
@@ -221,7 +221,7 @@ class RandomState(object):
         return self.normal(size=size, dtype=dtype)
 
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
-        """Returns an array of uniformlly-distributed samples over an interval.
+        """Returns an array of uniformly-distributed samples over an interval.
 
         .. seealso::
             :func:`cupy.random.uniform` for full documentation,
@@ -241,8 +241,8 @@ def seed(seed=None):
     affected.
 
     Args:
-        seed (None or int): Seed for the random number generator. If None, it
-            uses :func:`os.urandom` if available or :func:`time.clock`
+        seed (None or int): Seed for the random number generator. If ``None``,
+            it uses :func:`os.urandom` if available or :func:`time.clock`
             otherwise. Note that this function does not support seeding by an
             integer array.
 

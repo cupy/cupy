@@ -15,8 +15,8 @@ The :mod:`chainer.gradient_check` module makes it easy to implement the gradient
 
 .. _type-check-utils:
 
-Type checking utilites
-----------------------
+Type checking utilities
+-----------------------
 .. automodule:: chainer.utils.type_check
 
 .. autoclass:: Expr

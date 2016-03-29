@@ -102,7 +102,7 @@ Actual: {0}'''.format(type(data))
         self.name = name
 
     def __reduce__(self):
-        return (Variable, (self.data, self.volatile, self.name))
+        return Variable, (self.data, self.volatile, self.name)
 
     def __repr__(self):
         if self.name:
@@ -300,7 +300,7 @@ Actual: {0}'''.format(type(data))
         loss value.
 
         Args:
-            retain_grad (bool): If True, the gradient arrays of all
+            retain_grad (bool): If ``True``, the gradient arrays of all
                 intermediate variables are kept. Otherwise, :data:`grad` of the
                 intermediate variables are set to ``None`` on appropriate
                 timing, which may reduce the maximum memory consumption.

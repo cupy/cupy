@@ -1,5 +1,5 @@
-"""Thin wrapper of CuDNN."""
-# NOTE: This wrapper does not cover all APIs of CuDNN v4.
+"""Thin wrapper of cuDNN."""
+# NOTE: This wrapper does not cover all APIs of cuDNN v4.
 cimport cython
 
 
