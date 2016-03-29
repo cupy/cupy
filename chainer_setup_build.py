@@ -102,7 +102,8 @@ def check_library(compiler, includes=(), libraries=(),
             compiler.link_shared_lib(objects,
                                      os.path.join(temp_dir, 'a'),
                                      libraries=libraries,
-                                     library_dirs=library_dirs)
+                                     library_dirs=library_dirs,
+                                     target_lang='c++')
         except (distutils.errors.LinkError, TypeError):
             return False
 
