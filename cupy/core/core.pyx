@@ -1365,7 +1365,7 @@ cdef _argmax = create_reduction_func(
 
 cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support order and subok options
-    cdef Py_ssize_t ndim
+    cdef Py_ssize_t nvidem
     cdef ndarray a
     if isinstance(obj, ndarray):
         if dtype is None:
@@ -1663,7 +1663,8 @@ cdef _take_kernel = ElementwiseKernel(
     'raw T a, S indices, int32 cdim, int32 rdim, int32 adim, S index_range',
     'T out',
     '''
-      S wrap_indices = (indices - _floor_divide(indices, index_range) * index_range) * (index_range != 0);
+      S wrap_indices = indices % index_range;
+      if (wrap_indices < 0) wrap_indices += index_range;
 
       int li = i / (rdim * cdim);
       int ri = i % rdim;
@@ -1676,7 +1677,9 @@ cdef _take_kernel_0axis = ElementwiseKernel(
     'raw T a, S indices, int32 rdim, S index_range',
     'T out',
     '''
-      S wrap_indices = (indices - _floor_divide(indices, index_range) * index_range) * (index_range != 0);
+      S wrap_indices = indices % index_range;
+      if (wrap_indices < 0) wrap_indices += index_range;
+
       out = a[wrap_indices * rdim + i % rdim];
     ''',
     'cupy_take_0axis')
