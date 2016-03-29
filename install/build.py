@@ -65,8 +65,8 @@ def check_cudnn_version(compiler, settings):
     return True
 
 
-def build_and_run(compiler, source, libraries=[],
-                  include_dirs=[], library_dirs=[]):
+def build_and_run(compiler, source, libraries=(),
+                  include_dirs=(), library_dirs=()):
     temp_dir = tempfile.mkdtemp()
 
     try:
