@@ -95,7 +95,7 @@ def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
             when cover_all is ``False``.
 
     Returns:
-        ~chainer.Variable: Ouptut variable.
+        ~chainer.Variable: Output variable.
 
     """
     return Unpooling2D(ksize, stride, pad, outsize, cover_all)(x)

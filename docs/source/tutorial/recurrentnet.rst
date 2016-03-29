@@ -194,7 +194,7 @@ Volatile variables are also useful to evaluate feed-forward networks to reduce t
 
 Variable's volatility can be changed directly by setting the :attr:`Variable.volatile` attribute.
 This enables us to combine a fixed feature extractor network and a trainable predictor network.
-For example, suppose we want to train a feed-forward network ``predictor_func``, which is located on top of another fixed pretrained network ``fixed_func``.
+For example, suppose we want to train a feed-forward network ``predictor_func``, which is located on top of another fixed pre-trained network ``fixed_func``.
 We want to train ``predictor_func`` without storing the computation history for ``fixed_func``.
 This is simply done by following code snippets (suppose ``x_data`` and ``y_data`` indicate input data and label, respectively)::
 

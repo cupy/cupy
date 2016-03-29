@@ -10,8 +10,8 @@ class Deconvolution2D(link.Link):
 
     """Two dimensional deconvolution function.
 
-    This link wraps the :func:`~chainer.functions.convolution_2d` function and
-    holds the filter weight and bias vector as parameters.
+    This link wraps the :func:`~chainer.functions.deconvolution_2d` function
+    and holds the filter weight and bias vector as parameters.
 
     Args:
         in_channels (int): Number of channels of input arrays.
@@ -24,12 +24,14 @@ class Deconvolution2D(link.Link):
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         wscale (float): Scaling factor of the initial weight.
         bias (float): Initial bias value.
-        nobias (bool): If True, then this function does not use the bias term.
+        nobias (bool): If ``True``, then this function does not use the bias
+            term.
         outsize (tuple): Expected output size of deconvolutional operation.
             It should be pair of height and width :math:`(out_H, out_W)`.
             Default value is ``None`` and the outsize is estimated by
             input size, stride and pad.
-        use_cudnn (bool): If True, then this function uses CuDNN if available.
+        use_cudnn (bool): If ``True``, then this function uses cuDNN if
+            available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``.
         initial_bias (1-D array): Initial bias value. If ``None``, then this

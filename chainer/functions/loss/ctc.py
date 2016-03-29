@@ -234,7 +234,7 @@ def connectionist_temporal_classification(
 
     Args:
         x (sequence of Variable): RNN output at each time. ``x`` must be a list
-            of :class:`~chianer.Variable` s. Each element of ``x``, ``x[i]``
+            of :class:`~chainer.Variable` s. Each element of ``x``, ``x[i]``
             is a :class:`~chainer.Variable` representing output of RNN at time
             ``i``.
         t (Variable): Expected label sequence.
@@ -254,7 +254,7 @@ def connectionist_temporal_classification(
        You need to input ``x`` without applying to activation functions(e.g.
        softmax function), because this function applies softmax functions
        to ``x`` before calculating CTC loss to avoid numerical limitations.
-       You also need to apply softmax function to fowarded values before you
+       You also need to apply softmax function to forwarded values before you
        decode it.
 
     .. note::

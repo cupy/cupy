@@ -15,7 +15,7 @@ signbit = core.create_ufunc(
 
 copysign = ufunc.create_math_ufunc(
     'copysign', 2, 'cupy_copysign',
-    '''Returns the first arugment with the sign bit of the second elementwise.
+    '''Returns the first argument with the sign bit of the second elementwise.
 
     .. seealso:: :data:`numpy.copysign`
 

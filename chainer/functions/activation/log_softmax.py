@@ -100,7 +100,7 @@ def log_softmax(x, use_cudnn=True):
     .. math::
         p(x) = {\\exp(f(x)) \\over \\sum_{x'} \\exp(f(x'))}.
 
-    This method is theorecically equivalent to ``log(softmax(x))`` but is more
+    This method is theoretically equivalent to ``log(softmax(x))`` but is more
     stable.
 
     .. note::
@@ -110,8 +110,9 @@ def log_softmax(x, use_cudnn=True):
 
     Args:
         x (~chainer.Variable): Input variable.
-        use_cudnn (bool): If True, cuDNN is enabled and cuDNN ver. 3 or later
-            is used, then this function uses cuDNN as the core implementation.
+        use_cudnn (bool): If ``True``, cuDNN is enabled and cuDNN ver. 3 or
+            later is used, then this function uses cuDNN as the core
+            implementation.
 
     Returns:
         ~chainer.Variable: Output variable.

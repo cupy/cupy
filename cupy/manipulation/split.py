@@ -80,7 +80,7 @@ def split(ary, indices_or_sections, axis=0):
         axis (int): Axis along which the array is split.
 
     Returns:
-        A list of sub arrays. Eacy array is a view of the corresponding input
+        A list of sub arrays. Each array is a view of the corresponding input
         array.
 
     .. seealso:: :func:`numpy.split`

@@ -28,7 +28,7 @@ class GRU(GRUBase):
 
     GRU function has six parameters :math:`W_r`, :math:`W_z`, :math:`W`,
     :math:`U_r`, :math:`U_z`, and :math:`U`. All these parameters are
-    :math:`n \\times n` matricies, where :math:`n` is the dimension of
+    :math:`n \\times n` matrices, where :math:`n` is the dimension of
     hidden vectors.
 
     Given two inputs a previous hidden vector :math:`h` and an input vector
@@ -51,7 +51,7 @@ class GRU(GRUBase):
     Args:
         n_units(int): Dimension of hidden vector :math:`h`.
         n_inputs(int): Dimension of input vector :math:`x`. If ``None``,
-        it is set to the same value as ``n_units``.
+            it is set to the same value as ``n_units``.
 
     See:
         - `On the Properties of Neural Machine Translation: Encoder-Decoder
@@ -78,7 +78,7 @@ class StatefulGRU(GRUBase):
 
     Stateful GRU function has six parameters :math:`W_r`, :math:`W_z`,
     :math:`W`, :math:`U_r`, :math:`U_z`, and :math:`U`.
-    All these parameters are :math:`n \\times n` matricies,
+    All these parameters are :math:`n \\times n` matrices,
     where :math:`n` is the dimension of hidden vectors.
 
     Given input vector :math:`x`, Stateful GRU returns the next
@@ -103,7 +103,7 @@ class StatefulGRU(GRUBase):
 
     Attributes:
         h(~chainer.Variable): Hidden vector that indicates the state of
-        :class:`~chainer.links.StatefulGRU`.
+            :class:`~chainer.links.StatefulGRU`.
 
     .. seealso:: :class:`~chainer.functions.GRU`
     """

@@ -142,7 +142,7 @@ def lstm(c_prev, x):
     It means that :math:`x` 's second axis must have 4 times the length of
     :math:`c_{\\text{prev}}`.
 
-    The splitted input signals are corresponding to:
+    The split input signals are corresponding to:
 
         - :math:`a` : sources of cell input
         - :math:`i` : sources of input gate
@@ -181,9 +181,13 @@ def lstm(c_prev, x):
         function. Each of ``y``, ``c`` and ``h`` has ``n_units`` channels.
         Most typical preparation of ``x`` is:
 
-        >>> model = FunctionSet(w=F.Linear(n_units, 4 * n_units),
-        ...                     v=F.Linear(n_units, 4 * n_units),
-        ...                     ...)
+        >>> import chainer, chainer.functions as F
+        >>> n_units = 100
+        >>> y = chainer.Variable(numpy.zeros((1, n_units), 'f'))
+        >>> h = chainer.Variable(numpy.zeros((1, n_units), 'f'))
+        >>> c = chainer.Variable(numpy.zeros((1, n_units), 'f'))
+        >>> model = chainer.Chain(w=F.Linear(n_units, 4 * n_units),
+        ...                       v=F.Linear(n_units, 4 * n_units),)
         >>> x = model.w(y) + model.v(h)
         >>> c, h = F.lstm(c, x)
 

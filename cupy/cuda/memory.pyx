@@ -385,9 +385,9 @@ cdef class MemoryPool(object):
 
     .. note::
        When the allocation is skipped by reusing the pre-allocated block, it
-       does not call cudaMalloc and therefore CPU-GPU synchronization does not
-       occur. It makes interleaves of memory allocations and kernel invocations
-       very fast.
+       does not call ``cudaMalloc`` and therefore CPU-GPU synchronization does
+       not occur. It makes interleaves of memory allocations and kernel
+       invocations very fast.
 
     .. note::
        The memory pool holds allocated blocks without freeing as much as

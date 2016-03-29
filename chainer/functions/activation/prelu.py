@@ -94,7 +94,7 @@ def prelu(x, W):
 
     Args:
         x (~chainer.Variable): Input variable.
-    Its first argument is assumed to be the minibatch dimension.
+            Its first argument is assumed to be the minibatch dimension.
         W (~chainer.Variable): Weight variable.
 
     Returns:

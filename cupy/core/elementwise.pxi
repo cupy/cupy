@@ -427,12 +427,12 @@ cdef class ElementwiseKernel:
         operation (str): The body in the loop written in CUDA-C/C++.
         name (str): Name of the kernel function. It should be set for
             readability of the performance profiling.
-        reduce_dims (bool): If False, the shapes of array arguments are
+        reduce_dims (bool): If ``False``, the shapes of array arguments are
             kept within the kernel invocation. The shapes are reduced
             (i.e., the arrays are reshaped without copy to the minimum
-            ndims) by default. It may make the kernel fast by reducing the
+            dimension) by default. It may make the kernel fast by reducing the
             index calculations.
-        options (list): Options passed to the nvcc command.
+        options (list): Options passed to the ``nvcc`` command.
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
             top of the cu file.
         loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
@@ -478,12 +478,12 @@ cdef class ElementwiseKernel:
         """Compiles and invokes the elementwise kernel.
 
         The compilation runs only if the kernel is not cached. Note that the
-        kernels with different argument dtypes or ndims are not compatible. It
-        means that single ElementwiseKernel object may be compiled into
+        kernels with different argument dtypes or dimensions are not compatible.
+        It means that single ElementwiseKernel object may be compiled into
         multiple kernel binaries.
 
         Args:
-            args: Argumens of the kernel.
+            args: Arguments of the kernel.
             size (int): Range size of the indices. If specified, the variable
                 ``n`` is set to this value. Otherwise, the result of
                 broadcasting is used to determine the value of ``n``.
@@ -698,9 +698,9 @@ class ufunc(object):
         """Applies the universal function to arguments elementwise.
 
         Args:
-            args: Input arguments. Each of them can be a cupy.ndarray object or
-                a scalar. The output arguments can be omitted or be specified
-                by the ``out`` argument.
+            args: Input arguments. Each of them can be a :class:`cupy.ndarray`
+                object or a scalar. The output arguments can be omitted or be
+                specified by the ``out`` argument.
             out (cupy.ndarray): Output array. It outputs to new arrays
                 default.
             dtype: Data type specifier.
