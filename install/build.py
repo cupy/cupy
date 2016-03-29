@@ -1,9 +1,10 @@
 import distutils
 import os
-import setuptools  # NOQA
 import shutil
 import subprocess
 import tempfile
+
+import setuptools
 
 from install import utils
 
