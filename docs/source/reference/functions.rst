@@ -223,6 +223,10 @@ batch_matmul
 ~~~~~~~~~~~~
 .. autofunction:: batch_matmul
 
+clip
+~~~~
+.. autofunction:: clip
+
 cos
 ~~~
 .. autofunction:: cos
