@@ -14,5 +14,6 @@ Chainer Reference Manual
    links
    optimizers
    serializers
+   function_hooks
    caffe
    graph

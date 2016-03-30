@@ -60,12 +60,19 @@ parser.add_argument('--initmodel', default='',
                     help='Initialize the model from given file')
 parser.add_argument('--resume', default='',
                     help='Resume the optimization from snapshot')
+parser.add_argument('--test', dest='test', action='store_true')
+parser.set_defaults(test=False)
 args = parser.parse_args()
 if args.gpu >= 0:
     cuda.check_cuda_available()
 xp = cuda.cupy if args.gpu >= 0 else np
 
 assert 50000 % args.val_batchsize == 0
+
+if args.test:
+    denominator = 1
+else:
+    denominator = 100000
 
 
 def load_image_list(path, root):
@@ -110,10 +117,10 @@ optimizer.setup(model)
 # Init/Resume
 if args.initmodel:
     print('Load model from', args.initmodel)
-    serializers.load_hdf5(args.initmodel, model)
+    serializers.load_npz(args.initmodel, model)
 if args.resume:
     print('Load optimizer state from', args.resume)
-    serializers.load_hdf5(args.resume, optimizer)
+    serializers.load_npz(args.resume, optimizer)
 
 
 # ------------------------------------------------------------------------------
@@ -178,7 +185,7 @@ def feed_data():
                 i = 0
 
             count += 1
-            if count % 100000 == 0:
+            if count % denominator == 0:
                 data_q.put('val')
                 j = 0
                 for path, label in val_list:
@@ -283,8 +290,8 @@ def train_loop():
             continue
         elif inp == 'val':  # start validation
             res_q.put('val')
-            serializers.save_hdf5(args.out, model)
-            serializers.save_hdf5(args.outstate, optimizer)
+            serializers.save_npz(args.out, model)
+            serializers.save_npz(args.outstate, optimizer)
             model.train = False
             continue
 
@@ -319,5 +326,5 @@ feeder.join()
 logger.join()
 
 # Save final model
-serializers.save_hdf5(args.out, model)
-serializers.save_hdf5(args.outstate, optimizer)
+serializers.save_npz(args.out, model)
+serializers.save_npz(args.outstate, optimizer)

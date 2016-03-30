@@ -46,7 +46,7 @@ class LinearModel(object):
             t = chainer.Variable(t_data)
             return x, t
 
-        for epoch in six.moves.range(self.EPOCH):
+        for _ in six.moves.range(self.EPOCH):
             x, t = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu)
             model.zerograds()
             y = model(x)

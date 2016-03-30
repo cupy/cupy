@@ -48,14 +48,8 @@ class TestEmbedID(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x).data,)
-        gW, = gradient_check.numerical_grad(f, (self.link.W.data,), (y.grad,))
-        gradient_check.assert_allclose(gW, self.link.W.grad)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, self.link.W)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -66,6 +60,40 @@ class TestEmbedID(unittest.TestCase):
     def test_backward_gpu(self):
         self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+
+@testing.parameterize(
+    {'t_value': -1, 'valid': False},
+    {'t_value': 3,  'valid': False},
+    {'t_value': 0,  'valid': True},
+)
+class TestEmbedIDValueCheck(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.EmbedID(2, 2)
+        self.t = numpy.array([self.t_value], dtype=numpy.int32)
+        self.original_debug = chainer.is_debug()
+        chainer.set_debug(True)
+
+    def tearDown(self):
+        chainer.set_debug(self.original_debug)
+
+    def check_value_check(self, t_data):
+        t = chainer.Variable(t_data)
+
+        if self.valid:
+            # Check if it throws nothing
+            self.link(t)
+        else:
+            with self.assertRaises(ValueError):
+                self.link(t)
+
+    def test_value_check_cpu(self):
+        self.check_value_check(self.t)
+
+    @attr.gpu
+    def test_value_check_gpu(self):
+        self.check_value_check(self.t)
 
 
 testing.run_module(__name__, __file__)

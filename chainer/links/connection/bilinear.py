@@ -25,7 +25,7 @@ class Bilinear(link.Link):
             scaled according to the dimension of inputs and outputs. May also
             be a callable that takes in a tuple of the matrix shape and returns
             an initialization.
-        initial_bias (tuple): Intial values of :math:`V^1`, :math:`V^2`
+        initial_bias (tuple): Initial values of :math:`V^1`, :math:`V^2`
             and :math:`b`. The length this argument must be 3.
             Each element of this tuple must have the shapes of
             ``(left_size, output_size)``, ``(right_size, output_size)``,

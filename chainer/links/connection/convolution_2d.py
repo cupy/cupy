@@ -13,16 +13,16 @@ class Convolution2D(link.Link):
     Args:
         in_channels (int): Number of channels of input arrays.
         out_channels (int): Number of channels of output arrays.
-        ksize (int or (int, int)): Size of filters (a.k.a. kernels).
+        ksize (int or pair of ints): Size of filters (a.k.a. kernels).
             ``ksize=k`` and ``ksize=(k, k)`` are equivalent.
-        stride (int or (int, int)): Stride of filter applications.
+        stride (int or pair of ints): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
-        pad (int or (int, int)): Spatial padding width for input arrays.
+        pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         wscale (float): Scaling factor of the initial weight.
         bias (float): Initial bias value.
-        nobias (bool): If True, then this link does not use the bias term.
-        use_cudnn (bool): If True, then this link uses CuDNN if available.
+        nobias (bool): If ``True``, then this link does not use the bias term.
+        use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``. May also be a callable
              that takes a tuple that represents the shape of the matri
@@ -78,4 +78,4 @@ class Convolution2D(link.Link):
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x

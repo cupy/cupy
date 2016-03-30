@@ -1,4 +1,6 @@
+import collections
 import pkg_resources
+import threading
 
 from chainer import flag
 from chainer import function
@@ -30,5 +32,40 @@ Initializations = initializations
 ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
+
+
+thread_local = threading.local()
+
+
+def get_function_hooks():
+    if not hasattr(thread_local, 'function_hooks'):
+        thread_local.function_hooks = collections.OrderedDict()
+    return thread_local.function_hooks
+
+_debug = False
+
+
+def is_debug():
+    """Get the debug mode.
+
+    Returns:
+        bool: Return ``True`` if Chainer is in debug mode.
+    """
+    return _debug
+
+
+def set_debug(debug):
+    """Set the debug mode.
+
+    note::
+
+        This method changes global state. When you use this method on
+        multi-threading environment, it may affects other threads.
+
+    Args:
+        debug (bool): New debug mode.
+    """
+    global _debug
+    _debug = debug
 
 basic_math.install_variable_arithmetics()

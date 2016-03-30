@@ -3,11 +3,13 @@
 from chainer.functions.activation import clipped_relu
 from chainer.functions.activation import elu
 from chainer.functions.activation import leaky_relu
+from chainer.functions.activation import log_softmax
 from chainer.functions.activation import lstm
 from chainer.functions.activation import maxout
 from chainer.functions.activation import prelu
 from chainer.functions.activation import relu
 from chainer.functions.activation import sigmoid
+from chainer.functions.activation import slstm
 from chainer.functions.activation import softmax
 from chainer.functions.activation import softplus
 from chainer.functions.activation import tanh
@@ -38,8 +40,12 @@ from chainer.functions.loss import sigmoid_cross_entropy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
+from chainer.functions.math import batch_l2_norm_squared
+from chainer.functions.math import clip
+from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import identity
+from chainer.functions.math import inv
 from chainer.functions.math import matmul
 from chainer.functions.math import minmax
 from chainer.functions.math import sum
@@ -51,6 +57,7 @@ from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
+from chainer.functions.pooling import unpooling_2d
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
 from chainer.links.connection import convolution_2d as links_convolution_2d
@@ -74,6 +81,8 @@ ELU = elu.ELU
 elu = elu.elu
 LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
+LogSoftmax = log_softmax.LogSoftmax
+log_softmax = log_softmax.log_softmax
 LSTM = lstm.LSTM
 lstm = lstm.lstm
 maxout = maxout.maxout
@@ -82,6 +91,8 @@ ReLU = relu.ReLU
 relu = relu.relu
 Sigmoid = sigmoid.Sigmoid
 sigmoid = sigmoid.sigmoid
+SLSTM = slstm.SLSTM
+slstm = slstm.slstm
 Softmax = softmax.Softmax
 softmax = softmax.softmax
 Softplus = softplus.Softplus
@@ -141,14 +152,25 @@ sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 
+BatchDet = det.BatchDet
+batch_det = det.batch_det
+BatchInv = inv.BatchInv
+batch_inv = inv.batch_inv
+BatchL2NormSquared = batch_l2_norm_squared.BatchL2NormSquared
+batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
+Clip = clip.Clip
+clip = clip.clip
 Cos = trigonometric.Cos
 cos = trigonometric.cos
+det = det.det
 Exp = exponential.Exp
 exp = exponential.exp
 Identity = identity.Identity
 identity = identity.identity
+Inv = inv.Inv
+inv = inv.inv
 Log = exponential.Log
 log = exponential.log
 MatMul = matmul.MatMul
@@ -182,6 +204,9 @@ SpatialPyramidPooling2D = spatial_pyramid_pooling_2d.SpatialPyramidPooling2D
 spatial_pyramid_pooling_2d = \
     spatial_pyramid_pooling_2d.spatial_pyramid_pooling_2d
 
+Unpooling2D = unpooling_2d.Unpooling2D
+unpooling_2d = unpooling_2d.unpooling_2d
+
 # Import for backward compatibility
 PReLU = links_prelu.PReLU
 
@@ -193,7 +218,6 @@ InceptionBN = inceptionbn.InceptionBN
 Linear = links_linear.Linear
 Parameter = parameter.Parameter
 
-BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = links_negative_sampling.NegativeSampling
 
 BatchNormalization = links_batch_normalization.BatchNormalization

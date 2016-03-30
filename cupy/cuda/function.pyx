@@ -1,9 +1,9 @@
+from libc cimport stdint
 import numpy
 import six
 
 cimport cpython
 from libcpp cimport vector
-cimport numpy as cnumpy
 
 from cupy.cuda cimport driver
 
@@ -15,36 +15,36 @@ cdef class CPointer:
 
 cdef class CInt8(CPointer):
     cdef:
-        cnumpy.npy_int8 val
+        stdint.int8_t val
 
-    def __init__(self, cnumpy.npy_int8 v):
+    def __init__(self, stdint.int8_t v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
 cdef class CInt16(CPointer):
     cdef:
-        cnumpy.npy_int16 val
+        stdint.int16_t val
 
-    def __init__(self, cnumpy.npy_int16 v):
+    def __init__(self, stdint.int16_t v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
 cdef class CInt32(CPointer):
     cdef:
-        cnumpy.npy_int32 val
+        stdint.int32_t val
 
-    def __init__(self, cnumpy.npy_int32 v):
+    def __init__(self, stdint.int32_t v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
 cdef class CInt64(CPointer):
     cdef:
-        cnumpy.npy_int64 val
+        stdint.int64_t val
 
-    def __init__(self, cnumpy.npy_int64 v):
+    def __init__(self, stdint.int64_t v):
         self.val = v
         self.ptr = <void*>&self.val
 

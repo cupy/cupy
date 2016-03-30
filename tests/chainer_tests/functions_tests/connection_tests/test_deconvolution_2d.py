@@ -1,10 +1,12 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
 from chainer import cuda
 import chainer.functions as F
+from chainer.functions.connection import deconvolution_2d
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -16,7 +18,15 @@ from chainer.utils import conv
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x
+
+
+def _asfortranarray(x):
+    xp = cuda.get_array_module(x)
+    if xp is numpy:
+        return xp.asfortranarray(x)
+    else:
+        return xp.ascontiguousarray(x.T).T
 
 
 @parameterize(
@@ -30,6 +40,7 @@ def _pair(x):
         'nobias': [True, False],
         'use_cudnn': [True, False],
         'test_outsize': [True, False],
+        'c_contiguous': [True, False],
     })
 )
 class TestDeconvolution2DFunction(unittest.TestCase):
@@ -79,29 +90,28 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         self.test_forward_consistency()
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
-        x = chainer.Variable(x_data)
-        W = chainer.Variable(W_data)
-        b = None if b_data is None else chainer.Variable(b_data)
-        y = F.deconvolution_2d(x, W, b, stride=self.stride, pad=self.pad,
-                               use_cudnn=self.use_cudnn)
+        if not self.c_contiguous:
+            x_data = _asfortranarray(x_data)
+            W_data = _asfortranarray(W_data)
+            y_grad = _asfortranarray(y_grad)
+            self.assertFalse(x_data.flags.c_contiguous)
+            self.assertFalse(W_data.flags.c_contiguous)
+            self.assertFalse(y_grad.flags.c_contiguous)
+            if b_data is not None:
+                xp = cuda.get_array_module(b_data)
+                b = xp.empty((len(b_data) * 2,), dtype=self.b.dtype)
+                b[::2] = b_data
+                b_data = b[::2]
+                self.assertFalse(b_data.flags.c_contiguous)
 
-        y.grad = y_grad
-        y.backward()
+        args = (x_data, W_data)
+        if b_data is not None:
+            args = args + (b_data,)
 
-        func = y.creator
-        if b is None:
-            f = lambda: func.forward((x.data, W.data))
-            gx, gW = gradient_check.numerical_grad(
-                f, (x.data, W.data), (y.grad,), eps=1e-2)
-        else:
-            f = lambda: func.forward((x.data, W.data, b.data))
-            gx, gW, gb = gradient_check.numerical_grad(
-                f, (x.data, W.data, b.data), (y.grad,), eps=1e-2)
-
-        gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gW, W.grad)
-        if b is not None:
-            gradient_check.assert_allclose(gb, b.grad)
+        gradient_check.check_backward(
+            deconvolution_2d.Deconvolution2DFunction(
+                self.stride, self.pad, self.outsize, self.use_cudnn),
+            args, y_grad, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -113,6 +123,53 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         b = None if self.b is None else cuda.to_gpu(self.b)
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             b, cuda.to_gpu(self.gy))
+
+
+@testing.parameterize(
+    {'use_cudnn': True},
+    {'use_cudnn': False},
+)
+@attr.cudnn
+class TestDeconvolution2DCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.in_channels = 3
+        self.out_channels = 2
+        kh, kw = _pair(3)
+        sh, sw = _pair(1)
+        ph, pw = _pair(1)
+        self.W = cuda.cupy.random.normal(
+            0, numpy.sqrt(1. / (kh * kw * self.in_channels)),
+            (self.in_channels, self.out_channels, kh, kw)
+        ).astype(numpy.float32)
+        N = 2
+        inh, inw = 4, 3
+        outh = conv.get_deconv_outsize(inh, kh, sh, ph)
+        outw = conv.get_deconv_outsize(inw, kw, sw, pw)
+        self.x = cuda.cupy.random.uniform(
+            -1, 1, (N, self.in_channels, inh, inw)).astype(numpy.float32)
+        self.gy = cuda.cupy.random.uniform(
+            -1, 1, (N, self.out_channels, outh, outw)).astype(numpy.float32)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        W = chainer.Variable(self.W)
+        return F.deconvolution_2d(
+            x, W, None, stride=1, pad=1, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        v2 = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
+        v3 = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
+        with mock.patch(v2) as func_v2, mock.patch(v3) as func_v3:
+            self.forward()
+            self.assertEqual(func_v2.called or func_v3.called, self.use_cudnn)
+
+    def test_call_cudnn_backrward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn)
 
 
 testing.run_module(__name__, __file__)

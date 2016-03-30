@@ -1,27 +1,47 @@
 import numpy
 
+from chainer import cuda
 from chainer.functions.activation import maxout
 from chainer import link
+from chainer.links.connection import linear
 
 
-class Maxout(link.Link):
-    """Maxout Networks
+class Maxout(link.Chain):
+    """Fully-connected maxout layer.
+
+    Let ``M``, ``P`` and ``N`` be an input dimension, a pool size,
+    and an output dimension, respectively.
+    For an input vector :math:`x` of size ``M``, it computes
+
+    .. math::
+
+      Y_{i} = \\mathrm{max}_{j} (W_{ij\\cdot}x + b_{ij}).
+
+    Here :math:`W` is a weight tensor of shape ``(M, P, N)``,
+    :math:`b` an  optional bias vector of shape ``(M, P)``
+    and :math:`W_{ij\\cdot}` is a sub-vector extracted from
+    :math:`W` by fixing first and second dimensions to
+    :math:`i` and :math:`j`, respectively.
+    Minibatch dimension is omitted in the above equation.
+
+    As for the actual implementation, this chain has a
+    Linear link with a ``(M * P, N)`` weight matrix and
+    an optional ``M * P`` dimensional bias vector.
 
     Args:
         in_size (int): Dimension of input vectors.
-        num_channel (int): Number of channels.
         out_size (int): Dimension of output vectors.
+        pool_size (int): Number of channels.
         wscale (float): Scaling factor of the weight matrix.
-        initialW (3-D array): Initial weight value. If ``None``, then this
-            function uses ``wscale`` to initialize.
-        initial_bias (2-D array): Initial bias value. If ``None``, then this
-            functions uses ``bias`` to initialize.
+        initialW (3-D array or None): Initial weight value.
+            If ``None``, then this function uses ``wscale`` to initialize.
+        initial_bias (2-D array, float or None): Initial bias value.
+            If it is float, initial bias is filled with this value.
+            If it is ``None``, bias is omitted.
 
     Attributes:
-        W (~chainer.Variable): Weight tensor with shape
-            ``(in_size, num_channel, out_size)``.
-        b (~chainer.Variable): Bias vector with shape
-            ``(num_channel, out_size)``.
+        linear (~chainer.Link): The Linear link that performs
+            affine transformation.
 
     .. seealso:: :func:`~chainer.functions.maxout`
 
@@ -33,19 +53,29 @@ class Maxout(link.Link):
          `URL <http://jmlr.org/proceedings/papers/v28/goodfellow13.html>`_
     """
 
-    def __init__(self, in_size, num_channel, out_size,
+    def __init__(self, in_size, out_size, pool_size,
                  wscale=1, initialW=None, initial_bias=0):
-        super(Maxout, self).__init__(W=(in_size, num_channel, out_size))
-        if initialW is None:
-            initialW = numpy.random.normal(
-                0, wscale * numpy.sqrt(1. / in_size), self.W.data.shape)
-        self.W.data[...] = initialW
+        linear_out_size = out_size * pool_size
+        if initialW is not None:
+            initialW = initialW.reshape(linear_out_size, in_size)
 
         if initial_bias is not None:
-            self.add_param('b', (num_channel, out_size))
-            self.b.data[...] = initial_bias
-        else:
-            self.b = None
+            if numpy.isscalar(initial_bias):
+                initial_bias = numpy.full(
+                    (linear_out_size,), initial_bias, dtype=numpy.float32)
+            elif isinstance(initial_bias, (numpy.ndarray, cuda.ndarray)):
+                initial_bias = initial_bias.reshape(linear_out_size)
+            else:
+                raise ValueError(
+                    'initial bias must be float, ndarray, or None')
+
+        super(Maxout, self).__init__(
+            linear=linear.Linear(
+                in_size, linear_out_size, wscale,
+                nobias=initial_bias is None, initialW=initialW,
+                initial_bias=initial_bias))
+        self.out_size = out_size
+        self.pool_size = pool_size
 
     def __call__(self, x):
         """Applies the maxout layer.
@@ -56,5 +86,5 @@ class Maxout(link.Link):
         Returns:
             ~chainer.Variable: Output of the maxout layer.
         """
-
-        return maxout.maxout(x, self.W, self.b)
+        y = self.linear(x)
+        return maxout.maxout(y, self.pool_size)

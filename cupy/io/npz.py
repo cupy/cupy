@@ -32,8 +32,8 @@ def load(file, mmap_mode=None):
 
     Args:
         file (file-like object or string): The file to read.
-        mmap_mode (None, 'r+', 'r', 'w+', 'c'): If not None, memory-map the
-            file to construct an intermediate ``numpy.ndarray`` object and
+        mmap_mode (None, 'r+', 'r', 'w+', 'c'): If not ``None``, memory-map the
+            file to construct an intermediate :class:`numpy.ndarray` object and
             transfer it to the current device.
 
     Returns:
@@ -93,7 +93,7 @@ def savez(file, *args, **kwds):
 def savez_compressed(file, *args, **kwds):
     """Saves one or more arrays into a file in compressed ``.npz`` format.
 
-    It is equivalent to :func:`cupy.savez` function except the outptu file is
+    It is equivalent to :func:`cupy.savez` function except the output file is
     compressed.
 
     .. seealso::

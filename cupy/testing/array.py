@@ -12,10 +12,10 @@ def assert_allclose(actual, desired, rtol=1e-7, atol=0, err_msg='',
     Args:
          actual(numpy.ndarray or cupy.ndarray): The actual object to check.
          desired(numpy.ndarray or cupy.ndarray): The desired, expected object.
-         rtol(float): Relative torelance.
-         atol(float): Absolute torelance.
+         rtol(float): Relative tolerance.
+         atol(float): Absolute tolerance.
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting
+         verbose(bool): If ``True``, the conflicting
              values are appended to the error message.
 
     .. seealso:: :func:`numpy.testing.assert_allclose`
@@ -34,7 +34,7 @@ def assert_array_almost_equal(x, y, decimal=6, err_msg='', verbose=True):
          y(numpy.ndarray or cupy.ndarray): The desired, expected object.
          decimal(int): Desired precision.
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting
+         verbose(bool): If ``True``, the conflicting
              values are appended to the error message.
 
     .. seealso:: :func:`numpy.testing.assert_array_almost_equal`
@@ -81,7 +81,7 @@ def assert_array_equal(x, y, err_msg='', verbose=True):
          x(numpy.ndarray or cupy.ndarray): The actual object to check.
          y(numpy.ndarray or cupy.ndarray): The desired, expected object.
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting values
+         verbose(bool): If ``True``, the conflicting values
              are appended to the error message.
 
     .. seealso:: :func:`numpy.testing.assert_array_equal`
@@ -98,7 +98,7 @@ def assert_array_list_equal(xlist, ylist, err_msg='', verbose=True):
          x(array_like): Array of the actual objects.
          y(array_like): Array of the desired, expected objects.
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting values
+         verbose(bool): If ``True``, the conflicting values
              are appended to the error message.
 
     Each element of ``x`` and ``y`` must be either :class:`numpy.ndarray`
@@ -125,7 +125,7 @@ def assert_array_less(x, y, err_msg='', verbose=True):
          x(numpy.ndarray or cupy.ndarray): The smaller object to check.
          y(numpy.ndarray or cupy.ndarray): The larger object to compare.
          err_msg(str): The error message to be printed in case of failure.
-         verbose(bool): If True, the conflicting values
+         verbose(bool): If ``True``, the conflicting values
              are appended to the error message.
 
     .. seealso:: :func:`numpy.testing.assert_array_less`

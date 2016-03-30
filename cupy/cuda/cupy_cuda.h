@@ -147,6 +147,14 @@ int cudaDeviceSynchronize() {
     return 0;
 }
 
+int cudaDeviceCanAccessPeer(int* canAccessPeer, int device, int peerDevice) {
+    return 0;
+}
+
+int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags) {
+    return 0;
+}
+
 
 // Memory management
 int cudaMalloc(void** devPtr, size_t size) {
@@ -406,6 +414,18 @@ int cublasSgemmBatched(
 int cublasSdgmm(
         Handle handle, SideMode mode, int m, int n, float* A, int lda,
         float* x, int incx, float* C, int ldc) {
+    return 0;
+}
+
+int cublasSgetrfBatched(
+        Handle handle, int n, float *Aarray[], int lda, int *PivotArray,
+        int *infoArray, int batchSize) {
+    return 0;
+}
+
+int cublasSgetriBatched(
+        Handle handle, int n, const float *Aarray[], int lda, int *PivotArray,
+        float *Carray[], int ldc, int *infoArray, int batchSize) {
     return 0;
 }
 

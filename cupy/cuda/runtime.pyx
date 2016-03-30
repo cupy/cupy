@@ -49,6 +49,10 @@ cdef extern from "cupy_cuda.h":
     int cudaSetDevice(int device) nogil
     int cudaDeviceSynchronize() nogil
 
+    int cudaDeviceCanAccessPeer(int* canAccessPeer, int device,
+                                int peerDevice) nogil
+    int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags) nogil
+
     # Memory management
     int cudaMalloc(void** devPtr, size_t size) nogil
     int cudaFree(void* devPtr) nogil
@@ -150,6 +154,18 @@ cpdef setDevice(int device):
 cpdef deviceSynchronize():
     with nogil:
         status = cudaDeviceSynchronize()
+    check_status(status)
+
+
+cpdef int deviceCanAccessPeer(int device, int peerDevice) except *:
+    cpdef int ret
+    status = cudaDeviceCanAccessPeer(&ret, device, peerDevice)
+    check_status(status)
+    return ret
+
+
+cpdef deviceEnablePeerAccess(int peerDevice):
+    status = cudaDeviceEnablePeerAccess(peerDevice, 0)
     check_status(status)
 
 

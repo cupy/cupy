@@ -6,6 +6,9 @@ from chainer.utils import type_check
 
 
 class BinaryAccuracy(function.Function):
+
+    ignore_label = -1
+
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         x_type, t_type = in_types
@@ -23,7 +26,8 @@ class BinaryAccuracy(function.Function):
         y = y.ravel()
         t = t.ravel()
         c = (y >= 0)
-        return xp.asarray((c == t).mean(dtype='f')),
+        count = xp.maximum(1, (t != self.ignore_label).sum())
+        return xp.asarray((c == t).sum(dtype='f') / count, dtype='f'),
 
 
 def binary_accuracy(y, t):
@@ -32,8 +36,9 @@ def binary_accuracy(y, t):
     Args:
         y (Variable): Variable holding a matrix whose i-th element
             indicates the score of positive at the i-th example.
-        t (Variable): Variable holding an int32 vector of groundtruth
-            labels (0 or 1).
+        t (Variable): Variable holding an int32 vector of ground truth labels.
+            If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
+            Accuracy is zero if all ground truth labels are ``-1``.
 
     Returns:
         Variable: A variable holding a scalar array of the accuracy.

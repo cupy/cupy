@@ -48,7 +48,7 @@ Then, call on this instance ``l(x)`` executes *one step of LSTM layer*:
 Do not forget to reset the internal state of the LSTM layer before the forward computation!
 Every recurrent layer holds its internal state (i.e. the output of the previous call).
 At the first application of the recurrent layer, you must reset the internal state.
-Then, the next input can be direclty fed to the LSTM instance:
+Then, the next input can be directly fed to the LSTM instance:
 
 .. doctest::
 
@@ -194,7 +194,7 @@ Volatile variables are also useful to evaluate feed-forward networks to reduce t
 
 Variable's volatility can be changed directly by setting the :attr:`Variable.volatile` attribute.
 This enables us to combine a fixed feature extractor network and a trainable predictor network.
-For example, suppose we want to train a feed-forward network ``predictor_func``, which is located on top of another fixed pretrained network ``fixed_func``.
+For example, suppose we want to train a feed-forward network ``predictor_func``, which is located on top of another fixed pre-trained network ``fixed_func``.
 We want to train ``predictor_func`` without storing the computation history for ``fixed_func``.
 This is simply done by following code snippets (suppose ``x_data`` and ``y_data`` indicate input data and label, respectively)::
 

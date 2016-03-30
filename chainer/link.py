@@ -138,7 +138,7 @@ class Link(object):
     def add_persistent(self, name, value):
         """Registers a persistent value to the link.
 
-        The resitered value is saved and loaded on serialization and
+        The registered value is saved and loaded on serialization and
         deserialization. The value is set to an attribute of the link.
 
         Args:
@@ -156,7 +156,7 @@ class Link(object):
         d[name] = value
 
     def copy(self):
-        """Copies the link hierearchy to new one.
+        """Copies the link hierarchy to new one.
 
         The whole hierarchy rooted by this link is copied. The copy is
         basically shallow, except that the parameter variables are also
@@ -192,9 +192,9 @@ class Link(object):
         """
         if self._cpu:
             return self
-        for param in self.params():
-            param.to_cpu()
         d = self.__dict__
+        for name in self._params:
+            d[name].to_cpu()
         for name in self._persistent:
             value = d[name]
             if isinstance(value, cuda.ndarray):
@@ -206,7 +206,7 @@ class Link(object):
         """Copies parameter variables and persistent values to GPU.
 
         This method does not handle non-registered attributes. If some of such
-        attributes must be copoied to GPU, the link implementation must
+        attributes must be copied to GPU, the link implementation must
         override this method to do so.
 
         Args:
@@ -219,10 +219,10 @@ class Link(object):
         cuda.check_cuda_available()
         if not self._cpu:
             return self
+        d = self.__dict__
         with cuda.get_device(device):
-            for param in self.params():
-                param.to_gpu()
-            d = self.__dict__
+            for name in self._params:
+                d[name].to_gpu()
             for name in self._persistent:
                 value = d[name]
                 if isinstance(value, numpy.ndarray):
@@ -257,8 +257,8 @@ class Link(object):
         """Returns a generator of all links under the hierarchy.
 
         Args:
-            skipself (bool): If True, then the generator skips this link and
-                starts with the first child link.
+            skipself (bool): If ``True``, then the generator skips this link
+                and starts with the first child link.
 
         Returns:
             A generator object that generates all links.
@@ -271,8 +271,8 @@ class Link(object):
         """Returns a generator of all (path, link) pairs under the hierarchy.
 
         Args:
-            skipself (bool): If True, then the generator skips this link and
-                starts with the first child link.
+            skipself (bool): If ``True``, then the generator skips this link
+                and starts with the first child link.
 
         Returns:
             A generator object that generates all (path, link) pairs.
@@ -311,7 +311,7 @@ class Link(object):
         """Initializes all gradient arrays by zero.
 
         This method should be called before the backward computation at every
-        iteration of the optimizations.
+        iteration of the optimization.
 
         """
         for param in self.params():
@@ -423,7 +423,7 @@ class Chain(Link):
         return getattr(self, name)
 
     def add_link(self, name, link):
-        """Regsiters a child link to this chain.
+        """Registers a child link to this chain.
 
         The registered link is saved and loaded on serialization and
         deserialization, and involved in the optimization. The registered link
@@ -615,6 +615,7 @@ class ChainList(Link):
 
     def copy(self):
         ret = super(ChainList, self).copy()
+        ret._children = list(ret._children)  # copy
         children = ret._children
         for i, child in enumerate(children):
             child = child.copy()

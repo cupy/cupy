@@ -33,10 +33,10 @@ class NumericalGradientTest(unittest.TestCase):
     eps = None
 
     def f(self, xs):
-        return (xs[0] ** 2,)
+        return xs[0] ** 2,
 
     def df(self, xs):
-        return ((2 * xs[0],),)
+        return (2 * xs[0],),
 
     def setUp(self):
         self.xs = (_uniform(2, 1),)
@@ -49,7 +49,8 @@ class NumericalGradientTest(unittest.TestCase):
         # matrix-vector multiplication of dfxs and dys
         dx_expect = tuple(map(lambda dfx: _dot(dfx, gys), dfxs))
 
-        func = lambda: f(xs)
+        def func():
+            return f(xs)
         dx_actual = gradient_check.numerical_grad(func, xs, gys, eps)
 
         print('eps: {}'.format(eps))
@@ -84,8 +85,11 @@ class NumericalGradientTest(unittest.TestCase):
 
 class NumericalGradientTest2(NumericalGradientTest):
 
-    f = lambda self, xs: (1,)
-    df = lambda self, xs: ((0,),)
+    def f(self, xs):
+        return 1,
+
+    def df(self, xs):
+        return (0,),
 
 
 class NumericalGradientTest3(NumericalGradientTest):
@@ -159,7 +163,8 @@ class NumericalGradientReferenceTest(unittest.TestCase):
     def check_reference(self, x):
         # A returned value and an input refers the same memory.
         # See issue #488
-        func = lambda: (x,)
+        def func():
+            return x,
         gx, = gradient_check.numerical_grad(func, (x,), (1,))
         gradient_check.assert_allclose(cuda.to_cpu(gx), 1)
 

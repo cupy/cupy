@@ -3,7 +3,7 @@ from cupy.math import ufunc
 
 sinh = ufunc.create_math_ufunc(
     'sinh', 1, 'cupy_sinh',
-    '''Elementwise hypoerbolic sine function.
+    '''Elementwise hyperbolic sine function.
 
     .. seealso:: :data:`numpy.sinh`
 
@@ -12,7 +12,7 @@ sinh = ufunc.create_math_ufunc(
 
 cosh = ufunc.create_math_ufunc(
     'cosh', 1, 'cupy_cosh',
-    '''Elementwise hypoerbolic cosine function.
+    '''Elementwise hyperbolic cosine function.
 
     .. seealso:: :data:`numpy.cosh`
 

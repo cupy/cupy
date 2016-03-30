@@ -20,26 +20,12 @@ def _check_forward(e1, e2, f, y_expect):
 
 
 def _check_backward(e1, e2, y_grad, link, bias):
-    e1 = chainer.Variable(e1)
-    e2 = chainer.Variable(e2)
-    y = link(e1, e2)
-    y.grad = y_grad
-    y.backward()
-    f = lambda: (link(e1, e2).data,)
-
-    ge1, ge2, gW = gradient_check.numerical_grad(
-        f, (e1.data, e2.data, link.W.data), (y.grad,), eps=1e-2)
-    gradient_check.assert_allclose(ge1, e1.grad, rtol=1e-3)
-    gradient_check.assert_allclose(ge2, e2.grad, rtol=1e-3)
-    gradient_check.assert_allclose(gW, link.W.grad, rtol=1e-3)
-
+    params = [link.W]
     if bias:
-        gV1, gV2, gb = gradient_check.numerical_grad(
-            f, (link.V1.data, link.V2.data, link.b.data),
-            (y.grad,), eps=1e-2)
-        gradient_check.assert_allclose(gV1, link.V1.grad, rtol=1e-3)
-        gradient_check.assert_allclose(gV2, link.V2.grad, rtol=1e-3)
-        gradient_check.assert_allclose(gb, link.b.grad, rtol=1e-3)
+        params.append(link.b)
+
+    gradient_check.check_backward(
+        link, (e1, e2), y_grad, params, eps=1e-2, rtol=1e-3)
 
 
 def _batch_to_gpu(*xs):

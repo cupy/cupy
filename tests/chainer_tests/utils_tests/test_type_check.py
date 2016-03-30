@@ -110,7 +110,9 @@ class TestBinaryOperator(unittest.TestCase):
     def setUp(self):
         x = T.Variable(1, 'x')
         y = T.Variable(1, 'y')
-        f = lambda x, y: (x, y)
+
+        def f(x, y):
+            return x, y
         self.op1 = T.BinaryOperator(7, x, y, '+', f)
         self.op2 = T.BinaryOperator(8, x, y, '+', f)
         self.op3 = T.BinaryOperator(9, x, y, '+', f)
@@ -136,7 +138,9 @@ class TestUnaryOperator(unittest.TestCase):
 
     def setUp(self):
         x = T.Variable(1, 'x')
-        f = lambda x: (x,)
+
+        def f(x):
+            return x,
         self.op1 = T.UnaryOperator(8, x, '-', f)
         self.op2 = T.UnaryOperator(9, x, '-', f)
 
@@ -273,7 +277,9 @@ class TestBoolBinaryOperator(unittest.TestCase):
         x = T.Variable(1, 'x')
         y = T.Variable(1, 'y')
         z = T.Variable(2, 'z')
-        f = lambda x, y: x == y
+
+        def f(x, y):
+            return x == y
         self.op1 = T.BoolBinaryOperator(x, y, '==', '!=', f)
         self.op2 = T.BoolBinaryOperator(x, z, '==', '!=', f)
 

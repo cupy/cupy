@@ -45,8 +45,8 @@ In order to avoid memory allocation and deallocation during the computation, Cha
 Chainer changes the default allocator of CuPy to the memory pool, so user can use functions of CuPy directly without dealing with the memory allocator.
 
 
-Basics of cupy.ndarray
-~~~~~~~~~~~~~~~~~~~~~~
+Basics of :class:`cupy.ndarray`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
@@ -54,7 +54,7 @@ Basics of cupy.ndarray
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
 The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
-CuPy implements many functions on cupy.ndarray objects.
+CuPy implements many functions on :class:`cupy.ndarray` objects.
 :ref:`See the reference for the supported subset of NumPy API <cupy_reference>`.
 Understanding NumPy might help utilizing most features of CuPy.
 `See the NumPy documentation for learning it <http://docs.scipy.org/doc/numpy/index.html>`_.
@@ -175,11 +175,11 @@ A :class:`Link` object can be transferred to the specified GPU using the :meth:`
    optimizer.setup(model)
 
 This time, we make the number of input, hidden, and output units configurable.
-The :meth:`~Link.to_gpu` method also accpets a device ID like ``model.to_gpu(0)``.
+The :meth:`~Link.to_gpu` method also accepts a device ID like ``model.to_gpu(0)``.
 In this case, the link object is transferred to the appropriate GPU device.
 The current device is used by default.
 
-Then, all we have to do is transferring each minibatch to the GPU:
+Then we have to transfer each minibatch to the GPU:
 
 .. testcode::
    :hide:
@@ -189,6 +189,7 @@ Then, all we have to do is transferring each minibatch to the GPU:
 
 .. testcode::
 
+   model.to_gpu()
    batchsize = 100
    datasize = len(x_train)
    for epoch in range(20):
@@ -217,7 +218,7 @@ Model-parallel means parallelizations of the computations inside the model.
 In contrast, data-parallel means parallelizations using data sharding.
 In this subsection, we show how to use the model-parallel approach on multiple GPUs in Chainer.
 
-`Recall the MNIST example <mnist_mlp_example>`_.
+:ref:`Recall the MNIST example <mnist_mlp_example>`.
 Now suppose that we want to modify this example by expanding the network to 6 layers with 2000 units each using two GPUs.
 In order to make multi-GPU computation efficient, we only make the two GPUs communicate at the third and sixth layer.
 The overall architecture looks like the following diagram::
@@ -280,7 +281,7 @@ Data-parallel computation is another strategy to parallelize online processing.
 In the context of neural networks, it means that a different device does computation on a different subset of the input data.
 In this subsection, we review the way to achieve data-parallel learning on two GPUs.
 
-Suppose again our task is `the MNIST example <mnist_mlp_example>`_.
+Suppose again our task is :ref:`the MNIST example <mnist_mlp_example>`.
 This time we want to directly parallelize the three-layer network.
 The most simple form of data-parallelization is parallelizing the gradient computation for a distinct set of data.
 First, define a model instance:

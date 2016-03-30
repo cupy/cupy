@@ -54,19 +54,8 @@ class TestCrossCovariance(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.y), cuda.to_gpu(self.z))
 
     def check_backward(self, y_data, z_data):
-        y = chainer.Variable(y_data)
-        z = chainer.Variable(z_data)
-        loss = functions.cross_covariance(y, z)
-        scaled_loss = 0.5 * loss
-        scaled_loss.backward()
-
-        func = loss.creator
-        f = lambda: func.forward((y.data, z.data))
-        gy, gz = gradient_check.numerical_grad(f, (y.data, z.data),
-                                               (0.5,), eps=0.02)
-
-        gradient_check.assert_allclose(gy, y.grad)
-        gradient_check.assert_allclose(gz, z.grad)
+        gradient_check.check_backward(
+            functions.CrossCovariance(), (y_data, z_data), None, eps=0.02)
 
     def check_type(self, y_data, z_data):
         y = chainer.Variable(y_data)

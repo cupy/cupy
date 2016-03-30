@@ -30,18 +30,8 @@ class _TestMatMul(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
 
     def check_backward(self, x1_data, x2_data, y_grad, atol):
-        x1 = chainer.Variable(x1_data)
-        x2 = chainer.Variable(x2_data)
-        y = self.op(x1, x2)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x1.data, x2.data))
-        gx1, gx2 = gradient_check.numerical_grad(
-            f, (x1.data, x2.data), (y.grad,))
-        gradient_check.assert_allclose(gx1, x1.grad, atol=atol)
-        gradient_check.assert_allclose(gx2, x2.grad, atol=atol)
+        gradient_check.check_backward(
+            self.op, (x1_data, x2_data), y_grad, atol=atol)
 
     @condition.retry(3)
     def test_matmul_backward_cpu(self):
@@ -225,6 +215,38 @@ class TestBatchMatMulMatrixMatrixBatchSize1(_TestMatMul):
         self.forward_answer = numpy.array([
             numpy.dot(self.x1[i], self.x2[i])
             for i in six.moves.range(1)])
+
+
+class TestBatchMatMulBroadcastedMatrix1(_TestMatMul):
+
+    def setUp(self):
+        self.x1 = numpy.random.uniform(
+            .5, 1, (batch_size, m, k)).astype(numpy.float32)
+        self.x2 = numpy.random.uniform(
+            .5, 1, (1, k, n)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (batch_size, m, n)).astype(numpy.float32)
+        self.op = lambda x, y: F.batch_matmul(
+            x, F.broadcast_to(y, (batch_size, k, n)))
+        self.forward_answer = numpy.array([
+            numpy.dot(self.x1[i], self.x2[0])
+            for i in six.moves.range(batch_size)])
+
+
+class TestBatchMatMulBroadcastedMatrix2(_TestMatMul):
+
+    def setUp(self):
+        self.x1 = numpy.random.uniform(
+            .5, 1, (batch_size, m, k)).astype(numpy.float32)
+        self.x2 = numpy.random.uniform(
+            .5, 1, (k, n)).astype(numpy.float32)
+        self.gy = numpy.random.uniform(
+            -1, 1, (batch_size, m, n)).astype(numpy.float32)
+        self.op = lambda x, y: F.batch_matmul(
+            x, F.broadcast_to(F.expand_dims(y, 0), (batch_size, k, n)))
+        self.forward_answer = numpy.array([
+            numpy.dot(self.x1[i], self.x2)
+            for i in six.moves.range(batch_size)])
 
 
 testing.run_module(__name__, __file__)

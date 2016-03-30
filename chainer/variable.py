@@ -1,9 +1,51 @@
+import collections
 import heapq
+import traceback
 
 import numpy
+import six
 
+import chainer
 from chainer import cuda
 from chainer import flag
+
+
+def _check_grad_type(func, x, gx):
+    def make_message(message):
+        if func:
+            detail = 'Function `{0}` ({1}) has a bug.\n'.format(
+                type(func).__name__, func.label)
+
+            stack = func.stack
+            if stack:
+                detail += 'Stacktrace of the function is below:\n'
+                for line in traceback.format_list(func._stack):
+                    detail += line
+
+            detail += '''
+Please report this error to the issue tracker with the stack trace,
+the information of your environment, and your script:
+https://github.com/pfnet/chainer/issues/new.
+'''.format(type(func).__name__, func.label)
+
+        else:
+            detail = ''
+
+        detail += message
+        return detail
+
+    if not isinstance(gx, type(x.data)):
+        msg = ('Type of data and grad mismatch\n%s != %s' %
+               (type(x.data), type(gx)))
+        raise TypeError(make_message(msg))
+    if gx.dtype != x.data.dtype:
+        msg = ('Dtype of data and grad mismatch\n%s != %s' %
+               (x.data.dtype, gx.dtype))
+        raise TypeError(make_message(msg))
+    if gx.shape != x.data.shape:
+        msg = ('Shape of data and grad mismatch\n%s != %s' %
+               (x.data.shape, gx.shape))
+        raise ValueError(make_message(msg))
 
 
 class Variable(object):
@@ -45,7 +87,10 @@ class Variable(object):
 
     """
     def __init__(self, data, volatile=flag.OFF, name=None):
-        assert isinstance(data, (numpy.ndarray, cuda.ndarray))
+        if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
+            msg = '''numpy.ndarray or cuda.ndarray are expected.
+Actual: {0}'''.format(type(data))
+            raise TypeError(msg)
 
         self.data = data
         self.rank = 0
@@ -57,7 +102,7 @@ class Variable(object):
         self.name = name
 
     def __reduce__(self):
-        return (Variable, (self.data, self.volatile, self.name))
+        return Variable, (self.data, self.volatile, self.name)
 
     def __repr__(self):
         if self.name:
@@ -67,6 +112,45 @@ class Variable(object):
 
     def __str__(self):
         return self.name or ('<var@%x>' % id(self))
+
+    def debug_print(self):
+        """Display a summary of the stored data and location of the Variable"""
+
+        msg = """{summary}
+- device: {device}
+- volatile: {volatile}
+- backend: {background}
+- shape: {shape}
+- dtype: {dtype}
+- statistics: {stats}
+- grad: {grad}"""
+
+        stats_msg = 'mean={0:.8f}, std={1:.8f}'
+
+        try:
+            device = self.data.device
+        except AttributeError:
+            device = 'CPU'
+
+        with cuda.get_device(self.data) as dev:
+            xp = numpy if int(dev) == -1 else cuda.cupy
+
+            if self.grad is None:
+                grad = None
+            elif xp.all(self.grad == 0):
+                grad = 0
+            else:
+                grad = stats_msg.format(float(xp.mean(self.grad)),
+                                        float(xp.std(self.grad)))
+
+            stats = stats_msg.format(float(xp.mean(self.data)),
+                                     float(xp.std(self.data)))
+
+        return msg.format(summary=repr(self), volatile=self.volatile,
+                          grad=grad, shape=self.data.shape,
+                          background=type(self.data),
+                          dtype=self.data.dtype, device=device,
+                          stats=stats)
 
     def __pos__(self):
         return self
@@ -102,24 +186,8 @@ class Variable(object):
 
     @grad.setter
     def grad(self, g):
-        error_msg = '''
-This error is occured in two cases. The first case is when the user manually
-sets the Variable.grad incorrectly. The second case is when some Function
-implementation has a bug. If you do not manually set the Variable.grad in your
-script, please report this error to the issue tracker with the stack trace,
-the information of your environment, and your script:
-https://github.com/pfnet/chainer/issues/new.
-'''
         if g is not None:
-            if not isinstance(g, type(self.data)):
-                raise TypeError('Type of data and grad mismatch: %s != %s%s'
-                                % (type(self.data), type(g), error_msg))
-            if g.dtype != self.data.dtype:
-                raise TypeError('Dtype of data and grad mismatch: %s != %s%s'
-                                % (self.data.dtype, g.dtype, error_msg))
-            if g.shape != self.data.shape:
-                raise ValueError('Shape of data and grad mismatch: %s != %s%s'
-                                 % (self.data.shape, g.shape, error_msg))
+            _check_grad_type(None, self, g)
         self._grad = g
 
     def to_cpu(self):
@@ -232,7 +300,7 @@ https://github.com/pfnet/chainer/issues/new.
         loss value.
 
         Args:
-            retain_grad (bool): If True, the gradient arrays of all
+            retain_grad (bool): If ``True``, the gradient arrays of all
                 intermediate variables are kept. Otherwise, :data:`grad` of the
                 intermediate variables are set to ``None`` on appropriate
                 timing, which may reduce the maximum memory consumption.
@@ -250,7 +318,7 @@ https://github.com/pfnet/chainer/issues/new.
         seen_vars = set()
         need_copy = set()
 
-        # Initilize error by 1, if this is a loss variable
+        # Initialize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
             with cuda.get_device(self.data) as device:
                 if device is cuda.DummyDevice:
@@ -273,9 +341,22 @@ https://github.com/pfnet/chainer/issues/new.
 
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
+            hooks = collections.OrderedDict(chainer.get_function_hooks())
+            hooks.update(func.local_function_hooks)
+            for hook in six.itervalues(hooks):
+                hook.backward_preprocess(func, in_data, out_grad)
             with cuda.get_device(*(in_data + out_grad)):
                 gxs = func.backward(in_data, out_grad)
             assert len(gxs) == len(in_data)
+            for hook in six.itervalues(hooks):
+                hook.backward_postprocess(func, in_data, out_grad)
+
+            if chainer.is_debug():
+                if any(gx is not None and
+                       cuda.get_array_module(gx).isnan(gx).any()
+                       for gx in gxs):
+                    msg = 'NaN is detected on backward computation'
+                    raise RuntimeError(msg)
 
             if not retain_grad:
                 for y in outputs:
@@ -284,7 +365,10 @@ https://github.com/pfnet/chainer/issues/new.
             for x, gx in zip(func.inputs, gxs):
                 if gx is None:
                     continue
-                # Accumulate the graident to x. It is a bit tricky to handle
+
+                _check_grad_type(func, x, gx)
+
+                # Accumulate the gradient to x. It is a bit tricky to handle
                 # branches and parameter gradient accumulation correctly.
                 with cuda.get_device(gx):
                     id_x = id(x)
@@ -308,6 +392,7 @@ https://github.com/pfnet/chainer/issues/new.
                             need_copy.remove(id_x)
                         else:  # 3rd or later visit
                             x._grad += gx
+            del gxs  # to reduce memory usage
 
     def unchain_backward(self):
         """Deletes references between variables and functions backward.

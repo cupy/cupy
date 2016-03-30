@@ -11,8 +11,11 @@ def get_conv_outsize(size, k, s, p, cover_all=False):
         return (size + p * 2 - k) // s + 1
 
 
-def get_deconv_outsize(size, k, s, p):
-    return s * (size - 1) + k - 2 * p
+def get_deconv_outsize(size, k, s, p, cover_all=False):
+    if cover_all:
+        return s * (size - 1) + k - s + 1 - 2 * p
+    else:
+        return s * (size - 1) + k - 2 * p
 
 
 def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):

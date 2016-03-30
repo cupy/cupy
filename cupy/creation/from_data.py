@@ -9,10 +9,10 @@ def array(obj, dtype=None, copy=True, ndmin=0):
     options.
 
     Args:
-        obj: cupy.ndarray object or any other object that can be passed to
-            :func:`numpy.array`.
+        obj: :class:`cupy.ndarray` object or any other object that can be
+            passed to :func:`numpy.array`.
         dtype: Data type specifier.
-        copy (bool): If False, this function returns ``obj`` if possible.
+        copy (bool): If ``False``, this function returns ``obj`` if possible.
             Otherwise this function always returns a new array.
         ndmin (int): Minimum number of dimensions. Ones are inserted to the
             head of the shape if needed.
@@ -53,7 +53,7 @@ def asanyarray(a, dtype=None):
     This is currently equivalent to :func:`~cupy.asarray`, since there is no
     subclass of ndarray in CuPy. Note that the original
     :func:`numpy.asanyarray` returns the input array as is if it is an instance
-    of a subtype of numpy.ndarray.
+    of a subtype of :class:`numpy.ndarray`.
 
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 

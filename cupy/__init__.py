@@ -126,6 +126,8 @@ dstack = manipulation.join.dstack
 hstack = manipulation.join.hstack
 vstack = manipulation.join.vstack
 
+asfortranarray = manipulation.kind.asfortranarray
+
 array_split = manipulation.split.array_split
 dsplit = manipulation.split.dsplit
 hsplit = manipulation.split.hsplit
@@ -341,11 +343,11 @@ def asnumpy(a, stream=None):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
-        a: Arbitrary object that can be converted to numpy.ndarray.
+        a: Arbitrary object that can be converted to :class:`numpy.ndarray`.
         stream (cupy.cuda.Stream): CUDA stream object. If it is specified, then
             the device-to-host copy runs asynchronously. Otherwise, the copy is
-            synchronous. Note that if ``a`` is not a cupy.ndarray object, then
-            this argument has no effect.
+            synchronous. Note that if ``a`` is not a :class:`cupy.ndarray`
+            object, then this argument has no effect.
 
     Returns:
         numpy.ndarray: Converted array on the host memory.
@@ -378,9 +380,9 @@ def get_array_module(*args):
 
        A NumPy/CuPy generic function can be written as follows::
 
-           def softplus(x):
-               xp = cupy.get_array_module(x)
-               return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
+       >>> def softplus(x):
+       ...     xp = cupy.get_array_module(x)
+       ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
     if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):

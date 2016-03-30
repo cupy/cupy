@@ -166,7 +166,7 @@ class Optimizer(object):
         gradients. The implementation might call ``lossfun`` more than once.
 
         If ``lossfun`` is not given, then this method assumes that the
-        gardients of all parameters are already computed. An implementation
+        gradients of all parameters are already computed. An implementation
         that requires multiple gradient computations might raise an error on
         this case.
 
@@ -198,7 +198,7 @@ class Optimizer(object):
         """Registers a hook function.
 
         Hook function is typically called right after the gradient computation,
-        though the timing depdns on the optimization method.
+        though the timing depends on the optimization method.
 
         Args:
             hook (function): Hook function. It accepts the optimizer object.
@@ -343,7 +343,7 @@ class GradientMethod(Optimizer):
 
     """Base class of all single gradient-based optimizers.
 
-    This is an extention of the :class:`Optimizer` class. Typical gradient
+    This is an extension of the :class:`Optimizer` class. Typical gradient
     methods that just require the gradient at the current parameter vector on
     an update can be implemented as its child class.
 

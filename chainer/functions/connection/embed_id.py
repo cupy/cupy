@@ -1,5 +1,7 @@
 import numpy
+import six
 
+import chainer
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -21,6 +23,12 @@ class EmbedIDFunction(function.Function):
 
     def forward(self, inputs):
         x, W = inputs
+        if chainer.is_debug():
+            if not ((0 <= x).all() and
+                    (x < len(W)).all()):
+                msg = 'Each `x` value need to satisfty `0 <= x < len(W)`'
+                raise ValueError(msg)
+
         return W.take(x, axis=0),
 
     def backward(self, inputs, grad_outputs):
@@ -30,7 +38,11 @@ class EmbedIDFunction(function.Function):
         gW = xp.zeros_like(W)
 
         if xp is numpy:
-            numpy.add.at(gW, x, gy)
+            # It is equivalent to `numpy.add.at(gW, x, gy)` but ufunc.at is
+            # too slow.
+            for ix, igy in six.moves.zip(x.ravel(),
+                                         gy.reshape(x.size, -1)):
+                gW[ix] += igy
         else:
             cuda.elementwise(
                 'T gy, int32 x, int32 n_out', 'raw T gW',
@@ -52,7 +64,7 @@ def embed_id(x, W):
     This function is only differentiable on the input ``W``.
 
     Args:
-        x (~chainer.Variable): Input variable with one-hot representation.
+        x (~chainer.Variable): Batch vectors of IDs.
         W (~chainer.Variable): Representation of each ID (a.k.a.
             word embeddings).
 

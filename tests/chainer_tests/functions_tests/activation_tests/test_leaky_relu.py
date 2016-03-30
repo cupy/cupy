@@ -45,16 +45,8 @@ class TestLeakyReLU(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = functions.leaky_relu(x, slope=self.slope)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x.data,))
-        gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-
-        gradient_check.assert_allclose(gx, x.grad)
+        gradient_check.check_backward(
+            functions.LeakyReLU(self.slope), x_data, y_grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):

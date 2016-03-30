@@ -39,6 +39,27 @@ cdef class Memory:
         return self.ptr
 
 
+cdef set _peer_access_checked = set()
+
+
+cpdef _set_peer_access(int device, int peer):
+    device_pair = device, peer
+
+    if device_pair in _peer_access_checked:
+        return
+    cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
+    _peer_access_checked.add(device_pair)
+    if not can_access:
+        return
+
+    cdef int current = runtime.getDevice()
+    runtime.setDevice(device)
+    try:
+        runtime.deviceEnablePeerAccess(peer)
+    finally:
+        runtime.setDevice(current)
+
+
 cdef class MemoryPointer:
 
     """Pointer to a point on a device memory.
@@ -101,8 +122,9 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
+            _set_peer_access(src.device.id, self.device.id)
             runtime.memcpy(self.ptr, src.ptr, size,
-                           runtime.memcpyDeviceToDevice)
+                           runtime.memcpyDefault)
 
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size, stream):
         """Copies a memory sequence from a (possibly different) device asynchronously.
@@ -114,8 +136,9 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
+            _set_peer_access(src.device.id, self.device.id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
-                                runtime.memcpyDeviceToDevice, stream)
+                                runtime.memcpyDefault, stream)
 
     cpdef copy_from_host(self, mem, size_t size):
         """Copies a memory sequence from the host memory.
@@ -139,8 +162,8 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            runtime.memcpyAsync(self.ptr, mem.value, size, stream,
-                                runtime.memcpyHostToDevice)
+            runtime.memcpyAsync(self.ptr, mem.value, size,
+                                runtime.memcpyHostToDevice, stream)
 
     cpdef copy_from(self, mem, size_t size):
         """Copies a memory sequence from a (possibly different) device or host.
@@ -362,9 +385,9 @@ cdef class MemoryPool(object):
 
     .. note::
        When the allocation is skipped by reusing the pre-allocated block, it
-       does not call cudaMalloc and therefore CPU-GPU synchronization does not
-       occur. It makes interleaves of memory allocations and kernel invocations
-       very fast.
+       does not call ``cudaMalloc`` and therefore CPU-GPU synchronization does
+       not occur. It makes interleaves of memory allocations and kernel
+       invocations very fast.
 
     .. note::
        The memory pool holds allocated blocks without freeing as much as

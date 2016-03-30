@@ -244,7 +244,7 @@ cdef class ndarray:
     cpdef dump(self, file):
         """Dumps a pickle of the array to a file.
 
-        Dumped file can be read back to cupy.ndarray by
+        Dumped file can be read back to :class:`cupy.ndarray` by
         :func:`cupy.load`.
 
         """
@@ -497,7 +497,7 @@ cdef class ndarray:
         return newarray
 
     cpdef ndarray ravel(self):
-        """Returns an array flattend into one dimension.
+        """Returns an array flattened into one dimension.
 
         .. seealso::
            :func:`cupy.ravel` for full documentation,
@@ -979,6 +979,8 @@ cdef class ndarray:
                     strides.push_back(self._strides[ndim - 1])
                 else:
                     strides.push_back(self.itemsize)
+            elif ndim <= j:
+                raise IndexError("too many indices for array")
             elif isinstance(s, slice):
                 s = internal.complete_slice(s, self._shape[j])
                 s_start = s.start
@@ -1101,7 +1103,7 @@ cdef class ndarray:
         return a_cpu
 
     cpdef set(self, arr, stream=None):
-        """Copies an array on the host memory to cuda.ndarray.
+        """Copies an array on the host memory to :class:`cupy.ndarray`.
 
         Args:
             arr (numpy.ndarray): The source array on the host memory.
@@ -1363,7 +1365,7 @@ cdef _argmax = create_reduction_func(
 
 cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support order and subok options
-    cdef Py_ssize_t ndim
+    cdef Py_ssize_t nvidem
     cdef ndarray a
     if isinstance(obj, ndarray):
         if dtype is None:
@@ -1658,33 +1660,64 @@ right_shift = _create_bit_op(
 # -----------------------------------------------------------------------------
 
 cdef _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, int64 cdim, int64 rdim',
+    'raw T a, S indices, int32 cdim, int32 rdim, int32 adim, S index_range',
     'T out',
     '''
-      long long li = i / (rdim * cdim);
-      long long ri = i % rdim;
-      out = a[(li * cdim + indices) * rdim + ri];
+      S wrap_indices = indices % index_range;
+      if (wrap_indices < 0) wrap_indices += index_range;
+
+      int li = i / (rdim * cdim);
+      int ri = i % rdim;
+      out = a[(li * adim + wrap_indices) * rdim + ri];
     ''',
     'cupy_take')
 
 
+cdef _take_kernel_0axis = ElementwiseKernel(
+    'raw T a, S indices, int32 rdim, S index_range',
+    'T out',
+    '''
+      S wrap_indices = indices % index_range;
+      if (wrap_indices < 0) wrap_indices += index_range;
+
+      out = a[wrap_indices * rdim + i % rdim];
+    ''',
+    'cupy_take_0axis')
+
+
 cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
+    if a.ndim == 0:
+        a = a[None]
+
     if axis is None:
         a = a.ravel()
         lshape = ()
         rshape = ()
+        adim = 1
+        index_range = a.size
     else:
-        if axis >= a.ndim:
+        if not (-a.ndim <= axis < a.ndim):
             raise ValueError('Axis overrun')
+        if a.ndim != 0:
+            axis %= a.ndim
+
         lshape = a.shape[:axis]
         rshape = a.shape[axis + 1:]
+        adim = a.shape[axis]
+        index_range = adim
 
     if numpy.isscalar(indices):
-        a = rollaxis(a, axis)
+        indices %= index_range
+        if axis is not None:
+            a = rollaxis(a, axis)
         if out is None:
             return a[indices].copy()
         else:
-            out[:] = a[indices]
+            if out.dtype != a.dtype:
+                raise TypeError('Output dtype mismatch')
+            if out.shape != a.shape[1:]:
+                raise ValueError('Output shape mismatch')
+            out[()] = a[indices]
             return out
     elif not isinstance(indices, ndarray):
         indices = array(indices, dtype=int)
@@ -1702,7 +1735,10 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     rdim = internal.prod(rshape)
     indices = indices.reshape(
         (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
-    return _take_kernel(a, indices, cdim, rdim, out)
+    if axis == 0 or axis is None:
+        return _take_kernel_0axis(a.reduced_view(), indices, rdim, index_range, out)
+    else:
+        return _take_kernel(a.reduced_view(), indices, cdim, rdim, adim, index_range, out)
 
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,

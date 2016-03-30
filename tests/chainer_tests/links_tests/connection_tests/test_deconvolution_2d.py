@@ -16,7 +16,7 @@ from chainer.utils import conv
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x
 
 
 @parameterize(
@@ -73,22 +73,12 @@ class TestDeconvolution2D(unittest.TestCase):
         self.check_forward_consistency()
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x).data,)
-        gx, gW = gradient_check.numerical_grad(
-            f, (x.data, self.link.W.data), (y.grad,), eps=1e-2)
+        params = [self.link.W]
         if not self.nobias:
-            gb, = gradient_check.numerical_grad(
-                f, (self.link.b.data,), (y.grad,), eps=1e-2)
+            params.append(self.link.b)
 
-        gradient_check.assert_allclose(gx, x.grad)
-        gradient_check.assert_allclose(gW, self.link.W.grad)
-        if not self.nobias:
-            gradient_check.assert_allclose(gb, self.link.b.grad)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, params, eps=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):

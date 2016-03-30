@@ -35,16 +35,8 @@ class TestExpandDims(unittest.TestCase):
         numpy.testing.assert_array_equal(cuda.to_cpu(y.data), y_expect)
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = functions.expand_dims(x, self.axis)
-        y.grad = y_grad
-        y.backward()
-
-        func = y.creator
-        f = lambda: func.forward((x_data,))
-        gx, = gradient_check.numerical_grad(f, (x_data,), (y_grad,))
-        gradient_check.assert_allclose(cuda.to_cpu(x.grad),
-                                       cuda.to_cpu(gx))
+        gradient_check.check_backward(
+            functions.ExpandDims(self.axis), x_data, y_grad)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)

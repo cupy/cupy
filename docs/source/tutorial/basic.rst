@@ -26,7 +26,7 @@ As mentioned on the front page, Chainer is a flexible framework for neural netwo
 One major goal is flexibility, so it must enable us to write complex architectures simply and intuitively.
 
 Most existing deep learning frameworks are based on the **"Define-and-Run"** scheme.
-That is, first a network is defined and fixed, and then the user periodically feeds it with minibatches.
+That is, first a network is defined and fixed, and then the user periodically feeds it with mini-batches.
 Since the network is statically defined before any forward/backward computation, all the logic must be embedded into the network architecture as *data*.
 Consequently, defining a network architecture in such systems (e.g. Caffe) follows a declarative approach.
 Note that one can still produce such a static network definition using imperative languages (e.g. Torch7 and Theano-based frameworks).
@@ -157,10 +157,10 @@ A linear link from three-dimensional space to two-dimensional space is defined b
    >>> f = F.Linear(3, 2)
 
 .. note::
-   Most functions and links only accept minibatch input, where the first dimension of input arrays is considered as the *batch dimension*.
-   In the above Linear link case, input must have shape of (N, 3), where N is the minibatch size.
+   Most functions and links only accept mini-batch input, where the first dimension of input arrays is considered as the *batch dimension*.
+   In the above Linear link case, input must have shape of (N, 3), where N is the mini-batch size.
 
-Parameters of a link is stored as attributres.
+The parameters of a link are stored as attributes.
 Each parameter is an instance of :class:`~chainer.Variable`.
 In the case of Linear link, two parameters, ``W`` and ``b``, are stored.
 By default, the matrix ``W`` is initialized randomly, while the vector ``b`` is initialized with zeros.
@@ -307,7 +307,7 @@ Do not forget resetting gradients beforehand!
    >>> optimizer.update()
 
 The other way is just passing a loss function to the :meth:`~Optimizer.update` method.
-In this case, zerograds is automatically called by the update method, so user do not have to call it manually.
+In this case, :meth:`~Link.zerograds` is automatically called by the update method, so user do not have to call it manually.
 
    >>> def lossfun(args...):
    ...     ...
@@ -334,20 +334,20 @@ Serializer is a simple interface to serialize or deserialize an object.
 :class:`Link` and :class:`Optimizer` supports serialization by serializers.
 
 Concrete serializers are defined in the :mod:`serializers` module.
-Currently, it only contains a serializer and a deserializer for HDF5 format.
+It supports NumPy NPZ and HDF5 formats.
 
-We can serialize a link object into HDF5 file by the :func:`serializers.save_hdf5` function:
-
-.. doctest::
-
-   >>> serializers.save_hdf5('my.model', model)
-
-It saves the parameters of ``model`` into the file ``'my.model'`` in HDF5 format.
-The saved model can be read by the :func:`serializers.load_hdf5` function:
+For example, we can serialize a link object into NPZ file by the :func:`serializers.save_npz` function:
 
 .. doctest::
 
-   >>> serializers.load_hdf5('my.model', model)
+   >>> serializers.save_npz('my.model', model)
+
+It saves the parameters of ``model`` into the file ``'my.model'`` in NPZ format.
+The saved model can be read by the :func:`serializers.load_npz` function:
+
+.. doctest::
+
+   >>> serializers.load_npz('my.model', model)
 
 .. note::
    Note that only the parameters and the *persistent values* are serialized by these serialization code.
@@ -359,14 +359,17 @@ The state of an optimizer can also be saved by the same functions:
 
 .. doctest::
 
-   >>> serializers.save_hdf5('my.state', optimizer)
-   >>> serializers.load_hdf5('my.state', optimizer)
+   >>> serializers.save_npz('my.state', optimizer)
+   >>> serializers.load_npz('my.state', optimizer)
 
 .. note::
    Note that serialization of optimizer only saves its internal states including number of iterations, momentum vectors of MomentumSGD, etc.
    It does not save the parameters and persistent values of the target link.
    We have to explicitly save the target link with the optimizer to resume the optimization from saved states.
 
+Support of the HDF5 format is enabled if the h5py package is installed.
+Serialization and deserialization with the HDF5 format are almost identical to those with the NPZ format;
+just replace :func:`~serializers.save_npz` and :func:`~serializers.load_npz` by :func:`~serializers.save_hdf5` and :func:`~serializers.load_hdf5`, respectively.
 
 .. _mnist_mlp_example:
 
@@ -374,7 +377,7 @@ Example: Multi-layer Perceptron on MNIST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now you can solve a multiclass classification task using a multi-layer perceptron.
-Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing de-facto "hello world" of machine learning.
+Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing defacto "hello world" of machine learning.
 This MNIST example is also found in ``examples/mnist`` directory of the official repository.
 
 In order to use MNIST, we prepared ``load_mnist_data`` function at ``examples/mnist/data.py``::
@@ -420,7 +423,7 @@ We use a simple three-layer rectifier network with 100 units per layer as an exa
 This link uses :func:`~functions.relu` as an activation function.
 Note that the ``'l3'`` link is the final linear layer whose output corresponds to scores for the ten digits.
 
-In order to compute loss values or evalute the accuracy of the predictions, we define a classifier chain on top of the above MLP chain:
+In order to compute loss values or evaluate the accuracy of the predictions, we define a classifier chain on top of the above MLP chain:
 
 .. doctest::
 
@@ -435,7 +438,7 @@ In order to compute loss values or evalute the accuracy of the predictions, we d
    ...         return self.loss
 
 This Classifier class computes accuracy and loss, and returns the loss value.
-:func:`~functions.softmax_cross_entropy` computes the loss value given prediction and groundtruth labels.
+:func:`~functions.softmax_cross_entropy` computes the loss value given prediction and ground truth labels.
 :func:`~functions.accuracy` computes the prediction accuracy.
 We can set an arbitrary predictor link to an instance of the classifier.
 
@@ -503,7 +506,7 @@ It can be achieved simply by calling forward function:
    ...     t = Variable(y_test[i : i + batchsize])
    ...     loss = model(x, t)
    ...     sum_loss += loss.data * batchsize
-   ...     sum_accuracy = model.accuracy.data * batchsize
+   ...     sum_accuracy += model.accuracy.data * batchsize
    ...     
    >>> mean_loss = sum_loss / 10000
    >>> mean_accuracy = sum_accuracy / 10000

@@ -3,6 +3,7 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer.functions import sigmoid
+from chainer import utils
 from chainer.utils import type_check
 
 
@@ -31,23 +32,24 @@ class SigmoidCrossEntropy(function.Function):
         x, t = inputs
         self.ignore_mask = (t != self.ignore_label)
         if self.normalize:
-            count = int(self.ignore_mask.sum())
+            count = xp.maximum(1, self.ignore_mask.sum())
         else:
-            count = x.shape[0]
-        self.count = count if count > 0 else 1
+            count = max(1, len(x))
+        self.count = count
         # stable computation of the cross entropy.
         loss = -xp.sum(
             self.ignore_mask * (x * (t - (x >= 0)) -
                                 xp.log1p(xp.exp(-xp.abs(x)))))
-        return xp.array(loss / self.count, dtype=x.dtype),
+        return utils.force_array(xp.divide(loss, self.count, dtype=x.dtype)),
 
     def backward(self, inputs, grad_outputs):
+        xp = cuda.get_array_module(*inputs)
         x, t = inputs
         gloss = grad_outputs[0]
         y, = sigmoid.Sigmoid(self.use_cudnn).forward((x,))
-        dtype = y.dtype
-        gx = (gloss * self.ignore_mask * (y - t.astype(dtype)) /
-              dtype.type(self.count))
+        gx = xp.divide(
+            gloss * self.ignore_mask * (y - t), self.count,
+            dtype=y.dtype)
         return gx, None
 
 
@@ -58,9 +60,9 @@ def sigmoid_cross_entropy(x, t, use_cudnn=True, normalize=True):
         x (Variable): A variable object holding a matrix whose (i, j)-th
             element indicates the unnormalized log probability of the j-th unit
             at the i-th example.
-        t (Variable): Variable holding an int32 vector of groundtruth labels.
-            If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
-            Loss is zero if all groundtruth labels are ``-1``.
+        t (Variable): Variable holding an int32 vector of ground truth labels.
+            If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
+            Loss is zero if all ground truth labels are ``-1``.
         normalize (bool): Variable holding a boolean value which
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,

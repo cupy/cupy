@@ -18,18 +18,18 @@ class MLPConvolution2D(link.ChainList):
         in_channels (int): Number of channels of input arrays.
         out_channels (tuple of ints): Tuple of number of channels. The i-th
             integer indicates the number of filters of the i-th convolution.
-        ksize (int or (int, int)): Size of filters (a.k.a. kernels) of the
+        ksize (int or pair of ints): Size of filters (a.k.a. kernels) of the
             first convolution layer. ``ksize=k`` and ``ksize=(k, k)`` are
             equivalent.
-        stride (int or (int, int)): Stride of filter applications at the first
-            convolution layer. ``stride=s`` and ``stride=(s, s)`` are
+        stride (int or pair of ints): Stride of filter applications at the
+            first convolution layer. ``stride=s`` and ``stride=(s, s)`` are
             equivalent.
-        pad (int or (int, int)): Spatial padding width for input arrays at the
-            first convolution layer. ``pad=p`` and ``pad=(p, p)`` are
+        pad (int or pair of ints): Spatial padding width for input arrays at
+            the first convolution layer. ``pad=p`` and ``pad=(p, p)`` are
             equivalent.
         activation (function): Activation function for internal hidden units.
             Note that this function is not applied to the output of this link.
-        use_cudnn (bool): If True, then this link uses CuDNN if available.
+        use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
         convInit: A callable or scalar that takes a tuple of the matrix shape
                 and returns a matrix of the same dimensions to use for
                 initialization of the convolution matrix weights. Maybe be
@@ -56,8 +56,12 @@ class MLPConvolution2D(link.ChainList):
             initialW=convInit, initial_bias=biasInit)]
         for n_in, n_out in zip(out_channels, out_channels[1:]):
             convs.append(convolution_2d.Convolution2D(
+<<<<<<< HEAD
                 n_in, n_out, 1, wscale=wscale,
                 initialW=convInit, initial_bias=biasInit))
+=======
+                n_in, n_out, 1, wscale=wscale, use_cudnn=use_cudnn))
+>>>>>>> master
         super(MLPConvolution2D, self).__init__(*convs)
         self.activation = activation
 

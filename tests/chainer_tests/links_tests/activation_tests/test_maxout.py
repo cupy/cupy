@@ -20,19 +20,20 @@ def _as_mat(x):
 
 
 def _maxout(x, W, b):
-    y = numpy.tensordot(_as_mat(x), W, axes=1)
+    W_r = numpy.rollaxis(W, 2)
+    y = numpy.tensordot(_as_mat(x), W_r, axes=1)
     if b is not None:
         y += b
-    return numpy.max(y, axis=1)
+    return numpy.max(y, axis=2)
 
 
 @testing.parameterize(
     *testing.product(
         {'in_shape': [(2, ), (2, 5)],
-         'num_channel': [3],
+         'pool_size': [3],
          'out_size': [4],
          'wscale': [1],
-         'initial_bias': ['random', None],
+         'initial_bias': ['random', 'scalar', None],
          'batchsize': [7]}
     )
 )
@@ -41,7 +42,7 @@ class TestMaxout(unittest.TestCase):
     def setUp(self):
         # x, W, and b are set so that the result of forward
         # propagation gets stable, meaning that their small pertubations
-        # do not change :math:`argmax_{j} W_{\cdot ij} x + b_{ij}`.
+        # do not change :math:`argmax_{j} W_{ij\cdot} x + b_{ij}`.
 
         x_shape = (self.batchsize, ) + self.in_shape
         self.x = numpy.random.uniform(
@@ -52,27 +53,26 @@ class TestMaxout(unittest.TestCase):
 
         in_size = numpy.prod(self.in_shape)
         initialW = numpy.random.uniform(
-            -0.05, 0.05, (in_size, self.num_channel, self.out_size)
+            -0.05, 0.05, (self.out_size, self.pool_size, in_size)
         ).astype(numpy.float32)
-        for c in six.moves.range(self.num_channel):
+        for o in six.moves.range(self.out_size):
             w = numpy.arange(in_size, dtype=numpy.float32) + 1
-            for o in six.moves.range(self.out_size):
-                initialW[:, c, o] += w * o
+            for c in six.moves.range(self.pool_size):
+                initialW[o, c, :] += w * c
 
-        initial_bias = None
         if self.initial_bias == 'random':
             initial_bias = numpy.random.uniform(
-                -0.05, 0.05, (self.num_channel, self.out_size))
+                -0.05, 0.05, (self.out_size, self.pool_size))
+        elif self.initial_bias == 'scalar':
+            initial_bias = numpy.full(
+                (self.out_size, self.pool_size), 5, dtype=numpy.float32)
+        elif self.initial_bias is None:
+            initial_bias = None
 
-        self.link = links.Maxout(in_size, self.num_channel, self.out_size,
+        self.link = links.Maxout(in_size, self.out_size, self.pool_size,
                                  self.wscale, initialW, initial_bias)
 
-        W = self.link.W.data.copy()
-        b = None
-        if self.link.b is not None:
-            b = self.link.b.data.copy()
-
-        self.y = _maxout(self.x, W, b)
+        self.y = _maxout(self.x, initialW, initial_bias)
         self.link.zerograds()
 
     def check_forward(self, x_data):
@@ -92,25 +92,11 @@ class TestMaxout(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        x = chainer.Variable(x_data)
-        y = self.link(x)
-        y.grad = y_grad
-        y.backward()
-
-        f = lambda: (self.link(x).data, )
-        if self.initial_bias is None:
-            gx, gW = gradient_check.numerical_grad(
-                f, (x.data, self.link.W.data),
-                (y.grad, ), eps=1e-4)
-        else:
-            gx, gW, gb = gradient_check.numerical_grad(
-                f, (x.data, self.link.W.data, self.link.b.data),
-                (y.grad, ), eps=1e-4)
-
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-2)
-        gradient_check.assert_allclose(gW, self.link.W.grad, atol=1e-2)
+        params = [self.link.linear.W]
         if self.initial_bias is not None:
-            gradient_check.assert_allclose(gb, self.link.b.grad, atol=1e-2)
+            params.append(self.link.linear.b)
+        gradient_check.check_backward(
+            self.link, x_data, y_grad, params, atol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -138,17 +124,25 @@ class TestInvalidMaxout(unittest.TestCase):
 class TestInitialization(unittest.TestCase):
 
     def setUp(self):
+        self.in_size = 2
+        self.out_size = 3
+        self.pool_size = 4
         self.initialW = numpy.random.uniform(
-            -1, 1, (2, 3, 4)).astype(numpy.float32)
+            -1, 1, (self.out_size, self.pool_size, self.in_size)
+        ).astype(numpy.float32)
         self.initial_bias = numpy.random.uniform(
-            -1, 1, (3, 4)).astype(numpy.float32)
+            -1, 1, (self.out_size, self.pool_size)
+        ).astype(numpy.float32)
         self.link = links.Maxout(
-            2, 3, 4, initialW=self.initialW,
-            initial_bias=self.initial_bias)
+            self.in_size, self.out_size, self.pool_size,
+            initialW=self.initialW, initial_bias=self.initial_bias)
 
     def check_param(self):
-        gradient_check.assert_allclose(self.initialW, self.link.W.data)
-        gradient_check.assert_allclose(self.initial_bias, self.link.b.data)
+        linear_out_size = self.out_size * self.pool_size
+        initialW = self.initialW.reshape((linear_out_size, -1))
+        gradient_check.assert_allclose(initialW, self.link.linear.W.data)
+        initial_bias = self.initial_bias.reshape((linear_out_size,))
+        gradient_check.assert_allclose(initial_bias, self.link.linear.b.data)
 
     def test_param_cpu(self):
         self.check_param()

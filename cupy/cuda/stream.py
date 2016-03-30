@@ -9,11 +9,11 @@ class Event(object):
     instance is destroyed by the GC, its handle is also destroyed.
 
     Args:
-        block (bool): If True, the event blocks on the
+        block (bool): If ``True``, the event blocks on the
             :meth:`~cupy.cuda.Event.synchronize` method.
-        disable_timing (bool): If True, the event does not prepare the timing
-            data.
-        interprocess (bool): If True, the event can be passed to other
+        disable_timing (bool): If ``True``, the event does not prepare the
+            timing data.
+        interprocess (bool): If ``True``, the event can be passed to other
             processes.
 
     Attributes:
@@ -22,7 +22,7 @@ class Event(object):
 
     """
     def __init__(self, block=False, disable_timing=False, interprocess=False):
-        self.ptr = None
+        self.ptr = 0
 
         if interprocess and not disable_timing:
             raise ValueError('Timing must be disabled for interprocess events')
@@ -34,7 +34,6 @@ class Event(object):
     def __del__(self):
         if self.ptr:
             runtime.eventDestroy(self.ptr)
-            self.ptr = None
 
     @property
     def done(self):
@@ -87,11 +86,11 @@ class Stream(object):
     instance is destroyed by the GC, its handle is also destroyed.
 
     Args:
-        null (bool): If True, the stream is a null stream (i.e. the default
+        null (bool): If ``True``, the stream is a null stream (i.e. the default
             stream that synchronizes with all streams). Otherwise, a plain new
             stream is created.
-        non_blocking (bool): If True, the stream does not synchronize with the
-            NULL stream.
+        non_blocking (bool): If ``True``, the stream does not synchronize with
+            the NULL stream.
 
     Attributes:
         ptr (cupy.cuda.runtime.Stream): Raw stream handle. It can be passed to
@@ -100,7 +99,7 @@ class Stream(object):
     """
     def __init__(self, null=False, non_blocking=False):
         if null:
-            self.ptr = None
+            self.ptr = 0
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
         else:
@@ -109,7 +108,6 @@ class Stream(object):
     def __del__(self):
         if self.ptr:
             runtime.streamDestroy(self.ptr)
-            self.ptr = None
 
     @property
     def done(self):
@@ -136,8 +134,8 @@ class Stream(object):
         """Records an event on the stream.
 
         Args:
-            event (None or cupy.cuda.Event): CUDA event. If None, then a new
-                plain event is created and used.
+            event (None or cupy.cuda.Event): CUDA event. If ``None``, then a
+                new plain event is created and used.
 
         Returns:
             cupy.cuda.Event: The recorded event.

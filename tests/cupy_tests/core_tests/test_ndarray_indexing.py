@@ -27,6 +27,31 @@ from cupy import testing
     {'shape': (2,), 'transpose': None, 'indexes': (slice(None,), None)},
     {'shape': (), 'transpose': None, 'indexes': (None,)},
     {'shape': (), 'transpose': None, 'indexes': (None, None)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(10, -9, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-9, -10, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-1, -10, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-1, -11, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-11, -11, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(10, -9, -3),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-1, -11, -3),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(1, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(0, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-1, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-4, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-6, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-10, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-11, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-12, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, 1, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, 0, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -1, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -4, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -5, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -6, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -10, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -11, -1),)},
+    {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -12, -1),)},
 )
 @testing.gpu
 class TestArrayIndexingParameterized(unittest.TestCase):
@@ -43,6 +68,9 @@ class TestArrayIndexingParameterized(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'shape': (), 'transpose': None, 'indexes': 0},
+    {'shape': (), 'transpose': None, 'indexes': (slice(0, 1, 0),)},
+    {'shape': (2, 3), 'transpose': None, 'indexes': (0, 0, 0)},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': -3},
     {'shape': (2, 3, 4), 'transpose': (2, 0, 1), 'indexes': -5},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': 3},

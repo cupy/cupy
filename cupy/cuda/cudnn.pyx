@@ -1,5 +1,5 @@
-"""Thin wrapper of CuDNN."""
-# NOTE: This wrapper does not cover all APIs of CuDNN v2.
+"""Thin wrapper of cuDNN."""
+# NOTE: This wrapper does not cover all APIs of cuDNN v4.
 cimport cython
 
 
@@ -60,7 +60,7 @@ cdef extern from "cupy_cudnn.h":
     int cudnnGetConvolutionForwardAlgorithm(
             Handle handle, TensorDescriptor srcDesc,
             FilterDescriptor filterDesc, ConvolutionDescriptor convDesc,
-            TensorDescriptor destDesc, int preference,
+            TensorDescriptor destDesc, ConvolutionFwdPreference preference,
             size_t memoryLimitInbytes, ConvolutionFwdAlgo* algo)
     int cudnnGetConvolutionForwardWorkspaceSize(
             Handle handle, TensorDescriptor srcDesc,
@@ -77,17 +77,49 @@ cdef extern from "cupy_cudnn.h":
             Handle handle, void* alpha,
             TensorDescriptor srcDesc, void* srcData, void* beta,
             TensorDescriptor destDesc, void* destData)
+    int cudnnGetConvolutionBackwardFilterAlgorithm(
+            Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
+            ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
+            ConvolutionBwdFilterPreference preference,
+            size_t memoryLimitInbytes, ConvolutionBwdFilterAlgo* algo)
+    int cudnnGetConvolutionBackwardFilterWorkspaceSize(
+            Handle handle, TensorDescriptor srcDesc, TensorDescriptor diffDesc,
+            ConvolutionDescriptor convDesc, FilterDescriptor filterDesc,
+            ConvolutionBwdFilterAlgo algo, size_t* sizeInBytes)
     int cudnnConvolutionBackwardFilter_v2(
             Handle handle, void* alpha,
             TensorDescriptor srcDesc, void* srcData,
             TensorDescriptor diffDesc, void* diffData,
             ConvolutionDescriptor convDesc, void* beta,
             FilterDescriptor gradDesc, void* gradData)
+    int cudnnConvolutionBackwardFilter_v3(
+            Handle handle, void* alpha,
+            TensorDescriptor srcDesc, void* srcData,
+            TensorDescriptor diffDesc, void* diffData,
+            ConvolutionDescriptor convDesc, ConvolutionBwdFilterAlgo algo,
+            void* workSpace, size_t workSpaceSizeInBytes, void* beta,
+            FilterDescriptor gradDesc, void* gradData)
+    int cudnnGetConvolutionBackwardDataAlgorithm(
+            Handle handle, FilterDescriptor filterDesc, TensorDescriptor diffDesc,
+            ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
+            ConvolutionBwdDataPreference preference,
+            size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo)
+    int cudnnGetConvolutionBackwardDataWorkspaceSize(
+            Handle handle, FilterDescriptor filterDesc, TensorDescriptor diffDesc,
+            ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
+            ConvolutionBwdDataAlgo algo, size_t* sizeInBytes)
     int cudnnConvolutionBackwardData_v2(
             Handle handle, void* alpha,
             FilterDescriptor filterDesc, void* filterData,
             TensorDescriptor diffDesc, void* diffData,
             ConvolutionDescriptor convDesc, void* beta,
+            TensorDescriptor gradDesc, void* gradData)
+    int cudnnConvolutionBackwardData_v3(
+            Handle handle, void* alpha,
+            FilterDescriptor filterDesc, void* filterData,
+            TensorDescriptor diffDesc, void* diffData,
+            ConvolutionDescriptor convDesc, ConvolutionBwdDataAlgo algo,
+            void* workSpace, size_t workSpaceSizeInBytes, void* beta,
             TensorDescriptor gradDesc, void* gradData)
 
     # Pooling
@@ -321,7 +353,8 @@ cpdef destroyConvolutionDescriptor(size_t convDesc):
 
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int preference, size_t memoryLimitInbytes) except *:
+        size_t destDesc, ConvolutionFwdPreference preference,
+        size_t memoryLimitInbytes) except *:
     cdef ConvolutionFwdAlgo algo
     status = cudnnGetConvolutionForwardAlgorithm(
         <Handle>handle, <TensorDescriptor>srcDesc,
@@ -368,6 +401,29 @@ cpdef convolutionBackwardBias(
         <TensorDescriptor>destDesc, <void*>destData)
     check_status(status)
 
+cpdef int getConvolutionBackwardFilterAlgorithm(
+        size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
+        size_t filterDesc, ConvolutionBwdFilterPreference preference,
+        size_t memoryLimitInbytes) except *:
+    cdef ConvolutionBwdFilterAlgo algo
+    status = cudnnGetConvolutionBackwardFilterAlgorithm(
+        <Handle>handle, <TensorDescriptor>srcDesc, <TensorDescriptor>diffDesc,
+        <ConvolutionDescriptor>convDesc, <FilterDescriptor>filterDesc,
+        <ConvolutionBwdFilterPreference>preference,
+        memoryLimitInbytes, &algo)
+    check_status(status)
+    return algo
+
+cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
+        size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
+        size_t filterDesc, int algo) except *:
+    cdef size_t sizeInBytes
+    status = cudnnGetConvolutionBackwardFilterWorkspaceSize(
+        <Handle>handle, <TensorDescriptor>srcDesc, <TensorDescriptor>diffDesc,
+        <ConvolutionDescriptor> convDesc, <FilterDescriptor>filterDesc,
+        <ConvolutionBwdFilterAlgo>algo, &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
 
 cpdef convolutionBackwardFilter_v2(
         size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
@@ -381,6 +437,43 @@ cpdef convolutionBackwardFilter_v2(
         <FilterDescriptor>gradDesc, <void*>gradData)
     check_status(status)
 
+cpdef convolutionBackwardFilter_v3(
+        size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
+        size_t diffDesc, size_t diffData, size_t convDesc, int algo,
+        size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
+        size_t gradDesc, size_t gradData):
+    status = cudnnConvolutionBackwardFilter_v3(
+        <Handle>handle, <void*>alpha,
+        <TensorDescriptor>srcDesc, <void*>srcData,
+        <TensorDescriptor>diffDesc, <void*>diffData,
+        <ConvolutionDescriptor>convDesc, <ConvolutionBwdFilterAlgo>algo,
+        <void*>workSpace, workSpaceSizeInBytes, <void*>beta,
+        <FilterDescriptor>gradDesc, <void*>gradData)
+    check_status(status)
+
+cpdef int getConvolutionBackwardDataAlgorithm(
+        size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
+        size_t gradDesc, size_t preference,
+        size_t memoryLimitInbytes) except *:
+      cdef ConvolutionBwdDataAlgo algo
+      status = cudnnGetConvolutionBackwardDataAlgorithm(
+          <Handle>handle, <FilterDescriptor>filterDesc,
+          <TensorDescriptor>diffDesc, <ConvolutionDescriptor>convDesc,
+          <TensorDescriptor>gradDesc, <ConvolutionBwdDataPreference>preference,
+          memoryLimitInbytes, &algo)
+      check_status(status)
+      return algo
+
+cpdef size_t getConvolutionBackwardDataWorkspaceSize(
+        size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
+        size_t gradDesc, int algo) except *:
+      cdef size_t sizeInBytes
+      status = cudnnGetConvolutionBackwardDataWorkspaceSize(
+          <Handle>handle, <FilterDescriptor>filterDesc, <TensorDescriptor>diffDesc,
+          <ConvolutionDescriptor> convDesc, <TensorDescriptor>gradDesc,
+          <ConvolutionBwdDataAlgo>algo, &sizeInBytes)
+      check_status(status)
+      return sizeInBytes
 
 cpdef convolutionBackwardData_v2(
         size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
@@ -394,6 +487,19 @@ cpdef convolutionBackwardData_v2(
         <TensorDescriptor>gradDesc, <void*>gradData)
     check_status(status)
 
+cpdef convolutionBackwardData_v3(
+         size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
+         size_t diffDesc, size_t diffData, size_t convDesc, int algo,
+         size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
+         size_t gradDesc, size_t gradData):
+     status = cudnnConvolutionBackwardData_v3(
+         <Handle>handle, <void*>alpha,
+         <FilterDescriptor>filterDesc, <void*>filterData,
+         <TensorDescriptor>diffDesc, <void*>diffData,
+         <ConvolutionDescriptor>convDesc, <ConvolutionBwdDataAlgo>algo,
+         <void*>workSpace, workSpaceSizeInBytes, <void*>beta,
+         <TensorDescriptor>gradDesc, <void*>gradData)
+     check_status(status)
 
 ###############################################################################
 # Pooling
