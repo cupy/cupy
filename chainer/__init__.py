@@ -10,7 +10,7 @@ from chainer import link
 from chainer import optimizer
 from chainer import serializer
 from chainer import variable
-import initializations
+from chainer import initializer
 
 
 __version__ = pkg_resources.get_distribution('chainer').version
@@ -27,7 +27,7 @@ Link = link.Link
 Optimizer = optimizer.Optimizer
 Serializer = serializer.Serializer
 Variable = variable.Variable
-Initializations = initializations
+Initializer = initializer.Initializer
 
 ON = flag.ON
 OFF = flag.OFF
