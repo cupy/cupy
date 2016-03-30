@@ -56,12 +56,8 @@ class MLPConvolution2D(link.ChainList):
             initialW=convInit, initial_bias=biasInit)]
         for n_in, n_out in zip(out_channels, out_channels[1:]):
             convs.append(convolution_2d.Convolution2D(
-<<<<<<< HEAD
                 n_in, n_out, 1, wscale=wscale,
-                initialW=convInit, initial_bias=biasInit))
-=======
-                n_in, n_out, 1, wscale=wscale, use_cudnn=use_cudnn))
->>>>>>> master
+                initialW=convInit, initial_bias=biasInit, use_cudnn=use_cudnn))
         super(MLPConvolution2D, self).__init__(*convs)
         self.activation = activation
 
