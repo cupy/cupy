@@ -30,11 +30,11 @@ class MLPConvolution2D(link.ChainList):
         activation (function): Activation function for internal hidden units.
             Note that this function is not applied to the output of this link.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
-        convInit: A callable or scalar that takes a tuple of the matrix shape
+        conv_init: A callable or scalar that takes a tuple of the matrix shape
                 and returns a matrix of the same dimensions to use for
                 initialization of the convolution matrix weights. Maybe be
                 `None` to use default initialization.
-        biasInit: A callable or scalar that takes a tuple of the matrix shape
+        bias_init: A callable or scalar that takes a tuple of the matrix shape
                 and returns a matrix of the same dimensions to use for
                 initialization of the convolution bias weights. Maybe be `None`
                 to use default initialization.
@@ -48,16 +48,16 @@ class MLPConvolution2D(link.ChainList):
 
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, activation=relu.relu, use_cudnn=True,
-                 convInit=None, biasInit=None):
+                 conv_init=None, bias_init=None):
         assert len(out_channels) > 0
         convs = [convolution_2d.Convolution2D(
             in_channels, out_channels[0], ksize, stride, pad,
             wscale=wscale, use_cudnn=use_cudnn,
-            initialW=convInit, initial_bias=biasInit)]
+            initialW=conv_init, initial_bias=bias_init)]
         for n_in, n_out in zip(out_channels, out_channels[1:]):
             convs.append(convolution_2d.Convolution2D(
                 n_in, n_out, 1, wscale=wscale,
-                initialW=convInit, initial_bias=biasInit, use_cudnn=use_cudnn))
+                initialW=conv_init, initial_bias=bias_init, use_cudnn=use_cudnn))
         super(MLPConvolution2D, self).__init__(*convs)
         self.activation = activation
 
