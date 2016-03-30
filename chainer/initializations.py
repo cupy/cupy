@@ -35,7 +35,7 @@ def init_weight(weights, initWith, scale=1,
 
 
 def get_fans(shape):
-    fan_in = shape[1] if len(shape) == 2 else np.prod(shape[1:])
+    fan_in = np.prod(shape[1:])
     fan_out = shape[0]
     return fan_in, fan_out
 
@@ -101,7 +101,7 @@ def orthogonal(shape, scale=1.1):
     # pick the one with the correct shape
     q = u if u.shape == flat_shape else v
     q = q.reshape(shape)
-    return scale * q[:shape[0], :shape[1]]
+    return scale * q
 
 
 def identity(shape, scale=1):

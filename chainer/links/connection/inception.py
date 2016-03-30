@@ -41,26 +41,26 @@ class Inception(link.Chain):
     """
 
     def __init__(self, in_channels, out1, proj3, out3, proj5, out5, proj_pool,
-                 convInit=None, biasInit=None):
+                 conv_init=None, bias_init=None):
         super(Inception, self).__init__(
             conv1=convolution_2d.Convolution2D(in_channels, out1, 1,
-                                               initialW=convInit,
-                                               initial_bias=biasInit),
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
             proj3=convolution_2d.Convolution2D(in_channels, proj3, 1,
-                                               initialW=convInit,
-                                               initial_bias=biasInit),
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
             conv3=convolution_2d.Convolution2D(proj3, out3, 3, pad=1,
-                                               initialW=convInit,
-                                               initial_bias=biasInit),
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
             proj5=convolution_2d.Convolution2D(in_channels, proj5, 1,
-                                               initialW=convInit,
-                                               initial_bias=biasInit),
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
             conv5=convolution_2d.Convolution2D(proj5, out5, 5, pad=2,
-                                               initialW=convInit,
-                                               initial_bias=biasInit),
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
             projp=convolution_2d.Convolution2D(in_channels, proj_pool, 1,
-                                               initialW=convInit,
-                                               initial_bias=biasInit),
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
         )
 
     def __call__(self, x):
