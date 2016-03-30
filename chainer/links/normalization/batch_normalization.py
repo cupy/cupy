@@ -12,7 +12,7 @@ class BatchNormalization(link.Link):
     This link wraps the :func:`~chainer.functions.batch_normalization` and
     :func:`~chainer.functions.fixed_batch_normalization` functions.
 
-    It runs in three modes: training mode, fintuning mode, and testing mode.
+    It runs in three modes: training mode, finetuning mode, and testing mode.
 
     In training mode, it normalizes the input by *batch statistics*. It also
     maintains approximated population statistics by moving averages, which can

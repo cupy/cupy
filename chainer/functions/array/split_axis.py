@@ -9,7 +9,7 @@ from chainer.utils import type_check
 
 class SplitAxis(function.Function):
 
-    """Function that splits multiple arrays towards the specified axis."""
+    """Function that splits multiple arrays along the specified axis."""
 
     def __init__(self, indices_or_sections, axis):
         if not isinstance(indices_or_sections, (int, collections.Iterable)):
