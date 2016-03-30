@@ -29,11 +29,13 @@ class Inception(link.Chain):
         proj5 (int): Projection size of 5x5 convolution path.
         out5 (int): Output size of 5x5 convolution path.
         proj_pool (int): Projection size of max pooling path.
-        convInit: A callable or scalar that takes a tuple of the matrix shape
+        conv_init: A callable or scalar that takes a tuple that represents
+                the shape of the matrix
                 and returns a matrix of the same dimensions to use for
                 initialization of the convolution matrix weights. Maybe be
                 `None` to use default initialization.
-        biasInit: A callable or scalar that takes a tuple of the matrix shape
+        bias_init: A callable or scalar that takes a tuple that represents
+                the shape of the matrix
                 and returns a matrix of the same dimensions to use for
                 initialization of the convolution bias weights. Maybe be `None`
                 to use default initialization.

@@ -16,9 +16,9 @@ class EmbedID(link.Link):
         out_size (int): Size of embedding vector.
         initialW (2-D array): Initial weight value. If ``None``, then the
                 matrix is initialized from the standard normal distribution.
-            May also be a callable that takes a tuple of the matrix shape
-            and returns a matrix of the same dimensions to use for
-            initialization.
+            May also be a callable that takes a tuple that represents
+            the shape of the matrix and returns a matrix of the same
+            dimensions to use for initialization.
 
     .. seealso:: :func:`chainer.functions.embed_id`
 

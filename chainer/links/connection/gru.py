@@ -113,17 +113,17 @@ class StatefulGRU(GRUBase):
     Args:
         in_size(int): Dimension of input vector :math:`x`.
         out_size(int): Dimension of hidden vector :math:`h`.
-        init: A callable that takes a tuple of the matrix shape and returns a
-            matrix of the same dimensions to use for initialization of the
+        init: A callable that takes tuple that represents the shape of the matrix
+            and returns a matrix of the same dimensions to use for initialization of the
             GRU's input units (:math:`W`). Maybe be `None` to use default
             initialization.
-        inner_init: A callable that takes a tuple of the matrix shape and
-            returns a matrix of the same dimensions to use for initialization
-            of the GRU's inner recurrent units (:math:`U`). Maybe be `None` to
-            use default initialization
-        bias_init: A callable or scalar used to initiate the bias values for
+        inner_init: A callable that takes a tuple that represents the shape of
+            the matrix and returns a matrix of the same dimensions to use for
+            initialization of the GRU's inner recurrent units (:math:`U`).
+            Maybe be `None` to use default initialization.
+        bias_init: A callable or scalar used to initialize the bias values for
             both the GRU's inner and input units. Maybe be `None` to use
-            default initialization
+            default initialization.
 
     Attributes:
         h(~chainer.Variable): Hidden vector that indicates the state of
