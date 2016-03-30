@@ -1,5 +1,5 @@
 from chainer.functions.activation import lstm
-from chainer import initializations
+from chainer import initializer
 from chainer import link
 from chainer.links.connection import linear
 from chainer import variable

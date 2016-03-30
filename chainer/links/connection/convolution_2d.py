@@ -1,5 +1,5 @@
 from chainer.functions.connection import convolution_2d
-from chainer import initializations
+from chainer import initializer
 from chainer import link
 
 

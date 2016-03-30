@@ -1,5 +1,5 @@
 from chainer.functions.connection import linear
-from chainer import initializations
+from chainer import initializer
 from chainer import link
 
 class Linear(link.Link):
@@ -28,7 +28,7 @@ class Linear(link.Link):
             matrix of the same dimensions to use for initialization
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``. May also be a function
-            that behaves in the same manner as initalW.
+            that behaves in the same manner as initialW.
 
     .. seealso:: :func:`~chainer.functions.linear`
 
@@ -48,8 +48,9 @@ class Linear(link.Link):
             self.b = None
         else:
             self.add_param('b', out_size)
-            initializations.init_weight(self.b.data, initialW,
-                                        none_default=bias)
+            if initial_bias is None:
+                initial_bias = bias
+            initializations.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
         """Applies the linear layer.

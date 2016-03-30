@@ -1,5 +1,5 @@
 from chainer.functions.connection import deconvolution_2d
-from chainer import initializations
+from chainer import initializer
 from chainer import link
 
 
@@ -72,8 +72,9 @@ class Deconvolution2D(link.Link):
 
         if not nobias:
             self.add_param('b', out_channels)
-            initializations.init_weight(
-                self.b.data, initial_bias, none_default=bias)
+            if initial_bias is None:
+                initial_bias = bias
+            initializations.init_weight(self.b.data, initial_bias)
         else:
             self.b = None
 
