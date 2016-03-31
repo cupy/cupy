@@ -60,7 +60,7 @@ class Bilinear(link.Link):
         # that of Linear function.
 
         # initialW=None will result in the original initialization
-        initializations.init_weight(self.W.data, initialW)
+        initializers.init_weight(self.W.data, initialW)
 
         if not self.nobias:
             self.add_param('V1', (left_size, out_size))
@@ -76,9 +76,9 @@ class Bilinear(link.Link):
                 self.V2.data[...] = V2
                 self.b.data[...] = b
             else:
-                initializations.init_weight(self.V1.data, initial_bias)
-                initializations.init_weight(self.V2.data, initial_bias)
-                initializations.init_weight(self.b.data, 0)
+                initializers.init_weight(self.V1.data, initial_bias)
+                initializers.init_weight(self.V2.data, initial_bias)
+                initializers.init_weight(self.b.data, 0)
 
     def __call__(self, e1, e2):
         """Applies the bilinear function to inputs and the internal parameters.

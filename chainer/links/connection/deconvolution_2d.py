@@ -68,13 +68,13 @@ class Deconvolution2D(link.Link):
         W_shape = (in_channels, out_channels, kh, kw)
         super(Deconvolution2D, self).__init__(W=W_shape)
 
-        initializations.init_weight(self.W.data, initialW, scale=wscale)
+        initializers.init_weight(self.W.data, initialW, scale=wscale)
 
         if not nobias:
             self.add_param('b', out_channels)
             if initial_bias is None:
                 initial_bias = bias
-            initializations.init_weight(self.b.data, initial_bias)
+            initializers.init_weight(self.b.data, initial_bias)
         else:
             self.b = None
 

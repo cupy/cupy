@@ -31,7 +31,7 @@ class EmbedID(link.Link):
         super(EmbedID, self).__init__(W=(in_size, out_size))
         if initialW is None:
             initialW = initialzers.Normal(1.0)
-        initializations.init_weight(self.W.data, initialW)
+        initializers.init_weight(self.W.data, initialW)
 
     def __call__(self, x):
         """Extracts the word embedding of given IDs.
