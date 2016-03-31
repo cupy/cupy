@@ -12,7 +12,7 @@ class Identity(initializer.Initializer):
         if len(shape) != 2 or shape[0] != shape[1]:
             raise ValueError('Identity matrix initialization can only be used '
                              'for 2D square matrices.')
-        return scale * numpy.identity(shape[0])
+        return self.scale * numpy.identity(shape[0])
 
 
 class Constant(initializer.Initializer):
@@ -21,12 +21,12 @@ class Constant(initializer.Initializer):
         self.fill_value = fill_value
 
     def __call__(self, shape):
-        numpy.full(shape, fill_value)
+        return numpy.full(shape, self.fill_value)
 
 
-def zero(shape):
-    return Constant(0.0)(shape)
+def Zero():
+    return Constant(0.0)
 
 
-def one(shape):
-    return Constant(1.0)(shape)
+def One():
+    return Constant(1.0)

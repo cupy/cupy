@@ -13,6 +13,10 @@ class Normal(initializer.Initializer):
             loc=0.0, scale=self.scale, size=shape)
 
 
+def normal(shape, scale):
+    return Normal(scale)(shape)
+
+
 class GlorotNormal(initializer.Initializer):
     '''Reference: Glorot & Bengio, AISTATS 2010
 

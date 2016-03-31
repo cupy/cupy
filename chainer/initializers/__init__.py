@@ -7,8 +7,9 @@ from chainer.initializers import uniform
 
 
 Identity = constant.Identity
-zero = constant.zero
-one = constant.one
+Constant = constant.Constant
+Zero = constant.Zero
+One = constant.One
 Normal = normal.Normal
 GlorotNormal = normal.GlorotNormal
 HeNormal = normal.HeNormal

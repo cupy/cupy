@@ -40,7 +40,7 @@ class GlorotUniform(initializer.Initializer):
 
     def __call__(self, shape):
         fan_in, fan_out = initializer.get_fans(shape)
-        s = self.scale * np.sqrt(6. / (fan_in + fan_out))
+        s = self.scale * numpy.sqrt(6. / (fan_in + fan_out))
         return uniform(shape, s)
 
 
@@ -51,7 +51,7 @@ class HeUniform(initializer.Initializer):
 
     def __call__(self, shape):
         fan_in, fan_out = initializer.get_fans(shape)
-        s = self.scale * np.sqrt(6. / fan_in)
+        s = self.scale * numpy.sqrt(6. / fan_in)
         return uniform(shape, s)
 
 
