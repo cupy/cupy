@@ -115,4 +115,36 @@ class TestSplitAxisNone(unittest.TestCase):
             cuda.to_gpu(self.x), self.ys_section, axis=self.axis)
 
 
+class TestSplitAxisForceArray(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.arange(42, dtype=numpy.float32).reshape(2, 7, 3)
+        self.axis = 1
+
+    def check_forward_force_tuple(self, x_data, axis):
+        x = chainer.Variable(x_data)
+        ys = functions.split_axis(x, 1, axis, force_tuple=True)
+        self.assertIsInstance(ys, tuple)
+        self.assertEqual(len(ys), 1)
+
+    def test_forward_force_tuple_cpu(self):
+        self.check_forward_force_tuple(self.x, self.axis)
+
+    @attr.gpu
+    def test_forward_force_tuple_gpu(self):
+        self.check_forward_force_tuple(cuda.to_gpu(self.x), axis=self.axis)
+
+    def check_forward_single(self, x_data, axis):
+        x = chainer.Variable(x_data)
+        ys = functions.split_axis(x, 1, axis)
+        self.assertIsInstance(ys, chainer.Variable)
+
+    def test_forward_single_cpu(self):
+        self.check_forward_single(self.x, self.axis)
+
+    @attr.gpu
+    def test_forward_single_gpu(self):
+        self.check_forward_single(cuda.to_gpu(self.x), axis=self.axis)
+
+
 testing.run_module(__name__, __file__)
