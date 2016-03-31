@@ -14,8 +14,10 @@ class Orthogonal(initializer.Initializer):
         self.scale = scale
 
     def __call__(self, shape):
-        flat_shape = (shape[0], np.prod(shape[1:]))
-        a = numpy.random.normal(0.0, 1.0, flat_shape)
+        if not shape:
+            return numpy.array(1)
+        flat_shape = (shape[0], numpy.prod(shape[1:]))
+        a = numpy.random.standard_normal(flat_shape)
         u, _, v = numpy.linalg.svd(a, full_matrices=False)
         # pick the one with the correct shape
         q = u if u.shape == flat_shape else v
