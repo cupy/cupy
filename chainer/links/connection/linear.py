@@ -1,5 +1,5 @@
 from chainer.functions.connection import linear
-from chainer import initializer
+from chainer import initializers
 from chainer import link
 
 class Linear(link.Link):
@@ -42,7 +42,7 @@ class Linear(link.Link):
                  initialW=None, initial_bias=None):
         super(Linear, self).__init__(W=(out_size, in_size))
 
-        initializations.init_weight(self.W.data, initialW, scale=wscale)
+        initializers.init_weight(self.W.data, initialW, scale=wscale)
 
         if nobias:
             self.b = None
@@ -50,7 +50,7 @@ class Linear(link.Link):
             self.add_param('b', out_size)
             if initial_bias is None:
                 initial_bias = bias
-            initializations.init_weight(self.b.data, initial_bias)
+            initializers.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
         """Applies the linear layer.

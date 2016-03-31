@@ -1,5 +1,5 @@
 from chainer.functions.connection import embed_id
-from chainer import initializer
+from chainer import initializers
 from chainer import link
 
 
