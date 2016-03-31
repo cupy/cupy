@@ -18,7 +18,7 @@ class Identity(initializer.Initializer):
 class Constant(initializer.Initializer):
 
     def __init__(self, fill_value):
-        self.fill_value = fill_value:
+        self.fill_value = fill_value
 
     def __call__(self, shape):
         numpy.full(shape, fill_value)

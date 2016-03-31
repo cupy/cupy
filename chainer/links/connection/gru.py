@@ -3,7 +3,7 @@ import numpy
 import chainer
 from chainer.functions.activation import sigmoid
 from chainer.functions.activation import tanh
-from chainer import initializer
+from chainer import initializers
 from chainer import link
 from chainer.links.connection import linear
 
@@ -11,7 +11,7 @@ from chainer.links.connection import linear
 class GRUBase(link.Chain):
 
     def __init__(self, n_units, n_inputs=None, init=None,
-                 inner_init=initializations.orthogonal, bias_init=0):
+                 inner_init=initializers.orthogonal, bias_init=0):
         if n_inputs is None:
             n_inputs = n_units
         super(GRUBase, self).__init__(
@@ -25,13 +25,13 @@ class GRUBase(link.Chain):
 
         # initialize mats that process raw input
         for mat in (self.W_r, self.W_z, self.W):
-            initializations.init_weight(mat.W.data, init)
+            initializers.init_weight(mat.W.data, init)
         # initialize mats that take in recurrences
         for mat in (self.U_r, self.U_z, self.U):
-            initializations.init_weight(mat.W.data, inner_init)
+            initializers.init_weight(mat.W.data, inner_init)
         # initialize bias terms
         for mat in (self.W_r, self.W_z, self.W, self.U_r, self.U_z, self.U):
-            initializations.init_weight(mat.b.data, bias_init)
+            initializers.init_weight(mat.b.data, bias_init)
 
 
 class GRU(GRUBase):
@@ -134,7 +134,7 @@ class StatefulGRU(GRUBase):
     """
 
     def __init__(self, in_size, out_size, init=None,
-                 inner_init=initializations.orthogonal, bias_init=0):
+                 inner_init=initializers.Orthogonal(), bias_init=0):
         super(StatefulGRU, self).__init__(
             out_size, in_size, init, inner_init, bias_init)
         self.state_size = out_size

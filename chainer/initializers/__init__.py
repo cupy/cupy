@@ -1,7 +1,9 @@
-from chainer.initializer import constant
-from chainer.initializer import normal
-from chainer.initializer import orthogonal
-from chainer.initializer import uniform
+import numpy
+
+from chainer.initializers import constant
+from chainer.initializers import normal
+from chainer.initializers import orthogonal
+from chainer.initializers import uniform
 
 
 Identity = constant.Identity
@@ -10,6 +12,11 @@ one = constant.one
 Normal = normal.Normal
 GlorotNormal = normal.GlorotNormal
 HeNormal = normal.HeNormal
+Orthogonal = orthogonal.Orthogonal
+Uniform = uniform.Uniform
+LeCunUniform = uniform.LeCunUniform
+GlorotUniform = uniform.GlorotUniform
+HeUniform = uniform.HeUniform
 
 
 def init_weight(weights, initWith, scale=1.0):

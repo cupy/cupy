@@ -1,5 +1,5 @@
 from chainer.functions.activation import lstm
-from chainer import initializer
+from chainer import initializers
 from chainer import link
 from chainer.links.connection import linear
 from chainer import variable
@@ -30,7 +30,7 @@ class LSTM(link.Chain):
     """
 
     def __init__(self, in_size, out_size,
-                 lateral_init=initializations.orthogonal, upward_init=None,
+                 lateral_init=initializers.orthogonal, upward_init=None,
                  bias_init=0, forget_bias_init=1):
         super(LSTM, self).__init__(
             upward=linear.Linear(in_size, 4 * out_size, initialW=0),
@@ -41,17 +41,17 @@ class LSTM(link.Chain):
         self.reset_state()
 
         for i in range(0, 4 * out_size, out_size):
-            initializations.init_weight(
+            initializers.init_weight(
                 self.lateral.W.data[i:i + out_size, :], lateral_init)
-            initializations.init_weight(
+            initializers.init_weight(
                 self.upward.W.data[i:i + out_size, :], upward_init)
 
         a, i, f, o = lstm._extract_gates(
             self.upward.b.data.reshape(1, 4 * out_size, 1))
-        initializations.init_weight(a, bias_init)
-        initializations.init_weight(i, bias_init)
-        initializations.init_weight(f, forget_bias_init)
-        initializations.init_weight(o, bias_init)
+        initializers.init_weight(a, bias_init)
+        initializers.init_weight(i, bias_init)
+        initializers.init_weight(f, forget_bias_init)
+        initializers.init_weight(o, bias_init)
 
     def to_cpu(self):
         super(LSTM, self).to_cpu()

@@ -1,5 +1,5 @@
 from chainer.functions.connection import convolution_2d
-from chainer import initializer
+from chainer import initializers
 from chainer import link
 
 
@@ -53,13 +53,13 @@ class Convolution2D(link.Link):
         W_shape = (out_channels, in_channels, kh, kw)
         super(Convolution2D, self).__init__(W=W_shape)
 
-        initializations.init_weight(self.W.data, initialW, scale=wscale)
+        initializers.init_weight(self.W.data, initialW, scale=wscale)
 
         if nobias:
             self.b = None
         else:
             self.add_param('b', out_channels)
-            initializations.init_weight(self.b.data, initial_bias)
+            initializers.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
         """Applies the convolution layer.

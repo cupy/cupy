@@ -13,6 +13,10 @@ class Uniform(initializer.Initializer):
             low=-self.scale, high=self.scale, size=shape)
 
 
+def uniform(shape, scale):
+    return Uniform(scale)(shape)
+
+
 class LeCunUniform(initializer.Initializer):
     '''Reference: LeCun 98, Efficient Backprop
 
@@ -20,7 +24,7 @@ class LeCunUniform(initializer.Initializer):
 
     '''
 
-    def __init__(self. scale=1.0):
+    def __init__(self, scale=1.0):
         self.scale = scale
 
     def __call__(self, shape):

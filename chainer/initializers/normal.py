@@ -23,7 +23,7 @@ class GlorotNormal(initializer.Initializer):
 
     def __call__(self, shape):
         fan_in, fan_out = initializer.get_fans(shape)
-        s = self.scale * np.sqrt(2. / (fan_in + fan_out))
+        s = self.scale * numpy.sqrt(2. / (fan_in + fan_out))
         return normal(shape, s)
 
 
@@ -37,7 +37,7 @@ class HeNormal(initializer.Initializer):
 
     def __call__(self, shape):
         fan_in, fan_out = initializer.get_fans(shape)
-        s = self.scale * np.sqrt(2. / fan_in)
+        s = self.scale * numpy.sqrt(2. / fan_in)
         return normal(shape, s)
 
 
