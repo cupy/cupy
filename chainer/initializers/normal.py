@@ -1,6 +1,7 @@
 import numpy
 
 from chainer import initializer
+from chainer import cuda
 
 
 class Normal(initializer.Initializer):
@@ -8,13 +9,13 @@ class Normal(initializer.Initializer):
     def __init__(self, scale=0.05):
         self.scale = scale
 
-    def __call__(self, shape):
-        return numpy.random.normal(
-            loc=0.0, scale=self.scale, size=shape)
+    def __call__(self, array):
+        xp = cuda.get_array_module(array)
+        array[...] = xp.random.normal(loc=0.0, scale=self.scale, size=array.shape)
 
 
-def normal(shape, scale):
-    return Normal(scale)(shape)
+def normal(array, scale):
+    Normal(scale)(array)
 
 
 class GlorotNormal(initializer.Initializer):
@@ -25,10 +26,10 @@ class GlorotNormal(initializer.Initializer):
     def __init__(self, scale=1.0):
         self.scale = scale
 
-    def __call__(self, shape):
-        fan_in, fan_out = initializer.get_fans(shape)
+    def __call__(self, array):
+        fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / (fan_in + fan_out))
-        return normal(shape, s)
+        return normal(array, s)
 
 
 class HeNormal(initializer.Initializer):
@@ -39,9 +40,9 @@ class HeNormal(initializer.Initializer):
     def __init__(self, scale=1.0):
         self.scale = scale
 
-    def __call__(self, shape):
-        fan_in, fan_out = initializer.get_fans(shape)
+    def __call__(self, array):
+        fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / fan_in)
-        return normal(shape, s)
+        return normal(array, s)
 
 

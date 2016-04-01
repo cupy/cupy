@@ -1,4 +1,4 @@
-import numpy as np
+import numpy
 
 
 # Original code forked from MIT licensed keras project
@@ -6,7 +6,7 @@ import numpy as np
 
 class Initializer(object):
 
-    def __call__(self, shape):
+    def __call__(self, array):
         NotImplementedError()
 
 
@@ -17,6 +17,6 @@ def get_fans(shape):
     if len(shape) < 2:
         raise ValueError('shape must be of length >= 2: shape={}', shape)
 
-    fan_in = np.prod(shape[1:])
+    fan_in = numpy.prod(shape[1:])
     fan_out = shape[0]
     return fan_in, fan_out

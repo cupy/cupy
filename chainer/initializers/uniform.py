@@ -1,6 +1,7 @@
 import numpy
 
 from chainer import initializer
+from chainer import cuda
 
 
 class Uniform(initializer.Initializer):
@@ -8,13 +9,13 @@ class Uniform(initializer.Initializer):
     def __init__(self, scale=0.05):
         self.scale = scale
 
-    def __call__(self, shape):
-        return numpy.random.uniform(
-            low=-self.scale, high=self.scale, size=shape)
+    def __call__(self, array):
+        xp = cuda.get_array_module(array)
+        array[...] = xp.random.uniform(low=-self.scale, high=self.scale, size=array.shape)
 
 
-def uniform(shape, scale):
-    return Uniform(scale)(shape)
+def uniform(array, scale):
+    return Uniform(scale)(array)
 
 
 class LeCunUniform(initializer.Initializer):
@@ -27,10 +28,10 @@ class LeCunUniform(initializer.Initializer):
     def __init__(self, scale=1.0):
         self.scale = scale
 
-    def __call__(self, shape):
-        fan_in, fan_out = initializer.get_fans(shape)
+    def __call__(self, array):
+        fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(3. / fan_in)
-        return uniform(shape, s)
+        return uniform(array, s)
 
 
 class GlorotUniform(initializer.Initializer):
@@ -38,10 +39,10 @@ class GlorotUniform(initializer.Initializer):
     def __init__(self, scale=1.0):
         self.scale = scale
 
-    def __call__(self, shape):
-        fan_in, fan_out = initializer.get_fans(shape)
+    def __call__(self, array):
+        fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(6. / (fan_in + fan_out))
-        return uniform(shape, s)
+        return uniform(array, s)
 
 
 class HeUniform(initializer.Initializer):
@@ -49,9 +50,9 @@ class HeUniform(initializer.Initializer):
     def __init__(self, scale=1.0):
         self.scale = scale
 
-    def __call__(self, shape):
-        fan_in, fan_out = initializer.get_fans(shape)
+    def __call__(self, array):
+        fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(6. / fan_in)
-        return uniform(shape, s)
+        return uniform(array, s)
 
 
