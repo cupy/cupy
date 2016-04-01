@@ -1,7 +1,7 @@
 import numpy
 
-from chainer import initializer
 from chainer import cuda
+from chainer import initializer
 
 
 class Normal(initializer.Initializer):
@@ -11,7 +11,8 @@ class Normal(initializer.Initializer):
 
     def __call__(self, array):
         xp = cuda.get_array_module(array)
-        array[...] = xp.random.normal(loc=0.0, scale=self.scale, size=array.shape)
+        array[...] = xp.random.normal(
+            loc=0.0, scale=self.scale, size=array.shape)
 
 
 def normal(array, scale):
@@ -44,5 +45,3 @@ class HeNormal(initializer.Initializer):
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / fan_in)
         return normal(array, s)
-
-

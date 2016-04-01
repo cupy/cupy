@@ -1,7 +1,7 @@
 import numpy
 
-from chainer import initializer
 from chainer import cuda
+from chainer import initializer
 
 
 class Uniform(initializer.Initializer):
@@ -11,7 +11,8 @@ class Uniform(initializer.Initializer):
 
     def __call__(self, array):
         xp = cuda.get_array_module(array)
-        array[...] = xp.random.uniform(low=-self.scale, high=self.scale, size=array.shape)
+        array[...] = xp.random.uniform(
+            low=-self.scale, high=self.scale, size=array.shape)
 
 
 def uniform(array, scale):
@@ -54,5 +55,3 @@ class HeUniform(initializer.Initializer):
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(6. / fan_in)
         return uniform(array, s)
-
-

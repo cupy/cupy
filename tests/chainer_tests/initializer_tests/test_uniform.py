@@ -6,6 +6,7 @@ from chainer import testing
 from chainer.testing import attr
 import numpy
 
+
 class UniformBase(object):
 
     shape = (2, 3, 4)

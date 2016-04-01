@@ -6,11 +6,11 @@ from chainer import flag
 from chainer import function
 from chainer import function_set
 from chainer.functions import basic_math
+from chainer import initializer
 from chainer import link
 from chainer import optimizer
 from chainer import serializer
 from chainer import variable
-from chainer import initializer
 
 
 __version__ = pkg_resources.get_distribution('chainer').version

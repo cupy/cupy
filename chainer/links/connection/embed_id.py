@@ -30,7 +30,7 @@ class EmbedID(link.Link):
     def __init__(self, in_size, out_size, initialW=None):
         super(EmbedID, self).__init__(W=(in_size, out_size))
         if initialW is None:
-            initialW = initialzers.Normal(1.0)
+            initialW = initializers.Normal(1.0)
         initializers.init_weight(self.W.data, initialW)
 
     def __call__(self, x):

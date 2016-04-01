@@ -1,7 +1,7 @@
 import numpy
 
-from chainer import initializer
 from chainer import cuda
+from chainer import initializer
 
 
 class Identity(initializer.Initializer):

@@ -2,6 +2,7 @@ from chainer.functions.connection import linear
 from chainer import initializers
 from chainer import link
 
+
 class Linear(link.Link):
 
     """Linear layer (a.k.a. fully-connected layer).

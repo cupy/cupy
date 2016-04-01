@@ -1,10 +1,10 @@
 import unittest
 
 from chainer import cuda
+from chainer import gradient_check
 from chainer import initializers
 from chainer import testing
 from chainer.testing import attr
-from chainer import gradient_check        
 import numpy
 
 
@@ -76,6 +76,6 @@ class TestScalar(OrthogonalBase, unittest.TestCase):
     @attr.gpu
     def test_orthogonality_gpu(self):
         self.check_orthogonality(cuda.to_gpu(self.w))
-        
+
 
 testing.run_module(__name__, __file__)

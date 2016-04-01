@@ -1,7 +1,7 @@
 import numpy
 
-from chainer import initializer
 from chainer import cuda
+from chainer import initializer
 
 
 class Orthogonal(initializer.Initializer):
@@ -14,7 +14,8 @@ class Orthogonal(initializer.Initializer):
     def __init__(self, scale=1.1):
         self.scale = scale
 
-    # TODO: How do we treat over-complete bases case?
+    # TODO(Kenta Oono)
+    # How do we treat over-complete bases case?
     def __call__(self, array):
         xp = cuda.get_array_module(array)
         if not array.shape:

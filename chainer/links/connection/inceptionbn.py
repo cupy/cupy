@@ -45,20 +45,20 @@ class InceptionBN(link.Chain):
     def __init__(self, in_channels, out1, proj3, out3, proj33, out33,
                  pooltype, proj_pool=None, stride=1, conv_init=None):
         super(InceptionBN, self).__init__(
-            proj3=convolution_2d.Convolution2D(in_channels, proj3, 1,
-                                               nobias=True, initialW=conv_init),
-            conv3=convolution_2d.Convolution2D(proj3, out3, 3, pad=1,
-                                               stride=stride, nobias=True,
-                                               initialW=conv_init),
-            proj33=convolution_2d.Convolution2D(in_channels, proj33, 1,
-                                                nobias=True,
-                                                initialW=conv_init),
-            conv33a=convolution_2d.Convolution2D(proj33, out33, 3, pad=1,
-                                                 nobias=True,
-                                                 initialW=conv_init),
-            conv33b=convolution_2d.Convolution2D(out33, out33, 3, pad=1,
-                                                 stride=stride, nobias=True,
-                                                 initialW=conv_init),
+            proj3=convolution_2d.Convolution2D(
+                in_channels, proj3, 1, nobias=True, initialW=conv_init),
+            conv3=convolution_2d.Convolution2D(
+                proj3, out3, 3, pad=1, stride=stride, nobias=True,
+                initialW=conv_init),
+            proj33=convolution_2d.Convolution2D(
+                in_channels, proj33, 1, nobias=True,
+                initialW=conv_init),
+            conv33a=convolution_2d.Convolution2D(
+                proj33, out33, 3, pad=1, nobias=True,
+                initialW=conv_init),
+            conv33b=convolution_2d.Convolution2D(
+                out33, out33, 3, pad=1, stride=stride, nobias=True,
+                initialW=conv_init),
             proj3n=batch_normalization.BatchNormalization(proj3),
             conv3n=batch_normalization.BatchNormalization(out3),
             proj33n=batch_normalization.BatchNormalization(proj33),
