@@ -78,4 +78,26 @@ class TestScalar(OrthogonalBase, unittest.TestCase):
         self.check_orthogonality(cuda.to_gpu(self.w))
 
 
+@testing.parameterize(
+    {'shape': (4, 3)},
+    {'shape': (21, 4, 5)}
+ )
+class TestOverComplete(unittest.TestCase):
+
+    def setUp(self):
+        self.w = numpy.empty(self.shape, dtype=numpy.float32)
+        self.initializer = initializers.Orthogonal(scale=1.0)
+
+    def check_invalid(self, w):
+        with self.assertRaises(ValueError):
+            self.initializer(w)
+
+    def test_invalid_cpu(self):
+        self.check_invalid(self.w)
+
+    @attr.gpu
+    def test_invalid_gpu(self):
+        self.check_invalid(cuda.to_gpu(self.w))
+
+
 testing.run_module(__name__, __file__)
