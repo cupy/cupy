@@ -154,7 +154,7 @@ A linear link from three-dimensional space to two-dimensional space is defined b
 
 .. doctest::
 
-   >>> f = F.Linear(3, 2)
+   >>> f = L.Linear(3, 2)
 
 .. note::
    Most functions and links only accept mini-batch input, where the first dimension of input arrays is considered as the *batch dimension*.
