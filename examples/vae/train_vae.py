@@ -87,7 +87,7 @@ for epoch in six.moves.range(1, n_epoch + 1):
         if epoch == 1 and i == 0:
             with open('graph.dot', 'w') as o:
                 g = computational_graph.build_computational_graph(
-                    (model.loss, ), remove_split=True)
+                    (model.loss, ))
                 o.write(g.dump())
             print('graph generated')
 
@@ -118,10 +118,7 @@ serializers.save_npz('mlp.model', model)
 print('save the optimizer')
 serializers.save_npz('mlp.state', optimizer)
 
-
-# show results
-if args.gpu >= 0:
-    model.to_cpu()
+model.to_cpu()
 
 
 # original images and reconstructed images
@@ -135,13 +132,13 @@ train_ind = [1, 3, 5, 10, 2, 0, 13, 15, 17]
 x = chainer.Variable(np.asarray(x_train[train_ind]), volatile='on')
 x1 = model(x)
 save_images(x.data, 'train')
-save_images(x1.data, 'train_ae')
+save_images(x1.data, 'train_reconstructed')
 
 test_ind = [3, 2, 1, 18, 4, 8, 11, 17, 61]
 x = chainer.Variable(np.asarray(x_test[test_ind]), volatile='on')
 x1 = model(x)
 save_images(x.data, 'test')
-save_images(x1.data, 'test_ae')
+save_images(x1.data, 'test_reconstructed')
 
 
 # draw images from randomly sampled z
