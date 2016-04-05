@@ -8,6 +8,37 @@ from chainer.functions.math import sum as _sum
 
 
 def crf1d(cost, xs, ys):
+
+    """Calculates negative log-likelihood of linear-chain CRF.
+
+    It takes a transition cost matrix, a sequence of costs and a sequence of
+    labels. Let :math:`c_{st}` is transition cost from a label :math:`s` to
+    a label :math:`t`, :math:`x_{it}` is a cost value of a label :math:`t` at
+    position :math:`i`, and :math:`y_i` is an expected label value at position
+    :math:`i`. The negative log-likelihood of linear-chain CRF is defined as
+
+    .. math::
+        L = -\\left( \\sum_{i=1}^l x_{iy_i} + \\
+             \\sum_{i=1}^{l-1} c_{y_i y_{i+1}} - {\\log(Z)} \\right) ,
+
+    where :math:`l` is the length of the input sequence and :math:`Z` is the
+    partition function.
+
+    Args:
+        cost (Variable): A :math:`K \\times K` matrix which holds transition
+            cost between two labels, where :math:`K` is the number of labels.
+        xs (list of Variable): Input feature vector for each label. Each
+            :class:`~chainer.Variable` holds a :math:`B \\times K`
+            matrix, where :math:`B` is mini-batch size, :math:`K` is the number
+            of labels.
+        ys (list of Variable): Expected output labels. Each
+            :class:`~chainer.Variable` holds a :math:`B` integer vector.
+
+    Returns:
+        ~chainer.Variable: A variable holding a :math:`B` float vector. Each
+            element stores negative log-likelihood of the corresponding
+            sequence.
+    """
     assert xs[0].data.shape[1] == cost.data.shape[0]
 
     n_label = cost.data.shape[0]
