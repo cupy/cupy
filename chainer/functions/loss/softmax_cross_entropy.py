@@ -51,10 +51,10 @@ class SoftmaxCrossEntropy(function.Function):
 
     ignore_label = -1
 
-    def __init__(self, use_cudnn=True, normalize=True, store_forward=True):
+    def __init__(self, use_cudnn=True, normalize=True, cache_score=True):
         self.use_cudnn = use_cudnn
         self.normalize = normalize
-        self.store_forward = store_forward
+        self.cache_score = cache_score
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -83,7 +83,7 @@ class SoftmaxCrossEntropy(function.Function):
             self._check_input_values(x, t)
 
         log_y = softmax_log(x, False)
-        if self.store_forward:
+        if self.cache_score:
             self.y = numpy.exp(log_y)
         log_yd = numpy.rollaxis(log_y, 1)
         log_yd = log_yd.reshape(len(log_yd), -1)
@@ -108,7 +108,7 @@ class SoftmaxCrossEntropy(function.Function):
             self._check_input_values(x, t)
 
         log_y = softmax_log(x, self.use_cudnn)
-        if self.store_forward:
+        if self.cache_score:
             self.y = cupy.exp(log_y)
         if getattr(self, 'normalize', True):
             coeff = cupy.maximum(1, (t != self.ignore_label).sum())
@@ -175,7 +175,7 @@ class SoftmaxCrossEntropy(function.Function):
 
 
 def softmax_cross_entropy(
-        x, t, use_cudnn=True, normalize=True, store_forward=True):
+        x, t, use_cudnn=True, normalize=True, cache_score=True):
     """Computes cross entropy loss for pre-softmax activations.
 
     Args:
@@ -192,7 +192,7 @@ def softmax_cross_entropy(
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
             it only normalizes along a batch size.
-        store_forward (bool): When it is ``True``, the function stores result
+        cache_score (bool): When it is ``True``, the function stores result
             of forward computation to use it on backward computation. It
             reduces computational cost though consumes more memories.
 
@@ -204,4 +204,4 @@ def softmax_cross_entropy(
        This function is differentiable only by ``x``.
 
     """
-    return SoftmaxCrossEntropy(use_cudnn, normalize, store_forward)(x, t)
+    return SoftmaxCrossEntropy(use_cudnn, normalize, cache_score)(x, t)

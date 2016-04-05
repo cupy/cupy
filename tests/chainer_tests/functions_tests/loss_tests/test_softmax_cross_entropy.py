@@ -17,7 +17,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
 
     shape = (4, 3)
     backward_atol = 1e-4
-    store_forward = True
+    cache_score = True
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
@@ -28,10 +28,10 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
         loss = functions.softmax_cross_entropy(
-            x, t, use_cudnn=use_cudnn, store_forward=self.store_forward)
+            x, t, use_cudnn=use_cudnn, cache_score=self.cache_score)
         self.assertEqual(loss.data.shape, ())
         self.assertEqual(loss.data.dtype, numpy.float32)
-        self.assertEqual(hasattr(loss.creator, 'y'), self.store_forward)
+        self.assertEqual(hasattr(loss.creator, 'y'), self.cache_score)
         loss_value = float(cuda.to_cpu(loss.data))
 
         # Compute expected value
@@ -71,7 +71,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
     def check_backward(self, x_data, t_data, use_cudnn=True):
         gradient_check.check_backward(
             functions.SoftmaxCrossEntropy(
-                use_cudnn=use_cudnn, store_forward=self.store_forward),
+                use_cudnn=use_cudnn, cache_score=self.cache_score),
             (x_data, t_data), None, eps=0.02, atol=self.backward_atol)
 
     @condition.retry(3)
@@ -91,7 +91,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
 
 class TestSoftmaxCrossEntropyRemoveForward(TestSoftmaxCrossEntropy):
 
-    store_forward = False
+    cache_score = False
 
 
 class TestSoftmaxCrossEntropyUnstable(TestSoftmaxCrossEntropy):
