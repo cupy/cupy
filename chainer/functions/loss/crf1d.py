@@ -77,11 +77,11 @@ def crf1d_viterbi(cost, xs):
         max_inds.append(max_ind)
         alpha = minmax.max(scores, axis=1) + x
 
-    inds = minmax.argmax(alpha, axis=1).data
-    path = [inds]
+    inds = minmax.argmax(alpha, axis=1)
+    path = [inds.data]
     for m in reversed(max_inds):
-        inds = m.data[range(len(inds)), inds]
-        path.append(inds)
+        inds = select_item.select_item(m, inds)
+        path.append(inds.data)
     path.reverse()
 
     return alpha, path
