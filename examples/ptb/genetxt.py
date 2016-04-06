@@ -9,7 +9,6 @@
 
     """
 import argparse
-import codecs
 import sys
 
 import numpy as np
@@ -67,12 +66,9 @@ if args.gpu >= 0:
 
 model.predictor.reset_state()
 
-if six.PY2:
-    sys.stdout = codecs.getwriter('utf_8')(sys.stdout)
-    primetext = unicode(args.primetext, 'utf_8')
-else:
-    sys.stdout = codecs.getwriter('utf_8')(sys.stdout.detach())
-    primetext = args.primetext
+primetext = args.primetext
+if isinstance(primetext, six.binary_type):
+    primetext = primetext.decode('utf-8')
 
 if len(primetext) > 0:
     prev_word = Variable(np.ones((1,)).astype(np.int32) * vocab[primetext])
