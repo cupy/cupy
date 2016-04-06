@@ -18,3 +18,4 @@ def search_on_path(filenames):
             full = os.path.join(p, filename)
             if os.path.exists(full):
                 return os.path.abspath(full)
+    return None
