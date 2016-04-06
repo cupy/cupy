@@ -1,4 +1,5 @@
 import distutils
+import setuptools  # NOQA: this line is required for ccompiler
 import unittest
 
 from install import build
@@ -8,7 +9,7 @@ class TestCheckVersion(unittest.TestCase):
 
     def setUp(self):
         self.compiler = distutils.ccompiler.new_compiler()
-        self.settings = {'include_dirs': []}
+        self.settings = build.get_compiler_setting()
 
     def test_check_cuda_version(self):
         self.assertTrue(build.check_cuda_version(
