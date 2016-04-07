@@ -110,7 +110,7 @@ class DummyDeviceType(object):
         pass
 
     def __eq__(self, other):
-        return isinstance(other, DummyDevice)
+        return isinstance(other, DummyDeviceType)
 
     def __ne__(self, other):
         return not (self == other)
