@@ -11,7 +11,7 @@ from chainer.testing import attr
 class TestDummyDeviceType(unittest.TestCase):
 
     def test_int(self):
-        self.assertEqual(cuda.DummyDeviceType(), -1)
+        self.assertEqual(int(cuda.DummyDeviceType()), -1)
 
     def test_eq(self):
         self.assertEqual(cuda.DummyDeviceType(), cuda.DummyDeviceType())
