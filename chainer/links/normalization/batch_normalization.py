@@ -94,7 +94,7 @@ class BatchNormalization(link.Link):
 
             if finetune:
                 self.N += 1
-                decay = 1. / self.N
+                decay = 1. - 1. / self.N
             else:
                 decay = self.decay
 
