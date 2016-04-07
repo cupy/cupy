@@ -31,7 +31,8 @@ class Constant(initializer.Initializer):
         self.fill_value = fill_value
 
     def __call__(self, array):
-        array[...] = self.fill_value
+        xp = cuda.get_array_module(array)
+        array[...] = xp.asarray(self.fill_value)
 
 
 def Zero():

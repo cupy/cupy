@@ -38,6 +38,8 @@ def init_weight(weights, initializer, scale=1.0):
         initializer = HeNormal(1 / numpy.sqrt(2))
     elif numpy.isscalar(initializer):
         initializer = Constant(initializer)
+    elif isinstance(initializer, numpy.ndarray):
+        initializer = Constant(initializer)
 
     assert callable(initializer)
     initializer(weights)

@@ -267,13 +267,15 @@ class InvalidInitialParameter(InitByInitialParameter):
         self.invalidb = _uniform(self.out_size + 1,)
 
     def check_invalid(self, initialW, initial_bias, nobias):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             links.Bilinear(
                 self.in_shape[0], self.in_shape[1], self.out_size, nobias,
                 initialW, initial_bias)
 
     def test_invalidW_cpu(self):
         self.check_invalid(self.invalidW, (self.V1, self.V2, self.b), False)
+
+    def test_invalidW_cpu2(self):
         self.check_invalid(self.invalidW, None, True)
 
     def test_invalidV1_cpu(self):

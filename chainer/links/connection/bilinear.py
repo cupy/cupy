@@ -62,6 +62,10 @@ class Bilinear(link.Link):
         # initialW=None will result in the original initialization
         initializers.init_weight(self.W.data, initialW)
 
+        def check_shape(shape1, shape2):
+            if shape1 != shape2:
+                raise ValueError('Shape mismatch: {} != {}'.format(shape1, shape2))
+
         if not self.nobias:
             self.add_param('V1', (left_size, out_size))
             self.add_param('V2', (right_size, out_size))
@@ -69,9 +73,9 @@ class Bilinear(link.Link):
 
             if type(initial_bias) is tuple:
                 V1, V2, b = initial_bias
-                assert V1.shape == self.V1.data.shape
-                assert V2.shape == self.V2.data.shape
-                assert b.shape == self.b.data.shape
+                check_shape(V1.shape, self.V1.data.shape)
+                check_shape(V2.shape, self.V2.data.shape)
+                check_shape(b.shape, self.b.data.shape)
                 self.V1.data[...] = V1
                 self.V2.data[...] = V2
                 self.b.data[...] = b

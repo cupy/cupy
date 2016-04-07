@@ -11,7 +11,7 @@ from chainer.links.connection import linear
 class GRUBase(link.Chain):
 
     def __init__(self, n_units, n_inputs=None, init=None,
-                 inner_init=initializers.orthogonal, bias_init=0):
+                 inner_init=initializers.Orthogonal(), bias_init=0):
         if n_inputs is None:
             n_inputs = n_units
         super(GRUBase, self).__init__(

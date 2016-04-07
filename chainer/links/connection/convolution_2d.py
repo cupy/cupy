@@ -61,6 +61,8 @@ class Convolution2D(link.Link):
             self.b = None
         else:
             self.add_param('b', out_channels)
+            if initial_bias is None:
+                initial_bias = bias
             initializers.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
