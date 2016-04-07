@@ -29,8 +29,7 @@ class OrthogonalBase(object):
 @testing.parameterize(
     {'shape': (1,)},
     {'shape': (3, 4)},
-    {'shape': (3, 4, 5)}
- )
+    {'shape': (3, 4, 5)})
 class TestOrthogonal(OrthogonalBase, unittest.TestCase):
 
     def setUp(self):
@@ -80,8 +79,7 @@ class TestScalar(OrthogonalBase, unittest.TestCase):
 
 @testing.parameterize(
     {'shape': (4, 3)},
-    {'shape': (21, 4, 5)}
- )
+    {'shape': (21, 4, 5)})
 class TestOverComplete(unittest.TestCase):
 
     def setUp(self):

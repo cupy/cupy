@@ -6,8 +6,7 @@ from chainer import testing
 
 @testing.parameterize(
     {'shape': (2, 1), 'expect': (1, 2)},
-    {'shape': (2, 3, 4), 'expect': (12, 2)}
- )
+    {'shape': (2, 3, 4), 'expect': (12, 2)})
 class TestGetFans(unittest.TestCase):
 
     def test_get_fans(self):
@@ -17,8 +16,7 @@ class TestGetFans(unittest.TestCase):
 
 @testing.parameterize(
     {'shape': ()},
-    {'shape': (2,)}
- )
+    {'shape': (2,)})
 class TestGetFansInvalid(unittest.TestCase):
 
     def test_invalid(self):
