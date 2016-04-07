@@ -64,7 +64,8 @@ class Bilinear(link.Link):
 
         def check_shape(shape1, shape2):
             if shape1 != shape2:
-                raise ValueError('Shape mismatch: {} != {}'.format(shape1, shape2))
+                raise ValueError(
+                    'Shape mismatch: {} != {}'.format(shape1, shape2))
 
         if not self.nobias:
             self.add_param('V1', (left_size, out_size))
