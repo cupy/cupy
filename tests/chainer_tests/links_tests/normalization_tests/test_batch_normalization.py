@@ -93,4 +93,70 @@ class BatchNormalizationTest(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
+@testing.parameterize(
+    {'nx': 10, 'ny': 10},
+    # TODO(Kenta Oono)
+    # Pass the case below (this test does not pass when nx != ny).
+    # {'nx': 10, 'ny': 15}
+)
+class TestPopulationStatistics(unittest.TestCase):
+
+    def setUp(self):
+        self.decay = 0.9
+        self.size = 3
+        self.link = links.BatchNormalization(self.size, self.decay)
+        self.x = numpy.random.uniform(
+            -1, 1, (self.nx, self.size)).astype(numpy.float32)
+        self.y = numpy.random.uniform(
+            -1, 1, (self.ny, self.size)).astype(numpy.float32)
+
+    def check_statistics(self, x):
+        x = chainer.Variable(x)
+        self.link(x, finetune=True)
+        gradient_check.assert_allclose(self.x.mean(axis=0), self.link.avg_mean)
+        unbiased_var = self.x.var(axis=0) * self.nx / (self.nx - 1)
+        gradient_check.assert_allclose(unbiased_var, self.link.avg_var)
+
+    @condition.retry(3)
+    def test_statistics_cpu(self):
+        self.check_statistics(self.x)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_statistics_gpu(self):
+        self.link.to_gpu()
+        self.check_statistics(cuda.to_gpu(self.x))
+
+    def check_statistics2(self, x, y):
+        x = chainer.Variable(x)
+        y = chainer.Variable(y)
+        self.link(x, finetune=True)
+        self.link(y, finetune=True)
+        mean = (self.x.sum(axis=0) + self.y.sum(axis=0)) / (self.nx + self.ny)
+        var = (self.x.var(axis=0) * self.nx +
+               self.y.var(axis=0) * self.ny) / (self.nx + self.ny)
+
+        # TODO(Kenta Oono)
+        # Fix the estimate of the unbiased variance.
+        # Unbiased variance should be (nx + ny) / (nx + ny - 1) times of
+        # the variance.
+        # But the multiplier is ny / (ny - 1) in current implementation
+        # these two values are different when nx is not equal to ny.
+        unbiased_var = var * self.ny / (self.ny - 1)
+        gradient_check.assert_allclose(mean, self.link.avg_mean)
+        gradient_check.assert_allclose(unbiased_var, self.link.avg_var)
+
+    @condition.retry(3)
+    def test_statistics2_cpu(self):
+        self.check_statistics2(self.x, self.y)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_statistics2_gpu(self):
+        self.link.to_gpu()
+        self.check_statistics2(
+            cuda.to_gpu(self.x),
+            cuda.to_gpu(self.y))
+
+
 testing.run_module(__name__, __file__)
