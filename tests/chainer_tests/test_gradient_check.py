@@ -60,7 +60,7 @@ class NumericalGradientTest(unittest.TestCase):
 
     def check_numerical_grad(self, f, df, xs, gys, eps=None):
         if eps is None:
-            eps = tuple(10**(-i) for i in six.moves.range(2, 5))
+            eps = tuple(10 ** (-i) for i in six.moves.range(2, 5))
         elif not isinstance(eps, tuple):
             eps = (eps, )
 

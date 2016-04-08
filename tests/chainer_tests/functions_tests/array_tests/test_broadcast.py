@@ -132,6 +132,7 @@ class TestBroadcastTo(unittest.TestCase):
     {'in_shape': (3, 2, 5), 'out_shape': (1, 3, 2, 3)},
 )
 class TestBroadcastToTypeCheck(unittest.TestCase):
+
     def setUp(self):
         uniform = numpy.random.uniform
         self.data = uniform(0, 1, self.in_shape).astype(numpy.float32)

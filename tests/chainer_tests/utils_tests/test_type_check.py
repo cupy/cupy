@@ -32,6 +32,7 @@ class TestVariable(unittest.TestCase):
 
 
 class Object(object):
+
     def __init__(self):
         self.value = 10
 

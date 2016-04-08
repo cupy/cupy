@@ -30,6 +30,7 @@ def _make_eye(shape):
     'shape': [(1, 1), (5, 5)],
 }))
 class InvFunctionTest(unittest.TestCase):
+
     def setUp(self):
         self.x = (numpy.eye(self.shape[-1]) +
                   numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
@@ -85,6 +86,7 @@ class InvFunctionTest(unittest.TestCase):
     'shape': [(5, 1, 1), (3, 5, 5)],
 }))
 class BatchInvFunctionTest(unittest.TestCase):
+
     def setUp(self):
         self.x = (numpy.eye(self.shape[-1]) +
                   numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
