@@ -8,6 +8,18 @@ from chainer import testing
 from chainer.testing import attr
 
 
+class TestDummyDeviceType(unittest.TestCase):
+
+    def test_int(self):
+        self.assertEqual(int(cuda.DummyDeviceType()), -1)
+
+    def test_eq(self):
+        self.assertEqual(cuda.DummyDeviceType(), cuda.DummyDeviceType())
+
+    def test_ne(self):
+        self.assertNotEqual(cuda.DummyDeviceType(), 1)
+
+
 class TestCuda(unittest.TestCase):
 
     def test_get_dummy_device(self):
