@@ -3,10 +3,10 @@
 
 """ Sample script of recurrent neural network language model
     for generating text
-    
+
     This code is ported from following implementation.
     https://github.com/longjie/chainer-char-rnn/blob/master/sample.py
-    
+
     """
 import argparse
 import sys
@@ -88,10 +88,10 @@ for i in six.moves.range(args.length):
         index = np.random.choice(range(len(probability)), p=probability)
     else:
         index = np.argmax(cuda.to_cpu(prob.data))
-    
+
     if ivocab[index] == '<eos>':
         sys.stdout.write('.')
     else:
         sys.stdout.write(ivocab[index] + ' ')
-    
+
     prev_word = Variable(xp.array([index], dtype=xp.int32))
