@@ -10,7 +10,21 @@ from chainer import testing
 from chainer.testing import attr
 
 
-class ConcatTestBase(object):
+@testing.parameterize(
+    {'shape': (2, 7, 3), 'axis': 1,
+     'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                [slice(None), slice(5, None)]]},
+    {'shape': (7, 3), 'axis': 0,
+     'slices': [slice(None, 2), slice(2, 5), slice(5, None)]},
+    {'shape': (2,), 'axis': 0, 'slices': [slice(None, 1), slice(1, None)]},
+    {'shape': (2,), 'axis': 0, 'slices': [()]},
+)
+class ConcatTest(unittest.TestCase):
+
+    def setUp(self):
+        self.y = numpy.arange(
+            numpy.prod(self.shape), dtype=numpy.float32).reshape(self.shape)
+        self.xs = [self.y[s] for s in self.slices]
 
     def check_forward(self, xs_data, y_data, axis):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
@@ -43,38 +57,6 @@ class ConcatTestBase(object):
     def test_backward_gpu(self):
         self.check_backward([cuda.to_gpu(x.copy()) for x in self.xs],
                             axis=self.axis)
-
-
-class TestConcat1(unittest.TestCase, ConcatTestBase):
-
-    def setUp(self):
-        self.y = numpy.arange(42, dtype=numpy.float32).reshape(2, 7, 3)
-        self.xs = [self.y[:, :2], self.y[:, 2:5], self.y[:, 5:]]
-        self.axis = 1
-
-
-class TestConcat2(unittest.TestCase, ConcatTestBase):
-
-    def setUp(self):
-        self.y = numpy.arange(21, dtype=numpy.float32).reshape(7, 3)
-        self.xs = [self.y[:2], self.y[2:5], self.y[5:]]
-        self.axis = 0
-
-
-class TestConcatLastAxis(unittest.TestCase, ConcatTestBase):
-
-    def setUp(self):
-        self.y = numpy.arange(2, dtype=numpy.float32)
-        self.xs = [self.y[:1], self.y[1:]]
-        self.axis = 0
-
-
-class TestConcatOneElement(unittest.TestCase, ConcatTestBase):
-
-    def setUp(self):
-        self.y = numpy.arange(2, dtype=numpy.float32)
-        self.xs = [self.y]
-        self.axis = 0
 
 
 testing.run_module(__name__, __file__)
