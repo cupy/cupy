@@ -35,6 +35,13 @@ class TestReshape(unittest.TestCase):
         gradient_check.check_backward(
             functions.Reshape(self.gy.shape), x_data, y_grad)
 
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.gy)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
 
 class TestReshapeUnknownDimension(TestReshape):
     out_shape = (2, -1, 6)
