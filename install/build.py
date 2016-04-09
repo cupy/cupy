@@ -131,7 +131,8 @@ def build_and_run(compiler, source, libraries=(),
                                      os.path.join(temp_dir, 'a'),
                                      libraries=libraries,
                                      library_dirs=library_dirs,
-                                     extra_postargs=postargs)
+                                     extra_postargs=postargs,
+                                     target_lang='c++')
         except Exception as e:
             msg = 'Cannot build a stub file.\nOriginal error: {0}'.format(e)
             raise Exception(msg)
