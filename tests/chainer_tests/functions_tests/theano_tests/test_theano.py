@@ -74,6 +74,9 @@ class TheanoFunctionTestBase(object):
     {'inputs': [{'shape': (3, 2), 'type': 'float32'},
                 {'shape': (), 'type': 'float32'}],
      'outputs': [{'shape': (3, 2), 'type': 'float32'}]},
+    {'inputs': [{'shape': (3, 2), 'type': 'float32'},
+                {'shape': (3, 2), 'type': 'float64'}],
+     'outputs': [{'shape': (3, 2), 'type': 'float64'}]},
 )
 class TestTheanoFunction(TheanoFunctionTestBase, unittest.TestCase):
 
