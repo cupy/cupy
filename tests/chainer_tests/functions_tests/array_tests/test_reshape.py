@@ -10,8 +10,11 @@ from chainer import testing
 from chainer.testing import attr
 
 
+@testing.parameterize(
+    {'out_shape': (2, 2, 6)},
+    {'out_shape': (2, -1, 6)},
+)
 class TestReshape(unittest.TestCase):
-    out_shape = (2, 2, 6)
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
@@ -35,9 +38,12 @@ class TestReshape(unittest.TestCase):
         gradient_check.check_backward(
             functions.Reshape(self.gy.shape), x_data, y_grad)
 
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.gy)
 
-class TestReshapeUnknownDimension(TestReshape):
-    out_shape = (2, -1, 6)
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
 testing.run_module(__name__, __file__)

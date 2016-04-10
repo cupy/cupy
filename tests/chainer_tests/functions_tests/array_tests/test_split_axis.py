@@ -10,13 +10,27 @@ from chainer import testing
 from chainer.testing import attr
 
 
-class TestSplitAxis0(unittest.TestCase):
+@testing.parameterize(
+    {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [2, 5],
+     'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                [slice(None), slice(5, None)]]},
+    {'shape': (7, 3), 'axis': 0, 'ys_section': [2, 5],
+     'slices': [slice(None, 2), slice(2, 5), slice(5, None)]},
+    {'shape': (2, 9, 3), 'axis': 1, 'ys_section': 3,
+     'slices': [[slice(None), slice(None, 3)], [slice(None), slice(3, 6)],
+                [slice(None), slice(6, None)]]},
+    {'shape': (2, 6, 3), 'axis': 1, 'ys_section': 3,
+     'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 4)],
+                [slice(None), slice(4, None)]]},
+    {'shape': (2,), 'axis': 0, 'ys_section': [1],
+     'slices': [slice(None, 1), slice(1, None)]},
+)
+class TestSplitAxis(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.arange(42, dtype=numpy.float32).reshape(2, 7, 3)
-        self.ys = [self.x[:, :2], self.x[:, 2:5], self.x[:, 5:]]
-        self.ys_section = [2, 5]
-        self.axis = 1
+        self.x = numpy.arange(
+            numpy.prod(self.shape), dtype=numpy.float32).reshape(self.shape)
+        self.ys = [self.x[s] for s in self.slices]
 
     def check_forward(self, x_data, ys_data, indices_or_sections, axis):
         x = chainer.Variable(x_data)
@@ -51,42 +65,6 @@ class TestSplitAxis0(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x), self.ys_section, axis=self.axis)
-
-
-class TestSplitAxis1(TestSplitAxis0):
-
-    def setUp(self):
-        self.x = numpy.arange(21, dtype=numpy.float32).reshape(7, 3)
-        self.ys = [self.x[:2], self.x[2:5], self.x[5:]]
-        self.ys_section = [2, 5]
-        self.axis = 0
-
-
-class TestSplitAxis2(TestSplitAxis0):
-
-    def setUp(self):
-        self.x = numpy.arange(54, dtype=numpy.float32).reshape(2, 9, 3)
-        self.ys = [self.x[:, :3], self.x[:, 3:6], self.x[:, 6:]]
-        self.ys_section = 3
-        self.axis = 1
-
-
-class TestSplitAxis3(TestSplitAxis0):
-
-    def setUp(self):
-        self.x = numpy.arange(36, dtype=numpy.float32).reshape(2, 6, 3)
-        self.ys = [self.x[:, :2], self.x[:, 2:4], self.x[:, 4:]]
-        self.ys_section = 3
-        self.axis = 1
-
-
-class TestSplitAxis4(TestSplitAxis0):
-
-    def setUp(self):
-        self.x = numpy.arange(2, dtype=numpy.float32)
-        self.ys = [self.x[:1], self.x[1:]]
-        self.ys_section = [1]
-        self.axis = 0
 
 
 class TestSplitAxisNone(unittest.TestCase):

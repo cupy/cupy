@@ -10,6 +10,7 @@ from chainer import variable
 
 
 class MockFunction(function.Function):
+
     def __init__(self, n_in, n_out):
         self.n_in = n_in
         self.n_out = n_out
@@ -37,6 +38,7 @@ def _check(self, outputs, node_num, edge_num):
 
 
 class TestGraphBuilder(unittest.TestCase):
+
     # x-f-y-g-z
     def setUp(self):
         self.x = variable.Variable(np.zeros((1, 2)).astype(np.float32))
@@ -69,6 +71,7 @@ class TestGraphBuilder(unittest.TestCase):
 
 
 class TestGraphBuilder2(unittest.TestCase):
+
     # x-f-y1
     #  \
     #   g-y2
@@ -91,6 +94,7 @@ class TestGraphBuilder2(unittest.TestCase):
 
 
 class TestGraphBuilder3(unittest.TestCase):
+
     # x-f-y1
     #    \
     #     y2
@@ -112,6 +116,7 @@ class TestGraphBuilder3(unittest.TestCase):
 
 
 class TestGraphBuilder4(unittest.TestCase):
+
     # x1-f-y
     #   /
     # x2
@@ -134,6 +139,7 @@ class TestGraphBuilder4(unittest.TestCase):
 
 
 class TestGraphBuilder5(unittest.TestCase):
+
     def setUp(self):
         self.x = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.y = 2 * self.x
@@ -152,6 +158,7 @@ class TestGraphBuilder5(unittest.TestCase):
 
 
 class TestGraphBuilder6(unittest.TestCase):
+
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
@@ -173,6 +180,7 @@ class TestGraphBuilder6(unittest.TestCase):
 
 
 class TestGraphBuilder7(unittest.TestCase):
+
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
