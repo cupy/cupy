@@ -118,3 +118,27 @@ class TestTheanoFunctionTwoOutputs(TheanoFunctionTestBase, unittest.TestCase):
     def expect_forward(self):
         x, y = self.input_data
         return x + y, x - y
+
+
+@testing.parameterize(
+    {'inputs': [{'shape': (3, 2), 'type': 'float32'},
+                {'shape': (2,), 'type': 'int32'}],
+     'outputs': [{'shape': (2, 2), 'type': 'float32'}]},
+    {'inputs': [{'shape': (3, 2), 'type': 'float32'},
+                {'shape': (), 'type': 'int32'}],
+     'outputs': [{'shape': (2,), 'type': 'float32'}]},
+)
+class TestTheanoFunctionNonDifferential(
+        TheanoFunctionTestBase, unittest.TestCase):
+
+    def make_func(self):
+        x = T.TensorType(self.inputs[0]['type'],
+                         (False,) * len(self.inputs[0]['shape']))('x')
+        i = T.TensorType(self.inputs[1]['type'],
+                         (False,) * len(self.inputs[1]['shape']))('y')
+        z = x[i]
+        return functions.TheanoFunction([x, i], z)
+
+    def expect_forward(self):
+        x, i = self.input_data
+        return x[i],

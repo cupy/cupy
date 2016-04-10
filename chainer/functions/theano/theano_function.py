@@ -34,7 +34,8 @@ class TheanoFunction(function.Function):
         know_grads = dict(zip(outputs, gs))
 
         grad = theano.tensor.grad(
-            cost=None, wrt=inputs, known_grads=know_grads)
+            cost=None, wrt=inputs, known_grads=know_grads,
+            disconnected_inputs='ignore')
         self.grad = theano.function(
             inputs=inputs + gs,
             outputs=grad,
@@ -69,10 +70,18 @@ class TheanoFunction(function.Function):
         if gpu:
             args = [cuda.to_cpu(x) for x in args]
 
-        outputs = self.grad(*args)
-        for o in outputs:
-            print(o.dtype)
+        outs = self.grad(*args)
+        assert len(outs) == len(inputs)
+
+        outputs = []
+        for o, i in zip(outs, inputs):
+            if i.dtype.kind != 'f':
+                o = None
+            elif o.dtype != i.dtype:
+                o = o.astype(i.dtype)
+            outputs.append(o)
 
         if gpu:
-            outputs = [cuda.to_gpu(x) for x in outputs]
+            outputs = [cuda.to_gpu(x) if x is not None else None
+                       for x in outputs]
         return tuple(outputs)
