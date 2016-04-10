@@ -36,4 +36,33 @@ class HuberLoss(function.Function):
 
 
 def huber_loss(x, t, delta):
+    """Loss function which is less sensitive to outliers in data than MSE.
+
+        .. math::
+            a = x - t
+
+        and
+
+        .. math::
+            L_{\\delta}(a) = \\left \\{ \\begin{array}{cc}
+            \\frac{1}{2} a^2 & {\\rm if~|a| \\leq \\delta} \\\\
+            \\delta (|a| - \\frac{1}{2} \\delta) & {\\rm otherwise,}
+            \\end{array} \\right.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+            The shape of ``x`` should be (:math:`N`, :math:`K`).
+        t (~chainer.Variable): Target variable for regression.
+            The shape of ``t`` should be (:math:`N`, :math:`K`).
+        delta (float): Constant variable for huber loss function
+            as used in definition.
+
+    Returns:
+        ~chainer.Variable: A variable object holding a scalar array of the
+            huber loss :math:`L_{\\delta}`.
+
+    See:
+        `Huber loss - Wikipedia <https://en.wikipedia.org/wiki/Huber_loss>`_.
+
+    """
     return HuberLoss(delta=delta)(x, t)
