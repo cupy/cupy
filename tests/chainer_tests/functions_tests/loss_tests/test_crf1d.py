@@ -18,9 +18,10 @@ class TestCRF1d(unittest.TestCase):
             -1, 1, (self.n_label, self.n_label)).astype(numpy.float32)
         self.xs = [numpy.random.uniform(
             -1, 1, (self.batch, 3)).astype(numpy.float32) for _ in range(3)]
-        self.ys = [numpy.random.randint(
-            0, self.n_label, (self.batch,)).astype(numpy.int32)
-                   for _ in range(3)]
+        self.ys = [
+            numpy.random.randint(
+                0, self.n_label, (self.batch,)).astype(numpy.int32)
+            for _ in range(3)]
         self.gy = numpy.random.uniform(
             -1, 1, (self.batch,)).astype(numpy.float32)
 
