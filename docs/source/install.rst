@@ -32,7 +32,7 @@ Install Chainer
 
 Chainer depends on these Python packages:
 
-* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10
+* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11
 * `Six <https://pythonhosted.org/six/>`_ 1.9
 
 CUDA support
