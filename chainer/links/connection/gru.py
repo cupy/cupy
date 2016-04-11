@@ -3,14 +3,14 @@ import numpy
 import chainer
 from chainer.functions.activation import sigmoid
 from chainer.functions.activation import tanh
-from chainer import initializers
 from chainer import link
 from chainer.links.connection import linear
 
 
 class GRUBase(link.Chain):
 
-    def __init__(self, n_units, n_inputs=None, init=None, inner_init=None, bias_init=0):
+    def __init__(self, n_units, n_inputs=None, init=None,
+                 inner_init=None, bias_init=0):
         if n_inputs is None:
             n_inputs = n_units
         super(GRUBase, self).__init__(
@@ -130,7 +130,8 @@ class StatefulGRU(GRUBase):
 
     """
 
-    def __init__(self, in_size, out_size, init=None, inner_init=None, bias_init=0):
+    def __init__(self, in_size, out_size, init=None,
+                 inner_init=None, bias_init=0):
         super(StatefulGRU, self).__init__(
             out_size, in_size, init, inner_init, bias_init)
         self.state_size = out_size
