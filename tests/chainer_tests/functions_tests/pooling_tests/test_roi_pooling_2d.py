@@ -52,6 +52,25 @@ class TestROIPooling2D(unittest.TestCase):
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.rois))
 
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_cpu_gpu_equal(self):
+        # cpu
+        x_cpu = chainer.Variable(self.x)
+        rois_cpu = chainer.Variable(self.rois)
+        y_cpu = functions.roi_pooling_2d(
+            x_cpu, rois_cpu, outh=self.outh, outw=self.outw,
+            spatial_scale=self.spatial_scale)
+        gy_cpu = self.gy[:]
+        # gpu
+        x_gpu = chainer.Variable(cuda.to_gpu(self.x))
+        rois_gpu = chainer.Variable(cuda.to_gpu(self.rois))
+        y_gpu = functions.roi_pooling_2d(
+            x_gpu, rois_gpu, outh=self.outh, outw=self.outw,
+            spatial_scale=self.spatial_scale)
+        gradient_check.assert_allclose(y_cpu, cuda.to_cpu(y_gpu))
+        gradient_check.assert_allclose(gy_cpu, cuda.to_cpu(self.gy))
+
     def check_backward(self, x_data, roi_data, y_grad):
         x = chainer.Variable(x_data)
         rois = chainer.Variable(roi_data)
