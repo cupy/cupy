@@ -71,7 +71,7 @@ def bernoulli_nll(x, y):
     assert isinstance(x, variable.Variable)
     assert isinstance(y, variable.Variable)
 
-    return sum.sum(softplus.softplus(-y)) + sum.sum(y) - sum.sum(y * x)
+    return sum.sum(softplus.softplus(y)) - sum.sum(x * y)
 
 
 def gaussian_nll(x, mean, ln_var):
