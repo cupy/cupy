@@ -4,6 +4,9 @@ from chainer import cuda
 from chainer import initializer
 
 
+# Original code forked from MIT licensed keras project
+# https://github.com/fchollet/keras/blob/master/keras/initializations.py
+
 class Uniform(initializer.Initializer):
 
     def __init__(self, scale=0.05):

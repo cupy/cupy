@@ -1,14 +1,14 @@
 import numpy
 
 
-# Original code forked from MIT licensed keras project
-# https://github.com/fchollet/keras/blob/master/keras/initializations.py
-
 class Initializer(object):
 
     def __call__(self, array):
         NotImplementedError()
 
+
+# Original code forked from MIT licensed keras project
+# https://github.com/fchollet/keras/blob/master/keras/initializations.py
 
 def get_fans(shape):
     if not isinstance(shape, tuple):
