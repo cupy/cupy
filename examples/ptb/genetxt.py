@@ -95,3 +95,5 @@ for i in six.moves.range(args.length):
         sys.stdout.write(ivocab[index] + ' ')
 
     prev_word = Variable(xp.array([index], dtype=xp.int32))
+
+sys.stdout.write('¥n')
