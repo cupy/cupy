@@ -18,5 +18,8 @@ Base class
 Concrete function hooks
 -----------------------
 
+.. autoclass:: PrintHook
+  :members:
+
 .. autoclass:: TimerHook
   :members:
