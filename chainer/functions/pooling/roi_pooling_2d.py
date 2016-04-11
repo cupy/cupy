@@ -237,8 +237,8 @@ class ROIPooling2D(function.Function):
             '''
             int w = i % width;
             int h = (i / width) % height;
-            int c = (i / width / height) % channels;
-            int num = i / width / height / channels;
+            int c = (i / (width * height)) % channels;
+            int num = i / (width * height * channels);
 
             float gradient = 0;
             // Accumulate gradient over all ROIs that pooled this element
@@ -323,7 +323,7 @@ def roi_pooling_2d(x, rois, outh, outw, spatial_scale):
         rois (~chainer.Variable): Input roi variable.
         outh (int): Height of output image after pooled.
         outw (int): Width of output image after pooled.
-        spatial_scale (float): scale of the roi is resized.
+        spatial_scale (float): Scale of the roi is resized.
 
     Returns:
         ~chainer.Variable: Ouptut variable.
