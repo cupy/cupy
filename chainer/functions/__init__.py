@@ -34,6 +34,7 @@ from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
 from chainer.functions.loss import hinge
+from chainer.functions.loss import huber_loss
 from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
@@ -149,6 +150,8 @@ mean_squared_error = mean_squared_error.mean_squared_error
 negative_sampling = negative_sampling.negative_sampling
 SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
 sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
+HuberLoss = huber_loss.HuberLoss
+huber_loss = huber_loss.huber_loss
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 
