@@ -25,7 +25,7 @@ def init_weight(weights, initializer, scale=1.0):
 
     Args:
          weights (~numpy.ndarray): Weight matrix to be initialized.
-             initializer (value): The value to use to initialize the data.
+         initializer (value): The value to use to initialize the data.
              May be ``None`` (in which case HeNormal is used as
              an initializer), a scalar to set all values to,
              a matrix of the same shape to
