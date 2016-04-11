@@ -25,9 +25,9 @@ class Convolution2D(link.Link):
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``. May also be a callable
-             that takes a tuple that represents the shape of the matri
-             and returns a matrix of the same dimensions
-             to use for initialization.
+            that takes a tuple that represents the shape of the matri
+            and returns a matrix of the same dimensions
+            to use for initialization.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``. May also be a callable
             that takes a tuple that represents the shape of the matri

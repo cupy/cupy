@@ -72,7 +72,7 @@ class Bilinear(link.Link):
             self.add_param('V2', (right_size, out_size))
             self.add_param('b', out_size)
 
-            if type(initial_bias) is tuple:
+            if isinstance(initial_bias, tuple):
                 V1, V2, b = initial_bias
                 check_shape(V1.shape, self.V1.data.shape)
                 check_shape(V2.shape, self.V2.data.shape)
