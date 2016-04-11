@@ -47,10 +47,11 @@ class PrintHook(function.FunctionHook):
 
     name = 'PrintHook'
 
-    def __init__(self, sep='', end='\n', file=sys.stdout):
+    def __init__(self, sep='', end='\n', file=sys.stdout, flush=True):
         self.sep = sep
         self.end = end
         self.file = file
+        self.flush = True
 
     def _print(self, msg):
         print(msg, sep=self.sep, end=self.end, file=self.file)
@@ -67,6 +68,8 @@ class PrintHook(function.FunctionHook):
                 v = chainer.Variable(xp.empty_like(d, dtype=d.dtype))
                 v.grad = d
                 self._print(v.debug_print())
+        if self.flush:
+            self.file.flush()
 
     def forward_preprocess(self, function, in_data):
         self._process(function, in_data)
