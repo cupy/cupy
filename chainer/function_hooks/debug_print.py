@@ -9,13 +9,40 @@ from chainer import function
 class PrintHook(function.FunctionHook):
     """Function hook that prints debug information.
 
-    Attributes are same as the keyword argument of print function.
+    This function hook outputs the debug information of input arguments of
+    ``forward`` method of hooked function and ``backward`` method of outputs
+    of hooked functions at preprocessing time, that is,
+    just before each method is called.
+
+    The basic usage is to use it with ``with`` statement.
+
+    >>> import chainer, chainer.functions as F, chainer.links as L
+    ... l = L.Linear(10, 10)
+    ... x = chainer.Variable(numpy.zeros((1, 10), 'f'))
+    ... with chainer.function_hooks.PrintHook():
+    ...     y = l(x)
+    ...     z = F.sum(y)
+    ...     z.backward()
+
+    In this example, ``PrintHook`` shows the debug information of
+    forward propagations of ``LinearFunction`` (which is implicitly
+    called by ``l``) and ``Sum`` (called by ``F.sum``)
+    and backward propagations of ``z`` and ``y``.
+
+    Unlike simple "debug print" technique, where users insert print functions
+    at every function to be inspected, we can show the information
+    of all functions involved with single ``with`` statement.
+
+    Further, this hook enables us to show the information of
+    ``backward`` methods without inserting print functions into
+    Chainer's library code.
 
     Attributes:
         sep: Separator of print function.
         end: Character to be added at the end of print function.
         file: Output file_like object that that redirect to.
-        flush: If ``True``, print function forcibly flushes the text stream.
+        flush: If ``True``, this hook forcibly flushes the text stream
+            at the end of preprocessing.
     """
 
     name = 'PrintHook'
