@@ -119,11 +119,8 @@ def build_and_run(compiler, source, libraries=(),
         with open(fname, 'w') as f:
             f.write(source)
 
-        try:
-            objects = compiler.compile([fname], output_dir=temp_dir,
-                                       include_dirs=include_dirs)
-        except distutils.errors.CompileError:
-            return None
+        objects = compiler.compile([fname], output_dir=temp_dir,
+                                   include_dirs=include_dirs)
 
         try:
             postargs = ['/MANIFEST'] if sys.platform == 'win32' else []
