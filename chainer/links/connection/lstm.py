@@ -1,3 +1,5 @@
+import six
+
 from chainer.functions.activation import lstm
 from chainer import initializers
 from chainer import link
@@ -63,7 +65,7 @@ class LSTM(link.Chain):
         self.state_size = out_size
         self.reset_state()
 
-        for i in range(0, 4 * out_size, out_size):
+        for i in six.moves.range(0, 4 * out_size, out_size):
             initializers.init_weight(
                 self.lateral.W.data[i:i + out_size, :], lateral_init)
             initializers.init_weight(
