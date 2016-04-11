@@ -55,8 +55,8 @@ class LSTM(link.Chain):
     """
 
     def __init__(self, in_size, out_size,
-                 lateral_init=initializers.Orthogonal(), upward_init=None,
-                 bias_init=0, forget_bias_init=1):
+                 lateral_init=None, upward_init=None,
+                 bias_init=0, forget_bias_init=0):
         super(LSTM, self).__init__(
             upward=linear.Linear(in_size, 4 * out_size, initialW=0),
             lateral=linear.Linear(out_size, 4 * out_size,
