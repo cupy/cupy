@@ -10,28 +10,23 @@ from chainer.links.connection import linear
 
 class GRUBase(link.Chain):
 
-    def __init__(self, n_units, n_inputs=None, init=None,
-                 inner_init=initializers.Orthogonal(), bias_init=0):
+    def __init__(self, n_units, n_inputs=None, init=None, inner_init=None, bias_init=0):
         if n_inputs is None:
             n_inputs = n_units
         super(GRUBase, self).__init__(
-            W_r=linear.Linear(n_inputs, n_units, initialW=0),
-            U_r=linear.Linear(n_units, n_units, initialW=0),
-            W_z=linear.Linear(n_inputs, n_units, initialW=0),
-            U_z=linear.Linear(n_units, n_units, initialW=0),
-            W=linear.Linear(n_inputs, n_units, initialW=0),
-            U=linear.Linear(n_units, n_units, initialW=0),
+            W_r=linear.Linear(n_inputs, n_units,
+                              initialW=init, initial_bias=bias_init),
+            U_r=linear.Linear(n_units, n_units,
+                              initialW=inner_init, initial_bias=bias_init),
+            W_z=linear.Linear(n_inputs, n_units,
+                              initialW=init, initial_bias=bias_init),
+            U_z=linear.Linear(n_units, n_units,
+                              initialW=inner_init, initial_bias=bias_init),
+            W=linear.Linear(n_inputs, n_units,
+                            initialW=init, initial_bias=bias_init),
+            U=linear.Linear(n_units, n_units,
+                            initialW=inner_init, initial_bias=bias_init),
         )
-
-        # initialize mats that process raw input
-        for mat in (self.W_r, self.W_z, self.W):
-            initializers.init_weight(mat.W.data, init)
-        # initialize mats that take in recurrences
-        for mat in (self.U_r, self.U_z, self.U):
-            initializers.init_weight(mat.W.data, inner_init)
-        # initialize bias terms
-        for mat in (self.W_r, self.W_z, self.W, self.U_r, self.U_z, self.U):
-            initializers.init_weight(mat.b.data, bias_init)
 
 
 class GRU(GRUBase):
@@ -135,8 +130,7 @@ class StatefulGRU(GRUBase):
 
     """
 
-    def __init__(self, in_size, out_size, init=None,
-                 inner_init=initializers.Orthogonal(), bias_init=0):
+    def __init__(self, in_size, out_size, init=None, inner_init=None, bias_init=0):
         super(StatefulGRU, self).__init__(
             out_size, in_size, init, inner_init, bias_init)
         self.state_size = out_size
