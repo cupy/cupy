@@ -18,7 +18,7 @@ class Orthogonal(initializer.Initializer):
         self.scale = scale
 
     # TODO(Kenta Oono)
-    # How do we treat overcomplete bases case?
+    # How do we treat overcomplete base-system case?
     def __call__(self, array):
         xp = cuda.get_array_module(array)
         if not array.shape:
