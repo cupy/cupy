@@ -18,10 +18,6 @@ class Normal(initializer.Initializer):
             loc=0.0, scale=self.scale, size=array.shape)
 
 
-def normal(array, scale):
-    Normal(scale)(array)
-
-
 class GlorotNormal(initializer.Initializer):
     '''Reference: Glorot & Bengio, AISTATS 2010
 
@@ -33,7 +29,7 @@ class GlorotNormal(initializer.Initializer):
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / (fan_in + fan_out))
-        return normal(array, s)
+        return Normal(s)(array)
 
 
 class HeNormal(initializer.Initializer):
@@ -47,4 +43,4 @@ class HeNormal(initializer.Initializer):
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / fan_in)
-        return normal(array, s)
+        return Normal(s)(array)

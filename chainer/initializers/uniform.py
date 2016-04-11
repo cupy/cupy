@@ -18,10 +18,6 @@ class Uniform(initializer.Initializer):
             low=-self.scale, high=self.scale, size=array.shape)
 
 
-def uniform(array, scale):
-    return Uniform(scale)(array)
-
-
 class LeCunUniform(initializer.Initializer):
     '''Reference: LeCun 98, Efficient Backprop
 
@@ -35,7 +31,7 @@ class LeCunUniform(initializer.Initializer):
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(3. / fan_in)
-        return uniform(array, s)
+        return Uniform(s)(array)
 
 
 class GlorotUniform(initializer.Initializer):
@@ -46,7 +42,7 @@ class GlorotUniform(initializer.Initializer):
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(6. / (fan_in + fan_out))
-        return uniform(array, s)
+        return Uniform(s)(array)
 
 
 class HeUniform(initializer.Initializer):
@@ -57,4 +53,4 @@ class HeUniform(initializer.Initializer):
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(6. / fan_in)
-        return uniform(array, s)
+        return Uniform(s)(array)
