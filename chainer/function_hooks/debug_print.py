@@ -65,7 +65,7 @@ class PrintHook(function.FunctionHook):
             self._print('output gradient')
             for d in out_grad:
                 xp = cuda.get_array_module(d)
-                v = chainer.Variable(xp.empty_like(d, dtype=d.dtype))
+                v = chainer.Variable(xp.zeros_like(d, dtype=d.dtype))
                 v.grad = d
                 self._print(v.debug_print())
         if self.flush:
