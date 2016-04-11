@@ -267,7 +267,7 @@ class InvalidInitialParameter(InitByInitialParameter):
         self.invalidb = _uniform(self.out_size + 1,)
 
     def check_invalid(self, initialW, initial_bias, nobias):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AssertionError):
             links.Bilinear(
                 self.in_shape[0], self.in_shape[1], self.out_size, nobias,
                 initialW, initial_bias)

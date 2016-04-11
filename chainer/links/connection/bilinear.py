@@ -57,13 +57,9 @@ class Bilinear(link.Link):
         # This initialization is a modification of
         # that of Linear function.
 
-        # initialW=None will result in the original initialization
+        if hasattr(initialW, 'shape'):
+            assert initialW.shape == self.W.data.shape
         initializers.init_weight(self.W.data, initialW)
-
-        def check_shape(shape1, shape2):
-            if shape1 != shape2:
-                raise ValueError(
-                    'Shape mismatch: {} != {}'.format(shape1, shape2))
 
         if not self.nobias:
             self.add_param('V1', (left_size, out_size))
@@ -72,16 +68,21 @@ class Bilinear(link.Link):
 
             if isinstance(initial_bias, tuple):
                 V1, V2, b = initial_bias
-                check_shape(V1.shape, self.V1.data.shape)
-                check_shape(V2.shape, self.V2.data.shape)
-                check_shape(b.shape, self.b.data.shape)
-                self.V1.data[...] = V1
-                self.V2.data[...] = V2
-                self.b.data[...] = b
+            elif initial_bias is None:
+                V1 = V2 = None
+                b = 0
             else:
-                initializers.init_weight(self.V1.data, initial_bias)
-                initializers.init_weight(self.V2.data, initial_bias)
-                initializers.init_weight(self.b.data, 0)
+                raise ValueError('initial_bias must be tuple or None')
+
+            if hasattr(V1, 'shape'):
+                assert V1.shape == self.V1.data.shape
+            if hasattr(V2, 'shape'):
+                assert V2.shape == self.V2.data.shape
+            if hasattr(b, 'shape'):
+                assert b.shape == self.b.data.shape
+            initializers.init_weight(self.V1.data, V1)
+            initializers.init_weight(self.V2.data, V2)
+            initializers.init_weight(self.b.data, b)
 
     def __call__(self, e1, e2):
         """Applies the bilinear function to inputs and the internal parameters.

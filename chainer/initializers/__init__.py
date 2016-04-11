@@ -45,7 +45,3 @@ def init_weight(weights, initializer, scale=1.0):
     assert callable(initializer)
     initializer(weights)
     weights *= scale
-
-    if hasattr(initializer, 'shape'):
-        # check needed for bilinear tests to pass
-        assert weights.shape == initializer.shape
