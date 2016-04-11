@@ -1,5 +1,6 @@
 import numpy
 
+from chainer import cuda
 from chainer.functions.normalization import batch_normalization
 from chainer import link
 from chainer import variable
@@ -98,16 +99,17 @@ class BatchNormalization(link.Link):
             else:
                 decay = self.decay
 
-            m = x.data.size // self.gamma.data.size
-            adjust = m / max(m - 1., 1.)  # unbiased estimation
-            self.avg_mean *= decay
-            func.mean *= 1 - decay  # reuse buffer as a temporary
-            self.avg_mean += func.mean
-            del func.mean
-            self.avg_var *= decay
-            func.var *= (1 - decay) * adjust  # reuse buffer as a temporary
-            self.avg_var += func.var
-            del func.var
+            with cuda.get_device(x.data):
+                m = x.data.size // self.gamma.data.size
+                adjust = m / max(m - 1., 1.)  # unbiased estimation
+                self.avg_mean *= decay
+                func.mean *= 1 - decay  # reuse buffer as a temporary
+                self.avg_mean += func.mean
+                del func.mean
+                self.avg_var *= decay
+                func.var *= (1 - decay) * adjust  # reuse buffer as a temporary
+                self.avg_var += func.var
+                del func.var
         else:
             mean = variable.Variable(self.avg_mean, volatile='auto')
             var = variable.Variable(self.avg_var, volatile='auto')
