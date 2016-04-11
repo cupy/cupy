@@ -96,4 +96,4 @@ for i in six.moves.range(args.length):
 
     prev_word = Variable(xp.array([index], dtype=xp.int32))
 
-sys.stdout.write('¥n')
+sys.stdout.write('\n')
