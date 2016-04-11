@@ -76,9 +76,3 @@ class PrintHook(function.FunctionHook):
 
     def backward_preprocess(self, function, in_data, out_grad):
         self._process(function, in_data, out_grad)
-
-    def forward_postprocess(self, function, in_data):
-        self._process(function, in_data)
-
-    def backward_postprocess(self, function, in_data, out_grad):
-        self._process(function, in_data, out_grad)
