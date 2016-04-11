@@ -77,6 +77,14 @@ class BatchNormalizationTest(unittest.TestCase):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
 
+    @attr.multi_gpu(2)
+    def test_forward_multi_gpu(self):
+        with cuda.get_device(1):
+            self.link.to_gpu()
+            x = cuda.to_gpu(self.x)
+        with cuda.get_device(0):
+            self.check_forward(x)
+
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             self.link, x_data, y_grad, (self.link.gamma, self.link.beta),
