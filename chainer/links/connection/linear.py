@@ -24,12 +24,13 @@ class Linear(link.Link):
         bias (float): Initial bias value.
         nobias (bool): If ``True``, then this function does not use the bias.
         initialW (2-D array): Initial weight value. If ``None``, then this
-            function uses to initialize ``wscale``. May also be a function
-            that takes a tuple of ``(output_size, input_size)`` and returns a
-            matrix of the same dimensions to use for initialization
+            function uses to initialize ``wscale``.
+            May also be a callable that takes ``~numpy.ndarray`` or
+            ``~cupy.ndarray`` and edits its value.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
-            function uses to initialize ``bias``. May also be a function
-            that behaves in the same manner as initialW.
+            function uses to initialize ``bias``.
+            May also be a callable that takes ``~numpy.ndarray`` or
+            ``~cupy.ndarray`` and edits its value.
 
     .. seealso:: :func:`~chainer.functions.linear`
 

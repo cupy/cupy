@@ -29,10 +29,10 @@ class InceptionBN(link.Chain):
         pooltype (str): Pooling type. It must be either ``'max'`` or ``'avg'``.
         proj_pool (bool): If ``True``, do projection in the pooling path.
         stride (int): Stride parameter of the last convolution of each path.
-        conv_init: A callable or scalar that takes a tuple of the matrix shape
-            and returns a matrix of the same dimensions to use for
-            initialization of the convolution matrix weights. Maybe be
-            `None` to use default initialization.
+        conv_init: A callable that takes ``~numpy.ndarray`` or
+            ``~cupy.ndarray`` and edits its value.
+            It is used for initialization of the convolution matrix weights.
+            Maybe be ``None`` to use default initialization.
 
     .. seealso:: :class:`Inception`
 

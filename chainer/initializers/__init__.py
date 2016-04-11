@@ -24,13 +24,14 @@ def init_weight(weights, initializer, scale=1.0):
     """Initializes the given weight matrix.
 
     Args:
-         weights (~numpy.ndarray): Weight matrix to be initialized.
+         weights (~numpy.ndarray or ~cupy.ndarray):
+             Weight matrix to be initialized.
          initializer (value): The value to use to initialize the data.
              May be ``None`` (in which case HeNormal is used as
              an initializer), a scalar to set all values to,
-             a matrix of the same shape to
-             copy, or a callable that takes the shape of the matrix as input
-             and returns a matrix of the correct size.
+             an ``numpy.ndarray`` to be assigned,
+             or a callable that takes ``~numpy.ndarray`` or ``~cupy.ndarray``
+             and edits its value.
          scale (scalar): A constant to multiply initializer by.
     """
 

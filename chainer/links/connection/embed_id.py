@@ -16,9 +16,8 @@ class EmbedID(link.Link):
         out_size (int): Size of embedding vector.
         initialW (2-D array): Initial weight value. If ``None``, then the
             matrix is initialized from the standard normal distribution.
-            May also be a callable that takes a tuple that represents
-            the shape of the matrix and returns a matrix of the same
-            dimensions to use for initialization.
+            May also be a callable that takes ``~numpy.ndarray`` or
+            ``~cupy.ndarray`` and edits its value.
         ignore_label (int or None): If ``ignore_label`` is an int value,
             ``i``-th column of return value is filled with ``0``.
 
