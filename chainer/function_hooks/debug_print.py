@@ -10,9 +10,8 @@ class PrintHook(function.FunctionHook):
     """Function hook that prints debug information.
 
     This function hook outputs the debug information of input arguments of
-    ``forward`` method of hooked function and ``backward`` method of outputs
-    of hooked functions at preprocessing time, that is,
-    just before each method is called.
+    ``forward`` and ``backward`` methods involved in the hooked functions
+    at preprocessing time (that is, just before each method is called).
 
     The basic usage is to use it with ``with`` statement.
 
