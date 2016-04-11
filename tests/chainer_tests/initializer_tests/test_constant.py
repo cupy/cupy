@@ -31,28 +31,18 @@ class TestIdentity(unittest.TestCase):
         self.check_initializer(cuda.to_gpu(self.w))
 
 
+@testing.parameterize(
+    {'shape': (2, 3)},
+    {'shape': (2, 2, 4)},
+    {'shape': ()},
+    {'shape': 0})
 class TestIdentityInvalid(unittest.TestCase):
 
     def setUp(self):
         self.initializer = initializers.Identity()
 
     def test_invalid_shape(self):
-        w = numpy.empty((2, 3))
-        with self.assertRaises(ValueError):
-            self.initializer(w)
-
-    def test_invalid_shape2(self):
-        w = numpy.empty((2, 2, 4))
-        with self.assertRaises(ValueError):
-            self.initializer(w)
-
-    def test_invalid_shape3(self):
-        w = numpy.empty(())
-        with self.assertRaises(ValueError):
-            self.initializer(w)
-
-    def test_invalid_shape4(self):
-        w = numpy.array(())
+        w = numpy.empty(self.shape)
         with self.assertRaises(ValueError):
             self.initializer(w)
 
