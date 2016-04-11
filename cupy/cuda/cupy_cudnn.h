@@ -18,7 +18,7 @@ typedef int cudnnConvolutionBwdDataPreference_t;
 typedef int cudnnConvolutionBwdFilterAlgo_t;
 typedef int cudnnConvolutionBwdFilterPreference_t;
 
-cudnnStatus_t CUDNNWINAPI cudnnAddTensor_v3(
+cudnnStatus_t cudnnAddTensor_v3(
         cudnnHandle_t handle, const void* alpha,
         const cudnnTensorDescriptor_t bDesc, const void* b, const void* beta,
         cudnnTensorDescriptor_t yDesc, void* y) {
