@@ -50,7 +50,7 @@ class PrintHook(function.FunctionHook):
         self.sep = sep
         self.end = end
         self.file = file
-        self.flush = True
+        self.flush = flush
 
     def _print(self, msg):
         print(msg, sep=self.sep, end=self.end, file=self.file)
