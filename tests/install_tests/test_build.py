@@ -16,7 +16,7 @@ class TestCheckVersion(unittest.TestCase):
         self.assertTrue(build.check_cuda_version(
             self.compiler, self.settings))
 
-    @attr.gpu
+    @attr.cudnn
     def test_check_cudnn_version(self):
         self.assertTrue(build.check_cudnn_version(
             self.compiler, self.settings))
