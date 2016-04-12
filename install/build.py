@@ -1,4 +1,3 @@
-import distutils
 import os
 import shutil
 import subprocess
