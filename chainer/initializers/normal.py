@@ -9,6 +9,16 @@ from chainer import initializer
 
 class Normal(initializer.Initializer):
 
+    '''Initializes array with a normal distribution.
+
+    Each element of the array is initialized by the value drawn
+    independently from Gaussian distribution whose mean is 0,
+    and standard deviation is ``scale``.
+
+    Args:
+        scale(float): Standard deviation of Gaussian distribution.
+    '''
+
     def __init__(self, scale=0.05):
         self.scale = scale
 
@@ -19,7 +29,21 @@ class Normal(initializer.Initializer):
 
 
 class GlorotNormal(initializer.Initializer):
-    '''Reference: Glorot & Bengio, AISTATS 2010
+
+    '''Initializes array with scaled Gaussian distribution.
+
+    Each element of the array is initialized by the value drawn
+    independently from Gaussian distribution whose mean is 0,
+    and standard deviation is
+    :math:`scale \\times \\sqrt{\\frac{2}{fan\_in + fan\_out}}`,
+    where :math:`fan\_in` and :math:`fan\_out` are the number of
+    input and output units, respectively.
+
+    Reference: Glorot & Bengio, AISTATS 2010
+
+    Args:
+        scale (float): A constant that detemines the scale
+            of the standard deviation.
 
     '''
 
@@ -33,7 +57,20 @@ class GlorotNormal(initializer.Initializer):
 
 
 class HeNormal(initializer.Initializer):
-    '''Reference:  He et al., http://arxiv.org/abs/1502.01852
+
+    '''Initializes array with scaled Gaussian distribution.
+
+    Each element of the array is initialized by the value drawn
+    independently from Gaussian distribution whose mean is 0,
+    and standard deviation is
+    :math:`scale \\times \\sqrt{\\frac{2}{fan\_in}}`,
+    where :math:`fan\_in` is the number of input units.
+
+    Reference:  He et al., http://arxiv.org/abs/1502.01852
+
+    Args:
+        scale (float): A constant that detemines the scale
+            of the standard deviation.
 
     '''
 

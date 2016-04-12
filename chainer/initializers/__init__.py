@@ -21,17 +21,18 @@ HeUniform = uniform.HeUniform
 
 
 def init_weight(weights, initializer, scale=1.0):
-    """Initializes the given weight matrix.
+    """Initializes given weight matrix with given initializer.
 
     Args:
-         weights (~numpy.ndarray or ~cupy.ndarray):
+         weights (numpy.ndarray or cupy.ndarray):
              Weight matrix to be initialized.
          initializer (value): The value to use to initialize the data.
-             May be ``None`` (in which case HeNormal is used as
-             an initializer), a scalar to set all values to,
+             May be ``None`` (in which case
+             :class:`~chainer.initializers.HeNormal`
+             is used as an initializer), a scalar to set all values to,
              an ``numpy.ndarray`` to be assigned,
-             or a callable that takes ``~numpy.ndarray`` or ``~cupy.ndarray``
-             and edits its value.
+             or a callable that takes :class:`numpy.ndarray`
+             or :class:`cupy.ndarray` and edits its value.
          scale (scalar): A constant to multiply initializer by.
     """
 
