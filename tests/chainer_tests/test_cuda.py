@@ -77,4 +77,18 @@ class TestToCPU(unittest.TestCase):
             cuda.to_cpu(x)
 
 
+class TestWorkspace(unittest.TestCase):
+
+    def setUp(self):
+        self.space = cuda.get_max_workspace_size()
+
+    def tearDown(self):
+        cuda.set_max_workspace_size(self.space)
+
+    def test_size(self):
+        size = 1024
+        cuda.set_max_workspace_size(size)
+        self.assertEqual(size, cuda.get_max_workspace_size())
+
+
 testing.run_module(__name__, __file__)
