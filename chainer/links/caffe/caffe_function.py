@@ -320,22 +320,8 @@ class CaffeFunction(link.Chain):
 
     @_layer('Scale', 'NONE')    # TODO: old name
     def _setup_scale(self, layer):
-        def shape_for_broadcasting_in_numpy(x_shape, y_shape, axis):
-            assert x_shape[axis:axis + len(y_shape)] == y_shape
-            shape = [1] * axis + list(y_shape) \
-                + [1] * (len(x_shape) - axis - len(y_shape))
-            return tuple(shape)
-
-        def scale(x, y, axis=1):
-            x_shape = x.data.shape
-            y_shape = y.data.shape
-            y1_shape = shape_for_broadcasting_in_numpy(x_shape, y_shape, axis)
-            y1 = functions.reshape(y, y1_shape)
-            y2 = functions.broadcast_to(y1, x_shape)
-            return x * y2,
-
         axis = layer.scale_param.axis
-        self.forwards[layer.name] = _DoubleArgumentFunction(scale, axis=axis)
+        self.forwards[layer.name] = _ScaleFunction(axis)
         self._add_layer(layer)
 
     @_layer('Softmax', 'SOFTMAX')
@@ -444,16 +430,6 @@ class _SingleArgumentFunction(object):
         return self.func(x, *self.args, **self.kwargs)
 
 
-class _DoubleArgumentFunction(object):
-    def __init__(self, func, *args, **kwargs):
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self, x, y):
-        return self.func(x, y, *self.args, **self.kwargs)
-
-
 class _ListArgumentFcuntion(object):
     def __init__(self, func, **kwargs):
         self.func = func
@@ -481,3 +457,19 @@ class _CallChildLink(object):
 
     def __call__(self, *xs):
         return self.caffe_func[self.name](*xs)
+
+
+class _ScaleFunction(object):
+    def __init__(self, axis):
+        self.axis = axis
+
+    def __call__(self, x, y):
+        x_shape = x.data.shape
+        y_shape = y.data.shape
+        axis = self.axis
+        assert x_shape[axis:axis + len(y_shape)] == y_shape
+        y1_shape = tuple([1] * axis + list(y_shape) +
+                         [1] * (len(x_shape) - axis - len(y_shape)))
+        y1 = functions.reshape(y, y1_shape)
+        y2 = functions.broadcast_to(y1, x_shape)
+        return x * y2,

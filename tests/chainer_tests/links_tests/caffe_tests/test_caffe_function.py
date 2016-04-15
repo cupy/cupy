@@ -547,6 +547,30 @@ class TestLeakyReLU(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0], slope=0.5)
 
 
+class TestScale(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.caffe.caffe_function._ScaleFunction.__call__'
+    in_shapes = [(2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Scale',
+                'bottom': ['x', 'y'],
+                'top': ['z'],
+            }
+        ]
+    }
+
+    def test_scale(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x', 'y'], ['z'])
+        self.mock.assert_called_once_with(self.inputs[0], self.inputs[1])
+
+
 class TestSoftmax(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.softmax'
