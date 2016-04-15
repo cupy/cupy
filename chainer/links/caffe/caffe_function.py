@@ -322,8 +322,8 @@ class CaffeFunction(link.Chain):
     def _setup_scale(self, layer):
         def shape_for_broadcasting_in_numpy(x_shape, y_shape, axis):
             assert x_shape[axis:axis + len(y_shape)] == y_shape
-            shape = [1] * axis + list(y_shape)
-            + [1] * (len(x_shape) - axis - len(y_shape))
+            shape = [1] * axis + list(y_shape) \
+                + [1] * (len(x_shape) - axis - len(y_shape))
             return tuple(shape)
 
         def scale(x, y, axis=1):
