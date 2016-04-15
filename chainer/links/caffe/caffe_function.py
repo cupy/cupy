@@ -321,7 +321,11 @@ class CaffeFunction(link.Chain):
     @_layer('Scale', 'NONE')    # TODO: old name
     def _setup_scale(self, layer):
         axis = layer.scale_param.axis
-        self.forwards[layer.name] = _ScaleFunction(axis)
+        if len(layer.bottom) == 1:
+            fw = _ScaleLink(axis)
+        else:
+            fw = _ScaleFunction(axis)
+        self.forwards[layer.name] = fw
         self._add_layer(layer)
 
     @_layer('Softmax', 'SOFTMAX')
@@ -473,3 +477,17 @@ class _ScaleFunction(object):
         y1 = functions.reshape(y, y1_shape)
         y2 = functions.broadcast_to(y1, x_shape)
         return x * y2,
+
+
+class _ScaleLink(link.Link):
+    def __init__(self, axis):
+        super(_ScaleLink, self).__init__()
+        self.axis = axis
+
+    def __call__(self, x):
+        x_shape = x.data.shape
+        axis = self.axis
+        if not hasattr(self, "W"):
+            self.add_param("W", x_shape)
+            self.W.data.fill(1)
+        return _ScaleFunction(axis)(x, self.W)

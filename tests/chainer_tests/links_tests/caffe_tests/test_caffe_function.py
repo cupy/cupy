@@ -571,6 +571,30 @@ class TestScale(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0], self.inputs[1])
 
 
+class TestScaleOnlyBottom(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.caffe.caffe_function._ScaleLink.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Scale',
+                'bottom': ['x'],
+                'top': ['y'],
+            }
+        ]
+    }
+
+    def test_scale_only_bottom(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0])
+
+
 class TestSoftmax(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.softmax'
