@@ -52,4 +52,22 @@ class LinearInterpolate(function.Function):
 
 
 def linear_interpolate(p, x, y):
+    """Elementwise linear-interpolation function.
+
+    This function is defined as
+
+    .. math::
+
+        f(p, x, y) = p x + (1 - p) y.
+
+    Args:
+        p (~chainer.Variable): Input variable.
+        x (~chainer.Variable): Input variable.
+        y (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
+
     return LinearInterpolate()(p, x, y)

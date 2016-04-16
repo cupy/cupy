@@ -247,6 +247,10 @@ inv
 ~~~
 .. autofunction:: inv
 
+linear_interpolate
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: linear_interpolate
+
 log
 ~~~
 .. autofunction:: log
