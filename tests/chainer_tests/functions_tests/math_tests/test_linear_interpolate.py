@@ -49,6 +49,7 @@ class TestLinearInterpolate(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.p, self.x, self.y, self.g)
 
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.p),
