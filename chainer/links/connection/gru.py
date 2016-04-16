@@ -3,6 +3,7 @@ import numpy
 import chainer
 from chainer.functions.activation import sigmoid
 from chainer.functions.activation import tanh
+from chainer.functions.math import linear_interpolate
 from chainer import link
 from chainer.links.connection import linear
 
@@ -169,8 +170,9 @@ class StatefulGRU(GRUBase):
         z = sigmoid.sigmoid(z)
         h_bar = tanh.tanh(h_bar)
 
-        h_new = z * h_bar
         if self.h is not None:
-            h_new += (1 - z) * self.h
+            h_new = linear_interpolate.linear_interpolate(z, h_bar, self.h)
+        else:
+            h_new = z * h_bar
         self.h = h_new
         return self.h
