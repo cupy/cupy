@@ -47,6 +47,7 @@ from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import identity
 from chainer.functions.math import inv
+from chainer.functions.math import linear_interpolate
 from chainer.functions.math import matmul
 from chainer.functions.math import minmax
 from chainer.functions.math import sum
@@ -175,6 +176,8 @@ Identity = identity.Identity
 identity = identity.identity
 Inv = inv.Inv
 inv = inv.inv
+LinearInterpolate = linear_interpolate.LinearInterpolate
+linear_interpolate = linear_interpolate.linear_interpolate
 Log = exponential.Log
 log = exponential.log
 MatMul = matmul.MatMul
