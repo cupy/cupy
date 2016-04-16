@@ -6,6 +6,8 @@ from chainer import function
 
 class HardSigmoid(function.Function):
 
+    """Hard-sigmoid funciton."""
+
     def forward_cpu(self, inputs):
         x = inputs[0]
         return numpy.minimum(1.0, numpy.maximum(0.0, x * 0.2 + 0.5)),
@@ -34,4 +36,23 @@ class HardSigmoid(function.Function):
 
 
 def hard_sigmoid(x):
+    """Elementwise hard-sigmoid function.
+
+    This function is defined as
+
+    .. math::
+
+        f(x) = \\left \\{ \\begin{array}{ll}
+        0 & {\\rm if}~ x < -0.25 \\\\
+        0.2 x + 0.5 & {\\rm if}~ -0.25 < x < 0.25 \\\\
+        1 & {\\rm if}~ 0.25 < x.
+        \\end{array} \\right.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
     return HardSigmoid()(x)

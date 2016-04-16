@@ -35,6 +35,10 @@ elu
 ~~~
 .. autofunction:: elu
 
+hard_sigmoid
+~~~~~~~~~~~~
+.. autofunction:: hard_sigmoid
+
 leaky_relu
 ~~~~~~~~~~
 .. autofunction:: leaky_relu
