@@ -22,7 +22,6 @@ class TheanoFunctionTestBase(object):
             numpy.random.uniform(
                 -1, 1, d['shape']).astype(getattr(numpy, d['type']))
             for d in self.outputs]
-        self.func = self.make_func()
 
     def make_func(self):
         raise NotImplementedError
@@ -31,8 +30,10 @@ class TheanoFunctionTestBase(object):
         raise NotImplementedError
 
     def check_forward(self, input_data):
+        gpu = isinstance(input_data[0], cuda.cupy.ndarray)
+        func = self.make_func(gpu)
         inputs = [chainer.Variable(data) for data in input_data]
-        outputs = self.func(*inputs)
+        outputs = func(*inputs)
         if isinstance(outputs, chainer.Variable):
             outputs = (outputs,)
         expect = self.expect_forward()
@@ -50,8 +51,10 @@ class TheanoFunctionTestBase(object):
         self.check_forward(inputs)
 
     def check_backward(self, input_data, grad_data):
+        gpu = isinstance(input_data[0], cuda.cupy.ndarray)
+        func = self.make_func(gpu)
         gradient_check.check_backward(
-            self.func, input_data, grad_data, atol=1e-4)
+            func, input_data, grad_data, atol=1e-4)
 
     def test_backward_cpu(self):
         self.check_backward(self.input_data, self.grad_data)
@@ -79,13 +82,13 @@ class TheanoFunctionTestBase(object):
 )
 class TestTheanoFunction(TheanoFunctionTestBase, unittest.TestCase):
 
-    def make_func(self):
+    def make_func(self, gpu):
         x = T.TensorType(self.inputs[0]['type'],
                          (False,) * len(self.inputs[0]['shape']))('x')
         y = T.TensorType(self.inputs[1]['type'],
                          (False,) * len(self.inputs[1]['shape']))('y')
         z = x + y
-        return functions.TheanoFunction([x, y], [z])
+        return functions.TheanoFunction([x, y], [z], gpu)
 
     def expect_forward(self):
         x, y = self.input_data
@@ -108,14 +111,14 @@ class TestTheanoFunction(TheanoFunctionTestBase, unittest.TestCase):
 )
 class TestTheanoFunctionTwoOutputs(TheanoFunctionTestBase, unittest.TestCase):
 
-    def make_func(self):
+    def make_func(self, gpu):
         x = T.TensorType(self.inputs[0]['type'],
                          (False,) * len(self.inputs[0]['shape']))('x')
         y = T.TensorType(self.inputs[1]['type'],
                          (False,) * len(self.inputs[1]['shape']))('y')
         z = x + y
         w = x - y
-        return functions.TheanoFunction([x, y], [z, w])
+        return functions.TheanoFunction([x, y], [z, w], gpu)
 
     def expect_forward(self):
         x, y = self.input_data
@@ -133,13 +136,13 @@ class TestTheanoFunctionTwoOutputs(TheanoFunctionTestBase, unittest.TestCase):
 class TestTheanoFunctionNonDifferential(
         TheanoFunctionTestBase, unittest.TestCase):
 
-    def make_func(self):
+    def make_func(self, gpu):
         x = T.TensorType(self.inputs[0]['type'],
                          (False,) * len(self.inputs[0]['shape']))('x')
         i = T.TensorType(self.inputs[1]['type'],
                          (False,) * len(self.inputs[1]['shape']))('y')
         z = x[i]
-        return functions.TheanoFunction([x, i], z)
+        return functions.TheanoFunction([x, i], z, gpu)
 
     def expect_forward(self):
         x, i = self.input_data

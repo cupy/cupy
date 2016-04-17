@@ -2,6 +2,7 @@ import collections
 
 import numpy
 import theano
+import theano.sandbox.cuda as theano_cuda
 
 from chainer import cuda
 from chainer import function
@@ -25,17 +26,27 @@ def _make_var_tuple(vs):
 
 class TheanoFunction(function.Function):
 
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs, outputs, gpu=True):
         inputs = _make_var_tuple(inputs)
         outputs = _make_var_tuple(outputs)
+        if gpu:
+            outs = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(o)
+                         if o.type.dtype == 'float32' else o for o in outputs)
+        else:
+            outs = outputs
 
-        self.func = theano.function(inputs=inputs, outputs=outputs)
+        self.func = theano.function(inputs=inputs, outputs=outs)
         gs = tuple(o.type('g_{}'.format(i)) for i, o in enumerate(outputs))
         know_grads = dict(zip(outputs, gs))
 
         grad = theano.tensor.grad(
             cost=None, wrt=inputs, known_grads=know_grads,
             disconnected_inputs='ignore')
+
+        if gpu:
+            grad = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(g)
+                         if g.type.dtype == 'floag32' else g for g in grad)
+
         self.grad = theano.function(
             inputs=inputs + gs,
             outputs=grad,
@@ -56,19 +67,19 @@ class TheanoFunction(function.Function):
     def forward(self, inputs):
         gpu = cuda.get_array_module(*inputs) is not numpy
         if gpu:
-            inputs = [cuda.to_cpu(x) for x in inputs]
+            inputs = [_make_theano_array(x) for x in inputs]
 
         outputs = self.func(*inputs)
 
         if gpu:
-            outputs = [cuda.to_gpu(x) for x in outputs]
+            outputs = [_make_cupy_array(x) for x in outputs]
         return tuple(outputs)
 
     def backward(self, inputs, grads):
         args = inputs + grads
         gpu = cuda.get_array_module(*args) is not numpy
         if gpu:
-            args = [cuda.to_cpu(x) for x in args]
+            args = [_make_theano_array(x) for x in args]
 
         outs = self.grad(*args)
         assert len(outs) == len(inputs)
@@ -82,6 +93,41 @@ class TheanoFunction(function.Function):
             outputs.append(o)
 
         if gpu:
-            outputs = [cuda.to_gpu(x) if x is not None else None
-                       for x in outputs]
+            outputs = [_make_cupy_array(x) for x in outputs]
         return tuple(outputs)
+
+
+def _make_theano_array(x):
+    if isinstance(x, cuda.cupy.ndarray) and x.dtype == numpy.float32:
+        return _cupy_to_theano_array(x)
+    else:
+        return cuda.to_cpu(x)
+
+
+def _cupy_to_theano_array(x):
+    ptr = long(x.data.ptr)
+    strides = [s / 4 for s in x.strides]
+    return theano_cuda.from_gpu_pointer(ptr, x.shape, strides, x)
+
+
+class CudaNdarrayMemory(object):
+
+    def __init__(self, array):
+        self._array = array
+        self.device = cuda.cupy.cuda.Device()
+        self.ptr = array.gpudata
+
+
+def _theano_to_cupy_array(x):
+    mem = CudaNdarrayMemory(x)
+    memptr = cuda.cupy.cuda.MemoryPointer(mem, 0)
+    return cuda.cupy.ndarray(x.shape, dtype=numpy.float32, memptr=memptr)
+
+
+def _make_cupy_array(x):
+    if x is None:
+        return None
+    elif isinstance(x, theano_cuda.CudaNdarray):
+        return _theano_to_cupy_array(x)
+    else:
+        return cuda.to_gpu(x)
