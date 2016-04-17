@@ -215,7 +215,8 @@ def to_cpu(array, stream=None):
 
     """
     if isinstance(array, ndarray):
-        return array.get(stream)
+        with array.device:
+            return array.get(stream)
     elif isinstance(array, numpy.ndarray):
         return array
     else:
