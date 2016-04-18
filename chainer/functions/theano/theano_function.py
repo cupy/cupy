@@ -1,8 +1,13 @@
 import collections
 
 import numpy
-import theano
-import theano.sandbox.cuda as theano_cuda
+
+try:
+    import theano
+    import theano.sandbox.cuda as theano_cuda
+    _available = True
+except ImportError:
+    _available = False
 
 from chainer import cuda
 from chainer import function
@@ -27,6 +32,13 @@ def _make_var_tuple(vs):
 class TheanoFunction(function.Function):
 
     def __init__(self, inputs, outputs, gpu=True):
+        if not _available:
+            msg = '''theano is not installed on your environment.
+Please install theano to activate theano function.
+
+  $ pip install theano'''
+            raise RuntimeError(msg)
+
         inputs = _make_var_tuple(inputs)
         outputs = _make_var_tuple(outputs)
         if gpu:
