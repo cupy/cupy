@@ -320,12 +320,24 @@ class CaffeFunction(link.Chain):
 
     @_layer('Scale', 'NONE')    # TODO: old name
     def _setup_scale(self, layer):
+        # Get layer parameters.
+        bottom = layer.bottom
+        blobs = layer.blobs
         axis = layer.scale_param.axis
-        if len(layer.bottom) == 1:
-            fw = _ScaleLink(axis)
+        bias_term = layer.scale_param.bias_term
+
+        # Case of only bottom where W is learnt parameter.
+        if len(bottom) == 1:
+            W_blob = blobs[0]
+            bias_blob = blobs[1] if bias_term else None
+            func = _ScaleChain(axis, W_blob, bias_blob)
+        # Case of two bottoms where W is give as a bottom.
         else:
-            fw = _ScaleFunction(axis)
-        self.forwards[layer.name] = fw
+            bias_blob = blobs[0] if bias_term else None
+            func = _ScaleChain(axis, None, bias_blob)
+
+        self.add_link(layer.name, func)
+        self.forwards[layer.name] = _CallChildLink(self, layer.name)
         self._add_layer(layer)
 
     @_layer('Softmax', 'SOFTMAX')
@@ -479,15 +491,88 @@ class _ScaleFunction(object):
         return x * y2,
 
 
-class _ScaleLink(link.Link):
+class _ScaleChain(link.Chain):
+    def __init__(self, axis=1, W_blob=None, bias_blob=None):
+        super(_ScaleChain, self).__init__()
+
+        # Add W parameter if given.
+        if W_blob is not None:
+            W_shape = tuple(W_blob.shape.dim)
+            self.add_param('W', W_shape)
+            self.W.data.ravel()[:] = W_blob.data
+        else:
+            self.W = None
+
+        # Add bias term if given.
+        if bias_blob is not None:
+            func = _BiasLink(bias_blob)
+            self.add_link('b', func)
+        else:
+            self.b = None
+
+        # Hold function object.
+        self._func = _ScaleFunction(axis)
+
+    def __call__(self, *xs):
+        # Case of only bottom where W is learnt parameter.
+        if self.W is not None:
+            assert len(xs) == 1
+            x = xs[0]
+            W = self.W
+            z = self._func(x, W)
+        # Case of two bottoms where W is given as a bottom.
+        else:
+            assert len(xs) == 2
+            x, y = xs
+            z = self._func(x, y)
+
+        # Forward propagate bias term if given.
+        if self.b is not None:
+            return self.b(z)
+        else:
+            return z
+
+
+class _BiasFunction(object):
     def __init__(self, axis):
-        super(_ScaleLink, self).__init__()
         self.axis = axis
 
-    def __call__(self, x):
+    def __call__(self, x, y):
         x_shape = x.data.shape
+        y_shape = y.data.shape
         axis = self.axis
-        if not hasattr(self, "W"):
-            self.add_param("W", x_shape)
-            self.W.data.fill(1)
-        return _ScaleFunction(axis)(x, self.W)
+        assert x_shape[axis:axis + len(y_shape)] == y_shape
+        y1_shape = tuple([1] * axis + list(y_shape) +
+                         [1] * (len(x_shape) - axis - len(y_shape)))
+        y1 = functions.reshape(y, y1_shape)
+        y2 = functions.broadcast_to(y1, x_shape)
+        return x + y2,
+
+
+class _BiasLink(link.Link):
+    def __init__(self, axis=1, blob=None):
+        super(_BiasLink, self).__init__()
+
+        # Add b parameter if given.
+        if blob is not None:
+            shape = tuple(blob.shape.dim)
+            self.add_param('b', shape)
+            self.b.data.ravel()[:] = blob.data
+        else:
+            self.b = None
+
+        # Hold function object.
+        self._func = _BiasFunction(axis)
+
+    def __call__(self, *xs):
+        # Case of only bottom where b is learnt parameter.
+        if self.b is not None:
+            assert len(xs) == 1
+            x = xs[0]
+            b = self.b
+            return self._func(x, b)
+        # Case of two bottoms where b is given as a bottom.
+        else:
+            assert len(xs) == 2
+            x, y = xs
+            return self._func(x, y)
