@@ -100,7 +100,7 @@ class OptimizerTestBase(object):
         optimizer.setup(model)
 
         msg = 'optimization target must be a link'
-        with self.assertRaisesRegexp(TypeError, msg):
+        with six.assertRaisesRegex(self, TypeError, msg):
             optimizer.setup('xxx')
 
 

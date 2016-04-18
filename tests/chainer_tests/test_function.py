@@ -2,6 +2,7 @@ import unittest
 
 import mock
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -299,8 +300,8 @@ Expect: in_types\\[0\\]\\.dtype == <(type|class) 'numpy\\.float32'>
 Actual: float64 \\!= <(type|class) 'numpy\\.float32'>"""
 
         v = chainer.Variable(numpy.random.randn(1, 5))
-        with self.assertRaisesRegexp(chainer.utils.type_check.InvalidType,
-                                     msg):
+        with six.assertRaisesRegex(self, chainer.utils.type_check.InvalidType,
+                                   msg):
             f(v)
 
         # Incorrect dim
@@ -311,8 +312,8 @@ Expect: in_types\\[0\\]\\.ndim >= 2
 Actual: 1 < 2"""
 
         v = chainer.Variable(numpy.random.randn(5).astype(numpy.float32))
-        with self.assertRaisesRegexp(chainer.utils.type_check.InvalidType,
-                                     msg):
+        with six.assertRaisesRegex(self, chainer.utils.type_check.InvalidType,
+                                   msg):
             f(v)
 
 

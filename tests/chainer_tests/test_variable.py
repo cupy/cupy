@@ -144,7 +144,7 @@ class TestVariable(unittest.TestCase):
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
 
     def test_invalid_value_type(self):
-        with self.assertRaisesRegexp(TypeError, 'int'):
+        with six.assertRaisesRegex(self, TypeError, 'int'):
             chainer.Variable(1)
 
     def test_grad_type_check_pass(self):
@@ -465,7 +465,7 @@ class TestVariableBackwardError(unittest.TestCase):
 
         x = chainer.Variable(x_data)
         y = DummyFunction()(x)
-        with self.assertRaisesRegexp(TypeError, 'dummy_function'):
+        with six.assertRaisesRegex(self, TypeError, 'dummy_function'):
             y.backward()
 
     def test_type_mismatch_cpu(self):
@@ -489,7 +489,7 @@ class TestVariableBackwardError(unittest.TestCase):
 
         x = chainer.Variable(x_data)
         y = DummyFunction()(x)
-        with self.assertRaisesRegexp(TypeError, 'dummy_function'):
+        with six.assertRaisesRegex(self, TypeError, 'dummy_function'):
             y.backward()
 
     def test_dtype_mismatch_cpu(self):
@@ -513,7 +513,7 @@ class TestVariableBackwardError(unittest.TestCase):
 
         x = chainer.Variable(x_data)
         y = DummyFunction()(x)
-        with self.assertRaisesRegexp(ValueError, 'dummy_function'):
+        with six.assertRaisesRegex(self, ValueError, 'dummy_function'):
             y.backward()
 
     def test_shape_mismatch_cpu(self):
