@@ -49,6 +49,10 @@ class TestCuda(unittest.TestCase):
                 cuda.empty_like(x)
 
 
+@testing.parameterize(
+    {'c_contiguous': True},
+    {'c_contiguous': False},
+)
 class TestToCPU(unittest.TestCase):
 
     def setUp(self):
@@ -61,13 +65,14 @@ class TestToCPU(unittest.TestCase):
     @attr.gpu
     def test_cupy_array(self):
         x = cuda.to_gpu(self.x)
+        if not self.c_contiguous:
+            x = cuda.cupy.asfortranarray(x)
         y = cuda.to_cpu(x)
         self.assertIsInstance(y, numpy.ndarray)
         numpy.testing.assert_array_equal(self.x, y)
 
     def test_variable(self):
-        x = numpy.random.uniform(-1, 1, (2, 3))
-        x = chainer.Variable(x)
+        x = chainer.Variable(self.x)
         with self.assertRaises(TypeError):
             cuda.to_cpu(x)
 
