@@ -61,7 +61,7 @@ class Absolute(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        type_check.expect(in_types[0].dtype == numpy.float32)
+        type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward(self, x):
         return utils.force_array(abs(x[0])),
@@ -192,8 +192,7 @@ class Mul(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         type_check.expect(
-            in_types[0].dtype == numpy.float32,
-            in_types[1].dtype == numpy.float32,
+            in_types[0].dtype == in_types[1].dtype,
             in_types[0].shape == in_types[1].shape
         )
 
@@ -241,8 +240,8 @@ class Div(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         type_check.expect(
-            in_types[0].dtype == numpy.float32,
-            in_types[1].dtype == numpy.float32,
+            in_types[0].dtype == in_types[1].dtype,
+            in_types[0].dtype.kind == 'f',
             in_types[0].shape == in_types[1].shape
         )
 
@@ -281,7 +280,7 @@ class DivFromConstant(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        type_check.expect(in_types[0].dtype == numpy.float32)
+        type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward(self, x):
         value = utils.force_type(x[0].dtype, self.value)
@@ -315,8 +314,8 @@ class PowVarVar(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         type_check.expect(
-            in_types[0].dtype == numpy.float32,
-            in_types[1].dtype == numpy.float32,
+            in_types[0].dtype == in_types[1].dtype,
+            in_types[0].dtype.kind == 'f',
             in_types[0].shape == in_types[1].shape
         )
 
@@ -353,11 +352,11 @@ class PowVarConst(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        type_check.expect(in_types[0].dtype == numpy.float32)
+        type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward(self, x):
         value = utils.force_type(x[0].dtype, self.value)
-        return utils.force_array(x[0] ** value),
+        return utils.force_array((x[0] ** value).astype(x[0].dtype)),
 
     def backward_cpu(self, x, gy):
         val_1 = utils.force_type(x[0].dtype, self.value - 1)
@@ -391,7 +390,7 @@ class PowConstVar(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        type_check.expect(in_types[0].dtype == numpy.float32)
+        type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward(self, x):
         value = utils.force_type(x[0].dtype, self.value)
@@ -400,7 +399,8 @@ class PowConstVar(function.Function):
 
     def backward_cpu(self, x, gy):
         value = utils.force_type(x[0].dtype, self.value)
-        return utils.force_array(numpy.log(value) * self.y * gy[0]),
+        return utils.force_array(
+            numpy.log(value, dtype=x[0].dtype) * self.y * gy[0]),
 
     def backward_gpu(self, x, gy):
         value = utils.force_type(x[0].dtype, self.value)
