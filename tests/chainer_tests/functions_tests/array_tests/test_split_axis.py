@@ -1,3 +1,4 @@
+import itertools
 import unittest
 
 import numpy
@@ -10,32 +11,46 @@ from chainer import testing
 from chainer.testing import attr
 
 
-@testing.parameterize(
-    {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [2, 5],
-     'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
-                [slice(None), slice(5, None)]]},
-    {'shape': (7, 3), 'axis': 0, 'ys_section': [2, 5],
-     'slices': [slice(None, 2), slice(2, 5), slice(5, None)]},
-    {'shape': (2, 9, 3), 'axis': 1, 'ys_section': 3,
-     'slices': [[slice(None), slice(None, 3)], [slice(None), slice(3, 6)],
-                [slice(None), slice(6, None)]]},
-    {'shape': (2, 6, 3), 'axis': 1, 'ys_section': 3,
-     'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 4)],
-                [slice(None), slice(4, None)]]},
-    {'shape': (2,), 'axis': 0, 'ys_section': [1],
-     'slices': [slice(None, 1), slice(1, None)]},
-)
+@testing.parameterize(*[dict(x, **y) for x, y in itertools.product(
+    [
+        {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [2, 5],
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                    [slice(None), slice(5, None)]]},
+        {'shape': (7, 3), 'axis': 0, 'ys_section': [2, 5],
+         'slices': [slice(None, 2), slice(2, 5), slice(5, None)]},
+        {'shape': (2, 9, 3), 'axis': 1, 'ys_section': 3,
+         'slices': [[slice(None), slice(None, 3)], [slice(None), slice(3, 6)],
+                    [slice(None), slice(6, None)]]},
+        {'shape': (2, 6, 3), 'axis': 1, 'ys_section': 3,
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 4)],
+                    [slice(None), slice(4, None)]]},
+        {'shape': (2,), 'axis': 0, 'ys_section': [1],
+         'slices': [slice(None, 1), slice(1, None)]},
+        {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [2, 5],
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                    [slice(None), slice(5, None)]]},
+        {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [2, 5],
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                    [slice(None), slice(5, None)]]},
+    ],
+    [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ],
+)])
 class TestSplitAxis(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.arange(
-            numpy.prod(self.shape), dtype=numpy.float32).reshape(self.shape)
+            numpy.prod(self.shape), dtype=self.dtype).reshape(self.shape)
         self.ys = [self.x[s] for s in self.slices]
 
     def check_forward(self, x_data, ys_data, indices_or_sections, axis):
         x = chainer.Variable(x_data)
         ys = functions.split_axis(x, indices_or_sections, axis)
         for yd, y in zip(ys_data, ys):
+            self.assertEqual(y.data.dtype, self.dtype)
             self.assertIsInstance(y.data.shape, tuple)
             gradient_check.assert_allclose(yd, y.data, atol=0, rtol=0)
 
