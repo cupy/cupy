@@ -4,43 +4,8 @@ import six
 import chainer
 from chainer import cuda
 from chainer import function
+from chainer.functions.activation import log_softmax
 from chainer.utils import type_check
-
-
-if cuda.cudnn_enabled:
-    cudnn = cuda.cudnn
-    libcudnn = cudnn.cudnn
-    _algorithm = libcudnn.CUDNN_SOFTMAX_LOG
-    _mode = libcudnn.CUDNN_SOFTMAX_MODE_CHANNEL
-    _cudnn_version = libcudnn.getVersion()
-
-
-def logsumexp(xp, x):
-    m = x.max(axis=1, keepdims=True)
-    y = x - m
-    xp.exp(y, out=y)
-    return xp.log(y.sum(axis=1, keepdims=True)) + m
-
-
-def softmax_log(x, use_cudnn):
-    xp = cuda.get_array_module(x)
-    if (xp != numpy and cuda.cudnn_enabled and use_cudnn and
-            _cudnn_version >= 3000):
-        oz_dtype = 'd' if x.dtype == 'd' else 'f'
-        one = numpy.array(1, dtype=oz_dtype).ctypes
-        zero = numpy.array(0, dtype=oz_dtype).ctypes
-        handle = cudnn.get_handle()
-        x_cube = x.reshape(x.shape[:2] + (-1, 1))
-        desc = cudnn.create_tensor_descriptor(x_cube)
-        y = xp.empty_like(x)
-        libcudnn.softmaxForward(
-            handle, _algorithm, _mode, one.data, desc.value,
-            x_cube.data.ptr, zero.data, desc.value,
-            y.data.ptr)
-        return y
-    else:
-        log_z = logsumexp(xp, x)
-        return x - log_z
 
 
 class SoftmaxCrossEntropy(function.Function):
@@ -75,12 +40,15 @@ class SoftmaxCrossEntropy(function.Function):
                    '`0 <= t < x.shape[1] or t == %d`' % self.ignore_label)
             raise ValueError(msg)
 
+    def _log_softmax(self, x):
+        return log_softmax.LogSoftmax(self.use_cudnn).forward((x,))[0]
+
     def forward_cpu(self, inputs):
         x, t = inputs
         if chainer.is_debug():
             self._check_input_values(x, t)
 
-        log_y = softmax_log(x, False)
+        log_y = self._log_softmax(x)
         if self.cache_score:
             self.y = numpy.exp(log_y)
         log_yd = numpy.rollaxis(log_y, 1)
@@ -105,7 +73,7 @@ class SoftmaxCrossEntropy(function.Function):
         if chainer.is_debug():
             self._check_input_values(x, t)
 
-        log_y = softmax_log(x, self.use_cudnn)
+        log_y = self._log_softmax(x)
         if self.cache_score:
             self.y = cupy.exp(log_y)
         if getattr(self, 'normalize', True):
@@ -129,7 +97,7 @@ class SoftmaxCrossEntropy(function.Function):
         if hasattr(self, 'y'):
             y = self.y.copy()
         else:
-            log_y = softmax_log(x, self.use_cudnn)
+            log_y = self._log_softmax(x)
             y = numpy.exp(log_y)
         if y.ndim == 2:
             gx = y
@@ -155,7 +123,7 @@ class SoftmaxCrossEntropy(function.Function):
         if hasattr(self, 'y'):
             y = self.y
         else:
-            y = softmax_log(x, self.use_cudnn)
+            y = self._log_softmax(x)
             cupy.exp(y, out=y)
         gloss = grad_outputs[0]
         n_unit = t.size // len(t)
