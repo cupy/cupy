@@ -215,6 +215,7 @@ def to_cpu(array, stream=None):
 
     """
     if isinstance(array, ndarray):
+        check_cuda_available()
         with array.device:
             return array.get(stream)
     elif isinstance(array, numpy.ndarray):
