@@ -56,8 +56,8 @@ class VAE(chainer.Chain):
             rec_loss = 0
             for l in six.moves.range(k):
                 z = F.gaussian(mu, ln_var)
-                rec_loss += F.bernoulli_nll(x, self.decode(z, sigmoid=False)) / \
-                    (k * batchsize)
+                rec_loss += F.bernoulli_nll(x, self.decode(z, sigmoid=False)) \
+                    / (k * batchsize)
             self.rec_loss = rec_loss
             self.loss = self.rec_loss + \
                 C * gaussian_kl_divergence(mu, ln_var) / batchsize
