@@ -71,6 +71,17 @@ class TestToCPU(unittest.TestCase):
         self.assertIsInstance(y, numpy.ndarray)
         numpy.testing.assert_array_equal(self.x, y)
 
+    @attr.multi_gpu(2)
+    def test_cupy_array2(self):
+        with cuda.Device(0):
+            x = cuda.to_gpu(self.x)
+            if not self.c_contiguous:
+                x = cuda.cupy.asfortranarray(x)
+        with cuda.Device(1):
+            y = cuda.to_cpu(x)
+        self.assertIsInstance(y, numpy.ndarray)
+        numpy.testing.assert_array_equal(self.x, y)
+
     def test_variable(self):
         x = chainer.Variable(self.x)
         with self.assertRaises(TypeError):
