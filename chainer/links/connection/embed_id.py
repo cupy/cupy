@@ -39,4 +39,6 @@ class EmbedID(link.Link):
             ~chainer.Variable: Batch of corresponding embeddings.
 
         """
-        return embed_id.embed_id(x, self.W, ignore_label=self.ignore_label)
+        # for old pickled files
+        ignore_label = getattr(self, 'ignore_label', None)
+        return embed_id.embed_id(x, self.W, ignore_label=ignore_label)
