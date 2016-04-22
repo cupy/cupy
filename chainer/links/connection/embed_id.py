@@ -24,6 +24,9 @@ class EmbedID(link.Link):
         W (~chainer.Variable): Embedding parameter matrix.
 
     """
+
+    ignore_label = None
+
     def __init__(self, in_size, out_size, ignore_label=None):
         super(EmbedID, self).__init__(W=(in_size, out_size))
         self.W.data[...] = numpy.random.randn(in_size, out_size)
@@ -39,6 +42,4 @@ class EmbedID(link.Link):
             ~chainer.Variable: Batch of corresponding embeddings.
 
         """
-        # for old pickled files
-        ignore_label = getattr(self, 'ignore_label', None)
-        return embed_id.embed_id(x, self.W, ignore_label=ignore_label)
+        return embed_id.embed_id(x, self.W, ignore_label=self.ignore_label)
