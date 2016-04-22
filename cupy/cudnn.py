@@ -85,6 +85,25 @@ def create_uninitialized_tensor_descriptor():
     return desc
 
 
+def create_tensor_nd_descriptor(arr):
+    desc = Descriptor(cudnn.createTensorDescriptor(),
+                      cudnn.destroyTensorDescriptor)
+    if not arr.flags.c_contiguous:
+        raise ValueError('cupy.cudnn supports c-contiguous arrays only')
+    data_type = get_data_type(arr.dtype)
+    shape = arr.shape
+    # numpy's stride is defined in bytes, but cudnn's stride is defined in
+    # size of element
+    strides = [s // arr.itemsize for s in arr.strides]
+
+    c_shape = _to_ctypes_array(shape)
+    c_strides = _to_ctypes_array(strides)
+    cudnn.setTensorNdDescriptor(desc.value, data_type,
+                                arr.ndim, c_shape.data, c_strides.data)
+
+    return desc
+
+
 def create_filter_descriptor(arr, mode=cudnn.CUDNN_CROSS_CORRELATION):
     desc = Descriptor(cudnn.createFilterDescriptor(),
                       cudnn.destroyFilterDescriptor)
@@ -180,6 +199,39 @@ def activation_backward(x, y, gy, mode):
         desc.value, gy.data.ptr, desc.value, x.data.ptr,
         zero.data, desc.value, gx.data.ptr)
     return gx
+
+
+def create_dropout_descriptor(handle, dropout, states, state_size_in_bytes, seed):
+    desc = Descriptor(cudnn.createDropoutDescriptor(),
+                      cudnn.destroyDropoutDescriptor)
+    cudnn.setDropoutDescriptor(desc.value, handle, dropout,
+                               states, state_size_in_bytes, seed)
+    return desc
+
+
+def create_rnn_descriptor(hidden_size, seq_length, num_layers, dropout_desc,
+                          input_mode, direction, mode, data_type):
+    desc = Descriptor(cudnn.createRNNDescriptor(),
+                      cudnn.destroyRNNDescriptor)
+    cudnn.setRNNDescriptor(
+        desc.value, hidden_size, seq_length, num_layers, dropout_desc.value,
+        input_mode, direction, mode, data_type)
+    return desc
+
+
+def get_rnn_lin_layer_matrix_params(
+        handle, rnn_desc, layer, x_desc, w_desc, w, lin_layer_id):
+    mat_desc = Descriptor(cudnn.createFilterDescriptor(),
+                          cudnn.destroyFilterDescriptor)
+    ptr = numpy.array(0, dtype=numpy.intp)
+    cudnn.getRNNLinLayerMatrixParams(
+        handle, rnn_desc.value, layer, x_desc.data, w_desc.value, w.data.ptr,
+        lin_layer_id, mat_desc.value, ptr.ctypes.data)
+    offset = (ptr - w.data.ptr) // 4
+    _, _, _, dim = libcudnn.getFilterNdDescriptor(mat_desc.value, 3)
+    size = numpy.prod(dim)
+    mat = w[offset: offset+size]
+    return mat
 
 
 if _cudnn_version >= 3000:
