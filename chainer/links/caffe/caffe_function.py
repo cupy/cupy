@@ -331,7 +331,7 @@ class CaffeFunction(link.Chain):
             W_blob = blobs[0]
             bias_blob = blobs[1] if bias_term else None
             func = _ScaleChain(axis, W_blob, bias_blob)
-        # Case of two bottoms where W is give as a bottom.
+        # Case of two bottoms where W is given as a bottom.
         else:
             bias_blob = blobs[0] if bias_term else None
             func = _ScaleChain(axis, None, bias_blob)
