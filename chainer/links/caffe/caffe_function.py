@@ -505,7 +505,7 @@ class _ScaleChain(link.Chain):
 
         # Add bias term if given.
         if bias_blob is not None:
-            func = _BiasLink(bias_blob)
+            func = _BiasLink(axis, bias_blob)
             self.add_link('b', func)
         else:
             self.b = None
