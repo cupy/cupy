@@ -38,6 +38,7 @@ from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
+from chainer.functions.loss import black_out
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import crf1d
 from chainer.functions.loss import cross_covariance
@@ -172,6 +173,7 @@ binary_accuracy = binary_accuracy.binary_accuracy
 
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
+black_out = black_out.black_out
 Contrastive = contrastive.Contrastive
 contrastive = contrastive.contrastive
 crf1d = crf1d.crf1d
