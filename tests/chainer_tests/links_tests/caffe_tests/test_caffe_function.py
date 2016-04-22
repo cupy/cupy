@@ -549,7 +549,7 @@ class TestLeakyReLU(TestCaffeFunctionBaseMock):
 
 class TestScale(TestCaffeFunctionBaseMock):
 
-    func_name = 'chainer.links.caffe.caffe_function._ScaleFunction.__call__'
+    func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
     in_shapes = [(2, 3), (2, 3)]
     out_shapes = [(2, 3)]
 
@@ -560,6 +560,9 @@ class TestScale(TestCaffeFunctionBaseMock):
                 'type': 'Scale',
                 'bottom': ['x', 'y'],
                 'top': ['z'],
+                'scale_param': {
+                    'axis': 0,
+                }
             }
         ]
     }
@@ -573,7 +576,7 @@ class TestScale(TestCaffeFunctionBaseMock):
 
 class TestScaleOnlyBottom(TestCaffeFunctionBaseMock):
 
-    func_name = 'chainer.links.caffe.caffe_function._ScaleLink.__call__'
+    func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
     in_shapes = [(2, 3)]
     out_shapes = [(2, 3)]
 
@@ -584,11 +587,102 @@ class TestScaleOnlyBottom(TestCaffeFunctionBaseMock):
                 'type': 'Scale',
                 'bottom': ['x'],
                 'top': ['y'],
+                'blobs': [
+                    {
+                        'shape': {
+                            'dim': [2, 3],
+                        },
+                        'data': list(range(6)),
+                    }
+                ],
+                'scale_param': {
+                    'axis': 0,
+                }
             }
         ]
     }
 
     def test_scale_only_bottom(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0])
+
+
+class TestScaleWithBias(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
+    in_shapes = [(2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Scale',
+                'bottom': ['x', 'y'],
+                'top': ['z'],
+                'blobs': [
+                    {
+                        'shape': {
+                            'dim': [2, 3],
+                        },
+                        'data': list(range(6)),
+                    }
+                ],
+                'scale_param': {
+                    'axis': 0,
+                    'bias_term': True,
+                }
+            }
+        ]
+    }
+
+    def test_scale_with_bias(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x', 'y'], ['z'])
+        self.mock.assert_called_once_with(self.inputs[0], self.inputs[1])
+
+
+class TestScaleOnlyBottomWithBias(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Scale',
+                'bottom': ['x'],
+                'top': ['y'],
+                'blobs': [
+                    # For W parameter.
+                    {
+                        'shape': {
+                            'dim': [2, 3],
+                        },
+                        'data': list(range(6)),
+                    },
+                    # For bias.
+                    {
+                        'shape': {
+                            'dim': [2, 3],
+                        },
+                        'data': list(range(6)),
+                    }
+                ],
+                'scale_param': {
+                    'axis': 0,
+                    'bias_term': True,
+                }
+            }
+        ]
+    }
+
+    def test_scale_only_bottom_with_bias(self):
         self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
