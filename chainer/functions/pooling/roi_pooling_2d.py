@@ -59,7 +59,6 @@ class ROIPooling2D(function.Function):
 
         x_type, roi_type = in_types
         type_check.expect(
-            x_type.shape[0] == roi_type.shape[0],
             x_type.dtype == numpy.float32,
             x_type.ndim == 4,
             roi_type.dtype == numpy.float32,
