@@ -6,6 +6,7 @@ import warnings
 import numpy
 import six
 
+from chainer import variable
 from chainer import functions
 from chainer import link
 from chainer import links
@@ -316,6 +317,23 @@ class CaffeFunction(link.Chain):
             fw = functions.relu
 
         self.forwards[layer.name] = fw
+        self._add_layer(layer)
+
+    @_layer('Eltwise', 'ELTWISE')
+    def _setup_eltwise(self, layer):
+        operation = layer.eltwise_param.operation
+
+        if operation == 0:      # PROD
+            op = variable.Variable.__mul__
+        elif operation == 1:    # SUM
+            op = variable.Variable.__add__
+        elif operation == 2:    # MAX
+            op = functions.maximum
+
+        def _func(*xs):
+            return reduce(lambda x, y: op(x, y), xs)
+
+        self.forwards[layer.name] = _func
         self._add_layer(layer)
 
     @_layer('Scale', 'NONE')    # TODO: old name

@@ -547,6 +547,91 @@ class TestLeakyReLU(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0], slope=0.5)
 
 
+class TestEltwiseProd(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.variable.Variable.__mul__'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 0,  # PROD
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_prod(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x1', 'x2', 'x3'], ['y'])
+        self.mock.assert_has_calls([mock.call(self.inputs[1]),
+                                    mock.call(self.inputs[2])])
+
+
+class TestEltwiseSum(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.variable.Variable.__add__'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 1,  # SUM
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_sum(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x1', 'x2', 'x3'], ['y'])
+        self.mock.assert_has_calls([mock.call(self.inputs[1]),
+                                    mock.call(self.inputs[2])])
+
+
+class TestEltwiseMax(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.maximum'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 2,  # MAX
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_max(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x1', 'x2', 'x3'], ['y'])
+        self.mock.assert_has_calls(
+            [mock.call(self.inputs[0], self.inputs[1]),
+             mock.call(self.outputs[0], self.inputs[2])])
+
+
 class TestScale(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
