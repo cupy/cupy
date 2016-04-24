@@ -341,7 +341,7 @@ cdef class SingleDeviceMemoryPool:
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
-        # round up
+        # Round up the memory size to fit memory alignment of cudaMalloc
         unit = self._allocation_unit_size
         size = (((size + unit - 1) // unit) * unit)
         free = self._free[size]
