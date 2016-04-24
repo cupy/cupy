@@ -259,6 +259,10 @@ max
 ~~~
 .. autofunction:: max
 
+maximum
+~~~~~~~
+.. autofunction:: maximum
+
 min
 ~~~
 .. autofunction:: min

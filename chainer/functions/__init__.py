@@ -49,6 +49,7 @@ from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import matmul
 from chainer.functions.math import minmax
+from chainer.functions.math import maximum
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -180,6 +181,8 @@ MatMul = matmul.MatMul
 matmul = matmul.matmul
 Max = minmax.Max
 max = minmax.max
+Maximum = maximum.Maximum
+maximum = maximum.maximum
 Min = minmax.Min
 min = minmax.min
 Sin = trigonometric.Sin
