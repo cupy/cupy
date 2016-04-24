@@ -322,18 +322,11 @@ class CaffeFunction(link.Chain):
     @_layer('Eltwise', 'ELTWISE')
     def _setup_eltwise(self, layer):
         operation = layer.eltwise_param.operation
+        coeffs = layer.eltwise_param.coeff
+        if coeffs == []:
+            coeffs = None
 
-        if operation == 0:      # PROD
-            op = variable.Variable.__mul__
-        elif operation == 1:    # SUM
-            op = variable.Variable.__add__
-        elif operation == 2:    # MAX
-            op = functions.maximum
-
-        def _func(*xs):
-            return reduce(lambda x, y: op(x, y), xs)
-
-        self.forwards[layer.name] = _func
+        self.forwards[layer.name] = _EltwiseFunction(operation, coeffs)
         self._add_layer(layer)
 
     @_layer('Scale', 'NONE')    # TODO: old name
@@ -491,6 +484,35 @@ class _CallChildLink(object):
 
     def __call__(self, *xs):
         return self.caffe_func[self.name](*xs)
+
+
+class _EltwiseFunction(object):
+    def __init__(self, operation, coeffs=None):
+        if coeffs is not None:
+            assert len(coeffs) > 0
+        self.operation = operation
+        self.coeffs = coeffs
+
+    def __call__(self, *xs):
+        operation = self.operation
+
+        if operation == 0:      # PROD
+            return reduce(lambda x, y: x * y, xs),
+
+        elif operation == 1:    # SUM
+            coeffs = self.coeffs
+            if coeffs is not None:
+                assert len(xs) == len(coeffs)
+                xs2 = [x * coeff for x, coeff in zip(xs, coeffs)]
+            else:
+                xs2 = xs
+            return reduce(lambda x, y: x + y, xs2),
+
+        elif operation == 2:    # MAX
+            return reduce(lambda x, y: functions.maximum(x, y), xs),
+
+        else:
+            raise RuntimeError('Invalid EltwiseParameter.EltwiseOp value.')
 
 
 class _ScaleFunction(object):

@@ -603,6 +603,61 @@ class TestEltwiseSum(TestCaffeFunctionBaseMock):
                                     mock.call(self.inputs[2])])
 
 
+class TestEltwiseSumCoeff(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.variable.Variable.__add__'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 1,  # SUM
+                    'coeff': list(range(3)),
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_sum(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x1', 'x2', 'x3'], ['y'])
+        self.assertEqual(self.mock.call_count, 2)
+
+
+class TestEltwiseSumInvalidCoeff(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.variable.Variable.__add__'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 1,           # SUM
+                    'coeff': list(range(2)),  # not same as number of bottoms
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_sum(self):
+        self.init_func()
+        with self.assertRaises(AssertionError):
+            self.call(['x1', 'x2', 'x3'], ['y'])
+
+
 class TestEltwiseMax(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.maximum'
