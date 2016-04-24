@@ -9,7 +9,7 @@ def with_requires(*requirements):
 
        This test case runs only when `numpy>=1.10` is installed.
 
-       >>> from cupy import testing
+       >>> from chainer import testing
        ... class Test(unittest.TestCase):
        ...     @testing.with_requires('numpy>=1.10')
        ...     def test_for_numpy_1_10(self):
