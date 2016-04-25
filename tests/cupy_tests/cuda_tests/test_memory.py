@@ -107,33 +107,33 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         self.pool = memory.SingleDeviceMemoryPool(allocator=mock_alloc)
 
     def test_alloc(self):
-        p1 = self.pool.malloc(10)
-        p2 = self.pool.malloc(10)
-        p3 = self.pool.malloc(20)
+        p1 = self.pool.malloc(1000)
+        p2 = self.pool.malloc(1000)
+        p3 = self.pool.malloc(2000)
         self.assertNotEqual(p1.ptr, p2.ptr)
         self.assertNotEqual(p1.ptr, p3.ptr)
         self.assertNotEqual(p2.ptr, p3.ptr)
 
     def test_free(self):
-        p1 = self.pool.malloc(10)
+        p1 = self.pool.malloc(1000)
         ptr1 = p1.ptr
         del p1
-        p2 = self.pool.malloc(10)
+        p2 = self.pool.malloc(1000)
         self.assertEqual(ptr1, p2.ptr)
 
     def test_free_different_size(self):
-        p1 = self.pool.malloc(10)
+        p1 = self.pool.malloc(1000)
         ptr1 = p1.ptr
         del p1
-        p2 = self.pool.malloc(20)
+        p2 = self.pool.malloc(2000)
         self.assertNotEqual(ptr1, p2.ptr)
 
     def test_free_all_free(self):
-        p1 = self.pool.malloc(10)
+        p1 = self.pool.malloc(1000)
         ptr1 = p1.ptr
         del p1
         self.pool.free_all_free()
-        p2 = self.pool.malloc(10)
+        p2 = self.pool.malloc(1000)
         self.assertNotEqual(ptr1, p2.ptr)
 
 
