@@ -192,6 +192,7 @@ class Mul(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         type_check.expect(
+            in_types[0].dtype.kind == 'f',
             in_types[0].dtype == in_types[1].dtype,
             in_types[0].shape == in_types[1].shape
         )
@@ -240,8 +241,8 @@ class Div(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         type_check.expect(
-            in_types[0].dtype == in_types[1].dtype,
             in_types[0].dtype.kind == 'f',
+            in_types[0].dtype == in_types[1].dtype,
             in_types[0].shape == in_types[1].shape
         )
 
@@ -314,8 +315,8 @@ class PowVarVar(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         type_check.expect(
-            in_types[0].dtype == in_types[1].dtype,
             in_types[0].dtype.kind == 'f',
+            in_types[0].dtype == in_types[1].dtype,
             in_types[0].shape == in_types[1].shape
         )
 
