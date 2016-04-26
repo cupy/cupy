@@ -598,7 +598,7 @@ class TestVariableConstantOp(unittest.TestCase):
         self.backward_cpu(lambda x, y: x ** y)
 
     @condition.retry(10)
-    def s(self):
+    def test_rpow_backward_cpu(self):
         self.backward_cpu(lambda x, y: y ** x)
 
     def backward_gpu(self, op):
