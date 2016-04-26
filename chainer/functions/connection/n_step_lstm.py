@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.utils import type_check
 
 
 if cuda.cudnn_enabled:
@@ -11,8 +12,8 @@ if cuda.cudnn_enabled:
 
 class PointerArray(object):
 
-    def __init__(lst, back_pointer):
-        self._value = numpy.array(l, dtype=numpy.intp).ctypes
+    def __init__(self, lst, back_pointer):
+        self._value = numpy.array(lst, dtype=numpy.intp)
         # Store back_pointer to prevent the GC removes the original variable
         self._back_pointer = back_pointer
 
@@ -28,7 +29,7 @@ def _make_tensor_descriptor_array(xs):
     return PointerArray([d.value for d in descs], descs)
 
 
-def make_ptr_array(xs):
+def _make_ptr_array(xs):
     """Make an array of pointers denoting pointers of ndarrays.
     """
     return PointerArray([x.data.ptr for x in xs], xs)
@@ -36,10 +37,11 @@ def make_ptr_array(xs):
 
 class NStepLSTM(function.Function):
 
-    def __init__(self):
+    def __init__(self, n_layers, train=True):
         self.seed = 1337
         self.dropout = 0.5
-        self.n_layers = 3
+        self.n_layers = n_layers
+        self.train = True
 
     def check_type_forward(self, in_types):
         h_type, c_type, x_type = in_types
@@ -54,11 +56,11 @@ class NStepLSTM(function.Function):
             c_type.shape[1] == self.n_layers,
 
             # mini-batch size
-            h_type.shape[0] == c_types.shape[0],
-            h_type.shape[0] == x_types.shape[0],
+            h_type.shape[0] == c_type.shape[0],
+            h_type.shape[0] == x_type.shape[1],
 
             # hidden size
-            h_type.shape[2] == c_types.shape[2],
+            h_type.shape[2] == c_type.shape[2],
         )
 
     def forward(self, inputs):
@@ -85,8 +87,8 @@ class NStepLSTM(function.Function):
             libcudnn.CUDNN_LSTM, libcudnn.CUDNN_DATA_FLOAT)
 
         c_x_descs = _make_tensor_descriptor_array(xs)
-        hx_desc = cudnn.create_tensor_nd_descriptor(hx)
-        cx_desc = cudnn.create_tensor_nd_descriptor(cx)
+        hx_desc = cudnn.create_tensor_nd_descriptor(hx, False)
+        cx_desc = cudnn.create_tensor_nd_descriptor(cx, False)
 
         weights_size = libcudnn.getRNNParamsSize(
             handle, rnn_desc.value, c_x_descs.data)
@@ -96,7 +98,7 @@ class NStepLSTM(function.Function):
         for layer in range(self.n_layers):
             for lin_layer_id in range(8):
                 mat = cudnn.get_rnn_lin_layer_matrix_params(
-                    handle, rnn_desc.value, layer, c_x_descs, w_desc, w,
+                    handle, rnn_desc, layer, c_x_descs, w_desc, w,
                     lin_layer_id)
                 # TODO(unno): set mat
 
@@ -115,7 +117,7 @@ class NStepLSTM(function.Function):
         c_x = _make_ptr_array(xs)
         c_y = _make_ptr_array(ys)
 
-        if x.volatile == 'on':
+        if not self.train:
             libcudnn.RNNForwardInference(
                 handle, rnn_desc.value,
                 c_x_descs.data, c_x.data, hx_desc.value, hx.data.ptr,
@@ -125,7 +127,7 @@ class NStepLSTM(function.Function):
 
         else:
             reserve_size = libcudnn.getRNNTrainingReserveSize(
-                handle, rnn_desc, c_x_descs.data)
+                handle, rnn_desc.value, c_x_descs.data)
             self.reserve_space = cuda.cupy.empty((reserve_size,), dtype='b')
             libcudnn.RNNForwardTraining(
                 handle, rnn_desc.value,
@@ -145,8 +147,8 @@ class NStepLSTM(function.Function):
         cx_desc = cudnn.create_tensor_nd_descriptor(cx)
         dhy_desc = cudnn.create_tensor_nd_descriptor(dhy)
         dcy_desc = cudnn.create_tensor_nd_descriptor(dcy)
-        c_dy_descs = _make_tensor_desciptor_array(dys)
-        c_dy = make_ptr_array(dys)
+        c_dy_descs = _make_tensor_descriptor_array(dys)
+        c_dy = _make_ptr_array(dys)
 
         length = hx.shape[0]
         n_units = hx.shape[2]
@@ -156,12 +158,12 @@ class NStepLSTM(function.Function):
         workspace = cuda.cupy.empty((work_size,), dtype='b')
 
         dhx = cuda.cupy.empty_like(hx)
-        dcx = cuda.cupy.empty_like(cs)
+        dcx = cuda.cupy.empty_like(cx)
         dxs = cuda.cupy.empty_like(xs)
         dhx_desc = cudnn.create_tensor_nd_descriptor(dhx)
         dcx_desc = cudnn.create_tensor_nd_descriptor(dcx)
         c_dx_descs = _make_tensor_descriptor_array(dxs)
-        c_dx = make_ptr_array(dxs)
+        c_dx = _make_ptr_array(dxs)
 
         libcudnn.RNNBackwardData(
             handle, rnn_desc, c_y_descs.data, c_y.data,

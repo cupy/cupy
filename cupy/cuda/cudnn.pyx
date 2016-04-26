@@ -238,6 +238,9 @@ cdef extern from "cupy_cudnn.h":
     int cudnnGetRNNWorkspaceSize(
         Handle handle, RNNDescriptor rnnDesc, TensorDescriptor* xDesc,
         size_t* sizeInBytes)
+    int cudnnGetRNNTrainingReserveSize(
+        Handle handle, RNNDescriptor rnnDesc, TensorDescriptor* xDesc,
+        size_t* sizeInBytes)
     int cudnnGetRNNParamsSize(
         Handle handle, RNNDescriptor rnnDesc, TensorDescriptor* xDesc,
         size_t* sizeInBytes)
@@ -258,7 +261,7 @@ cdef extern from "cupy_cudnn.h":
     int cudnnRNNForwardTraining(
         Handle handle, RNNDescriptor rnnDesc, TensorDescriptor* xDesc, void* x,
         TensorDescriptor hxDesc, void* hx, TensorDescriptor cxDesc, void* cx,
-        FilterDescriptor wDesc, void* w, TensorDescriptor *yDesc, void* y,
+        FilterDescriptor wDesc, void* w, TensorDescriptor* yDesc, void* y,
         TensorDescriptor hyDesc, void* hy, TensorDescriptor cyDesc, void* cy,
         void* workspace, size_t workSpaceSizeInBytes, void* reserveSpace,
         size_t reserveSpaceSizeInBytes)
@@ -273,7 +276,7 @@ cdef extern from "cupy_cudnn.h":
         size_t reserveSpaceSizeInBytes)
     int cudnnRNNBackwardWeights(
         Handle handle, RNNDescriptor rnnDesc, TensorDescriptor* xDesc, void* x,
-        TensorDescriptor hxDesc, void* hx, TensorDescriptor * yDesc, void* y,
+        TensorDescriptor hxDesc, void* hx, TensorDescriptor* yDesc, void* y,
         void* workspace, size_t workSpaceSizeInBytes, FilterDescriptor dwDesc,
         void* dw, void* reserveSpace, size_t reserveSpaceSizeInBytes)
 
@@ -885,6 +888,16 @@ cpdef getRNNWorkspaceSize(
     return sizeInBytes
 
 
+cpdef getRNNTrainingReserveSize(
+    size_t handle, size_t rnnDesc, size_t xDesc):
+    cdef size_t sizeInBytes
+    status = cudnnGetRNNTrainingReserveSize(
+        <Handle>handle, <RNNDescriptor>rnnDesc, <TensorDescriptor*>xDesc,
+        &sizeInBytes)
+    check_status(status)
+    return sizeInBytes
+
+
 cpdef getRNNParamsSize(size_t handle, size_t rnnDesc, size_t xDesc):
     cdef size_t sizeInBytes
     status = cudnnGetRNNParamsSize(
@@ -903,6 +916,7 @@ cpdef getRNNLinLayerMatrixParams(
         linLayerID, <FilterDescriptor>linLayerMatDesc, <void**>linLayerMat)
     check_status(status)
 
+
 cpdef getRNNLinLayerBiasParams(
     size_t handle, size_t rnnDesc, int layer, size_t xDesc, size_t wDesc,
     size_t w, int linLayerID, size_t linLayerBiasDesc, size_t linLayerBias):
@@ -911,6 +925,7 @@ cpdef getRNNLinLayerBiasParams(
         <TensorDescriptor*>xDesc, <FilterDescriptor>wDesc, <void*>w,
         linLayerID, <FilterDescriptor>linLayerBiasDesc, <void**>linLayerBias)
     check_status(status)
+
 
 cpdef RNNForwardInference(
     size_t handle, size_t rnnDesc, size_t xDesc,
@@ -924,3 +939,63 @@ cpdef RNNForwardInference(
         <void*>cx, <FilterDescriptor>wDesc, <void*>w, <TensorDescriptor*>yDesc,
         <void*>y, <TensorDescriptor>hyDesc, <void*>hy, <TensorDescriptor>cyDesc,
         <void*>cy, <void*>workspace, workSpaceSizeInBytes)
+
+
+cpdef RNNForwardTraining(
+    size_t handle, size_t rnnDesc, size_t xDesc, size_t x,
+    size_t hxDesc, size_t hx, size_t cxDesc, size_t cx,
+    size_t wDesc, size_t w,  size_t yDesc, size_t y,
+    size_t hyDesc, size_t hy, size_t cyDesc, size_t cy,
+    size_t workspace, size_t workSpaceSizeInBytes, size_t reserveSpace,
+    size_t reserveSpaceSizeInBytes):
+    status = cudnnRNNForwardTraining(
+        <Handle>handle, <RNNDescriptor>rnnDesc,
+        <TensorDescriptor*>xDesc, <void*>x,
+        <TensorDescriptor>hxDesc, <void*>hx,
+        <TensorDescriptor>cxDesc, <void*>cx,
+        <FilterDescriptor>wDesc, <void*>w,
+        <TensorDescriptor*>yDesc, <void*>y,
+        <TensorDescriptor>hyDesc, <void*> hy,
+        <TensorDescriptor>cyDesc, <void*>cy,
+        <void*>workspace, workSpaceSizeInBytes,
+        <void*>reserveSpace, reserveSpaceSizeInBytes)
+
+
+cpdef RNNBackwardData(
+    size_t handle, size_t rnnDesc, size_t yDesc, size_t y,
+    size_t dyDesc, size_t dy, size_t dhyDesc, size_t dhy,
+    size_t dcyDesc, size_t dcy, size_t wDesc, size_t w,
+    size_t hxDesc, size_t hx, size_t cxDesc, size_t cx,
+    size_t dxDesc, size_t dx, size_t dhxDesc, size_t dhx,
+    size_t dcxDesc, size_t dcx, size_t workspace,
+    size_t workSpaceSizeInBytes, size_t reserveSpace,
+    size_t reserveSpaceSizeInBytes):
+    status = cudnnRNNBackwardData(
+        <Handle>handle, <RNNDescriptor>rnnDesc,
+        <TensorDescriptor*>yDesc, <void*>y,
+        <TensorDescriptor*>dyDesc, <void*>dy,
+        <TensorDescriptor>dhyDesc, <void*>dhy,
+        <TensorDescriptor>dcyDesc, <void*>dcy,
+        <FilterDescriptor>wDesc, <void*>w,
+        <TensorDescriptor>hxDesc, <void*>hx,
+        <TensorDescriptor>cxDesc, <void*>cx,
+        <TensorDescriptor*>dxDesc, <void*>dx,
+        <TensorDescriptor>dhxDesc, <void*>dhx,
+        <TensorDescriptor>dcxDesc, <void*>dcx,
+        <void*>workspace, workSpaceSizeInBytes,
+        <void*>reserveSpace, reserveSpaceSizeInBytes)
+
+
+cpdef RNNBackwardWeights(
+    size_t handle, size_t rnnDesc, size_t xDesc, size_t x,
+    size_t hxDesc, size_t hx, size_t yDesc, size_t y,
+    size_t workspace, size_t workSpaceSizeInBytes, size_t dwDesc,
+    size_t dw, size_t reserveSpace, size_t reserveSpaceSizeInBytes):
+    status = cudnnRNNBackwardWeights(
+        <Handle>handle, <RNNDescriptor>rnnDesc,
+        <TensorDescriptor*>xDesc, <void*>x,
+        <TensorDescriptor>hxDesc, <void*>hx,
+        <TensorDescriptor*>yDesc, <void*>y,
+        <void*>workspace, workSpaceSizeInBytes,
+        <FilterDescriptor>dwDesc, <void*>dw,
+        <void*>reserveSpace, reserveSpaceSizeInBytes)

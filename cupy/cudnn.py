@@ -85,10 +85,10 @@ def create_uninitialized_tensor_descriptor():
     return desc
 
 
-def create_tensor_nd_descriptor(arr):
+def create_tensor_nd_descriptor(arr, check_contiguous=True):
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
-    if not arr.flags.c_contiguous:
+    if check_contiguous and not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
     shape = arr.shape
@@ -228,9 +228,14 @@ def get_rnn_lin_layer_matrix_params(
         handle, rnn_desc.value, layer, x_desc.data, w_desc.value, w.data.ptr,
         lin_layer_id, mat_desc.value, ptr.ctypes.data)
     offset = (ptr - w.data.ptr) // 4
-    _, _, _, dim = libcudnn.getFilterNdDescriptor(mat_desc.value, 3)
+    _, _, _, dim = cudnn.getFilterNdDescriptor(mat_desc.value, 3)
+    print(dim)
+    print('ptr', ptr)
+    print(w.data.ptr)
+    print(offset)
     size = numpy.prod(dim)
     mat = w[offset: offset+size]
+    print(mat)
     return mat
 
 
