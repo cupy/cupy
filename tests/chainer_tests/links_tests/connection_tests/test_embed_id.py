@@ -102,4 +102,15 @@ class TestEmbedIDValueCheck(unittest.TestCase):
         self.check_value_check(self.t)
 
 
+class TestEmbedIDUnpickleOldFile(unittest.TestCase):
+
+    def test_old_unpickle(self):
+        embed = links.EmbedID(3, 4)
+        # To emulate an old pickled file
+        delattr(embed, 'ignore_label')
+        x = chainer.Variable(numpy.arange(2, dtype=numpy.int32))
+        y = embed(x)
+        self.assertEqual(y.data.shape, (2, 4))
+
+
 testing.run_module(__name__, __file__)
