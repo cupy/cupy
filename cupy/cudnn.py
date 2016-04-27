@@ -85,7 +85,7 @@ def create_uninitialized_tensor_descriptor():
     return desc
 
 
-def create_tensor_nd_descriptor(arr, check_contiguous=True):
+def create_tensor_nd_descriptor(arr, check_contiguous=True, rev=False):
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
     if check_contiguous and not arr.flags.c_contiguous:
@@ -96,6 +96,9 @@ def create_tensor_nd_descriptor(arr, check_contiguous=True):
     # size of element
     strides = [s // arr.itemsize for s in arr.strides]
 
+    if rev:
+        shape = list(reversed(shape))
+        strides = list(reversed(strides))
     c_shape = _to_ctypes_array(shape)
     c_strides = _to_ctypes_array(strides)
     cudnn.setTensorNdDescriptor(desc.value, data_type,
