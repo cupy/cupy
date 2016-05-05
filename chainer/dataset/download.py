@@ -1,6 +1,10 @@
+import hashlib
+import json
 import os
+import shutil
 import tempfile
 
+import filelock
 import numpy
 from six.moves.urillib import request
 
@@ -60,46 +64,77 @@ def get_dataset_directory(dataset_name, create_directory=True):
     return path
 
 
-def retrieve(urls, path, converter):
-    """Downloads a dataset and saves converted one if needed.
-
-    This function donwloads the dataset files and converts them to a (set of)
-    NumPy array(s). The converter function takes a (list of) path(s) to
-    downloaded temporary files, and returns a dict of NumPy arrays. The dict of
-    arrays is saved to the given path.
-
-    If a file already exists at the path, this function just loads it.
+def cached_download(url):
+    """Downloads a file and caches it.
 
     Args:
-        urls (str or list of strs): URLs to download files.
-        path (str): Path to which the converted file is saved.
-        converter: Function to convert the donwloaded files. It takes a string
-            if ``urls`` is a string, or a list of strings if ``urls`` is also a
-            list of strings.
+        url (str): URL to download from.
 
     Returns:
-        A dictionary or a dictionary-like object.
+        str: Path to the downloaded file.
+
+    """
+    cache_root = os.path.join(_dataset_root, '_dl_cache')
+    try:
+        os.makedirs(cache_root)
+    except OSError:
+        if not os.path.exists(cache_root):
+            raise RuntimeError('cannot create download cache directory')
+
+    lock_path = os.path.join(cache_root, '_dl_lock')
+    urlhash = hashlib.md5(url).hexdigest()
+    cache_path = os.path.join(cache_root, urlhash)
+
+    with filelock.FileLock(lock_path):
+        if os.path.exists(cache_path):
+            return cache_path
+        request.urlretrieve(url, cache_path)
+
+    return cache_path
+
+
+def cache_or_load_file(path, creator, loader):
+    """Caches a file if it does not exist, or loads it otherwise.
+
+    This is a utility function used in dataset loading routines. The creator
+    creates the file to given path, and returns the content. If the file
+    already exists, the loader is called instead, and it loads the cached file
+    and returns the content.
+
+    Note that the path passed to the creator is temporary one, and not same as
+    the path given to this function. This function safely renames the file
+    created by the creator to a given path, even if this function is called
+    simultaneously by multiple threads or processes.
+
+    Args:
+        path (str): Path to save the cached file.
+        creator: Function to create the file and returns the content. It takes
+            a path to temporary place as the argument. Before calling the
+            creator, there is no file at the temporary path.
+        loader: Function to load the cached file and returns the content.
+
+    Returns:
+        It returns the returned values by the creator or the loader.
 
     """
     if os.path.exists(path):
-        return numpy.load(path)
-        
-    if isinstance(urls, str):
-        filenames, _ = request.urlretrieve(urls)
-    else:
-        filenames = [request.urlretrieve(url)[0] for url in urls]
+        return loader(path)
 
-    result = converter(filenames)
+    file_name = os.path.basename(path)
+    temp_dir = tempfile.mkdtemp()
+    temp_path = os.path.join(temp_dir, file_name)
 
-    dirname = os.path.dirname(path)
-    tmp_path = tempfile.mkstemp(suffix='.npz', dir=dirname)
-    numpy.savez_compressed(tmp_path, **result)
+    lock_path = os.path.join(_dataset_root, '_create_lock')
 
     try:
-        os.rename(tmp_path, path)
+        content = creator(temp_path)
+        with filelock.FileLock(lock_path):
+            if not os.path.exists(path):
+                os.rename(temp_path, path)
     except OSError:
-        os.remove(tmp_path)
         if not os.path.exists(path):
             raise
+    finally:
+        shutil.rmtree(temp_dir)
 
-    return result
+    return content
