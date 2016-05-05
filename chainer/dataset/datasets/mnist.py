@@ -18,8 +18,8 @@ def get_mnist(withlabel=True, ndim=1, scale=1.):
     values in the interval ``[0, scale]``.
 
     This function returns the training set and the test set of the official
-    MNIST dataset. If ``withlabel`` is True, then each dataset consists of
-    tuples of images and labels, otherwise it only consists of images.
+    MNIST dataset. If ``withlabel`` is True, each dataset consists of tuples of
+    images and labels, otherwise it only consists of images.
 
     Args:
         withlabel (bool): If True, it returns datasets with labels. In this
