@@ -10,69 +10,43 @@ from chainer.dataset.datasets import tuple_dataset
 from chainer.dataset import download
 
 
-def get_mnist_training(withlabel=True, ndim=1, dtype=numpy.float32, scale=1.):
-    """Gets the MNIST training set.
+def get_mnist(withlabel=True, ndim=1, scale=1.):
+    """Gets the MNIST dataset.
 
     `MNIST <http://yann.lecun.com/exdb/mnist/>`_ is a set of hand-written
     digits represented by grey-scale 28x28 images. Each pixel is scaled to
     values in the interval ``[0, scale]``.
 
-    This function returns the training set of the official MNIST dataset.
+    This function returns the training set and the test set of the official
+    MNIST dataset. If ``withlabel`` is True, then each dataset consists of
+    tuples of images and labels, otherwise it only consists of images.
 
     Args:
-        withlabel (bool): If True, it returns a dataset with labels. In this
+        withlabel (bool): If True, it returns datasets with labels. In this
             case, each example is a tuple of an image and a label. Otherwise,
-            the dataset only contains images.
+            the datasets only contain images.
         ndim (int): Number of dimensions of each image. The shape of each image
             is determined depending on ndim as follows:
                 - ``ndim == 1``: the shape is ``(784,)``
                 - ``ndim == 2``: the shape is ``(28, 28)``
                 - ``ndim == 3``: the shape is ``(1, 28, 28)``
-        dtype: Data type of images.
         scale (float): Pixel value scale. If it is 1 (default), pixels are
             scaled to the interval ``[0, 1]``.
 
     Returns:
-        Dataset of tuples if ``withlabel`` is True, or an array of images
-        otherwise. In latter case, each row corresponds to an image.
-
-    .. seealso::
-       Use :func:`get_mnist_test` to retrieve the MNIST test set.
+        A tuple of two datasets. If ``withlabel`` is True, both datasets are
+        :class:`~chainer.dataset.datasets.TupleDataset` instances. Othewrise,
+        both datasets are arrays of images.
 
     """
-    raw = _retrieve_mnist_training()
-    return _preprocess_mnist(raw, withlabel, ndim, dtype, scale)
+    train_raw = _retrieve_mnist_training()
+    train = _preprocess_mnist(train_raw, withlabel, ndim, scale)
+    test_raw = _retrieve_mnist_test()
+    test = _preprocess_mnist(test_raw, withlabel, ndim, scale)
+    return train, test
 
 
-def get_mnist_test(withlabel=True, ndim=1, dtype=numpy.float32, scale=1.):
-    """Gets the MNIST test set.
-
-    `MNIST <http://yann.lecun.com/exdb/mnist/>`_ is a set of hand-written
-    digits represented by grey-scale 28x28 images. Each pixel is scaled to
-    values in the interval ``[0, scale]``.
-
-    This function returns the test set of the official MNIST dataset.
-
-    Args:
-        withlabel (bool): If True, it returns a dataset with labels. In this
-            case, each example is a tuple of an image and a label. Othewrise,
-            the dataset only contains images.
-        ndim (int): Number of dimensions of each image. See
-            :func:`get_mnist_training` for details.
-        dtype: Data type of images.
-        scale (float): Pixel value scale. If it is 1 (default), pixels are
-            scaled to the interval ``[0, 1]``.
-
-    Returns:
-        Dataset of tuples if ``withlabel`` is True, or an array of images
-        otherwise. In latter case, each row corresponds to an image.
-
-    """
-    raw = _retrieve_mnist_test()
-    return _preprocess_mnist(raw, withlabel, ndim, dtype, scale)
-
-
-def _preprocess_mnist(raw, withlabel, ndim, dtype, scale):
+def _preprocess_mnist(raw, withlabel, ndim, scale):
     images = raw['x']
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
@@ -80,7 +54,7 @@ def _preprocess_mnist(raw, withlabel, ndim, dtype, scale):
         images = images.reshape(-1, 1, 28, 28)
     elif ndim != 1:
         raise ValueError('invalid ndim for MNIST dataset')
-    images = images.astype(dtype)
+    images = images.astype(numpy.float32)
     images *= scale / 255.
 
     if withlabel:
