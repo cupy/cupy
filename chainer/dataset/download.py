@@ -1,3 +1,4 @@
+from __future__ import print_function
 import hashlib
 import json
 import os
@@ -88,6 +89,7 @@ def cached_download(url):
     with filelock.FileLock(lock_path):
         if os.path.exists(cache_path):
             return cache_path
+        print('Downloading from {}...'.format(url))
         request.urlretrieve(url, cache_path)
 
     return cache_path
