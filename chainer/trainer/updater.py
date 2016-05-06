@@ -79,7 +79,7 @@ class StandardUpdater(Updater):
     custom update function via the ``update_func`` argument. The other one is
     by inheriting this class and overriding the :meth:`update` method. In
     latter case, do not forget to update the iteration counter at each call of
-    this method, since this value is watched by the trainer for deciding when
+    this method, because this value is watched by the trainer for deciding when
     to invoke extensions and when to exit the training loop.
 
     Args:
@@ -94,8 +94,11 @@ class StandardUpdater(Updater):
             ``loss_func`` if specified.
         converter: Converter function to build input arrays. If it is omitted,
             :func:`~chainer.dataset.concat_examples` is used. If
-            ``update_func`` is specified, this argument is ignored and
+            ``update_func`` is specified, this argument is ignored and not
             used.
+        device: Device to which the training data is sent. Negative value
+            indicates the host memory (CPU). If ``update_func`` or
+            ``converter`` is specified, this argument is ignored and not used.
         loss_func: Loss function. The target link of the main optimizer is used
             by default. If ``update_func`` is specified, this argument is
             ignored and not used.
@@ -105,7 +108,7 @@ class StandardUpdater(Updater):
 
     """
     def __init__(self, iterator, optimizer, update_func=None, converter=None,
-                 loss_func=None):
+                 device=None, loss_func=None):
         if isinstance(iterator, iterator_module.Iterator):
             iterator = {'main': iterator}
         self._iterators = iterator
@@ -115,7 +118,7 @@ class StandardUpdater(Updater):
         self._optimizers = optimizer
 
         self._update_func = update_func or _default_update(
-            self, converter, loss_func)
+            self, converter, device, loss_func)
 
         self.iteration = 0
 
@@ -155,8 +158,12 @@ class StandardUpdater(Updater):
         self.iteration = serializer('iteration', self.iteration)
 
 
-def _default_update(updater, converter, loss_func):
-    converter = converter or convert.concat_examples
+def _default_update(updater, converter, device, loss_func):
+    if not converter:
+        def convert(batch):
+            return convert.concat_examples(batch, device=device)
+        converter = convert
+
     iterator = updater.get_iterator('main')
     optimizer = updater.get_optimizer('main')
     loss_func = loss_func or optimizer.target

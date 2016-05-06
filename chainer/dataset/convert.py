@@ -32,6 +32,9 @@ def concat_examples(batch, padding=None):
     Args:
         batch (list): A list of examples. This is typically given by a dataset
             iterator.
+        device: Device to which each array is sent. Negative value indicates
+            the host memory (CPU). If it is omitted, all arrays are left in the
+            original device.
         padding: Padding value for extra elements. If this is None (default),
             an error is raised on shape mismatch. Otherwise, an array of
             minimum dimensionalities that can accomodate all arrays is created,
@@ -45,32 +48,41 @@ def concat_examples(batch, padding=None):
     if len(batch) == 0:
         raise ValueError('batch is empty')
 
-    first_elem = batch[0]
-
-    if isinstance(first_elem, tuple):
-        result = []
-        if not isinstance(padding, tuple):
-            padding = [padding] * len(first_elem)
-
-        for i in six.moves.range(len(first_elem)):
-            result.append(_concat_arrays(
-                [example[i] for example in batch], padding[i]))
-
-        return tuple(result)
-
-    elif isinstance(first_elem, dict):
-        result = {}
-        if not isinstance(padding, dict):
-            padding = {key: padding for key in first_elem}
-
-        for key in first_elem:
-            result[key] = _concat_arrays(
-                [example[key] for example in batch], padding[key])
-
-        return result
-
+    if device is None:
+        def to_device(x):
+            return x
+    elif device < 0:
+        to_device = cuda.to_cpu
     else:
-        return _concat_arrays(batch, padding)
+        to_device = cuda.to_gpu
+
+    with cuda.get_device(device):
+        first_elem = batch[0]
+
+        if isinstance(first_elem, tuple):
+            result = []
+            if not isinstance(padding, tuple):
+                padding = [padding] * len(first_elem)
+
+            for i in six.moves.range(len(first_elem)):
+                result.append(to_device(_concat_arrays(
+                    [example[i] for example in batch], padding[i])))
+
+            return tuple(result)
+
+        elif isinstance(first_elem, dict):
+            result = {}
+            if not isinstance(padding, dict):
+                padding = {key: padding for key in first_elem}
+
+            for key in first_elem:
+                result[key] = to_device(_concat_arrays(
+                    [example[key] for example in batch], padding[key]))
+
+            return result
+
+        else:
+            return to_device(_concat_arrays(batch, padding))
 
 
 def _concat_arrays(arrays, padding=None):
