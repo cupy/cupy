@@ -1,4 +1,8 @@
+import math
+
 import numpy
+
+from chainer import cuda
 from chainer.functions.connection import deconvolution_2d
 from chainer import initializers
 from chainer import link
@@ -71,7 +75,9 @@ class Deconvolution2D(link.Link):
 
         if isinstance(initialW, (numpy.ndarray, cuda.ndarray)):
             assert initialW.shape == (in_channels, out_channels, kh, kw)
-        initializers.init_weight(self.W.data, initialW, scale=wscale)
+        # For backward compatibility, the scale of weights is proportional to
+        # the square root of wscale.
+        initializers.init_weight(self.W.data, initialW, scale=math.sqrt(wscale))
 
         if not nobias:
             self.add_param('b', out_channels)

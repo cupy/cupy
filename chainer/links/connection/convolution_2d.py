@@ -1,3 +1,5 @@
+import math
+
 from chainer.functions.connection import convolution_2d
 from chainer import initializers
 from chainer import link
@@ -53,7 +55,9 @@ class Convolution2D(link.Link):
         W_shape = (out_channels, in_channels, kh, kw)
         super(Convolution2D, self).__init__(W=W_shape)
 
-        initializers.init_weight(self.W.data, initialW, scale=wscale)
+        # For backward compatibility, the scale of weights is proportional to 
+        # the square root of wscale.
+        initializers.init_weight(self.W.data, initialW, scale=math.sqrt(wscale))
 
         if nobias:
             self.b = None

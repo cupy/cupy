@@ -1,3 +1,5 @@
+import math
+
 from chainer.functions.connection import linear
 from chainer import initializers
 from chainer import link
@@ -44,7 +46,9 @@ class Linear(link.Link):
                  initialW=None, initial_bias=None):
         super(Linear, self).__init__(W=(out_size, in_size))
 
-        initializers.init_weight(self.W.data, initialW, scale=wscale)
+        # For backward compatibility, the scale of weights is proportional to
+        # the square root of wscale.
+        initializers.init_weight(self.W.data, initialW, scale=math.sqrt(wscale))
 
         if nobias:
             self.b = None
