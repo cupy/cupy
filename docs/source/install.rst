@@ -32,7 +32,7 @@ Install Chainer
 
 Chainer depends on these Python packages:
 
-* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10
+* `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11
 * `Six <https://pythonhosted.org/six/>`_ 1.9
 
 CUDA support
@@ -89,18 +89,22 @@ Install Chainer with CUDA
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You need to install CUDA Toolkit before installing Chainer.
-Chainer installer find CUDA automatically.
+If you have CUDA in a default directory or set ``CUDA_PATH`` correctly, Chainer installer finds CUDA automatically::
 
-If you installed CUDA to non-default directory, you need to specify the directory with ``CUDA_PATH`` environment variable::
-
-  $ CUDA_PATH=/opt/nvidia/cuda pip install chainer
+  $ pip install chainer
 
 
 .. note::
 
-   Chainer installer uses ``CUDA_PATH`` environment variable first.
-   If it's empty, the installer finds ``nvcc`` command from ``PATH`` environment variable and use its parent directory.
-   If ``nvcc`` is not found, the installer uses default directory, such as ``/usr/local/cuda``.
+   Chainer installer looks up ``CUDA_PATH`` environment variable first.
+   If it is empty, the installer looks for ``nvcc`` command from ``PATH`` environment variable and use its parent directory as the root directory of CUDA installation.
+   If ``nvcc`` command is also not found, the installer tries to use the default directory for Ubuntu ``/usr/local/cuda``.
+
+
+If you installed CUDA into a non-default directory, you need to specify the directory with ``CUDA_PATH`` environment variable::
+
+  $ CUDA_PATH=/opt/nvidia/cuda pip install chainer
+
 
 .. warning::
 

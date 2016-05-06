@@ -34,7 +34,7 @@ class Sigmoid(function.Function):
             handle = cudnn.get_handle()
             x_mat = x[0].reshape(x[0].shape[0], -1, 1, 1)
             desc = cudnn.create_tensor_descriptor(x_mat)
-            libcudnn.activationForward(
+            libcudnn.activationForward_v3(
                 handle, _mode, alpha.data, desc.value, x_mat.data.ptr,
                 beta.data, desc.value, self.y.data.ptr)
         else:
@@ -55,7 +55,7 @@ class Sigmoid(function.Function):
             handle = cudnn.get_handle()
             y_mat = self.y.reshape(self.y.shape[0], -1, 1, 1)
             desc = cudnn.create_tensor_descriptor(y_mat)
-            libcudnn.activationBackward(
+            libcudnn.activationBackward_v3(
                 handle, _mode, one.data, desc.value, y_mat.data.ptr,
                 desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
                 zero.data, desc.value, gx.data.ptr)

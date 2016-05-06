@@ -64,14 +64,14 @@ class TestTanhCudnnCall(unittest.TestCase):
         return functions.relu(x, use_cudnn=self.use_cudnn)
 
     def test_call_cudnn_forward(self):
-        with mock.patch('cupy.cudnn.cudnn.activationForward') as func:
+        with mock.patch('cupy.cudnn.cudnn.activationForward_v3') as func:
             self.forward()
             self.assertEqual(func.called, self.use_cudnn)
 
     def test_call_cudnn_backrward(self):
         y = self.forward()
         y.grad = self.gy
-        with mock.patch('cupy.cudnn.cudnn.activationBackward') as func:
+        with mock.patch('cupy.cudnn.cudnn.activationBackward_v3') as func:
             y.backward()
             self.assertEqual(func.called, self.use_cudnn)
 

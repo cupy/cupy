@@ -191,6 +191,10 @@ hinge
 ~~~~~
 .. autofunction:: hinge
 
+huber_loss
+~~~~~~~~~~
+.. autofunction:: huber_loss
+
 mean_squared_error
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: mean_squared_error

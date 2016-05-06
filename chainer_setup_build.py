@@ -64,66 +64,8 @@ MODULES = [
 ]
 
 
-def get_compiler_setting():
-    nvcc_path = search_on_path(('nvcc', 'nvcc.exe'))
-    cuda_path_default = None
-    if nvcc_path is None:
-        utils.print_warning('nvcc not in path.',
-                            'Please set path to nvcc.')
-    else:
-        cuda_path_default = path.normpath(
-            path.join(path.dirname(nvcc_path), '..'))
-
-    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
-    if len(cuda_path) > 0 and cuda_path != cuda_path_default:
-        utils.print_warning(
-            'nvcc path != CUDA_PATH',
-            'nvcc path: %s' % cuda_path_default,
-            'CUDA_PATH: %s' % cuda_path)
-
-    if not path.exists(cuda_path):
-        cuda_path = cuda_path_default
-
-    if not cuda_path and path.exists('/usr/local/cuda'):
-        cuda_path = '/usr/local/cuda'
-
-    include_dirs = []
-    library_dirs = []
-    define_macros = []
-
-    if cuda_path:
-        include_dirs.append(path.join(cuda_path, 'include'))
-        if sys.platform == 'win32':
-            library_dirs.append(path.join(cuda_path, 'bin'))
-            library_dirs.append(path.join(cuda_path, 'lib', 'x64'))
-        else:
-            library_dirs.append(path.join(cuda_path, 'lib64'))
-            library_dirs.append(path.join(cuda_path, 'lib'))
-    if sys.platform == 'darwin':
-        library_dirs.append('/usr/local/cuda/lib')
-
-    return {
-        'include_dirs': include_dirs,
-        'library_dirs': library_dirs,
-        'define_macros': define_macros,
-        'language': 'c++',
-    }
-
-
 def localpath(*args):
     return path.abspath(path.join(path.dirname(__file__), *args))
-
-
-def get_path(key):
-    return os.environ.get(key, '').split(os.pathsep)
-
-
-def search_on_path(filenames):
-    for p in get_path('PATH'):
-        for filename in filenames:
-            full = path.join(p, filename)
-            if path.exists(full):
-                return path.abspath(full)
 
 
 def check_include(dirs, file_path):
@@ -160,7 +102,8 @@ def check_library(compiler, includes=(), libraries=(),
             compiler.link_shared_lib(objects,
                                      os.path.join(temp_dir, 'a'),
                                      libraries=libraries,
-                                     library_dirs=library_dirs)
+                                     library_dirs=library_dirs,
+                                     target_lang='c++')
         except (distutils.errors.LinkError, TypeError):
             return False
 
@@ -175,7 +118,7 @@ def make_extensions(options, compiler):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']
-    settings = get_compiler_setting()
+    settings = build.get_compiler_setting()
 
     include_dirs = settings['include_dirs']
 

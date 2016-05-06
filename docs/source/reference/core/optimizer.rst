@@ -10,4 +10,5 @@ Optimizer
 Hook functions
 ~~~~~~~~~~~~~~
 .. autoclass:: chainer.optimizer.WeightDecay
+.. autoclass:: chainer.optimizer.Lasso
 .. autoclass:: chainer.optimizer.GradientClipping

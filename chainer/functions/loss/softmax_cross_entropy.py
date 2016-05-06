@@ -194,7 +194,7 @@ def softmax_cross_entropy(
             it only normalizes along a batch size.
         cache_score (bool): When it is ``True``, the function stores result
             of forward computation to use it on backward computation. It
-            reduces computational cost though consumes more memories.
+            reduces computational cost though consumes more memory.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.

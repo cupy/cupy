@@ -28,6 +28,8 @@ class EmbedID(link.Link):
 
     """
 
+    ignore_label = None
+
     def __init__(self, in_size, out_size, initialW=None, ignore_label=None):
         super(EmbedID, self).__init__(W=(in_size, out_size))
         if initialW is None:

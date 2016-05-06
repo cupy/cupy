@@ -1,6 +1,8 @@
 import collections
 import pkg_resources
+import sys
 import threading
+import warnings
 
 from chainer import flag
 from chainer import function
@@ -11,6 +13,10 @@ from chainer import link
 from chainer import optimizer
 from chainer import serializer
 from chainer import variable
+
+
+if sys.version_info[:3] == (3, 5, 0):
+    warnings.warn('Python 3.5.0 is not recommended. Use newer version.')
 
 
 __version__ = pkg_resources.get_distribution('chainer').version

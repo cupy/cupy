@@ -40,6 +40,7 @@ def wrap_take(array, *args, **kwargs):
     {'arg': None, 'shape': ()},
     {'arg': 3, 'shape': (3,)},
 )
+@testing.gpu
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape(self):
@@ -47,6 +48,7 @@ class TestNdarrayInit(unittest.TestCase):
         self.assertTupleEqual(a.shape, self.shape)
 
 
+@testing.gpu
 class TestNdarrayInitRaise(unittest.TestCase):
 
     def test_unsupported_type(self):
@@ -61,6 +63,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
         'axis': [None, 0, 1, 2, -1, -2],
     })
 )
+@testing.gpu
 class TestNdarrayTake(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -83,6 +86,7 @@ class TestNdarrayTake(unittest.TestCase):
         'axis': [None, 0, 1, -1, -2],
     })
 )
+@testing.gpu
 class TestNdarrayTakeWithInt(unittest.TestCase):
 
     shape = (3, 4, 5)
@@ -140,6 +144,7 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
     {"shape": (3, 4, 5), "indices": (2,), "axis": 3},
     {"shape": (), "indices": (0,), "axis": 2}
 )
+@testing.gpu
 class TestNdarrayTakeErrorAxisOverRun(unittest.TestCase):
 
     @testing.for_all_dtypes()

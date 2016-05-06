@@ -92,16 +92,12 @@ class Convolution2DFunction(function.Function):
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
 
-            self.max_workspace_size = c * kh * kw * 4
+            workspace_size = cuda.get_max_workspace_size()
+            workspace = cuda.cupy.empty((workspace_size,), dtype='b')
             algo = libcudnn.getConvolutionForwardAlgorithm(
                 handle, x_desc.value, self.filter_desc.value,
                 self.conv_desc.value, y_desc.value, _fwd_pref,
-                self.max_workspace_size)
-            workspace_size = libcudnn.getConvolutionForwardWorkspaceSize(
-                handle, x_desc.value, self.filter_desc.value,
-                self.conv_desc.value, y_desc.value, algo)
-            workspace = cuda.cupy.empty(
-                (max(workspace_size // 4, 1),), dtype=x.dtype)
+                workspace_size)
 
             dtype = x.dtype
             one = numpy.array(1, dtype=dtype).ctypes
@@ -114,10 +110,9 @@ class Convolution2DFunction(function.Function):
 
             # TODO(beam2d): Support unshared bias
             if b is not None:
-                libcudnn.addTensor_v2(
-                    handle, libcudnn.CUDNN_ADD_SAME_C, one.data,
-                    self.bias_desc.value, b.data.ptr, one.data,
-                    y_desc.value, y.data.ptr)
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(
@@ -171,51 +166,36 @@ class Convolution2DFunction(function.Function):
             dtype = x.dtype
             one = numpy.array(1, dtype=dtype).ctypes
             zero = numpy.array(0, dtype=dtype).ctypes
+            gx = cuda.cupy.empty_like(x)
 
             if _cudnn_version >= 4000:
-                self.max_workspace_size = c * kh * kw * 4
+                workspace_size = cuda.get_max_workspace_size()
+                workspace = cuda.cupy.empty((workspace_size,), dtype='b')
+
                 algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
                     handle, x_desc.value, gy_desc.value,
                     self.conv_desc.value, self.filter_desc.value,
-                    _bwd_filter_pref, self.max_workspace_size)
-                workspace_size = \
-                    libcudnn.getConvolutionBackwardFilterWorkspaceSize(
-                        handle, x_desc.value, gy_desc.value,
-                        self.conv_desc.value, self.filter_desc.value, algo)
-                workspace = cuda.cupy.empty(
-                    (max(workspace_size // 4, 1),), dtype=x.dtype)
-
+                    _bwd_filter_pref, workspace_size)
                 libcudnn.convolutionBackwardFilter_v3(
                     handle, one.data, x_desc.value, x.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
                     algo, workspace.data.ptr, workspace_size,
                     zero.data, self.filter_desc.value, gW.data.ptr)
-            else:
-                libcudnn.convolutionBackwardFilter_v2(
-                    handle, one.data, x_desc.value, x.data.ptr,
-                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
-                    zero.data, self.filter_desc.value, gW.data.ptr)
 
-            gx = cuda.cupy.empty_like(x)
-
-            if _cudnn_version >= 4000:
                 algo = libcudnn.getConvolutionBackwardDataAlgorithm(
                     handle, self.filter_desc.value, gy_desc.value,
                     self.conv_desc.value, x_desc.value, _bwd_data_pref,
-                    self.max_workspace_size)
-                workspace_size = \
-                    libcudnn.getConvolutionBackwardDataWorkspaceSize(
-                        handle, self.filter_desc.value, gy_desc.value,
-                        self.conv_desc.value, x_desc.value, algo)
-                workspace = cuda.cupy.empty(
-                    (max(workspace_size // 4, 1),), dtype=x.dtype)
-
+                    workspace_size)
                 libcudnn.convolutionBackwardData_v3(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
                     algo, workspace.data.ptr, workspace_size,
                     zero.data, x_desc.value, gx.data.ptr)
             else:
+                libcudnn.convolutionBackwardFilter_v2(
+                    handle, one.data, x_desc.value, x.data.ptr,
+                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                    zero.data, self.filter_desc.value, gW.data.ptr)
                 libcudnn.convolutionBackwardData_v2(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,

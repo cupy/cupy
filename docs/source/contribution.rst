@@ -68,13 +68,13 @@ You can contain your thoughts on **how** to realize it into the feature requests
    The issue tracker is not a place to share knowledge on practices.
    We may redirect question issues to Chainer User Group.
 
-If you can write codes to fix an issue, send a PR to the master branch.
-Before writing your codes for PRs, read through the :ref:`coding-guide`.
-The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your codes for developers, a very important part of your PR.
+If you can write code to fix an issue, send a PR to the master branch.
+Before writing your code for PRs, read through the :ref:`coding-guide`.
+The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your code for developers, a very important part of your PR.
 
 Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/chainer/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/pfnet/chainer>`_ for Windows.
 Your PR need to pass at least the test for Linux on Travis CI.
-After the automatic test passes, some of the core developers will start reviewing your codes.
+After the automatic test passes, some of the core developers will start reviewing your code.
 Note that this automatic PR test only includes CPU tests.
 
 .. note::
@@ -83,7 +83,7 @@ Note that this automatic PR test only includes CPU tests.
    Since this service is running on our internal server, we do not use it for automatic PR tests to keep the server secure.
 
 
-Even if your codes are not complete, you can send a pull request as a *work-in-progress PR* by putting the ``[WIP]`` prefix to the PR title.
+Even if your code is not complete, you can send a pull request as a *work-in-progress PR* by putting the ``[WIP]`` prefix to the PR title.
 If you write a precise explanation about the PR, core developers and other contributors can join the discussion about how to proceed the PR.
 
 .. _coding-guide:
@@ -125,7 +125,7 @@ Testing Guidelines
 
 Testing is one of the most important part of your code.
 You must test your code by unit tests following our testing guidelines.
-Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your codes::
+Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your code::
 
   $ pip install nose mock
 

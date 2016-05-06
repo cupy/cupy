@@ -1,4 +1,3 @@
-from libc cimport stdint
 import numpy
 import six
 
@@ -8,6 +7,13 @@ from libcpp cimport vector
 from cupy.cuda cimport driver
 
 
+cdef extern from "cupy_stdint.h" nogil:
+    ctypedef signed char int8_t
+    ctypedef signed short int16_t
+    ctypedef signed int int32_t
+    ctypedef signed long long int64_t
+
+
 cdef class CPointer:
     def __init__(self, p=0):
         self.ptr = <void*>p
@@ -15,36 +21,36 @@ cdef class CPointer:
 
 cdef class CInt8(CPointer):
     cdef:
-        stdint.int8_t val
+        int8_t val
 
-    def __init__(self, stdint.int8_t v):
+    def __init__(self, int8_t v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
 cdef class CInt16(CPointer):
     cdef:
-        stdint.int16_t val
+        int16_t val
 
-    def __init__(self, stdint.int16_t v):
+    def __init__(self, int16_t v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
 cdef class CInt32(CPointer):
     cdef:
-        stdint.int32_t val
+        int32_t val
 
-    def __init__(self, stdint.int32_t v):
+    def __init__(self, int32_t v):
         self.val = v
         self.ptr = <void*>&self.val
 
 
 cdef class CInt64(CPointer):
     cdef:
-        stdint.int64_t val
+        int64_t val
 
-    def __init__(self, stdint.int64_t v):
+    def __init__(self, int64_t v):
         self.val = v
         self.ptr = <void*>&self.val
 

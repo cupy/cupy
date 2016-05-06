@@ -13,6 +13,7 @@ from chainer.testing import condition
 
 
 class TestCrossCovariance(unittest.TestCase):
+
     def setUp(self):
         self.y = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
         self.z = numpy.random.uniform(-1, 1, (4, 2)).astype(numpy.float32)

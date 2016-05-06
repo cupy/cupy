@@ -121,18 +121,12 @@ class Deconvolution2DFunction(function.Function):
             zero = numpy.array(0, dtype=x.dtype).ctypes
 
             if _cudnn_version >= 4000:
-                self.max_workspace_size = c * kh * kw * 4
+                workspace_size = cuda.get_max_workspace_size()
+                workspace = cuda.cupy.empty((workspace_size,), dtype='b')
                 algo = libcudnn.getConvolutionBackwardDataAlgorithm(
                     handle, self.filter_desc.value, x_desc.value,
                     self.conv_desc.value, y_desc.value, _bwd_data_pref,
-                    self.max_workspace_size)
-                workspace_size = \
-                    libcudnn.getConvolutionBackwardDataWorkspaceSize(
-                        handle, self.filter_desc.value, x_desc.value,
-                        self.conv_desc.value, y_desc.value, algo)
-                workspace = cuda.cupy.empty(
-                    (max(workspace_size // 4, 1),), dtype=x.dtype)
-
+                    workspace_size)
                 libcudnn.convolutionBackwardData_v3(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     x_desc.value, x.data.ptr, self.conv_desc.value,
@@ -145,9 +139,8 @@ class Deconvolution2DFunction(function.Function):
                     zero.data, y_desc.value, y.data.ptr)
 
             if b is not None:
-                libcudnn.addTensor_v2(
-                    handle, libcudnn.CUDNN_ADD_SAME_C,
-                    one.data, self.bias_desc.value, b.data.ptr,
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
                     one.data, y_desc.value, y.data.ptr)
         else:
             W_mat = W.reshape(in_c, c * kh * kw)
@@ -199,16 +192,12 @@ class Deconvolution2DFunction(function.Function):
             gx_desc = cudnn.create_tensor_descriptor(gx)
 
             # chance to choose implicit-precomp-gemm algorithm
-            self.max_workspace_size = out_channels * kh * kw * 4
+            workspace_size = cuda.get_max_workspace_size()
             algo = libcudnn.getConvolutionForwardAlgorithm(
                 handle, gy_desc.value, self.filter_desc.value,
                 self.conv_desc.value, gx_desc.value, _fwd_pref,
-                self.max_workspace_size)
-            workspace_size = libcudnn.getConvolutionForwardWorkspaceSize(
-                handle, gy_desc.value, self.filter_desc.value,
-                self.conv_desc.value, gx_desc.value, algo)
-            workspace = cuda.cupy.empty(
-                (max(workspace_size // 4, 1),), dtype=numpy.float32)
+                workspace_size)
+            workspace = cuda.cupy.empty((workspace_size,), dtype='b')
 
             one = numpy.array(1, dtype=x.dtype).ctypes
             zero = numpy.array(0, dtype=x.dtype).ctypes
@@ -227,17 +216,10 @@ class Deconvolution2DFunction(function.Function):
             gW = cuda.cupy.empty_like(W)
             # filter backward
             if _cudnn_version >= 4000:
-                self.max_workspace_size = c * kh * kw * 4
                 algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
                     handle, gy_desc.value, gx_desc.value,
                     self.conv_desc.value, self.filter_desc.value,
-                    _bwd_filter_pref, self.max_workspace_size)
-                workspace_size = \
-                    libcudnn.getConvolutionBackwardFilterWorkspaceSize(
-                        handle, gy_desc.value, gx_desc.value,
-                        self.conv_desc.value, self.filter_desc.value, algo)
-                workspace = cuda.cupy.empty(
-                    (max(workspace_size // 4, 1),), dtype=x.dtype)
+                    _bwd_filter_pref, workspace_size)
 
                 libcudnn.convolutionBackwardFilter_v3(
                     handle, one.data, gy_desc.value, gy.data.ptr,
