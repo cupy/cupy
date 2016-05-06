@@ -16,16 +16,28 @@ class Copy(function.Function):
         )
 
     def forward_cpu(self, x):
-        return x[0].copy(),
+        if self.out_device == -1:
+            return x[0].copy(),
+        else:
+            return cuda.to_gpu(x[0], device=self.out_device),
 
     def forward_gpu(self, x):
-        return cuda.copy(x[0], out_device=self.out_device),
+        if self.out_device == -1:
+            return cuda.to_cpu(x[0]),
+        else:
+            return cuda.copy(x[0], out_device=self.out_device),
 
     def backward_cpu(self, x, gy):
-        return gy[0].copy(),
+        if self.out_device == -1:
+            return gy[0].copy(),
+        else:
+            return cuda.to_cpu(gy[0]),
 
     def backward_gpu(self, x, gy):
-        return cuda.copy(gy[0], out_device=cuda.get_device(x[0])),
+        if self.out_device == -1:
+            return cuda.to_gpu(gy[0], device=cuda.get_device(x[0])),
+        else:
+            return cuda.copy(gy[0], out_device=cuda.get_device(x[0])),
 
 
 def copy(x, dst):

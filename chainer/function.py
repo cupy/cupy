@@ -286,7 +286,7 @@ Invalid operation is performed in: {0} (Forward)
             return value must be a tuple even if it returns only one array.
 
         """
-        if any(isinstance(x, cuda.ndarray) for x in inputs + grad_outputs):
+        if any(isinstance(x, cuda.ndarray) for x in inputs):
             return self.backward_gpu(inputs, grad_outputs)
         else:
             return self.backward_cpu(inputs, grad_outputs)
