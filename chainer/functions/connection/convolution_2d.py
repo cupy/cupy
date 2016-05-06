@@ -18,6 +18,11 @@ if cuda.cudnn_enabled:
             libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
+def _check_cudnn_acceptable_type(x_dtype, W_dtype):
+    return x_dtype == W_dtype and (
+        _cudnn_version >= 3000 or x_dtype != numpy.float16)
+
+
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
@@ -39,8 +44,8 @@ class Convolution2DFunction(function.Function):
         x_type = in_types[0]
         w_type = in_types[1]
         type_check.expect(
-            x_type.dtype == numpy.float32,
-            w_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
+            w_type.dtype.kind == 'f',
             x_type.ndim == 4,
             w_type.ndim == 4,
             x_type.shape[1] == w_type.shape[1],
@@ -49,7 +54,7 @@ class Convolution2DFunction(function.Function):
         if n_in.eval() == 3:
             b_type = in_types[2]
             type_check.expect(
-                b_type.dtype == numpy.float32,
+                b_type.dtype == x_type.dtype,
                 b_type.ndim == 1,
                 b_type.shape[0] == w_type.shape[0],
             )
@@ -61,7 +66,8 @@ class Convolution2DFunction(function.Function):
         self.col = conv.im2col_cpu(
             x, kh, kw, self.sy, self.sx, self.ph, self.pw,
             cover_all=self.cover_all)
-        y = numpy.tensordot(self.col, W, ((1, 2, 3), (1, 2, 3)))
+        y = numpy.tensordot(
+            self.col, W, ((1, 2, 3), (1, 2, 3))).astype(x.dtype)
         if b is not None:
             y += b
         return numpy.rollaxis(y, 3, 1),
@@ -79,7 +85,8 @@ class Convolution2DFunction(function.Function):
                                       cover_all=self.cover_all)
 
         y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
-        if not self.cover_all and cuda.cudnn_enabled and self.use_cudnn:
+        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             if b is not None:
@@ -103,9 +110,9 @@ class Convolution2DFunction(function.Function):
                 self.conv_desc.value, y_desc.value, _fwd_pref,
                 workspace_size)
 
-            dtype = x.dtype
-            one = numpy.array(1, dtype=dtype).ctypes
-            zero = numpy.array(0, dtype=dtype).ctypes
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
             libcudnn.convolutionForward(
                 handle, one.data, x_desc.value, x.data.ptr,
                 self.filter_desc.value, W.data.ptr, self.conv_desc.value,
@@ -140,8 +147,9 @@ class Convolution2DFunction(function.Function):
         gy = grad_outputs[0]
         h, w = x.shape[2:]
 
-        gW = numpy.tensordot(gy, self.col, ((0, 2, 3), (0, 4, 5)))
-        gcol = numpy.tensordot(W, gy, (0, 1))
+        gW = numpy.tensordot(
+            gy, self.col, ((0, 2, 3), (0, 4, 5))).astype(W.dtype)
+        gcol = numpy.tensordot(W, gy, (0, 1)).astype(x.dtype)
         gcol = numpy.rollaxis(gcol, 3)
         gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
 
@@ -160,7 +168,8 @@ class Convolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
 
         gW = cuda.cupy.empty_like(W)
-        if not self.cover_all and cuda.cudnn_enabled and self.use_cudnn:
+        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             gy = cuda.cupy.ascontiguousarray(gy)
@@ -168,9 +177,9 @@ class Convolution2DFunction(function.Function):
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
             gy_desc = cudnn.create_tensor_descriptor(gy)
-            dtype = x.dtype
-            one = numpy.array(1, dtype=dtype).ctypes
-            zero = numpy.array(0, dtype=dtype).ctypes
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
             gx = cuda.cupy.empty_like(x)
 
             if _cudnn_version >= 4000:
@@ -223,8 +232,9 @@ class Convolution2DFunction(function.Function):
             W_mat = W.reshape(out_c, -1)
             gcol = cuda.cupy.empty_like(self.col)
             gcol_mats = gcol.reshape(n, c * kh * kw, out_h * out_w)
+
             for i in moves.range(n):
-                cuda.cupy.dot(W_mat.T, gy_mats[i], gcol_mats[i])
+                gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
 
             gx = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, h, w)
