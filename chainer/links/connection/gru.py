@@ -108,13 +108,13 @@ class StatefulGRU(GRUBase):
     Args:
         in_size(int): Dimension of input vector :math:`x`.
         out_size(int): Dimension of hidden vector :math:`h`.
-        init: A callable that takes ``~numpy.ndarray`` or
-            ``~cupy.ndarray`` and edits its value.
+        init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
             It is used for initialization of the
             GRU's input units (:math:`W`). Maybe be `None` to use default
             initialization.
-        inner_init: A callable that takes ``~numpy.ndarray`` or
-            ``~cupy.ndarray`` and edits its value.
+        inner_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
             It is used for initialization of the GRU's inner
             recurrent units (:math:`U`).
             Maybe be ``None`` to use default initialization.

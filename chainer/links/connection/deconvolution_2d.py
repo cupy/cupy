@@ -31,12 +31,12 @@ class Deconvolution2D(link.Link):
             available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``.
-            May also be a callable that takes ``~numpy.ndarray`` or
-            ``~cupy.ndarray`` and edits its value.
+            May also be a callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``.
-            May also be a callable that takes ``~numpy.ndarray`` or
-            ``~cupy.ndarray`` and edits its value.
+            May also be a callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`
     which indicate the number of the number of input channels, output channels,

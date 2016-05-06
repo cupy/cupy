@@ -29,12 +29,12 @@ class Inception(link.Chain):
         proj5 (int): Projection size of 5x5 convolution path.
         out5 (int): Output size of 5x5 convolution path.
         proj_pool (int): Projection size of max pooling path.
-        conv_init: A callable that takes ``~numpy.ndarray`` or
-            ``~cupy.ndarray`` and edits its value.
+        conv_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
             It is used for initialization of the convolution matrix weights.
             Maybe be ``None`` to use default initialization.
-        bias_init: A callable that takes ``~numpy.ndarray`` or
-            ``~cupy.ndarray`` and edits its value.
+        bias_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
             It is used for initialization of the convolution bias weights.
             Maybe be ``None`` to use default initialization.
 

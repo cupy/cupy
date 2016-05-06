@@ -23,8 +23,8 @@ class Bilinear(link.Link):
             ``(left_size, right_size, out_size)``. If ``None``,
             :math:`W` is initialized by centered Gaussian distribution properly
             scaled according to the dimension of inputs and outputs.
-            May also be a callable that takes ``~numpy.ndarray`` or
-            ``~cupy.ndarray`` and edits its value.
+            May also be a callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
         initial_bias (tuple): Initial values of :math:`V^1`, :math:`V^2`
             and :math:`b`. The length this argument must be 3.
             Each element of this tuple must have the shapes of
@@ -32,8 +32,8 @@ class Bilinear(link.Link):
             and ``(output_size,)``, respectively. If ``None``, :math:`V^1`
             and :math:`V^2` is initialized by scaled centered Gaussian
             distributions and :math:`b` is set to :math:`0`.
-            May also be a tuple of callables that take ``~numpy.ndarray`` or
-            ``~cupy.ndarray`` and edit its value.
+            May also be a tuple of callables that take ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edit its value.
 
     .. seealso:: See :func:`chainer.functions.bilinear` for details.
 

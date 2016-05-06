@@ -46,8 +46,8 @@ class Orthogonal(initializer.Initializer):
             flat_shape = (len(array), numpy.prod(array.shape[1:]))
             if flat_shape[0] > flat_shape[1]:
                 raise ValueError('Cannot make orthogonal system because'
-                                 '# of vectors ({}) is larger than'
-                                 ' that of dimensions({})'.format(
+                                 ' # of vectors ({}) is larger than'
+                                 ' that of dimensions ({})'.format(
                                      flat_shape[0], flat_shape[1]))
             a = numpy.random.standard_normal(flat_shape)
             # we do not have cupy.linalg.svd for now
