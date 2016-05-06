@@ -1,3 +1,6 @@
+import numpy
+
+from chainer import cuda
 from chainer.functions.connection import bilinear
 from chainer import initializers
 from chainer import link
@@ -57,7 +60,7 @@ class Bilinear(link.Link):
         # This initialization is a modification of
         # that of Linear function.
 
-        if hasattr(initialW, 'shape'):
+        if isinstance(initialW, (numpy.ndarray, cuda.ndarray)):
             assert initialW.shape == self.W.data.shape
         initializers.init_weight(self.W.data, initialW)
 
@@ -74,11 +77,11 @@ class Bilinear(link.Link):
             else:
                 raise ValueError('initial_bias must be tuple or None')
 
-            if hasattr(V1, 'shape'):
+            if isinstance(V1, (numpy.ndarray, cuda.ndarray)):
                 assert V1.shape == self.V1.data.shape
-            if hasattr(V2, 'shape'):
+            if isinstance(V2, (numpy.ndarray, cuda.ndarray)):
                 assert V2.shape == self.V2.data.shape
-            if hasattr(b, 'shape'):
+            if isinstance(b, (numpy.ndarray, cuda.ndarray)):
                 assert b.shape == self.b.data.shape
             initializers.init_weight(self.V1.data, V1)
             initializers.init_weight(self.V2.data, V2)
