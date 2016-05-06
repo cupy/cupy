@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.functions.math import matmul as _matmul
 from chainer import utils
 from chainer.utils import type_check
 from chainer import variable
@@ -431,6 +432,97 @@ def rpow(lhs, rhs):  # rhs ** lhs
     return PowConstVar(rhs)(lhs)
 
 
+class MatMulVarVar(_matmul.MatMul):
+
+    @property
+    def label(self):
+        return '_ @ _'
+
+
+class MatMulVarConst(function.Function):
+
+    def __init__(self, value):
+        self.value = value
+
+    @property
+    def label(self):
+        return '_ @ %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        a_type = in_types[0]
+        b_type = self.value
+
+        type_check.expect(a_type.dtype == numpy.float32)
+
+        _matmul._check_ndim(a_type)
+
+        a_type = _matmul._convert_type(a_type)
+        a_idx = _matmul._get_check_index(False, False)
+        b_idx = _matmul._get_check_index(False, True)
+        type_check.expect(
+            a_type.shape[a_idx] == b_type.shape[b_idx]
+        )
+
+    def forward(self, x):
+        return _matmul._matmul(x[0], self.value),
+
+    def backward(self, x, gy):
+        gx0 = _matmul._matmul(
+            gy[0], self.value, transb=True, transout=False
+        ).reshape(x[0].shape)
+        return gx0,
+
+
+class MatMulConstVar(function.Function):
+
+    def __init__(self, value):
+        self.value = value
+
+    @property
+    def label(self):
+        return '%s @ _' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        a_type = self.value
+        b_type = in_types[0]
+
+        type_check.expect(b_type.dtype == numpy.float32)
+
+        _matmul._check_ndim(b_type)
+
+        b_type = _matmul._convert_type(b_type)
+        a_idx = _matmul._get_check_index(False, False)
+        b_idx = _matmul._get_check_index(False, True)
+        type_check.expect(
+            a_type.shape[a_idx] == b_type.shape[b_idx]
+        )
+
+    def forward(self, x):
+        return _matmul._matmul(self.value, x[0]),
+
+    def backward(self, x, gy):
+        gx1 = _matmul._matmul(
+            self.value, gy[0], transa=True, transout=False
+        ).reshape(x[0].shape)
+        return gx1,
+
+
+def matmul(lhs, rhs):  # lhs @ rhs
+    if isinstance(rhs, variable.Variable):
+        return MatMulVarVar()(lhs, rhs)
+    _check_constant_type(rhs)
+    return MatMulVarConst(rhs)(lhs)
+
+
+def rmatmul(lhs, rhs):  # rhs / lhs
+    if isinstance(rhs, variable.Variable):
+        return MatMulVarVar()(rhs, lhs)
+    _check_constant_type(rhs)
+    return MatMulConstVar(rhs)(lhs)
+
+
 def install_variable_arithmetics():
     variable.Variable.__neg__ = neg
     variable.Variable.__abs__ = absolute
@@ -446,3 +538,5 @@ def install_variable_arithmetics():
     variable.Variable.__rtruediv__ = rdiv
     variable.Variable.__pow__ = pow
     variable.Variable.__rpow__ = rpow
+    variable.Variable.__matmul__ = matmul
+    variable.Variable.__rmatmul__ = rmatmul
