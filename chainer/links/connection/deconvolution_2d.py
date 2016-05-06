@@ -77,7 +77,8 @@ class Deconvolution2D(link.Link):
             assert initialW.shape == (in_channels, out_channels, kh, kw)
         # For backward compatibility, the scale of weights is proportional to
         # the square root of wscale.
-        initializers.init_weight(self.W.data, initialW, scale=math.sqrt(wscale))
+        initializers.init_weight(self.W.data, initialW,
+                                 scale=math.sqrt(wscale))
 
         if nobias:
             self.b = None

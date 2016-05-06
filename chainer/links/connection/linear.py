@@ -48,7 +48,8 @@ class Linear(link.Link):
 
         # For backward compatibility, the scale of weights is proportional to
         # the square root of wscale.
-        initializers.init_weight(self.W.data, initialW, scale=math.sqrt(wscale))
+        initializers.init_weight(self.W.data, initialW,
+                                 scale=math.sqrt(wscale))
 
         if nobias:
             self.b = None
