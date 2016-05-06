@@ -6,7 +6,7 @@ from chainer import initializer
 
 class Identity(initializer.Initializer):
 
-    '''Initializes array with the identity matrix.
+    """Initializes array with the identity matrix.
 
     This initializer initializes the given array with the constant
     multiple of the identity matrix.
@@ -15,7 +15,7 @@ class Identity(initializer.Initializer):
     Attributes:
         scale (scalar): A constant to be multipllied to identity matrices.
 
-    '''
+    """
 
     def __init__(self, scale=1.0):
         self.scale = scale
@@ -38,13 +38,13 @@ class Identity(initializer.Initializer):
 
 class Constant(initializer.Initializer):
 
-    '''Initializes array with constant value.
+    """Initializes array with constant value.
 
     Attributes:
         fill_value (scalar or numpy.ndarray or cupy.ndarray):
             A constant to be assigned to the initialized array.
             Broadcast is allowed on this assignment.
-    '''
+    """
 
     def __init__(self, fill_value):
         self.fill_value = fill_value
@@ -56,13 +56,13 @@ class Constant(initializer.Initializer):
 
 def Zero():
 
-    '''Returns initializer that initializes array with the all-zero array.'''
+    """Returns initializer that initializes array with the all-zero array."""
 
     return Constant(0.0)
 
 
 def One():
 
-    '''Returns initializer that initializes array with the all-one array.'''
+    """Returns initializer that initializes array with the all-one array."""
 
     return Constant(1.0)

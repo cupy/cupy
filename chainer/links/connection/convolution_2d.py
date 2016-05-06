@@ -55,7 +55,7 @@ class Convolution2D(link.Link):
         W_shape = (out_channels, in_channels, kh, kw)
         super(Convolution2D, self).__init__(W=W_shape)
 
-        # For backward compatibility, the scale of weights is proportional to 
+        # For backward compatibility, the scale of weights is proportional to
         # the square root of wscale.
         initializers.init_weight(self.W.data, initialW, scale=math.sqrt(wscale))
 

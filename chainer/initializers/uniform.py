@@ -9,7 +9,7 @@ from chainer import initializer
 
 class Uniform(initializer.Initializer):
 
-    '''Initializes array with a scaled uniform distribution.
+    """Initializes array with a scaled uniform distribution.
 
     Each element of the array is initialized by the value drawn
     independently from uniform distribution :math:`[-scale, scale]`.
@@ -18,7 +18,7 @@ class Uniform(initializer.Initializer):
         scale (float): A constant that determines the
             scale of uniform distribution.
 
-    '''
+    """
 
     def __init__(self, scale=0.05):
         self.scale = scale
@@ -31,7 +31,7 @@ class Uniform(initializer.Initializer):
 
 class LeCunUniform(initializer.Initializer):
 
-    '''Initializes array with a scaled uniform distribution.
+    """Initializes array with a scaled uniform distribution.
 
     Each element of the array is initialized by the value drawn
     independently from uniform distribution :math:`[-s, s]`
@@ -45,7 +45,7 @@ class LeCunUniform(initializer.Initializer):
         scale (float): A constant that determines the
             scale of uniform distribution.
 
-    '''
+    """
 
     def __init__(self, scale=1.0):
         self.scale = scale
@@ -58,7 +58,7 @@ class LeCunUniform(initializer.Initializer):
 
 class GlorotUniform(initializer.Initializer):
 
-    '''Initializes array with a scaled uniform distribution.
+    """Initializes array with a scaled uniform distribution.
 
     Each element of the array is initialized by the value drawn
     independently from uniform distribution :math:`[-s, s]`
@@ -70,7 +70,7 @@ class GlorotUniform(initializer.Initializer):
         scale (float): A constant that determines the
             scale of uniform distribution.
 
-    '''
+    """
 
     def __init__(self, scale=1.0):
         self.scale = scale
@@ -83,7 +83,7 @@ class GlorotUniform(initializer.Initializer):
 
 class HeUniform(initializer.Initializer):
 
-    '''Initializes array with scaled uniform distribution.
+    """Initializes array with scaled uniform distribution.
 
     Each element of the array is initialized by the value drawn
     independently from uniform distribution :math:`[-s, s]`
@@ -94,7 +94,7 @@ class HeUniform(initializer.Initializer):
         scale (float): A constant that determines the
             scale of uniform distribution.
 
-    '''
+    """
 
     def __init__(self, scale=1.0):
         self.scale = scale

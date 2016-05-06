@@ -9,7 +9,7 @@ from chainer import initializer
 
 class Normal(initializer.Initializer):
 
-    '''Initializes array with a normal distribution.
+    """Initializes array with a normal distribution.
 
     Each element of the array is initialized by the value drawn
     independently from Gaussian distribution whose mean is 0,
@@ -17,7 +17,7 @@ class Normal(initializer.Initializer):
 
     Args:
         scale(float): Standard deviation of Gaussian distribution.
-    '''
+    """
 
     def __init__(self, scale=0.05):
         self.scale = scale
@@ -30,7 +30,7 @@ class Normal(initializer.Initializer):
 
 class GlorotNormal(initializer.Initializer):
 
-    '''Initializes array with scaled Gaussian distribution.
+    """Initializes array with scaled Gaussian distribution.
 
     Each element of the array is initialized by the value drawn
     independently from Gaussian distribution whose mean is 0,
@@ -45,7 +45,7 @@ class GlorotNormal(initializer.Initializer):
         scale (float): A constant that detemines the scale
             of the standard deviation.
 
-    '''
+    """
 
     def __init__(self, scale=1.0):
         self.scale = scale
@@ -58,7 +58,7 @@ class GlorotNormal(initializer.Initializer):
 
 class HeNormal(initializer.Initializer):
 
-    '''Initializes array with scaled Gaussian distribution.
+    """Initializes array with scaled Gaussian distribution.
 
     Each element of the array is initialized by the value drawn
     independently from Gaussian distribution whose mean is 0,
@@ -72,7 +72,7 @@ class HeNormal(initializer.Initializer):
         scale (float): A constant that detemines the scale
             of the standard deviation.
 
-    '''
+    """
 
     def __init__(self, scale=1.0):
         self.scale = scale

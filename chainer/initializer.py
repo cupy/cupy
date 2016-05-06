@@ -4,7 +4,7 @@ import numpy
 class Initializer(object):
 
     def __call__(self, array):
-        '''Initializes given array.
+        """Initializes given array.
 
         This method destructively changes the value of array.
         The derived class is required to implement this method.
@@ -14,7 +14,7 @@ class Initializer(object):
         Args:
             array (numpy.ndarray or cupy.ndarray):
                 An array to be initialized by this initializer.
-        '''
+        """
         NotImplementedError()
 
 

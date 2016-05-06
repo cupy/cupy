@@ -79,15 +79,15 @@ class Deconvolution2D(link.Link):
         # the square root of wscale.
         initializers.init_weight(self.W.data, initialW, scale=math.sqrt(wscale))
 
-        if not nobias:
+        if nobias:
+            self.b = None
+        else:
             self.add_param('b', out_channels)
             if isinstance(initial_bias, (numpy.ndarray, cuda.ndarray)):
                 assert initial_bias.shape == (out_channels,)
             if initial_bias is None:
                 initial_bias = bias
             initializers.init_weight(self.b.data, initial_bias)
-        else:
-            self.b = None
 
     def __call__(self, x):
         return deconvolution_2d.deconvolution_2d(
