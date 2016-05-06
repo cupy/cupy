@@ -1,3 +1,4 @@
+import numpy
 from chainer.functions.connection import deconvolution_2d
 from chainer import initializers
 from chainer import link
@@ -68,13 +69,13 @@ class Deconvolution2D(link.Link):
         W_shape = (in_channels, out_channels, kh, kw)
         super(Deconvolution2D, self).__init__(W=W_shape)
 
-        if hasattr(initialW, 'shape'):
+        if isinstance(initialW, (numpy.ndarray, cuda.ndarray)):
             assert initialW.shape == (in_channels, out_channels, kh, kw)
         initializers.init_weight(self.W.data, initialW, scale=wscale)
 
         if not nobias:
             self.add_param('b', out_channels)
-            if hasattr(initial_bias, 'shape'):
+            if isinstance(initial_bias, (numpy.ndarray, cuda.ndarray)):
                 assert initial_bias.shape == (out_channels,)
             if initial_bias is None:
                 initial_bias = bias
