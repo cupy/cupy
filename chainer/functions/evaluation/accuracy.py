@@ -15,7 +15,7 @@ class Accuracy(function.Function):
         x_type, t_type = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             x_type.ndim >= 2,
             t_type.dtype == numpy.int32,
             t_type.ndim == 1,
@@ -42,12 +42,12 @@ class Accuracy(function.Function):
             total = len(t) - ignore_cnt
 
             if total == 0:
-                return xp.asarray(0.0, dtype='f'),
+                return xp.asarray(0.0, dtype=y.dtype),
             else:
-                return xp.asarray(float(count) / total, dtype='f'),
+                return xp.asarray(float(count) / total, dtype=y.dtype),
         else:
             pred = y.argmax(axis=1)
-            return xp.asarray((pred == t).mean(dtype='f')),
+            return xp.asarray((pred == t).mean(dtype=y.dtype)),
 
 
 def accuracy(y, t, ignore_label=None):
