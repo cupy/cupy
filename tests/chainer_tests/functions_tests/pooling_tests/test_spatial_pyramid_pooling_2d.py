@@ -135,6 +135,8 @@ class TestMaxPooling2DCudnnCall(unittest.TestCase):
         self.x = cuda.cupy.arange(size, dtype=self.dtype).reshape(shape)
         self.gy = cuda.cupy.random.uniform(
             -1, 1, (2, 63, 1, 1)).astype(self.dtype)
+        self.skip_test = (self.cudnn and self.dtype == numpy.float16 and
+                          cuda.cudnn.cudnn.getVersion() < 3000)
 
     def forward(self):
         x = chainer.Variable(self.x)
@@ -143,11 +145,15 @@ class TestMaxPooling2DCudnnCall(unittest.TestCase):
             use_cudnn=self.use_cudnn)
 
     def test_call_cudnn_forward(self):
+        if self.skip_test:
+            return
         with mock.patch('cupy.cudnn.cudnn.poolingForward') as func:
             self.forward()
             self.assertEqual(func.called, self.use_cudnn)
 
     def test_call_cudnn_backrward(self):
+        if self.skip_test:
+            return
         y = self.forward()
         y.grad = self.gy
         with mock.patch('cupy.cudnn.cudnn.poolingBackward') as func:

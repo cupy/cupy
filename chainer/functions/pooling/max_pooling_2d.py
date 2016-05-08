@@ -27,7 +27,8 @@ class MaxPooling2D(pooling_2d.Pooling2D):
         return y,
 
     def forward_gpu(self, x):
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                pooling_2d._check_cudnn_acceptable_type(x[0].dtype)):
             return super(MaxPooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
@@ -91,7 +92,8 @@ class MaxPooling2D(pooling_2d.Pooling2D):
         return gx,
 
     def backward_gpu(self, x, gy):
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                pooling_2d._check_cudnn_acceptable_type(x[0].dtype)):
             return super(MaxPooling2D, self).backward_gpu(x, gy)
 
         n, c, h, w = x[0].shape

@@ -11,6 +11,11 @@ from chainer.utils import type_check
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
+    _cudnn_version = libcudnn.getVersion()
+
+
+def _check_cudnn_acceptable_type(x_dtype):
+    return _cudnn_version >= 3000 or x_dtype != numpy.float16
 
 
 def _pair(x):
