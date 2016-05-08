@@ -80,7 +80,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
         n, c, out_h, out_w = gy[0].shape
         h, w = x[0].shape[2:]
         gcol = numpy.zeros(
-            (n, c, self.kh, self.kw, out_h, out_w), dtype=numpy.float32)
+            (n, c, self.kh, self.kw, out_h, out_w), dtype=x[0].dtype)
 
         # TODO(beam2d): Make it fast
         gcol_r = numpy.rollaxis(gcol.reshape(n, c, -1, out_h, out_w), 2)
@@ -119,7 +119,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
                    int kx = x - out_x * sx;
                    int offset = out_x + out_w * (out_y + out_h * c0);
                    if (indexes[offset] == kx + kw * ky) {
-                     val += gy[offset];
+                     val = val + gy[offset];
                    }
                  }
                }

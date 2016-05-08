@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
@@ -21,7 +19,7 @@ class Unpooling2D(pooling_2d.Pooling2D):
         x_type = in_types[0]
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             x_type.ndim == 4,
         )
 
