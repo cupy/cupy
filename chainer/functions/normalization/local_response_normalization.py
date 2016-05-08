@@ -47,7 +47,7 @@ class LocalResponseNormalization(function.Function):
         x_type, = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             x_type.ndim >= 2,
         )
 
