@@ -85,6 +85,7 @@ class BatchNormalizationTest(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     @attr.multi_gpu(2)
+    @condition.retry(3)
     def test_forward_multi_gpu(self):
         with cuda.get_device(1):
             self.link.to_gpu()
