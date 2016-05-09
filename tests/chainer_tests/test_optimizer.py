@@ -158,6 +158,40 @@ class TestOptimizerLasso(unittest.TestCase):
         self.check_lasso()
 
 
+class TestOptimizerGradientNoise(unittest.TestCase):
+
+    def setUp(self):
+        self.target = SimpleLink(
+            np.arange(6, dtype=np.float32).reshape(2, 3),
+            np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3))
+
+    def check_gradient_noise(self):
+        w = self.target.param.data
+        g = self.target.param.grad
+        xp = cuda.get_array_module(w)
+
+        eta = 0.01
+        expect = w - g - xp.random.normal(loc=0,
+                                          scale=np.sqrt(
+                                              eta / np.power(1, 0.55)),
+                                          size=g.shape).astype(np.float32)
+
+        opt = optimizers.SGD(lr=1)
+        opt.setup(self.target)
+        opt.add_hook(optimizer.GradientNoise(eta))
+        opt.update()
+
+        gradient_check.assert_allclose(expect, w, rtol=0.3)
+
+    def test_gradient_noise_cpu(self):
+        self.check_gradient_noise()
+
+    @attr.gpu
+    def test_gradient_noise_gpu(self):
+        self.target.to_gpu()
+        self.check_gradient_noise()
+
+
 class TestGradientMethod(unittest.TestCase):
 
     def _suffix(self, gpu):

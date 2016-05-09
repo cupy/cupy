@@ -518,3 +518,52 @@ class GradientClipping(object):
                 grad = param.grad
                 with cuda.get_device(grad):
                     grad *= rate
+
+
+class GradientNoise(object):
+    """Optimizer hook function for adding gradient noise.
+
+    This hook function simply adds time-dependent annealed Gaussian noise
+    to the gradient at every training step:
+
+    . math::
+
+        g_t \\leftarrow g_t + N(0, \\sigma_t^2)
+
+    where
+
+    . math::
+
+        \\sigma_t^2 = \\frac{\\eta}{(1+t)^\\gamma}
+
+    with :math:`\\eta` selected from {0.01, 0.3, 1.0} and
+    :math:`\\gamma = 0.55`.
+
+    Args:
+        eta (float): parameter for the standard deviation.
+
+    See: `Adding Gradient Noise Improves Learning for Very Deep Networks
+    <http://arxiv.org/pdf/1511.06807>`_.
+    """
+    name = 'GradientNoise'
+
+    def __init__(self, eta):
+        self.eta = eta
+
+    def __call__(self, opt):
+        if cuda.available:
+            kernel = cuda.elementwise(
+                'T noise', 'T g', 'g += noise', 'gradient_noise')
+
+        for param in opt.target.params():
+            p, g = param.data, param.grad
+            xp = cuda.get_array_module(p)
+            noise = xp.random.normal(0,
+                                     numpy.sqrt(
+                                         self.eta / numpy.power(1 + opt.t, 0.55)),
+                                     p.shape).astype(numpy.float32)
+            with cuda.get_device(p) as dev:
+                if int(dev) == -1:
+                    g += noise
+                else:
+                    kernel(noise, g)
