@@ -96,12 +96,11 @@ class NStepLSTM(function.Function):
         handle = cudnn.get_handle()
         self.handle = handle
 
-        state_size = libcudnn.dropoutGetStatesSize(handle)
-        self.states = cuda.cupy.empty((state_size,), dtype='b')
+        self.states = cudnn.create_dropout_states(handle)
 
         dropout_desc = cudnn.create_dropout_descriptor(
             handle, self.dropout, self.states.data.ptr,
-            state_size, self.seed)
+            self.states.size, self.seed)
         self.dropout_desc = dropout_desc
 
         rnn_desc = cudnn.create_rnn_descriptor(

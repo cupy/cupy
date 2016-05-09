@@ -252,6 +252,11 @@ def get_rnn_lin_layer_bias_params(
     return bias
 
 
+def create_dropout_states(handle):
+    state_size = cudnn.dropoutGetStatesSize(handle)
+    return cupy.empty((state_size,), dtype='b')
+
+
 if _cudnn_version >= 3000:
     def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
                    srcDestData):
