@@ -44,6 +44,25 @@ def _make_ptr_array(xs):
     return PointerArray([x.data.ptr for x in xs], xs)
 
 
+class DropoutStates(object):
+
+    def __init__(self, states, desc):
+        self.states = states
+        self.desc = desc
+
+    @staticmethod
+    def create(handle, dropout, seed):
+        states = cudnn.create_dropout_states(handle)
+        desc = cudnn.create_dropout_descriptor(
+            handle, dropout, states.data.ptr, states.size, seed)
+        return DropoutStates(states, desc)
+
+    @staticmethod
+    def from_states(handle, states, dropout):
+        desc = cudnn.create_dropout_descriptor(handle, dropout, 0, 0, 0)
+        return DropoutStates(states, desc)
+
+
 class NStepLSTM(function.Function):
 
     def __init__(self, n_layers, train=True):
@@ -51,6 +70,8 @@ class NStepLSTM(function.Function):
         self.dropout = 0.0
         self.n_layers = n_layers
         self.train = train
+        handle = cudnn.get_handle()
+        self.states = DropoutStates.create(handle, self.dropout, self.seed)
 
     def check_type_forward(self, in_types):
         h_type, c_type, x_type, w_type, b_type = in_types
@@ -96,15 +117,8 @@ class NStepLSTM(function.Function):
         handle = cudnn.get_handle()
         self.handle = handle
 
-        self.states = cudnn.create_dropout_states(handle)
-
-        dropout_desc = cudnn.create_dropout_descriptor(
-            handle, self.dropout, self.states.data.ptr,
-            self.states.size, self.seed)
-        self.dropout_desc = dropout_desc
-
         rnn_desc = cudnn.create_rnn_descriptor(
-            n_units, length, self.n_layers, dropout_desc,
+            n_units, length, self.n_layers, self.states.desc,
             libcudnn.CUDNN_LINEAR_INPUT, libcudnn.CUDNN_UNIDIRECTIONAL,
             libcudnn.CUDNN_LSTM, libcudnn.CUDNN_DATA_FLOAT)
         self.rnn_desc = rnn_desc
