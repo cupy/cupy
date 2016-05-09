@@ -63,12 +63,22 @@ class DropoutStates(object):
         return DropoutStates(states, desc)
 
 
+def _make_indices(batches):
+    pos = 0
+    inds = []
+    for b in batches[:-1]:
+        pos += b
+        inds.append(pos)
+    return inds
+
+
 class NStepLSTM(function.Function):
 
-    def __init__(self, n_layers, states, train=True):
+    def __init__(self, n_layers, batches, states, train=True):
         self.n_layers = n_layers
         self.train = train
         self.states = states
+        self.batches = batches
 
     def check_type_forward(self, in_types):
         h_type, c_type, x_type, w_type, b_type = in_types
@@ -82,12 +92,14 @@ class NStepLSTM(function.Function):
             c_type.ndim == 3,
             c_type.shape[0] == self.n_layers,
 
+            x_type.shape[0] == sum(self.batches),
+
             # mini-batch size
             h_type.shape[1] == c_type.shape[1],
-            h_type.shape[1] == x_type.shape[1],
 
             # hidden size
             h_type.shape[2] == c_type.shape[2],
+            h_type.shape[2] == x_type.shape[1],
 
             w_type.ndim == 4,
             w_type.shape[0] == self.n_layers,
@@ -104,10 +116,12 @@ class NStepLSTM(function.Function):
     def forward(self, inputs):
         hx, cx, xs, ws, bs = inputs
 
-        length = xs.shape[0]
+        length = len(self.batches)
         n_units = hx.shape[2]
 
         ys = cuda.cupy.empty_like(xs)
+        inds = _make_indices(self.batches)
+        x_list = cuda.cupy.split(xs, inds, 0)
 
         # shape of h and c is (batch_size, n_layer, hidden_size) in Chainer
         # but (hidden_size, batch_size, n_layer) in cuDNN
@@ -120,7 +134,7 @@ class NStepLSTM(function.Function):
             libcudnn.CUDNN_LSTM, libcudnn.CUDNN_DATA_FLOAT)
         self.rnn_desc = rnn_desc
 
-        c_x_descs = _make_tensor_descriptor_array(xs)
+        c_x_descs = _make_tensor_descriptor_array(x_list)
         hx_desc = cudnn.create_tensor_nd_descriptor(hx, rev=True)
         cx_desc = cudnn.create_tensor_nd_descriptor(cx, rev=True)
 
@@ -144,7 +158,8 @@ class NStepLSTM(function.Function):
         self.w = w
         self.w_desc = w_desc
 
-        c_y_descs = _make_tensor_descriptor_array(ys)
+        y_list = cuda.cupy.split(ys, inds, 0)
+        c_y_descs = _make_tensor_descriptor_array(y_list)
         hy = cuda.cupy.empty_like(hx)
         cy = cuda.cupy.empty_like(cx)
         hy_desc = cudnn.create_tensor_nd_descriptor(hy, rev=True)
@@ -194,6 +209,8 @@ class NStepLSTM(function.Function):
             #TODO
             dys = cuda.cupy.zeros_like(xs)
 
+        inds = _make_indices(self.batches)
+
         dxs = cuda.cupy.empty_like(xs)
 
         dhx = cuda.cupy.empty_like(hx)
@@ -203,7 +220,8 @@ class NStepLSTM(function.Function):
         cx_desc = cudnn.create_tensor_nd_descriptor(cx, rev=True)
         dhy_desc = cudnn.create_tensor_nd_descriptor(dhy, rev=True)
         dcy_desc = cudnn.create_tensor_nd_descriptor(dcy, rev=True)
-        c_dy_descs = _make_tensor_descriptor_array(dys)
+        dy_list = cuda.cupy.split(dys, inds, 0)
+        c_dy_descs = _make_tensor_descriptor_array(dy_list)
 
         rnn_desc = self.rnn_desc
         handle = self.handle
@@ -213,7 +231,9 @@ class NStepLSTM(function.Function):
 
         dhx_desc = cudnn.create_tensor_nd_descriptor(dhx, rev=True)
         dcx_desc = cudnn.create_tensor_nd_descriptor(dcx, rev=True)
-        c_dx_descs = _make_tensor_descriptor_array(dxs)
+
+        dx_list = cuda.cupy.split(dxs, inds, 0)
+        c_dx_descs = _make_tensor_descriptor_array(dx_list)
 
         libcudnn.RNNBackwardData(
             handle, rnn_desc.value, self.c_y_descs.data, self.ys.data.ptr,

@@ -23,11 +23,12 @@ class TestNStepLSTM(unittest.TestCase):
     seed = 1337
 
     def setUp(self):
+        batches = [self.n_batch] * self.length
         handle = cuda.cupy.cudnn.get_handle()
         states = functions.n_step_lstm.DropoutStates.create(handle, self.dropout, self.seed)
-        self.rnn = functions.NStepLSTM(self.n_layers, states)
+        self.rnn = functions.NStepLSTM(self.n_layers, batches, states)
 
-        x_shape = (self.length, self.n_batch, self.in_size)
+        x_shape = (self.length * self.n_batch, self.in_size)
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
         h_shape = (self.n_layers, self.n_batch, self.out_size)
         self.cx = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
@@ -52,8 +53,8 @@ class TestNStepLSTM(unittest.TestCase):
 
         e_hy = self.hx.copy()
         e_cy = self.cx.copy()
-        for xi in self.x:
-            x = xi
+        for i in range(self.length):
+            x = self.x[i*self.n_batch:(i+1)*self.n_batch]
             for layer in range(self.n_layers):
                 w = self.w[layer]
                 b = self.b[layer]
