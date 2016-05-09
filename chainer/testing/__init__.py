@@ -1,9 +1,12 @@
 import nose
 
+from chainer.testing import helper
 from chainer.testing import parameterized
 
 parameterize = parameterized.parameterize
 product = parameterized.product
+
+with_requires = helper.with_requires
 
 
 def run_module(name, file):
