@@ -65,13 +65,10 @@ class DropoutStates(object):
 
 class NStepLSTM(function.Function):
 
-    def __init__(self, n_layers, train=True):
-        self.seed = 1337
-        self.dropout = 0.0
+    def __init__(self, n_layers, states, train=True):
         self.n_layers = n_layers
         self.train = train
-        handle = cudnn.get_handle()
-        self.states = DropoutStates.create(handle, self.dropout, self.seed)
+        self.states = states
 
     def check_type_forward(self, in_types):
         h_type, c_type, x_type, w_type, b_type = in_types

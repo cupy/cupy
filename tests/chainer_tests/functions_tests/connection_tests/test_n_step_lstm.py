@@ -19,9 +19,13 @@ class TestNStepLSTM(unittest.TestCase):
     in_size = 4
     out_size = 4
     n_layers = 2
+    dropout = 0.0
+    seed = 1337
 
     def setUp(self):
-        self.rnn = functions.NStepLSTM(n_layers=self.n_layers)
+        handle = cuda.cupy.cudnn.get_handle()
+        states = functions.n_step_lstm.DropoutStates.create(handle, self.dropout, self.seed)
+        self.rnn = functions.NStepLSTM(self.n_layers, states)
 
         x_shape = (self.length, self.n_batch, self.in_size)
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
