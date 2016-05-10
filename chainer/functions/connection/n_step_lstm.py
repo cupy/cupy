@@ -194,7 +194,6 @@ class NStepLSTM(function.Function):
         self.c_y_descs = c_y_descs
         self.ys = ys
         self.c_x_descs = c_x_descs
-        cuda.to_cpu(hy)
 
         return hy, cy, ys
 
