@@ -103,8 +103,14 @@ for epoch in six.moves.range(1, n_epoch + 1):
 
         if epoch == 1 and i == 0:
             with open('graph.dot', 'w') as o:
+                variable_style = {'shape': 'octagon', 'fillcolor': '#E0E0E0',
+                                  'style': 'filled'}
+                function_style = {'shape': 'record', 'fillcolor': '#6495ED',
+                                  'style': 'filled'}
                 g = computational_graph.build_computational_graph(
-                    (model.loss, ))
+                    (model.loss, ),
+                    variable_style=variable_style,
+                    function_style=function_style)
                 o.write(g.dump())
             print('graph generated')
 
