@@ -618,7 +618,7 @@ class TestEltwiseSumCoeff(TestCaffeFunctionBaseMock):
                 'top': ['y'],
                 'eltwise_param': {
                     'operation': 1,  # SUM
-                    'coeff': list(range(3)),
+                    'coeff': list(six.moves.range(3)),
                 },
             }
         ]
@@ -646,7 +646,8 @@ class TestEltwiseSumInvalidCoeff(TestCaffeFunctionBaseMock):
                 'top': ['y'],
                 'eltwise_param': {
                     'operation': 1,           # SUM
-                    'coeff': list(range(2)),  # not same as number of bottoms
+                    # not same as number of bottoms
+                    'coeff': list(six.moves.range(2)),
                 },
             }
         ]
@@ -732,7 +733,7 @@ class TestScaleOnlyBottom(TestCaffeFunctionBaseMock):
                         'shape': {
                             'dim': [2, 3],
                         },
-                        'data': list(range(6)),
+                        'data': list(six.moves.range(6)),
                     }
                 ],
                 'scale_param': {
@@ -767,7 +768,7 @@ class TestScaleWithBias(TestCaffeFunctionBaseMock):
                         'shape': {
                             'dim': [2, 3],
                         },
-                        'data': list(range(6)),
+                        'data': list(six.moves.range(6)),
                     }
                 ],
                 'scale_param': {
@@ -804,14 +805,14 @@ class TestScaleOnlyBottomWithBias(TestCaffeFunctionBaseMock):
                         'shape': {
                             'dim': [2, 3],
                         },
-                        'data': list(range(6)),
+                        'data': list(six.moves.range(6)),
                     },
                     # For bias.
                     {
                         'shape': {
                             'dim': [2, 3],
                         },
-                        'data': list(range(6)),
+                        'data': list(six.moves.range(6)),
                     }
                 ],
                 'scale_param': {
