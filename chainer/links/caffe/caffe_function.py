@@ -331,6 +331,12 @@ class CaffeFunction(link.Chain):
 
     @_layer('Scale', 'NONE')    # TODO: old name
     def _setup_scale(self, layer):
+        # Following parameters are not supporeted now:
+        # - negative axis
+        # - num_axes
+        # - filler
+        # - bias_filler
+
         # Get layer parameters.
         bottom = layer.bottom
         blobs = layer.blobs
