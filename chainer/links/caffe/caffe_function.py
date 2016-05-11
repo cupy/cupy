@@ -503,10 +503,8 @@ class _EltwiseFunction(object):
             coeffs = self.coeffs
             if coeffs is not None:
                 assert len(xs) == len(coeffs)
-                xs2 = [x * coeff for x, coeff in zip(xs, coeffs)]
-            else:
-                xs2 = xs
-            return reduce(lambda x, y: x + y, xs2),
+                xs = [x * coeff for x, coeff in zip(xs, coeffs)]
+            return reduce(lambda x, y: x + y, xs),
 
         elif operation == 2:    # MAX
             return reduce(lambda x, y: functions.maximum(x, y), xs),
