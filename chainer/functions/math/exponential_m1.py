@@ -22,7 +22,7 @@ class Expm1(function.Function):
         return self.y,
 
     def forward_gpu(self, x):
-        self.y = cuda.cupy.exp(x[0])-1.0
+        self.y = cuda.cupy.expm1(x[0])
         return self.y,
 
     def backward(self, x, gy):
@@ -48,7 +48,7 @@ class Log1p(function.Function):
         return utils.force_array(numpy.log1p(x[0])),
 
     def forward_gpu(self, x):
-        return cuda.cupy.log(x[0]+1.0),
+        return cuda.cupy.log1p(x[0]),
 
     def backward(self, x, gy):
         return utils.force_array((gy[0] / (x[0]+1.0)).astype('float32')),
