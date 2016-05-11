@@ -690,7 +690,7 @@ class TestEltwiseMax(TestCaffeFunctionBaseMock):
 
 class TestScale(TestCaffeFunctionBaseMock):
 
-    func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
+    func_name = 'chainer.links.caffe.caffe_function._Scale.__call__'
     in_shapes = [(2, 3), (2, 3)]
     out_shapes = [(2, 3)]
 
@@ -715,9 +715,9 @@ class TestScale(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0], self.inputs[1])
 
 
-class TestScaleOnlyBottom(TestCaffeFunctionBaseMock):
+class TestScaleOneBottom(TestCaffeFunctionBaseMock):
 
-    func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
+    func_name = 'chainer.links.caffe.caffe_function._Scale.__call__'
     in_shapes = [(2, 3)]
     out_shapes = [(2, 3)]
 
@@ -743,7 +743,7 @@ class TestScaleOnlyBottom(TestCaffeFunctionBaseMock):
         ]
     }
 
-    def test_scale_only_bottom(self):
+    def test_scale_one_bottom(self):
         self.init_func()
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
@@ -752,7 +752,7 @@ class TestScaleOnlyBottom(TestCaffeFunctionBaseMock):
 
 class TestScaleWithBias(TestCaffeFunctionBaseMock):
 
-    func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
+    func_name = 'chainer.links.caffe.caffe_function._Scale.__call__'
     in_shapes = [(2, 3), (2, 3)]
     out_shapes = [(2, 3)]
 
@@ -782,13 +782,14 @@ class TestScaleWithBias(TestCaffeFunctionBaseMock):
     def test_scale_with_bias(self):
         self.init_func()
         self.assertEqual(len(self.func.layers), 1)
+        self.assertTrue(hasattr(self.func.l1, 'bias'))
         self.call(['x', 'y'], ['z'])
         self.mock.assert_called_once_with(self.inputs[0], self.inputs[1])
 
 
-class TestScaleOnlyBottomWithBias(TestCaffeFunctionBaseMock):
+class TestScaleOneBottomWithBias(TestCaffeFunctionBaseMock):
 
-    func_name = 'chainer.links.caffe.caffe_function._ScaleChain.__call__'
+    func_name = 'chainer.links.caffe.caffe_function._Scale.__call__'
     in_shapes = [(2, 3)]
     out_shapes = [(2, 3)]
 
@@ -823,9 +824,10 @@ class TestScaleOnlyBottomWithBias(TestCaffeFunctionBaseMock):
         ]
     }
 
-    def test_scale_only_bottom_with_bias(self):
+    def test_scale_one_bottom_with_bias(self):
         self.init_func()
         self.assertEqual(len(self.func.layers), 1)
+        self.assertTrue(hasattr(self.func.l1, 'bias'))
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(self.inputs[0])
 
