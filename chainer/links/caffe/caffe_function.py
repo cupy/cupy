@@ -420,6 +420,10 @@ class CaffeFunction(link.Chain):
 def _get_ksize(param):
     if param.kernel_h > 0:
         return param.kernel_h, param.kernel_w
+    elif type(param.kernel_size) == int:
+        return param.kernel_size
+    elif len(param.kernel_size) == 1:
+        return param.kernel_size[0]
     else:
         return param.kernel_size
 
@@ -427,6 +431,10 @@ def _get_ksize(param):
 def _get_stride(param):
     if param.stride_h > 0:
         return param.stride_h, param.stride_w
+    elif type(param.stride) == int:
+        return param.stride
+    elif len(param.stride) == 1:
+        return param.stride[0]
     else:
         return param.stride
 
@@ -434,6 +442,10 @@ def _get_stride(param):
 def _get_pad(param):
     if param.pad_h > 0:
         return param.pad_h, param.pad_w
+    elif type(param.pad) == int:
+        return param.pad
+    elif len(param.pad) == 1:
+        return param.pad[0]
     else:
         return param.pad
 

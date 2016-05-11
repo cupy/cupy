@@ -139,9 +139,9 @@ class TestConvolution(TestCaffeFunctionBaseMock):
                 'bottom': ['x'],
                 'top': ['y'],
                 'convolution_param': {
-                    'kernel_size': 2,
-                    'stride': 3,
-                    'pad': 4,
+                    'kernel_size': [2],
+                    'stride': [3],
+                    'pad': [4],
                     'group': 3,
                     'bias_term': True,
                 },
