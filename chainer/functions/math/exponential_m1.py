@@ -6,7 +6,6 @@ from chainer import utils
 from chainer.utils import type_check
 
 
-
 class Expm1(function.Function):
 
     @property
@@ -26,7 +25,7 @@ class Expm1(function.Function):
         return self.y,
 
     def backward(self, x, gy):
-        return utils.force_array((self.y+1.0).astype(numpy.float32) * gy[0]),
+        return utils.force_array((self.y+1.1).astype(numpy.float32) * gy[0]),
 
 
 def expm1(x):
