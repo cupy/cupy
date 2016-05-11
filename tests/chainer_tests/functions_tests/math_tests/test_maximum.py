@@ -6,6 +6,7 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer import testing
+from chainer.utils import type_check
 from chainer.testing import attr
 
 
@@ -51,5 +52,16 @@ class TestMaximum(unittest.TestCase):
         x2 = cuda.to_gpu(self.x2)
         gy = cuda.to_gpu(self.gy)
         self.check_backward(x1, x2, gy)
+
+
+class TestMaximumInconsistentShapes(unittest.TestCase):
+
+    def test_maximum_inconsistent_shapes(self):
+        x1_data = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        x2_data = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        x1 = chainer.Variable(x1_data)
+        x2 = chainer.Variable(x2_data)
+        with self.assertRaises(type_check.InvalidType):
+            functions.maximum(x1, x2)
 
 testing.run_module(__name__, __file__)
