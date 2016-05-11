@@ -26,7 +26,7 @@ class Expm1(function.Function):
         return self.y,
 
     def backward(self, x, gy):
-        return utils.force_array((self.y+1.0).astype('float32') * gy[0]),
+        return utils.force_array((self.y+1.0).astype(numpy.float32) * gy[0]),
 
 
 def expm1(x):
@@ -51,7 +51,7 @@ class Log1p(function.Function):
         return cuda.cupy.log1p(x[0]),
 
     def backward(self, x, gy):
-        return utils.force_array((gy[0] / (x[0]+1.0)).astype('float32')),
+        return utils.force_array((gy[0] / (x[0]+1.0)).astype(numpy.float32)),
 
 
 def log1p(x):
