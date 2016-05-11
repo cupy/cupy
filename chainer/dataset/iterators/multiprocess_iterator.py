@@ -118,8 +118,8 @@ class MultiprocessIterator(iterator.Iterator):
                 #   1. Start prefetching the next batch.
                 #   2. Shuffle the order during the prefetch.
                 #   3. Iterator is suspended (i.e., serialized).
-                #   4. Iterator is resumed (i.e., deserialized) in another
-                #      process.
+                #   4. Iterator is resumed (i.e., deserialized) by another
+                #      object.
                 # In this case, the serialized iterator holds a new (shuffled)
                 # order information, while the resumed iterator must start from
                 # the end of the epoch with the old order.
