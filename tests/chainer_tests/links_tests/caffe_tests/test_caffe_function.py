@@ -902,7 +902,7 @@ class TestSoftmaxcuDnnEngine(TestCaffeFunctionBaseMock):
         ]
     }
 
-    def test_softmax_caffe_engine(self):
+    def test_softmax_cuDNN_engine(self):
         self.init_func()
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(self.inputs[0], use_cudnn=True)
