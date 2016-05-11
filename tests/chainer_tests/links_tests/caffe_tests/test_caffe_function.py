@@ -547,6 +547,76 @@ class TestLeakyReLU(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0], slope=0.5)
 
 
+class TestBatchNorm(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.BatchNormalization.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'BatchNorm',
+                'bottom': ['x'],
+                'top': ['y'],
+                'blobs': [
+                    {
+                        'shape': {
+                            'dim': [3],
+                        },
+                    },
+                ],
+                'batch_norm_param': {
+                    'use_global_stats': False,
+                }
+            }
+        ]
+    }
+
+    def test_batchnorm(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0],
+                                          test=False, finetune=False)
+
+
+class TestBatchNormUsingGlobalStats(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.BatchNormalization.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'BatchNorm',
+                'bottom': ['x'],
+                'top': ['y'],
+                'blobs': [
+                    {
+                        'shape': {
+                            'dim': [3],
+                        },
+                    },
+                ],
+                'batch_norm_param': {
+                    'use_global_stats': True,
+                }
+            }
+        ]
+    }
+
+    def test_batchnorm(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0],
+                                          test=True, finetune=False)
+
+
 class TestEltwiseProd(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.variable.Variable.__mul__'

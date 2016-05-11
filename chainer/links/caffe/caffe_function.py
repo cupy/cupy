@@ -318,6 +318,28 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = fw
         self._add_layer(layer)
 
+    @_layer('BatchNorm', 'NONE')    # TODO: old name
+    def _setup_batchnorm(self, layer):
+        # Get layer parameters.
+        blobs = layer.blobs
+        param = layer.batch_norm_param
+        use_global_stats = param.use_global_stats
+        decay = param.moving_average_fraction
+        eps = param.eps
+        size = blobs[0].shape.dim[0]  # Get channel dimension from mean blob.
+
+        # Make BatchNormalization link.
+        func = links.BatchNormalization(size, decay=decay, eps=eps,
+                                        use_gamma=False, use_beta=False)
+        self.add_link(layer.name, func)
+
+        # Add layer.
+        fwd = _SingleArgumentFunction(
+            _CallChildLink(self, layer.name),
+            test=use_global_stats, finetune=False)
+        self.forwards[layer.name] = fwd
+        self._add_layer(layer)
+
     @_layer('Eltwise', 'ELTWISE')
     def _setup_eltwise(self, layer):
         # stable_prod_grad parameter is not supported now.
@@ -493,8 +515,8 @@ class _CallChildLink(object):
         self.name = name
         self.caffe_func = caffe_func
 
-    def __call__(self, *xs):
-        return self.caffe_func[self.name](*xs)
+    def __call__(self, *xs, **kwargs):
+        return self.caffe_func[self.name](*xs, **kwargs)
 
 
 class _EltwiseFunction(object):
