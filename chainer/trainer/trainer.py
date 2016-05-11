@@ -109,13 +109,15 @@ class Trainer(object):
             returns True.
         observation: Observation of values made at the last update. See the
             :class:`Report` class for details.
+        out: Output directory.
         report: Report object to report observed values.
 
     """
-    def __init__(self, updater, stop_trigger=None):
+    def __init__(self, updater, stop_trigger=None, out='result'):
         self.updater = updater
         self.stop_trigger = trigger_module.get_trigger(stop_trigger)
         self.observation = {}
+        self.out = out
 
         report = report_module.Report()
         for name, optimizer in six.iteritems(updater.get_all_optimizers()):
@@ -195,7 +197,7 @@ class Trainer(object):
         else:
             raise ValueError('extension %s not found' % name)
 
-    def run(self, out='result'):
+    def run(self):
         """Executes the training loop.
 
         This method is the core of Trainer. It executes the whole loop of
@@ -203,16 +205,12 @@ class Trainer(object):
 
         Note that this method cannot run multiple times for one trainer object.
 
-        Args:
-            out (str): Output directory. All the results are put under this
-                directory.
-
         """
         if self._done:
             raise RuntimeError('cannot run training loop multiple times')
 
         try:
-            os.makedirs(out)
+            os.makedirs(self.out)
         except OSError:
             pass
 
