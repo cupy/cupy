@@ -26,7 +26,7 @@ def snapshot(savefun=npz.save_npz,
             the :meth:`str.format` method.
 
     """
-    @extension.make_extension(trigger=(1, 'epoch'))
+    @extension.make_extension(name='snapshot', trigger=(1, 'epoch'))
     def ext(trainer):
         fname = filename.format(trainer)
         fd, tmppath = tempfile.mkstemp(prefix=fname, dir=trainer.out)
