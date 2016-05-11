@@ -337,7 +337,7 @@ class CaffeFunction(link.Chain):
         axis = layer.scale_param.axis
         bias_term = layer.scale_param.bias_term
 
-        # Case of only bottom where W is learnt parameter.
+        # Case of only one bottom where W is learnt parameter.
         if len(bottom) == 1:
             W_blob = blobs[0]
             bias_blob = blobs[1] if bias_term else None
