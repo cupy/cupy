@@ -4,13 +4,13 @@ import sys
 import threading
 import warnings
 
+from chainer import _report
 from chainer import flag
 from chainer import function
 from chainer import function_set
 from chainer.functions import basic_math
 from chainer import link
 from chainer import optimizer
-from chainer import report_module
 from chainer import serializer
 from chainer import variable
 
@@ -31,7 +31,7 @@ FunctionSet = function_set.FunctionSet
 GradientMethod = optimizer.GradientMethod
 Link = link.Link
 Optimizer = optimizer.Optimizer
-Report = report_module.Report
+Report = _report.Report
 Serializer = serializer.Serializer
 Variable = variable.Variable
 
@@ -39,8 +39,8 @@ ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
 
-get_current_report = report_module.get_current_report
-report = report_module.report
+get_current_report = _report.get_current_report
+report = _report.report
 
 
 thread_local = threading.local()
