@@ -318,6 +318,8 @@ fmin = math.misc.fmin
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 count_nonzero = sorting.count.count_nonzero
+nonzero = sorting.search.nonzero
+flatnonzero = sorting.search.flatnonzero
 
 argmax = sorting.search.argmax
 argmin = sorting.search.argmin
