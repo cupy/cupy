@@ -6,7 +6,6 @@ import warnings
 import numpy
 import six
 
-from chainer import variable
 from chainer import functions
 from chainer import link
 from chainer import links
