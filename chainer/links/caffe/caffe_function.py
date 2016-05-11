@@ -510,7 +510,7 @@ class _EltwiseFunction(object):
             return reduce(lambda x, y: functions.maximum(x, y), xs),
 
         else:
-            raise RuntimeError('Invalid EltwiseParameter.EltwiseOp value.')
+            raise ValueError('Invalid EltwiseParameter.EltwiseOp value.')
 
 
 class _ScaleFunction(object):
