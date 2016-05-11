@@ -23,6 +23,15 @@ class Updater(object):
         """Current number of completed updates."""
         raise NotImplementedError
 
+    def finalize(self):
+        """Finalizes the updater object.
+
+        This method is called at the end of training loops. It should finalize
+        each dataset iterator used in this updater.
+
+        """
+        raise NotImplementedError
+
     def get_optimizer(self, name):
         """Gets the optimizer of given name.
 
@@ -125,6 +134,10 @@ class StandardUpdater(Updater):
     @property
     def epoch(self):
         return self._iterators['main'].epoch
+
+    def finalize(self):
+        for iterator in six.itervalues(self._iterstors):
+            iterator.finalize()
 
     def get_optimizer(self, name):
         return self._optimizers[name]
