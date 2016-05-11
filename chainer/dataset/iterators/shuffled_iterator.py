@@ -27,10 +27,13 @@ class ShuffledIterator(iterator.Iterator):
 
         self.current_position = 0
         self.epoch = 0
+        self.is_new_epoch = False
 
     def next(self):
         if not self._repeat and self.epoch > 0:
             raise StopIteration
+
+        self.is_new_epoch = False
 
         i = self.current_position
         N = len(self.dataset)
@@ -41,6 +44,7 @@ class ShuffledIterator(iterator.Iterator):
             i += 1
             if i >= N:
                 self.epoch += 1
+                self.is_new_epoch = True
                 i = 0
                 if not self._repeat:
                     break
@@ -53,4 +57,5 @@ class ShuffledIterator(iterator.Iterator):
         self.current_position = serializer('current_position',
                                            self.current_position)
         self.epoch = serializer('epoch', self.epoch)
+        self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
         serializer('_order', self._order)

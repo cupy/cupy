@@ -59,6 +59,11 @@ class Iterator(object):
         """
         raise NotImplementedError
 
+    @property
+    def is_new_epoch(self):
+        """True if the epoch count was incremented at the last update."""
+        raise NotImplementedError
+
     def next(self):
         """Returns the next batch.
 

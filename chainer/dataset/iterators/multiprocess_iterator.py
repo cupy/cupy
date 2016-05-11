@@ -40,6 +40,7 @@ class MultiprocessIterator(iterator.Iterator):
 
         self.current_position = 0
         self.epoch = 0
+        self.is_new_epoch = False
         self._pushed_position = None  # initialized at the first iteration
 
         if n_processes is None:
@@ -71,6 +72,7 @@ class MultiprocessIterator(iterator.Iterator):
         if not self._repeat and self.epoch > 0:
             raise StopIteration
 
+        self.is_new_epoch = False
         if not self._start:
             self._invoke_prefetch()  # load for the first iteration
             self._start = True
@@ -99,6 +101,7 @@ class MultiprocessIterator(iterator.Iterator):
         self.current_position = serializer('current_position',
                                            self.current_position)
         self.epoch = serializer('epoch', self.epoch)
+        self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
 
     def _invoke_prefetch(self):
         N = len(self.dataset)
@@ -136,6 +139,7 @@ class MultiprocessIterator(iterator.Iterator):
             if i >= N:
                 i = 0
                 self.epoch += 1
+                self.is_new_epoch = True
                 if not self._repeat:
                     break
         self.current_position = i

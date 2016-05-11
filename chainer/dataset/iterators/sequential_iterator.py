@@ -25,6 +25,7 @@ class SequentialIterator(iterator.Iterator):
 
         self.current_position = 0
         self.epoch = 0
+        self.is_new_epoch = False
 
     def next(self):
         if not self._repeat and self.epoch > 0:
@@ -44,7 +45,9 @@ class SequentialIterator(iterator.Iterator):
             else:
                 self.current_position = 0
             self.epoch += 1
+            self.is_new_epoch = True
         else:
+            self.is_new_epoch = False
             batch = self.dataset[i:i_end]
             self.current_position = i_end
 
@@ -54,3 +57,4 @@ class SequentialIterator(iterator.Iterator):
         self.current_position = serializer('current_position',
                                            self.current_position)
         self.epoch = serializer('epoch', self.epoch)
+        self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
