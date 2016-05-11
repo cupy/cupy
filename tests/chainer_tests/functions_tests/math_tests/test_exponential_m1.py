@@ -99,4 +99,5 @@ class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
         gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         return x, gy
 
+
 testing.run_module(__name__, __file__)
