@@ -19,8 +19,9 @@ class AdaDelta(optimizer.GradientMethod):
     def init_state(self, param, state):
         data = param.data
         xp = cuda.get_array_module(data)
-        state['msg'] = xp.zeros_like(data)
-        state['msdx'] = xp.zeros_like(data)
+        with cuda.get_device(data):
+            state['msg'] = xp.zeros_like(data)
+            state['msdx'] = xp.zeros_like(data)
 
     def update_one_cpu(self, param, state):
         grad = param.grad
