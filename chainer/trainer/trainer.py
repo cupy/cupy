@@ -84,9 +84,10 @@ class Trainer(object):
        deserialization, so users can train the model for some iterations,
        suspend it, and then resume it with larger number of total iterations.
 
-    During the training, it also creates a :class:`Reporter` object to store
-    observed values on each update. For each iteration, it creates a fresh
-    observation dictionary and stores it in the :attr:`observation` attribute.
+    During the training, it also creates a :class:`~chainer.Reporter` object to
+    store observed values on each update. For each iteration, it creates a
+    fresh observation dictionary and stores it in the :attr:`observation`
+    attribute.
 
     Links of the target model of each optimizer are registered to the reporter
     object as observers, where the name of each observer is constructed as the
