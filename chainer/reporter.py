@@ -154,14 +154,19 @@ def report(name, value, observer=None):
     current.report(name, value, observer)
 
 
+@contextlib.contextmanager
 def report_scope(observation):
     """Returns a report scope with the current reporter.
 
-    This is equivalant to ``get_current_reporter().report_scope(observation)``.
+    This is equivalant to ``get_current_reporter().report_scope(observation)``,
+    except that it does not make the reporter current redundantly.
 
     """
     current = _reporters[-1]
-    return current.report_scope(observation)
+    old = current.observation
+    current.observation = observation
+    yield
+    current.observation = old
 
 
 class Summary(object):
