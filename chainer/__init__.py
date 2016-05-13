@@ -25,6 +25,7 @@ AbstractSerializer = serializer.AbstractSerializer
 Chain = link.Chain
 ChainList = link.ChainList
 Deserializer = serializer.Deserializer
+DictSummary = reporter.DictSummary
 Flag = flag.Flag
 Function = function.Function
 FunctionSet = function_set.FunctionSet
@@ -33,6 +34,7 @@ Link = link.Link
 Optimizer = optimizer.Optimizer
 Reporter = reporter.Reporter
 Serializer = serializer.Serializer
+Summary = reporter.Summary
 Variable = variable.Variable
 
 ON = flag.ON
