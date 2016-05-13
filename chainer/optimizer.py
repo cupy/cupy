@@ -556,13 +556,12 @@ class GradientNoise(object):
                 'T noise', 'T g', 'g += noise', 'gradient_noise')
 
         for param in opt.target.params():
-            p, g = param.data, param.grad
-            xp = cuda.get_array_module(p)
-            noise = xp.random.normal(0,
-                                     numpy.sqrt(
-                                         self.eta / numpy.power(1 + opt.t, 0.55)),
-                                     p.shape).astype(numpy.float32)
-            with cuda.get_device(p) as dev:
+            g = param.grad
+            xp = cuda.get_array_module(g)
+            with cuda.get_device(g) as dev:
+                noise = xp.random.normal(0, numpy.sqrt(
+                    self.eta / numpy.power(1 + opt.t, 0.55)), g.shape).astype(
+                        numpy.float32)
                 if int(dev) == -1:
                     g += noise
                 else:
