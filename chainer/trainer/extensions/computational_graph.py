@@ -15,8 +15,8 @@ def dump_graph(root_name, out_name='cg.dot'):
 
     Args:
         root_name (str): Name of the root of the computational graph. The
-            actual root variable is retrieved from the report object by this
-            name.
+            root variable is retrieved by this name from the observation
+            dictionary of the trainer.
         out_name (str): Output file name.
 
     """

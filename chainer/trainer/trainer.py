@@ -3,7 +3,7 @@ import os
 
 import six
 
-from chainer import report_module
+from chainer import reporter as reporter_module
 from chainer.trainer import extension as extension_module
 from chainer.trainer import trigger as trigger_module
 
@@ -84,16 +84,16 @@ class Trainer(object):
        deserialization, so users can train the model for some iterations,
        suspend it, and then resume it with larger number of total iterations.
 
-    During the training, it also creates a :class:`Report` object to observe
-    values on each update. For each iteration, it creates a fresh observation
-    dictionary and stores it in the :attr:`observation` attribute.
+    During the training, it also creates a :class:`Reporter` object to store
+    observed values on each update. For each iteration, it creates a fresh
+    observation dictionary and stores it in the :attr:`observation` attribute.
 
-    Links of the target model of each optimizer are registered to the report
+    Links of the target model of each optimizer are registered to the reporter
     object as observers, where the name of each observer is constructed as the
     format ``<optimizer name><link name>``. The link name is given by the
     :meth:`chainer.Link.namedlink` method, which represetns the path to each
     link in the hierarchy. Other observers can be registered by accessing the
-    report object via the :attr:`report` attribute.
+    reporter object via the :attr:`reporter` attribute.
 
     The default trainer is `plain`, i.e., it does not contain any extensions.
 
@@ -108,9 +108,9 @@ class Trainer(object):
             The training loop stops at the iteration on which this trigger
             returns True.
         observation: Observation of values made at the last update. See the
-            :class:`Report` class for details.
+            :class:`Reporter` class for details.
         out: Output directory.
-        report: Report object to report observed values.
+        reporter: Reporter object to report observed values.
 
     """
     def __init__(self, updater, stop_trigger=None, out='result'):
@@ -119,10 +119,10 @@ class Trainer(object):
         self.observation = {}
         self.out = out
 
-        report = report_module.Report()
+        reporter = reporter_module.Reporter()
         for name, optimizer in six.iteritems(updater.get_all_optimizers()):
-            report.add_observers(name, optimizer.target.namedlinks())
-        self.report = report
+            reporter.add_observers(name, optimizer.target.namedlinks())
+        self.reporter = reporter
 
         self._done = False
         self._extensions = collections.OrderedDict()
@@ -227,13 +227,13 @@ class Trainer(object):
                 entry.extension(self)
 
         update = self.updater.update
-        report = self.report
+        reporter = self.reporter
         stop_trigger = self.stop_trigger
 
         # main training loop
         while not stop_trigger(self):
             observation = self.observation = {}
-            with report.scope(observation):
+            with reporter.scope(observation):
                 update()
 
             for name, entry in extensions:
