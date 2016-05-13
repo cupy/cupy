@@ -13,10 +13,10 @@ class Extension(object):
     provides a set of typical default values for these attributes.
 
     There are two ways to define users' own extensions: inheriting this class,
-    or decorating functions by :func:`make_extension`. Decorator can slightly
+    or decorating closures by :func:`make_extension`. Decorator can slightly
     reduce the overhead and is much easier to use, while this class provides
-    more flexibility (for example, decorated functions cannot be serialized in
-    general).
+    more flexibility (for example, it can have methods to configure the
+    behavior).
 
     Attributes:
         trigger: Default value of trigger for this extension. It is set to
