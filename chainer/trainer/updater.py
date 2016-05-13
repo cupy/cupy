@@ -174,9 +174,9 @@ class StandardUpdater(Updater):
 
 def _default_update(updater, converter, device, loss_func):
     if not converter:
-        def convert(batch):
+        def _convert(batch):
             return convert.concat_examples(batch, device=device)
-        converter = convert
+        converter = _convert
 
     iterator = updater.get_iterator('main')
     optimizer = updater.get_optimizer('main')
