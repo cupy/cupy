@@ -194,30 +194,19 @@ class Summary(object):
             self._x2 += value * value
             self._n += 1
 
-    @property
-    def mean(self):
-        """Mean of given scalars."""
-        x = self._x
-        with cuda.get_device(x):
-            return x / self._n
+    def make_statistics(self):
+        """Computes and returns mean, variance, and standard deviation values.
 
-    @property
-    def variance(self):
-        """Variance of given scalars."""
-        x, n = self._x, self._n
-        with cuda.get_device(x):
-            mean = x / n
-            return self._x2 / n - mean * mean
+        Returns:
+            tuple: Mean, variance, and standard deviation values.
 
-    @property
-    def std(self):
-        """Standard deviation of given scalars."""
+        """
         x, n = self._x, self._n
-        xp = cuda.get_array_module(x)
         with cuda.get_device(x):
             mean = x / n
             var = self._x2 / n - mean * mean
-            return xp.sqrt(var, out=var)
+            std = xp.sqrt(var)
+            return mean, var, std
 
 
 class DictSummary(object):
@@ -254,29 +243,23 @@ class DictSummary(object):
             if v.ndim == 0:
                 summaries[k].add(v)
 
-    @property
-    def mean(self):
-        """A dictionary of the means of accumulated values.
+    def make_statistics(self):
+        """Creates a dictionary of statistics.
 
-        This property always returns a new dictionary.
+        It returns a single dictionary holds mean, variance, and standard
+        deviation values for every entry added to the summary. For an entry of
+        name ``'key'``, these values are added to the dictionary by names
+        ``'key'``, ``'key.variance'``, and ``'key.std'``, respectively.
 
-        """
-        return {k: s.mean for k, s in six.iteritems(self._summaries)}
-
-    @property
-    def variance(self):
-        """A dictionary of the variances of accumulated values.
-
-        This property always returns a new dictionary.
+        Returns:
+            dict: Dictionary of statistics of all entries.
 
         """
-        return {k: s.variance for k, s in six.iteritems(self._summaries)}
+        stats = {}
+        for name, summary in self._summaries:
+            mean, var, std = summary.make_statistics()
+            stats[name] = mean
+            stats[name + '.variance'] = var
+            stats[name + '.std'] = std
 
-    @property
-    def std(self):
-        """A dictionary of the standard deviations of accumulated values.
-
-        This property always returns a new dictionary.
-
-        """
-        return {k: s.std for k, s in six.iteritems(self._summaries)}
+        return stats
