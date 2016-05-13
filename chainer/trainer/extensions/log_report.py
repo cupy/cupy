@@ -1,0 +1,107 @@
+import collections
+import json
+import os
+import tempfile
+
+from chainer import reporter
+from chainer.trainer import extension
+import chainer.trainer.trigger as trigger_module
+import chainer.serializer as serializer_module
+
+
+class LogReport(extension.Extension):
+
+    """Trainer extension to output the accumulated results to a log file.
+
+    This extension accumulates the observation of the trainer to
+    :class:`~chainer.DictSummary` for each duration of a specified length, and
+    writes them into a log file in JSON format.
+
+    There are two triggers to handle this extension. One is the trigger to
+    invoke this extension, which is used to handle the timing of accumulating
+    the results. It is set to ``1, 'iteration'`` by default. The other is the
+    trigger to determine when to emit the result. When this trigger returns
+    True, this extension appends the summary of accumulated values to the list
+    of past summaries, and writes the list to the log file. Then, this
+    extension makes a new fresh summary object which is used until the next
+    time that the trigger fires.
+
+    It also adds ``'epoch'`` and ``'iteration'`` entries to each result
+    dictionary, which are the epoch and iteration counts at the output.
+
+    Args:
+        keys (iterable of strs): Keys of values to accumulate. If this is None,
+            all the values are accumulated and output to the log file.
+        trigger: Trigger that decides when to aggregate the result and output
+            the values. This is distinct from the trigger of this extension
+            itself. If it is a tuple in the form ``<int>, 'epoch'`` or
+            ``<int>, 'iteration'``, it is passed to :class:`IntervalTrigger`.
+        postprocess: Callback to postprocess the result dictionaries. Each
+            result dictionary is passed to this callback on the output. This
+            callback can modify the result dictionaries, which are used to
+            output to the log file.
+        log_name (str): Name of the log file under the output directory. It can
+            be a format string: the last result dictionary is passed for the
+            formatting. For example, users can use '{.iteration}' to separate
+            the log files for different iterations.
+
+    """
+    def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
+                 log_name='log'):
+        self._keys = keys
+        self._trigger = trigger_module.get_trigger(trigger)
+        self._postprocess = postprocess
+        self._log_name = log_name
+        self._log = []
+
+        self._init_summary()
+
+    def __call__(self, trainer):
+        # accumulate the observations
+        keys = self._keys
+        observation = trainer.observation
+        summary = self._summary
+
+        if keys is None:
+            for key, value in six.iteritems(observation):
+                summary[key].add(value)
+        else:
+            for key in keys:
+                if key in observation:
+                    summary[key].add(observation[key])
+
+        if self._trigger(trainer):
+            # output the result
+            stats = self._summary.make_statistics()
+            stats_cpu = {}
+            for name, value in six.iteritems(stats):
+                stats_cpu[name] = float(value)  # copy to CPU
+
+            updater = trainer.updater
+            stats_cpu['epoch'] = updater.epoch
+            stats_cpu['iteration'] = updater.iteration
+
+            self._log.append(stats_cpu)
+
+            # write to the log file
+            log_name = self._log_name.format(stats_cpu)
+            fd, path = tempfile.mkstemp(prefix=log_name, dir=trainer.out)
+            with os.fdopen(fd, 'w') as f:
+                json.dump(self._log, f, indent=4)
+            os.rename(path, os.path.join(trainer.out, log_name))
+
+            # reset the summary for the next output
+            self._init_summary()
+
+    def serialize(self, serializer):
+        # Note that this serialization may lose some information of small
+        # numerical differences.
+        if isinstance(serializer, serializer_module.Serializer):
+            log = json.dumps(self._log)
+            serializer('_log', log)
+        else:
+            log = serializer('_log', '')
+            self._log = json.loads(log)
+
+    def _init_summary(self):
+        self._summary = collections.defaultdict(reporter.DictSummary)
