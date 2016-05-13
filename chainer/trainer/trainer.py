@@ -162,9 +162,12 @@ class Trainer(object):
         if name is None:
             name = getattr(extension, 'name', None)
             if name is None:
-                raise TypeError('name is not given for the extension')
-            elif name == 'training':
-                raise ValueError('the name "training" is reserved')
+                name = getattr(extension, 'default_name', None)
+                if name is None:
+                    raise TypeError('name is not given for the extension')
+                elif name == 'training':
+                    raise ValueError('the name "training" is reserved')
+        extension.name = name
 
         if trigger is None:
             trigger = getattr(extension, 'trigger', None)

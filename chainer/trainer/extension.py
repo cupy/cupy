@@ -33,7 +33,7 @@ class Extension(object):
     invoke_before_training = False
 
     @property
-    def name(self):
+    def default_name(self):
         """Default name of the extension.
 
         It is the name of the class by default. Implementation can override
@@ -63,7 +63,7 @@ class Extension(object):
         pass
 
 
-def make_extension(trigger=None, name=None, priority=None,
+def make_extension(trigger=None, default_name=None, priority=None,
                    invoke_before_training=False):
     """Decorator to make given functions into trainer extensions.
 
@@ -75,8 +75,8 @@ def make_extension(trigger=None, name=None, priority=None,
 
     Args:
         trigger: Default trigger of the extension.
-        name: Default name of the extension. The name of a given function is
-            used by default.
+        default_name: Default name of the extension. The name of a given
+            function is used by default.
         priority (int): Default priority of the extension.
         invoke_before_training (bool): Default flag to decide whether the
             extension should be invoked before any training.
@@ -89,7 +89,7 @@ def make_extension(trigger=None, name=None, priority=None,
 
     def decorator(ext):
         ext.trigger = trigger
-        ext.name = name or ext.__name__
+        ext.default_name = default_name or ext.__name__
         ext.priority = priority
         ext.invoke_before_training = invoke_before_training
         return ext
