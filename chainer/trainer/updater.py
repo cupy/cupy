@@ -84,12 +84,13 @@ class StandardUpdater(Updater):
     to input arrays by :func:`~chainer.datasets.concat_examples` by default,
     which can also be manually set.
 
-    There are two ways to modify the update behavior. One is by setting a
-    custom update function via the ``update_func`` argument. The other one is
-    by inheriting this class and overriding the :meth:`update` method. In
-    latter case, do not forget to update the iteration counter at each call of
-    this method, because this value is watched by the trainer for deciding when
-    to invoke extensions and when to exit the training loop.
+    There are two ways to modify the update behavior besides setting a custom
+    loss function. One is by setting a custom update function via the
+    ``update_func`` argument. The other one is by inheriting this class and
+    overriding the :meth:`update` method. In latter case, do not forget to
+    update the iteration counter at each call of this method, because this
+    value is watched by the trainer for deciding when to invoke extensions and
+    when to exit the training loop.
 
     Args:
         iterator: Dataset iterator for the training dataset. It can also be a
