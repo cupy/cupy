@@ -12,4 +12,5 @@ concat_examples = convert.concat_examples
 get_dataset_root = download.get_dataset_root
 set_dataset_root = download.set_dataset_root
 get_dataset_directory = download.get_dataset_directory
-retrieve = download.retrieve
+cached_download = download.cached_download
+cache_or_load_file = download.cache_or_load_file
