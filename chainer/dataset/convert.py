@@ -4,7 +4,7 @@ import six
 from chainer import cuda
 
 
-def concat_examples(batch, padding=None):
+def concat_examples(batch, device=None, padding=None):
     """Concatenates a list of examples into array(s).
 
     Dataset iterator yields a list of examples. If each example is an array,
@@ -86,7 +86,7 @@ def concat_examples(batch, padding=None):
 
 
 def _concat_arrays(arrays, padding=None):
-    shape = numpy.array(*arrays[0].shape)
+    shape = numpy.array(arrays[0].shape)
     for array in arrays[1:]:
         if numpy.any(shape != array.shape):
             if padding is None:
