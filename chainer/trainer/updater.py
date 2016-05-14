@@ -137,7 +137,7 @@ class StandardUpdater(Updater):
         return self._iterators['main'].epoch
 
     def finalize(self):
-        for iterator in six.itervalues(self._iterstors):
+        for iterator in six.itervalues(self._iterators):
             iterator.finalize()
 
     def get_optimizer(self, name):
