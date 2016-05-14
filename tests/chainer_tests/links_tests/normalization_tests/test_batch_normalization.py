@@ -167,4 +167,65 @@ class TestPopulationStatistics(unittest.TestCase):
             cuda.to_gpu(self.y))
 
 
+@testing.parameterize(*testing.product({
+    'test': [True, False],
+    'ndim': [0, 1, 2, 3],
+}))
+class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.BatchNormalization(3, use_gamma=False, use_beta=True)
+        if self.test:
+            mean = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
+            self.link.avg_mean[...] = mean
+            var = numpy.random.uniform(0.5, 1, (3,)).astype(numpy.float32)
+            self.link.avg_var[...] = var
+        self.link.zerograds()
+
+        shape = (7, 3) + (2,) * self.ndim
+        self.x = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
+
+        expander = (None, Ellipsis) + (None,) * self.ndim
+        gamma = numpy.ones((3,), dtype=numpy.float32)[expander]
+        beta = numpy.zeros((3,), dtype=numpy.float32)[expander]
+        if self.test:
+            mean = self.link.avg_mean
+            var = self.link.avg_var
+        else:
+            aggr_axes = (0,) + tuple(six.moves.range(2, self.ndim + 2))
+            mean = self.x.mean(axis=aggr_axes)
+            var = self.x.var(axis=aggr_axes)
+        self.y_expected = _batch_normalization(
+            expander, gamma, beta, self.x, mean, var, self.link.eps, self.test)
+
+    def check_forward(self, x_data, y_expected):
+        x = chainer.Variable(x_data)
+        y = self.link(x, test=self.test)
+        gradient_check.assert_allclose(y_expected, y.data)
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x, self.y_expected)
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.link.to_gpu()
+        x = cuda.to_gpu(self.x)
+        y_expected = cuda.to_gpu(self.y_expected)
+        self.check_forward(x, y_expected)
+
+    def check_backward(self, x_data, y_grad):
+        gradient_check.check_backward(self.link, x_data, y_grad,
+                                      eps=1e-2, rtol=1e-3, atol=1e-4)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.gy)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.link.to_gpu()
+        x = cuda.to_gpu(self.x)
+        gy = cuda.to_gpu(self.gy)
+        self.check_backward(x, gy)
+
 testing.run_module(__name__, __file__)
