@@ -7,7 +7,7 @@ import tempfile
 
 import filelock
 import numpy
-from six.moves.urillib import request
+from six.moves.urllib import request
 
 
 _dataset_root = os.environ.get('CHAINER_DATASET_ROOT',

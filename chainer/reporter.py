@@ -128,7 +128,7 @@ class Reporter(object):
         self.observation[name] = value
 
 
-_reporters = [Report()]
+_reporters = [Reporter()]
 
 
 def get_current_reporter():
