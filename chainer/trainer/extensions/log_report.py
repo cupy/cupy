@@ -43,7 +43,8 @@ class LogReport(extension.Extension):
         log_name (str): Name of the log file under the output directory. It can
             be a format string: the last result dictionary is passed for the
             formatting. For example, users can use '{.iteration}' to separate
-            the log files for different iterations.
+            the log files for different iterations. If the log name is None, it
+            does not output the log to any file.
 
     """
     def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
@@ -84,14 +85,20 @@ class LogReport(extension.Extension):
             self._log.append(stats_cpu)
 
             # write to the log file
-            log_name = self._log_name.format(stats_cpu)
-            fd, path = tempfile.mkstemp(prefix=log_name, dir=trainer.out)
-            with os.fdopen(fd, 'w') as f:
-                json.dump(self._log, f, indent=4)
-            os.rename(path, os.path.join(trainer.out, log_name))
+            if self._log_name is not None:
+                log_name = self._log_name.format(stats_cpu)
+                fd, path = tempfile.mkstemp(prefix=log_name, dir=trainer.out)
+                with os.fdopen(fd, 'w') as f:
+                    json.dump(self._log, f, indent=4)
+                os.rename(path, os.path.join(trainer.out, log_name))
 
             # reset the summary for the next output
             self._init_summary()
+
+    @property
+    def log(self):
+        """The current list of observation dictionaries."""
+        return self._log
 
     def serialize(self, serializer):
         # Note that this serialization may lose some information of small
