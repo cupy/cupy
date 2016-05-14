@@ -506,11 +506,22 @@ def get_array_module(*args):
 _max_workspace_size = 8 * 1024 * 1024
 
 
-# TODO(okuta): Write document
 def get_max_workspace_size():
+    """Gets the workspace size for cuDNN.
+
+    Returns:
+        int: The workspace size for cuDNN.
+
+    """
     return _max_workspace_size
 
 
 def set_max_workspace_size(size):
+    """Sets the workspace size for cuDNN.
+
+    Args:
+        size: The workspace size for cuDNN.
+
+    """
     global _max_workspace_size
     _max_workspace_size = size
