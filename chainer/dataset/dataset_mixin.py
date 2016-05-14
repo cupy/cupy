@@ -19,7 +19,7 @@ class DatasetMixin(object):
         if isinstance(index, slice):
             current, stop, step = index.indices(len(self))
             ret = []
-            while current >= stop and step > 0 or current <= stop and step < 0:
+            while current < stop and step > 0 or current > stop and step < 0:
                 ret.append(self.get_example(current))
                 current += step
             return ret
