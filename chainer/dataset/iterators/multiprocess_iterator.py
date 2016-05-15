@@ -1,5 +1,4 @@
 import multiprocessing
-import Queue
 
 import numpy
 import six
@@ -90,7 +89,7 @@ class MultiprocessIterator(iterator.Iterator):
         try:
             while True:
                 self._data_queue.get_nowait()
-        except Queue.Empty:
+        except six.moves.queue.Empty:
             pass
         for _ in workers:
             self._index_queue.put(-1)  # termination signal

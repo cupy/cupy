@@ -39,7 +39,7 @@ class ShuffledIterator(iterator.Iterator):
         N = len(self.dataset)
 
         batch = []
-        for _ in six.moves.range(batch_size):
+        for _ in six.moves.range(self.batch_size):
             batch.append(self.dataset[self._order[i]])
             i += 1
             if i >= N:

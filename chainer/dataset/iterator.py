@@ -14,6 +14,16 @@ class Iterator(object):
     The interface between the iterator and the underlying dataset is not fixed,
     and up to the implementation.
 
+    Each implementation should provide the following attributes (or possibly
+    read-only properties).
+
+    - ``batch_size``: the number of examples within each batch.
+    - ``current_position``: the current position of the iterator within the
+       epoch.
+    - ``epoch``: the number of completed sweeps over the dataset.
+    - ``is_new_epoch``: True if the epoch count was incremented at the last
+      update.
+
     Each implementation should also support serialization to resume/suspend the
     iteration.
 
@@ -21,48 +31,6 @@ class Iterator(object):
     def __iter__(self):
         """Returns self."""
         return self
-
-    @property
-    def batch_size(self):
-        """The number of examples within each batch.
-
-        Implementations should override it or provide an attribute of the same
-        name.
-
-        """
-        raise NotImplementedError
-
-    @property
-    def current_position(self):
-        """The current position of the iterator within the epoch.
-
-        It represents how many examples are already visited in the current
-        epoch.
-
-        Implementation should override it or provide an attribute of the same
-        name.
-
-        """
-        raise NotImplementedError
-
-    @property
-    def epoch(self):
-        """The number of completed sweeps over the dataset.
-
-        The definition of epoch depends on the dataset and iterator
-        implementation. In most cases, it represents how many times all data
-        points are already visited.
-
-        Implementations should override it or provide an attribute of the same
-        name.
-
-        """
-        raise NotImplementedError
-
-    @property
-    def is_new_epoch(self):
-        """True if the epoch count was incremented at the last update."""
-        raise NotImplementedError
 
     def next(self):
         """Returns the next batch.
