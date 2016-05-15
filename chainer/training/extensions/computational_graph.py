@@ -1,7 +1,7 @@
 import os
 
 from chainer import computational_graph
-from chainer.trainer import extension
+from chainer.training import extension
 from chainer import variable
 
 

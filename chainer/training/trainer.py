@@ -4,8 +4,8 @@ import os
 import six
 
 from chainer import reporter as reporter_module
-from chainer.trainer import extension as extension_module
-from chainer.trainer import trigger as trigger_module
+from chainer.training import extension as extension_module
+from chainer.training import trigger as trigger_module
 
 
 class _ExtensionEntry(object):

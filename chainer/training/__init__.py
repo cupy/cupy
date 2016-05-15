@@ -1,7 +1,7 @@
-from chainer.trainer import extension
-from chainer.trainer import trainer
-from chainer.trainer import trigger
-from chainer.trainer import updater
+from chainer.training import extension
+from chainer.training import trainer
+from chainer.training import trigger
+from chainer.training import updater
 
 
 Extension = extension.Extension

@@ -1,5 +1,9 @@
+import os
+import shutil
+import tempfile
+
 from chainer.serializers import npz
-from chainer.trainer import extension
+from chainer.training import extension
 
 
 def snapshot(savefun=npz.save_npz,

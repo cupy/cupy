@@ -1,4 +1,4 @@
-from chainer.trainer import extension
+from chainer.training import extension
 
 
 class ExponentialDecay(extension.Extension):

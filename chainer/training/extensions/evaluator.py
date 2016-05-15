@@ -6,7 +6,7 @@ from chainer.dataset import convert
 from chainer.dataset import iterator as iterator_module
 from chainer import link
 from chainer import reporter as reporter_module
-from chainer.trainer import extension
+from chainer.training import extension
 from chainer import variable
 
 

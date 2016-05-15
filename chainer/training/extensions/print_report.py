@@ -1,7 +1,7 @@
 import sys
 
-from chainer.trainer import extension
-from chainer.trainer.extensions import log_report as log_report_module
+from chainer.training import extension
+from chainer.training.extensions import log_report as log_report_module
 
 
 class PrintReport(extension.Extension):

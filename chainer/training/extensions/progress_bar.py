@@ -3,9 +3,9 @@ import datetime
 import sys
 import time
 
-from chainer.trainer import extension
-from chainer.trainer.extensions import log_report as log_report_module
-from chainer.trainer import trigger
+from chainer.training import extension
+from chainer.training.extensions import log_report as log_report_module
+from chainer.training import trigger
 
 
 class ProgressBar(extension.Extension):
