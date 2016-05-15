@@ -3,8 +3,8 @@ import tarfile
 import numpy
 from six.moves.cPickle import pickle
 
-from chainer.dataset.datasets import tuple_dataset
 from chainer.dataset import download
+from chainer.datasets import tuple_dataset
 
 
 def get_cifar10(withlabel=True, ndim=3, scale=1.):
@@ -32,8 +32,8 @@ def get_cifar10(withlabel=True, ndim=3, scale=1.):
 
     Returns:
         A tuple of two datasets. If ``withlabel`` is True, both datasets are
-        :class:`~chainer.dataset.datasets.TupleDataset` instances. Othewrise,
-        both datasets are arrays of images.
+        :class:`~chainer.datasets.TupleDataset` instances. Othewrise, both
+        datasets are arrays of images.
 
     """
     raw = _retrieve_cifar('cifar-10')
@@ -69,8 +69,8 @@ def get_cifar100(withlabel=True, ndim=3, scale=1.):
 
     Returns:
         A tuple of two datasets. If ``withlabel`` is True, both datasets are
-        :class:`~chainer.dataset.datasets.TupleDataset` instances. Othewrise,
-        both datasets are arrays of images.
+        :class:`~chainer.datasets.TupleDataset` instances. Othewrise, both
+        datasets are arrays of images.
 
     """
     raw = _retrieve_cifar('cifar-100')

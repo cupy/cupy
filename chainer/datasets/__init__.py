@@ -1,7 +1,7 @@
-from chainer.dataset.datasets import dict_dataset
-from chainer.dataset.datasets import image_dataset
-from chainer.dataset.datasets import sub_dataset
-from chainer.dataset.datasets import tuple_dataset
+from chainer.datasets import dict_dataset
+from chainer.datasets import image_dataset
+from chainer.datasets import sub_dataset
+from chainer.datasets import tuple_dataset
 
 
 DictDataset = dict_dataset.DictDataset

@@ -1,6 +1,6 @@
-from chainer.dataset.iterators import multiprocess_iterator
-from chainer.dataset.iterators import sequential_iterator
-from chainer.dataset.iterators import shuffled_iterator
+from chainer.iterators import multiprocess_iterator
+from chainer.iterators import sequential_iterator
+from chainer.iterators import shuffled_iterator
 
 
 MultiprocessIterator = multiprocess_iterator.MultiprocessIterator

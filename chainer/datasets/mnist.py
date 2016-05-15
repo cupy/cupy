@@ -6,8 +6,8 @@ import numpy
 import six
 from six.moves.urllib import request
 
-from chainer.dataset.datasets import tuple_dataset
 from chainer.dataset import download
+from chainer.datasets import tuple_dataset
 
 
 def get_mnist(withlabel=True, ndim=1, scale=1.):
@@ -35,8 +35,8 @@ def get_mnist(withlabel=True, ndim=1, scale=1.):
 
     Returns:
         A tuple of two datasets. If ``withlabel`` is True, both datasets are
-        :class:`~chainer.dataset.datasets.TupleDataset` instances. Othewrise,
-        both datasets are arrays of images.
+        :class:`~chainer.datasets.TupleDataset` instances. Othewrise, both
+        datasets are arrays of images.
 
     """
     train_raw = _retrieve_mnist_training()
