@@ -194,6 +194,12 @@ class Summary(object):
             self._x2 += value * value
             self._n += 1
 
+    def compute_mean(self):
+        """Computes the mean."""
+        x, n = self._x, self._n
+        with cuda.get_device(x):
+            return x / n
+
     def make_statistics(self):
         """Computes and returns the mean and standard deviation values.
 
@@ -244,13 +250,26 @@ class DictSummary(object):
             if v.ndim == 0:
                 summaries[k].add(v)
 
+    def compute_mean(self):
+        """Creates a dictionary of mean values.
+
+        It returns a single dictionary that holds a mean value for each entry
+        added to the summary.
+
+        Returns:
+            dict: Dictionary of mean values.
+
+        """
+        return {name: summary.compute_mean()
+                for name, summary in six.iteritems(self._summaries)}
+
     def make_statistics(self):
         """Creates a dictionary of statistics.
 
-        It returns a single dictionary holds mean and standard deviation values
-        for every entry added to the summary. For an entry of name ``'key'``,
-        these values are added to the dictionary by names ``'key'`` and
-        ``'key.std'``, respectively.
+        It returns a single dictionary that holds mean and standard deviation
+        values for every entry added to the summary. For an entry of name
+        ``'key'``, these values are added to the dictionary by names ``'key'``
+        and ``'key.std'``, respectively.
 
         Returns:
             dict: Dictionary of statistics of all entries.

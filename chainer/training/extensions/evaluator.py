@@ -157,6 +157,6 @@ def _default_eval_loop(evaluator, converter, device, eval_func):
 
             summary.add(observation)
 
-        return summary.make_statistics()
+        return summary.compute_mean()
 
     return eval_loop
