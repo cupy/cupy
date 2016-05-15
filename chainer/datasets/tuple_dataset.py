@@ -31,7 +31,7 @@ class TupleDataset(object):
             return [tuple([batch[i] for batch in batches])
                     for i in six.moves.range(length)]
         else:
-            return batches
+            return tuple(batches)
 
     def __len__(self):
         return self._length
