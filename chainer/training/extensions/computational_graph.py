@@ -23,10 +23,10 @@ def dump_graph(root_name, out_name='cg.dot'):
     def trigger(trainer):
         return trainer.updater.iteration == 1
 
-    @extension.make_extension(name='dump_graph', trigger=trigger)
-    def ext(trainer):
+    @extension.make_extension(trigger=trigger)
+    def dump_graph(trainer):
         var = trainer.observation[root_name]
-        if not isinstance(variable.Variable):
+        if not isinstance(var, variable.Variable):
             raise TypeError('root value is not a Variable')
         cg = computational_graph.build_computational_graph([var]).dump()
 
@@ -35,4 +35,4 @@ def dump_graph(root_name, out_name='cg.dot'):
         with open(out_path, 'w') as f:
             f.write(cg)
 
-    return ext
+    return dump_graph

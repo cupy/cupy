@@ -30,14 +30,14 @@ def snapshot(savefun=npz.save_npz,
             the :meth:`str.format` method.
 
     """
-    @extension.make_extension(name='snapshot', trigger=(1, 'epoch'))
-    def ext(trainer):
+    @extension.make_extension(trigger=(1, 'epoch'))
+    def snapshot(trainer):
         fname = filename.format(trainer)
         fd, tmppath = tempfile.mkstemp(prefix=fname, dir=trainer.out)
         try:
             savefun(tmppath, trainer)
         finally:
             os.close(fd)
-        os.rename(tmppath, os.path.join(trainer.out, fname))
+        shutil.move(tmppath, os.path.join(trainer.out, fname))
 
-    return ext
+    return snapshot

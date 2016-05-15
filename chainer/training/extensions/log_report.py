@@ -65,12 +65,9 @@ class LogReport(extension.Extension):
         summary = self._summary
 
         if keys is None:
-            for key, value in six.iteritems(observation):
-                summary[key].add(value)
+            summary.add(observation)
         else:
-            for key in keys:
-                if key in observation:
-                    summary[key].add(observation[key])
+            summary.add({k: observation[k] for k in keys if k in observation})
 
         if self._trigger(trainer):
             # output the result
@@ -112,4 +109,4 @@ class LogReport(extension.Extension):
             self._log = json.loads(log)
 
     def _init_summary(self):
-        self._summary = collections.defaultdict(reporter.DictSummary)
+        self._summary = reporter.DictSummary()

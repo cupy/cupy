@@ -116,9 +116,11 @@ class Evaluator(extension.Extension):
         """
         # set up a reporter
         reporter = reporter_module.Reporter()
+        prefix = self.name + '/'
         for name, target in six.iteritems(self._targets):
-            reporter.add_observer(name, target)
-            reporter.add_observers(name, target.namedlinks(skipself=True))
+            reporter.add_observer(prefix + name, target)
+            reporter.add_observers(prefix + name,
+                                   target.namedlinks(skipself=True))
 
         with reporter:
             return self._eval_loop(self)
@@ -136,9 +138,9 @@ def _default_eval_loop(evaluator, converter, device, eval_func):
 
     def eval_loop(trainer):
         it = copy.copy(iterator)
-        summary = _report.DictSummary()
+        summary = reporter_module.DictSummary()
 
-        for batch in iterator:
+        for batch in it:
             observation = {}
             with reporter_module.report_scope(observation):
                 in_arrays = converter(batch)
