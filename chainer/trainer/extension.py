@@ -37,7 +37,7 @@ class Extension(object):
         """Default name of the extension.
 
         It is the name of the class by default. Implementation can override
-        this property, or provide a class or instance attribute to hide it.
+        this property, or provide a class attribute to hide it.
 
         """
         return type(self).__name__
