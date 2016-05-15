@@ -60,7 +60,7 @@ setup(
               'chainer.serializers',
               'chainer.testing',
               'chainer.training',
-              'chainer.trainng.extensions',
+              'chainer.training.extensions',
               'chainer.utils',
               'cupy',
               'cupy.binary',
