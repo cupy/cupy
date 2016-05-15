@@ -63,11 +63,7 @@ class MultiprocessIterator(iterator.Iterator):
     def __del__(self):
         self.finalize()
 
-    @property
-    def n_processes(self):
-        return len(self._workers)
-
-    def next(self):
+    def __next__(self):
         if not self._repeat and self.epoch > 0:
             raise StopIteration
 
@@ -78,6 +74,12 @@ class MultiprocessIterator(iterator.Iterator):
         batch = self._get()
         self._invoke_prefetch()  # prefetch for the next iteration
         return batch
+
+    next = __next__
+
+    @property
+    def n_processes(self):
+        return len(self._workers)
 
     def finalize(self):
         if self._finalized:

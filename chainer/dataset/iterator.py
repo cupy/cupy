@@ -4,7 +4,7 @@ class Iterator(object):
 
     Iterator iterates over the dataset, yielding a minibatch at each
     iteration. Minibatch is a list of examples. Each implementation should
-    implement an iterator protocol (e.g., the :meth:`next` method).
+    implement an iterator protocol (e.g., the :meth:`__next__` method).
 
     Note that, even if the iterator supports setting the batch size, it does
     not guarantee that each batch always contains the same number of examples.
@@ -32,14 +32,21 @@ class Iterator(object):
         """Returns self."""
         return self
 
-    def next(self):
+    def __next__(self):
         """Returns the next batch.
 
-        This is a part of the iterator protocol of Python. It may raises the
+        This is a part of the iterator protocol of Python. It may raise the
         :class:`StopIteration` exception when it stops the iteration.
 
         """
         raise NotImplementedError
+
+    def next(self):
+        """Python2 alternative of ``__next__``.
+
+        It calls :meth:`__next__` by default.
+        """
+        return self.__next__()
 
     def finalize(self):
         """Finalizes the iterator and possibly releases the resources.

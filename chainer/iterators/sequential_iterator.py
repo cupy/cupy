@@ -27,7 +27,7 @@ class SequentialIterator(iterator.Iterator):
         self.epoch = 0
         self.is_new_epoch = False
 
-    def next(self):
+    def __next__(self):
         if not self._repeat and self.epoch > 0:
             raise StopIteration
 
@@ -52,6 +52,8 @@ class SequentialIterator(iterator.Iterator):
             self.current_position = i_end
 
         return batch
+
+    next = __next__
 
     def serialize(self, serializer):
         self.current_position = serializer('current_position',
