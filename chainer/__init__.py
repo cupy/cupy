@@ -4,14 +4,22 @@ import sys
 import threading
 import warnings
 
+from chainer import cuda
+from chainer import datasets
 from chainer import flag
 from chainer import function
 from chainer import function_set
+from chainer import functions
 from chainer.functions import basic_math
+from chainer import iterators
 from chainer import link
+from chainer import links
 from chainer import optimizer
+from chainer import optimizers
 from chainer import reporter
 from chainer import serializer
+from chainer import serializers
+from chainer import training
 from chainer import variable
 
 

@@ -1,5 +1,8 @@
+from chainer.datasets import cifar
 from chainer.datasets import dict_dataset
 from chainer.datasets import image_dataset
+from chainer.datasets import mnist
+from chainer.datasets import ptb
 from chainer.datasets import sub_dataset
 from chainer.datasets import tuple_dataset
 
@@ -15,3 +18,13 @@ get_cross_validation_datasets_random = (
 
 split_dataset = sub_dataset.split_dataset
 split_dataset_random = sub_dataset.split_dataset_random
+
+
+# examples
+
+get_cifar10 = cifar.get_cifar10
+get_cifar100 = cifar.get_cifar100
+get_mnist = mnist.get_mnist
+get_ptb_words_training = ptb.get_ptb_words_training
+get_ptb_words_validation = ptb.get_ptb_words_validation
+get_ptb_words_test = ptb.get_ptb_words_test
