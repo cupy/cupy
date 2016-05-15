@@ -79,7 +79,7 @@ def _retrieve_mnist_test():
 def _retrieve_mnist(name, urls):
     root = download.get_dataset_directory('pfnet/chainer/mnist')
     path = os.path.join(root, name)
-    return download.cached_create_file(
+    return download.cache_or_load_file(
         path, lambda path: _make_npz(path, urls), numpy.load)
 
 
