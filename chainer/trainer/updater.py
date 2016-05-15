@@ -13,16 +13,6 @@ class Updater(object):
     TODO(beam2d): document it.
 
     """
-    @property
-    def epoch(self):
-        """Current number of completed sweeps over the trianing dataset."""
-        raise NotImplementedError
-
-    @property
-    def iteration(self):
-        """Current number of completed updates."""
-        raise NotImplementedError
-
     def finalize(self):
         """Finalizes the updater object.
 
