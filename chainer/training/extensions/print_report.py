@@ -28,16 +28,15 @@ class PrintReport(extension.Extension):
         self._log_len = 0  # number of observations already printed
 
         # format information
-        entry_width = max(10, max(len(s) for s in entries))
-        self._entry_width = entry_width
+        entry_widths = [max(10, len(s)) for s in entries]
 
-        header = (('{:^:%d}  ' % entry_width) * len(entries) + '\n').format(
-            *entries)
+        header = '  '.join(('{:%d}' % w for w in entry_widths)).format(
+            *entries) + '\n'
         self._header = header  # printed at the first call
 
         template = []
-        for entry in entries:
-            template.append('{%s:>%dg}' % (entry, entry_width))
+        for entry, w in zip(entries, entry_widths):
+            template.append('{%s:<%dg}' % (entry, w))
         self._template = '  '.join(template) + '\n'
 
     def __call__(self, trainer):
