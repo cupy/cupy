@@ -122,7 +122,9 @@ class Trainer(object):
 
         reporter = reporter_module.Reporter()
         for name, optimizer in six.iteritems(updater.get_all_optimizers()):
-            reporter.add_observers(name, optimizer.target.namedlinks())
+            reporter.add_observer(name, optimizer.target)
+            reporter.add_observers(
+                name, optimizer.target.namedlinks(skipself=True))
         self.reporter = reporter
 
         self._done = False

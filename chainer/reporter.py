@@ -17,8 +17,8 @@ class Reporter(object):
 
     When a value is passed to the reporter, an observer object can be
     optionally attached. In this case, the name of the observer is added as the
-    prefix of the value name, separated with a single colon ``:``. The observer
-    name should be registered beforehand.
+    prefix of the value name. The observer name should be registered
+    beforehand.
 
     See the following example::
 
@@ -26,7 +26,7 @@ class Reporter(object):
        >>>
        >>> reporter = Reporter()
        >>> observer = object()  # it can be an arbitrary (reference) object
-       >>> reporter.add_observer('my_observer', observer)
+       >>> reporter.add_observer('my_observer:', observer)
        >>> observation = {}
        >>> with reporter.scope(observation):
        ...     reporter.report('x', 1, observer)
@@ -123,7 +123,7 @@ class Reporter(object):
         """
         if observer is not None:
             observer_name = self._observer_names[id(observer)]
-            name = '%s:%s' % (name, observer_name)
+            name = '%s/%s' % (observer_name, name)
 
         self.observation[name] = value
 
