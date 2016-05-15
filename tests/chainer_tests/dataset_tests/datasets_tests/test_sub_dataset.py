@@ -76,3 +76,40 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(len(te3), 2)
         self.assertEqual(te3[0], 1)
         self.assertEqual(te3[1], 2)
+
+    def test_get_cross_validation_datasets_2(self):
+        original = [1, 2, 3, 4, 5, 6, 7]
+        cv1, cv2, cv3 = datasets.get_cross_validation_datasets(original, 3)
+
+        tr1, te1 = cv1
+        self.assertEqual(len(tr1), 4)
+        self.assertEqual(tr1[0], 1)
+        self.assertEqual(tr1[1], 2)
+        self.assertEqual(tr1[2], 3)
+        self.assertEqual(tr1[3], 4)
+        self.assertEqual(len(te1), 3)
+        self.assertEqual(te1[0], 5)
+        self.assertEqual(te1[1], 6)
+        self.assertEqual(te1[2], 7)
+
+        tr2, te2 = cv2
+        self.assertEqual(len(tr2), 5)
+        self.assertEqual(tr2[0], 5)
+        self.assertEqual(tr2[1], 6)
+        self.assertEqual(tr2[2], 7)
+        self.assertEqual(tr2[3], 1)
+        self.assertEqual(tr2[4], 2)
+        self.assertEqual(len(te2), 2)
+        self.assertEqual(te2[0], 3)
+        self.assertEqual(te2[1], 4)
+
+        tr3, te3 = cv3
+        self.assertEqual(len(tr3), 5)
+        self.assertEqual(tr3[0], 3)
+        self.assertEqual(tr3[1], 4)
+        self.assertEqual(tr3[2], 5)
+        self.assertEqual(tr3[3], 6)
+        self.assertEqual(tr3[4], 7)
+        self.assertEqual(len(te3), 2)
+        self.assertEqual(te3[0], 1)
+        self.assertEqual(te3[1], 2)
