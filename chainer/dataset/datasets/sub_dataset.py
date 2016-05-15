@@ -130,7 +130,7 @@ def get_cross_validation_datasets(dataset, n_fold, order=None):
     splits = []
     for test_size in reversed(test_sizes):
         size = whole_size - test_size
-        splits.append(dataset, size, order)
+        splits.append(split_dataset(dataset, size, order))
         new_order = numpy.empty_like(order)
         new_order[:test_size] = order[-test_size:]
         new_order[test_size:] = order[:-test_size]
