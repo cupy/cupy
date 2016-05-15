@@ -73,26 +73,29 @@ class ProgressBar(extension.Extension):
             recent_timing = self._recent_timing
             now = time.clock()
 
-            if len(recent_timing) >= 10:
+            if len(recent_timing) >= 1:
                 out.write('\x1b\x9bJ')
 
                 bar_length = self._bar_length
-                rate = iters / iteration
-                marks = '#' * (rate * bar_length)
-                bar = '[%s%s]\n' % (marks, '.' * (bar_length - len(marks)))
+                rate = iteration / iters
+                marks = '#' * int(rate * bar_length)
+                bar = '[{}{}] {:.4%}\n'.format(
+                    marks, '.' * (bar_length - len(marks)), rate)
                 out.write(bar)
 
-                status = stat_template.format(trainer.update)
+                status = stat_template.format(trainer.updater)
                 old_t, old_sec = recent_timing[0]
                 speed = (iteration - old_t) / (now - old_sec)
                 estimated_time = (iters - iteration) / speed
-                out.write('%s iters/sec.  %s to finish.\n' %
-                          (speed, datetime.timedelta(seconds=estimated_time)))
+                out.write('{:.5g} iters/sec.\tEstimated time to finish: {}.\n'
+                          .format(speed,
+                                  datetime.timedelta(seconds=estimated_time)))
 
                 # move the cursor to the head of the progress bar
                 out.write('\x1b\x9b2A')
                 out.flush()
 
-                del recent_timing[0]
+                if len(recent_timing) > 100:
+                    del recent_timing[0]
 
             recent_timing.append((iteration, now))
