@@ -161,7 +161,7 @@ class StandardUpdater(Updater):
             iterator.serialize(serializer['iterator:' + name])
 
         for name, optimizer in six.iteritems(self._optimizers):
-            optmizer.serialize(serializer['optimizer:' + name])
+            optimizer.serialize(serializer['optimizer:' + name])
 
         self.iteration = serializer('iteration', self.iteration)
 
@@ -182,13 +182,13 @@ def _default_update(updater, converter, device, loss_func):
 
         if isinstance(in_arrays, tuple):
             in_vars = tuple(variable.Variable(x) for x in in_arrays)
-            optimizer.update(_loss_func, *in_vars)
+            optimizer.update(loss_func, *in_vars)
         elif isinstance(in_arrays, dict):
             in_vars = {key: variable.Variable(x)
                        for key, x in six.iteritems(in_arrays)}
-            optimizer.update(_loss_func, **in_vars)
+            optimizer.update(loss_func, **in_vars)
         else:
             in_var = variable.Variable(in_arrays)
-            optimizer.update(_loss_func, in_var)
+            optimizer.update(loss_func, in_var)
 
     return update
