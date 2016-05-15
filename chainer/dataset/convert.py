@@ -98,12 +98,13 @@ def _concat_arrays(arrays, padding=None):
     xp = cuda.get_array_module(arrays[0])
     if padding is None:
         result = xp.empty(shape, dtype=arrays[0].dtype)
-        for src, dst in six.moves.zip(arrays, result):
-            xp.copyto(dst, src)
+        for i in six.moves.range(len(arrays)):
+            result[i] = arrays[i]
     else:
         result = xp.full(shape, padding, dtype=arrays[0].dtype)
-        for src, dst in six.moves.zip(arrays, result):
+        for i in six.moves.range(len(arrays)):
+            src = arrays[i]
             slices = tuple(slice(dim) for dim in src.shape)
-            dst[slices] = src
+            result[(i,) + slices] = src
 
     return result
