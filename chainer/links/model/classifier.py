@@ -1,6 +1,7 @@
 from chainer.functions.evaluation import accuracy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer import link
+from chainer import reporter
 
 
 class Classifier(link.Chain):
@@ -53,6 +54,8 @@ class Classifier(link.Chain):
         self.accuracy = None
         self.y = self.predictor(x)
         self.loss = self.lossfun(self.y, t)
+        reporter.report('loss', self.loss, self)
         if self.compute_accuracy:
             self.accuracy = accuracy.accuracy(self.y, t)
+            reporter.report('accuracy', self.accuracy, self)
         return self.loss
