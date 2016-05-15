@@ -195,18 +195,19 @@ class Summary(object):
             self._n += 1
 
     def make_statistics(self):
-        """Computes and returns mean, variance, and standard deviation values.
+        """Computes and returns the mean and standard deviation values.
 
         Returns:
-            tuple: Mean, variance, and standard deviation values.
+            tuple: Mean and standard deviation values.
 
         """
         x, n = self._x, self._n
+        xp = cuda.get_array_module(x)
         with cuda.get_device(x):
             mean = x / n
             var = self._x2 / n - mean * mean
-            std = xp.sqrt(var)
-            return mean, var, std
+            std = xp.sqrt(var, var)
+            return mean, std
 
 
 class DictSummary(object):
@@ -246,20 +247,19 @@ class DictSummary(object):
     def make_statistics(self):
         """Creates a dictionary of statistics.
 
-        It returns a single dictionary holds mean, variance, and standard
-        deviation values for every entry added to the summary. For an entry of
-        name ``'key'``, these values are added to the dictionary by names
-        ``'key'``, ``'key.variance'``, and ``'key.std'``, respectively.
+        It returns a single dictionary holds mean and standard deviation values
+        for every entry added to the summary. For an entry of name ``'key'``,
+        these values are added to the dictionary by names ``'key'`` and
+        ``'key.std'``, respectively.
 
         Returns:
             dict: Dictionary of statistics of all entries.
 
         """
         stats = {}
-        for name, summary in self._summaries:
-            mean, var, std = summary.make_statistics()
+        for name, summary in six.iteritems(self._summaries):
+            mean, std = summary.make_statistics()
             stats[name] = mean
-            stats[name + '.variance'] = var
             stats[name + '.std'] = std
 
         return stats
