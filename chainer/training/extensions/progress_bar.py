@@ -74,7 +74,7 @@ class ProgressBar(extension.Extension):
             now = time.clock()
 
             if len(recent_timing) >= 1:
-                out.write('\x1b\x9bJ')
+                out.write(u'\x1b\x9bJ')
 
                 bar_length = self._bar_length
                 rate = iteration / iters
@@ -92,7 +92,7 @@ class ProgressBar(extension.Extension):
                                   datetime.timedelta(seconds=estimated_time)))
 
                 # move the cursor to the head of the progress bar
-                out.write('\x1b\x9b2A')
+                out.write(u'\x1b\x9b2A')
                 out.flush()
 
                 if len(recent_timing) > 100:
