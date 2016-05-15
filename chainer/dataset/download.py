@@ -132,7 +132,7 @@ def cache_or_load_file(path, creator, loader):
         content = creator(temp_path)
         with filelock.FileLock(lock_path):
             if not os.path.exists(path):
-                os.rename(temp_path, path)
+                shutil.move(temp_path, path)
     except OSError:
         if not os.path.exists(path):
             raise
