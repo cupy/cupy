@@ -126,6 +126,10 @@ class StandardUpdater(Updater):
     def epoch(self):
         return self._iterators['main'].epoch
 
+    @property
+    def is_new_epoch(self):
+        return self._iterators['main'].is_new_epoch
+
     def finalize(self):
         for iterator in six.itervalues(self._iterators):
             iterator.finalize()
