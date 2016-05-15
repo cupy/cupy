@@ -1,7 +1,7 @@
 import tarfile
 
 import numpy
-from six.moves.cPickle import pickle
+import six.moves.cPickle as pickle
 
 from chainer.dataset import download
 from chainer.datasets import tuple_dataset
