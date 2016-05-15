@@ -91,8 +91,8 @@ def _make_npz(path, urls):
     with gzip.open(x_path, 'rb') as fx, gzip.open(y_path, 'rb') as fy:
         fx.read(4)
         fy.read(4)
-        N = struct.unpack(fx.read(4), '>i')
-        if N != struct.unpack(fy.read(4), '>i'):
+        N, = struct.unpack('>i', fx.read(4))
+        if N != struct.unpack('>i', fy.read(4))[0]:
             raise RuntimeError('wrong pair of MNIST images and labels')
         fx.read(8)
 
