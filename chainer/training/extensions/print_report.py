@@ -34,10 +34,10 @@ class PrintReport(extension.Extension):
             *entries) + '\n'
         self._header = header  # printed at the first call
 
-        template = []
+        templates = []
         for entry, w in zip(entries, entry_widths):
-            template.append('{%s:<%dg}' % (entry, w))
-        self._template = '  '.join(template) + '\n'
+            templates.append((entry, '{:<%dg}  ' % w, ' ' * (w + 2)))
+        self._templates = templates
 
     def __call__(self, trainer):
         out = self._out
@@ -60,9 +60,8 @@ class PrintReport(extension.Extension):
 
         log = log_report.log
         log_len = self._log_len
-        template = self._template
         while len(log) > log_len:
-            out.write(template.format(**log[log_len]))
+            self._print(log[log_len])
             log_len += 1
         self._log_len = log_len
 
@@ -70,3 +69,12 @@ class PrintReport(extension.Extension):
         log_report = self._log_report
         if isinstance(log_report, log_report_module.LogReport):
             log_report.serialize(serializer['_log_report'])
+
+    def _print(self, observation):
+        out = self._out
+        for entry, template, empty in self._templates:
+            if entry in observation:
+                out.write(template.format(observation[entry]))
+            else:
+                out.write(empty)
+        out.write('\n')
