@@ -8,21 +8,39 @@ import chainer.links as L
 from chainer import training
 from chainer.training import extensions
 
+import train_mnist
+
 
 # Network definition
-class MLP(chainer.Chain):
+class ParallelMLP(chainer.Chain):
 
-    def __init__(self, n_in, n_units, n_out):
-        super(MLP, self).__init__(
-            l1=L.Linear(n_in, n_units),  # first layer
-            l2=L.Linear(n_units, n_units),  # second layer
-            l3=L.Linear(n_units, n_out),  # output layer
+    def __init__(self, n_in, n_units, n_out, gpu0, gpu1):
+        super(ParallelMLP, self).__init__(
+            first0=train_mnist.MLP(n_in, n_units // 2, n_units).to_gpu(gpu0),
+            first1=train_mnist.MLP(n_in, n_units // 2, n_units).to_gpu(gpu1),
+            second0=train_mnist.MLP(n_units, n_units // 2, n_out).to_gpu(gpu0),
+            second1=train_mnist.MLP(n_units, n_units // 2, n_out).to_gpu(gpu1),
         )
+        self.gpu0 = gpu0
+        self.gpu1 = gpu1
 
     def __call__(self, x):
-        h1 = F.relu(self.l1(x))
-        h2 = F.relu(self.l2(h1))
-        return self.l3(h2)
+        # assume x is on gpu0
+        x1 = F.copy(x, self.gpu1)
+
+        z0 = self.first0(x)
+        z1 = self.first1(x1)
+
+        # synchronize
+        h0 = z0 + F.copy(z1, self.gpu0)
+        h1 = z1 + F.copy(z0, self.gpu1)
+
+        y0 = self.second0(F.relu(h0))
+        y1 = self.second1(F.relu(h1))
+
+        # synchronize
+        y = y0 + F.copy(y1, self.gpu0)
+        return y  # output is on gpu0
 
 
 def main():
@@ -31,9 +49,11 @@ def main():
                         help='Number of images in each mini batch')
     parser.add_argument('--epoch', '-e', default=20, type=int,
                         help='Number of sweeps over the dataset to train')
-    parser.add_argument('--gpu', '-g', default=-1, type=int,
-                        help='GPU ID (negative value indicates CPU)')
-    parser.add_argument('--out', '-o', default='result',
+    parser.add_argument('--gpu0', '-g', default=0, type=int,
+                        help='First GPU ID')
+    parser.add_argument('--gpu1', '-G', default=1, type=int,
+                        help='Second GPU ID')
+    parser.add_argument('--out', '-o', default='result_parallel',
                         help='Directory to output the result')
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
@@ -41,61 +61,44 @@ def main():
                         help='Number of units')
     args = parser.parse_args()
 
-    print('GPU: {}'.format(args.gpu))
+    print('GPU: {}, {}'.format(args.gpu0, args.gpu1))
     print('# unit: {}'.format(args.unit))
     print('# Minibatch-size: {}'.format(args.batchsize))
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    # Set up a neural network to train
-    model = L.Classifier(MLP(784, args.unit, 10))
-    if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-        model.to_gpu()  # Copy the model to the GPU
+    # See train_mnist.py for the meaning of these lines
 
-    # Setup an optimizer
+    model = L.Classifier(ParallelMLP(784, args.unit, 10, args.gpu0, args.gpu1))
+    chainer.cuda.get_device(args.gpu0).use()
+
     optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
 
-    # Load the MNIST dataset
     train, test = chainer.datasets.get_mnist()
 
     train_iter = chainer.iterators.ShuffledIterator(train, args.batchsize)
     test_iter = chainer.iterators.SequentialIterator(test, args.batchsize,
                                                      repeat=False)
 
-    # Setup a trainer
-    updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
+    updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu0)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-    # Evaluate the model with the test dataset for each epoch
-    trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu))
-
-    # Dump a computational graph from 'loss' variable at the first iteration
+    trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu0))
     trainer.extend(extensions.dump_graph('main/loss'))
-
-    # Take a snapshot at each epoch
     trainer.extend(extensions.snapshot())
-
-    # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
-
-    # Print selected entries of the log to stdout
-    # Entries prefixed by 'validation' are computed by the Evaluator extension
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy']))
-
-    # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar(
         iterations_per_epoch=60000 / args.batchsize))
 
     if args.resume:
-        # Resume from a snapshot
         chainer.serializers.load_npz(args.resume, trainer)
 
-    # Run the training
     trainer.run()
+
 
 if __name__ == '__main__':
     main()
