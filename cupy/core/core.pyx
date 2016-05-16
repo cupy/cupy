@@ -2343,6 +2343,7 @@ cdef _mean = create_reduction_func(
 # scan
 # -----------------------------------------------------------------------------
 
+@util.memoize()
 def _inclusive_scan_kernel(dtype, block_size):
     """return Prefix Sum(Scan) cuda kernel
 
@@ -2408,6 +2409,7 @@ def _inclusive_scan_kernel(dtype, block_size):
 
     return module.get_function(name)
 
+@util.memoize()
 def _add_scan_blocked_sum_kernel(dtype):
     name = "add_scan_blocked_sum_kernel"
     dtype = _get_typename(dtype)
@@ -2427,6 +2429,7 @@ def _add_scan_blocked_sum_kernel(dtype):
 
     return module.get_function(name)
 
+@util.memoize()
 def _nonzero_1d_kernel(src_dtype, index_dtype):
     name = "nonzero_1d_kernel"
     src_dtype = _get_typename(src_dtype)
@@ -2449,6 +2452,7 @@ def _nonzero_1d_kernel(src_dtype, index_dtype):
 
     return module.get_function(name)
 
+@util.memoize()
 def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
     name = "nonzero_kernel"
     src_dtype = _get_typename(src_dtype)
