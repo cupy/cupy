@@ -120,7 +120,10 @@ class Evaluator(extension.Extension):
         """
         # set up a reporter
         reporter = reporter_module.Reporter()
-        prefix = self.name + '/'
+        if hasattr(self, 'name'):
+            prefix = self.name + '/'
+        else:
+            prefix = ''
         for name, target in six.iteritems(self._targets):
             reporter.add_observer(prefix + name, target)
             reporter.add_observers(prefix + name,
