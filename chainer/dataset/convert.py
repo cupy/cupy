@@ -86,7 +86,7 @@ def concat_examples(batch, device=None, padding=None):
 
 
 def _concat_arrays(arrays, padding=None):
-    shape = numpy.array(arrays[0].shape)
+    shape = numpy.array(arrays[0].shape, dtype=int)
     for array in arrays[1:]:
         if numpy.any(shape != array.shape):
             if padding is None:
