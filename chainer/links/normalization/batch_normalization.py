@@ -65,12 +65,14 @@ class BatchNormalization(link.Link):
             self.add_param('gamma', size, dtype=dtype)
             self.gamma.data.fill(1)
         else:
-            self.gamma = variable.Variable(numpy.ones(size, dtype=dtype))
+            self.gamma = variable.Variable(numpy.ones(size, dtype=dtype),
+                                           volatile='auto')
         if use_beta:
             self.add_param('beta', size, dtype=dtype)
             self.beta.data.fill(0)
         else:
-            self.beta = variable.Variable(numpy.zeros(size, dtype=dtype))
+            self.beta = variable.Variable(numpy.zeros(size, dtype=dtype),
+                                          volatile='auto')
         self.add_persistent('avg_mean', numpy.zeros(size, dtype=dtype))
         self.add_persistent('avg_var', numpy.zeros(size, dtype=dtype))
         self.add_persistent('N', 0)
