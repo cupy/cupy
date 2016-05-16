@@ -153,8 +153,6 @@ class NStepLSTM(function.Function):
         xs = cuda.cupy.concatenate(x_list, axis=0)
         ys = cuda.cupy.empty((len(xs), n_units), dtype=xs.dtype)
 
-        # shape of h and c is (batch_size, n_layer, hidden_size) in Chainer
-        # but (hidden_size, batch_size, n_layer) in cuDNN
         handle = cudnn.get_handle()
         self.handle = handle
 
