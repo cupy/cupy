@@ -1,13 +1,14 @@
 import unittest
 
-import numpy
 import chainer
+import numpy
+
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer import testing
-from chainer.utils import type_check
 from chainer.testing import attr
+from chainer.utils import type_check
 
 
 @testing.parameterize(*[

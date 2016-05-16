@@ -318,7 +318,7 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = fw
         self._add_layer(layer)
 
-    @_layer('BatchNorm', 'NONE')    # TODO: old name
+    @_layer('BatchNorm', 'NONE')    # TODO(Takagi) old name
     def _setup_batchnorm(self, layer):
         # Get layer parameters.
         blobs = layer.blobs
@@ -353,7 +353,7 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = _EltwiseFunction(operation, coeffs)
         self._add_layer(layer)
 
-    @_layer('Scale', 'NONE')    # TODO: old name
+    @_layer('Scale', 'NONE')    # TODO(Takagi) old name
     def _setup_scale(self, layer):
         # Following parameters are not supporeted now:
         # - negative axis
