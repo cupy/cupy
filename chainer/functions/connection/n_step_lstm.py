@@ -223,7 +223,7 @@ class NStepLSTM(function.Function):
         dcy_desc = cudnn.create_tensor_nd_descriptor(dcy)
 
         c_dy_descs = _make_tensor_descriptor_array(dy_list)
-        dys = cuda.cupy.concatenate(dys, axis=0)
+        dys = cuda.cupy.concatenate(dy_list, axis=0)
 
         rnn_desc = self.rnn_desc
         handle = self.handle
@@ -278,4 +278,3 @@ class NStepLSTM(function.Function):
                 v[:] = bias.ravel()
 
         return tuple([dhx, dcx] + dws + dbs + dx_list)
-
