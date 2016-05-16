@@ -5,8 +5,8 @@ import numpy
 from chainer.dataset import download
 
 
-def get_ptb_words_training():
-    """Gets the Penn Tree Bank training dataset as one long word sequence.
+def get_ptb_words():
+    """Gets the Penn Tree Bank dataset as long word sequences.
 
     `Penn Tree Bank <https://www.cis.upenn.edu/~treebank/>`_ is originally a
     corpus of English sentences with linguistic structure annotations. This
@@ -15,53 +15,23 @@ def get_ptb_words_training():
     which omits the annotation and splits the dataset into three parts:
     training, validation, and test.
 
-    This function returns a long array of word IDs. All sentences in the
+    This function returns the training, validation, and test sets, each of
+    which is represented as a long array of word IDs. All sentences in the
     dataset are concatenated by End-of-Sentence mark '<eos>', which is treated
     as one of the vocabulary.
 
     Returns:
-        numpy.ndarray: Int32 vector of word IDs.
+        tuple of numpy.ndarray: Int32 vectors of word IDs.
 
     .. Seealso::
        Use :func:`get_ptb_words_vocabulary` to get the mapping between the
        words and word IDs.
 
     """
-    return _retrieve_ptb_words('train.npz', _train_url)
-
-
-def get_ptb_words_validation():
-    """Gets the Penn Tree Bank validation dataset as one long word sequence.
-
-    This is the validation set for Penn Tree Bank long sequence dataset.
-    See :func:`get_ptb_words_training` for details.
-
-    Returns:
-        numpy.ndarray: Int32 vector of word IDs.
-
-    .. Seealso::
-       Use :func:`get_ptb_words_vocabulary` to get the mapping between the
-       words and word IDs.
-
-    """
-    return _retrieve_ptb_words('valid.npz', _valid_url)
-
-
-def get_ptb_words_test():
-    """Gets the Penn Tree Bank test dataset as one long word sequence.
-
-    This is the test set for Penn Tree Bank long sequence dataset.
-    See :func:`get_ptb_words_training` for details.
-
-    Returns:
-        numpy.ndarray: Int32 vector of word IDs.
-
-    .. Seealso::
-       Use :func:`get_ptb_words_vocabulary` to get the mapping between the
-       words and word IDs.
-
-    """
-    return _retrieve_ptb_words('test.npz', _test_url)
+    train = _retrieve_ptb_words('train.npz', _train_url)
+    valid = _retrieve_ptb_words('valid.npz', _valid_url)
+    test = _retrieve_ptb_words('test.npz', _test_url)
+    return train, valid, test
 
 
 def get_ptb_words_vocabulary():
@@ -111,7 +81,7 @@ def _retrieve_word_vocabulary():
                 if word not in vocab:
                     vocab[word] = index
                     index += 1
-                    f.write(vocab + '\n')
+                    f.write(word + '\n')
 
         return vocab
 
