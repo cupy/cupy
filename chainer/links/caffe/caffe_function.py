@@ -561,7 +561,6 @@ class _EltwiseFunction(object):
 def _scale(x, y, axis=1):
     x_shape = x.data.shape
     y_shape = y.data.shape
-    axis = self.axis
     assert x_shape[axis:axis + len(y_shape)] == y_shape
     y1_shape = tuple([1] * axis + list(y_shape) +
                      [1] * (len(x_shape) - axis - len(y_shape)))
@@ -591,13 +590,13 @@ class _Scale(link.Chain):
                 func = _Bias(axis, W_shape)
                 self.add_link('bias', func)
             else:
-                self.b = None
+                self.bias = None
         else:
             if bias_term is not None:
                 func = _Bias(axis, bias_term)
                 self.add_link('bias', func)
             else:
-                self.b = None
+                self.bias = None
 
         # Hold axis.
         self.axis = axis
@@ -617,8 +616,8 @@ class _Scale(link.Chain):
             z = _scale(x, y, axis)
 
         # Forward propagate bias term if given.
-        if self.b is not None:
-            return self.b(z)
+        if self.bias is not None:
+            return self.bias(z)
         else:
             return z
 
@@ -626,7 +625,6 @@ class _Scale(link.Chain):
 def _bias(x, y, axis=1):
     x_shape = x.data.shape
     y_shape = y.data.shape
-    axis = self.axis
     assert x_shape[axis:axis + len(y_shape)] == y_shape
     y1_shape = tuple([1] * axis + list(y_shape) +
                      [1] * (len(x_shape) - axis - len(y_shape)))
