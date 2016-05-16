@@ -278,4 +278,4 @@ class NStepLSTM(function.Function):
                 v[:] = bias.ravel()
 
         return tuple([dhx, dcx] + dws + dbs + dx_list)
-;
+
