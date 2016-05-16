@@ -6,6 +6,8 @@ import chainer
 from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
+from chainer import testing
+from chainer.testing import attr
 
 
 def sigmoid(x):
@@ -14,8 +16,8 @@ def sigmoid(x):
 
 class TestNStepLSTM(unittest.TestCase):
 
-    length = 3
-    n_batch = 2
+    batches = [4, 3, 2, 1]
+    length = len(batches)
     in_size = 4
     out_size = 4
     n_layers = 2
@@ -23,43 +25,56 @@ class TestNStepLSTM(unittest.TestCase):
     seed = 1337
 
     def setUp(self):
-        batches = [self.n_batch] * self.length
         handle = cuda.cupy.cudnn.get_handle()
         states = functions.n_step_lstm.DropoutStates.create(handle, self.dropout, self.seed)
-        self.rnn = functions.NStepLSTM(self.n_layers, batches, states)
+        self.rnn = functions.NStepLSTM(self.n_layers, states)
 
-        x_shape = (self.length * self.n_batch, self.in_size)
-        self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
-        h_shape = (self.n_layers, self.n_batch, self.out_size)
+        self.xs = [numpy.random.uniform(-1, 1, (b, self.in_size)).astype('f')
+                   for b in self.batches]
+        h_shape = (self.n_layers, self.batches[0], self.out_size)
         self.cx = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
         self.hx = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
 
-        w_shape = (self.n_layers, 8, self.out_size, self.out_size)
-        self.w = numpy.random.uniform(-1, 1, w_shape).astype(numpy.float32)
-        b_shape = (self.n_layers, 8, self.out_size)
-        self.b = numpy.random.uniform(-1, 1, b_shape).astype(numpy.float32)
+        self.ws = []
+        self.bs = []
+        for i in range(self.n_layers):
+            for j in range(8):
+                if i == 0 and j < 4:
+                    w_in = self.in_size
+                else:
+                    w_in = self.out_size
 
-        self.dy = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
+                self.ws.append(numpy.random.uniform(
+                    -1, 1, (w_in, self.out_size)).astype('f'))
+                self.bs.append(numpy.random.uniform(
+                    -1, 1, (self.out_size,)).astype('f'))
+
+        self.dys = [numpy.random.uniform(-1, 1, (b, self.out_size)).astype('f')
+                    for b in self.batches]
         self.dcy = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
         self.dhy = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
 
-    def check_forward(self, h_data, c_data, x_data, w_data, b_data):
+    def check_forward(self, h_data, c_data, xs_data, ws_data, bs_data):
         h = chainer.Variable(h_data)
         c = chainer.Variable(c_data)
-        x = chainer.Variable(x_data)
-        w = chainer.Variable(w_data)
-        b = chainer.Variable(b_data)
-        hy, cy, y = self.rnn(h, c, x, w, b)
+        xs = [chainer.Variable(x_data) for x_data in xs_data]
+        ws = [chainer.Variable(w_data) for w_data in ws_data]
+        bs = [chainer.Variable(b_data) for b_data in bs_data]
+        ret = self.rnn(*([h, c] + ws + bs + xs))
+        hy, cy = ret[:2]
+        ys = ret[2:]
 
         e_hy = self.hx.copy()
         e_cy = self.cx.copy()
-        for i in range(self.length):
-            x = self.x[i*self.n_batch:(i+1)*self.n_batch]
+        for ind in range(self.length):
+            x = self.xs[ind]
+            ey = x.copy()
             for layer in range(self.n_layers):
-                w = self.w[layer]
-                b = self.b[layer]
-                h_prev = e_hy[layer]
-                c_prev = e_cy[layer]
+                batch = x.shape[0]
+                w = self.ws[layer * 8: layer * 8 + 8]
+                b = self.bs[layer * 8: layer * 8 + 8]
+                h_prev = e_hy[layer][:batch]
+                c_prev = e_cy[layer][:batch]
                 i = sigmoid(x.dot(w[0].T) + h_prev.dot(w[4].T) + b[0] + b[4])
                 f = sigmoid(x.dot(w[1].T) + h_prev.dot(w[5].T) + b[1] + b[5])
                 c_bar = numpy.tanh(
@@ -67,10 +82,13 @@ class TestNStepLSTM(unittest.TestCase):
                 o = sigmoid(x.dot(w[3].T) + h_prev.dot(w[7].T) + b[3] + b[7])
                 e_c = (f * c_prev + i * c_bar)
                 e_h = o * numpy.tanh(e_c)
-                e_hy[layer] = e_h
-                e_cy[layer] = e_c
+                ey[:batch] = e_h
+                e_hy[layer, :batch] = e_h
+                e_cy[layer, :batch] = e_c
 
                 x = e_h
+
+            gradient_check.assert_allclose(ys[ind].data, ey)
 
         gradient_check.assert_allclose(hy.data, e_hy, rtol=1e-4, atol=1e-4)
         gradient_check.assert_allclose(cy.data, e_cy, rtol=1e-4, atol=1e-4)
@@ -78,23 +96,24 @@ class TestNStepLSTM(unittest.TestCase):
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.hx),
                            cuda.to_gpu(self.cx),
-                           cuda.to_gpu(self.x),
-                           cuda.to_gpu(self.w),
-                           cuda.to_gpu(self.b))
+                           [cuda.to_gpu(x) for x in self.xs],
+                           [cuda.to_gpu(w) for w in self.ws],
+                           [cuda.to_gpu(b) for b in self.bs])
 
-    def check_backward(self, h_data, c_data, x_data, w_data, b_data,
-                       dhy_data, dcy_data, dy_data):
+    def check_backward(self, h_data, c_data, xs_data, ws_data, bs_data,
+                       dhy_data, dcy_data, dys_data):
         gradient_check.check_backward(
             self.rnn,
-            (h_data, c_data, x_data, w_data, b_data),
-            (dhy_data, dcy_data, dy_data), eps=1e-2, rtol=1e-4, atol=1e-4)
+            tuple([h_data, c_data] + ws_data + bs_data + xs_data),
+            tuple([dhy_data, dcy_data] + dys_data),
+            eps=1e-2, rtol=1e-4, atol=1e-4)
 
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.hx),
                             cuda.to_gpu(self.cx),
-                            cuda.to_gpu(self.x),
-                            cuda.to_gpu(self.w),
-                            cuda.to_gpu(self.b),
+                            [cuda.to_gpu(x) for x in self.xs],
+                            [cuda.to_gpu(w) for w in self.ws],
+                            [cuda.to_gpu(b) for b in self.bs],
                             cuda.to_gpu(self.dhy),
                             cuda.to_gpu(self.dcy),
-                            cuda.to_gpu(self.dy))
+                            [cuda.to_gpu(dy) for dy in self.dys])

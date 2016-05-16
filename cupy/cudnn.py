@@ -85,10 +85,10 @@ def create_uninitialized_tensor_descriptor():
     return desc
 
 
-def create_tensor_nd_descriptor(arr, check_contiguous=True, rev=False):
+def create_tensor_nd_descriptor(arr):
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
-    if check_contiguous and not arr.flags.c_contiguous:
+    if not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
     shape = arr.shape
@@ -96,9 +96,6 @@ def create_tensor_nd_descriptor(arr, check_contiguous=True, rev=False):
     # size of element
     strides = [s // arr.itemsize for s in arr.strides]
 
-    if rev:
-        shape = list(reversed(shape))
-        strides = list(reversed(strides))
     c_shape = _to_ctypes_array(shape)
     c_strides = _to_ctypes_array(strides)
     cudnn.setTensorNdDescriptor(desc.value, data_type,
@@ -212,12 +209,12 @@ def create_dropout_descriptor(handle, dropout, states, state_size_in_bytes, seed
     return desc
 
 
-def create_rnn_descriptor(hidden_size, seq_length, num_layers, dropout_desc,
+def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type):
     desc = Descriptor(cudnn.createRNNDescriptor(),
                       cudnn.destroyRNNDescriptor)
     cudnn.setRNNDescriptor(
-        desc.value, hidden_size, seq_length, num_layers, dropout_desc.value,
+        desc.value, hidden_size, num_layers, dropout_desc.value,
         input_mode, direction, mode, data_type)
     return desc
 
@@ -228,7 +225,7 @@ def get_rnn_lin_layer_matrix_params(
                           cudnn.destroyFilterDescriptor)
     ptr = numpy.array(0, dtype=numpy.intp)
     cudnn.getRNNLinLayerMatrixParams(
-        handle, rnn_desc.value, layer, x_desc.data, w_desc.value, w.data.ptr,
+        handle, rnn_desc.value, layer, x_desc.value, w_desc.value, w.data.ptr,
         lin_layer_id, mat_desc.value, ptr.ctypes.data)
     offset = (ptr - w.data.ptr) // 4
     _, _, _, dim = cudnn.getFilterNdDescriptor(mat_desc.value, 3)
@@ -243,7 +240,7 @@ def get_rnn_lin_layer_bias_params(
                            cudnn.destroyFilterDescriptor)
     ptr = numpy.array(0, dtype=numpy.intp)
     cudnn.getRNNLinLayerBiasParams(
-        handle, rnn_desc.value, layer, x_desc.data, w_desc.value, w.data.ptr,
+        handle, rnn_desc.value, layer, x_desc.value, w_desc.value, w.data.ptr,
         lin_layer_id, bias_desc.value, ptr.ctypes.data)
     offset = (ptr - w.data.ptr) // 4
     _, _, _, dim = cudnn.getFilterNdDescriptor(bias_desc.value, 3)
