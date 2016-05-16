@@ -80,6 +80,9 @@ class LogReport(extension.Extension):
             stats_cpu['epoch'] = updater.epoch
             stats_cpu['iteration'] = updater.iteration
 
+            if self._postprocess is not None:
+                self._postprocess(stats_cpu)
+
             self._log.append(stats_cpu)
 
             # write to the log file
