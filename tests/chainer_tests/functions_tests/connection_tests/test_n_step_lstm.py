@@ -18,7 +18,7 @@ class TestNStepLSTM(unittest.TestCase):
 
     batches = [4, 3, 2, 1]
     length = len(batches)
-    in_size = 4
+    in_size = 3
     out_size = 4
     n_layers = 2
     dropout = 0.0
@@ -45,7 +45,7 @@ class TestNStepLSTM(unittest.TestCase):
                     w_in = self.out_size
 
                 self.ws.append(numpy.random.uniform(
-                    -1, 1, (w_in, self.out_size)).astype('f'))
+                    -1, 1, (self.out_size, w_in)).astype('f'))
                 self.bs.append(numpy.random.uniform(
                     -1, 1, (self.out_size,)).astype('f'))
 
@@ -68,13 +68,13 @@ class TestNStepLSTM(unittest.TestCase):
         e_cy = self.cx.copy()
         for ind in range(self.length):
             x = self.xs[ind]
-            ey = x.copy()
+            ey = None
             for layer in range(self.n_layers):
                 batch = x.shape[0]
                 w = self.ws[layer * 8: layer * 8 + 8]
                 b = self.bs[layer * 8: layer * 8 + 8]
-                h_prev = e_hy[layer][:batch]
-                c_prev = e_cy[layer][:batch]
+                h_prev = e_hy[layer, :batch]
+                c_prev = e_cy[layer, :batch]
                 i = sigmoid(x.dot(w[0].T) + h_prev.dot(w[4].T) + b[0] + b[4])
                 f = sigmoid(x.dot(w[1].T) + h_prev.dot(w[5].T) + b[1] + b[5])
                 c_bar = numpy.tanh(
@@ -82,7 +82,10 @@ class TestNStepLSTM(unittest.TestCase):
                 o = sigmoid(x.dot(w[3].T) + h_prev.dot(w[7].T) + b[3] + b[7])
                 e_c = (f * c_prev + i * c_bar)
                 e_h = o * numpy.tanh(e_c)
-                ey[:batch] = e_h
+                if ey is None:
+                    ey = e_h
+                else:
+                    ey[:batch] = e_h
                 e_hy[layer, :batch] = e_h
                 e_cy[layer, :batch] = e_c
 

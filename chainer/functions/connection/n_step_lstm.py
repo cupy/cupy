@@ -82,6 +82,7 @@ class NStepLSTM(function.Function):
         self.states = states
 
     def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() > 2 + 16 * self.n_layers)
         h_type, c_type = in_types[:2]
         type_check.expect(
             h_type.dtype == numpy.float32,
@@ -98,6 +99,44 @@ class NStepLSTM(function.Function):
             # hidden size
             h_type.shape[2] == c_type.shape[2],
         )
+        pos = 2
+        w_types, pos = _fetch_input(in_types, pos, self.n_layers * 8)
+        b_types, pos = _fetch_input(in_types, pos, self.n_layers * 8)
+        x_types = in_types[pos:]
+        for x_type in x_types:
+            type_check.expect(
+                x_type.dtype == numpy.float32,
+                x_type.ndim == 2,
+            )
+        for x1_type, x2_type in zip(x_types, x_types[1:]):
+            type_check.expect(
+                # Check if xs are sorted by descending lengths
+                x1_type.shape[0] >= x2_type.shape[0],
+                x1_type.shape[1] == x2_type.shape[1])
+
+        in_size = x_types[0].shape[1]
+        out_size = h_type.shape[2]
+
+        for layer in range(self.n_layers):
+            for i in range(8):
+                ind = layer * 8 + i
+                w_type = w_types[ind]
+                b_type = b_types[ind]
+                if layer == 0 and i < 4:
+                    w_in = in_size
+                else:
+                    w_in = out_size
+
+                type_check.expect(
+                    w_type.dtype == numpy.float32,
+                    w_type.ndim == 2,
+                    w_type.shape[0] == out_size,
+                    w_type.shape[1] == w_in,
+
+                    b_type.dtype == numpy.float32,
+                    b_type.ndim == 1,
+                    b_type.shape[0] == out_size,
+                )
 
     def forward(self, inputs):
         (hx, cx), pos = _fetch_input(inputs, 0, 2)
