@@ -544,17 +544,17 @@ class _EltwiseFunction(object):
         operation = self.operation
 
         if operation == 0:      # PROD
-            return reduce(lambda x, y: x * y, xs),
+            return six.moves.reduce(lambda x, y: x * y, xs),
 
         elif operation == 1:    # SUM
             coeffs = self.coeffs
             if coeffs is not None:
                 assert len(xs) == len(coeffs)
                 xs = [x * coeff for x, coeff in zip(xs, coeffs)]
-            return reduce(lambda x, y: x + y, xs),
+            return six.moves.reduce(lambda x, y: x + y, xs),
 
         elif operation == 2:    # MAX
-            return reduce(lambda x, y: functions.maximum(x, y), xs),
+            return six.moves.reduce(lambda x, y: functions.maximum(x, y), xs),
 
         else:
             raise ValueError('Invalid EltwiseParameter.EltwiseOp value.')
