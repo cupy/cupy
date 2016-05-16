@@ -331,6 +331,8 @@ class CaffeFunction(link.Chain):
         # Make BatchNormalization link.
         func = links.BatchNormalization(size, decay=decay, eps=eps,
                                         use_gamma=False, use_beta=False)
+        func.avg_mean.ravel()[:] = blobs[0].data
+        func.avg_var.ravel()[:] = blobs[1].data
         self.add_link(layer.name, func)
 
         # Add layer.

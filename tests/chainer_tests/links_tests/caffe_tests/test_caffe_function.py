@@ -561,10 +561,19 @@ class TestBatchNorm(TestCaffeFunctionBaseMock):
                 'bottom': ['x'],
                 'top': ['y'],
                 'blobs': [
+                    # For average mean.
                     {
                         'shape': {
                             'dim': [3],
                         },
+                        'data': list(six.moves.range(3)),
+                    },
+                    # For average variance.
+                    {
+                        'shape': {
+                            'dim': [3],
+                        },
+                        'data': list(six.moves.range(3)),
                     },
                 ],
                 'batch_norm_param': {
@@ -596,10 +605,19 @@ class TestBatchNormUsingGlobalStats(TestCaffeFunctionBaseMock):
                 'bottom': ['x'],
                 'top': ['y'],
                 'blobs': [
+                    # For average mean.
                     {
                         'shape': {
                             'dim': [3],
                         },
+                        'data': list(six.moves.range(3)),
+                    },
+                    # For average variance.
+                    {
+                        'shape': {
+                            'dim': [3],
+                        },
+                        'data': list(six.moves.range(3)),
                     },
                 ],
                 'batch_norm_param': {
