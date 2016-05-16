@@ -18,8 +18,6 @@ class Iterator(object):
     read-only properties).
 
     - ``batch_size``: the number of examples within each batch.
-    - ``current_position``: the current position of the iterator within the
-       epoch.
     - ``epoch``: the number of completed sweeps over the dataset.
     - ``is_new_epoch``: True if the epoch count was incremented at the last
       update.
