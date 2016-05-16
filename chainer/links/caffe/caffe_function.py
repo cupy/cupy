@@ -435,6 +435,8 @@ def _get_stride(param):
         return param.stride_h, param.stride_w
     elif type(param.stride) == int:
         return param.stride
+    elif len(param.stride) == 0:
+        return 1
     elif len(param.stride) == 1:
         return param.stride[0]
     else:
@@ -446,6 +448,8 @@ def _get_pad(param):
         return param.pad_h, param.pad_w
     elif type(param.pad) == int:
         return param.pad
+    elif len(param.pad) == 0:
+        return 0
     elif len(param.pad) == 1:
         return param.pad[0]
     else:
