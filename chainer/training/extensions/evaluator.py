@@ -59,6 +59,10 @@ class Evaluator(extension.Extension):
         device: Device to which the training data is sent. Negative value
             indicates the host memory (CPU). If ``eval_loop`` or ``converter``
             is specified, this argument is ignored and not used.
+        eval_hook: Function to prepare for each evaluation process. It is
+            called at the beginning of the evaluation. The evaluator extension
+            object is passed at each call. If ``eval_loop`` is specified, this
+            argument is ignored and not used.
         eval_func: Evaluation function called at each iteration. The target
             link to evaluate as a callable is used by default. If ``eval_loop``
             is specified, this argument is ignored and not used.
@@ -69,7 +73,7 @@ class Evaluator(extension.Extension):
     priority = extension.PRIORITY_WRITER
 
     def __init__(self, iterator, target, eval_loop=None, converter=None,
-                 device=None, eval_func=None):
+                 device=None, eval_hook=None, eval_func=None):
         if isinstance(iterator, iterator_module.Iterator):
             iterator = {'main': iterator}
         self._iterators = iterator
@@ -79,7 +83,7 @@ class Evaluator(extension.Extension):
         self._targets = target
 
         self._eval_loop = eval_loop or _default_eval_loop(
-            self, converter, device, eval_func)
+            self, converter, device, eval_hook, eval_func)
 
     def get_iterator(self, name):
         """Returns the iterator of the given name."""
@@ -126,7 +130,7 @@ class Evaluator(extension.Extension):
             return self._eval_loop(self)
 
 
-def _default_eval_loop(evaluator, converter, device, eval_func):
+def _default_eval_loop(evaluator, converter, device, eval_hook, eval_func):
     if not converter:
         def _convert(batch):
             return convert.concat_examples(batch, device=device)
@@ -137,6 +141,8 @@ def _default_eval_loop(evaluator, converter, device, eval_func):
     eval_func = eval_func or target
 
     def eval_loop(trainer):
+        if eval_hook:
+            eval_hook(evaluator)
         it = copy.copy(iterator)
         summary = reporter_module.DictSummary()
 
