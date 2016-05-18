@@ -17,6 +17,8 @@ from chainer.testing import condition
     {'x_shape': (10, 3, 1, 1), 't_shape': (10,)},
     {'x_shape': (10, 3, 5), 't_shape': (10, 5)},
     {'x_shape': (10, 3, 5, 4), 't_shape': (10, 5, 4)},
+    {'x_shape': (10, 3, 5, 4, 1), 't_shape': (10, 5, 4)},
+    {'x_shape': (10, 3, 5, 4, 1, 1), 't_shape': (10, 5, 4)},
 )
 class TestAccuracy(unittest.TestCase):
 

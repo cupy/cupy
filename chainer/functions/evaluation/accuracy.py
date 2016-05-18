@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -16,19 +17,14 @@ class Accuracy(function.Function):
             t_type.dtype == numpy.int32
         )
 
-        if t_type.ndim.eval() == 1:
-            type_check.expect(
-                x_type.ndim >= 2,
-                x_type.shape[0] == t_type.shape[0]
-            )
-            for i in range(2, x_type.ndim.eval()):
-                type_check.expect(x_type.shape[i] == 1)
-        else:
-            type_check.expect(
-                t_type.ndim == x_type.ndim - 1,
-                x_type.shape[0] == t_type.shape[0],
-                x_type.shape[2:] == t_type.shape[1:]
-            )
+        t_ndim = t_type.ndim.eval()
+        type_check.expect(
+            x_type.ndim >= t_ndim,
+            x_type.shape[0] == t_type.shape[0],
+            x_type.shape[2: t_ndim + 1] == t_type.shape[1:]
+        )
+        for i in six.moves.range(t_ndim + 1, x_type.ndim.eval()):
+            type_check.expect(x_type.shape[i] == 1)
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
