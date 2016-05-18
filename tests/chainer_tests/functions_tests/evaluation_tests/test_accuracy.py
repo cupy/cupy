@@ -11,11 +11,15 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    {'x_shape': (10, 3), 't_shape': (10,)},
+    {'x_shape': (10, 3, 5), 't_shape': (10, 5)},
+)
 class TestAccuracy(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (10, 3)).astype(numpy.float32)
-        self.t = numpy.random.randint(3, size=(10,)).astype(numpy.int32)
+        self.x = numpy.random.uniform(-1, 1, self.x_shape).astype(numpy.float32)
+        self.t = numpy.random.randint(3, size=self.t_shape).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data):
         x = chainer.Variable(x_data)
@@ -24,10 +28,12 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.float32)
         self.assertEqual((), y.data.shape)
 
+        x_ = numpy.rollaxis(self.x, 1, self.x.ndim).reshape(self.t.size, -1)
+        t_ = self.t.ravel()
         count = 0
-        for i in six.moves.range(self.t.size):
-            pred = self.x[i].argmax()
-            if pred == self.t[i]:
+        for i in six.moves.range(t_.size):
+            pred = x_[i].argmax()
+            if pred == t_[i]:
                 count += 1
 
         expected = float(count) / self.t.size

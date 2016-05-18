@@ -13,19 +13,18 @@ class Accuracy(function.Function):
 
         type_check.expect(
             x_type.dtype == numpy.float32,
-            x_type.ndim >= 2,
             t_type.dtype == numpy.int32,
-            t_type.ndim == 1,
-            t_type.shape[0] == x_type.shape[0],
+            t_type.ndim == x_type.ndim - 1,
+
+            x_type.shape[0] == t_type.shape[0],
+            x_type.shape[2:] == t_type.shape[1:]
         )
-        for i in range(2, x_type.ndim.eval()):
-            type_check.expect(x_type.shape[i] == 1)
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
         y, t = inputs
-        y = y.reshape(len(y), -1)  # flatten
-        pred = y.argmax(axis=1)
+        y = xp.rollaxis(y, 1)
+        pred = y.argmax(axis=0)
         return xp.asarray((pred == t).mean(dtype='f')),
 
 
