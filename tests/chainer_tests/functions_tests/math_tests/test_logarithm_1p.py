@@ -14,7 +14,7 @@ from chainer.testing import condition
 @testing.parameterize(*testing.product({
     'shape': [(), (3, 2)],
 }))
-class Expm1FunctionsTest(unittest.TestCase):
+class Log1pFunctionsTest(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
@@ -33,13 +33,13 @@ class Expm1FunctionsTest(unittest.TestCase):
         self.check_forward(op, op_np, cuda.to_gpu(self.x))
 
     @condition.retry(3)
-    def test_expm1_forward_cpu(self):
-        self.check_forward_cpu(F.expm1, numpy.expm1)
+    def test_log1p_forward_cpu(self):
+        self.check_forward_cpu(F.log1p, numpy.log1p)
 
     @attr.gpu
     @condition.retry(3)
-    def test_expm1_forward_gpu(self):
-        self.check_forward_gpu(F.expm1, numpy.expm1)
+    def test_log1p_forward_gpu(self):
+        self.check_forward_gpu(F.log1p, numpy.log1p)
 
     def check_backward(self, op, x_data, y_grad):
         gradient_check.check_backward(op, x_data, y_grad)
@@ -51,15 +51,16 @@ class Expm1FunctionsTest(unittest.TestCase):
         self.check_backward(op, cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @condition.retry(3)
-    def test_expm1_backward_cpu(self):
-        self.check_backward_cpu(F.expm1)
+    def test_log1p_backward_cpu(self):
+        self.check_backward_cpu(F.log1p)
 
     @attr.gpu
     @condition.retry(3)
-    def test_expm1_backward_gpu(self):
-        self.check_backward_gpu(F.expm1)
+    def test_log1p_backward_gpu(self):
+        self.check_backward_gpu(F.log1p)
 
-    def test_expm1(self):
-        self.assertEqual(F.Expm1().label, 'expm1')
+    def test_log1p(self):
+        self.assertEqual(F.Log1p().label, 'log1p')
+
 
 testing.run_module(__name__, __file__)
