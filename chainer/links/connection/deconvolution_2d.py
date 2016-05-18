@@ -42,6 +42,10 @@ class Deconvolution2D(link.Link):
             function uses to initialize ``bias``.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
+        deterministic (bool): The output of this link can be
+            non-deterministic when it uses cuDNN.
+            If this option is `True`, then it forces cuDNN to use
+            a deterministic algorithm.
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`
     which indicate the number of the number of input channels, output channels,
@@ -63,12 +67,13 @@ class Deconvolution2D(link.Link):
 
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, outsize=None, use_cudnn=True,
-                 initialW=None, initial_bias=None):
+                 initialW=None, initial_bias=None, deterministic=False):
         kh, kw = _pair(ksize)
         self.stride = _pair(stride)
         self.pad = _pair(pad)
         self.outsize = (None, None) if outsize is None else outsize
         self.use_cudnn = use_cudnn
+        self.deterministic = deterministic
 
         W_shape = (in_channels, out_channels, kh, kw)
         super(Deconvolution2D, self).__init__(W=W_shape)
@@ -93,7 +98,8 @@ class Deconvolution2D(link.Link):
     def __call__(self, x):
         return deconvolution_2d.deconvolution_2d(
             x, self.W, self.b, self.stride, self.pad,
-            self.outsize, self.use_cudnn)
+            self.outsize, self.use_cudnn,
+            deterministic=self.deterministic)
 
 
 def _pair(x):
