@@ -28,6 +28,10 @@ class Convolution2D(link.Link):
             function uses to initialize ``wscale``.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``.
+        deterministic (bool): The output of this link can be
+            non-deterministic when it uses cuDNN.
+            If this option is `True`, then it forces cuDNN to use
+            a deterministic algorithm.
 
     .. seealso::
        See :func:`chainer.functions.convolution_2d` for the definition of
@@ -40,11 +44,12 @@ class Convolution2D(link.Link):
     """
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
-                 initialW=None, initial_bias=None):
+                 initialW=None, initial_bias=None, deterministic=False):
         kh, kw = _pair(ksize)
         self.stride = _pair(stride)
         self.pad = _pair(pad)
         self.use_cudnn = use_cudnn
+        self.deterministic = deterministic
 
         W_shape = (out_channels, in_channels, kh, kw)
         super(Convolution2D, self).__init__(W=W_shape)
@@ -74,7 +79,8 @@ class Convolution2D(link.Link):
 
         """
         return convolution_2d.convolution_2d(
-            x, self.W, self.b, self.stride, self.pad, self.use_cudnn)
+            x, self.W, self.b, self.stride, self.pad, self.use_cudnn,
+            deterministic=self.deterministic)
 
 
 def _pair(x):
