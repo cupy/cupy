@@ -30,5 +30,7 @@ get_elapsed_time = stream.get_elapsed_time
 @contextlib.contextmanager
 def profile():
     profiler.start()
-    yield
-    profiler.stop()
+    try:
+        yield
+    finally:
+        profiler.stop()
