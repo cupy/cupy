@@ -14,7 +14,7 @@ from chainer.testing import condition
 @testing.parameterize(*testing.product({
     'shape': [(), (3, 2)],
 }))
-class Log1pFunctionsTest(unittest.TestCase):
+class Log1pFunctionTest(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
