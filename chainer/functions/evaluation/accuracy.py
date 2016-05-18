@@ -19,7 +19,7 @@ class Accuracy(function.Function):
 
         t_ndim = t_type.ndim.eval()
         type_check.expect(
-            x_type.ndim >= t_ndim,
+            x_type.ndim >= t_type.ndim,
             x_type.shape[0] == t_type.shape[0],
             x_type.shape[2: t_ndim + 1] == t_type.shape[1:]
         )
