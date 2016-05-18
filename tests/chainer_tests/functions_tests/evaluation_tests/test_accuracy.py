@@ -21,7 +21,8 @@ from chainer.testing import condition
 class TestAccuracy(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, self.x_shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1,
+                                      self.x_shape).astype(numpy.float32)
         self.t = numpy.random.randint(3, size=self.t_shape).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data):
