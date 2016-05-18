@@ -13,7 +13,10 @@ from chainer.testing import condition
 
 @testing.parameterize(
     {'x_shape': (10, 3), 't_shape': (10,)},
+    {'x_shape': (10, 3, 1), 't_shape': (10,)},
+    {'x_shape': (10, 3, 1, 1), 't_shape': (10,)},
     {'x_shape': (10, 3, 5), 't_shape': (10, 5)},
+    {'x_shape': (10, 3, 5, 4), 't_shape': (10, 5, 4)},
 )
 class TestAccuracy(unittest.TestCase):
 
