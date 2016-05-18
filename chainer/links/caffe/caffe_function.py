@@ -326,7 +326,7 @@ class CaffeFunction(link.Chain):
         use_global_stats = param.use_global_stats
         decay = param.moving_average_fraction
         eps = param.eps
-        size = blobs[0].shape.dim[0]  # Get channel dimension from mean blob.
+        size = int(blobs[0].shape.dim[0])  # Get channel dim from mean blob.
 
         # Make BatchNormalization link.
         func = links.BatchNormalization(size, decay=decay, eps=eps,
