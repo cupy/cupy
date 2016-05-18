@@ -218,10 +218,12 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
         gradient_check.check_backward(self.link, x_data, y_grad,
                                       eps=1e-2, rtol=1e-3, atol=1e-4)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.link.to_gpu()
         x = cuda.to_gpu(self.x)
