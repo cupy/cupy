@@ -246,6 +246,11 @@ class Trainer(object):
                 if entry.trigger(self):
                     entry.extension(self)
 
+        for _, entry in extensions:
+            finalize = entry.extension.finalize
+            if finalize:
+                finalize()
+
         self.updater.finalize()
         self._done = True
 
