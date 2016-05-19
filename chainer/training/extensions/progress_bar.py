@@ -65,7 +65,7 @@ class ProgressBar(extension.Extension):
             now = time.clock()
 
             if len(recent_timing) >= 1:
-                out.write(u'\x1b\x9bJ')
+                out.write(u'\033[J')
 
                 if unit == 'iteration':
                     rate = iteration / length
@@ -74,12 +74,12 @@ class ProgressBar(extension.Extension):
 
                 bar_length = self._bar_length
                 marks = '#' * int(rate * bar_length)
-                out.write('total [{}{}] {:.4%}\n'.format(
+                out.write('     total [{}{}] {:6.2%}\n'.format(
                     marks, '.' * (bar_length - len(marks)), rate))
 
                 epoch_rate = epoch - int(epoch)
                 marks = '#' * int(epoch_rate * bar_length)
-                out.write('epoch [{}{}] {:.4%}\n'.format(
+                out.write('this epoch [{}{}] {:6.2%}\n'.format(
                     marks, '.' * (bar_length - len(marks)), epoch_rate))
 
                 status = stat_template.format(trainer.updater)
@@ -90,15 +90,22 @@ class ProgressBar(extension.Extension):
                     estimated_time = (length - iteration) / speed_t
                 else:
                     estimated_time = (length - epoch) / speed_e
-                out.write('{:.5g} iters/sec.\tEstimated time to finish: {}.\n'
+                out.write('{:10.5g} iters/sec. Estimated time to finish: {}.\n'
                           .format(speed_t,
                                   datetime.timedelta(seconds=estimated_time)))
 
-                # move the cursor to the head of the progress bar
-                out.write(u'\x1b\x9b3A')
+                # move the cursor to the head of the progress bar, and hide the
+                # cursor
+                out.write(u'\033[3A\033[?25l')
                 out.flush()
 
                 if len(recent_timing) > 100:
                     del recent_timing[0]
 
             recent_timing.append((iteration, epoch, now))
+
+    def finalize(self):
+        # delete the progress bar, and show the cursor
+        out = self._out
+        out.write(u'\033[J\033[?25h')
+        out.flush()
