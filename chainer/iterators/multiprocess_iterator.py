@@ -1,3 +1,4 @@
+from __future__ import division
 import multiprocessing
 
 import numpy
@@ -78,6 +79,10 @@ class MultiprocessIterator(iterator.Iterator):
     next = __next__
 
     @property
+    def epoch_detail(self):
+        return self.epoch + self.current_position / len(self.dataset)
+
+    @property
     def n_processes(self):
         return len(self._workers)
 
@@ -138,11 +143,12 @@ class MultiprocessIterator(iterator.Iterator):
             batch.append(self._data_queue.get())
             i += 1
             if i >= N:
-                i = 0
                 self.epoch += 1
                 self.is_new_epoch = True
                 if not self._repeat:
+                    i = N
                     break
+                i = 0
         self.current_position = i
         return batch
 

@@ -1,3 +1,5 @@
+from __future__ import division
+
 from chainer.dataset import iterator
 
 
@@ -43,7 +45,7 @@ class SequentialIterator(iterator.Iterator):
                     batch = list(batch) + list(self.dataset[:rest])
                 self.current_position = rest
             else:
-                self.current_position = 0
+                self.current_position = N
             self.epoch += 1
             self.is_new_epoch = True
         else:
@@ -54,6 +56,10 @@ class SequentialIterator(iterator.Iterator):
         return batch
 
     next = __next__
+
+    @property
+    def epoch_detail(self):
+        return self.epoch + self.current_position / len(self.dataset)
 
     def serialize(self, serializer):
         self.current_position = serializer('current_position',

@@ -1,3 +1,5 @@
+from __future__ import division
+
 import numpy
 import six
 
@@ -45,15 +47,20 @@ class ShuffledIterator(iterator.Iterator):
             if i >= N:
                 self.epoch += 1
                 self.is_new_epoch = True
-                i = 0
                 if not self._repeat:
+                    i = N
                     break
+                i = 0
                 numpy.random.shuffle(self._order)
         self.current_position = i
 
         return batch
 
     next = __next__
+
+    @property
+    def epoch_detail(self):
+        return self.epoch + self.current_position / len(self.dataset)
 
     def serialize(self, serializer):
         self.current_position = serializer('current_position',

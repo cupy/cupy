@@ -19,6 +19,9 @@ class Iterator(object):
 
     - ``batch_size``: the number of examples within each batch.
     - ``epoch``: the number of completed sweeps over the dataset.
+    - ``epoch_detail``: floating point number version of the epoch. For
+      example, if the iterator is at the middle of the dataset at the third
+      epoch, then this value is 2.5.
     - ``is_new_epoch``: True if the epoch count was incremented at the last
       update.
 
