@@ -43,7 +43,7 @@ class PrintReport(extension.Extension):
         out = self._out
 
         # delete the printed contents from the current cursor
-        out.write(u'\x1b\x9bJ')
+        out.write(u'\033[J')
 
         if self._header:
             out.write(self._header)
