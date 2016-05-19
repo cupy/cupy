@@ -65,6 +65,12 @@ class PrintReport(extension.Extension):
             log_len += 1
         self._log_len = log_len
 
+    def finalize(self):
+        # delete the progress bar
+        out = self._out
+        out.write(u'\x1b\x9bJ')
+        out.flush()
+
     def serialize(self, serializer):
         log_report = self._log_report
         if isinstance(log_report, log_report_module.LogReport):
