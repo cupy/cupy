@@ -14,5 +14,6 @@ ExponentialDecay = exponential_decay.ExponentialDecay
 LinearShift = linear_shift.LinearShift
 LogReport = log_report.LogReport
 snapshot = _snapshot.snapshot
+snapshot_object = _snapshot.snapshot_object
 PrintReport = print_report.PrintReport
 ProgressBar = progress_bar.ProgressBar
