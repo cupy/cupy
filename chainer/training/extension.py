@@ -52,6 +52,15 @@ class Extension(object):
             trainer (Trainer): Trainer object that calls this operator.
 
         """
+        pass
+
+    def finalize(self):
+        """Finalizes the extension.
+
+        This method is called at the end of the training loop.
+
+        """
+        pass
 
     def serialize(self, serializer):
         """Serializes the extension state.
@@ -64,7 +73,7 @@ class Extension(object):
 
 
 def make_extension(trigger=None, default_name=None, priority=None,
-                   invoke_before_training=False):
+                   invoke_before_training=False, finalizer=None):
     """Decorator to make given functions into trainer extensions.
 
     This decorator just adds some attributes to a given function. The value of
@@ -80,6 +89,8 @@ def make_extension(trigger=None, default_name=None, priority=None,
         priority (int): Default priority of the extension.
         invoke_before_training (bool): Default flag to decide whether the
             extension should be invoked before any training.
+        finalizer: Finalizer function of this extension. The finalizer is
+            called at the end of the training loop.
 
     """
     if trigger is None:
@@ -92,6 +103,7 @@ def make_extension(trigger=None, default_name=None, priority=None,
         ext.default_name = default_name or ext.__name__
         ext.priority = priority
         ext.invoke_before_training = invoke_before_training
+        ext.finalize = finalizer
         return ext
 
     return decorator
