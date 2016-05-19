@@ -237,21 +237,22 @@ class Trainer(object):
         stop_trigger = self.stop_trigger
 
         # main training loop
-        while not stop_trigger(self):
-            observation = self.observation = {}
-            with reporter.scope(observation):
-                update()
+        try:
+            while not stop_trigger(self):
+                observation = self.observation = {}
+                with reporter.scope(observation):
+                    update()
 
-            for name, entry in extensions:
-                if entry.trigger(self):
-                    entry.extension(self)
+                for name, entry in extensions:
+                    if entry.trigger(self):
+                        entry.extension(self)
+        finally:
+            for _, entry in extensions:
+                finalize = entry.extension.finalize
+                if finalize:
+                    finalize()
+            self.updater.finalize()
 
-        for _, entry in extensions:
-            finalize = entry.extension.finalize
-            if finalize:
-                finalize()
-
-        self.updater.finalize()
         self._done = True
 
     def serialize(self, serializer):
