@@ -22,6 +22,7 @@ from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
+from chainer.functions.array import transpose_sequence
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
@@ -122,6 +123,8 @@ Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
 Transpose = transpose.Transpose
 transpose = transpose.transpose
+TransposeSequence = transpose_sequence.TransposeSequence
+transpose_sequence = transpose_sequence.transpose_sequence
 Where = where.Where
 where = where.where
 
