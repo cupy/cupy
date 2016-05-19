@@ -199,7 +199,6 @@ def main():
         ['epoch', 'iteration', 'perplexity', 'val_perplexity']
     ), trigger=(interval, 'iteration'))
     trainer.extend(extensions.ProgressBar(
-        iterations_per_epoch=len(train) / (args.batchsize * args.bproplen),
         update_interval=1 if args.test else 100))
     trainer.extend(extensions.snapshot())
     trainer.extend(extensions.snapshot_object(

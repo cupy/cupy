@@ -87,8 +87,7 @@ def main():
          'main/accuracy', 'validation/main/accuracy']))
 
     # Print a progress bar to stdout
-    trainer.extend(extensions.ProgressBar(
-        iterations_per_epoch=60000 / args.batchsize))
+    trainer.extend(extensions.ProgressBar())
 
     if args.resume:
         # Resume from a snapshot

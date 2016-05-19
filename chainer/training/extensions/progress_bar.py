@@ -21,20 +21,16 @@ class ProgressBar(extension.Extension):
             omitted and the stop trigger of the trainer is
             :class:`IntervalTrigger`, this extension uses its attributes to
             determine the length of the training.
-        iterations_per_epoch (int): Number of iterations per epoch. This value
-            is used to print the bar when the training length is specified by
-            a number of epochs.
         update_interval (int): Number of iterations to skip printing the
             progress bar.
         bar_length (int): Length of the progress bar.
         out: Stream to print the bar. Standard output is used by default.
 
     """
-    def __init__(self, training_length=None, iterations_per_epoch=None,
-                 update_interval=100, bar_length=50, out=sys.stdout):
+    def __init__(self, training_length=None, update_interval=100,
+                 bar_length=50, out=sys.stdout):
         self._training_length = training_length
         self._status_template = None
-        self._iterations_per_epoch = iterations_per_epoch
         self._update_interval = update_interval
         self._bar_length = bar_length
         self._out = out
@@ -57,45 +53,52 @@ class ProgressBar(extension.Extension):
                 '{0.iteration} iter, {0.epoch} epoch / %s %ss' %
                 training_length)
 
-        iters, unit = training_length
-        if unit == 'epoch':
-            iter_per_epoch = self._iterations_per_epoch
-            if iter_per_epoch is None:
-                raise ValueError('needs iterations_per_epoch set when the '
-                                 'training length is given in epochs')
-            iters *= iter_per_epoch
-
+        length, unit = training_length
         out = self._out
 
-        # print the progress bar
         iteration = trainer.updater.iteration
+
+        # print the progress bar
         if iteration % self._update_interval == 0:
+            epoch = trainer.updater.epoch_detail
             recent_timing = self._recent_timing
             now = time.clock()
 
             if len(recent_timing) >= 1:
                 out.write(u'\x1b\x9bJ')
 
+                if unit == 'iteration':
+                    rate = iteration / length
+                else:
+                    rate = epoch / length
+
                 bar_length = self._bar_length
-                rate = iteration / iters
                 marks = '#' * int(rate * bar_length)
-                bar = '[{}{}] {:.4%}\n'.format(
-                    marks, '.' * (bar_length - len(marks)), rate)
-                out.write(bar)
+                out.write('total [{}{}] {:.4%}\n'.format(
+                    marks, '.' * (bar_length - len(marks)), rate))
+
+                epoch_rate = epoch - int(epoch)
+                marks = '#' * int(epoch_rate * bar_length)
+                out.write('epoch [{}{}] {:.4%}\n'.format(
+                    marks, '.' * (bar_length - len(marks)), epoch_rate))
 
                 status = stat_template.format(trainer.updater)
-                old_t, old_sec = recent_timing[0]
-                speed = (iteration - old_t) / (now - old_sec)
-                estimated_time = (iters - iteration) / speed
+                old_t, old_e, old_sec = recent_timing[0]
+                speed_t = (iteration - old_t) / (now - old_sec)
+                speed_e = (epoch - old_e) / (now - old_sec)
+                if unit == 'iteration':
+                    estimated_time = (length - iteration) / speed_t
+                else:
+                    estimated_time = (length - epoch) / speed_e
                 out.write('{:.5g} iters/sec.\tEstimated time to finish: {}.\n'
-                          .format(speed,
+                          .format(speed_t,
                                   datetime.timedelta(seconds=estimated_time)))
 
                 # move the cursor to the head of the progress bar
-                out.write(u'\x1b\x9b2A')
+                out.write(u'\x1b\x9b3A')
                 out.flush()
 
                 if len(recent_timing) > 100:
                     del recent_timing[0]
 
-            recent_timing.append((iteration, now))
+            recent_timing.append((iteration, epoch, now))

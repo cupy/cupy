@@ -91,8 +91,7 @@ def main():
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy']))
-    trainer.extend(extensions.ProgressBar(
-        iterations_per_epoch=60000 / args.batchsize))
+    trainer.extend(extensions.ProgressBar())
 
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
