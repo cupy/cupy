@@ -85,6 +85,11 @@ class ParallelSequentialIterator(chainer.dataset.Iterator):
 
         return list(zip(cur_words, next_words))
 
+    @property
+    def epoch_detail(self):
+        # Floating point version of epoch.
+        return self.iteration * self.batch_size / len(self.dataset)
+
     def get_words(self):
         # It returns a list of current words.
         return [self.dataset[(offset + self.iteration) % len(self.dataset)]
@@ -199,7 +204,7 @@ def main():
         ['epoch', 'iteration', 'perplexity', 'val_perplexity']
     ), trigger=(interval, 'iteration'))
     trainer.extend(extensions.ProgressBar(
-        update_interval=1 if args.test else 100))
+        update_interval=1 if args.test else 10))
     trainer.extend(extensions.snapshot())
     trainer.extend(extensions.snapshot_object(
         model, 'model_iter_{.updater.iteration}'))
