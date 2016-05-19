@@ -162,6 +162,7 @@ class StandardUpdater(Updater):
 
         for name, optimizer in six.iteritems(self._optimizers):
             optimizer.serialize(serializer['optimizer:' + name])
+            optimizer.target.serialize(serializer['model:' + name])
 
         self.iteration = serializer('iteration', self.iteration)
 
