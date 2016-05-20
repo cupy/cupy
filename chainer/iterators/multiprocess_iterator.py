@@ -43,20 +43,7 @@ class MultiprocessIterator(iterator.Iterator):
         self.is_new_epoch = False
         self._pushed_position = None  # initialized at the first iteration
 
-        if n_processes is None:
-            n_processes = multiprocessing.cpu_count()
-
-        queue_size = max(n_processes, batch_size)
-        self._index_queue = multiprocessing.Queue(queue_size)
-        self._data_queue = multiprocessing.Queue(queue_size)
-
-        args = dataset, self._index_queue, self._data_queue
-        self._workers = []
-        for _ in range(n_processes):
-            worker = multiprocessing.Process(target=_worker, args=args)
-            worker.daemon = True
-            self._workers.append(worker)
-            worker.start()
+        self.n_processes = n_processes or multiprocessing.cpu_count()
 
         self._start = False
         self._finalized = False
@@ -70,8 +57,8 @@ class MultiprocessIterator(iterator.Iterator):
 
         self.is_new_epoch = False
         if not self._start:
+            self._init()  # start workers
             self._invoke_prefetch()  # load for the first iteration
-            self._start = True
         batch = self._get()
         self._invoke_prefetch()  # prefetch for the next iteration
         return batch
@@ -82,12 +69,8 @@ class MultiprocessIterator(iterator.Iterator):
     def epoch_detail(self):
         return self.epoch + self.current_position / len(self.dataset)
 
-    @property
-    def n_processes(self):
-        return len(self._workers)
-
     def finalize(self):
-        if self._finalized:
+        if not self._start or self._finalized:
             return
 
         self._finalized = True
@@ -108,6 +91,21 @@ class MultiprocessIterator(iterator.Iterator):
                                            self.current_position)
         self.epoch = serializer('epoch', self.epoch)
         self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
+        serializer('order', self._order)
+
+    def _init(self):
+        queue_size = max(self.n_processes, self.batch_size)
+        self._index_queue = multiprocessing.Queue(queue_size)
+        self._data_queue = multiprocessing.Queue(queue_size)
+
+        args = self.dataset, self._index_queue, self._data_queue
+        self._workers = []
+        for _ in range(self.n_processes):
+            worker = multiprocessing.Process(target=_worker, args=args)
+            worker.daemon = True
+            self._workers.append(worker)
+            worker.start()
+        self._start = True
 
     def _invoke_prefetch(self):
         N = len(self.dataset)
@@ -115,24 +113,21 @@ class MultiprocessIterator(iterator.Iterator):
         if i is None:  # first iteration
             i = self.current_position
 
+        order = self._order
         for k in six.moves.range(self.batch_size):
-            self._index_queue.put(self._order[i])
-            i += 1
             if i >= N:
-                i = 0
                 if not self._repeat:
+                    i = N
                     break
-                # TODO(beam2d): This shuffle may break the state on suspend.
-                # Consider the case that the following occurs in this order:
-                #   1. Start prefetching the next batch.
-                #   2. Shuffle the order during the prefetch.
-                #   3. Iterator is suspended (i.e., serialized).
-                #   4. Iterator is resumed (i.e., deserialized) by another
-                #      object.
-                # In this case, the serialized iterator holds a new (shuffled)
-                # order information, while the resumed iterator must start from
-                # the end of the epoch with the old order.
-                numpy.random.shuffle(self._order)
+                i = 0
+                # We cannot shuffle the order directly here, since the iterator
+                # may be serialized before the prefetched data are consumed by
+                # the user, in which case an inconsistency appears.
+                order = order.copy()
+                numpy.random.shuffle(order)
+            self._index_queue.put(order[i])
+            i += 1
+        self._prefetch_order = order  # Temporarily store the shuffled order.
         self._pushed_position = i
 
     def _get(self):
@@ -150,6 +145,8 @@ class MultiprocessIterator(iterator.Iterator):
                     break
                 i = 0
         self.current_position = i
+        # Eventually overwrite the (possibly shuffled) order.
+        self._order = self._prefetch_order
         return batch
 
 
