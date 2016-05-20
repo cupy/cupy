@@ -47,14 +47,14 @@ class NStepLSTM(link.ChainList):
         self.states = states
         self.n_layers = n_layers
 
-    def __call__(self, h, c, xs):
-        assert isinstance(xs, list)
+    def __call__(self, hx, cx, xs):
+        assert isinstance(xs, (list, tuple))
         indices = argsort_list_descent(xs)
 
         xs = permutate_list(xs, indices, rev=False)
-        hx = permutate.permutate(h, indices, axis=1, rev=False)
-        cx = permutate.permutate(c, indices, axis=1, rev=False)
-        trans_x = transpose_sequence.transpose_sequence(*xs)
+        hx = permutate.permutate(hx, indices, axis=1, rev=False)
+        cx = permutate.permutate(cx, indices, axis=1, rev=False)
+        trans_x = transpose_sequence.transpose_sequence(xs)
 
         args = [hx, cx]
         for w in self:
@@ -70,7 +70,7 @@ class NStepLSTM(link.ChainList):
 
         hy = permutate.permutate(hy, indices, axis=1, rev=True)
         cy = permutate.permutate(cy, indices, axis=1, rev=True)
-        ys = transpose_sequence.transpose_sequence(*trans_y)
-        ys = permutate_list(ys, indices, True)
+        ys = transpose_sequence.transpose_sequence(trans_y)
+        ys = permutate_list(ys, indices, rev=True)
 
         return hy, cy, ys
