@@ -17,3 +17,4 @@ Chainer Reference Manual
    function_hooks
    caffe
    graph
+   dataset
