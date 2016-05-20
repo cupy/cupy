@@ -1,7 +1,7 @@
 import numpy
 
 from chainer import cuda
-from chainer import function
+from chainer.functions.math import identity
 from chainer import utils
 from chainer import variable
 
@@ -188,14 +188,6 @@ def check_backward(func, x_data, y_grad, params=(),
     See:
        :func:`numerical_grad`
     """
-    class Ident(function.Function):
-
-        def forward(self, inputs):
-            return inputs
-
-        def backward(self, inputs, grads):
-            return grads
-
     x_data = _as_tuple(x_data)
     if y_grad is not None:
         y_grad = _as_tuple(y_grad)
@@ -210,7 +202,7 @@ def check_backward(func, x_data, y_grad, params=(),
     # To do so we need to insert a dummy function `Ident` to the
     # computational graph.
     # Note that `func` may not be a `Function` object.
-    y = Ident()(*y)
+    y = identity.Identity()(*y)
     y = _as_tuple(y)
 
     if y_grad is not None:
