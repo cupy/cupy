@@ -38,5 +38,8 @@ class TransposeSequence(function.Function):
         return _transpose(gs)
 
 
-def transpose_sequence(*xs):
-    return TransposeSequence()(*xs)
+def transpose_sequence(xs, force_tuple=True):
+    ys = TransposeSequence()(*xs)
+    if force_tuple and not isinstance(ys, tuple):
+        ys = (ys,)
+    return ys
