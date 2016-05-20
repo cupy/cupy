@@ -247,7 +247,7 @@ class NStepLSTM(function.Function):
         indexes = _make_indices(lengths)
 
         dhy, dcy = grads[:2]
-        dy_list = grads[2:]
+        dy_list = list(grads[2:])
         if dhy is None:
             dhy = cuda.cupy.zeros_like(hx)
         if dcy is None:
