@@ -24,12 +24,12 @@ class TestTransposeSequence(unittest.TestCase):
 
     def check_forward(self, xs_data):
         xs = [chainer.Variable(x) for x in xs_data]
-        ys = functions.transpose_sequence(*xs)
+        ys = functions.transpose_sequence(xs)
         self.assertEqual(len(ys), len(self.trans_lengths))
         for y, l in zip(ys, self.trans_lengths):
             self.assertEqual(len(y.data), l)
 
-        zs = functions.transpose_sequence(*ys)
+        zs = functions.transpose_sequence(ys)
         self.assertEqual(len(xs), len(zs))
         for x, z in zip(xs, zs):
             gradient_check.assert_allclose(x.data, z.data)
@@ -42,8 +42,11 @@ class TestTransposeSequence(unittest.TestCase):
         self.check_forward([cuda.to_gpu(x) for x in self.xs])
 
     def check_backward(self, xs_data, gs_data):
+        def f(*xs):
+            return functions.transpose_sequence(xs)
+
         gradient_check.check_backward(
-            functions.transpose_sequence, tuple(xs_data), tuple(gs_data))
+            f, tuple(xs_data), tuple(gs_data))
 
     def test_backward_cpu(self):
         self.check_backward(self.xs, self.gs)
