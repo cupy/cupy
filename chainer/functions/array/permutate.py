@@ -36,7 +36,7 @@ class Permutate(function.Function):
         else:
             indices = self.indices
 
-        if xp is cuda.cupy:
+        if xp is not numpy:
             indices = xp.array(indices, 'i')
         return xp.take(x, indices, axis=self.axis)
 
