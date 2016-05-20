@@ -107,15 +107,14 @@ class Reporter(object):
         for name, observer in observers:
             self._observer_names[id(observer)] = prefix + name
 
-    def report(self, name, value, observer=None):
-        """Reports an observed value.
+    def report(self, values, observer=None):
+        """Reports observed values.
 
-        The value is written with the given name, prefixed by the name of the
+        The values are written with the key, prefixed by the name of the
         observer object if given.
 
         Args:
-            name (str): Name of the value.
-            value: Observed value.
+            values (dict): Dictionary of observed values.
             observer: Observer object. Its object ID is used to retrieve the
                 observer name, which is used as the prefix of the registration
                 name of the observed value.
@@ -123,9 +122,9 @@ class Reporter(object):
         """
         if observer is not None:
             observer_name = self._observer_names[id(observer)]
-            name = '%s/%s' % (observer_name, name)
-
-        self.observation[name] = value
+        for key, value in six.iteritems(values):
+            name = '%s/%s' % (observer_name, key)
+            self.observation[name] = value
 
 
 _reporters = [Reporter()]
@@ -136,22 +135,21 @@ def get_current_reporter():
     return _reporters[-1]
 
 
-def report(name, value, observer=None):
-    """Reports an observed value with the current reporter object.
+def report(values, observer=None):
+    """Reports observed values with the current reporter object.
 
     Any reporter object can be set current by the ``with`` statement. This
-    function calls the :meth:`Report.write` method of the current report.
+    function calls the :meth:`Report.report` method of the current report.
 
     Args:
-        name (str): Name of the value.
-        value: Observed value.
+        values (dict): Dictionary of observed values.
         observer: Observer object. Its object ID is used to retrieve the
             observer name, which is used as the prefix of the registration name
             of the observed value.
 
     """
     current = _reporters[-1]
-    current.report(name, value, observer)
+    current.report(values, observer)
 
 
 @contextlib.contextmanager

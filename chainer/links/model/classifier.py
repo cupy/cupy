@@ -54,8 +54,8 @@ class Classifier(link.Chain):
         self.accuracy = None
         self.y = self.predictor(x)
         self.loss = self.lossfun(self.y, t)
-        reporter.report('loss', self.loss, self)
+        reporter.report({'loss': self.loss}, self)
         if self.compute_accuracy:
             self.accuracy = accuracy.accuracy(self.y, t)
-            reporter.report('accuracy', self.accuracy, self)
+            reporter.report({'accuracy': self.accuracy}, self)
         return self.loss
