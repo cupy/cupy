@@ -105,11 +105,11 @@ class TestNStepLSTM(unittest.TestCase):
 
     def check_backward(self, h_data, c_data, xs_data, ws_data, bs_data,
                        dhy_data, dcy_data, dys_data):
+        args = tuple([h_data, c_data] + ws_data + bs_data + xs_data)
+        grads = tuple([dhy_data, dcy_data] + dys_data)
+
         gradient_check.check_backward(
-            self.rnn,
-            tuple([h_data, c_data] + ws_data + bs_data + xs_data),
-            tuple([dhy_data, dcy_data] + dys_data),
-            eps=1e-2, rtol=1e-4, atol=1e-4)
+            self.rnn, args, grads, eps=1e-2, rtol=1e-4, atol=1e-4)
 
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.hx),
