@@ -143,6 +143,10 @@ class NStepLSTM(function.Function):
         ws, pos = _fetch_input(inputs, pos, self.n_layers * 8)
         bs, pos = _fetch_input(inputs, pos, self.n_layers * 8)
         x_list = inputs[pos:]
+
+        hx = cuda.cupy.ascontiguousarray(hx)
+        cx = cuda.cupy.ascontiguousarray(cx)
+
         x = x_list[0]
         x = x.reshape(x.shape + (1,))
         x_desc = cudnn.create_tensor_nd_descriptor(x)
@@ -235,6 +239,10 @@ class NStepLSTM(function.Function):
         ws, pos = _fetch_input(inputs, pos, self.n_layers * 8)
         bs, pos = _fetch_input(inputs, pos, self.n_layers * 8)
         x_list = inputs[pos:]
+
+        hx = cuda.cupy.ascontiguousarray(hx)
+        cx = cuda.cupy.ascontiguousarray(cx)
+
         lengths = [len(x) for x in x_list]
         indexes = _make_indices(lengths)
 
