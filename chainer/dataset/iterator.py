@@ -64,7 +64,7 @@ class Iterator(object):
         This is a method to support serializer protocol of Chainer.
 
         .. note::
-           It should only serializes the internal state that changes over the
+           It should only serialize the internal state that changes over the
            iteration. It should not serializes what is set manually by
            users such as the batch size.
 
