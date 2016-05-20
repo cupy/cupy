@@ -3,6 +3,7 @@ import unittest
 import numpy
 import six
 
+import chainer
 from chainer import cuda
 from chainer import gradient_check
 from chainer import testing
@@ -312,6 +313,31 @@ class AssertAllCloseTest2(unittest.TestCase):
     @attr.gpu
     def test_rtol_gpu(self):
         self.check_rtol(cuda.to_gpu(self.x), cuda.to_gpu(self.y))
+
+
+class Ident(chainer.Function):
+
+    def forward(self, inputs):
+        return inputs
+
+    def backward(self, inputs, grads):
+        return grads
+
+
+class TestCheckBackward(unittest.TestCase):
+
+    def test_multiple_output(self):
+        x1 = numpy.array([1], dtype='f')
+        x2 = numpy.array([1], dtype='f')
+        g1 = numpy.array([1], dtype='f')
+        g2 = numpy.array([1], dtype='f')
+
+        def f(x, y):
+            s, t = Ident()(x, y)
+            u = Ident()(t)
+            return s, u
+
+        gradient_check.check_backward(f, (x1, x2), (g1, g2))
 
 
 testing.run_module(__name__, __file__)
