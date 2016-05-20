@@ -9,6 +9,7 @@ from chainer.datasets import tuple_dataset
 
 DictDataset = dict_dataset.DictDataset
 ImageDataset = image_dataset.ImageDataset
+LabeledImageDataset = image_dataset.LabeledImageDataset
 SubDataset = sub_dataset.SubDataset
 TupleDataset = tuple_dataset.TupleDataset
 
