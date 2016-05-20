@@ -120,3 +120,6 @@ class TestNStepLSTM(unittest.TestCase):
                             cuda.to_gpu(self.dhy),
                             cuda.to_gpu(self.dcy),
                             [cuda.to_gpu(dy) for dy in self.dys])
+
+
+testing.run_module(__name__, __file__)
