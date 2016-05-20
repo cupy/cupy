@@ -125,24 +125,25 @@ def main():
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), args.out)
 
-    interval = (10 if args.test else 100000), 'iteration'
+    val_interval = (10 if args.test else 100000), 'iteration'
+    log_interval = (10 if args.test else 1000), 'iteration'
 
     eval_model = model.copy()  # Copy the links with shared parameters
                                # to change 'train' flag only in valudation
     eval_model.train = False
     trainer.extend(extensions.Evaluator(val_iter, eval_model, device=args.gpu),
-                   trigger=interval)
+                   trigger=val_interval)
     trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.snapshot(), trigger=interval)
+    trainer.extend(extensions.snapshot(), trigger=val_interval)
     trainer.extend(extensions.snapshot_object(
-        model, 'model_iter_{.updater.iteration}'), trigger=interval)
+        model, 'model_iter_{.updater.iteration}'), trigger=val_interval)
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
-    trainer.extend(extensions.LogReport(trigger=interval))
+    trainer.extend(extensions.LogReport(trigger=log_interval))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'iteration', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy']),
-                   trigger=interval)
+                   trigger=log_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
     if args.resume:
