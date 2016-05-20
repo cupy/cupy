@@ -55,3 +55,4 @@ class TestTransposeSequence(unittest.TestCase):
             [cuda.to_gpu(g) for g in self.gs])
 
 
+testing.run_module(__name__, __file__)
