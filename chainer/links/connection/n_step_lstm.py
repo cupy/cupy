@@ -35,6 +35,9 @@ class NStepLSTM(link.ChainList):
                     w_in = out_size
                 weight.add_param('w%d' % j, (out_size, w_in))
                 weight.add_param('b%d' % j, (out_size,))
+                getattr(weight, 'w%d' % j).data[...] = numpy.random.normal(
+                    0, numpy.sqrt(1. / w_in), (out_size, w_in))
+                getattr(weight, 'b%d' % j).data[...] = 0
             weights.append(weight)
 
         super(NStepLSTM, self).__init__(*weights)
