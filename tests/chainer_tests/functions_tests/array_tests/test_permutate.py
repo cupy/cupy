@@ -54,3 +54,6 @@ class TestPermutate(unittest.TestCase):
     @attr.gpu
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.g))
+
+
+testing.run_module(__name__, __file__)
