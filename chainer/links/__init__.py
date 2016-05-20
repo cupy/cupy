@@ -17,7 +17,7 @@ from chainer.links.loss import hierarchical_softmax
 from chainer.links.loss import negative_sampling
 from chainer.links.model import classifier
 from chainer.links.normalization import batch_normalization
-
+from chainer.links.connection import peephole
 
 Maxout = maxout.Maxout
 PReLU = prelu.PReLU
@@ -34,6 +34,7 @@ Linear = linear.Linear
 LSTM = lstm.LSTM
 MLPConvolution2D = mlp_convolution_2d.MLPConvolution2D
 Parameter = parameter.Parameter
+Peephole = peephole.Peephole
 
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = negative_sampling.NegativeSampling
