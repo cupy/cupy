@@ -13,7 +13,7 @@ from chainer.utils import type_check
 
 
 @testing.parameterize(
-    testing.product(
+    *testing.product_dict(
         [{'x_shape': (10, 3), 't_shape': (10,)},
          {'x_shape': (10, 3, 1), 't_shape': (10,)},
          {'x_shape': (10, 3, 1, 1), 't_shape': (10,)},
@@ -31,9 +31,9 @@ class TestAccuracy(unittest.TestCase):
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1,
                                       self.x_shape).astype(numpy.float32)
-        if t_data == 'randint':
+        if self.t_data == 'randint':
             self.t = numpy.random.randint(3, size=self.t_shape).astype(numpy.int32)
-        elif t_data == 'zero':
+        elif self.t_data == 'zero':
             self.t = numpy.zeros(self.t_shape).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data):
@@ -55,7 +55,7 @@ class TestAccuracy(unittest.TestCase):
                 total = (t_ != self.ignore_label).sum()
         else:
             count = 0
-            for i in six.moves.range(self.t_.size):
+            for i in six.moves.range(t_.size):
                 pred = x_[i].argmax()
                 if pred == t_[i]:
                     count += 1
