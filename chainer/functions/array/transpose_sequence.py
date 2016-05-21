@@ -5,9 +5,9 @@ from chainer import function
 from chainer.utils import type_check
 
 
-def _transpose(xs):
+def _transpose(xs, length):
     xp = cuda.get_array_module(*xs)
-    lengths = numpy.zeros(len(xs[0]), dtype='i')
+    lengths = numpy.zeros(length, dtype='i')
     for i, x in enumerate(xs):
         lengths[0:len(x)] = i + 1
     dtype = xs[0].dtype
@@ -24,7 +24,6 @@ def _transpose(xs):
 class TransposeSequence(function.Function):
 
     def check_type_forward(self, xs_type):
-        type_check.expect(xs_type.size() >= 1)
         for p, n in zip(xs_type, xs_type[1:]):
             type_check.expect(
                 p.shape[0] >= n.shape[0],
@@ -32,10 +31,12 @@ class TransposeSequence(function.Function):
             )
 
     def forward(self, xs):
-        return _transpose(xs)
+        if len(xs) == 0:
+            return ()
+        return _transpose(xs, len(xs[0]))
 
     def backward(self, xs, gs):
-        return _transpose(gs)
+        return _transpose(gs, len(xs))
 
 
 def transpose_sequence(xs):
