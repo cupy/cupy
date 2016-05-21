@@ -1,4 +1,3 @@
-import itertools
 import unittest
 
 import numpy
@@ -13,7 +12,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(*[dict(x, **y) for x, y in itertools.product(
+@testing.parameterize(*testing.product_dict(
     [
         # we assume insize as (2, 1)
         # standard output size which is estimated with get_deconv_outsize
@@ -31,7 +30,7 @@ from chainer.testing import condition
         {'dtype': numpy.float32},
         {'dtype': numpy.float64},
     ],
-)])
+))
 class TestUnpooling2D(unittest.TestCase):
 
     def setUp(self):
