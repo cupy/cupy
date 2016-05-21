@@ -13,6 +13,9 @@ from chainer.testing import attr
 @testing.parameterize(
     {'shape': (), 'lengths': [4, 2, 1], 'trans_lengths': [3, 2, 1, 1]},
     {'shape': (3,), 'lengths': [4, 2, 1], 'trans_lengths': [3, 2, 1, 1]},
+    {'shape': (), 'lengths': [0, 0], 'trans_lengths': []},
+    {'shape': (3,), 'lengths': [4, 2, 0], 'trans_lengths': [2, 2, 1, 1]},
+    {'shape': (3,), 'lengths': [], 'trans_lengths': []},
 )
 class TestTransposeSequence(unittest.TestCase):
 
@@ -29,10 +32,9 @@ class TestTransposeSequence(unittest.TestCase):
         for y, l in zip(ys, self.trans_lengths):
             self.assertEqual(len(y.data), l)
 
-        zs = functions.transpose_sequence(ys)
-        self.assertEqual(len(xs), len(zs))
-        for x, z in zip(xs, zs):
-            gradient_check.assert_allclose(x.data, z.data)
+        for i, l in enumerate(self.trans_lengths):
+            for j in range(l):
+                gradient_check.assert_allclose(ys[i].data[j], self.xs[j][i])
 
     def test_forward_cpu(self):
         self.check_forward(self.xs)
@@ -42,6 +44,10 @@ class TestTransposeSequence(unittest.TestCase):
         self.check_forward([cuda.to_gpu(x) for x in self.xs])
 
     def check_backward(self, xs_data, gs_data):
+        # In this situation the function returns no result
+        if len(self.trans_lengths) == 0:
+            return
+
         def f(*xs):
             return functions.transpose_sequence(xs)
 
