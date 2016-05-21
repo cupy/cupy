@@ -29,13 +29,10 @@ class Crop(function.Function):
 
     def forward(self, xs):
         ary = xs[0]
+        slices = [slice(None)] * ary.ndim
         for axis in self.axes:
-            ary = ary.swapaxes(axis, 0)
-            size = self.shape[axis]
-            start = self.offset
-            end = start + size
-            ary = ary[start:end].swapaxes(axis, 0)
-        return ary,
+            slices[axis] = slice(self.offset, self.offset + self.shape[axis])
+        return ary[tuple(slices)],
 
     def backward(self, xs, gys):
         xp = cuda.get_array_module(*xs)
