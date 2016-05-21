@@ -12,13 +12,6 @@ if cuda.cudnn_enabled:
     _mode = libcudnn.CUDNN_ACTIVATION_RELU
 
 
-def _as4darray(arr):
-    if arr.ndim == 0:
-        return arr.reshape(1, 1, 1, 1)
-    else:
-        return arr.reshape(arr.shape[0], -1, 1, 1)
-
-
 class ReLU(function.Function):
 
     """Rectified Linear Unit."""
@@ -38,16 +31,8 @@ class ReLU(function.Function):
         return utils.force_array(numpy.maximum(zero, x[0])),
 
     def forward_gpu(self, x):
-        y = cuda.cupy.empty_like(x[0])
         if cuda.cudnn_enabled and self.use_cudnn:
-            dtype = x[0].dtype
-            one = numpy.array(1, dtype=dtype).ctypes
-            zero = numpy.array(0, dtype=dtype).ctypes
-            handle = cudnn.get_handle()
-            desc = cudnn.create_tensor_descriptor(_as4darray(x[0]))
-            libcudnn.activationForward_v3(
-                handle, _mode, one.data, desc.value, x[0].data.ptr,
-                zero.data, desc.value, y.data.ptr)
+            y = cudnn.activation_forward(x[0], _mode)
             self.y = y
         else:
             y = cuda.cupy.maximum(x[0].dtype.type(0), x[0])
@@ -58,16 +43,7 @@ class ReLU(function.Function):
 
     def backward_gpu(self, x, gy):
         if cuda.cudnn_enabled and self.use_cudnn:
-            gx = cuda.cupy.empty_like(x[0])
-            dtype = gx.dtype
-            one = numpy.array(1, dtype=dtype).ctypes
-            zero = numpy.array(0, dtype=dtype).ctypes
-            handle = cudnn.get_handle()
-            desc = cudnn.create_tensor_descriptor(_as4darray(self.y))
-            libcudnn.activationBackward_v3(
-                handle, _mode, one.data, desc.value, self.y.data.ptr,
-                desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
-                zero.data, desc.value, gx.data.ptr)
+            gx = cudnn.activation_backward(x[0], self.y, gy[0], _mode)
         else:
             gx = cuda.elementwise(
                 'T x, T gy', 'T gx',

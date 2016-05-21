@@ -130,6 +130,13 @@ def create_pooling_descriptor(ksize, stride, pad, mode):
     return desc
 
 
+def _as4darray(arr):
+    if arr.ndim == 0:
+        return arr.reshape(1, 1, 1, 1)
+    else:
+        return arr.reshape(arr.shape[0], -1, 1, 1)
+
+
 def activation_forward(x, mode):
     x = cupy.ascontiguousarray(x)
     y = cupy.empty_like(x)
@@ -138,7 +145,7 @@ def activation_forward(x, mode):
     one = numpy.array(1, dtype=dtype).ctypes
     zero = numpy.array(0, dtype=dtype).ctypes
     handle = get_handle()
-    x_mat = x.reshape(x.shape[0], -1, 1, 1)
+    x_mat = _as4darray(x)
     desc = create_tensor_descriptor(x_mat)
     cudnn.activationForward_v3(
         handle, mode, one.data, desc.value, x_mat.data.ptr,
@@ -155,7 +162,7 @@ def activation_backward(x, y, gy, mode):
     one = numpy.array(1, dtype=dtype).ctypes
     zero = numpy.array(0, dtype=dtype).ctypes
     handle = get_handle()
-    y_mat = y.reshape(y.shape[0], -1, 1, 1)
+    y_mat = _as4darray(y)
     desc = create_tensor_descriptor(y_mat)
     cudnn.activationBackward_v3(
         handle, mode, one.data, desc.value, y.data.ptr,
