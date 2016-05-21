@@ -12,6 +12,31 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
+def accuracy(x, t, ignore_label):
+    x_ = numpy.rollaxis(x, 1, x.ndim).reshape(t.size, -1)
+    t_ = t.ravel()
+
+    if ignore_label is not None:
+        count = 0
+        for i in six.moves.range(t_.size):
+            pred = x_[i].argmax()
+            if t_[i] != ignore_label and pred == t_[i]:
+                count += 1
+        total = (t_ != ignore_label).sum()
+    else:
+        count = 0
+        for i in six.moves.range(t_.size):
+            pred = x_[i].argmax()
+            if pred == t_[i]:
+                count += 1
+        total = t_.size
+
+    if total == 0:
+        return 0.0
+    else:
+        return float(count) / total
+
+
 @testing.parameterize(
     *testing.product_dict(
         [{'x_shape': (10, 3), 't_shape': (10,)},
@@ -32,7 +57,8 @@ class TestAccuracy(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1,
                                       self.x_shape).astype(numpy.float32)
         if self.t_data == 'randint':
-            self.t = numpy.random.randint(3, size=self.t_shape).astype(numpy.int32)
+            self.t = numpy.random.randint(
+                3, size=self.t_shape).astype(numpy.int32)
         elif self.t_data == 'zero':
             self.t = numpy.zeros(self.t_shape).astype(numpy.int32)
 
@@ -43,28 +69,8 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.float32)
         self.assertEqual((), y.data.shape)
 
-        x_ = numpy.rollaxis(self.x, 1, self.x.ndim).reshape(self.t.size, -1)
-        t_ = self.t.ravel()
+        expected = accuracy(self.x, self.t, self.ignore_label)
 
-        if self.ignore_label is not None:
-            count = 0
-            for i in six.moves.range(t_.size):
-                pred = x_[i].argmax()
-                if t_[i] != self.ignore_label and pred == t_[i]:
-                    count += 1
-                total = (t_ != self.ignore_label).sum()
-        else:
-            count = 0
-            for i in six.moves.range(t_.size):
-                pred = x_[i].argmax()
-                if pred == t_[i]:
-                    count += 1
-                total = t_.size
-
-        if total == 0:
-            expected = 0.0
-        else:
-            expected = float(count) / total
         gradient_check.assert_allclose(expected, cuda.to_cpu(y.data))
 
     @condition.retry(3)
