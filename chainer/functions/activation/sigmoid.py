@@ -28,17 +28,7 @@ class Sigmoid(function.Function):
     def forward_gpu(self, inputs):
         x = inputs[0]
         if cuda.cudnn_enabled and self.use_cudnn:
-            x = cuda.cupy.ascontiguousarray(x)
-            self.y = cuda.cupy.empty_like(x)
-            dtype = x.dtype
-            alpha = numpy.array(1, dtype=dtype).ctypes
-            beta = numpy.array(0, dtype=dtype).ctypes
-            handle = cudnn.get_handle()
-            x_mat = x.reshape(x.shape[0], -1, 1, 1)
-            desc = cudnn.create_tensor_descriptor(x_mat)
-            libcudnn.activationForward_v3(
-                handle, _mode, alpha.data, desc.value, x_mat.data.ptr,
-                beta.data, desc.value, self.y.data.ptr)
+            self.y = cuda.cupy.cudnn.activation_forward(x, _mode)
         else:
             self.y = cuda.elementwise(
                 'T x', 'T y', 'y = 1 / (1 + exp(-x))',
@@ -52,20 +42,7 @@ class Sigmoid(function.Function):
         x = inputs[0]
         gy = grads[0]
         if cuda.cudnn_enabled and self.use_cudnn:
-            x = cuda.cupy.ascontiguousarray(x)
-            gy = cuda.cupy.ascontiguousarray(gy)
-
-            gx = cuda.cupy.empty_like(x)
-            dtype = x.dtype
-            one = numpy.array(1, dtype=dtype).ctypes
-            zero = numpy.array(0, dtype=dtype).ctypes
-            handle = cudnn.get_handle()
-            y_mat = self.y.reshape(self.y.shape[0], -1, 1, 1)
-            desc = cudnn.create_tensor_descriptor(y_mat)
-            libcudnn.activationBackward_v3(
-                handle, _mode, one.data, desc.value, y_mat.data.ptr,
-                desc.value, gy.data.ptr, desc.value, x.data.ptr,
-                zero.data, desc.value, gx.data.ptr)
+            gx = cuda.cupy.cudnn.activation_backward(x, self.y, gy, _mode)
         else:
             gx = cuda.elementwise(
                 'T y, T gy', 'T gx',
