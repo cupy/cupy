@@ -37,16 +37,12 @@ class Crop(function.Function):
     def backward(self, xs, gys):
         xp = cuda.get_array_module(*xs)
         gy = gys[0]
-        gx = xp.zeros_like(xs[0])
-        gx_orig = gx
+        slices = [slice(None)] * gy.ndim
         for axis in self.axes:
-            gx = gx.swapaxes(axis, 0)
-            size = self.shape[axis]
-            start = self.offset
-            end = start + size
-            gx = gx[start:end].swapaxes(axis, 0)
-        gx[...] = gy
-        return gx_orig,
+            slices[axis] = slice(self.offset, self.offset + self.shape[axis])
+        gx = xp.zeros_like(xs[0])
+        gx[tuple(slices)] = gy
+        return gx,
 
 
 def crop(x, shape, axes, offset=0):
