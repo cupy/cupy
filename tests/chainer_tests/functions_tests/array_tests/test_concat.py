@@ -1,4 +1,3 @@
-import itertools
 import unittest
 
 import numpy
@@ -11,7 +10,7 @@ from chainer import testing
 from chainer.testing import attr
 
 
-@testing.parameterize(*[dict(x, **y) for x, y in itertools.product(
+@testing.parameterize(*testing.product_dict(
     [
         {'shape': (2, 7, 3), 'axis': 1,
          'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
@@ -32,7 +31,7 @@ from chainer.testing import attr
         {'dtype': numpy.float32},
         {'dtype': numpy.float64},
     ],
-)])
+))
 class TestConcat(unittest.TestCase):
 
     def setUp(self):

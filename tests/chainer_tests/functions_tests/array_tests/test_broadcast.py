@@ -1,4 +1,3 @@
-import itertools
 import unittest
 
 import numpy
@@ -13,7 +12,7 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
-@testing.parameterize(*[dict(x, **y) for x, y in itertools.product(
+@testing.parameterize(*testing.product_dict(
     [
         {'in_shapes': [(3, 1, 5), (1, 2, 5)], 'out_shape': (3, 2, 5)},
         {'in_shapes': [(3, 2, 5), (5,)], 'out_shape': (3, 2, 5)},
@@ -31,7 +30,7 @@ from chainer.utils import type_check
         {'dtype': numpy.float32},
         {'dtype': numpy.float64},
     ],
-)])
+))
 class TestBroadcast(unittest.TestCase):
 
     def setUp(self):
@@ -105,7 +104,7 @@ class TestBroadcastTypeError(unittest.TestCase):
             functions.broadcast()
 
 
-@testing.parameterize(*[dict(x, **y) for x, y in itertools.product(
+@testing.parameterize(*testing.product_dict(
     [
         {'in_shape': (3, 1, 5), 'out_shape': (3, 2, 5)},
         {'in_shape': (5,), 'out_shape': (3, 2, 5)},
@@ -116,7 +115,7 @@ class TestBroadcastTypeError(unittest.TestCase):
         {'dtype': numpy.float32},
         {'dtype': numpy.float64},
     ],
-)])
+))
 class TestBroadcastTo(unittest.TestCase):
 
     def setUp(self):

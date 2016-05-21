@@ -1,4 +1,3 @@
-import itertools
 import unittest
 
 import numpy
@@ -11,7 +10,7 @@ from chainer import testing
 from chainer.testing import attr
 
 
-@testing.parameterize(*[dict(x, **y) for x, y in itertools.product(
+@testing.parameterize(*testing.product_dict(
     [
         {'in_shape': (3, 2), 'out_shape': (1, 3, 2), 'axis': 0},
         {'in_shape': (3, 2), 'out_shape': (3, 1, 2), 'axis': 1},
@@ -27,7 +26,7 @@ from chainer.testing import attr
         {'dtype': numpy.float32},
         {'dtype': numpy.float64},
     ],
-)])
+))
 class TestExpandDims(unittest.TestCase):
 
     def setUp(self):
