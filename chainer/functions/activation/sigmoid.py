@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer.utils import type_check
 
 if cuda.cudnn_enabled:
@@ -22,7 +23,8 @@ class Sigmoid(function.Function):
         type_check.expect(in_types[0].dtype == numpy.float32)
 
     def forward_cpu(self, x):
-        self.y = numpy.tanh(x[0] * 0.5) * 0.5 + 0.5
+        half = numpy.float32(0.5)
+        self.y = utils.force_array(numpy.tanh(x[0] * half) * half + half)
         return self.y,
 
     def forward_gpu(self, inputs):
@@ -36,7 +38,8 @@ class Sigmoid(function.Function):
         return self.y,
 
     def backward_cpu(self, x, gy):
-        return gy[0] * self.y * (1 - self.y),
+        one = numpy.float32(1)
+        return utils.force_array(gy[0] * self.y * (one - self.y)),
 
     def backward_gpu(self, inputs, grads):
         x = inputs[0]
