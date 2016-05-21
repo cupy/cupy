@@ -53,10 +53,10 @@ class SLSTM(function.Function):
         c1_type, c2_type, x1_type, x2_type = in_types
 
         type_check.expect(
-            c1_type.dtype == numpy.float32,
-            c2_type.dtype == numpy.float32,
-            x1_type.dtype == numpy.float32,
-            x2_type.dtype == numpy.float32,
+            c1_type.dtype.kind == 'f',
+            c2_type.dtype == c1_type.dtype,
+            x1_type.dtype == c1_type.dtype,
+            x2_type.dtype == c1_type.dtype,
 
             c1_type.ndim >= 2,
             c2_type.ndim >= 2,

@@ -9,7 +9,7 @@ from chainer.utils import type_check
 def _fwd_kern():
     return cuda.elementwise(
         'T x, T cond, T W', 'T y',
-        'y = cond >= 0 ? x : x * W', 'prelu')
+        'y = cond >= 0 ? x : (T)(x * W)', 'prelu')
 
 
 class PReLUFunction(function.Function):
@@ -20,8 +20,8 @@ class PReLUFunction(function.Function):
         x_type, W_type = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
-            W_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
+            W_type.dtype == x_type.dtype,
             x_type.ndim >= W_type.ndim + 1,
             x_type.shape[1:1 + W_type.ndim.eval()] == W_type.shape
         )
@@ -62,7 +62,7 @@ class PReLUFunction(function.Function):
         gy = grad_outputs[0]
         masked = cuda.elementwise(
             'T x, T gy', 'T masked',
-            'masked = x >= 0 ? 0 : x * gy',
+            'masked = x >= 0 ? (T)0 : (T)(x * gy)',
             'prelu_masked')(x, gy)
         axes = (0,) + tuple(six.moves.range(1 + W.ndim, gy.ndim))
         gW = masked.sum(axis=axes)

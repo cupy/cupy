@@ -20,10 +20,10 @@ class Sigmoid(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        type_check.expect(in_types[0].dtype == numpy.float32)
+        type_check.expect(in_types[0].dtype.kind == 'f')
 
     def forward_cpu(self, x):
-        half = numpy.float32(0.5)
+        half = x[0].dtype.type(0.5)
         self.y = utils.force_array(numpy.tanh(x[0] * half) * half + half)
         return self.y,
 
@@ -38,7 +38,7 @@ class Sigmoid(function.Function):
         return self.y,
 
     def backward_cpu(self, x, gy):
-        one = numpy.float32(1)
+        one = x[0].dtype.type(1)
         return utils.force_array(gy[0] * self.y * (one - self.y)),
 
     def backward_gpu(self, inputs, grads):

@@ -23,19 +23,18 @@ class ReLU(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(
             in_types.size() == 1,
-            in_types[0].dtype == numpy.float32
+            in_types[0].dtype.kind == 'f',
         )
 
     def forward_cpu(self, x):
-        zero = utils.force_type(x[0].dtype, 0)
-        return utils.force_array(numpy.maximum(zero, x[0])),
+        return utils.force_array(numpy.maximum(x[0], 0, dtype=x[0].dtype)),
 
     def forward_gpu(self, x):
         if cuda.cudnn_enabled and self.use_cudnn:
             y = cudnn.activation_forward(x[0], _mode)
             self.y = y
         else:
-            y = cuda.cupy.maximum(x[0].dtype.type(0), x[0])
+            y = cuda.cupy.maximum(x[0], 0)
         return y,
 
     def backward_cpu(self, x, gy):
@@ -47,7 +46,7 @@ class ReLU(function.Function):
         else:
             gx = cuda.elementwise(
                 'T x, T gy', 'T gx',
-                'gx = x > 0 ? gy : 0',
+                'gx = x > 0 ? gy : (T)0',
                 'relu_bwd')(x[0], gy[0])
         return gx,
 
