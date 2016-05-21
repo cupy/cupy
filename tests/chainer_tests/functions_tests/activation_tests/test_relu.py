@@ -35,6 +35,12 @@ class TestReLU(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
+    @attr.cudnn
+    @condition.retry(3)
+    def test_backward_gpu_non_contiguous(self):
+        self.check_backward(cuda.cupy.asfortranarray(cuda.to_gpu(self.x)),
+                            cuda.cupy.asfortranarray(cuda.to_gpu(self.gy)))
+
     @attr.gpu
     @condition.retry(3)
     def test_backward_cpu_no_cudnn(self):
