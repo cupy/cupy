@@ -13,37 +13,58 @@ from chainer.utils import type_check
 
 
 @testing.parameterize(
-    {'x_shape': (10, 3), 't_shape': (10,)},
-    {'x_shape': (10, 3, 1), 't_shape': (10,)},
-    {'x_shape': (10, 3, 1, 1), 't_shape': (10,)},
-    {'x_shape': (10, 3, 5), 't_shape': (10, 5)},
-    {'x_shape': (10, 3, 5, 4), 't_shape': (10, 5, 4)},
-    {'x_shape': (10, 3, 5, 4, 1), 't_shape': (10, 5, 4)},
-    {'x_shape': (10, 3, 5, 4, 1, 1), 't_shape': (10, 5, 4)},
+    testing.product(
+        [{'x_shape': (10, 3), 't_shape': (10,)},
+         {'x_shape': (10, 3, 1), 't_shape': (10,)},
+         {'x_shape': (10, 3, 1, 1), 't_shape': (10,)},
+         {'x_shape': (10, 3, 5), 't_shape': (10, 5)},
+         {'x_shape': (10, 3, 5, 4), 't_shape': (10, 5, 4)},
+         {'x_shape': (10, 3, 5, 4, 1), 't_shape': (10, 5, 4)},
+         {'x_shape': (10, 3, 5, 4, 1, 1), 't_shape': (10, 5, 4)}],
+        [{'ignore_label': None, 't_data': 'randint'},
+         {'ignore_label': 0, 't_data': 'randint'},
+         {'ignore_label': 0, 't_data': 'zero'}]
+    )
 )
 class TestAccuracy(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1,
                                       self.x_shape).astype(numpy.float32)
-        self.t = numpy.random.randint(3, size=self.t_shape).astype(numpy.int32)
+        if t_data == 'randint':
+            self.t = numpy.random.randint(3, size=self.t_shape).astype(numpy.int32)
+        elif t_data == 'zero':
+            self.t = numpy.zeros(self.t_shape).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
-        y = chainer.functions.accuracy(x, t)
+        y = chainer.functions.accuracy(x, t, self.ignore_label)
         self.assertEqual(y.data.dtype, numpy.float32)
         self.assertEqual((), y.data.shape)
 
         x_ = numpy.rollaxis(self.x, 1, self.x.ndim).reshape(self.t.size, -1)
         t_ = self.t.ravel()
-        count = 0
-        for i in six.moves.range(t_.size):
-            pred = x_[i].argmax()
-            if pred == t_[i]:
-                count += 1
 
-        expected = float(count) / self.t.size
+        if self.ignore_label is not None:
+            count = 0
+            for i in six.moves.range(t_.size):
+                pred = x_[i].argmax()
+                if t_[i] != self.ignore_label and pred == t_[i]:
+                    count += 1
+                total = (t_ != self.ignore_label).sum()
+        else:
+            count = 0
+            for i in six.moves.range(self.t_.size):
+                pred = x_[i].argmax()
+                if pred == t_[i]:
+                    count += 1
+                total = t_.size
+
+        if total == 0:
+            expected = 0.0
+        else:
+            expected = float(count) / total
         gradient_check.assert_allclose(expected, cuda.to_cpu(y.data))
 
     @condition.retry(3)

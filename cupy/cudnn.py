@@ -3,6 +3,7 @@ import atexit
 import numpy
 import six
 
+import cupy
 from cupy import cuda
 from cupy.cuda import cudnn
 
@@ -127,6 +128,47 @@ def create_pooling_descriptor(ksize, stride, pad, mode):
             desc.value, mode, ndim, c_ksize.data, c_pad.data, c_stride.data)
 
     return desc
+
+
+def _as4darray(arr):
+    if arr.ndim == 0:
+        return arr.reshape(1, 1, 1, 1)
+    else:
+        return arr.reshape(arr.shape[0], -1, 1, 1)
+
+
+def activation_forward(x, mode):
+    x = cupy.ascontiguousarray(x)
+    y = cupy.empty_like(x)
+
+    dtype = x.dtype
+    one = numpy.array(1, dtype=dtype).ctypes
+    zero = numpy.array(0, dtype=dtype).ctypes
+    handle = get_handle()
+    x_mat = _as4darray(x)
+    desc = create_tensor_descriptor(x_mat)
+    cudnn.activationForward_v3(
+        handle, mode, one.data, desc.value, x_mat.data.ptr,
+        zero.data, desc.value, y.data.ptr)
+    return y
+
+
+def activation_backward(x, y, gy, mode):
+    x = cupy.ascontiguousarray(x)
+    gy = cupy.ascontiguousarray(gy)
+
+    gx = cupy.empty_like(x)
+    dtype = x.dtype
+    one = numpy.array(1, dtype=dtype).ctypes
+    zero = numpy.array(0, dtype=dtype).ctypes
+    handle = get_handle()
+    y_mat = _as4darray(y)
+    desc = create_tensor_descriptor(y_mat)
+    cudnn.activationBackward_v3(
+        handle, mode, one.data, desc.value, y.data.ptr,
+        desc.value, gy.data.ptr, desc.value, x.data.ptr,
+        zero.data, desc.value, gx.data.ptr)
+    return gx
 
 
 if _cudnn_version >= 3000:

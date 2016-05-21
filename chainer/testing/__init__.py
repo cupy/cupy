@@ -5,6 +5,7 @@ from chainer.testing import parameterized
 
 parameterize = parameterized.parameterize
 product = parameterized.product
+product_dict = parameterized.product_dict
 
 with_requires = helper.with_requires
 
