@@ -23,6 +23,8 @@ def _transpose(xs, length):
 
 class TransposeSequence(function.Function):
 
+    """Function that transposes a list of Variables."""
+
     def check_type_forward(self, xs_type):
         for p, n in zip(xs_type, xs_type[1:]):
             type_check.expect(
@@ -40,6 +42,21 @@ class TransposeSequence(function.Function):
 
 
 def transpose_sequence(xs):
+    """Transpose a list of Variables.
+
+    This function transpose a list of :class:`~chainer.Variable` s and returns
+    a list of :class:`Variable` s.
+    For exampe a user gives ``[(0, 1, 2, 3), (4, 5), (6)]``, the function
+    returns ``[(0, 4, 6), (1, 5), (2), (3)]``.
+    Note that a given list needs to be sorted by each length of
+    :class:`~chainer.Variable`.
+
+    Args:
+        xs (list of ~chainer.Variable): Variables to transport.
+
+    Returns:
+        tuple or Variable: Transposed list.
+    """
     ys = TransposeSequence()(*xs)
     if not isinstance(ys, tuple):
         ys = (ys,)
