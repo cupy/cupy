@@ -31,11 +31,12 @@ class TestSLSTM(unittest.TestCase):
         self.gc = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
         self.gh = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
 
-        self.check_forward_option = {}
-        self.check_backward_option = {}
+        self.check_forward_options = {}
+        self.check_backward_options = {'eps': 1e-2}
         if self.dtype == numpy.float16:
-            self.check_forward_option = {'atol': 5e-4, 'rtol': 5e-3}
-            self.check_backward_option = {'atol': 5e-2, 'rtol': 1e-1}
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_backward_options = {
+                'eps': 2 ** -4, 'atol': 5e-3, 'rtol': 5e-2}
 
     def flat(self):
         self.c_prev1 = self.c_prev1[:, :, 0].copy()
@@ -71,9 +72,9 @@ class TestSLSTM(unittest.TestCase):
         h_expect = _sigmoid(o1_in + o2_in) * numpy.tanh(c_expect)
 
         gradient_check.assert_allclose(
-            c_expect, c.data, **self.check_forward_option)
+            c_expect, c.data, **self.check_forward_options)
         gradient_check.assert_allclose(
-            h_expect, h.data, **self.check_forward_option)
+            h_expect, h.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -103,7 +104,7 @@ class TestSLSTM(unittest.TestCase):
         gradient_check.check_backward(
             functions.SLSTM(),
             (c_prev1_data, c_prev2_data, x1_data, x2_data),
-            (c_grad, h_grad), eps=1e-2, **self.check_backward_option)
+            (c_grad, h_grad), **self.check_backward_options)
 
     @condition.retry(3)
     def test_full_backward_cpu(self):

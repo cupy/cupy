@@ -25,11 +25,12 @@ class TestLogSoftmax(unittest.TestCase):
             self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, self.x.shape).astype(self.dtype)
 
-        self.check_forward_option = {}
-        self.check_backward_option = {'atol': 1e-4, 'rtol': 1e-3}
+        self.check_forward_options = {}
+        self.check_backward_options = {'eps': 1e-2, 'atol': 1e-4, 'rtol': 1e-3}
         if self.dtype == numpy.float16:
-            self.check_forward_option = {'atol': 1e-3, 'rtol': 1e-2}
-            self.check_backward_option = {'atol': 5e-2, 'rtol': 1e-1}
+            self.check_forward_options = {'atol': 5e-3, 'rtol': 5e-2}
+            self.check_backward_options = {
+                'eps': 0.125, 'atol': 5e-3, 'rtol': 5e-2}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -41,7 +42,7 @@ class TestLogSoftmax(unittest.TestCase):
         y_expect = self.x - log_z
 
         gradient_check.assert_allclose(
-            y_expect, y.data, **self.check_forward_option)
+            y_expect, y.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -60,7 +61,7 @@ class TestLogSoftmax(unittest.TestCase):
     def check_backward(self, x_data, gy_data, use_cudnn=True):
         gradient_check.check_backward(
             functions.LogSoftmax(use_cudnn), x_data, gy_data,
-            eps=1e-2, **self.check_backward_option)
+            **self.check_backward_options)
 
     @condition.retry(10)
     def test_backward_cpu(self):

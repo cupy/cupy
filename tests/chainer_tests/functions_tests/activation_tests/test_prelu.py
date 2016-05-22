@@ -22,13 +22,15 @@ class TestPReLU(unittest.TestCase):
         # Avoid unstability of numerical grad
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         for i in range(self.x.size):
-            if -0.01 < self.x.flat[i] < 0.01:
+            if -0.05 < self.x.flat[i] < 0.05:
                 self.x.flat[i] = 0.5
         self.W = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.check_backward_option = {}
+        self.check_backward_options = {}
         if self.dtype == numpy.float16:
-            self.check_backward_option = {'atol': 1e-2, 'rtol': 1e-1}
+            self.check_backward_options = {'atol': 1e-2, 'rtol': 1e-1}
+            self.check_backward_options = {
+                'eps': 2.0 ** -6, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data, W_data):
         x = chainer.Variable(x_data)
@@ -56,7 +58,7 @@ class TestPReLU(unittest.TestCase):
     def check_backward(self, x_data, W_data, y_grad):
         gradient_check.check_backward(
             prelu.PReLUFunction(), (x_data, W_data), y_grad,
-            **self.check_backward_option)
+            **self.check_backward_options)
 
     @condition.retry(10)
     def test_backward_cpu(self):

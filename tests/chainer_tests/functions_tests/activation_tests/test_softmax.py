@@ -27,11 +27,12 @@ class TestSoftmax(unittest.TestCase):
             self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, self.x.shape).astype(self.dtype)
 
-        self.check_forward_option = {}
-        self.check_backward_option = {}
+        self.check_forward_options = {}
+        self.check_backward_options = {'eps': 1e-2}
         if self.dtype == numpy.float16:
-            self.check_forward_option = {'atol': 1e-3, 'rtol': 1e-2}
-            self.check_backward_option = {'atol': 5e-2, 'rtol': 1e-1}
+            self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
+            self.check_backward_options = {
+                'eps': 2.0 ** -4, 'atol': 5e-3, 'rtol': 5e-2}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -44,7 +45,7 @@ class TestSoftmax(unittest.TestCase):
             y_roll[i] /= y_roll[i].sum()
 
         gradient_check.assert_allclose(
-            y_expect, y.data, **self.check_forward_option)
+            y_expect, y.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -63,19 +64,19 @@ class TestSoftmax(unittest.TestCase):
     def check_backward(self, x_data, gy_data, use_cudnn=True):
         gradient_check.check_backward(
             functions.Softmax(use_cudnn), x_data, gy_data,
-            eps=1e-2, **self.check_backward_option)
+            **self.check_backward_options)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.cudnn
-    @condition.retry(3)
+    @condition.retry(10)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
 

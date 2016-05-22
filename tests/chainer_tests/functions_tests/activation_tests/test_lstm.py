@@ -27,11 +27,12 @@ class TestLSTM(unittest.TestCase):
         self.gc = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
         self.gh = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
 
-        self.check_forward_option = {}
-        self.check_backward_option = {}
+        self.check_forward_options = {}
+        self.check_backward_options = {'eps': 1e-2}
         if self.dtype == numpy.float16:
-            self.check_forward_option = {'atol': 1e-3, 'rtol': 1e-2}
-            self.check_backward_option = {'atol': 5e-2, 'rtol': 5e-1}
+            self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
+            self.check_backward_options = {
+                'eps': 0.125, 'atol': 5e-3, 'rtol': 5e-2}
 
     def flat(self):
         self.c_prev = self.c_prev[:, :, 0].copy()
@@ -57,9 +58,9 @@ class TestLSTM(unittest.TestCase):
         h_expect = _sigmoid(o_in) * numpy.tanh(c_expect)
 
         gradient_check.assert_allclose(
-            c_expect, c.data, **self.check_forward_option)
+            c_expect, c.data, **self.check_forward_options)
         gradient_check.assert_allclose(
-            h_expect, h.data, **self.check_forward_option)
+            h_expect, h.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -85,7 +86,7 @@ class TestLSTM(unittest.TestCase):
         gradient_check.check_backward(
             functions.LSTM(),
             (c_prev_data, x_data), (c_grad, h_grad),
-            eps=1e-2, **self.check_backward_option)
+            **self.check_backward_options)
 
     @condition.retry(3)
     def test_full_backward_cpu(self):

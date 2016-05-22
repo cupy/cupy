@@ -21,11 +21,12 @@ class TestSoftplus(unittest.TestCase):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.beta = numpy.random.uniform(1, 2, ())
-        self.check_forward_option = {}
-        self.check_backward_option = {}
+        self.check_forward_options = {}
+        self.check_backward_options = {}
         if self.dtype == numpy.float16:
-            self.check_forward_option = {'atol': 1e-4, 'rtol': 1e-3}
-            self.check_backward_option = {'atol': 5e-2, 'rtol': 2e-1}
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_backward_options = {
+                'eps': 2.0 ** -5, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
@@ -34,12 +35,12 @@ class TestSoftplus(unittest.TestCase):
         y_exp = numpy.log(1 + numpy.exp(self.beta * x_value)) / self.beta
         self.assertEqual(y.data.dtype, self.dtype)
         gradient_check.assert_allclose(
-            y_exp, y.data, **self.check_forward_option)
+            y_exp, y.data, **self.check_forward_options)
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             functions.Softplus(beta=self.beta), x_data, y_grad,
-            **self.check_backward_option)
+            **self.check_backward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -55,7 +56,7 @@ class TestSoftplus(unittest.TestCase):
         self.check_backward(self.x, self.gy)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 

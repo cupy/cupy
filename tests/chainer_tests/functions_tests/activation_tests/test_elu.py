@@ -26,11 +26,12 @@ class TestELU(unittest.TestCase):
                 self.x.flat[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.alpha = random.random()
-        self.check_forward_option = {}
-        self.check_backward_option = {}
+        self.check_forward_options = {}
+        self.check_backward_options = {}
         if self.dtype == numpy.float16:
-            self.check_forward_option = {'atol': 1e-4, 'rtol': 1e-3}
-            self.check_backward_option = {'atol': 1e-2, 'rtol': 5e-2}
+            self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
+            self.check_backward_options = {
+                'eps': 2.0 ** -5, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
@@ -43,7 +44,7 @@ class TestELU(unittest.TestCase):
                 expected[i] = self.alpha * (numpy.exp(expected[i]) - 1)
 
         gradient_check.assert_allclose(
-            expected, y.data, **self.check_forward_option)
+            expected, y.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -57,7 +58,7 @@ class TestELU(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             functions.ELU(self.alpha), x_data, y_grad,
-            **self.check_backward_option)
+            **self.check_backward_options)
 
     @condition.retry(10)
     def test_backward_cpu(self):

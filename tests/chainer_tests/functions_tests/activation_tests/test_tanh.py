@@ -21,9 +21,10 @@ class TestTanh(unittest.TestCase):
     def setUp(self):
         self.x = numpy.random.uniform(-.5, .5, self.shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-.1, .1, self.shape).astype(self.dtype)
-        self.check_backward_option = {}
+        self.check_backward_options = {}
         if self.dtype == numpy.float16:
-            self.check_backward_option = {'atol': 5e-3, 'rtol': 5e-2}
+            self.check_backward_options = {
+                'eps': 2.0 ** -5, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -50,7 +51,7 @@ class TestTanh(unittest.TestCase):
     def check_backward(self, x_data, gy_data, use_cudnn=True):
         gradient_check.check_backward(
             functions.Tanh(use_cudnn), x_data, gy_data,
-            **self.check_backward_option)
+            **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
