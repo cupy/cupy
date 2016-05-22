@@ -3,12 +3,10 @@ import unittest
 import numpy
 
 import chainer
-from chainer import cuda
 from chainer import link
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
-from chainer.testing import condition
 
 
 class MockPredictor(link.Chain):
