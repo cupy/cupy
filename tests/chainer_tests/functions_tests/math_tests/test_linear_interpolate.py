@@ -30,7 +30,6 @@ class TestLinearInterpolate(unittest.TestCase):
             self.check_backward_options = {
                 'eps': 0.3, 'atol': 1e-3, 'rtol': 1e-3}
 
-
     def check_forward(self, p_data, x_data, y_data):
         p = chainer.Variable(p_data)
         x = chainer.Variable(x_data)
