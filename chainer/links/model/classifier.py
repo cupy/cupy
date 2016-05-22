@@ -43,7 +43,7 @@ class Classifier(link.Chain):
         Args:
             args (list of ~chainer.Variable): Input minibatch.
 
-        The all elements of ``xs`` but last one are features and
+        The all elements of ``args`` but last one are features and
         the last element corresponds to ground truth labels.
         It feeds features to the predictor and compare the result
         with ground truth labels.
