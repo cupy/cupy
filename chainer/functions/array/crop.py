@@ -67,7 +67,7 @@ def crop(x, shape, axes, offsets=0):
             Default is 0.
 
     Returns:
-        Variable: :class:``~chainer.Variable`` object
+        Variable: :class:`~chainer.Variable` object
             which is cropped array of ``x``.
 
     """
