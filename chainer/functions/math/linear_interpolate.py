@@ -13,9 +13,9 @@ class LinearInterpolate(function.Function):
         p_type, x_type, y_type = in_types
 
         type_check.expect(
-            p_type.dtype == numpy.float32,
-            x_type.dtype == numpy.float32,
-            y_type.dtype == numpy.float32,
+            p_type.dtype.kind == 'f',
+            x_type.dtype == p_type.dtype,
+            y_type.dtype == p_type.dtype,
             p_type.shape == x_type.shape,
             p_type.shape == y_type.shape,
         )

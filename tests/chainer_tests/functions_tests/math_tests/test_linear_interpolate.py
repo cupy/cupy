@@ -13,14 +13,23 @@ from chainer.testing import condition
 
 @testing.parameterize(*testing.product({
     'shape': [(3, 4), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestLinearInterpolate(unittest.TestCase):
 
     def setUp(self):
-        self.p = numpy.random.uniform(0, 1, self.shape).astype(numpy.float32)
-        self.x = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
-        self.y = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
-        self.g = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
+        self.p = numpy.random.uniform(0, 1, self.shape).astype(self.dtype)
+        self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.y = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.g = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+
+        self.check_forward_options = {}
+        self.check_backward_options = {}
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-3}
+            self.check_backward_options = {
+                'eps': 0.3, 'atol': 1e-3, 'rtol': 1e-3}
+
 
     def check_forward(self, p_data, x_data, y_data):
         p = chainer.Variable(p_data)
@@ -29,7 +38,8 @@ class TestLinearInterpolate(unittest.TestCase):
 
         z = functions.linear_interpolate(p, x, y)
         expect = self.p * self.x + (1 - self.p) * self.y
-        gradient_check.assert_allclose(z.data, expect)
+        gradient_check.assert_allclose(
+            z.data, expect, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -44,7 +54,8 @@ class TestLinearInterpolate(unittest.TestCase):
 
     def check_backward(self, p_data, x_data, y_data, grad):
         gradient_check.check_backward(
-            functions.LinearInterpolate(), (p_data, x_data, y_data), grad)
+            functions.LinearInterpolate(), (p_data, x_data, y_data), grad,
+            **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
