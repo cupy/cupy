@@ -10,7 +10,7 @@ class HardSigmoid(function.Function):
 
     def forward_cpu(self, inputs):
         x = inputs[0]
-        return numpy.minimum(1.0, numpy.maximum(0.0, x * 0.2 + 0.5)),
+        return numpy.clip(x * 0.2 + 0.5, 0.0, 1.0),
 
     def forward_gpu(self, inputs):
         x = inputs[0]
