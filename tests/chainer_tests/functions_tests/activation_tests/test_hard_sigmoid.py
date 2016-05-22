@@ -11,6 +11,9 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(*testing.product({
+    'shape': [(3, 4), ()],
+}))
 class TestHardSigmoid(unittest.TestCase):
 
     shape = (3, 4)
@@ -22,6 +25,7 @@ class TestHardSigmoid(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.hard_sigmoid(x)
+        self.assertIs(y.data.dtype, x_data.dtype)
         expect = numpy.minimum(1.0, numpy.maximum(0.0, self.x * 0.2 + 0.5))
         gradient_check.assert_allclose(y.data, expect)
 
