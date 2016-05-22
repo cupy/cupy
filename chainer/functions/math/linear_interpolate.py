@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer.utils import type_check
 
 
@@ -21,7 +22,8 @@ class LinearInterpolate(function.Function):
 
     def forward_cpu(self, inputs):
         p, x, y = inputs
-        return p * x + (1 - p) * y,
+        one = p.dtype.type(1)
+        return utils.force_array(p * x + (one - p) * y),
 
     def forward_gpu(self, inputs):
         p, x, y = inputs
@@ -35,7 +37,9 @@ class LinearInterpolate(function.Function):
         p, x, y = inputs
         g = grads[0]
         pg = p * g
-        return (x - y) * g, pg, g - pg
+        return (utils.force_array((x - y) * g),
+                utils.force_array(pg),
+                utils.force_array(g - pg))
 
     def backward_gpu(self, inputs, grads):
         p, x, y = inputs

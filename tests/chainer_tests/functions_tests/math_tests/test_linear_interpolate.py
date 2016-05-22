@@ -11,9 +11,10 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(*testing.product({
+    'shape': [(3, 4), ()],
+}))
 class TestLinearInterpolate(unittest.TestCase):
-
-    shape = (3, 4)
 
     def setUp(self):
         self.p = numpy.random.uniform(0, 1, self.shape).astype(numpy.float32)
