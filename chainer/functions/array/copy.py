@@ -30,7 +30,7 @@ class Copy(function.Function):
     def backward(self, inputs, grad_outputs):
         # In this function, `grad_outputs` contains cuda arrays even when
         # `inputs` only contains numpy arrays.
-        if any(isinstance(x, cuda.ndarray) for x in inputs):
+        if isinstance(inputs[0], cuda.ndarray):
             return self.backward_gpu(inputs, grad_outputs)
         else:
             return self.backward_cpu(inputs, grad_outputs)
