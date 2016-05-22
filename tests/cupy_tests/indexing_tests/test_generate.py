@@ -15,13 +15,14 @@ class TestGanerate(unittest.TestCase):
         b = testing.shaped_reverse_arange((2, 4), xp, dtype)
         return xp.r_[a, b]
 
+    @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
-    def test_r_2(self, xp):
-        return xp.r_[xp.array([1, 2, 3]), 0, 0, xp.array([4, 5, 6])]
+    def test_r_2(self, xp, dtype):
+        return xp.r_[xp.array([1, 2, 3], dtype=dtype), 0, 0, xp.array([4, 5, 6], dtype=dtype)]
 
     def test_r_3(self, xp):
         with self.assertRaises(NotImplementedError):
-            testing.r_[-1:1:6j, [0]*3, 5, 6]
+            testing.r_[-1:1:6j, [0] * 3, 5, 6]
 
     @testing.for_all_dtypes(name='dtype')
     def test_r_4(self, xp, dtype):

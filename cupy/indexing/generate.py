@@ -2,10 +2,11 @@
 # "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
 import cupy
 
+import six
+
 
 class AxisConcatenator(object):
-    """
-    Translates slice objects to concatenation along an axis.
+    """Translates slice objects to concatenation along an axis.
 
     For detailed documentation on usage, see `r_`.
 
@@ -22,10 +23,10 @@ class AxisConcatenator(object):
         return res
 
     def _output_obj(self, newobj, tempobj, ndmin, trans1d):
-        k2 = ndmin-tempobj.ndim
+        k2 = ndmin - tempobj.ndim
         if (trans1d < 0):
             trans1d += k2 + 1
-        defaxes = list(range(ndmin))
+        defaxes = list(six.moves.range(ndmin))
         k1 = trans1d
         axes = defaxes[:k1] + defaxes[k2:] + \
                defaxes[k1:k2]
@@ -50,7 +51,7 @@ class AxisConcatenator(object):
         if not isinstance(key, tuple):
             key = (key,)
 
-        for k in range(len(key)):
+        for k in six.moves.range(len(key)):
             if isinstance(key[k], slice):
                 return NotImplemented
             elif isinstance(key[k], str):
@@ -81,12 +82,9 @@ class AxisConcatenator(object):
     def __len__(self):
         return 0
 
-# def c_
-# class c_(object):
 class CClass(AxisConcatenator):
     def __init__(self):
-        """
-        Translates slice objects to concatenation along the second axis.
+        """Translates slice objects to concatenation along the second axis.
 
         This is short-hand for ``np.r_['-1,2,0', index expression]``, which is
         useful because of its common occurrence. In particular, arrays will be
@@ -99,7 +97,7 @@ class CClass(AxisConcatenator):
 
 c_ = CClass()
 
-# class r_(object):
+
 class RClass(AxisConcatenator):
     def __init__(self):
         """Translates slice objects to concatenation along the first axis.
