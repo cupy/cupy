@@ -52,8 +52,9 @@ def copy(x, dst):
     """Copies the input variable onto the specified device.
 
     This function copies the array of input variable onto the device specified
-    by ``dst`` if the original array is on GPU, and otherwise just copies the
-    array within host memory.
+    by ``dst``. When ``dst == -1``, it copies the array onto the host memory.
+    This function supports copies from host to device, from device to device
+    and from device to host.
 
     Args:
         x (~chainer.Variable): Variable to be copied.
