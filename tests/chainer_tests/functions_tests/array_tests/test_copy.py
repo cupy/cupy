@@ -17,21 +17,23 @@ def _to_gpu(x, device_id):
         return x
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class Copy(unittest.TestCase):
 
     def setUp(self):
         self.x_data = numpy.random.uniform(
-            -1, 1, (10, 5)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (10, 5)).astype(numpy.float32)
+            -1, 1, (10, 5)).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, (10, 5)).astype(self.dtype)
 
     def check_forward(self, src_id, dst_id):
         x_data = _to_gpu(self.x_data, src_id)
         x = chainer.Variable(x_data)
-
         y = functions.copy(x, dst_id)
 
-        numpy.testing.assert_array_equal(
-            self.x_data, cuda.to_cpu(y.data))
+        self.assertEqual(self.x_data.dtype, self.dtype)
+        numpy.testing.assert_array_equal(self.x_data, cuda.to_cpu(y.data))
 
     def check_backward(self, src_id, dst_id):
         x_data = _to_gpu(self.x_data, src_id)
