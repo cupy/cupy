@@ -13,18 +13,19 @@ from chainer.testing import condition
 
 
 @testing.parameterize(*testing.product({
+    'shape': [(4, 3, 2), (1,)],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestPReLU(unittest.TestCase):
 
     def setUp(self):
         # Avoid unstability of numerical grad
-        self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(self.dtype)
+        self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         for i in range(self.x.size):
             if -0.01 < self.x.flat[i] < 0.01:
                 self.x.flat[i] = 0.5
         self.W = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
-        self.gy = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.check_backward_option = {}
         if self.dtype == numpy.float16:
             self.check_backward_option = {'atol': 1e-2, 'rtol': 1e-1}
