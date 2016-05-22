@@ -12,7 +12,7 @@ from chainer.testing import attr
 
 class TestCrop(unittest.TestCase):
     axes = [1, 2]
-    offset = 0
+    offsets = 0
 
     def setUp(self):
         self.x_data = numpy.random.uniform(-1, 1, (4, 3, 2))
@@ -21,7 +21,7 @@ class TestCrop(unittest.TestCase):
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = functions.crop(x, self.shape, self.axes)
+        y = functions.crop(x, self.shape, self.axes, self.offsets)
         self.assertEqual(y.data.dtype, numpy.float)
         numpy.testing.assert_equal(cuda.to_cpu(x_data)[:, :2, :1],
                                    cuda.to_cpu(y.data))
@@ -35,7 +35,7 @@ class TestCrop(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            functions.Crop(self.shape, self.axes, self.offset),
+            functions.Crop(self.shape, self.axes, self.offsets),
             (x_data,), y_grad)
 
     def test_backward_cpu(self):
