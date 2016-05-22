@@ -37,6 +37,7 @@ class TestLinearInterpolate(unittest.TestCase):
         y = chainer.Variable(y_data)
 
         z = functions.linear_interpolate(p, x, y)
+        self.assertIs(z.data.dtype.type, self.dtype)
         expect = self.p * self.x + (1 - self.p) * self.y
         gradient_check.assert_allclose(
             z.data, expect, **self.check_forward_options)
