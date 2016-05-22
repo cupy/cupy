@@ -100,7 +100,7 @@ class TestAveragePooling2DCudnnCall(unittest.TestCase):
 
     @unittest.skipIf(cuda.cudnn_enabled and
                      cuda.cudnn.cudnn.getVersion() < 3000,
-                     'Only cudnn ver>=3 supports pooling2d')
+                     'Only cudnn ver>=3 supports average-pooling2d')
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.poolingForward') as func:
             self.forward()
@@ -108,7 +108,7 @@ class TestAveragePooling2DCudnnCall(unittest.TestCase):
 
     @unittest.skipIf(cuda.cudnn_enabled and
                      cuda.cudnn.cudnn.getVersion() < 3000,
-                     'Only cudnn ver>=3 supports pooling2d')
+                     'Only cudnn ver>=3 supports average-pooling2d')
     def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
