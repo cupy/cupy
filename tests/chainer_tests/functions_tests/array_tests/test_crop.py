@@ -8,23 +8,38 @@ from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
+from chainer.testing import parameterize
 
 
+@parameterize(
+    {'axes': [1, 2], 'offsets': 0, 'cropped_shape': (4, 2, 1)},
+    {'axes': [1, 2], 'offsets': [0, 1, 1], 'cropped_shape': (4, 2, 1)},
+    {'axes': 1, 'offsets': 1, 'cropped_shape': (4, 2, 2)},
+    {'axes': 1, 'offsets': [0, 1, 1], 'cropped_shape': (4, 2, 2)},
+)
 class TestCrop(unittest.TestCase):
-    axes = [1, 2]
-    offsets = 0
 
     def setUp(self):
         self.x_data = numpy.random.uniform(-1, 1, (4, 3, 2))
         self.shape = (4, 2, 1)
-        self.gy_data = numpy.random.uniform(-1, 1, self.shape)
+        self.gy_data = numpy.random.uniform(-1, 1, self.cropped_shape)
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.crop(x, self.shape, self.axes, self.offsets)
         self.assertEqual(y.data.dtype, numpy.float)
-        numpy.testing.assert_equal(cuda.to_cpu(x_data)[:, :2, :1],
-                                   cuda.to_cpu(y.data))
+        offsets = self.offsets
+        if isinstance(offsets, int):
+            offsets = tuple([offsets] * len(self.shape))
+        if self.axes == 1:
+            numpy.testing.assert_equal(
+                cuda.to_cpu(x_data)[:, offsets[1]:offsets[1]+self.shape[1], :],
+                cuda.to_cpu(y.data))
+        elif self.axes == [1, 2]:
+            numpy.testing.assert_equal(
+                cuda.to_cpu(x_data)[:, offsets[1]:offsets[1]+self.shape[1],
+                                    offsets[2]:offsets[2]+self.shape[2]],
+                cuda.to_cpu(y.data))
 
     def test_forward_cpu(self):
         self.check_forward(self.x_data)

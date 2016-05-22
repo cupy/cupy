@@ -13,7 +13,7 @@ class Crop(function.Function):
         if not isinstance(shape, collections.Iterable):
             raise TypeError('shape must be 1-D array')
         if isinstance(axes, int):
-            axes = tuple(axes)
+            axes = tuple([axes])
         elif not isinstance(axes, collections.Iterable):
             raise TypeError('axes must be integer or 1-D array')
         if isinstance(offsets, int):
