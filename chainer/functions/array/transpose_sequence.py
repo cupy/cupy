@@ -12,7 +12,7 @@ def _transpose(xs, length):
         lengths[0:len(x)] = i + 1
     dtype = xs[0].dtype
     unit = xs[0].shape[1:]
-    outs = tuple(xp.empty((l,) + unit, dtype=dtype) for l in lengths)
+    outs = tuple([xp.empty((l,) + unit, dtype=dtype) for l in lengths])
 
     for i, x in enumerate(xs):
         for p, xi in enumerate(x):
