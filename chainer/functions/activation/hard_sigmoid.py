@@ -3,11 +3,18 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer import utils
+from chainer.utils import type_check
 
 
 class HardSigmoid(function.Function):
 
     """Hard-sigmoid funciton."""
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        x_type, = in_types
+
+        type_check.expect(x_type.dtype.kind == 'f')
 
     def forward_cpu(self, inputs):
         x = inputs[0]
