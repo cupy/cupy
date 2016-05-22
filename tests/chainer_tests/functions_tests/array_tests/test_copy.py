@@ -65,6 +65,26 @@ class Copy(unittest.TestCase):
         device_id = cuda.Device().id
         self.check_forward(device_id, device_id)
 
+    @attr.gpu
+    def test_forward_cpu_to_gpu(self):
+        device_id = cuda.Device().id
+        self.check_forward(-1, device_id)
+
+    @attr.gpu
+    def test_backward_cpu_to_gpu(self):
+        device_id = cuda.Device().id
+        self.check_backward(-1, device_id)
+
+    @attr.gpu
+    def test_forward_gpu_to_cpu(self):
+        device_id = cuda.Device().id
+        self.check_forward(device_id, -1)
+
+    @attr.gpu
+    def test_backward_gpu_to_cpu(self):
+        device_id = cuda.Device().id
+        self.check_backward(device_id, -1)
+
     @attr.multi_gpu(2)
     def test_forward_multigpu(self):
         self.check_forward(0, 1)
