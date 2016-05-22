@@ -99,6 +99,10 @@ copy
 ~~~~
 .. autofunction:: copy
 
+crop
+~~~~
+.. autofunction:: crop
+
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
