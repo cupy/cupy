@@ -24,10 +24,11 @@ class TestAveragePooling2D(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1,
                                        (2, 3, 2, 2)).astype(self.dtype)
         self.check_forward_options = {}
-        self.check_backward_options = {}
+        self.check_backward_options = {'eps': 1e-2}
         if self.dtype == numpy.float16:
-            self.check_forward_options = {'atol': 0.005, 'rtol': 0.005}
-            self.check_backward_options = {'atol': 0.01, 'rtol': 0.01}
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_backward_options = {
+                'eps': 1e-1, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -63,7 +64,7 @@ class TestAveragePooling2D(unittest.TestCase):
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
             functions.AveragePooling2D(3, 2, 1, False, use_cudnn),
-            x_data, y_grad, eps=1e-2, **self.check_backward_options)
+            x_data, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):

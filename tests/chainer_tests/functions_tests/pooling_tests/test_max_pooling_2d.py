@@ -26,14 +26,12 @@ class TestMaxPooling2D(unittest.TestCase):
         numpy.random.shuffle(self.x)
         self.x = 2 * self.x / self.x.size - 1
         if self.cover_all:
-            self.gy = numpy.random.uniform(-1, 1,
-                                           (2, 3, 3, 2)).astype(self.dtype)
+            self.gy = numpy.random.uniform(
+                -1, 1, (2, 3, 3, 2)).astype(self.dtype)
         else:
-            self.gy = numpy.random.uniform(-1, 1,
-                                           (2, 3, 2, 2)).astype(self.dtype)
-        self.check_backward_options = {}
-        if self.dtype == numpy.float16:
-            self.check_backward_options = {'atol': 0.05, 'rtol': 0.05}
+            self.gy = numpy.random.uniform(
+                -1, 1, (2, 3, 2, 2)).astype(self.dtype)
+        self.check_backward_options = {'eps': 2.0 ** -8}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
