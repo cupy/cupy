@@ -22,13 +22,13 @@ class DotNode(object):
         assert isinstance(node, (variable.Variable, function.Function))
         self.node = node
         self.id_ = id(node)
+        self.attribute = {'label': node.label}
         if isinstance(node, variable.Variable):
             self.attribute = {'shape': 'oval'}
         else:
             self.attribute = {'shape': 'box'}
-        if self.attribute is not None:
+        if attribute is not None:
             self.attribute.update(attribute)
-        self.attribute['label'] = node.label
 
     @property
     def label(self):
