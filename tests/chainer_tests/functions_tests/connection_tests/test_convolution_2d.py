@@ -15,6 +15,7 @@ from chainer.testing import condition
 
 @testing.parameterize(*testing.product({
     'c_contiguous': [True, False],
+    'cover_all': [True, False],
 }))
 class TestConvolution2DFunction(unittest.TestCase):
 
@@ -33,8 +34,12 @@ class TestConvolution2DFunction(unittest.TestCase):
 
         self.x = numpy.random.uniform(-1, 1,
                                       (2, 3, 4, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1,
-                                       (2, 2, 2, 2)).astype(numpy.float32)
+        if self.cover_all:
+            self.gy = numpy.random.uniform(-1, 1,
+                                           (2, 2, 3, 2)).astype(numpy.float32)
+        else:
+            self.gy = numpy.random.uniform(-1, 1,
+                                           (2, 2, 2, 2)).astype(numpy.float32)
 
     @attr.cudnn
     def test_forward_consistency(self, nobias=False):
@@ -43,14 +48,14 @@ class TestConvolution2DFunction(unittest.TestCase):
         b_cpu = None if nobias else chainer.Variable(self.b)
         y_cpu = functions.convolution_2d(
             x_cpu, W_cpu, b_cpu, stride=self.stride, pad=self.pad,
-            use_cudnn=self.use_cudnn)
+            use_cudnn=self.use_cudnn, cover_all=self.cover_all)
 
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         W_gpu = chainer.Variable(cuda.to_gpu(self.W))
         b_gpu = None if nobias else chainer.Variable(cuda.to_gpu(self.b))
         y_gpu = functions.convolution_2d(
             x_gpu, W_gpu, b_gpu, stride=self.stride, pad=self.pad,
-            use_cudnn=self.use_cudnn)
+            use_cudnn=self.use_cudnn, cover_all=self.cover_all)
 
         gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
 
@@ -85,7 +90,7 @@ class TestConvolution2DFunction(unittest.TestCase):
 
         gradient_check.check_backward(
             convolution_2d.Convolution2DFunction(
-                self.stride, self.pad, self.use_cudnn),
+                self.stride, self.pad, self.use_cudnn, self.cover_all),
             args, y_grad, eps=1e-2)
 
     @condition.retry(3)
@@ -123,10 +128,9 @@ class TestConvolution2DFunction(unittest.TestCase):
                             None, cuda.to_gpu(self.gy))
 
 
-@testing.parameterize(
-    {'use_cudnn': True},
-    {'use_cudnn': False},
-)
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+}))
 @attr.cudnn
 class TestConvolution2DCudnnCall(unittest.TestCase):
 

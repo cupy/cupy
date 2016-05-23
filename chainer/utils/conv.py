@@ -105,7 +105,7 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
              for (int out_x = out_x_0; out_x < out_x_1; ++out_x) {
                int kx = x - out_x * sx;
                int k = out_y + out_h * (kx + kw * (ky + kh * c0));
-               val += col[out_x + out_w * k];
+               val = val + col[out_x + out_w * k];
              }
            }
            img = val;

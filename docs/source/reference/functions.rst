@@ -311,6 +311,10 @@ max_pooling_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: max_pooling_2d
 
+roi_pooling_2d
+~~~~~~~~~~~~~~
+.. autofunction:: roi_pooling_2d
+
 spatial_pyramid_pooling_2d
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: spatial_pyramid_pooling_2d

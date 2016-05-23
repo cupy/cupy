@@ -26,10 +26,11 @@ def _pair(x):
 
 class Convolution2DFunction(function.Function):
 
-    def __init__(self, stride=1, pad=0, use_cudnn=True):
+    def __init__(self, stride=1, pad=0, use_cudnn=True, cover_all=False):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
         self.use_cudnn = use_cudnn
+        self.cover_all = cover_all
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -58,7 +59,8 @@ class Convolution2DFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         self.col = conv.im2col_cpu(
-            x, kh, kw, self.sy, self.sx, self.ph, self.pw)
+            x, kh, kw, self.sy, self.sx, self.ph, self.pw,
+            cover_all=self.cover_all)
         y = numpy.tensordot(self.col, W, ((1, 2, 3), (1, 2, 3)))
         if b is not None:
             y += b
@@ -71,11 +73,13 @@ class Convolution2DFunction(function.Function):
         out_c, _, kh, kw = W.shape
         n, c, h, w = x.shape
 
-        out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph)
-        out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw)
+        out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph,
+                                      cover_all=self.cover_all)
+        out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw,
+                                      cover_all=self.cover_all)
 
         y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if not self.cover_all and cuda.cudnn_enabled and self.use_cudnn:
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             if b is not None:
@@ -116,7 +120,8 @@ class Convolution2DFunction(function.Function):
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(
-                x, kh, kw, self.sy, self.sx, self.ph, self.pw)
+                x, kh, kw, self.sy, self.sx, self.ph, self.pw,
+                cover_all=self.cover_all)
             W_mat = W.reshape(out_c, -1)
             col_mats = self.col.reshape(n, -1, out_h * out_w)
             y_mats = y.reshape(n, out_c, -1)
@@ -155,7 +160,7 @@ class Convolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
 
         gW = cuda.cupy.empty_like(W)
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if not self.cover_all and cuda.cudnn_enabled and self.use_cudnn:
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             gy = cuda.cupy.ascontiguousarray(gy)
@@ -233,7 +238,8 @@ class Convolution2DFunction(function.Function):
             return gx, gW, gb
 
 
-def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
+def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
+                   cover_all=False):
     """Two-dimensional convolution function.
 
     This is an implementation of two-dimensional convolution in ConvNets.
@@ -261,6 +267,8 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
+        cover_all (bool): If True, all spatial locations are convoluted into
+            some output pixels. It may make the output size larger.
 
 
     Returns:
@@ -291,7 +299,7 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
     .. seealso:: :class:`Convolution2D`
 
     """
-    func = Convolution2DFunction(stride, pad, use_cudnn)
+    func = Convolution2DFunction(stride, pad, use_cudnn, cover_all)
     if b is None:
         return func(x, W)
     else:
