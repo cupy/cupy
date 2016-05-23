@@ -63,6 +63,22 @@ class TestVariable(unittest.TestCase):
     def test_len_gpu(self):
         self.check_len(True)
 
+    def check_get_item(self, gpu):
+        x_data = self.x
+        if gpu:
+            x_data = cuda.to_gpu(x_data)
+        x = chainer.Variable(x_data)
+        slices = slice(2, 5),
+        np.testing.assert_equal(cuda.to_cpu(x[slices].data),
+                                cuda.to_cpu(x_data[slices]))
+
+    def test_get_item_cpu(self):
+        self.check_get_item(False)
+
+    @attr.gpu
+    def test_get_item_gpu(self):
+        self.check_get_item(True)
+
     def check_label(self, expected, gpu):
         c = self.c
         if gpu:
