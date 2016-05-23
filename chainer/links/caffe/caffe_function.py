@@ -587,6 +587,7 @@ class _Scale(link.Chain):
         # Add W parameter if given.
         if W_shape is not None:
             self.add_param('W', W_shape)
+            self.W.data.fill(1)
         else:
             self.W = None
 
@@ -646,6 +647,7 @@ class _Bias(link.Link):
         # Add b parameter if given.
         if shape is not None:
             self.add_param('b', shape)
+            self.b.data.fill(0)
         else:
             self.b = None
 
