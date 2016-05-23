@@ -174,7 +174,8 @@ class TestPopulationStatistics(unittest.TestCase):
 class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.BatchNormalization(3, use_gamma=False, use_beta=True)
+        self.link = links.BatchNormalization(
+            3, use_gamma=False, use_beta=False)
         if self.test:
             mean = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
             self.link.avg_mean[...] = mean
@@ -198,6 +199,10 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
             var = self.x.var(axis=aggr_axes)
         self.y_expected = _batch_normalization(
             expander, gamma, beta, self.x, mean, var, self.link.eps, self.test)
+
+    def test_no_gamma_and_beta(self):
+        self.assertIsNone(self.link.gamma)
+        self.assertIsNone(self.link.beta)
 
     def check_forward(self, x_data, y_expected):
         x = chainer.Variable(x_data)
