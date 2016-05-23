@@ -18,8 +18,8 @@ class TestGanerate(unittest.TestCase):
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
     def test_r_2(self, xp, dtype):
-        a = xp.array([1, 2, 3], dtype=dtype)
-        b = xp.array([4, 5, 6], dtype=dtype)
+        a = testing.shaped_arange((1, 3), xp, dtype)
+        b = testing.shaped_arange((1, 3), xp, dtype)
         return xp.r_[a, 0, 0, b]
 
     def test_r_3(self, xp):
