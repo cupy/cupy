@@ -19,6 +19,7 @@ class TestLogSoftmax(unittest.TestCase):
 
     def setUp(self):
         if self.shape is None:
+            # For checking numerical stability
             value = -5 if self.dtype == numpy.float16 else -1000
             self.x = numpy.array([[value, 1]], dtype=self.dtype)
         else:
