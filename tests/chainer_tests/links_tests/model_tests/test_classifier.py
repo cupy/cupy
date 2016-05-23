@@ -27,7 +27,7 @@ class TestClassifier(unittest.TestCase):
     def setUp(self):
         self.classifier = links.Classifier(MockPredictor((3,)))
         self.x = numpy.random.uniform(-1, 1, (10, 3)).astype(numpy.float32)
-        self.t = numpy.random.randint(3, size=(10,), dtype=numpy.int32)
+        self.t = numpy.random.randint(3, size=(10,)).astype(numpy.int32)
 
     def check_call(self):
         xp = self.classifier.xp
@@ -50,7 +50,7 @@ class TestClassifier2(unittest.TestCase):
         self.classifier = links.Classifier(MockPredictor((3,)))
         self.xs = [numpy.random.uniform(-1, 1, (10, 3)).astype(numpy.float32),
                    numpy.random.uniform(-1, 1, (10, 2)).astype(numpy.float32)]
-        self.t = numpy.random.randint(3, size=(10,), dtype=numpy.int32)
+        self.t = numpy.random.randint(3, size=(10,)).astype(numpy.int32)
 
     def check_call(self):
         xp = self.classifier.xp
