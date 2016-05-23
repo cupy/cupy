@@ -377,7 +377,7 @@ class CaffeFunction(link.Chain):
         # Case of two bottoms where W is given as a bottom.
         else:
             shape = blobs[0].shape.dim if bias_term else None
-            func = _Scale(axis, bias_term=shape)
+            func = _Scale(axis, bias_term=bias_term, bias_shape=shape)
             if bias_term:
                 func.bias.b.data.ravel()[:] = blobs[0].data
 
@@ -576,13 +576,8 @@ def _scale(x, y, axis=1):
 
 
 class _Scale(link.Chain):
-    def __init__(self, axis=1, W_shape=None, bias_term=None):
+    def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
         super(_Scale, self).__init__()
-
-        # bias_term should be bool or None if W_shape is given. Otherwise, it
-        # is used as bias term's shape.
-        if W_shape is not None:
-            assert type(bias_term) == bool or bias_term is None
 
         # Add W parameter if given.
         if W_shape is not None:
@@ -593,14 +588,17 @@ class _Scale(link.Chain):
 
         # Add bias term if given.
         if W_shape is not None:
-            if bias_term is True:
+            if bias_term:
                 func = _Bias(axis, W_shape)
                 self.add_link('bias', func)
             else:
                 self.bias = None
         else:
-            if bias_term is not None:
-                func = _Bias(axis, bias_term)
+            if bias_term:
+                if bias_shape is None:
+                    raise ValueError('bias_shape should be given if W is not '
+                                     'learnt parameter and bias_term is True.')
+                func = _Bias(axis, bias_shape)
                 self.add_link('bias', func)
             else:
                 self.bias = None
