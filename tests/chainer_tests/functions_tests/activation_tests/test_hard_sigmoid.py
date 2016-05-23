@@ -17,8 +17,6 @@ from chainer.testing import condition
 }))
 class TestHardSigmoid(unittest.TestCase):
 
-    shape = (3, 4)
-
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.g = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
