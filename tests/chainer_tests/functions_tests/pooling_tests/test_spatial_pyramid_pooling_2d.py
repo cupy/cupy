@@ -41,7 +41,7 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
         self.check_backward_options = {'eps': 2.0 ** -10}
         if self.dtype == numpy.float16:
             self.check_backward_options = {
-                'eps': 2.0 ** -10, 'atol': 1e-4, 'rtol': 1e-3}
+                'eps': 2.0 ** -10, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
