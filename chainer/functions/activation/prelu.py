@@ -44,9 +44,8 @@ class PReLUFunction(function.Function):
         x, W = inputs
         gy = grad_outputs[0]
         mask = x >= 0
-        masked_x_gy = numpy.ma.array(x * gy, mask=mask)
         axes = (0,) + tuple(six.moves.range(1 + W.ndim, gy.ndim))
-        gW = masked_x_gy.sum(axis=axes)
+        gW = numpy.where(mask, 0, x * gy).sum(axis=axes)
         if numpy.isscalar(gW):
             gW = numpy.array(gW)
 
