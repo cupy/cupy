@@ -56,11 +56,11 @@ class BatchNormalizationTest(unittest.TestCase):
         else:
             self.mean = self.x.mean(axis=self.aggr_axes)
             self.var = self.x.var(axis=self.aggr_axes)
-        self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
-        self.check_backward_options = {'atol': 1e-4, 'rtol': 1e-3}
+        self.check_forward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
+        self.check_backward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
         if self.dtype == numpy.float16:
-            self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
-            self.check_backward_options = {'atol': 5e-1, 'rtol': 1e-1}
+            self.check_forward_optionss = {'atol': 1e-3, 'rtol': 1e-2}
+            self.check_backward_optionss = {'atol': 5e-1, 'rtol': 1e-1}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data, volatile=self.volatile)
@@ -72,7 +72,7 @@ class BatchNormalizationTest(unittest.TestCase):
             self.var, self.link.eps, self.test)
 
         gradient_check.assert_allclose(
-            y_expect, y.data, **self.check_forward_options)
+            y_expect, y.data, **self.check_forward_optionss)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -96,7 +96,7 @@ class BatchNormalizationTest(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             self.link, x_data, y_grad, (self.link.gamma, self.link.beta),
-            eps=1e-2, **self.check_backward_options)
+            eps=1e-2, **self.check_backward_optionss)
 
     @condition.retry(3)
     def test_backward_cpu(self):
