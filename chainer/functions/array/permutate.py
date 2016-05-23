@@ -28,6 +28,8 @@ def _reverse_indices(indices):
 
 class Permutate(function.Function):
 
+    """Permutate function."""
+
     def __init__(self, indices, axis=0, rev=False):
         _check_indices(indices)
         self.indices = indices
@@ -65,4 +67,23 @@ class Permutate(function.Function):
 
 
 def permutate(x, indices, axis=0, rev=False):
+    """Permutates a given variable along an axis.
+
+    This function permutate ``x`` with given ``indices``.
+    That means ``y[i] = x[indices[i]]`` for all ``i``.
+    Note that this result is same as ``y = x.take(indices)``.
+    ``indices`` must be a permutation of ``[0, 1, ..., len(x) - 1]``.
+
+    When ``rev`` is ``True``, ``indices`` is treated as its inverse.
+    That means ``y[indices[i]] = x[i]``.
+
+    Args:
+        x (~chainer.Variable): Variable to permutate.
+        indices (numpy.ndarray): Indices to extract from the variable.
+        axis (int): Axis that the input array is permutate along.
+        rev (bool): If ``True``, ``indices`` is treated as its inverse.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
     return Permutate(indices, axis=axis, rev=rev)(x)
