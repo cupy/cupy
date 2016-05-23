@@ -29,6 +29,15 @@ get_elapsed_time = stream.get_elapsed_time
 
 @contextlib.contextmanager
 def profile():
+    """Enable CUDA profiling during with statement.
+
+    This function enable profiling on entering with statement, and disable
+    profiling on leaving the statement.
+
+    >>> with cupy.cuda.profile():
+    ...    # do something you want to measure
+
+    """
     profiler.start()
     try:
         yield
