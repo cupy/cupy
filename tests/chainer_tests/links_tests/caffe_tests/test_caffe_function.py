@@ -1031,6 +1031,7 @@ class TestScaleChain(unittest.TestCase):
 
     @attr.gpu
     def test_forward_gpu(self):
+        self.link.to_gpu()
         x = cuda.to_gpu(self.x)
         if self.learn_W:
             W = None
@@ -1056,6 +1057,7 @@ class TestScaleChain(unittest.TestCase):
 
     @attr.gpu
     def test_backward_gpu(self):
+        self.link.to_gpu()
         x = cuda.to_gpu(self.x)
         if self.learn_W:
             W = None
@@ -1188,6 +1190,7 @@ class TestBiasLink(unittest.TestCase):
 
     @attr.gpu
     def test_forward_gpu(self):
+        self.link.to_gpu()
         x = cuda.to_gpu(self.x)
         if self.learn_b:
             b = None
@@ -1213,6 +1216,7 @@ class TestBiasLink(unittest.TestCase):
 
     @attr.gpu
     def test_backward_gpu(self):
+        self.link.to_gpu()
         x = cuda.to_gpu(self.x)
         if self.learn_b:
             b = None
