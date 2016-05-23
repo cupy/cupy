@@ -56,4 +56,25 @@ class TestPermutate(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.g))
 
 
+class TestPermutateInvalidIndices(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.arange(10).reshape((2, 5)).astype('f')
+
+    def test_duplicate_key(self):
+        with self.assertRaises(ValueError):
+            x = chainer.Variable(self.x)
+            functions.permutate(x, [0, 0, 2])
+
+    def test_negative_key(self):
+        with self.assertRaises(ValueError):
+            x = chainer.Variable(self.x)
+            functions.permutate(x, [-1, 0])
+
+    def test_non_successive_key(self):
+        with self.assertRaises(ValueError):
+            x = chainer.Variable(self.x)
+            functions.permutate(x, [0, 2])
+
+
 testing.run_module(__name__, __file__)

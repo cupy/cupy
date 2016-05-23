@@ -1,8 +1,22 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
+
+
+def _check_indices(indices):
+    if len(indices) == 0:
+        return
+    for i in indices:
+        if 0 <= i < len(indices):
+            continue
+        raise ValueError('Out of bounds index: {}'.format(i))
+    sort = numpy.sort(indices)
+    for s, t in six.moves.zip(sort, sort[1:]):
+        if s == t:
+            raise ValueError('indices contains duplicate value: {}'.format(s))
 
 
 def _reverse_indices(indices):
@@ -15,6 +29,7 @@ def _reverse_indices(indices):
 class Permutate(function.Function):
 
     def __init__(self, indices, axis=0, rev=False):
+        _check_indices(indices)
         self.indices = indices
         self.axis = axis
         self.rev = rev
