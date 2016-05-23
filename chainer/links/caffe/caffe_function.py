@@ -609,12 +609,13 @@ class _Scale(link.Chain):
         self.axis = axis
 
     def __call__(self, *xs):
+        axis = self.axis
+
         # Case of only one bottom where W is learnt parameter.
         if self.W is not None:
             assert len(xs) == 1
             x, = xs
             W = self.W
-            axis = self.axis
             z = _scale(x, W, axis)
         # Case of two bottoms where W is given as a bottom.
         else:
@@ -655,12 +656,13 @@ class _Bias(link.Link):
         self.axis = axis
 
     def __call__(self, *xs):
+        axis = self.axis
+
         # Case of only one bottom where b is learnt parameter.
         if self.b is not None:
             assert len(xs) == 1
             x, = xs
             b = self.b
-            axis = self.axis
             return _bias(x, b, axis)
         # Case of two bottoms where b is given as a bottom.
         else:
