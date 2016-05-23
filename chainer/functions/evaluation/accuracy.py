@@ -32,8 +32,6 @@ class Accuracy(function.Function):
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
         y, t = inputs
-        y = xp.rollaxis(y, 1)
-        y = xp.reshape(y, (-1,) + t.shape)
 
         if self.ignore_label is not None:
             mask = (t == self.ignore_label)
@@ -43,7 +41,8 @@ class Accuracy(function.Function):
             # TODO(henry0312)
             #   If cupy.where returns indexes, we could make the code better.
             #   Also, we would need Advanced Indexing.
-            pred = xp.where(mask, self.ignore_label, y.argmax(axis=0))
+            pred = xp.where(mask, self.ignore_label,
+                            y.argmax(axis=1).reshape(t.shape))
             count = (pred == t).sum() - ignore_cnt
             total = t.size - ignore_cnt
 
@@ -52,7 +51,7 @@ class Accuracy(function.Function):
             else:
                 return xp.asarray(float(count) / total, dtype='f'),
         else:
-            pred = y.argmax(axis=0)
+            pred = y.argmax(axis=1).reshape(t.shape)
             return xp.asarray((pred == t).mean(dtype='f')),
 
 
