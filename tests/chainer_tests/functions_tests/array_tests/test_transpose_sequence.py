@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -33,7 +34,7 @@ class TestTransposeSequence(unittest.TestCase):
             self.assertEqual(len(y.data), l)
 
         for i, l in enumerate(self.trans_lengths):
-            for j in range(l):
+            for j in six.moves.range(l):
                 gradient_check.assert_allclose(ys[i].data[j], self.xs[j][i])
 
     def test_forward_cpu(self):
