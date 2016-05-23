@@ -9,9 +9,9 @@ import six
 
 import chainer
 from chainer import cuda
+from chainer import gradient_check
 from chainer import links
 from chainer.links import caffe
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 if links.caffe.caffe_function.available:
