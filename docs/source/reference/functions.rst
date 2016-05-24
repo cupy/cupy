@@ -103,6 +103,10 @@ expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
 
+get_item
+~~~~~~~~
+.. autofunction:: get_item
+
 reshape
 ~~~~~~~
 .. autofunction:: reshape
@@ -310,6 +314,10 @@ average_pooling_2d
 max_pooling_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: max_pooling_2d
+
+roi_pooling_2d
+~~~~~~~~~~~~~~
+.. autofunction:: roi_pooling_2d
 
 spatial_pyramid_pooling_2d
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

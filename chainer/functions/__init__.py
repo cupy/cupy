@@ -17,6 +17,7 @@ from chainer.functions.array import broadcast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
+from chainer.functions.array import get_item
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
@@ -57,6 +58,7 @@ from chainer.functions.normalization import batch_normalization
 from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
+from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
 from chainer.links.activation import prelu as links_prelu
@@ -111,6 +113,8 @@ Copy = copy.Copy
 copy = copy.copy
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
+GetItem = get_item.GetItem
+get_item = get_item.get_item
 Reshape = reshape.Reshape
 reshape = reshape.reshape
 SplitAxis = split_axis.SplitAxis
@@ -203,6 +207,8 @@ AveragePooling2D = average_pooling_2d.AveragePooling2D
 average_pooling_2d = average_pooling_2d.average_pooling_2d
 MaxPooling2D = max_pooling_2d.MaxPooling2D
 max_pooling_2d = max_pooling_2d.max_pooling_2d
+ROIPooling2D = roi_pooling_2d.ROIPooling2D
+roi_pooling_2d = roi_pooling_2d.roi_pooling_2d
 SpatialPyramidPooling2D = spatial_pyramid_pooling_2d.SpatialPyramidPooling2D
 spatial_pyramid_pooling_2d = \
     spatial_pyramid_pooling_2d.spatial_pyramid_pooling_2d

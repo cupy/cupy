@@ -22,7 +22,7 @@ Requirements for some features:
   - filelock
   - g++ 4.8.4+
 - cuDNN support
-  - cuDNN v2, v3, v4
+  - cuDNN v2, v3, v4, v5
 - Caffe model support
   - Protocol Buffers (pip install protobuf)
     - protobuf>=3.0.0 is required for Py3
