@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -78,5 +79,33 @@ class TestLogSoftmax(unittest.TestCase):
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
 
+
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+@attr.cudnn
+class TestLogSoftmaxCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.x = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
+        self.gy = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
+        self.expect = self.use_cudnn and cuda.cudnn.cudnn.getVersion() >= 3000
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        return functions.log_softmax(x, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.softmaxForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.expect)
+
+    def test_call_cudnn_backward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.softmaxBackward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.expect)
 
 testing.run_module(__name__, __file__)

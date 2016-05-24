@@ -8,6 +8,7 @@ from chainer.utils import type_check
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
+    _cudnn_version = libcudnn.getVersion()
     _mode = libcudnn.CUDNN_ACTIVATION_TANH
 
 
@@ -27,7 +28,8 @@ class Tanh(function.Function):
         return self.y,
 
     def forward_gpu(self, x):
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
             self.y = cudnn.activation_forward(x[0], _mode)
         else:
             self.y = cuda.cupy.empty_like(x[0])
@@ -39,7 +41,8 @@ class Tanh(function.Function):
         return utils.force_array(gy[0] * (one - self.y * self.y)),
 
     def backward_gpu(self, x, gy):
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
             gx = cudnn.activation_backward(x[0], self.y, gy[0], _mode)
         else:
             gx = cuda.elementwise(
