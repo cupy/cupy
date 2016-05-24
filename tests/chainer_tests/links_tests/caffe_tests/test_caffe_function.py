@@ -14,6 +14,7 @@ from chainer import links
 from chainer.links import caffe
 from chainer import testing
 from chainer.testing import attr
+from chainer.testing import condition
 if links.caffe.caffe_function.available:
     from chainer.links.caffe.caffe_function import caffe_pb
 
@@ -955,10 +956,12 @@ class TestScaleFunction(unittest.TestCase):
             lambda x, y: caffe.caffe_function._scale(x, y, axis),
             x, y_grad)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x1, self.x2, self.axis, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         x1 = cuda.to_gpu(self.x1)
         x2 = cuda.to_gpu(self.x2)
@@ -1048,6 +1051,7 @@ class TestScaleChain(unittest.TestCase):
             gradient_check.check_backward(
                 self.link, (x_data, W_data), y_grad, atol=1e-2)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         if self.learn_W:
             W = None
@@ -1056,6 +1060,7 @@ class TestScaleChain(unittest.TestCase):
         self.check_backward(self.x, W, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.link.to_gpu()
         x = cuda.to_gpu(self.x)
@@ -1127,10 +1132,12 @@ class TestBiasFunction(unittest.TestCase):
             lambda x, y: caffe.caffe_function._bias(x, y, axis),
             x, y_grad)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x1, self.x2, self.axis, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         x1 = cuda.to_gpu(self.x1)
         x2 = cuda.to_gpu(self.x2)
@@ -1207,6 +1214,7 @@ class TestBiasLink(unittest.TestCase):
             gradient_check.check_backward(
                 self.link, (x_data, b_data), y_grad, atol=1e-2)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         if self.learn_b:
             b = None
@@ -1215,6 +1223,7 @@ class TestBiasLink(unittest.TestCase):
         self.check_backward(self.x, b, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.link.to_gpu()
         x = cuda.to_gpu(self.x)
