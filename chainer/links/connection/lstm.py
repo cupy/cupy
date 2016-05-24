@@ -1,6 +1,8 @@
 import six
 
 from chainer.functions.activation import lstm
+from chainer.functions.array import concat
+from chainer.functions.array import split_axis
 from chainer import initializers
 from chainer import link
 from chainer.links.connection import linear
@@ -160,13 +162,22 @@ class LSTM(LSTMBase):
             ~chainer.Variable: Outputs of updated LSTM units.
 
         """
+        batch = len(x.data)
         lstm_in = self.upward(x)
+        h_rest = None
         if self.h is not None:
-            lstm_in += self.lateral(self.h)
+            if len(self.h.data) > batch:
+                h_update, h_rest = split_axis.split_axis(self.h, [batch], axis=0)
+                lstm_in += self.lateral(h_update)
+            else:
+                lstm_in += self.lateral(self.h)
         if self.c is None:
             xp = self.xp
             self.c = variable.Variable(
                 xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
                 volatile='auto')
-        self.c, self.h = lstm.lstm(self.c, lstm_in)
+        self.c, h = lstm.lstm(self.c, lstm_in)
+        if h_rest is not None:
+            h = concat.concat([h, h_rest], axis=0)
+        self.h = h
         return self.h

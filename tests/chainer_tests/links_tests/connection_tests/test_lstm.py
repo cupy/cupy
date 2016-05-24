@@ -27,33 +27,39 @@ class TestLSTM(unittest.TestCase):
         self.upward = upward.copy()  # fixed on CPU
         self.lateral = lateral.copy()  # fixed on CPU
 
-        x_shape = (4, self.in_size)
-        self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
+        x1_shape = (4, self.in_size)
+        self.x1 = numpy.random.uniform(-1, 1, x1_shape).astype(numpy.float32)
+        x2_shape = (3, self.in_size)
+        self.x2 = numpy.random.uniform(-1, 1, x2_shape).astype(numpy.float32)
 
-    def check_forward(self, x_data):
+    def check_forward(self, x1_data, x2_data):
         xp = self.link.xp
-        x = chainer.Variable(x_data)
-        h1 = self.link(x)
-        c0 = chainer.Variable(xp.zeros((len(self.x), self.out_size),
-                                       dtype=self.x.dtype))
-        c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x))
+        x1 = chainer.Variable(x1_data)
+        h1 = self.link(x1)
+        c0 = chainer.Variable(xp.zeros((len(self.x1), self.out_size),
+                                       dtype=self.x1.dtype))
+        c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x1))
         testing.assert_allclose(h1.data, h1_expect.data)
         testing.assert_allclose(self.link.h.data, h1_expect.data)
         testing.assert_allclose(self.link.c.data, c1_expect.data)
 
-        h2 = self.link(x)
+        batch = len(x2_data)
+        x2 = chainer.Variable(x2_data)
+        h2 = self.link(x2)
+        h1_in, h1_rest = functions.split_axis(h1, [batch], axis=0)
         c2_expect, h2_expect = \
             functions.lstm(c1_expect,
-                           self.link.upward(x) + self.link.lateral(h1))
-        testing.assert_allclose(h2.data, h2_expect.data)
+                           self.link.upward(x2) + self.link.lateral(h1_in))
+        testing.assert_allclose(h2.data[:batch], h2_expect.data)
+        testing.assert_allclose(h2.data[batch:], h1_rest.data)
 
     def test_forward_cpu(self):
-        self.check_forward(self.x)
+        self.check_forward(self.x1, self.x2)
 
     @attr.gpu
     def test_forward_gpu(self):
         self.link.to_gpu()
-        self.check_forward(cuda.to_gpu(self.x))
+        self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
 
 
 class TestLSSTMRestState(unittest.TestCase):

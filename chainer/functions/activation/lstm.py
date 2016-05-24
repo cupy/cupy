@@ -56,7 +56,7 @@ class LSTM(function.Function):
             x_type.ndim >= 2,
             c_type.ndim == x_type.ndim,
 
-            x_type.shape[0] == c_type.shape[0],
+            x_type.shape[0] <= c_type.shape[0],
             x_type.shape[1] == 4 * c_type.shape[1],
         )
         for i in six.moves.range(2, c_type.ndim.eval()):
@@ -65,6 +65,7 @@ class LSTM(function.Function):
     def forward(self, inputs):
         c_prev, x = inputs
         a, i, f, o = _extract_gates(x)
+        batch = len(x)
 
         if isinstance(x, numpy.ndarray):
             self.a = numpy.tanh(a)
@@ -72,23 +73,30 @@ class LSTM(function.Function):
             self.f = _sigmoid(f)
             self.o = _sigmoid(o)
 
-            self.c = self.a * self.i + self.f * c_prev
-            h = self.o * numpy.tanh(self.c)
+            c_next = numpy.empty_like(c_prev)
+            c_next[:batch] = self.a * self.i + self.f * c_prev[:batch]
+            h = self.o * numpy.tanh(c_next[:batch])
         else:
-            self.c, h = cuda.elementwise(
+            c_next = cuda.cupy.empty_like(c_prev)
+            h = cuda.cupy.empty_like(c_next[:batch])
+            cuda.elementwise(
                 'T c_prev, T a, T i_, T f, T o', 'T c, T h',
                 '''
                     COMMON_ROUTINE;
                     c = aa * ai + af * c_prev;
                     h = ao * tanh(c);
                 ''',
-                'lstm_fwd', preamble=_preamble)(c_prev, a, i, f, o)
+                'lstm_fwd', preamble=_preamble)(
+                    c_prev[:batch], a, i, f, o, c_next[:batch], h)
 
-        return self.c, h
+        c_next[batch:] = c_prev[batch:]
+        self.c = c_next[:batch]
+        return c_next, h
 
     def backward(self, inputs, grad_outputs):
         xp = cuda.get_array_module(*inputs)
         c_prev, x = inputs
+        batch = len(x)
         gc, gh = grad_outputs
 
         gx = xp.empty_like(x)
@@ -96,18 +104,24 @@ class LSTM(function.Function):
 
         # Consider the case that either gradient is not given
         if gc is None:
-            gc = 0
+            gc_update = 0
+            gc_rest = 0
+        else:
+            gc_update = gc[:batch]
+            gc_rest = gc[batch:]
         if gh is None:
             gh = 0
 
         if xp is numpy:
             co = numpy.tanh(self.c)
-            gc_prev = gh * self.o * _grad_tanh(co) + gc  # multiply f later
-            ga[:] = gc_prev * self.i * _grad_tanh(self.a)
-            gi[:] = gc_prev * self.a * _grad_sigmoid(self.i)
-            gf[:] = gc_prev * c_prev * _grad_sigmoid(self.f)
+            gc_prev = numpy.empty_like(c_prev)
+            gc_prev[:batch] = gh * self.o * _grad_tanh(co) + gc_update  # multiply f later
+            ga[:] = gc_prev[:batch] * self.i * _grad_tanh(self.a)
+            gi[:] = gc_prev[:batch] * self.a * _grad_sigmoid(self.i)
+            gf[:] = gc_prev[:batch] * c_prev[:batch] * _grad_sigmoid(self.f)
             go[:] = gh * co * _grad_sigmoid(self.o)
-            gc_prev *= self.f  # multiply f here
+            gc_prev[:batch] *= self.f  # multiply f here
+            gc_prev[batch:] = gc_rest
         else:
             a, i, f, o = _extract_gates(x)
             gc_prev = xp.empty_like(c_prev)
@@ -125,8 +139,9 @@ class LSTM(function.Function):
                     gc_prev = temp * af;
                 ''',
                 'lstm_bwd', preamble=_preamble)(
-                    c_prev, self.c, gc, gh, a, i, f, o,
-                    gc_prev, ga, gi, gf, go)
+                    c_prev[:batch], self.c, gc_update, gh, a, i, f, o,
+                    gc_prev[:batch], ga, gi, gf, go)
+            gc_prev[batch:] = gc_rest
 
         return gc_prev, gx
 
