@@ -68,6 +68,9 @@ class TestVariable(unittest.TestCase):
         if gpu:
             x_data = cuda.to_gpu(x_data)
         x = chainer.Variable(x_data)
+        slices = slice(2, 5)
+        np.testing.assert_equal(cuda.to_cpu(x[slices].data),
+                                cuda.to_cpu(x_data[slices]))
         slices = slice(2, 5),
         np.testing.assert_equal(cuda.to_cpu(x[slices].data),
                                 cuda.to_cpu(x_data[slices]))

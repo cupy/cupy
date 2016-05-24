@@ -1,3 +1,5 @@
+import collections
+
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -9,6 +11,8 @@ class GetItem(function.Function):
     """Function that slices array and extract elements."""
 
     def __init__(self, slices):
+        if not isinstance(slices, collections.Iterable):
+            slices = tuple([slices])
         self.slices = slices
 
     def check_type_forward(self, in_types):
