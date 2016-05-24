@@ -17,6 +17,7 @@ from chainer.functions.array import broadcast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
+from chainer.functions.array import get_item
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
@@ -112,6 +113,8 @@ Copy = copy.Copy
 copy = copy.copy
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
+GetItem = get_item.GetItem
+get_item = get_item.get_item
 Reshape = reshape.Reshape
 reshape = reshape.reshape
 SplitAxis = split_axis.SplitAxis
