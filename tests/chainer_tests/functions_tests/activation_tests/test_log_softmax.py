@@ -90,27 +90,22 @@ class TestLogSoftmaxCudnnCall(unittest.TestCase):
     def setUp(self):
         self.x = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
         self.gy = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
+        self.expect = self.use_cudnn and cuda.cudnn.cudnn.getVersion() >= 3000
 
     def forward(self):
         x = chainer.Variable(self.x)
         return functions.log_softmax(x, use_cudnn=self.use_cudnn)
 
-    @unittest.skipIf(cuda.cudnn_enabled and
-                     cuda.cudnn.cudnn.getVersion() < 3000,
-                     'Only cudnn ver>=3 supports softmax')
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.softmaxForward') as func:
             self.forward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
-    @unittest.skipIf(cuda.cudnn_enabled and
-                     cuda.cudnn.cudnn.getVersion() < 3000,
-                     'Only cudnn ver>=3 supports softmax')
     def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
         with mock.patch('cupy.cudnn.cudnn.softmaxBackward') as func:
             y.backward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
 testing.run_module(__name__, __file__)
