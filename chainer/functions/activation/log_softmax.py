@@ -42,9 +42,9 @@ class LogSoftmax(function.Function):
     def forward(self, xs):
         x = xs[0]
         xp = cuda.get_array_module(x)
-        dtype = x.dtype
-        if (xp != numpy and dtype != numpy.float16 and cuda.cudnn_enabled and
-                self.use_cudnn and _cudnn_version >= 3000):
+        if (xp != numpy and cuda.cudnn_enabled and self.use_cudnn and
+                (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
+            dtype = 'd' if x[0].dtype == 'd' else 'f'
             one = numpy.array(1, dtype=dtype).ctypes
             zero = numpy.array(0, dtype=dtype).ctypes
             handle = cudnn.get_handle()
@@ -64,9 +64,9 @@ class LogSoftmax(function.Function):
 
     def backward(self, x, gy):
         xp = cuda.get_array_module(*x)
-        dtype = x[0].dtype
-        if (xp != numpy and dtype != numpy.float16 and cuda.cudnn_enabled and
-                self.use_cudnn and _cudnn_version >= 3000):
+        if (xp != numpy and cuda.cudnn_enabled and self.use_cudnn and
+                (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
+            dtype = 'd' if x[0].dtype == 'd' else 'f'
             one = numpy.array(1, dtype=dtype).ctypes
             zero = numpy.array(0, dtype=dtype).ctypes
             handle = cudnn.get_handle()
