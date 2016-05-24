@@ -36,11 +36,11 @@ def get_item(x, slices):
 
     Args:
         x (tuple of Variables): Variable to be sliced.
-        slices (tuple of slice objects): Values to slice variable in each axis.
+        slices (slice or tuple of slices): Slice objects to slice variable.
 
     Returns:
         Variable: :class:`~chainer.Variable` object
-            which is cropped array of ``x``.
+            which contains sliced array of ``x``.
 
     """
     return GetItem(slices)(x)
