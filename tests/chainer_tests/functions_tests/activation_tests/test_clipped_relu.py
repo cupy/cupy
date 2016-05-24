@@ -20,9 +20,10 @@ class TestClippedReLU(unittest.TestCase):
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         # Avoid values around zero and z for stability of numerical gradient
-        for i in range(self.x.size):
-            if -0.01 < self.x.flat[i] < 0.01 or 0.74 < self.x.flat[i] < 0.76:
-                self.x.flat[i] = 0.5
+        for i in numpy.ndindex(self.shape):
+            if -0.01 < self.x[i] < 0.01 or 0.74 < self.x[i] < 0.76:
+                self.x[i] = 0.5
+
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.z = 0.75
         self.check_backward_options = {}
