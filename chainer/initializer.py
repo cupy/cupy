@@ -15,8 +15,9 @@ class Initializer(object):
         Args:
             array (numpy.ndarray or cupy.ndarray):
                 An array to be initialized by this initializer.
+
         """
-        NotImplementedError()
+        raise NotImplementedError()
 
 
 # Original code forked from MIT licensed keras project
