@@ -2,6 +2,7 @@
 
 from chainer.functions.activation import clipped_relu
 from chainer.functions.activation import elu
+from chainer.functions.activation import hard_sigmoid
 from chainer.functions.activation import leaky_relu
 from chainer.functions.activation import log_softmax
 from chainer.functions.activation import lstm
@@ -82,6 +83,8 @@ connectionist_temporal_classification \
     = ctc.connectionist_temporal_classification
 ELU = elu.ELU
 elu = elu.elu
+HardSigmoid = hard_sigmoid.HardSigmoid
+hard_sigmoid = hard_sigmoid.hard_sigmoid
 LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LogSoftmax = log_softmax.LogSoftmax
