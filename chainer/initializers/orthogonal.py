@@ -40,7 +40,7 @@ class Orthogonal(initializer.Initializer):
     # How do we treat overcomplete base-system case?
     def __call__(self, array):
         xp = cuda.get_array_module(array)
-        if not array.shape:
+        if not array.shape:  # 0-dim case
             array[...] = self.scale
         elif not array.size:
             raise ValueError('Array to be initialized must be non-empty.')
@@ -52,7 +52,7 @@ class Orthogonal(initializer.Initializer):
                                  ' # of vectors ({}) is larger than'
                                  ' that of dimensions ({})'.format(
                                      flat_shape[0], flat_shape[1]))
-            a = numpy.random.standard_normal(flat_shape)
+            a = numpy.random.normal(size=flat_shape)
             # we do not have cupy.linalg.svd for now
             u, _, v = numpy.linalg.svd(a, full_matrices=False)
             # pick the one with the correct shape
