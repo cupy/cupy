@@ -74,7 +74,7 @@ def logsumexp(x, axis=None):
 
     .. math::
 
-       y_i = \\log(\\sum_j \\exp(x_{ij}))
+       y_i = \\log\\left(\\sum_j \\exp(x_{ij})\\right)
 
     Args:
         x (~chainer.Variable): Elements to log-sum-exp.
