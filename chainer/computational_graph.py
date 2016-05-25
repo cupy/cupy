@@ -60,8 +60,8 @@ class ComputationalGraph(object):
             nodes (list): List of nodes. Each node is either
                  :class:`Variable` object or :class:`Function` object.
             edges (list): List of edges. Each edge consists of pair of nodes.
-            variable_style (dist): Dot node style for variable.
-            function_style (dist): Dot node style for function.
+            variable_style (dict): Dot node style for variable.
+            function_style (dict): Dot node style for function.
 
         """
         self.nodes = nodes
