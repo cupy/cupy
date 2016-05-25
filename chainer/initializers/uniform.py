@@ -16,7 +16,7 @@ class Uniform(initializer.Initializer):
 
     Attributes:
         scale (float): A constant that determines the
-            scale of uniform distribution.
+            scale of the uniform distribution.
 
     """
 
@@ -35,15 +35,15 @@ class LeCunUniform(initializer.Initializer):
 
     Each element of the array is initialized by the value drawn
     independently from uniform distribution :math:`[-s, s]`
-    where :math:`s = scale \\times \\sqrt{\\frac{3}{fan\_in}}`.
-    Here :math:`fan\_in` is the number of input units.
+    where :math:`s = scale \\times \\sqrt{\\frac{3}{fan_{in}}}`.
+    Here :math:`fan_{in}` is the number of input units.
 
     Reference: LeCun 98, Efficient Backprop
     http://yann.lecun.com/exdb/publis/pdf/lecun-98b.pdf
 
     Attributes:
         scale (float): A constant that determines the
-            scale of uniform distribution.
+            scale of the uniform distribution.
 
     """
 
@@ -62,13 +62,13 @@ class GlorotUniform(initializer.Initializer):
 
     Each element of the array is initialized by the value drawn
     independently from uniform distribution :math:`[-s, s]`
-    where :math:`s = scale \\times \\sqrt{\\frac{6}{fan\_in + fan\_out}}`.
-    Here, :math:`fan\_in` and `fan\_out` are the number of
+    where :math:`s = scale \\times \\sqrt{\\frac{6}{fan_{in} + fan_{out}}}`.
+    Here, :math:`fan_{in}` and `fan_{out}` are the number of
     input and output units, respectively.
 
     Attributes:
         scale (float): A constant that determines the
-            scale of uniform distribution.
+            scale of the uniform distribution.
 
     """
 
@@ -87,12 +87,12 @@ class HeUniform(initializer.Initializer):
 
     Each element of the array is initialized by the value drawn
     independently from uniform distribution :math:`[-s, s]`
-    where :math:`s = scale \\times \\sqrt{\\frac{6}{fan\_in}}`.
-    Here, :math:`fan\_in` is the number of input units.
+    where :math:`s = scale \\times \\sqrt{\\frac{6}{fan_{in}}}`.
+    Here, :math:`fan_{in}` is the number of input units.
 
     Attributes:
         scale (float): A constant that determines the
-            scale of uniform distribution.
+            scale of the uniform distribution.
 
     """
 

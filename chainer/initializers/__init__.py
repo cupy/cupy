@@ -21,12 +21,16 @@ HeUniform = uniform.HeUniform
 
 
 def init_weight(weights, initializer, scale=1.0):
-    """Initializes given weight matrix with given initializer.
+    """Helper function for initialization of the weight tensor.
+
+    This function accepts several types of initializer, prepares
+    the appropriate ``~chainer.Initializer`` if necessary,
+    and does the initialization.
 
     Args:
          weights (numpy.ndarray or cupy.ndarray):
-             Weight matrix to be initialized.
-         initializer (value): The value to use to initialize the data.
+             Weight tensor to be initialized.
+         initializer: The value used to initialize the data.
              May be ``None`` (in which case
              :class:`~chainer.initializers.HeNormal`
              is used as an initializer), a scalar to set all values to,
@@ -34,6 +38,7 @@ def init_weight(weights, initializer, scale=1.0):
              or a callable that takes :class:`numpy.ndarray`
              or :class:`cupy.ndarray` and edits its value.
          scale (scalar): A constant to multiply initializer by.
+
     """
 
     if initializer is None:

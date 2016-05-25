@@ -4,6 +4,7 @@ import numpy
 class Initializer(object):
 
     def __call__(self, array):
+
         """Initializes given array.
 
         This method destructively changes the value of array.

@@ -8,9 +8,9 @@ class Identity(initializer.Initializer):
 
     """Initializes array with the identity matrix.
 
-    This initializer initializes the given array with the constant
+    It initializes the given array with the constant
     multiple of the identity matrix.
-    Note that arrays to be passed must be 2D square matrices.
+    Note that arrays to be passed must be 2D squared matrices.
 
     Attributes:
         scale (scalar): A constant to be multipllied to identity matrices.
@@ -24,7 +24,7 @@ class Identity(initializer.Initializer):
         shape = array.shape
         if len(shape) != 2 or shape[0] != shape[1]:
             raise ValueError('Identity matrix initialization can only be used '
-                             'for 2D square matrices.')
+                             'for 2D squared matrices.')
         array[...] = 0
         xp = cuda.get_array_module(array)
         d = xp.diagonal(array)

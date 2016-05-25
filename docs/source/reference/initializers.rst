@@ -1,16 +1,12 @@
 Weight Initializers
 ===================
 
-Weight initializer is an object that initializes the value of
-:class:`numpy.ndarray` or :class:`cupy.ndarray`.
-Weight initializers are instance of :class:`~chainer.Initializer`.
-Each initializer are required to implement :meth:`~chainer.Initializer.__call__`
-method that does initialization.
-Typically, weight initializers are passed to `__init__` of :class:`~chainer.Link`
+Weight initializer is an instance of :class:`~chainer.Initializer` that
+destructively edits the contents of :class:`numpy.ndarray` or :class:`cupy.ndarray`.
+Typically, weight initializers are passed to ``__init__`` of :class:`~chainer.Link`
 and initializes its the weights and biases.
 
 .. module:: chainer.initializer
-
 
 Base class
 ----------
@@ -18,13 +14,8 @@ Base class
 .. autoclass:: Initializer
   :members:
 
+
 .. module:: chainer.initializers
-
-
-Helper function
----------------
-
-.. autofunction:: init_weight
 
 Concrete initializers
 ---------------------
@@ -62,3 +53,11 @@ Concrete initializers
 
 .. autoclass:: HeUniform
   :members:
+
+
+.. module:: chainer
+
+Helper function
+---------------
+
+.. autofunction:: init_weight

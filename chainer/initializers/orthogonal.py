@@ -8,22 +8,22 @@ from chainer import initializer
 # https://github.com/fchollet/keras/blob/master/keras/initializations.py
 
 class Orthogonal(initializer.Initializer):
-    """Initializes array with orthogonal system.
+    """Initializes array with an orthogonal system.
 
     This initializer first makes a matrix of the same shape as the
     array to be initialized whose elements are drawn independently from
     standard Gaussian distribution.
     Next, it applies Singular Value Decomposition (SVD) to the matrix.
     Then, it initializes the array with either side of resultant
-    orthogonal matrices, depending on the shape of the initialized array.
+    orthogonal matrices, depending on the shape of the input array.
     Finally, the array is multiplied by the constant ``scale``.
 
-    If the ``ndim`` of the array is more than 2, we consider the array
-    to be a matrix by concatenating from second to last indices.
+    If the ``ndim`` of the input array is more than 2, we consider the array
+    to be a matrix by concatenating all axes except the first one.
 
     The number of vectors consisting of the orthogonal system
-    (first element of the shape of the array) must be equal to or smaller
-    than the dimension of each vector (second element of the shape of
+    (i.e. first element of the shape of the array) must be equal to or smaller
+    than the dimension of each vector (i.e. second element of the shape of
     the array).
 
     Attributes:

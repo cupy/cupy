@@ -35,8 +35,8 @@ class GlorotNormal(initializer.Initializer):
     Each element of the array is initialized by the value drawn
     independently from Gaussian distribution whose mean is 0,
     and standard deviation is
-    :math:`scale \\times \\sqrt{\\frac{2}{fan\_in + fan\_out}}`,
-    where :math:`fan\_in` and :math:`fan\_out` are the number of
+    :math:`scale \\times \\sqrt{\\frac{2}{fan_{in} + fan_{out}}}`,
+    where :math:`fan_{in}` and :math:`fan_{out}` are the number of
     input and output units, respectively.
 
     Reference: Glorot & Bengio, AISTATS 2010
@@ -63,8 +63,8 @@ class HeNormal(initializer.Initializer):
     Each element of the array is initialized by the value drawn
     independently from Gaussian distribution whose mean is 0,
     and standard deviation is
-    :math:`scale \\times \\sqrt{\\frac{2}{fan\_in}}`,
-    where :math:`fan\_in` is the number of input units.
+    :math:`scale \\times \\sqrt{\\frac{2}{fan_{in}}}`,
+    where :math:`fan_{in}` is the number of input units.
 
     Reference:  He et al., http://arxiv.org/abs/1502.01852
 
