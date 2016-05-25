@@ -84,6 +84,7 @@ class TestEmpty(unittest.TestCase):
     def test_cpu(self):
         self.check_assert(self.w)
 
+    @attr.gpu
     def test_gpu(self):
         self.check_assert(cuda.to_gpu(self.w))
 
