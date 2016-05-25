@@ -21,9 +21,9 @@ class TestPReLU(unittest.TestCase):
     def setUp(self):
         # Avoid unstability of numerical grad
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        for i in range(self.x.size):
-            if -0.05 < self.x.flat[i] < 0.05:
-                self.x.flat[i] = 0.5
+        for i in numpy.ndindex(self.shape):
+            if -0.05 < self.x[i] < 0.05:
+                self.x[i] = 0.5
         self.W = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.check_backward_options = {}
