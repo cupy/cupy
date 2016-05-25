@@ -165,6 +165,10 @@ huber_loss = huber_loss.huber_loss
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 
+ArgMax = minmax.ArgMax
+argmax = minmax.argmax
+ArgMin = minmax.ArgMin
+argmin = minmax.argmin
 BatchDet = det.BatchDet
 batch_det = det.batch_det
 BatchInv = inv.BatchInv
