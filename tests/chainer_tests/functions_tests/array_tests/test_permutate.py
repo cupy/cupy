@@ -11,10 +11,10 @@ from chainer.testing import attr
 
 
 @testing.parameterize(
-    {'shape': (3,), 'dtype': 'f', 'axis': 0, 'rev': False},
-    {'shape': (3,), 'dtype': 'f', 'axis': -1, 'rev': True},
-    {'shape': (3, 4), 'dtype': 'd', 'axis': 1, 'rev': True},
-    {'shape': (3, 4, 5), 'dtype': 'f', 'axis': 2, 'rev': False},
+    {'shape': (3,), 'dtype': 'f', 'axis': 0, 'inv': False},
+    {'shape': (3,), 'dtype': 'f', 'axis': -1, 'inv': True},
+    {'shape': (3, 4), 'dtype': 'd', 'axis': 1, 'inv': True},
+    {'shape': (3, 4, 5), 'dtype': 'f', 'axis': 2, 'inv': False},
 )
 class TestPermutate(unittest.TestCase):
 
@@ -25,13 +25,13 @@ class TestPermutate(unittest.TestCase):
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = functions.permutate(x, self.indices, axis=self.axis, rev=self.rev)
+        y = functions.permutate(x, self.indices, axis=self.axis, inv=self.inv)
 
         y_cpu = cuda.to_cpu(y.data)
         y_cpu = numpy.rollaxis(y_cpu, axis=self.axis)
         x_data = numpy.rollaxis(self.x, axis=self.axis)
         for i, ind in enumerate(self.indices):
-            if self.rev:
+            if self.inv:
                 numpy.testing.assert_array_equal(y_cpu[ind], x_data[i])
             else:
                 numpy.testing.assert_array_equal(y_cpu[i], x_data[ind])
@@ -44,7 +44,7 @@ class TestPermutate(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, g_data):
-        fun = functions.Permutate(self.indices, axis=self.axis, rev=self.rev)
+        fun = functions.Permutate(self.indices, axis=self.axis, inv=self.inv)
         gradient_check.check_backward(
             fun, x_data, g_data)
 

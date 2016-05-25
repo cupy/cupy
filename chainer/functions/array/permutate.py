@@ -19,7 +19,7 @@ def _check_indices(indices):
             raise ValueError('indices contains duplicate value: {}'.format(s))
 
 
-def _reverse_indices(indices):
+def _inverse_indices(indices):
     r = numpy.empty(len(indices), 'i')
     for i, ind in enumerate(indices):
         r[ind] = i
@@ -30,11 +30,11 @@ class Permutate(function.Function):
 
     """Permutate function."""
 
-    def __init__(self, indices, axis=0, rev=False):
+    def __init__(self, indices, axis=0, inv=False):
         _check_indices(indices)
         self.indices = indices
         self.axis = axis
-        self.rev = rev
+        self.inv = inv
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -46,10 +46,10 @@ class Permutate(function.Function):
 
         type_check.expect(x_type.shape[self.axis] == len(self.indices))
 
-    def _permutate(self, x, rev):
+    def _permutate(self, x, inv):
         xp = cuda.get_array_module(x)
-        if rev:
-            indices = _reverse_indices(self.indices)
+        if inv:
+            indices = _inverse_indices(self.indices)
         else:
             indices = self.indices
 
@@ -59,14 +59,14 @@ class Permutate(function.Function):
 
     def forward(self, inputs):
         x = inputs[0]
-        return self._permutate(x, self.rev),
+        return self._permutate(x, self.inv),
 
     def backward(self, inputs, grads):
         g = grads[0]
-        return self._permutate(g, not self.rev),
+        return self._permutate(g, not self.inv),
 
 
-def permutate(x, indices, axis=0, rev=False):
+def permutate(x, indices, axis=0, inv=False):
     """Permutates a given variable along an axis.
 
     This function permutate ``x`` with given ``indices``.
@@ -74,16 +74,16 @@ def permutate(x, indices, axis=0, rev=False):
     Note that this result is same as ``y = x.take(indices)``.
     ``indices`` must be a permutation of ``[0, 1, ..., len(x) - 1]``.
 
-    When ``rev`` is ``True``, ``indices`` is treated as its inverse.
+    When ``inv`` is ``True``, ``indices`` is treated as its inverse.
     That means ``y[indices[i]] = x[i]``.
 
     Args:
         x (~chainer.Variable): Variable to permutate.
         indices (numpy.ndarray): Indices to extract from the variable.
         axis (int): Axis that the input array is permutate along.
-        rev (bool): If ``True``, ``indices`` is treated as its inverse.
+        inv (bool): If ``True``, ``indices`` is treated as its inverse.
 
     Returns:
         ~chainer.Variable: Output variable.
     """
-    return Permutate(indices, axis=axis, rev=rev)(x)
+    return Permutate(indices, axis=axis, inv=inv)(x)
