@@ -51,23 +51,16 @@ class TestOrthogonal(OrthogonalBase, unittest.TestCase):
         self.check_orthogonality(cuda.to_gpu(self.w))
 
 
-class TestEmpty(OrthogonalBase, unittest.TestCase):
-
-    def setUp(self):
-        self.w = numpy.array([], dtype=numpy.float32)
-        self.initializer = initializers.Orthogonal(scale=1.0)
-
-
-class TestScalar(OrthogonalBase, unittest.TestCase):
+class TestZeroDim(OrthogonalBase, unittest.TestCase):
 
     def setUp(self):
         self.w = numpy.empty([], dtype=numpy.float32)
-        self.initializer = initializers.Orthogonal(scale=1.0)
+        self.initializer = initializers.Orthogonal(scale=2.0)
 
     def check_orthogonality(self, w):
         self.initializer(w)
         xp = cuda.get_array_module(w)
-        gradient_check.assert_allclose(w, xp.ones((), dtype=numpy.float32))
+        gradient_check.assert_allclose(w, xp.ones((), dtype=numpy.float32) * 2)
 
     def test_orthogonality_cpu(self):
         self.check_orthogonality(self.w)
@@ -75,6 +68,24 @@ class TestScalar(OrthogonalBase, unittest.TestCase):
     @attr.gpu
     def test_orthogonality_gpu(self):
         self.check_orthogonality(cuda.to_gpu(self.w))
+
+
+class TestEmpty(unittest.TestCase):
+
+    def setUp(self):
+        self.w = numpy.empty(0, dtype=numpy.float32)
+        self.initializer = initializers.Orthogonal()
+
+    def check_assert(self, w):
+        print(w.shape)
+        with self.assertRaises(ValueError):
+            self.initializer(w)
+
+    def test_cpu(self):
+        self.check_assert(self.w)
+
+    def test_gpu(self):
+        self.check_assert(cuda.to_gpu(self.w))
 
 
 @testing.parameterize(

@@ -42,8 +42,11 @@ class Orthogonal(initializer.Initializer):
         xp = cuda.get_array_module(array)
         if not array.shape:
             array[...] = self.scale
-        elif array.size:
-            flat_shape = (len(array), numpy.prod(array.shape[1:]))
+        elif not array.size:
+            raise ValueError('Array to be initialized must be non-empty.')
+        else:
+            # numpy.prod returns float value when the argument is empty.
+            flat_shape = (len(array), int(numpy.prod(array.shape[1:])))
             if flat_shape[0] > flat_shape[1]:
                 raise ValueError('Cannot make orthogonal system because'
                                  ' # of vectors ({}) is larger than'
