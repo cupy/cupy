@@ -28,7 +28,7 @@ class TestAveragePooling2D(unittest.TestCase):
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'eps': 1e-1, 'atol': 1e-3, 'rtol': 1e-2}
+                'eps': 1e-1, 'atol': 5e-3, 'rtol': 5e-2}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)

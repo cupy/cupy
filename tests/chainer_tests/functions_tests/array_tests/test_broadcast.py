@@ -42,7 +42,8 @@ class TestBroadcast(unittest.TestCase):
 
         self.check_backward_options = {}
         if self.dtype == numpy.float16:
-            self.check_backward_options = {'atol': 0.05, 'rtol': 0.05}
+            self.check_backward_options = {
+                'eps': 2 ** -5, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, data):
         xs = [chainer.Variable(x) for x in data]
@@ -124,7 +125,8 @@ class TestBroadcastTo(unittest.TestCase):
         self.grad = uniform(0, 1, self.out_shape).astype(self.dtype)
         self.check_backward_options = {}
         if self.dtype == numpy.float16:
-            self.check_backward_options = {'atol': 0.05, 'rtol': 0.05}
+            self.check_backward_options = {
+                'eps': 2 ** -5, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, data):
         x = chainer.Variable(data)
