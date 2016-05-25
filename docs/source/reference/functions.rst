@@ -263,6 +263,10 @@ log
 ~~~
 .. autofunction:: log
 
+logsumexp
+~~~~~~~~~
+.. autofunction:: logsumexp
+
 matmul
 ~~~~~~
 .. autofunction:: matmul
