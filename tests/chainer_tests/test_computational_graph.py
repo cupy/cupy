@@ -213,4 +213,17 @@ class TestGraphBuilderStylization(unittest.TestCase):
                 self.assertIn('{0}="{1}"'.format(key, value), dotfile_content)
 
 
+class TestGraphBuilderRankdir(unittest.TestCase):
+
+    def setUp(self):
+        self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
+        self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
+        self.y = self.x1 + self.x2
+
+    def test_randir(self):
+        for rankdir in ['TB', 'BT', 'LR', 'RL']:
+            g = c.build_computational_graph((self.y,), rankdir=rankdir)
+            self.assertIn('rankdir=%s' % rankdir, g.dump())
+
+
 testing.run_module(__name__, __file__)
