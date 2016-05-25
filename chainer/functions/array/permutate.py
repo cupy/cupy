@@ -1,6 +1,7 @@
 import numpy
 import six
 
+import chainer
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -31,7 +32,8 @@ class Permutate(function.Function):
     """Permutate function."""
 
     def __init__(self, indices, axis=0, inv=False):
-        _check_indices(indices)
+        if chainer.is_debug():
+            _check_indices(indices)
         self.indices = indices
         self.axis = axis
         self.inv = inv

@@ -60,6 +60,11 @@ class TestPermutateInvalidIndices(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.arange(10).reshape((2, 5)).astype('f')
+        self.debug = chainer.is_debug()
+        chainer.set_debug(True)
+
+    def tearDown(self):
+        chainer.set_debug(self.debug)
 
     def test_duplicate_key(self):
         with self.assertRaises(ValueError):
