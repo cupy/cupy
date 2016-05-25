@@ -41,7 +41,7 @@ class NegativeSamplingFunction(function.Function):
         self._make_samples(t)
 
         loss = numpy.float32(0.0)
-        for i, (ix, k) in enumerate(six.moves.zip(x, self.samples)):
+        for ix, k in six.moves.zip(x, self.samples):
             w = W[k]
             f = w.dot(ix)
             f[0] *= -1  # positive sample
