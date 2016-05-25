@@ -9,6 +9,8 @@ from chainer import function
 from chainer import function_set
 from chainer.functions import array
 from chainer.functions import basic_math
+from chainer import initializer
+from chainer import initializers
 from chainer import link
 from chainer import optimizer
 from chainer import serializer
@@ -33,6 +35,7 @@ Link = link.Link
 Optimizer = optimizer.Optimizer
 Serializer = serializer.Serializer
 Variable = variable.Variable
+Initializer = initializer.Initializer
 
 ON = flag.ON
 OFF = flag.OFF
@@ -75,3 +78,5 @@ def set_debug(debug):
 
 basic_math.install_variable_arithmetics()
 array.get_item.install_variable_get_item()
+
+init_weight = initializers.init_weight

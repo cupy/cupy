@@ -274,6 +274,8 @@ class InvalidInitialParameter(InitByInitialParameter):
 
     def test_invalidW_cpu(self):
         self.check_invalid(self.invalidW, (self.V1, self.V2, self.b), False)
+
+    def test_invalidW_cpu2(self):
         self.check_invalid(self.invalidW, None, True)
 
     def test_invalidV1_cpu(self):
