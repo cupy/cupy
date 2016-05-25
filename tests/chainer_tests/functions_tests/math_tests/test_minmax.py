@@ -341,4 +341,92 @@ class TestMin(unittest.TestCase):
             self.x.min(axis=(1, -2))
 
 
+@testing.parameterize(
+    {'function_name': 'argmax', 'function_class': functions.ArgMax},
+    {'function_name': 'argmin', 'function_class': functions.ArgMin},
+)
+class TestArgMinMax(unittest.TestCase):
+
+    def setUp(self):
+        self.function = getattr(functions, self.function_name)
+        self.expect = getattr(numpy, self.function_name)
+
+        self.x = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
+
+    def check_forward(self, x_data, axis=None):
+        x = chainer.Variable(x_data)
+        y = self.function(x, axis=axis)
+        self.assertEqual(y.data.dtype, numpy.int32)
+        y_expect = self.expect(self.x, axis=axis)
+        self.assertEqual(y.data.shape, y_expect.shape)
+        gradient_check.assert_allclose(y_expect, y.data)
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x)
+
+    def test_forward_axis_cpu(self):
+        for i in range(self.x.ndim):
+            self.check_forward(self.x, axis=i)
+
+    def test_forward_negative_axis_cpu(self):
+        self.check_forward(self.x, axis=-1)
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x))
+
+    @attr.gpu
+    def test_forward_axis_gpu(self):
+        for i in range(self.x.ndim):
+            self.check_forward(cuda.to_gpu(self.x), axis=i)
+
+    @attr.gpu
+    def test_forward_negative_axis_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x), axis=-1)
+
+    def check_backward(self, x_data, axis=None):
+        x = chainer.Variable(x_data)
+        y = self.function(x, axis=axis)
+        y.backward()
+        self.assertTrue(numpy.all(cuda.to_cpu(x.grad) == 0))
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
+        self.check_backward(self.x)
+
+    @condition.retry(3)
+    def test_backward_axis_cpu(self):
+        for i in range(self.x.ndim):
+            self.check_backward(self.x, axis=i)
+
+    @condition.retry(3)
+    def test_backward_negative_axis_cpu(self):
+        self.check_backward(self.x, axis=-1)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_axis_gpu(self):
+        for i in range(self.x.ndim):
+            self.check_backward(cuda.to_gpu(self.x), axis=i)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_negative_axis_gpu(self):
+        for i in range(self.x.ndim):
+            self.check_backward(cuda.to_gpu(self.x), axis=-1)
+
+    def test_invalid_axis_type(self):
+        with self.assertRaises(TypeError):
+            self.function_class([0])
+
+    def test_invalid_axis_type_in_tuple(self):
+        with self.assertRaises(TypeError):
+            self.function_class((1, 'x'))
+
+
 testing.run_module(__name__, __file__)
