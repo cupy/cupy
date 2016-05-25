@@ -35,7 +35,8 @@ class IntervalTrigger(object):
         if self.unit == 'epoch':
             return updater.is_new_epoch and updater.epoch % self.period == 0
         else:
-            return updater.iteration % self.period == 0
+            iteration = updater.iteration
+            return iteration > 0 and iteration % self.period == 0
 
 
 def get_trigger(trigger):
