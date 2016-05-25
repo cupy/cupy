@@ -52,6 +52,7 @@ from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import linear_interpolate
 from chainer.functions.math import logarithm_1p
+from chainer.functions.math import logsumexp
 from chainer.functions.math import matmul
 from chainer.functions.math import minmax
 from chainer.functions.math import sum
@@ -192,6 +193,8 @@ Log = exponential.Log
 log = exponential.log
 Log1p = logarithm_1p.Log1p
 log1p = logarithm_1p.log1p
+LogSumExp = logsumexp.LogSumExp
+logsumexp = logsumexp.logsumexp
 MatMul = matmul.MatMul
 matmul = matmul.matmul
 Max = minmax.Max
