@@ -341,17 +341,24 @@ class TestMin(unittest.TestCase):
             self.x.min(axis=(1, -2))
 
 
-@testing.parameterize(
-    {'function_name': 'argmax', 'function_class': functions.ArgMax},
-    {'function_name': 'argmin', 'function_class': functions.ArgMin},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'function_name': 'argmax', 'function_class': functions.ArgMax},
+        {'function_name': 'argmin', 'function_class': functions.ArgMin},
+    ],
+    [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ]
+))
 class TestArgMinMax(unittest.TestCase):
 
     def setUp(self):
         self.function = getattr(functions, self.function_name)
         self.expect = getattr(numpy, self.function_name)
 
-        self.x = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
 
     def check_forward(self, x_data, axis=None):
         x = chainer.Variable(x_data)
