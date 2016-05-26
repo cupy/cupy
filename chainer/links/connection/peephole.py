@@ -28,11 +28,11 @@ template <typename T> __device__ T grad_tanh(T y) { return 1 - y * y; }
 
 class Peephole(link.Chain):
 
-    """Fully-connected LSTM layer.
+    """Fully-connected LSTM with peephole connections layer.
 
-    This is a fully-connected LSTM layer as a chain. Unlike the
-    :func:`~chainer.functions.lstm` function, which is defined as a stateless
-    activation function, this chain holds upward and lateral connections as
+    This is a fully-connected LSTM with peephole connections layer as a chain. Unlike the
+    :func:`~chainer.functions.peephole` function, which is defined as a stateless
+    activation function, this chain holds upward, lateral and peephole connections as
     child links.
 
     It also maintains *states*, including the cell state and the output
@@ -45,6 +45,9 @@ class Peephole(link.Chain):
     Attributes:
         upward (~chainer.links.Linear): Linear layer of upward connections.
         lateral (~chainer.links.Linear): Linear layer of lateral connections.
+        peep_i (~chainer.links.Linear): Linear layer of peephole input connections.
+        peep_f (~chainer.links.Linear): Linear layer of peephole forget connections.
+        peep_o (~chainer.links.Linear): Linear layer of peephole output connections.
         c (~chainer.Variable): Cell states of LSTM units.
         h (~chainer.Variable): Output at the previous time step.
 
@@ -89,9 +92,9 @@ class Peephole(link.Chain):
             a = numpy.tanh(a)
             i = _sigmoid(i + peep_in_i)
             f = _sigmoid(f + peep_in_f)
-            self.c_next = a * i + f * c_prev
+            c_next = a * i + f * c_prev
         #else:
-        #return c_next
+        return c_next
 
     def __call__(self, x):
         """Updates the internal state and returns the LSTM outputs.
@@ -113,7 +116,7 @@ class Peephole(link.Chain):
                 volatile='auto')
         peep_in_i = self.peep_i(self.c) 
         peep_in_f = self.peep_f(self.c) 
-        self.calc_c_next(self.c, lstm_in.data, peep_in_i.data, peep_in_f.data)
-        peep_in_o = self.peep_o(self.c_next)
+        c_next = self.calc_c_next(self.c, lstm_in.data, peep_in_i.data, peep_in_f.data)
+        peep_in_o = self.peep_o(c_next)
         self.c, self.h = peephole.peephole(self.c, lstm_in, peep_in_i, peep_in_f, peep_in_o) 
         return self.h

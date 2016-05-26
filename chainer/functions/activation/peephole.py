@@ -40,21 +40,36 @@ class Peephole(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 5)
-        #c_type, x_type = in_types
+        c_type, x_type, peep_i_type, peep_f_type, peep_o_type = in_types
 
-        #type_check.expect(
-        #    c_type.dtype == numpy.float32,
-        #    x_type.dtype == numpy.float32,
+        type_check.expect(
+            c_type.dtype == numpy.float32,
+            x_type.dtype == numpy.float32,
+            peep_i_type.dtype == numpy.float32,
+            peep_f_type.dtype == numpy.float32,
+            peep_o_type.dtype == numpy.float32,
 
-        #    c_type.ndim >= 2,
-        #    x_type.ndim >= 2,
-        #    c_type.ndim == x_type.ndim,
+            c_type.ndim >= 2,
+            x_type.ndim >= 2,
+            peep_i_type.ndim >= 2, 
+            peep_f_type.ndim >= 2, 
+            peep_o_type.ndim >= 2, 
+            c_type.ndim == x_type.ndim,
+            c_type.ndim == peep_i_type.ndim,
+            c_type.ndim == peep_f_type.ndim,
+            c_type.ndim == peep_o_type.ndim,
 
-        #    x_type.shape[0] == c_type.shape[0],
-        #    x_type.shape[1] == 4 * c_type.shape[1],
-        #)
-        #for i in range(2, c_type.ndim.eval()):
-        #    type_check.expect(x_type.shape[i] == c_type.shape[i])
+            x_type.shape[0] == c_type.shape[0],
+            x_type.shape[1] == 4 * c_type.shape[1],
+        )
+        for i in range(2, c_type.ndim.eval()):
+            type_check.expect(x_type.shape[i] == c_type.shape[i])
+        for i in range(0, c_type.ndim.eval()):
+            type_check.expect(
+                peep_i_type.shape[i] == c_type.shape[i],
+                peep_f_type.shape[i] == c_type.shape[i],
+                peep_o_type.shape[i] == c_type.shape[i],
+            )    
 
     def forward(self, inputs):
         c_prev, x, peep_in_i, peep_in_f, peep_in_o = inputs
@@ -65,7 +80,7 @@ class Peephole(function.Function):
             self.i = _sigmoid(i + peep_in_i)
             self.f = _sigmoid(f + peep_in_f)
             self.o = _sigmoid(o + peep_in_o)
-            
+
             self.c = self.a * self.i + self.f * c_prev
             h = self.o * numpy.tanh(self.c)
         #else:
@@ -80,7 +95,7 @@ class Peephole(function.Function):
         #        'peep_fwd', preamble=_preamble)(c_prev, a, i, f, o)
 
         return self.c, h
-            
+
     def backward(self, inputs, grad_outputs):
         xp = cuda.get_array_module(*inputs)
         c_prev, x, peep_in_i, peep_in_f, peep_in_o = inputs
