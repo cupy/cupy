@@ -11,18 +11,31 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    {'dtype': numpy.float16},
+    {'dtype': numpy.float32},
+    {'dtype': numpy.float64},
+)
 class TestLogSumExp(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
+        self.check_forward_option = {}
+        self.check_backward_option = {
+            'eps': 2.0 ** -5, 'rtol': 1.0e-4, 'atol': 1.0e-4}
+        if self.dtype == numpy.float16:
+            self.check_forward_option = {'rtol': 1.0e-2, 'atol': 1.0e-2}
+            self.check_backward_option = {
+                'eps': 2.0 ** -4, 'rtol': 1.0e-2, 'atol': 1.0e-2}
 
     def check_forward(self, x_data, axis=None):
         x = chainer.Variable(x_data)
         y = functions.logsumexp(x, axis=axis)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         y_expect = numpy.log(numpy.exp(self.x).sum(axis=axis))
-        gradient_check.assert_allclose(y_expect, y.data)
+        gradient_check.assert_allclose(
+            y_expect, y.data, **self.check_forward_option)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -91,7 +104,8 @@ class TestLogSumExp(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, axis=None):
         gradient_check.check_backward(
-            functions.LogSumExp(axis), x_data, y_grad, atol=1e-4)
+            functions.LogSumExp(axis), x_data, y_grad,
+            **self.check_backward_option)
 
     @condition.retry(3)
     def test_backward_cpu(self):
