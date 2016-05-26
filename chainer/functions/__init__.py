@@ -50,11 +50,8 @@ from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
 from chainer.functions.math import identity
 from chainer.functions.math import inv
-<<<<<<< HEAD
 from chainer.functions.math import linear_interpolate
-=======
 from chainer.functions.math import logarithm_1p
->>>>>>> modify flake8 error
 from chainer.functions.math import matmul
 from chainer.functions.math import minmax
 from chainer.functions.math import sum
