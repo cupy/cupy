@@ -191,4 +191,26 @@ class TestGraphBuilder7(unittest.TestCase):
         _check(self, (self.y, ), 9, 8)
 
 
+class TestGraphBuilderStylization(unittest.TestCase):
+
+    def setUp(self):
+        self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
+        self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
+        self.y = self.x1 + self.x2
+        self.f = self.y.creator
+        self.variable_style = {'label': 'variable_0', 'shape': 'octagon',
+                               'style': 'filled', 'fillcolor': '#E0E0E0'}
+        self.function_style = {'label': 'function_0', 'shape': 'record',
+                               'style': 'filled', 'fillcolor': '#6495ED'}
+        self.g = c.build_computational_graph(
+            (self.y,), variable_style=self.variable_style,
+            function_style=self.function_style)
+
+    def test_dotfile_content(self):
+        dotfile_content = self.g.dump()
+        for style in [self.variable_style, self.function_style]:
+            for key, value in style.items():
+                self.assertIn('{0}="{1}"'.format(key, value), dotfile_content)
+
+
 testing.run_module(__name__, __file__)
