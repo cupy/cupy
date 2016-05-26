@@ -32,7 +32,7 @@ class Expm1FunctionTest(unittest.TestCase):
 
     @attr.gpu
     @condition.retry(3)
-def test_expm1_forward_gpu(self):
+    def test_expm1_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
