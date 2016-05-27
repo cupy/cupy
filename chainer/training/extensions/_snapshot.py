@@ -12,7 +12,8 @@ def snapshot_object(target, filename, savefun=npz.save_npz):
     This extension serializes the given object and saves it to the output
     directory.
 
-    This extension is called once for each epoch by default.
+    This extension is called once for each epoch by default. The default
+    priority is -100, which is lower than that of most built-in extensions.
 
     Args:
         target: Object to serialize.
@@ -28,7 +29,7 @@ def snapshot_object(target, filename, savefun=npz.save_npz):
         An extension function.
 
     """
-    @extension.make_extension(trigger=(1, 'epoch'))
+    @extension.make_extension(trigger=(1, 'epoch'), priority=-100)
     def snapshot_object(trainer):
         _snapshot_object(trainer, target, filename.format(trainer), savefun)
 
@@ -43,7 +44,8 @@ def snapshot(savefun=npz.save_npz,
     directory. It is used to support resuming the training loop from the saved
     state.
 
-    This extension is called once for each epoch by default.
+    This extension is called once for each epoch by default. The default
+    priority is -100, which is lower than that of most built-in extensions.
 
     .. note::
        This extension first writes the serialized object to a temporary file
@@ -59,7 +61,7 @@ def snapshot(savefun=npz.save_npz,
             the :meth:`str.format` method.
 
     """
-    @extension.make_extension(trigger=(1, 'epoch'))
+    @extension.make_extension(trigger=(1, 'epoch'), priority=-100)
     def snapshot(trainer):
         _snapshot_object(trainer, trainer, filename.format(trainer), savefun)
 
