@@ -5,6 +5,7 @@ import threading
 import warnings
 
 from chainer import cuda
+from chainer import dataset
 from chainer import datasets
 from chainer import flag
 from chainer import function
