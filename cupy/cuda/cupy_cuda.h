@@ -6,6 +6,7 @@
 #ifndef CUPY_NO_CUDA
 #include <cublas_v2.h>
 #include <cuda.h>
+#include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include <curand.h>
 
@@ -532,6 +533,23 @@ int curandGeneratePoisson(
     return 0;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// cuda_profiler_api.h
+///////////////////////////////////////////////////////////////////////////////
+
+int cudaProfilerInitialize(const char *configFile, 
+                           const char *outputFile, 
+                           int outputMode) {
+  return 0;
+}
+
+int cudaProfilerStart() {
+  return 0;
+}
+
+int cudaProfilerStop() {
+  return 0;
+}
 
 #endif // #ifndef CUPY_NO_CUDA
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_H
