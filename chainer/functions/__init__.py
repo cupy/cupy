@@ -47,9 +47,11 @@ from chainer.functions.math import batch_l2_norm_squared
 from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
+from chainer.functions.math import exponential_m1
 from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import linear_interpolate
+from chainer.functions.math import logarithm_1p
 from chainer.functions.math import matmul
 from chainer.functions.math import minmax
 from chainer.functions.math import sum
@@ -178,6 +180,8 @@ cos = trigonometric.cos
 det = det.det
 Exp = exponential.Exp
 exp = exponential.exp
+Expm1 = exponential_m1.Expm1
+expm1 = exponential_m1.expm1
 Identity = identity.Identity
 identity = identity.identity
 Inv = inv.Inv
@@ -186,6 +190,8 @@ LinearInterpolate = linear_interpolate.LinearInterpolate
 linear_interpolate = linear_interpolate.linear_interpolate
 Log = exponential.Log
 log = exponential.log
+Log1p = logarithm_1p.Log1p
+log1p = logarithm_1p.log1p
 MatMul = matmul.MatMul
 matmul = matmul.matmul
 Max = minmax.Max
