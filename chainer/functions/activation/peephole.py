@@ -38,6 +38,13 @@ template <typename T> __device__ T grad_tanh(T y) { return 1 - y * y; }
 
 class Peephole(function.Function):
 
+    def __init__(self, c_next, a, i, f, o):
+        self.c = c_next.data
+        self.a = a 
+        self.i = i
+        self.f = f
+        self.o = o
+
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 5)
         c_type, x_type, peep_i_type, peep_f_type, peep_o_type = in_types
@@ -72,17 +79,18 @@ class Peephole(function.Function):
             )    
 
     def forward(self, inputs):
-        c_prev, x, peep_in_i, peep_in_f, peep_in_o = inputs
-        a, i, f, o = _extract_gates(x)
+        #c_prev, x, peep_in_i, peep_in_f, peep_in_o = inputs
+        #a, i, f, o = _extract_gates(x)
+        
+        h = self.o * numpy.tanh(self.c)
+        #if isinstance(x, numpy.ndarray):
+        #    #self.a = numpy.tanh(a)
+        #    #self.i = _sigmoid(i + peep_in_i)
+        #    #self.f = _sigmoid(f + peep_in_f)
+        #    #self.o = _sigmoid(o + peep_in_o)
 
-        if isinstance(x, numpy.ndarray):
-            self.a = numpy.tanh(a)
-            self.i = _sigmoid(i + peep_in_i)
-            self.f = _sigmoid(f + peep_in_f)
-            self.o = _sigmoid(o + peep_in_o)
-
-            self.c = self.a * self.i + self.f * c_prev
-            h = self.o * numpy.tanh(self.c)
+        #    #self.c = self.a * self.i + self.f * c_prev
+        #    h = self.o * numpy.tanh(self.c)
         #else:
         #    self.c, h = cuda.elementwise(
         #        'T c_prev, T a, T i_, T f, T o', 'T c, T h',
@@ -93,7 +101,8 @@ class Peephole(function.Function):
         #            h = ao * tanh(c);
         #        ''',
         #        'peep_fwd', preamble=_preamble)(c_prev, a, i, f, o)
-
+        #print "functions" 
+        #print self.c 
         return self.c, h
 
     def backward(self, inputs, grad_outputs):
@@ -128,5 +137,25 @@ class Peephole(function.Function):
         return gc_prev, gx, gpeep_in_i, gpeep_in_f, gpeep_in_o    
 
 
-def peephole(c_prev, x, peep_in_i, peep_in_f, peep_in_o):
-    return Peephole()(c_prev, x, peep_in_i, peep_in_f, peep_in_o)
+def peephole(c_prev, x, peep_i, peep_f, peep_o):
+    a, i, f, o = _extract_gates(x.data)
+    peep_in_i = peep_i(c_prev)
+    peep_in_f = peep_f(c_prev)
+
+    a = numpy.tanh(a)
+    i = _sigmoid(i + peep_in_i.data)
+    f = _sigmoid(f + peep_in_f.data)
+    c_next = a * i + f * c_prev
+    peep_in_o = peep_o(c_next) 
+    o = _sigmoid(o + peep_in_o.data)
+
+    #if isinstance(x, numpy.ndarray):
+    #    a = numpy.tanh(a)
+    #    i = _sigmoid(i + peep_in_i.data)
+    #    f = _sigmoid(f + peep_in_f.data)
+    #    c_next = a * i + f * c_prev
+    #    peep_in_o = peep_o(c_next) 
+    #    o = _sigmoid(o + peep_in_o.data)
+    #else:
+  
+    return Peephole(c_next, a, i, f, o)(c_prev, x, peep_in_i, peep_in_f, peep_in_o) 

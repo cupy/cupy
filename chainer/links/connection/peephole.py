@@ -6,25 +6,6 @@ from chainer import variable
 import six
 import numpy
 
-def _extract_gates(x):
-    r = x.reshape((x.shape[0], x.shape[1] // 4, 4) + x.shape[2:])
-    return (r[:, :, i] for i in six.moves.range(4))
-
-def _sigmoid(x):
-    return 1 / (1 + numpy.exp(-x))
-
-_preamble = '''
-template <typename T> __device__ T sigmoid(T x) { return 1 / (1 + exp(-x)); }
-template <typename T> __device__ T grad_sigmoid(T y) { return Y * (1 - y); }
-template <typename T> __device__ T grad_tanh(T y) { return 1 - y * y; }
-
-#define COMMON_ROUTINE \
-    T aa = tanh(a); \
-    T ai = sigmoid(i_); \
-    T af = sigmoid(f); \
-    T ao = sigmoid(o);
-'''
-
 
 class Peephole(link.Chain):
 
@@ -56,9 +37,9 @@ class Peephole(link.Chain):
         super(Peephole, self).__init__(
             upward=linear.Linear(in_size, 4 * out_size),
             lateral=linear.Linear(out_size, 4 * out_size, nobias=True),
-            peep_i=linear.Linear(in_size, out_size, nobias=True),
-            peep_f=linear.Linear(in_size, out_size, nobias=True), 
-            peep_o=linear.Linear(in_size, out_size, nobias=True), 
+            peep_i=linear.Linear(out_size, out_size, nobias=True),
+            peep_f=linear.Linear(out_size, out_size, nobias=True), 
+            peep_o=linear.Linear(out_size, out_size, nobias=True), 
         )
         self.state_size = out_size
         self.reset_state()
@@ -85,17 +66,6 @@ class Peephole(link.Chain):
         """
         self.c = self.h = None
 
-    def calc_c_next(self, c_prev, x, peep_in_i, peep_in_f):
-        a, i, f, o = _extract_gates(x)
-
-        if isinstance(x, numpy.ndarray):
-            a = numpy.tanh(a)
-            i = _sigmoid(i + peep_in_i)
-            f = _sigmoid(f + peep_in_f)
-            c_next = a * i + f * c_prev
-        #else:
-        return c_next
-
     def __call__(self, x):
         """Updates the internal state and returns the LSTM outputs.
 
@@ -114,9 +84,5 @@ class Peephole(link.Chain):
             self.c = variable.Variable(
                 xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
                 volatile='auto')
-        peep_in_i = self.peep_i(self.c) 
-        peep_in_f = self.peep_f(self.c) 
-        c_next = self.calc_c_next(self.c, lstm_in.data, peep_in_i.data, peep_in_f.data)
-        peep_in_o = self.peep_o(c_next)
-        self.c, self.h = peephole.peephole(self.c, lstm_in, peep_in_i, peep_in_f, peep_in_o) 
+        self.c, self.h = peephole.peephole(self.c, lstm_in, self.peep_i, self.peep_f, self.peep_o) 
         return self.h
