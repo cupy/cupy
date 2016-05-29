@@ -225,5 +225,9 @@ class TestGraphBuilderRankdir(unittest.TestCase):
             g = c.build_computational_graph((self.y,), rankdir=rankdir)
             self.assertIn('rankdir=%s' % rankdir, g.dump())
 
+    def test_randir_invalid(self):
+        self.assertRaises(ValueError,
+                          c.build_computational_graph, (self.y,), rankdir='TL')
+
 
 testing.run_module(__name__, __file__)
