@@ -61,28 +61,28 @@ public:
   inline __device__ float16& operator+=(const T& rhs)
   {
     *this = *this + rhs;
-	return *this;
+    return *this;
   }
 
   template<typename T>
   inline __device__ float16& operator-=(const T& rhs)
   {
     *this = *this - rhs;
-	return *this;
+    return *this;
   }
 
   template<typename T>
   inline __device__ float16& operator*=(const T& rhs)
   {
     *this = *this * rhs;
-	return *this;
+    return *this;
   }
 
   template<typename T>
   inline __device__ float16& operator/=(const T& rhs)
   {
     *this = *this + rhs;
-	return *this;
+    return *this;
   }
 
   static __device__ float16 copysign(float16 x, float16 y) {
