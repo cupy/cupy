@@ -53,7 +53,8 @@ class ComputationalGraph(object):
       We assume that the computational graph is directed and acyclic.
 
     """
-    def __init__(self, nodes, edges, variable_style=None, function_style=None):
+    def __init__(self, nodes, edges, variable_style=None, function_style=None,
+                 rankdir='TB'):
         """Initializes computational graph.
 
         Args:
@@ -62,12 +63,18 @@ class ComputationalGraph(object):
             edges (list): List of edges. Each edge consists of pair of nodes.
             variable_style (dict): Dot node style for variable.
             function_style (dict): Dot node style for function.
+            rankdir (str): Direction of the graph that must be
+                TB (top to bottom), BT (bottom to top), LR (left to right)
+                or RL (right to left).
 
         """
         self.nodes = nodes
         self.edges = edges
         self.variable_style = variable_style
         self.function_style = function_style
+        if rankdir not in ('TB', 'BT', 'LR', 'RL'):
+            raise ValueError('rankdir must be in TB, BT, LR or RL.')
+        self.rankdir = rankdir
 
     def _to_dot(self):
         """Converts graph in dot format.
@@ -77,7 +84,7 @@ class ComputationalGraph(object):
             str: The graph in dot format.
 
         """
-        ret = "digraph graphname{"
+        ret = 'digraph graphname{rankdir=%s;' % self.rankdir
         for node in self.nodes:
             assert isinstance(node, (variable.Variable, function.Function))
             if isinstance(node, variable.Variable):
@@ -121,7 +128,8 @@ class ComputationalGraph(object):
 
 
 def build_computational_graph(outputs, remove_split=True,
-                              variable_style=None, function_style=None):
+                              variable_style=None, function_style=None,
+                              rankdir='TB'):
     """Builds a graph of functions and variables backward-reachable from outputs.
 
     Args:
@@ -133,6 +141,9 @@ def build_computational_graph(outputs, remove_split=True,
         variable_style(dict): Dot node style for variable.
             Possible keys are 'shape', 'color', 'fillcolor', 'style', and etc.
         function_style(dict): Dot node style for function.
+        rankdir (str): Direction of the graph that must be
+            TB (top to bottom), BT (bottom to top), LR (left to right)
+            or RL (right to left).
 
     Returns:
         ComputationalGraph: A graph consisting of nodes and edges that
@@ -206,4 +217,4 @@ def build_computational_graph(outputs, remove_split=True,
                     nodes.add(HashableObject(input_))
                     nodes.add(HashableObject(cand))
     return ComputationalGraph(list(i.v for i in nodes), list(seen_edges),
-                              variable_style, function_style)
+                              variable_style, function_style, rankdir)
