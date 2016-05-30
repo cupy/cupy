@@ -48,7 +48,7 @@ class TestCast(unittest.TestCase):
     def check_backward(self, x_data, g_data):
         func = functions.Cast(self.out_type)
         gradient_check.check_backward(
-            func, x_data, g_data, eps=2.0 ** 5, atol=1e-3, rtol=1e-3)
+            func, x_data, g_data, eps=2.0 ** -2, atol=1e-3, rtol=1e-3)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.g)
