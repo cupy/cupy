@@ -18,3 +18,4 @@ Chainer Reference Manual
    initializers
    caffe
    graph
+   environment

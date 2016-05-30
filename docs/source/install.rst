@@ -85,6 +85,8 @@ That shows all logs of installation. It may helps you::
   $ pip install chainer -vvvv
 
 
+.. _install_cuda:
+
 Install Chainer with CUDA
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
