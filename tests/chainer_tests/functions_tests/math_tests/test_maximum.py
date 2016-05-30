@@ -69,6 +69,23 @@ class TestMaximum(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'dtype1': [numpy.float16, numpy.float32, numpy.float64],
+    'dtype2': [numpy.float16, numpy.float32, numpy.float64]
+}))
+class TestMaximumInconsistentTypes(unittest.TestCase):
+
+    def test_maximum_inconsistent_types(self):
+        if self.dtype1 == self.dtype2:
+            return
+        x1_data = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype1)
+        x2_data = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype2)
+        x1 = chainer.Variable(x1_data)
+        x2 = chainer.Variable(x2_data)
+        with self.assertRaises(type_check.InvalidType):
+            functions.maximum(x1, x2)
+
+
+@testing.parameterize(*testing.product({
     'dtype': [numpy.float16, numpy.float32, numpy.float64]
 }))
 class TestMaximumInconsistentShapes(unittest.TestCase):

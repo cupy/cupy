@@ -13,7 +13,7 @@ class Maximum(function.Function):
         type_check.expect(
             in_types.size() == 2,
             in_types[0].dtype.kind == 'f',
-            in_types[1].dtype.kind == 'f',
+            in_types[0].dtype == in_types[1].dtype,
             in_types[0].shape == in_types[1].shape
         )
 
