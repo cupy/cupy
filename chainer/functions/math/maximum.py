@@ -38,11 +38,11 @@ class Maximum(function.Function):
         gy, = grads
         gx1 = cuda.elementwise(
             'T x1, T x2, T gy', 'T gx1',
-            'gx1 = (x1 >= x2) ? gy : 0',
+            'gx1 = (x1 >= x2) ? gy : (T)0.0',
             'maximum_bwd1')(x1, x2, gy)
         gx2 = cuda.elementwise(
             'T x1, T x2, T gy', 'T gx1',
-            'gx1 = (x1 < x2) ? gy : 0',
+            'gx1 = (x1 < x2) ? gy : (T)0.0',
             'maximum_bwd2')(x1, x2, gy)
         return gx1, gx2
 
