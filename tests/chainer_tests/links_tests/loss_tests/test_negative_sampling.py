@@ -136,17 +136,29 @@ class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
 
     @attr.gpu
     def test_ignore_forward_gpu(self):
+        self.link.to_gpu()
         self.test_ignore_forward()
 
-    @attr.gpu
     def test_ignore_backward(self):
         # Ensure that the gradient when an ignore target is included is the
         # same as when it is excluded explicitly.
-        gx, gw = self.check_backward(self.x, self.t, self.gy)
+        gx, gw = self.check_backward(
+            self.link.xp.asarray(self.x),
+            self.link.xp.asarray(self.t),
+            self.link.xp.asarray(self.gy))
         self.link.zerograds()
-        gx0, gw0 = self.check_backward(self.x0, self.t0, self.gy0)
-        gradient_check.assert_allclose(gx[self.idx, :], gx0, atol=1.e-4)
+        gx0, gw0 = self.check_backward(
+            self.link.xp.asarray(self.x0),
+            self.link.xp.asarray(self.t0),
+            self.link.xp.asarray(self.gy0))
+        gradient_check.assert_allclose(
+            cuda.to_cpu(gx)[self.idx, :], gx0, atol=1.e-4)
         gradient_check.assert_allclose(gw, gw0, atol=1.e-4)
+
+    @attr.gpu
+    def test_ignore_backward_gpu(self):
+        self.link.to_gpu()
+        self.test_ignore_backward()
 
 
 testing.run_module(__name__, __file__)
