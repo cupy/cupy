@@ -537,9 +537,11 @@ int curandGeneratePoisson(
 // cuda_profiler_api.h
 ///////////////////////////////////////////////////////////////////////////////
 
+typedef int cudaOutputMode_t;
+
 int cudaProfilerInitialize(const char *configFile, 
                            const char *outputFile, 
-                           int outputMode) {
+                           cudaOutputMode_t outputMode) {
   return 0;
 }
 
