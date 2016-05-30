@@ -9,12 +9,28 @@ from chainer import variable
 
 class LSTMBase(link.Chain):
 
-    def __init__(self, in_size, out_size):
+    def __init__(self, in_size, out_size,
+                 lateral_init=None, upward_init=None,
+                 bias_init=0, forget_bias_init=0):
         super(LSTMBase, self).__init__(
-            upward=linear.Linear(in_size, 4 * out_size),
-            lateral=linear.Linear(out_size, 4 * out_size, nobias=True),
+            upward=linear.Linear(in_size, 4 * out_size, initialW=0),
+            lateral=linear.Linear(out_size, 4 * out_size,
+                                  initialW=0, nobias=True),
         )
         self.state_size = out_size
+
+        for i in six.moves.range(0, 4 * out_size, out_size):
+            initializers.init_weight(
+                self.lateral.W.data[i:i + out_size, :], lateral_init)
+            initializers.init_weight(
+                self.upward.W.data[i:i + out_size, :], upward_init)
+
+        a, i, f, o = lstm._extract_gates(
+            self.upward.b.data.reshape(1, 4 * out_size, 1))
+        initializers.init_weight(a, bias_init)
+        initializers.init_weight(i, bias_init)
+        initializers.init_weight(f, forget_bias_init)
+        initializers.init_weight(o, bias_init)
 
 
 class StatelessLSTM(LSTMBase):
@@ -106,29 +122,9 @@ class LSTM(LSTMBase):
 
     """
 
-    def __init__(self, in_size, out_size,
-                 lateral_init=None, upward_init=None,
-                 bias_init=0, forget_bias_init=0):
-        super(LSTM, self).__init__(
-            upward=linear.Linear(in_size, 4 * out_size, initialW=0),
-            lateral=linear.Linear(out_size, 4 * out_size,
-                                  initialW=0, nobias=True),
-        )
-        self.state_size = out_size
+    def __init__(self, in_size, out_size, **kwargs):
+        super(LSTM, self).__init__(in_size, out_size, **kwargs)
         self.reset_state()
-
-        for i in six.moves.range(0, 4 * out_size, out_size):
-            initializers.init_weight(
-                self.lateral.W.data[i:i + out_size, :], lateral_init)
-            initializers.init_weight(
-                self.upward.W.data[i:i + out_size, :], upward_init)
-
-        a, i, f, o = lstm._extract_gates(
-            self.upward.b.data.reshape(1, 4 * out_size, 1))
-        initializers.init_weight(a, bias_init)
-        initializers.init_weight(i, bias_init)
-        initializers.init_weight(f, forget_bias_init)
-        initializers.init_weight(o, bias_init)
 
     def to_cpu(self):
         super(LSTM, self).to_cpu()
