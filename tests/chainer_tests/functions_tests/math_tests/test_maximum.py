@@ -8,32 +8,42 @@ from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
+from chainer.testing import condition
 from chainer.utils import type_check
 
 
-@testing.parameterize(*[
-    {'shape': (3, 2)},
-    {'shape': ()},
-])
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64]
+}))
 class TestMaximum(unittest.TestCase):
 
     def setUp(self):
         shape = self.shape
-        self.x1 = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
-        self.x2 = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
+        self.x1 = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
+        self.x2 = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.y_expected = numpy.maximum(self.x1, self.x2)
-        self.gy = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
+        self.check_forward_options = {}
+        self.check_backward_options = {'eps': 1e-2}
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
+            self.check_backward_options = {
+                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
 
     def check_forward(self, x1_data, x2_data, y_expected):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = functions.maximum(x1, x2)
-        gradient_check.assert_allclose(y_expected, y.data)
+        gradient_check.assert_allclose(
+            y_expected, y.data, **self.check_forward_options)
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x1, self.x2, self.y_expected)
 
     @attr.gpu
+    @condition.retry(3)
     def test_forward_gpu(self):
         x1 = cuda.to_gpu(self.x1)
         x2 = cuda.to_gpu(self.x2)
@@ -42,12 +52,15 @@ class TestMaximum(unittest.TestCase):
     def check_backward(self, x1_data, x2_data, y_grad):
         func = functions.maximum
         x = (x1_data, x2_data)
-        gradient_check.check_backward(func, x, y_grad)
+        gradient_check.check_backward(
+            func, x, y_grad, **self.check_backward_options)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x1, self.x2, self.gy)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         x1 = cuda.to_gpu(self.x1)
         x2 = cuda.to_gpu(self.x2)
@@ -55,11 +68,14 @@ class TestMaximum(unittest.TestCase):
         self.check_backward(x1, x2, gy)
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64]
+}))
 class TestMaximumInconsistentShapes(unittest.TestCase):
 
     def test_maximum_inconsistent_shapes(self):
-        x1_data = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        x2_data = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        x1_data = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype)
+        x2_data = numpy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         with self.assertRaises(type_check.InvalidType):
