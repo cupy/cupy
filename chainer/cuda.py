@@ -509,6 +509,8 @@ _max_workspace_size = 8 * 1024 * 1024
 def get_max_workspace_size():
     """Gets the workspace size for cuDNN.
 
+    Check "cuDNN Library User Guide" for detail.
+
     Returns:
         int: The workspace size for cuDNN.
 
@@ -518,6 +520,8 @@ def get_max_workspace_size():
 
 def set_max_workspace_size(size):
     """Sets the workspace size for cuDNN.
+
+    Check "cuDNN Library User Guide" for detail.
 
     Args:
         size: The workspace size for cuDNN.
