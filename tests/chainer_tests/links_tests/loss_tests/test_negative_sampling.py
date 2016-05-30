@@ -108,6 +108,7 @@ class TestNegativeSampling(unittest.TestCase):
 
 
 class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
+
     def setUp(self):
         # Create two identical datasets except that 2nd dataset has the
         # negative targets explicitly removed. Both cases should have identical

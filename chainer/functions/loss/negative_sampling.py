@@ -62,7 +62,7 @@ class NegativeSamplingFunction(function.Function):
             'raw T W, raw T x, bool mask, S k, int32 c, int32 m', 'T wx',
             '''
             T f = 0;
-            if (mask == 1){
+            if (mask == 1) {
                 for (int j = 0; j < c; ++j) {
                   int x_ind[] = {(i / m), j};
                   int w_ind[] = {k, j};
