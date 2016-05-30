@@ -3,6 +3,7 @@ from six import moves
 
 from chainer import cuda
 from chainer import function
+from chainer.functions.connection import convolution_2d
 from chainer.utils import conv
 from chainer.utils import type_check
 
@@ -16,6 +17,9 @@ if cuda.cudnn_enabled:
             libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
         _bwd_data_pref = \
             libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
+
+
+_check_cudnn_acceptable_type = convolution_2d._check_cudnn_acceptable_type
 
 
 def _pair(x):
@@ -38,8 +42,8 @@ class Deconvolution2DFunction(function.Function):
         x_type, w_type = in_types[:2]
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
-            w_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
+            w_type.dtype.kind == 'f',
             x_type.ndim == 4,
             w_type.ndim == 4,
             x_type.shape[1] == w_type.shape[0]
@@ -61,7 +65,7 @@ class Deconvolution2DFunction(function.Function):
         if n_in.eval() == 3:
             b_type = in_types[2]
             type_check.expect(
-                b_type.dtype == numpy.float32,
+                b_type.dtype == x_type.dtype,
                 b_type.ndim == 1,
                 b_type.shape[0] == w_type.shape[1]
             )
@@ -71,7 +75,7 @@ class Deconvolution2DFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         _, _, h, w = x.shape
-        gcol = numpy.tensordot(W, x, (0, 1))
+        gcol = numpy.tensordot(W, x, (0, 1)).astype(x.dtype)
         # - k, m, n: shape of out_channel
         # - b: number of inputs
         # - h, w: height and width of kernels
@@ -98,7 +102,8 @@ class Deconvolution2DFunction(function.Function):
             self.outh = conv.get_deconv_outsize(in_h, kh, self.sy, self.ph)
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(in_w, kw, self.sx, self.pw)
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             if b is not None:
@@ -107,7 +112,7 @@ class Deconvolution2DFunction(function.Function):
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
             y = cuda.cupy.empty((n, c, self.outh, self.outw),
-                                dtype=numpy.float32)
+                                dtype=x.dtype)
             y_desc = cudnn.create_tensor_descriptor(y)
 
             self.filter_desc = cudnn.create_filter_descriptor(W)
@@ -117,8 +122,9 @@ class Deconvolution2DFunction(function.Function):
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
 
-            one = numpy.array(1, dtype=x.dtype).ctypes
-            zero = numpy.array(0, dtype=x.dtype).ctypes
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
 
             if _cudnn_version >= 4000:
                 workspace_size = cuda.get_max_workspace_size()
@@ -146,10 +152,10 @@ class Deconvolution2DFunction(function.Function):
             W_mat = W.reshape(in_c, c * kh * kw)
             x_mats = x.reshape(n, in_c, in_h * in_w)
             gcol = cuda.cupy.empty(
-                (n, c, kh, kw, in_h, in_w), dtype=numpy.float32)
+                (n, c, kh, kw, in_h, in_w), dtype=x.dtype)
             gcol_mats = gcol.reshape(n, c * kh * kw, in_h * in_w)
             for i in moves.range(n):
-                cuda.cupy.dot(W_mat.T, x_mats[i], gcol_mats[i])
+                gcol_mats[i] = cuda.cupy.dot(W_mat.T, x_mats[i])
             y = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
             if b is not None:
@@ -163,8 +169,8 @@ class Deconvolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
         col = conv.im2col_cpu(
             gy, kh, kw, self.sy, self.sx, self.ph, self.pw)
-        gW = numpy.tensordot(x, col, ([0, 2, 3], [0, 4, 5]))
-        gx = numpy.tensordot(col, W, ([1, 2, 3], [1, 2, 3]))
+        gW = numpy.tensordot(x, col, ([0, 2, 3], [0, 4, 5])).astype(W.dtype)
+        gx = numpy.tensordot(col, W, ([1, 2, 3], [1, 2, 3])).astype(x.dtype)
         gx = numpy.rollaxis(gx, 3, 1)
 
         if b is None:
@@ -180,9 +186,10 @@ class Deconvolution2DFunction(function.Function):
         n, in_c, in_h, in_w = x.shape
         _, out_channels, kh, kw = W.shape
         c, h, w = gy.shape[1:]
-        gx = cuda.cupy.empty((n, in_c, in_h, in_w), dtype=numpy.float32)
+        gx = cuda.cupy.empty((n, in_c, in_h, in_w), dtype=x.dtype)
 
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             gy = cuda.cupy.ascontiguousarray(gy)
@@ -199,8 +206,9 @@ class Deconvolution2DFunction(function.Function):
                 workspace_size)
             workspace = cuda.cupy.empty((workspace_size,), dtype='b')
 
-            one = numpy.array(1, dtype=x.dtype).ctypes
-            zero = numpy.array(0, dtype=x.dtype).ctypes
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
 
             libcudnn.convolutionForward(
                 handle, one.data, gy_desc.value, gy.data.ptr,
