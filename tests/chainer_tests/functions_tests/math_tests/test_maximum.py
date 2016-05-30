@@ -22,6 +22,11 @@ class TestMaximum(unittest.TestCase):
         shape = self.shape
         self.x1 = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.x2 = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
+        # Avoid close values for stability in numerical gradient.
+        for i in numpy.ndindex(shape):
+            if -0.05 < self.x1[i] - self.x2[i] < 0.05:
+                self.x1[i] = -0.5
+                self.x2[i] = 0.5
         self.y_expected = numpy.maximum(self.x1, self.x2)
         self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.check_forward_options = {}
