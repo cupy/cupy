@@ -18,9 +18,11 @@ class BatchNormalizationFunction(function.Function):
                 '%s == %s' % (in_types.size(), n_in))
 
         x_type, gamma_type, beta_type = in_types[:3]
+        M = gamma_type.ndim.eval()
         type_check.expect(
             x_type.dtype.kind == 'f',
             x_type.ndim >= gamma_type.ndim + 1,
+            x_type.shape[1:1 + M] == gamma_type.shape,
             # TODO(beam2d): Check shape
             gamma_type.dtype == x_type.dtype,
             beta_type.dtype == x_type.dtype,

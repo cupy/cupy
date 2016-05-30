@@ -10,6 +10,7 @@ from chainer import links
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import type_check
 
 
 def _batch_normalization(expander, gamma, beta, x, mean, var, eps, test):
@@ -286,6 +287,24 @@ class TestDefaultInitializer(unittest.TestCase):
         self.link.to_gpu()
         testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
         testing.assert_allclose(numpy.zeros(self.size), self.link.beta.data)
+
+
+class TestInvalidInput(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.BatchNormalization(3)
+
+    def test_invalid_initialize(self):
+        with self.assertRaises(TypeError):
+            self.link = links.BatchNormalization({})
+
+    def test_invalid_shape(self):
+        with self.assertRaises(type_check.InvalidType):
+            self.link(chainer.Variable(numpy.zeros((2, 5, 3, 4), dtype='f')))
+
+    def test_invalid_shape_cpu(self):
+        with self.assertRaises(type_check.InvalidType):
+            self.link(chainer.Variable(numpy.zeros((2, 4), dtype='f')))
 
 
 testing.run_module(__name__, __file__)
