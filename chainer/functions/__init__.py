@@ -15,6 +15,7 @@ from chainer.functions.activation import softmax
 from chainer.functions.activation import softplus
 from chainer.functions.activation import tanh
 from chainer.functions.array import broadcast
+from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
@@ -113,6 +114,8 @@ Broadcast = broadcast.Broadcast
 BroadcastTo = broadcast.BroadcastTo
 broadcast_to = broadcast.broadcast_to
 broadcast = broadcast.broadcast
+Cast = cast.Cast
+cast = cast.cast
 Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
