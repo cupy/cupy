@@ -20,13 +20,17 @@ class TestHardSigmoid(unittest.TestCase):
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.g = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        # Avoid unstability of numerical grad
+        for i in numpy.ndindex(self.shape):
+            if -0.35 < self.x[i] < 0.15 or 0.15 < self.x[i] < 0.35:
+                self.x[i] = 0.0
 
         self.check_forward_option = {}
         self.check_backward_option = {}
         if self.dtype is numpy.float16:
             self.check_forward_option = {'atol': 1e-3, 'rtol': 1e-3}
             self.check_backward_option = \
-                {'eps': 0.1, 'atol': 1e-3, 'rtol': 1e-3}
+                {'eps': 2.0 ** -3, 'atol': 1e-3, 'rtol': 1e-3}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
