@@ -38,8 +38,9 @@ if available:
         def decorator(meth):
             global _type_to_method
             _type_to_method[typ] = meth
-            typevalue = getattr(caffe_pb.V1LayerParameter, oldname)
-            _oldname_to_method[typevalue] = meth
+            if oldname is not None:
+                typevalue = getattr(caffe_pb.V1LayerParameter, oldname)
+                _oldname_to_method[typevalue] = meth
             return meth
         return decorator
 else:
@@ -318,7 +319,7 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = fw
         self._add_layer(layer)
 
-    @_layer('BatchNorm', 'NONE')    # TODO(Takagi) old name
+    @_layer('BatchNorm', None)
     def _setup_batchnorm(self, layer):
         # Get layer parameters.
         blobs = layer.blobs
@@ -353,7 +354,7 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = _EltwiseFunction(operation, coeffs)
         self._add_layer(layer)
 
-    @_layer('Scale', 'NONE')    # TODO(Takagi) old name
+    @_layer('Scale', None)
     def _setup_scale(self, layer):
         # Following parameters are not supporeted now:
         # - negative axis
