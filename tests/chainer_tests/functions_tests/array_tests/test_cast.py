@@ -52,3 +52,6 @@ class TestCast(unittest.TestCase):
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.g)
+
+
+testing.run_module(__name__, __file__)
