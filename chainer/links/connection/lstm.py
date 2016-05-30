@@ -53,7 +53,7 @@ class StatelessLSTM(LSTMBase):
     """
 
     def __call__(self, c, h, x):
-        """Updates the internal state and returns the LSTM outputs.
+        """Returns new cell state and updated output of LSTM.
 
         Args:
             c (~chainer.Variable): Cell states of LSTM units.
@@ -61,7 +61,9 @@ class StatelessLSTM(LSTMBase):
             x (~chainer.Variable): A new batch from the input sequence.
 
         Returns:
-            ~chainer.Variable: Outputs of updated LSTM units.
+            tuple of ~chainer.Variable: Returns ``(c_new, h_new)``, where
+                ``c_new`` represents new cell state, and ``h_new`` is updated
+                output of LSTM units.
 
         """
         lstm_in = self.upward(x)
