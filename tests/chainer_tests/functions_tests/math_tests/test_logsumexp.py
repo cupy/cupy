@@ -27,7 +27,7 @@ class TestLogSumExp(unittest.TestCase):
         if self.dtype == numpy.float16:
             self.check_forward_option = {'rtol': 1.0e-2, 'atol': 1.0e-2}
             self.check_backward_option = {
-                'eps': 2.0 ** -4, 'rtol': 1.0e-2, 'atol': 1.0e-2}
+                'eps': 2.0 ** -3, 'rtol': 1.0e-2, 'atol': 1.0e-2}
 
     def check_forward(self, x_data, axis=None):
         x = chainer.Variable(x_data)
