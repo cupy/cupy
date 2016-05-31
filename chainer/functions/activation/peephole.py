@@ -4,7 +4,7 @@ import six
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
-
+from chainer import variable
 
 def _extract_gates(x):
     # reshape:change shape, //:divide(integer)
@@ -39,7 +39,7 @@ template <typename T> __device__ T grad_tanh(T y) { return 1 - y * y; }
 class Peephole(function.Function):
 
     def __init__(self, c_next, a, i, f, o):
-        self.c = c_next.data
+        self.c = c_next
         self.a = a 
         self.i = i
         self.f = f
@@ -79,10 +79,9 @@ class Peephole(function.Function):
             )    
 
     def forward(self, inputs):
-        #c_prev, x, peep_in_i, peep_in_f, peep_in_o = inputs
-        #a, i, f, o = _extract_gates(x)
         
         h = self.o * numpy.tanh(self.c)
+        
         #if isinstance(x, numpy.ndarray):
         #    #self.a = numpy.tanh(a)
         #    #self.i = _sigmoid(i + peep_in_i)
@@ -101,8 +100,6 @@ class Peephole(function.Function):
         #            h = ao * tanh(c);
         #        ''',
         #        'peep_fwd', preamble=_preamble)(c_prev, a, i, f, o)
-        #print "functions" 
-        #print self.c 
         return self.c, h
 
     def backward(self, inputs, grad_outputs):
@@ -138,15 +135,19 @@ class Peephole(function.Function):
 
 
 def peephole(c_prev, x, peep_i, peep_f, peep_o):
-    a, i, f, o = _extract_gates(x.data)
     peep_in_i = peep_i(c_prev)
     peep_in_f = peep_f(c_prev)
-
+    a, i, f, o = _extract_gates(x.data)
+    
     a = numpy.tanh(a)
+    peep_in_i.data = numpy.reshape(peep_in_i.data, i.shape) 
     i = _sigmoid(i + peep_in_i.data)
+    peep_in_f.data = numpy.reshape(peep_in_f.data, f.shape) 
     f = _sigmoid(f + peep_in_f.data)
-    c_next = a * i + f * c_prev
+    c_next = a * i + f * c_prev.data
+    c_next = variable.Variable(c_next) 
     peep_in_o = peep_o(c_next) 
+    peep_in_o.data = numpy.reshape(peep_in_o.data, o.shape) 
     o = _sigmoid(o + peep_in_o.data)
 
     #if isinstance(x, numpy.ndarray):
@@ -158,4 +159,4 @@ def peephole(c_prev, x, peep_i, peep_f, peep_o):
     #    o = _sigmoid(o + peep_in_o.data)
     #else:
   
-    return Peephole(c_next, a, i, f, o)(c_prev, x, peep_in_i, peep_in_f, peep_in_o) 
+    return Peephole(c_next.data, a, i, f, o)(c_prev, x, peep_in_i, peep_in_f, peep_in_o) 
