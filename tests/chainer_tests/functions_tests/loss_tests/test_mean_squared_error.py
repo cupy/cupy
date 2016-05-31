@@ -39,7 +39,7 @@ class TestMeanSquaredError(unittest.TestCase):
 
     @attr.gpu
     @condition.retry(3)
-    def test_forwrad_gpu(self):
+    def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x0), cuda.to_gpu(self.x1))
 
     def check_backward(self, x0_data, x1_data):

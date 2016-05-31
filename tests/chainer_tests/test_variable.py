@@ -63,6 +63,25 @@ class TestVariable(unittest.TestCase):
     def test_len_gpu(self):
         self.check_len(True)
 
+    def check_get_item(self, gpu):
+        x_data = self.x
+        if gpu:
+            x_data = cuda.to_gpu(x_data)
+        x = chainer.Variable(x_data)
+        slices = slice(2, 5)
+        np.testing.assert_equal(cuda.to_cpu(x[slices].data),
+                                cuda.to_cpu(x_data[slices]))
+        slices = slice(2, 5),
+        np.testing.assert_equal(cuda.to_cpu(x[slices].data),
+                                cuda.to_cpu(x_data[slices]))
+
+    def test_get_item_cpu(self):
+        self.check_get_item(False)
+
+    @attr.gpu
+    def test_get_item_gpu(self):
+        self.check_get_item(True)
+
     def check_label(self, expected, gpu):
         c = self.c
         if gpu:
@@ -144,7 +163,7 @@ class TestVariable(unittest.TestCase):
         self.check_backward((ret[1], ), (ret[2], ), (ret[3], ), False)
 
     def test_invalid_value_type(self):
-        with self.assertRaisesRegexp(TypeError, 'int'):
+        with six.assertRaisesRegex(self, TypeError, 'int'):
             chainer.Variable(1)
 
     def test_grad_type_check_pass(self):
@@ -465,7 +484,7 @@ class TestVariableBackwardError(unittest.TestCase):
 
         x = chainer.Variable(x_data)
         y = DummyFunction()(x)
-        with self.assertRaisesRegexp(TypeError, 'dummy_function'):
+        with six.assertRaisesRegex(self, TypeError, 'dummy_function'):
             y.backward()
 
     def test_type_mismatch_cpu(self):
@@ -489,7 +508,7 @@ class TestVariableBackwardError(unittest.TestCase):
 
         x = chainer.Variable(x_data)
         y = DummyFunction()(x)
-        with self.assertRaisesRegexp(TypeError, 'dummy_function'):
+        with six.assertRaisesRegex(self, TypeError, 'dummy_function'):
             y.backward()
 
     def test_dtype_mismatch_cpu(self):
@@ -513,7 +532,7 @@ class TestVariableBackwardError(unittest.TestCase):
 
         x = chainer.Variable(x_data)
         y = DummyFunction()(x)
-        with self.assertRaisesRegexp(ValueError, 'dummy_function'):
+        with six.assertRaisesRegex(self, ValueError, 'dummy_function'):
             y.backward()
 
     def test_shape_mismatch_cpu(self):

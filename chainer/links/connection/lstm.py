@@ -1,4 +1,7 @@
+import six
+
 from chainer.functions.activation import lstm
+from chainer import initializers
 from chainer import link
 from chainer.links.connection import linear
 from chainer import variable
@@ -19,6 +22,29 @@ class LSTM(link.Chain):
     Args:
         in_size (int): Dimensionality of input vectors.
         out_size (int): Dimensionality of output vectors.
+        lateral_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the lateral connections.
+            Maybe be ``None`` to use default initialization.
+        upward_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the upward connections.
+            Maybe be ``None`` to use default initialization.
+        bias_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value
+            It is used for initialization of the biases of cell input,
+            input gate and output gate.and gates of the upward connection.
+            Maybe a scalar, in that case, the bias is
+            initialized by this value.
+            Maybe be ``None`` to use default initialization.
+        forget_bias_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value
+            It is used for initialization of the biases of the forget gate of
+            the upward connection.
+            Maybe a scalar, in that case, the bias is
+            initialized by this value.
+            Maybe be ``None`` to use default initialization.
+
 
     Attributes:
         upward (~chainer.links.Linear): Linear layer of upward connections.
@@ -27,13 +53,30 @@ class LSTM(link.Chain):
         h (~chainer.Variable): Output at the previous time step.
 
     """
-    def __init__(self, in_size, out_size):
+
+    def __init__(self, in_size, out_size,
+                 lateral_init=None, upward_init=None,
+                 bias_init=0, forget_bias_init=0):
         super(LSTM, self).__init__(
-            upward=linear.Linear(in_size, 4 * out_size),
-            lateral=linear.Linear(out_size, 4 * out_size, nobias=True),
+            upward=linear.Linear(in_size, 4 * out_size, initialW=0),
+            lateral=linear.Linear(out_size, 4 * out_size,
+                                  initialW=0, nobias=True),
         )
         self.state_size = out_size
         self.reset_state()
+
+        for i in six.moves.range(0, 4 * out_size, out_size):
+            initializers.init_weight(
+                self.lateral.W.data[i:i + out_size, :], lateral_init)
+            initializers.init_weight(
+                self.upward.W.data[i:i + out_size, :], upward_init)
+
+        a, i, f, o = lstm._extract_gates(
+            self.upward.b.data.reshape(1, 4 * out_size, 1))
+        initializers.init_weight(a, bias_init)
+        initializers.init_weight(i, bias_init)
+        initializers.init_weight(f, forget_bias_init)
+        initializers.init_weight(o, bias_init)
 
     def to_cpu(self):
         super(LSTM, self).to_cpu()

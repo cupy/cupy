@@ -215,7 +215,9 @@ def to_cpu(array, stream=None):
 
     """
     if isinstance(array, ndarray):
-        return array.get(stream)
+        check_cuda_available()
+        with get_device(array):
+            return array.get(stream)
     elif isinstance(array, numpy.ndarray):
         return array
     else:
@@ -499,3 +501,16 @@ def get_array_module(*args):
         return cupy.get_array_module(*args)
     else:
         return numpy
+
+
+_max_workspace_size = 8 * 1024 * 1024
+
+
+# TODO(okuta): Write document
+def get_max_workspace_size():
+    return _max_workspace_size
+
+
+def set_max_workspace_size(size):
+    global _max_workspace_size
+    _max_workspace_size = size

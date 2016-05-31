@@ -133,6 +133,8 @@ cpdef destroyTensorDescriptor(size_t tensorDesc)
 cpdef addTensor_v2(
         size_t handle, int mode, size_t alpha, size_t biasDesc,
         size_t biasData, size_t beta, size_t srcDestDesc, size_t srcDestData)
+cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
+                   size_t b, size_t beta, size_t yDesc, size_t y)
 
 
 ###############################################################################
@@ -140,9 +142,9 @@ cpdef addTensor_v2(
 ###############################################################################
 
 cpdef size_t createFilterDescriptor() except *
-cpdef setFilter4dDescriptor(
+cpdef setFilter4dDescriptor_v3(
         size_t filterDesc, int dataType, int k, int c, int h, int w)
-cpdef setFilterNdDescriptor(
+cpdef setFilterNdDescriptor_v3(
         size_t filterDesc, int dataType, int nbDims, size_t filterDimA)
 cpdef destroyFilterDescriptor(size_t filterDesc)
 
@@ -158,6 +160,9 @@ cpdef setConvolution2dDescriptor(
 cpdef setConvolutionNdDescriptor_v2(
         size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
         size_t upscaleA, int mode)
+cpdef setConvolutionNdDescriptor_v3(
+        size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
+        size_t upscaleA, int mode, int dataType)
 cpdef destroyConvolutionDescriptor(size_t convDesc)
 cpdef int getConvolutionForwardAlgorithm(
         size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
@@ -213,11 +218,11 @@ cpdef convolutionBackwardData_v3(
 ###############################################################################
 
 cpdef size_t createPoolingDescriptor() except *
-cpdef setPooling2dDescriptor(
+cpdef setPooling2dDescriptor_v3(
         size_t poolingDesc, int mode, int windowHeight, int windowWidth,
         int verticalPadding, int horizontalPadding, int verticalStride,
         int horizontalStride)
-cpdef setPoolingNdDescriptor(
+cpdef setPoolingNdDescriptor_v3(
         size_t poolingDesc, int mode, int nbDims, size_t windowDimA,
         size_t paddingA, size_t strideA)
 cpdef destroyPoolingDescriptor(size_t poolingDesc)
@@ -242,10 +247,10 @@ cpdef softmaxBackward(
         size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
         size_t srcData, size_t srcDiffDesc, size_t srcDiffData, size_t beta,
         size_t destDiffDesc, size_t destDiffData)
-cpdef activationForward(
+cpdef activationForward_v3(
         size_t handle, int mode, size_t alpha, size_t srcDesc, size_t srcData,
         size_t beta, size_t dstDesc, size_t dstData)
-cpdef activationBackward(
+cpdef activationBackward_v3(
         size_t handle, int mode, size_t alpha, size_t srcDesc, size_t srcData,
         size_t srcDiffDesc, size_t srcDiffData, size_t destDesc,
         size_t destData, size_t beta, size_t destDiffDesc,

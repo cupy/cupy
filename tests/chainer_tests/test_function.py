@@ -2,6 +2,7 @@ import unittest
 
 import mock
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -282,8 +283,19 @@ class TestFunctionBackwardIntegration(unittest.TestCase):
 
 class TestFunctionInvalidType(unittest.TestCase):
 
-    def test_forward_invalid(self):
-        f = F.Linear(5, 5)
+    def test_forward_invalid1(self):
+        class Function(chainer.Function):
+            def check_type_forward(self, in_types):
+                x_type, = in_types
+                type_check.expect(
+                    x_type.dtype == numpy.float32,
+                    x_type.ndim >= 2,
+                )
+
+            def forward(self, inputs):
+                return inputs
+
+        f = Function()
 
         # OK
         v = chainer.Variable(numpy.random.randn(1, 5).astype(numpy.float32))
@@ -293,26 +305,26 @@ class TestFunctionInvalidType(unittest.TestCase):
         # Incorrect dtype
         # in py3, numpy dtypes are represented as class
         msg = """\
-Invalid operation is performed in: LinearFunction \\(Forward\\)
+Invalid operation is performed in: Function \\(Forward\\)
 
 Expect: in_types\\[0\\]\\.dtype == <(type|class) 'numpy\\.float32'>
 Actual: float64 \\!= <(type|class) 'numpy\\.float32'>"""
 
         v = chainer.Variable(numpy.random.randn(1, 5))
-        with self.assertRaisesRegexp(chainer.utils.type_check.InvalidType,
-                                     msg):
+        with six.assertRaisesRegex(self, chainer.utils.type_check.InvalidType,
+                                   msg):
             f(v)
 
         # Incorrect dim
         msg = """\
-Invalid operation is performed in: LinearFunction \\(Forward\\)
+Invalid operation is performed in: Function \\(Forward\\)
 
 Expect: in_types\\[0\\]\\.ndim >= 2
 Actual: 1 < 2"""
 
         v = chainer.Variable(numpy.random.randn(5).astype(numpy.float32))
-        with self.assertRaisesRegexp(chainer.utils.type_check.InvalidType,
-                                     msg):
+        with six.assertRaisesRegex(self, chainer.utils.type_check.InvalidType,
+                                   msg):
             f(v)
 
 

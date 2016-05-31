@@ -19,20 +19,20 @@ class BatchNormalizationFunction(function.Function):
 
         x_type, gamma_type, beta_type = in_types[:3]
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             x_type.ndim >= gamma_type.ndim + 1,
             # TODO(beam2d): Check shape
-            gamma_type.dtype == numpy.float32,
-            beta_type.dtype == numpy.float32,
+            gamma_type.dtype == x_type.dtype,
+            beta_type.dtype == x_type.dtype,
             gamma_type.shape == beta_type.shape,
         )
 
         if len(in_types) == 5:
             mean_type, var_type = in_types[3:]
             type_check.expect(
-                mean_type.dtype == numpy.float32,
+                mean_type.dtype == x_type.dtype,
                 mean_type.shape == gamma_type.shape,
-                var_type.dtype == numpy.float32,
+                var_type.dtype == x_type.dtype,
                 var_type.shape == gamma_type.shape,
             )
 
