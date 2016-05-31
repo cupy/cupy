@@ -95,6 +95,10 @@ broadcast_to
 ~~~~~~~~~~~~
 .. autofunction:: broadcast_to
 
+cast
+~~~~
+.. autofunction:: cast
+
 concat
 ~~~~~~
 .. autofunction:: concat
