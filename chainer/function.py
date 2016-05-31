@@ -419,14 +419,13 @@ class FunctionHook(object):
 
     >>> import chainer, chainer.links as L, chainer.functions as F
     ... class Model(chainer.Chain):
-    ...     def __call__(x):
-    ...         x = self.l(x)
-    ...         return F.exp(x)
+    ...     def __call__(self, x1):
+    ...         return F.exp(self.l(x1))
     ... model1 = Model(l=L.Linear(10, 10))
     ... model2 = Model(l=L.Linear(10, 10))
     ... x = chainer.Variable(numpy.zeros((1, 10), 'f'))
     ... with chainer.function_hooks.TimerHook() as m:
-    ...     y = model1(x)
+    ...     _ = model1(x)
     ...     y = model2(x)
     ...     print(m.total_time())
     ... model3 = Model(l=L.Linear(10, 10))
