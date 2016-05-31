@@ -201,8 +201,8 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
             expander, gamma, beta, self.x, mean, var, self.link.eps, self.test)
 
     def test_no_gamma_and_beta(self):
-        self.assertIsNone(self.link.gamma)
-        self.assertIsNone(self.link.beta)
+        self.assertFalse(hasattr(self.link, 'gamma'))
+        self.assertFalse(hasattr(self.link, 'beta'))
 
     def check_forward(self, x_data, y_expected):
         x = chainer.Variable(x_data)

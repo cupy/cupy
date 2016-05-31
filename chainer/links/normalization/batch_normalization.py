@@ -64,17 +64,9 @@ class BatchNormalization(link.Link):
         if use_gamma:
             self.add_param('gamma', size, dtype=dtype)
             self.gamma.data.fill(1)
-            self._gamma = None
-        else:
-            self.gamma = None
-            self.add_persistent('_gamma', numpy.ones(size, dtype=dtype))
         if use_beta:
             self.add_param('beta', size, dtype=dtype)
             self.beta.data.fill(0)
-            self._beta = None
-        else:
-            self.beta = None
-            self.add_persistent('_beta', numpy.zeros(size, dtype=dtype))
         self.add_persistent('avg_mean', numpy.zeros(size, dtype=dtype))
         self.add_persistent('avg_var', numpy.zeros(size, dtype=dtype))
         self.add_persistent('N', 0)
@@ -104,14 +96,16 @@ class BatchNormalization(link.Link):
         """
         use_batch_mean = not test or finetune
 
-        if self.gamma is not None:
+        if hasattr(self, 'gamma'):
             gamma = self.gamma
         else:
-            gamma = variable.Variable(self._gamma, volatile='auto')
-        if self.beta is not None:
+            gamma = variable.Variable(self.xp.ones(self.avg_mean.shape, dtype=x.data.dtype),
+                                      volatile='auto')
+        if hasattr(self, 'beta'):
             beta = self.beta
         else:
-            beta = variable.Variable(self._beta, volatile='auto')
+            beta = variable.Variable(self.xp.zeros(self.avg_mean.shape, dtype=x.data.dtype),
+                                     volatile='auto')
 
         if use_batch_mean:
             func = batch_normalization.BatchNormalizationFunction(self.eps)
