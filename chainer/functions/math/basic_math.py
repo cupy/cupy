@@ -15,23 +15,17 @@ def _convert_value_to_string(value):
     if numpy.isscalar(value):
         if value < 0:
             return '({})'.format(value)
-        else:
-            return str(value)
-    elif isinstance(value, (numpy.ndarray, cuda.ndarray)):
+        return str(value)
+    if isinstance(value, (numpy.ndarray, cuda.ndarray)):
         return 'constant array'
-    else:
-        raise ValueError(
-            'value must be scalar, ndarray, or Variable')
+    raise ValueError('value must be scalar, ndarray, or Variable')
 
 
 def _check_constant_type(value):
     if numpy.isscalar(value):
         return
-    elif isinstance(value, (numpy.ndarray, cuda.ndarray)):
-        return
-    else:
-        raise ValueError(
-            'value must be scalar, ndarray, or Variable')
+    if not isinstance(value, (numpy.ndarray, cuda.ndarray)):
+        raise ValueError('value must be scalar, ndarray, or Variable')
 
 
 def _preprocess_const(x, value):
