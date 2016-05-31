@@ -58,7 +58,8 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         self.gy = numpy.random.uniform(
             -1, 1, (N, self.out_channels, outh, outw)).astype(self.x_dtype)
         self.test_forward_options = {}
-        self.check_backward_options = {'eps': 1e-2}
+        self.check_backward_options = {
+            'eps': 1e-2, 'atol': 1e-4, 'rtol': 1e-3}
         if self.x_dtype == numpy.float16:
             self.test_forward_options = {'atol': 5e-3, 'rtol': 5e-2}
             self.check_backward_options = {
