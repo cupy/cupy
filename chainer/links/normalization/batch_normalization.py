@@ -99,13 +99,13 @@ class BatchNormalization(link.Link):
         if hasattr(self, 'gamma'):
             gamma = self.gamma
         else:
-            gamma = variable.Variable(self.xp.ones(self.avg_mean.shape, dtype=x.data.dtype),
-                                      volatile='auto')
+            gamma = variable.Variable(self.xp.ones(
+                self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
         if hasattr(self, 'beta'):
             beta = self.beta
         else:
-            beta = variable.Variable(self.xp.zeros(self.avg_mean.shape, dtype=x.data.dtype),
-                                     volatile='auto')
+            beta = variable.Variable(self.xp.zeros(
+                self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
 
         if use_batch_mean:
             func = batch_normalization.BatchNormalizationFunction(self.eps)
