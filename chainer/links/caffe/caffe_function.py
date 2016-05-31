@@ -118,7 +118,7 @@ class CaffeFunction(link.Chain):
     """
     def __init__(self, model_path):
         if not available:
-            msg = ('CaffeFunction is only supported on protobuf>=3 in Python3')
+            msg = 'CaffeFunction is only supported on protobuf>=3 in Python3'
             raise RuntimeError(msg)
 
         super(CaffeFunction, self).__init__()
