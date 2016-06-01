@@ -71,6 +71,11 @@ StatefulGRU
 .. autoclass:: StatefulGRU
    :members:
 
+StatelessLSTM
+~~~~~~~~~~~~~
+.. autoclass:: StatelessLSTM
+   :members:
+
 Activation/loss/normalization functions with parameters
 -------------------------------------------------------
 

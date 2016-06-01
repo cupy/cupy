@@ -15,5 +15,6 @@ Chainer Reference Manual
    optimizers
    serializers
    function_hooks
+   initializers
    caffe
    graph

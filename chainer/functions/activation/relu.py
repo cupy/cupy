@@ -9,6 +9,7 @@ from chainer.utils import type_check
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
+    _cudnn_version = libcudnn.getVersion()
     _mode = libcudnn.CUDNN_ACTIVATION_RELU
 
 
@@ -30,7 +31,8 @@ class ReLU(function.Function):
         return utils.force_array(numpy.maximum(x[0], 0, dtype=x[0].dtype)),
 
     def forward_gpu(self, x):
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
             y = cudnn.activation_forward(x[0], _mode)
             self.y = y
         else:
@@ -41,7 +43,8 @@ class ReLU(function.Function):
         return utils.force_array(gy[0] * (x[0] > 0)),
 
     def backward_gpu(self, x, gy):
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                (_cudnn_version >= 3000 or x[0].dtype != numpy.float16)):
             gx = cudnn.activation_backward(x[0], self.y, gy[0], _mode)
         else:
             gx = cuda.elementwise(

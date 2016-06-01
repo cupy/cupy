@@ -21,9 +21,9 @@ class TestReLU(unittest.TestCase):
     def setUp(self):
         # Avoid unstability of numerical grad
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        for i in range(self.x.size):
-            if -0.01 < self.x.flat[i] < 0.01:
-                self.x.flat[i] = 0.5
+        for i in numpy.ndindex(self.shape):
+            if -0.1 < self.x[i] < 0.1:
+                self.x[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.check_backward_options = {}
         if self.dtype == numpy.float16:
@@ -92,28 +92,25 @@ class TestReLUCudnnCall(unittest.TestCase):
     def setUp(self):
         self.x = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
         self.gy = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
+        self.expect = self.use_cudnn and (
+            cuda.cudnn.cudnn.getVersion() >= 3000 or
+            self.dtype != numpy.float16)
 
     def forward(self):
         x = chainer.Variable(self.x)
         return functions.relu(x, use_cudnn=self.use_cudnn)
 
-    @unittest.skipIf(cuda.cudnn_enabled and
-                     cuda.cudnn.cudnn.getVersion() < 3000,
-                     'Only cudnn ver>=3 supports ReLU')
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.activationForward_v3') as func:
             self.forward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
-    @unittest.skipIf(cuda.cudnn_enabled and
-                     cuda.cudnn.cudnn.getVersion() < 3000,
-                     'Only cudnn ver>=3 supports ReLU')
     def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
         with mock.patch('cupy.cudnn.cudnn.activationBackward_v3') as func:
             y.backward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
 
 testing.run_module(__name__, __file__)

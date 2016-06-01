@@ -29,6 +29,10 @@ class InceptionBN(link.Chain):
         pooltype (str): Pooling type. It must be either ``'max'`` or ``'avg'``.
         proj_pool (bool): If ``True``, do projection in the pooling path.
         stride (int): Stride parameter of the last convolution of each path.
+        conv_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the convolution matrix weights.
+            Maybe be ``None`` to use default initialization.
 
     .. seealso:: :class:`Inception`
 
@@ -37,19 +41,24 @@ class InceptionBN(link.Chain):
             training mode. If ``False``, they are used in testing mode.
 
     """
+
     def __init__(self, in_channels, out1, proj3, out3, proj33, out33,
-                 pooltype, proj_pool=None, stride=1):
+                 pooltype, proj_pool=None, stride=1, conv_init=None):
         super(InceptionBN, self).__init__(
             proj3=convolution_2d.Convolution2D(
-                in_channels, proj3, 1, nobias=True),
+                in_channels, proj3, 1, nobias=True, initialW=conv_init),
             conv3=convolution_2d.Convolution2D(
-                proj3, out3, 3, pad=1, stride=stride, nobias=True),
+                proj3, out3, 3, pad=1, stride=stride, nobias=True,
+                initialW=conv_init),
             proj33=convolution_2d.Convolution2D(
-                in_channels, proj33, 1, nobias=True),
+                in_channels, proj33, 1, nobias=True,
+                initialW=conv_init),
             conv33a=convolution_2d.Convolution2D(
-                proj33, out33, 3, pad=1, nobias=True),
+                proj33, out33, 3, pad=1, nobias=True,
+                initialW=conv_init),
             conv33b=convolution_2d.Convolution2D(
-                out33, out33, 3, pad=1, stride=stride, nobias=True),
+                out33, out33, 3, pad=1, stride=stride, nobias=True,
+                initialW=conv_init),
             proj3n=batch_normalization.BatchNormalization(proj3),
             conv3n=batch_normalization.BatchNormalization(out3),
             proj33n=batch_normalization.BatchNormalization(proj33),
@@ -60,15 +69,18 @@ class InceptionBN(link.Chain):
         if out1 > 0:
             assert stride == 1
             assert proj_pool is not None
-            self.add_link('conv1', convolution_2d.Convolution2D(
-                in_channels, out1, 1, stride=stride, nobias=True))
+            self.add_link('conv1',
+                          convolution_2d.Convolution2D(in_channels, out1, 1,
+                                                       stride=stride,
+                                                       nobias=True,
+                                                       initialW=conv_init))
             self.add_link('conv1n', batch_normalization.BatchNormalization(
                 out1))
         self.out1 = out1
 
         if proj_pool is not None:
             self.add_link('poolp', convolution_2d.Convolution2D(
-                in_channels, proj_pool, 1, nobias=True))
+                in_channels, proj_pool, 1, nobias=True, initialW=conv_init))
             self.add_link('poolpn', batch_normalization.BatchNormalization(
                 proj_pool))
         self.proj_pool = proj_pool

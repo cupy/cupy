@@ -45,6 +45,11 @@ CPU/GPU generic code support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: get_array_module
 
+cuDNN support
+~~~~~~~~~~~~~
+.. autofunction:: set_max_workspace_size
+.. autofunction:: get_max_workspace_size
+
 Common algorithms
 -----------------
 .. automodule:: chainer.utils
