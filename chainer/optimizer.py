@@ -561,7 +561,7 @@ class GradientNoise(object):
             with cuda.get_device(g) as dev:
                 noise = xp.random.normal(0, numpy.sqrt(
                     self.eta / numpy.power(1 + opt.t, 0.55)), g.shape).astype(
-                    numpy.float32)
+                    g.dtype)
                 if int(dev) == -1:
                     g += noise
                 else:
