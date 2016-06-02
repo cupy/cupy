@@ -70,7 +70,7 @@ class TestROIPooling2D(unittest.TestCase):
         y_gpu = functions.roi_pooling_2d(
             x_gpu, rois_gpu, outh=self.outh, outw=self.outw,
             spatial_scale=self.spatial_scale)
-        gradient_check.assert_allclose(y_cpu.data, cuda.to_cpu(y_gpu.data))
+        testing.assert_allclose(y_cpu.data, cuda.to_cpu(y_gpu.data))
 
     def check_backward(self, x_data, roi_data, y_grad):
         gradient_check.check_backward(

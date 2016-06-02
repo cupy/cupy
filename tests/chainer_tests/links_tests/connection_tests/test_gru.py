@@ -73,9 +73,9 @@ class TestGRU(unittest.TestCase):
 
         self.assertEqual(y.data.dtype, numpy.float32)
         y_expect = _gru(self.link, h_data, x_data)
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
         if isinstance(self.link, links.StatefulGRU):
-            gradient_check.assert_allclose(self.link.h.data, y.data)
+            testing.assert_allclose(self.link.h.data, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.h, self.x)
@@ -96,11 +96,11 @@ class TestGRU(unittest.TestCase):
         def f():
             return _gru(self.link, h_data, x_data),
         gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-3)
+        testing.assert_allclose(gx, x.grad, atol=1e-3)
 
         if isinstance(self.link, links.GRU):
             gh, = gradient_check.numerical_grad(f, (h.data,), (y.grad,))
-            gradient_check.assert_allclose(gh, h.grad, atol=1e-3)
+            testing.assert_allclose(gh, h.grad, atol=1e-3)
 
     def test_backward_cpu(self):
         self.check_backward(self.h, self.x, self.gy)

@@ -5,7 +5,6 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer import gradient_check
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
@@ -38,15 +37,15 @@ class TestLSTM(unittest.TestCase):
         c0 = chainer.Variable(xp.zeros((len(self.x), self.out_size),
                                        dtype=self.x.dtype))
         c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x))
-        gradient_check.assert_allclose(h1.data, h1_expect.data)
-        gradient_check.assert_allclose(self.link.h.data, h1_expect.data)
-        gradient_check.assert_allclose(self.link.c.data, c1_expect.data)
+        testing.assert_allclose(h1.data, h1_expect.data)
+        testing.assert_allclose(self.link.h.data, h1_expect.data)
+        testing.assert_allclose(self.link.c.data, c1_expect.data)
 
         h2 = self.link(x)
         c2_expect, h2_expect = \
             functions.lstm(c1_expect,
                            self.link.upward(x) + self.link.lateral(h1))
-        gradient_check.assert_allclose(h2.data, h2_expect.data)
+        testing.assert_allclose(h2.data, h2_expect.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -174,15 +173,15 @@ class TestStatelessLSTM(unittest.TestCase):
         c0 = chainer.Variable(xp.zeros((len(self.x), self.out_size),
                                        dtype=self.x.dtype))
         c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x))
-        gradient_check.assert_allclose(h1.data, h1_expect.data)
-        gradient_check.assert_allclose(c1.data, c1_expect.data)
+        testing.assert_allclose(h1.data, h1_expect.data)
+        testing.assert_allclose(c1.data, c1_expect.data)
 
         c2, h2 = self.link(c1, h1, x)
         c2_expect, h2_expect = \
             functions.lstm(c1_expect,
                            self.link.upward(x) + self.link.lateral(h1))
-        gradient_check.assert_allclose(h2.data, h2_expect.data)
-        gradient_check.assert_allclose(c2.data, c2_expect.data)
+        testing.assert_allclose(h2.data, h2_expect.data)
+        testing.assert_allclose(c2.data, c2_expect.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)

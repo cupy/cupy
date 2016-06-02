@@ -43,7 +43,7 @@ class TestLeakyReLU(unittest.TestCase):
             if self.x[i] < 0:
                 expected[i] *= self.slope
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             expected, y.data, **self.check_forward_options)
 
     @condition.retry(3)

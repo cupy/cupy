@@ -5,7 +5,6 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
@@ -54,7 +53,7 @@ class TestSplitAxis(unittest.TestCase):
         for yd, y in zip(ys_data, ys):
             self.assertEqual(y.data.dtype, self.dtype)
             self.assertIsInstance(y.data.shape, tuple)
-            gradient_check.assert_allclose(yd, y.data, atol=0, rtol=0)
+            testing.assert_allclose(yd, y.data, atol=0, rtol=0)
 
     def test_forward_cpu(self):
         self.check_forward(self.x, self.ys, self.ys_section, self.axis)
@@ -74,7 +73,7 @@ class TestSplitAxis(unittest.TestCase):
             y.grad = y.data
         ys[0].backward()
 
-        gradient_check.assert_allclose(x.data, x.grad, atol=0, rtol=0)
+        testing.assert_allclose(x.data, x.grad, atol=0, rtol=0)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.ys_section, axis=self.axis)
@@ -100,7 +99,7 @@ class TestSplitAxisNone(unittest.TestCase):
         ys[0].backward()
 
         gx = numpy.array([1, 0])
-        gradient_check.assert_allclose(gx, x.grad, atol=0, rtol=0)
+        testing.assert_allclose(gx, x.grad, atol=0, rtol=0)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.ys_section, axis=self.axis)

@@ -57,9 +57,9 @@ class TestLSTM(unittest.TestCase):
             _sigmoid(f_in) * self.c_prev
         h_expect = _sigmoid(o_in) * numpy.tanh(c_expect)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             c_expect, c.data, **self.check_forward_options)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             h_expect, h.data, **self.check_forward_options)
 
     @condition.retry(3)

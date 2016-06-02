@@ -34,7 +34,7 @@ class TestSigmoid(unittest.TestCase):
         self.assertEqual(y.data.dtype, self.dtype)
         y_expect = functions.sigmoid(chainer.Variable(self.x))
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect.data, y.data, **self.check_forward_options)
 
     @attr.cudnn

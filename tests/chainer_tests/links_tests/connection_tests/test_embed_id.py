@@ -41,7 +41,7 @@ class TestEmbedID(unittest.TestCase):
             else:
                 y_expect[i] = self.W[int(self.x[i])]
 
-        gradient_check.assert_allclose(y_expect, y.data, atol=0, rtol=0)
+        testing.assert_allclose(y_expect, y.data, atol=0, rtol=0)
 
     @condition.retry(3)
     def test_forward_cpu(self):
