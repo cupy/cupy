@@ -27,7 +27,7 @@ class TestReLU(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.check_backward_options = {}
         if self.dtype == numpy.float16:
-            self.check_backward_options = {'eps': 2.0 ** -10}
+            self.check_backward_options = {'dtype': numpy.float64}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)

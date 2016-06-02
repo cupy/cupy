@@ -43,15 +43,11 @@ class TestConvolution2DFunction(unittest.TestCase):
             self.gy = numpy.random.uniform(
                 -1, 1, (2, 2, 2, 2)).astype(self.x_dtype)
         self.check_forward_options = {}
-        self.check_backward_options = {'eps': 1e-2}
-        if self.x_dtype == numpy.float16:
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.x_dtype == numpy.float16 or self.W_dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
-        elif self.W_dtype == numpy.float16:
-            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
-            self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     @attr.cudnn
     def test_forward_consistency(self, nobias=False):

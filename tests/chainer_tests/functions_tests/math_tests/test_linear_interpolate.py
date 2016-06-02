@@ -24,11 +24,11 @@ class TestLinearInterpolate(unittest.TestCase):
         self.g = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
 
         self.check_forward_options = {}
-        self.check_backward_options = {'atol': 1e-4, 'rtol': 1e-4}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-3}
             self.check_backward_options = {
-                'eps': 0.3, 'atol': 1e-3, 'rtol': 1e-3}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, p_data, x_data, y_data):
         p = chainer.Variable(p_data)

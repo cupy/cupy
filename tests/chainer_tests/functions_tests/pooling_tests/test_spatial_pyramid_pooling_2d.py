@@ -38,10 +38,10 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
             (self.n, self.c, self.h, self.w)).astype(self.dtype)
         self.gy = numpy.random.uniform(
             -1, 1, (self.n, self.output_dim, 1, 1)).astype(self.dtype)
-        self.check_backward_options = {'eps': 2.0 ** -10}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
             self.check_backward_options = {
-                'eps': 2.0 ** -10, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)

@@ -132,19 +132,15 @@ class TestBinaryOp(unittest.TestCase):
         z = y + x
         self.assertEqual(1, z.data.get()[0])
 
-    def check_backward(self, op, x1_data, x2_data, y_grad, atol):
+    def check_backward(self, op, x1_data, x2_data, y_grad):
+        options = {}
         if self.dtype == numpy.float16:
-            eps = 1e-2
-            atol = 0.1
-            rtol = 0.1
-        else:
-            eps = 1e-3
-            rtol = 1e-4
+            options = {'atol': 5e-4, 'rtol': 5e-3}
         gradient_check.check_backward(op, (x1_data, x2_data), y_grad,
-                                      eps=eps, atol=atol, rtol=rtol)
+                                      dtype=numpy.float64, **options)
 
-    def backward_cpu(self, op, atol=1e-5):
-        self.check_backward(op, self.x1, self.x2, self.gy, atol)
+    def backward_cpu(self, op):
+        self.check_backward(op, self.x1, self.x2, self.gy)
 
     @condition.retry(3)
     def test_add_backward_cpu(self):
@@ -164,12 +160,12 @@ class TestBinaryOp(unittest.TestCase):
 
     @condition.retry(10)
     def test_pow_backward_cpu(self):
-        self.backward_cpu(lambda x, y: x ** y, atol=1e-4)
+        self.backward_cpu(lambda x, y: x ** y)
 
-    def backward_gpu(self, op, atol=1e-5):
+    def backward_gpu(self, op):
         self.check_backward(
             op, cuda.to_gpu(self.x1), cuda.to_gpu(self.x2),
-            cuda.to_gpu(self.gy), atol)
+            cuda.to_gpu(self.gy))
 
     @attr.gpu
     @condition.retry(3)
@@ -194,7 +190,7 @@ class TestBinaryOp(unittest.TestCase):
     @attr.gpu
     @condition.retry(10)
     def test_pow_backward_gpu(self):
-        self.backward_gpu(lambda x, y: x ** y, atol=1e-4)
+        self.backward_gpu(lambda x, y: x ** y)
 
 
 @testing.parameterize(*testing.product({
@@ -557,17 +553,12 @@ class TestVariableConstantOp(unittest.TestCase):
         self.forward_gpu(lambda x, y: y ** x)
 
     def check_backward(self, op, x_data, y_grad):
+        options = {}
         if self.dtype == numpy.float16:
-            eps = 1e-2
-            atol = 0.01
-            rtol = 0.1
-        else:
-            eps = 1e-3
-            atol = 1e-5
-            rtol = 1e-4
+            options = {'atol': 5e-4, 'rtol': 5e-3}
         gradient_check.check_backward(lambda x: op(x, self.value),
                                       x_data, y_grad,
-                                      eps=eps, atol=atol, rtol=rtol)
+                                      dtype=numpy.float64, **options)
 
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -797,9 +788,9 @@ class TestVariableConstantArrayOp(unittest.TestCase):
             value = cuda.to_gpu(value)
         options = {}
         if self.dtype == numpy.float16:
-            options = {'eps': 0.01, 'atol': 0.01, 'rtol': 0.1}
+            options = {'atol': 5e-4, 'rtol': 5e-3}
         gradient_check.check_backward(lambda x: op(x, value), x_data, y_grad,
-                                      **options)
+                                      dtype=numpy.float64, **options)
 
     def backward_cpu(self, op, positive=False):
         self.check_backward(op, self.x, self.gy, False, positive)
@@ -940,9 +931,9 @@ class TestUnaryFunctions(unittest.TestCase):
     def check_backward(self, op, x_data, y_grad):
         options = {}
         if self.dtype == numpy.float16:
-            options = {'eps': 2 ** -5, 'atol': 0.01, 'rtol': 0.1}
-
-        gradient_check.check_backward(op, x_data, y_grad, **options)
+            options = {'atol': 5e-4, 'rtol': 5e-3}
+        gradient_check.check_backward(
+            op, x_data, y_grad, dtype=numpy.float64, **options)
 
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -981,9 +972,9 @@ class TestNegativePow(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         options = {}
         if self.dtype == numpy.float16:
-            options = {'eps': 1e-2, 'atol': 1e-2, 'rtol': 1e-1}
+            options = {'atol': 5e-4, 'rtol': 5e-3}
         gradient_check.check_backward(
-            lambda x: x ** 2, x_data, y_grad, **options)
+            lambda x: x ** 2, x_data, y_grad, dtype=numpy.float64, **options)
 
     @condition.retry(10)
     def test_cpu(self):

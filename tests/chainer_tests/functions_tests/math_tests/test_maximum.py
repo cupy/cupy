@@ -30,11 +30,11 @@ class TestMaximum(unittest.TestCase):
         self.y_expected = numpy.maximum(self.x1, self.x2)
         self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.check_forward_options = {}
-        self.check_backward_options = {'eps': 1e-2}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
             self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x1_data, x2_data, y_expected):
         x1 = chainer.Variable(x1_data)
