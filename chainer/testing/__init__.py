@@ -14,7 +14,7 @@ def run_module(name, file):
     """Run current test cases of the file.
 
     Args:
-        name: __name__ attrinute of the file.
+        name: __name__ attribute of the file.
         file: __file__ attribute of the file.
     """
 
