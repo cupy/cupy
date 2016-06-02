@@ -324,6 +324,9 @@ class Ident(chainer.Function):
         return grads
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [None, numpy.float32, numpy.float64],
+}))
 class TestCheckBackward(unittest.TestCase):
 
     def test_multiple_output(self):
@@ -337,7 +340,7 @@ class TestCheckBackward(unittest.TestCase):
             u = Ident()(t)
             return s, u
 
-        gradient_check.check_backward(f, (x1, x2), (g1, g2))
+        gradient_check.check_backward(f, (x1, x2), (g1, g2), dtype=self.dtype)
 
     def test_no_grads_for_not_float(self):
         x1 = numpy.array([1], dtype='f')
