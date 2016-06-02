@@ -36,7 +36,7 @@ class TestSLSTM(unittest.TestCase):
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'eps': 2 ** -4, 'atol': 5e-3, 'rtol': 5e-2}
+                'eps': 2 ** -4, 'atol': 1e-2, 'rtol': 1e-1}
 
     def flat(self):
         self.c_prev1 = self.c_prev1[:, :, 0].copy()

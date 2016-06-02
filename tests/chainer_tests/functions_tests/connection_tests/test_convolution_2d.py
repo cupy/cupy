@@ -45,11 +45,11 @@ class TestConvolution2DFunction(unittest.TestCase):
         self.check_forward_options = {}
         self.check_backward_options = {'eps': 1e-2}
         if self.x_dtype == numpy.float16:
-            self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
                 'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
         elif self.W_dtype == numpy.float16:
-            self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
                 'eps': 2 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
 
