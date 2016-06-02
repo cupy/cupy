@@ -5,7 +5,6 @@ import numpy as np
 
 import chainer
 from chainer import cuda
-from chainer import gradient_check
 from chainer import optimizer
 from chainer import optimizers
 from chainer import testing
@@ -117,7 +116,7 @@ class TestOptimizerWeightDecay(unittest.TestCase):
         opt.add_hook(optimizer.WeightDecay(decay))
         opt.update()
 
-        gradient_check.assert_allclose(expect, w)
+        testing.assert_allclose(expect, w)
 
     def test_weight_decay_cpu(self):
         self.check_weight_decay()
@@ -147,7 +146,7 @@ class TestOptimizerLasso(unittest.TestCase):
         opt.add_hook(optimizer.Lasso(decay))
         opt.update()
 
-        gradient_check.assert_allclose(expect, w)
+        testing.assert_allclose(expect, w)
 
     def test_lasso_cpu(self):
         self.check_lasso()
@@ -317,7 +316,7 @@ class TestGradientMethod(unittest.TestCase):
         self.optimizer.weight_decay(0.1)
         g = cuda.to_cpu(self.target.param.grad)
         expect = np.array([0.0, 1.1, 2.2], dtype=np.float32)
-        gradient_check.assert_allclose(g, expect)
+        testing.assert_allclose(g, expect)
 
     def test_weight_decay_cpu(self):
         self.setup_cpu()

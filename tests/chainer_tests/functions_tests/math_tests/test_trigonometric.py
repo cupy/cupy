@@ -22,7 +22,7 @@ class UnaryFunctionsTestBase(object):
     def check_forward(self, op, op_np, x_data):
         x = chainer.Variable(x_data)
         y = op(x)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             op_np(self.x), y.data, atol=1e-7, rtol=1e-7)
 
     def check_forward_cpu(self, op, op_np):

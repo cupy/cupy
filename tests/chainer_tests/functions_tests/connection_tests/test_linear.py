@@ -44,7 +44,7 @@ class TestNonparameterizedLinear(unittest.TestCase):
             b = chainer.Variable(b_data)
             y = functions.linear(x, W, b)
         self.assertEqual(y.data.dtype, self.x_dtype)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y.data, **self.check_forward_options)
 
     @condition.retry(3)

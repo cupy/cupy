@@ -79,7 +79,7 @@ class TestMaxout(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.link(x)
         self.assertEqual(y.data.dtype, numpy.float32)
-        gradient_check.assert_allclose(self.y, y.data)
+        testing.assert_allclose(self.y, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -140,9 +140,9 @@ class TestInitialization(unittest.TestCase):
     def check_param(self):
         linear_out_size = self.out_size * self.pool_size
         initialW = self.initialW.reshape((linear_out_size, -1))
-        gradient_check.assert_allclose(initialW, self.link.linear.W.data)
+        testing.assert_allclose(initialW, self.link.linear.W.data)
         initial_bias = self.initial_bias.reshape((linear_out_size,))
-        gradient_check.assert_allclose(initial_bias, self.link.linear.b.data)
+        testing.assert_allclose(initial_bias, self.link.linear.b.data)
 
     def test_param_cpu(self):
         self.check_param()

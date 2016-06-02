@@ -5,7 +5,6 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
@@ -39,7 +38,7 @@ class TestReshape(unittest.TestCase):
         y = functions.reshape(x, self.out_shape)
         y.grad = y.data
         y.backward()
-        gradient_check.assert_allclose(x.data, x.grad, atol=0, rtol=0)
+        testing.assert_allclose(x.data, x.grad, atol=0, rtol=0)
 
     def test_backward_cpu(self):
         self.check_backward(self.x)

@@ -43,7 +43,7 @@ class TestELU(unittest.TestCase):
             if self.x[i] < 0:
                 expected[i] = self.alpha * (numpy.exp(expected[i]) - 1)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             expected, y.data, **self.check_forward_options)
 
     @condition.retry(3)

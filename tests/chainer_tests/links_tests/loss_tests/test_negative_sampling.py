@@ -39,9 +39,9 @@ class TestNegativeSampling(unittest.TestCase):
             f, (x.data, W.data), (y.grad,), eps=1e-2)
         del negative_sampling.NegativeSamplingFunction.samples  # clean up
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             cuda.to_cpu(gx), cuda.to_cpu(x.grad), atol=1.e-4)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             cuda.to_cpu(gW), cuda.to_cpu(W.grad), atol=1.e-4)
         return x.grad, W.grad
 
@@ -66,7 +66,7 @@ class TestNegativeSampling(unittest.TestCase):
         self.assertEqual(y_g.data.dtype, numpy.float32)
         self.assertEqual(y_g.data.shape, ())
 
-        gradient_check.assert_allclose(y.data, y_g.data, atol=1.e-4)
+        testing.assert_allclose(y.data, y_g.data, atol=1.e-4)
         return y.data, y_g.data
 
     @condition.retry(3)

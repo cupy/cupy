@@ -23,7 +23,7 @@ class TestMax(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.float32)
         y_expect = self.x.max(axis=axis, keepdims=keepdims)
         self.assertEqual(y.data.shape, y_expect.shape)
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -188,7 +188,7 @@ class TestMin(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.float32)
         y_expect = self.x.min(axis=axis, keepdims=keepdims)
         self.assertEqual(y.data.shape, y_expect.shape)
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
