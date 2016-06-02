@@ -20,9 +20,10 @@ class ImageDataset(dataset_mixin.DatasetMixin):
     as either a list of strings or a text file that contains paths in distinct
     lines.
 
-    Each image is automatically converted to arrays of shape ``
-    height, width``, where ``channels`` represents the number of channels in
-    each pixel (e.g., 1 for grey-scale images, and 3 for RGB-color images).
+    Each image is automatically converted to arrays of shape
+    ``channels, height, width``, where ``channels`` represents the number of
+    channels in each pixel (e.g., 1 for grey-scale images, and 3 for RGB-color
+    images).
 
     .. note::
        **This dataset requires the Pillow package being installed.** In order

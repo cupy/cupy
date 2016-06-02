@@ -106,7 +106,7 @@ def get_cross_validation_datasets(dataset, n_fold, order=None):
     part of each split corresponds to the training dataset, while the second
     part to the test dataset. No pair of test datasets share any examples, and
     all test datasets together cover the whole base dataset. Each test dataset
-    contains almost same number of examples.
+    contains almost same number of examples (the numbers may differ up to 1).
 
     Args:
         dataset: Dataset to split.

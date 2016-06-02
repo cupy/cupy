@@ -42,8 +42,7 @@ def get_ptb_words_vocabulary():
             used in the Penn Tree Bank long sequence datasets.
 
     .. seealso::
-       See :func:`get_ptb_words_training`, :func:`get_ptb_words_validation`,
-       and :func:`get_ptb_words_test` for the actual datasets.
+       See :func:`get_ptb_words` for the actual datasets.
 
     """
     return _retrieve_word_vocabulary()

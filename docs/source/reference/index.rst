@@ -18,3 +18,4 @@ Chainer Reference Manual
    caffe
    graph
    dataset
+   datasets
