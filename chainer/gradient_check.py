@@ -1,9 +1,11 @@
+import warnings
+
 import numpy
 import six
 
 from chainer import cuda
 from chainer.functions.math import identity
-from chainer import utils
+from chainer import testing
 from chainer import variable
 
 
@@ -74,14 +76,11 @@ def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
         verbose (bool): If ``True``, it outputs verbose messages on error.
 
     """
-    x = cuda.to_cpu(utils.force_array(x))
-    y = cuda.to_cpu(utils.force_array(y))
-    try:
-        numpy.testing.assert_allclose(
-            x, y, atol=atol, rtol=rtol, verbose=verbose)
-    except Exception:
-        print('error:', numpy.abs(x - y).max())
-        raise
+    warnings.warn(
+        'chainer.gradient_check.assert_assert_allclose is deprecated.'
+        'Use chainer.testing.assert_assert_allclose instead.',
+        DeprecationWarning)
+    testing.assert_allclose(x, y, atol, rtol, verbose)
 
 
 def _as_tuple(x):
@@ -241,10 +240,10 @@ def check_backward(func, x_data, y_grad, params=(),
             assert x.grad is None
             continue
         gx, = numerical_grad(f, (x.data,), y_grad, eps=eps)
-        assert_allclose(gx, x.grad, atol=atol, rtol=rtol)
+        testing.assert_allclose(gx, x.grad, atol=atol, rtol=rtol)
         assert gx.dtype is x.grad.dtype
 
     for p in params:
         gp, = numerical_grad(f, (p.data,), y_grad, eps=eps)
-        assert_allclose(gp, p.grad, atol=atol, rtol=rtol)
+        testing.assert_allclose(gp, p.grad, atol=atol, rtol=rtol)
         assert gp.dtype is p.grad.dtype
