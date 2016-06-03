@@ -1,5 +1,7 @@
 .. module:: chainer.datasets
 
+.. _datasets:
+
 Dataset examples
 ================
 

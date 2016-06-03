@@ -18,6 +18,8 @@ Chainer also has a light system to download, manage, and cache concrete examples
 
 Dataset representation
 ~~~~~~~~~~~~~~~~~~~~~~
+See :ref:`datasets` for dataset implementations.
+
 .. autoclass:: DatasetMixin
    :members:
 
