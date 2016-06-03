@@ -283,6 +283,10 @@ min
 ~~~
 .. autofunction:: min
 
+scale
+~~~~~
+.. autofunction:: scale
+
 sin
 ~~~
 .. autofunction:: sin

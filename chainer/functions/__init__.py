@@ -56,6 +56,7 @@ from chainer.functions.math import logarithm_1p
 from chainer.functions.math import matmul
 from chainer.functions.math import maximum
 from chainer.functions.math import minmax
+from chainer.functions.math import scale
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -204,6 +205,7 @@ Maximum = maximum.Maximum
 maximum = maximum.maximum
 Min = minmax.Min
 min = minmax.min
+scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
 Sum = sum.Sum

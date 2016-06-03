@@ -565,17 +565,6 @@ class _EltwiseFunction(object):
             raise ValueError('Invalid EltwiseParameter.EltwiseOp value.')
 
 
-def _scale(x, y, axis=1):
-    x_shape = x.data.shape
-    y_shape = y.data.shape
-    assert x_shape[axis:axis + len(y_shape)] == y_shape
-    y1_shape = tuple([1] * axis + list(y_shape) +
-                     [1] * (len(x_shape) - axis - len(y_shape)))
-    y1 = functions.reshape(y, y1_shape)
-    y2 = functions.broadcast_to(y1, x_shape)
-    return x * y2
-
-
 class _Scale(link.Chain):
     def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
         super(_Scale, self).__init__()
@@ -615,12 +604,12 @@ class _Scale(link.Chain):
             assert len(xs) == 1
             x, = xs
             W = self.W
-            z = _scale(x, W, axis)
+            z = functions.scale(x, W, axis)
         # Case of two bottoms where W is given as a bottom.
         else:
             assert len(xs) == 2
             x, y = xs
-            z = _scale(x, y, axis)
+            z = functions.scale(x, y, axis)
 
         # Forward propagate bias term if given.
         if self.bias is not None:
