@@ -19,3 +19,4 @@ Chainer Reference Manual
    graph
    dataset
    datasets
+   iterators

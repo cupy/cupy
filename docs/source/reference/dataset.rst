@@ -25,6 +25,8 @@ See :ref:`datasets` for dataset implementations.
 
 Iterator interface
 ~~~~~~~~~~~~~~~~~~
+See :ref:`iterators` for dataset iterator implementations.
+
 .. autoclass:: Iterator
    :members:
 

@@ -26,7 +26,7 @@ class MultiprocessIterator(iterator.Iterator):
         dataset (~chainer.dataset.Dataset): Dataset to iterate.
         batch_size (int): Number of examples within each batch.
         repeat (bool): If True, then it infinitely loops over the dataset.
-            Otherwise, it stops iteration at the end of the sweep.
+            Otherwise, it stops iteration at the end of the first epoch.
         n_processes (int): Number of worker processes. The number of CPUs is
             used by default.
 

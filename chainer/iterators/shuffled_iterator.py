@@ -18,7 +18,7 @@ class ShuffledIterator(iterator.Iterator):
         dataset (~chainer.dataset.Dataset): Dataset to iterate.
         batch_size (int): Number of examples within each batch.
         repeat (bool): If True, then it infinitely loops over the dataset.
-            Otherwise, it stops iteration at the end of the sweep.
+            Otherwise, it stops iteration at the end of the first epoch.
 
     """
     def __init__(self, dataset, batch_size, repeat=True):
