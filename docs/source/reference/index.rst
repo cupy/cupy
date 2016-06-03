@@ -15,8 +15,7 @@ Chainer Reference Manual
    optimizers
    serializers
    function_hooks
-   caffe
-   graph
-   dataset
    datasets
    iterators
+   caffe
+   graph
