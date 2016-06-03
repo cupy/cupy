@@ -579,7 +579,7 @@ class _Scale(link.Chain):
         # Add bias term if given.
         if W_shape is not None:
             if bias_term:
-                func = _Bias(axis, W_shape)
+                func = links.Bias(axis, W_shape)
                 self.add_link('bias', func)
             else:
                 self.bias = None
@@ -588,7 +588,7 @@ class _Scale(link.Chain):
                 if bias_shape is None:
                     raise ValueError('bias_shape should be given if W is not '
                                      'learnt parameter and bias_term is True.')
-                func = _Bias(axis, bias_shape)
+                func = links.Bias(axis, bias_shape)
                 self.add_link('bias', func)
             else:
                 self.bias = None
@@ -616,44 +616,3 @@ class _Scale(link.Chain):
             return self.bias(z)
         else:
             return z
-
-
-def _bias(x, y, axis=1):
-    x_shape = x.data.shape
-    y_shape = y.data.shape
-    assert x_shape[axis:axis + len(y_shape)] == y_shape
-    y1_shape = tuple([1] * axis + list(y_shape) +
-                     [1] * (len(x_shape) - axis - len(y_shape)))
-    y1 = functions.reshape(y, y1_shape)
-    y2 = functions.broadcast_to(y1, x_shape)
-    return x + y2
-
-
-class _Bias(link.Link):
-    def __init__(self, axis=1, shape=None):
-        super(_Bias, self).__init__()
-
-        # Add b parameter if given.
-        if shape is not None:
-            self.add_param('b', shape)
-            self.b.data.fill(0)
-        else:
-            self.b = None
-
-        # Hold axis.
-        self.axis = axis
-
-    def __call__(self, *xs):
-        axis = self.axis
-
-        # Case of only one bottom where b is learnt parameter.
-        if self.b is not None:
-            assert len(xs) == 1
-            x, = xs
-            b = self.b
-            return _bias(x, b, axis)
-        # Case of two bottoms where b is given as a bottom.
-        else:
-            assert len(xs) == 2
-            x, y = xs
-            return _bias(x, y, axis)

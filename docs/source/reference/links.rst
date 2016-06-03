@@ -16,6 +16,12 @@ Chainer provides many :class:`~chainer.Link` implementations in the
 Learnable connections
 ---------------------
 
+Bias
+~~~~
+
+.. autoclass:: Bias
+   :members:
+
 Bilinear
 ~~~~~~~~
 .. autoclass:: Bilinear
