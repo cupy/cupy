@@ -211,7 +211,6 @@ def build_computational_graph(outputs, remove_split=True,
         elif isinstance(cand, function.Function):
             for input_ in cand.inputs:
                 if input_ is not cand and (input_, cand) not in seen_edges:
-                    creator = input_.creator
                     add_cand(input_)
                     seen_edges.add((input_, cand))
                     nodes.add(HashableObject(input_))
