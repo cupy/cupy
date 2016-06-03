@@ -6,3 +6,4 @@ Utilities
 
    util/cuda
    util/algorithm
+   util/reporter

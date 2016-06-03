@@ -40,6 +40,14 @@ class Reporter(object):
        >>> with report_scope(observation):
        ...     report('x', 1, observer)
 
+    The most important application of Reporter is to report observed values
+    from each link or chain in the training and validation procedures.
+    :class:`~chainer.training.Trainer` and some extensions prepare their own
+    Reporter object with the hierarchy of the target link registered as
+    observers. We can use :func:`report` function inside any links and chains
+    to report the observed values (e.g., training loss, accuracy, activation
+    statistics, etc.).
+
     Attributes:
         observation: Dictionary of observed values.
 
@@ -140,6 +148,39 @@ def report(values, observer=None):
 
     Any reporter object can be set current by the ``with`` statement. This
     function calls the :meth:`Report.report` method of the current report.
+
+    .. admonition:: Example
+
+       The most typical example is a use within links and chains. Suppose that
+       a link is registered to the current reporter as an observer (for
+       example, the target link of the optimizer is automatically registered to
+       the reporter of the :class:`~chainer.training.Trainer`). We can report
+       some values from the link as follows::
+
+          class MyRegressor(chainer.Chain):
+              def __init__(self, predictor):
+                  super(MyRegressor, self).__init__(predictor=predictor)
+
+              def __call__(self, x, y):
+                  # This chain just computes the mean squared error between the
+                  # prediction and y.
+                  pred = self.predictor(x)
+                  abs_error = F.sum(F.abs(pred - y)) / len(x.data)
+                  loss = F.mean_squared_error(pred, y)
+
+                  # Report the mean absolute and squared error.
+                  report({'abs_error': abs_error, 'squared_error': loss}, self)
+
+                  return loss
+
+       If the link is named ``'main'`` in the hierarchy (which is the default
+       name of the target link in the
+       :class:`~chainer.training.StandardUpdater`), these reported values are
+       named ``'main/abs_error'`` and ``'main/squared_error'``. If these values
+       are reported inside the :class:`~chainer.training.extension.Evaluator`
+       extension, the names are changed to ``'validation/main/abs_error'`` and
+       ``'validation/main/squared_error'`` (``'validation'`` is the default
+       name of the Evaluator extension).
 
     Args:
         values (dict): Dictionary of observed values.
