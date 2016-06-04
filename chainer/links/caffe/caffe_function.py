@@ -371,14 +371,14 @@ class CaffeFunction(link.Chain):
         # Case of only one bottom where W is learnt parameter.
         if len(bottom) == 1:
             W_shape = blobs[0].shape.dim
-            func = _Scale(axis, W_shape, bias_term)
+            func = links.Scale(axis, W_shape, bias_term)
             func.W.data.ravel()[:] = blobs[0].data
             if bias_term:
                 func.bias.b.data.ravel()[:] = blobs[1].data
         # Case of two bottoms where W is given as a bottom.
         else:
             shape = blobs[0].shape.dim if bias_term else None
-            func = _Scale(axis, bias_term=bias_term, bias_shape=shape)
+            func = links.Scale(axis, bias_term=bias_term, bias_shape=shape)
             if bias_term:
                 func.bias.b.data.ravel()[:] = blobs[0].data
 
@@ -563,56 +563,3 @@ class _EltwiseFunction(object):
 
         else:
             raise ValueError('Invalid EltwiseParameter.EltwiseOp value.')
-
-
-class _Scale(link.Chain):
-    def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
-        super(_Scale, self).__init__()
-
-        # Add W parameter if given.
-        if W_shape is not None:
-            self.add_param('W', W_shape)
-            self.W.data.fill(1)
-        else:
-            self.W = None
-
-        # Add bias term if given.
-        if W_shape is not None:
-            if bias_term:
-                func = links.Bias(axis, W_shape)
-                self.add_link('bias', func)
-            else:
-                self.bias = None
-        else:
-            if bias_term:
-                if bias_shape is None:
-                    raise ValueError('bias_shape should be given if W is not '
-                                     'learnt parameter and bias_term is True.')
-                func = links.Bias(axis, bias_shape)
-                self.add_link('bias', func)
-            else:
-                self.bias = None
-
-        # Hold axis.
-        self.axis = axis
-
-    def __call__(self, *xs):
-        axis = self.axis
-
-        # Case of only one bottom where W is learnt parameter.
-        if self.W is not None:
-            assert len(xs) == 1
-            x, = xs
-            W = self.W
-            z = functions.scale(x, W, axis)
-        # Case of two bottoms where W is given as a bottom.
-        else:
-            assert len(xs) == 2
-            x, y = xs
-            z = functions.scale(x, y, axis)
-
-        # Forward propagate bias term if given.
-        if self.bias is not None:
-            return self.bias(z)
-        else:
-            return z

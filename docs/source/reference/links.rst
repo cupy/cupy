@@ -72,6 +72,11 @@ MLPConvolution2D
 .. autoclass:: MLPConvolution2D
    :members:
 
+Scale
+~~~~~
+.. autoclass:: Scale
+   :members:
+
 StatefulGRU
 ~~~~~~~~~~~
 .. autoclass:: StatefulGRU

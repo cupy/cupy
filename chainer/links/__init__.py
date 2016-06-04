@@ -14,6 +14,7 @@ from chainer.links.connection import linear
 from chainer.links.connection import lstm
 from chainer.links.connection import mlp_convolution_2d
 from chainer.links.connection import parameter
+from chainer.links.connection import scale
 from chainer.links.loss import hierarchical_softmax
 from chainer.links.loss import negative_sampling
 from chainer.links.model import classifier
@@ -37,6 +38,7 @@ LSTM = lstm.LSTM
 StatelessLSTM = lstm.StatelessLSTM
 MLPConvolution2D = mlp_convolution_2d.MLPConvolution2D
 Parameter = parameter.Parameter
+Scale = scale.Scale
 
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = negative_sampling.NegativeSampling
