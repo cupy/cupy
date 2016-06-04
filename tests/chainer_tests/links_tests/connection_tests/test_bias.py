@@ -33,6 +33,9 @@ class TestBias(unittest.TestCase):
             self.link = links.Bias(axis, None)
         self.link.zerograds()
 
+    def test_attribute_presence(self):
+        self.assertEqual(self.learn_b, hasattr(self.link, 'b'))
+
     def check_forward(self, x_data, b_data, y_expected):
         x = chainer.Variable(x_data)
         if b_data is None:

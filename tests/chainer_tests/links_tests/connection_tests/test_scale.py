@@ -46,6 +46,10 @@ class TestScale(unittest.TestCase):
                 self.link.bias.b.data = self.b
         self.link.zerograds()
 
+    def test_attribute_presence(self):
+        self.assertEqual(self.learn_W, hasattr(self.link, 'W'))
+        self.assertEqual(self.bias_term, hasattr(self.link, 'bias'))
+
     def check_forward(self, x_data, W_data, y_expected):
         x = chainer.Variable(x_data)
         if W_data is None:

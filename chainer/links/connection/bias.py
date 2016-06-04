@@ -30,8 +30,6 @@ class Bias(link.Link):
         if shape is not None:
             self.add_param('b', shape)
             self.b.data.fill(0)
-        else:
-            self.b = None
 
         # Hold axis.
         self.axis = axis
@@ -47,7 +45,7 @@ class Bias(link.Link):
         axis = self.axis
 
         # Case of only one bottom where b is learnt parameter.
-        if self.b is not None:
+        if hasattr(self, 'b'):
             assert len(xs) == 1
             x, = xs
             b = self.b

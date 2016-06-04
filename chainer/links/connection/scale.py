@@ -38,16 +38,12 @@ class Scale(link.Chain):
         if W_shape is not None:
             self.add_param('W', W_shape)
             self.W.data.fill(1)
-        else:
-            self.W = None
 
         # Add bias term if given.
         if W_shape is not None:
             if bias_term:
                 func = bias.Bias(axis, W_shape)
                 self.add_link('bias', func)
-            else:
-                self.bias = None
         else:
             if bias_term:
                 if bias_shape is None:
@@ -55,8 +51,6 @@ class Scale(link.Chain):
                                      'learnt parameter and bias_term is True.')
                 func = bias.Bias(axis, bias_shape)
                 self.add_link('bias', func)
-            else:
-                self.bias = None
 
         # Hold axis.
         self.axis = axis
@@ -72,7 +66,7 @@ class Scale(link.Chain):
         axis = self.axis
 
         # Case of only one bottom where W is learnt parameter.
-        if self.W is not None:
+        if hasattr(self, 'W'):
             assert len(xs) == 1
             x, = xs
             W = self.W
@@ -84,7 +78,7 @@ class Scale(link.Chain):
             z = scale.scale(x, y, axis)
 
         # Forward propagate bias term if given.
-        if self.bias is not None:
+        if hasattr(self, 'bias'):
             return self.bias(z)
         else:
             return z
