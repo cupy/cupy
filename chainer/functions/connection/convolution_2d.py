@@ -92,7 +92,9 @@ class Convolution2DFunction(function.Function):
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
 
-            self.max_workspace_size = c * kh * kw * 4
+            self.max_workspace_size = max(
+                out_c * c * 64,  # for winograd
+                c * kh * kw * 4)
             algo = libcudnn.getConvolutionForwardAlgorithm(
                 handle, x_desc.value, self.filter_desc.value,
                 self.conv_desc.value, y_desc.value, _fwd_pref,
@@ -114,10 +116,9 @@ class Convolution2DFunction(function.Function):
 
             # TODO(beam2d): Support unshared bias
             if b is not None:
-                libcudnn.addTensor_v2(
-                    handle, libcudnn.CUDNN_ADD_SAME_C, one.data,
-                    self.bias_desc.value, b.data.ptr, one.data,
-                    y_desc.value, y.data.ptr)
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(

@@ -7,6 +7,8 @@ from cupy import cuda
 from cupy.cuda import cudnn
 
 
+_cudnn_version = cudnn.getVersion()
+
 _handles = {}
 
 
@@ -76,11 +78,11 @@ def create_filter_descriptor(arr, mode=cudnn.CUDNN_CROSS_CORRELATION):
                       cudnn.destroyFilterDescriptor)
     data_type = get_data_type(arr.dtype)
     if arr.ndim == 4:
-        cudnn.setFilter4dDescriptor(desc.value, data_type, *arr.shape)
+        cudnn.setFilter4dDescriptor_v3(desc.value, data_type, *arr.shape)
     else:
         c_shape = _to_ctypes_array(arr.shape)
-        cudnn.setFilterNdDescriptor(desc.value, data_type, arr.ndim,
-                                    c_shape.data)
+        cudnn.setFilterNdDescriptor_v3(desc.value, data_type, arr.ndim,
+                                       c_shape.data)
 
     return desc
 
@@ -114,14 +116,26 @@ def create_pooling_descriptor(ksize, stride, pad, mode):
         raise ValueError('ksize, stride, and pad must be of same length')
 
     if ndim == 2:
-        cudnn.setPooling2dDescriptor(
+        cudnn.setPooling2dDescriptor_v3(
             desc.value, mode, ksize[0], ksize[1], pad[0], pad[1],
             stride[0], stride[1])
     else:
         c_ksize = _to_ctypes_array(ksize)
         c_pad = _to_ctypes_array(pad)
         c_stride = _to_ctypes_array(stride)
-        cudnn.setPoolingNdDescriptor(
+        cudnn.setPoolingNdDescriptor_v3(
             desc.value, mode, ndim, c_ksize.data, c_pad.data, c_stride.data)
 
     return desc
+
+
+if _cudnn_version >= 3000:
+    def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
+                   srcDestData):
+        cudnn.addTensor_v3(handle, alpha, biasDesc,
+                           biasData, beta, srcDestDesc, srcDestData)
+else:
+    def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
+                   srcDestData):
+        cudnn.addTensor_v2(handle, cudnn.CUDNN_ADD_SAME_C, alpha, biasDesc,
+                           biasData, beta, srcDestDesc, srcDestData)

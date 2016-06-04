@@ -45,7 +45,7 @@ class ReLU(function.Function):
             zero = numpy.array(0, dtype=dtype).ctypes
             handle = cudnn.get_handle()
             desc = cudnn.create_tensor_descriptor(_as4darray(x[0]))
-            libcudnn.activationForward(
+            libcudnn.activationForward_v3(
                 handle, _mode, one.data, desc.value, x[0].data.ptr,
                 zero.data, desc.value, y.data.ptr)
             self.y = y
@@ -64,7 +64,7 @@ class ReLU(function.Function):
             zero = numpy.array(0, dtype=dtype).ctypes
             handle = cudnn.get_handle()
             desc = cudnn.create_tensor_descriptor(_as4darray(self.y))
-            libcudnn.activationBackward(
+            libcudnn.activationBackward_v3(
                 handle, _mode, one.data, desc.value, self.y.data.ptr,
                 desc.value, gy[0].data.ptr, desc.value, x[0].data.ptr,
                 zero.data, desc.value, gx.data.ptr)

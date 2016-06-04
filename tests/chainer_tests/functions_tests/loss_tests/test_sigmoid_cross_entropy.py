@@ -114,7 +114,7 @@ class TestSgimoidCrossEntropyCudnnCall(unittest.TestCase):
 
     def test_call_cudnn_backward(self):
         y = self.forward()
-        with mock.patch('cupy.cudnn.cudnn.activationForward') as func:
+        with mock.patch('cupy.cudnn.cudnn.activationForward_v3') as func:
             y.backward()
             self.assertEqual(func.called, self.use_cudnn)
 
