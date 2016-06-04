@@ -8,13 +8,9 @@ import numpy
 import six
 
 import chainer
-from chainer import cuda
-from chainer import gradient_check
 from chainer import links
 from chainer.links import caffe
 from chainer import testing
-from chainer.testing import attr
-from chainer.testing import condition
 if links.caffe.caffe_function.available:
     from chainer.links.caffe.caffe_function import caffe_pb
 
