@@ -21,7 +21,7 @@ def ix_(*args):
     N dimensions.
 
     Using `ix_` one can quickly construct index arrays that will index
-    the cross product. ``a[np.ix_([1,3],[2,5])]`` returns the array
+    the cross product. ``a[cupy.ix_([1,3],[2,5])]`` returns the array
     ``[[a[1,2] a[1,5]], [a[3,2] a[3,5]]]``.
 
     Args:
@@ -34,11 +34,11 @@ def ix_(*args):
 
     Examples
     --------
-    >>> a = np.arange(10).reshape(2, 5)
+    >>> a = cupy.arange(10).reshape(2, 5)
     >>> a
     array([[0, 1, 2, 3, 4],
            [5, 6, 7, 8, 9]])
-    >>> ixgrid = np.ix_([0,1], [2,4])
+    >>> ixgrid = cupy.ix_([0,1], [2,4])
     >>> ixgrid
     (array([[0],
            [1]]), array([[2, 4]]))
