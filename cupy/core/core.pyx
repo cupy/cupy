@@ -2467,7 +2467,6 @@ def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
 
             int thid = blockIdx.x * blockDim.x + threadIdx.x;
 
-
             if (thid < src.size()){
                 if (src[thid] != 0){
                     ${index_dtype} idx = scaned_index[thid] - 1;
