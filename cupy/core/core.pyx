@@ -2488,7 +2488,7 @@ def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
     return module.get_function(name)
 
 def scan(a):
-    if (a.ndim != 1):
+    if a.ndim != 1:
         raise TypeError("Input array should be 1D array.")
 
     block_size = 256
