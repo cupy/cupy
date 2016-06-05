@@ -347,10 +347,7 @@ class CaffeFunction(link.Chain):
     def _setup_eltwise(self, layer):
         # stable_prod_grad parameter is not supported now.
         operation = layer.eltwise_param.operation
-        coeffs = layer.eltwise_param.coeff
-        if not coeffs:
-            coeffs = None
-
+        coeffs = layer.eltwise_param.coeff or None
         self.forwards[layer.name] = _EltwiseFunction(operation, coeffs)
         self._add_layer(layer)
 
