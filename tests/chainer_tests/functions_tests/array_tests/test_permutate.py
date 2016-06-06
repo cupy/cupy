@@ -21,11 +21,12 @@ class TestPermutate(unittest.TestCase):
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.g = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.indices = numpy.random.permutation(self.shape[self.axis])
+        self.indices = numpy.random.permutation(self.shape[self.axis]).astype('i')
 
-    def check_forward(self, x_data):
+    def check_forward(self, x_data, ind_data):
         x = chainer.Variable(x_data)
-        y = functions.permutate(x, self.indices, axis=self.axis, inv=self.inv)
+        indices = chainer.Variable(ind_data)
+        y = functions.permutate(x, indices, axis=self.axis, inv=self.inv)
 
         y_cpu = cuda.to_cpu(y.data)
         y_cpu = numpy.rollaxis(y_cpu, axis=self.axis)
@@ -37,23 +38,25 @@ class TestPermutate(unittest.TestCase):
                 numpy.testing.assert_array_equal(y_cpu[i], x_data[ind])
 
     def test_forward_cpu(self):
-        self.check_forward(self.x)
+        self.check_forward(self.x, self.indices)
 
     @attr.gpu
     def test_forward_gpu(self):
-        self.check_forward(cuda.to_gpu(self.x))
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.indices))
 
-    def check_backward(self, x_data, g_data):
-        fun = functions.Permutate(self.indices, axis=self.axis, inv=self.inv)
+    def check_backward(self, x_data, ind_data, g_data):
+        fun = functions.Permutate(axis=self.axis, inv=self.inv)
         gradient_check.check_backward(
-            fun, x_data, g_data)
+            fun, (x_data, ind_data), g_data)
 
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.g)
+        self.check_backward(self.x, self.indices, self.g)
 
     @attr.gpu
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.g))
+        self.check_backward(cuda.to_gpu(self.x),
+                            cuda.to_gpu(self.indices),
+                            cuda.to_gpu(self.g))
 
 
 class TestPermutateInvalidIndices(unittest.TestCase):
@@ -69,17 +72,20 @@ class TestPermutateInvalidIndices(unittest.TestCase):
     def test_duplicate_key(self):
         with self.assertRaises(ValueError):
             x = chainer.Variable(self.x)
-            functions.permutate(x, [0, 0, 2])
+            ind = chainer.Variable(numpy.array([0, 0], 'i'))
+            functions.permutate(x, ind)
 
     def test_negative_key(self):
         with self.assertRaises(ValueError):
             x = chainer.Variable(self.x)
-            functions.permutate(x, [-1, 0])
+            ind = chainer.Variable(numpy.array([-1, 0], 'i'))
+            functions.permutate(x, ind)
 
     def test_non_successive_key(self):
         with self.assertRaises(ValueError):
             x = chainer.Variable(self.x)
-            functions.permutate(x, [0, 2])
+            ind = chainer.Variable(numpy.array([0, 2], 'i'))
+            functions.permutate(x, ind)
 
 
 testing.run_module(__name__, __file__)

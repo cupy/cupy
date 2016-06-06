@@ -10,6 +10,8 @@ from chainer.utils import type_check
 def _check_indices(indices):
     if len(indices) == 0:
         return
+    # TODO(unno): Check indices without cpu
+    indices = cuda.to_cpu(indices)
     for i in indices:
         if 0 <= i < len(indices):
             continue
@@ -21,9 +23,17 @@ def _check_indices(indices):
 
 
 def _inverse_indices(indices):
-    r = numpy.empty(len(indices), 'i')
-    for i, ind in enumerate(indices):
-        r[ind] = i
+    xp = cuda.get_array_module(indices)
+    r = xp.empty_like(indices)
+    if xp is numpy:
+        for i, ind in enumerate(indices):
+            r[ind] = i
+    else:
+        cuda.elementwise(
+            'int32 ind', 'raw int32 r',
+            'r[ind] = i',
+            'inverse_indices'
+        )(indices, r)
     return r
 
 
@@ -31,41 +41,42 @@ class Permutate(function.Function):
 
     """Permutate function."""
 
-    def __init__(self, indices, axis=0, inv=False):
-        if chainer.is_debug():
-            _check_indices(indices)
-        self.indices = indices
+    def __init__(self, axis=0, inv=False):
         self.axis = axis
         self.inv = inv
 
     def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() == 1)
-        x_type = in_types[0]
+        type_check.expect(in_types.size() == 2)
+        x_type, ind_type = in_types
         if self.axis < 0:
             type_check.expect(x_type.ndim >= -self.axis)
         else:
             type_check.expect(x_type.ndim > self.axis)
 
-        type_check.expect(x_type.shape[self.axis] == len(self.indices))
+        type_check.expect(
+            ind_type.ndim == 1,
+            x_type.shape[self.axis] == ind_type.shape[0],
+        )
 
-    def _permutate(self, x, inv):
+    def _permutate(self, x, indices, inv):
         xp = cuda.get_array_module(x)
         if inv:
-            indices = _inverse_indices(self.indices)
-        else:
-            indices = self.indices
+            indices = _inverse_indices(indices)
 
-        if xp is not numpy:
-            indices = xp.array(indices, 'i')
         return xp.take(x, indices, axis=self.axis)
 
     def forward(self, inputs):
-        x = inputs[0]
-        return self._permutate(x, self.inv),
+        x, inds = inputs
+
+        if chainer.is_debug():
+            _check_indices(inds)
+
+        return self._permutate(x, inds, self.inv),
 
     def backward(self, inputs, grads):
+        inds = inputs[1]
         g = grads[0]
-        return self._permutate(g, not self.inv),
+        return self._permutate(g, inds, not self.inv), None
 
 
 def permutate(x, indices, axis=0, inv=False):
@@ -81,11 +92,11 @@ def permutate(x, indices, axis=0, inv=False):
 
     Args:
         x (~chainer.Variable): Variable to permutate.
-        indices (numpy.ndarray): Indices to extract from the variable.
+        indices (~chainer.Variable): Indices to extract from the variable.
         axis (int): Axis that the input array is permutate along.
         inv (bool): If ``True``, ``indices`` is treated as its inverse.
 
     Returns:
         ~chainer.Variable: Output variable.
     """
-    return Permutate(indices, axis=axis, inv=inv)(x)
+    return Permutate(axis=axis, inv=inv)(x, indices)
