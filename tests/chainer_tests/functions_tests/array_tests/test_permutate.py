@@ -21,7 +21,8 @@ class TestPermutate(unittest.TestCase):
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.g = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.indices = numpy.random.permutation(self.shape[self.axis]).astype('i')
+        self.indices = numpy.random.permutation(
+            self.shape[self.axis]).astype(numpy.int32)
 
     def check_forward(self, x_data, ind_data):
         x = chainer.Variable(x_data)
