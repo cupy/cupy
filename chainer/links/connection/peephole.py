@@ -2,6 +2,10 @@ from chainer.functions.activation import peephole
 from chainer import link
 from chainer.links.connection import linear
 from chainer import variable
+from chainer.functions.activation import sigmoid
+from chainer.functions.activation import tanh
+from chainer.functions.array import reshape
+from chainer.functions.array import split_axis
 
 import six
 import numpy
@@ -84,5 +88,23 @@ class Peephole(link.Chain):
             self.c = variable.Variable(
                 xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
                 volatile='auto')
-        self.c, self.h = peephole.peephole(self.c, lstm_in, self.peep_i, self.peep_f, self.peep_o) 
+        
+        lstm_in = reshape.reshape(lstm_in, (lstm_in.data.shape[0], lstm_in.data.shape[1] // 4, 4) + lstm_in.data.shape[2:])
+        a, i, f, o = split_axis.split_axis(lstm_in, 4, 2) 
+        a = reshape.reshape(a, (a.data.shape[0], a.data.shape[1])) 
+        i = reshape.reshape(i, (i.data.shape[0], i.data.shape[1])) 
+        f = reshape.reshape(f, (f.data.shape[0], f.data.shape[1])) 
+        o = reshape.reshape(o, (o.data.shape[0], o.data.shape[1])) 
+        peep_in_i = self.peep_i(self.c)
+        peep_in_f = self.peep_f(self.c)
+        a = tanh.tanh(a)
+            #peep_in_i.data = numpy.reshape(peep_in_i.data, i.data.shape)
+        i = sigmoid.sigmoid(i + peep_in_i)
+            #peep_in_f.data = numpy.reshape(peep_in_f.data, f.data.shape)
+        f = sigmoid.sigmoid(f + peep_in_f)
+        self.c = a * i + f * self.c
+        peep_in_o = self.peep_o(self.c)
+            #peep_in_o.data = numpy.reshape(peep_in_o.data, o.data.shape)
+        o = sigmoid.sigmoid(o + peep_in_o)
+        self.h = o * tanh.tanh(self.c)
         return self.h
