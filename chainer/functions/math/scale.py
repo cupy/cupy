@@ -1,4 +1,5 @@
-from chainer.functions.array import reshape, broadcast
+from chainer.functions.array import broadcast
+from chainer.functions.array import reshape
 
 
 def scale(x, y, axis=1):

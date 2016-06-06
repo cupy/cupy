@@ -7,7 +7,8 @@ from chainer import cuda
 from chainer import functions
 from chainer import gradient_check
 from chainer import testing
-from chainer.testing import attr, condition
+from chainer.testing import attr
+from chainer.testing import condition
 
 
 class TestBias(unittest.TestCase):
