@@ -115,7 +115,8 @@ class LSTM(function.Function):
         if xp is numpy:
             co = numpy.tanh(self.c)
             gc_prev = numpy.empty_like(c_prev)
-            gc_prev[:batch] = gh * self.o * _grad_tanh(co) + gc_update  # multiply f later
+            # multiply f later
+            gc_prev[:batch] = gh * self.o * _grad_tanh(co) + gc_update
             ga[:] = gc_prev[:batch] * self.i * _grad_tanh(self.a)
             gi[:] = gc_prev[:batch] * self.a * _grad_sigmoid(self.i)
             gf[:] = gc_prev[:batch] * c_prev[:batch] * _grad_sigmoid(self.f)

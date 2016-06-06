@@ -167,7 +167,8 @@ class LSTM(LSTMBase):
         h_rest = None
         if self.h is not None:
             if len(self.h.data) > batch:
-                h_update, h_rest = split_axis.split_axis(self.h, [batch], axis=0)
+                h_update, h_rest = split_axis.split_axis(
+                    self.h, [batch], axis=0)
                 lstm_in += self.lateral(h_update)
             else:
                 lstm_in += self.lateral(self.h)
