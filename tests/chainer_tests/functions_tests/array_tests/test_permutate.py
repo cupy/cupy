@@ -59,32 +59,26 @@ class TestPermutate(unittest.TestCase):
                             cuda.to_gpu(self.g))
 
 
+@testing.parameterize(
+    {'indices': [0, 0]},
+    {'indices': [-1, 0]},
+    {'indices': [0, 2]},
+)
 class TestPermutateInvalidIndices(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.arange(10).reshape((2, 5)).astype('f')
+        self.ind = numpy.array(self.indices, 'i')
         self.debug = chainer.is_debug()
         chainer.set_debug(True)
 
     def tearDown(self):
         chainer.set_debug(self.debug)
 
-    def test_duplicate_key(self):
+    def test_invalid(self):
         with self.assertRaises(ValueError):
             x = chainer.Variable(self.x)
-            ind = chainer.Variable(numpy.array([0, 0], 'i'))
-            functions.permutate(x, ind)
-
-    def test_negative_key(self):
-        with self.assertRaises(ValueError):
-            x = chainer.Variable(self.x)
-            ind = chainer.Variable(numpy.array([-1, 0], 'i'))
-            functions.permutate(x, ind)
-
-    def test_non_successive_key(self):
-        with self.assertRaises(ValueError):
-            x = chainer.Variable(self.x)
-            ind = chainer.Variable(numpy.array([0, 2], 'i'))
+            ind = chainer.Variable(self.ind)
             functions.permutate(x, ind)
 
 
