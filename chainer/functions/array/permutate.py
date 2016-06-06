@@ -54,6 +54,7 @@ class Permutate(function.Function):
             type_check.expect(x_type.ndim > self.axis)
 
         type_check.expect(
+            ind_type.dtype == numpy.int32,
             ind_type.ndim == 1,
             x_type.shape[self.axis] == ind_type.shape[0],
         )
