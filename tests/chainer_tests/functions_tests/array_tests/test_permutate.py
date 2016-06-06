@@ -75,11 +75,18 @@ class TestPermutateInvalidIndices(unittest.TestCase):
     def tearDown(self):
         chainer.set_debug(self.debug)
 
-    def test_invalid(self):
+    def check_invalid(self, x_data, ind_data):
+        x = chainer.Variable(x_data)
+        ind = chainer.Variable(ind_data)
         with self.assertRaises(ValueError):
-            x = chainer.Variable(self.x)
-            ind = chainer.Variable(self.ind)
             functions.permutate(x, ind)
+
+    def test_invlaid_cpu(self):
+        self.check_invalid(self.x, self.ind)
+
+    @attr.gpu
+    def test_invlaid_gpu(self):
+        self.check_invalid(cuda.to_gpu(self.x), cuda.to_gpu(self.ind))
 
 
 testing.run_module(__name__, __file__)
