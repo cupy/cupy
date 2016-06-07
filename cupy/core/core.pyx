@@ -2377,14 +2377,14 @@ def _inclusive_scan_kernel(dtype, block_size):
         unsigned int idx0 = thid + block;
         unsigned int idx1 = thid + blockDim.x + block;
 
-        temp[thid] = idx0 < n ? src[idx0] : 0;
-        temp[thid + blockDim.x] = idx1 < n ? src[idx1] : 0;
+        temp[thid] = (idx0 < n) ? src[idx0] : (${dtype})0;
+        temp[thid + blockDim.x] = (idx1 < n) ? src[idx1] : (${dtype})0;
         __syncthreads();
 
         for(int i = 1; i <= ${block_size}; i <<= 1){
             int index = (threadIdx.x + 1) * i * 2 - 1;
             if (index < (${block_size} << 1)){
-                temp[index] += temp[index - i];
+                temp[index] = temp[index] + temp[index - i];
             }
             __syncthreads();
         }
@@ -2392,7 +2392,7 @@ def _inclusive_scan_kernel(dtype, block_size):
         for(int i = ${block_size} >> 1; i > 0; i >>= 1){
             int index = (threadIdx.x + 1) * i * 2 - 1;
             if(index + i < (${block_size} << 1)){
-                temp[index + i] += temp[index];
+                temp[index + i] = temp[index + i] + temp[index];
             }
             __syncthreads();
         }
@@ -2421,7 +2421,7 @@ def _add_scan_blocked_sum_kernel(dtype):
         unsigned int idxSum = idx + blockDim.x;
 
         if(idx < n){
-            src_dst[idxSum] += sum[blockIdx.x];
+            src_dst[idxSum] = src_dst[idxSum] + sum[blockIdx.x];
         }
     }
     """).substitute(name=name, dtype=dtype)
