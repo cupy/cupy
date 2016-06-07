@@ -34,8 +34,10 @@ class TestStack(unittest.TestCase):
         xs = [chainer.Variable(x) for x in xs_data]
         y = functions.stack(xs, axis=self.axis)
 
-        expect = numpy.stack(self.xs, axis=self.axis)
-        gradient_check.assert_allclose(y.data, expect)
+        if hasattr(numpy, 'stack'):
+            # run test only with numpy>=1.10
+            expect = numpy.stack(self.xs, axis=self.axis)
+            gradient_check.assert_allclose(y.data, expect)
 
     def test_forward_cpu(self):
         self.check_forward(self.xs)
