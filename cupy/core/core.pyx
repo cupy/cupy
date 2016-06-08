@@ -581,7 +581,8 @@ cdef class ndarray:
         """Return the indices of the elements that are non-zero.
         containing the indices of the non-zero elements in that dimension.
 
-        Returns (tuple): tuple of arrays
+        Returns:
+            tuple of arrays: Indices of elements that are non-zero.
 
         .. seealso:: :func:`numpy.nonzero`
         """
@@ -2361,7 +2362,8 @@ def _inclusive_scan_kernel(dtype, block_size):
         dtype: src, dst array type
         block_size: block_size
 
-    Returns: cuda function
+    Returns:
+         cupy.cuda.Function: cuda function
     """
 
     name = "inclusive_scan_kernel"
@@ -2488,6 +2490,15 @@ def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
     return module.get_function(name)
 
 def scan(a):
+    """Return the prefix sum(scan) of the elements.
+
+    Args:
+        a (cupy.ndarray): input array.
+
+    Returns:
+        cupy.ndarray: A new array holding the result is returned.
+
+    """
     if a.ndim != 1:
         raise TypeError("Input array should be 1D array.")
 

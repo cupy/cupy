@@ -63,7 +63,8 @@ def nonzero(a):
     Args:
         a (cupy.ndarray): array
 
-    Returns (tuple): tuple of arrays
+    Returns:
+        tuple of arrays: Indices of elements that are non-zero.
 
     .. seealso:: :func:`numpy.nonzero`
 
@@ -79,7 +80,8 @@ def flatnonzero(a):
     Args:
         a (cupy.ndarray): input array
 
-    Returns (cupy.ndarray): Output array,
+    Returns:
+        cupy.ndarray: Output array,
         containing the indices of the elements of a.ravel() that are non-zero.
 
     .. seealso:: :func:`numpy.flatnonzero`
