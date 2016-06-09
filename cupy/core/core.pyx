@@ -2504,20 +2504,20 @@ def scan(a):
 
     block_size = 256
 
-    scaned_index = ndarray(a.shape, dtype=a.dtype)
+    scanned_array = ndarray(a.shape, dtype=a.dtype)
     kern_scan = _inclusive_scan_kernel(a.dtype, block_size)
     kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
               block=(block_size,),
-              args=(a, scaned_index),
+              args=(a, scanned_array),
               shared_mem=a.itemsize * block_size * 2)
 
     if a.size // (block_size * 2) > 0:
-        blocked_sum = scaned_index[block_size * 2 - 1:-1:block_size * 2]
+        blocked_sum = scanned_array[block_size * 2 - 1:-1:block_size * 2]
         scanned_blocked_sum = scan(blocked_sum)
 
-        kern_add = _add_scan_blocked_sum_kernel(scaned_index.dtype)
+        kern_add = _add_scan_blocked_sum_kernel(scanned_array.dtype)
         kern_add(grid=((a.size - 1) // (2 * block_size),),
                  block=(2 * block_size,),
-                 args=(scaned_index, scanned_blocked_sum))
+                 args=(scanned_array, scanned_blocked_sum))
 
-    return scaned_index
+    return scanned_array
