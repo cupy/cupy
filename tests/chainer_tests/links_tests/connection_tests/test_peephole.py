@@ -7,6 +7,7 @@ from chainer import cuda
 from chainer import gradient_check
 from chainer import links
 from chainer import testing
+from chainer.testing import attr
 
 
 def _sigmoid(x):
@@ -99,11 +100,12 @@ class TestPeephole(unittest.TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.c, self.h, self.x)
 
-    # @attr.gpu
-    # def test_forward_gpu(self):
-    #     self.link.to_gpu()
-    #     self.check_forward(cuda.to_gpu(self.h),
-    #                        cuda.to_gpu(self.x))
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.link.to_gpu()
+        self.check_forward(cuda.to_gpu(self.c),
+                           cuda.to_gpu(self.h),
+                           cuda.to_gpu(self.x))
 
     def check_backward(self, c_data, h_data, x_data, y_grad):
         x = chainer.Variable(x_data)
@@ -120,95 +122,94 @@ class TestPeephole(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.c, self.h, self.x, self.gy)
 
-    # @attr.gpu
-    # def test_backward_gpu(self):
-    #     self.link.to_gpu()
-    #     self.check_backward(cuda.to_gpu(self.h),
-    #                         cuda.to_gpu(self.x),
-    #                         cuda.to_gpu(self.gy))
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.link.to_gpu()
+        self.check_backward(cuda.to_gpu(self.c),
+                            cuda.to_gpu(self.h),
+                            cuda.to_gpu(self.x),
+                            cuda.to_gpu(self.gy))
 
 
-# @testing.parameterize(
-#     *testing.product({
-#         'link_array_module': ['to_cpu', 'to_gpu'],
-#         'state_array_module': ['to_cpu', 'to_gpu']
-#     }))
-# class TestGRUState(unittest.TestCase):
+@testing.parameterize(
+    *testing.product({
+        'link_array_module': ['to_cpu', 'to_gpu'],
+        'state_array_module': ['to_cpu', 'to_gpu']
+    }))
+class TestPeepholeState(unittest.TestCase):
 
-    # def setUp(self):
-    #     in_size, out_size = 10, 8
-    #     self.link = links.StatefulGRU(in_size, out_size)
-    #     self.h = chainer.Variable(
-    #         numpy.random.uniform(-1, 1, (3, out_size)).astype(numpy.float32))
+    def setUp(self):
+        in_size, out_size = 10, 8
+        self.link = links.Peephole(in_size, out_size)
 
-    # def check_set_state(self, h):
-    #     self.link.set_state(h)
-    #     self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+    def check_reset_state(self):
+        self.link.reset_state()
+        self.assertIsNone(self.link.c)
+        self.assertIsNone(self.link.h)
 
-    # def test_set_state_cpu(self):
-    #     self.check_set_state(self.h)
+    def test_reset_state_cpu(self):
+        self.check_reset_state()
 
-    # @attr.gpu
-    # def test_set_state_gpu(self):
-    #     getattr(self.link, self.link_array_module)()
-    #     getattr(self.h, self.state_array_module)()
-    #     self.check_set_state(self.h)
-
-    # def check_reset_state(self):
-    #     self.link.reset_state()
-    #     self.assertIsNone(self.link.h)
-
-    # def test_reset_state_cpu(self):
-    #     self.check_reset_state()
-
-    # @attr.gpu
-    # def test_reset_state_gpu(self):
-    #     getattr(self.link, self.link_array_module)()
-    #     self.check_reset_state()
+    @attr.gpu
+    def test_reset_state_gpu(self):
+        getattr(self.link, self.link_array_module)()
+        self.check_reset_state()
 
 
-# class TestGRUToCPUToGPU(unittest.TestCase):
+class TestPeepholeToCPUToGPU(unittest.TestCase):
 
-    # def setUp(self):
-    #     in_size, out_size = 10, 8
-    #     self.link = links.StatefulGRU(in_size, out_size)
-    #     self.h = chainer.Variable(
-    #         numpy.random.uniform(-1, 1, (3, out_size)).astype(numpy.float32))
+    def setUp(self):
+        in_size, out_size = 10, 8
+        self.link = links.Peephole(in_size, out_size)
+        self.c = chainer.Variable(
+            numpy.random.uniform(-1, 1, (1, out_size)).astype(numpy.float32))
+        self.h = chainer.Variable(
+            numpy.random.uniform(-1, 1, (1, out_size)).astype(numpy.float32))
 
-    # def check_to_cpu(self, h):
-    #     self.link.set_state(h)
-    #     self.link.to_cpu()
-    #     self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
-    #     self.link.to_cpu()
-    #     self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+    def check_to_cpu(self, c, h):
+        self.link.c = c
+        self.link.h = h
+        self.link.to_cpu()
+        self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
+        self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+        self.link.to_cpu()
+        self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
+        self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
 
-    # def test_to_cpu_cpu(self):
-    #     self.check_to_cpu(self.h)
+    def test_to_cpu_cpu(self):
+        self.check_to_cpu(self.c, self.h)
 
-    # @attr.gpu
-    # def test_to_cpu_gpu(self):
-    #     self.h.to_gpu()
-    #     self.check_to_cpu(self.h)
+    @attr.gpu
+    def test_to_cpu_gpu(self):
+        self.c.to_gpu()
+        self.h.to_gpu()
+        self.check_to_cpu(self.c, self.h)
 
-    # def check_to_cpu_to_gpu(self, h):
-    #     self.link.set_state(h)
-    #     self.link.to_gpu()
-    #     self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
-    #     self.link.to_gpu()
-    #     self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
-    #     self.link.to_cpu()
-    #     self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
-    #     self.link.to_gpu()
-    #     self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+    def check_to_cpu_to_gpu(self, c, h):
+        self.link.c = c
+        self.link.h = h
+        self.link.to_gpu()
+        self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
+        self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+        self.link.to_gpu()
+        self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
+        self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+        self.link.to_cpu()
+        self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
+        self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+        self.link.to_gpu()
+        self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
+        self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
 
-    # @attr.gpu
-    # def test_to_cpu_to_gpu_cpu(self):
-    #     self.check_to_cpu_to_gpu(self.h)
+    @attr.gpu
+    def test_to_cpu_to_gpu_cpu(self):
+        self.check_to_cpu_to_gpu(self.c, self.h)
 
-    # @attr.gpu
-    # def test_to_cpu_to_gpu_gpu(self):
-    #     self.h.to_gpu()
-    #     self.check_to_cpu_to_gpu(self.h)
+    @attr.gpu
+    def test_to_cpu_to_gpu_gpu(self):
+        self.c.to_gpu()
+        self.h.to_gpu()
+        self.check_to_cpu_to_gpu(self.c, self.h)
 
 
 testing.run_module(__name__, __file__)
