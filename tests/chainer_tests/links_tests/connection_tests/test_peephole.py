@@ -31,13 +31,10 @@ def _peephole(func, c, h, x):
     peep_in_i = c.dot(func.peep_i.W.data.T)
     peep_in_f = c.dot(func.peep_f.W.data.T)
     a = xp.tanh(a)
-    # peep_in_i.data = xp.reshape(peep_in_i.data, i.shape)
     i = _sigmoid(i + peep_in_i)
-    # peep_in_f.data = xp.reshape(peep_in_f.data, f.shape)
     f = _sigmoid(f + peep_in_f)
     c_next = a * i + f * c
     peep_in_o = c_next.dot(func.peep_o.W.data.T)
-    # peep_in_o.data = xp.reshape(peep_in_o.data, o.shape)
     o = _sigmoid(o + peep_in_o)
     y = o * xp.tanh(c_next)
     return c_next, y
@@ -61,7 +58,6 @@ class TestPeephole(unittest.TestCase):
         peep_f[...] = numpy.random.uniform(-1, 1, peep_f.shape)
         peep_o = self.link.peep_o.W.data
         peep_o[...] = numpy.random.uniform(-1, 1, peep_o.shape)
-        # self.link.zerograds()
 
         self.upward = upward.copy()
         self.lateral = lateral.copy()

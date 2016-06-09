@@ -15,6 +15,9 @@ class Peephole(link.Chain):
     Unlike the :link:`~chainer.links.lstm` link, this chain holds peep_i,
     peep_f and peep_o as child links besides upward and lateral.
 
+    Given two inputs a previous hidden vector :math:`h` and an input vector
+    :math:`x`, Peephole returns the next hidden vector :math:`h` defined as
+
     Args:
         in_size (int): Dimensionality of input vectors.
         out_size (int): Dimensionality of output vectors.
@@ -86,13 +89,10 @@ class Peephole(link.Chain):
         peep_in_i = self.peep_i(self.c)
         peep_in_f = self.peep_f(self.c)
         a = tanh.tanh(a)
-        # peep_in_i.data = numpy.reshape(peep_in_i.data, i.data.shape)
         i = sigmoid.sigmoid(i + peep_in_i)
-        # peep_in_f.data = numpy.reshape(peep_in_f.data, f.data.shape)
         f = sigmoid.sigmoid(f + peep_in_f)
         self.c = a * i + f * self.c
         peep_in_o = self.peep_o(self.c)
-        # peep_in_o.data = numpy.reshape(peep_in_o.data, o.data.shape)
         o = sigmoid.sigmoid(o + peep_in_o)
         self.h = o * tanh.tanh(self.c)
         return self.h
