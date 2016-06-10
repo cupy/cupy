@@ -92,13 +92,15 @@ class StandardUpdater(Updater):
         update_func: Update routine. This is a function that takes the updater
             object as the argument. The default routine uses ``converter`` and
             ``loss_func`` if specified.
-        converter: Converter function to build input arrays. If it is omitted,
+        converter: Converter function to build input arrays. Each batch
+            extracted by the main iterator and the ``device`` option are passed
+            to this function. If it is omitted,
             :func:`~chainer.dataset.concat_examples` is used. If
             ``update_func`` is specified, this argument is ignored and not
             used.
         device: Device to which the training data is sent. Negative value
-            indicates the host memory (CPU). If ``update_func`` or
-            ``converter`` is specified, this argument is ignored and not used.
+            indicates the host memory (CPU). If ``update_func`` is specified,
+            this argument is ignored and not used.
         loss_func: Loss function. The target link of the main optimizer is used
             by default. If ``update_func`` is specified, this argument is
             ignored and not used.
@@ -173,9 +175,7 @@ class StandardUpdater(Updater):
 
 def _default_update(updater, converter, device, loss_func):
     if not converter:
-        def _convert(batch):
-            return convert.concat_examples(batch, device=device)
-        converter = _convert
+        converter = convert.concat_examples
 
     iterator = updater.get_iterator('main')
     optimizer = updater.get_optimizer('main')
@@ -183,7 +183,7 @@ def _default_update(updater, converter, device, loss_func):
 
     def update(_):
         batch = iterator.next()
-        in_arrays = converter(batch)
+        in_arrays = converter(batch, device)
 
         if isinstance(in_arrays, tuple):
             in_vars = tuple(variable.Variable(x) for x in in_arrays)

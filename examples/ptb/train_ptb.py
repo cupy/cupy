@@ -115,7 +115,7 @@ def get_bptt_updater(train_iter, optimizer, bprop_len, device):
             batch = train_iter.__next__()
 
             # Concatenate the word IDs to matrices and send them to the device
-            x, t = chainer.dataset.concat_examples(batch, device=device)
+            x, t = chainer.dataset.concat_examples(batch, device)
 
             # Compute the loss at this time step and accuulate it
             loss += model(chainer.Variable(x), chainer.Variable(t))
