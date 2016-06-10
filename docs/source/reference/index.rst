@@ -17,5 +17,6 @@ Chainer Reference Manual
    function_hooks
    datasets
    iterators
+   extensions
    caffe
    graph

@@ -13,5 +13,7 @@ Core functionalities
    core/optimizer
    core/serializer
    core/dataset
+   core/reporter
+   core/training
    core/debug
    core/function_set

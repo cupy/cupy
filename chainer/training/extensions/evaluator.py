@@ -20,18 +20,17 @@ class Evaluator(extension.Extension):
     are aggregated to :class:`~chainer.DictSummary`. The collected mean values
     are further reported to the reporter object of the trainer, where the name
     of each observation is prefixed by the evaluator name. It also report their
-    variances and standard deviations, where the names are also suffixed by
-    ``.variance`` and ``.std``, respectively.
+    standard deviations, where the names are also suffixed by ``.std``.
 
     Evaluator has a structure to customize similar to that of
-    :class:`StandardUpdater`. The main differences are:
+    :class:`~chainer.training.StandardUpdater`. The main differences are:
 
-    - There are no optimizers in an evaluator. Instead, it holds link
+    - There are no optimizers in an evaluator. Instead, it holds links
       to evaluate.
     - An evaluation loop function is used instead of an update function.
     - Preparation routine can be customized, which is called before each
       evaluation. It can be used, e.g., to initialize the state of stateful
-      networks.
+      recurrent networks.
 
     There are two ways to modify the evaluation behavior besides setting a
     custom evaluation function. One is by setting a custom evaluation loop via
