@@ -13,7 +13,6 @@ from chainer.functions.activation import slstm
 from chainer.functions.activation import softmax
 from chainer.functions.activation import softplus
 from chainer.functions.activation import tanh
-from chainer.functions.activation import peephole
 from chainer.functions.array import broadcast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
@@ -101,8 +100,6 @@ Softplus = softplus.Softplus
 softplus = softplus.softplus
 Tanh = tanh.Tanh
 tanh = tanh.tanh
-Peephole = peephole.Peephole
-peephole = peephole.peephole
 
 Broadcast = broadcast.Broadcast
 BroadcastTo = broadcast.BroadcastTo

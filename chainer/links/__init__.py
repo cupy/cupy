@@ -13,11 +13,11 @@ from chainer.links.connection import linear
 from chainer.links.connection import lstm
 from chainer.links.connection import mlp_convolution_2d
 from chainer.links.connection import parameter
+from chainer.links.connection import peephole
 from chainer.links.loss import hierarchical_softmax
 from chainer.links.loss import negative_sampling
 from chainer.links.model import classifier
 from chainer.links.normalization import batch_normalization
-from chainer.links.connection import peephole
 
 Maxout = maxout.Maxout
 PReLU = prelu.PReLU
