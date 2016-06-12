@@ -595,12 +595,9 @@ cdef class ndarray:
 
         if self.ndim <= 1:
             dst = ndarray((count_nonzero,), dtype=dtype)
-            kern = _nonzero_1d_kernel(self.dtype, dtype)
 
-            if self.ndim == 0:
-                kern.linear_launch(self.size, (self.ravel(), scan_index, dst))
-            else:
-                kern.linear_launch(self.size, (self, scan_index, dst))
+            kern = _nonzero_1d_kernel(self.dtype, dtype)
+            kern.linear_launch(self.size, (self.ravel(), scan_index, dst))
 
             return dst,
         else:
