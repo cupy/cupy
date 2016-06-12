@@ -20,3 +20,8 @@ class TestScan(unittest.TestCase):
         expect = cupy.arange(start=1, stop=element_num + 1).astype(dtype)
 
         testing.assert_array_equal(prefix_sum, expect)
+
+    def test_check_1d_array(self):
+        with self.assertRaises(TypeError):
+            a = cupy.zeros((2, 2))
+            cupy.core.core.scan(a)
