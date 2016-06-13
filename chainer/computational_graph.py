@@ -24,9 +24,9 @@ class DotNode(object):
         self.id_ = id(node)
         self.attribute = {'label': node.label}
         if isinstance(node, variable.Variable):
-            self.attribute = {'shape': 'oval'}
+            self.attribute.update({'shape': 'oval'})
         else:
-            self.attribute = {'shape': 'box'}
+            self.attribute.update({'shape': 'box'})
         if attribute is not None:
             self.attribute.update(attribute)
 
