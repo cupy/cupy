@@ -52,7 +52,6 @@ class Scale(link.Chain):
                 func = bias.Bias(axis, bias_shape)
                 self.add_link('bias', func)
 
-        # Hold axis.
         self.axis = axis
 
     def __call__(self, *xs):

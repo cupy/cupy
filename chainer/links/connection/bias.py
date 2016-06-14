@@ -31,7 +31,6 @@ class Bias(link.Link):
             self.add_param('b', shape)
             self.b.data.fill(0)
 
-        # Hold axis.
         self.axis = axis
 
     def __call__(self, *xs):
