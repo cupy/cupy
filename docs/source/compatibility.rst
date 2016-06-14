@@ -52,7 +52,6 @@ The actual dropping should be done through the following steps:
 - At the major version announced in the above update, drop the API.
 
 Consequently, it takes at least two minor versions to drop any APIs after the first deprecation.
-Since each minor update is made for every six weeks, this dropping procedure takes at least 12 weeks (~ 3 months).
 
 API Changes and Its Preparation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
