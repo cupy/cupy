@@ -8,13 +8,13 @@ def bias(x, y, axis=1):
 
     Computes a elementwise summation of two input variables, with the shape of
     the latter variable broadcasted to match the shape of the former. `axis`
-    is the first axis of the first variable along which to apply the second
-    variable.
+    is the first axis of the first variable along which the second variable is
+    applied.
 
     Args:
         x (~chainer.Variable): Input variable to be summed.
         y (~chainer.Variable): Input variable to sum, broadcasted.
-        axis (int): The first axis of `x` along which to apply `y`
+        axis (int): The first axis of `x` along which `y` is applied.
 
     Returns:
         ~chainer.Variable: Output variable.
