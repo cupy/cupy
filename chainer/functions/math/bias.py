@@ -11,8 +11,8 @@ def bias(x, y, axis=1):
     variable.
 
     Args:
-        x (~chainer.Variable): Input variable to be scaled.
-        y (~chainer.Variable): Input variable to scale, broadcasted.
+        x (~chainer.Variable): Input variable to be summed.
+        y (~chainer.Variable): Input variable to sum, broadcasted.
         axis (int): The first axis of `x` along which to apply `y`
 
     Returns:
