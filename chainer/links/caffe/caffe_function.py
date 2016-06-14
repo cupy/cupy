@@ -118,7 +118,7 @@ class CaffeFunction(link.Chain):
     """
     def __init__(self, model_path):
         if not available:
-            msg = ('CaffeFunction is only supported on protobuf>=3 in Python3')
+            msg = 'CaffeFunction is only supported on protobuf>=3 in Python3'
             raise RuntimeError(msg)
 
         super(CaffeFunction, self).__init__()
@@ -347,10 +347,7 @@ class CaffeFunction(link.Chain):
     def _setup_eltwise(self, layer):
         # stable_prod_grad parameter is not supported now.
         operation = layer.eltwise_param.operation
-        coeffs = layer.eltwise_param.coeff
-        if coeffs == []:
-            coeffs = None
-
+        coeffs = layer.eltwise_param.coeff or None
         self.forwards[layer.name] = _EltwiseFunction(operation, coeffs)
         self._add_layer(layer)
 
