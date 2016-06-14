@@ -1,3 +1,4 @@
+import chainer
 from chainer.functions.array import broadcast
 from chainer.functions.array import reshape
 
@@ -21,7 +22,8 @@ def bias(x, y, axis=1):
     """
     x_shape = x.data.shape
     y_shape = y.data.shape
-    assert x_shape[axis:axis + len(y_shape)] == y_shape
+    if chainer.is_debug():
+        assert x_shape[axis:axis + len(y_shape)] == y_shape
     y1_shape = tuple([1] * axis + list(y_shape) +
                      [1] * (len(x_shape) - axis - len(y_shape)))
     y1 = reshape.reshape(y, y1_shape)
