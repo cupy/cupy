@@ -371,14 +371,15 @@ class CaffeFunction(link.Chain):
         # Case of only one bottom where W is learnt parameter.
         if len(bottom) == 1:
             W_shape = blobs[0].shape.dim
-            func = links.Scale(axis, W_shape, bias_term)
+            func = links.scale.Scale(axis, W_shape, bias_term)
             func.W.data.ravel()[:] = blobs[0].data
             if bias_term:
                 func.bias.b.data.ravel()[:] = blobs[1].data
         # Case of two bottoms where W is given as a bottom.
         else:
             shape = blobs[0].shape.dim if bias_term else None
-            func = links.Scale(axis, bias_term=bias_term, bias_shape=shape)
+            func = links.scale.Scale(
+                axis, bias_term=bias_term, bias_shape=shape)
             if bias_term:
                 func.bias.b.data.ravel()[:] = blobs[0].data
 
