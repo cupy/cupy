@@ -34,13 +34,10 @@ class Scale(link.Chain):
     def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
         super(Scale, self).__init__()
 
-        # Add W parameter if given.
+        # Add W parameter and/or bias term.
         if W_shape is not None:
             self.add_param('W', W_shape)
             self.W.data.fill(1)
-
-        # Add bias term if given.
-        if W_shape is not None:
             if bias_term:
                 func = bias.Bias(axis, W_shape)
                 self.add_link('bias', func)
