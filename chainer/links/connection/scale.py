@@ -7,13 +7,13 @@ class Scale(link.Chain):
     """Broadcasted elementwise product with learnable parameter.
 
     Computes a elementwise product as :func:`~chainer.functions.scale`
-    function except that its second input is a learnable weight parameter
+    function does except that its second input is a learnable weight parameter
     :math:`W` the link has.
 
     Args:
         axis (int): The first axis of the first input of
-            :func:`~chainer.functions.scale` function along which to apply its
-            second input.
+            :func:`~chainer.functions.scale` function along which its second
+            input is applied.
         W_shape (tuple of ints): Shape of learnable weight parameter. If
             ``None``, a weight parameter needs to be given explicitly to its
             ``__call__`` method's second input.
@@ -59,9 +59,9 @@ class Scale(link.Chain):
         """Applies broadcasted elementwise product.
 
         Args:
-            *xs (list of ~chainer.Variable): Input variables whose length
-                should be one if the link has a learnable weight parameter,
-                otherwise should be two.
+            xs (list of ~chainer.Variable): Input variables whose length should
+                be one if the link has a learnable weight parameter, otherwise
+                should be two.
         """
         axis = self.axis
 
