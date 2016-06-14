@@ -6,13 +6,13 @@ class Bias(link.Link):
     """Broadcasted elementwise summation with learnable parameter.
 
     Computes a elementwise summation as :func:`~chainer.functions.bias`
-    function except that its second input is a learnable bias parameter
+    function does except that its second input is a learnable bias parameter
     :math:`b` the link has.
 
     Args:
         axis (int): The first axis of the first input of
-            :func:`~chainer.functions.bias` function along which to apply its
-            second input.
+            :func:`~chainer.functions.bias` function along which its second
+            input is applied.
         shape (tuple of ints): Shape of the learnable bias parameter. If
             ``None``, a bias parameter needs to be given explicitly to its
             ``__call__`` method's second input.
@@ -38,9 +38,9 @@ class Bias(link.Link):
         """Applies broadcasted elementwise summation.
 
         Args:
-            *xs (list of ~chainer.Variable): Input variables whose length
-                should be one if the link has a learnable bias parameter,
-                otherwise should be two.
+            xs (list of ~chainer.Variable): Input variables whose length should
+                be one if the link has a learnable bias parameter, otherwise
+                should be two.
         """
         axis = self.axis
 
