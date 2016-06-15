@@ -37,9 +37,13 @@ class Function(object):
 
     .. admonition:: Example
 
+
        Let ``x`` an instance of :class:`Variable` and ``f`` an instance of
        :class:`Function` taking only one argument. Then a line
 
+       >>> import numpy, chainer, chainer.functions as F
+       >>> x = chainer.Variable(numpy.zeros(10))
+       >>> f = F.Identity()
        >>> y = f(x)
 
        computes a new variable ``y`` and creates backward references. Actually,
@@ -49,6 +53,7 @@ class Function(object):
 
        If an application of another function ``g`` occurs as
 
+       >>> g = F.Identity()
        >>> z = g(x)
 
        then the graph grows with a branch::
@@ -203,7 +208,7 @@ Invalid operation is performed in: {0} (Forward)
         It delegates the procedure to :meth:`forward_cpu` or
         :meth:`forward_gpu` by default. Which it selects is determined by the
         type of input arrays.
-        Implementations of :class:`Function` must implement either cpu/gpu
+        Implementations of :class:`Function` must implement either CPU/GPU
         methods or this method.
 
         Args:
@@ -263,7 +268,7 @@ Invalid operation is performed in: {0} (Forward)
         It delegates the procedure to :meth:`backward_cpu` or
         :meth:`backward_gpu` by default. Which it selects is determined by the
         type of input arrays and output gradient arrays. Implementations of
-        :class:`Function` must implement either cpu/gpu methods or this method,
+        :class:`Function` must implement either CPU/GPU methods or this method,
         if the function is intended to be backprop-ed.
 
         Args:
@@ -412,19 +417,18 @@ class FunctionHook(object):
     with :class:`~chainer.function_hooks.TimerHook`, which is a subclass of
     :class:`~chainer.function.FunctionHook`.
 
-    >>> class Model(chainer.Chain):
-    ...     def __call__(x):
-    ...         x = self.l(x)
-    ...         return F.exp(x)
-    ...
-    ... model1 = chainer.Model(l=L.Linear(10, 10))
-    ... model2 = chainer.Model(l=L.Linear(10, 10))
-    ... x = chainer.Variable(...)
-    ... with TimerHook() as m:
-    ...     y = model1(x)
+    >>> import chainer, chainer.links as L, chainer.functions as F
+    ... class Model(chainer.Chain):
+    ...     def __call__(self, x1):
+    ...         return F.exp(self.l(x1))
+    ... model1 = Model(l=L.Linear(10, 10))
+    ... model2 = Model(l=L.Linear(10, 10))
+    ... x = chainer.Variable(numpy.zeros((1, 10), 'f'))
+    ... with chainer.function_hooks.TimerHook() as m:
+    ...     _ = model1(x)
     ...     y = model2(x)
     ...     print(m.total_time())
-    ... model3 = chainer.Model(l=L.Linear(10, 10))
+    ... model3 = Model(l=L.Linear(10, 10))
     ... z = model3(y)
 
     In this example, we measure the elapsed times for each forward propagation
@@ -464,7 +468,7 @@ class FunctionHook(object):
         function_hooks[self.name] = self
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         del chainer.get_function_hooks()[self.name]
 
     # forward

@@ -114,7 +114,7 @@ class TestOptimizerWeightDecay(unittest.TestCase):
 
         opt = optimizers.SGD(lr=1)
         opt.setup(self.target)
-        opt.weight_decay(decay)
+        opt.add_hook(optimizer.WeightDecay(decay))
         opt.update()
 
         gradient_check.assert_allclose(expect, w)
@@ -126,6 +126,36 @@ class TestOptimizerWeightDecay(unittest.TestCase):
     def test_weight_decay_gpu(self):
         self.target.to_gpu()
         self.check_weight_decay()
+
+
+class TestOptimizerLasso(unittest.TestCase):
+
+    def setUp(self):
+        self.target = SimpleLink(
+            np.arange(6, dtype=np.float32).reshape(2, 3),
+            np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3))
+
+    def check_lasso(self):
+        w = self.target.param.data
+        g = self.target.param.grad
+        xp = cuda.get_array_module(w)
+        decay = 0.2
+        expect = w - g - decay * xp.sign(w)
+
+        opt = optimizers.SGD(lr=1)
+        opt.setup(self.target)
+        opt.add_hook(optimizer.Lasso(decay))
+        opt.update()
+
+        gradient_check.assert_allclose(expect, w)
+
+    def test_lasso_cpu(self):
+        self.check_lasso()
+
+    @attr.gpu
+    def test_lasso_gpu(self):
+        self.target.to_gpu()
+        self.check_lasso()
 
 
 class TestGradientMethod(unittest.TestCase):
@@ -155,7 +185,7 @@ class TestGradientMethod(unittest.TestCase):
         self.optimizer.setup(self.target)
 
     def setup_gpu(self, dst_id=None):
-        self.target.to_gpu()
+        self.target.to_gpu(dst_id)
         self.optimizer.setup(self.target)
 
     def check_init_state(self, gpu):

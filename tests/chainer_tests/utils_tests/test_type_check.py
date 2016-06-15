@@ -32,6 +32,7 @@ class TestVariable(unittest.TestCase):
 
 
 class Object(object):
+
     def __init__(self):
         self.value = 10
 
@@ -112,7 +113,7 @@ class TestBinaryOperator(unittest.TestCase):
         y = T.Variable(1, 'y')
 
         def f(x, y):
-            return (x, y)
+            return x, y
         self.op1 = T.BinaryOperator(7, x, y, '+', f)
         self.op2 = T.BinaryOperator(8, x, y, '+', f)
         self.op3 = T.BinaryOperator(9, x, y, '+', f)
@@ -140,7 +141,7 @@ class TestUnaryOperator(unittest.TestCase):
         x = T.Variable(1, 'x')
 
         def f(x):
-            return (x,)
+            return x,
         self.op1 = T.UnaryOperator(8, x, '-', f)
         self.op2 = T.UnaryOperator(9, x, '-', f)
 

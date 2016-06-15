@@ -20,8 +20,8 @@ class Classifier(link.Chain):
         y (~chainer.Variable): Prediction for the last minibatch.
         loss (~chainer.Variable): Loss value for the last minibatch.
         accuracy (~chainer.Variable): Accuracy for the last minibatch.
-        compute_accuracy (bool): If True, compute accuracy on the forward
-            computation. The default value is True.
+        compute_accuracy (bool): If ``True``, compute accuracy on the forward
+            computation. The default value is ``True``.
 
     """
 
@@ -42,7 +42,7 @@ class Classifier(link.Chain):
 
         Args:
             x (~chainer.Variable): Input minibatch.
-            t (~chainer.Variable): Corresponding groundtruth labels.
+            t (~chainer.Variable): Corresponding ground truth labels.
 
         Returns:
             ~chainer.Variable: Loss value.

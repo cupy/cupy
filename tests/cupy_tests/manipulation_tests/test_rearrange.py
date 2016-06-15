@@ -11,7 +11,7 @@ class TestRearrange(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_roll(self, xp, dtype):
-        x = xp.arange(10)
+        x = xp.arange(10, dtype)
         return xp.roll(x, 2)
 
     @testing.for_all_dtypes()

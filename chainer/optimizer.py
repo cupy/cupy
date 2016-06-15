@@ -198,7 +198,7 @@ class Optimizer(object):
         """Registers a hook function.
 
         Hook function is typically called right after the gradient computation,
-        though the timing depdns on the optimization method.
+        though the timing depends on the optimization method.
 
         Args:
             hook (function): Hook function. It accepts the optimizer object.
@@ -454,6 +454,41 @@ class WeightDecay(object):
                     g += rate * p
                 else:
                     kernel(p, rate, g)
+
+
+class Lasso(object):
+    """Optimizer hook function for Lasso regularization.
+
+    This hook function adds a scaled parameter to the sign of each weight.
+    It can be used as a regularization.
+
+    Args:
+        rate (float): Coefficient for the weight decay.
+
+    Attributes:
+        rate (float): Coefficient for the weight decay.
+
+    """
+    name = 'Lasso'
+
+    def __init__(self, rate):
+        self.rate = rate
+
+    def __call__(self, opt):
+        if cuda.available:
+            kernel = cuda.elementwise(
+                'T s, T decay', 'T g', 'g += decay * s', 'lasso')
+
+        rate = self.rate
+        for param in opt.target.params():
+            p, g = param.data, param.grad
+            xp = cuda.get_array_module(p)
+            sign = xp.sign(p)
+            with cuda.get_device(p) as dev:
+                if int(dev) == -1:
+                    g += rate * sign
+                else:
+                    kernel(sign, rate, g)
 
 
 class GradientClipping(object):

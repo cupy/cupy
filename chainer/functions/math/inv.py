@@ -16,12 +16,12 @@ def _inv_gpu(b):
     n = a.shape[1]
     n_matrices = len(a)
     # Pivot array
-    p = cuda.cupy.empty((n, n_matrices), dtype='int32')
+    p = cuda.cupy.empty((n, n_matrices), dtype=numpy.int32)
     # Output array
     c = cuda.cupy.empty_like(a)
     # These arrays hold information on the execution success
     # or if the matrix was singular
-    info = cuda.cupy.empty(n_matrices, dtype=numpy.intp)
+    info = cuda.cupy.empty(n_matrices, dtype=numpy.int32)
     ap = matmul._mat_ptrs(a)
     cp = matmul._mat_ptrs(c)
     _, lda = matmul._get_ld(a)
@@ -110,9 +110,9 @@ def inv(a):
     """Computes the inverse of of square matrix.
 
     Args:
-        a (Variable): Input array to compute the determinant for.
-        Shape of the array should be ``(n, n)`` where ``n`` is the
-        dimensionality of a square matrix.
+        a (Variable): Input array to compute the determinant for. Shape of
+            the array should be ``(n, n)`` where ``n`` is the dimensionality of
+            a square matrix.
 
     Returns:
         ~chainer.Variable: Matrix inverse of ``a``.
@@ -124,10 +124,9 @@ def batch_inv(a):
     """Computes the inverse of a batch of square matrices.
 
     Args:
-        a (Variable): Input array to compute the determinant for.
-        Shape of the array should be ``(m, n, n)`` where m is the number
-        of matrices in the batch, and ``n`` is the dimensionality of a square
-        matrix.
+        a (Variable): Input array to compute the determinant for. Shape of
+            the array should be ``(m, n, n)`` where m is the number of matrices
+            in the batch, and ``n`` is the dimensionality of a square matrix.
 
     Returns:
         ~chainer.Variable: Inverse of every matrix in the batch of matrices.

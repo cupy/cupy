@@ -3,6 +3,7 @@ from six import moves
 
 from chainer import cuda
 from chainer import function
+from chainer.functions.connection import convolution_2d
 from chainer.utils import conv
 from chainer.utils import type_check
 
@@ -18,10 +19,13 @@ if cuda.cudnn_enabled:
             libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
+_check_cudnn_acceptable_type = convolution_2d._check_cudnn_acceptable_type
+
+
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x
 
 
 class Deconvolution2DFunction(function.Function):
@@ -38,8 +42,8 @@ class Deconvolution2DFunction(function.Function):
         x_type, w_type = in_types[:2]
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
-            w_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
+            w_type.dtype.kind == 'f',
             x_type.ndim == 4,
             w_type.ndim == 4,
             x_type.shape[1] == w_type.shape[0]
@@ -61,7 +65,7 @@ class Deconvolution2DFunction(function.Function):
         if n_in.eval() == 3:
             b_type = in_types[2]
             type_check.expect(
-                b_type.dtype == numpy.float32,
+                b_type.dtype == x_type.dtype,
                 b_type.ndim == 1,
                 b_type.shape[0] == w_type.shape[1]
             )
@@ -71,7 +75,7 @@ class Deconvolution2DFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         _, _, h, w = x.shape
-        gcol = numpy.tensordot(W, x, (0, 1))
+        gcol = numpy.tensordot(W, x, (0, 1)).astype(x.dtype)
         # - k, m, n: shape of out_channel
         # - b: number of inputs
         # - h, w: height and width of kernels
@@ -98,7 +102,8 @@ class Deconvolution2DFunction(function.Function):
             self.outh = conv.get_deconv_outsize(in_h, kh, self.sy, self.ph)
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(in_w, kw, self.sx, self.pw)
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             if b is not None:
@@ -107,7 +112,7 @@ class Deconvolution2DFunction(function.Function):
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
             y = cuda.cupy.empty((n, c, self.outh, self.outw),
-                                dtype=numpy.float32)
+                                dtype=x.dtype)
             y_desc = cudnn.create_tensor_descriptor(y)
 
             self.filter_desc = cudnn.create_filter_descriptor(W)
@@ -117,22 +122,17 @@ class Deconvolution2DFunction(function.Function):
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
 
-            one = numpy.array(1, dtype=x.dtype).ctypes
-            zero = numpy.array(0, dtype=x.dtype).ctypes
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
 
             if _cudnn_version >= 4000:
-                self.max_workspace_size = c * kh * kw * 4
+                workspace_size = cuda.get_max_workspace_size()
+                workspace = cuda.cupy.empty((workspace_size,), dtype='b')
                 algo = libcudnn.getConvolutionBackwardDataAlgorithm(
                     handle, self.filter_desc.value, x_desc.value,
                     self.conv_desc.value, y_desc.value, _bwd_data_pref,
-                    self.max_workspace_size)
-                workspace_size = \
-                    libcudnn.getConvolutionBackwardDataWorkspaceSize(
-                        handle, self.filter_desc.value, x_desc.value,
-                        self.conv_desc.value, y_desc.value, algo)
-                workspace = cuda.cupy.empty(
-                    (max(workspace_size // 4, 1),), dtype=x.dtype)
-
+                    workspace_size)
                 libcudnn.convolutionBackwardData_v3(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     x_desc.value, x.data.ptr, self.conv_desc.value,
@@ -145,18 +145,17 @@ class Deconvolution2DFunction(function.Function):
                     zero.data, y_desc.value, y.data.ptr)
 
             if b is not None:
-                libcudnn.addTensor_v2(
-                    handle, libcudnn.CUDNN_ADD_SAME_C,
-                    one.data, self.bias_desc.value, b.data.ptr,
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
                     one.data, y_desc.value, y.data.ptr)
         else:
             W_mat = W.reshape(in_c, c * kh * kw)
             x_mats = x.reshape(n, in_c, in_h * in_w)
             gcol = cuda.cupy.empty(
-                (n, c, kh, kw, in_h, in_w), dtype=numpy.float32)
+                (n, c, kh, kw, in_h, in_w), dtype=x.dtype)
             gcol_mats = gcol.reshape(n, c * kh * kw, in_h * in_w)
             for i in moves.range(n):
-                cuda.cupy.dot(W_mat.T, x_mats[i], gcol_mats[i])
+                gcol_mats[i] = cuda.cupy.dot(W_mat.T, x_mats[i])
             y = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
             if b is not None:
@@ -170,8 +169,8 @@ class Deconvolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
         col = conv.im2col_cpu(
             gy, kh, kw, self.sy, self.sx, self.ph, self.pw)
-        gW = numpy.tensordot(x, col, ([0, 2, 3], [0, 4, 5]))
-        gx = numpy.tensordot(col, W, ([1, 2, 3], [1, 2, 3]))
+        gW = numpy.tensordot(x, col, ([0, 2, 3], [0, 4, 5])).astype(W.dtype)
+        gx = numpy.tensordot(col, W, ([1, 2, 3], [1, 2, 3])).astype(x.dtype)
         gx = numpy.rollaxis(gx, 3, 1)
 
         if b is None:
@@ -187,9 +186,10 @@ class Deconvolution2DFunction(function.Function):
         n, in_c, in_h, in_w = x.shape
         _, out_channels, kh, kw = W.shape
         c, h, w = gy.shape[1:]
-        gx = cuda.cupy.empty((n, in_c, in_h, in_w), dtype=numpy.float32)
+        gx = cuda.cupy.empty((n, in_c, in_h, in_w), dtype=x.dtype)
 
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             gy = cuda.cupy.ascontiguousarray(gy)
@@ -199,19 +199,16 @@ class Deconvolution2DFunction(function.Function):
             gx_desc = cudnn.create_tensor_descriptor(gx)
 
             # chance to choose implicit-precomp-gemm algorithm
-            self.max_workspace_size = out_channels * kh * kw * 4
+            workspace_size = cuda.get_max_workspace_size()
             algo = libcudnn.getConvolutionForwardAlgorithm(
                 handle, gy_desc.value, self.filter_desc.value,
                 self.conv_desc.value, gx_desc.value, _fwd_pref,
-                self.max_workspace_size)
-            workspace_size = libcudnn.getConvolutionForwardWorkspaceSize(
-                handle, gy_desc.value, self.filter_desc.value,
-                self.conv_desc.value, gx_desc.value, algo)
-            workspace = cuda.cupy.empty(
-                (max(workspace_size // 4, 1),), dtype=numpy.float32)
+                workspace_size)
+            workspace = cuda.cupy.empty((workspace_size,), dtype='b')
 
-            one = numpy.array(1, dtype=x.dtype).ctypes
-            zero = numpy.array(0, dtype=x.dtype).ctypes
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
 
             libcudnn.convolutionForward(
                 handle, one.data, gy_desc.value, gy.data.ptr,
@@ -227,17 +224,10 @@ class Deconvolution2DFunction(function.Function):
             gW = cuda.cupy.empty_like(W)
             # filter backward
             if _cudnn_version >= 4000:
-                self.max_workspace_size = c * kh * kw * 4
                 algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
                     handle, gy_desc.value, gx_desc.value,
                     self.conv_desc.value, self.filter_desc.value,
-                    _bwd_filter_pref, self.max_workspace_size)
-                workspace_size = \
-                    libcudnn.getConvolutionBackwardFilterWorkspaceSize(
-                        handle, gy_desc.value, gx_desc.value,
-                        self.conv_desc.value, self.filter_desc.value, algo)
-                workspace = cuda.cupy.empty(
-                    (max(workspace_size // 4, 1),), dtype=x.dtype)
+                    _bwd_filter_pref, workspace_size)
 
                 libcudnn.convolutionBackwardFilter_v3(
                     handle, one.data, gy_desc.value, gy.data.ptr,
@@ -287,9 +277,9 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
     the filter weight ``W``, and the bias vector ``b``.
 
     Args:
-        x (~chainer.Variable): Input variable of shape :math:`(n, c_I, h, w)`
+        x (~chainer.Variable): Input variable of shape :math:`(n, c_I, h, w)`.
         W (~chainer.Variable): Weight variable of shape
-        :math:`(c_I, c_O, k_H, k_W)`.
+            :math:`(c_I, c_O, k_H, k_W)`.
         b (~chainer.Variable): Bias variable of length :math:`c_O` (optional).
         stride (int or pair of ints): Stride of filter applications.
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
@@ -299,7 +289,8 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
             It should be pair of height and width :math:`(out_H, out_W)`.
             Default value is ``None`` and the outsize is estimated by
             input size, stride and pad.
-        use_cudnn (bool): If True, then this function uses CuDNN if available.
+        use_cudnn (bool): If ``True``, then this function uses cuDNN if
+            available.
 
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`

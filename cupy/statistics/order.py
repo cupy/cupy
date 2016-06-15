@@ -6,7 +6,8 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
         axis (int): Along which axis to take the minimum. The flattened array
             is used by default.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis is remained as an axis of size one.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
         dtype: Data type specifier.
 
     Returns:
@@ -27,7 +28,8 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
         axis (int): Along which axis to take the maximum. The flattened array
             is used by default.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis is remained as an axis of size one.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
         dtype: Data type specifier.
 
     Returns:

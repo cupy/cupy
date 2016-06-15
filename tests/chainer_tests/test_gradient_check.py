@@ -3,6 +3,7 @@ import unittest
 import numpy
 import six
 
+import chainer
 from chainer import cuda
 from chainer import gradient_check
 from chainer import testing
@@ -33,10 +34,10 @@ class NumericalGradientTest(unittest.TestCase):
     eps = None
 
     def f(self, xs):
-        return (xs[0] ** 2,)
+        return xs[0] ** 2,
 
     def df(self, xs):
-        return ((2 * xs[0],),)
+        return (2 * xs[0],),
 
     def setUp(self):
         self.xs = (_uniform(2, 1),)
@@ -60,7 +61,7 @@ class NumericalGradientTest(unittest.TestCase):
 
     def check_numerical_grad(self, f, df, xs, gys, eps=None):
         if eps is None:
-            eps = tuple(10**(-i) for i in six.moves.range(2, 5))
+            eps = tuple(10 ** (-i) for i in six.moves.range(2, 5))
         elif not isinstance(eps, tuple):
             eps = (eps, )
 
@@ -86,10 +87,10 @@ class NumericalGradientTest(unittest.TestCase):
 class NumericalGradientTest2(NumericalGradientTest):
 
     def f(self, xs):
-        return (1,)
+        return 1,
 
     def df(self, xs):
-        return ((0,),)
+        return (0,),
 
 
 class NumericalGradientTest3(NumericalGradientTest):
@@ -164,7 +165,7 @@ class NumericalGradientReferenceTest(unittest.TestCase):
         # A returned value and an input refers the same memory.
         # See issue #488
         def func():
-            return (x,)
+            return x,
         gx, = gradient_check.numerical_grad(func, (x,), (1,))
         gradient_check.assert_allclose(cuda.to_cpu(gx), 1)
 
@@ -312,6 +313,31 @@ class AssertAllCloseTest2(unittest.TestCase):
     @attr.gpu
     def test_rtol_gpu(self):
         self.check_rtol(cuda.to_gpu(self.x), cuda.to_gpu(self.y))
+
+
+class Ident(chainer.Function):
+
+    def forward(self, inputs):
+        return inputs
+
+    def backward(self, inputs, grads):
+        return grads
+
+
+class TestCheckBackward(unittest.TestCase):
+
+    def test_multiple_output(self):
+        x1 = numpy.array([1], dtype='f')
+        x2 = numpy.array([1], dtype='f')
+        g1 = numpy.array([1], dtype='f')
+        g2 = numpy.array([1], dtype='f')
+
+        def f(x, y):
+            s, t = Ident()(x, y)
+            u = Ident()(t)
+            return s, u
+
+        gradient_check.check_backward(f, (x1, x2), (g1, g2))
 
 
 testing.run_module(__name__, __file__)

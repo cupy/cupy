@@ -9,7 +9,7 @@ from chainer.utils import type_check
 def _fwd_kern():
     return cuda.elementwise(
         'T x, T cond, T W', 'T y',
-        'y = cond >= 0 ? x : x * W', 'prelu')
+        'y = cond >= 0 ? x : (T)(x * W)', 'prelu')
 
 
 class PReLUFunction(function.Function):
@@ -20,8 +20,8 @@ class PReLUFunction(function.Function):
         x_type, W_type = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
-            W_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
+            W_type.dtype == x_type.dtype,
             x_type.ndim >= W_type.ndim + 1,
             x_type.shape[1:1 + W_type.ndim.eval()] == W_type.shape
         )
@@ -44,9 +44,8 @@ class PReLUFunction(function.Function):
         x, W = inputs
         gy = grad_outputs[0]
         mask = x >= 0
-        masked_x_gy = numpy.ma.array(x * gy, mask=mask)
         axes = (0,) + tuple(six.moves.range(1 + W.ndim, gy.ndim))
-        gW = masked_x_gy.sum(axis=axes)
+        gW = numpy.where(mask, 0, x * gy).sum(axis=axes)
         if numpy.isscalar(gW):
             gW = numpy.array(gW)
 
@@ -62,7 +61,7 @@ class PReLUFunction(function.Function):
         gy = grad_outputs[0]
         masked = cuda.elementwise(
             'T x, T gy', 'T masked',
-            'masked = x >= 0 ? 0 : x * gy',
+            'masked = x >= 0 ? (T)0 : (T)(x * gy)',
             'prelu_masked')(x, gy)
         axes = (0,) + tuple(six.moves.range(1 + W.ndim, gy.ndim))
         gW = masked.sum(axis=axes)
@@ -94,7 +93,7 @@ def prelu(x, W):
 
     Args:
         x (~chainer.Variable): Input variable.
-    Its first argument is assumed to be the minibatch dimension.
+            Its first argument is assumed to be the minibatch dimension.
         W (~chainer.Variable): Weight variable.
 
     Returns:

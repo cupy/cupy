@@ -1,6 +1,7 @@
 import numpy
 
 from chainer import cuda
+from chainer.functions.math import identity
 from chainer import utils
 from chainer import variable
 
@@ -69,7 +70,7 @@ def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
         y: Right-hand-side array.
         atol (float): Absolute tolerance.
         rtol (float): Relative tolerance.
-        verbose (bool): If True, it outputs verbose messages on error.
+        verbose (bool): If ``True``, it outputs verbose messages on error.
 
     """
     x = cuda.to_cpu(utils.force_array(x))
@@ -88,7 +89,7 @@ def _as_tuple(x):
     elif isinstance(x, list):
         return tuple(x)
     else:
-        return (x,)
+        return x,
 
 
 def check_backward(func, x_data, y_grad, params=(),
@@ -168,7 +169,7 @@ def check_backward(func, x_data, y_grad, params=(),
             passed to ``func``. If ``x_data`` is one ``ndarray`` object, it is
             treated as ``(x_data,)``.
         y_grad (ndarray or tuple of ndarrays or None):
-            A set of ``ndarray`` s representing gradinents of return-values of
+            A set of ``ndarray`` s representing gradients of return-values of
             ``func``. If ``y_grad`` is one ``ndarray`` object, it is
             treated as ``(y_grad,)``. If ``func`` is a loss-function,
             ``y_grad`` should be set to ``None``.
@@ -194,6 +195,14 @@ def check_backward(func, x_data, y_grad, params=(),
 
     xs = [variable.Variable(x) for x in x_data]
     y = func(*xs)
+    y = _as_tuple(y)
+
+    # All creators of `y` need to be the same because we only call
+    # `y[0].backward` to call `backward` method of the creator.
+    # To do so we need to insert a dummy function `Ident` to the
+    # computational graph.
+    # Note that `func` may not be a `Function` object.
+    y = identity.Identity()(*y)
     y = _as_tuple(y)
 
     if y_grad is not None:

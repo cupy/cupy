@@ -10,6 +10,7 @@ from chainer import variable
 
 
 class MockFunction(function.Function):
+
     def __init__(self, n_in, n_out):
         self.n_in = n_in
         self.n_out = n_out
@@ -37,6 +38,7 @@ def _check(self, outputs, node_num, edge_num):
 
 
 class TestGraphBuilder(unittest.TestCase):
+
     # x-f-y-g-z
     def setUp(self):
         self.x = variable.Variable(np.zeros((1, 2)).astype(np.float32))
@@ -69,6 +71,7 @@ class TestGraphBuilder(unittest.TestCase):
 
 
 class TestGraphBuilder2(unittest.TestCase):
+
     # x-f-y1
     #  \
     #   g-y2
@@ -91,6 +94,7 @@ class TestGraphBuilder2(unittest.TestCase):
 
 
 class TestGraphBuilder3(unittest.TestCase):
+
     # x-f-y1
     #    \
     #     y2
@@ -112,6 +116,7 @@ class TestGraphBuilder3(unittest.TestCase):
 
 
 class TestGraphBuilder4(unittest.TestCase):
+
     # x1-f-y
     #   /
     # x2
@@ -134,6 +139,7 @@ class TestGraphBuilder4(unittest.TestCase):
 
 
 class TestGraphBuilder5(unittest.TestCase):
+
     def setUp(self):
         self.x = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.y = 2 * self.x
@@ -143,16 +149,16 @@ class TestGraphBuilder5(unittest.TestCase):
     def test_edges(self):
         self.assertEqual(len(self.g.edges), 2)
         self.assertSetEqual(set(self.g.edges),
-                            set([(self.x, self.f),
-                                 (self.f, self.y)]))
+                            {(self.x, self.f), (self.f, self.y)})
 
     def test_nodes(self):
         self.assertEqual(len(self.g.nodes), 3)
         self.assertSetEqual(set(self.g.nodes),
-                            set([self.x, self.f, self.y]))
+                            {self.x, self.f, self.y})
 
 
 class TestGraphBuilder6(unittest.TestCase):
+
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
@@ -163,20 +169,18 @@ class TestGraphBuilder6(unittest.TestCase):
     def test_edges(self):
         self.assertEqual(len(self.g.edges), 3)
         self.assertSetEqual(set(self.g.edges),
-                            set([(self.x1, self.f),
-                                 (self.x2, self.f),
-                                 (self.f, self.y)]))
+                            {(self.x1, self.f),
+                             (self.x2, self.f),
+                             (self.f, self.y)})
 
     def test_nodes(self):
         self.assertEqual(len(self.g.nodes), 4)
         self.assertSetEqual(set(self.g.nodes),
-                            set([self.x1,
-                                 self.x2,
-                                 self.f,
-                                 self.y]))
+                            {self.x1, self.x2, self.f, self.y})
 
 
 class TestGraphBuilder7(unittest.TestCase):
+
     def setUp(self):
         self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
         self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
@@ -185,6 +189,45 @@ class TestGraphBuilder7(unittest.TestCase):
 
     def test_tail_node(self):
         _check(self, (self.y, ), 9, 8)
+
+
+class TestGraphBuilderStylization(unittest.TestCase):
+
+    def setUp(self):
+        self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
+        self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
+        self.y = self.x1 + self.x2
+        self.f = self.y.creator
+        self.variable_style = {'label': 'variable_0', 'shape': 'octagon',
+                               'style': 'filled', 'fillcolor': '#E0E0E0'}
+        self.function_style = {'label': 'function_0', 'shape': 'record',
+                               'style': 'filled', 'fillcolor': '#6495ED'}
+        self.g = c.build_computational_graph(
+            (self.y,), variable_style=self.variable_style,
+            function_style=self.function_style)
+
+    def test_dotfile_content(self):
+        dotfile_content = self.g.dump()
+        for style in [self.variable_style, self.function_style]:
+            for key, value in style.items():
+                self.assertIn('{0}="{1}"'.format(key, value), dotfile_content)
+
+
+class TestGraphBuilderRankdir(unittest.TestCase):
+
+    def setUp(self):
+        self.x1 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
+        self.x2 = variable.Variable(np.zeros((1, 2)).astype(np.float32))
+        self.y = self.x1 + self.x2
+
+    def test_randir(self):
+        for rankdir in ['TB', 'BT', 'LR', 'RL']:
+            g = c.build_computational_graph((self.y,), rankdir=rankdir)
+            self.assertIn('rankdir=%s' % rankdir, g.dump())
+
+    def test_randir_invalid(self):
+        self.assertRaises(ValueError,
+                          c.build_computational_graph, (self.y,), rankdir='TL')
 
 
 testing.run_module(__name__, __file__)

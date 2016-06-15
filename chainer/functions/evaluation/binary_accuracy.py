@@ -1,3 +1,5 @@
+from __future__ import division
+
 import numpy
 
 from chainer import cuda
@@ -14,7 +16,7 @@ class BinaryAccuracy(function.Function):
         x_type, t_type = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             t_type.dtype == numpy.int32,
             t_type.shape == x_type.shape,
         )
@@ -27,7 +29,7 @@ class BinaryAccuracy(function.Function):
         t = t.ravel()
         c = (y >= 0)
         count = xp.maximum(1, (t != self.ignore_label).sum())
-        return xp.asarray((c == t).sum(dtype='f') / count, dtype='f'),
+        return xp.asarray((c == t).sum() / count, dtype=y.dtype),
 
 
 def binary_accuracy(y, t):
@@ -36,9 +38,9 @@ def binary_accuracy(y, t):
     Args:
         y (Variable): Variable holding a matrix whose i-th element
             indicates the score of positive at the i-th example.
-        t (Variable): Variable holding an int32 vector of groundtruth labels.
-            If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
-            Accuracy is zero if all groundtruth labels are ``-1``.
+        t (Variable): Variable holding an int32 vector of ground truth labels.
+            If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
+            Accuracy is zero if all ground truth labels are ``-1``.
 
     Returns:
         Variable: A variable holding a scalar array of the accuracy.

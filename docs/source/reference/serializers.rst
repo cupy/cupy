@@ -3,7 +3,7 @@
 Serializers
 ===========
 
-Serialization in Numpy NPZ format
+Serialization in NumPy NPZ format
 ---------------------------------
 
 NumPy serializers can be used in arbitrary environments that Chainer runs with.

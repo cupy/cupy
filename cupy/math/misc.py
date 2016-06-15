@@ -5,7 +5,7 @@ from cupy import core
 
 
 def clip(a, a_min, a_max, out=None):
-    '''Clips the values of an array to a given interval.
+    """Clips the values of an array to a given interval.
 
     This is equivalent to ``maximum(minimum(a, a_max), a_min)``, while this
     function is more efficient.
@@ -21,7 +21,7 @@ def clip(a, a_min, a_max, out=None):
 
     .. seealso:: :func:`numpy.clip`
 
-    '''
+    """
     # TODO(okuta): check type
     return a.clip(a_min, a_max, out=out)
 
@@ -141,7 +141,7 @@ fmin = core.create_ufunc(
     'out0 = min(in0, in1)',
     doc='''Takes the minimum of two arrays elementwise.
 
-    If NaN apperas, it returns the other operand.
+    If NaN appears, it returns the other operand.
 
     .. seealso:: :data:`numpy.fmin`
 

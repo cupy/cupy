@@ -2,6 +2,7 @@
 
 from chainer.functions.activation import clipped_relu
 from chainer.functions.activation import elu
+from chainer.functions.activation import hard_sigmoid
 from chainer.functions.activation import leaky_relu
 from chainer.functions.activation import log_softmax
 from chainer.functions.activation import lstm
@@ -14,9 +15,11 @@ from chainer.functions.activation import softmax
 from chainer.functions.activation import softplus
 from chainer.functions.activation import tanh
 from chainer.functions.array import broadcast
+from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
+from chainer.functions.array import get_item
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
@@ -34,6 +37,7 @@ from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
 from chainer.functions.loss import hinge
+from chainer.functions.loss import huber_loss
 from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
@@ -41,11 +45,16 @@ from chainer.functions.loss import softmax_cross_entropy
 from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared
+from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
+from chainer.functions.math import exponential_m1
 from chainer.functions.math import identity
 from chainer.functions.math import inv
+from chainer.functions.math import linear_interpolate
+from chainer.functions.math import logarithm_1p
 from chainer.functions.math import matmul
+from chainer.functions.math import maximum
 from chainer.functions.math import minmax
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
@@ -55,6 +64,7 @@ from chainer.functions.normalization import batch_normalization
 from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
+from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
 from chainer.links.activation import prelu as links_prelu
@@ -78,6 +88,8 @@ connectionist_temporal_classification \
     = ctc.connectionist_temporal_classification
 ELU = elu.ELU
 elu = elu.elu
+HardSigmoid = hard_sigmoid.HardSigmoid
+hard_sigmoid = hard_sigmoid.hard_sigmoid
 LeakyReLU = leaky_relu.LeakyReLU
 leaky_relu = leaky_relu.leaky_relu
 LogSoftmax = log_softmax.LogSoftmax
@@ -103,12 +115,16 @@ Broadcast = broadcast.Broadcast
 BroadcastTo = broadcast.BroadcastTo
 broadcast_to = broadcast.broadcast_to
 broadcast = broadcast.broadcast
+Cast = cast.Cast
+cast = cast.cast
 Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
+GetItem = get_item.GetItem
+get_item = get_item.get_item
 Reshape = reshape.Reshape
 reshape = reshape.reshape
 SplitAxis = split_axis.SplitAxis
@@ -148,6 +164,8 @@ mean_squared_error = mean_squared_error.mean_squared_error
 negative_sampling = negative_sampling.negative_sampling
 SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
 sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
+HuberLoss = huber_loss.HuberLoss
+huber_loss = huber_loss.huber_loss
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 
@@ -159,21 +177,31 @@ BatchL2NormSquared = batch_l2_norm_squared.BatchL2NormSquared
 batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
+Clip = clip.Clip
+clip = clip.clip
 Cos = trigonometric.Cos
 cos = trigonometric.cos
 det = det.det
 Exp = exponential.Exp
 exp = exponential.exp
+Expm1 = exponential_m1.Expm1
+expm1 = exponential_m1.expm1
 Identity = identity.Identity
 identity = identity.identity
 Inv = inv.Inv
 inv = inv.inv
+LinearInterpolate = linear_interpolate.LinearInterpolate
+linear_interpolate = linear_interpolate.linear_interpolate
 Log = exponential.Log
 log = exponential.log
+Log1p = logarithm_1p.Log1p
+log1p = logarithm_1p.log1p
 MatMul = matmul.MatMul
 matmul = matmul.matmul
 Max = minmax.Max
 max = minmax.max
+Maximum = maximum.Maximum
+maximum = maximum.maximum
 Min = minmax.Min
 min = minmax.min
 Sin = trigonometric.Sin
@@ -197,6 +225,8 @@ AveragePooling2D = average_pooling_2d.AveragePooling2D
 average_pooling_2d = average_pooling_2d.average_pooling_2d
 MaxPooling2D = max_pooling_2d.MaxPooling2D
 max_pooling_2d = max_pooling_2d.max_pooling_2d
+ROIPooling2D = roi_pooling_2d.ROIPooling2D
+roi_pooling_2d = roi_pooling_2d.roi_pooling_2d
 SpatialPyramidPooling2D = spatial_pyramid_pooling_2d.SpatialPyramidPooling2D
 spatial_pyramid_pooling_2d = \
     spatial_pyramid_pooling_2d.spatial_pyramid_pooling_2d
@@ -215,7 +245,6 @@ InceptionBN = inceptionbn.InceptionBN
 Linear = links_linear.Linear
 Parameter = parameter.Parameter
 
-BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = links_negative_sampling.NegativeSampling
 
 BatchNormalization = links_batch_normalization.BatchNormalization

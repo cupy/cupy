@@ -17,7 +17,8 @@ class AdaGrad(optimizer.GradientMethod):
 
     def init_state(self, param, state):
         xp = cuda.get_array_module(param.data)
-        state['h'] = xp.zeros_like(param.data)
+        with cuda.get_device(param.data):
+            state['h'] = xp.zeros_like(param.data)
 
     def update_one_cpu(self, param, state):
         h = state['h']

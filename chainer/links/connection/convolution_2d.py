@@ -1,6 +1,7 @@
-import numpy
+import math
 
 from chainer.functions.connection import convolution_2d
+from chainer import initializers
 from chainer import link
 
 
@@ -22,12 +23,16 @@ class Convolution2D(link.Link):
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         wscale (float): Scaling factor of the initial weight.
         bias (float): Initial bias value.
-        nobias (bool): If True, then this link does not use the bias term.
-        use_cudnn (bool): If True, then this link uses CuDNN if available.
+        nobias (bool): If ``True``, then this link does not use the bias term.
+        use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``.
+            May also be a callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``.
+            May also be a callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
 
     .. seealso::
        See :func:`chainer.functions.convolution_2d` for the definition of
@@ -38,6 +43,7 @@ class Convolution2D(link.Link):
         b (~chainer.Variable): Bias parameter.
 
     """
+
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
                  initialW=None, initial_bias=None):
@@ -49,11 +55,10 @@ class Convolution2D(link.Link):
         W_shape = (out_channels, in_channels, kh, kw)
         super(Convolution2D, self).__init__(W=W_shape)
 
-        if initialW is not None:
-            self.W.data[...] = initialW
-        else:
-            std = wscale * numpy.sqrt(1. / (kh * kw * in_channels))
-            self.W.data[...] = numpy.random.normal(0, std, W_shape)
+        # For backward compatibility, the scale of weights is proportional to
+        # the square root of wscale.
+        initializers.init_weight(self.W.data, initialW,
+                                 scale=math.sqrt(wscale))
 
         if nobias:
             self.b = None
@@ -61,7 +66,7 @@ class Convolution2D(link.Link):
             self.add_param('b', out_channels)
             if initial_bias is None:
                 initial_bias = bias
-            self.b.data[...] = initial_bias
+            initializers.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
         """Applies the convolution layer.
@@ -80,4 +85,4 @@ class Convolution2D(link.Link):
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x

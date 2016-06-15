@@ -6,6 +6,7 @@ This is a minimal example to write a feed-forward net.
 """
 from __future__ import print_function
 import argparse
+import time
 
 import numpy as np
 import six
@@ -92,6 +93,7 @@ for epoch in six.moves.range(1, n_epoch + 1):
     perm = np.random.permutation(N)
     sum_accuracy = 0
     sum_loss = 0
+    start = time.time()
     for i in six.moves.range(0, N, batchsize):
         x = chainer.Variable(xp.asarray(x_train[perm[i:i + batchsize]]))
         t = chainer.Variable(xp.asarray(y_train[perm[i:i + batchsize]]))
@@ -101,16 +103,24 @@ for epoch in six.moves.range(1, n_epoch + 1):
 
         if epoch == 1 and i == 0:
             with open('graph.dot', 'w') as o:
+                variable_style = {'shape': 'octagon', 'fillcolor': '#E0E0E0',
+                                  'style': 'filled'}
+                function_style = {'shape': 'record', 'fillcolor': '#6495ED',
+                                  'style': 'filled'}
                 g = computational_graph.build_computational_graph(
-                    (model.loss, ))
+                    (model.loss, ),
+                    variable_style=variable_style,
+                    function_style=function_style)
                 o.write(g.dump())
             print('graph generated')
 
         sum_loss += float(model.loss.data) * len(t.data)
         sum_accuracy += float(model.accuracy.data) * len(t.data)
-
-    print('train mean loss={}, accuracy={}'.format(
-        sum_loss / N, sum_accuracy / N))
+    end = time.time()
+    elapsed_time = end - start
+    throughput = N / elapsed_time
+    print('train mean loss={}, accuracy={}, throughput={} images/sec'.format(
+        sum_loss / N, sum_accuracy / N, throughput))
 
     # evaluation
     sum_accuracy = 0
