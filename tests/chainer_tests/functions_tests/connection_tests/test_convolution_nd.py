@@ -1,5 +1,6 @@
 import unittest
 
+import functools
 import numpy
 from operator import mul
 
@@ -31,7 +32,7 @@ class TestConvolutionND(unittest.TestCase):
         self.stride = tuple([2]*N)
         self.pad = tuple([1]*N)
 
-        W_scale = numpy.sqrt(1. / reduce(mul, ks, in_channels))
+        W_scale = numpy.sqrt(1. / functools.reduce(mul, ks, in_channels))
         W_shape = (out_channels, in_channels) + ks
         self.W = numpy.random.normal(0, W_scale, W_shape).astype(self.W_dtype)
         self.b = numpy.random.uniform(-1, 1, out_channels).astype(self.x_dtype)
