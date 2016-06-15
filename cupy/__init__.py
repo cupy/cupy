@@ -135,6 +135,7 @@ concatenate = manipulation.join.concatenate
 dstack = manipulation.join.dstack
 hstack = manipulation.join.hstack
 vstack = manipulation.join.vstack
+stack = manipulation.join.stack
 
 asfortranarray = manipulation.kind.asfortranarray
 

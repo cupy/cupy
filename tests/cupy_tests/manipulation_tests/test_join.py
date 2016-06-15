@@ -97,3 +97,24 @@ class TestJoin(unittest.TestCase):
         b = cupy.empty((3, 1))
         with self.assertRaises(ValueError):
             cupy.vstack((a, b))
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_array_equal()
+    def test_stack(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        b = testing.shaped_arange((2, 3), xp)
+        c = testing.shaped_arange((2, 3), xp)
+        return xp.stack((a, b, c))
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_raises()
+    def test_stack_different_shape(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        b = testing.shaped_arange((2, 4), xp)
+        return xp.stack([a, b])
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_raises()
+    def test_stack_out_of_bounds(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.stack([a, a], axis=3)
