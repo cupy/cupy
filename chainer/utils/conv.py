@@ -140,7 +140,7 @@ def col2im_cpu(col, sy, sx, ph, pw, h, w):
 def col2im_nd_cpu(col, ss, ps, ds):
     # Assured consistency of dimensions of parameters by caller.
     n, c = col.shape[:2]  # (n, c, kx_1, ..., kx_N, out_1, ..., out_N)
-    mid = (len(col.shape) - 2) / 2 + 2
+    mid = (len(col.shape) - 2) // 2 + 2
     ks = col.shape[2:mid]
     outs = col.shape[mid:]
     colon = slice(None)
@@ -202,7 +202,7 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w):
 def col2im_nd_gpu(col, ss, ps, ds):
     # Assured consistency of dimensions of parameters by caller.
     n, c = col.shape[:2]        # (n, c, k_1, ..., k_N, out_1, ..., out_N)
-    mid = (len(col.shape) - 2) / 2 + 2
+    mid = (len(col.shape) - 2) // 2 + 2
     ks = col.shape[2:mid]
     outs = col.shape[mid:]
     N = len(ds)
