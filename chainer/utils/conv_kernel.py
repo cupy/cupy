@@ -3,6 +3,10 @@ import functools
 import six
 
 
+def identity(x):
+    return x
+
+
 def mulexp(xs, init=None):
     if init:
         return functools.reduce('{} * {}'.format, xs, init)
@@ -27,23 +31,11 @@ def muladdexp(xs, ys, init=None):
         return functools.reduce(aux, zip(xs, ys))
 
 
-def mapenum(fn, *xs):
-    def aux(x):
-        i, ys = x[0], x[1]
-        return fn(i, *ys)
-    return map(aux, enumerate(zip(*xs)))
-
-
-def maplist(fn, xs, enumerate=False):
+def maplist(fn, xs):
     # Imperative impl. because Python does not optimize tail recursion.
     ret = []
-    i = 0
     while xs:
-        if enumerate:
-            ret += [fn(i, xs)]
-            i += 1
-        else:
-            ret += [fn(xs)]
+        ret += [fn(xs)]
         xs = xs[1:]
     return ret
 
@@ -91,40 +83,40 @@ def _im2col_c0_decl(outs, ks):
 def _im2col_kxs_decl(N, outs, ks):
     # 2D: int kx_0 = i / (k_1 * out_0 * out_1) % k_0;
     #     int kx_1 = i / (out_0 * out_1) % k_1;
-    def aux(i, xs):
+    def aux(kx, xs):
         head = xs[0]
         tail = xs[1:] + outs
         if tail:
-            return 'int kx_{} = i / ({}) % {};'.format(i, mulexp(tail), head)
+            return 'int {} = i / ({}) % {};'.format(kx, mulexp(tail), head)
         else:
-            return 'int kx_{} = i % {};'.format(i, head)
-    kxs_decl = maplist(aux, ks, True)
+            return 'int {} = i % {};'.format(kx, head)
     kxs = _vars('kx', N)
+    kxs_decl = map(aux, kxs, maplist(identity, ks))
     return kxs_decl, kxs
 
 
 def _im2col_outxs_decl(N, outs):
     # 2D: int outx_0 = i / (out_1) % out_0;
     #     int outx_1 = i % out_1;
-    def aux(i, xs):
+    def aux(outx, xs):
         head = xs[0]
         tail = xs[1:]
         if tail:
-            return 'int outx_{} = i / ({}) % {};'.format(i, mulexp(tail), head)
+            return 'int {} = i / ({}) % {};'.format(outx, mulexp(tail), head)
         else:
-            return 'int outx_{} = i % {};'.format(i, head)
-    outxs_decl = maplist(aux, outs, True)
+            return 'int {} = i % {};'.format(outx, head)
     outxs = _vars('outx', N)
+    outxs_decl = map(aux, outxs, maplist(identity, outs))
     return outxs_decl, outxs
 
 
 def _im2col_ins_decl(N, kxs, outxs, ss, ps):
     # 2D: int in_0 = kx_0 + outx_0 * s_0 - p_0;
     #     int in_1 = kx_1 + outx_1 * s_1 - p_1;
-    def aux(i, kx, outx, s, p):
-        return 'int in_{} = {} + {} * {} - {};'.format(i, kx, outx, s, p)
-    ins_decl = mapenum(aux, kxs, outxs, ss, ps)
+    def aux(_in, kx, outx, s, p):
+        return 'int {} = {} + {} * {} - {};'.format(_in, kx, outx, s, p)
     ins = _vars('in', N)
+    ins_decl = map(aux, ins, kxs, outxs, ss, ps)
     return ins_decl, ins
 
 
@@ -134,10 +126,9 @@ def _im2col_col_set(ins, ds):
     #     } else {
     #       col = (T)0;
     #     }
-    def rels_aux(x):
-        _in, d = x
+    def rels_aux(_in, d):
         return '0 <= {} && {} < {}'.format(_in, _in, d)
-    test = andexp(map(rels_aux, zip(ins, ds)))
+    test = andexp(map(rels_aux, ins, ds))
     index = muladdexp(ds, ins, 'c0')
     col_set = 'col = img[{}];'.format(index)
     template = """if ({}) {{
@@ -193,16 +184,16 @@ def _col2im_c0_decl(ds):
 def _col2im_xs_decl(N, ds, ps):
     # 2D: int x_0 = i / (d_1) % d_0 + p_0;
     #     int x_1 = i % d_1 + p_1;
-    def aux(i, ds, p):
+    def aux(x, ds, p):
         head = ds[0]
         tail = ds[1:]
         if tail:
-            return 'int x_{} = i / ({}) % {} + {};'.format(
-                i, mulexp(tail), head, p)
+            return 'int {} = i / ({}) % {} + {};'.format(
+                x, mulexp(tail), head, p)
         else:
-            return 'int x_{} = i % {} + {};'.format(i, head, p)
-    xs_decl = mapenum(aux, maplist(lambda x: x, ds), ps)
+            return 'int {} = i % {} + {};'.format(x, head, p)
     xs = _vars('x', N)
+    xs_decl = map(aux, xs, maplist(identity, ds), ps)
     return xs_decl, xs
 
 
@@ -211,15 +202,15 @@ def _col2im_outs_decl(N, outs, xs, ks, ss):
     #     int outx_1_0 = min(out_0, (x_0       + s_0) / s_0);
     #     int outx_0_1 = max(0,     (x_1 - k_1 + s_1) / s_1);
     #     int outx_1_1 = min(out_1, (x_1       + s_1) / s_1);
-    def aux(i, out, x, k, s):
+    def aux(outx_0, outx_1, out, x, k, s):
         return [
-            'int outx_0_{} = max(0,     ({} - {} + {}) / {});'.format(
-                i, x, k, s, s),
-            'int outx_1_{} = min({}, ({}       + {}) / {});'.format(
-                i, out, x, s, s)]
-    outs_decl = sum(mapenum(aux, outs, xs, ks, ss), [])
+            'int {} = max(0,     ({} - {} + {}) / {});'.format(
+                outx_0, x, k, s, s),
+            'int {} = min({}, ({}       + {}) / {});'.format(
+                outx_1, out, x, s, s)]
     outxs_0 = _vars('outx_0', N)
     outxs_1 = _vars('outx_1', N)
+    outs_decl = sum(map(aux, outxs_0, outxs_1, outs, xs, ks, ss), [])
     return outs_decl, outxs_0, outxs_1
 
 
@@ -246,9 +237,6 @@ def _col2im_val_accum(N, outxs_0, outxs_1, outs, ks, xs, ss):
         w('int {} = {} - {} * {};'.format(kx, x, outx, s))
 
     # Accumulation.
-    def _aux(exp, arg):
-        x, y = arg
-        return '({} + {} * {})'.format(x, y, exp)
     index = muladdexp(ks + outs, kxs + outxs, 'c0')
     w('val = val + col[{}];'.format(index))
 
@@ -267,8 +255,7 @@ def _col2im_operation(N, ds, outs, ks, ss, ps):
     c0_decl = [_col2im_c0_decl(ds)]
     xs_decl, xs = _col2im_xs_decl(N, ds, ps)
     outs_decl, outxs_0, outxs_1 = _col2im_outs_decl(N, outs, xs, ks, ss)
-    val_accum = [_col2im_val_accum(
-        N, outxs_0, outxs_1, outs, ks, xs, ss)]
+    val_accum = [_col2im_val_accum(N, outxs_0, outxs_1, outs, ks, xs, ss)]
     img_set = [_col2im_img_set()]
     return '\n'.join(c0_decl + xs_decl + outs_decl + val_accum + img_set)
 
