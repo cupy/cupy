@@ -1,3 +1,4 @@
+import chainer
 from chainer.functions.math import scale
 from chainer import link
 from chainer.links.connection import bias
@@ -63,13 +64,15 @@ class Scale(link.Chain):
 
         # Case of only one bottom where W is learnt parameter.
         if hasattr(self, 'W'):
-            assert len(xs) == 1
+            if chainer.is_debug():
+                assert len(xs) == 1
             x, = xs
             W = self.W
             z = scale.scale(x, W, axis)
         # Case of two bottoms where W is given as a bottom.
         else:
-            assert len(xs) == 2
+            if chainer.is_debug():
+                assert len(xs) == 2
             x, y = xs
             z = scale.scale(x, y, axis)
 

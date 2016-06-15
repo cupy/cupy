@@ -1,3 +1,4 @@
+import chainer
 from chainer.functions.math import bias
 from chainer import link
 
@@ -45,12 +46,14 @@ class Bias(link.Link):
 
         # Case of only one bottom where b is learnt parameter.
         if hasattr(self, 'b'):
-            assert len(xs) == 1
+            if chainer.is_debug():
+                assert len(xs) == 1
             x, = xs
             b = self.b
             return bias.bias(x, b, axis)
         # Case of two bottoms where b is given as a bottom.
         else:
-            assert len(xs) == 2
+            if chainer.is_debug():
+                assert len(xs) == 2
             x, y = xs
             return bias.bias(x, y, axis)
