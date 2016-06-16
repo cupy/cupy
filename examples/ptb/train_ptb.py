@@ -53,17 +53,19 @@ class ParallelSequentialIterator(chainer.dataset.Iterator):
     def __init__(self, dataset, batch_size, repeat=True):
         self.dataset = dataset
         self.batch_size = batch_size  # batch size
-        self.epoch = 0  # number of completed sweeps over the dataset
-                        # In this case, it is incremented if every word is
-                        # visited at least once after the last increment.
-        self.is_new_epoch = False  # True if the epoch is incremented at the
-                                   # last iteration
+        # Number of completed sweeps over the dataset. In this case, it is
+        # incremented if every word is visited at least once after the last
+        # increment.
+        self.epoch = 0
+        # True if the epoch is incremented at the last iteration.
+        self.is_new_epoch = False
         self.repeat = repeat
         length = len(dataset)
         # Offsets maintain the position of each sequence in the minibatch.
         self.offsets = [i * length // batch_size for i in range(batch_size)]
-        self.iteration = 0  # NOTE: this is not a count of parameter updates.
-                            # It is just a count of calls of ``__next__``.
+        # NOTE: this is not a count of parameter updates. It is just a count of
+        # calls of ``__next__``.
+        self.iteration = 0
 
     def __next__(self):
         # This method is the main part of a dataset iterator. It returns the

@@ -1,12 +1,10 @@
 from __future__ import print_function
 import hashlib
-import json
 import os
 import shutil
 import tempfile
 
 import filelock
-import numpy
 from six.moves.urllib import request
 
 

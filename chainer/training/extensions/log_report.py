@@ -5,9 +5,9 @@ import tempfile
 import six
 
 from chainer import reporter
+import chainer.serializer as serializer_module
 from chainer.training import extension
 import chainer.training.trigger as trigger_module
-import chainer.serializer as serializer_module
 
 
 class LogReport(extension.Extension):

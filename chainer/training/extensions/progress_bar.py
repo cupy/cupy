@@ -4,7 +4,6 @@ import sys
 import time
 
 from chainer.training import extension
-from chainer.training.extensions import log_report as log_report_module
 from chainer.training import trigger
 
 

@@ -79,8 +79,8 @@ def make_extension(trigger=None, default_name=None, priority=None,
     This decorator just adds some attributes to a given function. The value of
     the attributes are given by the arguments of this decorator.
 
-    See :class:`Extension` for details of trainer extensions. Most of the default
-    values of arguments also follow those for this class.
+    See :class:`Extension` for details of trainer extensions. Most of the
+    default values of arguments also follow those for this class.
 
     Args:
         trigger: Default trigger of the extension.

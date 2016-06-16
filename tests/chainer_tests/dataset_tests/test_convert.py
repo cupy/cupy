@@ -95,7 +95,7 @@ class TestConcatExamples(unittest.TestCase):
     def check_concat_arrays_padding(self, xp):
         arrays = [xp.random.rand(3, 4),
                   xp.random.rand(2, 5),
-                  xp.random.rand(4, 3),]
+                  xp.random.rand(4, 3)]
         array = dataset.concat_examples(arrays, padding=0)
         self.assertEqual(array.shape, (3, 4, 5))
 

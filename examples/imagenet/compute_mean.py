@@ -10,7 +10,6 @@ import chainer
 def compute_mean(dataset):
     print('compute mean image')
     sum_image = 0
-    count = 0
     N = len(dataset)
     for i, (image, _) in enumerate(dataset):
         sum_image += image
@@ -22,7 +21,8 @@ def compute_mean(dataset):
 
 def main():
     parser = argparse.ArgumentParser(description='Compute images mean array')
-    parser.add_argument('dataset', help='Path to training image-label list file')
+    parser.add_argument('dataset',
+                        help='Path to training image-label list file')
     parser.add_argument('--root', '-R', default='.',
                         help='Root directory path of image files')
     parser.add_argument('--output', '-o', default='mean.npy',

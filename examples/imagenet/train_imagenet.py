@@ -84,7 +84,7 @@ def main():
     parser.add_argument('--loaderjob', '-j', type=int,
                         help='Number of parallel data loading processes')
     parser.add_argument('--mean', '-m', default='mean.npy',
-                        help='Path to the mean file (computed by compute_mean.py)')
+                        help='Mean file (computed by compute_mean.py)')
     parser.add_argument('--resume', '-r', default='',
                         help='Initialize the trainer from given file')
     parser.add_argument('--out', '-o', default='result',
@@ -128,9 +128,10 @@ def main():
     val_interval = (10 if args.test else 100000), 'iteration'
     log_interval = (10 if args.test else 1000), 'iteration'
 
-    eval_model = model.copy()  # Copy the links with shared parameters
-                               # to change 'train' flag only in valudation
+    # Copy the chain with shared parameters to flip 'train' flag only in test
+    eval_model = model.copy()
     eval_model.train = False
+
     trainer.extend(extensions.Evaluator(val_iter, eval_model, device=args.gpu),
                    trigger=val_interval)
     trainer.extend(extensions.dump_graph('main/loss'))
@@ -140,10 +141,10 @@ def main():
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
     trainer.extend(extensions.LogReport(trigger=log_interval))
-    trainer.extend(extensions.PrintReport(
-        ['epoch', 'iteration', 'main/loss', 'validation/main/loss',
-         'main/accuracy', 'validation/main/accuracy']),
-                   trigger=log_interval)
+    trainer.extend(extensions.PrintReport([
+        'epoch', 'iteration', 'main/loss', 'validation/main/loss',
+        'main/accuracy', 'validation/main/accuracy',
+    ]), trigger=log_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
     if args.resume:

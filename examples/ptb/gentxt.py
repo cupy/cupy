@@ -24,7 +24,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', '-m', type=str, required=True,
                         help='model data, saved by train_ptb.py')
-    parser.add_argument('--primetext', '-p', type=str, required=True, default='',
+    parser.add_argument('--primetext', '-p', type=str, required=True,
+                        default='',
                         help='base text data, used for text generation')
     parser.add_argument('--seed', '-s', type=int, default=123,
                         help='random seeds for text generation')

@@ -4,26 +4,26 @@ import sys
 import threading
 import warnings
 
-from chainer import cuda
-from chainer import dataset
-from chainer import datasets
+from chainer import cuda  # NOQA
+from chainer import dataset  # NOQA
+from chainer import datasets  # NOQA
 from chainer import flag
 from chainer import function
 from chainer import function_set
-from chainer import functions
+from chainer import functions  # NOQA
 from chainer.functions import array
 from chainer.functions import basic_math
 from chainer import initializer
 from chainer import initializers
-from chainer import iterators
+from chainer import iterators  # NOQA
 from chainer import link
-from chainer import links
+from chainer import links  # NOQA
 from chainer import optimizer
-from chainer import optimizers
+from chainer import optimizers  # NOQA
 from chainer import reporter
 from chainer import serializer
-from chainer import serializers
-from chainer import training
+from chainer import serializers  # NOQA
+from chainer import training  # NOQA
 from chainer import variable
 
 

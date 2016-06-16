@@ -1,7 +1,7 @@
 import six
 
-from chainer.dataset import iterator as iterator_module
 from chainer.dataset import convert
+from chainer.dataset import iterator as iterator_module
 from chainer import optimizer as optimizer_module
 from chainer import variable
 

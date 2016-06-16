@@ -4,7 +4,6 @@ import struct
 
 import numpy
 import six
-from six.moves.urllib import request
 
 from chainer.dataset import download
 from chainer.datasets import tuple_dataset
