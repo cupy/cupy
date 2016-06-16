@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer.functions.math import identity
@@ -185,7 +186,7 @@ def check_backward(func, x_data, y_grad, params=(),
         rtol (float): Relative tolerance to be passed to
             :func:`assert_allclose`.
         no_grads (list of bool): Flag to skip variable for gradient assertion.
-            It should be same length as x_data.
+            It should be same length as ``x_data``.
 
     See:
        :func:`numerical_grad`
@@ -235,7 +236,7 @@ def check_backward(func, x_data, y_grad, params=(),
         if len(no_grads) != len(xs):
             raise ValueError(
                 'Length of no_grads param and xs should be same.')
-    for skip, x in zip(no_grads, xs):
+    for skip, x in six.moves.zip(no_grads, xs):
         if skip:
             assert x.grad is None
             continue
