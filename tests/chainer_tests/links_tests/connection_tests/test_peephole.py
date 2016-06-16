@@ -139,6 +139,7 @@ class TestPeepholeState(unittest.TestCase):
     def test_reset_state_cpu(self):
         self.check_reset_state()
 
+    @attr.gpu
     def test_reset_state_gpu(self):
         getattr(self.link, self.link_array_module)()
         self.check_reset_state()
