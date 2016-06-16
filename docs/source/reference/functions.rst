@@ -135,6 +135,10 @@ transpose
 ~~~~~~~~~
 .. autofunction:: transpose
 
+transpose_sequence
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: transpose_sequence
+
 where
 ~~~~~
 .. autofunction:: where
