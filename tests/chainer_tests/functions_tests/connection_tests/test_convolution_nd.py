@@ -28,9 +28,9 @@ class TestConvolutionND(unittest.TestCase):
         in_channels = 3
         out_channels = 2
         N = len(self.ds)
-        ks = tuple([3]*N)
-        self.stride = tuple([2]*N)
-        self.pad = tuple([1]*N)
+        ks = (3,) * N
+        self.stride = (2,) * N
+        self.pad = (1,) * N
 
         W_scale = numpy.sqrt(1. / functools.reduce(mul, ks, in_channels))
         W_shape = (out_channels, in_channels) + ks
