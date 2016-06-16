@@ -9,22 +9,40 @@ from chainer import variable
 
 class Peephole(link.Chain):
 
-    """Fully-connected LSTM with peephole connections layer.
+    """Fully-connected LSTM layer with peephole connections.
 
     This is a fully-connected LSTM layer with peephole connections as a chain.
-    Unlike the :link:`~chainer.links.lstm` link, this chain holds peep_i,
-    peep_f and peep_o as child links besides upward and lateral.
+    Unlike the :link:`~chainer.links.lstm` link, this chain holds `peep_i`,
+    `peep_f` and `peep_o` as child links besides upward and lateral.
 
-    Given two inputs a previous hidden vector :math:`h` and an input vector
-    :math:`x`, Peephole returns the next hidden vector :math:`h` defined as
+    Given a input vector :math:`x`, Peephole returns the next hidden vector 
+    :math:`h'` defined as  
+
+    .. math::
+
+       a &=& \\tanh(upward x + lateral h), \\\\ 
+       i &=& \\sigma(upward x + lateral h + peep_i c), \\\\ 
+       f &=& \\sigma(upward x + lateral h + peep_f c), \\\\ 
+       c' &=& a \\odot i + f \\odot c, \\\\
+       o &=& \\sigma(upward x + lateral h + peep_o c'), \\\\
+       h' &=& o \\tanh(c'),
+
+    where :math:`\\sigma` is the sigmoid function, :math:`\\odot` is the
+    element-wise product, :math:`c` is the current cell state, :math:`c'`
+    is the next cell state and :math:`h` is the current hidden vector.
 
     Args:
-        in_size (int): Dimensionality of input vectors.
-        out_size (int): Dimensionality of output vectors.
+        in_size(int): Dimension of input vector :math:`x`.
+        out_size(int): Dimension of hidden vector :math: `h`.
 
     Attributes:
+        upward (~chainer.links.Linear): Linear layer of upward connections.
+        lateral (~chainer.links.Linear): Linear layer of lateral connections.
+        peep_i (~chainer.links.Linear): Linear layer of lateral connections.
+        peep_f (~chainer.links.Linear): Linear layer of lateral connections.
+        peep_o (~chainer.links.Linear): Linear layer of lateral connections.
         c (~chainer.Variable): Cell states of LSTM units.
-        h (~chainer.Variable): Output at the previous time step.
+        h (~chainer.Variable): Output at the current time step.
 
     """
     def __init__(self, in_size, out_size):
@@ -78,14 +96,14 @@ class Peephole(link.Chain):
             self.c = variable.Variable(
                 xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
                 volatile='auto')
-        lstm_in = reshape.reshape(lstm_in, (lstm_in.data.shape[0],
-                                            lstm_in.data.shape[1] // 4,
-                                            4) + lstm_in.data.shape[2:])
+        lstm_in = reshape.reshape(lstm_in, (len(lstm_in.data[:, 0]),
+                                            len(lstm_in.data[0, :]) // 4,
+                                            4))
         a, i, f, o = split_axis.split_axis(lstm_in, 4, 2)
-        a = reshape.reshape(a, (a.data.shape[0], a.data.shape[1]))
-        i = reshape.reshape(i, (i.data.shape[0], i.data.shape[1]))
-        f = reshape.reshape(f, (f.data.shape[0], f.data.shape[1]))
-        o = reshape.reshape(o, (o.data.shape[0], o.data.shape[1]))
+        a = reshape.reshape(a, (len(a.data[:, 0, 0]), len(a.data[0, :, 0])))
+        i = reshape.reshape(i, (len(i.data[:, 0, 0]), len(i.data[0, :, 0])))
+        f = reshape.reshape(f, (len(f.data[:, 0, 0]), len(f.data[0, :, 0])))
+        o = reshape.reshape(o, (len(o.data[:, 0, 0]), len(o.data[0, :, 0])))
         peep_in_i = self.peep_i(self.c)
         peep_in_f = self.peep_f(self.c)
         a = tanh.tanh(a)
