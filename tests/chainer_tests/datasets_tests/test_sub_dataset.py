@@ -1,6 +1,6 @@
 import unittest
 
-from chainer.dataset import datasets
+from chainer import datasets
 
 
 class TestSubDataset(unittest.TestCase):
@@ -113,3 +113,6 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(len(te3), 2)
         self.assertEqual(te3[0], 1)
         self.assertEqual(te3[1], 2)
+
+
+testing.run_module(__name__, __file__)

@@ -1,6 +1,6 @@
 import unittest
 
-from chainer.dataset import iterators
+from chainer import iterators
 
 
 class TestSequentialIterator(unittest.TestCase):
@@ -59,3 +59,6 @@ class TestSequentialIterator(unittest.TestCase):
         self.assertTrue(it.is_new_epoch)
         self.assertEqual(it.epoch, 1)
         self.assertRaises(StopIteration, it.next)
+
+
+testing.run_module(__name__, __file__)

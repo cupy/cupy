@@ -3,7 +3,7 @@ import unittest
 import numpy
 
 from chainer import cuda
-from chainer.dataset import datasets
+from chainer import datasets
 from chainer.testing import attr
 
 
@@ -33,3 +33,6 @@ class TestDictDataset(unittest.TestCase):
     @attr.gpu
     def test_dict_dataset_gpu(self):
         self.check_dict_dataset(cuda.to_gpu(self.x), cuda.to_gpu(self.y))
+
+
+testing.run_module(__name__, __file__)

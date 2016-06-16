@@ -191,3 +191,6 @@ class TestConcatExamples(unittest.TestCase):
     @attr.gpu
     def test_concat_dicts_padding_gpu(self):
         self.check_concat_dicts_padding(cuda.cupy)
+
+
+testing.run_module(__name__, __file__)

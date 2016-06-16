@@ -48,3 +48,6 @@ class TestDatasetMixin(unittest.TestCase):
         self.assertEqual(ds[:3:2], ds.values[:3:2])
         self.assertEqual(ds[1:4:2], ds.values[1:4:2])
         self.assertEqual(ds[::-2], ds.values[::-2])
+
+
+testing.run_module(__name__, __file__)

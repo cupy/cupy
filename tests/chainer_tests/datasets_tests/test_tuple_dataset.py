@@ -3,7 +3,7 @@ import unittest
 import numpy
 
 from chainer import cuda
-from chainer.dataset import datasets
+from chainer import datasets
 from chainer.testing import attr
 
 
@@ -32,3 +32,6 @@ class TestTupleDataset(unittest.TestCase):
     @attr.gpu
     def test_tuple_dataset_gpu(self):
         self.check_tuple_dataset(cuda.to_gpu(self.x0), cuda.to_gpu(self.x1))
+
+
+testing.run_module(__name__, __file__)

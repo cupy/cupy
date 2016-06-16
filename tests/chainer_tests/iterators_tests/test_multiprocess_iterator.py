@@ -1,6 +1,6 @@
 import unittest
 
-from chainer.dataset import iterators
+from chainer import iterators
 
 
 class TestMultiprocessIterator(unittest.TestCase):
@@ -58,3 +58,6 @@ class TestMultiprocessIterator(unittest.TestCase):
 
         self.assertEqual(len(batch3), 1)
         self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
+
+
+testing.run_module(__name__, __file__)
