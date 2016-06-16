@@ -121,10 +121,6 @@ class TestPeephole(unittest.TestCase):
                             cuda.to_gpu(self.gy))
 
 
-@testing.parameterize(
-    *testing.product({
-        'link_array_module': ['to_cpu', 'to_gpu']
-    }))
 class TestPeepholeState(unittest.TestCase):
 
     def setUp(self):
@@ -141,7 +137,7 @@ class TestPeepholeState(unittest.TestCase):
 
     @attr.gpu
     def test_reset_state_gpu(self):
-        getattr(self.link, self.link_array_module)()
+        self.link.to_gpu()
         self.check_reset_state()
 
 
