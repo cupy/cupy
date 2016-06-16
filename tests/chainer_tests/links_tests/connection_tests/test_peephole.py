@@ -1,6 +1,5 @@
 import unittest
 
-import cupy
 import numpy
 
 import chainer
@@ -180,11 +179,11 @@ class TestPeepholeToCPUToGPU(unittest.TestCase):
         self.link.c = c
         self.link.h = h
         self.link.to_gpu()
-        self.assertIs(self.link.xp, cupy)
+        self.assertIsNot(self.link.xp, numpy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
         self.link.to_gpu()
-        self.assertIs(self.link.xp, cupy)
+        self.assertIsNot(self.link.xp, numpy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
         self.link.to_cpu()
@@ -192,7 +191,7 @@ class TestPeepholeToCPUToGPU(unittest.TestCase):
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
         self.link.to_gpu()
-        self.assertIs(self.link.xp, cupy)
+        self.assertIsNot(self.link.xp, numpy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
 
