@@ -40,6 +40,7 @@ class TestMinimum(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = functions.minimum(x1, x2)
+        assert y.data.dtype == self.dtype
         gradient_check.assert_allclose(
             y_expected, y.data, **self.check_forward_options)
 
