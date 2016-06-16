@@ -46,8 +46,10 @@ class TestStack(unittest.TestCase):
 
         y_data = cuda.to_cpu(y.data)
         self.assertEqual(y_data.shape[self.axis], 2)
-        numpy.testing.assert_array_equal(y_data.take(0, axis=self.axis), self.xs[0])
-        numpy.testing.assert_array_equal(y_data.take(1, axis=self.axis), self.xs[1])
+        numpy.testing.assert_array_equal(
+            y_data.take(0, axis=self.axis), self.xs[0])
+        numpy.testing.assert_array_equal(
+            y_data.take(1, axis=self.axis), self.xs[1])
 
     def test_forward_cpu(self):
         self.check_forward(self.xs)
@@ -68,7 +70,8 @@ class TestStack(unittest.TestCase):
 
     @attr.gpu
     def test_backward_gpu(self):
-        self.check_backward([cuda.to_gpu(x) for x in self.xs], cuda.to_gpu(self.g))
+        self.check_backward(
+            [cuda.to_gpu(x) for x in self.xs], cuda.to_gpu(self.g))
 
 
 testing.run_module(__name__, __file__)
