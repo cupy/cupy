@@ -33,7 +33,7 @@ We hope it helps you to choose an appropriate framework for the demand.
 |       +-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
 |       | Variable-length loops       | Y                 | Y (``scan``)           |                     |                                                    |
 |       +-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
-|       | Stateful RNNs [2]_          | Y                 |                        | Y [6]_              |                                                    |
+|       | Stateful RNNs [2]_          | Y                 | Y                      | Y [6]_              |                                                    |
 |       +-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
 |       | Per-batch architectures     | Y                 |                        |                     |                                                    |
 +-------+-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
@@ -45,9 +45,9 @@ We hope it helps you to choose an appropriate framework for the demand.
 |       +-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
 |       | CPU/GPU generic coding [3]_ | Y                 | [4]_                   | Y                   |                                                    |
 |       +-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
-|       | Multi GPU (data parallel)   | Y                 |                        | Y (``fbcunn``)      | Y                                                  |
+|       | Multi GPU (data parallel)   | Y                 | Y [7]_                 | Y (``fbcunn``)      | Y                                                  |
 |       +-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
-|       | Multi GPU (model parallel)  | Y                 |                        | Y (``fbcunn``)      |                                                    |
+|       | Multi GPU (model parallel)  | Y                 | Y [8]_                 | Y (``fbcunn``)      |                                                    |
 +-------+-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
 | Misc  | Type checking               | Y                 | Y                      | Y                   | N/A                                                |
 |       +-----------------------------+-------------------+------------------------+---------------------+----------------------------------------------------+
@@ -61,8 +61,9 @@ We hope it helps you to choose an appropriate framework for the demand.
 .. [3] This row shows whether each array API supports unified codes for CPU and GPU.
 .. [4] The array backend of Theano does not have compatible interface with NumPy, though most users write code on Theano variables, which is generic for CPU and GPU.
 .. [5] Depending on the frameworks.
-.. [6] Also available in the `Torch RNN package <https://github.com/Element-Research/rnn>`
-
+.. [6] Also available in the `Torch RNN package <https://github.com/Element-Research/rnn>`_
+.. [7] Via `Platoon <https://github.com/mila-udem/platoon/>`_
+.. [8] `Experimental as May 2016 <http://deeplearning.net/software/theano/tutorial/using_multi_gpu.html>`_
 
 Benchmarks
 ----------

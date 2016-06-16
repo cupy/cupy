@@ -5,6 +5,10 @@ from chainer.training import extension
 from chainer import variable
 
 
+_var_style = {'shape': 'octagon', 'fillcolor': '#E0E0E0', 'style': 'filled'}
+_func_style = {'shape': 'record', 'fillcolor': '#6495ED', 'style': 'filled'}
+
+
 def dump_graph(root_name, out_name='cg.dot'):
     """Returns a trainer extension to dump a computational graph.
 
@@ -28,7 +32,9 @@ def dump_graph(root_name, out_name='cg.dot'):
         var = trainer.observation[root_name]
         if not isinstance(var, variable.Variable):
             raise TypeError('root value is not a Variable')
-        cg = computational_graph.build_computational_graph([var]).dump()
+        cg = computational_graph.build_computational_graph(
+            [var], variable_style=_var_style, function_style=_func_style
+        ).dump()
 
         out_path = os.path.join(trainer.out, out_name)
         # TODO(beam2d): support outputting images by the dot command

@@ -38,8 +38,9 @@ if available:
         def decorator(meth):
             global _type_to_method
             _type_to_method[typ] = meth
-            typevalue = getattr(caffe_pb.V1LayerParameter, oldname)
-            _oldname_to_method[typevalue] = meth
+            if oldname is not None:
+                typevalue = getattr(caffe_pb.V1LayerParameter, oldname)
+                _oldname_to_method[typevalue] = meth
             return meth
         return decorator
 else:
@@ -117,7 +118,7 @@ class CaffeFunction(link.Chain):
     """
     def __init__(self, model_path):
         if not available:
-            msg = ('CaffeFunction is only supported on protobuf>=3 in Python3')
+            msg = 'CaffeFunction is only supported on protobuf>=3 in Python3'
             raise RuntimeError(msg)
 
         super(CaffeFunction, self).__init__()
@@ -318,6 +319,87 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = fw
         self._add_layer(layer)
 
+    @_layer('BatchNorm', None)
+    def _setup_batchnorm(self, layer):
+        # Get layer parameters.
+        blobs = layer.blobs
+        param = layer.batch_norm_param
+        use_global_stats = param.use_global_stats
+        decay = param.moving_average_fraction
+        eps = param.eps
+        size = int(blobs[0].shape.dim[0])  # Get channel dim from mean blob.
+
+        # Make BatchNormalization link.
+        func = links.BatchNormalization(size, decay=decay, eps=eps,
+                                        use_gamma=False, use_beta=False)
+        func.avg_mean.ravel()[:] = blobs[0].data
+        func.avg_var.ravel()[:] = blobs[1].data
+        self.add_link(layer.name, func)
+
+        # Add layer.
+        fwd = _SingleArgumentFunction(
+            _CallChildLink(self, layer.name),
+            test=use_global_stats, finetune=False)
+        self.forwards[layer.name] = fwd
+        self._add_layer(layer)
+
+    @_layer('Eltwise', 'ELTWISE')
+    def _setup_eltwise(self, layer):
+        # stable_prod_grad parameter is not supported now.
+        operation = layer.eltwise_param.operation
+        coeffs = layer.eltwise_param.coeff or None
+        self.forwards[layer.name] = _EltwiseFunction(operation, coeffs)
+        self._add_layer(layer)
+
+    @_layer('Scale', None)
+    def _setup_scale(self, layer):
+        # Following parameters are not supporeted now:
+        # - negative axis
+        # - num_axes
+        # - filler
+        # - bias_filler
+
+        # Get layer parameters.
+        bottom = layer.bottom
+        blobs = layer.blobs
+        axis = layer.scale_param.axis
+        bias_term = layer.scale_param.bias_term
+
+        # Case of only one bottom where W is learnt parameter.
+        if len(bottom) == 1:
+            W_shape = blobs[0].shape.dim
+            func = _Scale(axis, W_shape, bias_term)
+            func.W.data.ravel()[:] = blobs[0].data
+            if bias_term:
+                func.bias.b.data.ravel()[:] = blobs[1].data
+        # Case of two bottoms where W is given as a bottom.
+        else:
+            shape = blobs[0].shape.dim if bias_term else None
+            func = _Scale(axis, bias_term=bias_term, bias_shape=shape)
+            if bias_term:
+                func.bias.b.data.ravel()[:] = blobs[0].data
+
+        # Add layer.
+        self.add_link(layer.name, func)
+        self.forwards[layer.name] = _CallChildLink(self, layer.name)
+        self._add_layer(layer)
+
+    @_layer('Softmax', 'SOFTMAX')
+    def _setup_softmax(self, layer):
+        if layer.softmax_param.axis != 1:
+            raise RuntimeError(
+                'Softmax along non-channel axis is not supported')
+
+        if layer.softmax_param.engine == 0:  # DEFAULT
+            fw = functions.softmax
+        elif layer.softmax_param.engine == 1:  # CAFFE
+            fw = _SingleArgumentFunction(functions.softmax, use_cudnn=False)
+        elif layer.softmax_param.engine == 2:  # CUDNN
+            fw = _SingleArgumentFunction(functions.softmax, use_cudnn=True)
+
+        self.forwards[layer.name] = fw
+        self._add_layer(layer)
+
     @_layer('SoftmaxWithLoss', 'SOFTMAX_LOSS')
     def _setup_softmax_with_loss(self, layer):
         if layer.softmax_param.axis != 1:
@@ -338,6 +420,10 @@ class CaffeFunction(link.Chain):
 def _get_ksize(param):
     if param.kernel_h > 0:
         return param.kernel_h, param.kernel_w
+    elif type(param.kernel_size) == int:
+        return param.kernel_size
+    elif len(param.kernel_size) == 1:
+        return param.kernel_size[0]
     else:
         return param.kernel_size
 
@@ -345,6 +431,12 @@ def _get_ksize(param):
 def _get_stride(param):
     if param.stride_h > 0:
         return param.stride_h, param.stride_w
+    elif type(param.stride) == int:
+        return param.stride
+    elif len(param.stride) == 0:
+        return 1
+    elif len(param.stride) == 1:
+        return param.stride[0]
     else:
         return param.stride
 
@@ -352,6 +444,12 @@ def _get_stride(param):
 def _get_pad(param):
     if param.pad_h > 0:
         return param.pad_h, param.pad_w
+    elif type(param.pad) == int:
+        return param.pad
+    elif len(param.pad) == 0:
+        return 0
+    elif len(param.pad) == 1:
+        return param.pad[0]
     else:
         return param.pad
 
@@ -433,5 +531,137 @@ class _CallChildLink(object):
         self.name = name
         self.caffe_func = caffe_func
 
+    def __call__(self, *xs, **kwargs):
+        return self.caffe_func[self.name](*xs, **kwargs)
+
+
+class _EltwiseFunction(object):
+    def __init__(self, operation, coeffs=None):
+        if coeffs is not None:
+            assert len(coeffs) > 0
+        self.operation = operation
+        self.coeffs = coeffs
+
     def __call__(self, *xs):
-        return self.caffe_func[self.name](*xs)
+        operation = self.operation
+
+        if operation == 0:      # PROD
+            return six.moves.reduce(lambda x, y: x * y, xs),
+
+        elif operation == 1:    # SUM
+            coeffs = self.coeffs
+            if coeffs is not None:
+                assert len(xs) == len(coeffs)
+                xs = [x * coeff for x, coeff in zip(xs, coeffs)]
+            return six.moves.reduce(lambda x, y: x + y, xs),
+
+        elif operation == 2:    # MAX
+            return six.moves.reduce(lambda x, y: functions.maximum(x, y), xs),
+
+        else:
+            raise ValueError('Invalid EltwiseParameter.EltwiseOp value.')
+
+
+def _scale(x, y, axis=1):
+    x_shape = x.data.shape
+    y_shape = y.data.shape
+    assert x_shape[axis:axis + len(y_shape)] == y_shape
+    y1_shape = tuple([1] * axis + list(y_shape) +
+                     [1] * (len(x_shape) - axis - len(y_shape)))
+    y1 = functions.reshape(y, y1_shape)
+    y2 = functions.broadcast_to(y1, x_shape)
+    return x * y2
+
+
+class _Scale(link.Chain):
+    def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
+        super(_Scale, self).__init__()
+
+        # Add W parameter if given.
+        if W_shape is not None:
+            self.add_param('W', W_shape)
+            self.W.data.fill(1)
+        else:
+            self.W = None
+
+        # Add bias term if given.
+        if W_shape is not None:
+            if bias_term:
+                func = _Bias(axis, W_shape)
+                self.add_link('bias', func)
+            else:
+                self.bias = None
+        else:
+            if bias_term:
+                if bias_shape is None:
+                    raise ValueError('bias_shape should be given if W is not '
+                                     'learnt parameter and bias_term is True.')
+                func = _Bias(axis, bias_shape)
+                self.add_link('bias', func)
+            else:
+                self.bias = None
+
+        # Hold axis.
+        self.axis = axis
+
+    def __call__(self, *xs):
+        axis = self.axis
+
+        # Case of only one bottom where W is learnt parameter.
+        if self.W is not None:
+            assert len(xs) == 1
+            x, = xs
+            W = self.W
+            z = _scale(x, W, axis)
+        # Case of two bottoms where W is given as a bottom.
+        else:
+            assert len(xs) == 2
+            x, y = xs
+            z = _scale(x, y, axis)
+
+        # Forward propagate bias term if given.
+        if self.bias is not None:
+            return self.bias(z)
+        else:
+            return z
+
+
+def _bias(x, y, axis=1):
+    x_shape = x.data.shape
+    y_shape = y.data.shape
+    assert x_shape[axis:axis + len(y_shape)] == y_shape
+    y1_shape = tuple([1] * axis + list(y_shape) +
+                     [1] * (len(x_shape) - axis - len(y_shape)))
+    y1 = functions.reshape(y, y1_shape)
+    y2 = functions.broadcast_to(y1, x_shape)
+    return x + y2
+
+
+class _Bias(link.Link):
+    def __init__(self, axis=1, shape=None):
+        super(_Bias, self).__init__()
+
+        # Add b parameter if given.
+        if shape is not None:
+            self.add_param('b', shape)
+            self.b.data.fill(0)
+        else:
+            self.b = None
+
+        # Hold axis.
+        self.axis = axis
+
+    def __call__(self, *xs):
+        axis = self.axis
+
+        # Case of only one bottom where b is learnt parameter.
+        if self.b is not None:
+            assert len(xs) == 1
+            x, = xs
+            b = self.b
+            return _bias(x, b, axis)
+        # Case of two bottoms where b is given as a bottom.
+        else:
+            assert len(xs) == 2
+            x, y = xs
+            return _bias(x, y, axis)

@@ -11,7 +11,10 @@ from chainer import flag
 from chainer import function
 from chainer import function_set
 from chainer import functions
+from chainer.functions import array
 from chainer.functions import basic_math
+from chainer import initializer
+from chainer import initializers
 from chainer import iterators
 from chainer import link
 from chainer import links
@@ -45,6 +48,7 @@ Reporter = reporter.Reporter
 Serializer = serializer.Serializer
 Summary = reporter.Summary
 Variable = variable.Variable
+Initializer = initializer.Initializer
 
 ON = flag.ON
 OFF = flag.OFF
@@ -90,3 +94,6 @@ def set_debug(debug):
     _debug = debug
 
 basic_math.install_variable_arithmetics()
+array.get_item.install_variable_get_item()
+
+init_weight = initializers.init_weight

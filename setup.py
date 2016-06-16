@@ -28,7 +28,7 @@ chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.8.1',
+    version='1.9.1',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
@@ -49,6 +49,7 @@ setup(
               'chainer.functions.pooling',
               'chainer.function_hooks',
               'chainer.iterators',
+              'chainer.initializers',
               'chainer.links',
               'chainer.links.activation',
               'chainer.links.caffe',

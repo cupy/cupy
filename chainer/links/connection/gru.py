@@ -9,16 +9,23 @@ from chainer.links.connection import linear
 
 class GRUBase(link.Chain):
 
-    def __init__(self, n_units, n_inputs=None):
+    def __init__(self, n_units, n_inputs=None, init=None,
+                 inner_init=None, bias_init=0):
         if n_inputs is None:
             n_inputs = n_units
         super(GRUBase, self).__init__(
-            W_r=linear.Linear(n_inputs, n_units),
-            U_r=linear.Linear(n_units, n_units),
-            W_z=linear.Linear(n_inputs, n_units),
-            U_z=linear.Linear(n_units, n_units),
-            W=linear.Linear(n_inputs, n_units),
-            U=linear.Linear(n_units, n_units),
+            W_r=linear.Linear(n_inputs, n_units,
+                              initialW=init, initial_bias=bias_init),
+            U_r=linear.Linear(n_units, n_units,
+                              initialW=inner_init, initial_bias=bias_init),
+            W_z=linear.Linear(n_inputs, n_units,
+                              initialW=init, initial_bias=bias_init),
+            U_z=linear.Linear(n_units, n_units,
+                              initialW=inner_init, initial_bias=bias_init),
+            W=linear.Linear(n_inputs, n_units,
+                            initialW=init, initial_bias=bias_init),
+            U=linear.Linear(n_units, n_units,
+                            initialW=inner_init, initial_bias=bias_init),
         )
 
 
@@ -63,6 +70,7 @@ class GRU(GRUBase):
 
 
     .. seealso:: :class:`~chainer.links.StatefulGRU`
+
     """
 
     def __call__(self, h, x):
@@ -100,16 +108,32 @@ class StatefulGRU(GRUBase):
     Args:
         in_size(int): Dimension of input vector :math:`x`.
         out_size(int): Dimension of hidden vector :math:`h`.
+        init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the
+            GRU's input units (:math:`W`). Maybe be `None` to use default
+            initialization.
+        inner_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the GRU's inner
+            recurrent units (:math:`U`).
+            Maybe be ``None`` to use default initialization.
+        bias_init: A callable or scalar used to initialize the bias values for
+            both the GRU's inner and input units. Maybe be ``None`` to use
+            default initialization.
 
     Attributes:
         h(~chainer.Variable): Hidden vector that indicates the state of
             :class:`~chainer.links.StatefulGRU`.
 
     .. seealso:: :class:`~chainer.functions.GRU`
+
     """
 
-    def __init__(self, in_size, out_size):
-        super(StatefulGRU, self).__init__(out_size, in_size)
+    def __init__(self, in_size, out_size, init=None,
+                 inner_init=None, bias_init=0):
+        super(StatefulGRU, self).__init__(
+            out_size, in_size, init, inner_init, bias_init)
         self.state_size = out_size
         self.reset_state()
 

@@ -25,8 +25,9 @@ from chainer.links import caffe
 parser = argparse.ArgumentParser(
     description='Evaluate a Caffe reference model on ILSVRC2012 dataset')
 parser.add_argument('dataset', help='Path to validation image-label list file')
-parser.add_argument('model_type', choices=('alexnet', 'caffenet', 'googlenet'),
-                    help='Model type (alexnet, caffenet, googlenet)')
+parser.add_argument('model_type',
+                    choices=('alexnet', 'caffenet', 'googlenet', 'resnet'),
+                    help='Model type (alexnet, caffenet, googlenet, resnet)')
 parser.add_argument('model', help='Path to the pretrained Caffe model')
 parser.add_argument('--basepath', '-b', default='/',
                     help='Base path for images in the dataset')
@@ -79,6 +80,13 @@ elif args.model_type == 'googlenet':
         y, = func(inputs={'data': x}, outputs=['loss3/classifier'],
                   disable=['loss1/ave_pool', 'loss2/ave_pool'],
                   train=False)
+        return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
+elif args.model_type == 'resnet':
+    in_size = 224
+    mean_image = np.load(args.mean)
+
+    def forward(x, t):
+        y, = func(inputs={'data': x}, outputs=['prob'], train=False)
         return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
 
 

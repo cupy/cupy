@@ -2,6 +2,8 @@ import itertools
 import sys
 import unittest
 
+import six
+
 
 def _gen_case(base, module, i, param):
     cls_name = '%s_param_%d' % (base.__name__, i)
@@ -37,3 +39,9 @@ def product(parameter):
     values = [parameter[key] for key in keys]
     values_product = itertools.product(*values)
     return [dict(zip(keys, vals)) for vals in values_product]
+
+
+def product_dict(*parameters):
+    return [
+        {k: v for dic in dicts for k, v in six.iteritems(dic)}
+        for dicts in itertools.product(*parameters)]

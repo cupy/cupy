@@ -1780,6 +1780,9 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     cdef bint a_is_vec, b_is_vec
     cdef vector.vector[Py_ssize_t] ret_shape
     cdef vector.vector[Py_ssize_t] shape
+
+    if out is not None and numpy.result_type(a.dtype, b.dtype) != out.dtype:
+        raise ValueError('Not supported dtype combination.')
     a_ndim = a._shape.size()
     b_ndim = b._shape.size()
     assert a_ndim > 0 and b_ndim > 0

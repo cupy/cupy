@@ -20,9 +20,10 @@ class RMSpropGraves(optimizer.GradientMethod):
 
     def init_state(self, param, state):
         xp = cuda.get_array_module(param.data)
-        state['n'] = xp.zeros_like(param.data)
-        state['g'] = xp.zeros_like(param.data)
-        state['delta'] = xp.zeros_like(param.data)
+        with cuda.get_device(param.data):
+            state['n'] = xp.zeros_like(param.data)
+            state['g'] = xp.zeros_like(param.data)
+            state['delta'] = xp.zeros_like(param.data)
 
     def update_one_cpu(self, param, state):
         n, g, delta = state['n'], state['g'], state['delta']
