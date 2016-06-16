@@ -45,3 +45,6 @@ class TestStack(unittest.TestCase):
     @attr.gpu
     def test_forward_gpu(self):
         self.check_forward([cuda.to_gpu(x) for x in self.xs])
+
+
+testing.run_module(__name__, __file__)
