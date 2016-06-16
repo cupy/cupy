@@ -359,6 +359,8 @@ class TestCheckBackward(unittest.TestCase):
             s = Ident()(x)
             return s,
 
+        self.assertRaises(TypeError, gradient_check.check_backward,
+                          f, (x1, x2), g1, no_grads=[False, False])
         gradient_check.check_backward(f, (x1, x2), g1, no_grads=[False, True])
 
 
