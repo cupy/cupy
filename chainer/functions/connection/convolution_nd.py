@@ -171,7 +171,7 @@ class ConvolutionND(function.Function):
         # TODO(takagi): Use streams or batch gemm
         gW_mat[...] = 0
         for i in moves.range(n):
-            gW_mat += cuda.dot(gy_mats[i], col_mats[i].T)
+            gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
 
         # Compute patch array gradient.
         W_mat = W.reshape(out_c, -1)
@@ -179,7 +179,7 @@ class ConvolutionND(function.Function):
         gcol_mats = gcol.reshape(
             n, reduce(operator.mul, ks, c), reduce(operator.mul, outs))
         for i in moves.range(n):
-            gcol_mats[i] = cuda.dot(W_mat.T, gy_mats[i])
+            gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
 
         # Compute input gradient.
         gx = conv.col2im_nd_gpu(gcol, ss, ps, ds)
