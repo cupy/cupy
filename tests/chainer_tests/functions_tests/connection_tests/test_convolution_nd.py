@@ -17,7 +17,7 @@ from chainer.utils import conv
 
 @testing.parameterize(*testing.product({
     'ds': [(10,), (10, 8), (10, 8, 6)],
-    # TODO(takagi) c_contiguous later.
+    'c_contiguous': [True, False],
     'cover_all': [True, False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
@@ -84,8 +84,19 @@ class TestConvolutionND(unittest.TestCase):
         self.check_forward_consistency(nobias=True, use_cudnn=False)
 
     def check_backward(self, x_data, W_data, b_data, y_grad, use_cudnn=False):
-        # xp = cuda.get_array_module(x_data)
-        # TODO(takgi) c_contiguous
+        xp = cuda.get_array_module(x_data)
+        if not self.c_contiguous:
+            x_data = xp.asfortranarray(x_data)
+            W_data = xp.asfortranarray(W_data)
+            y_grad = xp.asfortranarray(y_grad)
+            self.assertFalse(x_data.flags.c_contiguous)
+            self.assertFalse(W_data.flags.c_contiguous)
+            self.assertFalse(y_grad.flags.c_contiguous)
+            if b_data is not None:
+                b = xp.empty((len(b_data) * 2,), dtype=b_data.dtype)
+                b[::2] = b_data
+                b_data = b[::2]
+                self.assertFalse(b_data.flags.c_contiguous)
 
         args = (x_data, W_data)
         if b_data is not None:
