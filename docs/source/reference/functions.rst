@@ -115,6 +115,10 @@ get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
+permutate
+~~~~~~~~~
+.. autofunction:: permutate
+
 reshape
 ~~~~~~~
 .. autofunction:: reshape
