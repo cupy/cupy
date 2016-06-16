@@ -29,7 +29,7 @@ class Reporter(object):
        >>> reporter.add_observer('my_observer:', observer)
        >>> observation = {}
        >>> with reporter.scope(observation):
-       ...     reporter.report('x', 1, observer)
+       ...     reporter.report({'x': 1}, observer)
        ...
        >>> observation
        {'my_observer:x': 1}
@@ -38,7 +38,7 @@ class Reporter(object):
 
        >>> observation = {}
        >>> with report_scope(observation):
-       ...     report('x', 1, observer)
+       ...     report({'x': 1}, observer)
 
     The most important application of Reporter is to report observed values
     from each link or chain in the training and validation procedures.
