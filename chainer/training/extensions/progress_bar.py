@@ -43,14 +43,14 @@ class ProgressBar(extension.Extension):
         if training_length is None:
             t = trainer.stop_trigger
             if not isinstance(t, trigger.IntervalTrigger):
-                raise TypeError('cannot retrieve the training length from'
-                                '%s' % type(stop_trigger))
+                raise TypeError(
+                    'cannot retrieve the training length from %s' % type(t))
             training_length = self._training_length = t.period, t.unit
 
         stat_template = self._status_template
         if stat_template is None:
             stat_template = self._status_template = (
-                '{0.iteration} iter, {0.epoch} epoch / %s %ss' %
+                '{0.iteration:10} iter, {0.epoch} epoch / %s %ss\n' %
                 training_length)
 
         length, unit = training_length
@@ -83,6 +83,8 @@ class ProgressBar(extension.Extension):
                     marks, '.' * (bar_length - len(marks)), epoch_rate))
 
                 status = stat_template.format(trainer.updater)
+                out.write(status)
+
                 old_t, old_e, old_sec = recent_timing[0]
                 speed_t = (iteration - old_t) / (now - old_sec)
                 speed_e = (epoch - old_e) / (now - old_sec)
@@ -96,7 +98,7 @@ class ProgressBar(extension.Extension):
 
                 # move the cursor to the head of the progress bar, and hide the
                 # cursor
-                out.write(u'\033[3A\033[?25l')
+                out.write(u'\033[4A\033[?25l')
                 out.flush()
 
                 if len(recent_timing) > 100:
