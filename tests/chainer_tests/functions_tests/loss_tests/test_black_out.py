@@ -51,7 +51,7 @@ class TestBlackOut(unittest.TestCase):
             for i in range(self.n_samples):
                 w = self.samples[b, i]
                 l += numpy.log(1 - numpy.exp(self.W[w].dot(self.x[b])) / z)
-                
+
             expect_y[b] = l
 
         loss = -numpy.sum(expect_y) / self.batch_size
