@@ -19,6 +19,7 @@ from chainer.links.loss import negative_sampling
 from chainer.links.model import classifier
 from chainer.links.normalization import batch_normalization
 
+
 Maxout = maxout.Maxout
 PReLU = prelu.PReLU
 

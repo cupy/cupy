@@ -15,14 +15,14 @@ class Peephole(link.Chain):
     Unlike the :link:`~chainer.links.lstm` link, this chain holds `peep_i`,
     `peep_f` and `peep_o` as child links besides upward and lateral.
 
-    Given a input vector :math:`x`, Peephole returns the next hidden vector 
-    :math:`h'` defined as  
+    Given a input vector :math:`x`, Peephole returns the next hidden vector
+    :math:`h'` defined as
 
     .. math::
 
-       a &=& \\tanh(upward x + lateral h), \\\\ 
-       i &=& \\sigma(upward x + lateral h + peep_i c), \\\\ 
-       f &=& \\sigma(upward x + lateral h + peep_f c), \\\\ 
+       a &=& \\tanh(upward x + lateral h), \\\\
+       i &=& \\sigma(upward x + lateral h + peep_i c), \\\\
+       f &=& \\sigma(upward x + lateral h + peep_f c), \\\\
        c' &=& a \\odot i + f \\odot c, \\\\
        o &=& \\sigma(upward x + lateral h + peep_o c'), \\\\
        h' &=& o \\tanh(c'),

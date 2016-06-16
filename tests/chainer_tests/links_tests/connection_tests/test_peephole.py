@@ -1,5 +1,6 @@
 import unittest
 
+import cupy
 import numpy
 
 import chainer
@@ -20,14 +21,14 @@ def _peephole(func, c, h, x):
 
     lstm_in = x.dot(func.upward.W.data.T)
     lstm_in += h.dot(func.lateral.W.data.T)
-    lstm_in = xp.reshape(lstm_in, (lstm_in.shape[0],
-                                   lstm_in.shape[1] // 4,
-                                   4) + lstm_in.shape[2:])
+    lstm_in = xp.reshape(lstm_in, (len(lstm_in[:, 0]),
+                                   len(lstm_in[0, :]) // 4,
+                                   4))
     a, i, f, o = xp.split(lstm_in, 4, 2)
-    a = xp.reshape(a, (a.shape[0], a.shape[1]))
-    i = xp.reshape(i, (i.shape[0], i.shape[1]))
-    f = xp.reshape(f, (f.shape[0], f.shape[1]))
-    o = xp.reshape(o, (o.shape[0], o.shape[1]))
+    a = xp.reshape(a, (len(a[:, 0, 0]), len(a[0, :, 0])))
+    i = xp.reshape(i, (len(i[:, 0, 0]), len(i[0, :, 0])))
+    f = xp.reshape(f, (len(f[:, 0, 0]), len(f[0, :, 0])))
+    o = xp.reshape(o, (len(o[:, 0, 0]), len(o[0, :, 0])))
     peep_in_i = c.dot(func.peep_i.W.data.T)
     peep_in_f = c.dot(func.peep_f.W.data.T)
     a = xp.tanh(a)
@@ -58,12 +59,6 @@ class TestPeephole(unittest.TestCase):
         peep_f[...] = numpy.random.uniform(-1, 1, peep_f.shape)
         peep_o = self.link.peep_o.W.data
         peep_o[...] = numpy.random.uniform(-1, 1, peep_o.shape)
-
-        self.upward = upward.copy()
-        self.lateral = lateral.copy()
-        self.peep_i = peep_i.copy()
-        self.peep_f = peep_f.copy()
-        self.peep_o = peep_o.copy()
 
         c_shape = (1, self.out_size)
         h_shape = (1, self.out_size)
@@ -129,8 +124,7 @@ class TestPeephole(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
-        'link_array_module': ['to_cpu', 'to_gpu'],
-        'state_array_module': ['to_cpu', 'to_gpu']
+        'link_array_module': ['to_cpu', 'to_gpu']
     }))
 class TestPeepholeState(unittest.TestCase):
 
@@ -146,7 +140,6 @@ class TestPeepholeState(unittest.TestCase):
     def test_reset_state_cpu(self):
         self.check_reset_state()
 
-    @attr.gpu
     def test_reset_state_gpu(self):
         getattr(self.link, self.link_array_module)()
         self.check_reset_state()
@@ -166,9 +159,11 @@ class TestPeepholeToCPUToGPU(unittest.TestCase):
         self.link.c = c
         self.link.h = h
         self.link.to_cpu()
+        self.assertIs(self.link.xp, numpy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
         self.link.to_cpu()
+        self.assertIs(self.link.xp, numpy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
 
@@ -185,15 +180,19 @@ class TestPeepholeToCPUToGPU(unittest.TestCase):
         self.link.c = c
         self.link.h = h
         self.link.to_gpu()
+        self.assertIs(self.link.xp, cupy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
         self.link.to_gpu()
+        self.assertIs(self.link.xp, cupy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
         self.link.to_cpu()
+        self.assertIs(self.link.xp, numpy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
         self.link.to_gpu()
+        self.assertIs(self.link.xp, cupy)
         self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
         self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
 
