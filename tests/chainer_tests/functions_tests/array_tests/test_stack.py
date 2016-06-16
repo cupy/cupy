@@ -28,7 +28,10 @@ from chainer.testing import attr
 class TestStack(unittest.TestCase):
 
     def setUp(self):
-        self.xs = [numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)]
+        self.xs = [
+            numpy.random.uniform(-1, 1, self.shape).astype(self.dtype),
+            numpy.random.uniform(-1, 1, self.shape).astype(self.dtype),
+        ]
 
     def check_forward(self, xs_data):
         xs = [chainer.Variable(x) for x in xs_data]
@@ -38,6 +41,11 @@ class TestStack(unittest.TestCase):
             # run test only with numpy>=1.10
             expect = numpy.stack(self.xs, axis=self.axis)
             gradient_check.assert_allclose(y.data, expect)
+
+        y_data = cuda.to_cpu(y.data)
+        self.assertEqual(y_data.shape[self.axis], 2)
+        numpy.testing.assert_array_equal(y_data.take(0, axis=self.axis), self.xs[0])
+        numpy.testing.assert_array_equal(y_data.take(1, axis=self.axis), self.xs[1])
 
     def test_forward_cpu(self):
         self.check_forward(self.xs)
