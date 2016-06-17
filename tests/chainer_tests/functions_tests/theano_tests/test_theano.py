@@ -1,16 +1,21 @@
 import unittest
 
 import numpy
-import theano.tensor as T
 
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer.functions import theano_function
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
 
+if theano_function._available:
+    import theano.tensor as T
+
+
+@unittest.skipUnless(theano_function._available, 'theano is not available')
 class TheanoFunctionTestBase(object):
 
     def setUp(self):
