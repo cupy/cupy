@@ -16,6 +16,9 @@ def _sum_sqnorm(arr):
             sq_sum[int(dev)] += s
     return sum([float(i) for i in six.itervalues(sq_sum)])
 
+def exponential_decay_noise(xp, shape, dtype, hook, opt):
+    std = numpy.sqrt(hook.eta / numpy.power(1 + opt.t, 0.55))
+    return xp.random.normal(0, std, shape).astype(dtype)
 
 class Optimizer(object):
 
@@ -547,8 +550,9 @@ class GradientNoise(object):
     """
     name = 'GradientNoise'
 
-    def __init__(self, eta):
+    def __init__(self, eta, noise_func=exponential_decay_noise):
         self.eta = eta
+        self.noise_func = noise_func
 
     def __call__(self, opt):
         if cuda.available:
@@ -559,9 +563,7 @@ class GradientNoise(object):
             g = param.grad
             xp = cuda.get_array_module(g)
             with cuda.get_device(g) as dev:
-                noise = xp.random.normal(0, numpy.sqrt(
-                    self.eta / numpy.power(1 + opt.t, 0.55)), g.shape).astype(
-                    g.dtype)
+                noise = self.noise_func(xp, g.shape, g.dtype, self, opt)
                 if int(dev) == -1:
                     g += noise
                 else:
