@@ -30,7 +30,7 @@ class TestHardSigmoid(unittest.TestCase):
         if self.dtype is numpy.float16:
             self.check_forward_option = {'atol': 1e-3, 'rtol': 1e-3}
             self.check_backward_option = \
-                {'eps': 2.0 ** -3, 'atol': 1e-3, 'rtol': 1e-3}
+                {'eps': 2.0 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)

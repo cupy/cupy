@@ -928,7 +928,7 @@ class TestScaleFunction(unittest.TestCase):
 
     def setUp(self):
         self.x1 = numpy.random.uniform(-1, 1, (3, 2, 3)).astype(numpy.float32)
-        self.x2 = numpy.random.uniform(-1, 1, (2)).astype(numpy.float32)
+        self.x2 = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
         self.axis = 1
         self.y_expected = numpy.copy(self.x1)
         for i, j, k in numpy.ndindex(self.y_expected.shape):
@@ -973,7 +973,7 @@ class TestScaleFunctionInvalidShape(unittest.TestCase):
 
     def test_scale_invalid_shape(self):
         x1 = chainer.Variable(numpy.zeros((3, 2, 3), numpy.float32))
-        x2 = chainer.Variable(numpy.zeros((2), numpy.float32))
+        x2 = chainer.Variable(numpy.zeros((2,), numpy.float32))
         axis = 0
         with self.assertRaises(AssertionError):
             caffe.caffe_function._scale(x1, x2, axis)
@@ -989,8 +989,8 @@ class TestScaleChain(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (3, 2, 3)).astype(numpy.float32)
-        self.W = numpy.random.uniform(-1, 1, (2)).astype(numpy.float32)
-        self.b = numpy.random.uniform(-1, 1, (2)).astype(numpy.float32)
+        self.W = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
+        self.b = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
         self.y_expected = numpy.copy(self.x)
         for i, j, k in numpy.ndindex(self.y_expected.shape):
             self.y_expected[i, j, k] *= self.W[j]
@@ -1076,7 +1076,7 @@ class TestScaleChainInvalidArgc(unittest.TestCase):
 
     def setUp(self):
         x_data = numpy.random.uniform(-1, 1, (3, 2, 3)).astype(numpy.float32)
-        W_data = numpy.random.uniform(-1, 1, (2)).astype(numpy.float32)
+        W_data = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
         self.axis = 1
         self.x = chainer.Variable(x_data)
         self.W = chainer.Variable(W_data)
@@ -1104,7 +1104,7 @@ class TestBiasFunction(unittest.TestCase):
 
     def setUp(self):
         self.x1 = numpy.random.uniform(-1, 1, (3, 2, 3)).astype(numpy.float32)
-        self.x2 = numpy.random.uniform(-1, 1, (2)).astype(numpy.float32)
+        self.x2 = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
         self.axis = 1
         self.y_expected = numpy.copy(self.x1)
         for i, j, k in numpy.ndindex(self.y_expected.shape):
@@ -1149,7 +1149,7 @@ class TestBiasFunctionInvalidShape(unittest.TestCase):
 
     def test_bias_function_invalid_shape(self):
         x1 = chainer.Variable(numpy.zeros((3, 2, 3), numpy.float32))
-        x2 = chainer.Variable(numpy.zeros((2), numpy.float32))
+        x2 = chainer.Variable(numpy.zeros((2,), numpy.float32))
         axis = 0
         with self.assertRaises(AssertionError):
             caffe.caffe_function._bias(x1, x2, axis)
@@ -1163,7 +1163,7 @@ class TestBiasLink(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (3, 2, 3)).astype(numpy.float32)
-        self.b = numpy.random.uniform(-1, 1, (2)).astype(numpy.float32)
+        self.b = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
         self.y_expected = numpy.copy(self.x)
         for i, j, k in numpy.ndindex(self.y_expected.shape):
             self.y_expected[i, j, k] += self.b[j]
@@ -1239,7 +1239,7 @@ class TestBiasLinkInvalidArgc(unittest.TestCase):
 
     def setUp(self):
         x_data = numpy.random.uniform(-1, 1, (3, 2, 3)).astype(numpy.float32)
-        b_data = numpy.random.uniform(-1, 1, (2)).astype(numpy.float32)
+        b_data = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
         self.axis = 1
         self.x = chainer.Variable(x_data)
         self.b = chainer.Variable(b_data)

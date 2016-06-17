@@ -51,10 +51,8 @@ def download_mnist_data():
     print('Done')
     print('Converting test data...')
     data_test, target_test = load_mnist(test_images, test_labels, num_test)
-    mnist = {}
-    mnist['data'] = np.append(data_train, data_test, axis=0)
-    mnist['target'] = np.append(target_train, target_test, axis=0)
-
+    mnist = {'data': np.append(data_train, data_test, axis=0),
+             'target': np.append(target_train, target_test, axis=0)}
     print('Done')
     print('Save output...')
     with open('mnist.pkl', 'wb') as output:

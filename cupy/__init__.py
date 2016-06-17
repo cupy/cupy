@@ -7,7 +7,7 @@ import six
 try:
     from cupy import core
 except ImportError:
-    # core is a c-extention module.
+    # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
     msg = ('CuPy is not correctly installed. Please check your environment, '
@@ -135,6 +135,7 @@ concatenate = manipulation.join.concatenate
 dstack = manipulation.join.dstack
 hstack = manipulation.join.hstack
 vstack = manipulation.join.vstack
+stack = manipulation.join.stack
 
 asfortranarray = manipulation.kind.asfortranarray
 

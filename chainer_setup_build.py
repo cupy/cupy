@@ -130,6 +130,13 @@ def make_extensions(options, compiler):
         x for x in settings['library_dirs'] if path.exists(x)]
     if sys.platform != 'win32':
         settings['runtime_library_dirs'] = settings['library_dirs']
+    if sys.platform == 'darwin':
+        args = settings.setdefault('extra_link_args', [])
+        args.append(
+            '-Wl,' + ','.join('-rpath,' + path
+                              for path in settings['library_dirs']))
+        # -rpath is only supported when targetting Mac OS X 10.5 or later
+        args.append('-mmacosx-version-min=10.5')
 
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))

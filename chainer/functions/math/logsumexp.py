@@ -1,12 +1,9 @@
-import numpy
-
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 
 
-class Sum(function.Function):
-    """Sum of array elements over a given axis."""
+class LogSumExp(function.Function):
 
     def __init__(self, axis=None):
         if axis is None:
@@ -24,7 +21,7 @@ class Sum(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(
             in_types.size() == 1,
-            in_types[0].dtype == numpy.float32
+            in_types[0].dtype.kind == 'f',
         )
 
         if self.axis is not None:
@@ -38,35 +35,47 @@ class Sum(function.Function):
                         -axis - 1 < in_types[0].ndim,
                     )
 
-    def forward(self, x):
-        xp = cuda.get_array_module(*x)
-        return xp.asarray(x[0].sum(axis=self.axis)),
+    def forward(self, inputs):
+        xp = cuda.get_array_module(*inputs)
 
-    def backward(self, x, gy):
-        xp = cuda.get_array_module(*x)
+        x, = inputs
+        m = x.max(axis=self.axis, keepdims=True)
+        y = x - m
+        xp.exp(y, out=y)
+        y_sum = y.sum(axis=self.axis)
+        self.y = xp.asarray(xp.log(y_sum) + m.reshape(y_sum.shape))
+        return self.y,
 
-        gx = xp.empty_like(x[0])
-        if self.axis is None:
-            gx[:] = gy[0]
-        else:
-            gy = gy[0]
+    def backward(self, inputs, grads):
+        xp = cuda.get_array_module(*inputs)
+        x, = inputs
+        gy, = grads
+
+        y = self.y
+        if self.axis is not None:
             actual_axis = []
             for axis in self.axis:
                 if axis < 0:
-                    axis += len(gx.shape)
+                    axis = len(x.shape) + axis
                 actual_axis.append(axis)
             for axis in sorted(actual_axis):
                 gy = xp.expand_dims(gy, axis=axis)
-            gx[:] = gy
-
+                y = xp.expand_dims(y, axis=axis)
+        gx = gy * xp.exp(x - y)
         return gx,
 
 
-def sum(x, axis=None):
-    """Sum of array elements over a given axis.
+def logsumexp(x, axis=None):
+    """Log-sum-exp of array elements over a given axis.
+
+    This function calculates logarithm of sum of exponetial of array elements.
+
+    .. math::
+
+       y_i = \\log\\left(\\sum_j \\exp(x_{ij})\\right)
 
     Args:
-        x (~chainer.Variable): Elements to sum.
+        x (~chainer.Variable): Elements to log-sum-exp.
         axis (None, int, or tuple of int): Axis which a sum is performed.
             The default (axis = None) is perform a sum over all the dimensions
             of the input array.
@@ -75,4 +84,4 @@ def sum(x, axis=None):
         ~chainer.Variable: Output variable.
 
     """
-    return Sum(axis)(x)
+    return LogSumExp(axis)(x)

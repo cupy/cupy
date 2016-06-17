@@ -24,9 +24,9 @@ class DotNode(object):
         self.id_ = id(node)
         self.attribute = {'label': node.label}
         if isinstance(node, variable.Variable):
-            self.attribute = {'shape': 'oval'}
+            self.attribute.update({'shape': 'oval'})
         else:
-            self.attribute = {'shape': 'box'}
+            self.attribute.update({'shape': 'box'})
         if attribute is not None:
             self.attribute.update(attribute)
 
@@ -211,7 +211,6 @@ def build_computational_graph(outputs, remove_split=True,
         elif isinstance(cand, function.Function):
             for input_ in cand.inputs:
                 if input_ is not cand and (input_, cand) not in seen_edges:
-                    creator = input_.creator
                     add_cand(input_)
                     seen_edges.add((input_, cand))
                     nodes.add(HashableObject(input_))

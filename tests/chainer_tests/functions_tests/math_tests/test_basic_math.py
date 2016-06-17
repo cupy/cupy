@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import basic_math
@@ -283,6 +284,11 @@ class TestBinaryOpConstant(unittest.TestCase):
             self._test_constant_array_one(
                 func, x_data, cuda.to_gpu(
                     numpy.array([3.0, 4.0, 5.0], self.dtype)))
+
+        with six.assertRaisesRegex(self, ValueError, 'broadcast'):
+            self._test_constant_array_gpu_one(
+                func, x_data, cuda.to_gpu(
+                    numpy.array([[3.0, 4.0], [5.0, 6.0]], self.dtype)))
 
     def test_add_constant(self):
         self._test_constant(lambda x, y: x + y)
