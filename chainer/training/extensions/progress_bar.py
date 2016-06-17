@@ -95,8 +95,7 @@ class ProgressBar(extension.Extension):
                           .format(speed_t,
                                   datetime.timedelta(seconds=estimated_time)))
 
-                # move the cursor to the head of the progress bar, and hide the
-                # cursor
+                # move the cursor to the head of the progress bar
                 out.write('\033[4A')
                 out.flush()
 
@@ -106,7 +105,7 @@ class ProgressBar(extension.Extension):
             recent_timing.append((iteration, epoch, now))
 
     def finalize(self):
-        # delete the progress bar, and show the cursor
+        # delete the progress bar
         out = self._out
         out.write('\033[J')
         out.flush()
