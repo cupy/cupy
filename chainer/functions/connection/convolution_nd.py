@@ -6,8 +6,21 @@ from six import moves
 
 from chainer import cuda
 from chainer import function
+from chainer.functions.connection import convolution_2d
 from chainer.utils import conv
 from chainer.utils import type_check
+
+
+if cuda.cudnn_enabled:
+    cudnn = cuda.cudnn
+    libcudnn = cuda.cudnn.cudnn
+    _cudnn_version = libcudnn.getVersion()
+    _fwd_pref = libcudnn.CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT
+    if _cudnn_version >= 4000:
+        _bwd_filter_pref = \
+            libcudnn.CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT
+        _bwd_data_pref = \
+            libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
 def _ensure_tuple(x, n):
@@ -81,6 +94,7 @@ class ConvolutionND(function.Function):
         ss = self.stride
         ps = self.pad
         N = self.N
+        colon = slice(None)
 
         # Compute output image's dimensions.
         outs = tuple(
@@ -90,26 +104,63 @@ class ConvolutionND(function.Function):
         # Make empty array for result.
         y_shape = (n, out_c) + outs  # (n, c_O, out_1, out_2, ..., out_N)
         y = cuda.empty(y_shape, dtype=x.dtype)
+        # Implementation using cuDNN.
+        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
+                convolution_2d._check_cudnn_acceptable_type(x.dtype, W.dtype)):
+            x = cuda.cupy.ascontiguousarray(x)
+            W = cuda.cupy.ascontiguousarray(W)
+            if b is not None:
+                b = cuda.cupy.ascontiguousarray(b)
 
-        # TODO(takagi) cuDNN version here.
+            handle = cudnn.get_handle()
+            x_desc = cudnn.create_tensor_descriptor(x)
+            y_desc = cudnn.create_tensor_descriptor(y)
 
-        # Make patch array.
-        self.col = conv.im2col_nd_gpu(x, ks, ss, ps, cover_all=self.cover_all)
+            self.filter_desc = cudnn.create_filter_descriptor(W)
+            self.conv_desc = cudnn.create_convolution_descriptor(ps, ss)
+            if b is not None:
+                b_index = (None, colon) + (None,) * N
+                self.bias_desc = cudnn.create_tensor_descriptor(b[b_index])
 
-        # Compute correlation.
-        W_mat = W.reshape(out_c, -1)
-        col_mats = self.col.reshape(n, -1, reduce(operator.mul, outs))
-        y_mats = y.reshape(n, out_c, -1)
-        # TODO(takagi): Use streams or batch gemm
-        for i in moves.range(n):
-            y_mats[i] = W_mat.dot(col_mats[i])
+            workspace_size = cuda.get_max_workspace_size()
+            workspace = cuda.empty((workspace_size,), dtype='b')
+            algo = libcudnn.getConvolutionForwardAlgorithm(
+                handle, x_desc.value, self.filter_desc.value,
+                self.conv_desc.value, y_desc.value, _fwd_pref,
+                workspace_size)
 
-        # Apply bias if given.
-        # TODO(takagi): Support unshared bias
-        if b is not None:
-            colon = slice(None)
-            index = (colon,) + (None,) * N  # (:, None, ..., None)
-            y += b[index]
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
+            libcudnn.convolutionForward(
+                handle, one.data, x_desc.value, x.data.ptr,
+                self.filter_desc.value, W.data.ptr, self.conv_desc.value,
+                algo, workspace.data.ptr, workspace_size, zero.data,
+                y_desc.value, y.data.ptr)
+
+            # TODO(takagi) Support unshared bias
+            if b is not None:
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
+        # Implementation using im2col.
+        else:
+            # Make patch array.
+            self.col = conv.im2col_nd_gpu(x, ks, ss, ps, cover_all=self.cover_all)
+
+            # Compute correlation.
+            W_mat = W.reshape(out_c, -1)
+            col_mats = self.col.reshape(n, -1, reduce(operator.mul, outs))
+            y_mats = y.reshape(n, out_c, -1)
+            # TODO(takagi): Use streams or batch gemm
+            for i in moves.range(n):
+                y_mats[i] = W_mat.dot(col_mats[i])
+
+            # Apply bias if given.
+            # TODO(takagi): Support unshared bias
+            if b is not None:
+                index = (colon,) + (None,) * N  # (:, None, ..., None)
+                y += b[index]
 
         return y,
 
@@ -161,34 +212,86 @@ class ConvolutionND(function.Function):
 
         # Compute filter weight gradient.
         gW = cuda.empty_like(W)
+        # Implementation using cuDNN.
+        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
+                convolution_2d._check_cudnn_acceptable_type(x.dtype, W.dtype)):
+            x = cuda.cupy.ascontiguousarray(x)
+            W = cuda.cupy.ascontiguousarray(W)
+            gy = cuda.cupy.ascontiguousarray(gy)
 
-        # TODO(takagi) cuDNN version here.
+            handle = cudnn.get_handle()
+            x_desc = cudnn.create_tensor_descriptor(x)
+            gy_desc = cudnn.create_tensor_descriptor(gy)
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
+            gx = cuda.cupy.empty_like(x)
 
-        gW_mat = gW.reshape(out_c, reduce(operator.mul, ks, c))
-        col_mats = self.col.reshape(
-            n, reduce(operator.mul, ks, c), reduce(operator.mul, outs))
-        gy_mats = gy.reshape(n, out_c, reduce(operator.mul, outs))
-        # TODO(takagi): Use streams or batch gemm
-        gW_mat[...] = 0
-        for i in moves.range(n):
-            gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
+            if _cudnn_version >= 4000:
+                workspace_size = cuda.get_max_workspace_size()
+                workspace = cuda.cupy.empty((workspace_size,), dtype='b')
 
-        # Compute patch array gradient.
-        W_mat = W.reshape(out_c, -1)
-        gcol = cuda.empty_like(self.col)
-        gcol_mats = gcol.reshape(
-            n, reduce(operator.mul, ks, c), reduce(operator.mul, outs))
-        for i in moves.range(n):
-            gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
+                algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
+                    handle, x_desc.value, gy_desc.value,
+                    self.conv_desc.value, self.filter_desc.value,
+                    _bwd_filter_pref, workspace_size)
+                libcudnn.convolutionBackwardFilter_v3(
+                    handle, one.data, x_desc.value, x.data.ptr,
+                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                    algo, workspace.data.ptr, workspace_size,
+                    zero.data, self.filter_desc.value, gW.data.ptr)
 
-        # Compute input gradient.
-        gx = conv.col2im_nd_gpu(gcol, ss, ps, ds)
+                algo = libcudnn.getConvolutionBackwardDataAlgorithm(
+                    handle, self.filter_desc.value, gy_desc.value,
+                    self.conv_desc.value, x_desc.value, _bwd_data_pref,
+                    workspace_size)
+                libcudnn.convolutionBackwardData_v3(
+                    handle, one.data, self.filter_desc.value, W.data.ptr,
+                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                    algo, workspace.data.ptr, workspace_size,
+                    zero.data, x_desc.value, gx.data.ptr)
+            else:
+                libcudnn.convolutionBackwardFilter_v2(
+                    handle, one.data, x_desc.value, x.data.ptr,
+                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                    zero.data, self.filter_desc.value, gW.data.ptr)
+                libcudnn.convolutionBackwardData_v2(
+                    handle, one.data, self.filter_desc.value, W.data.ptr,
+                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                    zero.data, x_desc.value, gx.data.ptr)
 
-        # Compute bias gradient if given.
-        if b is not None:
-            # (n, _, out_1, out_2, ..., out_N)
-            axis = (0,) + tuple(moves.range(2, N+2))
-            gb = gy.sum(axis=axis)
+            if b is not None:
+                gb = cuda.cupy.empty_like(b)
+                libcudnn.convolutionBackwardBias(
+                    handle, one.data, gy_desc.value, gy.data.ptr,
+                    zero.data, self.bias_desc.value, gb.data.ptr)
+        # Implementation using col2im.
+        else:
+            gW_mat = gW.reshape(out_c, reduce(operator.mul, ks, c))
+            col_mats = self.col.reshape(
+                n, reduce(operator.mul, ks, c), reduce(operator.mul, outs))
+            gy_mats = gy.reshape(n, out_c, reduce(operator.mul, outs))
+            # TODO(takagi): Use streams or batch gemm
+            gW_mat[...] = 0
+            for i in moves.range(n):
+                gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
+
+            # Compute patch array gradient.
+            W_mat = W.reshape(out_c, -1)
+            gcol = cuda.empty_like(self.col)
+            gcol_mats = gcol.reshape(
+                n, reduce(operator.mul, ks, c), reduce(operator.mul, outs))
+            for i in moves.range(n):
+                gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
+
+            # Compute input gradient.
+            gx = conv.col2im_nd_gpu(gcol, ss, ps, ds)
+
+            # Compute bias gradient if given.
+            if b is not None:
+                # (n, _, out_1, out_2, ..., out_N)
+                axis = (0,) + tuple(moves.range(2, N+2))
+                gb = gy.sum(axis=axis)
 
         if b is None:
             return gx, gW

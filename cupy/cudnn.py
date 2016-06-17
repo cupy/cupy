@@ -1,6 +1,8 @@
 import atexit
 
+import functools
 import numpy
+import operator
 import six
 
 import cupy
@@ -60,17 +62,34 @@ def _to_ctypes_array(tup, dtype=numpy.intc):
     return numpy.array(tup, dtype=dtype).ctypes
 
 
+def maplist(fn, xs):
+    # Imperative impl. because Python does not optimize tail recursion.
+    ret = []
+    while xs:
+        ret += [fn(xs)]
+        xs = xs[1:]
+    return ret
+
+
+def _compute_strides(shape):
+    def aux(xs):
+        return functools.reduce(operator.mul, xs[1:], 1)
+    return tuple(map(aux, maplist(lambda x: x, shape)))
+
+
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
-    if arr.ndim != 4:
-        raise ValueError('cupy.cudnn supports 4-dimensional arrays only')
     if not arr.flags.c_contiguous:
         raise ValueError('cupy.cudnn supports c-contiguous arrays only')
     data_type = get_data_type(arr.dtype)
-    cudnn.setTensor4dDescriptor(desc.value, format, data_type,
-                                *arr.shape)
-
+    if arr.ndim == 4:
+        cudnn.setTensor4dDescriptor(desc.value, format, data_type, *arr.shape)
+    else:
+        c_shape = _to_ctypes_array(arr.shape)
+        c_strides = _to_ctypes_array(_compute_strides(arr.shape))
+        cudnn.setTensorNdDescriptor(desc.value, data_type, arr.ndim,
+                                    c_shape.data, c_strides.data)
     return desc
 
 

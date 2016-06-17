@@ -1,6 +1,7 @@
 import unittest
 
 import functools
+import mock
 import numpy
 from operator import mul
 
@@ -16,7 +17,9 @@ from chainer.utils import conv
 
 
 @testing.parameterize(*testing.product({
-    'ds': [(10,), (10, 8), (10, 8, 6)],
+    # 'ds': [(10,), (10, 8), (10, 8, 6)],
+    # TODO(takagi) cuDNN looks not support 1D convolution.
+    'ds': [(10, 8), (10, 8, 6)],
     'c_contiguous': [True, False],
     'cover_all': [True, False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
@@ -74,6 +77,14 @@ class TestConvolutionND(unittest.TestCase):
         gradient_check.assert_allclose(
             y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
 
+    @attr.cudnn
+    def test_forward_consistency(self):
+        self.check_forward_consistency(nobias=False, use_cudnn=True)
+
+    @attr.cudnn
+    def test_forward_consistency_nobias(self):
+        self.check_forward_consistency(nobias=True, use_cudnn=True)
+
     @attr.gpu
     def test_forward_consistency_im2col(self):
         self.check_forward_consistency(nobias=False, use_cudnn=False)
@@ -115,6 +126,20 @@ class TestConvolutionND(unittest.TestCase):
     def test_backward_cpu_nobias(self):
         self.check_backward(self.x, self.W, None, self.gy)
 
+    @attr.cudnn
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
+                            cuda.to_gpu(self.b), cuda.to_gpu(self.gy),
+                            use_cudnn=True)
+
+    @attr.cudnn
+    @condition.retry(3)
+    def test_backward_gpu_nobias(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
+                            None, cuda.to_gpu(self.gy),
+                            use_cudnn=True)
+
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_im2col(self):
@@ -130,6 +155,57 @@ class TestConvolutionND(unittest.TestCase):
                             use_cudnn=False)
 
 
-# TODO(takagi) TestConvolutionNDCudnnCall
+@testing.parameterize(*testing.product({
+    # 'ds': [(10,), (10, 8), (10, 8, 6)],
+    # TODO(takgi) cuDNN looks not support 1D convolution.
+    'ds': [(10, 8), (10, 8, 6)],
+    'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+@attr.cudnn
+class TestConvolutionNDCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        in_channels = 3
+        out_channels = 2
+        N = len(self.ds)
+        ks = (3,) * N
+        self.stride = (2,) * N
+        self.pad = (1,) * N
+        x_shape = (2, 3) + self.ds
+        self.x = cuda.cupy.random.uniform(-1, 1, x_shape).astype(self.dtype)
+        W_scale = numpy.sqrt(1. / functools.reduce(mul, ks, in_channels))
+        W_shape = (out_channels, in_channels) + ks
+        self.W = cuda.cupy.random.normal(0, W_scale, W_shape).astype(self.dtype)
+        gy_shape = (2, 2) + tuple(
+            [conv.get_conv_outsize(d, k, s, p)
+             for (d, k, s, p) in zip(self.ds, ks, self.stride, self.pad)])
+        self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
+        self.expect = self.use_cudnn and (
+            cuda.cudnn.cudnn.getVersion() >= 3000 or
+            self.dtype != numpy.float16)
+
+    def forward(self):
+        x = chainer.Variable(cuda.to_gpu(self.x))
+        W = chainer.Variable(cuda.to_gpu(self.W))
+        return functions.convolution_nd(
+            x, W, None, stride=self.stride, pad=self.pad,
+            use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.expect)
+
+    def test_call_cudnn_backward(self):
+        y = self.forward()
+        y.grad = self.gy
+        if cuda.cudnn.cudnn.getVersion() >= 4000:
+            name = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
+        else:
+            name = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
+        with mock.patch(name) as func:
+            y.backward()
+            self.assertEqual(func.called, self.expect)
 
 testing.run_module(__name__, __file__)
