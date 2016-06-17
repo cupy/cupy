@@ -43,7 +43,7 @@ class PrintReport(extension.Extension):
         out = self._out
 
         # delete the printed contents from the current cursor
-        out.write(u'\033[J')
+        out.write('\033[J')
 
         if self._header:
             out.write(self._header)
@@ -64,12 +64,6 @@ class PrintReport(extension.Extension):
             self._print(log[log_len])
             log_len += 1
         self._log_len = log_len
-
-    def finalize(self):
-        # delete the progress bar
-        out = self._out
-        out.write(u'\x1b\x9bJ')
-        out.flush()
 
     def serialize(self, serializer):
         log_report = self._log_report

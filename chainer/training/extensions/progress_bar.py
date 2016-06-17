@@ -64,7 +64,7 @@ class ProgressBar(extension.Extension):
             now = time.clock()
 
             if len(recent_timing) >= 1:
-                out.write(u'\033[J')
+                out.write('\033[J')
 
                 if unit == 'iteration':
                     rate = iteration / length
@@ -97,7 +97,7 @@ class ProgressBar(extension.Extension):
 
                 # move the cursor to the head of the progress bar, and hide the
                 # cursor
-                out.write(u'\033[4A\033[?25l')
+                out.write('\033[4A')
                 out.flush()
 
                 if len(recent_timing) > 100:
@@ -108,5 +108,5 @@ class ProgressBar(extension.Extension):
     def finalize(self):
         # delete the progress bar, and show the cursor
         out = self._out
-        out.write(u'\033[J\033[?25h')
+        out.write('\033[J')
         out.flush()
