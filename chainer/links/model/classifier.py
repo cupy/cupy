@@ -13,10 +13,12 @@ class Classifier(link.Chain):
     Args:
         predictor (~chainer.Link): Predictor network.
         lossfun (function): Loss function.
+        evaluator (function): Function that computes accuracy.
 
     Attributes:
         predictor (~chainer.Link): Predictor network.
         lossfun (function): Loss function.
+        evaluator (function): Function that computes accuracy.
         y (~chainer.Variable): Prediction for the last minibatch.
         loss (~chainer.Variable): Loss value for the last minibatch.
         accuracy (~chainer.Variable): Accuracy for the last minibatch.
@@ -28,9 +30,11 @@ class Classifier(link.Chain):
     compute_accuracy = True
 
     def __init__(self, predictor,
-                 lossfun=softmax_cross_entropy.softmax_cross_entropy):
+                 lossfun=softmax_cross_entropy.softmax_cross_entropy,
+                 evaluator=accuracy.accuracy):
         super(Classifier, self).__init__(predictor=predictor)
         self.lossfun = lossfun
+        self.evaluator = evaluator
         self.y = None
         self.loss = None
         self.accuracy = None
@@ -54,5 +58,5 @@ class Classifier(link.Chain):
         self.y = self.predictor(x)
         self.loss = self.lossfun(self.y, t)
         if self.compute_accuracy:
-            self.accuracy = accuracy.accuracy(self.y, t)
+            self.accuracy = self.evaluator(self.y, t)
         return self.loss
