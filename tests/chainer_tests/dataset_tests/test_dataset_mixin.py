@@ -1,6 +1,7 @@
 import unittest
 
 from chainer import dataset
+from chainer import testing
 
 
 class SimpleDataset(dataset.DatasetMixin):

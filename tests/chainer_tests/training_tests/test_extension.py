@@ -1,6 +1,7 @@
 import unittest
 
 from chainer import training
+from chainer import testing
 
 
 class TestExtension(unittest.TestCase):
@@ -14,7 +15,7 @@ class TestExtension(unittest.TestCase):
 
     def test_make_extension(self):
         @training.make_extension(trigger=(2, 'epoch'), default_name='my_ext',
-                                priority=50, invoke_before_training=True)
+                                 priority=50, invoke_before_training=True)
         def my_extension(trainer):
             pass
 

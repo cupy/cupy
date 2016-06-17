@@ -1,6 +1,7 @@
 import unittest
 
 from chainer import datasets
+from chainer import testing
 
 
 class TestSubDataset(unittest.TestCase):

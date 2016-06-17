@@ -4,6 +4,7 @@ import numpy
 
 from chainer import cuda
 from chainer import datasets
+from chainer import testing
 from chainer.testing import attr
 
 

@@ -1,6 +1,7 @@
 import unittest
 
 from chainer import iterators
+from chainer import testing
 
 
 class TestSequentialIterator(unittest.TestCase):
