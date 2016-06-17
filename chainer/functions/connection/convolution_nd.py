@@ -8,6 +8,7 @@ from chainer import cuda
 from chainer import function
 from chainer.functions.connection import convolution_2d
 from chainer.utils import conv
+from chainer.utils import conv_nd
 from chainer.utils import type_check
 
 
@@ -71,7 +72,8 @@ class ConvolutionND(function.Function):
         N = self.N
 
         # Make patch array.
-        self.col = conv.im2col_nd_cpu(x, ks, ss, ps, cover_all=self.cover_all)
+        self.col = conv_nd.im2col_nd_cpu(
+            x, ks, ss, ps, cover_all=self.cover_all)
 
         # Compute correlation.
         axes = tuple(moves.range(1, N+2))  # (1, 2, ..., N+1)
@@ -146,7 +148,8 @@ class ConvolutionND(function.Function):
         # Implementation using im2col.
         else:
             # Make patch array.
-            self.col = conv.im2col_nd_gpu(x, ks, ss, ps, cover_all=self.cover_all)
+            self.col = conv_nd.im2col_nd_gpu(
+                x, ks, ss, ps, cover_all=self.cover_all)
 
             # Compute correlation.
             W_mat = W.reshape(out_c, -1)
@@ -186,7 +189,7 @@ class ConvolutionND(function.Function):
         gcol = numpy.rollaxis(gcol, N + 1)
 
         # Compute input gradient.
-        gx = conv.col2im_nd_cpu(gcol, ss, ps, ds)
+        gx = conv_nd.col2im_nd_cpu(gcol, ss, ps, ds)
 
         # Compute bias gradient if given and return gradients.
         if b is None:
@@ -285,7 +288,7 @@ class ConvolutionND(function.Function):
                 gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
 
             # Compute input gradient.
-            gx = conv.col2im_nd_gpu(gcol, ss, ps, ds)
+            gx = conv_nd.col2im_nd_gpu(gcol, ss, ps, ds)
 
             # Compute bias gradient if given.
             if b is not None:
