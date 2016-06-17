@@ -16,9 +16,11 @@ def _sum_sqnorm(arr):
             sq_sum[int(dev)] += s
     return sum([float(i) for i in six.itervalues(sq_sum)])
 
+
 def exponential_decay_noise(xp, shape, dtype, hook, opt):
     std = numpy.sqrt(hook.eta / numpy.power(1 + opt.t, 0.55))
     return xp.random.normal(0, std, shape).astype(dtype)
+
 
 class Optimizer(object):
 
