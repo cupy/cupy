@@ -20,14 +20,14 @@ def _peephole(func, c, h, x):
 
     lstm_in = x.dot(func.upward.W.data.T)
     lstm_in += h.dot(func.lateral.W.data.T)
-    lstm_in = xp.reshape(lstm_in, (len(lstm_in[:, 0]),
-                                   len(lstm_in[0, :]) // 4,
+    lstm_in = xp.reshape(lstm_in, (len(lstm_in),
+                                   lstm_in.shape[1] // 4,
                                    4))
     a, i, f, o = xp.split(lstm_in, 4, 2)
-    a = xp.reshape(a, (len(a[:, 0, 0]), len(a[0, :, 0])))
-    i = xp.reshape(i, (len(i[:, 0, 0]), len(i[0, :, 0])))
-    f = xp.reshape(f, (len(f[:, 0, 0]), len(f[0, :, 0])))
-    o = xp.reshape(o, (len(o[:, 0, 0]), len(o[0, :, 0])))
+    a = xp.reshape(a, (len(a), a.shape[1]))
+    i = xp.reshape(i, (len(i), i.shape[1]))
+    f = xp.reshape(f, (len(f), f.shape[1]))
+    o = xp.reshape(o, (len(o), o.shape[1]))
     peep_in_i = c.dot(func.peep_i.W.data.T)
     peep_in_f = c.dot(func.peep_f.W.data.T)
     a = xp.tanh(a)

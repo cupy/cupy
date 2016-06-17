@@ -12,8 +12,9 @@ class Peephole(link.Chain):
     """Fully-connected LSTM layer with peephole connections.
 
     This is a fully-connected LSTM layer with peephole connections as a chain.
-    Unlike the :link:`~chainer.links.lstm` link, this chain holds `peep_i`,
-    `peep_f` and `peep_o` as child links besides upward and lateral.
+    Unlike the :link:`~chainer.links.lstm` link, this chain holds ``peep_i``,
+    ``peep_f`` and ``peep_o`` as child links besides ``upward`` and
+    ``lateral``.
 
     Given a input vector :math:`x`, Peephole returns the next hidden vector
     :math:`h'` defined as
@@ -32,15 +33,18 @@ class Peephole(link.Chain):
     is the next cell state and :math:`h` is the current hidden vector.
 
     Args:
-        in_size(int): Dimension of input vector :math:`x`.
-        out_size(int): Dimension of hidden vector :math: `h`.
+        in_size(int): Dimension of the input vector :math:`x`.
+        out_size(int): Dimension of the hidden vector :math: `h`.
 
     Attributes:
         upward (~chainer.links.Linear): Linear layer of upward connections.
         lateral (~chainer.links.Linear): Linear layer of lateral connections.
-        peep_i (~chainer.links.Linear): Linear layer of lateral connections.
-        peep_f (~chainer.links.Linear): Linear layer of lateral connections.
-        peep_o (~chainer.links.Linear): Linear layer of lateral connections.
+        peep_i (~chainer.links.Linear): Linear layer of peephole connections
+                                        to the input gate.
+        peep_f (~chainer.links.Linear): Linear layer of lateral connections
+                                        to the forget gate.
+        peep_o (~chainer.links.Linear): Linear layer of lateral connections
+                                        to the output gate.
         c (~chainer.Variable): Cell states of LSTM units.
         h (~chainer.Variable): Output at the current time step.
 
@@ -71,7 +75,7 @@ class Peephole(link.Chain):
             self.h.to_gpu(device)
 
     def reset_state(self):
-        """Resets the internal state.
+        """Resets the internal states.
 
         It sets ``None`` to the :attr:`c` and :attr:`h` attributes.
 
@@ -96,14 +100,14 @@ class Peephole(link.Chain):
             self.c = variable.Variable(
                 xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
                 volatile='auto')
-        lstm_in = reshape.reshape(lstm_in, (len(lstm_in.data[:, 0]),
-                                            len(lstm_in.data[0, :]) // 4,
+        lstm_in = reshape.reshape(lstm_in, (len(lstm_in.data),
+                                            lstm_in.data.shape[1] // 4,
                                             4))
         a, i, f, o = split_axis.split_axis(lstm_in, 4, 2)
-        a = reshape.reshape(a, (len(a.data[:, 0, 0]), len(a.data[0, :, 0])))
-        i = reshape.reshape(i, (len(i.data[:, 0, 0]), len(i.data[0, :, 0])))
-        f = reshape.reshape(f, (len(f.data[:, 0, 0]), len(f.data[0, :, 0])))
-        o = reshape.reshape(o, (len(o.data[:, 0, 0]), len(o.data[0, :, 0])))
+        a = reshape.reshape(a, (len(a.data), a.data.shape[1]))
+        i = reshape.reshape(i, (len(i.data), i.data.shape[1]))
+        f = reshape.reshape(f, (len(f.data), f.data.shape[1]))
+        o = reshape.reshape(o, (len(o.data), o.data.shape[1]))
         peep_in_i = self.peep_i(self.c)
         peep_in_f = self.peep_f(self.c)
         a = tanh.tanh(a)
