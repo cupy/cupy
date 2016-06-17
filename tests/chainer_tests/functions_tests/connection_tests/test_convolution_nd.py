@@ -44,7 +44,6 @@ class TestConvolutionND(unittest.TestCase):
              for (d, k, s, p) in zip(self.ds, ks, self.stride, self.pad)])
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.x_dtype)
 
-        # Set assertion precisions.
         self.check_forward_options = {}
         self.check_backward_options = {
             'eps': 1e-2, 'atol': 5e-5, 'rtol': 5e-4}
