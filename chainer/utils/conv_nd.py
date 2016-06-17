@@ -3,8 +3,8 @@ import numpy
 import six
 
 from chainer import cuda
-from chainer.utils import conv_nd_kernel
 from chainer.utils.conv import get_conv_outsize
+from chainer.utils import conv_nd_kernel
 
 
 def im2col_nd_cpu(img, ks, ss, ps, pval=0, cover_all=False):
