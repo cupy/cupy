@@ -176,7 +176,8 @@ class TestConvolutionNDCudnnCall(unittest.TestCase):
         self.x = cuda.cupy.random.uniform(-1, 1, x_shape).astype(self.dtype)
         W_scale = numpy.sqrt(1. / functools.reduce(mul, ks, in_channels))
         W_shape = (out_channels, in_channels) + ks
-        self.W = cuda.cupy.random.normal(0, W_scale, W_shape).astype(self.dtype)
+        self.W = cuda.cupy.random.normal(
+            0, W_scale, W_shape).astype(self.dtype)
         gy_shape = (2, 2) + tuple(
             [conv.get_conv_outsize(d, k, s, p)
              for (d, k, s, p) in zip(self.ds, ks, self.stride, self.pad)])
