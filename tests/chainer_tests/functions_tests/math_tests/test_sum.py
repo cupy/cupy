@@ -98,6 +98,12 @@ class TestSum(unittest.TestCase):
         self.check_backward(self.x, self.gy)
 
     @condition.retry(3)
+    def test_backward_zerodim_cpu(self):
+        x = numpy.array(0, dtype='f').astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.check_backward(x, gy)
+
+    @condition.retry(3)
     def test_backward_axis_cpu(self):
         for i in range(self.x.ndim):
             gy = numpy.ones_like(self.x.sum(axis=i)) * self.gy
