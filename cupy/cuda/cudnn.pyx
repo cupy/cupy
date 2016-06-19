@@ -2,6 +2,8 @@
 # NOTE: This wrapper does not cover all APIs of cuDNN v4.
 cimport cython
 
+from cupy.cuda cimport driver
+
 
 ###############################################################################
 # Extern
@@ -17,8 +19,8 @@ cdef extern from "cupy_cudnn.h":
     # Initialization and CUDA cooperation
     int cudnnCreate(Handle* handle)
     int cudnnDestroy(Handle handle)
-    int cudnnSetStream(Handle handle, Stream stream)
-    int cudnnGetStream(Handle handle, Stream* stream)
+    int cudnnSetStream(Handle handle, driver.Stream stream)
+    int cudnnGetStream(Handle handle, driver.Stream* stream)
 
     # Tensor manipulation
     int cudnnCreateTensorDescriptor(TensorDescriptor* descriptor)
@@ -107,12 +109,14 @@ cdef extern from "cupy_cudnn.h":
             void* workSpace, size_t workSpaceSizeInBytes, void* beta,
             FilterDescriptor gradDesc, void* gradData)
     int cudnnGetConvolutionBackwardDataAlgorithm(
-            Handle handle, FilterDescriptor filterDesc, TensorDescriptor diffDesc,
+            Handle handle, FilterDescriptor filterDesc,
+            TensorDescriptor diffDesc,
             ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
             ConvolutionBwdDataPreference preference,
             size_t memoryLimitInbytes, ConvolutionBwdDataAlgo* algo)
     int cudnnGetConvolutionBackwardDataWorkspaceSize(
-            Handle handle, FilterDescriptor filterDesc, TensorDescriptor diffDesc,
+            Handle handle, FilterDescriptor filterDesc,
+            TensorDescriptor diffDesc,
             ConvolutionDescriptor convDesc, TensorDescriptor gradDesc,
             ConvolutionBwdDataAlgo algo, size_t* sizeInBytes)
     int cudnnConvolutionBackwardData_v2(
@@ -264,12 +268,12 @@ cpdef destroy(size_t handle):
 
 
 cpdef setStream(size_t handle, size_t stream):
-    status = cudnnSetStream(<Handle>handle, <Stream>stream)
+    status = cudnnSetStream(<Handle>handle, <driver.Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(size_t handle) except *:
-    cdef Stream stream
+    cdef driver.Stream stream
     status = cudnnGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
@@ -527,8 +531,9 @@ cpdef size_t getConvolutionBackwardDataWorkspaceSize(
         size_t gradDesc, int algo) except *:
       cdef size_t sizeInBytes
       status = cudnnGetConvolutionBackwardDataWorkspaceSize(
-          <Handle>handle, <FilterDescriptor>filterDesc, <TensorDescriptor>diffDesc,
-          <ConvolutionDescriptor> convDesc, <TensorDescriptor>gradDesc,
+          <Handle>handle, <FilterDescriptor>filterDesc,
+          <TensorDescriptor>diffDesc,
+          <ConvolutionDescriptor>convDesc, <TensorDescriptor>gradDesc,
           <ConvolutionBwdDataAlgo>algo, &sizeInBytes)
       check_status(status)
       return sizeInBytes

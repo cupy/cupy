@@ -1,6 +1,8 @@
 """Thin wrapper of CUBLAS."""
 cimport cython
 
+from cupy.cuda cimport driver
+
 
 ###############################################################################
 # Extern
@@ -15,8 +17,8 @@ cdef extern from 'cupy_cuda.h':
     int cublasSetPointerMode(Handle handle, PointerMode mode)
 
     # Stream
-    int cublasSetStream(Handle handle, Stream streamId)
-    int cublasGetStream(Handle handle, Stream* streamId)
+    int cublasSetStream(Handle handle, driver.Stream streamId)
+    int cublasGetStream(Handle handle, driver.Stream* streamId)
 
     # BLAS Level 1
     int cublasIsamax(Handle handle, int n, float* x, int incx, int* result)
@@ -150,12 +152,12 @@ cpdef setPointerMode(size_t handle, int mode):
 ###############################################################################
 
 cpdef setStream(size_t handle, size_t stream):
-    status = cublasSetStream(<Handle>handle, <Stream>stream)
+    status = cublasSetStream(<Handle>handle, <driver.Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(size_t handle) except *:
-    cdef Stream stream
+    cdef driver.Stream stream
     status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream

@@ -2,10 +2,6 @@
 # Types
 ###############################################################################
 
-from cupy.cuda.driver cimport Event
-from cupy.cuda.driver cimport Stream
-
-
 cdef class PointerAttributes:
     cdef:
         public int device
@@ -17,14 +13,6 @@ cdef class PointerAttributes:
 
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
-    ctypedef int DeviceAttr 'enum cudaDeviceAttr'
-    ctypedef int MemoryKind 'enum cudaMemcpyKind'
-
-    ctypedef size_t _Pointer 'void*'
-
-    ctypedef void (*StreamCallbackDef)(
-        Stream stream, Error status, void* userData)
-    ctypedef StreamCallbackDef StreamCallback 'cudaStreamCallback_t'
 
 
 ###############################################################################
@@ -48,6 +36,13 @@ cpdef enum:
     eventBlockingSync = 1
     eventDisableTiming = 2
     eventInterprocess = 4
+
+
+###############################################################################
+# Error handling
+###############################################################################
+
+cpdef check_status(int status)
 
 
 ###############################################################################

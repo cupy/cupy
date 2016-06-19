@@ -2,15 +2,15 @@
 # Types
 ###############################################################################
 
-from cupy.cuda.driver cimport Stream
-
 cdef extern from *:
     ctypedef int ActivationMode 'cudnnActivationMode_t'
     ctypedef int AddMode 'cudnnAddMode_t'
     ctypedef int ConvolutionBwdDataAlgo 'cudnnConvolutionBwdDataAlgo_t'
-    ctypedef int ConvolutionBwdDataPreference 'cudnnConvolutionBwdDataPreference_t'
+    ctypedef int ConvolutionBwdDataPreference \
+        'cudnnConvolutionBwdDataPreference_t'
     ctypedef int ConvolutionBwdFilterAlgo 'cudnnConvolutionBwdFilterAlgo_t'
-    ctypedef int ConvolutionBwdFilterPreference 'cudnnConvolutionBwdFilterPreference_t'
+    ctypedef int ConvolutionBwdFilterPreference \
+        'cudnnConvolutionBwdFilterPreference_t'
     ctypedef int ConvolutionFwdAlgo 'cudnnConvolutionFwdAlgo_t'
     ctypedef int ConvolutionFwdPreference 'cudnnConvolutionFwdPreference_t'
     ctypedef int ConvolutionMode 'cudnnConvolutionMode_t'

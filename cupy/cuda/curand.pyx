@@ -1,6 +1,8 @@
 """Thin wrapper of cuRAND."""
 cimport cython
 
+from cupy.cuda cimport driver
+
 
 ###############################################################################
 # Extern
@@ -13,7 +15,7 @@ cdef extern from "cupy_cuda.h":
     int curandGetVersion(int* version)
 
     # Stream
-    int curandSetStream(Generator generator, Stream stream)
+    int curandSetStream(Generator generator, driver.Stream stream)
     int curandSetPseudoRandomGeneratorSeed(
         Generator generator, unsigned long long seed)
     int curandSetGeneratorOffset(
@@ -105,7 +107,7 @@ cpdef int getVersion():
 
 
 cpdef setStream(size_t generator, size_t stream):
-    status = curandSetStream(<Generator>generator, <Stream>stream)
+    status = curandSetStream(<Generator>generator, <driver.Stream>stream)
     check_status(status)
 
 

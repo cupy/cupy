@@ -15,7 +15,6 @@ from libcpp cimport vector
 
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
-from cupy.cuda cimport device
 from cupy.cuda cimport memory
 
 
