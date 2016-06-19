@@ -952,7 +952,7 @@ cdef class ndarray:
         ellipsis = -1
         n_newaxes = n_ellipses = 0
         for i, s in enumerate(slices):
-            if s == newaxis:
+            if s is None:
                 n_newaxes += 1
             elif s == Ellipsis:
                 n_ellipses += 1
@@ -971,7 +971,7 @@ cdef class ndarray:
         j = 0
         offset = 0
         for i, s in enumerate(slices):
-            if s is newaxis:
+            if s is None:
                 shape.push_back(1)
                 if j < ndim:
                     strides.push_back(self._strides[j])

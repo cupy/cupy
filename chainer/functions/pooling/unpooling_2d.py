@@ -41,7 +41,7 @@ class Unpooling2D(pooling_2d.Pooling2D):
             self.outw = conv.get_deconv_outsize(
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
         xp = cuda.get_array_module(*x)
-        col = xp.tile(x[0][:, :, xp.newaxis, xp.newaxis],
+        col = xp.tile(x[0][:, :, None, None],
                       (1, 1, self.kh, self.kw, 1, 1))
         if isinstance(x[0], cuda.ndarray):
             y = conv.col2im_gpu(col, self.sy, self.sx, self.ph, self.pw,
