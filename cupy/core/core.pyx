@@ -790,8 +790,8 @@ cdef class ndarray:
         elif self.size == 1:
             return bool(self.get())
         else:
-            msg = 'The truth value of an array with more than one element is ' \
-                  'ambiguous. Use a.any() or a.all()'
+            msg = ('The truth value of an array with more than one element is '
+                   'ambiguous. Use a.any() or a.all()')
             raise ValueError(msg)
 
     # Unary operations:
@@ -1037,8 +1037,8 @@ cdef class ndarray:
                 if ind < 0:
                     ind += self._shape[j]
                 if not (0 <= ind < self._shape[j]):
-                    msg = 'Index %s is out of bounds for axis %s with size %s' \
-                          % (s, j, self._shape[j])
+                    msg = ('Index %s is out of bounds for axis %s with size %s'
+                           % (s, j, self._shape[j]))
                     raise IndexError(msg)
                 offset += ind * self._strides[j]
                 j += 1
@@ -1772,9 +1772,11 @@ cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
     indices = indices.reshape(
         (1,) * len(lshape) + indices.shape + (1,) * len(rshape))
     if axis == 0 or axis is None:
-        return _take_kernel_0axis(a.reduced_view(), indices, rdim, index_range, out)
+        return _take_kernel_0axis(
+            a.reduced_view(), indices, rdim, index_range, out)
     else:
-        return _take_kernel(a.reduced_view(), indices, cdim, rdim, adim, index_range, out)
+        return _take_kernel(
+            a.reduced_view(), indices, cdim, rdim, adim, index_range, out)
 
 
 cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,

@@ -478,9 +478,9 @@ cdef class ElementwiseKernel:
         """Compiles and invokes the elementwise kernel.
 
         The compilation runs only if the kernel is not cached. Note that the
-        kernels with different argument dtypes or dimensions are not compatible.
-        It means that single ElementwiseKernel object may be compiled into
-        multiple kernel binaries.
+        kernels with different argument dtypes or dimensions are not
+        compatible. It means that single ElementwiseKernel object may be
+        compiled into multiple kernel binaries.
 
         Args:
             args: Arguments of the kernel.

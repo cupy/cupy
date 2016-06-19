@@ -158,8 +158,8 @@ cpdef generateUniformDouble(size_t generator, size_t outputPtr, size_t num):
 cpdef generateNormal(size_t generator, size_t outputPtr, size_t n,
                      float mean, float stddev):
     if n % 2 == 1:
-        msg = 'curandGenerateNormal can only generate even number of '\
-              'random variables simultaneously. See issue #390 for detail.'
+        msg = ('curandGenerateNormal can only generate even number of '
+               'random variables simultaneously. See issue #390 for detail.')
         raise ValueError(msg)
     status = curandGenerateNormal(
         <Generator>generator, <float*>outputPtr, n, mean, stddev)
@@ -169,8 +169,8 @@ cpdef generateNormal(size_t generator, size_t outputPtr, size_t n,
 cpdef generateNormalDouble(size_t generator, size_t outputPtr, size_t n,
                            float mean, float stddev):
     if n % 2 == 1:
-        msg = 'curandGenerateNormalDouble can only generate even number of '\
-              'random variables simultaneously. See issue #390 for detail.'
+        msg = ('curandGenerateNormalDouble can only generate even number of '
+               'random variables simultaneously. See issue #390 for detail.')
         raise ValueError(msg)
     status = curandGenerateNormalDouble(
         <Generator>generator, <double*>outputPtr, n, mean, stddev)
@@ -180,8 +180,8 @@ cpdef generateNormalDouble(size_t generator, size_t outputPtr, size_t n,
 def generateLogNormal(size_t generator, size_t outputPtr, size_t n,
                       float mean, float stddev):
     if n % 2 == 1:
-        msg = 'curandGenerateLogNormal can only generate even number of '\
-              'random variables simultaneously. See issue #390 for detail.'
+        msg = ('curandGenerateLogNormal can only generate even number of '
+               'random variables simultaneously. See issue #390 for detail.')
         raise ValueError(msg)
     status = curandGenerateLogNormal(
         <Generator>generator, <float*>outputPtr, n, mean, stddev)
@@ -191,8 +191,9 @@ def generateLogNormal(size_t generator, size_t outputPtr, size_t n,
 cpdef generateLogNormalDouble(size_t generator, size_t outputPtr, size_t n,
                               float mean, float stddev):
     if n % 2 == 1:
-        msg = 'curandGenerateLogNormalDouble can only generate even number of '\
-              'random variables simultaneously. See issue #390 for detail.'
+        msg = ('curandGenerateLogNormalDouble can only generate even number '
+               'of random variables simultaneously. See issue #390 for '
+               'detail.')
         raise ValueError(msg)
     status = curandGenerateLogNormalDouble(
         <Generator>generator, <double*>outputPtr, n, mean, stddev)
