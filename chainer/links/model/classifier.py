@@ -53,7 +53,8 @@ class Classifier(link.Chain):
 
         """
 
-        x, t = args[:-1], args[-1]
+        x = args[:-1]
+        t = args[-1]
         self.y = None
         self.loss = None
         self.accuracy = None
