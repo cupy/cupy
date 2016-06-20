@@ -67,5 +67,5 @@ test_script:
   # Run the project tests
   - "%CMD_IN_ENV% pip install nose mock hacking"
   - "flake8"
-  - "cd tests\\chainer_tests"
+  - "cd tests\\install_tests"
   - "nosetests -A \"gpu<1\""
