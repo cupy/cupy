@@ -255,7 +255,7 @@ Actual: {0}'''.format(type(data))
         if src is None:
             raise ValueError('Source gradient is not set.')
         if dst is None:
-            raise ValueError('Target graidient is not set.')
+            raise ValueError('Target gradient is not set.')
 
         xp = cuda.get_array_module(dst)
         if xp is numpy:
