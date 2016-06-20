@@ -140,7 +140,6 @@ class TestNonzero(unittest.TestCase):
     @testing.numpy_cupy_array_list_equal()
     def test_nonzero(self, xp, dtype):
         array = xp.array(self.array, dtype=dtype)
-
         return xp.nonzero(array)
 
 

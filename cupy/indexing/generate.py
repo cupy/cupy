@@ -11,7 +11,6 @@ import cupy
 # TODO(okuta): Implement indices
 
 
-# TODO(okuta): Implement ix_
 def ix_(*args):
     """Construct an open mesh from multiple sequences.
 
@@ -42,12 +41,6 @@ def ix_(*args):
     >>> ixgrid
     (array([[0],
            [1]]), array([[2, 4]]))
-    >>> ixgrid[0].shape, ixgrid[1].shape
-    ((2, 1), (1, 2))
-    >>> a[ixgrid]
-    array([[2, 4],
-           [7, 9]])
-
      .. seealso:: :func:`numpy.ix_`
 
     """

@@ -12,7 +12,7 @@ class TestScan(unittest.TestCase):
     def test_scan(self, dtype):
         element_num = 10000
 
-        if dtype in [cupy.int8, cupy.uint8]:
+        if dtype in {cupy.int8, cupy.uint8}:
             element_num = 100
 
         a = cupy.ones((element_num,), dtype=dtype)
