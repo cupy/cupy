@@ -3,7 +3,10 @@ import numpy
 
 class Initializer(object):
 
-    def __call__(self, array):
+    def __init__(self, dtype=None):
+        self.dtype = dtype
+
+    def __call__(self, array=None, shape=None, xp=None):
         """Initializes given array.
 
         This method destructively changes the value of array.
@@ -13,7 +16,12 @@ class Initializer(object):
 
         Args:
             array (numpy.ndarray or cupy.ndarray):
-                An array to be initialized by this initializer.
+                An array to be initialized by this initializer. If ``None``,
+                this method returns new array.
+            shape (tuple): Shape of a return array. If ``None``, this method
+                uses ``array.shape``.
+            xp (module): :mod:`cupy` or :mod:`numpy`. If ``None``, this method
+                uses ``cuda.get_array_module(array)``.
 
         """
         raise NotImplementedError()

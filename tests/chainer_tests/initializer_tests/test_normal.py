@@ -7,43 +7,48 @@ from chainer.testing import attr
 import numpy
 
 
-class NormalBase(object):
+@testing.parameterize(*testing.product({
+    'target': [
+        initializers.Normal,
+        initializers.GlorotNormal,
+        initializers.HeNormal,
+    ],
+    'shape': [(2, 3), (2, 3, 4)],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class NormalBase(unittest.TestCase):
 
-    shape = (2, 3, 4)
+    def setUp(self):
+        pass
 
     def check_initializer(self, w):
-        self.initializer(w)
+        initializer = self.target(scale=0.1)
+        initializer(w)
         self.assertTupleEqual(w.shape, self.shape)
-        self.assertEqual(w.dtype, numpy.float32)
-        xp = cuda.get_array_module(w)
-        self.assertIsInstance(w, xp.ndarray)
+        self.assertEqual(w.dtype, self.dtype)
 
     def test_initializer_cpu(self):
-        w = numpy.empty(self.shape, dtype=numpy.float32)
+        w = numpy.empty(self.shape, dtype=self.dtype)
         self.check_initializer(w)
 
     @attr.gpu
     def test_initializer_gpu(self):
-        w = cuda.cupy.empty(self.shape, dtype=numpy.float32)
+        w = cuda.cupy.empty(self.shape, dtype=self.dtype)
         self.check_initializer(w)
 
+    def check_shaped_initializer(self, xp):
+        initializer = self.target(scale=0.1, dtype=self.dtype)
+        w = initializer(None, self.shape, xp)
+        self.assertIs(cuda.get_array_module(w), xp)
+        self.assertTupleEqual(w.shape, self.shape)
+        self.assertEqual(w.dtype, self.dtype)
 
-class TestNormal(unittest.TestCase, NormalBase):
+    def test_shaped_initializer_cpu(self):
+        self.check_shaped_initializer(numpy)
 
-    def setUp(self):
-        self.initializer = initializers.Normal(scale=0.1)
-
-
-class TestGlorotNormal(unittest.TestCase, NormalBase):
-
-    def setUp(self):
-        self.initializer = initializers.GlorotNormal(scale=0.1)
-
-
-class TestHeNormal(unittest.TestCase, NormalBase):
-
-    def setUp(self):
-        self.initializer = initializers.HeNormal(scale=1.0)
+    @attr.gpu
+    def test_shaped_initializer_gpu(self):
+        self.check_shaped_initializer(cuda.cupy)
 
 
 testing.run_module(__name__, __file__)
