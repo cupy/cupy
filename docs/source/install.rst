@@ -3,17 +3,17 @@ Install Guide
 
 .. _before_install:
 
-Before installing Chainer
--------------------------
+Before installing CuPy
+----------------------
 
 We recommend these platforms.
 
 * `Ubuntu <http://www.ubuntu.com/>`_ 14.04 LTS 64bit
 * `CentOS <https://www.centos.org/>`_ 7 64bit
 
-Chainer is supported on Python 2.7.6+, 3.4.3+, 3.5.1+.
-Chainer uses C++ compiler such as g++.
-You need to install it before installing Chainer.
+CuPy is supported on Python 2.7.6+, 3.4.3+, 3.5.1+.
+CuPy uses C++ compiler such as g++.
+You need to install it before installing CuPy.
 This is typical installation method for each platform::
 
   # Ubuntu 14.04
@@ -27,10 +27,10 @@ If you use old ``setuptools``, upgrade it::
   $ pip install -U setuptools
 
 
-Install Chainer
+Install CuPy
 ---------------
 
-Chainer depends on these Python packages:
+CuPy depends on these Python packages:
 
 * `NumPy <http://www.numpy.org/>`_ 1.9, 1.10, 1.11
 * `Six <https://pythonhosted.org/six/>`_ 1.9
@@ -44,37 +44,24 @@ cuDNN support
 
 * `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5, v5.1
 
-Caffe model support
-
-* `Protocol Buffers <https://developers.google.com/protocol-buffers/>`_
-* protobuf>=3.0.0 is required for Py3
-
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
 
-Image dataset is optional
 
-* `Pillow <https://pillow.readthedocs.io/>`_
+Install CuPy via pip
+~~~~~~~~~~~~~~~~~~~~
 
-HDF5 serialization is optional
+We recommend to install CuPy via pip::
 
-* `h5py <http://www.h5py.org/>`_ 2.5.0
-
-
-Install Chainer via pip
-~~~~~~~~~~~~~~~~~~~~~~~
-
-We recommend to install Chainer via pip::
-
-  $ pip install chainer
+  $ pip install cupy
 
 
-Install Chainer from source
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install CuPy from source
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use ``setup.py`` to install Chainer from source::
+You can use ``setup.py`` to install CuPy from source::
 
-  $ tar zxf chainer-x.x.x.tar.gz
-  $ cd chainer-x.x.x
+  $ tar zxf cupy-x.x.x.tar.gz
+  $ cd cupy-x.x.x
   $ python setup.py install
 
 
@@ -86,48 +73,48 @@ When an error occurs...
 Use ``-vvvv`` option with ``pip`` command.
 That shows all logs of installation. It may helps you::
 
-  $ pip install chainer -vvvv
+  $ pip install cupy -vvvv
 
 
 .. _install_cuda:
 
-Install Chainer with CUDA
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Install CuPy with CUDA
+~~~~~~~~~~~~~~~~~~~~~~
 
-You need to install CUDA Toolkit before installing Chainer.
-If you have CUDA in a default directory or set ``CUDA_PATH`` correctly, Chainer installer finds CUDA automatically::
+You need to install CUDA Toolkit before installing CuPy.
+If you have CUDA in a default directory or set ``CUDA_PATH`` correctly, CuPy installer finds CUDA automatically::
 
-  $ pip install chainer
+  $ pip install cupy
 
 
 .. note::
 
-   Chainer installer looks up ``CUDA_PATH`` environment variable first.
+   CuPy installer looks up ``CUDA_PATH`` environment variable first.
    If it is empty, the installer looks for ``nvcc`` command from ``PATH`` environment variable and use its parent directory as the root directory of CUDA installation.
    If ``nvcc`` command is also not found, the installer tries to use the default directory for Ubuntu ``/usr/local/cuda``.
 
 
 If you installed CUDA into a non-default directory, you need to specify the directory with ``CUDA_PATH`` environment variable::
 
-  $ CUDA_PATH=/opt/nvidia/cuda pip install chainer
+  $ CUDA_PATH=/opt/nvidia/cuda pip install cupy
 
 
 .. warning::
 
-   If you want to use ``sudo`` to install Chainer, note that ``sudo`` command initializes all environment variables.
+   If you want to use ``sudo`` to install CuPy, note that ``sudo`` command initializes all environment variables.
    Please specify ``CUDA_PATH`` environment variable inside ``sudo`` like this::
 
-      $ sudo CUDA_PATH=/opt/nvidia/cuda pip install chainer
+      $ sudo CUDA_PATH=/opt/nvidia/cuda pip install cupy
 
 
 .. _install_cudnn:
 
-Install Chainer with CUDA and cuDNN
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install CuPy with CUDA and cuDNN
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 cuDNN is a library for Deep Neural Networks that NVIDIA provides.
-Chainer can use cuDNN.
-If you want to enable cuDNN, install cuDNN and CUDA before installing Chainer.
+CuPy can use cuDNN.
+If you want to enable cuDNN, install cuDNN and CUDA before installing CuPy.
 We recommend you to install cuDNN to CUDA directory.
 For example if you uses Ubuntu Linux, copy ``.h`` files to ``include`` directory and ``.so`` files to ``lib64`` directory::
 
@@ -143,80 +130,52 @@ If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``
   export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 
 
-Install Chainer for developers
+Install CuPy for developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Chainer uses Cython (>=0.24).
+CuPy uses Cython (>=0.24).
 Developers need to use Cython to regenerate C++ sources from ``pyx`` files.
 We recommend to use ``pip`` with ``-e`` option for editable mode::
 
   $ pip install -U cython
-  $ cd /path/to/chainer/source
+  $ cd /path/to/cupy/source
   $ pip install -e .
 
-Users need not to install Cython as a distribution package of Chainer only contains generated sources.
+Users need not to install Cython as a distribution package of CuPy only contains generated sources.
 
 
-Support image dataset
-~~~~~~~~~~~~~~~~~~~~~
+Uninstall CuPy
+--------------
 
-Install Pillow manually to activate image dataset.
-This feature is optional::
+Use pip to uninstall CuPy::
 
-  $ pip install pillow
-
-
-Support HDF5 serialization
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Install h5py manually to activate HDF5 serialization.
-This feature is optional::
-
-  $ pip install h5py
-
-Before installing h5py, you need to install libhdf5.
-It depends on your environment::
-
-  # Ubuntu 14.04
-  $ apt-get install libhdf5-dev
-
-  # CentOS 7
-  $ yum -y install epel-release
-  $ yum install hdf5-devel
-
-
-Uninstall Chainer
------------------
-
-Use pip to uninstall Chainer::
-
-  $ pip uninstall chainer
+  $ pip uninstall cupy
 
 .. note::
 
-   When you upgrade Chainer, ``pip`` sometimes installed various version of Chainer in ``site-packages``.
+   When you upgrade CuPy, ``pip`` sometimes installed various version of CuPy in ``site-packages``.
    Please uninstall it repeatedly until ``pip`` returns an error.
 
 
-Upgrade Chainer
+Upgrade CuPy
 ---------------
 
 Just use ``pip`` with ``-U`` option::
 
-  $ pip install -U chainer
+  $ pip install -U cupy
 
 
-Reinstall Chainer
------------------
+Reinstall CuPy
+---------------
 
-If you want to reinstall Chainer, please uninstall Chainer and then install it.
+If you want to reinstall CuPy, please uninstall CuPy and then install it.
 We recommend to use ``--no-cache-dir`` option as ``pip`` sometimes uses cache::
 
-  $ pip uninstall chainer
-  $ pip install chainer --no-cache-dir
+  $ pip uninstall cupy
+  $ pip install cupy --no-cache-dir
 
-When you install Chainer without CUDA, and after that you want to use CUDA, please reinstall Chainer.
-You need to reinstall Chainer when you want to upgrade CUDA.
+When you install CuPy without CUDA, and after that you want to use CUDA, please reinstall CuPy.
+You need to reinstall CuPy when you want to upgrade CUDA.
 
 
 Run Chainer with Docker
@@ -236,21 +195,13 @@ Or, run the interpreter directly::
 What "recommend" means?
 -----------------------
 
-We tests Chainer automatically with Jenkins.
+We tests CuPy automatically with Jenkins.
 All supported environments are tested in this environment.
-We cannot guarantee that Chainer works on other environments.
+We cannot guarantee that CuPy works on other environments.
 
 
 FAQ
 ---
-
-The installer says "hdf5.h is not found"
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You don't have libhdf5.
-Please install hdf5.
-See :ref:`before_install`.
-
 
 MemoryError happens
 ~~~~~~~~~~~~~~~~~~~
@@ -263,8 +214,8 @@ See :ref:`install_error`.
 Examples says "cuDNN is not enabled"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You failed to build Chainer with cuDNN.
+You failed to build CuPy with cuDNN.
 If you don't need cuDNN, ignore this message.
-Otherwise, retry to install Chainer with cuDNN.
+Otherwise, retry to install CuPy with cuDNN.
 ``-vvvv`` option helps you.
 See :ref:`install_cudnn`.

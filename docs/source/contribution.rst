@@ -1,20 +1,19 @@
-Chainer Contribution Guide
-==========================
+CuPy Contribution Guide
+=======================
 
-This is a guide for all contributions to Chainer.
-The development of Chainer is running on `the official repository at GitHub <https://github.com/pfnet/chainer>`_.
+This is a guide for all contributions to CuPy.
+The development of CuPy is running on `the official repository at GitHub <https://github.com/pfnet/cupy>`_.
 Anyone that wants to register an issue or to send a pull request should read through this document.
 
 Classification of Contributions
 -------------------------------
 
-There are several ways to contribute to Chainer community:
+There are several ways to contribute to CuPy community:
 
 1. Registering an issue
 2. Sending a pull request (PR)
 3. Sending a question to `Chainer User Group <https://groups.google.com/forum/#!forum/chainer>`_
-4. Open-sourcing an external example
-5. Writing a post about Chainer
+4. Writing a post about CuPy
 
 This document mainly focuses on 1 and 2, though other contributions are also appreciated.
 
@@ -58,14 +57,14 @@ Issues and PRs are classified into following categories:
 Issues and PRs are labeled by these categories.
 This classification is often reflected into its corresponding release category: Feature issues/PRs are contained into minor/major releases and NoCompat issues/PRs are contained into major releases, while other issues/PRs can be contained into any releases including revision ones.
 
-On registering an issue, write precise explanations on what you want Chainer to be.
+On registering an issue, write precise explanations on what you want CuPy to be.
 Bug reports must include necessary and sufficient conditions to reproduce the bugs.
 Feature requests must include **what** you want to do (and **why** you want to do, if needed).
 You can contain your thoughts on **how** to realize it into the feature requests, though **what** part is most important for discussions.
 
 .. warning::
 
-   If you have a question on usages of Chainer, it is highly recommended to send a post to `Chainer User Group <https://groups.google.com/forum/#!forum/chainer>`_ instead of the issue tracker.
+   If you have a question on usages of CuPy, it is highly recommended to send a post to `Chainer User Group <https://groups.google.com/forum/#!forum/chainer>`_ instead of the issue tracker.
    The issue tracker is not a place to share knowledge on practices.
    We may redirect question issues to Chainer User Group.
 
@@ -73,7 +72,7 @@ If you can write code to fix an issue, send a PR to the master branch.
 Before writing your code for PRs, read through the :ref:`coding-guide`.
 The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your code for developers, a very important part of your PR.
 
-Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/chainer/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/pfnet/chainer>`_ for Windows.
+Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/cupy/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/pfnet/cupy>`_ for Windows.
 Your PR need to pass at least the test for Linux on Travis CI.
 After the automatic test passes, some of the core developers will start reviewing your code.
 Note that this automatic PR test only includes CPU tests.
@@ -120,13 +119,12 @@ Here is a (not-complete) list of the rules that ``flake8`` cannot check.
 * Import statements must be organized into three parts: standard libraries, third-party libraries, and internal imports. [H306]
 
 In addition, we restrict the usage of *shortcut symbols* in our code base.
-They are symbols imported by packages and sub-packages of ``chainer``.
-For example, ``chainer.Variable`` is a shortcut of ``chainer.variable.Variable``.
-**It is not allowed to use such shortcuts in the ``chainer`` library implementation**.
+They are symbols imported by packages and sub-packages of ``cupy``.
+For example, ``cupy.cuda.Device`` is a shortcut of ``cupy.cuda.device.Device``.
+**It is not allowed to use such shortcuts in the ``cupy`` library implementation**.
 Note that you can still use them in ``tests`` and ``examples`` directories.
-Also note that you should use shortcut names of CuPy APIs in Chainer implementation.
 
-Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_.
+Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/pfnet/cupy/>`_.
 The reviewing process starts after the check passes.
 
 
@@ -163,8 +161,8 @@ If you want to skip such tests, pass ``--attr='!slow'`` option to the ``nosetest
 
   $ nosetests path/to/your/test.py --attr='!slow'
 
-Tests are put into the ``tests/chainer_tests``, ``tests/cupy_tests`` and ``tests/install_tests`` directories.
-These have the same structure as that of ``chainer``, ``cupy`` and ``install`` directories, respectively.
+Tests are put into the ``tests/cupy_tests`` and ``tests/install_tests`` directories.
+These have the same structure as that of ``cupy`` and ``install`` directories, respectively.
 In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
 
 * The name of each subdirectory of ``tests`` must end with the ``_tests`` suffix.
@@ -176,7 +174,6 @@ Following this naming convention, you can run all the tests by just typing ``nos
 
 Or you can also specify a root directory to search test scripts from::
 
-  $ nosetests tests/chainer_tests  # to just run tests of Chainer
   $ nosetests tests/cupy_tests     # to just run tests of CuPy
   $ nosetests tests/install_tests  # to just run tests of installation modules
 
@@ -196,10 +193,10 @@ There are many examples of unit tests under the ``tests`` directory.
 They simply use the ``unittest`` package of the standard library.
 
 Even if your patch includes GPU-related code, your tests should not fail without GPU capability.
-Test functions that require CUDA must be tagged by the ``chainer.testing.attr.gpu`` decorator (or ``cupy.testing.attr.gpu`` for testing CuPy APIs)::
+Test functions that require CUDA must be tagged by the ``cupy.testing.attr.gpu``::
 
   import unittest
-  from chainer.testing import attr
+  from cupy.testing import attr
 
   class TestMyFunc(unittest.TestCase):
       ...
@@ -209,13 +206,13 @@ Test functions that require CUDA must be tagged by the ``chainer.testing.attr.gp
           ...
 
 The functions tagged by the ``gpu`` decorator are skipped if ``--attr='!gpu'`` is given.
-We also have the ``chainer.testing.attr.cudnn`` decorator to let ``nosetests`` know that the test depends on cuDNN.
+We also have the ``cupy.testing.attr.cudnn`` decorator to let ``nosetests`` know that the test depends on cuDNN.
 
 The test functions decorated by ``gpu`` must not depend on multiple GPUs.
-In order to write tests for multiple GPUs, use ``chainer.testing.attr.multi_gpu()`` or ``cupy.testing.attr.multi_gpu()`` decorators instead::
+In order to write tests for multiple GPUs, use ``cupy.testing.attr.multi_gpu()`` or ``cupy.testing.attr.multi_gpu()`` decorators instead::
 
   import unittest
-  from chainer.testing import attr
+  from cupy.testing import attr
 
   class TestMyFunc(unittest.TestCase):
       ...
@@ -241,7 +238,7 @@ The test functions decorated by ``slow`` are skipped if ``--attr='!slow'`` is gi
    If you want to specify more than two attributes, separate them with a comma such as ``--attr='!gpu,!slow'``.
    See detail in `the document of nose <https://nose.readthedocs.io/en/latest/plugins/attrib.html#simple-syntax>`_.
 
-Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_ **with --attr='!gpu,!slow' option**.
+Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/cupy/>`_ **with --attr='!gpu,!slow' option**.
 Since Travis-CI does not support CUDA, we cannot check your CUDA-related code automatically.
 The reviewing process starts after the test passes.
 Note that reviewers will test your code without the option to check CUDA-related code.

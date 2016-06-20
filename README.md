@@ -1,14 +1,14 @@
-[![pypi](https://img.shields.io/pypi/v/chainer.svg)](https://pypi.python.org/pypi/chainer)
-[![GitHub license](https://img.shields.io/github/license/pfnet/chainer.svg)](https://github.com/pfnet/chainer)
-[![travis](https://img.shields.io/travis/pfnet/chainer/master.svg)](https://travis-ci.org/pfnet/chainer)
-[![coveralls](https://img.shields.io/coveralls/pfnet/chainer.svg)](https://coveralls.io/github/pfnet/chainer)
-[![Read the Docs](https://readthedocs.org/projects/chainer/badge/?version=stable)](http://docs.chainer.org/en/stable/?badge=stable)
+[![pypi](https://img.shields.io/pypi/v/cupy.svg)](https://pypi.python.org/pypi/cupy)
+[![GitHub license](https://img.shields.io/github/license/pfnet/cupy.svg)](https://github.com/pfnet/cupy)
+[![travis](https://img.shields.io/travis/pfnet/cupy.svg)](https://travis-ci.org/pfnet/cupy)
+[![coveralls](https://img.shields.io/coveralls/pfnet/cupy.svg)](https://coveralls.io/github/pfnet/cupy)
+[![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy-ndarray.org/en/stable/?badge=stable)
 
-# CuPy: An NumPy-compatible library on CUDA
+# CuPy : NumPy-like API accelerated with CUDA
 
 ## Requirements
 
-CuPy is tested on Ubuntu 14.04 and CentOS 7. We recommend them to use Chainer, though it may run on other systems as well.
+CuPy is tested on Ubuntu 14.04 and CentOS 7. We recommend them to use CuPy, though it may run on other systems as well.
 
 Minimum requirements:
 - Python 2.7.6+, 3.4.3+, 3.5.1+
@@ -85,14 +85,14 @@ Tokui, S., Oono, K., Hido, S. and Clayton, J.,
 Chainer: a Next-Generation Open Source Framework for Deep Learning,
 *Proceedings of Workshop on Machine Learning Systems(LearningSys) in
 The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIPS)*, (2015)
-[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](chainer_bibtex.txt)
+[URL](http://learningsys.org/papers/LearningSys_2015_paper_33.pdf), [BibTex](cupy_bibtex.txt)
 
 
 ## More information
 
-- Official site: http://chainer.org/
-- Official document: http://docs.chainer.org/
-- github: https://github.com/pfnet/chainer
+- Official site: http://cupy-ndarray.org/
+- Official document: http://docs.cupy-ndarray.org/
+- github: https://github.com/pfnet/cupy
 - Forum: https://groups.google.com/forum/#!forum/chainer
 - Forum (Japanese): https://groups.google.com/forum/#!forum/chainer-jp
 - Twitter: https://twitter.com/ChainerOfficial
