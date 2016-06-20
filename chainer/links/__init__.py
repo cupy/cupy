@@ -4,6 +4,7 @@ from chainer.links.activation import maxout
 from chainer.links.activation import prelu
 from chainer.links.connection import bilinear
 from chainer.links.connection import convolution_2d
+from chainer.links.connection import convolution_nd
 from chainer.links.connection import deconvolution_2d
 from chainer.links.connection import embed_id
 from chainer.links.connection import gru
@@ -24,6 +25,7 @@ PReLU = prelu.PReLU
 
 Bilinear = bilinear.Bilinear
 Convolution2D = convolution_2d.Convolution2D
+ConvolutionND = convolution_nd.ConvolutionND
 Deconvolution2D = deconvolution_2d.Deconvolution2D
 EmbedID = embed_id.EmbedID
 GRU = gru.GRU
