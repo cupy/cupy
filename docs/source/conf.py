@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Chainer documentation build configuration file, created by
+# CuPy documentation build configuration file, created by
 # sphinx-quickstart on Sun May 10 12:22:10 2015.
 #
 # This file is execfile()d with the current directory set to its
@@ -18,7 +18,7 @@ import shlex
 import sys
 
 
-__version__ = pkg_resources.get_distribution('chainer').version
+__version__ = pkg_resources.get_distribution('cupy').version
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
@@ -65,7 +65,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Chainer'
+project = u'CuPy'
 copyright = u'2015, Preferred Networks, inc. and Preferred Infrastructure, inc.'
 author = u'Preferred Networks, inc. and Preferred Infrastructure, inc.'
 
@@ -233,7 +233,7 @@ if on_rtd:
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Chainerdoc'
+htmlhelp_basename = 'CuPydoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -255,7 +255,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Chainer.tex', u'Chainer Documentation',
+    (master_doc, 'CuPy.tex', u'CuPy Documentation',
      u'Preferred Networks, inc. and Preferred Infrastructure, inc.', 'manual'),
 ]
 
@@ -285,7 +285,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'chainer', u'Chainer Documentation',
+    (master_doc, 'cupy', u'CuPy Documentation',
      [author], 1)
 ]
 
@@ -299,8 +299,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Chainer', u'Chainer Documentation',
-     author, 'Chainer', 'One line description of project.',
+    (master_doc, 'CuPy', u'CuPy Documentation',
+     author, 'CuPy', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -326,13 +326,6 @@ intersphinx_mapping = {
 doctest_global_setup = '''
 import numpy as np
 import cupy
-import chainer
-from chainer import cuda, Function, gradient_check, training, utils, Variable
-from chainer import datasets, iterators, optimizers, serializers
-from chainer import Link, Chain, ChainList
-import chainer.functions as F
-import chainer.links as L
-from chainer.training import extensions
 np.random.seed(0)
 '''
 

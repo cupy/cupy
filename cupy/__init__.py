@@ -11,7 +11,7 @@ except ImportError:
     # built.
     exc_info = sys.exc_info()
     msg = ('CuPy is not correctly installed. Please check your environment, '
-           'uninstall Chainer and reinstall it with `pip install chainer '
+           'uninstall CuPy and reinstall it with `pip install cupy '
            '--no-cache-dir -vvvv`.\n\n'
            'original error: {}'.format(exc_info[1]))
 
