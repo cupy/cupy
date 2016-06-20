@@ -25,7 +25,13 @@ class Normal(initializer.Initializer):
         self.scale = scale
         super(Normal, self).__init__(dtype)
 
-    def __call__(self, array):
+    def __call__(self, array=None, shape=None, xp=None):
+        if array is None:
+            assert isinstance(shape, tuple)
+            ret = xp.random.normal(
+                loc=0.0, scale=self.scale, size=shape).astype(self.dtype)
+            return ret
+        assert self.dtype is None or array.dtype == self.dtype
         xp = cuda.get_array_module(array)
         array[...] = xp.random.normal(
             loc=0.0, scale=self.scale, size=array.shape)

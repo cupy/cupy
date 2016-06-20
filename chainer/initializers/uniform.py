@@ -56,8 +56,13 @@ class LeCunUniform(initializer.Initializer):
         self.scale = scale
         super(LeCunUniform, self).__init__(dtype)
 
-    def __call__(self, array):
-        fan_in, fan_out = initializer.get_fans(array.shape)
+    def __call__(self, array=None, shape=None, xp=None):
+        if array is None:
+            assert isinstance(shape, tuple)
+            sh = shape
+        else:
+            sh = array.shape
+        fan_in, fan_out = initializer.get_fans(sh)
         s = self.scale * numpy.sqrt(3. / fan_in)
         Uniform(s)(array)
 

@@ -47,18 +47,16 @@ class Constant(initializer.Initializer):
         self.fill_value = fill_value
         super(Constant, self).__init__(dtype)
 
-    def __call__(self, array):
-        if self.dtype is not None:
-            assert array.dtype == self.dtype
+    def __call__(self, array=None, shape=None, xp=None):
+        if array is None:
+            assert isinstance(shape, tuple)
+            return xp.full(shape, self.fill_value, self.dtype)
+        assert self.dtype is None or array.dtype == self.dtype
         xp = cuda.get_array_module(array)
         array[...] = xp.asarray(self.fill_value)
 
 
-def Zero(dtype=None):
-    """Returns initializer that initializes array with the all-zero array.
-
-    Args:
-        dtype: Data type specifier.
+def Zero(dtype=numpy.float32):
 
     Returns:
         numpy.ndarray or cupy.ndarray: An initialized array.
@@ -77,4 +75,3 @@ def One(dtype=None):
         numpy.ndarray or cupy.ndarray: An initialized array.
 
     """
-    return Constant(1.0, dtype=dtype)

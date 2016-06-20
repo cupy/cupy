@@ -25,7 +25,12 @@ class Initializer(object):
 
         Args:
             array (numpy.ndarray or cupy.ndarray):
-                An array to be initialized by this initializer.
+                An array to be initialized by this initializer. If ``None``,
+                this method returns new array.
+            shape (tuple): Shape of a return array. If ``None``, this method
+                uses ``array.shape``.
+            xp (module): :mod:`cupy` or :mod:`numpy`. If ``None``, this method
+                uses ``cuda.get_array_module(array)``.
 
         """
         raise NotImplementedError()
