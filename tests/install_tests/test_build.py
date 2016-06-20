@@ -2,7 +2,7 @@ from distutils import ccompiler
 from distutils import sysconfig
 import unittest
 
-from chainer.testing import attr
+from cupy.testing import attr
 from install import build
 
 
