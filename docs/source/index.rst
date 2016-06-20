@@ -1,20 +1,18 @@
-==================================================
-Chainer -- A flexible framework of neural networks
-==================================================
+============================================
+CuPy -- NumPy-like API accelerated with CUDA
+============================================
 
-This is the `Chainer <http://chainer.org>`_ documentation.
+This is the `CuPy <http://cupy-ndarray.org>`_ documentation.
 
 .. toctree::
    :maxdepth: 1
 
    install
    tutorial/index
-   reference/index
    cupy-reference/index
    contribution
    compatibility
    tips
-   comparison
    license
 
 
