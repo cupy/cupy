@@ -1,3 +1,4 @@
+import chainer
 from chainer.functions.evaluation import accuracy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer import link
@@ -53,6 +54,8 @@ class Classifier(link.Chain):
 
         """
 
+        if chainer.is_debug():
+            assert len(args) >= 2
         x = args[:-1]
         t = args[-1]
         self.y = None
