@@ -3,67 +3,50 @@ import unittest
 import numpy
 
 import chainer
-from chainer import link
+from chainer.functions.evaluation import accuracy
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
 
 
-class MockPredictor(link.Chain):
-
-    def __init__(self, return_shape):
-        self.return_shape = return_shape
-        super(MockPredictor, self).__init__()
-
-    def __call__(self, *xs):
-        batchsize = len(xs[0].data)
-        y_shape = (batchsize,) + self.return_shape
-        y = self.xp.empty(y_shape, dtype=numpy.float32)
-        return chainer.Variable(y)
-
-
+@testing.parameterize(
+    {'compute_accuracy': True},
+    {'compute_accuracy': False}
+)
 class TestClassifier(unittest.TestCase):
 
     def setUp(self):
-        self.classifier = links.Classifier(MockPredictor((3,)))
-        self.x = numpy.random.uniform(-1, 1, (10, 3)).astype(numpy.float32)
-        self.t = numpy.random.randint(3, size=(10,)).astype(numpy.int32)
+        predictor = links.Linear(10, 3)
+        self.link = links.Classifier(predictor)
+        self.link.compute_accuracy = self.compute_accuracy
+
+        self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
+        self.t = numpy.random.randint(3, size=(5)).astype(numpy.int32)
 
     def check_call(self):
-        xp = self.classifier.xp
+        xp = self.link.xp
         x = chainer.Variable(xp.asarray(self.x))
         t = chainer.Variable(xp.asarray(self.t))
-        self.classifier(x, t)
+        loss = self.link(x, t)
 
-    def test_call(self):
+        self.assertTrue(hasattr(self.link, 'y'))
+        self.assertIsNotNone(self.link.y)
+
+        self.assertTrue(hasattr(self.link, 'loss'))
+        xp.testing.assert_allclose(self.link.loss.data, loss.data)
+
+        self.assertTrue(hasattr(self.link, 'accuracy'))
+        if self.compute_accuracy:
+            self.assertIsNotNone(self.link.accuracy)
+        else:
+            self.assertIsNone(self.link.accuracy)
+
+    def test_call_cpu(self):
         self.check_call()
 
     @attr.gpu
-    def test_gpu(self):
-        self.classifier.to_gpu()
-        self.check_call()
-
-
-class TestClassifier2(unittest.TestCase):
-
-    def setUp(self):
-        self.classifier = links.Classifier(MockPredictor((3,)))
-        self.xs = [numpy.random.uniform(-1, 1, (10, 3)).astype(numpy.float32),
-                   numpy.random.uniform(-1, 1, (10, 2)).astype(numpy.float32)]
-        self.t = numpy.random.randint(3, size=(10,)).astype(numpy.int32)
-
-    def check_call(self):
-        xp = self.classifier.xp
-        xs = [chainer.Variable(xp.asarray(x)) for x in self.xs]
-        t = chainer.Variable(xp.asarray(self.t))
-        self.classifier(*(xs + [t]))
-
-    def test_call(self):
-        self.check_call()
-
-    @attr.gpu
-    def test_gpu(self):
-        self.classifier.to_gpu()
+    def test_call_gpu(self):
+        self.link.to_gpu()
         self.check_call()
 
 
