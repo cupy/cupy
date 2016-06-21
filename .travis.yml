@@ -50,7 +50,6 @@ install:
   - pip install cython
   - python setup.py sdist
   - pip install dist/*.tar.gz
-  - pip install h5py pillow
   - pip install nose hacking mock
   - pip install autopep8
 
@@ -62,8 +61,3 @@ script:
   - READTHEDOCS=True python setup.py develop
 
 sudo: false
-
-addons:
-  apt:
-    packages:
-      - libhdf5-serial-dev
