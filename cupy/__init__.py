@@ -1,7 +1,6 @@
 from __future__ import division
 import pkg_resources
 import sys
-import pkg_resources
 
 import numpy
 import six
