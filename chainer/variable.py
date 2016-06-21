@@ -86,7 +86,7 @@ class Variable(object):
             :class:`~chainer.Flag` for the detail of ternary flags.
 
     """
-    def __init__(self, data, volatile=flag.OFF, name=None):
+    def __init__(self, data, volatile=flag.OFF, name=None, grad=None): #add "grad"
         if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
             msg = '''numpy.ndarray or cuda.ndarray are expected.
 Actual: {0}'''.format(type(data))
@@ -96,13 +96,13 @@ Actual: {0}'''.format(type(data))
         self.rank = 0
         self._volatile = flag.Flag(volatile)
 
-        self._grad = None
+        self._grad = grad #instead of None
         self.creator = None
 
         self.name = name
 
     def __reduce__(self):
-        return Variable, (self.data, self.volatile, self.name)
+        return Variable, (self.data, self.volatile, self.name, self.grad) #add "self.grad"
 
     def __repr__(self):
         if self.name:
