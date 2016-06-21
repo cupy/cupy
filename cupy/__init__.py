@@ -1,6 +1,6 @@
 from __future__ import division
-import sys
 import pkg_resources
+import sys
 
 import numpy
 import six
