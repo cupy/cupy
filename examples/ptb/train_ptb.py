@@ -68,16 +68,16 @@ class ParallelSequentialIterator(chainer.dataset.Iterator):
         self.iteration = 0
 
     def __next__(self):
+        if not self.repeat and self.iteration * self.batch_size >= length:
+            # If not self.repeat, this iterator stops at the end of the first
+            # epoch (i.e., when all words are visited once).
+            raise StopIteration
         # This method is the main part of a dataset iterator. It returns the
         # pair of the current and next words, and increments the iteration
         # count.
         length = len(self.dataset)
         cur_words = self.get_words()
         self.iteration += 1
-        if not self.repeat and self.iteration >= length:
-            # If not self.repeat, this iterator stops at the end of the first
-            # epoch (i.e., when all words are visited once).
-            raise StopIteration
         next_words = self.get_words()
 
         epoch = self.iteration * self.batch_size // length

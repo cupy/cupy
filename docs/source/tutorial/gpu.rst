@@ -179,7 +179,30 @@ The :meth:`~Link.to_gpu` method also accepts a device ID like ``model.to_gpu(0)`
 In this case, the link object is transferred to the appropriate GPU device.
 The current device is used by default.
 
-Then we have to transfer each minibatch to the GPU:
+If we use :class:`chainer.training.Trainer`, what we have to do is just letting the updater know the device ID to send each minibatch.
+
+.. testcode::
+   :hide:
+
+   data = np.random.rand(70000, 784).astype(np.float32)
+   target = np.random.randint(10, size=70000).astype(np.int32)
+   train = datasets.TupleDataset(data[:60000], target[:60000])
+   test = datasets.TupleDataset(data[60000:], target[60000:])
+   train_iter = iterators.ShuffledIterator(train, batch_size=100)
+   test_iter = iterators.Sequential(test, batch_size=100, repeat=False)
+
+.. testcode::
+
+   updater = training.StandardUpdater(train_iter, optimizer, device=0)
+   trainer = training.Trainer(updater, (20, 'epoch'), out='result')
+
+We also have to specify the device ID for an evaluator extension as well.
+
+.. testcode::
+
+   trainer.extend(extensions.Evaluator(test_iter, model, device=0))
+
+When we write down the training loop by hand, we have to transfer each minibatch to the GPU manually:
 
 .. testcode::
    :hide:
@@ -314,7 +337,7 @@ Then, set up an optimizer:
 Here we use the first copy of the model as *the master model*.
 Before its update, gradients of ``model_1`` must be aggregated to those of ``model_0``.
 
-Then, we can write a data-parallel learning loop as follows:
+Then, we can write a data-parallel learning loop as follows (codes for Trainer is in preparation):
 
 .. testcode::
 
@@ -330,10 +353,13 @@ Then, we can write a data-parallel learning loop as follows:
            model_0.zerograds()
            model_1.zerograds()
 
-           loss_0 = model_0(Variable(cuda.to_gpu(x_batch[:batchsize//2], 0)),
-                            Variable(cuda.to_gpu(y_batch[:batchsize//2], 0)))
-           loss_1 = model_1(Variable(cuda.to_gpu(x_batch[batchsize//2:], 1)),
-                            Variable(cuda.to_gpu(y_batch[batchsize//2:], 1)))
+           x0 = Variable(cuda.to_gpu(x_batch[:batchsize//2], 0))
+           t0 = Variable(cuda.to_gpu(y_batch[:batchsize//2], 0))
+           x1 = Variable(cuda.to_gpu(x_batch[batchsize//2:], 1))
+           t0 = Variable(cuda.to_gpu(y_batch[batchsize//2:], 1))
+
+           loss_0 = model_0(x0, t0)
+           loss_1 = model_1(x1, t1)
 
            loss_0.backward()
            loss_1.backward()

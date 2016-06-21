@@ -532,6 +532,8 @@ In most cases, we want to see how the training proceeds, where we can use extens
    >>> trainer.extend(extensions.LogReport())
    >>> trainer.extend(extensions.PrintReport(['epoch', 'main/accuracy', 'validation/main/accuracy']))
    >>> trainer.extend(extensions.ProgressBar())
+   >>> 
+   >>> trainer.run()
 
 These extensions perform the following tasks:
 
