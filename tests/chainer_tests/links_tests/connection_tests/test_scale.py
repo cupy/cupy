@@ -11,12 +11,12 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(*[
+@testing.parameterize(
     {'learn_W': True, 'bias_term': False, 'bias_shape': None},
     {'learn_W': True, 'bias_term': True, 'bias_shape': None},
     {'learn_W': False, 'bias_term': False, 'bias_shape': None},
-    {'learn_W': False, 'bias_term': True, 'bias_shape': (2,)},
-])
+    {'learn_W': False, 'bias_term': True, 'bias_shape': (2,)}
+)
 class TestScale(unittest.TestCase):
 
     def setUp(self):
@@ -30,11 +30,10 @@ class TestScale(unittest.TestCase):
                 self.y_expected[i, j, k] += self.b[j]
         self.gy = numpy.random.uniform(-1, 1, (3, 2, 3)).astype(numpy.float32)
 
-        learn_W = self.learn_W
         bias_term = self.bias_term
         bias_shape = self.bias_shape
         axis = 1
-        if learn_W:
+        if self.learn_W:
             self.link = links.Scale(
                 axis, self.W.shape, bias_term, bias_shape)
             self.link.W.data = self.W

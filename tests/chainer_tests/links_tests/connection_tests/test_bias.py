@@ -11,10 +11,10 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(*[
+@testing.parameterize(
     {'learn_b': True},
-    {'learn_b': False},
-])
+    {'learn_b': False}
+)
 class TestBias(unittest.TestCase):
 
     def setUp(self):
@@ -25,9 +25,8 @@ class TestBias(unittest.TestCase):
             self.y_expected[i, j, k] += self.b[j]
         self.gy = numpy.random.uniform(-1, 1, (3, 2, 3)).astype(numpy.float32)
 
-        learn_b = self.learn_b
         axis = 1
-        if learn_b:
+        if self.learn_b:
             self.link = links.Bias(axis, self.b.shape)
             self.link.b.data = self.b
         else:
