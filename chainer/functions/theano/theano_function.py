@@ -1,6 +1,7 @@
 import collections
 
 import numpy
+import six
 
 try:
     import theano
@@ -117,7 +118,10 @@ def _make_theano_array(x):
 
 
 def _cupy_to_theano_array(x):
-    ptr = long(x.data.ptr)
+    if six.PY2:
+        ptr = long(x.data.ptr)  # NOQA
+    else:
+        ptr = int(x.data.ptr)
     strides = [s / 4 for s in x.strides]
     return theano_cuda.from_gpu_pointer(ptr, x.shape, strides, x)
 
