@@ -50,8 +50,6 @@ install:
   - pip install cython
   - python setup.py sdist
   - pip install dist/*.tar.gz
-  - pip install h5py pillow
-  - travis_wait pip install theano
   - pip install nose hacking mock
   - pip install autopep8
 
@@ -63,10 +61,3 @@ script:
   - READTHEDOCS=True python setup.py develop
 
 sudo: false
-
-addons:
-  apt:
-    packages:
-      - gfortran
-      - libhdf5-serial-dev
-      - liblapack-dev
