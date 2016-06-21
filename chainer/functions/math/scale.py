@@ -11,6 +11,20 @@ def scale(x, y, axis=1):
     is the first axis of the first variable along which the second variable is
     applied.
 
+    The term "broadcasting" here comes from Caffe's scale layer so the
+    "broadcasting" with the following arguments:
+
+           x : 100 x 3 x 40 x 60
+           y : 3 x 40
+        axis : 1
+
+    is equivalent to the following numpy broadcasting:
+
+        x : 100 x 3 x 40 x 60
+        y :   1 x 3 x 40 x 1
+
+    Note that how the `axis` indicates to which axis of `x` we apply `y`.
+
     Args:
         x (~chainer.Variable): Input variable to be scaled.
         y (~chainer.Variable): Input variable to scale, broadcasted.
