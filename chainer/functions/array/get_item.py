@@ -17,7 +17,8 @@ class GetItem(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
-        type_check.expect(in_types[0].ndim == len(self.slices))
+        valid_slice = len(self.slices) - self.slices.count(None)
+        type_check.expect(in_types[0].ndim == valid_slice)
 
     def forward(self, xs):
         ary = xs[0]

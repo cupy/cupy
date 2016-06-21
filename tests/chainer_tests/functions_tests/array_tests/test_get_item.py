@@ -16,6 +16,9 @@ from chainer.testing import parameterize
     {'axes': [1, 2], 'offsets': [0, 1, 1], 'sliced_shape': (4, 2, 1)},
     {'axes': 1, 'offsets': 1, 'sliced_shape': (4, 2, 2)},
     {'axes': 1, 'offsets': [0, 1, 1], 'sliced_shape': (4, 2, 2)},
+    {'axes': [], 'offsets': 0, 'new_axes': 0, 'sliced_shape': (1, 4, 3, 2)},
+    {'axes': [], 'offsets': 0, 'new_axes': 2, 'sliced_shape': (4, 3, 1, 2)},
+    {'axes': [], 'offsets': 0, 'new_axes': 3, 'sliced_shape': (4, 3, 2, 1)},
 )
 class TestGetItem(unittest.TestCase):
 
@@ -32,6 +35,9 @@ class TestGetItem(unittest.TestCase):
         for axis in self.axes:
             self.slices[axis] = slice(self.offsets[axis],
                                       self.offsets[axis]+self.shape[axis])
+
+        if hasattr(self, 'new_axes'):
+            self.slices.insert(self.new_axes, None)
 
         self.slices = tuple(self.slices)
 

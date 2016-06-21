@@ -33,9 +33,9 @@ This classification is based on following criteria:
 
 The release classification is reflected into the version number x.y.z, where x, y, and z corresponds to major, minor, and revision updates, respectively.
 
-We sets milestones for some future releases.
-A milestone for a revision release is set right after the last release.
-On the other hand, a milestone for a minor or major release is set four weeks prior to its due.
+We set a milestone for an upcoming release.
+The milestone is of name 'vX.Y.Z', where the version number represents a revision release at the outset.
+If at least one *feature* PR is merged in the period, we rename the milestone to represent a minor release (see the next section for the PR types).
 
 See also :doc:`compatibility`.
 

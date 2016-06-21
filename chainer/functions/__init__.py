@@ -20,11 +20,13 @@ from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
 from chainer.functions.array import get_item
+from chainer.functions.array import permutate
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
+from chainer.functions.array import transpose_sequence
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
@@ -54,8 +56,10 @@ from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import linear_interpolate
 from chainer.functions.math import logarithm_1p
+from chainer.functions.math import logsumexp
 from chainer.functions.math import matmul
 from chainer.functions.math import maximum
+from chainer.functions.math import minimum
 from chainer.functions.math import minmax
 from chainer.functions.math import scale
 from chainer.functions.math import sum
@@ -127,6 +131,8 @@ ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
 GetItem = get_item.GetItem
 get_item = get_item.get_item
+Permutate = permutate.Permutate
+permutate = permutate.permutate
 Reshape = reshape.Reshape
 reshape = reshape.reshape
 SplitAxis = split_axis.SplitAxis
@@ -137,6 +143,8 @@ Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
 Transpose = transpose.Transpose
 transpose = transpose.transpose
+TransposeSequence = transpose_sequence.TransposeSequence
+transpose_sequence = transpose_sequence.transpose_sequence
 Where = where.Where
 where = where.where
 
@@ -199,12 +207,16 @@ Log = exponential.Log
 log = exponential.log
 Log1p = logarithm_1p.Log1p
 log1p = logarithm_1p.log1p
+LogSumExp = logsumexp.LogSumExp
+logsumexp = logsumexp.logsumexp
 MatMul = matmul.MatMul
 matmul = matmul.matmul
 Max = minmax.Max
 max = minmax.max
 Maximum = maximum.Maximum
 maximum = maximum.maximum
+Minimum = minimum.Minimum
+minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
 scale = scale.scale
