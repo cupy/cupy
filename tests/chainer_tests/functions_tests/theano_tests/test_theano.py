@@ -35,7 +35,7 @@ class TheanoFunctionTestBase(object):
         raise NotImplementedError
 
     def check_forward(self, input_data):
-        gpu = isinstance(input_data[0], cuda.cupy.ndarray)
+        gpu = isinstance(input_data[0], cuda.ndarray)
         func = self.make_func(gpu)
         inputs = [chainer.Variable(data) for data in input_data]
         outputs = func(*inputs)
@@ -56,7 +56,7 @@ class TheanoFunctionTestBase(object):
         self.check_forward(inputs)
 
     def check_backward(self, input_data, grad_data):
-        gpu = isinstance(input_data[0], cuda.cupy.ndarray)
+        gpu = isinstance(input_data[0], cuda.ndarray)
         func = self.make_func(gpu)
         gradient_check.check_backward(
             func, input_data, grad_data, atol=1e-4)
@@ -152,3 +152,6 @@ class TestTheanoFunctionNonDifferential(
     def expect_forward(self):
         x, i = self.input_data
         return x[i],
+
+
+testing.run_module(__name__, __file__)
