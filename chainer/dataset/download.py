@@ -87,8 +87,16 @@ def cached_download(url):
     with filelock.FileLock(lock_path):
         if os.path.exists(cache_path):
             return cache_path
+
+    temp_root = tempfile.mkdtemp(dir=cache_root)
+    try:
+        temp_path = os.path.join(temp_root, 'dl')
         print('Downloading from {}...'.format(url))
-        request.urlretrieve(url, cache_path)
+        request.urlretrieve(url, temp_path)
+        with filelock.FileLock(lock_path):
+            shutil.move(temp_path, cache_path)
+    finally:
+        shutil.rmtree(temp_root)
 
     return cache_path
 
