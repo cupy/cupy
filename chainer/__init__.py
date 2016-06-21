@@ -82,7 +82,7 @@ class DebugMode(object):
 
     This class provides a context manager for debug mode. When entering the
     context, it sets the debug mode to the value of `debug` parameter with
-    memorizing its original value. When exiting the context, it set the debug
+    memorizing its original value. When exiting the context, it sets the debug
     mode back to the original value.
 
     Args:
