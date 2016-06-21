@@ -1,4 +1,5 @@
 import sys
+import pkg_resources
 
 import numpy
 import six
@@ -31,6 +32,9 @@ from cupy import sorting  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
+
+
+__version__ = pkg_resources.get_distribution('cupy').version
 
 
 # import class and function
@@ -104,6 +108,7 @@ from numpy import float64  # NOQA
 from cupy.core import ufunc  # NOQA
 
 from numpy import newaxis  # == None  # NOQA
+
 
 # =============================================================================
 # Routines
