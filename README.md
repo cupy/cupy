@@ -4,6 +4,9 @@
 [![coveralls](https://img.shields.io/coveralls/pfnet/cupy.svg)](https://coveralls.io/github/pfnet/cupy)
 [![Read the Docs](https://readthedocs.org/projects/cupy/badge/?version=stable)](http://docs.cupy-ndarray.org/en/stable/?badge=stable)
 
+# Please do not send a PR yet
+Please see [chainer](https://github.com/pfnet/chainer) project.
+
 # CuPy : NumPy-like API accelerated with CUDA
 
 ## Requirements
