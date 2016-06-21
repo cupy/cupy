@@ -78,7 +78,7 @@ class GRU(GRUBase):
         r = sigmoid.sigmoid(self.W_r(x) + self.U_r(h))
         z = sigmoid.sigmoid(self.W_z(x) + self.U_z(h))
         h_bar = tanh.tanh(self.W(x) + self.U(r * h))
-        h_new = (1 - z) * h + z * h_bar
+        h_new = linear_interpolate.linear_interpolate(z, h_bar, h)
         return h_new
 
 
