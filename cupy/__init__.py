@@ -1,5 +1,6 @@
 from __future__ import division
 import sys
+import pkg_resources
 
 import numpy
 import six
@@ -29,6 +30,8 @@ from cupy import sorting
 from cupy import statistics
 from cupy import testing  # NOQA
 from cupy import util
+
+__version__ = pkg_resources.get_distribution('cupy').version
 
 random = cupy.random
 
