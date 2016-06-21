@@ -58,6 +58,7 @@ class BatchNormalization(link.Link):
             to the batch variances.
 
     """
+
     def __init__(self, size, decay=0.9, eps=2e-5, dtype=numpy.float32,
                  use_gamma=True, use_beta=True,
                  initial_gamma=None, initial_beta=None):

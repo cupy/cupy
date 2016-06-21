@@ -8,6 +8,7 @@ import chainer.links as L
 
 class VAE(chainer.Chain):
     """Variational AutoEncoder"""
+
     def __init__(self, n_in, n_latent, n_h):
         super(VAE, self).__init__(
             # encoder

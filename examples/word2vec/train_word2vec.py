@@ -87,6 +87,7 @@ class SkipGram(chainer.Chain):
 
 
 class SoftmaxCrossEntropyLoss(chainer.Chain):
+
     def __init__(self, n_in, n_out):
         super(SoftmaxCrossEntropyLoss, self).__init__(
             out=L.Linear(n_in, n_out),

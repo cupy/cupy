@@ -49,6 +49,7 @@ class LogReport(extension.Extension):
             does not output the log to any file.
 
     """
+
     def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
                  log_name='log'):
         self._keys = keys

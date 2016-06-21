@@ -12,6 +12,7 @@ class NesterovAG(optimizer.GradientMethod):
     See: http://arxiv.org/abs/1212.0901
 
     """
+
     def __init__(self, lr=0.01, momentum=0.9):
         self.lr = lr
         self.momentum = momentum

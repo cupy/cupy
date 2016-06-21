@@ -44,6 +44,7 @@ class LSTM(function.Function):
     state. x must have four times channels compared to the number of units.
 
     """
+
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         c_type, x_type = in_types
