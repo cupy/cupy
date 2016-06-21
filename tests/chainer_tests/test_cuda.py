@@ -40,13 +40,15 @@ class TestCuda(unittest.TestCase):
     def test_empy_unavailable(self):
         if not cuda.available:
             with self.assertRaises(RuntimeError):
-                cuda.empty(())
+                with warnings.catch_warnings():
+                    cuda.empty(())
 
     def test_empy_like_unavailable(self):
         x = numpy.array([1])
         if not cuda.available:
             with self.assertRaises(RuntimeError):
-                cuda.empty_like(x)
+                with warnings.catch_warnings():
+                    cuda.empty_like(x)
 
 
 @testing.parameterize(
