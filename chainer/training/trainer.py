@@ -239,8 +239,8 @@ class Trainer(object):
         # main training loop
         try:
             while not stop_trigger(self):
-                observation = self.observation = {}
-                with reporter.scope(observation):
+                self.observation = {}
+                with reporter.scope(self.observation):
                     update()
 
                 for name, entry in extensions:
