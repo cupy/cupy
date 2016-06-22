@@ -19,8 +19,7 @@ chainer_setup_build.parse_args()
 setup(
     name='cupy',
     version='1.0.0',
-    description=('An implementation of NumPy-compatible multi-dimensional '
-                 'array on CUDA'),
+    description=('CuPy: NumPy-like API accelerated with CUDA'),
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     url='http://chainer.org/',
