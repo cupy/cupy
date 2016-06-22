@@ -99,7 +99,7 @@ class TestSum(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_zerodim_cpu(self):
-        x = numpy.array(-1, 1, ()).astype(numpy.float32)
+        x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         self.check_backward(x, gy)
 
@@ -142,7 +142,7 @@ class TestSum(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_backward_zerodim_gpu(self):
-        x = numpy.array(-1, 1, ()).astype(numpy.float32)
+        x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
         self.check_backward(cuda.to_gpu(x), cuda.to_gpu(gy))
 
