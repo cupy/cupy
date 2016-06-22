@@ -60,18 +60,6 @@ def _writer():
     return _aux
 
 
-def memoize(f):
-    # Arguments are limited to some small integers for dimensions.
-    memo = {}
-
-    @functools.wraps(f)
-    def ret(*args, **kwargs):
-        if args not in memo:
-            memo[args] = f(*args, **kwargs)
-        return memo[args]
-    return ret
-
-
 #
 # im2col
 
@@ -160,7 +148,6 @@ def _im2col_operation(N, ds, outs, ks, ss, ps):
     return '\n'.join(c0_decl + kxs_decl + outxs_decl + ins_decl + col_set)
 
 
-@memoize
 def generate_im2col_nd_kernel(N):
     ds = _vars('d', N)
     outs = _vars('out', N)
@@ -273,7 +260,6 @@ def _col2im_operation(N, ds, outs, ks, ss, ps):
     return '\n'.join(c0_decl + xs_decl + outs_decl + val_accum + img_set)
 
 
-@memoize
 def generate_col2im_nd_kernel(N):
     ds = _vars('d', N)
     outs = _vars('out', N)

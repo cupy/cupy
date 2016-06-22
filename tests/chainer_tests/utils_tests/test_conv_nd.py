@@ -82,6 +82,7 @@ class TestIm2ColND(unittest.TestCase):
         ss = (1,) * N
         ps = (1,) * N
         self.check_im2col_nd(ks, ss, ps, gpu=True)
+        self.assertTrue(N in conv_nd._im2col_cache)
 
     @attr.gpu
     def test_im2col_nd_2_gpu(self):
@@ -90,6 +91,7 @@ class TestIm2ColND(unittest.TestCase):
         ss = (2,) * N
         ps = (2,) * N
         self.check_im2col_nd(ks, ss, ps, gpu=True)
+        self.assertTrue(N in conv_nd._im2col_cache)
 
     @attr.gpu
     def test_im2col_nd_3_gpu(self):
@@ -98,6 +100,7 @@ class TestIm2ColND(unittest.TestCase):
         ss = (2, 1, 2)[:N]
         ps = (1, 2, 1)[:N]
         self.check_im2col_nd(ks, ss, ps, gpu=True)
+        self.assertTrue(N in conv_nd._im2col_cache)
 
 
 @testing.parameterize(*testing.product({
@@ -174,6 +177,7 @@ class TestCol2ImND(unittest.TestCase):
         ss = (1,) * N
         ps = (1,) * N
         self.check_col2im_nd(ks, ss, ps, gpu=True)
+        self.assertTrue(N in conv_nd._col2im_cache)
 
     @attr.gpu
     def test_col2im_2_gpu(self):
@@ -182,6 +186,7 @@ class TestCol2ImND(unittest.TestCase):
         ss = (2,) * N
         ps = (2,) * N
         self.check_col2im_nd(ks, ss, ps, gpu=True)
+        self.assertTrue(N in conv_nd._col2im_cache)
 
     @attr.gpu
     def test_col2im_3_gpu(self):
@@ -190,5 +195,6 @@ class TestCol2ImND(unittest.TestCase):
         ss = (2, 1, 2)[:N]
         ps = (1, 2, 1)[:N]
         self.check_col2im_nd(ks, ss, ps, gpu=True)
+        self.assertTrue(N in conv_nd._col2im_cache)
 
 testing.run_module(__name__, __file__)

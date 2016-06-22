@@ -40,6 +40,9 @@ def im2col_nd_cpu(img, ks, ss, ps, pval=0, cover_all=False):
     return col
 
 
+_im2col_cache = {}
+
+
 def im2col_nd_gpu(img, ks, ss, ps, cover_all=False):
     # Assured consistency of dimensions of parameters by caller.
     n, c = img.shape[0:2]       # (n, c, d_1, d_2, ..., d_N)
@@ -52,8 +55,12 @@ def im2col_nd_gpu(img, ks, ss, ps, cover_all=False):
     shape = (n, c) + ks + outs
     col = cuda.empty(shape, dtype=img.dtype)
 
-    in_params, out_params, operation, name = \
-        conv_nd_kernel.generate_im2col_nd_kernel(N)
+    if N in _im2col_cache:
+        in_params, out_params, operation, name = _im2col_cache[N]
+    else:
+        _im2col_cache[N] = conv_nd_kernel.generate_im2col_nd_kernel(N)
+        in_params, out_params, operation, name = _im2col_cache[N]
+
     cuda.elementwise(in_params, out_params, operation, name)(
         img.reduced_view(), *(ds + outs + ks + ss + ps + (col,)))
 
@@ -88,6 +95,9 @@ def col2im_nd_cpu(col, ss, ps, ds):
     return img[img_index]
 
 
+_col2im_cache = {}
+
+
 def col2im_nd_gpu(col, ss, ps, ds):
     # Assured consistency of dimensions of parameters by caller.
     n, c = col.shape[:2]        # (n, c, k_1, ..., k_N, out_1, ..., out_N)
@@ -99,8 +109,12 @@ def col2im_nd_gpu(col, ss, ps, ds):
     img_shape = (n, c) + ds     # (n, c, d_1, d_2, ..., d_N)
     img = cuda.empty(img_shape, dtype=col.dtype)
 
-    in_params, out_params, operation, name =\
-        conv_nd_kernel.generate_col2im_nd_kernel(N)
+    if N in _col2im_cache:
+        in_params, out_params, operation, name = _col2im_cache[N]
+    else:
+        _col2im_cache[N] = conv_nd_kernel.generate_col2im_nd_kernel(N)
+        in_params, out_params, operation, name = _col2im_cache[N]
+
     cuda.elementwise(in_params, out_params, operation, name)(
         col.reduced_view(), *(ds + outs + ks + ss + ps + (img,)))
 
