@@ -82,18 +82,12 @@ class TestContrastive(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_zero_dist_cpu(self):
-        x0 = self.x0
-        x1 = self.x0
-        self.dist = xp.sqrt(numpy.sum((x0 - x1) ** 2, axis=1))
-        self.check_backward(x0, x1, self.t)
+        self.check_backward(self.x0, self.x0, self.t)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_zero_dist_gpu_no_cudnn(self):
-        x0 = self.x0
-        x1 = self.x0
-        self.dist = cuda.to_gpu(numpy.sqrt(numpy.sum((x0 - x1) ** 2, axis=1)))
-        self.check_backward(cuda.to_gpu(x0), cuda.to_gpu(x1),
+        self.check_backward(cuda.to_gpu(self.x0), cuda.to_gpu(self.x0),
                             cuda.to_gpu(self.t))
 
 testing.run_module(__name__, __file__)
