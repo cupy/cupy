@@ -129,6 +129,7 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
 
 typedef enum {} cudnnAddMode_t;
 
+
 cudnnStatus_t cudnnSetConvolutionNdDescriptor_v2(
         cudnnConvolutionDescriptor_t convDesc, int arrayLength,
         const int padA[], const int filterStrideA[], const int upscaleA[],
@@ -169,6 +170,70 @@ cudnnStatus_t cudnnConvolutionBackwardData_v2(
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
+// Batch normalization
+
+cudnnStatus_t cudnnDeriveBNTensorDescriptor(
+         cudnnTensorDescriptor_t derivedBnDesc,
+         const cudnnTensorDescriptor_t xDesc,
+         cudnnBatchNormMode_t mode);
+
+
+cudnnStatus_t cudnnBatchNormalizationForwardTraining(
+                                cudnnHandle_t handle,
+                                cudnnBatchNormMode_t mode,
+                                const void *alpha,
+                                const void *beta,
+                                const cudnnTensorDescriptor_t xDesc,
+                                const void *x,
+                                const cudnnTensorDescriptor_t yDesc,
+                                void *y,
+                                const cudnnTensorDescriptor_t bnScaleBiasMeanVarDesc,
+                                const void *bnScale,
+                                const void *bnBias,
+                                double exponentialAverageFactor,
+                                void *resultRunningMean,
+                                void *resultRunningVariance,
+                                double epsilon,
+                                void *resultSaveMean,
+                                void *resultSaveInvVariance);
+
+cudnnStatus_t cudnnBatchNormalizationForwardInference(
+                                cudnnHandle_t handle,
+                                cudnnBatchNormMode_t mode,
+                                const void *alpha,
+                                const void *beta,
+                                const cudnnTensorDescriptor_t xDesc,
+                                const void *x,
+                                const cudnnTensorDescriptor_t yDesc,
+                                void *y,
+                                const cudnnTensorDescriptor_t bnScaleBiasMeanVarDesc,
+                                const void *bnScale,
+                                const void *bnBias,
+                                const void *estimatedMean,
+                                const void *estimatedVariance,
+                                double epsilon);
+
+cudnnStatus_t cudnnBatchNormalizationBackward(
+                                cudnnHandle_t handle,
+                                cudnnBatchNormMode_t mode,
+                                const void *alphaDataDiff,
+                                const void *betaDataDiff,
+                                const void *alphaParamDiff,
+                                const void *betaParamDiff,
+                                const cudnnTensorDescriptor_t xDesc,
+                                const void *x,
+                                const cudnnTensorDescriptor_t dyDesc,
+                                const void *dy,
+                                const cudnnTensorDescriptor_t dxDesc,
+                                void *dx,
+                                const cudnnTensorDescriptor_t dBnScaleBiasDesc,
+                                const void *bnScale,
+                                void *dBnScaleResult,
+                                void *dBnBiasResult,
+                                double epsilon,
+                                const void *savedMean,
+                                const void *savedInvVariance);
+
 #endif // CUDNN_VERSION >= 5000
 
 #else // #ifndef CUPY_NO_CUDA
@@ -180,6 +245,7 @@ cudnnStatus_t cudnnConvolutionBackwardData_v2(
 
 typedef int cudnnActivationMode_t;
 typedef int cudnnAddMode_t;
+typedef int cudnnBatchNormMode_t;
 typedef int cudnnConvolutionBwdDataAlgo_t;
 typedef int cudnnConvolutionBwdDataPreference_t;
 typedef int cudnnConvolutionBwdFilterAlgo_t;
@@ -446,7 +512,6 @@ int cudnnConvolutionBackwardData_v3(
          TensorDescriptor gradDesc, void* gradData) {
      return 0;
  }
-
 
 // Pooling
 int cudnnCreatePoolingDescriptor(PoolingDescriptor* desc) {
