@@ -4,7 +4,7 @@ from chainer import link
 
 
 class Bias(link.Link):
-    """Broadcasted elementwise summation with learnable parameter.
+    """Broadcasted elementwise summation with learnable parameters.
 
     Computes a elementwise summation as :func:`~chainer.functions.bias`
     function does except that its second input is a learnable bias parameter
@@ -15,13 +15,15 @@ class Bias(link.Link):
             :func:`~chainer.functions.bias` function along which its second
             input is applied.
         shape (tuple of ints): Shape of the learnable bias parameter. If
-            ``None``, a bias parameter needs to be given explicitly to its
-            ``__call__`` method's second input.
+            ``None``, this link does not have learnable parameters so an
+            explicit bias needs to be given to its ``__call__`` method's second
+            input.
 
     .. seealso:: See :func:`chainer.functions.bias` for details.
 
     Attributes:
-        b (~chainer.Variable): Bias parameter.
+        b (~chainer.Variable): Bias parameter if `shape` is given. Otherwise,
+            no attributes.
 
     """
     def __init__(self, axis=1, shape=None):
@@ -44,14 +46,14 @@ class Bias(link.Link):
         """
         axis = self.axis
 
-        # Case of only one bottom where b is learnt parameter.
+        # Case of only one argument where b is a learnt parameter.
         if hasattr(self, 'b'):
             if chainer.is_debug():
                 assert len(xs) == 1
             x, = xs
             b = self.b
             return bias.bias(x, b, axis)
-        # Case of two bottoms where b is given as a bottom.
+        # Case of two arguments where b is given as an argument.
         else:
             if chainer.is_debug():
                 assert len(xs) == 2

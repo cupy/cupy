@@ -5,7 +5,7 @@ from chainer.links.connection import bias
 
 
 class Scale(link.Chain):
-    """Broadcasted elementwise product with learnable parameter.
+    """Broadcasted elementwise product with learnable parameters.
 
     Computes a elementwise product as :func:`~chainer.functions.scale`
     function does except that its second input is a learnable weight parameter
@@ -16,8 +16,9 @@ class Scale(link.Chain):
             :func:`~chainer.functions.scale` function along which its second
             input is applied.
         W_shape (tuple of ints): Shape of learnable weight parameter. If
-            ``None``, a weight parameter needs to be given explicitly to its
-            ``__call__`` method's second input.
+            ``None``, this link does not have learnable weight parameter so an
+            explicit weight needs to be given to its ``__call__`` method's
+            second input.
         bias_term (bool): Whether to also learn a bias (equivalent to Scale
             link + Bias link).
         bias_shape (tuple of ints): Shape of learnable bias. If ``W_shape`` is
@@ -28,8 +29,10 @@ class Scale(link.Chain):
     .. seealso:: See :func:`chainer.functions.scale` for details.
 
     Attributes:
-        W (~chainer.Variable): Weight parameter.
-        bias (~chainer.links.Bias): Bias term.
+        W (~chainer.Variable): Weight parameter if `W_shape` is given.
+            Otherwise, no W attribute.
+        bias (~chainer.links.Bias): Bias term if `bias_term` is True.
+            Otherwise, no bias attribute.
 
     """
     def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
@@ -62,14 +65,14 @@ class Scale(link.Chain):
         """
         axis = self.axis
 
-        # Case of only one bottom where W is learnt parameter.
+        # Case of only one argument where W is a learnt parameter.
         if hasattr(self, 'W'):
             if chainer.is_debug():
                 assert len(xs) == 1
             x, = xs
             W = self.W
             z = scale.scale(x, W, axis)
-        # Case of two bottoms where W is given as a bottom.
+        # Case of two arguments where W is given as an argument.
         else:
             if chainer.is_debug():
                 assert len(xs) == 2
