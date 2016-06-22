@@ -52,7 +52,6 @@ def im2col_nd_gpu(img, ks, ss, ps, cover_all=False):
     shape = (n, c) + ks + outs
     col = cuda.empty(shape, dtype=img.dtype)
 
-    # TODO(takagi) Better to cache this code?
     in_params, out_params, operation, name = \
         conv_nd_kernel.generate_im2col_nd_kernel(N)
     cuda.elementwise(in_params, out_params, operation, name)(
@@ -100,7 +99,6 @@ def col2im_nd_gpu(col, ss, ps, ds):
     img_shape = (n, c) + ds     # (n, c, d_1, d_2, ..., d_N)
     img = cuda.empty(img_shape, dtype=col.dtype)
 
-    # TODO(takagi) Better to cache this code?
     in_params, out_params, operation, name =\
         conv_nd_kernel.generate_col2im_nd_kernel(N)
     cuda.elementwise(in_params, out_params, operation, name)(
