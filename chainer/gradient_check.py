@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer.functions.math import identity
@@ -93,7 +94,7 @@ def _as_tuple(x):
 
 
 def check_backward(func, x_data, y_grad, params=(),
-                   eps=1e-3, atol=1e-5, rtol=1e-4):
+                   eps=1e-3, atol=1e-5, rtol=1e-4, no_grads=None):
     """Test backward procedure of a given function.
 
     This function automatically check backward-process of given function.
@@ -184,6 +185,8 @@ def check_backward(func, x_data, y_grad, params=(),
             :func:`assert_allclose`.
         rtol (float): Relative tolerance to be passed to
             :func:`assert_allclose`.
+        no_grads (list of bool): Flag to skip variable for gradient assertion.
+            It should be same length as ``x_data``.
 
     See:
        :func:`numerical_grad`
@@ -227,13 +230,19 @@ def check_backward(func, x_data, y_grad, params=(),
         ys = _as_tuple(ys)
         return tuple(y.data for y in ys)
 
-    for x in xs:
-        if x.data.dtype.kind == 'f':
-            gx, = numerical_grad(f, (x.data,), y_grad, eps=eps)
-            assert_allclose(gx, x.grad, atol=atol, rtol=rtol)
-            assert gx.dtype is x.grad.dtype
-        else:
+    if no_grads is None:
+        no_grads = [x.data.dtype.kind != 'f' for x in xs]
+    else:
+        if len(no_grads) != len(xs):
+            raise ValueError(
+                'Length of no_grads param and xs should be same.')
+    for skip, x in six.moves.zip(no_grads, xs):
+        if skip:
             assert x.grad is None
+            continue
+        gx, = numerical_grad(f, (x.data,), y_grad, eps=eps)
+        assert_allclose(gx, x.grad, atol=atol, rtol=rtol)
+        assert gx.dtype is x.grad.dtype
 
     for p in params:
         gp, = numerical_grad(f, (p.data,), y_grad, eps=eps)
