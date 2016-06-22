@@ -124,42 +124,52 @@ class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
         self.t0 = self.t.copy()[self.idx]
         self.gy0 = self.gy.copy()
 
-    def test_ignore_forward(self):
+    def check_ignore_forward(self, x_data, t_data, x0_data, t0_data):
         # Ensure that the loss when an ignore target is included is the same
         # as when it is excluded explicitly.
-        x = chainer.Variable(self.link.xp.asarray(self.x))
-        t = chainer.Variable(self.link.xp.asarray(self.t))
+        x = chainer.Variable(x_data)
+        t = chainer.Variable(t_data)
         y = self.link(x, t)
-        x0 = chainer.Variable(self.link.xp.asarray(self.x0))
-        t0 = chainer.Variable(self.link.xp.asarray(self.t0))
+        x0 = chainer.Variable(x0_data)
+        t0 = chainer.Variable(t0_data)
         y0 = self.link(x0, t0)
         gradient_check.assert_allclose(y.data, y0.data, atol=1.e-4)
+
+    def test_ignore_forward_cpu(self):
+        self.check_ignore_forward(self.x, self.t, self.x0, self.t0)
 
     @attr.gpu
     def test_ignore_forward_gpu(self):
         self.link.to_gpu()
-        self.test_ignore_forward()
+        self.check_ignore_forward(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.t),
+            cuda.to_gpu(self.x0), cuda.to_gpu(self.t0))
 
-    def test_ignore_backward(self):
+    def check_ignore_backward(
+            self, x_data, t_data, gy_data, x0_data, t0_data, gy0_data):
         # Ensure that the gradient when an ignore target is included is the
         # same as when it is excluded explicitly.
-        gx, gw = self.check_backward(
-            self.link.xp.asarray(self.x),
-            self.link.xp.asarray(self.t),
-            self.link.xp.asarray(self.gy))
+        gx, gw = self.check_backward(x_data, t_data, gy_data)
         self.link.zerograds()
-        gx0, gw0 = self.check_backward(
-            self.link.xp.asarray(self.x0),
-            self.link.xp.asarray(self.t0),
-            self.link.xp.asarray(self.gy0))
+        gx0, gw0 = self.check_backward(x0_data, t0_data, gy0_data)
         gradient_check.assert_allclose(
             cuda.to_cpu(gx)[self.idx, :], gx0, atol=1.e-4)
         gradient_check.assert_allclose(gw, gw0, atol=1.e-4)
 
+    def test_ignore_backward_cpu(self):
+        self.check_ignore_backward(
+            self.x, self.t, self.gy, self.x0, self.t0, self.gy0)
+
     @attr.gpu
     def test_ignore_backward_gpu(self):
         self.link.to_gpu()
-        self.test_ignore_backward()
+        self.check_ignore_backward(
+            cuda.to_gpu(self.x),
+            cuda.to_gpu(self.t),
+            cuda.to_gpu(self.gy),
+            cuda.to_gpu(self.x0),
+            cuda.to_gpu(self.t0),
+            cuda.to_gpu(self.gy0))
 
 
 testing.run_module(__name__, __file__)
