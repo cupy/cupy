@@ -108,7 +108,8 @@ class ConvolutionND(function.Function):
         y = cuda.empty(y_shape, dtype=x.dtype)
         # Implementation using cuDNN.
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
-                convolution_2d._check_cudnn_acceptable_type(x.dtype, W.dtype)):
+            N > 1 and convolution_2d._check_cudnn_acceptable_type(
+                x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             if b is not None:
@@ -217,7 +218,8 @@ class ConvolutionND(function.Function):
         gW = cuda.empty_like(W)
         # Implementation using cuDNN.
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
-                convolution_2d._check_cudnn_acceptable_type(x.dtype, W.dtype)):
+            N > 1 and convolution_2d._check_cudnn_acceptable_type(
+                x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             gy = cuda.cupy.ascontiguousarray(gy)

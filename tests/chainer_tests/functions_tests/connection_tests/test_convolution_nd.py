@@ -17,9 +17,7 @@ from chainer.utils import conv
 
 
 @testing.parameterize(*testing.product({
-    # 'ds': [(10,), (10, 8), (10, 8, 6)],
-    # TODO(takagi) cuDNN looks not support 1D convolution.
-    'ds': [(10, 8), (10, 8, 6)],
+    'ds': [(10,), (10, 8), (10, 8, 6)],
     'c_contiguous': [True, False],
     'cover_all': [True, False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
@@ -156,9 +154,7 @@ class TestConvolutionND(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    # 'ds': [(10,), (10, 8), (10, 8, 6)],
-    # TODO(takgi) cuDNN looks not support 1D convolution.
-    'ds': [(10, 8), (10, 8, 6)],
+    'ds': [(10,), (10, 8), (10, 8, 6)],
     'use_cudnn': [True, False],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
@@ -182,7 +178,7 @@ class TestConvolutionNDCudnnCall(unittest.TestCase):
             [conv.get_conv_outsize(d, k, s, p)
              for (d, k, s, p) in zip(self.ds, ks, self.stride, self.pad)])
         self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
-        self.expect = self.use_cudnn and (
+        self.expect = self.use_cudnn and N > 1 and (
             cuda.cudnn.cudnn.getVersion() >= 3000 or
             self.dtype != numpy.float16)
 

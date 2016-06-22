@@ -15,9 +15,7 @@ from chainer.utils import conv_nd
 
 
 @testing.parameterize(*testing.product({
-    # 'ds': [(10,), (10, 8), (10, 8, 6)],
-    # TODO(takagi) cuDNN looks not support 1D convolution.
-    'ds': [(10, 8), (10, 8, 6)],
+    'ds': [(10,), (10, 8), (10, 8, 6)],
 }))
 class TestConvolutionND(unittest.TestCase):
 
