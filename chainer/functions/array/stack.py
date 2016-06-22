@@ -7,7 +7,7 @@ def stack(xs, axis=0):
 
     Args:
         xs (list of chainer.Variable): Variables to be concatenated.
-        axis (int): Axis of result along which variables stacked.
+        axis (int): Axis of result along which variables are stacked.
 
     Returns:
         ~chainer.Variable: Output variable.
