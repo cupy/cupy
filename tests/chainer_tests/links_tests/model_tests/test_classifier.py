@@ -3,7 +3,6 @@ import unittest
 import numpy
 
 import chainer
-from chainer.functions.evaluation import accuracy
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
