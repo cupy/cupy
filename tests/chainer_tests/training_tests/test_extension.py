@@ -1,7 +1,7 @@
 import unittest
 
-from chainer import training
 from chainer import testing
+from chainer import training
 
 
 class TestExtension(unittest.TestCase):
