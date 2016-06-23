@@ -58,10 +58,9 @@ class ConvolutionND(link.Link):
         super(ConvolutionND, self).__init__(W=W_shape)
 
         # For backward compatibility, the scale of weights is proportional to
-        # the Nth root of wscale.
-        # TODO(takagi) Nth root right?
+        # the square root of wscale.
         initializers.init_weight(self.W.data, initialW,
-                                 scale=math.pow(wscale, 1.0 / N))
+                                 scale=math.sqrt(wscale))
 
         if nobias:
             self.b = None
