@@ -59,7 +59,7 @@ def atleast_2d(*arys):
         if a.ndim == 0:
             a = a.reshape(1, 1)
         elif a.ndim == 1:
-            a = a[cupy.newaxis, :]
+            a = a[None, :]
         res.append(a)
     if len(res) == 1:
         res = res[0]
@@ -96,9 +96,9 @@ def atleast_3d(*arys):
         if a.ndim == 0:
             a = a.reshape(1, 1, 1)
         elif a.ndim == 1:
-            a = a[cupy.newaxis, :, cupy.newaxis]
+            a = a[None, :, None]
         elif a.ndim == 2:
-            a = a[:, :, cupy.newaxis]
+            a = a[:, :, None]
         res.append(a)
     if len(res) == 1:
         res = res[0]

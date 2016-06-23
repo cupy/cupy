@@ -174,7 +174,7 @@ Actual: {0}'''.format(type(data))
 
     @property
     def label(self):
-        """Short text that represents the function."""
+        """Short text that represents the variable."""
         if self.data.shape == ():
             return str(self.data.dtype)
         return '(%s), %s' % (', '.join(map(str, self.data.shape)),
