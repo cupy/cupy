@@ -7,6 +7,7 @@ try:
 except ImportError as e:
     available = False
     _import_error = e
+import six
 
 from chainer.dataset import dataset_mixin
 
@@ -44,7 +45,7 @@ class ImageDataset(dataset_mixin.DatasetMixin):
     """
     def __init__(self, paths, root='.', dtype=numpy.float32):
         _check_pillow_availability()
-        if isinstance(paths, str):
+        if isinstance(paths, six.string_types):
             with open(paths) as paths_file:
                 paths = [path.strip() for path in paths_file]
         self._paths = paths
@@ -94,7 +95,7 @@ class LabeledImageDataset(dataset_mixin.DatasetMixin):
     def __init__(self, pairs, root='.', dtype=numpy.float32,
                  label_dtype=numpy.int32):
         _check_pillow_availability()
-        if isinstance(pairs, str):
+        if isinstance(pairs, six.string_types):
             pairs_path = pairs
             with open(pairs_path) as pairs_file:
                 pairs = []
