@@ -24,13 +24,20 @@ class TestDummyDeviceType(unittest.TestCase):
 class TestCuda(unittest.TestCase):
 
     def test_get_dummy_device(self):
-        if not cuda.available:
-            self.assertIs(cuda.get_device(), cuda.DummyDevice)
+        self.assertIs(cuda.get_device(), cuda.DummyDevice)
+
+    @attr.gpu
+    def test_get_device_for_numpy_int(self):
+        self.assertIs(cuda.get_device(numpy.int64(0)), cuda.DummyDevice)
 
     @attr.gpu
     def test_get_dummy_device_for_empty_array(self):
         x = cuda.cupy.array([]).reshape((0, 10))
         self.assertIs(cuda.get_device(x), cuda.DummyDevice)
+
+    @attr.gpu
+    def test_get_device_for_int(self):
+        self.assertEqual(cuda.get_device(0), cuda.Device(0))
 
     def test_to_gpu_unavailable(self):
         x = numpy.array([1])
