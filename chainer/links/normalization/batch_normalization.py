@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer.functions.normalization import batch_normalization
+#import batch_normalization_debug
 from chainer import link
 from chainer import variable
 
@@ -58,7 +59,7 @@ class BatchNormalization(link.Link):
             to the batch variances.
 
     """
-    def __init__(self, size, decay=0.9, eps=1e-5, dtype=numpy.float32,
+    def __init__(self, size, decay=0.9, eps=2e-5, dtype=numpy.float32,
                  use_gamma=True, use_beta=True):
         super(BatchNormalization, self).__init__()
         if use_gamma:
@@ -95,7 +96,8 @@ class BatchNormalization(link.Link):
 
         """
         use_batch_mean = not test or finetune
-
+        print('use_batch_mean = ', use_batch_mean)
+        # use_batch_mean = (not test) or finetune
         if hasattr(self, 'gamma'):
             gamma = self.gamma
         else:
@@ -108,8 +110,8 @@ class BatchNormalization(link.Link):
                 self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
 
         if use_batch_mean:
-            func = batch_normalization.BatchNormalizationFunction(self.eps)
-            ret = func(x, gamma, beta)
+            #func = batch_normalization.BatchNormalizationFunction(self.eps)
+            #ret = func(x, gamma, beta)
 
             if finetune:
                 self.N += 1
@@ -117,22 +119,22 @@ class BatchNormalization(link.Link):
             else:
                 decay = self.decay
 
-            with cuda.get_device(x.data):
-                m = x.data.size // gamma.data.size
-                adjust = m / max(m - 1., 1.)  # unbiased estimation
-                self.avg_mean *= decay
-                func.mean *= 1 - decay  # reuse buffer as a temporary
-                self.avg_mean += func.mean
-                del func.mean
-                self.avg_var *= decay
-                func.var *= (1 - decay) * adjust  # reuse buffer as a temporary
-                self.avg_var += func.var
-                del func.var
+            print('decay = ', decay)
+            func = batch_normalization.BatchNormalizationFunction(self.avg_mean, self.avg_var, True,
+                                                                             decay, self.eps)
+            ret = func(x, gamma, beta)
+                
+            self.avg_mean = func.running_mean
+            self.avg_var = func.running_var
         else:
-            mean = variable.Variable(self.avg_mean, volatile='auto')
-            var = variable.Variable(self.avg_var, volatile='auto')
+            #mean = variable.Variable(self.avg_mean, volatile='auto')
+            #var = variable.Variable(self.avg_var, volatile='auto')
+            #ret = batch_normalization.fixed_batch_normalization(
+            #    x, gamma, beta, mean, var, self.eps)
+            
+            # Use running average statistics or fine-tuned statistics.
             ret = batch_normalization.fixed_batch_normalization(
-                x, gamma, beta, mean, var, self.eps)
+                x, gamma, beta, self.avg_mean, self.avg_var, self.eps)
         return ret
 
     def start_finetuning(self):
