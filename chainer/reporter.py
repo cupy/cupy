@@ -130,12 +130,14 @@ class Reporter(object):
         """
         if observer is not None:
             observer_name = self._observer_names[id(observer)]
-        for key, value in six.iteritems(values):
-            name = '%s/%s' % (observer_name, key)
-            self.observation[name] = value
+            for key, value in six.iteritems(values):
+                name = '%s/%s' % (observer_name, key)
+                self.observation[name] = value
+        else:
+            self.observation.update(values)
 
 
-_reporters = [Reporter()]
+_reporters = []
 
 
 def get_current_reporter():
@@ -148,6 +150,7 @@ def report(values, observer=None):
 
     Any reporter object can be set current by the ``with`` statement. This
     function calls the :meth:`Report.report` method of the current report.
+    If no reporter object is current, this function does nothing.
 
     .. admonition:: Example
 
@@ -189,8 +192,9 @@ def report(values, observer=None):
             of the observed value.
 
     """
-    current = _reporters[-1]
-    current.report(values, observer)
+    if _reporters:
+        current = _reporters[-1]
+        current.report(values, observer)
 
 
 @contextlib.contextmanager
