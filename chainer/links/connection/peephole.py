@@ -41,9 +41,9 @@ class Peephole(link.Chain):
         lateral (~chainer.links.Linear): Linear layer of lateral connections.
         peep_i (~chainer.links.Linear): Linear layer of peephole connections
                                         to the input gate.
-        peep_f (~chainer.links.Linear): Linear layer of lateral connections
+        peep_f (~chainer.links.Linear): Linear layer of peephole connections
                                         to the forget gate.
-        peep_o (~chainer.links.Linear): Linear layer of lateral connections
+        peep_o (~chainer.links.Linear): Linear layer of peephole connections
                                         to the output gate.
         c (~chainer.Variable): Cell states of LSTM units.
         h (~chainer.Variable): Output at the current time step.
