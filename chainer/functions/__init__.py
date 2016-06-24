@@ -65,6 +65,7 @@ from chainer.functions.normalization import batch_normalization
 from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
+from chainer.functions.pooling import max_pooling_nd
 from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
@@ -226,7 +227,9 @@ local_response_normalization = \
 AveragePooling2D = average_pooling_2d.AveragePooling2D
 average_pooling_2d = average_pooling_2d.average_pooling_2d
 MaxPooling2D = max_pooling_2d.MaxPooling2D
+MaxPoolingND = max_pooling_nd.MaxPoolingND
 max_pooling_2d = max_pooling_2d.max_pooling_2d
+max_pooling_nd = max_pooling_nd.max_pooling_nd
 ROIPooling2D = roi_pooling_2d.ROIPooling2D
 roi_pooling_2d = roi_pooling_2d.roi_pooling_2d
 SpatialPyramidPooling2D = spatial_pyramid_pooling_2d.SpatialPyramidPooling2D
