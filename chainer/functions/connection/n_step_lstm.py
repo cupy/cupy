@@ -148,7 +148,7 @@ class NStepLSTM(function.Function):
         cx = cuda.cupy.ascontiguousarray(cx)
 
         x = x_list[0]
-        x = x.reshape(x.shape + (1,))
+        x = x[..., None]
         x_desc = cudnn.create_tensor_nd_descriptor(x)
 
         length = len(x_list)
