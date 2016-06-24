@@ -220,9 +220,7 @@ class NStepLSTM(function.Function):
         self.ys = ys
         self.c_x_descs = c_x_descs
 
-        ret = [hy, cy]
-        ret.extend(y_list)
-        return tuple(ret)
+        return tuple([hy, cy] + y_list)
 
     def backward(self, inputs, grads):
         (hx, cx), pos = _fetch_input(inputs, 0, 2)
