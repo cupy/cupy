@@ -61,15 +61,6 @@ class DropoutStates(object):
         return DropoutStates(states, desc)
 
 
-def _make_indices(batches):
-    pos = 0
-    inds = []
-    for b in batches[:-1]:
-        pos += b
-        inds.append(pos)
-    return inds
-
-
 def _fetch_input(inputs, pos, n):
     return inputs[pos:pos+n], pos + n
 
@@ -190,9 +181,8 @@ class NStepLSTM(function.Function):
         self.w = w
         self.w_desc = w_desc
 
-        lengths = [len(x) for x in x_list]
-        indexes = _make_indices(lengths)
-        y_list = cuda.cupy.split(ys, indexes)
+        sections = numpy.cumsum([len(x) for x in x_list[:-1]])
+        y_list = cuda.cupy.split(ys, sections)
 
         c_y_descs = _make_tensor_descriptor_array(y_list)
         hy = cuda.cupy.empty_like(hx)
@@ -243,9 +233,6 @@ class NStepLSTM(function.Function):
         hx = cuda.cupy.ascontiguousarray(hx)
         cx = cuda.cupy.ascontiguousarray(cx)
 
-        lengths = [len(x) for x in x_list]
-        indexes = _make_indices(lengths)
-
         dhy, dcy = grads[:2]
         dy_list = list(grads[2:])
         if dhy is None:
@@ -280,7 +267,8 @@ class NStepLSTM(function.Function):
         dcx_desc = cudnn.create_tensor_nd_descriptor(dcx)
 
         dxs = cuda.cupy.empty_like(xs)
-        dx_list = cuda.cupy.split(dxs, indexes, 0)
+        sections = numpy.cumsum([len(x) for x in x_list[:-1]])
+        dx_list = cuda.cupy.split(dxs, sections, 0)
         c_dx_descs = _make_tensor_descriptor_array(dx_list)
 
         libcudnn.RNNBackwardData(
