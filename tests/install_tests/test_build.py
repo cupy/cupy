@@ -2,7 +2,8 @@ from distutils import ccompiler
 from distutils import sysconfig
 import unittest
 
-from cupy.testing import attr
+from nose.plugins import attrib
+
 from install import build
 
 
@@ -13,12 +14,12 @@ class TestCheckVersion(unittest.TestCase):
         sysconfig.customize_compiler(self.compiler)
         self.settings = build.get_compiler_setting()
 
-    @attr.gpu
+    @attrib.attr('gpu')
     def test_check_cuda_version(self):
         self.assertTrue(build.check_cuda_version(
             self.compiler, self.settings))
 
-    @attr.cudnn
+    @attrib.attr('gpu', 'cudnn')
     def test_check_cudnn_version(self):
         self.assertTrue(build.check_cudnn_version(
             self.compiler, self.settings))
