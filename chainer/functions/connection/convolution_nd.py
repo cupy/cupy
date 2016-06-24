@@ -24,20 +24,19 @@ if cuda.cudnn_enabled:
             libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
-def _ensure_tuple(x, n):
+def _tuple(x, N):
     if hasattr(x, '__getitem__'):
+        assert len(x) == N
         return x
-    return tuple([x] * n)
+    return (x,) * N
 
 
 class ConvolutionND(function.Function):
 
     def __init__(self, N, stride=1, pad=0, use_cudnn=True, cover_all=False):
         self.N = N
-        self.stride = _ensure_tuple(stride, N)
-        assert len(self.stride) == N
-        self.pad = _ensure_tuple(pad, N)
-        assert len(self.pad) == N
+        self.stride = _tuple(stride, N)
+        self.pad = _tuple(pad, N)
         self.use_cudnn = use_cudnn
         self.cover_all = cover_all
 
