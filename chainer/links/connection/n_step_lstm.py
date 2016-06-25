@@ -24,7 +24,7 @@ def permutate_list(lst, indices, inv):
 
 class NStepLSTM(link.ChainList):
 
-    def __init__(self, n_layers, in_size, out_size, dropout, seed):
+    def __init__(self, n_layers, in_size, out_size, dropout, seed=1337, use_cudnn=True):
         weights = []
         for i in range(0, n_layers):
             weight = link.Link()
@@ -44,6 +44,8 @@ class NStepLSTM(link.ChainList):
 
         self.n_layers = n_layers
         self.dropout = dropout
+        self.seed = seed
+        self.use_cudnn = use_cudnn
 
     def __call__(self, hx, cx, xs):
         assert isinstance(xs, (list, tuple))
@@ -63,7 +65,8 @@ class NStepLSTM(link.ChainList):
             for i in range(0, 8):
                 bs.append(getattr(w, 'b%d' % i))
         hy, cy, trans_y = rnn.n_step_lstm(
-            self.n_layers, self.dropout, hx, cx, ws, bs, trans_x)
+            self.n_layers, self.dropout, hx, cx, ws, bs, trans_x,
+            seed=self.seed, use_cudnn=self.use_cudnn)
 
         hy = permutate.permutate(hy, indices, axis=1, inv=True)
         cy = permutate.permutate(cy, indices, axis=1, inv=True)

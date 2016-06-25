@@ -14,6 +14,9 @@ def sigmoid(x):
     return numpy.tanh(x * 0.5) * 0.5 + 0.5
 
 
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+}))
 class TestNStepLSTM(unittest.TestCase):
 
     lengths = [3, 1, 2]
@@ -40,7 +43,8 @@ class TestNStepLSTM(unittest.TestCase):
             numpy.random.uniform(-1, 1, (l, self.out_size)).astype('f')
             for l in self.lengths]
         self.rnn = links.NStepLSTM(
-            self.n_layer, self.in_size, self.out_size, self.dropout, self.seed)
+            self.n_layer, self.in_size, self.out_size, self.dropout, self.seed,
+            use_cudnn=self.use_cudnn)
 
         for layer in self.rnn:
             for p in layer.params():
