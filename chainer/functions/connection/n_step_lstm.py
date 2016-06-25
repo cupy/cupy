@@ -3,6 +3,12 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import function
+from chainer.functions.activation import lstm
+from chainer.functions.array import concat
+from chainer.functions.array import reshape
+from chainer.functions.array import split_axis
+from chainer.functions.array import stack
+from chainer.functions.connection import linear
 from chainer.utils import type_check
 
 
@@ -309,3 +315,78 @@ class NStepLSTM(function.Function):
                 v[:] = bias.ravel()
 
         return tuple([dhx, dcx] + dws + dbs + dx_list)
+
+
+def _stack_weight(ws):
+    # TODO(unno): Input of the current LSTM implementaiton is shuffled
+    w = stack.stack(ws, axis=1)
+    shape = w.data.shape
+    return reshape.reshape(w, (shape[0] * shape[1],) + shape[2:])
+    
+
+def n_step_lstm(n_layers, dropout, hx, cx, ws, bs, xs, seed=1337):
+    xp = cuda.get_array_module(hx.data)
+
+    if xp is not numpy:
+        handle = cuda.cupy.cudnn.get_handle()
+        states = DropoutStates.create(handle, dropout, seed)
+        rnn = NStepLSTM(n_layers, states)
+        ret = rnn(*((hx, cx) + tuple(ws) + tuple(bs) + tuple(xs)))
+        hy, cy = ret[:2]
+        ys = ret[2:]
+        return hy, cy, ys
+
+    else:
+        hx = split_axis.split_axis(hx, n_layers, axis=0, force_tuple=True)
+        hx = [reshape.reshape(h, h.data.shape[1:]) for h in hx]
+        cx = split_axis.split_axis(cx, n_layers, axis=0, force_tuple=True)
+        cx = [reshape.reshape(c, c.data.shape[1:]) for c in cx]
+
+        xws = []
+        xbs = []
+        hws = []
+        hbs = []
+        for layer in range(n_layers):
+            w = ws[layer * 8: layer * 8 + 8]
+            xws.append(_stack_weight([w[2], w[0], w[1], w[3]]))
+            hws.append(_stack_weight([w[6], w[4], w[5], w[7]]))
+
+            b = bs[layer * 8: layer * 8 + 8]
+            xbs.append(_stack_weight([b[2], b[0], b[1], b[3]]))
+            hbs.append(_stack_weight([b[6], b[4], b[5], b[7]]))
+
+        ys = []
+        for x in xs:
+            batch = len(x.data)
+            h_next = []
+            c_next = []
+            for layer in range(n_layers):
+                h = hx[layer]
+                c = cx[layer]
+                if len(h.data) > batch:
+                    h, h_rest = split_axis.split_axis(h, [batch], axis=0)
+                    c, c_rest = split_axis.split_axis(c, [batch], axis=0)
+                else:
+                    h_rest = None
+
+                lstm_in = linear.linear(x, xws[layer], xbs[layer]) + \
+                          linear.linear(h, hws[layer], hbs[layer])
+
+                c_bar, h_bar = lstm.lstm(c, lstm_in)
+                if h_rest is not None:
+                    h = concat.concat([h_bar, h_rest], axis=0)
+                    c = concat.concat([c_bar, c_rest], axis=0)
+                else:
+                    h = h_bar
+                    c = c_bar
+                h_next.append(h)
+                c_next.append(c)
+                x = h_bar
+            hx = h_next
+            cx = c_next
+            ys.append(x)
+
+        hy = stack.stack(hx)
+        cy = stack.stack(cx)
+        return hy, cy, tuple(ys)
+

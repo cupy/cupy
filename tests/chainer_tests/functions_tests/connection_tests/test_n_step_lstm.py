@@ -5,6 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer.functions import n_step_lstm
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -25,10 +26,6 @@ class TestNStepLSTM(unittest.TestCase):
     seed = 1337
 
     def setUp(self):
-        handle = cuda.cupy.cudnn.get_handle()
-        states = functions.n_step_lstm.DropoutStates.create(handle, self.dropout, self.seed)
-        self.rnn = functions.NStepLSTM(self.n_layers, states)
-
         self.xs = [numpy.random.uniform(-1, 1, (b, self.in_size)).astype('f')
                    for b in self.batches]
         h_shape = (self.n_layers, self.batches[0], self.out_size)
@@ -60,17 +57,15 @@ class TestNStepLSTM(unittest.TestCase):
         xs = [chainer.Variable(x_data) for x_data in xs_data]
         ws = [chainer.Variable(w_data) for w_data in ws_data]
         bs = [chainer.Variable(b_data) for b_data in bs_data]
-        ret = self.rnn(*([h, c] + ws + bs + xs))
-        hy, cy = ret[:2]
-        ys = ret[2:]
+        hy, cy, ys = n_step_lstm.n_step_lstm(
+            self.n_layers, self.dropout, h, c, ws, bs, xs)
 
         e_hy = self.hx.copy()
         e_cy = self.cx.copy()
         for ind in range(self.length):
             x = self.xs[ind]
-            ey = None
+            batch = x.shape[0]
             for layer in range(self.n_layers):
-                batch = x.shape[0]
                 w = self.ws[layer * 8: layer * 8 + 8]
                 b = self.bs[layer * 8: layer * 8 + 8]
                 h_prev = e_hy[layer, :batch]
@@ -82,20 +77,20 @@ class TestNStepLSTM(unittest.TestCase):
                 o = sigmoid(x.dot(w[3].T) + h_prev.dot(w[7].T) + b[3] + b[7])
                 e_c = (f * c_prev + i * c_bar)
                 e_h = o * numpy.tanh(e_c)
-                if ey is None:
-                    ey = e_h
-                else:
-                    ey[:batch] = e_h
                 e_hy[layer, :batch] = e_h
                 e_cy[layer, :batch] = e_c
 
                 x = e_h
 
-            gradient_check.assert_allclose(ys[ind].data, ey)
+            gradient_check.assert_allclose(ys[ind].data, x, rtol=1e-4, atol=1e-4)
 
         gradient_check.assert_allclose(hy.data, e_hy, rtol=1e-4, atol=1e-4)
         gradient_check.assert_allclose(cy.data, e_cy, rtol=1e-4, atol=1e-4)
 
+    def test_forward_cpu(self):
+        self.check_forward(self.hx, self.cx, self.xs, self.ws, self.bs)
+
+    @attr.gpu
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.hx),
                            cuda.to_gpu(self.cx),
@@ -108,9 +103,23 @@ class TestNStepLSTM(unittest.TestCase):
         args = tuple([h_data, c_data] + ws_data + bs_data + xs_data)
         grads = tuple([dhy_data, dcy_data] + dys_data)
 
-        gradient_check.check_backward(
-            self.rnn, args, grads, eps=1e-2, rtol=1e-4, atol=1e-4)
+        def f(*inputs):
+            hx, cx = inputs[:2]
+            ws = inputs[2: 2+8*self.n_layers]
+            bs = inputs[2+8*self.n_layers:2+16*self.n_layers]
+            xs = inputs[2+16*self.n_layers:]
+            hy, cy, ys = n_step_lstm.n_step_lstm(
+                self.n_layers, self.dropout, hx, cx, ws, bs, xs)
+            return (hy, cy) + ys
 
+        gradient_check.check_backward(
+            f, args, grads, eps=1e-2, rtol=1e-4, atol=1e-4)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.hx, self.cx, self.xs, self.ws, self.bs,
+                            self.dhy, self.dcy, self.dys)
+
+    @attr.gpu
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.hx),
                             cuda.to_gpu(self.cx),
