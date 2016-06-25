@@ -325,10 +325,11 @@ def _stack_weight(ws):
     return reshape.reshape(w, (shape[0] * shape[1],) + shape[2:])
     
 
-def n_step_lstm(n_layers, dropout, hx, cx, ws, bs, xs, seed=1337):
+def n_step_lstm(n_layers, dropout, hx, cx, ws, bs, xs, seed=1337, use_cudnn=True):
     xp = cuda.get_array_module(hx.data)
 
-    if xp is not numpy and cuda.cudnn_enabled and _cudnn_version >= 5000:
+    if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
+       _cudnn_version >= 5000:
         handle = cuda.cupy.cudnn.get_handle()
         states = DropoutStates.create(handle, dropout, seed)
         rnn = NStepLSTM(n_layers, states)
