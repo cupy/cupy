@@ -19,6 +19,9 @@ def _split(inputs, pos):
     return inputs[:pos], inputs[pos:]
 
 
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+}))
 class TestNStepLSTM(unittest.TestCase):
 
     batches = [4, 3, 2, 1]
@@ -62,7 +65,8 @@ class TestNStepLSTM(unittest.TestCase):
         ws = [chainer.Variable(w_data, volatile=volatile) for w_data in ws_data]
         bs = [chainer.Variable(b_data, volatile=volatile) for b_data in bs_data]
         hy, cy, ys = n_step_lstm.n_step_lstm(
-            self.n_layers, self.dropout, h, c, ws, bs, xs)
+            self.n_layers, self.dropout, h, c, ws, bs, xs,
+            use_cudnn=self.use_cudnn)
 
         e_hy = self.hx.copy()
         e_cy = self.cx.copy()
