@@ -11,9 +11,9 @@ def argsort_list_descent(lst):
     return numpy.argsort([-len(x.data) for x in lst])
 
 
-def permutate_list(lst, indices, rev):
+def permutate_list(lst, indices, inv):
     ret = [None] * len(lst)
-    if rev:
+    if inv:
         for i, ind in enumerate(indices):
             ret[ind] = lst[i]
     else:
@@ -42,35 +42,33 @@ class NStepLSTM(link.ChainList):
 
         super(NStepLSTM, self).__init__(*weights)
 
-        handle = cuda.cupy.cudnn.get_handle()
-        states = rnn.DropoutStates.create(handle, dropout, seed)
-        self.states = states
         self.n_layers = n_layers
+        self.dropout = dropout
 
     def __call__(self, hx, cx, xs):
         assert isinstance(xs, (list, tuple))
         indices = argsort_list_descent(xs)
 
-        xs = permutate_list(xs, indices, rev=False)
-        hx = permutate.permutate(hx, indices, axis=1, rev=False)
-        cx = permutate.permutate(cx, indices, axis=1, rev=False)
+        xs = permutate_list(xs, indices, inv=False)
+        hx = permutate.permutate(hx, indices, axis=1, inv=False)
+        cx = permutate.permutate(cx, indices, axis=1, inv=False)
         trans_x = transpose_sequence.transpose_sequence(xs)
 
-        args = [hx, cx]
+        ws = []
         for w in self:
             for i in range(0, 8):
-                args.append(getattr(w, 'w%d' % i))
+                ws.append(getattr(w, 'w%d' % i))
+        bs = []
         for w in self:
             for i in range(0, 8):
-                args.append(getattr(w, 'b%d' % i))
+                bs.append(getattr(w, 'b%d' % i))
         args.extend(trans_x)
-        ret = rnn.NStepLSTM(self.n_layers, self.states)(*args)
-        hy, cy = ret[:2]
-        trans_y = ret[2:]
+        hx, cy, trans_y = rnn.n_step_lstm(
+            self.n_layers, self.dropout, hx, cx, ws, bs, trans_x)
 
-        hy = permutate.permutate(hy, indices, axis=1, rev=True)
-        cy = permutate.permutate(cy, indices, axis=1, rev=True)
+        hy = permutate.permutate(hy, indices, axis=1, inv=True)
+        cy = permutate.permutate(cy, indices, axis=1, inv=True)
         ys = transpose_sequence.transpose_sequence(trans_y)
-        ys = permutate_list(ys, indices, rev=True)
+        ys = permutate_list(ys, indices, inv=True)
 
         return hy, cy, ys
