@@ -31,7 +31,7 @@ class PointerArray(object):
 
 def _make_tensor_descriptor_array(xs):
     """Make an array of pointers denoting pointers of tensor descriptors. 
-   """
+    """
     descs = []
     for x in xs:
         if x.ndim < 3:
