@@ -390,4 +390,3 @@ def n_step_lstm(n_layers, dropout, hx, cx, ws, bs, xs, seed=1337, use_cudnn=True
         hy = stack.stack(hx)
         cy = stack.stack(cx)
         return hy, cy, tuple(ys)
-
