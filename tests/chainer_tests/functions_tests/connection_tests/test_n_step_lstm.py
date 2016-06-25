@@ -15,6 +15,10 @@ def sigmoid(x):
     return numpy.tanh(x * 0.5) * 0.5 + 0.5
 
 
+def _split(inputs, pos):
+    return inputs[:pos], inputs[pos:]
+
+
 class TestNStepLSTM(unittest.TestCase):
 
     batches = [4, 3, 2, 1]
@@ -116,10 +120,10 @@ class TestNStepLSTM(unittest.TestCase):
         grads = tuple([dhy_data, dcy_data] + dys_data)
 
         def f(*inputs):
-            hx, cx = inputs[:2]
-            ws = inputs[2: 2+8*self.n_layers]
-            bs = inputs[2+8*self.n_layers:2+16*self.n_layers]
-            xs = inputs[2+16*self.n_layers:]
+            (hx, cx), inputs = _split(inputs, 2)
+            ws, inputs = _split(inputs, 8 * self.n_layers)
+            bs, inputs = _split(inputs, 8 * self.n_layers)
+            xs = inputs
             hy, cy, ys = n_step_lstm.n_step_lstm(
                 self.n_layers, self.dropout, hx, cx, ws, bs, xs)
             return (hy, cy) + ys

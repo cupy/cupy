@@ -68,8 +68,8 @@ class DropoutStates(object):
         return DropoutStates(states, desc)
 
 
-def _fetch_input(inputs, pos, n):
-    return inputs[pos:pos+n], pos + n
+def _split(inputs, pos):
+    return inputs[:pos], inputs[pos:]
 
 
 class NStepLSTM(function.Function):
@@ -81,7 +81,7 @@ class NStepLSTM(function.Function):
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() > 2 + 16 * self.n_layers)
-        h_type, c_type = in_types[:2]
+        (h_type, c_type), in_types = _split(in_types, 2)
         type_check.expect(
             h_type.dtype == numpy.float32,
             c_type.dtype == numpy.float32,
@@ -97,10 +97,9 @@ class NStepLSTM(function.Function):
             # hidden size
             h_type.shape[2] == c_type.shape[2],
         )
-        pos = 2
-        w_types, pos = _fetch_input(in_types, pos, self.n_layers * 8)
-        b_types, pos = _fetch_input(in_types, pos, self.n_layers * 8)
-        x_types = in_types[pos:]
+        w_types, in_types = _split(in_types, self.n_layers * 8)
+        b_types, in_types = _split(in_types, self.n_layers * 8)
+        x_types = in_types
         for x_type in x_types:
             type_check.expect(
                 x_type.dtype == numpy.float32,
@@ -137,10 +136,10 @@ class NStepLSTM(function.Function):
                 )
 
     def forward(self, inputs):
-        (hx, cx), pos = _fetch_input(inputs, 0, 2)
-        ws, pos = _fetch_input(inputs, pos, self.n_layers * 8)
-        bs, pos = _fetch_input(inputs, pos, self.n_layers * 8)
-        x_list = inputs[pos:]
+        (hx, cx), inputs = _split(inputs, 2)
+        ws, inputs = _split(inputs, self.n_layers * 8)
+        bs, inputs = _split(inputs, self.n_layers * 8)
+        x_list = inputs
 
         hx = cuda.cupy.ascontiguousarray(hx)
         cx = cuda.cupy.ascontiguousarray(cx)
@@ -230,10 +229,10 @@ class NStepLSTM(function.Function):
         return tuple([hy, cy] + y_list)
 
     def backward(self, inputs, grads):
-        (hx, cx), pos = _fetch_input(inputs, 0, 2)
-        ws, pos = _fetch_input(inputs, pos, self.n_layers * 8)
-        bs, pos = _fetch_input(inputs, pos, self.n_layers * 8)
-        x_list = inputs[pos:]
+        (hx, cx), inputs = _split(inputs, 2)
+        ws, inputs = _split(inputs, self.n_layers * 8)
+        bs, inputs = _split(inputs, self.n_layers * 8)
+        x_list = inputs
 
         hx = cuda.cupy.ascontiguousarray(hx)
         cx = cuda.cupy.ascontiguousarray(cx)
