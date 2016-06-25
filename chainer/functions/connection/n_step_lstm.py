@@ -15,6 +15,7 @@ from chainer.utils import type_check
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cuda.cudnn.cudnn
+    _cudnn_version = libcudnn.getVersion()
 
 
 class PointerArray(object):
@@ -327,7 +328,7 @@ def _stack_weight(ws):
 def n_step_lstm(n_layers, dropout, hx, cx, ws, bs, xs, seed=1337):
     xp = cuda.get_array_module(hx.data)
 
-    if xp is not numpy:
+    if xp is not numpy and cuda.cudnn_enabled and _cudnn_version >= 5000:
         handle = cuda.cupy.cudnn.get_handle()
         states = DropoutStates.create(handle, dropout, seed)
         rnn = NStepLSTM(n_layers, states)
