@@ -1,5 +1,6 @@
 import unittest
 
+import mock
 import numpy
 
 import chainer
@@ -149,6 +150,76 @@ class TestNStepLSTM(unittest.TestCase):
                             cuda.to_gpu(self.dhy),
                             cuda.to_gpu(self.dcy),
                             [cuda.to_gpu(dy) for dy in self.dys])
+
+
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+}))
+@attr.cudnn
+class TestNStepLSTMCudnnCall(unittest.TestCase):
+
+    batches = [4, 3, 2, 1]
+    length = len(batches)
+    in_size = 3
+    out_size = 4
+    n_layers = 2
+    dropout = 0.0
+    seed = 1337
+
+    def setUp(self):
+        self.xs = [cuda.cupy.random.uniform(-1, 1, (b, self.in_size)).astype('f')
+                   for b in self.batches]
+        h_shape = (self.n_layers, self.batches[0], self.out_size)
+        self.cx = cuda.cupy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
+        self.hx = cuda.cupy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
+
+        self.ws = []
+        self.bs = []
+        for i in range(self.n_layers):
+            for j in range(8):
+                if i == 0 and j < 4:
+                    w_in = self.in_size
+                else:
+                    w_in = self.out_size
+
+                self.ws.append(cuda.cupy.random.uniform(
+                    -1, 1, (self.out_size, w_in)).astype('f'))
+                self.bs.append(cuda.cupy.random.uniform(
+                    -1, 1, (self.out_size,)).astype('f'))
+
+        self.dys = [cuda.cupy.random.uniform(-1, 1, (b, self.out_size)).astype('f')
+                    for b in self.batches]
+        self.dcy = cuda.cupy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
+        self.dhy = cuda.cupy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
+        self.expect = self.use_cudnn and (
+            cuda.cudnn.cudnn.getVersion() >= 5000)
+
+    def forward(self, volatile):
+        h = chainer.Variable(self.hx, volatile=volatile)
+        c = chainer.Variable(self.cx, volatile=volatile)
+        xs = [chainer.Variable(x_data, volatile=volatile) for x_data in self.xs]
+        ws = [chainer.Variable(w_data, volatile=volatile) for w_data in self.ws]
+        bs = [chainer.Variable(b_data, volatile=volatile) for b_data in self.bs]
+        return n_step_lstm.n_step_lstm(
+            self.n_layers, self.dropout, h, c, ws, bs, xs,
+            use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward_training(self):
+        with mock.patch('cupy.cuda.cudnn.RNNForwardTraining') as func:
+            self.forward(False)
+            self.assertEqual(func.called, self.expect)
+
+    def test_call_cudnn_forward_inference(self):
+        with mock.patch('cupy.cuda.cudnn.RNNForwardInference') as func:
+            self.forward(True)
+            self.assertEqual(func.called, self.expect)
+
+    def test_call_cudnn_backward(self):
+        hy, cy, ys = self.forward(False)
+        hy.grad = self.dhy
+        with mock.patch('cupy.cuda.cudnn.RNNBackwardWeights') as func:
+            hy.backward()
+            self.assertEqual(func.called, self.expect)
 
 
 testing.run_module(__name__, __file__)
