@@ -8,7 +8,7 @@ from chainer import link
 
 
 def argsort_list_descent(lst):
-    return numpy.argsort([-len(x.data) for x in lst])
+    return numpy.argsort([-len(x.data) for x in lst]).astype('i')
 
 
 def permutate_list(lst, indices, inv):
@@ -62,8 +62,7 @@ class NStepLSTM(link.ChainList):
         for w in self:
             for i in range(0, 8):
                 bs.append(getattr(w, 'b%d' % i))
-        args.extend(trans_x)
-        hx, cy, trans_y = rnn.n_step_lstm(
+        hy, cy, trans_y = rnn.n_step_lstm(
             self.n_layers, self.dropout, hx, cx, ws, bs, trans_x)
 
         hy = permutate.permutate(hy, indices, axis=1, inv=True)
