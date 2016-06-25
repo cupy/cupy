@@ -6,7 +6,6 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer.functions import n_step_lstm
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -59,13 +58,14 @@ class TestNStepLSTM(unittest.TestCase):
         self.dcy = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
         self.dhy = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
 
-    def check_forward(self, h_data, c_data, xs_data, ws_data, bs_data, volatile):
+    def check_forward(
+            self, h_data, c_data, xs_data, ws_data, bs_data, volatile):
         h = chainer.Variable(h_data, volatile=volatile)
         c = chainer.Variable(c_data, volatile=volatile)
-        xs = [chainer.Variable(x_data, volatile=volatile) for x_data in xs_data]
-        ws = [chainer.Variable(w_data, volatile=volatile) for w_data in ws_data]
-        bs = [chainer.Variable(b_data, volatile=volatile) for b_data in bs_data]
-        hy, cy, ys = n_step_lstm.n_step_lstm(
+        xs = [chainer.Variable(x, volatile=volatile) for x in xs_data]
+        ws = [chainer.Variable(w, volatile=volatile) for w in ws_data]
+        bs = [chainer.Variable(b, volatile=volatile) for b in bs_data]
+        hy, cy, ys = functions.n_step_lstm(
             self.n_layers, self.dropout, h, c, ws, bs, xs,
             use_cudnn=self.use_cudnn)
 
@@ -91,7 +91,8 @@ class TestNStepLSTM(unittest.TestCase):
 
                 x = e_h
 
-            gradient_check.assert_allclose(ys[ind].data, x, rtol=1e-4, atol=1e-4)
+            gradient_check.assert_allclose(
+                ys[ind].data, x, rtol=1e-4, atol=1e-4)
 
         gradient_check.assert_allclose(hy.data, e_hy, rtol=1e-4, atol=1e-4)
         gradient_check.assert_allclose(cy.data, e_cy, rtol=1e-4, atol=1e-4)
@@ -110,6 +111,7 @@ class TestNStepLSTM(unittest.TestCase):
                            [cuda.to_gpu(w) for w in self.ws],
                            [cuda.to_gpu(b) for b in self.bs],
                            False)
+
     @attr.gpu
     def test_forward_gpu_volatile(self):
         self.check_forward(cuda.to_gpu(self.hx),
@@ -129,7 +131,7 @@ class TestNStepLSTM(unittest.TestCase):
             ws, inputs = _split(inputs, 8 * self.n_layers)
             bs, inputs = _split(inputs, 8 * self.n_layers)
             xs = inputs
-            hy, cy, ys = n_step_lstm.n_step_lstm(
+            hy, cy, ys = functions.n_step_lstm(
                 self.n_layers, self.dropout, hx, cx, ws, bs, xs)
             return (hy, cy) + ys
 
@@ -167,11 +169,12 @@ class TestNStepLSTMCudnnCall(unittest.TestCase):
     seed = 1337
 
     def setUp(self):
-        self.xs = [cuda.cupy.random.uniform(-1, 1, (b, self.in_size)).astype('f')
-                   for b in self.batches]
+        self.xs = [cuda.cupy.random.uniform(
+            -1, 1, (b, self.in_size)).astype('f')
+            for b in self.batches]
         h_shape = (self.n_layers, self.batches[0], self.out_size)
-        self.cx = cuda.cupy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
-        self.hx = cuda.cupy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
+        self.cx = cuda.cupy.random.uniform(-1, 1, h_shape).astype('f')
+        self.hx = cuda.cupy.random.uniform(-1, 1, h_shape).astype('f')
 
         self.ws = []
         self.bs = []
@@ -187,20 +190,21 @@ class TestNStepLSTMCudnnCall(unittest.TestCase):
                 self.bs.append(cuda.cupy.random.uniform(
                     -1, 1, (self.out_size,)).astype('f'))
 
-        self.dys = [cuda.cupy.random.uniform(-1, 1, (b, self.out_size)).astype('f')
-                    for b in self.batches]
-        self.dcy = cuda.cupy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
-        self.dhy = cuda.cupy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
+        self.dys = [cuda.cupy.random.uniform(
+            -1, 1, (b, self.out_size)).astype('f')
+            for b in self.batches]
+        self.dcy = cuda.cupy.random.uniform(-1, 1, h_shape).astype('f')
+        self.dhy = cuda.cupy.random.uniform(-1, 1, h_shape).astype('f')
         self.expect = self.use_cudnn and (
             cuda.cudnn.cudnn.getVersion() >= 5000)
 
     def forward(self, volatile):
         h = chainer.Variable(self.hx, volatile=volatile)
         c = chainer.Variable(self.cx, volatile=volatile)
-        xs = [chainer.Variable(x_data, volatile=volatile) for x_data in self.xs]
-        ws = [chainer.Variable(w_data, volatile=volatile) for w_data in self.ws]
-        bs = [chainer.Variable(b_data, volatile=volatile) for b_data in self.bs]
-        return n_step_lstm.n_step_lstm(
+        xs = [chainer.Variable(x, volatile=volatile) for x in self.xs]
+        ws = [chainer.Variable(w, volatile=volatile) for w in self.ws]
+        bs = [chainer.Variable(b, volatile=volatile) for b in self.bs]
+        return functions.n_step_lstm(
             self.n_layers, self.dropout, h, c, ws, bs, xs,
             use_cudnn=self.use_cudnn)
 

@@ -1,6 +1,5 @@
 import numpy
 
-from chainer import cuda
 from chainer.functions.array import permutate
 from chainer.functions.array import transpose_sequence
 from chainer.functions.connection import n_step_lstm as rnn
@@ -24,7 +23,9 @@ def permutate_list(lst, indices, inv):
 
 class NStepLSTM(link.ChainList):
 
-    def __init__(self, n_layers, in_size, out_size, dropout, seed=1337, use_cudnn=True):
+    def __init__(
+            self, n_layers, in_size, out_size, dropout, seed=1337,
+            use_cudnn=True):
         weights = []
         for i in range(0, n_layers):
             weight = link.Link()

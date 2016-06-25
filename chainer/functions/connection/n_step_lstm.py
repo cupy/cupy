@@ -1,6 +1,5 @@
 import numpy
 
-import chainer
 from chainer import cuda
 from chainer import flag
 from chainer import function
@@ -32,7 +31,8 @@ class PointerArray(object):
 
 
 def _make_tensor_descriptor_array(xs):
-    """Make an array of pointers denoting pointers of tensor descriptors. 
+    """Make an array of pointers denoting pointers of tensor descriptors.
+
     """
     descs = []
     for x in xs:
@@ -46,6 +46,7 @@ def _make_tensor_descriptor_array(xs):
 
 def _make_ptr_array(xs):
     """Make an array of pointers denoting pointers of ndarrays.
+
     """
     return PointerArray([x.data.ptr for x in xs], xs)
 
@@ -145,9 +146,7 @@ class NStepLSTM(function.Function):
         hx = cuda.cupy.ascontiguousarray(hx)
         cx = cuda.cupy.ascontiguousarray(cx)
 
-        x = x_list[0]
-        x = x[..., None]
-        x_desc = cudnn.create_tensor_nd_descriptor(x)
+        x_desc = cudnn.create_tensor_nd_descriptor(x_list[0][..., None])
 
         length = len(x_list)
         n_units = hx.shape[2]
@@ -323,9 +322,10 @@ def _stack_weight(ws):
     w = stack.stack(ws, axis=1)
     shape = w.data.shape
     return reshape.reshape(w, (shape[0] * shape[1],) + shape[2:])
-    
 
-def n_step_lstm(n_layers, dropout, hx, cx, ws, bs, xs, seed=1337, use_cudnn=True):
+
+def n_step_lstm(
+        n_layers, dropout, hx, cx, ws, bs, xs, seed=1337, use_cudnn=True):
     xp = cuda.get_array_module(hx.data)
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
@@ -374,7 +374,7 @@ def n_step_lstm(n_layers, dropout, hx, cx, ws, bs, xs, seed=1337, use_cudnn=True
                     h_rest = None
 
                 lstm_in = linear.linear(x, xws[layer], xbs[layer]) + \
-                          linear.linear(h, hws[layer], hbs[layer])
+                    linear.linear(h, hws[layer], hbs[layer])
 
                 c_bar, h_bar = lstm.lstm(c, lstm_in)
                 if h_rest is not None:

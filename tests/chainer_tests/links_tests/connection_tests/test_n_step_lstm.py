@@ -27,18 +27,15 @@ class TestNStepLSTM(unittest.TestCase):
     seed = 1337
 
     def setUp(self):
-        self.h = numpy.random.uniform(
-            -1, 1, (self.n_layer, len(self.lengths), self.out_size)).astype('f')
-        self.c = numpy.random.uniform(
-            -1, 1, (self.n_layer, len(self.lengths), self.out_size)).astype('f')
+        shape = (self.n_layer, len(self.lengths), self.out_size)
+        self.h = numpy.random.uniform(-1, 1, shape).astype('f')
+        self.c = numpy.random.uniform(-1, 1, shape).astype('f')
         self.xs = [
             numpy.random.uniform(-1, 1, (l, self.in_size)).astype('f')
             for l in self.lengths]
 
-        self.gh = numpy.random.uniform(
-            -1, 1, (self.n_layer, len(self.lengths), self.out_size)).astype('f')
-        self.gc = numpy.random.uniform(
-            -1, 1, (self.n_layer, len(self.lengths), self.out_size)).astype('f')
+        self.gh = numpy.random.uniform(-1, 1, shape).astype('f')
+        self.gc = numpy.random.uniform(-1, 1, shape).astype('f')
         self.gys = [
             numpy.random.uniform(-1, 1, (l, self.out_size)).astype('f')
             for l in self.lengths]
