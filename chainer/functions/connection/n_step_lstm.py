@@ -2,6 +2,7 @@ import numpy
 
 import chainer
 from chainer import cuda
+from chainer import flag
 from chainer import function
 from chainer.functions.activation import lstm
 from chainer.functions.array import concat
@@ -331,8 +332,10 @@ def n_step_lstm(n_layers, dropout, hx, cx, ws, bs, xs, seed=1337, use_cudnn=True
        _cudnn_version >= 5000:
         handle = cuda.cupy.cudnn.get_handle()
         states = DropoutStates.create(handle, dropout, seed)
-        rnn = NStepLSTM(n_layers, states)
-        ret = rnn(*((hx, cx) + tuple(ws) + tuple(bs) + tuple(xs)))
+        inputs = (hx, cx) + tuple(ws) + tuple(bs) + tuple(xs)
+        volatile = flag.aggregate_flags([x.volatile for x in inputs])
+        rnn = NStepLSTM(n_layers, states, train=not volatile)
+        ret = rnn(*inputs)
         hy, cy = ret[:2]
         ys = ret[2:]
         return hy, cy, ys
