@@ -51,12 +51,12 @@ class TestNStepLSTM(unittest.TestCase):
         self.dcy = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
         self.dhy = numpy.random.uniform(-1, 1, h_shape).astype(numpy.float32)
 
-    def check_forward(self, h_data, c_data, xs_data, ws_data, bs_data):
-        h = chainer.Variable(h_data)
-        c = chainer.Variable(c_data)
-        xs = [chainer.Variable(x_data) for x_data in xs_data]
-        ws = [chainer.Variable(w_data) for w_data in ws_data]
-        bs = [chainer.Variable(b_data) for b_data in bs_data]
+    def check_forward(self, h_data, c_data, xs_data, ws_data, bs_data, volatile):
+        h = chainer.Variable(h_data, volatile=volatile)
+        c = chainer.Variable(c_data, volatile=volatile)
+        xs = [chainer.Variable(x_data, volatile=volatile) for x_data in xs_data]
+        ws = [chainer.Variable(w_data, volatile=volatile) for w_data in ws_data]
+        bs = [chainer.Variable(b_data, volatile=volatile) for b_data in bs_data]
         hy, cy, ys = n_step_lstm.n_step_lstm(
             self.n_layers, self.dropout, h, c, ws, bs, xs)
 
@@ -88,7 +88,10 @@ class TestNStepLSTM(unittest.TestCase):
         gradient_check.assert_allclose(cy.data, e_cy, rtol=1e-4, atol=1e-4)
 
     def test_forward_cpu(self):
-        self.check_forward(self.hx, self.cx, self.xs, self.ws, self.bs)
+        self.check_forward(self.hx, self.cx, self.xs, self.ws, self.bs, False)
+
+    def test_forward_cpu_volatile(self):
+        self.check_forward(self.hx, self.cx, self.xs, self.ws, self.bs, True)
 
     @attr.gpu
     def test_forward_gpu(self):
@@ -96,7 +99,16 @@ class TestNStepLSTM(unittest.TestCase):
                            cuda.to_gpu(self.cx),
                            [cuda.to_gpu(x) for x in self.xs],
                            [cuda.to_gpu(w) for w in self.ws],
-                           [cuda.to_gpu(b) for b in self.bs])
+                           [cuda.to_gpu(b) for b in self.bs],
+                           False)
+    @attr.gpu
+    def test_forward_gpu_volatile(self):
+        self.check_forward(cuda.to_gpu(self.hx),
+                           cuda.to_gpu(self.cx),
+                           [cuda.to_gpu(x) for x in self.xs],
+                           [cuda.to_gpu(w) for w in self.ws],
+                           [cuda.to_gpu(b) for b in self.bs],
+                           True)
 
     def check_backward(self, h_data, c_data, xs_data, ws_data, bs_data,
                        dhy_data, dcy_data, dys_data):
