@@ -168,6 +168,7 @@ deconvolution_2d = deconvolution_2d.deconvolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
 NStepLSTM = n_step_lstm.NStepLSTM
+n_step_lstm = n_step_lstm.n_step_lstm
 
 Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
