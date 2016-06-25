@@ -201,7 +201,8 @@ def activation_backward(x, y, gy, mode):
     return gx
 
 
-def create_dropout_descriptor(handle, dropout, states, state_size_in_bytes, seed):
+def create_dropout_descriptor(
+        handle, dropout, states, state_size_in_bytes, seed):
     desc = Descriptor(cudnn.createDropoutDescriptor(),
                       cudnn.destroyDropoutDescriptor)
     cudnn.setDropoutDescriptor(desc.value, handle, dropout,
