@@ -42,7 +42,7 @@ class GlorotNormal(initializer.Initializer):
     Reference: Glorot & Bengio, AISTATS 2010
 
     Args:
-        scale (float): A constant that detemines the scale
+        scale (float): A constant that determines the scale
             of the standard deviation.
 
     """
@@ -69,7 +69,7 @@ class HeNormal(initializer.Initializer):
     Reference:  He et al., http://arxiv.org/abs/1502.01852
 
     Args:
-        scale (float): A constant that detemines the scale
+        scale (float): A constant that determines the scale
             of the standard deviation.
 
     """
