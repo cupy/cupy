@@ -5,7 +5,6 @@ import six
 
 import chainer
 from chainer import cuda
-from chainer import functions
 from chainer.functions.normalization import batch_normalization
 from chainer import gradient_check
 from chainer import testing
@@ -45,7 +44,8 @@ class TestBatchNormalization(unittest.TestCase):
 
     def check_forward(self, args):
         y = batch_normalization.batch_normalization(
-            *[chainer.Variable(i) for i in args], running_mean=self.mean, running_var=self.var, decay=self.decay, eps=self.eps)
+            *[chainer.Variable(i) for i in args], running_mean=self.mean,
+            running_var=self.var, decay=self.decay, eps=self.eps)
         self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = _batch_normalization(
@@ -64,9 +64,10 @@ class TestBatchNormalization(unittest.TestCase):
 
     def check_backward(self, args, y_grad):
         gradient_check.check_backward(
-            batch_normalization.BatchNormalizationFunction(mean=self.mean,
-                                                                      var=self.var, train=self.train, decay=self.decay, eps=self.eps),
-            args, y_grad, eps=1e-2, rtol=1e-3, atol=1e-4)
+            batch_normalization.BatchNormalizationFunction(
+                mean=self.mean, var=self.var, train=self.train,
+                decay=self.decay, eps=self.eps), args, y_grad, eps=1e-2,
+            rtol=1e-3, atol=1e-4)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -85,7 +86,6 @@ class TestBatchNormalization(unittest.TestCase):
 class TestFixedBatchNormalization(unittest.TestCase):
 
     def setUp(self):
-        #numpy.random.seed(0) # For debugging
         self.gamma = numpy.random.uniform(.5, 1, (3,)).astype(numpy.float32)
         self.beta = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
         self.expander = (None, Ellipsis) + (None,) * self.ndim
@@ -105,7 +105,8 @@ class TestFixedBatchNormalization(unittest.TestCase):
 
     def check_forward(self, args):
         y = batch_normalization.fixed_batch_normalization(
-            *[chainer.Variable(i) for i in args], fixed_mean=self.mean, fixed_var=self.var, eps=self.eps)
+            *[chainer.Variable(i) for i in args], fixed_mean=self.mean,
+            fixed_var=self.var, eps=self.eps)
         self.assertEqual(y.data.dtype, numpy.float32)
 
         y_expect = _batch_normalization(
@@ -124,8 +125,9 @@ class TestFixedBatchNormalization(unittest.TestCase):
 
     def check_backward(self, args, y_grad):
         gradient_check.check_backward(
-            batch_normalization.BatchNormalizationFunction(mean=self.mean,
-                                                                      var=self.var, train=self.train, decay=self.decay, eps=self.eps),
+            batch_normalization.BatchNormalizationFunction(
+                mean=self.mean, var=self.var, train=self.train,
+                decay=self.decay, eps=self.eps),
             args, y_grad, eps=1e-2, rtol=1e-3, atol=1e-4)
 
     @condition.retry(3)

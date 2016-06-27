@@ -1,8 +1,6 @@
 import numpy
 
-from chainer import cuda
 from chainer.functions.normalization import batch_normalization
-#import batch_normalization_debug
 from chainer import link
 from chainer import variable
 
@@ -110,9 +108,6 @@ class BatchNormalization(link.Link):
                 self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
 
         if use_batch_mean:
-            #func = batch_normalization.BatchNormalizationFunction(self.eps)
-            #ret = func(x, gamma, beta)
-
             if finetune:
                 self.N += 1
                 decay = 1. - 1. / self.N
@@ -120,18 +115,13 @@ class BatchNormalization(link.Link):
                 decay = self.decay
 
             print('decay = ', decay)
-            func = batch_normalization.BatchNormalizationFunction(self.avg_mean, self.avg_var, True,
-                                                                             decay, self.eps)
+            func = batch_normalization.BatchNormalizationFunction(
+                self.avg_mean, self.avg_var, True, decay, self.eps)
             ret = func(x, gamma, beta)
-                
+
             self.avg_mean = func.running_mean
             self.avg_var = func.running_var
         else:
-            #mean = variable.Variable(self.avg_mean, volatile='auto')
-            #var = variable.Variable(self.avg_var, volatile='auto')
-            #ret = batch_normalization.fixed_batch_normalization(
-            #    x, gamma, beta, mean, var, self.eps)
-            
             # Use running average statistics or fine-tuned statistics.
             ret = batch_normalization.fixed_batch_normalization(
                 x, gamma, beta, self.avg_mean, self.avg_var, self.eps)
