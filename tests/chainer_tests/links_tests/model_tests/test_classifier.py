@@ -20,7 +20,7 @@ class TestClassifier(unittest.TestCase):
         self.link.compute_accuracy = self.compute_accuracy
 
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
-        self.t = numpy.random.randint(3, size=(5)).astype(numpy.int32)
+        self.t = numpy.random.randint(3, size=5).astype(numpy.int32)
 
     def check_call(self):
         xp = self.link.xp
