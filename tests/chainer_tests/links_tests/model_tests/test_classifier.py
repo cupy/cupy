@@ -1,18 +1,13 @@
 import unittest
 
 import numpy
+import mock
 
 import chainer
 from chainer.functions.evaluation import accuracy
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
-
-
-class MockLink(chainer.Link):
-
-    def __call__(self, *xs):
-        return xs[0]
 
 
 @testing.parameterize(*testing.product({
@@ -22,7 +17,7 @@ class MockLink(chainer.Link):
 class TestClassifier(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.Classifier(MockLink())
+        self.link = links.Classifier(links.Identity())
         self.link.compute_accuracy = self.compute_accuracy
 
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
@@ -30,13 +25,19 @@ class TestClassifier(unittest.TestCase):
 
     def check_call(self):
         xp = self.link.xp
+
+        y = chainer.Variable(xp.random.uniform(-1, 1, (5, 7)).astype(numpy.float32))
+        self.link.predictor = mock.MagicMock(return_value=y)
+
         x = chainer.Variable(xp.asarray(self.x))
         t = chainer.Variable(xp.asarray(self.t))
         if self.x_num == 1:
             loss = self.link(x, t)
+            self.link.predictor.assert_called_with(x)
         elif self.x_num == 2:
             x_ = chainer.Variable(xp.asarray(self.x.copy()))
             loss = self.link(x, x_, t)
+            self.link.predictor.assert_called_with(x, x_)
 
         self.assertTrue(hasattr(self.link, 'y'))
         self.assertIsNotNone(self.link.y)
@@ -62,7 +63,7 @@ class TestClassifier(unittest.TestCase):
 class TestInvalidArgument(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.Classifier(MockLink())
+        self.link = links.Classifier(links.Identity())
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
 
     def check_invalid_argument(self):
