@@ -73,6 +73,7 @@ def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
 
     return desc
 
+
 def create_uninitialized_tensor_descriptor():
     """
     Create a cudnnCreateTensorDescriptor_t that is not yet initialized.
@@ -81,6 +82,7 @@ def create_uninitialized_tensor_descriptor():
     desc = Descriptor(cudnn.createTensorDescriptor(),
                       cudnn.destroyTensorDescriptor)
     return desc
+
 
 def create_filter_descriptor(arr, mode=cudnn.CUDNN_CROSS_CORRELATION):
     desc = Descriptor(cudnn.createFilterDescriptor(),
