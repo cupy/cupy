@@ -60,9 +60,8 @@ class CaffeFunction(link.Chain):
 
     .. note::
 
-       This class only supports Python 2.7, since the compiled module for
-       protocol buffers only supports Python 2. The ``__init__`` function
-       raises an exception in Python 3.
+       protobuf>=3.0.0 is required if you use Python 3 because protobuf 2 is
+       not supported on Python 3.
 
     .. note::
 
