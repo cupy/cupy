@@ -30,13 +30,11 @@ def _pair(x):
 
 class Deconvolution2DFunction(function.Function):
 
-    def __init__(self, stride=1, pad=0, outsize=None, use_cudnn=True,
-                 deterministic=False):
+    def __init__(self, stride=1, pad=0, outsize=None, use_cudnn=True):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
         self.use_cudnn = use_cudnn
         self.outh, self.outw = (None, None) if outsize is None else outsize
-        self.deterministic = deterministic
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -131,14 +129,10 @@ class Deconvolution2DFunction(function.Function):
             if _cudnn_version >= 4000:
                 workspace_size = cuda.get_max_workspace_size()
                 workspace = cuda.cupy.empty((workspace_size,), dtype='b')
-                if not self.deterministic:
-                    algo = libcudnn.getConvolutionBackwardDataAlgorithm(
-                        handle, self.filter_desc.value, x_desc.value,
-                        self.conv_desc.value, y_desc.value, _bwd_data_pref,
-                        workspace_size)
-                else:
-                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1  # NOQA
-
+                algo = libcudnn.getConvolutionBackwardDataAlgorithm(
+                    handle, self.filter_desc.value, x_desc.value,
+                    self.conv_desc.value, y_desc.value, _bwd_data_pref,
+                    workspace_size)
                 libcudnn.convolutionBackwardData_v3(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     x_desc.value, x.data.ptr, self.conv_desc.value,
@@ -230,13 +224,10 @@ class Deconvolution2DFunction(function.Function):
             gW = cuda.cupy.empty_like(W)
             # filter backward
             if _cudnn_version >= 4000:
-                if not self.deterministic:
-                    algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
-                        handle, gy_desc.value, gx_desc.value,
-                        self.conv_desc.value, self.filter_desc.value,
-                        _bwd_filter_pref, workspace_size)
-                else:
-                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1  # NOQA
+                algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
+                    handle, gy_desc.value, gx_desc.value,
+                    self.conv_desc.value, self.filter_desc.value,
+                    _bwd_filter_pref, workspace_size)
 
                 libcudnn.convolutionBackwardFilter_v3(
                     handle, one.data, gy_desc.value, gy.data.ptr,
@@ -278,7 +269,7 @@ class Deconvolution2DFunction(function.Function):
 
 
 def deconvolution_2d(x, W, b=None, stride=1, pad=0,
-                     outsize=None, use_cudnn=True, deterministic=False):
+                     outsize=None, use_cudnn=True):
     """Two dimensional deconvolution function.
 
     This is an implementation of two-dimensional deconvolution.
@@ -300,10 +291,6 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
             input size, stride and pad.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
-        deterministic (bool): The output of this function can be
-            non-deterministic when it uses cuDNN.
-            If this option is `True`, then it forces cuDNN to use
-            a deterministic algorithm.
 
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`
@@ -323,8 +310,7 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
        w_O &= s_X (w - 1) + k_W - 2p_W.
 
     """
-    func = Deconvolution2DFunction(stride, pad, outsize, use_cudnn,
-                                   deterministic)
+    func = Deconvolution2DFunction(stride, pad, outsize, use_cudnn)
     if b is None:
         return func(x, W)
     else:
