@@ -17,7 +17,7 @@ from chainer.testing import attr
 class TestClassifier(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.Classifier(links.Identity())
+        self.link = links.Classifier(links.Linear(10, 3))
         self.link.compute_accuracy = self.compute_accuracy
 
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
@@ -63,7 +63,7 @@ class TestClassifier(unittest.TestCase):
 class TestInvalidArgument(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.Classifier(links.Identity())
+        self.link = links.Classifier(links.Linear(10, 3))
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
 
     def check_invalid_argument(self):
