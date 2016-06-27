@@ -54,7 +54,7 @@ def concat_examples(batch, device=None, padding=None):
     elif device < 0:
         to_device = cuda.to_cpu
     else:
-        to_device = cuda.to_gpu
+        to_device = lambda x: cuda.to_gpu(x, device)
 
     first_elem = batch[0]
 
