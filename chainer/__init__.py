@@ -7,7 +7,10 @@ import warnings
 from chainer import flag
 from chainer import function
 from chainer import function_set
+from chainer.functions import array
 from chainer.functions import basic_math
+from chainer import initializer
+from chainer import initializers
 from chainer import link
 from chainer import optimizer
 from chainer import serializer
@@ -32,6 +35,7 @@ Link = link.Link
 Optimizer = optimizer.Optimizer
 Serializer = serializer.Serializer
 Variable = variable.Variable
+Initializer = initializer.Initializer
 
 ON = flag.ON
 OFF = flag.OFF
@@ -72,4 +76,29 @@ def set_debug(debug):
     global _debug
     _debug = debug
 
+
+class DebugMode(object):
+    """Debug mode context.
+
+    This class provides a context manager for debug mode. When entering the
+    context, it sets the debug mode to the value of `debug` parameter with
+    memorizing its original value. When exiting the context, it sets the debug
+    mode back to the original value.
+
+    Args:
+        debug (bool): Debug mode used in the context.
+    """
+    def __init__(self, debug):
+        self._debug = debug
+
+    def __enter__(self):
+        self._old = is_debug()
+        set_debug(self._debug)
+
+    def __exit__(self, *_):
+        set_debug(self._old)
+
 basic_math.install_variable_arithmetics()
+array.get_item.install_variable_get_item()
+
+init_weight = initializers.init_weight

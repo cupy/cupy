@@ -7,8 +7,8 @@ from chainer.utils import type_check
 
 
 def _extract_gates(x):
-    r = x.reshape((x.shape[0], x.shape[1] // 4, 4) + x.shape[2:])
-    return (r[:, :, i] for i in six.moves.range(4))
+    r = x.reshape((len(x), x.shape[1] // 4, 4) + x.shape[2:])
+    return [r[:, :, i] for i in six.moves.range(4)]
 
 
 def _sigmoid(x):
@@ -49,8 +49,8 @@ class LSTM(function.Function):
         c_type, x_type = in_types
 
         type_check.expect(
-            c_type.dtype == numpy.float32,
-            x_type.dtype == numpy.float32,
+            c_type.dtype.kind == 'f',
+            x_type.dtype == c_type.dtype,
 
             c_type.ndim >= 2,
             x_type.ndim >= 2,
@@ -59,7 +59,7 @@ class LSTM(function.Function):
             x_type.shape[0] == c_type.shape[0],
             x_type.shape[1] == 4 * c_type.shape[1],
         )
-        for i in range(2, c_type.ndim.eval()):
+        for i in six.moves.range(2, c_type.ndim.eval()):
             type_check.expect(x_type.shape[i] == c_type.shape[i])
 
     def forward(self, inputs):

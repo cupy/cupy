@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
@@ -21,7 +19,7 @@ class Unpooling2D(pooling_2d.Pooling2D):
         x_type = in_types[0]
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             x_type.ndim == 4,
         )
 
@@ -43,7 +41,7 @@ class Unpooling2D(pooling_2d.Pooling2D):
             self.outw = conv.get_deconv_outsize(
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
         xp = cuda.get_array_module(*x)
-        col = xp.tile(x[0][:, :, xp.newaxis, xp.newaxis],
+        col = xp.tile(x[0][:, :, None, None],
                       (1, 1, self.kh, self.kw, 1, 1))
         if isinstance(x[0], cuda.ndarray):
             y = conv.col2im_gpu(col, self.sy, self.sx, self.ph, self.pw,

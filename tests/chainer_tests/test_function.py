@@ -138,6 +138,32 @@ class TestFunction(unittest.TestCase):
         self.setup_gpu()
         self.check_call()
 
+    def check_call_ndarray(self):
+        x1 = chainer.Variable(self.x1)
+        x2 = self.x2
+        x1.rank = 1
+        ys = self.f(x1, x2)
+
+        self.assertEqual(len(ys), 2)
+        self.check_check_type_forward()
+
+        for y in ys:
+            self.assertIsInstance(y, chainer.Variable)
+            # rank is (maximum rank in xs) + 1
+            self.assertEqual(y.rank, 2)
+            self.assertFalse(y.volatile)
+            self.assertIs(y.creator, self.f)
+
+        self.assertIsInstance(y.creator.outputs, tuple)
+
+    def test_call_ndarray_cpu(self):
+        self.check_call_ndarray()
+
+    @attr.gpu
+    def test_call_ndarray_gpu(self):
+        self.setup_gpu()
+        self.check_call_ndarray()
+
     def check_call_volatile(self):
         x1 = chainer.Variable(self.x1, volatile=True)
         x2 = chainer.Variable(self.x2, volatile=True)
@@ -283,8 +309,19 @@ class TestFunctionBackwardIntegration(unittest.TestCase):
 
 class TestFunctionInvalidType(unittest.TestCase):
 
-    def test_forward_invalid(self):
-        f = F.Linear(5, 5)
+    def test_forward_invalid1(self):
+        class Function(chainer.Function):
+            def check_type_forward(self, in_types):
+                x_type, = in_types
+                type_check.expect(
+                    x_type.dtype == numpy.float32,
+                    x_type.ndim >= 2,
+                )
+
+            def forward(self, inputs):
+                return inputs
+
+        f = Function()
 
         # OK
         v = chainer.Variable(numpy.random.randn(1, 5).astype(numpy.float32))
@@ -294,7 +331,7 @@ class TestFunctionInvalidType(unittest.TestCase):
         # Incorrect dtype
         # in py3, numpy dtypes are represented as class
         msg = """\
-Invalid operation is performed in: LinearFunction \\(Forward\\)
+Invalid operation is performed in: Function \\(Forward\\)
 
 Expect: in_types\\[0\\]\\.dtype == <(type|class) 'numpy\\.float32'>
 Actual: float64 \\!= <(type|class) 'numpy\\.float32'>"""
@@ -306,7 +343,7 @@ Actual: float64 \\!= <(type|class) 'numpy\\.float32'>"""
 
         # Incorrect dim
         msg = """\
-Invalid operation is performed in: LinearFunction \\(Forward\\)
+Invalid operation is performed in: Function \\(Forward\\)
 
 Expect: in_types\\[0\\]\\.ndim >= 2
 Actual: 1 < 2"""

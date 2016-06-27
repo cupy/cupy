@@ -10,25 +10,42 @@ from chainer import testing
 from chainer.testing import attr
 
 
-@testing.parameterize(
-    {'shape': (2, 7, 3), 'axis': 1,
-     'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
-                [slice(None), slice(5, None)]]},
-    {'shape': (7, 3), 'axis': 0,
-     'slices': [slice(None, 2), slice(2, 5), slice(5, None)]},
-    {'shape': (2,), 'axis': 0, 'slices': [slice(None, 1), slice(1, None)]},
-    {'shape': (2,), 'axis': 0, 'slices': [()]},
-)
-class ConcatTest(unittest.TestCase):
+@testing.parameterize(*testing.product_dict(
+    [
+        {'shape': (2, 7, 3), 'axis': 1,
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                    [slice(None), slice(5, None)]]},
+        {'shape': (7, 3), 'axis': 0,
+         'slices': [slice(None, 2), slice(2, 5), slice(5, None)]},
+        {'shape': (2,), 'axis': 0, 'slices': [slice(None, 1), slice(1, None)]},
+        {'shape': (2,), 'axis': 0, 'slices': [()]},
+        {'shape': (2, 7, 3), 'axis': 1,
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                    [slice(None), slice(5, None)]]},
+        {'shape': (2, 7, 3), 'axis': 1,
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                    [slice(None), slice(5, None)]]},
+        {'shape': (2, 7, 3), 'axis': -2,
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                    [slice(None), slice(5, None)]]},
+    ],
+    [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ],
+))
+class TestConcat(unittest.TestCase):
 
     def setUp(self):
         self.y = numpy.arange(
-            numpy.prod(self.shape), dtype=numpy.float32).reshape(self.shape)
+            numpy.prod(self.shape), dtype=self.dtype).reshape(self.shape)
         self.xs = [self.y[s] for s in self.slices]
 
     def check_forward(self, xs_data, y_data, axis):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
         y = functions.concat(xs, axis=axis)
+        self.assertEqual(y.data.dtype, self.dtype)
         gradient_check.assert_allclose(y_data, y.data, atol=0, rtol=0)
         self.assertIsInstance(y.data.shape, tuple)
 

@@ -174,7 +174,7 @@ Actual: {0}'''.format(type(data))
 
     @property
     def label(self):
-        """Short text that represents the function."""
+        """Short text that represents the variable."""
         if self.data.shape == ():
             return str(self.data.dtype)
         return '(%s), %s' % (', '.join(map(str, self.data.shape)),
@@ -255,7 +255,7 @@ Actual: {0}'''.format(type(data))
         if src is None:
             raise ValueError('Source gradient is not set.')
         if dst is None:
-            raise ValueError('Target graidient is not set.')
+            raise ValueError('Target gradient is not set.')
 
         xp = cuda.get_array_module(dst)
         if xp is numpy:

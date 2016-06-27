@@ -12,25 +12,30 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(
-    {'shape': (3, 2)},
-    {'shape': ()},
-)
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestSigmoid(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(
-            -.5, .5, self.shape).astype(numpy.float32)
-        self.gy = numpy.random.uniform(
-            -.1, .1, self.shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(-.5, .5, self.shape).astype(self.dtype)
+        self.gy = numpy.random.uniform(-.1, .1, self.shape).astype(self.dtype)
+        self.check_forward_options = {}
+        self.check_backward_options = {}
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
+            self.check_backward_options = {
+                'eps': 2 ** -5, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
         y = functions.sigmoid(x, use_cudnn=use_cudnn)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         y_expect = functions.sigmoid(chainer.Variable(self.x))
 
-        gradient_check.assert_allclose(y_expect.data, y.data)
+        gradient_check.assert_allclose(
+            y_expect.data, y.data, **self.check_forward_options)
 
     @attr.cudnn
     @condition.retry(3)
@@ -49,7 +54,8 @@ class TestSigmoid(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
-            functions.Sigmoid(use_cudnn), x_data, y_grad)
+            functions.Sigmoid(use_cudnn), x_data, y_grad,
+            **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -72,16 +78,19 @@ class TestSigmoid(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
 
 
-@testing.parameterize(
-    {'use_cudnn': True},
-    {'use_cudnn': False},
-)
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 @attr.cudnn
 class TestSigmoidCudnnCall(unittest.TestCase):
 
     def setUp(self):
-        self.x = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
-        self.gy = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
+        self.x = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
+        self.gy = cuda.cupy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
+        self.expect = self.use_cudnn and (
+            cuda.cudnn.cudnn.getVersion() >= 3000 or
+            self.dtype != numpy.float16)
 
     def forward(self):
         x = chainer.Variable(self.x)
@@ -90,14 +99,14 @@ class TestSigmoidCudnnCall(unittest.TestCase):
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.activationForward_v3') as func:
             self.forward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
-    def test_call_cudnn_backrward(self):
+    def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
         with mock.patch('cupy.cudnn.cudnn.activationBackward_v3') as func:
             y.backward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
 
 testing.run_module(__name__, __file__)

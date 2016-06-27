@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import basic_math
@@ -133,12 +134,14 @@ class TestBinaryOp(unittest.TestCase):
 
     def check_backward(self, op, x1_data, x2_data, y_grad, atol):
         if self.dtype == numpy.float16:
+            eps = 1e-2
             atol = 0.1
             rtol = 0.1
         else:
+            eps = 1e-3
             rtol = 1e-4
         gradient_check.check_backward(op, (x1_data, x2_data), y_grad,
-                                      atol=atol, rtol=rtol)
+                                      eps=eps, atol=atol, rtol=rtol)
 
     def backward_cpu(self, op, atol=1e-5):
         self.check_backward(op, self.x1, self.x2, self.gy, atol)
@@ -281,6 +284,11 @@ class TestBinaryOpConstant(unittest.TestCase):
             self._test_constant_array_one(
                 func, x_data, cuda.to_gpu(
                     numpy.array([3.0, 4.0, 5.0], self.dtype)))
+
+        with six.assertRaisesRegex(self, ValueError, 'broadcast'):
+            self._test_constant_array_gpu_one(
+                func, x_data, cuda.to_gpu(
+                    numpy.array([[3.0, 4.0], [5.0, 6.0]], self.dtype)))
 
     def test_add_constant(self):
         self._test_constant(lambda x, y: x + y)
@@ -444,8 +452,8 @@ class TestVariableConstantOp(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = op(x, self.value)
         if self.dtype == numpy.float16:
-            atol = 3e-4
-            rtol = 3e-4
+            atol = 5e-4
+            rtol = 5e-4
         else:
             atol = 1e-7
             rtol = 1e-7
@@ -550,13 +558,16 @@ class TestVariableConstantOp(unittest.TestCase):
 
     def check_backward(self, op, x_data, y_grad):
         if self.dtype == numpy.float16:
-            atol = 0.1
+            eps = 1e-2
+            atol = 0.01
             rtol = 0.1
         else:
+            eps = 1e-3
             atol = 1e-5
             rtol = 1e-4
         gradient_check.check_backward(lambda x: op(x, self.value),
-                                      x_data, y_grad, atol=atol, rtol=rtol)
+                                      x_data, y_grad,
+                                      eps=eps, atol=atol, rtol=rtol)
 
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -784,12 +795,11 @@ class TestVariableConstantArrayOp(unittest.TestCase):
             value = numpy.abs(value)
         if gpu:
             value = cuda.to_gpu(value)
+        options = {}
         if self.dtype == numpy.float16:
-            tol = 0.1
-        else:
-            tol = 1e-4
+            options = {'eps': 0.01, 'atol': 0.01, 'rtol': 0.1}
         gradient_check.check_backward(lambda x: op(x, value), x_data, y_grad,
-                                      atol=tol, rtol=tol)
+                                      **options)
 
     def backward_cpu(self, op, positive=False):
         self.check_backward(op, self.x, self.gy, False, positive)
@@ -892,6 +902,9 @@ class TestUnaryFunctions(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        for i in numpy.ndindex(self.shape):
+            if -0.1 < self.x[i] < 0.1:
+                self.x[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
 
     def check_forward(self, op, op_np, x_data):
@@ -925,14 +938,11 @@ class TestUnaryFunctions(unittest.TestCase):
         self.forward_gpu(lambda x: abs(x), lambda x: abs(x))
 
     def check_backward(self, op, x_data, y_grad):
+        options = {}
         if self.dtype == numpy.float16:
-            atol = 0.1
-            rtol = 0.1
-        else:
-            atol = 1e-5
-            rtol = 1e-4
+            options = {'eps': 2 ** -5, 'atol': 0.01, 'rtol': 0.1}
 
-        gradient_check.check_backward(op, x_data, y_grad, atol=atol, rtol=rtol)
+        gradient_check.check_backward(op, x_data, y_grad, **options)
 
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -969,12 +979,11 @@ class TestNegativePow(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype)
 
     def check_backward(self, x_data, y_grad):
+        options = {}
         if self.dtype == numpy.float16:
-            tol = 0.1
-        else:
-            tol = 1e-4
+            options = {'eps': 1e-2, 'atol': 1e-2, 'rtol': 1e-1}
         gradient_check.check_backward(
-            lambda x: x ** 2, x_data, y_grad, atol=tol, rtol=tol)
+            lambda x: x ** 2, x_data, y_grad, **options)
 
     @condition.retry(10)
     def test_cpu(self):

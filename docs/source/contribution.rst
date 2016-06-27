@@ -33,9 +33,9 @@ This classification is based on following criteria:
 
 The release classification is reflected into the version number x.y.z, where x, y, and z corresponds to major, minor, and revision updates, respectively.
 
-We sets milestones for some future releases.
-A milestone for a revision release is set right after the last release.
-On the other hand, a milestone for a minor or major release is set four weeks prior to its due.
+We set a milestone for an upcoming release.
+The milestone is of name 'vX.Y.Z', where the version number represents a revision release at the outset.
+If at least one *feature* PR is merged in the period, we rename the milestone to represent a minor release (see the next section for the PR types).
 
 See also :doc:`compatibility`.
 
@@ -143,10 +143,10 @@ In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` opti
   $ nosetests path/to/your/test.py --attr='!gpu'
 
 Some GPU tests involve multiple GPUs.
-If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--attr='gpu<N'`` where ``N`` is a concrete integer.
+If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--eval-attr='gpu<N'`` where ``N`` is a concrete integer.
 For example, if you have only one GPU, launch ``nosetests`` by the following command to skip multi-GPU tests::
 
-  $ nosetests path/to/gpu/test.py --attr='gpu<2'
+  $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
 
 Tests are put into the ``tests/chainer_tests``, ``tests/cupy_tests`` and ``tests/install_tests`` directories.
 These have the same structure as that of ``chainer``, ``cupy`` and ``install`` directories, respectively.

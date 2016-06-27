@@ -27,6 +27,8 @@ import os
 import warnings
 
 import numpy
+import six
+
 
 available = False
 cudnn_enabled = False
@@ -157,14 +159,15 @@ def get_device(*args):
     for arg in args:
         if arg is None:
             continue
+        if type(arg) in six.integer_types:
+            check_cuda_available()
+            return Device(arg)
         if not isinstance(arg, numpy.ndarray):
             check_cuda_available()
             if isinstance(arg, cupy.ndarray):
                 if arg.device is None:
                     continue
                 return arg.device
-            else:
-                return Device(arg)
 
     return DummyDevice
 
@@ -506,11 +509,26 @@ def get_array_module(*args):
 _max_workspace_size = 8 * 1024 * 1024
 
 
-# TODO(okuta): Write document
 def get_max_workspace_size():
+    """Gets the workspace size for cuDNN.
+
+    Check "cuDNN Library User Guide" for detail.
+
+    Returns:
+        int: The workspace size for cuDNN.
+
+    """
     return _max_workspace_size
 
 
 def set_max_workspace_size(size):
+    """Sets the workspace size for cuDNN.
+
+    Check "cuDNN Library User Guide" for detail.
+
+    Args:
+        size: The workspace size for cuDNN.
+
+    """
     global _max_workspace_size
     _max_workspace_size = size

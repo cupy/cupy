@@ -98,14 +98,21 @@ class Function(object):
            not need to take care of device selection.
 
         Args:
-            inputs: Tuple of input :class:`Variable` objects. The volatile
-                flags of all input variables must agree.
+            inputs: Tuple of input :class:`Variable`, :class:`numpy.ndarray` or
+                :class:`cupy.ndarray` objects. The volatile flags of all input
+                variables must agree. If the input is an :class:`numpy.ndarray`
+                or a :class:`cupy.ndarray`, it is automatically wrapped with
+                :class:`Variable`.
 
         Returns:
             One :class:`Variable` object or a tuple of multiple
             :class:`Variable` objects.
 
         """
+
+        inputs = [x if isinstance(x, chainer.Variable)
+                  else chainer.Variable(x, volatile=flag.AUTO)
+                  for x in inputs]
 
         in_data = tuple([x.data for x in inputs])
         if chainer.is_debug():
@@ -419,14 +426,13 @@ class FunctionHook(object):
 
     >>> import chainer, chainer.links as L, chainer.functions as F
     ... class Model(chainer.Chain):
-    ...     def __call__(x):
-    ...         x = self.l(x)
-    ...         return F.exp(x)
+    ...     def __call__(self, x1):
+    ...         return F.exp(self.l(x1))
     ... model1 = Model(l=L.Linear(10, 10))
     ... model2 = Model(l=L.Linear(10, 10))
     ... x = chainer.Variable(numpy.zeros((1, 10), 'f'))
     ... with chainer.function_hooks.TimerHook() as m:
-    ...     y = model1(x)
+    ...     _ = model1(x)
     ...     y = model2(x)
     ...     print(m.total_time())
     ... model3 = Model(l=L.Linear(10, 10))

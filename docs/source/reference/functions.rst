@@ -35,6 +35,10 @@ elu
 ~~~
 .. autofunction:: elu
 
+hard_sigmoid
+~~~~~~~~~~~~
+.. autofunction:: hard_sigmoid
+
 leaky_relu
 ~~~~~~~~~~
 .. autofunction:: leaky_relu
@@ -91,6 +95,10 @@ broadcast_to
 ~~~~~~~~~~~~
 .. autofunction:: broadcast_to
 
+cast
+~~~~
+.. autofunction:: cast
+
 concat
 ~~~~~~
 .. autofunction:: concat
@@ -102,6 +110,14 @@ copy
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
+
+get_item
+~~~~~~~~
+.. autofunction:: get_item
+
+permutate
+~~~~~~~~~
+.. autofunction:: permutate
 
 reshape
 ~~~~~~~
@@ -122,6 +138,10 @@ swapaxes
 transpose
 ~~~~~~~~~
 .. autofunction:: transpose
+
+transpose_sequence
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: transpose_sequence
 
 where
 ~~~~~
@@ -227,6 +247,10 @@ batch_matmul
 ~~~~~~~~~~~~
 .. autofunction:: batch_matmul
 
+bias
+~~~~
+.. autofunction:: bias
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -247,9 +271,17 @@ inv
 ~~~
 .. autofunction:: inv
 
+linear_interpolate
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: linear_interpolate
+
 log
 ~~~
 .. autofunction:: log
+
+logsumexp
+~~~~~~~~~
+.. autofunction:: logsumexp
 
 matmul
 ~~~~~~
@@ -259,9 +291,21 @@ max
 ~~~
 .. autofunction:: max
 
+maximum
+~~~~~~~
+.. autofunction:: maximum
+
 min
 ~~~
 .. autofunction:: min
+
+minimum
+~~~~~~
+.. autofunction:: minimum
+
+scale
+~~~~~
+.. autofunction:: scale
 
 sin
 ~~~

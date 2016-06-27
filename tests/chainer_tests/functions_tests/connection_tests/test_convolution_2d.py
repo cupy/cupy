@@ -16,6 +16,8 @@ from chainer.testing import condition
 @testing.parameterize(*testing.product({
     'c_contiguous': [True, False],
     'cover_all': [True, False],
+    'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestConvolution2DFunction(unittest.TestCase):
 
@@ -28,18 +30,28 @@ class TestConvolution2DFunction(unittest.TestCase):
         self.use_cudnn = use_cudnn
         self.W = numpy.random.normal(
             0, numpy.sqrt(1. / (kh * kw * in_channels)),
-            (out_channels, in_channels, kh, kw)).astype(numpy.float32)
+            (out_channels, in_channels, kh, kw)).astype(self.W_dtype)
         self.b = numpy.random.uniform(
-            -1, 1, out_channels).astype(numpy.float32)
+            -1, 1, out_channels).astype(self.x_dtype)
 
-        self.x = numpy.random.uniform(-1, 1,
-                                      (2, 3, 4, 3)).astype(numpy.float32)
+        self.x = numpy.random.uniform(
+            -1, 1, (2, 3, 4, 3)).astype(self.x_dtype)
         if self.cover_all:
             self.gy = numpy.random.uniform(-1, 1,
-                                           (2, 2, 3, 2)).astype(numpy.float32)
+                                           (2, 2, 3, 2)).astype(self.x_dtype)
         else:
-            self.gy = numpy.random.uniform(-1, 1,
-                                           (2, 2, 2, 2)).astype(numpy.float32)
+            self.gy = numpy.random.uniform(
+                -1, 1, (2, 2, 2, 2)).astype(self.x_dtype)
+        self.check_forward_options = {}
+        self.check_backward_options = {'eps': 1e-2}
+        if self.x_dtype == numpy.float16:
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_backward_options = {
+                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
+        elif self.W_dtype == numpy.float16:
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_backward_options = {
+                'eps': 2 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
 
     @attr.cudnn
     def test_forward_consistency(self, nobias=False):
@@ -57,7 +69,8 @@ class TestConvolution2DFunction(unittest.TestCase):
             x_gpu, W_gpu, b_gpu, stride=self.stride, pad=self.pad,
             use_cudnn=self.use_cudnn, cover_all=self.cover_all)
 
-        gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
+        gradient_check.assert_allclose(
+            y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
 
     @attr.gpu
     def test_forward_consistency_im2col(self):
@@ -91,7 +104,7 @@ class TestConvolution2DFunction(unittest.TestCase):
         gradient_check.check_backward(
             convolution_2d.Convolution2DFunction(
                 self.stride, self.pad, self.use_cudnn, self.cover_all),
-            args, y_grad, eps=1e-2)
+            args, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -130,6 +143,7 @@ class TestConvolution2DFunction(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 @attr.cudnn
 class TestConvolution2DCudnnCall(unittest.TestCase):
@@ -141,12 +155,15 @@ class TestConvolution2DCudnnCall(unittest.TestCase):
         self.stride = 2
         self.pad = 1
         self.x = cuda.cupy.random.uniform(
-            -1, 1, (2, 3, 4, 3)).astype(numpy.float32)
+            -1, 1, (2, 3, 4, 3)).astype(self.dtype)
         self.W = cuda.cupy.random.normal(
             0, numpy.sqrt(1. / (kh * kw * in_channels)),
-            (out_channels, in_channels, kh, kw)).astype(numpy.float32)
+            (out_channels, in_channels, kh, kw)).astype(self.dtype)
         self.gy = cuda.cupy.random.uniform(
-            -1, 1, (2, 2, 2, 2)).astype(numpy.float32)
+            -1, 1, (2, 2, 2, 2)).astype(self.dtype)
+        self.expect = self.use_cudnn and (
+            cuda.cudnn.cudnn.getVersion() >= 3000 or
+            self.dtype != numpy.float16)
 
     def forward(self):
         x = chainer.Variable(self.x)
@@ -158,16 +175,18 @@ class TestConvolution2DCudnnCall(unittest.TestCase):
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
             self.forward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
     def test_call_cudnn_backrward(self):
         y = self.forward()
         y.grad = self.gy
-        v2 = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
-        v3 = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
-        with mock.patch(v2) as func_v2, mock.patch(v3) as func_v3:
+        if cuda.cudnn.cudnn.getVersion() >= 4000:
+            name = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
+        else:
+            name = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
+        with mock.patch(name) as func:
             y.backward()
-            self.assertEqual(func_v2.called or func_v3.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
 
 testing.run_module(__name__, __file__)

@@ -141,7 +141,7 @@ def activation_forward(x, mode):
     x = cupy.ascontiguousarray(x)
     y = cupy.empty_like(x)
 
-    dtype = x.dtype
+    dtype = 'd' if x.dtype == 'd' else 'f'
     one = numpy.array(1, dtype=dtype).ctypes
     zero = numpy.array(0, dtype=dtype).ctypes
     handle = get_handle()
@@ -158,7 +158,7 @@ def activation_backward(x, y, gy, mode):
     gy = cupy.ascontiguousarray(gy)
 
     gx = cupy.empty_like(x)
-    dtype = x.dtype
+    dtype = 'd' if x.dtype == 'd' else 'f'
     one = numpy.array(1, dtype=dtype).ctypes
     zero = numpy.array(0, dtype=dtype).ctypes
     handle = get_handle()
