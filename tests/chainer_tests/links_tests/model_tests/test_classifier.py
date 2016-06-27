@@ -16,7 +16,7 @@ from chainer.testing import attr
 class TestClassifier(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.Classifier(links.Linear(10, 3))
+        self.link = links.Classifier(chainer.Link())
         self.link.compute_accuracy = self.compute_accuracy
 
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
