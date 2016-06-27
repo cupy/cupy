@@ -121,7 +121,7 @@ class TestNStepLSTM(unittest.TestCase):
         gradient_check.check_backward(
             fun, tuple([h_data, c_data] + xs_data),
             tuple([gh_data, gc_data] + gys_data),
-            tuple(params), eps=1e-2, rtol=1e-2)
+            tuple(params), eps=1e-2, rtol=1e-3, atol=1e-3)
 
     def test_backward_cpu(self):
         self.check_backward(
