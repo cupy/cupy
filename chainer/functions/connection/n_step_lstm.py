@@ -1,7 +1,6 @@
 import numpy
 
 from chainer import cuda
-from chainer import flag
 from chainer import function
 from chainer.functions.activation import lstm
 from chainer.functions.array import concat
@@ -325,16 +324,16 @@ def _stack_weight(ws):
 
 
 def n_step_lstm(
-        n_layers, dropout, hx, cx, ws, bs, xs, seed=1337, use_cudnn=True):
+        n_layers, dropout_ratio, hx, cx, ws, bs, xs, seed=1337, train=True,
+        use_cudnn=True):
     xp = cuda.get_array_module(hx.data)
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
        _cudnn_version >= 5000:
         handle = cuda.cupy.cudnn.get_handle()
-        states = DropoutStates.create(handle, dropout, seed)
+        states = DropoutStates.create(handle, dropout_ratio, seed)
         inputs = (hx, cx) + tuple(ws) + tuple(bs) + tuple(xs)
-        volatile = flag.aggregate_flags([x.volatile for x in inputs])
-        rnn = NStepLSTM(n_layers, states, train=not volatile)
+        rnn = NStepLSTM(n_layers, states, train=train)
         ret = rnn(*inputs)
         hy, cy = ret[:2]
         ys = ret[2:]

@@ -198,7 +198,8 @@ class TestNStepLSTMCudnnCall(unittest.TestCase):
         self.expect = self.use_cudnn and (
             cuda.cudnn.cudnn.getVersion() >= 5000)
 
-    def forward(self, volatile):
+    def forward(self, train):
+        volatile = not train
         h = chainer.Variable(self.hx, volatile=volatile)
         c = chainer.Variable(self.cx, volatile=volatile)
         xs = [chainer.Variable(x, volatile=volatile) for x in self.xs]
@@ -206,20 +207,20 @@ class TestNStepLSTMCudnnCall(unittest.TestCase):
         bs = [chainer.Variable(b, volatile=volatile) for b in self.bs]
         return functions.n_step_lstm(
             self.n_layers, self.dropout, h, c, ws, bs, xs,
-            use_cudnn=self.use_cudnn)
+            train=train, use_cudnn=self.use_cudnn)
 
     def test_call_cudnn_forward_training(self):
         with mock.patch('cupy.cuda.cudnn.RNNForwardTraining') as func:
-            self.forward(False)
+            self.forward(True)
             self.assertEqual(func.called, self.expect)
 
     def test_call_cudnn_forward_inference(self):
         with mock.patch('cupy.cuda.cudnn.RNNForwardInference') as func:
-            self.forward(True)
+            self.forward(False)
             self.assertEqual(func.called, self.expect)
 
     def test_call_cudnn_backward(self):
-        hy, cy, ys = self.forward(False)
+        hy, cy, ys = self.forward(True)
         hy.grad = self.dhy
         with mock.patch('cupy.cuda.cudnn.RNNBackwardWeights') as func:
             hy.backward()

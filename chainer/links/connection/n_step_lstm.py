@@ -48,7 +48,7 @@ class NStepLSTM(link.ChainList):
         self.seed = seed
         self.use_cudnn = use_cudnn
 
-    def __call__(self, hx, cx, xs):
+    def __call__(self, hx, cx, xs, train=True):
         assert isinstance(xs, (list, tuple))
         indices = argsort_list_descent(xs)
 
@@ -67,7 +67,7 @@ class NStepLSTM(link.ChainList):
                 bs.append(getattr(w, 'b%d' % i))
         hy, cy, trans_y = rnn.n_step_lstm(
             self.n_layers, self.dropout, hx, cx, ws, bs, trans_x,
-            seed=self.seed, use_cudnn=self.use_cudnn)
+            seed=self.seed, train=train, use_cudnn=self.use_cudnn)
 
         hy = permutate.permutate(hy, indices, axis=1, inv=True)
         cy = permutate.permutate(cy, indices, axis=1, inv=True)
