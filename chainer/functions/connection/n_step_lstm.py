@@ -8,6 +8,7 @@ from chainer.functions.array import reshape
 from chainer.functions.array import split_axis
 from chainer.functions.array import stack
 from chainer.functions.connection import linear
+from chainer.functions.noise import dropout
 from chainer.utils import type_check
 
 
@@ -372,6 +373,8 @@ def n_step_lstm(
                 else:
                     h_rest = None
 
+                x = dropout.dropout(x, ratio=dropout_ratio, train=train)
+                h = dropout.dropout(h, ratio=dropout_ratio, train=train)
                 lstm_in = linear.linear(x, xws[layer], xbs[layer]) + \
                     linear.linear(h, hws[layer], hbs[layer])
 
