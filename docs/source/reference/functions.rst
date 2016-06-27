@@ -247,6 +247,10 @@ batch_matmul
 ~~~~~~~~~~~~
 .. autofunction:: batch_matmul
 
+bias
+~~~~
+.. autofunction:: bias
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -298,6 +302,10 @@ min
 minimum
 ~~~~~~
 .. autofunction:: minimum
+
+scale
+~~~~~
+.. autofunction:: scale
 
 sin
 ~~~

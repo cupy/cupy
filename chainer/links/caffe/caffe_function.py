@@ -368,14 +368,15 @@ class CaffeFunction(link.Chain):
         # Case of only one bottom where W is learnt parameter.
         if len(bottom) == 1:
             W_shape = blobs[0].shape.dim
-            func = _Scale(axis, W_shape, bias_term)
+            func = links.scale.Scale(axis, W_shape, bias_term)
             func.W.data.ravel()[:] = blobs[0].data
             if bias_term:
                 func.bias.b.data.ravel()[:] = blobs[1].data
         # Case of two bottoms where W is given as a bottom.
         else:
             shape = blobs[0].shape.dim if bias_term else None
-            func = _Scale(axis, bias_term=bias_term, bias_shape=shape)
+            func = links.scale.Scale(
+                axis, bias_term=bias_term, bias_shape=shape)
             if bias_term:
                 func.bias.b.data.ravel()[:] = blobs[0].data
 
@@ -560,108 +561,3 @@ class _EltwiseFunction(object):
 
         else:
             raise ValueError('Invalid EltwiseParameter.EltwiseOp value.')
-
-
-def _scale(x, y, axis=1):
-    x_shape = x.data.shape
-    y_shape = y.data.shape
-    assert x_shape[axis:axis + len(y_shape)] == y_shape
-    y1_shape = tuple([1] * axis + list(y_shape) +
-                     [1] * (len(x_shape) - axis - len(y_shape)))
-    y1 = functions.reshape(y, y1_shape)
-    y2 = functions.broadcast_to(y1, x_shape)
-    return x * y2
-
-
-class _Scale(link.Chain):
-    def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
-        super(_Scale, self).__init__()
-
-        # Add W parameter if given.
-        if W_shape is not None:
-            self.add_param('W', W_shape)
-            self.W.data.fill(1)
-        else:
-            self.W = None
-
-        # Add bias term if given.
-        if W_shape is not None:
-            if bias_term:
-                func = _Bias(axis, W_shape)
-                self.add_link('bias', func)
-            else:
-                self.bias = None
-        else:
-            if bias_term:
-                if bias_shape is None:
-                    raise ValueError('bias_shape should be given if W is not '
-                                     'learnt parameter and bias_term is True.')
-                func = _Bias(axis, bias_shape)
-                self.add_link('bias', func)
-            else:
-                self.bias = None
-
-        # Hold axis.
-        self.axis = axis
-
-    def __call__(self, *xs):
-        axis = self.axis
-
-        # Case of only one bottom where W is learnt parameter.
-        if self.W is not None:
-            assert len(xs) == 1
-            x, = xs
-            W = self.W
-            z = _scale(x, W, axis)
-        # Case of two bottoms where W is given as a bottom.
-        else:
-            assert len(xs) == 2
-            x, y = xs
-            z = _scale(x, y, axis)
-
-        # Forward propagate bias term if given.
-        if self.bias is not None:
-            return self.bias(z)
-        else:
-            return z
-
-
-def _bias(x, y, axis=1):
-    x_shape = x.data.shape
-    y_shape = y.data.shape
-    assert x_shape[axis:axis + len(y_shape)] == y_shape
-    y1_shape = tuple([1] * axis + list(y_shape) +
-                     [1] * (len(x_shape) - axis - len(y_shape)))
-    y1 = functions.reshape(y, y1_shape)
-    y2 = functions.broadcast_to(y1, x_shape)
-    return x + y2
-
-
-class _Bias(link.Link):
-    def __init__(self, axis=1, shape=None):
-        super(_Bias, self).__init__()
-
-        # Add b parameter if given.
-        if shape is not None:
-            self.add_param('b', shape)
-            self.b.data.fill(0)
-        else:
-            self.b = None
-
-        # Hold axis.
-        self.axis = axis
-
-    def __call__(self, *xs):
-        axis = self.axis
-
-        # Case of only one bottom where b is learnt parameter.
-        if self.b is not None:
-            assert len(xs) == 1
-            x, = xs
-            b = self.b
-            return _bias(x, b, axis)
-        # Case of two bottoms where b is given as a bottom.
-        else:
-            assert len(xs) == 2
-            x, y = xs
-            return _bias(x, y, axis)
