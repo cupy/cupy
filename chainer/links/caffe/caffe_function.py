@@ -353,7 +353,7 @@ class CaffeFunction(link.Chain):
 
     @_layer('Scale', None)
     def _setup_scale(self, layer):
-        # Following parameters are not supporeted now:
+        # Following parameters are not supported now:
         # - negative axis
         # - num_axes
         # - filler
