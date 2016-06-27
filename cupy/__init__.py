@@ -204,7 +204,7 @@ mintypecode = numpy.mintypecode
 # -----------------------------------------------------------------------------
 take = indexing.indexing.take
 diagonal = indexing.indexing.diagonal
-
+ix_ = indexing.generate.ix_
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
@@ -329,6 +329,8 @@ fmin = math.misc.fmin
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 count_nonzero = sorting.count.count_nonzero
+nonzero = sorting.search.nonzero
+flatnonzero = sorting.search.flatnonzero
 
 argmax = sorting.search.argmax
 argmin = sorting.search.argmin

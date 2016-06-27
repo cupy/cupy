@@ -24,6 +24,7 @@ from chainer.functions.array import permutate
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
+from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
@@ -47,6 +48,7 @@ from chainer.functions.loss import softmax_cross_entropy
 from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared
+from chainer.functions.math import bias
 from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
@@ -60,6 +62,7 @@ from chainer.functions.math import matmul
 from chainer.functions.math import maximum
 from chainer.functions.math import minimum
 from chainer.functions.math import minmax
+from chainer.functions.math import scale
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -137,6 +140,7 @@ SplitAxis = split_axis.SplitAxis
 split_axis = split_axis.split_axis
 SelectItem = select_item.SelectItem
 select_item = select_item.select_item
+stack = stack.stack
 Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
 Transpose = transpose.Transpose
@@ -185,6 +189,7 @@ BatchL2NormSquared = batch_l2_norm_squared.BatchL2NormSquared
 batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
+bias = bias.bias
 Clip = clip.Clip
 clip = clip.clip
 Cos = trigonometric.Cos
@@ -216,6 +221,7 @@ Minimum = minimum.Minimum
 minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
+scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
 Sum = sum.Sum
