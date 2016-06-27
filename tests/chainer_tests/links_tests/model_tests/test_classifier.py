@@ -1,10 +1,9 @@
 import unittest
 
-import numpy
 import mock
+import numpy
 
 import chainer
-from chainer.functions.evaluation import accuracy
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
@@ -26,7 +25,8 @@ class TestClassifier(unittest.TestCase):
     def check_call(self):
         xp = self.link.xp
 
-        y = chainer.Variable(xp.random.uniform(-1, 1, (5, 7)).astype(numpy.float32))
+        y = chainer.Variable(xp.random.uniform(
+            -1, 1, (5, 7)).astype(numpy.float32))
         self.link.predictor = mock.MagicMock(return_value=y)
 
         x = chainer.Variable(xp.asarray(self.x))
