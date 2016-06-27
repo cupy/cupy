@@ -129,7 +129,11 @@ class Reporter(object):
 
         """
         if observer is not None:
-            observer_name = self._observer_names[id(observer)]
+            observer_id = id(observer)
+            if observer_id not in self._observer_names:
+                raise KeyError(
+                    'Given observer is not registered to the reporter.')
+            observer_name = self._observer_names[observer_id]
             for key, value in six.iteritems(values):
                 name = '%s/%s' % (observer_name, key)
                 self.observation[name] = value
