@@ -18,9 +18,10 @@ class SMORMS3(optimizer.GradientMethod):
 
     def init_state(self, param, state):
         xp = cuda.get_array_module(param.data)
-        state['mem'] = xp.ones_like(param.data)
-        state['g'] = xp.zeros_like(param.data)
-        state['g2'] = xp.zeros_like(param.data)
+        with cuda.get_device(param.data):
+            state['mem'] = xp.ones_like(param.data)
+            state['g'] = xp.zeros_like(param.data)
+            state['g2'] = xp.zeros_like(param.data)
 
     def update_one_cpu(self, param, state):
         mem, g, g2 = state['mem'], state['g'], state['g2']
@@ -45,7 +46,7 @@ class SMORMS3(optimizer.GradientMethod):
                g = (1 - r) * g + r * grad;
                g2 = (1 - r) * g2 + r * grad * grad;
                x = g * g / (g2 + eps);
-               param -= grad * min(lr, g * g / (g2 + eps)) / (sqrt(g2) + eps);
+               param -= grad * min(lr, (T)(g * g / (g2 + eps))) / (sqrt(g2) + eps);
                mem = 1 + mem * (1 - x)
                ''',
             'smorms3')(param.grad, self.lr, self.eps,
