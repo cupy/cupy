@@ -11,3 +11,4 @@ Instead it requires additional overhead time.
 
 .. autofunction:: is_debug
 .. autofunction:: set_debug
+.. autoclass:: DebugMode

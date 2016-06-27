@@ -115,6 +115,10 @@ get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
+permutate
+~~~~~~~~~
+.. autofunction:: permutate
+
 reshape
 ~~~~~~~
 .. autofunction:: reshape
@@ -134,6 +138,10 @@ swapaxes
 transpose
 ~~~~~~~~~
 .. autofunction:: transpose
+
+transpose_sequence
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: transpose_sequence
 
 where
 ~~~~~
@@ -239,6 +247,10 @@ batch_matmul
 ~~~~~~~~~~~~
 .. autofunction:: batch_matmul
 
+bias
+~~~~
+.. autofunction:: bias
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -267,6 +279,10 @@ log
 ~~~
 .. autofunction:: log
 
+logsumexp
+~~~~~~~~~
+.. autofunction:: logsumexp
+
 matmul
 ~~~~~~
 .. autofunction:: matmul
@@ -282,6 +298,14 @@ maximum
 min
 ~~~
 .. autofunction:: min
+
+minimum
+~~~~~~
+.. autofunction:: minimum
+
+scale
+~~~~~
+.. autofunction:: scale
 
 sin
 ~~~

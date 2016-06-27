@@ -27,6 +27,8 @@ import os
 import warnings
 
 import numpy
+import six
+
 
 available = False
 cudnn_enabled = False
@@ -157,14 +159,15 @@ def get_device(*args):
     for arg in args:
         if arg is None:
             continue
-        if not isinstance(arg, (numpy.ndarray, numpy.generic)):
+        if type(arg) in six.integer_types:
+            check_cuda_available()
+            return Device(arg)
+        if not isinstance(arg, numpy.ndarray):
             check_cuda_available()
             if isinstance(arg, cupy.ndarray):
                 if arg.device is None:
                     continue
                 return arg.device
-            else:
-                return Device(arg)
 
     return DummyDevice
 

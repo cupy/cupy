@@ -49,7 +49,7 @@ def main():
     for c, i in vocab.items():
         ivocab[i] = c
 
-    # shoud be same as n_units , described in train_ptb.py
+    # should be same as n_units , described in train_ptb.py
     n_units = args.unit
 
     lm = train_ptb.RNNForLM(len(vocab), n_units, train=False)

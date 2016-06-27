@@ -58,7 +58,7 @@ class AveragePooling2D(pooling_2d.Pooling2D):
 
     def backward_cpu(self, x, gy):
         h, w = x[0].shape[2:]
-        gcol = numpy.tile(gy[0][:, :, numpy.newaxis, numpy.newaxis],
+        gcol = numpy.tile(gy[0][:, :, None, None],
                           (1, 1, self.kh, self.kw, 1, 1))
         gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
         gx /= self.kh * self.kw

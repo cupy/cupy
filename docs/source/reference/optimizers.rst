@@ -11,3 +11,4 @@ Optimizers
 .. autoclass:: RMSprop
 .. autoclass:: RMSpropGraves
 .. autoclass:: SGD
+.. autoclass:: SMORMS3
