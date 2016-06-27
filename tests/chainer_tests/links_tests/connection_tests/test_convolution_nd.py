@@ -15,42 +15,44 @@ from chainer.utils import conv_nd
 
 
 @testing.parameterize(*testing.product({
-    'ds': [(10,), (10, 8), (10, 8, 6)],
+    'dims': [(10,), (10, 8), (10, 8, 6)],
 }))
 class TestConvolutionND(unittest.TestCase):
 
     def setUp(self):
-        N = len(self.ds)
-        self.ks = (3,) * N
-        self.ss = (2,) * N
-        self.ps = (1,) * N
+        ndim = len(self.dims)
+        self.ksize = (3,) * ndim
+        self.stride = (2,) * ndim
+        self.pad = (1,) * ndim
 
         self.link = convolution_nd.ConvolutionND(
-            N, 3, 2, self.ks, stride=self.ss, pad=self.ps)
+            ndim, 3, 2, self.ksize, stride=self.stride, pad=self.pad)
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
         self.link.zerograds()
 
-        x_shape = (2, 3) + self.ds
+        x_shape = (2, 3) + self.dims
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
         gy_shape = (2, 2) + tuple(
             [conv.get_conv_outsize(d, k, s, p)
-             for (d, k, s, p) in zip(self.ds, self.ks, self.ss, self.ps)])
+             for (d, k, s, p) in zip(
+                     self.dims, self.ksize, self.stride, self.pad)])
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(numpy.float32)
 
     @attr.gpu
     def test_im2col_consistency(self):
-        col_cpu = conv_nd.im2col_nd_cpu(self.x, self.ks, self.ss, self.ps)
+        col_cpu = conv_nd.im2col_nd_cpu(
+            self.x, self.ksize, self.stride, self.pad)
         col_gpu = conv_nd.im2col_nd_gpu(
-            cuda.to_gpu(self.x), self.ks, self.ss, self.ps)
+            cuda.to_gpu(self.x), self.ksize, self.stride, self.pad)
         gradient_check.assert_allclose(col_cpu, col_gpu.get(), atol=0, rtol=0)
 
     @attr.gpu
     def test_col2im_consistency(self):
-        col = conv_nd.im2col_nd_cpu(self.x, self.ks, self.ss, self.ps)
-        im_cpu = conv_nd.col2im_nd_cpu(col, self.ss, self.ps, self.ds)
+        col = conv_nd.im2col_nd_cpu(self.x, self.ksize, self.stride, self.pad)
+        im_cpu = conv_nd.col2im_nd_cpu(col, self.stride, self.pad, self.dims)
         im_gpu = conv_nd.col2im_nd_gpu(
-            cuda.to_gpu(col), self.ss, self.ps, self.ds)
+            cuda.to_gpu(col), self.stride, self.pad, self.dims)
         gradient_check.assert_allclose(im_cpu, im_gpu.get())
 
     def check_forward_consistency(self):

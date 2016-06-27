@@ -33,10 +33,10 @@ def _tuple(x, N):
 
 class ConvolutionND(function.Function):
 
-    def __init__(self, N, stride=1, pad=0, use_cudnn=True, cover_all=False):
-        self.N = N
-        self.stride = _tuple(stride, N)
-        self.pad = _tuple(pad, N)
+    def __init__(self, ndim, stride=1, pad=0, use_cudnn=True, cover_all=False):
+        self.ndim = ndim
+        self.stride = _tuple(stride, ndim)
+        self.pad = _tuple(pad, ndim)
         self.use_cudnn = use_cudnn
         self.cover_all = cover_all
 
@@ -49,8 +49,8 @@ class ConvolutionND(function.Function):
         type_check.expect(
             x_type.dtype.kind == 'f',
             w_type.dtype.kind == 'f',
-            x_type.ndim == self.N + 2,
-            w_type.ndim == self.N + 2,
+            x_type.ndim == self.ndim + 2,
+            w_type.ndim == self.ndim + 2,
             x_type.shape[1] == w_type.shape[1],
         )
 
@@ -65,17 +65,17 @@ class ConvolutionND(function.Function):
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
-        ks = W.shape[2:]
-        ss = self.stride
-        ps = self.pad
-        N = self.N
+        ndim = self.ndim
+        ksize = W.shape[2:]
+        stride = self.stride
+        pad = self.pad
 
         # Make patch array.
         self.col = conv_nd.im2col_nd_cpu(
-            x, ks, ss, ps, cover_all=self.cover_all)
+            x, ksize, stride, pad, cover_all=self.cover_all)
 
         # Compute correlation.
-        axes = tuple(moves.range(1, N+2))  # (1, 2, ..., N+1)
+        axes = tuple(moves.range(1, ndim+2))  # (1, 2, ..., N+1)
         y = numpy.tensordot(self.col, W, (axes, axes)).astype(x.dtype)
 
         # Apply bias if given.
@@ -83,31 +83,31 @@ class ConvolutionND(function.Function):
             y += b
 
         # Roll c_O before the second in (n, y_1, y_2, ..., y_N, c_O).
-        return numpy.rollaxis(y, N+1, 1),
+        return numpy.rollaxis(y, ndim+1, 1),
 
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
         out_c = W.shape[0]      # (c_O, _, k_1, k_2, ..., k_N)
-        ks = W.shape[2:]
+        ksize = W.shape[2:]
         n, c = x.shape[:2]      # (n, c_I, d_1, d_2, ..., d_N)
-        ds = x.shape[2:]
-        ss = self.stride
-        ps = self.pad
-        N = self.N
+        dims = x.shape[2:]
+        stride = self.stride
+        pad = self.pad
+        ndim = self.ndim
         colon = slice(None)
 
         # Compute output image's dimensions.
         outs = tuple(
             [conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
-             for (d, k, s, p) in zip(ds, ks, ss, ps)])
+             for (d, k, s, p) in zip(dims, ksize, stride, pad)])
 
         # Make empty array for result.
         y_shape = (n, out_c) + outs  # (n, c_O, out_1, out_2, ..., out_N)
         y = cuda.empty(y_shape, dtype=x.dtype)
         # Implementation using cuDNN.
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
-            N > 1 and convolution_2d._check_cudnn_acceptable_type(
+            ndim > 1 and convolution_2d._check_cudnn_acceptable_type(
                 x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
@@ -119,9 +119,10 @@ class ConvolutionND(function.Function):
             y_desc = cudnn.create_tensor_descriptor(y)
 
             self.filter_desc = cudnn.create_filter_descriptor(W)
-            self.conv_desc = cudnn.create_convolution_descriptor(ps, ss)
+            self.conv_desc = cudnn.create_convolution_descriptor(
+                pad, stride)
             if b is not None:
-                b_index = (None, colon) + (None,) * N
+                b_index = (None, colon) + (None,) * ndim
                 self.bias_desc = cudnn.create_tensor_descriptor(b[b_index])
 
             workspace_size = cuda.get_max_workspace_size()
@@ -149,7 +150,7 @@ class ConvolutionND(function.Function):
         else:
             # Make patch array.
             self.col = conv_nd.im2col_nd_gpu(
-                x, ks, ss, ps, cover_all=self.cover_all)
+                x, ksize, stride, pad, cover_all=self.cover_all)
 
             # Compute correlation.
             W_mat = W.reshape(out_c, -1)
@@ -162,7 +163,7 @@ class ConvolutionND(function.Function):
             # Apply bias if given.
             # TODO(takagi): Support unshared bias
             if b is not None:
-                index = (colon,) + (None,) * N  # (:, None, ..., None)
+                index = (colon,) + (None,) * ndim  # (:, None, ..., None)
                 y += b[index]
 
         return y,
@@ -171,53 +172,53 @@ class ConvolutionND(function.Function):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]   # (n, c_O, out_1, out_2, ..., out_N)
-        ds = x.shape[2:]       # (n, c_I, d_1, d_2, ..., d_N)
-        ss = self.stride
-        ps = self.pad
-        N = self.N
+        dims = x.shape[2:]     # (n, c_I, d_1, d_2, ..., d_N)
+        stride = self.stride
+        pad = self.pad
+        ndim = self.ndim
 
         # Compute filter weight gradient.
         # (n, _, out_1, out_2, ..., out_N)
-        out_axes = (0,) + tuple(moves.range(2, N+2))
+        out_axes = (0,) + tuple(moves.range(2, ndim+2))
         # (n, _, _, ..., _, out_1, out_2, ..., out_N)
-        col_axes = (0,) + tuple(moves.range(N+2, N*2+2))
+        col_axes = (0,) + tuple(moves.range(ndim+2, ndim*2+2))
         gW = numpy.tensordot(
             gy, self.col, (out_axes, col_axes)).astype(W.dtype)
 
         # Compute patch array gradient.
         gcol = numpy.tensordot(W, gy, (0, 1)).astype(x.dtype)
-        gcol = numpy.rollaxis(gcol, N + 1)
+        gcol = numpy.rollaxis(gcol, ndim + 1)
 
         # Compute input gradient.
-        gx = conv_nd.col2im_nd_cpu(gcol, ss, ps, ds)
+        gx = conv_nd.col2im_nd_cpu(gcol, stride, pad, dims)
 
         # Compute bias gradient if given and return gradients.
         if b is None:
             return gx, gW
         else:
             # (n, _, out_1, out_2, ..., out_N)
-            axis = (0,) + tuple(moves.range(2, N+2))
+            axis = (0,) + tuple(moves.range(2, ndim+2))
             gb = gy.sum(axis=axis)
             return gx, gW, gb
 
     def backward_gpu(self, inputs, grad_putputs):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
-        gy = grad_putputs[0]   # (n, c_O, out_1, out_2, ..., out_N)
+        gy = grad_putputs[0]    # (n, c_O, out_1, out_2, ..., out_N)
         out_c = gy.shape[1]
         outs = gy.shape[2:]
-        n, c = x.shape[:2]     # (n, c_I, d_1, d_2, ..., d_N)
-        ds = x.shape[2:]
-        ks = W.shape[2:]       # (_, _, k_1, k_2, ..., k_N)
-        ss = self.stride
-        ps = self.pad
-        N = self.N
+        n, c = x.shape[:2]      # (n, c_I, d_1, d_2, ..., d_N)
+        dims = x.shape[2:]
+        ksize = W.shape[2:]     # (_, _, k_1, k_2, ..., k_N)
+        stride = self.stride
+        pad = self.pad
+        ndim = self.ndim
 
         # Compute filter weight gradient.
         gW = cuda.empty_like(W)
         # Implementation using cuDNN.
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
-            N > 1 and convolution_2d._check_cudnn_acceptable_type(
+            ndim > 1 and convolution_2d._check_cudnn_acceptable_type(
                 x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
@@ -271,9 +272,9 @@ class ConvolutionND(function.Function):
                     zero.data, self.bias_desc.value, gb.data.ptr)
         # Implementation using col2im.
         else:
-            gW_mat = gW.reshape(out_c, reduce(operator.mul, ks, c))
+            gW_mat = gW.reshape(out_c, reduce(operator.mul, ksize, c))
             col_mats = self.col.reshape(
-                n, reduce(operator.mul, ks, c), reduce(operator.mul, outs))
+                n, reduce(operator.mul, ksize, c), reduce(operator.mul, outs))
             gy_mats = gy.reshape(n, out_c, reduce(operator.mul, outs))
             # TODO(takagi): Use streams or batch gemm
             gW_mat[...] = 0
@@ -284,17 +285,17 @@ class ConvolutionND(function.Function):
             W_mat = W.reshape(out_c, -1)
             gcol = cuda.empty_like(self.col)
             gcol_mats = gcol.reshape(
-                n, reduce(operator.mul, ks, c), reduce(operator.mul, outs))
+                n, reduce(operator.mul, ksize, c), reduce(operator.mul, outs))
             for i in moves.range(n):
                 gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
 
             # Compute input gradient.
-            gx = conv_nd.col2im_nd_gpu(gcol, ss, ps, ds)
+            gx = conv_nd.col2im_nd_gpu(gcol, stride, pad, dims)
 
             # Compute bias gradient if given.
             if b is not None:
                 # (n, _, out_1, out_2, ..., out_N)
-                axis = (0,) + tuple(moves.range(2, N+2))
+                axis = (0,) + tuple(moves.range(2, ndim+2))
                 gb = gy.sum(axis=axis)
 
         if b is None:
@@ -343,8 +344,8 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
 
     .. seealso:: :class:`ConvolutionND`, :function:`convolution_2d`
     """
-    N = len(x.data.shape[2:])
-    func = ConvolutionND(N, stride, pad, use_cudnn, cover_all)
+    ndim = len(x.data.shape[2:])
+    func = ConvolutionND(ndim, stride, pad, use_cudnn, cover_all)
     if b is None:
         return func(x, W)
     else:

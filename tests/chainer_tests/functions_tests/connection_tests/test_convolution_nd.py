@@ -17,7 +17,7 @@ from chainer.utils import conv
 
 
 @testing.parameterize(*testing.product({
-    'ds': [(10,), (10, 8), (10, 8, 6)],
+    'dims': [(10,), (10, 8), (10, 8, 6)],
     'c_contiguous': [True, False],
     'cover_all': [True, False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
@@ -28,21 +28,21 @@ class TestConvolutionND(unittest.TestCase):
     def setUp(self):
         in_channels = 3
         out_channels = 2
-        N = len(self.ds)
-        ks = (3,) * N
-        self.stride = (2,) * N
-        self.pad = (1,) * N
+        ndim = len(self.dims)
+        ksize = (3,) * ndim
+        self.stride = (2,) * ndim
+        self.pad = (1,) * ndim
 
-        W_scale = numpy.sqrt(1. / functools.reduce(mul, ks, in_channels))
-        W_shape = (out_channels, in_channels) + ks
+        W_scale = numpy.sqrt(1. / functools.reduce(mul, ksize, in_channels))
+        W_shape = (out_channels, in_channels) + ksize
         self.W = numpy.random.normal(0, W_scale, W_shape).astype(self.W_dtype)
         self.b = numpy.random.uniform(-1, 1, out_channels).astype(self.x_dtype)
 
-        x_shape = (2, 3) + self.ds
+        x_shape = (2, 3) + self.dims
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.x_dtype)
         gy_shape = (2, 2) + tuple(
             [conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
-             for (d, k, s, p) in zip(self.ds, ks, self.stride, self.pad)])
+             for (d, k, s, p) in zip(self.dims, ksize, self.stride, self.pad)])
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.x_dtype)
 
         self.check_forward_options = {}
@@ -110,10 +110,10 @@ class TestConvolutionND(unittest.TestCase):
         if b_data is not None:
             args = args + (b_data,)
 
-        N = len(self.ds)
+        ndim = len(self.dims)
         gradient_check.check_backward(
             convolution_nd.ConvolutionND(
-                N, self.stride, self.pad, use_cudnn, self.cover_all),
+                ndim, self.stride, self.pad, use_cudnn, self.cover_all),
             args, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
@@ -154,7 +154,7 @@ class TestConvolutionND(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'ds': [(10,), (10, 8), (10, 8, 6)],
+    'dims': [(10,), (10, 8), (10, 8, 6)],
     'use_cudnn': [True, False],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
@@ -164,21 +164,21 @@ class TestConvolutionNDCudnnCall(unittest.TestCase):
     def setUp(self):
         in_channels = 3
         out_channels = 2
-        N = len(self.ds)
-        ks = (3,) * N
-        self.stride = (2,) * N
-        self.pad = (1,) * N
-        x_shape = (2, 3) + self.ds
+        ndim = len(self.dims)
+        ksize = (3,) * ndim
+        self.stride = (2,) * ndim
+        self.pad = (1,) * ndim
+        x_shape = (2, 3) + self.dims
         self.x = cuda.cupy.random.uniform(-1, 1, x_shape).astype(self.dtype)
-        W_scale = numpy.sqrt(1. / functools.reduce(mul, ks, in_channels))
-        W_shape = (out_channels, in_channels) + ks
+        W_scale = numpy.sqrt(1. / functools.reduce(mul, ksize, in_channels))
+        W_shape = (out_channels, in_channels) + ksize
         self.W = cuda.cupy.random.normal(
             0, W_scale, W_shape).astype(self.dtype)
         gy_shape = (2, 2) + tuple(
             [conv.get_conv_outsize(d, k, s, p)
-             for (d, k, s, p) in zip(self.ds, ks, self.stride, self.pad)])
+             for (d, k, s, p) in zip(self.dims, ksize, self.stride, self.pad)])
         self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
-        self.expect = self.use_cudnn and N > 1 and (
+        self.expect = self.use_cudnn and ndim > 1 and (
             cuda.cudnn.cudnn.getVersion() >= 3000 or
             self.dtype != numpy.float16)
 

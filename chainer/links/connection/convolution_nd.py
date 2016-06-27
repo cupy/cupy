@@ -12,7 +12,7 @@ class ConvolutionND(link.Link):
     holds the filter weight and bias vector as parameters.
 
     Args:
-        N (int): Number of spacial dimensions.
+        ndim (int): Number of spacial dimensions.
         in_channels (int): Number of channels of input arrays.
         out_channels (int): Number of channels of output arrays.
         ksize (int or tuple of ints): Size of filters (a.k.a. kernels).
@@ -46,15 +46,15 @@ class ConvolutionND(link.Link):
 
     """
 
-    def __init__(self, N, in_channels, out_channels, ksize, stride=1, pad=0,
+    def __init__(self, ndim, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
                  initialW=None, initial_bias=None):
-        ks = _ensure_tuple(ksize, N)
-        self.stride = _ensure_tuple(stride, N)
-        self.pad = _ensure_tuple(pad, N)
+        ksize = _tuple(ksize, ndim)
+        self.stride = _tuple(stride, ndim)
+        self.pad = _tuple(pad, ndim)
         self.use_cudnn = use_cudnn
 
-        W_shape = (out_channels, in_channels) + ks
+        W_shape = (out_channels, in_channels) + ksize
         super(ConvolutionND, self).__init__(W=W_shape)
 
         # For backward compatibility, the scale of weights is proportional to
@@ -84,7 +84,7 @@ class ConvolutionND(link.Link):
             x, self.W, self.b, self.stride, self.pad, self.use_cudnn)
 
 
-def _ensure_tuple(x, n):
+def _tuple(x, n):
     if hasattr(x, '__getitem__'):
         return x
     return tuple([x] * n)
