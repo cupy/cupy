@@ -64,11 +64,6 @@ class TestInvalidArgument(unittest.TestCase):
     def setUp(self):
         self.link = links.Classifier(MockLink())
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
-        self.debug = chainer.is_debug()
-        chainer.set_debug(True)
-
-    def tearDown(self):
-        chainer.set_debug(self.debug)
 
     def check_invalid_argument(self):
         with self.assertRaises(AssertionError):
