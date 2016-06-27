@@ -54,8 +54,7 @@ class Classifier(link.Chain):
 
         """
 
-        if chainer.is_debug():
-            assert len(args) >= 2
+        assert len(args) >= 2
         x = args[:-1]
         t = args[-1]
         self.y = None
