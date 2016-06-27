@@ -24,6 +24,7 @@ from chainer.functions.array import permutate
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
+from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
@@ -139,6 +140,7 @@ SplitAxis = split_axis.SplitAxis
 split_axis = split_axis.split_axis
 SelectItem = select_item.SelectItem
 select_item = select_item.select_item
+stack = stack.stack
 Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
 Transpose = transpose.Transpose
