@@ -46,7 +46,7 @@ class SMORMS3(optimizer.GradientMethod):
                g = (1 - r) * g + r * grad;
                g2 = (1 - r) * g2 + r * grad * grad;
                x = g * g / (g2 + eps);
-               param -= grad * min(lr, (T)(g * g / (g2 + eps))) / (sqrt(g2) + eps);
+               param -= grad * min(lr, x) / (sqrt(g2) + eps);
                mem = 1 + mem * (1 - x)
                ''',
             'smorms3')(param.grad, self.lr, self.eps,
