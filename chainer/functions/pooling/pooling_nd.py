@@ -12,27 +12,27 @@ if cuda.cudnn_enabled:
     _cudnn_version = libcudnn.getVersion()
 
 
-def _tuple(x, N):
+def _tuple(x, n):
     if hasattr(x, '__getitem__'):
-        assert len(x) == N
+        assert len(x) == n
         return x
-    return (x,) * N
+    return (x,) * n
 
 
 class PoolingND(function.Function):
 
     """Base class of pooling function over a set of N-dimensional planes."""
 
-    def __init__(self, N, ksize, stride=None, pad=0, cover_all=True,
+    def __init__(self, ndim, ksize, stride=None, pad=0, cover_all=True,
                  use_cudnn=True):
 
         if stride is None:
             stride = ksize
 
-        self.N = N
-        self.ksize = _tuple(ksize, N)
-        self.stride = _tuple(stride, N)
-        self.pad = _tuple(pad, N)
+        self.ndim = ndim
+        self.ksize = _tuple(ksize, ndim)
+        self.stride = _tuple(stride, ndim)
+        self.pad = _tuple(pad, ndim)
 
         self.cover_all = cover_all
         self.use_cudnn = use_cudnn
@@ -41,17 +41,17 @@ class PoolingND(function.Function):
         type_check.expect(
             in_types.size() == 1,
             in_types[0].dtype.kind == 'f',
-            in_types[0].ndim == 2 + self.N
+            in_types[0].ndim == 2 + self.ndim
         )
 
     def forward_gpu(self, x):
         # Implementation using cuDNN.
         x = x[0]
         n, c = x.shape[:2]
-        ds = x.shape[2:]
+        dims = x.shape[2:]
         ys = tuple([conv.get_conv_outsize(d, k, s, p, self.cover_all)
                     for (d, k, s, p) in zip(
-                            ds, self.ksize, self.stride, self.pad)])
+                            dims, self.ksize, self.stride, self.pad)])
         y_shape = (n, c) + ys
         y = cuda.cupy.empty(y_shape, dtype=x.dtype)
 

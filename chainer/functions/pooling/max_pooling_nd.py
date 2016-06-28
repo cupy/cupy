@@ -28,10 +28,10 @@ class MaxPoolingND(pooling_nd.PoolingND):
             cover_all=self.cover_all)
         n, c = col.shape[:2]
         mid = (len(col.shape) - 2) // 2 + 2
-        ks = col.shape[2:mid]
+        ksize = col.shape[2:mid]
         outs = col.shape[mid:]
         # (n, c, k_1 * k_2 * ... * k_N, out_1, out_2, ..., out_N)
-        col_shape = (n, c) + (functools.reduce(mul, ks),) + outs
+        col_shape = (n, c) + (functools.reduce(mul, ksize),) + outs
         col = col.reshape(col_shape)
 
         # We select maximum twice, since the implementation using numpy.choose
@@ -46,22 +46,22 @@ class MaxPoolingND(pooling_nd.PoolingND):
             return super(MaxPoolingND, self).forward_gpu(x)
 
         n, c = x[0].shape[:2]
-        ds = x[0].shape[2:]
+        dims = x[0].shape[2:]
         ys = tuple([conv_nd.get_conv_outsize(d, k, s, p, self.cover_all)
                     for (d, k, s, p) in zip(
-                            ds, self.ksize, self.stride, self.pad)])
+                            dims, self.ksize, self.stride, self.pad)])
         # (n, c, y_1, y_2, ..., y_N)
         y_shape = (n, c) + ys
         y = cuda.cupy.empty(y_shape, dtype=x[0].dtype)
         self.indexes = cuda.cupy.empty(y_shape, dtype=numpy.int32)
 
-        N = self.N
-        if N not in _forward_cache:
-            _forward_cache[N] = max_pooling_nd_kernel.generate_forward(N)
-        in_params, out_params, operation, name = _forward_cache[N]
+        ndim = self.ndim
+        if ndim not in _forward_cache:
+            _forward_cache[ndim] = max_pooling_nd_kernel.generate_forward(ndim)
+        in_params, out_params, operation, name = _forward_cache[ndim]
         cuda.elementwise(in_params, out_params, operation, name)(
             x[0].reduced_view(),
-            *(ds + ys + self.ksize + self.stride + self.pad +
+            *(dims + ys + self.ksize + self.stride + self.pad +
               (y, self.indexes)))
 
         return y,
@@ -69,7 +69,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
     def backward_cpu(self, x, gy):
         n, c = gy[0].shape[:2]
         outs = gy[0].shape[2:]
-        ds = x[0].shape[2:]
+        dims = x[0].shape[2:]
         # (n, c, k_1, k_2, ..., k_N, out_1, out_2, ..., out_N)
         gcol_shape = (n, c) + self.ksize + outs
         gcol = numpy.zeros(gcol_shape, dtype=x[0].dtype)
@@ -81,7 +81,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
         for i in numpy.ndindex(indeces):
             gcol_r[self.indexes[i]][i] = gy[0][i]
 
-        gx = conv_nd.col2im_nd_cpu(gcol, self.stride, self.pad, ds)
+        gx = conv_nd.col2im_nd_cpu(gcol, self.stride, self.pad, dims)
         return gx,
 
     def backward_gpu(self, x, gy):
@@ -94,7 +94,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
         ys = gy[0].shape[2:]
         gx = cuda.cupy.empty_like(x[0])
 
-        ndim = self.N
+        ndim = self.ndim
         if ndim not in _backward_cache:
             _backward_cache[ndim] = max_pooling_nd_kernel.generate_backward(
                 ndim)
@@ -109,7 +109,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
             self.ksize, self.stride, self.pad, libcudnn.CUDNN_POOLING_MAX)
 
 
-def max_pooling_nd(x, N, ksize, stride=None, pad=0, cover_all=True,
+def max_pooling_nd(x, ndim, ksize, stride=None, pad=0, cover_all=True,
                    use_cudnn=True):
     """N-dimensionally spatial max pooling function.
 
@@ -121,7 +121,7 @@ def max_pooling_nd(x, N, ksize, stride=None, pad=0, cover_all=True,
 
     Args:
         x (~chainer.Variable): Input variable.
-        N (int): Number of spatial dimensions.
+        ndim (int): Number of spatial dimensions.
         ksize (int or tuple of ints): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k, ..., k)`` are equivalent.
         stride (int or tuple of ints or None): Stride of pooling applications.
@@ -139,4 +139,4 @@ def max_pooling_nd(x, N, ksize, stride=None, pad=0, cover_all=True,
         ~chainer.Variable: Output variable.
 
     """
-    return MaxPoolingND(N, ksize, stride, pad, cover_all, use_cudnn)(x)
+    return MaxPoolingND(ndim, ksize, stride, pad, cover_all, use_cudnn)(x)
