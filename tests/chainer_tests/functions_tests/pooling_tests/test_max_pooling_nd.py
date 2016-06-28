@@ -3,6 +3,7 @@ import unittest
 import functools
 import itertools
 import math
+import mock
 import numpy
 from operator import mul
 import six
@@ -128,6 +129,53 @@ class TestMaxPoolingND(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
+
+
+@testing.parameterize(*testing.product({
+    'dims': [(4, 3, 2), (3, 2), (2,)],
+    'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+@attr.cudnn
+class TestMaxPoolingNDCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        self.ndim = len(self.dims)
+        self.ksize = (3,) * self.ndim
+        self.stride = (2,) * self.ndim
+        self.pad = (1,) * self.ndim
+        x_shape = (2, 3) + self.dims
+        self.x = cuda.cupy.arange(functools.reduce(mul, x_shape),
+                                  dtype=self.dtype).reshape(x_shape)
+        gy_shape = (2, 3) + tuple(
+            [conv.get_conv_outsize(d, k, s, p)
+             for (d, k, s, p)
+             in zip(self.dims, self.ksize, self.stride, self.pad)])
+        self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        return functions.max_pooling_nd(
+            x, self.ksize, self.stride, self.pad, cover_all=False,
+            use_cudnn=self.use_cudnn)
+
+    @unittest.skipIf(cuda.cudnn_enabled and
+                     cuda.cudnn.cudnn.getVersion() < 3000,
+                     'Only cudnn ver>=3 supports max-pooling-nd')
+    def test_call_cudnn_forward(self):
+        with mock.patch('cupy.cudnn.cudnn.poolingForward') as func:
+            self.forward()
+            self.assertEqual(func.called, self.use_cudnn and self.ndim > 1)
+
+    @unittest.skipIf(cuda.cudnn_enabled and
+                     cuda.cudnn.cudnn.getVersion() < 3000,
+                     'Only cudnn ver>=3 supports max-pooling-nd')
+    def test_call_cudnn_backward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.poolingBackward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.use_cudnn and self.ndim > 1)
 
 
 testing.run_module(__name__, __file__)
