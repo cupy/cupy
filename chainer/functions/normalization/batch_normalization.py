@@ -68,12 +68,6 @@ class BatchNormalizationFunction(function.Function):
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
         x, gamma, beta = inputs
-        if x.ndim == 4:
-            # for convolutional layer
-            self.mode = libcudnn.CUDNN_BATCHNORM_SPATIAL
-        else:
-            # for linear layer
-            self.mode = libcudnn.CUDNN_BATCHNORM_PER_ACTIVATION
 
         if x[0].dtype == numpy.float16:
             # cuDNN v5 batch normalization does not seem to support float16.
@@ -120,6 +114,13 @@ class BatchNormalizationFunction(function.Function):
             y = gamma * self.x_hat
             y += beta
         elif cuda.cudnn_enabled and self.use_cudnn and self.cudnn_dim_ok:
+            if x.ndim == 4:
+                # for convolutional layer
+                self.mode = libcudnn.CUDNN_BATCHNORM_SPATIAL
+            else:
+                # for linear layer
+                self.mode = libcudnn.CUDNN_BATCHNORM_PER_ACTIVATION
+
             dtype = x.dtype
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(_as4darray(x))
