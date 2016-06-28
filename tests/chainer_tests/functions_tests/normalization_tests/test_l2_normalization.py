@@ -70,7 +70,6 @@ class TestL2Normalization(unittest.TestCase):
     def test_eps_cpu(self):
         self.check_eps(numpy.zeros_like(self.x))
 
-    @unittest.skip("GPU eps functionality not implemented.")
     @attr.gpu
     def test_eps_gpu(self):
         self.check_eps(cuda.to_gpu(numpy.zeros_like(self.x)))

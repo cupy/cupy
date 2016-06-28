@@ -30,16 +30,16 @@ class NormalizeL2(function.Function):
     def forward_gpu(self, inputs):
         x = array.as_mat(inputs[0])
         l2norm_kernel = cuda.cupy.ReductionKernel(
-            'T x',
+            'T x, float32 eps',
             'T y',
             'x * x',
             'a + b',
-            'y = sqrt(a)',
+            'y = sqrt(a) + eps',
             '0',
             'l2norm'
         )
         norm = cuda.cupy.broadcast_to(
-            l2norm_kernel(x, axis=1).reshape(-1, 1),
+            l2norm_kernel(x, self.eps, axis=1).reshape(-1, 1),
             x.shape
         )
 
@@ -59,16 +59,16 @@ class NormalizeL2(function.Function):
             gx = gx / norm**2
         else:
             l2norm_kernel = cuda.cupy.ReductionKernel(
-                'T x',
+                'T x, float32 eps',
                 'T y',
                 'x * x',
                 'a + b',
-                'y = sqrt(a)',
+                'y = sqrt(a) + eps',
                 '0',
                 'l2norm'
             )
             norm = cuda.cupy.broadcast_to(
-                l2norm_kernel(x, axis=1).reshape(-1, 1),
+                l2norm_kernel(x, self.eps, axis=1).reshape(-1, 1),
                 x.shape
             )
             x_gy = cuda.cupy.broadcast_to(
