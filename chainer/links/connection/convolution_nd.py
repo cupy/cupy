@@ -12,7 +12,7 @@ class ConvolutionND(link.Link):
     holds the filter weight and bias vector as parameters.
 
     Args:
-        ndim (int): Number of spacial dimensions.
+        ndim (int): Number of spatial dimensions.
         in_channels (int): Number of channels of input arrays.
         out_channels (int): Number of channels of output arrays.
         ksize (int or tuple of ints): Size of filters (a.k.a. kernels).

@@ -314,7 +314,7 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
 
     Notation: here is a notation for dimensionalities.
 
-    - :math:`N` is the number of spacial dimensions.
+    - :math:`N` is the number of spatial dimensions.
     - :math:`n` is the batch size.
     - :math:`c_I` and :math:`c_O` are the number of the input and output,
       respectively.
