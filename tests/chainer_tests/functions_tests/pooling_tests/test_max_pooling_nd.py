@@ -61,13 +61,12 @@ class TestMaxPoolingND(unittest.TestCase):
                            for (x, d, k) in zip(xs, dims, ksize)])
                     for xs in xss]
 
-        ndim = self.ndim
         dims = self.dims
         ksize = self.ksize
         stride = self.stride
         pad = self.pad
         x = chainer.Variable(x_data)
-        y = functions.max_pooling_nd(x, ndim, ksize, stride, pad,
+        y = functions.max_pooling_nd(x, ksize, stride, pad,
                                      cover_all=self.cover_all,
                                      use_cudnn=use_cudnn)
         self.assertEqual(y.data.dtype, self.dtype)
@@ -94,7 +93,7 @@ class TestMaxPoolingND(unittest.TestCase):
         x_data = numpy.random.rand(*x_shape).astype(self.dtype)
         x = chainer.Variable(x_data)
         ksize = stride = int(math.ceil(pow(32, 1.0 / ndim)))
-        functions.max_pooling_nd(x, ndim, ksize, stride=stride, pad=0)
+        functions.max_pooling_nd(x, ksize, stride=stride, pad=0)
 
     @attr.cudnn
     @condition.retry(3)

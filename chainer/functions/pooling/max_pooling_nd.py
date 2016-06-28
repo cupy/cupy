@@ -109,7 +109,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
             self.ksize, self.stride, self.pad, libcudnn.CUDNN_POOLING_MAX)
 
 
-def max_pooling_nd(x, ndim, ksize, stride=None, pad=0, cover_all=True,
+def max_pooling_nd(x, ksize, stride=None, pad=0, cover_all=True,
                    use_cudnn=True):
     """N-dimensionally spatial max pooling function.
 
@@ -121,7 +121,6 @@ def max_pooling_nd(x, ndim, ksize, stride=None, pad=0, cover_all=True,
 
     Args:
         x (~chainer.Variable): Input variable.
-        ndim (int): Number of spatial dimensions.
         ksize (int or tuple of ints): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k, ..., k)`` are equivalent.
         stride (int or tuple of ints or None): Stride of pooling applications.
@@ -139,4 +138,5 @@ def max_pooling_nd(x, ndim, ksize, stride=None, pad=0, cover_all=True,
         ~chainer.Variable: Output variable.
 
     """
+    ndim = len(x.data.shape[2:])
     return MaxPoolingND(ndim, ksize, stride, pad, cover_all, use_cudnn)(x)
