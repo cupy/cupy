@@ -17,14 +17,13 @@ from chainer.utils import conv
 
 
 @testing.parameterize(*testing.product({
+    'dims': [(4,), (4, 3), (4, 3, 2)],
     'cover_all': [True, False],
     'dtype': [numpy.float32],  # numpy.float32, numpy.float64],
 }))
 class TestMaxPoolingND(unittest.TestCase):
 
     def setUp(self):
-#        self.dims = (4, 3, 2)
-        self.dims = (4, 3)
         self.ndim = len(self.dims)
         self.ksize = (3,) * self.ndim
         self.stride = (2,) * self.ndim
