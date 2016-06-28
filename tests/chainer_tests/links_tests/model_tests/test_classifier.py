@@ -5,6 +5,7 @@ import mock
 import numpy
 
 import chainer
+from chainer import functions
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
@@ -13,7 +14,7 @@ from chainer.testing import attr
 class accuracy_with_ignore_label(object):
 
     def __call__(self, y, t):
-        return accuracy.accuracy(y, t, ignore_label=1)
+        return functions.accuracy(y, t, ignore_label=1)
 
 
 @testing.parameterize(*testing.product({
