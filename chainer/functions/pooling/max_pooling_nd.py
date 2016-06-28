@@ -41,7 +41,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
         return y,
 
     def forward_gpu(self, x):
-        if (cuda.cudnn_enabled and self.use_cudnn and
+        if (cuda.cudnn_enabled and self.use_cudnn and self.ndim > 1 and
                 pooling_2d._check_cudnn_acceptable_type(x[0].dtype)):
             return super(MaxPoolingND, self).forward_gpu(x)
 
@@ -85,7 +85,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
         return gx,
 
     def backward_gpu(self, x, gy):
-        if (cuda.cudnn_enabled and self.use_cudnn and
+        if (cuda.cudnn_enabled and self.use_cudnn and self.ndim > 1 and
                 pooling_2d._check_cudnn_acceptable_type(x[0].dtype)):
             return super(MaxPoolingND, self).backward_gpu(x, gy)
 
