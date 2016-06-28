@@ -16,7 +16,7 @@ from chainer.utils import type_check
     'shape': [(3, 2), ()],
     'dtype': [numpy.float16, numpy.float32, numpy.float64]
 }))
-class TestMaximum(unittest.TestCase):
+class TestMinimum(unittest.TestCase):
 
     def setUp(self):
         shape = self.shape
@@ -27,7 +27,7 @@ class TestMaximum(unittest.TestCase):
             if -0.125 < self.x1[i] - self.x2[i] < 0.125:
                 self.x1[i] = -0.5
                 self.x2[i] = 0.5
-        self.y_expected = numpy.maximum(self.x1, self.x2)
+        self.y_expected = numpy.minimum(self.x1, self.x2)
         self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.check_forward_options = {}
         self.check_backward_options = {'eps': 1e-2}
@@ -39,7 +39,7 @@ class TestMaximum(unittest.TestCase):
     def check_forward(self, x1_data, x2_data, y_expected):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
-        y = functions.maximum(x1, x2)
+        y = functions.minimum(x1, x2)
         self.assertEqual(y.data.dtype, self.dtype)
         gradient_check.assert_allclose(
             y_expected, y.data, **self.check_forward_options)
@@ -56,7 +56,7 @@ class TestMaximum(unittest.TestCase):
         self.check_forward(x1, x2, self.y_expected)
 
     def check_backward(self, x1_data, x2_data, y_grad):
-        func = functions.maximum
+        func = functions.minimum
         x = (x1_data, x2_data)
         gradient_check.check_backward(
             func, x, y_grad, **self.check_backward_options)
@@ -78,9 +78,9 @@ class TestMaximum(unittest.TestCase):
     'dtype1': [numpy.float16, numpy.float32, numpy.float64],
     'dtype2': [numpy.float16, numpy.float32, numpy.float64]
 }))
-class TestMaximumInconsistentTypes(unittest.TestCase):
+class TestMinimumInconsistentTypes(unittest.TestCase):
 
-    def test_maximum_inconsistent_types(self):
+    def test_minimum_inconsistent_types(self):
         if self.dtype1 == self.dtype2:
             return
         x1_data = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype1)
@@ -88,20 +88,20 @@ class TestMaximumInconsistentTypes(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         with self.assertRaises(type_check.InvalidType):
-            functions.maximum(x1, x2)
+            functions.minimum(x1, x2)
 
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float16, numpy.float32, numpy.float64]
 }))
-class TestMaximumInconsistentShapes(unittest.TestCase):
+class TestMinimumInconsistentShapes(unittest.TestCase):
 
-    def test_maximum_inconsistent_shapes(self):
+    def test_minimum_inconsistent_shapes(self):
         x1_data = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype)
         x2_data = numpy.random.uniform(-1, 1, (2, 3)).astype(self.dtype)
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         with self.assertRaises(type_check.InvalidType):
-            functions.maximum(x1, x2)
+            functions.minimum(x1, x2)
 
 testing.run_module(__name__, __file__)

@@ -456,7 +456,7 @@ First, we have to define a function on variables:
    class LinearFunction(Function):
        def forward(self, inputs):
            x, W, b = inputs
-           return x.dot(W.t) + b,
+           return x.dot(W.T) + b,
 
        def backward(self, inputs, grad_outputs):
            x, W, b = inputs

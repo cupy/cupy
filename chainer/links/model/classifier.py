@@ -39,23 +39,31 @@ class Classifier(link.Chain):
         self.loss = None
         self.accuracy = None
 
-    def __call__(self, x, t):
+    def __call__(self, *args):
         """Computes the loss value for an input and label pair.
 
         It also computes accuracy and stores it to the attribute.
 
         Args:
-            x (~chainer.Variable): Input minibatch.
-            t (~chainer.Variable): Corresponding ground truth labels.
+            args (list of ~chainer.Variable): Input minibatch.
+
+        The all elements of ``args`` but last one are features and
+        the last element corresponds to ground truth labels.
+        It feeds features to the predictor and compare the result
+        with ground truth labels.
 
         Returns:
             ~chainer.Variable: Loss value.
 
         """
+
+        assert len(args) >= 2
+        x = args[:-1]
+        t = args[-1]
         self.y = None
         self.loss = None
         self.accuracy = None
-        self.y = self.predictor(x)
+        self.y = self.predictor(*x)
         self.loss = self.lossfun(self.y, t)
         if self.compute_accuracy:
             self.accuracy = self.evaluator(self.y, t)

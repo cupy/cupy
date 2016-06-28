@@ -71,21 +71,11 @@ class TestROIPooling2D(unittest.TestCase):
         gradient_check.assert_allclose(y_cpu.data, cuda.to_cpu(y_gpu.data))
 
     def check_backward(self, x_data, roi_data, y_grad):
-        x = chainer.Variable(x_data)
-        rois = chainer.Variable(roi_data)
-        y = functions.roi_pooling_2d(x, rois, outh=self.outh, outw=self.outw,
-                                     spatial_scale=self.spatial_scale)
-        y.grad = y_grad
-        y.backward()
-
-        xs = (x.data, rois.data)
-
-        def f():
-            func = y.creator
-            return func.forward(xs)
-
-        gx, _ = gradient_check.numerical_grad(f, xs, (y.grad,))
-        gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
+        gradient_check.check_backward(
+            functions.ROIPooling2D(outh=self.outh,
+                                   outw=self.outw,
+                                   spatial_scale=self.spatial_scale),
+            (x_data, roi_data), y_grad, no_grads=[False, True])
 
     @condition.retry(3)
     def test_backward_cpu(self):
