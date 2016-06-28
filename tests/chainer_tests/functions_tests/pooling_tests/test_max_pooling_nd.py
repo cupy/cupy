@@ -20,7 +20,7 @@ from chainer.utils import conv
 @testing.parameterize(*testing.product({
     'dims': [(4,), (4, 3), (4, 3, 2)],
     'cover_all': [True, False],
-    'dtype': [numpy.float32],  # numpy.float32, numpy.float64],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestMaxPoolingND(unittest.TestCase):
 
@@ -43,6 +43,9 @@ class TestMaxPoolingND(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
         self.check_backward_options = {'eps': 2.0 ** -8}
+        if self.dtype == numpy.float16:
+            self.check_backward_options = {
+                'eps': 2.0 ** -8, 'atol': 1e-03, 'rtol': 1e-03}
 
     def check_forward(self, x_data, use_cudnn=True):
         def _patches(dims, ksize, stride, pad, cover_all):
