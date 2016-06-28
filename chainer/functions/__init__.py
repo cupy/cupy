@@ -45,6 +45,7 @@ from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
 from chainer.functions.loss import softmax_cross_entropy
+from chainer.functions.loss import triplet
 from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared
@@ -176,6 +177,8 @@ mean_squared_error = mean_squared_error.mean_squared_error
 negative_sampling = negative_sampling.negative_sampling
 SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
 sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
+Triplet = triplet.Triplet
+triplet = triplet.triplet
 HuberLoss = huber_loss.HuberLoss
 huber_loss = huber_loss.huber_loss
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
