@@ -2,6 +2,7 @@ import unittest
 
 import functools
 import itertools
+import math
 import numpy
 from operator import mul
 import six
@@ -87,7 +88,13 @@ class TestMaxPoolingND(unittest.TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.x, use_cudnn=False)
 
-    # TODO(takagi) test_forward_cpu_wide?
+    def test_forward_cpu_wide(self):  # see #120
+        ndim = self.ndim
+        x_shape = (2, 3) + (15,) * ndim
+        x_data = numpy.random.rand(*x_shape).astype(self.dtype)
+        x = chainer.Variable(x_data)
+        ksize = stride = int(math.ceil(pow(32, 1.0 / ndim)))
+        functions.max_pooling_nd(x, ndim, ksize, stride=stride, pad=0)
 
     @attr.cudnn
     @condition.retry(3)
