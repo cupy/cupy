@@ -1,11 +1,11 @@
 from __future__ import print_function
 
 from chainer.utils.conv_nd_kernel import _vars
+from chainer.utils.conv_nd_kernel import _writer
 from chainer.utils.conv_nd_kernel import identity
 from chainer.utils.conv_nd_kernel import maplist
-from chainer.utils.conv_nd_kernel import mulexp
 from chainer.utils.conv_nd_kernel import muladdexp
-from chainer.utils.conv_nd_kernel import _writer
+from chainer.utils.conv_nd_kernel import mulexp
 
 
 #

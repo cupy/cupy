@@ -4,9 +4,9 @@ import functools
 from operator import mul
 
 from chainer import cuda
+from chainer.functions.pooling import max_pooling_nd_kernel
 from chainer.functions.pooling import pooling_2d
 from chainer.functions.pooling import pooling_nd
-from chainer.functions.pooling import max_pooling_nd_kernel
 from chainer.utils import conv_nd
 
 
@@ -49,7 +49,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
         dims = x[0].shape[2:]
         ys = tuple([conv_nd.get_conv_outsize(d, k, s, p, self.cover_all)
                     for (d, k, s, p) in zip(
-                            dims, self.ksize, self.stride, self.pad)])
+                        dims, self.ksize, self.stride, self.pad)])
         # (n, c, y_1, y_2, ..., y_N)
         y_shape = (n, c) + ys
         y = cuda.cupy.empty(y_shape, dtype=x[0].dtype)
