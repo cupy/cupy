@@ -52,7 +52,7 @@ class NormalizeL2(function.Function):
         xp = cuda.get_array_module(x)
 
         if xp is numpy:
-            norm = numpy.sqrt((x * x).sum(axis=1)) + self.eps
+            norm = numpy.linalg.norm(x, axis=1) + self.eps
             norm = norm[:, numpy.newaxis]
 
             gx = gy * norm - (x * gy).sum(axis=1)[:, numpy.newaxis] * x / norm
@@ -89,7 +89,7 @@ def normalize(x, eps=1e-5):
 
     This function implements L2 normalization on a 1D vector. No reduction
     along batch axis is done.  Let :math:`x` be an input vector of dimension
-    :math:`(N,D)`, where :math:`N` and :math:`K` denote mini-batchsize and the
+    :math:`(N, K)`, where :math:`N` and :math:`K` denote mini-batchsize and the
     dimension of the input variable. Then, this function computes an output
     vector :math:`y` by following formula:
 
