@@ -28,7 +28,8 @@ class TestClassifier(unittest.TestCase):
         if self.evaluator is None:
             self.link = links.Classifier(chainer.Link())
         else:
-            self.link = links.Classifier(chainer.Link(), evaluator=self.evaluator)
+            self.link = links.Classifier(chainer.Link(),
+                                         evaluator=self.evaluator)
         self.link.compute_accuracy = self.compute_accuracy
 
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
