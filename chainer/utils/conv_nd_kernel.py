@@ -95,28 +95,28 @@ def _im2col_kxs_decl(N, outs, ks):
     return kxs_decl, kxs
 
 
-def _im2col_outxs_decl(N, outs):
-    # 2D: int outx_0 = i / (out_1) % out_0;
-    #     int outx_1 = i % out_1;
-    def aux(outx, xs):
+def _im2col_out_xs_decl(N, outs):
+    # 2D: int out_x0 = i / (out_1) % out_0;
+    #     int out_x1 = i % out_1;
+    def aux(out_x, xs):
         head = xs[0]
         tail = xs[1:]
         if tail:
-            return 'int {} = i / ({}) % {};'.format(outx, mulexp(tail), head)
+            return 'int {} = i / ({}) % {};'.format(out_x, mulexp(tail), head)
         else:
-            return 'int {} = i % {};'.format(outx, head)
-    outxs = _vars('outx', N)
-    outxs_decl = map(aux, outxs, maplist(identity, outs))
-    return outxs_decl, outxs
+            return 'int {} = i % {};'.format(out_x, head)
+    out_xs = _vars('out_x', N)
+    out_xs_decl = map(aux, out_xs, maplist(identity, outs))
+    return out_xs_decl, out_xs
 
 
-def _im2col_ins_decl(N, kxs, outxs, ss, ps):
-    # 2D: int in_0 = kx_0 + outx_0 * s_0 - p_0;
-    #     int in_1 = kx_1 + outx_1 * s_1 - p_1;
-    def aux(_in, kx, outx, s, p):
-        return 'int {} = {} + {} * {} - {};'.format(_in, kx, outx, s, p)
+def _im2col_ins_decl(N, kxs, out_xs, ss, ps):
+    # 2D: int in_0 = kx_0 + out_x_0 * s_0 - p_0;
+    #     int in_1 = kx_1 + out_x_1 * s_1 - p_1;
+    def aux(_in, kx, out_x, s, p):
+        return 'int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p)
     ins = _vars('in', N)
-    ins_decl = map(aux, ins, kxs, outxs, ss, ps)
+    ins_decl = map(aux, ins, kxs, out_xs, ss, ps)
     return ins_decl, ins
 
 
@@ -142,10 +142,10 @@ def _im2col_col_set(ins, ds):
 def _im2col_operation(N, ds, outs, ks, ss, ps):
     c0_decl = [_im2col_c0_decl(outs, ks)]
     kxs_decl, kxs = _im2col_kxs_decl(N, outs, ks)
-    outxs_decl, outxs = _im2col_outxs_decl(N, outs)
-    ins_decl, ins = _im2col_ins_decl(N, kxs, outxs, ss, ps)
+    out_xs_decl, out_xs = _im2col_out_xs_decl(N, outs)
+    ins_decl, ins = _im2col_ins_decl(N, kxs, out_xs, ss, ps)
     col_set = [_im2col_col_set(ins, ds)]
-    return '\n'.join(c0_decl + kxs_decl + outxs_decl + ins_decl + col_set)
+    return '\n'.join(c0_decl + kxs_decl + out_xs_decl + ins_decl + col_set)
 
 
 def generate_im2col_nd_kernel(N):
@@ -177,7 +177,7 @@ def _col2im_out_params():
 
 
 def _col2im_c0_decl(ds):
-    # 2D: int c0  = i / (d_0 * d_1);
+    # 2D: int c0 = i / (d_0 * d_1);
     return 'int c0  = i / ({});'.format(mulexp(ds))
 
 
@@ -197,51 +197,51 @@ def _col2im_xs_decl(N, ds, ps):
     return xs_decl, xs
 
 
-def _col2im_outs_decl(N, outs, xs, ks, ss):
-    # 2D: int outx_0_0 = max(0,     (x_0 - k_0 + s_0) / s_0);
-    #     int outx_1_0 = min(out_0, (x_0       + s_0) / s_0);
-    #     int outx_0_1 = max(0,     (x_1 - k_1 + s_1) / s_1);
-    #     int outx_1_1 = min(out_1, (x_1       + s_1) / s_1);
-    def aux(outx_0, outx_1, out, x, k, s):
+def _col2im_out_xs_decl(N, outs, xs, ks, ss):
+    # 2D: int out_x0_0 = max(0,     (x_0 - k_0 + s_0) / s_0);
+    #     int out_x1_0 = min(out_0, (x_0       + s_0) / s_0);
+    #     int out_x0_1 = max(0,     (x_1 - k_1 + s_1) / s_1);
+    #     int out_x1_1 = min(out_1, (x_1       + s_1) / s_1);
+    def aux(out_x0, out_x1, out, x, k, s):
         return [
             'int {} = max(0,     ({} - {} + {}) / {});'.format(
-                outx_0, x, k, s, s),
+                out_x0, x, k, s, s),
             'int {} = min({}, ({}       + {}) / {});'.format(
-                outx_1, out, x, s, s)]
-    outxs_0 = _vars('outx_0', N)
-    outxs_1 = _vars('outx_1', N)
-    outs_decl = sum(map(aux, outxs_0, outxs_1, outs, xs, ks, ss), [])
-    return outs_decl, outxs_0, outxs_1
+                out_x1, out, x, s, s)]
+    out_x0s = _vars('out_x0', N)
+    out_x1s = _vars('out_x1', N)
+    outs_decl = sum(map(aux, out_x0s, out_x1s, outs, xs, ks, ss), [])
+    return outs_decl, out_x0s, out_x1s
 
 
-def _col2im_val_accum(N, outxs_0, outxs_1, outs, ks, xs, ss):
+def _col2im_val_accum(N, out_x0s, out_x1s, outs, ks, xs, ss):
     # 2D: T val = 0;
-    #     for (int outx_0 = outx_0_0; outx_0 < outx_1_0; ++outx_0) {
-    #       int kx_0 = x_0 - outx_0 * s_0;
-    #       for (int outx_1 = outx_0_1; outx_1 < outx_1_1; ++outx_1) {
-    #         int kx_1 = x_1 - outx_1 * s_1;
-    #         val = val + col[(outx_1 + out_1 * (outx_0 + out_0 * (kx_1 + k_1
-    #               * (kx_0 + k_0 * c0))))];
+    #     for (int out_x_0 = out_x0_0; out_x_0 < out_x1_0; ++out_x_0) {
+    #       int kx_0 = x_0 - out_x_0 * s_0;
+    #       for (int out_x_1 = out_x0_1; out_x_1 < out_x1_1; ++out_x_1) {
+    #         int kx_1 = x_1 - out_x_1 * s_1;
+    #         val = val + col[(out_x_1 + out_1 * (out_x_0 + out_0 *
+    #               (kx_1 + k_1 * (kx_0 + k_0 * c0))))];
     #       }
     #     }
     w = _writer()
     w('T val = 0;')
 
     # Loop openings.
-    outxs = _vars('outx', N)
+    out_xs = _vars('out_x', N)
     kxs = _vars('kx', N)
-    for (outx, outx_0, outx_1, kx, x, s) in zip(
-            outxs, outxs_0, outxs_1, kxs, xs, ss):
+    for (out_x, out_x0, out_x1, kx, x, s) in zip(
+            out_xs, out_x0s, out_x1s, kxs, xs, ss):
         w('for (int {} = {}; {} < {}; ++{}) {{'.format(
-            outx, outx_0, outx, outx_1, outx), 'inc')
-        w('int {} = {} - {} * {};'.format(kx, x, outx, s))
+            out_x, out_x0, out_x, out_x1, out_x), 'inc')
+        w('int {} = {} - {} * {};'.format(kx, x, out_x, s))
 
     # Accumulation.
-    index = muladdexp(ks + outs, kxs + outxs, 'c0')
+    index = muladdexp(ks + outs, kxs + out_xs, 'c0')
     w('val = val + col[{}];'.format(index))
 
     # Loop closings.
-    for _ in outxs:
+    for _ in out_xs:
         w('}', 'dec')
 
     return w()
@@ -254,8 +254,8 @@ def _col2im_img_set():
 def _col2im_operation(N, ds, outs, ks, ss, ps):
     c0_decl = [_col2im_c0_decl(ds)]
     xs_decl, xs = _col2im_xs_decl(N, ds, ps)
-    outs_decl, outxs_0, outxs_1 = _col2im_outs_decl(N, outs, xs, ks, ss)
-    val_accum = [_col2im_val_accum(N, outxs_0, outxs_1, outs, ks, xs, ss)]
+    outs_decl, out_x0s, out_x1s = _col2im_out_xs_decl(N, outs, xs, ks, ss)
+    val_accum = [_col2im_val_accum(N, out_x0s, out_x1s, outs, ks, xs, ss)]
     img_set = [_col2im_img_set()]
     return '\n'.join(c0_decl + xs_decl + outs_decl + val_accum + img_set)
 
