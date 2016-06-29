@@ -40,8 +40,8 @@ def maplist(fn, xs):
     return ret
 
 
-def _vars(prefix, N):
-    return ['{}_{}'.format(prefix, i) for i in six.moves.range(N)]
+def _vars(prefix, n):
+    return ['{}_{}'.format(prefix, i) for i in six.moves.range(n)]
 
 
 def _writer():
@@ -80,7 +80,7 @@ def _im2col_c0_decl(outs, ks):
     return 'int c0 = i / ({});'.format(mulexp(ks + outs))
 
 
-def _im2col_kxs_decl(N, outs, ks):
+def _im2col_kxs_decl(ndim, outs, ks):
     # 2D: int kx_0 = i / (k_1 * out_0 * out_1) % k_0;
     #     int kx_1 = i / (out_0 * out_1) % k_1;
     def aux(kx, xs):
@@ -90,12 +90,12 @@ def _im2col_kxs_decl(N, outs, ks):
             return 'int {} = i / ({}) % {};'.format(kx, mulexp(tail), head)
         else:
             return 'int {} = i % {};'.format(kx, head)
-    kxs = _vars('kx', N)
+    kxs = _vars('kx', ndim)
     kxs_decl = map(aux, kxs, maplist(identity, ks))
     return kxs_decl, kxs
 
 
-def _im2col_out_xs_decl(N, outs):
+def _im2col_out_xs_decl(ndim, outs):
     # 2D: int out_x0 = i / (out_1) % out_0;
     #     int out_x1 = i % out_1;
     def aux(out_x, xs):
@@ -105,17 +105,17 @@ def _im2col_out_xs_decl(N, outs):
             return 'int {} = i / ({}) % {};'.format(out_x, mulexp(tail), head)
         else:
             return 'int {} = i % {};'.format(out_x, head)
-    out_xs = _vars('out_x', N)
+    out_xs = _vars('out_x', ndim)
     out_xs_decl = map(aux, out_xs, maplist(identity, outs))
     return out_xs_decl, out_xs
 
 
-def _im2col_ins_decl(N, kxs, out_xs, ss, ps):
+def _im2col_ins_decl(ndim, kxs, out_xs, ss, ps):
     # 2D: int in_0 = kx_0 + out_x_0 * s_0 - p_0;
     #     int in_1 = kx_1 + out_x_1 * s_1 - p_1;
     def aux(_in, kx, out_x, s, p):
         return 'int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p)
-    ins = _vars('in', N)
+    ins = _vars('in', ndim)
     ins_decl = map(aux, ins, kxs, out_xs, ss, ps)
     return ins_decl, ins
 
@@ -139,25 +139,25 @@ def _im2col_col_set(ins, ds):
     return template.format(test, col_set)
 
 
-def _im2col_operation(N, ds, outs, ks, ss, ps):
+def _im2col_operation(ndim, ds, outs, ks, ss, ps):
     c0_decl = [_im2col_c0_decl(outs, ks)]
-    kxs_decl, kxs = _im2col_kxs_decl(N, outs, ks)
-    out_xs_decl, out_xs = _im2col_out_xs_decl(N, outs)
-    ins_decl, ins = _im2col_ins_decl(N, kxs, out_xs, ss, ps)
+    kxs_decl, kxs = _im2col_kxs_decl(ndim, outs, ks)
+    out_xs_decl, out_xs = _im2col_out_xs_decl(ndim, outs)
+    ins_decl, ins = _im2col_ins_decl(ndim, kxs, out_xs, ss, ps)
     col_set = [_im2col_col_set(ins, ds)]
     return '\n'.join(c0_decl + kxs_decl + out_xs_decl + ins_decl + col_set)
 
 
-def generate_im2col_nd_kernel(N):
-    ds = _vars('d', N)
-    outs = _vars('out', N)
-    ks = _vars('k', N)
-    ss = _vars('s', N)
-    ps = _vars('p', N)
+def generate_im2col_nd_kernel(ndim):
+    ds = _vars('d', ndim)
+    outs = _vars('out', ndim)
+    ks = _vars('k', ndim)
+    ss = _vars('s', ndim)
+    ps = _vars('p', ndim)
     in_params = _im2col_in_params(ds, outs, ks, ss, ps)
     out_params = _im2col_out_params()
-    operation = _im2col_operation(N, ds, outs, ks, ss, ps)
-    name = 'im2col_{}d'.format(N)
+    operation = _im2col_operation(ndim, ds, outs, ks, ss, ps)
+    name = 'im2col_{}d'.format(ndim)
     return in_params, out_params, operation, name
 
 
@@ -181,7 +181,7 @@ def _col2im_c0_decl(ds):
     return 'int c0  = i / ({});'.format(mulexp(ds))
 
 
-def _col2im_xs_decl(N, ds, ps):
+def _col2im_xs_decl(ndim, ds, ps):
     # 2D: int x_0 = i / (d_1) % d_0 + p_0;
     #     int x_1 = i % d_1 + p_1;
     def aux(x, ds, p):
@@ -192,12 +192,12 @@ def _col2im_xs_decl(N, ds, ps):
                 x, mulexp(tail), head, p)
         else:
             return 'int {} = i % {} + {};'.format(x, head, p)
-    xs = _vars('x', N)
+    xs = _vars('x', ndim)
     xs_decl = map(aux, xs, maplist(identity, ds), ps)
     return xs_decl, xs
 
 
-def _col2im_out_xs_decl(N, outs, xs, ks, ss):
+def _col2im_out_xs_decl(ndim, outs, xs, ks, ss):
     # 2D: int out_x0_0 = max(0,     (x_0 - k_0 + s_0) / s_0);
     #     int out_x1_0 = min(out_0, (x_0       + s_0) / s_0);
     #     int out_x0_1 = max(0,     (x_1 - k_1 + s_1) / s_1);
@@ -208,13 +208,13 @@ def _col2im_out_xs_decl(N, outs, xs, ks, ss):
                 out_x0, x, k, s, s),
             'int {} = min({}, ({}       + {}) / {});'.format(
                 out_x1, out, x, s, s)]
-    out_x0s = _vars('out_x0', N)
-    out_x1s = _vars('out_x1', N)
+    out_x0s = _vars('out_x0', ndim)
+    out_x1s = _vars('out_x1', ndim)
     outs_decl = sum(map(aux, out_x0s, out_x1s, outs, xs, ks, ss), [])
     return outs_decl, out_x0s, out_x1s
 
 
-def _col2im_val_accum(N, out_x0s, out_x1s, outs, ks, xs, ss):
+def _col2im_val_accum(ndim, out_x0s, out_x1s, outs, ks, xs, ss):
     # 2D: T val = 0;
     #     for (int out_x_0 = out_x0_0; out_x_0 < out_x1_0; ++out_x_0) {
     #       int kx_0 = x_0 - out_x_0 * s_0;
@@ -228,8 +228,8 @@ def _col2im_val_accum(N, out_x0s, out_x1s, outs, ks, xs, ss):
     w('T val = 0;')
 
     # Loop openings.
-    out_xs = _vars('out_x', N)
-    kxs = _vars('kx', N)
+    out_xs = _vars('out_x', ndim)
+    kxs = _vars('kx', ndim)
     for (out_x, out_x0, out_x1, kx, x, s) in zip(
             out_xs, out_x0s, out_x1s, kxs, xs, ss):
         w('for (int {} = {}; {} < {}; ++{}) {{'.format(
@@ -251,36 +251,36 @@ def _col2im_img_set():
     return 'img = val;'
 
 
-def _col2im_operation(N, ds, outs, ks, ss, ps):
+def _col2im_operation(ndim, ds, outs, ks, ss, ps):
     c0_decl = [_col2im_c0_decl(ds)]
-    xs_decl, xs = _col2im_xs_decl(N, ds, ps)
-    outs_decl, out_x0s, out_x1s = _col2im_out_xs_decl(N, outs, xs, ks, ss)
-    val_accum = [_col2im_val_accum(N, out_x0s, out_x1s, outs, ks, xs, ss)]
+    xs_decl, xs = _col2im_xs_decl(ndim, ds, ps)
+    outs_decl, out_x0s, out_x1s = _col2im_out_xs_decl(ndim, outs, xs, ks, ss)
+    val_accum = [_col2im_val_accum(ndim, out_x0s, out_x1s, outs, ks, xs, ss)]
     img_set = [_col2im_img_set()]
     return '\n'.join(c0_decl + xs_decl + outs_decl + val_accum + img_set)
 
 
-def generate_col2im_nd_kernel(N):
-    ds = _vars('d', N)
-    outs = _vars('out', N)
-    ks = _vars('k', N)
-    ss = _vars('s', N)
-    ps = _vars('p', N)
+def generate_col2im_nd_kernel(ndim):
+    ds = _vars('d', ndim)
+    outs = _vars('out', ndim)
+    ks = _vars('k', ndim)
+    ss = _vars('s', ndim)
+    ps = _vars('p', ndim)
     in_params = _col2im_in_params(ds, outs, ks, ss, ps)
     out_params = _col2im_out_params()
-    operation = _col2im_operation(N, ds, outs, ks, ss, ps)
-    name = 'col2im_{}d'.format(N)
+    operation = _col2im_operation(ndim, ds, outs, ks, ss, ps)
+    name = 'col2im_{}d'.format(ndim)
     return in_params, out_params, operation, name
 
 
 # just for debug.
 if __name__ == "__main__":
-    N = 3
+    ndim = 3
 
     print("im2col_nd_kernel")
     print("----------------")
     print()
-    for x in generate_im2col_nd_kernel(N):
+    for x in generate_im2col_nd_kernel(ndim):
         print(x)
         print()
 
@@ -288,6 +288,6 @@ if __name__ == "__main__":
     print("col2im_nd_kernel")
     print("----------------")
     print()
-    for x in generate_col2im_nd_kernel(N):
+    for x in generate_col2im_nd_kernel(ndim):
         print(x)
         print()
