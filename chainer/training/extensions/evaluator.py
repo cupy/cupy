@@ -134,9 +134,7 @@ class Evaluator(extension.Extension):
 
 def _default_eval_loop(evaluator, converter, device, eval_hook, eval_func):
     if not converter:
-        def _convert(batch):
-            return convert.concat_examples(batch, device=device)
-        converter = _convert
+        converter = convert.concat_examples
 
     iterator = evaluator.get_iterator('main')
     target = evaluator.get_target('main')
@@ -151,7 +149,7 @@ def _default_eval_loop(evaluator, converter, device, eval_hook, eval_func):
         for batch in it:
             observation = {}
             with reporter_module.report_scope(observation):
-                in_arrays = converter(batch)
+                in_arrays = converter(batch, device)
                 if isinstance(in_arrays, tuple):
                     in_vars = tuple(variable.Variable(x) for x in in_arrays)
                     eval_func(*in_vars)
