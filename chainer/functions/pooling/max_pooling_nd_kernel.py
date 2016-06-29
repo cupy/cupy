@@ -25,47 +25,47 @@ def _forward_out_params():
 
 def _forward_c0_decl(outs):
     # 2D: int c0 = i / (out_0 * out_1);
-    return 'int c0     = i / ({});'.format(mulexp(outs))
+    return 'int c0      = i / ({});'.format(mulexp(outs))
 
 
-def _forward_outxs_decl(ndim, outs):
+def _forward_out_xs_decl(ndim, outs):
     # 2D: int outx_0 = i / (out_1) % out_0;
     #     int outx_1 = i % out_1;
-    def aux(outx, outs):
+    def aux(out_x, outs):
         head = outs[0]
         tail = outs[1:]
         if tail:
-            return 'int {} = i / ({}) % {};'.format(outx, mulexp(tail), head)
+            return 'int {} = i / ({}) % {};'.format(out_x, mulexp(tail), head)
         else:
-            return 'int {} = i % {};'.format(outx, head)
-    outxs = _vars('outx', ndim)
-    outxs_decl = map(aux, outxs, maplist(identity, outs))
-    return outxs_decl, outxs
+            return 'int {} = i % {};'.format(out_x, head)
+    out_xs = _vars('out_x', ndim)
+    out_xs_decl = map(aux, out_xs, maplist(identity, outs))
+    return out_xs_decl, out_xs
 
 
-def _forward_ins_decl(ndim, outxs, ds, ks, ss, ps):
-    # 2D: int inx_0_0 = max(0, outx_0 * s_0 - p_0);
-    #     int inx_1_0 = min(d_0, outx_0 * s_0 + k_0 - p_0);
-    #     int inx_0_1 = max(0, outx_1 * s_1 - p_1);
-    #     int inx_1_1 = min(d_1, outx_1 * s_1 + k_1 - p_1);
-    def aux(inx_0, inx_1, out, d, k, s, p):
+def _forward_in_xs_decl(ndim, out_xs, ds, ks, ss, ps):
+    # 2D: int in_x0_0 = max(0,   out_x_0 * s_0       - p_0);
+    #     int in_x1_0 = min(d_0, out_x_0 * s_0 + k_0 - p_0);
+    #     int in_x0_1 = max(0,   out_x_1 * s_1       - p_1);
+    #     int in_x1_1 = min(d_1, out_x_1 * s_1 + k_1 - p_1);
+    def aux(in_x0, in_x1, out, d, k, s, p):
         return [
-            'int {} = max(0, {} * {} - {});'.format(inx_0, out, s, p),
+            'int {} = max(0,   {} * {}       - {});'.format(in_x0, out, s, p),
             'int {} = min({}, {} * {} + {} - {});'.format(
-                inx_1, d, out, s, k, p)]
-    inxs_0 = _vars('inx_0', ndim)
-    inxs_1 = _vars('inx_1', ndim)
-    ins_decl = sum(map(aux, inxs_0, inxs_1, outxs, ds, ks, ss, ps), [])
-    return ins_decl, inxs_0, inxs_1
+                in_x1, d, out, s, k, p)]
+    in_x0s = _vars('in_x0', ndim)
+    in_x1s = _vars('in_x1', ndim)
+    in_xs_decl = sum(map(aux, in_x0s, in_x1s, out_xs, ds, ks, ss, ps), [])
+    return in_xs_decl, in_x0s, in_x1s
 
 
-def _forward_val_max(ndim, inxs_0, inxs_1, ds):
-    # 2D: T maxval = in[(inx_0_1 + d_1 * (inx_0_0 + d_0 * c0))];
-    #     int argmax_0 = inx_0_0;
-    #     int argmax_1 = inx_0_1;
-    #     for (int x_0 = inx_0_0; x_0 < inx_1_0; ++x_0) {
+def _forward_val_max(ndim, in_x0s, in_x1s, ds):
+    # 2D: T maxval = in[(in_x0_1 + d_1 * (in_x0_0 + d_0 * c0))];
+    #     int argmax_0 = in_x0_0;
+    #     int argmax_1 = in_x0_1;
+    #     for (int x_0 = in_x0_0; x_0 < in_x1_0; ++x_0) {
     #       int offset_0 = d_1 * (x_0 + d_0 * c0);
-    #       for (int x_1 = inx_0_1; x_1 < inx_1_1; ++x_1) {
+    #       for (int x_1 = in_x0_1; x_1 < in_x1_1; ++x_1) {
     #         int offset_1 = 1 * (x_1 + offset_0);
     #         float v = in[offset_1];
     #         if (maxval < v) {
@@ -78,20 +78,20 @@ def _forward_val_max(ndim, inxs_0, inxs_1, ds):
     w = _writer()
 
     # Initialize values for max operation.
-    w('T maxval = in[{}];'.format(muladdexp(ds, inxs_0, 'c0')))
+    w('T maxval = in[{}];'.format(muladdexp(ds, in_x0s, 'c0')))
     argmaxs = _vars('argmax', ndim)
-    for (argmax, inx_0) in zip(argmaxs, inxs_0):
-        w('int {} = {};'.format(argmax, inx_0))
+    for (argmax, in_x0) in zip(argmaxs, in_x0s):
+        w('int {} = {};'.format(argmax, in_x0))
 
     # Loop openings.
     xs = _vars('x', ndim)
     offsets = _vars('offset', ndim)
     ds1 = ds[1:] + [1]
     offsets0 = ['d_0 * c0'] + offsets[:-1]
-    for (x, inx_0, inx_1, offset, offset0, d1) in zip(
-            xs, inxs_0, inxs_1, offsets, offsets0, ds1):
+    for (x, in_x0, in_x1, offset, offset0, d1) in zip(
+            xs, in_x0s, in_x1s, offsets, offsets0, ds1):
         w('for (int {} = {}; {} < {}; ++{}) {{'.format(
-            x, inx_0, x, inx_1, x), 'inc')
+            x, in_x0, x, in_x1, x), 'inc')
         w('int {} = {} * ({} + {});'.format(offset, d1, x, offset0))
 
     # Max operation.
@@ -113,7 +113,7 @@ def _forward_out_set():
     return 'out = maxval;'
 
 
-def _forward_indexes_set(ndim, argmaxs, outxs, ks, ss, ps):
+def _forward_indexes_set(ndim, argmaxs, out_xs, ks, ss, ps):
     # 2D: int argmax_k_0 = argmax_0 + p_0 - out_0 * s_0;
     #     int argmax_k_1 = argmax_1 + p_1 - out_1 * s_1;
     #     indexes = (argmax_k_1 + k_1 * argmax_k_0);
@@ -121,21 +121,22 @@ def _forward_indexes_set(ndim, argmaxs, outxs, ks, ss, ps):
         return 'int {} = {} + {} - {} * {};'.format(
             argmax_k, argmax, p, out, s)
     argmax_ks = _vars('argmax_k', ndim)
-    argmax_k_decl = map(aux, argmax_ks, argmaxs, ps, outxs, ss)
+    argmax_ks_decl = map(aux, argmax_ks, argmaxs, ps, out_xs, ss)
     indexes_set = 'indexes = {};'.format(
         muladdexp(ks[1:], argmax_ks[1:], argmax_ks[0]))
-    return argmax_k_decl + [indexes_set]
+    return argmax_ks_decl + [indexes_set]
 
 
 def _forward_operation(ndim, ds, outs, ks, ss, ps):
     c0_decl = [_forward_c0_decl(outs)]
-    outxs_decl, outxs = _forward_outxs_decl(ndim, outs)
-    ins_decl, inxs_0, inxs_1 = _forward_ins_decl(ndim, outxs, ds, ks, ss, ps)
-    val_max, argmaxs = _forward_val_max(ndim, inxs_0, inxs_1, ds)
+    out_xs_decl, out_xs = _forward_out_xs_decl(ndim, outs)
+    in_xs_decl, in_x0s, in_x1s = _forward_in_xs_decl(
+        ndim, out_xs, ds, ks, ss, ps)
+    val_max, argmaxs = _forward_val_max(ndim, in_x0s, in_x1s, ds)
     out_set = [_forward_out_set()]
-    indexes_set = _forward_indexes_set(ndim, argmaxs, outxs, ks, ss, ps)
+    indexes_set = _forward_indexes_set(ndim, argmaxs, out_xs, ks, ss, ps)
     return '\n'.join(
-        c0_decl + outxs_decl + ins_decl + val_max + out_set + indexes_set)
+        c0_decl + out_xs_decl + in_xs_decl + val_max + out_set + indexes_set)
 
 
 def generate_forward(ndim):
@@ -169,6 +170,7 @@ def _backward_out_params():
 
 
 def _backward_c0_decl(ds):
+    # 2D: int c0  = i / (d_0 * d_1);
     return 'int c0  = i / ({});'.format(mulexp(ds))
 
 
@@ -188,30 +190,30 @@ def _backward_xs_decl(ndim, ds, ps):
     return xs_decl, xs
 
 
-def _backward_outxs_decl(ndim, xs, outs, ks, ss):
-    # 2D: int outx_0_0 = max(0,     (x_0 - k_0 + s_0) / s_0);
-    #     int outx_1_0 = min(out_0, (x_0       + s_0) / s_0);
-    #     int outx_0_1 = max(0,     (x_1 - k_1 + s_1) / s_1);
-    #     int outx_1_1 = min(out_1, (x_1       + s_1) / s_1);
-    def aux(outx_0, outx_1, x, out, k, s):
+def _backward_out_xs_decl(ndim, xs, outs, ks, ss):
+    # 2D: int out_x0_0 = max(0,     (x_0 - k_0 + s_0) / s_0);
+    #     int out_x1_0 = min(out_0, (x_0       + s_0) / s_0);
+    #     int out_x0_1 = max(0,     (x_1 - k_1 + s_1) / s_1);
+    #     int out_x1_1 = min(out_1, (x_1       + s_1) / s_1);
+    def aux(out_x0, out_x1, x, out, k, s):
         return [
             'int {} = max(0,     ({} - {} + {}) / {});'.format(
-                outx_0, x, k, s, s),
+                out_x0, x, k, s, s),
             'int {} = min({}, ({}       + {}) / {});'.format(
-                outx_1, out, x, s, s)]
-    outxs_0 = _vars('outx_0', ndim)
-    outxs_1 = _vars('outx_1', ndim)
-    outxs_decl = sum(map(aux, outxs_0, outxs_1, xs, outs, ks, ss), [])
-    return outxs_decl, outxs_0, outxs_1
+                out_x1, out, x, s, s)]
+    out_x0s = _vars('out_x0', ndim)
+    out_x1s = _vars('out_x1', ndim)
+    out_xs_decl = sum(map(aux, out_x0s, out_x1s, xs, outs, ks, ss), [])
+    return out_xs_decl, out_x0s, out_x1s
 
 
-def _backward_val_accum(ndim, outxs_0, outxs_1, outs, xs, ks, ss):
+def _backward_val_accum(ndim, out_x0s, out_x1s, outs, xs, ks, ss):
     # 2D: T val = 0;
-    #     for (int outx_0 = outx_0_0; outx_0 < outx_1_0; ++outx_0) {
-    #       int kx_0 = x_0 - outx_0 * s_0;
-    #       for (int outx_1 = outx_0_1; outx_1 < outx_1_1; ++outx_1) {
-    #         int kx_1 = x_1 - outx_1 * s_1;
-    #         int offset = (outx_1 + out_1 * (outx_0 + out_0 * c0));
+    #     for (int out_x_0 = out_x0_0; out_x_0 < out_x1_0; ++out_x_0) {
+    #       int kx_0 = x_0 - out_x_0 * s_0;
+    #       for (int out_x_1 = out_x0_1; out_x_1 < out_x1_1; ++out_x_1) {
+    #         int kx_1 = x_1 - out_x_1 * s_1;
+    #         int offset = (out_x_1 + out_1 * (out_x_0 + out_0 * c0));
     #         if (indexes[offset] == (kx_1 + k_1 * kx_0)) {
     #           val = val + gy[offset];
     #         }
@@ -223,16 +225,16 @@ def _backward_val_accum(ndim, outxs_0, outxs_1, outs, xs, ks, ss):
     w('T val = 0;')
 
     # Loop openings.
-    outxs = _vars('outx', ndim)
+    out_xs = _vars('out_x', ndim)
     kxs = _vars('kx', ndim)
-    for (outx, outx_0, outx_1, kx, s, x) in zip(
-            outxs, outxs_0, outxs_1, kxs, ss, xs):
+    for (out_x, out_x0, out_x1, kx, s, x) in zip(
+            out_xs, out_x0s, out_x1s, kxs, ss, xs):
         w('for (int {} = {}; {} < {}; ++{}) {{'.format(
-            outx, outx_0, outx, outx_1, outx), 'inc')
-        w('int {} = {} - {} * {};'.format(kx, x, outx, s))
+            out_x, out_x0, out_x, out_x1, out_x), 'inc')
+        w('int {} = {} - {} * {};'.format(kx, x, out_x, s))
 
     # Accumulation.
-    w('int offset = {};'.format(muladdexp(outs, outxs, 'c0')))
+    w('int offset = {};'.format(muladdexp(outs, out_xs, 'c0')))
     w('if (indexes[offset] == {}) {{'.format(
         muladdexp(ks[1:], kxs[1:], kxs[0])), 'inc')
     w('val = val + gy[offset];')
@@ -252,11 +254,11 @@ def _backward_gx_set():
 def _backward_operation(ndim, ds, outs, ks, ss, ps):
     c0_decl = [_backward_c0_decl(ds)]
     xs_decl, xs = _backward_xs_decl(ndim, ds, ps)
-    outxs_decl, outxs_0, outxs_1 = _backward_outxs_decl(
+    out_xs_decl, out_x0s, out_x1s = _backward_out_xs_decl(
         ndim, xs, outs, ks, ss)
-    val_accum = [_backward_val_accum(ndim, outxs_0, outxs_1, outs, xs, ks, ss)]
+    val_accum = [_backward_val_accum(ndim, out_x0s, out_x1s, outs, xs, ks, ss)]
     gx_set = [_backward_gx_set()]
-    return '\n'.join(c0_decl + xs_decl + outxs_decl + val_accum + gx_set)
+    return '\n'.join(c0_decl + xs_decl + out_xs_decl + val_accum + gx_set)
 
 
 def generate_backward(ndim):
