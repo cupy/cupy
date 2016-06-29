@@ -143,10 +143,10 @@ In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` opti
   $ nosetests path/to/your/test.py --attr='!gpu'
 
 Some GPU tests involve multiple GPUs.
-If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--attr='gpu<N'`` where ``N`` is a concrete integer.
+If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--eval-attr='gpu<N'`` where ``N`` is a concrete integer.
 For example, if you have only one GPU, launch ``nosetests`` by the following command to skip multi-GPU tests::
 
-  $ nosetests path/to/gpu/test.py --attr='gpu<2'
+  $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
 
 Tests are put into the ``tests/chainer_tests``, ``tests/cupy_tests`` and ``tests/install_tests`` directories.
 These have the same structure as that of ``chainer``, ``cupy`` and ``install`` directories, respectively.

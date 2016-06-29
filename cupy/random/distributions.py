@@ -62,7 +62,7 @@ def standard_normal(size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the standard normal distribution.
 
-    .. seealso:: :func:`numpy.randomm.standard_normal`
+    .. seealso:: :func:`numpy.random.standard_normal`
 
     """
     return normal(size=size, dtype=dtype)
