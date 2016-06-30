@@ -39,6 +39,7 @@ from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import convolution_nd
 from chainer.functions.connection import deconvolution_2d
+from chainer.functions.connection import dilated_convolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
@@ -95,6 +96,7 @@ from chainer.functions.util import forget
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
 from chainer.links.connection import convolution_2d as links_convolution_2d
+from chainer.links.connection import dilated_convolution_2d as links_dilated_convolution_2d
 from chainer.links.connection import embed_id as links_embed_id
 from chainer.links.connection import inception
 from chainer.links.connection import inceptionbn
@@ -180,6 +182,7 @@ bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
 convolution_nd = convolution_nd.convolution_nd
 deconvolution_2d = deconvolution_2d.deconvolution_2d
+dilated_convolution_2d = dilated_convolution_2d.dilated_convolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
 
@@ -320,6 +323,7 @@ PReLU = links_prelu.PReLU
 
 Bilinear = links_bilinear.Bilinear
 Convolution2D = links_convolution_2d.Convolution2D
+DilatedConvolution2D = links_dilated_convolution_2d.DilatedConvolution2D
 EmbedID = links_embed_id.EmbedID
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN
