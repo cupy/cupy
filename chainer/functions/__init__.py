@@ -36,6 +36,7 @@ from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
+from chainer.functions.evaluation import f1_score
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
@@ -160,6 +161,8 @@ Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 BinaryAccuracy = binary_accuracy.BinaryAccuracy
 binary_accuracy = binary_accuracy.binary_accuracy
+F1Score = f1_score.F1Score
+f1_score = f1_score.f1_score
 
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
