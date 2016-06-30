@@ -52,6 +52,7 @@ Issues and PRs are classified into following categories:
 * **Document**: document fixes and improvements
 * **Example**: fixes and improvements on the examples
 * **Install**: fixes installation script
+* **Contribution-Welcome**: issues that we request for contribution (only issues are categorized to this)
 * **Other**: other issues and PRs
 
 Issues and PRs are labeled by these categories.
