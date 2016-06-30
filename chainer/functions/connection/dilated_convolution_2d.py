@@ -64,22 +64,13 @@ class DilatedConvolution2DFunction(function.Function):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
-
-        # TODO(yasunorikudo): Dilate W efficiently
-        if not self.dy == 1:
-            for i in range(self.dy - 1):
-                seq_h = numpy.arange(1, kh) if i == 0 else numpy.dstack((seq_h, numpy.arange(1, kh)))
-            seq_h = seq_h.reshape((self.dy - 1) * (kh - 1))
-            W = numpy.insert(W, seq_h, numpy.zeros(kw), axis=2)
-        if not self.dx == 1:
-            for i in range(self.dx - 1):
-                seq_w = numpy.arange(1, kw) if i == 0 else numpy.dstack((seq_w, numpy.arange(1, kw)))
-            seq_w = seq_w.reshape((self.dx - 1) * (kw - 1))
-            W = numpy.insert(W, seq_w, 0, axis=3)
+        dkh, dkw = kh + (kh - 1) * (self.dy - 1), kw + (kw - 1) * (self.dx - 1)
 
         self.col = conv.im2col_cpu(
-            x, kh + (kh - 1) * (self.dy - 1), kw + (kw - 1) * (self.dx - 1),
-            self.sy, self.sx, self.ph, self.pw, cover_all=self.cover_all)
+            x, dkh, dkw, self.sy, self.sx, self.ph, self.pw,
+            cover_all=self.cover_all)
+        self.col = self.col[:, :, numpy.arange(0, dkh, self.dy)]
+        self.col = self.col[:, :, :, numpy.arange(0, dkw, self.dx)]
         y = numpy.tensordot(
             self.col, W, ((1, 2, 3), (1, 2, 3))).astype(x.dtype)
         if b is not None:
