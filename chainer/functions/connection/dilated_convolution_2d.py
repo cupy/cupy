@@ -68,9 +68,7 @@ class DilatedConvolution2DFunction(function.Function):
 
         self.col = conv.im2col_cpu(
             x, dkh, dkw, self.sy, self.sx, self.ph, self.pw,
-            cover_all=self.cover_all)
-        self.col = self.col[:, :, numpy.arange(0, dkh, self.dy)]
-        self.col = self.col[:, :, :, numpy.arange(0, dkw, self.dx)]
+            cover_all=self.cover_all)[:, :, 0:dkh:self.dy, 0:dkw:self.dx, :, :]
         y = numpy.tensordot(
             self.col, W, ((1, 2, 3), (1, 2, 3))).astype(x.dtype)
         if b is not None:
@@ -80,6 +78,35 @@ class DilatedConvolution2DFunction(function.Function):
     def forward_gpu(self, inputs):
 
     def backward_cpu(self, inputs, grad_outputs):
+        x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
+        gy = grad_outputs[0]
+        h, w = x.shape[2:]
+        kh, kw = W.shape[2:]
+
+        # TODO(yasunorikudo): Dilate W efficiently
+        if not self.dy == 1:
+            for i in range(self.dy - 1):
+                seq_h = numpy.arange(1, kh) if i == 0 else numpy.dstack((seq_h, numpy.arange(1, kh)))
+            seq_h = seq_h.reshape((self.dy - 1) * (kh - 1))
+            W = numpy.insert(W, seq_h, numpy.zeros(kw), axis=2)
+        if not self.dx == 1:
+            for i in range(self.dx - 1):
+                seq_w = numpy.arange(1, kw) if i == 0 else numpy.dstack((seq_w, numpy.arange(1, kw)))
+            seq_w = seq_w.reshape((self.dx - 1) * (kw - 1))
+            W = numpy.insert(W, seq_w, 0, axis=3)
+
+        gW = numpy.tensordot(
+            gy, self.col, ((0, 2, 3), (0, 4, 5))).astype(W.dtype)
+        gcol = numpy.tensordot(W, gy, (0, 1)).astype(x.dtype)
+        gcol = numpy.rollaxis(gcol, 3)
+        gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
+
+        if b is None:
+            return gx, gW
+        else:
+            gb = gy.sum(axis=(0, 2, 3))
+            return gx, gW, gb
 
     def backward_gpu(self, inputs, grad_outputs):
 
