@@ -16,7 +16,7 @@ def _sigmoid(x):
 
 
 @testing.parameterize(*testing.product({
-    'batch': [3, 2],
+    'batch': [3, 2, 0],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestLSTM(unittest.TestCase):

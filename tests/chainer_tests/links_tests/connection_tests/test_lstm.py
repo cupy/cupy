@@ -31,8 +31,10 @@ class TestLSTM(unittest.TestCase):
         self.x1 = numpy.random.uniform(-1, 1, x1_shape).astype(numpy.float32)
         x2_shape = (3, self.in_size)
         self.x2 = numpy.random.uniform(-1, 1, x2_shape).astype(numpy.float32)
+        x3_shape = (0, self.in_size)
+        self.x3 = numpy.random.uniform(-1, 1, x3_shape).astype(numpy.float32)
 
-    def check_forward(self, x1_data, x2_data):
+    def check_forward(self, x1_data, x2_data, x3_data):
         xp = self.link.xp
         x1 = chainer.Variable(x1_data)
         h1 = self.link(x1)
@@ -45,21 +47,31 @@ class TestLSTM(unittest.TestCase):
 
         batch = len(x2_data)
         x2 = chainer.Variable(x2_data)
-        h2 = self.link(x2)
-        h1_in, h1_rest = functions.split_axis(h1, [batch], axis=0)
-        c2_expect, h2_expect = \
+        h1_in, h1_rest = functions.split_axis(self.link.h.data, [batch], axis=0)
+        y2 = self.link(x2)
+        c2_expect, y2_expect = \
             functions.lstm(c1_expect,
                            self.link.upward(x2) + self.link.lateral(h1_in))
-        testing.assert_allclose(h2.data[:batch], h2_expect.data)
-        testing.assert_allclose(h2.data[batch:], h1_rest.data)
+        testing.assert_allclose(y2.data, y2_expect.data)
+        testing.assert_allclose(self.link.h.data[:batch], y2_expect.data)
+        testing.assert_allclose(self.link.h.data[batch:], h1_rest.data)
+
+        x3 = chainer.Variable(x3_data)
+        h2_rest = self.link.h
+        y3 = self.link(x3)
+        c3_expect, y3_expect = \
+            functions.lstm(c2_expect, self.link.upward(x3))
+        testing.assert_allclose(y3.data, y3_expect.data)
+        testing.assert_allclose(self.link.h.data, h2_rest.data)
 
     def test_forward_cpu(self):
-        self.check_forward(self.x1, self.x2)
+        self.check_forward(self.x1, self.x2, self.x3)
 
     @attr.gpu
     def test_forward_gpu(self):
         self.link.to_gpu()
-        self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
+        self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2),
+                           cuda.to_gpu(self.x3))
 
 
 class TestLSSTMRestState(unittest.TestCase):

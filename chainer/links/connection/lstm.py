@@ -166,7 +166,9 @@ class LSTM(LSTMBase):
         lstm_in = self.upward(x)
         h_rest = None
         if self.h is not None:
-            if len(self.h.data) > batch:
+            if batch == 0:
+                h_rest = self.h
+            elif len(self.h.data) > batch:
                 h_update, h_rest = split_axis.split_axis(
                     self.h, [batch], axis=0)
                 lstm_in += self.lateral(h_update)
@@ -177,8 +179,13 @@ class LSTM(LSTMBase):
             self.c = variable.Variable(
                 xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
                 volatile='auto')
-        self.c, h = lstm.lstm(self.c, lstm_in)
-        if h_rest is not None:
-            h = concat.concat([h, h_rest], axis=0)
-        self.h = h
-        return self.h
+        self.c, y = lstm.lstm(self.c, lstm_in)
+
+        if h_rest is None:
+            self.h = y
+        elif len(y.data) == 0:
+            self.h = h_rest
+        else:
+            self.h = concat.concat([y, h_rest], axis=0)
+
+        return y
