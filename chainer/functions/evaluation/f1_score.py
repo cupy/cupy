@@ -26,9 +26,6 @@ class F1Score(function.Function):
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
         y, t = inputs
-        # flatten
-        y = y.ravel()
-        t = t.ravel()
 
         positive = t == self.positive_label
         relevant = y >= 0
