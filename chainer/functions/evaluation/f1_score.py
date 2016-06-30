@@ -33,8 +33,9 @@ class F1Score(function.Function):
         self.precision = xp.asarray(tp / relevant.sum(), dtype=y.dtype)
         self.recall = xp.asarray(tp / positive.sum(), dtype=y.dtype)
         beta_square = self.beta * self.beta
-        self.f1_score = xp.asarray((1 + beta_square) * self.precision * self.recall
-                                   / (beta_square * self.precision + self.recall), dtype=y.dtype)
+        self.f1_score = xp.asarray(
+            (1 + beta_square) * self.precision * self.recall /
+            (beta_square * self.precision + self.recall), dtype=y.dtype)
         return self.f1_score,
 
 
