@@ -11,14 +11,18 @@ from chainer import testing
 from chainer.testing import attr
 
 
-class accuracy_with_ignore_label(object):
+# testing.parameterize takes a list of dictionaries.
+# Currently, we cannot set a function to the value of the dictionaries.
+# As a workaround, we wrap the function and invoke it in __call__ method.
+# See issue #1337 for detail.
+class AccuracyWithIgnoreLabel(object):
 
     def __call__(self, y, t):
         return functions.accuracy(y, t, ignore_label=1)
 
 
 @testing.parameterize(*testing.product({
-    'evaluator': [accuracy_with_ignore_label(), None],
+    'evaluator': [AccuracyWithIgnoreLabel(), None],
     'compute_accuracy': [True, False],
     'x_num': [1, 2]
 }))
