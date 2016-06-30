@@ -85,13 +85,13 @@ class NormalizeL2(function.Function):
 
 
 def normalize(x, eps=1e-5):
-    """L2 norm (a.k.a. Euclidean norm) squared.
+    """L2 norm squared (a.k.a. Euclidean norm).
 
     This function implements L2 normalization on a 1D vector. No reduction
-    along batch axis is done.  Let :math:`x` be an input vector of dimension
+    is done along batch axis.  Let :math:`x` be an input vector of dimension
     :math:`(N, K)`, where :math:`N` and :math:`K` denote mini-batchsize and the
     dimension of the input variable. Then, this function computes an output
-    vector :math:`y` by following formula:
+    vector :math:`y` by the following equation:
 
     .. math::
        y_i = {x_i \\over \\| x_i \\|_2}
@@ -100,11 +100,12 @@ def normalize(x, eps=1e-5):
 
     Args:
         x (~chainer.Variable): Two dimensional output variable. The first
-            dimension is assumed to be the *minibatch dimension*.
+            dimension is assumed to be the mini-batch dimension.
         eps (float): Epsilon value for numerical stability.
 
     Returns:
-        ~chainer.Variable: Two dimensional output variable.
+        ~chainer.Variable: Two dimensional output variable, the same shape
+            as :math:`x`.
 
     """
     return NormalizeL2(eps)(x)

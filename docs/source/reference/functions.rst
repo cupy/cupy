@@ -343,6 +343,10 @@ local_response_normalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: local_response_normalization
 
+normalize
+~~~~~~~~~
+.. autofunction:: normalize
+
 
 Spatial pooling
 ---------------
@@ -366,4 +370,3 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
-
