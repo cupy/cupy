@@ -1,6 +1,7 @@
 """Collection of :class:`~chainer.Function` implementations."""
 
 from chainer.functions.activation import clipped_relu
+from chainer.functions.activation import crelu
 from chainer.functions.activation import elu
 from chainer.functions.activation import hard_sigmoid
 from chainer.functions.activation import leaky_relu
@@ -90,6 +91,8 @@ from chainer.links.normalization import batch_normalization \
 
 ClippedReLU = clipped_relu.ClippedReLU
 clipped_relu = clipped_relu.clipped_relu
+CReLU = crelu.CReLU
+crelu = crelu.crelu
 ConnectionistTemporalClassification = ctc.ConnectionistTemporalClassification
 connectionist_temporal_classification \
     = ctc.connectionist_temporal_classification

@@ -31,6 +31,10 @@ clipped_relu
 ~~~~~~~~~~~~
 .. autofunction:: clipped_relu
 
+crelu
+~~~~~~~~~~~~
+.. autofunction:: crelu
+
 elu
 ~~~
 .. autofunction:: elu
