@@ -1,3 +1,5 @@
+from __future__ import division
+
 from chainer.training import extension
 
 
@@ -45,7 +47,7 @@ class LinearShift(extension.Extension):
         elif self._t >= t2:
             value = v2
         else:
-            rate = float(t2 - t1) / (self._t - t1)
+            rate = (self._t - t1) / (t2 - t1)
             value = v1 + rate * (v2 - v1)
         setattr(optimizer, self._attr, value)
 
