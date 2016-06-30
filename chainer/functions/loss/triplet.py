@@ -62,11 +62,11 @@ def triplet(anchor, positive, negative, margin=0.2):
     """Computes triplet loss.
 
     It takes a triplet of variables as inputs, :math:`a`, :math:`p` and
-    :math:`n`, anchor, positive example and negative example respectively.
+    :math:`n`: anchor, positive example and negative example respectively.
     The triplet defines a relative similarity between samples.
     Let :math:`N` and :math:`K` denote mini-batchsize and the dimension of
     input variables, respectively. The shape of all input variables should be
-    ``(N, K)``.
+    :math:`(N, K)`.
 
     .. math::
         L(a, p, n) = \\frac{1}{N} \\left( \\sum_{i=1}^N \\max \{d(a_i, p_i)
@@ -76,13 +76,13 @@ def triplet(anchor, positive, negative, margin=0.2):
 
     Args:
         anchor (~chainer.Variable): The anchor example variable. The shape
-            should be (N, K), where N denotes the minibatch size, and K denotes
-            the dimension of anchor.
+            should be :math:`(N, K)`, where :math:`N` denotes the minibatch
+            size, and :math:`K` denotes the dimension of the anchor.
         positive (~chainer.Variable): The positive example variable. The shape
             should be the same as anchor.
-        negative (~chainer.Variable): The negatove example variable. The shape
+        negative (~chainer.Variable): The negative example variable. The shape
             should be the same as anchor.
-        margin (float): A parameter for triplet loss. It should be positive
+        margin (float): A parameter for triplet loss. It should be a positive
             value.
 
     Returns:
@@ -90,7 +90,8 @@ def triplet(anchor, positive, negative, margin=0.2):
             calculated by the above equation.
 
     .. note::
-        This cost can be used to train triplet networks. See `Learning
-         Fine-grained Image Similarity with Deep Ranking` for details.
+        This cost can be used to train triplet networks. See `Learning \
+        Fine-grained Image Similarity with Deep Ranking \
+        <https://arxiv.org/abs/1404.4661>`_ for details.
     """
     return Triplet(margin)(anchor, positive, negative)
