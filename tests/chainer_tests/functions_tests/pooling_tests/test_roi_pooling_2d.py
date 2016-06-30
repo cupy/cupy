@@ -14,7 +14,7 @@ from chainer.testing import condition
 class TestROIPooling2D(unittest.TestCase):
 
     def setUp(self):
-        N = 4
+        N = 3
         n_channels = 3
         self.x = numpy.arange(
             N * n_channels * 12 * 8,
