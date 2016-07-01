@@ -36,7 +36,8 @@ from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
-from chainer.functions.evaluation import classification_summary as classification_summary_
+from chainer.functions.evaluation import classification_summary \
+    as classification_summary_
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
