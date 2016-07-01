@@ -1,16 +1,13 @@
 import unittest
 
 import numpy
-import six
 
 import chainer
 from chainer import cuda
 from chainer import functions as F
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
-from chainer.utils import type_check
 
 
 def recall(preds, ts, dtype, label_num):
@@ -35,7 +32,8 @@ def precision(preds, ts, dtype, label_num):
 
 def f1_score(precision, recall, beta=1.0):
     beta_square = beta * beta
-    return (1 + beta_square) * precision * recall / (beta_square * precision + recall)
+    return ((1 + beta_square) * precision * recall /
+            (beta_square * precision + recall))
 
 
 def support(ts, dtype, label_num):
@@ -61,7 +59,8 @@ class TestClassificationSummary(unittest.TestCase):
     def setUp(self):
         self.label_num = 3
         self.y = numpy.random.uniform(-1, 1, self.y_shape).astype(self.dtype)
-        self.t = numpy.random.randint(0, self.label_num, self.t_shape).astype(numpy.int32)
+        self.t = numpy.random.randint(
+            0, self.label_num, self.t_shape).astype(numpy.int32)
         self.check_forward_options = {}
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
@@ -69,7 +68,7 @@ class TestClassificationSummary(unittest.TestCase):
     def check_forward(self, xp):
         y = chainer.Variable(xp.asarray(self.y))
         t = chainer.Variable(xp.asarray(self.t))
-        p_acutual, r_acutual, f1_actual, s_actual = F.classification_summary(
+        p_actual, r_actual, f1_actual, s_actual = F.classification_summary(
             y, t, self.label_num, self.beta)
 
         pred = self.y.argmax(axis=1).reshape(self.t.shape)
