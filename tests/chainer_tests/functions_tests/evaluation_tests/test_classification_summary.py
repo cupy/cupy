@@ -76,12 +76,20 @@ class TestClassificationSummary(unittest.TestCase):
         r_expect = recall(pred, self.t, self.dtype, self.label_num)
         f1_expect = f1_score(p_expect, r_expect, self.beta)
         s_expect = support(self.t, self.dtype, self.label_num)
+        chainer.testing.assert_allclose(p_actual.data, p_expect,
+                                        **self.check_forward_options)
+        chainer.testing.assert_allclose(r_actual.data, r_expect,
+                                        **self.check_forward_options)
         chainer.testing.assert_allclose(f1_actual.data, f1_expect,
                                         **self.check_forward_options)
+        chainer.testing.assert_allclose(s_actual.data, s_expect,
+                                        **self.check_forward_options)
 
+    @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(numpy)
 
+    @condition.retry(3)
     @attr.gpu
     def test_forward_gpu(self):
         self.check_forward(cuda.cupy)
