@@ -76,6 +76,35 @@ class DilatedConvolution2DFunction(function.Function):
         return numpy.rollaxis(y, 3, 1),
 
     def forward_gpu(self, inputs):
+        x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
+
+        out_c, _, kh, kw = W.shape
+        n, c, h, w = x.shape
+        dkh, dkw = kh + (kh - 1) * (self.dy - 1), kw + (kw - 1) * (self.dx - 1)
+
+        out_h = conv.get_conv_outsize(h, dkh, self.sy, self.ph,
+                                      cover_all=self.cover_all)
+        out_w = conv.get_conv_outsize(w, dkw, self.sx, self.pw,
+                                      cover_all=self.cover_all)
+
+        y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
+
+        # Implementation using im2col
+        self.col = conv.im2col_gpu(
+            x, dkh, dkw, self.sy, self.sx, self.ph, self.pw,
+            cover_all=self.cover_all)[:, :, 0:dkh:self.dy, 0:dkw:self.dx, :, :]
+        W_mat = W.reshape(out_c, -1)
+        col_mats = self.col.reshape(n, -1, out_h * out_w)
+        y_mats = y.reshape(n, out_c, -1)
+        # TODO(beam2d): Use streams or batch gemm
+        for i in moves.range(n):
+            y_mats[i] = W_mat.dot(col_mats[i])
+        # TODO(beam2d): Support unshared bias
+        if b is not None:
+            y += b[:, None, None]
+
+        return y,
 
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
