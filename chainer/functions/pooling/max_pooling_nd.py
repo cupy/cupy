@@ -132,7 +132,8 @@ def max_pooling_nd(x, ksize, stride=None, pad=0, cover_all=True,
         cover_all (bool): If ``True``, all spatial locations are pooled into
             some output pixels. It may make the output size larger.
         use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
-            uses cuDNN as the core implementation.
+            uses cuDNN as the core implementation. cuDNN supports more than
+            one-dimensional pooling.
 
     Returns:
         ~chainer.Variable: Output variable.
