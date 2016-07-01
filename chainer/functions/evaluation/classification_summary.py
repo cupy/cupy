@@ -91,13 +91,20 @@ def classification_summary(y, t, label_num=None, beta=1.0):
     If ``ignore_label`` is not ``None``, data points whose labels are ignored.
     ``label_num`` should specifies the number of label types.
     Each value in ``t`` should be the integer in ``[0, label_num)``.
-    if label_num
-    
+    If ``label_num`` is ``None``, we regard ``label_num`` to be the maximum
+    value of in ``t`` plus 1.
+
     Args:
         y (~chainer.Variable): Variable holding a vector of scores.
         t (~chainer.Variable): Variable holding ground truth label.
         label_num (int): the number of label types.
         beta (float): Strength of recall against precision in F1 score.
+
+    Returns:
+        4-tuple of ~chainer.Variable of size ``(label_num,)``.
+        Each element represents precision, recall, f1_score, and
+        support of this minibatch.
+
     """
     return ClassificationSummary(beta, label_num)(y, t)
 
