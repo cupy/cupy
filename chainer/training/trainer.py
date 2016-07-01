@@ -141,6 +141,10 @@ class Trainer(object):
         Extensions with the same priority are invoked in the order of
         registrations.
 
+        If two or more extensions with the same name are registered, suffixes
+        are added to the names of the second to last extensions. The suffix is
+        ``_N`` where N is the ordinal of the extensions.
+
         See :class:`Extension` for the interface of extensions.
 
         Args:
@@ -170,7 +174,6 @@ class Trainer(object):
                     raise TypeError('name is not given for the extension')
                 elif name == 'training':
                     raise ValueError('the name "training" is reserved')
-        extension.name = name
 
         if trigger is None:
             trigger = getattr(extension, 'trigger', None)
@@ -184,7 +187,14 @@ class Trainer(object):
             invoke_before_training = getattr(
                 extension, 'invoke_before_training', False)
 
-        self._extensions[name] = _ExtensionEntry(
+        modified_name = name
+        ordinal = 0
+        while modified_name in self._extensions:
+            ordinal += 1
+            modified_name = '%s_%d' % (name, ordinal)
+
+        extension.name = modified_name
+        self._extensions[modified_name] = _ExtensionEntry(
             extension, priority, trigger, invoke_before_training)
 
     def get_extension(self, name):
