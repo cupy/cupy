@@ -335,7 +335,7 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
             :math:`(p_1, p_2, ..., p_N)`. ``pad=p`` is equivalent to
             ``(p, p, ..., p)``.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
-             available.
+             available. cuDNN supports more than one-dimensional convolution.
         cover_all (bool): If ``True``, all spatial locations are convoluted
             into some output pixels. It may make the output size larger.
 
