@@ -235,6 +235,10 @@ softmax_cross_entropy
 ~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: softmax_cross_entropy
 
+triplet
+~~~~~~~
+.. autofunction:: triplet
+
 
 Mathematical functions
 ----------------------
@@ -370,4 +374,3 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
-
