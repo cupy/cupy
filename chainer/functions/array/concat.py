@@ -18,14 +18,19 @@ class Concat(function.Function):
         type_check.expect(in_types[0].ndim >
                           type_check.Variable(self.axis, 'axis'))
 
+        type_check.expect(
+            -in_types[0].ndim <= self.axis,
+            self.axis < in_types[0].ndim
+        )
         ndim = in_types[0].ndim.eval()
+        axis = self.axis % ndim
         for i in range(1, in_types.size().eval()):
             type_check.expect(
                 in_types[0].dtype == in_types[i].dtype,
                 in_types[0].ndim == in_types[i].ndim,
             )
             for d in range(0, ndim):
-                if d == self.axis:
+                if d == axis:
                     continue
                 type_check.expect(in_types[0].shape[d] == in_types[i].shape[d])
 

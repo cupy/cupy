@@ -1,7 +1,11 @@
 import nose
 
+from chainer.testing import array
 from chainer.testing import helper
 from chainer.testing import parameterized
+
+
+assert_allclose = array.assert_allclose
 
 parameterize = parameterized.parameterize
 product = parameterized.product

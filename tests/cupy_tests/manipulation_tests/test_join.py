@@ -97,3 +97,62 @@ class TestJoin(unittest.TestCase):
         b = cupy.empty((3, 1))
         with self.assertRaises(ValueError):
             cupy.vstack((a, b))
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_array_equal()
+    def test_stack(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        b = testing.shaped_arange((2, 3), xp)
+        c = testing.shaped_arange((2, 3), xp)
+        return xp.stack((a, b, c))
+
+    def test_stack_value(self):
+        a = testing.shaped_arange((2, 3), cupy)
+        b = testing.shaped_arange((2, 3), cupy)
+        c = testing.shaped_arange((2, 3), cupy)
+        s = cupy.stack((a, b, c))
+        self.assertEqual(s.shape, (3, 2, 3))
+        cupy.testing.assert_array_equal(s[0], a)
+        cupy.testing.assert_array_equal(s[1], b)
+        cupy.testing.assert_array_equal(s[2], c)
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_array_equal()
+    def test_stack_with_axis(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.stack((a, a), axis=1)
+
+    def test_stack_with_axis_value(self):
+        a = testing.shaped_arange((2, 3), cupy)
+        s = cupy.stack((a, a), axis=1)
+
+        self.assertEqual(s.shape, (2, 2, 3))
+        cupy.testing.assert_array_equal(s[:, 0, :], a)
+        cupy.testing.assert_array_equal(s[:, 1, :], a)
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_array_equal()
+    def test_stack_with_negative_axis(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.stack((a, a), axis=-1)
+
+    def test_stack_with_negative_axis_value(self):
+        a = testing.shaped_arange((2, 3), cupy)
+        s = cupy.stack((a, a), axis=-1)
+
+        self.assertEqual(s.shape, (2, 3, 2))
+        cupy.testing.assert_array_equal(s[:, :, 0], a)
+        cupy.testing.assert_array_equal(s[:, :, 1], a)
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_raises()
+    def test_stack_different_shape(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        b = testing.shaped_arange((2, 4), xp)
+        return xp.stack([a, b])
+
+    @testing.with_requires('numpy>=1.10')
+    @testing.numpy_cupy_raises()
+    def test_stack_out_of_bounds(self, xp):
+        a = testing.shaped_arange((2, 3), xp)
+        return xp.stack([a, a], axis=3)

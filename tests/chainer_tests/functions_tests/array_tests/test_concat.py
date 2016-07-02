@@ -25,6 +25,9 @@ from chainer.testing import attr
         {'shape': (2, 7, 3), 'axis': 1,
          'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
                     [slice(None), slice(5, None)]]},
+        {'shape': (2, 7, 3), 'axis': -2,
+         'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
+                    [slice(None), slice(5, None)]]},
     ],
     [
         {'dtype': numpy.float16},

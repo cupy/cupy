@@ -25,6 +25,8 @@ from chainer.testing import attr
                     [slice(None), slice(4, None)]]},
         {'shape': (2,), 'axis': 0, 'ys_section': [1],
          'slices': [slice(None, 1), slice(1, None)]},
+        {'shape': (2,), 'axis': 0, 'ys_section': [],
+         'slices': [slice(None, None)]},
         {'shape': (2, 7, 3), 'axis': 1, 'ys_section': [2, 5],
          'slices': [[slice(None), slice(None, 2)], [slice(None), slice(2, 5)],
                     [slice(None), slice(5, None)]]},
@@ -47,7 +49,8 @@ class TestSplitAxis(unittest.TestCase):
 
     def check_forward(self, x_data, ys_data, indices_or_sections, axis):
         x = chainer.Variable(x_data)
-        ys = functions.split_axis(x, indices_or_sections, axis)
+        ys = functions.split_axis(
+            x, indices_or_sections, axis, force_tuple=True)
         for yd, y in zip(ys_data, ys):
             self.assertEqual(y.data.dtype, self.dtype)
             self.assertIsInstance(y.data.shape, tuple)
@@ -65,7 +68,8 @@ class TestSplitAxis(unittest.TestCase):
 
     def check_backward(self, x_data, indices_or_sections, axis):
         x = chainer.Variable(x_data)
-        ys = functions.split_axis(x, indices_or_sections, axis)
+        ys = functions.split_axis(
+            x, indices_or_sections, axis, force_tuple=True)
         for y in ys:
             y.grad = y.data
         ys[0].backward()
