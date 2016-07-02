@@ -19,6 +19,7 @@ from chainer.testing import parameterize
     {'axes': [], 'offsets': 0, 'new_axes': 0, 'sliced_shape': (1, 4, 3, 2)},
     {'axes': [], 'offsets': 0, 'new_axes': 2, 'sliced_shape': (4, 3, 1, 2)},
     {'axes': [], 'offsets': 0, 'new_axes': 3, 'sliced_shape': (4, 3, 2, 1)},
+    {'slices': (1, -1, 0), 'sliced_shape': ()},
 )
 class TestGetItem(unittest.TestCase):
 
@@ -26,20 +27,23 @@ class TestGetItem(unittest.TestCase):
         self.x_data = numpy.random.uniform(-1, 1, (4, 3, 2))
         self.shape = (4, 2, 1)
         self.gy_data = numpy.random.uniform(-1, 1, self.sliced_shape)
-        # Convert axes, offsets and shape to slices
-        if isinstance(self.offsets, int):
-            self.offsets = tuple([self.offsets] * len(self.shape))
-        if isinstance(self.axes, int):
-            self.axes = tuple([self.axes])
-        self.slices = [slice(None)] * len(self.shape)
-        for axis in self.axes:
-            self.slices[axis] = slice(self.offsets[axis],
-                                      self.offsets[axis]+self.shape[axis])
 
-        if hasattr(self, 'new_axes'):
-            self.slices.insert(self.new_axes, None)
+        if not hasattr(self, 'slices'):
+            # Convert axes, offsets and shape to slices
+            if isinstance(self.offsets, int):
+                self.offsets = tuple([self.offsets] * len(self.shape))
+            if isinstance(self.axes, int):
+                self.axes = tuple([self.axes])
 
-        self.slices = tuple(self.slices)
+            self.slices = [slice(None)] * len(self.shape)
+            for axis in self.axes:
+                self.slices[axis] = slice(self.offsets[axis],
+                                          self.offsets[axis]+self.shape[axis])
+
+            if hasattr(self, 'new_axes'):
+                self.slices.insert(self.new_axes, None)
+
+            self.slices = tuple(self.slices)
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)

@@ -4,6 +4,7 @@ from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 from chainer import variable
+from chainer import utils
 
 
 class GetItem(function.Function):
@@ -22,7 +23,7 @@ class GetItem(function.Function):
 
     def forward(self, xs):
         ary = xs[0]
-        return ary[tuple(self.slices)],
+        return utils.force_array(ary[tuple(self.slices)]),
 
     def backward(self, xs, gys):
         xp = cuda.get_array_module(*xs)
@@ -37,7 +38,9 @@ def get_item(x, slices):
 
     Args:
         x (tuple of Variables): Variable to be sliced.
-        slices (slice or tuple of slices): Slice objects to slice variable.
+        slices (int, slice or None or tuple of them): Basic slicing to slice
+            a variable. It supports ``int``, ``slice`` and ``newaxis``
+            (equivalent to ``None``).
 
     Returns:
         Variable: :class:`~chainer.Variable` object
