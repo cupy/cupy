@@ -3,11 +3,12 @@ import unittest
 import numpy
 
 import chainer
-from chainer import assert_allclose
 from chainer import cuda
+from chainer import gradient_check
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
+
 
 
 class TestHighway(unittest.TestCase):
@@ -44,7 +45,7 @@ class TestHighway(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.link(x)
         self.assertEqual(y.data.dtype, numpy.float32)
-        assert_allclose(self.y, y.data)
+        gradient_check.assert_allclose(self.y, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
