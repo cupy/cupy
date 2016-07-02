@@ -1,5 +1,5 @@
-from chainer.functions.array import split_axis
 from chainer.functions.array import reshape
+from chainer.functions.array import split_axis
 
 
 def split(x, axis=0):
