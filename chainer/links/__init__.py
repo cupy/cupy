@@ -12,6 +12,7 @@ from chainer.links.connection import inceptionbn
 from chainer.links.connection import linear
 from chainer.links.connection import lstm
 from chainer.links.connection import mlp_convolution_2d
+from chainer.links.connection import highway
 from chainer.links.connection import parameter
 from chainer.links.loss import hierarchical_softmax
 from chainer.links.loss import negative_sampling
@@ -34,6 +35,7 @@ Linear = linear.Linear
 LSTM = lstm.LSTM
 StatelessLSTM = lstm.StatelessLSTM
 MLPConvolution2D = mlp_convolution_2d.MLPConvolution2D
+Highway = highway.Highway
 Parameter = parameter.Parameter
 
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
