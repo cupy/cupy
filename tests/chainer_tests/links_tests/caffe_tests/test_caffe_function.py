@@ -920,6 +920,37 @@ class TestScaleOneBottomWithBias(TestCaffeFunctionBaseMock):
         self.mock.assert_called_once_with(self.inputs[0])
 
 
+class TestSlice(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.split_axis'
+    in_shapes = [(3, 4, 3)]
+    out_shapes = [(3, 2, 3), (3, 2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'slice',
+                'type': 'Slice',
+                'bottom': ['x'],
+                'top': ['y1', 'y2'],
+                'slice_param': {
+                    'axis': 1
+                }
+            }
+        ]
+    }
+
+    def test_slice(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y1', 'y2'])
+        self.mock.assert_called_once_with(
+            self.inputs[0],
+            indices_or_sections=2,
+            axis=1
+        )
+
+
 class TestSoftmax(TestCaffeFunctionBaseMock):
 
     func_name = 'chainer.functions.softmax'
