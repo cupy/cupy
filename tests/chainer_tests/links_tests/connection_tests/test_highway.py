@@ -10,7 +10,6 @@ from chainer import testing
 from chainer.testing import attr
 
 
-
 class TestHighway(unittest.TestCase):
 
     in_out_size = 3
