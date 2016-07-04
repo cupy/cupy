@@ -47,8 +47,7 @@ class TestSequentialIterator(unittest.TestCase):
         self.assertTrue(it.is_new_epoch)
         self.assertEqual(it.epoch, 1)
         for i in range(2):
-            with self.assertRaises(StopIteration):
-                it.next()
+            self.assertRaises(StopIteration, it.next)
 
     def test_iterator_not_repeat_not_even(self):
         dataset = [1, 2, 3, 4, 5]

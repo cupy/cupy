@@ -43,8 +43,7 @@ class TestMultiprocessIterator(unittest.TestCase):
         batches = sum([it.next()[:] for _ in range(3)], [])
         self.assertEqual(sorted(batches), dataset)
         for _ in range(2):
-            with self.assertRaises(StopIteration):
-                it.next()
+            self.assertRaises(StopIteration, it.next):
 
     def test_iterator_not_repeat_not_even(self):
         dataset = [1, 2, 3, 4, 5]
@@ -54,8 +53,7 @@ class TestMultiprocessIterator(unittest.TestCase):
         batch1 = it.next()[:]
         batch2 = it.next()[:]
         batch3 = it.next()[:]
-        with self.assertRaises(StopIteration):
-            it.next()
+        self.assertRaises(StopIteration, it.next):
 
         self.assertEqual(len(batch3), 1)
         self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
