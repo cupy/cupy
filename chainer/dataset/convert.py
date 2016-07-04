@@ -87,14 +87,14 @@ def concat_examples(batch, device=None, padding=None):
 
 def _concat_arrays(arrays, padding):
     if padding is not None:
-        return _concate_arrays_with_padding(arrays, padding)
+        return _concat_arrays_with_padding(arrays, padding)
 
     xp = cuda.get_array_module(arrays[0])
     with cuda.get_device(arrays[0]):
         return xp.concatenate([array[None] for array in arrays])
 
 
-def _concate_arrays_with_padding(arrays, padding):
+def _concat_arrays_with_padding(arrays, padding):
     shape = numpy.array(arrays[0].shape, dtype=int)
     for array in arrays[1:]:
         if numpy.any(shape != array.shape):
