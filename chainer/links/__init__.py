@@ -8,12 +8,12 @@ from chainer.links.connection import convolution_2d
 from chainer.links.connection import deconvolution_2d
 from chainer.links.connection import embed_id
 from chainer.links.connection import gru
+from chainer.links.connection import highway
 from chainer.links.connection import inception
 from chainer.links.connection import inceptionbn
 from chainer.links.connection import linear
 from chainer.links.connection import lstm
 from chainer.links.connection import mlp_convolution_2d
-from chainer.links.connection import highway
 from chainer.links.connection import parameter
 from chainer.links.connection import scale
 from chainer.links.loss import hierarchical_softmax
@@ -32,13 +32,13 @@ Deconvolution2D = deconvolution_2d.Deconvolution2D
 EmbedID = embed_id.EmbedID
 GRU = gru.GRU
 StatefulGRU = gru.StatefulGRU
+Highway = highway.Highway
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN
 Linear = linear.Linear
 LSTM = lstm.LSTM
 StatelessLSTM = lstm.StatelessLSTM
 MLPConvolution2D = mlp_convolution_2d.MLPConvolution2D
-Highway = highway.Highway
 Parameter = parameter.Parameter
 Scale = scale.Scale
 
