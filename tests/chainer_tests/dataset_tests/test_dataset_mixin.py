@@ -18,13 +18,15 @@ class SimpleDataset(dataset.DatasetMixin):
 
 class TestDatasetMixin(unittest.TestCase):
 
+    def setUp(self):
+        self.ds = SimpleDataset([1, 2, 3, 4, 5])
+
     def test_getitem(self):
-        ds = SimpleDataset([1, 2, 3, 4, 5])
-        for i in range(len(ds.values)):
-            self.assertEqual(ds[i], ds.values[i])
+        for i in range(len(self.ds.values)):
+            self.assertEqual(self.ds[i], self.ds.values[i])
 
     def test_slice(self):
-        ds = SimpleDataset([1, 2, 3, 4, 5])
+        ds = self.ds
         self.assertEqual(ds[:], ds.values)
         self.assertEqual(ds[1:], ds.values[1:])
         self.assertEqual(ds[2:], ds.values[2:])
