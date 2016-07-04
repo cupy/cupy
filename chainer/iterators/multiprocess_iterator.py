@@ -13,8 +13,8 @@ class MultiprocessIterator(iterator.Iterator):
 
     This is an implementation of :class:`~chainer.dataset.Iterator` that loads
     examples with worker processes. It uses the standard :mod:`multiprocessing`
-    module to parallelize the loading. In order to access the dataset by worker
-    processes, the dataset is sent to them in the standard way using pickle.
+    module to parallelize the loading. The dataset is sent to the worker
+    processes in the standard way using pickle.
 
     Note that this iterator effectively prefetches the examples for the next
     batch asynchronously after the current batch is returned.
@@ -25,7 +25,7 @@ class MultiprocessIterator(iterator.Iterator):
     Args:
         dataset (~chainer.dataset.Dataset): Dataset to iterate.
         batch_size (int): Number of examples within each batch.
-        repeat (bool): If True, then it infinitely loops over the dataset.
+        repeat (bool): If ``True``, then it infinitely loops over the dataset.
             Otherwise, it stops iteration at the end of the first epoch.
         n_processes (int): Number of worker processes. The number of CPUs is
             used by default.
