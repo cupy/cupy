@@ -42,8 +42,8 @@ class Trainer(object):
     :func:`make_extension`. See :class:`Extension` for more details on custom
     extensions.
 
-    Users can register extensions to the trainer by calling the
-    :meth:`add_extension` method, where some configurations can be added.
+    Users can register extensions to the trainer by calling the :meth:`extend`
+    method, where some configurations can be added.
 
     - Trigger of an extension is a callable object that takes the trainer
       object as the argument, and is called at each iteration. It decides

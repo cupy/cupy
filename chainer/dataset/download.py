@@ -27,7 +27,8 @@ def set_dataset_root(path):
 
     There are two ways to set the dataset root directory. One is by setting the
     environmant variable ``CHAINER_DATASET_ROOT``. The other is by using this
-    function. The default dataset root is ``$HOME/.chainer/dataset``.
+    function. If both are specified, one specified via this function is used.
+    The default dataset root is ``$HOME/.chainer/dataset``.
 
     Args:
         path (str): Path to the new dataset root directory.
@@ -41,7 +42,7 @@ def get_dataset_directory(dataset_name, create_directory=True):
     """Gets the path to the directory of given dataset.
 
     The generated path is just a concatenation of the global root directory
-    (see :func:`set_datasets_root` for how to change it) and the dataset name.
+    (see :func:`set_dataset_root` for how to change it) and the dataset name.
     The dataset name can contain slashes, which are treated as path separators.
 
     Args:
@@ -65,6 +66,12 @@ def get_dataset_directory(dataset_name, create_directory=True):
 
 def cached_download(url):
     """Downloads a file and caches it.
+
+    It downloads a file from the URL if there is no corresponding cache. After
+    the download, this function stores a cache to the directory under the
+    dataset root (see :func:`set_dataset_root`). If there is already a cache
+    for the given URL, it just returns the path to the cache without
+    downloading the same file.
 
     Args:
         url (str): URL to download from.
@@ -104,10 +111,10 @@ def cached_download(url):
 def cache_or_load_file(path, creator, loader):
     """Caches a file if it does not exist, or loads it otherwise.
 
-    This is a utility function used in dataset loading routines. The creator
-    creates the file to given path, and returns the content. If the file
-    already exists, the loader is called instead, and it loads the cached file
-    and returns the content.
+    This is a utility function used in dataset loading routines. The
+    ``creator`` creates the file to given path, and returns the content. If the
+    file already exists, the ``loader`` is called instead, and it loads the
+    file and returns the content.
 
     Note that the path passed to the creator is temporary one, and not same as
     the path given to this function. This function safely renames the file
