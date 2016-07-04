@@ -89,7 +89,7 @@ def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
             :func:`~chainer.utils.conv.get_conv_outsize` must be equal to
             the shape of the 2d array in the input batch ``x``.
         cover_all (bool): If ``True``, all spatial locations are pooled
-            into some output pixels, and the output size is larger than that
+            into some output pixels, and the output size is smaller than that
             when cover_all is ``False``.
 
     Returns:
