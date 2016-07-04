@@ -101,6 +101,9 @@ class TestConcatExamples(unittest.TestCase):
         dicts = self.get_dict_arrays_to_concat(numpy)
         self.check_concat_dicts(dicts, cuda.Device().id)
 
+
+class TestConcatExamplesWithPadding(unittest.TestCase):
+
     def check_concat_arrays_padding(self, xp):
         arrays = [xp.random.rand(3, 4),
                   xp.random.rand(2, 5),
