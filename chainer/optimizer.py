@@ -554,7 +554,8 @@ class GradientNoise(object):
 
     Args:
         eta (float): parameter that defines the scale of the noise, which for
-        the default noise function is recommended to be either 0.01, 0.3 or 1.0.
+        the default noise function is recommended to be either 0.01, 0.3
+        or 1.0.
         noise_func (function): the noise generating function which by default
         is given by `Adding Gradient Noise Improves Learning for Very Deep
         Networks <http://arxiv.org/pdf/1511.06807>`_.
