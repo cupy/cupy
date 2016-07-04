@@ -93,3 +93,6 @@ class TestClassificationSummary(unittest.TestCase):
     @attr.gpu
     def test_forward_gpu(self):
         self.check_forward(cuda.cupy)
+
+
+testing.run_module(__name__, __file__)
