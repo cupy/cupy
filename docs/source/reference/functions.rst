@@ -31,6 +31,10 @@ clipped_relu
 ~~~~~~~~~~~~
 .. autofunction:: clipped_relu
 
+crelu
+~~~~~~~~~~~~
+.. autofunction:: crelu
+
 elu
 ~~~
 .. autofunction:: elu
@@ -231,6 +235,10 @@ softmax_cross_entropy
 ~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: softmax_cross_entropy
 
+triplet
+~~~~~~~
+.. autofunction:: triplet
+
 
 Mathematical functions
 ----------------------
@@ -246,6 +254,10 @@ batch_l2_norm_squared
 batch_matmul
 ~~~~~~~~~~~~
 .. autofunction:: batch_matmul
+
+bias
+~~~~
+.. autofunction:: bias
 
 clip
 ~~~~
@@ -298,6 +310,10 @@ min
 minimum
 ~~~~~~
 .. autofunction:: minimum
+
+scale
+~~~~~
+.. autofunction:: scale
 
 sin
 ~~~
@@ -358,4 +374,3 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
-
