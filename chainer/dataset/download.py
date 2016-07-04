@@ -146,9 +146,6 @@ def cache_or_load_file(path, creator, loader):
         with filelock.FileLock(lock_path):
             if not os.path.exists(path):
                 shutil.move(temp_path, path)
-    except OSError:
-        if not os.path.exists(path):
-            raise
     finally:
         shutil.rmtree(temp_dir)
 
