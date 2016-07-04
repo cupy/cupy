@@ -110,6 +110,7 @@ class TestConcatExamplesWithPadding(unittest.TestCase):
                   xp.random.rand(4, 3)]
         array = dataset.concat_examples(arrays, padding=0)
         self.assertEqual(array.shape, (3, 4, 5))
+        self.assertEqual(type(array), type(arrays[0]))
 
         arrays = [cuda.to_cpu(a) for a in arrays]
         array = cuda.to_cpu(array)
@@ -138,6 +139,8 @@ class TestConcatExamplesWithPadding(unittest.TestCase):
         self.assertEqual(len(arrays), 2)
         self.assertEqual(arrays[0].shape, (3, 4, 5))
         self.assertEqual(arrays[1].shape, (3, 3, 6))
+        self.assertEqual(type(arrays[0]), type(tuples[0][0]))
+        self.assertEqual(type(arrays[1]), type(tuples[0][1]))
 
         for i in range(len(tuples)):
             tuples[i] = cuda.to_cpu(tuples[i][0]), cuda.to_cpu(tuples[i][1])
@@ -176,6 +179,8 @@ class TestConcatExamplesWithPadding(unittest.TestCase):
         self.assertIn('y', arrays)
         self.assertEqual(arrays['x'].shape, (3, 4, 5))
         self.assertEqual(arrays['y'].shape, (3, 3, 6))
+        self.assertEqual(type(arrays['x']), type(dicts[0]['x']))
+        self.assertEqual(type(arrays['y']), type(dicts[0]['y']))
 
         for d in dicts:
             d['x'] = cuda.to_cpu(d['x'])
