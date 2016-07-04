@@ -22,18 +22,18 @@ class AccuracyWithIgnoreLabel(object):
 
 
 @testing.parameterize(*testing.product({
-    'evaluator': [AccuracyWithIgnoreLabel(), None],
+    'accfun': [AccuracyWithIgnoreLabel(), None],
     'compute_accuracy': [True, False],
     'x_num': [1, 2]
 }))
 class TestClassifier(unittest.TestCase):
 
     def setUp(self):
-        if self.evaluator is None:
+        if self.accfun is None:
             self.link = links.Classifier(chainer.Link())
         else:
             self.link = links.Classifier(chainer.Link(),
-                                         evaluator=self.evaluator)
+                                         accfun=self.accfun)
         self.link.compute_accuracy = self.compute_accuracy
 
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)
