@@ -13,9 +13,15 @@ class TestConcatExamples(unittest.TestCase):
     def get_arrays_to_concat(self, xp):
         return [xp.random.rand(2, 3) for _ in range(5)]
 
+    def check_device(self, array, device):
+        if device is not None:
+            self.assertIsInstance(array, cuda.ndarray)
+            self.assertEqual(array.device.id, device)
+
     def check_concat_arrays(self, arrays, device=None):
         array = dataset.concat_examples(arrays, device)
         self.assertEqual(array.shape, (len(arrays),) + arrays[0].shape)
+        self.check_device(array, device)
 
         for x, y in zip(array, arrays):
             numpy.testing.assert_array_equal(
@@ -45,6 +51,7 @@ class TestConcatExamples(unittest.TestCase):
         for i in range(len(arrays)):
             shape = (len(tuples),) + tuples[0][i].shape
             self.assertEqual(arrays[i].shape, shape)
+            self.check_device(arrays[i], device)
 
             for x, y in zip(arrays[i], tuples):
                 numpy.testing.assert_array_equal(
@@ -74,6 +81,7 @@ class TestConcatExamples(unittest.TestCase):
         for key in arrays:
             shape = (len(dicts),) + dicts[0][key].shape
             self.assertEqual(arrays[key].shape, shape)
+            self.check_device(arrays[key], device)
 
             for x, y in zip(arrays[key], dicts):
                 numpy.testing.assert_array_equal(
