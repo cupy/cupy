@@ -117,7 +117,6 @@ class MultiprocessIterator(iterator.Iterator):
         for k in six.moves.range(self.batch_size):
             if i >= N:
                 if not self._repeat:
-                    i = N
                     break
                 i = 0
                 # We cannot shuffle the order directly here, since the iterator
@@ -141,7 +140,6 @@ class MultiprocessIterator(iterator.Iterator):
                 self.epoch += 1
                 self.is_new_epoch = True
                 if not self._repeat:
-                    i = N
                     break
                 i = 0
         self.current_position = i

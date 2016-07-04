@@ -48,7 +48,6 @@ class ShuffledIterator(iterator.Iterator):
                 self.epoch += 1
                 self.is_new_epoch = True
                 if not self._repeat:
-                    i = N
                     break
                 i = 0
                 numpy.random.shuffle(self._order)
