@@ -98,10 +98,7 @@ def _concat_arrays_with_padding(arrays, padding):
     shape = numpy.array(arrays[0].shape, dtype=int)
     for array in arrays[1:]:
         if numpy.any(shape != array.shape):
-            if padding is None:
-                raise ValueError('shape mismatch within a batch')
-            else:
-                numpy.maximum(shape, array.shape, shape)
+            numpy.maximum(shape, array.shape, shape)
     shape = tuple(numpy.insert(shape, 0, len(arrays)))
 
     xp = cuda.get_array_module(arrays[0])
