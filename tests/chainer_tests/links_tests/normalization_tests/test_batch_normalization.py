@@ -243,4 +243,49 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
         gy = cuda.to_gpu(self.gy)
         self.check_backward(x, gy)
 
+
+class TestInitialize(unittest.TestCase):
+
+    def setUp(self):
+        self.decay = 0.9
+        self.size = 3
+        self.initial_gamma = numpy.random.uniform(-1, 1, self.size)
+        self.initial_gamma = self.initial_gamma.astype(numpy.float32)
+        self.initial_beta = numpy.random.uniform(-1, 1, self.size)
+        self.initial_beta = self.initial_beta.astype(numpy.float32)
+        self.link = links.BatchNormalization(self.size, self.decay,
+                                             initial_gamma=self.initial_gamma,
+                                             initial_beta=self.initial_beta)
+
+    @condition.retry(3)
+    def test_initialize_cpu(self):
+        testing.assert_allclose(self.initial_gamma, self.link.gamma.data)
+        testing.assert_allclose(self.initial_beta, self.link.beta.data)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_initialize_gpu(self):
+        self.link.to_gpu()
+        testing.assert_allclose(self.initial_gamma, self.link.gamma.data)
+        testing.assert_allclose(self.initial_beta, self.link.beta.data)
+
+
+class TestDefaultInitializer(unittest.TestCase):
+
+    def setUp(self):
+        self.decay = 0.9
+        self.size = 3
+        self.link = links.BatchNormalization(self.size, self.decay)
+
+    def test_initialize_cpu(self):
+        testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
+        testing.assert_allclose(numpy.zeros(self.size), self.link.beta.data)
+
+    @attr.gpu
+    def test_initialize_gpu(self):
+        self.link.to_gpu()
+        testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
+        testing.assert_allclose(numpy.zeros(self.size), self.link.beta.data)
+
+
 testing.run_module(__name__, __file__)
