@@ -8,7 +8,6 @@ from chainer import cuda
 from chainer import gradient_check
 from chainer import links
 from chainer import testing
-from chainer.testing import assert_allclose
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -260,18 +259,18 @@ class TestInitialize(unittest.TestCase):
 
     @condition.retry(3)
     def test_initialize_cpu(self):
-        assert_allclose(self.initial_gamma, self.link.gamma.data)
-        assert_allclose(self.initial_beta, self.link.beta.data)
+        testing.assert_allclose(self.initial_gamma, self.link.gamma.data)
+        testing.assert_allclose(self.initial_beta, self.link.beta.data)
 
     @attr.gpu
     @condition.retry(3)
     def test_initialize_gpu(self):
         self.link.to_gpu()
-        assert_allclose(self.initial_gamma, self.link.gamma.data)
-        assert_allclose(self.initial_beta, self.link.beta.data)
+        testing.assert_allclose(self.initial_gamma, self.link.gamma.data)
+        testing.assert_allclose(self.initial_beta, self.link.beta.data)
 
 
-class TestInitializeWithoutGammaAndBeta(unittest.TestCase):
+class TestDefaultInitializer(unittest.TestCase):
 
     def setUp(self):
         self.decay = 0.9
@@ -279,14 +278,14 @@ class TestInitializeWithoutGammaAndBeta(unittest.TestCase):
         self.link = links.BatchNormalization(self.size, self.decay)
 
     def test_initialize_cpu(self):
-        assert_allclose(numpy.ones(self.size), self.link.gamma.data)
-        assert_allclose(numpy.zeros(self.size), self.link.beta.data)
+        testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
+        testing.assert_allclose(numpy.zeros(self.size), self.link.beta.data)
 
     @attr.gpu
     def test_initialize_gpu(self):
         self.link.to_gpu()
-        assert_allclose(numpy.ones(self.size), self.link.gamma.data)
-        assert_allclose(numpy.zeros(self.size), self.link.beta.data)
+        testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
+        testing.assert_allclose(numpy.zeros(self.size), self.link.beta.data)
 
 
 testing.run_module(__name__, __file__)
