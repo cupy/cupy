@@ -130,6 +130,8 @@ class Trainer(object):
         self._done = False
         self._extensions = collections.OrderedDict()
 
+        updater.connect_trainer(self)
+
     def extend(self, extension, name=None, trigger=None, priority=None,
                invoke_before_training=None):
         """Registers an extension to the trainer.

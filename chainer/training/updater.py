@@ -13,6 +13,21 @@ class Updater(object):
     TODO(beam2d): document it.
 
     """
+    def connect_trainer(self, trainer):
+        """Connects the updater to the trainer that will call it.
+
+        The typical usage of this method is to register additional links to the
+        reporter of the trainer. This method is called at the end of the
+        initialization of :class:`~chainer.training.Trainer`. The default
+        implementation does nothing.
+
+        Args:
+            trainer (~chainer.training.Trainer): Trainer object to which the
+                updater is registered.
+
+        """
+        pass
+
     def finalize(self):
         """Finalizes the updater object.
 
