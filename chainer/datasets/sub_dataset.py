@@ -139,7 +139,7 @@ def get_cross_validation_datasets(dataset, n_fold, order=None):
         dataset: Dataset to split.
         n_fold (int): Number of splits for cross validation.
         order (sequence of ints): Order of indexes with which each split is
-            determined. If it is None, then no permutation is used.
+            determined. If it is ``None``, then no permutation is used.
 
     Returns:
         list of tuples: List of dataset splits.
