@@ -18,6 +18,23 @@ class SubDataset(dataset_mixin.DatasetMixin):
     Negative indexing is also allowed: in this case, the term ``start + i`` is
     replaced by ``finish + i``.
 
+    SubDataset is often used to split a dataset into training and validation
+    subsets. The training set is used for training, while the validation set is
+    used to track the generalization performance, i.e. how the learned model
+    works well on unseen data. We can tune hyperparameters (e.g. number of
+    hidden units, weight initializers, learning rate, etc.) by comparing the
+    validation performance. Note that we often use another set called test set
+    to measure the quality of the tuned hyperparameter, which can be made by
+    nesting multiple SubDatasets.
+
+    There are two ways to make training-validation splits. One is a single
+    split, where the dataset is split just into two subsets. It can be done by
+    :func:`split_dataset` or :func:`split_dataset_random`. The other one is a
+    :math:`k`-fold cross validation, in which the dataset is divided into
+    :math:`k` subsets, and :math:`k` different splits are generated using each
+    of the :math:`k` subsets as a validation set and the rest as a training
+    set. It can be done by :func:`get_cross_validation_datasets`.
+
     Args:
         dataset: Base dataset.
         start (int): The first index in the interval.
