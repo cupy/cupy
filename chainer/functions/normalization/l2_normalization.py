@@ -45,41 +45,44 @@ class NormalizeL2(function.Function):
 
         return x / norm,
 
-    def backward(self, inputs, gy):
+    def backward_cpu(self, inputs, gy):
         x = inputs[0]
         gy = gy[0]
 
-        xp = cuda.get_array_module(x)
+        norm = numpy.linalg.norm(x, axis=1) + self.eps
+        norm = norm[:, numpy.newaxis]
 
-        if xp is numpy:
-            norm = numpy.linalg.norm(x, axis=1) + self.eps
-            norm = norm[:, numpy.newaxis]
+        gx = gy * norm - (x * gy).sum(axis=1)[:, numpy.newaxis] * x / norm
+        gx = gx / norm**2
 
-            gx = gy * norm - (x * gy).sum(axis=1)[:, numpy.newaxis] * x / norm
-            gx = gx / norm**2
-        else:
-            l2norm_kernel = cuda.cupy.ReductionKernel(
-                'T x, float32 eps',
-                'T y',
-                'x * x',
-                'a + b',
-                'y = sqrt(a) + eps',
-                '0',
-                'l2norm'
-            )
-            norm = cuda.cupy.broadcast_to(
-                l2norm_kernel(x, self.eps, axis=1).reshape(-1, 1),
-                x.shape
-            )
-            x_gy = cuda.cupy.broadcast_to(
-                (x * gy).sum(axis=1, keepdims=True),
-                x.shape
-            )
-            gx = cuda.elementwise(
-                'T gy, T x, T x_gy, T norm',
-                'T gx',
-                'gx = (gy * norm - x_gy * x / norm) / (norm * norm)',
-                'l2_bwd')(gy, x, x_gy, norm)
+        return gx,
+
+    def backward_gpu(self, inputs, gy):
+        x = inputs[0]
+        gy = gy[0]
+
+        l2norm_kernel = cuda.cupy.ReductionKernel(
+            'T x, float32 eps',
+            'T y',
+            'x * x',
+            'a + b',
+            'y = sqrt(a) + eps',
+            '0',
+            'l2norm'
+        )
+        norm = cuda.cupy.broadcast_to(
+            l2norm_kernel(x, self.eps, axis=1).reshape(-1, 1),
+            x.shape
+        )
+        x_gy = cuda.cupy.broadcast_to(
+            (x * gy).sum(axis=1, keepdims=True),
+            x.shape
+        )
+        gx = cuda.elementwise(
+            'T gy, T x, T x_gy, T norm',
+            'T gx',
+            'gx = (gy * norm - x_gy * x / norm) / (norm * norm)',
+            'l2_bwd')(gy, x, x_gy, norm)
 
         return gx,
 
