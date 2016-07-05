@@ -40,7 +40,7 @@ class SubDataset(dataset_mixin.DatasetMixin):
         start (int): The first index in the interval.
         finish (int): The next-to-the-last index in the interval.
         order (sequence of ints): Permutation of indexes in the base dataset.
-            If this is None, then the ascending order of indexes is used.
+            If this is ``None``, then the ascending order of indexes is used.
 
     """
     def __init__(self, dataset, start, finish, order=None):
