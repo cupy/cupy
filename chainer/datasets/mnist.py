@@ -46,7 +46,7 @@ def get_mnist(withlabel=True, ndim=1, scale=1., dtype=numpy.float32,
     train = _preprocess_mnist(train_raw, withlabel, ndim, scale, dtype,
                               label_dtype)
     test_raw = _retrieve_mnist_test()
-    test = _preprocess_mnist(test_raw, withlabel, ndim, scale,
+    test = _preprocess_mnist(test_raw, withlabel, ndim, scale, dtype,
                              label_dtype)
     return train, test
 
