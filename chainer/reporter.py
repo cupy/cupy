@@ -288,11 +288,8 @@ class DictSummary(object):
         for k, v in six.iteritems(d):
             if isinstance(v, variable.Variable):
                 v = v.data
-            elif numpy.isscalar(v):
+            if numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
                 summaries[k].add(v)
-            elif isinstance(v, (numpy.ndarray, cuda.ndarray)):
-                if v.ndim == 0:
-                    summaries[k].add(v)
 
     def compute_mean(self):
         """Creates a dictionary of mean values.

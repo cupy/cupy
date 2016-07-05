@@ -254,7 +254,6 @@ class Trainer(object):
                 self.observation = {}
                 with reporter.scope(self.observation):
                     update()
-
                     for name, entry in extensions:
                         if entry.trigger(self):
                             entry.extension(self)
