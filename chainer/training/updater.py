@@ -266,8 +266,50 @@ class ParallelUpdater(StandardUpdater):
             optimizer=optimizer,
             converter=converter
         )
+        assert models is not None or devices is not None, \
+            "Either 'models' or 'devices' must be defined."
+
+        if models is None:
+            names = devices.keys()
+            try:
+                names.remove('main')
+            except ValueError:
+                raise KeyError("'devices' must contain a 'main' key.")
+            models = {'main': optimizer.target}
+            for name in names:
+                models[name] = models[0].copy()
+
+        if devices is None:
+            devices = dict((name, i) for i, name in enumerate(names))
+
+        for name, model in models.items():
+            model.to_gpu(devices[name])
+
+        self._models = models
+
         self._update_func = update_func or _parallel_update(
             self, converter, models, devices)
+
+    def connect_trainer(self, trainer):
+        """Connects the updater to the trainer that will call it.
+
+        The typical usage of this method is to register additional links to the
+        reporter of the trainer. This method is called at the end of the
+        initialization of :class:`~chainer.training.Trainer`. The default
+        implementation does nothing.
+
+        Args:
+            trainer (~chainer.training.Trainer): Trainer object to which the
+                updater is registered.
+
+        """
+        # Add observers for all (other) models.
+        model_main = self.get_optimizer('main').target
+        models_others = {
+            k: v for k, v in self._models.items() if v != model_main
+        }
+        for name, model in models_others.items():
+            trainer.reporter.add_observer(name, model)
 
 
 def _parallel_update(updater, converter, models, devices):

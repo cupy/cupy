@@ -35,17 +35,14 @@ def main():
     print('')
 
     # See train_mnist.py for the meaning of these lines
-    model_0 = L.Classifier(train_mnist.MLP(784, args.unit, 10))
-    model_1 = model_0.copy()
-    model_0.to_gpu(args.gpu0)
-    model_1.to_gpu(args.gpu1)
+    model = L.Classifier(train_mnist.MLP(784, args.unit, 10))
 
     # Make a specified GPU current
     chainer.cuda.get_device(args.gpu0).use()
 
     # Setup an optimizer
     optimizer = chainer.optimizers.Adam()
-    optimizer.setup(model_0)
+    optimizer.setup(model)
 
     # Load the MNIST dataset
     train, test = chainer.datasets.get_mnist()
@@ -58,16 +55,12 @@ def main():
     updater = training.ParallelUpdater(
         train_iter,
         optimizer,
-        models={'main':model_0, 'second':model_1},
-        devices={'main':args.gpu0, 'second':args.gpu1},
+        devices={'main': args.gpu0, 'second': args.gpu1},
     )
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-    # Add observer for model on second gpu.
-    trainer.reporter.add_observer('second', model_1)
-
     # Evaluate the model with the test dataset for each epoch
-    trainer.extend(extensions.Evaluator(test_iter, model_0, device=args.gpu0))
+    trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu0))
 
     # Dump a computational graph from 'loss' variable at the first iteration
     trainer.extend(extensions.dump_graph('main/loss'))
