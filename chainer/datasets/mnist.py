@@ -9,8 +9,8 @@ from chainer.dataset import download
 from chainer.datasets import tuple_dataset
 
 
-def get_mnist(withlabel=True, ndim=1, scale=1.,
-              image_dtype=numpy.float32, label_dtype=numpy.int32):
+def get_mnist(withlabel=True, ndim=1, scale=1., dtype=numpy.float32,
+              label_dtype=numpy.int32):
     """Gets the MNIST dataset.
 
     `MNIST <http://yann.lecun.com/exdb/mnist/>`_ is a set of hand-written
@@ -33,8 +33,8 @@ def get_mnist(withlabel=True, ndim=1, scale=1.,
                 - ``ndim == 3``: the shape is ``(1, 28, 28)``
         scale (float): Pixel value scale. If it is 1 (default), pixels are
             scaled to the interval ``[0, 1]``.
-        image_dtype: Dtype of image arrays.
-        label_dtype: Dtype of label arrays.
+        dtype: Data type of resulting image arrays.
+        label_dtype: Data type of the labels.
 
     Returns:
         A tuple of two datasets. If ``withlabel`` is ``True``, both datasets
@@ -43,11 +43,11 @@ def get_mnist(withlabel=True, ndim=1, scale=1.,
 
     """
     train_raw = _retrieve_mnist_training()
-    train = _preprocess_mnist(train_raw, withlabel, ndim, scale,
-                              image_dtype, label_dtype)
+    train = _preprocess_mnist(train_raw, withlabel, ndim, scale, dtype,
+                              label_dtype)
     test_raw = _retrieve_mnist_test()
     test = _preprocess_mnist(test_raw, withlabel, ndim, scale,
-                             image_dtype, label_dtype)
+                             label_dtype)
     return train, test
 
 
