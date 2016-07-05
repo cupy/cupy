@@ -33,6 +33,9 @@ class TestSubDataset(unittest.TestCase):
         with self.assertRaises(ValueError):
             datasets.SubDataset(original, 1, 4, [2, 0, 3, 1])
 
+
+class TestSplitDataset(unittest.TestCase):
+
     def test_split_dataset(self):
         original = [1, 2, 3, 4, 5]
         subset1, subset2 = datasets.split_dataset(original, 2)
@@ -61,6 +64,9 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(subset2[0], 4)
         self.assertEqual(subset2[1], 2)
         self.assertEqual(subset2[2], 5)
+
+
+class TestGetCrossValidationDatasets(unittest.TestCase):
 
     def test_get_cross_validation_datasets(self):
         original = [1, 2, 3, 4, 5, 6]
