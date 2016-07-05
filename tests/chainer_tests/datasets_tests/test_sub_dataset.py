@@ -44,6 +44,13 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(subset2[1], 4)
         self.assertEqual(subset2[2], 5)
 
+    def test_split_dataset_invalid_position(self):
+        original = [1, 2, 3, 4, 5]
+        with self.assertRaises(ValueError):
+            datasets.split_dataset(original, -1)
+        with self.assertRaises(ValueError):
+            datasets.split_dataset(original, 5)
+
     def test_permuted_split_dataset(self):
         original = [1, 2, 3, 4, 5]
         subset1, subset2 = datasets.split_dataset(original, 2, [2, 0, 3, 1, 4])

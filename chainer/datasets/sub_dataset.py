@@ -94,8 +94,13 @@ def split_dataset(dataset, split_at, order=None):
             represents the examples of indexes ``order[split_at:]``.
 
     """
+    n_examples = len(dataset)
+    if split_at < 0:
+        raise ValueError('split_at must be non-negative')
+    if split_at >= n_examples:
+        raise ValueError('split_at exceeds the dataset size')
     subset1 = SubDataset(dataset, 0, split_at, order)
-    subset2 = SubDataset(dataset, split_at, len(dataset), order)
+    subset2 = SubDataset(dataset, split_at, n_examples, order)
     return subset1, subset2
 
 
