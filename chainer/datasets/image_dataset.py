@@ -101,7 +101,7 @@ class LabeledImageDataset(dataset_mixin.DatasetMixin):
                 pairs = []
                 for i, line in enumerate(pairs_file):
                     pair = line.strip().split()
-                    if len(pair) > 2:
+                    if len(pair) != 2:
                         raise ValueError(
                             'invalid format at line {} in file {}'.format(
                                 i, pairs_path))
