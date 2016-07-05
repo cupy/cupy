@@ -17,4 +17,3 @@ get_trigger = trigger.get_trigger
 
 Updater = updater.Updater
 StandardUpdater = updater.StandardUpdater
-ParallelUpdater = updater.ParallelUpdater
