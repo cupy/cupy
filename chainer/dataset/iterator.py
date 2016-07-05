@@ -17,7 +17,7 @@ class Iterator(object):
     Each implementation should provide the following attributes (or possibly
     read-only properties).
 
-    - ``batch_size``: the number of examples within each batch.
+    - ``batch_size``: the number of examples within each minibatch.
     - ``epoch``: the number of completed sweeps over the dataset.
     - ``epoch_detail``: floating point number version of the epoch. For
       example, if the iterator is at the middle of the dataset at the third

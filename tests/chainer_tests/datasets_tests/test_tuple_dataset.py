@@ -13,6 +13,7 @@ class TestTupleDataset(unittest.TestCase):
     def setUp(self):
         self.x0 = numpy.random.rand(3, 4)
         self.x1 = numpy.random.rand(3, 5)
+        self.z0 = numpy.random.rand(4, 4)
 
     def check_tuple_dataset(self, x0, x1):
         td = datasets.TupleDataset(x0, x1)
@@ -33,6 +34,15 @@ class TestTupleDataset(unittest.TestCase):
     @attr.gpu
     def test_tuple_dataset_gpu(self):
         self.check_tuple_dataset(cuda.to_gpu(self.x0), cuda.to_gpu(self.x1))
+
+    def test_tuple_dataset_len_mismatch(self):
+        with self.assertRaises(ValueError):
+            datasets.TupleDataset(self.x0, self.z0)
+
+    def test_tuple_dataset_overrun(self):
+        td = datasets.TupleDataset(self.x0, self.x1)
+        with self.assertRaises(IndexError):
+            td[3]
 
 
 testing.run_module(__name__, __file__)

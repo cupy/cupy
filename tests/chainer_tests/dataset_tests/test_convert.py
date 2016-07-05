@@ -13,9 +13,15 @@ class TestConcatExamples(unittest.TestCase):
     def get_arrays_to_concat(self, xp):
         return [xp.random.rand(2, 3) for _ in range(5)]
 
+    def check_device(self, array, device):
+        if device is not None:
+            self.assertIsInstance(array, cuda.ndarray)
+            self.assertEqual(array.device.id, device)
+
     def check_concat_arrays(self, arrays, device=None):
         array = dataset.concat_examples(arrays, device)
         self.assertEqual(array.shape, (len(arrays),) + arrays[0].shape)
+        self.check_device(array, device)
 
         for x, y in zip(array, arrays):
             numpy.testing.assert_array_equal(
@@ -45,6 +51,7 @@ class TestConcatExamples(unittest.TestCase):
         for i in range(len(arrays)):
             shape = (len(tuples),) + tuples[0][i].shape
             self.assertEqual(arrays[i].shape, shape)
+            self.check_device(arrays[i], device)
 
             for x, y in zip(arrays[i], tuples):
                 numpy.testing.assert_array_equal(
@@ -74,6 +81,7 @@ class TestConcatExamples(unittest.TestCase):
         for key in arrays:
             shape = (len(dicts),) + dicts[0][key].shape
             self.assertEqual(arrays[key].shape, shape)
+            self.check_device(arrays[key], device)
 
             for x, y in zip(arrays[key], dicts):
                 numpy.testing.assert_array_equal(
@@ -93,12 +101,16 @@ class TestConcatExamples(unittest.TestCase):
         dicts = self.get_dict_arrays_to_concat(numpy)
         self.check_concat_dicts(dicts, cuda.Device().id)
 
+
+class TestConcatExamplesWithPadding(unittest.TestCase):
+
     def check_concat_arrays_padding(self, xp):
         arrays = [xp.random.rand(3, 4),
                   xp.random.rand(2, 5),
                   xp.random.rand(4, 3)]
         array = dataset.concat_examples(arrays, padding=0)
         self.assertEqual(array.shape, (3, 4, 5))
+        self.assertEqual(type(array), type(arrays[0]))
 
         arrays = [cuda.to_cpu(a) for a in arrays]
         array = cuda.to_cpu(array)
@@ -127,6 +139,8 @@ class TestConcatExamples(unittest.TestCase):
         self.assertEqual(len(arrays), 2)
         self.assertEqual(arrays[0].shape, (3, 4, 5))
         self.assertEqual(arrays[1].shape, (3, 3, 6))
+        self.assertEqual(type(arrays[0]), type(tuples[0][0]))
+        self.assertEqual(type(arrays[1]), type(tuples[0][1]))
 
         for i in range(len(tuples)):
             tuples[i] = cuda.to_cpu(tuples[i][0]), cuda.to_cpu(tuples[i][1])
@@ -165,6 +179,8 @@ class TestConcatExamples(unittest.TestCase):
         self.assertIn('y', arrays)
         self.assertEqual(arrays['x'].shape, (3, 4, 5))
         self.assertEqual(arrays['y'].shape, (3, 3, 6))
+        self.assertEqual(type(arrays['x']), type(dicts[0]['x']))
+        self.assertEqual(type(arrays['y']), type(dicts[0]['y']))
 
         for d in dicts:
             d['x'] = cuda.to_cpu(d['x'])

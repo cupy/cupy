@@ -14,6 +14,12 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(subset[1], 3)
         self.assertEqual(subset[2], 4)
 
+    def test_sub_dataset_overrun(self):
+        original = [1, 2, 3, 4, 5]
+        subset = datasets.SubDataset(original, 1, 4)
+        with self.assertRaises(IndexError):
+            subset[len(subset)]
+
     def test_permuted_sub_dataset(self):
         original = [1, 2, 3, 4, 5]
         subset = datasets.SubDataset(original, 1, 4, [2, 0, 3, 1, 4])
@@ -21,6 +27,14 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(subset[0], 1)
         self.assertEqual(subset[1], 4)
         self.assertEqual(subset[2], 2)
+
+    def test_permuted_sub_dataset_len_mismatch(self):
+        original = [1, 2, 3, 4, 5]
+        with self.assertRaises(ValueError):
+            datasets.SubDataset(original, 1, 4, [2, 0, 3, 1])
+
+
+class TestSplitDataset(unittest.TestCase):
 
     def test_split_dataset(self):
         original = [1, 2, 3, 4, 5]
@@ -33,6 +47,13 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(subset2[1], 4)
         self.assertEqual(subset2[2], 5)
 
+    def test_split_dataset_invalid_position(self):
+        original = [1, 2, 3, 4, 5]
+        with self.assertRaises(ValueError):
+            datasets.split_dataset(original, -1)
+        with self.assertRaises(ValueError):
+            datasets.split_dataset(original, 5)
+
     def test_permuted_split_dataset(self):
         original = [1, 2, 3, 4, 5]
         subset1, subset2 = datasets.split_dataset(original, 2, [2, 0, 3, 1, 4])
@@ -43,6 +64,22 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(subset2[0], 4)
         self.assertEqual(subset2[1], 2)
         self.assertEqual(subset2[2], 5)
+
+    def test_split_dataset_with_invalid_length_permutation(self):
+        original = [1, 2, 3, 4, 5]
+        with self.assertRaises(ValueError):
+            datasets.split_dataset(original, 2, [2, 0, 3, 1])
+        with self.assertRaises(ValueError):
+            datasets.split_dataset(original, 2, [2, 0, 3, 1, 4, 5])
+
+    def test_split_dataset_random(self):
+        original = [1, 2, 3, 4, 5]
+        subset1, subset2 = datasets.split_dataset_random(original, 2)
+        reconst = sorted(set(subset1).union(subset2))
+        self.assertEqual(reconst, original)
+
+
+class TestGetCrossValidationDatasets(unittest.TestCase):
 
     def test_get_cross_validation_datasets(self):
         original = [1, 2, 3, 4, 5, 6]
@@ -114,6 +151,19 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(len(te3), 2)
         self.assertEqual(te3[0], 1)
         self.assertEqual(te3[1], 2)
+
+    def test_get_cross_validation_datasets_random(self):
+        original = [1, 2, 3, 4, 5, 6]
+        cvs = datasets.get_cross_validation_datasets_random(original, 3)
+        # check if each split covers the whole dataset
+        for tr, te in cvs:
+            reconst = sorted(set(tr).union(te))
+            self.assertEqual(reconst, original)
+            self.assertEqual(len(tr) + len(te), len(original))
+        # check if all validation sets cover the whole dataset
+        validation_union = sorted(
+            list(cvs[0][1]) + list(cvs[1][1]) + list(cvs[2][1]))
+        self.assertEqual(validation_union, original)
 
 
 testing.run_module(__name__, __file__)

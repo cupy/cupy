@@ -101,7 +101,7 @@ class LabeledImageDataset(dataset_mixin.DatasetMixin):
                 pairs = []
                 for i, line in enumerate(pairs_file):
                     pair = line.strip().split()
-                    if len(pair) > 2:
+                    if len(pair) != 2:
                         raise ValueError(
                             'invalid format at line {} in file {}'.format(
                                 i, pairs_path))
@@ -126,5 +126,5 @@ class LabeledImageDataset(dataset_mixin.DatasetMixin):
 def _check_pillow_availability():
     if not available:
         raise ImportError('PIL cannot be loaded. Install Pillow!\n'
-                          'The actual import error is follows:\n' +
+                          'The actual import error is as follows:\n' +
                           str(_import_error))

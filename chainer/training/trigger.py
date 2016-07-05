@@ -42,11 +42,28 @@ class IntervalTrigger(object):
 def get_trigger(trigger):
     """Gets a trigger object.
 
-    If ``trigger`` is callable, it just returns the trigger. Otherwise, it
+    Trigger object is a callable that accepts a
+    :class:`~chainer.training.Trainer` object as an argument and returns a
+    boolean value. When it returns True, a certain kind of events occur.
+    For example, if the trigger is passed to the
+    :class:`~chainer.training.Trainer` as the `stop trigger`, the training loop
+    breaks when the trigger returns True. If the trigger is passed to the
+    :meth:`~chainer.training.Trainer.extend` method of a trainer, then the
+    registered extension is invoked only when the trigger returns True.
+
+    This function returns a trigger object based on the argument.
+    If ``trigger`` is already a callable, it just returns the trigger. If
+    ``trigger`` is None, it returns a trigger that never fires. Otherwise, it
     passes the value to :class:`IntervalTrigger`.
 
     """
     if callable(trigger):
         return trigger
+    elif trigger is None:
+        return _never_fire_trigger
     else:
         return IntervalTrigger(*trigger)
+
+
+def _never_fire_trigger(trainer):
+    return False

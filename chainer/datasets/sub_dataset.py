@@ -18,12 +18,29 @@ class SubDataset(dataset_mixin.DatasetMixin):
     Negative indexing is also allowed: in this case, the term ``start + i`` is
     replaced by ``finish + i``.
 
+    SubDataset is often used to split a dataset into training and validation
+    subsets. The training set is used for training, while the validation set is
+    used to track the generalization performance, i.e. how the learned model
+    works well on unseen data. We can tune hyperparameters (e.g. number of
+    hidden units, weight initializers, learning rate, etc.) by comparing the
+    validation performance. Note that we often use another set called test set
+    to measure the quality of the tuned hyperparameter, which can be made by
+    nesting multiple SubDatasets.
+
+    There are two ways to make training-validation splits. One is a single
+    split, where the dataset is split just into two subsets. It can be done by
+    :func:`split_dataset` or :func:`split_dataset_random`. The other one is a
+    :math:`k`-fold cross validation, in which the dataset is divided into
+    :math:`k` subsets, and :math:`k` different splits are generated using each
+    of the :math:`k` subsets as a validation set and the rest as a training
+    set. It can be done by :func:`get_cross_validation_datasets`.
+
     Args:
         dataset: Base dataset.
         start (int): The first index in the interval.
         finish (int): The next-to-the-last index in the interval.
         order (sequence of ints): Permutation of indexes in the base dataset.
-            If this is None, then the ascending order of indexes is used.
+            If this is ``None``, then the ascending order of indexes is used.
 
     """
     def __init__(self, dataset, start, finish, order=None):
@@ -33,6 +50,11 @@ class SubDataset(dataset_mixin.DatasetMixin):
         self._start = start
         self._finish = finish
         self._size = finish - start
+        if order is not None and len(order) != len(dataset):
+            msg = ('order option must have the same length as the base '
+                   'dataset: len(order) = {} while len(dataset) = {}'.format(
+                       len(order), len(dataset)))
+            raise ValueError(msg)
         self._order = order
 
     def __len__(self):
@@ -72,8 +94,13 @@ def split_dataset(dataset, split_at, order=None):
             represents the examples of indexes ``order[split_at:]``.
 
     """
+    n_examples = len(dataset)
+    if split_at < 0:
+        raise ValueError('split_at must be non-negative')
+    if split_at >= n_examples:
+        raise ValueError('split_at exceeds the dataset size')
     subset1 = SubDataset(dataset, 0, split_at, order)
-    subset2 = SubDataset(dataset, split_at, len(dataset), order)
+    subset2 = SubDataset(dataset, split_at, n_examples, order)
     return subset1, subset2
 
 
@@ -104,7 +131,7 @@ def get_cross_validation_datasets(dataset, n_fold, order=None):
 
     This function generates ``n_fold`` splits of the given dataset. The first
     part of each split corresponds to the training dataset, while the second
-    part to the test dataset. No pair of test datasets share any examples, and
+    part to the test dataset. No pairs of test datasets share any examples, and
     all test datasets together cover the whole base dataset. Each test dataset
     contains almost same number of examples (the numbers may differ up to 1).
 
@@ -112,7 +139,7 @@ def get_cross_validation_datasets(dataset, n_fold, order=None):
         dataset: Dataset to split.
         n_fold (int): Number of splits for cross validation.
         order (sequence of ints): Order of indexes with which each split is
-            determined. If it is None, then no permutation is used.
+            determined. If it is ``None``, then no permutation is used.
 
     Returns:
         list of tuples: List of dataset splits.

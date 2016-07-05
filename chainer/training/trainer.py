@@ -42,8 +42,8 @@ class Trainer(object):
     :func:`make_extension`. See :class:`Extension` for more details on custom
     extensions.
 
-    Users can register extensions to the trainer by calling the
-    :meth:`add_extension` method, where some configurations can be added.
+    Users can register extensions to the trainer by calling the :meth:`extend`
+    method, where some configurations can be added.
 
     - Trigger of an extension is a callable object that takes the trainer
       object as the argument, and is called at each iteration. It decides
@@ -130,6 +130,8 @@ class Trainer(object):
         self._done = False
         self._extensions = collections.OrderedDict()
 
+        updater.connect_trainer(self)
+
     def extend(self, extension, name=None, trigger=None, priority=None,
                invoke_before_training=None):
         """Registers an extension to the trainer.
@@ -140,6 +142,10 @@ class Trainer(object):
         extensions with higher priorities are called earlier in each iteration.
         Extensions with the same priority are invoked in the order of
         registrations.
+
+        If two or more extensions with the same name are registered, suffixes
+        are added to the names of the second to last extensions. The suffix is
+        ``_N`` where N is the ordinal of the extensions.
 
         See :class:`Extension` for the interface of extensions.
 
@@ -170,7 +176,6 @@ class Trainer(object):
                     raise TypeError('name is not given for the extension')
                 elif name == 'training':
                     raise ValueError('the name "training" is reserved')
-        extension.name = name
 
         if trigger is None:
             trigger = getattr(extension, 'trigger', None)
@@ -184,7 +189,14 @@ class Trainer(object):
             invoke_before_training = getattr(
                 extension, 'invoke_before_training', False)
 
-        self._extensions[name] = _ExtensionEntry(
+        modified_name = name
+        ordinal = 0
+        while modified_name in self._extensions:
+            ordinal += 1
+            modified_name = '%s_%d' % (name, ordinal)
+
+        extension.name = modified_name
+        self._extensions[modified_name] = _ExtensionEntry(
             extension, priority, trigger, invoke_before_training)
 
     def get_extension(self, name):

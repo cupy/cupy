@@ -16,16 +16,17 @@ def concat_examples(batch, device=None, padding=None):
     For instance, consider each example consists of two arrays ``(x, y)``.
     Then, this function concatenates ``x`` 's into one array, and ``y`` 's
     into another array, and returns a tuple of these two arrays. Another
-    example: consider each example is a dictionary of two arrays. Two arrays
-    have keys ``'x'`` and ``'y'``. Then, this function concatenates ``x`` 's
-    into one array, and ``y`` 's into another array, and returns a dictionary
-    with two arrays ``x`` and ``y``.
+    example: consider each example is a dictionary of two entries whose keys
+    are ``'x'`` and ``'y'``, respectively, and values are arrays. Then, this
+    function concatenates ``x`` 's into one array, and ``y`` 's into another
+    array, and returns a dictionary with two entries ``x`` and ``y`` whose
+    values are the concatenated arrays.
 
     When the arrays to concatenate have different shapes, the behavior depends
-    on the ``padding`` value. If ``padding`` is None (default), it raises an
-    error. Otherwise, it builds an array of the minimum shape that the contents
-    of all arrays can be substituted to. The padding value is then used to the
-    extra elements of the resulting arrays.
+    on the ``padding`` value. If ``padding`` is ``None`` (default), it raises
+    an error. Otherwise, it builds an array of the minimum shape that the
+    contents of all arrays can be substituted to. The padding value is then
+    used to the extra elements of the resulting arrays.
 
     TODO(beam2d): Add an example.
 
@@ -35,7 +36,7 @@ def concat_examples(batch, device=None, padding=None):
         device (int): Device ID to which each array is sent. Negative value
             indicates the host memory (CPU). If it is omitted, all arrays are
             left in the original device.
-        padding: Padding value for extra elements. If this is None (default),
+        padding: Scalar value for extra elements. If this is None (default),
             an error is raised on shape mismatch. Otherwise, an array of
             minimum dimensionalities that can accomodate all arrays is created,
             and elements outside of the examples are padded by this value.
@@ -86,21 +87,18 @@ def concat_examples(batch, device=None, padding=None):
 
 def _concat_arrays(arrays, padding):
     if padding is not None:
-        return _concate_arrays_with_padding(arrays, padding)
+        return _concat_arrays_with_padding(arrays, padding)
 
     xp = cuda.get_array_module(arrays[0])
     with cuda.get_device(arrays[0]):
         return xp.concatenate([array[None] for array in arrays])
 
 
-def _concate_arrays_with_padding(arrays, padding):
+def _concat_arrays_with_padding(arrays, padding):
     shape = numpy.array(arrays[0].shape, dtype=int)
     for array in arrays[1:]:
         if numpy.any(shape != array.shape):
-            if padding is None:
-                raise ValueError('shape mismatch within a batch')
-            else:
-                numpy.maximum(shape, array.shape, shape)
+            numpy.maximum(shape, array.shape, shape)
     shape = tuple(numpy.insert(shape, 0, len(arrays)))
 
     xp = cuda.get_array_module(arrays[0])
