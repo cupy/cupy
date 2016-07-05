@@ -141,13 +141,12 @@ def get_device(*args):
     protocol of Python for the *with* statement.
 
     Args:
-        args: Values to specify a GPU device. :class:`numpy.ndarray` objects
-            are skipped. If all arguments are :class:`numpy.ndarray` objects,
-            it returns a dummy device object. Otherwise, the first
-            non-:mod:`numpy` object is used to select a device. If it is a
-            :class:`cupy.ndarray` object, its device is returned. Otherwise,
-            the argument is passed to the initializer of
-            :class:`~cupy.cuda.Device` and it is returned.
+        args: Values to specify a GPU device. The first integer or
+            :class:`cupy.ndarray` object is used to select a device. If it is
+            an integer, the corresponding device is returned. If it is a CuPy
+            array, the device on which this array reside is returned. If any
+            arguments are neither integers nor CuPy arrays, a dummy device
+            object representing CPU is returned.
 
     Returns:
         Device object specified by given ``args``.
@@ -157,17 +156,13 @@ def get_device(*args):
 
     """
     for arg in args:
-        if arg is None:
-            continue
         if type(arg) in six.integer_types:
             check_cuda_available()
             return Device(arg)
-        if not isinstance(arg, numpy.ndarray):
-            check_cuda_available()
-            if isinstance(arg, cupy.ndarray):
-                if arg.device is None:
-                    continue
-                return arg.device
+        if isinstance(arg, ndarray):
+            if arg.device is None:
+                continue
+            return arg.device
 
     return DummyDevice
 
