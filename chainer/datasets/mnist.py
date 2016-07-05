@@ -13,8 +13,9 @@ def get_mnist(withlabel=True, ndim=1, scale=1.):
     """Gets the MNIST dataset.
 
     `MNIST <http://yann.lecun.com/exdb/mnist/>`_ is a set of hand-written
-    digits represented by grey-scale 28x28 images. Each pixel is scaled to
-    values in the interval ``[0, scale]``.
+    digits represented by grey-scale 28x28 images. In the original images, each
+    pixel is represented by one-byte unsigned integer. This function
+    scales the pixels to floating point values in the interval ``[0, scale]``.
 
     This function returns the training set and the test set of the official
     MNIST dataset. If ``withlabel`` is True, each dataset consists of tuples of
