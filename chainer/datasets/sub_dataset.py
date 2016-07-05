@@ -50,6 +50,11 @@ class SubDataset(dataset_mixin.DatasetMixin):
         self._start = start
         self._finish = finish
         self._size = finish - start
+        if order is not None and len(order) != len(dataset):
+            msg = ('order option must have the same length as the base '
+                   'dataset: len(order) = {} while len(dataset) = {}'.format(
+                       len(order), len(dataset)))
+            raise ValueError(msg)
         self._order = order
 
     def __len__(self):

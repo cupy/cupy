@@ -28,6 +28,11 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(subset[1], 4)
         self.assertEqual(subset[2], 2)
 
+    def test_permuted_sub_dataset_len_mismatch(self):
+        original = [1, 2, 3, 4, 5]
+        with self.assertRaises(ValueError):
+            datasets.SubDataset(original, 1, 4, [2, 0, 3, 1])
+
     def test_split_dataset(self):
         original = [1, 2, 3, 4, 5]
         subset1, subset2 = datasets.split_dataset(original, 2)
