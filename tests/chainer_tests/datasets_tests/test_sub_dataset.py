@@ -65,6 +65,19 @@ class TestSplitDataset(unittest.TestCase):
         self.assertEqual(subset2[1], 2)
         self.assertEqual(subset2[2], 5)
 
+    def test_split_dataset_with_invalid_length_permutation(self):
+        original = [1, 2, 3, 4, 5]
+        with self.assertRaises(ValueError):
+            datasets.split_dataset(original, 2, [2, 0, 3, 1])
+        with self.assertRaises(ValueError):
+            datasets.split_dataset(original, 2, [2, 0, 3, 1, 4, 5])
+
+    def test_split_dataset_random(self):
+        original = [1, 2, 3, 4, 5]
+        subset1, subset2 = datasets.split_dataset_random(original, 2)
+        reconst = sorted(set(subset1).union(subset2))
+        self.assertEqual(reconst, original)
+
 
 class TestGetCrossValidationDatasets(unittest.TestCase):
 
