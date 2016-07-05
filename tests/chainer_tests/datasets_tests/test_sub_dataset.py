@@ -14,6 +14,12 @@ class TestSubDataset(unittest.TestCase):
         self.assertEqual(subset[1], 3)
         self.assertEqual(subset[2], 4)
 
+    def test_sub_dataset_overrun(self):
+        original = [1, 2, 3, 4, 5]
+        subset = datasets.SubDataset(original, 1, 4)
+        with self.assertRaises(IndexError):
+            subset[len(subset)]
+
     def test_permuted_sub_dataset(self):
         original = [1, 2, 3, 4, 5]
         subset = datasets.SubDataset(original, 1, 4, [2, 0, 3, 1, 4])
