@@ -152,5 +152,18 @@ class TestGetCrossValidationDatasets(unittest.TestCase):
         self.assertEqual(te3[0], 1)
         self.assertEqual(te3[1], 2)
 
+    def test_get_cross_validation_datasets_random(self):
+        original = [1, 2, 3, 4, 5, 6]
+        cvs = datasets.get_cross_validation_datasets_random(original, 3)
+        # check if each split covers the whole dataset
+        for tr, te in cvs:
+            reconst = sorted(set(tr).union(te))
+            self.assertEqual(reconst, original)
+            self.assertEqual(len(tr) + len(te), len(original))
+        # check if all validation sets cover the whole dataset
+        validation_union = sorted(
+            list(cvs[0][1]) + list(cvs[1][1]) + list(cvs[2][1]))
+        self.assertEqual(validation_union, original)
+
 
 testing.run_module(__name__, __file__)
