@@ -277,7 +277,7 @@ class ParallelUpdater(StandardUpdater):
                 raise KeyError("'devices' must contain a 'main' key.")
             models = {'main': optimizer.target}
             for name in names:
-                models[name] = models[0].copy()
+                models[name] = models['main'].copy()
 
         if devices is None:
             devices = dict((name, i) for i, name in enumerate(names))
