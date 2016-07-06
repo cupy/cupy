@@ -154,3 +154,5 @@ def _worker(dataset, in_queue, out_queue):
         if index < 0:
             break
         out_queue.put(dataset[index])
+    out_queue.close()
+    out_queue.cancel_join_thread()
