@@ -56,11 +56,16 @@ class Trainer(object):
       standard values for the priorities:
 
       - ``PRIORITY_WRITER``. This is the priority for extensions that write
-        some records to the result statistics.
-      - ``PRIORITY_EDITOR``. This is the priority for extensions that both read
-        and write records from/to the result statistics.
+        some records to the :attr:`observation` dictionary. It includes cases
+        that the extension directly adds values to the observation dictionary,
+        or the extension uses the :func:`chainer.report` function to report
+        values to the observation dictionary.
+      - ``PRIORITY_EDITOR``. This is the priority for extensions that edit the
+        :attr:`observation` dictionary based on already reported values.
       - ``PRIORITY_READER``. This is the priority for extensions that only read
-        records from the result statistics.
+        records from the :attr:`observation` dictionary. This is also suitable
+        for extensions that do not use the :attr:`observation` dictionary at
+        all.
 
     - Extensions with ``invoke_before_training`` flag on are also invoked at
       the beginning of the training loop. Extensions that update the training
