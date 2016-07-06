@@ -351,6 +351,10 @@ local_response_normalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: local_response_normalization
 
+normalize
+~~~~~~~~~
+.. autofunction:: normalize
+
 
 Spatial pooling
 ---------------

@@ -70,6 +70,7 @@ from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
 from chainer.functions.noise import gaussian
 from chainer.functions.normalization import batch_normalization
+from chainer.functions.normalization import l2_normalization
 from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
@@ -244,6 +245,8 @@ LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization
 local_response_normalization = \
     local_response_normalization.local_response_normalization
+NormalizeL2 = l2_normalization.NormalizeL2
+normalize = l2_normalization.normalize
 
 AveragePooling2D = average_pooling_2d.AveragePooling2D
 average_pooling_2d = average_pooling_2d.average_pooling_2d
