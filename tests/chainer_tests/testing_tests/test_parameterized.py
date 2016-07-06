@@ -34,7 +34,6 @@ class ProductDictTest(unittest.TestCase):
         self.assertListEqual(testing.product_dict(*self.actual), self.expect)
 
 
-
 def f(x):
     return x
 

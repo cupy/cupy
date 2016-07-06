@@ -1,7 +1,7 @@
 import itertools
 import sys
-import unittest
 import types
+import unittest
 
 import six
 
@@ -16,11 +16,14 @@ def _gen_case(base, module, i, param):
     mb = {'__str__': __str__}
     for k, v in six.iteritems(param):
         if isinstance(v, types.FunctionType):
+
             def create_new_v():
                 f = v
+
                 def new_v(self, *args, **kwargs):
                     return f(*args, **kwargs)
                 return new_v
+
             mb[k] = create_new_v()
         else:
             mb[k] = v
