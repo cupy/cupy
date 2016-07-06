@@ -94,7 +94,9 @@ class NpzDeserializer(serializer.Deserializer):
     def __call__(self, key, value):
         key = key.lstrip('/')
         dataset = self.npz[self.path + key]
-        if isinstance(value, numpy.ndarray):
+        if value is None:
+            return dataset
+        elif isinstance(value, numpy.ndarray):
             numpy.copyto(value, dataset)
         elif isinstance(value, cuda.ndarray):
             value.set(numpy.asarray(dataset))
