@@ -80,7 +80,7 @@ class Min(SelectorBase):
 class IndexSelectorBase(function.Function):
     """Select index of an array element from a given axis."""
 
-    def __init__(self, axis=None, keepdims=False):
+    def __init__(self, axis=None):
         if axis is None:
             self.axis = None
         elif isinstance(axis, int):
