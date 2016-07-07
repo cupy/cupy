@@ -70,7 +70,7 @@ class Reporter(object):
 
     @contextlib.contextmanager
     def scope(self, observation):
-        """Creates a scope to report observed values to the given dictionary.
+        """Creates a scope to report observed values to ``observation``.
 
         This is a context manager to be passed to ``with`` statements. In this
         scope, the observation dictionary is changed to the given one.
@@ -157,7 +157,7 @@ def report(values, observer=None):
     """Reports observed values with the current reporter object.
 
     Any reporter object can be set current by the ``with`` statement. This
-    function calls the :meth:`Report.report` method of the current report.
+    function calls the :meth:`Report.report` method of the current reporter.
     If no reporter object is current, this function does nothing.
 
     .. admonition:: Example
@@ -210,7 +210,7 @@ def report(values, observer=None):
 def report_scope(observation):
     """Returns a report scope with the current reporter.
 
-    This is equivalant to ``get_current_reporter().report_scope(observation)``,
+    This is equivalant to ``get_current_reporter().scope(observation)``,
     except that it does not make the reporter current redundantly.
 
     """
