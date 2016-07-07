@@ -75,8 +75,10 @@ class TestLinearParameterShapePlaceholder(unittest.TestCase):
 
     def setUp(self):
         self.link = links.Linear(self.in_size_or_none, self.out_size)
-        temp_x = numpy.random.uniform(-1, 1, (self.out_size, self.in_size)).astype(numpy.float32)
-        self.link(chainer.Variable(temp_x)) # This will initialize the parameters W.
+        temp_x = numpy.random.uniform(-1, 1,
+                                      (self.out_size,
+                                       self.in_size)).astype(numpy.float32)
+        self.link(chainer.Variable(temp_x))
         W = self.link.W.data
         W[...] = numpy.random.uniform(-1, 1, W.shape)
         b = self.link.b.data
@@ -121,6 +123,7 @@ class TestLinearParameterShapePlaceholder(unittest.TestCase):
     def test_backward_gpu(self):
         self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
 
 class TestLinearWithSpatialDimensions(TestLinear):
 

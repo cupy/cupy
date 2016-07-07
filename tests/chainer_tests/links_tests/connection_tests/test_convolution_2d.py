@@ -109,6 +109,7 @@ class TestConvolution2D(unittest.TestCase):
         self.link.to_gpu()
         self.check_pickling(cuda.to_gpu(self.x))
 
+
 class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
 
     def setUp(self):
@@ -116,7 +117,7 @@ class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
         self.link = links.Convolution2D(in_channels, 2, 3, stride=2, pad=1)
         self.x = numpy.random.uniform(-1, 1,
                                       (2, 3, 4, 3)).astype(numpy.float32)
-        self.link(chainer.Variable(self.x))  # This will initialize the parameters W.
+        self.link(chainer.Variable(self.x))
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
         self.link.zerograds()
