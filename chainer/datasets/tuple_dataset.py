@@ -6,11 +6,12 @@ class TupleDataset(object):
     """Dataset of a tuple of datasets.
 
     It combines multiple datasets into one dataset. Each example is represented
-    by a tuple whose i-th item corresponds to the i-th dataset.
+    by a tuple whose ``i``-th item corresponds to the i-th dataset.
 
     Args:
-        datasets: Underlying datasets. The i-th one is used for the i-th item
-            of each example. All datasets must have the same length.
+        datasets: Underlying datasets. The ``i``-th one is used for the
+            ``i``-th item of each example. All datasets must have the
+            length.
 
     """
     def __init__(self, *datasets):
