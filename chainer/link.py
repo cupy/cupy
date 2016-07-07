@@ -167,7 +167,7 @@ class Link(object):
         d = self.__dict__
         if (name in self._uninitialized_params) or (name in d):
             raise AttributeError(
-                'cannot register a new uninitialized parameter %s: already exists'
+                'cannot register a new uninitialized parameter %s: exists'
                 % name)
         self._uninitialized_params.add(name)
 
