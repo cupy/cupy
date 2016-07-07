@@ -156,26 +156,27 @@ class DilatedConvolution2DFunction(function.Function):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
+        n, _, out_h, out_w = gy.shape
         h, w = x.shape[2:]
-        kh, kw = W.shape[2:]
-
-        # TODO(yasunorikudo): Dilate W efficiently
-        if not self.dy == 1:
-            for i in range(self.dy - 1):
-                seq_h = numpy.arange(1, kh) if i == 0 else numpy.dstack((seq_h, numpy.arange(1, kh)))
-            seq_h = seq_h.reshape((self.dy - 1) * (kh - 1))
-            W = numpy.insert(W, seq_h, numpy.zeros(kw), axis=2)
-        if not self.dx == 1:
-            for i in range(self.dx - 1):
-                seq_w = numpy.arange(1, kw) if i == 0 else numpy.dstack((seq_w, numpy.arange(1, kw)))
-            seq_w = seq_w.reshape((self.dx - 1) * (kw - 1))
-            W = numpy.insert(W, seq_w, 0, axis=3)
+        c, kh, kw = W.shape[1:]
 
         gW = numpy.tensordot(
             gy, self.col, ((0, 2, 3), (0, 4, 5))).astype(W.dtype)
         gcol = numpy.tensordot(W, gy, (0, 1)).astype(x.dtype)
         gcol = numpy.rollaxis(gcol, 3)
-        gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
+
+        # dilate col2im_cpu
+        img = numpy.zeros(
+            (n, c, h + 2 * self.ph + self.sy - 1, w + 2 * self.pw + self.sx - 1),
+            dtype=gcol.dtype)
+        for j in moves.range(kh):
+            q = j * self.dy
+            q_lim = q + self.sy * out_h
+            for i in moves.range(kw):
+                p = i * self.dx
+                p_lim = p + self.sx * out_w
+                img[:, :, q:q_lim:self.sy, p:p_lim:self.sx] += gcol[:, :, j, i, :, :]
+        gx = img[:, :, self.ph:h + self.ph, self.pw:w + self.pw]
 
         if b is None:
             return gx, gW
