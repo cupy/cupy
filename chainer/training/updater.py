@@ -219,20 +219,11 @@ class ParallelUpdater(StandardUpdater):
     """Implementation of a parallel GPU Updater.
 
     This is an implementation of :class:`Updater` that uses multiple GPUs.
-    It accepts one or more training datasets and one or more optimizers. The
-    default update routine assumes that there is only one training dataset and
-    one optimizer, while users can specify their own update routines. Each
-    batch is converted to input arrays by
-    :func:`~chainer.datasets.concat_examples` by default, which can also be
-    manually set.
-
-    There are two ways to modify the update behavior besides setting a custom
-    loss function. One is by setting a custom update function via the
-    ``update_func`` argument. The other one is by inheriting this class and
-    overriding the :meth:`update` method. In latter case, do not forget to
-    update the iteration counter at each call of this method, because this
-    value is watched by the trainer for deciding when to invoke extensions and
-    when to exit the training loop.
+    It behaves similarly to :class:`~chainer.training.StandardUpdater`. The
+    update routine is modified to support data-parallel computation on multiple
+    GPUs in one machine. It is based on synchronous parallel SGD: it
+    parallelizes the gradient computation over a mini-batch, and updates the
+    parameters only in the main device.
 
     Args:
         iterator: Dataset iterator for the training dataset. It can also be a
@@ -267,7 +258,7 @@ class ParallelUpdater(StandardUpdater):
             converter=converter
         )
         assert models is not None or devices is not None, \
-            "Either 'models' or 'devices' must be defined."
+            "Either 'models' or 'devices' must be specified."
 
         if models is None:
             names = list(six.iterkeys(devices))
@@ -291,18 +282,6 @@ class ParallelUpdater(StandardUpdater):
             self, converter, models, devices)
 
     def connect_trainer(self, trainer):
-        """Connects the updater to the trainer that will call it.
-
-        The typical usage of this method is to register additional links to the
-        reporter of the trainer. This method is called at the end of the
-        initialization of :class:`~chainer.training.Trainer`. The default
-        implementation does nothing.
-
-        Args:
-            trainer (~chainer.training.Trainer): Trainer object to which the
-                updater is registered.
-
-        """
         # Add observers for all (other) models.
         model_main = self.get_optimizer('main').target
         models_others = {
