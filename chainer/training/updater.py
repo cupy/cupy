@@ -257,24 +257,23 @@ class ParallelUpdater(StandardUpdater):
             optimizer=optimizer,
             converter=converter
         )
-        assert models is not None or devices is not None, \
-            "Either 'models' or 'devices' must be specified."
 
         if models is None:
+            if devices is None:
+                raise ValueError('either models or devices must be specified')
             names = list(six.iterkeys(devices))
+
             try:
                 names.remove('main')
             except ValueError:
                 raise KeyError("'devices' must contain a 'main' key.")
+
             models = {'main': optimizer.target}
             for name in names:
-                models[name] = models['main'].copy()
-
-        if devices is None:
-            devices = dict((name, i) for i, name in enumerate(names))
-
-        for name, model in models.items():
-            model.to_gpu(devices[name])
+                model = optimizer.target.copy()
+                model.to_gpu(devices[name])
+                models[name] = model
+            optimizer.target.to_gpu(devices['main'])
 
         self._models = models
 
