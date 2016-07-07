@@ -31,7 +31,7 @@ class Trainer(object):
       These are all done by the update object held by the trainer.
     - Invocation of trainer extensions in the descending order of their
       priorities. A trigger object is attached to each extension, and it
-      descides at each iteration whether the extension should be executed.
+      decides at each iteration whether the extension should be executed.
       Trigger objects are callable objects that take the trainer object as the
       argument and return a boolean value indicating whether the extension
       should be called or not.
@@ -45,12 +45,10 @@ class Trainer(object):
     Users can register extensions to the trainer by calling the :meth:`extend`
     method, where some configurations can be added.
 
-    - Trigger of an extension is a callable object that takes the trainer
-      object as the argument, and is called at each iteration. It decides
-      whether the extension should be executed at the iteration by returning a
-      boolean value. In most cases, :class:`IntervalTrigger` is used, in which
-      case users can simply specify a tuple of the interval length and its
-      unit, like ``(1000, 'iteration')`` or ``(1, 'epoch')``.
+    - Trigger object, which is also explained above. In most cases,
+      :class:`IntervalTrigger` is used, in which case users can simply specify
+      a tuple of the interval length and its unit, like
+      ``(1000, 'iteration')`` or ``(1, 'epoch')``.
     - The order of execution of extensions is determined by their priorities.
       Extensions of higher priorities are invoked earlier. There are three
       standard values for the priorities:
@@ -69,9 +67,9 @@ class Trainer(object):
 
     - Extensions with ``invoke_before_training`` flag on are also invoked at
       the beginning of the training loop. Extensions that update the training
-      status (e.g., changing learning rates) should have this flag to be True
-      to ensure that resume of the training loop correctly recovers the
-      training status.
+      status (e.g., changing learning rates) should have this flag to be
+      ``True`` to ensure that resume of the training loop correctly recovers
+      the training status.
 
     The current state of the trainer object and objects handled by the trainer
     can be serialized through the standard serialization protocol of Chainer.
@@ -97,14 +95,15 @@ class Trainer(object):
     Links of the target model of each optimizer are registered to the reporter
     object as observers, where the name of each observer is constructed as the
     format ``<optimizer name><link name>``. The link name is given by the
-    :meth:`chainer.Link.namedlink` method, which represetns the path to each
+    :meth:`chainer.Link.namedlink` method, which represents the path to each
     link in the hierarchy. Other observers can be registered by accessing the
     reporter object via the :attr:`reporter` attribute.
 
     The default trainer is `plain`, i.e., it does not contain any extensions.
 
     Args:
-        updater (Updater): Updater object. It defines how to update the models.
+        updater (~chainer.training.Updater): Updater object. It defines how to
+            update the models.
         stop_trigger: Trigger that determines when to stop the training loop.
             If it is not callable, it is passed to :class:`IntervalTrigger`.
 
@@ -112,7 +111,7 @@ class Trainer(object):
         updater: The updater object for this trainer.
         stop_trigger: Trigger that determines when to stop the training loop.
             The training loop stops at the iteration on which this trigger
-            returns True.
+            returns ``True``.
         observation: Observation of values made at the last update. See the
             :class:`Reporter` class for details.
         out: Output directory.
@@ -156,17 +155,21 @@ class Trainer(object):
 
         Args:
             extension: Extension to register.
+            name (str): Name of the extension. If it is omitted, the
+                ``default_name`` attribute of the extension is used instead.
+                Note that the name would be suffixed by an ordinal in case of
+                duplicated names as explained above.
             trigger (tuple or Trigger): Trigger object that determines when to
-                invoke the extension. If it is None, ``extension.trigger`` is
-                used instead. If the trigger is not callable, it is passed to
-                :class:`IntervalTrigger` to build an interval trigger.
+                invoke the extension. If it is ``None``, ``extension.trigger``
+                is used instead. If the trigger is not callable, it is passed
+                to :class:`IntervalTrigger` to build an interval trigger.
             priority (int): Invocation priority of the extension. Extensions
                 are invoked in the descending order of priorities in each
-                iteration. If this is None, ``extension.priority`` is used
+                iteration. If this is ``None``, ``extension.priority`` is used
                 instead.
-            invoke_before_training (bool): If True, the extension is also
+            invoke_before_training (bool): If ``True``, the extension is also
                 invoked just before entering the training loop. If this
-                None, ``extension.invoke_before_training`` is used instead.
+                ``None``, ``extension.invoke_before_training`` is used instead.
                 This option is mainly used for extensions that alter the
                 training configuration (e.g., learning rates); in such a case,
                 resuming from snapshots require the call of extension to
@@ -223,7 +226,7 @@ class Trainer(object):
     def run(self):
         """Executes the training loop.
 
-        This method is the core of Trainer. It executes the whole loop of
+        This method is the core of ``Trainer``. It executes the whole loop of
         training the models.
 
         Note that this method cannot run multiple times for one trainer object.
