@@ -88,16 +88,19 @@ class TestReport(unittest.TestCase):
     def test_report_with_observer(self):
         reporter = chainer.Reporter()
         observer = object()
-        with reporter:
-            with self.assertRaises(KeyError):
-                chainer.report({'x': 1}, observer)
-
         reporter.add_observer('o', observer)
         with reporter:
             chainer.report({'x': 1}, observer)
         observation = reporter.observation
         self.assertIn('o/x', observation)
         self.assertEqual(observation['o/x'], 1)
+
+    def test_report_with_unregistered_observer(self):
+        reporter = chainer.Reporter()
+        observer = object()
+        with reporter:
+            with self.assertRaises(KeyError):
+                chainer.report({'x': 1}, observer)
 
     def test_report_scope(self):
         reporter = chainer.Reporter()
