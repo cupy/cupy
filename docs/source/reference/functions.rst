@@ -243,6 +243,14 @@ triplet
 Mathematical functions
 ----------------------
 
+argmax
+~~~~~~
+.. autofunction:: argmax
+
+argmin
+~~~~~~
+.. autofunction:: argmin
+
 batch_inv
 ~~~~~~~~~
 .. autofunction:: batch_inv
