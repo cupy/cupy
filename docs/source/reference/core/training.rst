@@ -26,6 +26,9 @@ Updater
 .. autoclass:: StandardUpdater
    :members:
 
+.. autoclass:: ParallelUpdater
+   :members:
+
 
 Extension
 ---------
