@@ -40,6 +40,7 @@ class TestReporter(unittest.TestCase):
         observation = reporter.observation
         self.assertIn('o/x', observation)
         self.assertEqual(observation['o/x'], 1)
+        self.assertNotIn('x', observation)
 
     def test_add_observers(self):
         reporter = chainer.Reporter()
@@ -56,6 +57,8 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(observation['o1/x'], 1)
         self.assertIn('o2/y', observation)
         self.assertEqual(observation['o2/y'], 2)
+        self.assertNotIn('x', observation)
+        self.assertNotIn('y', observation)
         self.assertNotIn('o1/y', observation)
         self.assertNotIn('o2/x', observation)
 
