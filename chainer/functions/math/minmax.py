@@ -111,9 +111,6 @@ class IndexSelectorBase(function.Function):
         xp = cuda.get_array_module(*x)
         return xp.asarray(self._fwd(x[0], xp)),
 
-    def backward(self, x, gy):
-        return cuda.get_array_module(*x).zeros_like(x[0]),
-
 
 class ArgMin(IndexSelectorBase):
 

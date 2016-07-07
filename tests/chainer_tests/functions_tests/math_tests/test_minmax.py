@@ -388,7 +388,7 @@ class TestArgMinMax(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.function(x, axis=self.axis)
         y.backward()
-        self.assertTrue(numpy.all(cuda.to_cpu(x.grad) == 0))
+        self.assertIsNone(x.grad)
 
     @condition.retry(3)
     def test_backward_cpu(self):
