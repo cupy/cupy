@@ -306,16 +306,16 @@ def _parallel_update(updater, converter, models, devices):
         #
         # Split the batch to sub-batches.
         #
-        n = len(models.items())
+        n = len(models)
         in_arrays_list = {}
-        for i, key in enumerate(models.keys()):
+        for i, key in enumerate(six.iterkeys(models)):
             in_arrays_list[key] = converter(batch[i::n], devices[key])
 
-        for model in models.values():
+        for model in six.itervalues(models):
             model.zerograds()
 
         losses = []
-        for model_key in models.keys():
+        for model_key in six.iterkeys(models):
             model = models[model_key]
             in_arrays = in_arrays_list[model_key]
 
@@ -333,12 +333,12 @@ def _parallel_update(updater, converter, models, devices):
         for loss in losses:
             loss.backward()
 
-        for model in models_others.values():
+        for model in six.itervalues(models_others):
             model_main.addgrads(model)
 
         optimizer.update()
 
-        for model in models_others.values():
+        for model in six.itervalues(models_others):
             model.copyparams(model_main)
 
     return update
