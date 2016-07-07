@@ -13,8 +13,9 @@ class LinearShift(extension.Extension):
 
     For example, suppose that this extension is called at every iteration, and
     ``value_range == (x, y)`` and ``time_range == (i, j)``. Then, this
-    extension keeps the attribute to be ``x`` up to the ``i``-th iteration, and
-    linearly shifts the value to ``y`` by the ``j``-th iteration.
+    extension keeps the attribute to be ``x`` up to the ``i``-th iteration,
+    linearly shifts the value to ``y`` by the ``j``-th iteration, and then
+    keeps the value to be ``y`` after the ``j``-th iteration.
 
     This extension is also called before the training loop starts by default.
 

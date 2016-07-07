@@ -14,13 +14,13 @@ class ExponentialDecay(extension.Extension):
         attr (str): Name of the attribute to decay.
         decay_rate (float): Rate of the exponential decay. This value is
             multiplied to the attribute at each call.
-        init (float): Initial value of the attribute. If it is None, the
+        init (float): Initial value of the attribute. If it is ``None``, the
             extension exracts the attribute at the first call and uses it as
             the initial value.
         minimum (float): Minimum value of the attribute. If the attribute
             reaches this value, the decay stops.
         optimizer (~chainer.Optimizer): Target optimizer to adjust the
-            attribute. If it is None, the main optimizer of the updater is
+            attribute. If it is ``None``, the main optimizer of the updater is
             used.
 
     """
