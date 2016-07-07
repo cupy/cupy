@@ -74,16 +74,14 @@ class MultiprocessIterator(iterator.Iterator):
             return
 
         self._finalized = True
-        workers = self._workers
-        self._workers = []
         try:
             while True:
                 self._data_queue.get_nowait()
         except six.moves.queue.Empty:
             pass
-        for _ in workers:
+        for _ in self._workers:
             self._index_queue.put(-1)  # termination signal
-        for worker in workers:
+        for worker in self._workers:
             worker.join()
 
     def serialize(self, serializer):
