@@ -270,7 +270,7 @@ class ParallelUpdater(StandardUpdater):
             "Either 'models' or 'devices' must be defined."
 
         if models is None:
-            names = devices.keys()
+            names = list(six.iterkeys(devices))
             try:
                 names.remove('main')
             except ValueError:
