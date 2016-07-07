@@ -14,8 +14,9 @@ class Reporter(object):
 
     Reporter is used to collect values that users want to watch. The reporter
     object holds a mapping from value names to the actually observed values.
+    We call this mapping `observations`.
 
-    When a value is passed to the reporter, an observer object can be
+    When a value is passed to the reporter, an object called `observer` can be
     optionally attached. In this case, the name of the observer is added as the
     prefix of the value name. The observer name should be registered
     beforehand.
@@ -39,6 +40,9 @@ class Reporter(object):
        >>> observation = {}
        >>> with report_scope(observation):
        ...     report({'x': 1}, observer)
+       ...
+       >>> observation
+       {'my_observer:x': 1}
 
     The most important application of Reporter is to report observed values
     from each link or chain in the training and validation procedures.
@@ -169,13 +173,13 @@ def report(values, observer=None):
                   super(MyRegressor, self).__init__(predictor=predictor)
 
               def __call__(self, x, y):
-                  # This chain just computes the mean squared error between the
-                  # prediction and y.
+                  # This chain just computes the mean absolute and squared
+                  # errors between the prediction and y.
                   pred = self.predictor(x)
                   abs_error = F.sum(F.abs(pred - y)) / len(x.data)
                   loss = F.mean_squared_error(pred, y)
 
-                  # Report the mean absolute and squared error.
+                  # Report the mean absolute and squared errors.
                   report({'abs_error': abs_error, 'squared_error': loss}, self)
 
                   return loss
@@ -185,7 +189,8 @@ def report(values, observer=None):
        :class:`~chainer.training.StandardUpdater`), these reported values are
        named ``'main/abs_error'`` and ``'main/squared_error'``. If these values
        are reported inside the :class:`~chainer.training.extension.Evaluator`
-       extension, the names are changed to ``'validation/main/abs_error'`` and
+       extension, ``'validation/'`` is added at the head of the link name, thus
+       the item names are changed to ``'validation/main/abs_error'`` and
        ``'validation/main/squared_error'`` (``'validation'`` is the default
        name of the Evaluator extension).
 
@@ -267,8 +272,8 @@ class DictSummary(object):
 
     """Online summarization of a sequence of dictionaries.
 
-    DictSummary computes the statistics of a given set of scalars online. It
-    only computes the statistics for scalar values and variables of scalar
+    ``DictSummary`` computes the statistics of a given set of scalars online.
+    It only computes the statistics for scalar values and variables of scalar
     values in the dictionaries.
 
     """
