@@ -14,8 +14,8 @@ class Iterator(object):
     The interface between the iterator and the underlying dataset is not fixed,
     and up to the implementation.
 
-    Each implementation should provide the following attributes (or possibly
-    read-only properties).
+    Each implementation should provide the following attributes (not needed to
+    be writable).
 
     - ``batch_size``: the number of examples within each minibatch.
     - ``epoch``: the number of completed sweeps over the dataset.
