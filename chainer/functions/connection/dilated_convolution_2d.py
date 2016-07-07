@@ -88,21 +88,67 @@ class DilatedConvolution2DFunction(function.Function):
         out_w = conv.get_conv_outsize(w, dkw, self.sx, self.pw,
                                       cover_all=self.cover_all)
 
-        y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
+        y = cuda.cupy.zeros((n, out_c, out_h, out_w), dtype=x.dtype)
+        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
 
-        # Implementation using im2col
-        self.col = conv.im2col_gpu(
-            x, dkh, dkw, self.sy, self.sx, self.ph, self.pw,
-            cover_all=self.cover_all)[:, :, 0:dkh:self.dy, 0:dkw:self.dx, :, :]
-        W_mat = W.reshape(out_c, -1)
-        col_mats = self.col.reshape(n, -1, out_h * out_w)
-        y_mats = y.reshape(n, out_c, -1)
-        # TODO(beam2d): Use streams or batch gemm
-        for i in moves.range(n):
-            y_mats[i] = W_mat.dot(col_mats[i])
-        # TODO(beam2d): Support unshared bias
-        if b is not None:
-            y += b[:, None, None]
+            pad_x = cuda.cupy.zeros((n, c, h + 2 * self.ph, w + 2 * self.pw),
+                                    dtype=x.dtype)
+            pad_x[:, :, self.ph:self.ph + h, self.pw:self.pw + w] = x
+
+            for j in moves.range(kh):
+                for i in moves.range(kw):
+                    xji = cuda.cupy.ascontiguousarray(
+                        pad_x[:, :,
+                        j * self.dy:j * self.dy + h + 2 * self.ph - dkh + 1,
+                        i * self.dx:i * self.dx + w + 2 * self.pw - dkw + 1])
+                    Wji = cuda.cupy.ascontiguousarray(W[:, :, j:j + 1, i:i + 1])
+
+                    if i == 0 and j == 0:
+                        handle = cudnn.get_handle()
+                        x_desc = cudnn.create_tensor_descriptor(xji)
+                        y_desc = cudnn.create_tensor_descriptor(y)
+                        filter_desc = cudnn.create_filter_descriptor(Wji)
+                        conv_desc = cudnn.create_convolution_descriptor(
+                            (0, 0), (self.sy, self.sx))
+
+                        workspace_size = cuda.get_max_workspace_size()
+                        workspace = cuda.cupy.empty((workspace_size,), dtype='b')
+                        algo = libcudnn.getConvolutionForwardAlgorithm(
+                            handle, x_desc.value, filter_desc.value,
+                            conv_desc.value, y_desc.value, _fwd_pref,
+                            workspace_size)
+
+                        oz_dtype = 'd' if x.dtype == 'd' else 'f'
+                        one = numpy.array(1, dtype=oz_dtype).ctypes
+
+                    libcudnn.convolutionForward(
+                        handle, one.data, x_desc.value, xji.data.ptr,
+                        filter_desc.value, Wji.data.ptr, conv_desc.value,
+                        algo, workspace.data.ptr, workspace_size, one.data,
+                        y_desc.value, y.data.ptr)
+
+            if b is not None:
+                b = cuda.cupy.ascontiguousarray(b)
+                self.bias_desc = cudnn.create_tensor_descriptor(
+                    b[None, :, None, None])
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
+        else:
+            # Implementation using im2col
+            self.col = conv.im2col_gpu(
+                x, dkh, dkw, self.sy, self.sx, self.ph, self.pw,
+                cover_all=self.cover_all)[:, :, 0:dkh:self.dy, 0:dkw:self.dx, :, :]
+            W_mat = W.reshape(out_c, -1)
+            col_mats = self.col.reshape(n, -1, out_h * out_w)
+            y_mats = y.reshape(n, out_c, -1)
+            # TODO(beam2d): Use streams or batch gemm
+            for i in moves.range(n):
+                y_mats[i] = W_mat.dot(col_mats[i])
+            # TODO(beam2d): Support unshared bias
+            if b is not None:
+                y += b[:, None, None]
 
         return y,
 
