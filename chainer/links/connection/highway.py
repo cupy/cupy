@@ -4,6 +4,7 @@ from chainer.functions.activation import sigmoid
 from chainer.functions.math import basic_math
 from chainer import link
 from chainer.links.connection import linear
+import copy
 
 
 class Highway(link.Chain):
@@ -69,9 +70,10 @@ class Highway(link.Chain):
         """
         out_plain = self.activate(self.plain(x))
         out_transform = sigmoid.sigmoid(self.transform(x))
+        out_transform_copy = copy.copy(out_transform)
         a = basic_math.mul(out_plain, out_transform)
         ones = cuda.get_array_module(x).ones_like(x.data)
-        b = basic_math.rsub(out_transform, ones)
+        b = basic_math.rsub(out_transform_copy, ones)
         c = basic_math.mul(x, b)
         y = basic_math.add(a, c)
         return y
