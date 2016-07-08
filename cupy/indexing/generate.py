@@ -12,11 +12,6 @@ class AxisConcatenator(object):
 
     """
     def _retval(self, res):
-        if self.matrix:
-            oldndim = res.ndim
-            res = makemat(res)
-            if oldndim == 1 and self.col:
-                res = res.T
         self.axis = self._axis
         self.matrix = self._matrix
         self.col = 0
@@ -47,18 +42,18 @@ class AxisConcatenator(object):
         ndmin = self.ndmin
         objs = []
         if isinstance(key, str):
-            return NotImplemented
+            return NotImplementedError
         if not isinstance(key, tuple):
             key = (key,)
 
         for k in six.moves.range(len(key)):
             if isinstance(key[k], slice):
-                return NotImplemented
+                return NotImplementedError
             elif isinstance(key[k], str):
                 if k != 0:
                     raise ValueError(
                     'special directives must be the first entry.')
-                return NotImplemented
+                return NotImplementedError
             else:
                 newobj = key[k]
                 if ndmin > 1:
@@ -86,7 +81,7 @@ class CClass(AxisConcatenator):
     def __init__(self):
         """Translates slice objects to concatenation along the second axis.
 
-        This is short-hand for ``np.r_['-1,2,0', index expression]``, which is
+        This is short-hand for ``np.r_[-1,2,0, index expression]``, which is
         useful because of its common occurrence. In particular, arrays will be
         stacked along their last axis after being upgraded to at least 2-D with
         1's post-pended to the shape (column vectors made out of 1-D arrays).
@@ -107,7 +102,7 @@ class RClass(AxisConcatenator):
         1. If the index expression contains comma separated arrays, then stack
            them along their first axis.
         2. If the index expression contains slice notation or scalars then create
-           a 1-D array with a range indicated by the slice notation.(Not Implemented)
+           a 1-D array with a range indicated by the slice notation. (Not Implemented)
 
         If slice notation is used, the syntax ``start:stop:step`` is equivalent
         to ``np.arange(start, stop, step)`` inside of the brackets. However, if
@@ -116,19 +111,20 @@ class RClass(AxisConcatenator):
         inclusive. In other words ``start:stop:stepj`` is interpreted as
         ``np.linspace(start, stop, step, endpoint=1)`` inside of the brackets.
         After expansion of slice notation, all comma separated sequences are
-        concatenated together.
+        concatenated together. (Not Implemented)
 
         Optional character strings placed as the first element of the index
         expression can be used to change the output. The strings 'r' or 'c' result
         in matrix output. If the result is 1-D and 'r' is specified a 1 x N (row)
         matrix is produced. If the result is 1-D and 'c' is specified, then a N x 1
         (column) matrix is produced. If the result is 2-D then both provide the
-        same matrix result.
+        same matrix result. (Not Implemented)
 
         A string integer specifies which axis to stack multiple comma separated
         arrays along. A string of two comma-separated integers allows indication
         of the minimum number of dimensions to force each entry into as the
         second integer (the axis to concatenate along is still the first integer).
+        (Not Implemented)
 
         A string with three comma-separated integers allows specification of the
         axis to concatenate along, the minimum number of dimensions to force the
@@ -140,7 +136,7 @@ class RClass(AxisConcatenator):
         where the start of the array should be instead. Thus, a third argument of
         '0' would place the 1's at the end of the array shape. Negative integers
         specify where in the new shape tuple the last dimension of upgraded arrays
-        should be placed, so the default is '-1'.
+        should be placed, so the default is '-1'. (Not Implemented)
 
         Args:
             Not a function, so takes no parameters

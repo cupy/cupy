@@ -15,6 +15,12 @@ class TestGanerate(unittest.TestCase):
         b = testing.shaped_reverse_arange((2, 4), xp, dtype)
         return xp.r_[a, b]
 
+    def test_r_8(self, xp, dtype):
+        a = testing.shaped_arange((3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 4), xp, dtype)
+        c = testing.shaped_reverse_arange((1, 4), xp, dtype)
+        return xp.r_[a, b, c]
+
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
     def test_r_2(self, xp, dtype):
@@ -44,9 +50,32 @@ class TestGanerate(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             testing.r_['r', [1, 2, 3], [4, 5, 6]]
 
+    def test_r_9(self, xp):
+        a = testing.shaped_arange((3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 5), xp, dtype)
+        with self.assertRaises(ValueError):
+            testing.r_[a, b]
+
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
     def test_c_1(self, xp, dtype):
         a = testing.shaped_arange((4, 2), xp, dtype)
         b = testing.shaped_reverse_arange((4, 3), xp, dtype)
         return xp.c_[a, b]
+
+    def test_c_2(self, xp, dtype):
+        a = testing.shaped_arange((4, 2), xp, dtype)
+        b = testing.shaped_reverse_arange((4, 3), xp, dtype)
+        c = testing.shaped_reverse_arange((4, 1), xp, dtype)
+        return xp.c_[a, b, c]
+
+    @testing.for_all_dtypes(name='dtype')
+    def test_c_3(self, xp):
+        a = testing.shaped_arange((3, 4), xp, dtype)
+        b = testing.shaped_reverse_arange((2, 5), xp, dtype)
+        with self.assertRaises(ValueError):
+            testing.c_[a, b]
+
+    def test_AxisConcatenator_init1(self):
+        with self.assertRaises(TypeError):
+            testing.AxisConcatenator.__init__()
