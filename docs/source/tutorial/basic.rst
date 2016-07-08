@@ -433,7 +433,7 @@ This code automatically downloads the MNIST dataset and saves the NumPy arrays t
 The returned ``train`` and ``test`` can be seen as lists of image-label pairs (strictly speaking, they are instances of :class:`~datasets.TupleDataset`).
 
 We also have to define how to iterate over these datasets.
-We want to shuffle the training dataset for every *epoch*, i.e. at the end of every sweep over the dataset.
+We want to shuffle the training dataset for every *epoch*, i.e. at the beginning of every sweep over the dataset.
 In this case, we can use :class:`iterators.ShuffledIterator`.
 
 .. doctest::
@@ -513,7 +513,7 @@ Now we can build a trainer object.
    >>> updater = training.StandardUpdater(train_iter, optimizer)
    >>> trainer = training.Trainer(updater, (20, 'epoch'), out='result')
 
-The second argument ``20, 'epoch'`` represents the duration of training.
+The second argument ``(20, 'epoch')`` represents the duration of training.
 We can use either ``epoch`` or ``iteration`` as the unit.
 In this case, we train the multi-layer perceptron by iterating over the training set 20 times.
 
@@ -526,7 +526,7 @@ In order to invoke the training loop, we just call the :meth:`~training.Trainer.
 This method executes the whole training sequence.
 
 The above code just optimizes the parameters.
-In most cases, we want to see how the training proceeds, where we can use extensions inserted before the training.
+In most cases, we want to see how the training proceeds, where we can use extensions inserted before calling the ``run`` method.
 
 .. doctest::
 

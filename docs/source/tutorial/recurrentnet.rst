@@ -223,7 +223,7 @@ When we write a training loop, it is better to use Trainer, since we can then ea
 Before implementing it on Trainer, let's clarify the training settings.
 We here use Penn Tree Bank dataset as a set of sentences.
 Each sentence is represented as a word sequence.
-We concatenate all sentences into one long word sequence, in which each sentence is separated by a special word ``<eos>``.
+We concatenate all sentences into one long word sequence, in which each sentence is separated by a special word ``<eos>``, which stands for "End of Sequence".
 This dataset is easily obtained by :func:`chainer.datasets.get_ptb_words`.
 This function returns train, validation, and test dataset, each of which is represented as a long array of integers.
 Each integer represents a word ID.
@@ -260,9 +260,9 @@ Following is a code from the official example in the ``examples/ptb`` directory.
            self.iteration = 0
 
        def __next__(self):
+           length = len(self.dataset)
            if not self.repeat and self.iteration * self.batch_size >= length:
                raise StopIteration
-           length = len(self.dataset)
            cur_words = self.get_words()
            self.iteration += 1
            next_words = self.get_words()
