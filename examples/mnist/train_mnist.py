@@ -48,6 +48,8 @@ def main():
     print('')
 
     # Set up a neural network to train
+    # Classifier reports softmax cross entropy loss and accuracy at every
+    # iteration, which will be used by the PrintReport extension below.
     model = L.Classifier(MLP(784, args.unit, 10))
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
@@ -72,6 +74,7 @@ def main():
     trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu))
 
     # Dump a computational graph from 'loss' variable at the first iteration
+    # The "main" refers to the target link of the "main" optimizer.
     trainer.extend(extensions.dump_graph('main/loss'))
 
     # Take a snapshot at each epoch
@@ -81,7 +84,10 @@ def main():
     trainer.extend(extensions.LogReport())
 
     # Print selected entries of the log to stdout
-    # Entries prefixed by 'validation' are computed by the Evaluator extension
+    # Here "main" refers to the target link of the "main" optimizer again, and
+    # "validation" refers to the default name of the Evaluator extension.
+    # Entries other than 'epoch' are reported by the Classifier link, called by
+    # either the updater or the evaluator.
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy']))
