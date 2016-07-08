@@ -19,8 +19,8 @@ class Evaluator(extension.Extension):
     the evaluation function on each iteration. The report for all iterations
     are aggregated to :class:`~chainer.DictSummary`. The collected mean values
     are further reported to the reporter object of the trainer, where the name
-    of each observation is prefixed by the evaluator name. It also report their
-    standard deviations, where the names are also suffixed by ``.std``.
+    of each observation is prefixed by the evaluator name. See
+    :class:`~chainer.Reporter` for details in naming rules of the reports.
 
     Evaluator has a structure to customize similar to that of
     :class:`~chainer.training.StandardUpdater`. The main differences are:
@@ -50,14 +50,14 @@ class Evaluator(extension.Extension):
             just a link object, the link is registered by the name ``'main'``.
         eval_loop: Evaluation loop. This is a function that takes the evaluator
             object as the argument, and returns a dictionary of statistics for
-            observed values. The default routine uses ``converter`` and
-            ``eval_func`` if specified.
+            observed values. If it is omitted, the default routine is used. The
+            default routine uses ``converter``.
         converter: Converter function to build input arrays. If it is omitted,
             :func:`~chainer.dataset.concat_examples` is used. If
             ``eval_loop`` is specified, this argument is ignored and not used.
         device: Device to which the training data is sent. Negative value
-            indicates the host memory (CPU). If ``eval_loop`` or ``converter``
-            is specified, this argument is ignored and not used.
+            indicates the host memory (CPU). If ``eval_loop`` is specified,
+            this argument is ignored and not used.
         eval_hook: Function to prepare for each evaluation process. It is
             called at the beginning of the evaluation. The evaluator extension
             object is passed at each call. If ``eval_loop`` is specified, this
