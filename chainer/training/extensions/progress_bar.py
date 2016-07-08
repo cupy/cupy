@@ -22,7 +22,7 @@ class ProgressBar(extension.Extension):
             determine the length of the training.
         update_interval (int): Number of iterations to skip printing the
             progress bar.
-        bar_length (int): Length of the progress bar.
+        bar_length (int): Length of the progress bar in characters.
         out: Stream to print the bar. Standard output is used by default.
 
     """
