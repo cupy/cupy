@@ -7,7 +7,7 @@ class DatasetMixin(object):
     combines the results into a list. This mixin makes it easy to implement a
     new dataset that does not support efficient slicing.
 
-    Dataset implementation usign DatasetMixin still has to provide the
+    Dataset implementation using DatasetMixin still has to provide the
     :meth:`__len__` operator explicitly.
 
     """

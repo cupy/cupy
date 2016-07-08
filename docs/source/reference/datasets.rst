@@ -58,6 +58,7 @@ ImageDataset
 LabeledImageDataset
 ~~~~~~~~~~~~~~~~~~~
 .. autoclass:: LabeledImageDataset
+   :members:
 
 
 Concrete datasets

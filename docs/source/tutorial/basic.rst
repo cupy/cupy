@@ -281,7 +281,7 @@ Optimizer
 In order to get good values for parameters, we have to optimize them by the :class:`Optimizer` class.
 It runs a numerical optimization algorithm given a link.
 Many algorithms are implemented in :mod:`~chainer.optimizers` module.
-Here we use the simplest one, called Stochastic Gradient Descent:
+Here we use the simplest one, called Stochastic Gradient Descent (SGD):
 
 .. doctest::
 

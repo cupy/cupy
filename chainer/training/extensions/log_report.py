@@ -14,9 +14,9 @@ class LogReport(extension.Extension):
 
     """Trainer extension to output the accumulated results to a log file.
 
-    This extension accumulates the observation of the trainer to
-    :class:`~chainer.DictSummary` for each duration of a specified length, and
-    writes them into a log file in JSON format.
+    This extension accumulates the observations of the trainer to
+    :class:`~chainer.DictSummary` at a regular interval specified by a supplied
+    trigger, and writes them into a log file in JSON format.
 
     There are two triggers to handle this extension. One is the trigger to
     invoke this extension, which is used to handle the timing of accumulating
