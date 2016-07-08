@@ -35,6 +35,11 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
         return len(self.base)
 
     def get_example(self, i):
+        # It reads the i-th image/label pair and return a preprocessed image.
+        # It applies following preprocesses:
+        #     - Cropping (random or center rectangular)
+        #     - Random flip
+        #     - Scaling to [0, 1] value
         crop_size = self.crop_size
 
         image, label = self.base[i]
