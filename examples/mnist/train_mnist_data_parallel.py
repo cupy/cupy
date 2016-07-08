@@ -11,6 +11,9 @@ import train_mnist
 
 
 def main():
+    # This script is almost identical to train_mnist.py. The only difference is
+    # that this script uses data-parallel computation on two GPUs.
+    # See train_mnist.py for more details.
     parser = argparse.ArgumentParser(description='Chainer example: MNIST')
     parser.add_argument('--batchsize', '-b', type=int, default=400,
                         help='Number of images in each mini batch')
@@ -34,57 +37,39 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    # See train_mnist.py for the meaning of these lines
     model = L.Classifier(train_mnist.MLP(784, args.unit, 10))
-
-    # Make a specified GPU current
-    chainer.cuda.get_device(args.gpu0).use()
-
-    # Setup an optimizer
     optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
 
-    # Load the MNIST dataset
     train, test = chainer.datasets.get_mnist()
-
     train_iter = chainer.iterators.ShuffledIterator(train, args.batchsize)
     test_iter = chainer.iterators.SequentialIterator(test, args.batchsize,
                                                      repeat=False)
 
-    # Set up a trainer
+    # ParallelUpdater implements the data-parallel gradient computation on
+    # multiple GPUs. It accepts "devices" argument that specifies which GPU to
+    # use.
     updater = training.ParallelUpdater(
         train_iter,
         optimizer,
+        # The device of the name 'main' is used as a "master", while others are
+        # used as slaves. Names other than 'main' are arbitrary.
         devices={'main': args.gpu0, 'second': args.gpu1},
     )
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-    # Evaluate the model with the test dataset for each epoch
     trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu0))
-
-    # Dump a computational graph from 'loss' variable at the first iteration
     trainer.extend(extensions.dump_graph('main/loss'))
-
-    # Take a snapshot at each epoch
     trainer.extend(extensions.snapshot())
-
-    # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
-
-    # Print selected entries of the log to stdout
-    # Entries prefixed by 'validation' are computed by the Evaluator extension
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy']))
-
-    # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())
 
     if args.resume:
-        # Resume from a snapshot
         chainer.serializers.load_npz(args.resume, trainer)
 
-    # Run the training
     trainer.run()
 
 
