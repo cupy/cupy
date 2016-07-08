@@ -326,11 +326,13 @@ In this case, :meth:`~Link.zerograds` is automatically called by the update meth
    ...     return loss
    >>> optimizer.update(lossfun, args...)
 
+See :meth:`Optimizer.update` for the full specification.
+
 
 Trainer
 ~~~~~~~
 
-When we want to train neural networks, we have to run *training loops* that update parameters for many times.
+When we want to train neural networks, we have to run *training loops* that update parameters many times.
 A typical training loop consists of following procedures:
 
 1. Iterations over training datasets
@@ -352,7 +354,7 @@ The training loop abstraction mainly consists of two components:
   The whole procedure is implemented by :class:`~training.Trainer`.
   The way to update parameters (3 and 4) is defined by :class:`~training.Updater`, which can be freely customized.
   The 5 and 6 are implemented by instances of :class:`~training.Extension`, which appends an extra procedure to the training loop.
-  Users can freely customize the training procedure by adding extensions.
+  Users can freely customize the training procedure by adding extensions. Users can also implement their own extensions.
 
 We will see how to use Trainer in the example section below.
 
