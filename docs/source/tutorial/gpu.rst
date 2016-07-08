@@ -229,9 +229,6 @@ When we write down the training loop by hand, we have to transfer each minibatch
    epoch 0
    ...
 
-This is almost identical to the code of the original example,
-we just inserted a call to the :func:`cuda.to_gpu` function to the minibatch arrays.
-
 
 Model-parallel Computation on Multiple GPUs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
