@@ -5,7 +5,6 @@ from operator import mul
 
 from chainer import cuda
 from chainer.functions.pooling import max_pooling_nd_kernel
-from chainer.functions.pooling import pooling_2d
 from chainer.functions.pooling import pooling_nd
 from chainer.utils import conv_nd
 
@@ -42,7 +41,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
 
     def forward_gpu(self, x):
         if (cuda.cudnn_enabled and self.use_cudnn and self.ndim > 1 and
-                pooling_2d._check_cudnn_acceptable_type(x[0].dtype)):
+                pooling_nd._check_cudnn_acceptable_type(x[0].dtype)):
             return super(MaxPoolingND, self).forward_gpu(x)
 
         n, c = x[0].shape[:2]
@@ -86,7 +85,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
 
     def backward_gpu(self, x, gy):
         if (cuda.cudnn_enabled and self.use_cudnn and self.ndim > 1 and
-                pooling_2d._check_cudnn_acceptable_type(x[0].dtype)):
+                pooling_nd._check_cudnn_acceptable_type(x[0].dtype)):
             return super(MaxPoolingND, self).backward_gpu(x, gy)
 
         n, c = x[0].shape[:2]

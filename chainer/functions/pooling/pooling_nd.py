@@ -12,6 +12,10 @@ if cuda.cudnn_enabled:
     _cudnn_version = libcudnn.getVersion()
 
 
+def _check_cudnn_acceptable_type(x_dtype):
+    return _cudnn_version >= 3000 or x_dtype != numpy.float16
+
+
 def _tuple(x, n):
     if hasattr(x, '__getitem__'):
         assert len(x) == n
