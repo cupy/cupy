@@ -68,14 +68,17 @@ class ParallelSequentialIterator(chainer.dataset.Iterator):
         self.iteration = 0
 
     def __next__(self):
+        # This iterator returns a list representing a mini batch. Each item
+        # indicates a different position in the original sequence. Each item is
+        # represented by a pair of two word IDs. The first word is at the
+        # "current" position, while the second word at the next position.
+        # At each iteration, the iteration count is incremented, which pushes
+        # forward the "current" position.
         length = len(self.dataset)
         if not self.repeat and self.iteration * self.batch_size >= length:
             # If not self.repeat, this iterator stops at the end of the first
             # epoch (i.e., when all words are visited once).
             raise StopIteration
-        # This method is the main part of a dataset iterator. It returns the
-        # pair of the current and next words, and increments the iteration
-        # count.
         cur_words = self.get_words()
         self.iteration += 1
         next_words = self.get_words()
@@ -130,7 +133,8 @@ def get_bptt_updater(train_iter, optimizer, bprop_len, device):
     return training.StandardUpdater(train_iter, optimizer, update_bptt)
 
 
-# Routine to rewrite the result dictionary to add perplexity values
+# Routine to rewrite the result dictionary of LogReport to add perplexity
+# values
 def compute_perplexity(result):
     result['perplexity'] = np.exp(result['main/loss'])
     if 'validation/main/loss' in result:
@@ -154,7 +158,8 @@ def main():
                         help='Directory to output the result')
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
-    parser.add_argument('--test', action='store_true')
+    parser.add_argument('--test', action='store_true',
+                        help='Use tiny datasets for quick tests')
     parser.set_defaults(test=False)
     parser.add_argument('--unit', '-u', type=int, default=650,
                         help='Number of LSTM units in each layer')
