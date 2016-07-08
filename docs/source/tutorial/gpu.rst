@@ -294,8 +294,8 @@ The copy supports backprop, which just reversely transfers an output gradient to
 An almost identical example code can be found at ``examples/mnist/net.py``.
 
 
-Data-parallel Computation on Multiple GPUs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Data-parallel Computation on Multiple GPUs with Trainer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Data-parallel computation is another strategy to parallelize online processing.
 In the context of neural networks, it means that a different device does computation on a different subset of the input data.
@@ -304,13 +304,47 @@ In this subsection, we review the way to achieve data-parallel learning on two G
 Suppose again our task is :ref:`the MNIST example <mnist_mlp_example>`.
 This time we want to directly parallelize the three-layer network.
 The most simple form of data-parallelization is parallelizing the gradient computation for a distinct set of data.
-First, define a model instance:
+First, define a model and optimizer instances:
 
-.. testcode::
+.. doctest::
+
+   model = L.Classifier(MLP(784, 1000, 10))
+   optimizer = optimizers.SGD()
+   optimizer.setup(model)
+
+Recall that the ``MLP`` link implements the multi-layer perceptron, and the :class:`~chainer.links.Classifier` link wraps it to provide a classifier interface.
+We used :class:`~training.StandardUpdater` in the previous example.
+In order to enable data-parallel computation with multiple GPUs, we only have to replace it with :class:`~training.ParallelUpdater`.
+
+.. doctest::
+
+   updater = training.ParallelUpdater(train_iter, optimizer,
+                                      devices={'main': 0, 'second': 1})
+
+The ``devices`` option specifies which devices to use in data-parallel learning.
+The device with name ``'main'`` is used as the main device.
+The original model is sent to this device, so the optimization runs on the main device.
+In the above example, the model is also cloned and sent to GPU 1.
+Half of each mini batch is fed to this cloned model.
+After every backward computation, the gradient is accumulated into the main device, the parameter update runs on it, and then the updated parameters are sent to GPU 1 again.
+
+
+Data-parallel Computation on Multiple GPUs without Trainer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We here introduce a way to write data-parallel computation without the help of :class:`~training.Trainer`.
+Most users can skip this section.
+If you are interested in how to write a data-parallel computation by yourself, this section should be informative.
+It is also helpful to, e.g., customize the :class:`~training.ParallelUpdater` class.
+
+We again start from the MNIST example.
+At this time, we use a suffix like ``_0`` and ``_1`` to distinguish objects on each device.
+First, we define a model.
+
+.. doctest::
 
    model_0 = L.Classifier(MLP(784, 1000, 10))
 
-Recall that the ``MLP`` link implements the multi-layer perceptron, and the :class:`~chainer.links.Classifier` link wraps it to provide a classifier interface.
 We want to make two copies of this instance on different GPUs.
 The :meth:`Link.to_gpu` method runs in place, so we cannot use it to make a copy.
 In order to make a copy, we can use :meth:`Link.copy` method.
