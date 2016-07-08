@@ -185,6 +185,50 @@ class DilatedConvolution2DFunction(function.Function):
             return gx, gW, gb
 
     def backward_gpu(self, inputs, grad_outputs):
+        x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
+        gy = grad_outputs[0]
+        _, out_c, out_h, out_w = gy.shape
+        n, c, h, w = x.shape
+        kh, kw = W.shape[2:]
+
+        gW = cuda.cupy.empty_like(W)
+        gW_mat = gW.reshape(out_c, c * kh * kw)
+        col_mats = self.col.reshape(n, c * kh * kw, out_h * out_w)
+        gy_mats = gy.reshape(n, out_c, out_h * out_w)
+        # TODO(beam2d): Use streams or batch gemm
+        gW_mat[...] = 0
+        for i in moves.range(n):
+            gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
+
+        W_mat = W.reshape(out_c, -1)
+        gcol = cuda.cupy.empty_like(self.col)
+        gcol_mats = gcol.reshape(n, c * kh * kw, out_h * out_w)
+
+        for i in moves.range(n):
+            gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
+
+        # dilate col2im_gpu
+        # TODO(yasunorikudo): Write cuda.elementwise
+        img = cuda.cupy.zeros(
+            (n, c, h + 2 * self.ph + self.sy - 1, w + 2 * self.pw + self.sx - 1),
+            dtype=gcol.dtype)
+        for j in moves.range(kh):
+            q = j * self.dy
+            q_lim = q + self.sy * out_h
+            for i in moves.range(kw):
+                p = i * self.dx
+                p_lim = p + self.sx * out_w
+                img[:, :, q:q_lim:self.sy, p:p_lim:self.sx] += gcol[:, :, j, i, :, :]
+        gx = img[:, :, self.ph:h + self.ph, self.pw:w + self.pw]
+
+        if b is not None:
+            gb = gy.sum(axis=(0, 2, 3))
+
+        if b is None:
+            return gx, gW
+        else:
+            return gx, gW, gb
 
 def dilated_convolution_2d(x, W, b=None, dilate=1, stride=1, pad=0, use_cudnn=True,
                    cover_all=False):
