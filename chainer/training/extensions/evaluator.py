@@ -71,7 +71,7 @@ class Evaluator(extension.Extension):
     default_name = 'validation'
     priority = extension.PRIORITY_WRITER
 
-    def __init__(self, iterator, target, eval_loop=None, converter=None,
+    def __init__(self, iterator, target, converter=convert.concat_examples,
                  device=None, eval_hook=None, eval_func=None):
         if isinstance(iterator, iterator_module.Iterator):
             iterator = {'main': iterator}
@@ -81,8 +81,10 @@ class Evaluator(extension.Extension):
             target = {'main': target}
         self._targets = target
 
-        self._eval_loop = eval_loop or _default_eval_loop(
-            self, converter, device, eval_hook, eval_func)
+        self.converter = converter
+        self.device = device
+        self.eval_hook = eval_hook
+        self.eval_func = eval_func
 
     def get_iterator(self, name):
         """Returns the iterator of the given name."""
@@ -100,9 +102,36 @@ class Evaluator(extension.Extension):
         """Returns a dictionary of all target links."""
         return dict(self._targets)
 
-    def __call__(self, trainer):
-        result = self.evaluate()
-        trainer.observation.update(result)
+    def __call__(self, trainer=None):
+        """Executes the evaluator extension.
+
+        Unlike usual extensions, this extension can be executed passing a
+        trainer object. This extension reports the performance on
+        validation dataset using the :func:`~chainer.report` function. Thus,
+        users can use this extension independently from any trainer by
+        manutally configuring a :class:`~chainer.Reporter` object.
+
+        Args:
+            trainer (~chainer.training.Trainer): Trainer object that invokes
+                this extension. It can be omitted in case of calling this
+                extension manually.
+
+        """
+        # set up a reporter
+        reporter = reporter_module.Reporter()
+        if hasattr(self, 'name'):
+            prefix = self.name + '/'
+        else:
+            prefix = ''
+        for name, target in six.iteritems(self._targets):
+            reporter.add_observer(prefix + name, target)
+            reporter.add_observers(prefix + name,
+                                   target.namedlinks(skipself=True))
+
+        with reporter:
+            result = self.evaluate()
+
+        reporter_module.report(result)
 
     def evaluate(self):
         """Executes an evaluation.
@@ -129,27 +158,36 @@ class Evaluator(extension.Extension):
                                    target.namedlinks(skipself=True))
 
         with reporter:
+            
             return self._eval_loop(self)
 
+    def evaluate(self):
+        """Evaluates the model and returns a result dictionary.
 
-def _default_eval_loop(evaluator, converter, device, eval_hook, eval_func):
-    if not converter:
-        converter = convert.concat_examples
+        This method runs the evaluation loop over the validation dataset. It
+        accumulates the reported values to :class:`~chainer.DictSummary` and
+        returns a dictionary whose values are means computed by the summary.
 
-    iterator = evaluator.get_iterator('main')
-    target = evaluator.get_target('main')
-    eval_func = eval_func or target
+        Users can override this method to customize the evaluation routine.
 
-    def eval_loop(trainer):
-        if eval_hook:
-            eval_hook(evaluator)
+        Returns:
+            dict: Result dictionary. This dictionary is further reported via
+                :func:`~chainer.report` without specifying any observer.
+
+        """
+        iterator = self._iterators['main']
+        target = self._targets['main']
+        eval_func = self.eval_func or target
+
+        if self.eval_hook:
+            self.eval_hook(self)
         it = copy.copy(iterator)
         summary = reporter_module.DictSummary()
 
         for batch in it:
             observation = {}
             with reporter_module.report_scope(observation):
-                in_arrays = converter(batch, device)
+                in_arrays = self.converter(batch, self.device)
                 if isinstance(in_arrays, tuple):
                     in_vars = tuple(variable.Variable(x) for x in in_arrays)
                     eval_func(*in_vars)
@@ -164,5 +202,3 @@ def _default_eval_loop(evaluator, converter, device, eval_hook, eval_func):
             summary.add(observation)
 
         return summary.compute_mean()
-
-    return eval_loop
