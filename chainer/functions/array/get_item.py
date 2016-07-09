@@ -50,9 +50,9 @@ def get_item(x, slices):
 
     Args:
         x (tuple of Variables): Variable to be sliced.
-        slices (int, slice or None or tuple of them): Basic slicing to slice
-            a variable. It supports ``int``, ``slice`` and ``newaxis``
-            (equivalent to ``None``).
+        slices (int, slice, None or Ellipsis or tuple of them): Basic slicing
+            to slice a variable. It supports ``int``, ``slice``, ``newaxis``
+            (equivalent to ``None``) and ``Ellipsis``.
 
     Returns:
         Variable: :class:`~chainer.Variable` object
