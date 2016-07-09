@@ -84,18 +84,11 @@ class StandardUpdater(Updater):
 
     This is the standard implementation of :class:`Updater`. It accepts one or
     more training datasets and one or more optimizers. The default update
-    routine assumes that there is only one training dataset and one optimizer,
-    while users can specify their own update routines. Each batch is converted
-    to input arrays by :func:`~chainer.datasets.concat_examples` by default,
-    which can also be manually set.
-
-    There are two ways to modify the update behavior besides setting a custom
-    loss function. One is by setting a custom update function via the
-    ``update_func`` argument. The other one is by inheriting this class and
-    overriding the :meth:`update` method. In latter case, do not forget to
-    update the iteration counter at each call of this method, because this
-    value is watched by the trainer for deciding when to invoke extensions and
-    when to exit the training loop.
+    routine assumes that there is only one training dataset and one optimizer.
+    Users can override this update routine by inheriting this class and
+    overriding the :meth:`update_core` method. Each batch is converted toiput
+    arrays by :func:`~chainer.datasets.concat_examples` by default, which can
+    also be manually set.
 
     Args:
         iterator: Dataset iterator for the training dataset. It can also be a
@@ -104,27 +97,24 @@ class StandardUpdater(Updater):
         optimizer: Optimizer to update parameters. It can also be a dictionary
             of optimizers. If this is just an optimizer, then the optimizer is
             registered by the name ``'main'``.
-        update_func: Update routine. This is a function that takes the updater
-            object as the argument. The default routine uses ``converter`` and
-            ``loss_func`` if specified.
         converter: Converter function to build input arrays. Each batch
             extracted by the main iterator and the ``device`` option are passed
-            to this function. If it is omitted,
-            :func:`~chainer.dataset.concat_examples` is used. If
-            ``update_func`` is specified, this argument is ignored and not
-            used.
+            to this function. :func:`~chainer.dataset.concat_examples` is used
+            by default.
         device: Device to which the training data is sent. Negative value
-            indicates the host memory (CPU). If ``update_func`` is specified,
-            this argument is ignored and not used.
+            indicates the host memory (CPU).
         loss_func: Loss function. The target link of the main optimizer is used
-            by default. If ``update_func`` is specified, this argument is
-            ignored and not used.
+            by default.
 
     Attributes:
+        converter: Converter function.
+        loss_func: Loss function. If it is None, the target link of the main
+                   optimizer is used instead.
+        device: Device to which the training data is sent.
         iteration: Current number of completed updates.
 
     """
-    def __init__(self, iterator, optimizer, update_func=None, converter=None,
+    def __init__(self, iterator, optimizer, converter=convert.concat_examples,
                  device=None, loss_func=None):
         if isinstance(iterator, iterator_module.Iterator):
             iterator = {'main': iterator}
@@ -134,9 +124,9 @@ class StandardUpdater(Updater):
             optimizer = {'main': optimizer}
         self._optimizers = optimizer
 
-        self._update_func = update_func or _default_update(
-            self, converter, device, loss_func)
-
+        self.converter = converter
+        self.loss_func = loss_func
+        self.device = device
         self.iteration = 0
 
     @property
@@ -174,31 +164,15 @@ class StandardUpdater(Updater):
         return self._iterators[name]
 
     def update(self):
-        self._update_func(self)
+        self.update_core()
         self.iteration += 1
 
-    def serialize(self, serializer):
-        for name, iterator in six.iteritems(self._iterators):
-            iterator.serialize(serializer['iterator:' + name])
+    def update_core(self):
+        batch = self._iterators['main'].next()
+        in_arrays = self.converter(batch, self.device)
 
-        for name, optimizer in six.iteritems(self._optimizers):
-            optimizer.serialize(serializer['optimizer:' + name])
-            optimizer.target.serialize(serializer['model:' + name])
-
-        self.iteration = serializer('iteration', self.iteration)
-
-
-def _default_update(updater, converter, device, loss_func):
-    if not converter:
-        converter = convert.concat_examples
-
-    iterator = updater.get_iterator('main')
-    optimizer = updater.get_optimizer('main')
-    loss_func = loss_func or optimizer.target
-
-    def update(_):
-        batch = iterator.next()
-        in_arrays = converter(batch, device)
+        optimizer = self._optimizers['main']
+        loss_func = self.loss_func or optimizer.target
 
         if isinstance(in_arrays, tuple):
             in_vars = tuple(variable.Variable(x) for x in in_arrays)
@@ -211,7 +185,15 @@ def _default_update(updater, converter, device, loss_func):
             in_var = variable.Variable(in_arrays)
             optimizer.update(loss_func, in_var)
 
-    return update
+    def serialize(self, serializer):
+        for name, iterator in six.iteritems(self._iterators):
+            iterator.serialize(serializer['iterator:' + name])
+
+        for name, optimizer in six.iteritems(self._optimizers):
+            optimizer.serialize(serializer['optimizer:' + name])
+            optimizer.target.serialize(serializer['model:' + name])
+
+        self.iteration = serializer('iteration', self.iteration)
 
 
 class ParallelUpdater(StandardUpdater):
@@ -232,30 +214,27 @@ class ParallelUpdater(StandardUpdater):
         optimizer: Optimizer to update parameters. It can also be a dictionary
             of optimizers. If this is just an optimizer, then the optimizer is
             registered by the name ``'main'``.
-        update_func: Update routine. This is a function that takes the updater
-            object as the argument. The default routine uses ``converter``if
-            specified.
         converter: Converter function to build input arrays. Each batch
             extracted by the main iterator is split equaly between the
             devices and then passed with corresponding ``device`` option to
-            this function. If it is omitted,
-            :func:`~chainer.dataset.concat_examples` is used.
+            this function. :func:`~chainer.dataset.concat_examples` is used by
+            default.
         models: Dictionary of models. The main model should be the same model
             attached to the ``'main'`` optimizer.
         devices: Dictionary of devices to which the training data is sent. The
             devices should be arranged in a dictionary with the same structure
             as ``models``.
-
-    Attributes:
-        iteration: Current number of completed updates.
+        loss_func: Loss function. The model is used as a loss function by
+            default.
 
     """
-    def __init__(self, iterator, optimizer, update_func=None, converter=None,
-                 models=None, devices=None):
+    def __init__(self, iterator, optimizer, converter=convert.concat_examples,
+                 models=None, devices=None, loss_func=None):
         super(ParallelUpdater, self).__init__(
             iterator=iterator,
             optimizer=optimizer,
-            converter=converter
+            converter=converter,
+            loss_func=loss_func,
         )
 
         if models is None:
@@ -275,10 +254,8 @@ class ParallelUpdater(StandardUpdater):
                 models[name] = model
             optimizer.target.to_gpu(devices['main'])
 
+        self._devices = devices
         self._models = models
-
-        self._update_func = update_func or _parallel_update(
-            self, converter, models, devices)
 
     def connect_trainer(self, trainer):
         # Add observers for all (other) models.
@@ -289,46 +266,41 @@ class ParallelUpdater(StandardUpdater):
         for name, model in models_others.items():
             trainer.reporter.add_observer(name, model)
 
+    def update_core(self):
+        optimizer = self.get_optimizer('main')
+        model_main = optimizer.target
+        models_others = {k: v for k, v in self._models.items()
+                         if v is not model_main}
 
-def _parallel_update(updater, converter, models, devices):
-
-    if not converter:
-        converter = convert.concat_examples
-
-    iterator = updater.get_iterator('main')
-    optimizer = updater.get_optimizer('main')
-    model_main = optimizer.target
-    models_others = {k: v for k, v in models.items() if v != model_main}
-
-    def update(_):
-        batch = iterator.next()
+        batch = self.get_iterator('main').next()
 
         #
         # Split the batch to sub-batches.
         #
-        n = len(models)
+        n = len(self._models)
         in_arrays_list = {}
-        for i, key in enumerate(six.iterkeys(models)):
-            in_arrays_list[key] = converter(batch[i::n], devices[key])
+        for i, key in enumerate(six.iterkeys(self._models)):
+            in_arrays_list[key] = self.converter(
+                batch[i::n], self._devices[key])
 
-        for model in six.itervalues(models):
+        for model in six.itervalues(self._models):
             model.zerograds()
 
         losses = []
-        for model_key in six.iterkeys(models):
-            model = models[model_key]
+        for model_key, model in six.iteritems(self._models):
             in_arrays = in_arrays_list[model_key]
+            loss_func = self.loss_func or model
 
             if isinstance(in_arrays, tuple):
                 in_vars = tuple(variable.Variable(x) for x in in_arrays)
-                losses.append(model(*in_vars))
+                losses.append(loss_func(*in_vars))
             elif isinstance(in_arrays[0], dict):
                 in_vars = {key: variable.Variable(x)
                            for key, x in six.iteritems(in_arrays)}
-                losses.append(model(**in_vars))
+                losses.append(loss_func(**in_vars))
             else:
                 in_vars = variable.Variable(in_arrays)
-                losses.append(model(in_vars))
+                losses.append(loss_func(in_vars))
 
         for loss in losses:
             loss.backward()
@@ -340,5 +312,3 @@ def _parallel_update(updater, converter, models, devices):
 
         for model in six.itervalues(models_others):
             model.copyparams(model_main)
-
-    return update
