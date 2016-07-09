@@ -134,34 +134,6 @@ class Evaluator(extension.Extension):
         reporter_module.report(result)
 
     def evaluate(self):
-        """Executes an evaluation.
-
-        This method runs an evaluation and returns the statistics of the
-        observation. It calls the evaluation loop and returns the collected
-        statistics of observed values. During the evaluation loop, a reporter
-        to which the registered links are set as observers is used.
-
-        Returns:
-            dict: Dictionary of statistics of observations made by the
-                evaluation routines.
-
-        """
-        # set up a reporter
-        reporter = reporter_module.Reporter()
-        if hasattr(self, 'name'):
-            prefix = self.name + '/'
-        else:
-            prefix = ''
-        for name, target in six.iteritems(self._targets):
-            reporter.add_observer(prefix + name, target)
-            reporter.add_observers(prefix + name,
-                                   target.namedlinks(skipself=True))
-
-        with reporter:
-            
-            return self._eval_loop(self)
-
-    def evaluate(self):
         """Evaluates the model and returns a result dictionary.
 
         This method runs the evaluation loop over the validation dataset. It
