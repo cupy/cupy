@@ -20,6 +20,9 @@ from chainer.testing import parameterize
     {'axes': [], 'offsets': 0, 'new_axes': 2, 'sliced_shape': (4, 3, 1, 2)},
     {'axes': [], 'offsets': 0, 'new_axes': 3, 'sliced_shape': (4, 3, 2, 1)},
     {'slices': (1, -1, 0), 'sliced_shape': ()},
+    {'slices': (1, -1), 'sliced_shape': (2,)},
+    {'slices': (1, ..., -1), 'sliced_shape': (3,)},
+    {'slices': (1, None, ..., None, -1), 'sliced_shape': (1, 3, 1)},
 )
 class TestGetItem(unittest.TestCase):
 

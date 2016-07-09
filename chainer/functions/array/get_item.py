@@ -1,5 +1,7 @@
 import collections
 
+import numpy
+
 from chainer import cuda
 from chainer import function
 from chainer import utils
@@ -14,12 +16,22 @@ class GetItem(function.Function):
     def __init__(self, slices):
         if not isinstance(slices, collections.Iterable):
             slices = tuple([slices])
+        n_ellipses = 0
+        for s in slices:
+            if numpy.isscalar(s) or s is None or isinstance(s, slice):
+                pass
+            elif s is Ellipsis:
+                n_ellipses += 1
+            else:
+                raise ValueError('Only basic indexing is supported')
+        if n_ellipses > 1:
+            raise ValueError('Only one Ellipsis is allowed')
         self.slices = slices
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         valid_slice = len(self.slices) - self.slices.count(None)
-        type_check.expect(in_types[0].ndim == valid_slice)
+        type_check.expect(in_types[0].ndim >= valid_slice)
 
     def forward(self, xs):
         ary = xs[0]
