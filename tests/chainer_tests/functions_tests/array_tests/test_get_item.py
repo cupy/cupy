@@ -9,6 +9,7 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import parameterize
+from chainer.utils import type_check
 
 
 @parameterize(
@@ -73,6 +74,25 @@ class TestGetItem(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x_data),
                             cuda.to_gpu(self.gy_data))
+
+
+class TestInvalidGetItem(unittest.TestCase):
+
+    def setUp(self):
+        self.x_data = numpy.random.uniform(-1, 1, (4, 3, 2))
+
+    def test_advanced_indexing(self):
+        with self.assertRaises(ValueError):
+            functions.get_item(self.x_data, ([0, 0, 0],))
+
+    def test_multiple_ellipsis(self):
+        with self.assertRaises(ValueError):
+            functions.get_item(self.x_data, (Ellipsis, Ellipsis))
+
+    def test_too_many_indices(self):
+        with self.assertRaises(type_check.InvalidType):
+            functions.get_item(self.x_data, (0, 0, 0, 0))
+
 
 
 testing.run_module(__name__, __file__)
