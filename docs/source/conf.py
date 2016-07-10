@@ -329,7 +329,8 @@ doctest_global_setup = '''
 import numpy as np
 import cupy
 import chainer
-from chainer import cuda, Function, gradient_check, Variable, optimizers, serializers, utils
+from chainer import cuda, datasets, Function, gradient_check, iterators, optimizers, serializers, training, utils, Variable
+from chainer.training import extensions
 from chainer import Link, Chain, ChainList
 import chainer.functions as F
 import chainer.links as L
