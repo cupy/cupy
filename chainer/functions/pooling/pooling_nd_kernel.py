@@ -1,0 +1,298 @@
+from __future__ import print_function
+
+from chainer.utils.conv_nd_kernel import identity
+from chainer.utils.conv_nd_kernel import maplist
+from chainer.utils.conv_nd_kernel import mulexp
+from chainer.utils.conv_nd_kernel import vars
+from chainer.utils.conv_nd_kernel import writer
+
+
+#
+# PoolingNDKernelFwd
+
+class PoolingNDKernelFwd(object):
+
+    def __init__(self, ndim):
+        self.ndim = ndim
+        self.ds = vars('d', ndim)
+        self.outs = vars('out', ndim)
+        self.ks = vars('k', ndim)
+        self.ss = vars('s', ndim)
+        self.ps = vars('p', ndim)
+
+    def name(self):
+        raise NotImplementedError()
+
+    def in_params(self):
+        return []
+
+    def out_params(self):
+        return []
+
+    def before(self):
+        raise NotImplementedError()
+
+    def main(self, offset, xs):
+        raise NotImplementedError()
+
+    def after(self, out_xs):
+        raise NotImplementedError()
+
+    def generate(self):
+        in_params = self._in_params()
+        out_params = self._out_params()
+        operation = self._operation()
+        name = '{}_pool_{}d_fwd'.format(self.name(), self.ndim)
+        return in_params, out_params, operation, name
+
+    def _in_params(self):
+        # 2D: raw T in, int32 d_0, int32 d_1, int32 out_0, int32 out_1,
+        #     int32 k_0, int32 k_1, int32 s_0, int32 s_1, int32 p_0,
+        #     int32 p_1, ...
+        def aux(x):
+            return 'int32 {}'.format(x)
+        in_params = self.in_params()
+        if type(in_params) is tuple:
+            raws = in_params[0]
+            in_params = in_params[1]
+        else:
+            raws = []
+        return ', '.join(['raw T in'] + raws + map(
+            aux, self.ds + self.outs + self.ks + self.ss + self.ps)+in_params)
+
+    def _out_params(self):
+        # T out, ...
+        out_params = self.out_params()
+        return ', '.join(['T out'] + out_params)
+
+    def _compile_c0(self):
+        # 2D: int c0 = i / (out_0 * out_1);
+        return ['int c0 = i / ({});'.format(mulexp(self.outs))]
+
+    def _compile_out_x(self):
+        # 2D: int out_x_0 = i / (out_1) % out_0;
+        #    int out_x_1 = i % out_1;
+        def aux(out_x, outs):
+            head = outs[0]
+            tail = outs[1:]
+            if tail:
+                return 'int {} = i / ({}) % {};'.format(
+                    out_x, mulexp(tail), head)
+            else:
+                return 'int {} = i % {};'.format(out_x, head)
+        out_xs = vars('out_x', self.ndim)
+        out_xs_decls = map(aux, out_xs, maplist(identity, self.outs))
+        return out_xs_decls, out_xs
+
+    def _compile_loop(self, out_xs):
+        # 2D: int in_x0_0 = max(0,   out_x_0 * s_0       - p_0);
+        #     int in_x1_0 = min(d_0, out_x_0 * s_0 + k_0 - p_0);
+        #     int in_x0_1 = max(0,   out_x_1 * s_1       - p_1);
+        #     int in_x1_1 = min(d_1, out_x_1 * s_1 + k_1 - p_1);
+        #     ... Before-part here ...
+        #     for (int x_0 = in_x0_0; x_0 < in_x1_0; ++x_0) {
+        #       int offset_0 = d_1 * (x_0 + d_0 * c0);
+        #       for (int x_1 = in_x0_1; x_1 < in_x1_1; ++x_1) {
+        #         int offset_1 = 1 * (x_1 + offset_0);
+        #         ... Main-part here ...
+        #       }
+        #     }
+        #     ... After-part here ...
+        def aux(in_x0, in_x1, d, out, k, s, p):
+            return [
+                'int {} = max(0,   {} * {}       - {});'.format(
+                    in_x0, out, s, p),
+                'int {} = min({}, {} * {} + {} - {});'.format(
+                    in_x1, d, out, s, k, p)]
+        in_x0s = vars('in_x0', self.ndim)
+        in_x1s = vars('in_x1', self.ndim)
+        bounds = sum(map(
+            aux, in_x0s, in_x1s, self.ds, out_xs, self.ks, self.ss, self.ps
+            ), [])
+
+        def _loop_main(main):
+            w = writer()
+
+            # Loop openings.
+            xs = vars('x', self.ndim)
+            offsets = vars('offset', self.ndim)
+            ds1 = self.ds[1:] + [1]
+            offsets1 = ['d_0 * c0'] + offsets[:-1]
+            for (x, in_x0, in_x1, offset, offset1, d1) in zip(
+                    xs, in_x0s, in_x1s, offsets, offsets1, ds1):
+                w('for (int {} = {}; {} < {}; ++{}) {{'.format(
+                    x, in_x0, x, in_x1, x), 'inc')
+                w('int {} = {} * ({} + {});'.format(offset, d1, x, offset1))
+
+            # Write main-part.
+            offset = offsets[-1]
+            for l in main(offset, xs).split('\n'):
+                w(l)
+
+            # Loop closings.
+            for _ in xs:
+                w('}', 'dec')
+
+            return [w()]
+
+        return bounds, _loop_main
+
+    def _compile_procedure(self, out_xs):
+        def _main(offset, xs):
+            return self.main(offset, xs)
+        before = [self.before()]
+        after = [self.after(out_xs)]
+        return before, _main, after
+
+    def _operation(self):
+        c0 = self._compile_c0()
+        out_x, out_xs = self._compile_out_x()
+        loop_bounds, loop_main = self._compile_loop(out_xs)
+        before, main, after = self._compile_procedure(out_xs)
+        return '\n'.join(
+            c0 + out_x + loop_bounds + before + loop_main(main) + after)
+
+
+#
+# PoolingNDKernelBwd
+
+class PoolingNDKernelBwd(object):
+
+    def __init__(self, ndim):
+        self.ndim = ndim
+        self.ds = vars('d', ndim)
+        self.outs = vars('out', ndim)
+        self.ks = vars('k', ndim)
+        self.ss = vars('s', ndim)
+        self.ps = vars('p', ndim)
+
+    def name(self):
+        raise NotImplementedError()
+
+    def in_params(self):
+        return []
+
+    def out_params(self):
+        return []
+
+    def before(self):
+        raise NotImplementedError()
+
+    def main(self, kx, out_xs):
+        raise NotImplementedError()
+
+    def after(self, xs):
+        raise NotImplementedError()
+
+    def generate(self):
+        in_params = self._in_params()
+        out_params = self._out_params()
+        operation = self._operation()
+        name = '{}_pool_{}d_bwd'.format(self.name(), self.ndim)
+        return in_params, out_params, operation, name
+
+    def _in_params(self):
+        # 2D: raw T gy, int32 d_0, int32 d_1, int32 out_0, int32 out_1,
+        #     int32 k_0, int32 k_1, int32 s_0, int32 s_1, int32 p_0,
+        #     int32 p_1, ...
+        def aux(x):
+            return 'int32 {}'.format(x)
+        in_params = self.in_params()
+        if type(in_params) is tuple:
+            raws = in_params[0]
+            in_params = in_params[1]
+        else:
+            raws = []
+        return ', '.join(['raw T gy'] + raws + map(
+            aux, self.ds + self.outs + self.ks + self.ss + self.ps)+in_params)
+
+    def _out_params(self):
+        # T gx, ...
+        out_params = self.out_params()
+        return ', '.join(['T gx'] + out_params)
+
+    def _compile_c0(self):
+        # 2D: int c0  = i / (d_0 * d_1);
+        return ['int c0  = i / ({});'.format(mulexp(self.ds))]
+
+    def _compile_x(self):
+        # 2D: int x_0 = i / (d_1) % d_0 + p_0;
+        #     int x_1 = i % d_1 + p_1;
+        def aux(x, ds, p):
+            head = ds[0]
+            tail = ds[1:]
+            if tail:
+                return 'int {} = i / ({}) % {} + {};'.format(
+                    x, mulexp(tail), head, p)
+            else:
+                return 'int {} = i % {} + {};'.format(x, head, p)
+        xs = vars('x', self.ndim)
+        xs_decls = map(aux, xs, maplist(identity, self.ds), self.ps)
+        return xs_decls, xs
+
+    def _compile_loop(self, xs):
+        # 2D: int out_x0_0 = max(0,     (x_0 - k_0 + s_0) / s_0);
+        #     int out_x1_0 = min(out_0, (x_0       + s_0) / s_0);
+        #     int out_x0_1 = max(0,     (x_1 - k_1 + s_1) / s_1);
+        #     int out_x1_1 = min(out_1, (x_1       + s_1) / s_1);
+        #     ... Before-part here ...
+        #     for (int out_x_0 = out_x0_0; out_x_0 < out_x1_0; ++out_x_0) {
+        #       int kx_0 = x_0 - out_x_0 * s_0 + k_0 * 0;
+        #       for (int out_x_1 = out_x0_1; out_x_1 < out_x1_1; ++out_x_1) {
+        #         int kx_1 = x_1 - out_x_1 * s_1 + k_1 * kx_0;
+        #         ... Main-part here ...
+        #       }
+        #     }
+        #     ... After-part here ...
+        def aux(out_x0, out_x1, x, out, k, s):
+            return [
+                'int {} = max(0,     ({} - {} + {}) / {});'.format(
+                    out_x0, x, k, s, s),
+                'int {} = min({}, ({}       + {}) / {});'.format(
+                    out_x1, out, x, s, s)]
+        out_x0s = vars('out_x0', self.ndim)
+        out_x1s = vars('out_x1', self.ndim)
+        bounds = sum(map(
+            aux, out_x0s, out_x1s, xs, self.outs, self.ks, self.ss), [])
+
+        def _loop_main(main):
+            w = writer()
+
+            # Loop openings.
+            out_xs = vars('out_x', self.ndim)
+            kxs = vars('kx', self.ndim)
+            kxs1 = [0] + kxs[:-1]
+            for (out_x, out_x0, out_x1, kx, s, x, k, kx1) in zip(
+                    out_xs, out_x0s, out_x1s, kxs, self.ss, xs, self.ks, kxs1):
+                w('for (int {} = {}; {} < {}; ++{}) {{'.format(
+                    out_x, out_x0, out_x, out_x1, out_x), 'inc')
+                w('int {} = {} - {} * {} + {} * {};'.format(
+                    kx, x, out_x, s, k, kx1))
+
+            # Write main-part.
+            kx = kxs[-1]
+            for l in main(kx, out_xs).split('\n'):
+                w(l)
+
+            # Loop closings.
+            for _ in out_xs:
+                w('}', 'dec')
+
+            return [w()]
+
+        return bounds, _loop_main
+
+    def _compile_procedure(self, xs):
+        def _main(kx, out_xs):
+            return self.main(kx, out_xs)
+        before = [self.before()]
+        after = [self.after(xs)]
+        return before, _main, after
+
+    def _operation(self):
+        c0 = self._compile_c0()
+        x, xs = self._compile_x()
+        loop_bounds, loop_main = self._compile_loop(xs)
+        before, main, after = self._compile_procedure(xs)
+        return '\n'.join(
+            c0 + x + loop_bounds + before + loop_main(main) + after)

@@ -56,7 +56,8 @@ class MaxPoolingND(pooling_nd.PoolingND):
 
         ndim = self.ndim
         if ndim not in _forward_cache:
-            _forward_cache[ndim] = max_pooling_nd_kernel.generate_forward(ndim)
+            _forward_cache[ndim] = \
+                max_pooling_nd_kernel.MaxPoolingNDKernelFwd(ndim).generate()
         in_params, out_params, operation, name = _forward_cache[ndim]
         cuda.elementwise(in_params, out_params, operation, name)(
             x[0].reduced_view(),
@@ -95,8 +96,8 @@ class MaxPoolingND(pooling_nd.PoolingND):
 
         ndim = self.ndim
         if ndim not in _backward_cache:
-            _backward_cache[ndim] = max_pooling_nd_kernel.generate_backward(
-                ndim)
+            _backward_cache[ndim] = \
+                max_pooling_nd_kernel.MaxPoolingNDKernelBwd(ndim).generate()
         in_params, out_params, operation, name = _backward_cache[ndim]
         cuda.elementwise(in_params, out_params, operation, name)(
             gy[0].reduced_view(), self.indexes.reduced_view(),
