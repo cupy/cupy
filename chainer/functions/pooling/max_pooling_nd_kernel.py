@@ -68,7 +68,6 @@ class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
         # 2D: raw T gy, raw S indexes, int32 d_0, int32 d_1, int32 out_0,
         #     int32 out_1, int32 k_0, int32 k_1, int32 s_0, int32 s_1,
         #     int32 p_0, int32 p_1
-
         return (['raw S indexes'], [])
 
     def before(self):

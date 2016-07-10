@@ -71,7 +71,7 @@ class PoolingNDKernelFwd(object):
 
     def _compile_out_x(self):
         # 2D: int out_x_0 = i / (out_1) % out_0;
-        #    int out_x_1 = i % out_1;
+        #     int out_x_1 = i % out_1;
         def aux(out_x, outs):
             head = outs[0]
             tail = outs[1:]
