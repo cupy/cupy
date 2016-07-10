@@ -178,7 +178,7 @@ class PoolingNDKernelBwd(object):
     def before(self):
         raise NotImplementedError()
 
-    def main(self, kx, out_xs):
+    def main(self, offset, xs, out_xs):
         raise NotImplementedError()
 
     def after(self, xs):
@@ -237,9 +237,9 @@ class PoolingNDKernelBwd(object):
         #     int out_x1_1 = min(out_1, (x_1       + s_1) / s_1);
         #     ... Before-part here ...
         #     for (int out_x_0 = out_x0_0; out_x_0 < out_x1_0; ++out_x_0) {
-        #       int kx_0 = x_0 - out_x_0 * s_0 + k_0 * 0;
+        #       int offset_0 = out_1 * (out_x_0 + out_0 * c0);
         #       for (int out_x_1 = out_x0_1; out_x_1 < out_x1_1; ++out_x_1) {
-        #         int kx_1 = x_1 - out_x_1 * s_1 + k_1 * kx_0;
+        #         int offset_1 = 1 * (out_x_1 + offset_0);
         #         ... Main-part here ...
         #       }
         #     }
@@ -260,18 +260,19 @@ class PoolingNDKernelBwd(object):
 
             # Loop openings.
             out_xs = vars('out_x', self.ndim)
-            kxs = vars('kx', self.ndim)
-            kxs1 = [0] + kxs[:-1]
-            for (out_x, out_x0, out_x1, kx, s, x, k, kx1) in zip(
-                    out_xs, out_x0s, out_x1s, kxs, self.ss, xs, self.ks, kxs1):
+            offsets = vars('offset', self.ndim)
+            outs1 = self.outs[1:] + [1]
+            offsets1 = ['out_0 * c0'] + offsets[:-1]
+            for (out_x, out_x0, out_x1, offset, offset1, out1) in zip(
+                    out_xs, out_x0s, out_x1s, offsets, offsets1, outs1):
                 w('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     out_x, out_x0, out_x, out_x1, out_x), 'inc')
-                w('int {} = {} - {} * {} + {} * {};'.format(
-                    kx, x, out_x, s, k, kx1))
+                w('int {} = {} * ({} + {});'.format(
+                    offset, out1, out_x, offset1))
 
             # Write main-part.
-            kx = kxs[-1]
-            for l in main(kx, out_xs).split('\n'):
+            offset = offsets[-1]
+            for l in main(offset, xs, out_xs).split('\n'):
                 w(l)
 
             # Loop closings.
@@ -283,8 +284,8 @@ class PoolingNDKernelBwd(object):
         return bounds, _loop_main
 
     def _compile_procedure(self, xs):
-        def _main(kx, out_xs):
-            return self.main(kx, out_xs)
+        def _main(offset, xs, out_xs):
+            return self.main(offset, xs, out_xs)
         before = [self.before()]
         after = [self.after(xs)]
         return before, _main, after

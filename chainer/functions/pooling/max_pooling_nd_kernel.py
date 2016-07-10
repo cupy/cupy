@@ -73,14 +73,19 @@ class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
     def before(self):
         return 'T val = 0;'
 
-    def main(self, kx, out_xs):
-        # 2D: if (indexes[offset] == kx_1) {
-        #       val = val + gy[offset];
+    def main(self, offset, xs, out_xs):
+        # 2D: int kx = (x_1 - out_x_1 * s_1 + k_1 *
+        #              (x_0 - out_x_0 * s_0 + k_0 * 0));
+        #     if (indexes[offset_1] == kx) {
+        #       val = val + gy[offset_1];
         #     }
+        def aux(x, out_x, s):
+            return '{} - {} * {}'.format(x, out_x, s)
         w = writer()
-        w('int offset = {};'.format(muladdexp(self.outs, out_xs, 'c0')))
-        w('if (indexes[offset] == {}) {{'.format(kx), 'inc')
-        w('val = val + gy[offset];')
+        w('int kx = {};'.format(
+            muladdexp(self.ks, map(aux, xs, out_xs, self.ss), '0')))
+        w('if (indexes[{}] == kx) {{'.format(offset), 'inc')
+        w('val = val + gy[{}];'.format(offset))
         w('}', 'dec')
         return w()
 
