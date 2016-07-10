@@ -86,9 +86,9 @@ class StandardUpdater(Updater):
     more training datasets and one or more optimizers. The default update
     routine assumes that there is only one training dataset and one optimizer.
     Users can override this update routine by inheriting this class and
-    overriding the :meth:`update_core` method. Each batch is converted toiput
+    overriding the :meth:`update_core` method. Each batch is converted to input
     arrays by :func:`~chainer.datasets.concat_examples` by default, which can
-    also be manually set.
+    also be manually set by ``converter`` argument.
 
     Args:
         iterator: Dataset iterator for the training dataset. It can also be a
@@ -108,8 +108,8 @@ class StandardUpdater(Updater):
 
     Attributes:
         converter: Converter function.
-        loss_func: Loss function. If it is None, the target link of the main
-                   optimizer is used instead.
+        loss_func: Loss function. If it is ``None``, the target link of the
+                   main optimizer is used instead.
         device: Device to which the training data is sent.
         iteration: Current number of completed updates.
 

@@ -48,23 +48,21 @@ class Evaluator(extension.Extension):
             iterator is registered by the name ``'main'``.
         target: Link object or a dictionary of links to evaluate. If this is
             just a link object, the link is registered by the name ``'main'``.
-        eval_loop: Evaluation loop. This is a function that takes the evaluator
-            object as the argument, and returns a dictionary of statistics for
-            observed values. If it is omitted, the default routine is used. The
-            default routine uses ``converter``.
-        converter: Converter function to build input arrays. If it is omitted,
-            :func:`~chainer.dataset.concat_examples` is used. If
-            ``eval_loop`` is specified, this argument is ignored and not used.
+        converter: Converter function to build input arrays.
+            :func:`~chainer.dataset.concat_examples` is used by default.
         device: Device to which the training data is sent. Negative value
-            indicates the host memory (CPU). If ``eval_loop`` is specified,
-            this argument is ignored and not used.
+            indicates the host memory (CPU).
         eval_hook: Function to prepare for each evaluation process. It is
             called at the beginning of the evaluation. The evaluator extension
-            object is passed at each call. If ``eval_loop`` is specified, this
-            argument is ignored and not used.
+            object is passed at each call.
         eval_func: Evaluation function called at each iteration. The target
-            link to evaluate as a callable is used by default. If ``eval_loop``
-            is specified, this argument is ignored and not used.
+            link to evaluate as a callable is used by default.
+
+    Attributes:
+        converter: Converter function.
+        device: Device to which the training data is sent.
+        eval_hook: Function to prepare for each evaluation process.
+        eval_func: Evaluation function called at each iteration.
 
     """
     trigger = 1, 'epoch'
@@ -105,11 +103,11 @@ class Evaluator(extension.Extension):
     def __call__(self, trainer=None):
         """Executes the evaluator extension.
 
-        Unlike usual extensions, this extension can be executed passing a
-        trainer object. This extension reports the performance on
-        validation dataset using the :func:`~chainer.report` function. Thus,
-        users can use this extension independently from any trainer by
-        manutally configuring a :class:`~chainer.Reporter` object.
+        Unlike usual extensions, this extension can be executed without passing
+        a trainer object. This extension reports the performance on validation
+        dataset using the :func:`~chainer.report` function. Thus, users can use
+        this extension independently from any trainer by manutally configuring
+        a :class:`~chainer.Reporter` object.
 
         Args:
             trainer (~chainer.training.Trainer): Trainer object that invokes
