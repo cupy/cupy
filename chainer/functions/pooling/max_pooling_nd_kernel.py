@@ -1,9 +1,9 @@
 from __future__ import print_function
 
+from chainer.functions.pooling import pooling_nd_kernel
 from chainer.utils.conv_nd_kernel import muladdexp
 from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import writer
-from chainer.functions.pooling import pooling_nd_kernel
 
 
 class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
