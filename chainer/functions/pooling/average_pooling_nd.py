@@ -104,7 +104,7 @@ def average_pooling_nd(x, ksize, stride=None, pad=0, use_cudnn=True):
     """N-dimensionally spatial average pooling function.
 
     This function provides a N-dimensionally generalized version of
-    :function:`~functions.average_pooling_2d`. This acts similarly to
+    :func:`~functions.average_pooling_2d`. This acts similarly to
     :class:`~functions.ConvolutionND`, but it computes the average of input
     spatial patch for each channel without any parameter instead of computing
     the inner products.
