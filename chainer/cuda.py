@@ -96,6 +96,9 @@ class DummyDeviceType(object):
     This class is used to represent CPU device.
 
     """
+
+    id = -1
+
     def __int__(self):
         return -1
 
@@ -116,10 +119,6 @@ class DummyDeviceType(object):
 
     def __ne__(self, other):
         return not (self == other)
-
-    @property
-    def id(self):
-        return -1
 
 
 DummyDevice = DummyDeviceType()
