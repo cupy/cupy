@@ -37,6 +37,13 @@ def crf1d(cost, xs, ys):
     Returns:
         ~chainer.Variable: A variable holding the average negative
             log-likelihood of the input sequences.
+
+    .. note::
+
+        See detail in the original paper: `Conditional Random Fields:
+        Probabilistic Models for Segmenting and Labeling Sequence Data
+        <http://repository.upenn.edu/cis_papers/159/>`_.
+
     """
     assert xs[0].data.shape[1] == cost.data.shape[0]
 
