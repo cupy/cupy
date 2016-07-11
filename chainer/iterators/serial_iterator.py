@@ -1,7 +1,6 @@
 from __future__ import division
 
 import numpy
-import six
 
 from chainer.dataset import iterator
 
