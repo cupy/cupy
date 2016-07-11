@@ -53,7 +53,7 @@ cdef extern from "cupy_cudnn.h":
     int cudnnSetFilterNdDescriptor_v3(
         FilterDescriptor filterDesc, DataType dataType, int nbDims,
         int* filterDimA)
-    int cudnnGetFilterNdDescriptor(
+    int cudnnGetFilterNdDescriptor_v5(
         FilterDescriptor wDesc, int nbDimsRequested, DataType* dataType,
         TensorFormat* format, int* nbDims, int filterDimA[])
     int cudnnDestroyFilterDescriptor(FilterDescriptor filterDesc)
@@ -445,7 +445,7 @@ cpdef getFilterNdDescriptor(size_t wDesc, int nbDimsRequested):
     cdef vector.vector[int] filterDimA
     filterDimA.resize(nbDimsRequested)
 
-    status = cudnnGetFilterNdDescriptor(
+    status = cudnnGetFilterNdDescriptor_v5(
         <FilterDescriptor>wDesc, nbDimsRequested, &dataType,
         &format, &nbDims, &filterDimA[0])
     check_status(status)
