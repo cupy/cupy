@@ -64,6 +64,7 @@ from chainer.functions.noise import gaussian
 from chainer.functions.normalization import batch_normalization
 from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
+from chainer.functions.pooling import average_pooling_nd
 from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import max_pooling_nd
 from chainer.functions.pooling import roi_pooling_2d
@@ -225,7 +226,9 @@ local_response_normalization = \
     local_response_normalization.local_response_normalization
 
 AveragePooling2D = average_pooling_2d.AveragePooling2D
+AveragePoolingND = average_pooling_nd.AveragePoolingND
 average_pooling_2d = average_pooling_2d.average_pooling_2d
+average_pooling_nd = average_pooling_nd.average_pooling_nd
 MaxPooling2D = max_pooling_2d.MaxPooling2D
 MaxPoolingND = max_pooling_nd.MaxPoolingND
 max_pooling_2d = max_pooling_2d.max_pooling_2d
