@@ -309,8 +309,8 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
     """N-dimensional convolution function.
 
     This is an implementation of N-dimensional convolution which is generalized
-    two-dimensional convolution in ConvNets. It takes three variables: an input
-    image ``x``, a filter weight ``W`` and a bias vector ``b``.
+    two-dimensional convolution in ConvNets. It takes three variables: the
+    input image ``x``, the filter weight ``W`` and the bias vector ``b``.
 
     Notation: here is a notation for dimensionalities.
 
@@ -318,31 +318,33 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
     - :math:`n` is the batch size.
     - :math:`c_I` and :math:`c_O` are the number of the input and output,
       respectively.
-    - :math:`d_1, d_2, ..., d_N` are the sizes of each axis of the input image.
-    - :math:`k_1, k_2, ..., k_N` are the sizes of each axis of the filters.
+    - :math:`d_1, d_2, ..., d_N` are the size of each axis of the input image,
+      respectively.
+    - :math:`k_1, k_2, ..., k_N` are the size of each axis of the filters,
+      respectively.
 
     Args:
         x (~chainer.Variable): Input variable of shape
             :math:`(n, c_I, d_1, d_2, ..., d_N)`.
-        W (~chainer.Variable):mi Weight variable of shape
+        W (~chainer.Variable): Weight variable of shape
             :math:`(c_O, c_I, k_1, k_2, ..., k_N)`.
-        b (~chainer.Variable): Bias variable of length :math:`(c_O,)`
+        b (~chainer.Variable): Bias variable of length :math:`c_O`
             (optional).
         stride (int or tuple of ints): Stride of filter applications
             :math:`(s_1, s_2, ..., s_N)`. ``stride=s`` is equivalent to
-             ``(s, s, ..., s)``.
+            ``(s, s, ..., s)``.
         pad (int or tuple of ints): Spatial padding width for input arrays
             :math:`(p_1, p_2, ..., p_N)`. ``pad=p`` is equivalent to
             ``(p, p, ..., p)``.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
-             available. cuDNN supports more than one-dimensional convolution.
+            available. cuDNN supports more than one-dimensional convolution.
         cover_all (bool): If ``True``, all spatial locations are convoluted
             into some output pixels. It may make the output size larger.
 
     Returns:
         ~chainer.Variable: Output variable.
 
-    .. seealso:: :class:`ConvolutionND`, :function:`convolution_2d`
+    .. seealso:: :class:`ConvolutionND`, :func:`convolution_2d`
     """
     ndim = len(x.data.shape[2:])
     func = ConvolutionND(ndim, stride, pad, use_cudnn, cover_all)
