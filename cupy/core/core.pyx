@@ -1890,8 +1890,6 @@ cpdef ndarray tensordot_core(
     b = b.astype(dtype, copy=False)
 
     if not a.size or not b.size:
-        if a.size or b.size:
-            raise ValueError('cannot dot zero-sized and non-zero-sized arrays')
         if out is None:
             out = ndarray(ret_shape, dtype=ret_dtype)
         out.fill(0)
