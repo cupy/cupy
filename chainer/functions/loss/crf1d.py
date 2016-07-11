@@ -90,4 +90,4 @@ def argmax_crf1d(cost, xs):
         path.append(inds.data)
     path.reverse()
 
-    return alpha, path
+    return minmax.max(alpha, axis=1), path
