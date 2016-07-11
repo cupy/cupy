@@ -25,5 +25,5 @@ class CRF1d(link.Link):
     def __call__(self, xs, ys):
         return crf1d.crf1d(self.cost, xs, ys)
 
-    def viterbi(self, xs):
-        return crf1d.crf1d_viterbi(self.cost, xs)
+    def argmax(self, xs):
+        return crf1d.argmax_crf1d(self.cost, xs)

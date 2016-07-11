@@ -57,10 +57,10 @@ class TestCRF1d(unittest.TestCase):
         log_p = functions.crf1d(cost, xs, ys)
         log_p.backward()
 
-    def test_viterbi(self):
+    def test_argmax(self):
         cost = chainer.Variable(self.cost)
         xs = [chainer.Variable(self.xs[i]) for i in range(3)]
-        s, path = functions.loss.crf1d.crf1d_viterbi(cost, xs)
+        s, path = functions.loss.crf1d.argmax_crf1d(cost, xs)
 
         best_paths = [numpy.empty((self.batch,), numpy.int32)
                       for i in range(len(xs))]

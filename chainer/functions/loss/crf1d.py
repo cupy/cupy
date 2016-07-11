@@ -63,7 +63,7 @@ def crf1d(cost, xs, ys):
     return _sum.sum(logz - score) / n_batch
 
 
-def crf1d_viterbi(cost, xs):
+def argmax_crf1d(cost, xs):
     n_label = cost.data.shape[0]
     n_batch = xs[0].data.shape[0]
 
