@@ -40,7 +40,8 @@ def _transpose(xs, length):
         unit = numpy.prod(xs[0].shape[1:], dtype='i')
         size = length * len(xs) * unit
         cuda.elementwise(
-            'int32 len, int32 unit, raw int32 off1, raw int32 off2, raw T vs', 'raw T hs',
+            'int32 len, int32 unit, raw int32 off1, raw int32 off2, raw T vs',
+            'raw T hs',
             '''
             int ind = i / unit;
             int off = i - ind * unit;
@@ -51,7 +52,8 @@ def _transpose(xs, length):
             }
             ''',
             'transpose_sequence'
-        )(length, unit, cuda.to_gpu(offsets1), cuda.to_gpu(offsets2), x, o, size=size)
+        )(length, unit, cuda.to_gpu(offsets1), cuda.to_gpu(offsets2), x, o,
+          size=size)
         outs = tuple(xp.split(o, offsets2[1:-1]))
 
     return outs
