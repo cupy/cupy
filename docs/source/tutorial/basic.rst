@@ -434,18 +434,19 @@ The returned ``train`` and ``test`` can be seen as lists of image-label pairs (s
 
 We also have to define how to iterate over these datasets.
 We want to shuffle the training dataset for every *epoch*, i.e. at the beginning of every sweep over the dataset.
-In this case, we can use :class:`iterators.ShuffledIterator`.
+In this case, we can use :class:`iterators.SerialIterator`.
 
 .. doctest::
 
-   >>> train_iter = iterators.ShuffledIterator(train, batch_size=100)
+   >>> train_iter = iterators.SerialIterator(train, batch_size=100)
 
 On the other hand, we do not have to shuffle the test dataset.
-In this case, :class:`iterators.SequentialIterator` can be used instead.
+In this case, we can pass ``shuffle=False`` argument to disable the shuffling.
+It makes the iteration faster when the underlying dataset supports fast slicing.
 
 .. doctest::
 
-   >>> test_iter = iterators.SequentialIterator(test, batch_size=100, repeat=False)
+   >>> test_iter = iterators.SerialIterator(test, batch_size=100, repeat=False, shuffle=False)
 
 We also pass ``repeat=False``, which means we stop iteration when all examples are visited.
 This option is usually required for the test/validation datasets; without this option, the iteration enters an infinite loop.
