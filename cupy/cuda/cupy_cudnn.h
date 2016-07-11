@@ -372,7 +372,7 @@ cudnnStatus_t cudnnRNNBackwardWeights(
 #define cudnnConvolutionBackwardFilter_v3 cudnnConvolutionBackwardFilter
 #define cudnnSetConvolutionNdDescriptor_v3 cudnnSetConvolutionNdDescriptor
 
-#define cudnnGetFilterNdDescriptor cudnnGetFilterNdDescriptor_v5
+#define cudnnGetFilterNdDescriptor_v5 cudnnGetFilterNdDescriptor
 
 typedef enum {} cudnnAddMode_t;
 
