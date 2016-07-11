@@ -18,6 +18,23 @@ from chainer.testing import condition
 from chainer.utils import conv
 
 
+def pooling_patches(dims, ksize, stride, pad, cover_all):
+    """Return tuples of slices that indicate pooling patches."""
+    # Left-top indeces of each pooling patch.
+    if cover_all:
+        xss = itertools.product(
+            *[six.moves.range(-p, d+p-k+s, s)
+              for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+    else:
+        xss = itertools.product(
+            *[six.moves.range(-p, d+p-k+1, s)
+              for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+    # Tuple of slices for pooling patches.
+    return [tuple([slice(max(x, 0), min(x+k, d))
+                   for (x, d, k) in zip(xs, dims, ksize)])
+            for xs in xss]
+
+
 @testing.parameterize(*testing.product({
     'dims': [(4,), (4, 3), (4, 3, 2)],
     'cover_all': [True, False],
@@ -49,22 +66,6 @@ class TestMaxPoolingND(unittest.TestCase):
                 'eps': 2.0 ** -8, 'atol': 1e-03, 'rtol': 1e-03}
 
     def check_forward(self, x_data, use_cudnn=True):
-        def _patches(dims, ksize, stride, pad, cover_all):
-            """Return tuples of slices that indicate pooling patches."""
-            # Left-top indeces of each pooling patch.
-            if cover_all:
-                xss = itertools.product(
-                    *[six.moves.range(-p, d+p-k+s, s)
-                      for (d, k, s, p) in zip(dims, ksize, stride, pad)])
-            else:
-                xss = itertools.product(
-                    *[six.moves.range(-p, d+p-k+1, s)
-                      for (d, k, s, p) in zip(dims, ksize, stride, pad)])
-            # Tuple of slices for pooling patches.
-            return [tuple([slice(max(x, 0), min(x+k, d))
-                           for (x, d, k) in zip(xs, dims, ksize)])
-                    for xs in xss]
-
         dims = self.dims
         ksize = self.ksize
         stride = self.stride
@@ -81,9 +82,8 @@ class TestMaxPoolingND(unittest.TestCase):
             for c in six.moves.range(3):
                 x = self.x[k, c]
                 expect = numpy.array(
-                    [x[idx].max()
-                     for idx in _patches(dims, ksize, stride, pad,
-                                         self.cover_all)]
+                    [x[idx].max() for idx in pooling_patches(
+                        dims, ksize, stride, pad, self.cover_all)]
                 ).reshape(y_data.shape[2:])
                 gradient_check.assert_allclose(expect, y_data[k, c])
 
