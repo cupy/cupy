@@ -3,6 +3,7 @@ import sys
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import basic_math
