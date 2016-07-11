@@ -209,7 +209,7 @@ def to_gpu(array, device=None, stream=None):
                     src = array.copy()
                 ret.data.copy_from_device_async(src.data, src.nbytes, stream)
 
-            # to hold a reference to the end of the asynchronously memcpy
+            # to hold a reference until the end of the asynchronous memcpy
             stream.add_callback(lambda *x: None, (src, ret))
             return ret
 
