@@ -117,28 +117,18 @@ def calculate_loss(model, dataset, position):
 if args.gpu >= 0:
     cuda.get_device(args.gpu).use()
 
-index2word = {}
-word2index = {}
-counts = collections.Counter()
-dataset = []
-with open('ptb.train.txt') as f:
-    for line in f:
-        for word in line.split():
-            if word not in word2index:
-                ind = len(word2index)
-                word2index[word] = ind
-                index2word[ind] = word
-            counts[word2index[word]] += 1
-            dataset.append(word2index[word])
-            if args.test and len(dataset) >= 100:
-                break
-        if args.test and len(dataset) >= 100:
-            break
+train, val, test = chainer.datasets.get_ptb_words()
+if args.test:
+    train = train[:100]
 
-n_vocab = len(word2index)
+vocab = chainer.datasets.get_ptb_words_vocabulary()
+index2word = {wid: word for word, wid in vocab.items()}
+
+counts = collections.Counter(train)
+n_vocab = max(train) + 1
 
 print('n_vocab: %d' % n_vocab)
-print('data length: %d' % len(dataset))
+print('data length: %d' % len(train))
 
 if args.out_type == 'hsm':
     HSM = L.BinaryHierarchicalSoftmax
@@ -162,7 +152,7 @@ else:
 if args.gpu >= 0:
     model.to_gpu()
 
-dataset = np.array(dataset, dtype=np.int32)
+dataset = np.array(train, dtype=np.int32)
 
 optimizer = O.Adam()
 optimizer.setup(model)
