@@ -118,7 +118,7 @@ def calculate_loss(model, dataset, position):
 if args.gpu >= 0:
     cuda.get_device(args.gpu).use()
 
-train, val, test = chainer.datasets.get_ptb_words()
+train, _, _ = chainer.datasets.get_ptb_words()
 if args.test:
     train = train[:100]
 
