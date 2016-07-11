@@ -42,9 +42,9 @@ def main():
     optimizer.setup(model)
 
     train, test = chainer.datasets.get_mnist()
-    train_iter = chainer.iterators.ShuffledIterator(train, args.batchsize)
-    test_iter = chainer.iterators.SequentialIterator(test, args.batchsize,
-                                                     repeat=False)
+    train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
+    test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
+                                                 repeat=False, shuffle=False)
 
     # ParallelUpdater implements the data-parallel gradient computation on
     # multiple GPUs. It accepts "devices" argument that specifies which GPU to

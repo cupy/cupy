@@ -19,23 +19,27 @@ class MultiprocessIterator(iterator.Iterator):
     Note that this iterator effectively prefetches the examples for the next
     batch asynchronously after the current batch is returned.
 
-    This iterator shuffles the order of examples at the beginning of each epoch
-    like :class:`ShuffledIterator`.
-
     Args:
         dataset (~chainer.dataset.Dataset): Dataset to iterate.
         batch_size (int): Number of examples within each batch.
-        repeat (bool): If ``True``, then it infinitely loops over the dataset.
+        repeat (bool): If ``True``, it infinitely loops over the dataset.
             Otherwise, it stops iteration at the end of the first epoch.
+        shuffle (bool): If ``True``, the order of examples is shuffled at the
+            beginning of each epoch. Otherwise, examples are extracted in the
+            order of indexes.
         n_processes (int): Number of worker processes. The number of CPUs is
             used by default.
 
     """
-    def __init__(self, dataset, batch_size, repeat=True, n_processes=None):
+    def __init__(self, dataset, batch_size, repeat=True, shuffle=True,
+                 n_processes=None):
         self.dataset = dataset
         self.batch_size = batch_size
         self._repeat = repeat
-        self._order = numpy.random.permutation(len(dataset))
+        if shuffle:
+            self._order = numpy.random.permutation(len(dataset))
+        else:
+            self._order = None
         self._prefetch_order = None  # used at the end of each epoch
 
         self.current_position = 0
@@ -117,13 +121,17 @@ class MultiprocessIterator(iterator.Iterator):
                 if not self._repeat:
                     break
                 i = 0
-                # We cannot shuffle the order directly here, since the iterator
-                # may be serialized before the prefetched data are consumed by
-                # the user, in which case an inconsistency appears.
-                order = order.copy()
-                numpy.random.shuffle(order)
-            self._index_queue.put(order[i])
+                if order is not None:
+                    # We cannot shuffle the order directly here, since the
+                    # iterator may be serialized before the prefetched data are
+                    # consumed by the user, in which case an inconsistency
+                    # appears.
+                    order = order.copy()
+                    numpy.random.shuffle(order)
+            index = i if order is None else order[i]
+            self._index_queue.put(index)
             i += 1
+
         self._prefetch_order = order  # Temporarily store the shuffled order.
         self._pushed_position = i
 

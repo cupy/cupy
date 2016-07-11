@@ -77,9 +77,9 @@ def main():
 
     train, test = chainer.datasets.get_mnist()
 
-    train_iter = chainer.iterators.ShuffledIterator(train, args.batchsize)
-    test_iter = chainer.iterators.SequentialIterator(test, args.batchsize,
-                                                     repeat=False)
+    train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
+    test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
+                                                 repeat=False, shuffle=False)
 
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu0)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
