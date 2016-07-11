@@ -35,9 +35,8 @@ def crf1d(cost, xs, ys):
             :class:`~chainer.Variable` holds a :math:`B` integer vector.
 
     Returns:
-        ~chainer.Variable: A variable holding a :math:`B` float vector. Each
-            element stores negative log-likelihood of the corresponding
-            sequence.
+        ~chainer.Variable: A variable holding the average negative
+            log-likelihood of the input sequences.
     """
     assert xs[0].data.shape[1] == cost.data.shape[0]
 
