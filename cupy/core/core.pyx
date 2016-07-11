@@ -303,7 +303,8 @@ cdef class ndarray:
 
         a = self
         if not self._c_contiguous:
-            a = ascontiguousarray(self)
+            with self.device:
+                a = ascontiguousarray(self)
             if a.data.device.id == device.get_device_id():
                 return a
         newarray = ndarray(a.shape, a.dtype)
