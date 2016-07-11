@@ -289,22 +289,30 @@ class TestDefaultInitializer(unittest.TestCase):
         testing.assert_allclose(numpy.zeros(self.size), self.link.beta.data)
 
 
+@testing.parameterize(*testing.product({
+    'shape': [(2, 4), (2, 5, 3, 4)],
+}))
 class TestInvalidInput(unittest.TestCase):
 
     def setUp(self):
         self.link = links.BatchNormalization(3)
 
-    def test_invalid_initialize(self):
-        with self.assertRaises(TypeError):
-            self.link = links.BatchNormalization({})
-
-    def test_invalid_shape(self):
-        with self.assertRaises(type_check.InvalidType):
-            self.link(chainer.Variable(numpy.zeros((2, 5, 3, 4), dtype='f')))
-
     def test_invalid_shape_cpu(self):
         with self.assertRaises(type_check.InvalidType):
-            self.link(chainer.Variable(numpy.zeros((2, 4), dtype='f')))
+            self.link(chainer.Variable(numpy.zeros(self.shape, dtype='f')))
+
+    @attr.gpu
+    def test_invalid_shape_gpu(self):
+        self.link.to_gpu()
+        with self.assertRaises(type_check.InvalidType):
+            self.link(chainer.Variable(cuda.cupy.zeros(self.shape, dtype='f')))
+
+
+class TestInvalidInitialize(unittest.TestCase):
+
+    def test_invalid_type(self):
+        with self.assertRaises(TypeError):
+            self.link = links.BatchNormalization({})
 
 
 testing.run_module(__name__, __file__)
