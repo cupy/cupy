@@ -54,11 +54,11 @@ class TestScale(unittest.TestCase):
         x = chainer.Variable(x_data)
         if W_data is None:
             y = self.link(x)
-            gradient_check.assert_allclose(y_expected, y.data)
+            testing.assert_allclose(y_expected, y.data)
         else:
             W = chainer.Variable(W_data)
             y = self.link(x, W)
-            gradient_check.assert_allclose(y_expected, y.data)
+            testing.assert_allclose(y_expected, y.data)
 
     def test_forward_cpu(self):
         if self.learn_W:
