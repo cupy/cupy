@@ -9,6 +9,7 @@ import collections
 import time
 
 import numpy as np
+import six
 
 import chainer
 from chainer import cuda
@@ -122,7 +123,7 @@ if args.test:
     train = train[:100]
 
 vocab = chainer.datasets.get_ptb_words_vocabulary()
-index2word = {wid: word for word, wid in vocab.items()}
+index2word = {wid: word for word, wid in six.iteritems(vocab)}
 
 counts = collections.Counter(train)
 n_vocab = max(train) + 1
