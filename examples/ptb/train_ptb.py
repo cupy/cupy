@@ -231,7 +231,7 @@ def main():
     print('test')
     eval_rnn.reset_state()
     evaluator = extensions.Evaluator(test_iter, eval_model, device=args.gpu)
-    result = evaluator.evaluate()
+    result = evaluator()
     print('test perplexity:', np.exp(float(result['main/loss'])))
 
 
