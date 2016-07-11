@@ -180,7 +180,7 @@ class TestOptimizerGradientNoise(unittest.TestCase):
         opt.add_hook(optimizer.GradientNoise(eta))
         opt.update()
 
-        gradient_check.assert_allclose(expect, w, rtol=0.4)
+        testing.assert_allclose(expect, w, rtol=0.4)
 
     def test_gradient_noise_cpu(self):
         self.check_gradient_noise()
