@@ -1850,6 +1850,9 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     if k != 0:
         m = b.size // k
         n = a.size // k
+    else:
+        m = 0
+        n = 0
 
     ret_shape.assign(a._shape.begin() + 1, a._shape.end())
     ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
