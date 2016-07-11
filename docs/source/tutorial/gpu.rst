@@ -188,8 +188,8 @@ If we use :class:`chainer.training.Trainer`, what we have to do is just letting 
    target = np.random.randint(10, size=70000).astype(np.int32)
    train = datasets.TupleDataset(data[:60000], target[:60000])
    test = datasets.TupleDataset(data[60000:], target[60000:])
-   train_iter = iterators.ShuffledIterator(train, batch_size=100)
-   test_iter = iterators.SequentialIterator(test, batch_size=100, repeat=False)
+   train_iter = iterators.SerialIterator(train, batch_size=100)
+   test_iter = iterators.SerialIterator(test, batch_size=100, repeat=False, shuffle=False)
 
 .. testcode::
 
