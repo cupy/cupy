@@ -48,7 +48,7 @@ class TestCRF1d(unittest.TestCase):
                  self.cost[self.ys[1], self.ys[2]])
 
         expect = numpy.sum(-(score - numpy.log(z))) / self.batch
-        gradient_check.assert_allclose(log_p.data, expect)
+        testing.assert_allclose(log_p.data, expect)
 
     def test_backward(self):
         cost = chainer.Variable(self.cost)
