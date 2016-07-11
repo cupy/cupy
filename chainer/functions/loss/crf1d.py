@@ -11,10 +11,10 @@ def crf1d(cost, xs, ys):
 
     """Calculates negative log-likelihood of linear-chain CRF.
 
-    It takes a transition cost matrix, a sequence of costs and a sequence of
-    labels. Let :math:`c_{st}` is transition cost from a label :math:`s` to
-    a label :math:`t`, :math:`x_{it}` is a cost value of a label :math:`t` at
-    position :math:`i`, and :math:`y_i` is an expected label value at position
+    It takes a transition cost matrix, a sequence of costs, and a sequence of
+    labels. Let :math:`c_{st}` be a transition cost from a label :math:`s` to
+    a label :math:`t`, :math:`x_{it}` be a cost of a label :math:`t` at
+    position :math:`i`, and :math:`y_i` be an expected label at position
     :math:`i`. The negative log-likelihood of linear-chain CRF is defined as
 
     .. math::
@@ -22,7 +22,7 @@ def crf1d(cost, xs, ys):
              \\sum_{i=1}^{l-1} c_{y_i y_{i+1}} - {\\log(Z)} \\right) ,
 
     where :math:`l` is the length of the input sequence and :math:`Z` is the
-    partition function.
+    normalizing constant called partition function.
 
     Args:
         cost (Variable): A :math:`K \\times K` matrix which holds transition
