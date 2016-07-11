@@ -33,7 +33,7 @@ class TestL2Normalization(unittest.TestCase):
         for n in six.moves.range(len(self.x)):
             y_expect[n] = self.x[n] / numpy.linalg.norm(self.x[n])
 
-        gradient_check.assert_allclose(y_expect, y_data)
+        testing.assert_allclose(y_expect, y_data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -65,7 +65,7 @@ class TestL2Normalization(unittest.TestCase):
         y_data = cuda.to_cpu(y.data)
 
         y_expect = numpy.zeros_like(self.x)
-        gradient_check.assert_allclose(y_expect, y_data)
+        testing.assert_allclose(y_expect, y_data)
 
     def test_eps_cpu(self):
         self.check_eps(numpy.zeros_like(self.x))

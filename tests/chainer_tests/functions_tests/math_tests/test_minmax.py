@@ -375,7 +375,7 @@ class TestArgMinMax(unittest.TestCase):
         self.assertEqual(y.data.dtype, numpy.int32)
         y_expect = self.expect(self.x, axis=self.axis)
         self.assertEqual(y.data.shape, y_expect.shape)
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)

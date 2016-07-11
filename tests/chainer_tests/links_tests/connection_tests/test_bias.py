@@ -40,11 +40,11 @@ class TestBias(unittest.TestCase):
         x = chainer.Variable(x_data)
         if b_data is None:
             y = self.link(x)
-            gradient_check.assert_allclose(y_expected, y.data)
+            testing.assert_allclose(y_expected, y.data)
         else:
             b = chainer.Variable(b_data)
             y = self.link(x, b)
-            gradient_check.assert_allclose(y_expected, y.data)
+            testing.assert_allclose(y_expected, y.data)
 
     def test_forward_cpu(self):
         if self.learn_b:

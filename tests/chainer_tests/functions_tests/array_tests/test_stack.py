@@ -41,7 +41,7 @@ class TestStack(unittest.TestCase):
         if hasattr(numpy, 'stack'):
             # run test only with numpy>=1.10
             expect = numpy.stack(self.xs, axis=self.axis)
-            gradient_check.assert_allclose(y.data, expect)
+            testing.assert_allclose(y.data, expect)
 
         y_data = cuda.to_cpu(y.data)
         self.assertEqual(y_data.shape[self.axis], 2)

@@ -26,7 +26,7 @@ class TestScale(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = functions.scale(x1, x2, axis)
-        gradient_check.assert_allclose(y_expected, y.data)
+        testing.assert_allclose(y_expected, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x1, self.x2, self.axis, self.y_expected)
