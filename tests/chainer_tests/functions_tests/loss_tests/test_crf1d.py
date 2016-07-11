@@ -83,7 +83,7 @@ class TestCRF1d(unittest.TestCase):
             best_paths[1][b] = best_path[1]
             best_paths[2][b] = best_path[2]
 
-            testing.assert_allclose(s[b], best_score)
+            testing.assert_allclose(s.data[b], best_score)
 
         numpy.testing.assert_array_equal(path, best_paths)
 
