@@ -114,6 +114,10 @@ class Evaluator(extension.Extension):
                 this extension. It can be omitted in case of calling this
                 extension manually.
 
+        Returns:
+            dict: Result dictionary that contains mean statistics of values
+                reported by the evaluation function.
+
         """
         # set up a reporter
         reporter = reporter_module.Reporter()
@@ -130,6 +134,7 @@ class Evaluator(extension.Extension):
             result = self.evaluate()
 
         reporter_module.report(result)
+        return result
 
     def evaluate(self):
         """Evaluates the model and returns a result dictionary.
