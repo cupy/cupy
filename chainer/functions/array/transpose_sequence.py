@@ -36,7 +36,7 @@ def _transpose(xs, length):
         numpy.cumsum(lengths, dtype='i', out=offsets2[1:])
 
         x = xp.concatenate(xs, axis=0)
-        o = xp.zeros_like(x)
+        o = xp.empty_like(x)
         unit = numpy.prod(xs[0].shape[1:], dtype='i')
         size = length * len(xs) * unit
         cuda.elementwise(
