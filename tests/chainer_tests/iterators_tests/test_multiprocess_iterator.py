@@ -15,13 +15,13 @@ class TestMultiprocessIterator(unittest.TestCase):
             dataset, 2, n_processes=self.n_processes)
         for i in range(3):
             self.assertEqual(it.epoch, i)
-            batch1 = it.next()[:]
+            batch1 = it.next()
             self.assertEqual(len(batch1), 2)
             self.assertFalse(it.is_new_epoch)
-            batch2 = it.next()[:]
+            batch2 = it.next()
             self.assertEqual(len(batch2), 2)
             self.assertFalse(it.is_new_epoch)
-            batch3 = it.next()[:]
+            batch3 = it.next()
             self.assertEqual(len(batch3), 2)
             self.assertTrue(it.is_new_epoch)
             self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
@@ -31,7 +31,7 @@ class TestMultiprocessIterator(unittest.TestCase):
         it = iterators.MultiprocessIterator(
             dataset, 2, n_processes=self.n_processes)
 
-        batches = sum([it.next()[:] for _ in range(5)], [])
+        batches = sum([it.next() for _ in range(5)], [])
         self.assertEqual(sorted(batches[:5]), dataset)
         self.assertEqual(sorted(batches[5:]), dataset)
 
@@ -40,7 +40,7 @@ class TestMultiprocessIterator(unittest.TestCase):
         it = iterators.MultiprocessIterator(
             dataset, 2, repeat=False, n_processes=self.n_processes)
 
-        batches = sum([it.next()[:] for _ in range(3)], [])
+        batches = sum([it.next() for _ in range(3)], [])
         self.assertEqual(sorted(batches), dataset)
         for _ in range(2):
             self.assertRaises(StopIteration, it.next)
@@ -50,9 +50,9 @@ class TestMultiprocessIterator(unittest.TestCase):
         it = iterators.MultiprocessIterator(
             dataset, 2, repeat=False, n_processes=self.n_processes)
 
-        batch1 = it.next()[:]
-        batch2 = it.next()[:]
-        batch3 = it.next()[:]
+        batch1 = it.next()
+        batch2 = it.next()
+        batch3 = it.next()
         self.assertRaises(StopIteration, it.next)
 
         self.assertEqual(len(batch3), 1)
