@@ -524,6 +524,11 @@ In order to invoke the training loop, we just call the :meth:`~training.Trainer.
 
    >>> trainer.run()
 
+.. testcode::
+   :hide:
+
+   trainer = training.Trainer(updater, (20, 'epoch'), out='result')
+
 This method executes the whole training sequence.
 
 The above code just optimizes the parameters.
@@ -535,8 +540,7 @@ In most cases, we want to see how the training proceeds, where we can use extens
    >>> trainer.extend(extensions.LogReport())
    >>> trainer.extend(extensions.PrintReport(['epoch', 'main/accuracy', 'validation/main/accuracy']))
    >>> trainer.extend(extensions.ProgressBar())
-   >>> 
-   >>> trainer.run()
+   >>> trainer.run()  # doctest: +SKIP
 
 These extensions perform the following tasks:
 

@@ -188,8 +188,8 @@ If we use :class:`chainer.training.Trainer`, what we have to do is just letting 
    target = np.random.randint(10, size=70000).astype(np.int32)
    train = datasets.TupleDataset(data[:60000], target[:60000])
    test = datasets.TupleDataset(data[60000:], target[60000:])
-   train_iter = iterators.ShuffledIterator(train, batch_size=100)
-   test_iter = iterators.Sequential(test, batch_size=100, repeat=False)
+   train_iter = iterators.SerialIterator(train, batch_size=100)
+   test_iter = iterators.SerialIterator(test, batch_size=100, repeat=False, shuffle=False)
 
 .. testcode::
 
@@ -341,7 +341,7 @@ We again start from the MNIST example.
 At this time, we use a suffix like ``_0`` and ``_1`` to distinguish objects on each device.
 First, we define a model.
 
-.. doctest::
+.. testcode::
 
    model_0 = L.Classifier(MLP(784, 1000, 10))
 
@@ -387,7 +387,7 @@ Then, we can write a data-parallel learning loop as follows (codes for Trainer i
            x0 = Variable(cuda.to_gpu(x_batch[:batchsize//2], 0))
            t0 = Variable(cuda.to_gpu(y_batch[:batchsize//2], 0))
            x1 = Variable(cuda.to_gpu(x_batch[batchsize//2:], 1))
-           t0 = Variable(cuda.to_gpu(y_batch[batchsize//2:], 1))
+           t1 = Variable(cuda.to_gpu(y_batch[batchsize//2:], 1))
 
            loss_0 = model_0(x0, t0)
            loss_1 = model_1(x1, t1)
