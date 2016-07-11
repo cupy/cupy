@@ -2,7 +2,6 @@ import unittest
 
 from chainer import iterators
 from chainer import testing
-from chainer.testing import condition
 
 
 class TestMultiprocessIterator(unittest.TestCase):
@@ -33,8 +32,7 @@ class TestMultiprocessIterator(unittest.TestCase):
             dataset, 2, n_processes=self.n_processes)
 
         batches = sum([it.next() for _ in range(5)], [])
-        self.assertEqual(sorted(batches[:5]), dataset)
-        self.assertEqual(sorted(batches[5:]), dataset)
+        self.assertEqual(sorted(batches), sorted(dataset * 2))
 
     def test_iterator_not_repeat(self):
         dataset = [1, 2, 3, 4, 5]
@@ -46,7 +44,6 @@ class TestMultiprocessIterator(unittest.TestCase):
         for _ in range(2):
             self.assertRaises(StopIteration, it.next)
 
-    @condition.repeat(100)
     def test_iterator_not_repeat_not_even(self):
         dataset = [1, 2, 3, 4, 5]
         it = iterators.MultiprocessIterator(
