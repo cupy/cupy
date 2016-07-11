@@ -14,9 +14,9 @@ Evaluator
 .. autoclass:: Evaluator
    :members:
 
-ExponentialDecay
+ExponentialShift
 ----------------
-.. autoclass:: ExponentialDecay
+.. autoclass:: ExponentialShift
    :members:
 
 LinearShift
