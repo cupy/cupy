@@ -1,5 +1,7 @@
+import numpy
 import six
 
+import chainer
 from chainer.functions.activation import lstm
 from chainer import initializers
 from chainer import link
@@ -143,13 +145,13 @@ class LSTM(LSTMBase):
             self.h.to_gpu(device)
 
     def set_state(self, c, h):
-        """ReSets the internal state.
+        """Sets the internal state.
 
         It sets the :attr:`c` and :attr:`h` attributes.
 
         Args:
-            c (~chainer.Variable): A new batch from the input sequence.
-            h (~chainer.Variable): A new batch from the input sequence.
+            c (~chainer.Variable): A new cell states of LSTM units.
+            h (~chainer.Variable): A new output at the previous time step.
 
         """
         assert isinstance(c, chainer.Variable)
