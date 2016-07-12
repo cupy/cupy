@@ -17,6 +17,9 @@ from cupy import testing
         ((0, 3), (3, 4)),
         ((2, 3), (3, 0)),
         ((0, 3), (3, 0)),
+        ((3, 0), (0, 4)),
+        ((2, 3, 0), (3, 0, 2)),
+        ((0, 0), (0, 0)),
     ],
     'trans_a': [True, False],
     'trans_b': [True, False],
@@ -54,7 +57,8 @@ class TestDot(unittest.TestCase):
             b = testing.shaped_arange(shape_b[::-1], xp, dtype_b).T
         else:
             b = testing.shaped_arange(shape_b, xp, dtype_b)
-        c = xp.empty((shape_a[0], shape_b[-1]), dtype=dtype_c)
+        shape_c = shape_a[:-1] + shape_b[:-2] + shape_b[-1:]
+        c = xp.empty(shape_c, dtype=dtype_c)
         xp.dot(a, b, out=c)
         return c
 

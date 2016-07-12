@@ -1848,8 +1848,14 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         b = rollaxis(b, b_axis, 0)
 
     k = a._shape[0]
-    m = b.size // k
-    n = a.size // k
+    if k != 0:
+        m = b.size // k
+        n = a.size // k
+    else:
+        # When k==0, the function must returns a matrix filled with zero
+        # like NumPy.
+        m = 0
+        n = 0
 
     ret_shape.assign(a._shape.begin() + 1, a._shape.end())
     ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
@@ -1862,7 +1868,7 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         elif b_is_vec:
             ret_shape.erase(ret_shape.begin())
     else:
-        if out.size != n * m:
+        if k != 0 and out.size != n * m:
             raise ValueError('Output array has an invalid size')
         if not out._c_contiguous:
             raise ValueError('Output array must be C-contiguous')
