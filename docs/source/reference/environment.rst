@@ -1,7 +1,7 @@
 Environment variables
 =====================
 
-Here are environment variables Chainer uses.
+Here are the environment variables Chainer uses.
 
 
 +------------------------+----------------------------------------------------------+
@@ -13,5 +13,5 @@ Here are environment variables Chainer uses.
 +------------------------+----------------------------------------------------------+
 | ``CHAINER_TYPE_CHECK`` | Set ``0`` to disable type checking.                      |
 |                        | Otherwise type checking is enabled automatically.        |
-|                        | See :class:`~chainer.Function` for detail.               |
+|                        | See :class:`~chainer.Function` for details.              |
 +------------------------+----------------------------------------------------------+

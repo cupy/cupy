@@ -1,7 +1,7 @@
 Environment variables
 =====================
 
-Here are environment variables Chainer uses.
+Here are the environment variables Chainer uses.
 
 
 +--------------------+----------------------------------------------------+
@@ -14,9 +14,9 @@ Here are environment variables Chainer uses.
 For install
 -----------
 
-These environment variables are only referred on intall.
+These environment variables are only used during installation.
 
 +---------------+----------------------------------------+
 | ``CUDA_PATH`` | Path to the directory containing CUDA. |
-|               | See :ref:`install_cuda` for detail     |
+|               | See :ref:`install_cuda` for details.   |
 +---------------+----------------------------------------+
