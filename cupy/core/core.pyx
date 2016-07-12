@@ -1851,6 +1851,8 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         m = b.size // k
         n = a.size // k
     else:
+        # When k==0, the function must returns a matrix filled with zero
+        # like NumPy.
         m = 0
         n = 0
 
