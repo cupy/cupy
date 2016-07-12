@@ -142,6 +142,29 @@ class LSTM(LSTMBase):
         if self.h is not None:
             self.h.to_gpu(device)
 
+    def set_state(self, c, h):
+        """ReSets the internal state.
+
+        It sets the :attr:`c` and :attr:`h` attributes.
+
+        Args:
+            c (~chainer.Variable): A new batch from the input sequence.
+            h (~chainer.Variable): A new batch from the input sequence.
+
+        """
+        assert isinstance(c, chainer.Variable)
+        assert isinstance(h, chainer.Variable)
+        c_ = c
+        h_ = h
+        if self.xp == numpy:
+            c_.to_cpu()
+            h_.to_cpu()
+        else:
+            c_.to_gpu()
+            h_.to_gpu()
+        self.c = c_
+        self.h = h_
+
     def reset_state(self):
         """Resets the internal state.
 
