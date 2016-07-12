@@ -47,7 +47,8 @@ class TestLSTM(unittest.TestCase):
 
         batch = len(x2_data)
         x2 = chainer.Variable(x2_data)
-        h1_in, h1_rest = functions.split_axis(self.link.h.data, [batch], axis=0)
+        h1_in, h1_rest = functions.split_axis(
+            self.link.h.data, [batch], axis=0)
         y2 = self.link(x2)
         c2_expect, y2_expect = \
             functions.lstm(c1_expect,
