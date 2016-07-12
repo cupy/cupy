@@ -4,7 +4,7 @@ import numpy
 
 import chainer
 from chainer import cuda
-from chainer.functions.array import split
+from chainer.functions.array import separate
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -25,7 +25,7 @@ from chainer.testing import attr
         {'dtype': numpy.float64},
     ]
 ))
-class TestSplit(unittest.TestCase):
+class TestSeparate(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -40,7 +40,7 @@ class TestSplit(unittest.TestCase):
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        ys = split.split(x, self.axis)
+        ys = separate.separate(x, self.axis)
 
         self.assertIsInstance(ys, tuple)
         self.assertEqual(len(ys), self.shape[self.axis])
@@ -57,7 +57,7 @@ class TestSplit(unittest.TestCase):
 
     def check_backward(self, x_data, gys_data):
         def f(x):
-            return split.split(x, self.axis)
+            return separate.separate(x, self.axis)
 
         gradient_check.check_backward(
             f, x_data, gys_data, **self.check_backward_options)
