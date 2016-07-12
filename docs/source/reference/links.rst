@@ -47,6 +47,11 @@ GRU
 .. autoclass:: GRU
    :members:
 
+Highway
+~~~~~~~
+.. autoclass:: Highway
+   :members:
+
 Inception
 ~~~~~~~~~
 .. autoclass:: Inception
