@@ -1,10 +1,7 @@
-from chainer import cuda
 from chainer.functions.activation import relu
 from chainer.functions.activation import sigmoid
-from chainer.functions.math import basic_math
 from chainer import link
 from chainer.links.connection import linear
-import copy
 
 
 class Highway(link.Chain):
@@ -70,6 +67,5 @@ class Highway(link.Chain):
         """
         out_plain = self.activate(self.plain(x))
         out_transform = sigmoid.sigmoid(self.transform(x))
-        out_transform_copy = copy.copy(out_transform)
         y = out_plain * out_transform + x * (1 - out_transform)
         return y
