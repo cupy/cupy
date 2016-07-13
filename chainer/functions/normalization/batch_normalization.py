@@ -49,13 +49,8 @@ class BatchNormalizationFunction(function.Function):
         self.decay = decay
 
     def check_type_forward(self, in_types):
-        n_in = in_types.size().eval()
-        if n_in != 3:
-            raise type_check.InvalidType(
-                '%s or %s' % (in_types.size() == 3, in_types.size() == 5),
-                '%s == %s' % (in_types.size(), n_in))
-
-        x_type, gamma_type, beta_type = in_types[:3]
+        type_check.expect(in_types.size() == 3)
+        x_type, gamma_type, beta_type = in_types
         type_check.expect(
             x_type.dtype.kind == 'f',
             x_type.ndim >= gamma_type.ndim + 1,
@@ -69,6 +64,7 @@ class BatchNormalizationFunction(function.Function):
         xp = cuda.get_array_module(*inputs)
         x, gamma, beta = inputs
 
+        # TODO(vogel): Check for float16 support again in next cuDNN version.
         if x[0].dtype == numpy.float16:
             # cuDNN v5 batch normalization does not seem to support float16.
             self.use_cudnn = False
@@ -121,6 +117,9 @@ class BatchNormalizationFunction(function.Function):
                 # for linear layer
                 self.mode = libcudnn.CUDNN_BATCHNORM_PER_ACTIVATION
 
+            x = cuda.cupy.ascontiguousarray(x)
+            gamma = cuda.cupy.ascontiguousarray(gamma)
+            beta = cuda.cupy.ascontiguousarray(beta)
             dtype = x.dtype
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(_as4darray(x))
@@ -292,8 +291,10 @@ def batch_normalization(x, gamma, beta, running_mean=None,
     It takes the input variable ``x`` and two parameter variables ``gamma`` and
     ``beta``. The input must have the batch size and the features (or channels)
     as the first two dimensions of its shape. The input can have more than two
-    dimensions, where the remained dimensions are considered as spatial
-    dimensions, which are considered as a part of the batch size.
+    dimensions, where the remaining dimensions are considered as spatial
+    dimensions, which are considered as a part of the batch size. That is,
+    the total batch size will be considered to be the product of all
+    dimensions except the second dimension.
 
     Note: If this function is called, it will not be possible to access the
     updated running mean and variance statistics, because they are members

@@ -77,7 +77,7 @@ class TestBatchNormalization(unittest.TestCase):
             batch_normalization.BatchNormalizationFunction(
                 mean=self.mean, var=self.var, train=self.train,
                 decay=self.decay, eps=self.eps), args, y_grad,
-                **self.check_backward_optionss)
+            **self.check_backward_optionss)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -110,7 +110,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
 
         self.mean = numpy.random.uniform(-1, 1, (3,)).astype(self.dtype)
         self.var = numpy.random.uniform(
-            0.5, 1, (3,)).astype(numpy.dtype)
+            0.5, 1, (3,)).astype(self.dtype)
         self.args = [self.x, self.gamma, self.beta]
         self.train = False
         self.check_forward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
