@@ -34,7 +34,7 @@ class TestLogSumExp(unittest.TestCase):
         y = functions.logsumexp(x, axis=axis)
         self.assertEqual(y.data.dtype, self.dtype)
         y_expect = numpy.log(numpy.exp(self.x).sum(axis=axis))
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y.data, **self.check_forward_option)
 
     @condition.retry(3)

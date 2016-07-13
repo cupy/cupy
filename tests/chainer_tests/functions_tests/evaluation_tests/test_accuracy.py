@@ -5,7 +5,6 @@ import six
 
 import chainer
 from chainer import cuda
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
@@ -75,8 +74,8 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual((), y.data.shape)
 
         expected = accuracy(self.x, self.t, self.ignore_label)
-        gradient_check.assert_allclose(expected, cuda.to_cpu(y.data),
-                                       **self.check_forward_options)
+        testing.assert_allclose(
+            expected, cuda.to_cpu(y.data), **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):

@@ -1,6 +1,7 @@
 """Collection of :class:`~chainer.Function` implementations."""
 
 from chainer.functions.activation import clipped_relu
+from chainer.functions.activation import crelu
 from chainer.functions.activation import elu
 from chainer.functions.activation import hard_sigmoid
 from chainer.functions.activation import leaky_relu
@@ -45,6 +46,7 @@ from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
 from chainer.functions.loss import softmax_cross_entropy
+from chainer.functions.loss import triplet
 from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared
@@ -68,6 +70,7 @@ from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
 from chainer.functions.noise import gaussian
 from chainer.functions.normalization import batch_normalization
+from chainer.functions.normalization import l2_normalization
 from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
@@ -90,6 +93,8 @@ from chainer.links.normalization import batch_normalization \
 
 ClippedReLU = clipped_relu.ClippedReLU
 clipped_relu = clipped_relu.clipped_relu
+CReLU = crelu.CReLU
+crelu = crelu.crelu
 ConnectionistTemporalClassification = ctc.ConnectionistTemporalClassification
 connectionist_temporal_classification \
     = ctc.connectionist_temporal_classification
@@ -171,16 +176,22 @@ gaussian_kl_divergence = vae.gaussian_kl_divergence
 gaussian_nll = vae.gaussian_nll
 Hinge = hinge.Hinge
 hinge = hinge.hinge
+HuberLoss = huber_loss.HuberLoss
+huber_loss = huber_loss.huber_loss
 MeanSquaredError = mean_squared_error.MeanSquaredError
 mean_squared_error = mean_squared_error.mean_squared_error
 negative_sampling = negative_sampling.negative_sampling
 SigmoidCrossEntropy = sigmoid_cross_entropy.SigmoidCrossEntropy
 sigmoid_cross_entropy = sigmoid_cross_entropy.sigmoid_cross_entropy
-HuberLoss = huber_loss.HuberLoss
-huber_loss = huber_loss.huber_loss
 SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
+Triplet = triplet.Triplet
+triplet = triplet.triplet
 
+ArgMax = minmax.ArgMax
+argmax = minmax.argmax
+ArgMin = minmax.ArgMin
+argmin = minmax.argmin
 BatchDet = det.BatchDet
 batch_det = det.batch_det
 BatchInv = inv.BatchInv
@@ -238,6 +249,8 @@ LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization
 local_response_normalization = \
     local_response_normalization.local_response_normalization
+NormalizeL2 = l2_normalization.NormalizeL2
+normalize = l2_normalization.normalize
 
 AveragePooling2D = average_pooling_2d.AveragePooling2D
 average_pooling_2d = average_pooling_2d.average_pooling_2d

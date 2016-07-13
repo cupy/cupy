@@ -42,7 +42,7 @@ class TestClippedReLU(unittest.TestCase):
             elif self.x[i] > self.z:
                 y_expect[i] = self.z
 
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):

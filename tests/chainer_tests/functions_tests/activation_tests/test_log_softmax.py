@@ -43,7 +43,7 @@ class TestLogSoftmax(unittest.TestCase):
             numpy.logaddexp, self.x, axis=1, keepdims=True)
         y_expect = self.x - log_z
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y.data, **self.check_forward_options)
 
     @condition.retry(3)

@@ -13,7 +13,7 @@ except ImportError:
     msg = ('CuPy is not correctly installed. Please check your environment, '
            'uninstall Chainer and reinstall it with `pip install chainer '
            '--no-cache-dir -vvvv`.')
-    raise six.reraise(RuntimeError, msg, sys.exc_info()[2])
+    raise six.reraise(RuntimeError, RuntimeError(msg), sys.exc_info()[2])
 
 
 from cupy import binary

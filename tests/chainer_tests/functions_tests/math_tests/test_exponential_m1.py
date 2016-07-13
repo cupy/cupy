@@ -23,7 +23,7 @@ class Expm1FunctionTest(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = F.expm1(x)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             numpy.expm1(self.x), y.data, atol=1e-7, rtol=1e-7)
 
     @condition.retry(3)

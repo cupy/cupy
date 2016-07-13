@@ -1,7 +1,6 @@
 import unittest
 
 from chainer import cuda
-from chainer import gradient_check
 from chainer import initializers
 from chainer import testing
 from chainer.testing import attr
@@ -20,7 +19,7 @@ class TestIdentity(unittest.TestCase):
         self.initializer(w)
         xp = cuda.get_array_module(w)
         self.assertIsInstance(w, xp.ndarray)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             w, self.scale * numpy.identity(len(self.shape)))
 
     def test_initializer_cpu(self):
@@ -59,7 +58,7 @@ class TestConstant(unittest.TestCase):
         self.initializer(w)
         xp = cuda.get_array_module(w)
         self.assertIsInstance(w, xp.ndarray)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             w, numpy.full(self.shape, self.fill_value))
 
     def test_initializer_cpu(self):

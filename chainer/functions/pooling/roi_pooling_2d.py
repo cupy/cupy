@@ -68,7 +68,8 @@ class ROIPooling2D(function.Function):
 
     def forward_cpu(self, inputs):
         bottom_data, bottom_rois = inputs
-        n_rois, channels, height, width = bottom_data.shape
+        channels, height, width = bottom_data.shape[1:]
+        n_rois = bottom_rois.shape[0]
         top_data = numpy.empty((n_rois, channels, self.outh, self.outw),
                                dtype=numpy.float32)
         self.argmax_data = numpy.empty_like(top_data).astype(numpy.int32)
@@ -184,7 +185,8 @@ class ROIPooling2D(function.Function):
 
     def backward_cpu(self, inputs, gy):
         bottom_data, bottom_rois = inputs
-        n_rois, channels, height, width = bottom_data.shape
+        channels, height, width = bottom_data.shape[1:]
+        n_rois = bottom_rois.shape[0]
         bottom_delta = numpy.zeros_like(bottom_data, dtype=numpy.float32)
 
         for i_roi in six.moves.range(n_rois):

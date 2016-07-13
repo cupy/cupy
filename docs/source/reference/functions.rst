@@ -31,6 +31,10 @@ clipped_relu
 ~~~~~~~~~~~~
 .. autofunction:: clipped_relu
 
+crelu
+~~~~~~~~~~~~
+.. autofunction:: crelu
+
 elu
 ~~~
 .. autofunction:: elu
@@ -231,9 +235,21 @@ softmax_cross_entropy
 ~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: softmax_cross_entropy
 
+triplet
+~~~~~~~
+.. autofunction:: triplet
+
 
 Mathematical functions
 ----------------------
+
+argmax
+~~~~~~
+.. autofunction:: argmax
+
+argmin
+~~~~~~
+.. autofunction:: argmin
 
 batch_inv
 ~~~~~~~~~
@@ -343,6 +359,10 @@ local_response_normalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: local_response_normalization
 
+normalize
+~~~~~~~~~
+.. autofunction:: normalize
+
 
 Spatial pooling
 ---------------
@@ -366,4 +386,3 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
-

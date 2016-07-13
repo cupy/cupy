@@ -16,5 +16,8 @@ Chainer Reference Manual
    serializers
    function_hooks
    initializers
+   datasets
+   iterators
+   extensions
    caffe
    graph

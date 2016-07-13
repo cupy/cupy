@@ -31,7 +31,7 @@ class TestTanh(unittest.TestCase):
         y = functions.tanh(x, use_cudnn=use_cudnn)
         self.assertEqual(y.data.dtype, self.dtype)
         y_expect = functions.tanh(chainer.Variable(self.x))
-        gradient_check.assert_allclose(y_expect.data, y.data)
+        testing.assert_allclose(y_expect.data, y.data)
 
     @attr.cudnn
     @condition.retry(3)

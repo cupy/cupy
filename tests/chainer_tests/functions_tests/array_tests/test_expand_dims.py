@@ -5,7 +5,6 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
@@ -45,7 +44,7 @@ class TestExpandDims(unittest.TestCase):
         y = functions.expand_dims(x, self.axis)
         y.grad = y.data
         y.backward()
-        gradient_check.assert_allclose(x.data, x.grad, atol=0, rtol=0)
+        testing.assert_allclose(x.data, x.grad, atol=0, rtol=0)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)

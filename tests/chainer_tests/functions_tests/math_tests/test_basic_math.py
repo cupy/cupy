@@ -27,7 +27,7 @@ class TestBinaryOp(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = op(x1, x2)
-        gradient_check.assert_allclose(op(self.x1, self.x2), y.data)
+        testing.assert_allclose(op(self.x1, self.x2), y.data)
 
     def forward_cpu(self, op):
         self.check_forward(op, self.x1, self.x2)
@@ -457,7 +457,7 @@ class TestVariableConstantOp(unittest.TestCase):
         else:
             atol = 1e-7
             rtol = 1e-7
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             op(self.x, self.value), y.data, atol=atol, rtol=rtol)
 
     def forward_cpu(self, op):
@@ -690,7 +690,7 @@ class TestVariableConstantArrayOp(unittest.TestCase):
         else:
             tol = 1e-6
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             op(self.x, value), y.data, atol=tol, rtol=tol)
 
     def forward_cpu(self, op, positive=False):
@@ -910,7 +910,7 @@ class TestUnaryFunctions(unittest.TestCase):
     def check_forward(self, op, op_np, x_data):
         x = chainer.Variable(x_data)
         y = op(x)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             op_np(self.x), y.data, atol=1e-7, rtol=1e-7)
 
     def forward_cpu(self, op, op_np):

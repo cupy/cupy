@@ -1,3 +1,5 @@
+import numpy
+
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -75,6 +77,53 @@ class Min(SelectorBase):
         return xp.amin(x, axis=self.axis, keepdims=self.keepdims)
 
 
+class IndexSelectorBase(function.Function):
+    """Select index of an array element from a given axis."""
+
+    def __init__(self, axis=None):
+        if axis is None:
+            self.axis = None
+        elif isinstance(axis, int):
+            self.axis = axis
+        else:
+            raise TypeError('None or int are required')
+
+    def _fwd(self, x, xp):
+        raise NotImplementedError('_fwd should be implemented in sub-class.')
+
+    def check_type_forward(self, in_types):
+        type_check.expect(
+            in_types.size() == 1,
+            in_types[0].dtype.kind == 'f'
+        )
+
+        if self.axis is not None:
+            if self.axis >= 0:
+                type_check.expect(
+                    self.axis < in_types[0].ndim,
+                )
+            else:
+                type_check.expect(
+                    -self.axis - 1 < in_types[0].ndim,
+                )
+
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return xp.asarray(self._fwd(x[0], xp)),
+
+
+class ArgMin(IndexSelectorBase):
+
+    def _fwd(self, x, xp):
+        return xp.argmin(x, axis=self.axis).astype(numpy.int32)
+
+
+class ArgMax(IndexSelectorBase):
+
+    def _fwd(self, x, xp):
+        return xp.argmax(x, axis=self.axis).astype(numpy.int32)
+
+
 def max(x, axis=None, keepdims=False):
     """Maximum of array elements over a given axis.
 
@@ -103,3 +152,33 @@ def min(x, axis=None, keepdims=False):
 
     """
     return Min(axis, keepdims)(x)
+
+
+def argmax(x, axis=None):
+    """Returns index which holds maximum of array elements over a given axis.
+
+    Args:
+        x (~chainer.Variable): Array to find maximum elements.
+        axis (None or int): Axis over which a max is performed.
+            The default (axis = None) is perform a max over all the dimensions
+            of the input array.
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
+    return ArgMax(axis)(x)
+
+
+def argmin(x, axis=None):
+    """Returns index which holds minimum of array elements over a given axis.
+
+    Args:
+        x (~chainer.Variable): Array to find minimum elements.
+        axis (None or int): Axis over which a min is performed.
+            The default (axis = None) is perform a min over all the dimensions
+            of the input array.
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    """
+    return ArgMin(axis)(x)

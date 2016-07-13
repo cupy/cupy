@@ -5,7 +5,6 @@ import numpy as np
 
 import chainer
 from chainer import cuda
-from chainer import gradient_check
 from chainer import optimizer
 from chainer import optimizers
 from chainer import testing
@@ -117,7 +116,7 @@ class TestOptimizerWeightDecay(unittest.TestCase):
         opt.add_hook(optimizer.WeightDecay(decay))
         opt.update()
 
-        gradient_check.assert_allclose(expect, w)
+        testing.assert_allclose(expect, w)
 
     def test_weight_decay_cpu(self):
         self.check_weight_decay()
@@ -147,7 +146,7 @@ class TestOptimizerLasso(unittest.TestCase):
         opt.add_hook(optimizer.Lasso(decay))
         opt.update()
 
-        gradient_check.assert_allclose(expect, w)
+        testing.assert_allclose(expect, w)
 
     def test_lasso_cpu(self):
         self.check_lasso()
@@ -156,6 +155,40 @@ class TestOptimizerLasso(unittest.TestCase):
     def test_lasso_gpu(self):
         self.target.to_gpu()
         self.check_lasso()
+
+
+class TestOptimizerGradientNoise(unittest.TestCase):
+
+    def setUp(self):
+        self.target = SimpleLink(
+            np.arange(6, dtype=np.float32).reshape(2, 3),
+            np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3))
+
+    def check_gradient_noise(self):
+        w = self.target.param.data
+        g = self.target.param.grad
+        xp = cuda.get_array_module(w)
+
+        eta = 0.01
+        expect = w - g - xp.random.normal(loc=0,
+                                          scale=np.sqrt(
+                                              eta / np.power(1, 0.55)),
+                                          size=g.shape).astype(np.float32)
+
+        opt = optimizers.SGD(lr=1)
+        opt.setup(self.target)
+        opt.add_hook(optimizer.GradientNoise(eta))
+        opt.update()
+
+        testing.assert_allclose(expect, w, rtol=0.4)
+
+    def test_gradient_noise_cpu(self):
+        self.check_gradient_noise()
+
+    @attr.gpu
+    def test_gradient_noise_gpu(self):
+        self.target.to_gpu()
+        self.check_gradient_noise()
 
 
 class TestGradientMethod(unittest.TestCase):
@@ -283,7 +316,7 @@ class TestGradientMethod(unittest.TestCase):
         self.optimizer.weight_decay(0.1)
         g = cuda.to_cpu(self.target.param.grad)
         expect = np.array([0.0, 1.1, 2.2], dtype=np.float32)
-        gradient_check.assert_allclose(g, expect)
+        testing.assert_allclose(g, expect)
 
     def test_weight_decay_cpu(self):
         self.setup_cpu()

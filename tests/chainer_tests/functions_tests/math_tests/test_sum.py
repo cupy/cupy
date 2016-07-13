@@ -22,7 +22,7 @@ class TestSum(unittest.TestCase):
         y = functions.sum(x, axis=axis)
         self.assertEqual(y.data.dtype, numpy.float32)
         y_expect = self.x.sum(axis=axis)
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
