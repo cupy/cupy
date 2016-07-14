@@ -58,7 +58,7 @@ Please install theano to activate theano function.
 
         if gpu:
             grad = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(g)
-                         if g.type.dtype == 'floag32' else g for g in grad)
+                         if g.type.dtype == 'float32' else g for g in grad)
 
         self.grad = theano.function(
             inputs=inputs + gs,
