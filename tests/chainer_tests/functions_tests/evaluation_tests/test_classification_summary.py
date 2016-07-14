@@ -45,8 +45,8 @@ def support(ts, dtype, label_num):
 
 @testing.parameterize(
     *testing.product_dict(
-        [{'y_shape': (30, 3), 't_shape': (30,)},
-         {'y_shape': (30, 3, 5), 't_shape': (30, 5)}],
+        [{'y_shape': (100, 3), 't_shape': (100,)},
+         {'y_shape': (100, 3, 5), 't_shape': (100, 5)}],
         [{'dtype': numpy.float16},
          {'dtype': numpy.float32},
          {'dtype': numpy.float64}],
