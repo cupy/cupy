@@ -72,7 +72,7 @@ class TestHighway(unittest.TestCase):
             self.link, x_data, y_grad,
             (self.link.plain.W, self.link.plain.b,
              self.link.transform.W, self.link.transform.b),
-            eps=1e-2, atol=1.5e-3, rtol=1e-2)
+            eps=1e-2, atol=3.2e-3, rtol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
