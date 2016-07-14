@@ -121,7 +121,7 @@ def _cupy_to_theano_array(x):
         ptr = long(x.data.ptr)  # NOQA
     else:
         ptr = int(x.data.ptr)
-    strides = [s / 4 for s in x.strides]
+    strides = [s // 4 for s in x.strides]
     return theano_cuda.from_gpu_pointer(ptr, x.shape, strides, x)
 
 
