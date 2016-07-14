@@ -1,5 +1,4 @@
 import numpy
-
 import six
 
 import chainer
