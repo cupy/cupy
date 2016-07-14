@@ -80,7 +80,7 @@ class TestClassificationSummary(unittest.TestCase):
                                         **self.check_forward_options)
         chainer.testing.assert_allclose(r_actual.data, r_expect,
                                         **self.check_forward_options)
-        chainer.testing.assert_allclose(f1_actual.data, f1_expect,
+        chainer.testing.assert_allclose(fbeta_actual.data, fbeta_expect,
                                         **self.check_forward_options)
         chainer.testing.assert_allclose(s_actual.data, s_expect,
                                         **self.check_forward_options)
