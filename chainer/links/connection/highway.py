@@ -8,23 +8,30 @@ class Highway(link.Chain):
 
     """Highway module.
 
-    Network allowing unimpeded information flow across layer on information
-    flow.
-    It applies two different gate. One gate is transform gate, and the other
-    is carry gate. Carry gate enable to propagete large gradient value to
-    previous layer.
+    This is a network allowing unimpeded information flow across layer on
+    information highways.
+    It applies two different gates. One gate is transform gate
+    (:math:`tanh(W_h x + b_h)`), and the other is carry gate
+    (:math:`sigma(W_t x + b_t)`). Carry gate enable us to propagete large
+    gradient value to previous layer.
 
-    The output is sum of linear multiplied transform gate, and input array
-    multiplied carry gate.
-    Its array has the same spatial size as the input. In order to satisfy this,
-    Highway module uses square matrix as its weight.
+    Highway module returns :math:`y` defined as
+
+    .. math::
+
+    y &=& Relu(W_h x + b_h)\\odot\\sigma(W_t x + b_t)) +
+          x\\odot(1 - \\sigma(W_t x + b_t))
+
+    The output array has the same spatial size as the input. In order to
+    satisfy this, :math:`W_h` and :math:`W_t` must be square matrix.
 
     See: `Highway Networks <https://arxiv.org/abs/1505.00387>`_.
 
     Args:
         in_out_size (int): Dimension of input and output vectors.
         nobias (bool): If ``True``, then this function does not use the bias.
-        activate: Activation function of plain array. tanh is also enable.
+        activate: Activation function of plain array. :math:`tanh` is also
+        enable.
         init_Wh (2-D array): Initial weight value of plain array. If ``None``,
             then this function uses to initialize ``wscale``.
             May also be a callable that takes ``numpy.ndarray`` or
@@ -42,6 +49,7 @@ class Highway(link.Chain):
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
             Negative value is sufficient for learning (e.g. -1, -3, ...).
+
     """
 
     def __init__(self, in_out_size, nobias=False, activate=relu.relu,
