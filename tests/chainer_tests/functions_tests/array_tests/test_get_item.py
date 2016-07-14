@@ -79,7 +79,14 @@ class TestGetItem(unittest.TestCase):
 class TestInvalidGetItem(unittest.TestCase):
 
     def setUp(self):
+        self.default_debug = chainer.is_debug()
+        chainer.set_debug(True)
+
         self.x_data = numpy.random.uniform(-1, 1, (4, 3, 2))
+
+    def tearDown(self):
+        chainer.set_debug(self.default_debug)
+        
 
     def test_advanced_indexing(self):
         with self.assertRaises(ValueError):
