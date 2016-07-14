@@ -68,9 +68,8 @@ Please install theano to activate theano function.
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == len(self.func.input_storage))
 
-        for i, storage in enumerate(self.func.input_storage):
+        for actual_type, storage in six.moves.zip(in_types, self.func.input_storage):
             expect_type = storage.type
-            actual_type = in_types[i]
             # Theano cannot check shapes of variables
             type_check.expect(
                 actual_type.ndim == expect_type.ndim,
