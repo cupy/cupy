@@ -19,9 +19,9 @@ class ClassificationSummary(function.Function):
 
     ignore_label = -1
 
-    def __init__(self, beta, label_num):
-        self.beta = beta
+    def __init__(self, label_num, beta):
         self.label_num = label_num
+        self.beta = beta
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -106,16 +106,16 @@ def classification_summary(y, t, label_num=None, beta=1.0):
         support of this minibatch.
 
     """
-    return ClassificationSummary(beta, label_num)(y, t)
+    return ClassificationSummary(label_num, beta)(y, t)
 
 
 def precision(y, t, label_num=None):
-    ret = ClassificationSummary(1.0, label_num)(y, t)
+    ret = ClassificationSummary(label_num, 1.0)(y, t)
     return ret[0], ret[-1]
 
 
 def recall(y, t, label_num=None):
-    ret = ClassificationSummary(1.0, label_num)(y, t)
+    ret = ClassificationSummary(label_num, 1.0)(y, t)
     return ret[1], ret[-1]
 
 
