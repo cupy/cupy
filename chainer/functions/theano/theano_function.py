@@ -50,10 +50,10 @@ Please install theano to activate theano function.
 
         self.func = theano.function(inputs=inputs, outputs=outs)
         gs = tuple(o.type('g_{}'.format(i)) for i, o in enumerate(outputs))
-        know_grads = dict(zip(outputs, gs))
+        known_grads = dict(zip(outputs, gs))
 
         grad = theano.tensor.grad(
-            cost=None, wrt=inputs, known_grads=know_grads,
+            cost=None, wrt=inputs, known_grads=known_grads,
             disconnected_inputs='ignore')
 
         if gpu:
