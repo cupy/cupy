@@ -10,13 +10,13 @@ class DilatedConvolution2D(link.Link):
     """Two-dimensional dilated convolutional layer.
     """
 
-    def __init__(self, in_channels, out_channels, ksize, dilate=1, stride=1, pad=0,
+    def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
-                 initialW=None, initial_bias=None):
+                 initialW=None, initial_bias=None, dilate=1):
         kh, kw = _pair(ksize)
-        self.dilate = _pair(dilate)
         self.stride = _pair(stride)
         self.pad = _pair(pad)
+        self.dilate = _pair(dilate)
         self.use_cudnn = use_cudnn
 
         W_shape = (out_channels, in_channels, kh, kw)
@@ -46,7 +46,7 @@ class DilatedConvolution2D(link.Link):
 
         """
         return dilated_convolution_2d.dilated_convolution_2d(
-            x, self.W, self.b, self.dilate, self.stride, self.pad, self.use_cudnn)
+            x, self.W, self.b, self.stride, self.pad, self.use_cudnn, dilate=self.dilate)
 
 
 def _pair(x):
