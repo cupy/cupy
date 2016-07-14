@@ -62,6 +62,11 @@ def get_item(x, slices):
         Variable: :class:`~chainer.Variable` object
             which contains sliced array of ``x``.
 
+    .. note::
+
+       See NumPy documents for details of `indexing
+       <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_
+
     """
     return GetItem(slices)(x)
 
