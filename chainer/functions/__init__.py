@@ -23,6 +23,7 @@ from chainer.functions.array import expand_dims
 from chainer.functions.array import get_item
 from chainer.functions.array import permutate
 from chainer.functions.array import reshape
+from chainer.functions.array import rollaxis
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
 from chainer.functions.array import stack
@@ -141,6 +142,8 @@ Permutate = permutate.Permutate
 permutate = permutate.permutate
 Reshape = reshape.Reshape
 reshape = reshape.reshape
+Rollaxis = rollaxis.Rollaxis
+rollaxis = rollaxis.rollaxis
 SplitAxis = split_axis.SplitAxis
 split_axis = split_axis.split_axis
 SelectItem = select_item.SelectItem
