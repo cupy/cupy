@@ -139,6 +139,12 @@ def cache_or_load_file(path, creator, loader):
     temp_dir = tempfile.mkdtemp()
     temp_path = os.path.join(temp_dir, file_name)
 
+    try:
+        os.makedirs(_dataset_root)
+    except OSError:
+        if not os.path.exists(_dataset_root):
+            raise RuntimeError('cannot create dataset directory')
+
     lock_path = os.path.join(_dataset_root, '_create_lock')
 
     try:
