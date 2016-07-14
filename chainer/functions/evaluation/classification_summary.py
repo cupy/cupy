@@ -45,10 +45,6 @@ class ClassificationSummary(function.Function):
         xp = cuda.get_array_module(*inputs)
         y, t = inputs
 
-        mask = (t == self.ignore_label)
-        pred = xp.where(mask, self.ignore_label,
-                        y.argmax(axis=1).reshape(t.shape))
-
         if self.label_num is None:
             label_num = xp.maximum(t) + 1
         else:
@@ -56,21 +52,17 @@ class ClassificationSummary(function.Function):
             if chainer.is_debug():
                 assert (t < label_num).all()
 
-        precision = xp.empty((label_num,), dtype=y.dtype)
-        recall = xp.empty((label_num), dtype=y.dtype)
-        support = xp.empty((label_num), dtype=numpy.int32)
+        mask = (t == self.ignore_label).ravel()
+        pred = xp.where(mask, label_num, y.argmax(axis=1).ravel())
+        true = xp.where(mask, label_num, t.ravel())
+        support = xp.bincount(true, minlength=label_num + 1)[:label_num]
+        relevant = xp.bincount(pred, minlength=label_num + 1)[:label_num]
+        tp_mask = xp.where(pred == true, true, label_num)
+        tp = xp.bincount(tp_mask, minlength=label_num + 1)[:label_num]
 
-        # TODO(Kenta Oono)
-        # speed up
-        for i in six.moves.range(label_num):
-            supp = (t == i) & (t != self.ignore_label)
-            relevant = (pred == i) & (t != self.ignore_label)
-            tp = (supp & relevant).sum().astype(y.dtype)
-            support[i] = supp.sum()
-            precision[i] = tp / relevant.sum()
-            recall[i] = tp / support[i]
-
-        f1 = _f1_score(precision, recall, self.beta)
+        precision = tp / relevant
+        recall = tp / support
+        fbeta = _fbeta_score(precision, recall, self.beta)
 
         return precision, recall, fbeta, support
 
