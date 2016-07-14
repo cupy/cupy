@@ -191,6 +191,37 @@ class TestOptimizerGradientNoise(unittest.TestCase):
         self.check_gradient_noise()
 
 
+class TestGradientHardClipping(unittest.TestCase):
+
+    def setUp(self):
+        self.target = SimpleLink(
+            np.arange(6, dtype=np.float32).reshape(2, 3),
+            np.arange(3, -3, -1, dtype=np.float32).reshape(2, 3))
+
+    def check_hardclipping(self):
+        w = self.target.param.data
+        g = self.target.param.grad
+        xp = cuda.get_array_module(w)
+        lower_bound = -0.9
+        upper_bound = 1.1
+        expect = w - xp.clip(g, lower_bound, upper_bound)
+
+        opt = optimizers.SGD(lr=1)
+        opt.setup(self.target)
+        opt.add_hook(optimizer.GradientHardClipping(lower_bound, upper_bound))
+        opt.update()
+
+        testing.assert_allclose(expect, w)
+
+    def test_hardclipping_cpu(self):
+        self.check_hardclipping()
+
+    @attr.gpu
+    def test_hardclipping_gpu(self):
+        self.target.to_gpu()
+        self.check_hardclipping()
+
+
 class TestGradientMethod(unittest.TestCase):
 
     def _suffix(self, gpu):
