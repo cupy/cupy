@@ -316,7 +316,7 @@ min
 .. autofunction:: min
 
 minimum
-~~~~~~
+~~~~~~~
 .. autofunction:: minimum
 
 scale
