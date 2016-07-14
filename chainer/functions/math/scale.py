@@ -7,28 +7,28 @@ def scale(x, y, axis=1):
     """Elementwise product with broadcasting.
 
     Computes a elementwise product of two input variables, with the shape of
-    the latter variable broadcasted to match the shape of the former. `axis`
+    the latter variable broadcasted to match the shape of the former. ``axis``
     is the first axis of the first variable along which the second variable is
     applied.
 
     The term "broadcasting" here comes from Caffe's scale layer so the
-    "broadcasting" with the following arguments:
+    "broadcasting" with the following arguments::
 
            x : 100 x 3 x 40 x 60
            y : 3 x 40
         axis : 1
 
-    is equivalent to the following numpy broadcasting:
+    is equivalent to the following numpy broadcasting::
 
         x : 100 x 3 x 40 x 60
         y :   1 x 3 x 40 x 1
 
-    Note that how the `axis` indicates to which axis of `x` we apply `y`.
+    Note that how the ``axis`` indicates to which axis of ``x`` we apply ``y``.
 
     Args:
         x (~chainer.Variable): Input variable to be scaled.
         y (~chainer.Variable): Input variable to scale, broadcasted.
-        axis (int): The first axis of `x` along which `y` is applied.
+        axis (int): The first axis of ``x`` along which ``y`` is applied.
 
     Returns:
         ~chainer.Variable: Output variable.
