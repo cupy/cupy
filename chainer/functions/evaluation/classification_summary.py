@@ -78,32 +78,36 @@ class ClassificationSummary(function.Function):
 def classification_summary(y, t, label_num=None, beta=1.0):
     """Calculates Precision, Recall, F1 Score, and support.
 
-    This function calculates the following quantities for each label value.
+    This function calculates the following quantities for each class.
 
     - Precision: :math:`\frac{tp}{tp + fp}`
     - Recall: :math:`\frac{tp}{tp + tn}`
-    - F1 Score: The harmonic average of Precision and Recall.
-    - Support: The number of data points of each ground truth label.
+    - F beta Score: The weighted harmonic average of Precision and Recall.
+    - Support: The number of instances of each ground truth label.
 
-    Here, ``tp``, ``fp``, and ``tn`` stand for true positive, false positive,
-    and true negative, respectively.
+    Here, ``tp``, ``fp``, and ``tn`` stand for the number of true positives,
+    false positives, and true negative, respectively.
 
-    If ``ignore_label`` is not ``None``, data points whose labels are ignored.
-    ``label_num`` should specifies the number of label types.
-    Each value in ``t`` should be the integer in ``[0, label_num)``.
-    If ``label_num`` is ``None``, we regard ``label_num`` to be the maximum
-    value of in ``t`` plus 1.
+    If ``ignore_label`` is not ``None``, instances with the given
+    label are ignored.
+    ``label_num`` specifies the number of classes, that is,
+    each value in ``t`` must be an integer in the range of
+    ``[0, label_num)``.
+    If ``label_num`` is ``None``, this function regards
+    ``label_num`` as a maximum of in ``t`` plus one.
 
     Args:
         y (~chainer.Variable): Variable holding a vector of scores.
-        t (~chainer.Variable): Variable holding ground truth label.
-        label_num (int): the number of label types.
-        beta (float): Strength of recall against precision in F1 score.
+        t (~chainer.Variable): Variable holding a vector of
+        ground truth labels.
+        label_num (int): The number of classes.
+        beta (float): The parameter which determines the weight of
+        precision in the F-beta score.
 
     Returns:
         4-tuple of ~chainer.Variable of size ``(label_num,)``.
-        Each element represents precision, recall, f1_score, and
-        support of this minibatch.
+        Each element represents precision, recall, F beta score,
+        and support of this minibatch.
 
     """
     return ClassificationSummary(label_num, beta)(y, t)
