@@ -86,7 +86,6 @@ class TestInvalidGetItem(unittest.TestCase):
 
     def tearDown(self):
         chainer.set_debug(self.default_debug)
-        
 
     def test_advanced_indexing(self):
         with self.assertRaises(ValueError):
