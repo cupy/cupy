@@ -9,7 +9,7 @@ from chainer import function
 from chainer.utils import type_check
 
 
-def _f1_score(precision, recall, beta):
+def _fbeta_score(precision, recall, beta):
     beta_square = beta * beta
     return ((1 + beta_square) * precision * recall /
             (beta_square * precision + recall)).astype(precision.dtype)
@@ -72,11 +72,11 @@ class ClassificationSummary(function.Function):
 
         f1 = _f1_score(precision, recall, self.beta)
 
-        return precision, recall, f1, support
+        return precision, recall, fbeta, support
 
 
 def classification_summary(y, t, label_num=None, beta=1.0):
-    """Calculates Precision, Recall, F1 Score, and support.
+    """Calculates Precision, Recall, F beta Score, and support.
 
     This function calculates the following quantities for each class.
 
@@ -123,6 +123,11 @@ def recall(y, t, label_num=None):
     return ret[1], ret[-1]
 
 
-def f1_score(y, t, label_num=None, beta=1.0):
-    ret = ClassificationSummary(beta, label_num)(y, t)
+def fbeta_score(y, t, label_num=None, beta=1.0):
+    ret = ClassificationSummary(label_num, beta)(y, t)
+    return ret[2], ret[-1]
+
+
+def f1_score(y, t, label_num=None):
+    ret = ClassificationSummary(label_num, 1.0)(y, t)
     return ret[2], ret[-1]

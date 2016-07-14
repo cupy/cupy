@@ -30,7 +30,7 @@ def precision(preds, ts, dtype, label_num):
     return dtype(tp) / relevant
 
 
-def f1_score(precision, recall, beta=1.0):
+def fbeta_score(precision, recall, beta=1.0):
     beta_square = beta * beta
     return ((1 + beta_square) * precision * recall /
             (beta_square * precision + recall))
@@ -68,13 +68,13 @@ class TestClassificationSummary(unittest.TestCase):
     def check_forward(self, xp):
         y = chainer.Variable(xp.asarray(self.y))
         t = chainer.Variable(xp.asarray(self.t))
-        p_actual, r_actual, f1_actual, s_actual = F.classification_summary(
+        p_actual, r_actual, fbeta_actual, s_actual = F.classification_summary(
             y, t, self.label_num, self.beta)
 
         pred = self.y.argmax(axis=1).reshape(self.t.shape)
         p_expect = precision(pred, self.t, self.dtype, self.label_num)
         r_expect = recall(pred, self.t, self.dtype, self.label_num)
-        f1_expect = f1_score(p_expect, r_expect, self.beta)
+        fbeta_expect = fbeta_score(p_expect, r_expect, self.beta)
         s_expect = support(self.t, self.dtype, self.label_num)
         chainer.testing.assert_allclose(p_actual.data, p_expect,
                                         **self.check_forward_options)
