@@ -191,4 +191,85 @@ class TestDeconvolution2DCudnnCall(unittest.TestCase):
             self.assertEqual(func.called, self.expect)
 
 
+@testing.parameterize(*testing.product({
+    'c_contiguous': [True, False],
+    'deterministic': [True, False],
+    'nobias': [True, False],
+}))
+class TestDeconvolution2DFunctionDeterministic(unittest.TestCase):
+    def setUp(self):
+        self.stride = 2
+        self.pad = 1
+        batch_sz = 2
+        in_channels = 64
+        out_channels = 64
+        kh, kw = (3, 3)
+        in_h, in_w = (32, 128)
+        out_h, out_w = (63, 255)
+        # should be same types for cudnn test
+        x_dtype = numpy.float32
+        W_dtype = numpy.float32
+        self.W = numpy.random.normal(
+            0, numpy.sqrt(1. / (kh * kw * in_channels)),
+            (out_channels, in_channels, kh, kw)).astype(W_dtype)
+        self.b = numpy.random.uniform(-1, 1, out_channels).astype(x_dtype)
+        self.x = numpy.random.uniform(
+            -1, 1, (batch_sz, in_channels, in_h, in_w)).astype(x_dtype)
+        self.gy = numpy.random.uniform(
+            -1, 1, (batch_sz, out_channels, out_h, out_w)).astype(x_dtype)
+
+    @attr.gpu
+    @attr.cudnn
+    def test_deterministic(self):
+        x1, W1, b1, y1 = self._run()
+        x2, W2, b2, y2 = self._run()
+
+        if self.deterministic:
+            cuda.cupy.testing.assert_array_equal(W1.grad, W2.grad)
+        else:
+            with self.assertRaises(AssertionError):
+                cuda.cupy.testing.assert_array_equal(W1.grad, W2.grad)
+
+        if not self.nobias:
+            cuda.cupy.testing.assert_array_equal(b1.grad, b2.grad)
+        cuda.cupy.testing.assert_array_equal(x1.grad, x2.grad)
+
+    def _contiguous(self, x_data, W_data, b_data, gy_data):
+        if not self.c_contiguous:
+            x_data = numpy.asfortranarray(x_data)
+            W_data = numpy.asfortranarray(W_data)
+            gy_data = numpy.asfortranarray(gy_data)
+            self.assertFalse(x_data.flags.c_contiguous)
+            self.assertFalse(W_data.flags.c_contiguous)
+            self.assertFalse(gy_data.flags.c_contiguous)
+            b = numpy.empty((len(b_data) * 2,), dtype=self.b.dtype)
+            b[::2] = b_data
+            b_data = b[::2]
+            self.assertFalse(b_data.flags.c_contiguous)
+        return x_data, W_data, b_data, gy_data
+
+    def _make_gpu_args(self):
+        return tuple(cuda.to_gpu(data) for data in (self.x, self.W, self.b))
+
+    def _run(self):
+        # verify data continuity and move to gpu
+        x_data, W_data, b_data, gy_data = \
+            tuple(cuda.to_gpu(data) for data in self._contiguous(
+                self.x, self.W, self.b, self.gy))
+        x, W, b, y = self._run_forward(x_data, W_data, b_data)
+
+        y.grad = gy_data
+        y.backward()
+        return x, W, b, y
+
+    def _run_forward(self, x_data, W_data, b_data):
+        x = chainer.Variable(x_data)
+        W = chainer.Variable(W_data)
+        b = None if self.nobias else chainer.Variable(b_data)
+        y = F.deconvolution_2d(x, W, b, stride=self.stride, pad=self.pad,
+                               use_cudnn=True,
+                               deterministic=self.deterministic)
+        return x, W, b, y
+
+
 testing.run_module(__name__, __file__)
