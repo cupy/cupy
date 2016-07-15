@@ -56,11 +56,15 @@ class TestLSTM(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
 
-class TestLSSTMRestState(unittest.TestCase):
+class TestLSTMState(unittest.TestCase):
 
     def setUp(self):
         self.link = links.LSTM(5, 7)
         self.x = chainer.Variable(
+            numpy.random.uniform(-1, 1, (3, 5)).astype(numpy.float32))
+        self.c = chainer.Variable(
+            numpy.random.uniform(-1, 1, (3, 5)).astype(numpy.float32))
+        self.h = chainer.Variable(
             numpy.random.uniform(-1, 1, (3, 5)).astype(numpy.float32))
 
     def check_state(self):
@@ -78,6 +82,21 @@ class TestLSSTMRestState(unittest.TestCase):
         self.link.to_gpu()
         self.x.to_gpu()
         self.check_state()
+
+    def check_set_state(self, c, h):
+        self.link.set_state(c, h)
+        self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
+        testing.assert_allclose(c.data, self.link.c.data)
+        self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+        testing.assert_allclose(h.data, self.link.h.data)
+
+    def test_set_state_cpu(self):
+        self.check_set_state(self.c, self.h)
+
+    @attr.gpu
+    def test_set_state_gpu(self):
+        self.link.to_gpu()
+        self.check_set_state(self.c, self.h)
 
     def check_reset_state(self):
         self.link(self.x)
