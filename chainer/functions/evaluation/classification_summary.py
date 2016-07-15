@@ -17,11 +17,10 @@ def _fbeta_score(precision, recall, beta):
 
 class ClassificationSummary(function.Function):
 
-    ignore_label = -1
-
-    def __init__(self, label_num, beta):
+    def __init__(self, label_num, beta, ignore_label):
         self.label_num = label_num
         self.beta = beta
+        self.ignore_label = ignore_label
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
@@ -67,7 +66,7 @@ class ClassificationSummary(function.Function):
         return precision, recall, fbeta, support
 
 
-def classification_summary(y, t, label_num=None, beta=1.0):
+def classification_summary(y, t, label_num=None, beta=1.0, ignore_label=-1):
     """Calculates Precision, Recall, F beta Score, and support.
 
     This function calculates the following quantities for each class.
@@ -80,13 +79,17 @@ def classification_summary(y, t, label_num=None, beta=1.0):
     Here, ``tp``, ``fp``, and ``tn`` stand for the number of true positives,
     false positives, and true negative, respectively.
 
-    If ``ignore_label`` is not ``None``, instances with the given
-    label are ignored.
     ``label_num`` specifies the number of classes, that is,
     each value in ``t`` must be an integer in the range of
     ``[0, label_num)``.
     If ``label_num`` is ``None``, this function regards
     ``label_num`` as a maximum of in ``t`` plus one.
+
+    ``ignore_label`` determines which instances should be ignored.
+    Specifically, instances with the given label are not taken
+    into account for calculating the above quantities.
+    By default, it is set to -1 so that all instances are taken
+    into consideration, as labels are supposed to be non-negative integers.
 
     Args:
         y (~chainer.Variable): Variable holding a vector of scores.
@@ -95,6 +98,7 @@ def classification_summary(y, t, label_num=None, beta=1.0):
         label_num (int): The number of classes.
         beta (float): The parameter which determines the weight of
         precision in the F-beta score.
+        ignore_label (int): Instances with this label are ignored.
 
     Returns:
         4-tuple of ~chainer.Variable of size ``(label_num,)``.
@@ -102,24 +106,24 @@ def classification_summary(y, t, label_num=None, beta=1.0):
         and support of this minibatch.
 
     """
-    return ClassificationSummary(label_num, beta)(y, t)
+    return ClassificationSummary(label_num, beta, ignore_label)(y, t)
 
 
-def precision(y, t, label_num=None):
-    ret = ClassificationSummary(label_num, 1.0)(y, t)
+def precision(y, t, label_num=None, ignore_label=-1):
+    ret = ClassificationSummary(label_num, 1.0, ignore_label)(y, t)
     return ret[0], ret[-1]
 
 
-def recall(y, t, label_num=None):
-    ret = ClassificationSummary(label_num, 1.0)(y, t)
+def recall(y, t, label_num=None, ignore_label=-1):
+    ret = ClassificationSummary(label_num, 1.0, ignore_label)(y, t)
     return ret[1], ret[-1]
 
 
-def fbeta_score(y, t, label_num=None, beta=1.0):
-    ret = ClassificationSummary(label_num, beta)(y, t)
+def fbeta_score(y, t, label_num=None, beta=1.0, ignore_label=-1):
+    ret = ClassificationSummary(label_num, beta, ignore_label)(y, t)
     return ret[2], ret[-1]
 
 
-def f1_score(y, t, label_num=None):
-    ret = ClassificationSummary(label_num, 1.0)(y, t)
+def f1_score(y, t, label_num=None, ignore_label=-1):
+    ret = ClassificationSummary(label_num, 1.0, ignore_label)(y, t)
     return ret[2], ret[-1]
