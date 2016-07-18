@@ -24,29 +24,29 @@ cdef extern from "cupy_cuda.h":
 
     # Generation functions
     int curandGenerate(
-            Generator generator, unsigned int* outputPtr, size_t num)
+        Generator generator, unsigned int* outputPtr, size_t num)
     int curandGenerateLongLong(
-            Generator generator, unsigned long long* outputPtr,
-            size_t num)
+        Generator generator, unsigned long long* outputPtr,
+        size_t num)
     int curandGenerateUniform(
-            Generator generator, float* outputPtr, size_t num)
+        Generator generator, float* outputPtr, size_t num)
     int curandGenerateUniformDouble(
-            Generator generator, double* outputPtr, size_t num)
+        Generator generator, double* outputPtr, size_t num)
     int curandGenerateNormal(
-            Generator generator, float* outputPtr, size_t num,
-            float mean, float stddev)
+        Generator generator, float* outputPtr, size_t num,
+        float mean, float stddev)
     int curandGenerateNormalDouble(
-            Generator generator, double* outputPtr, size_t n,
-            double mean, double stddev)
+        Generator generator, double* outputPtr, size_t n,
+        double mean, double stddev)
     int curandGenerateLogNormal(
-            Generator generator, float* outputPtr, size_t n,
-            float mean, float stddev)
+        Generator generator, float* outputPtr, size_t n,
+        float mean, float stddev)
     int curandGenerateLogNormalDouble(
-            Generator generator, double* outputPtr, size_t n,
-            double mean, double stddev)
+        Generator generator, double* outputPtr, size_t n,
+        double mean, double stddev)
     int curandGeneratePoisson(
-            Generator generator, unsigned int* outputPtr, size_t n,
-            double lam)
+        Generator generator, unsigned int* outputPtr, size_t n,
+        double lam)
 
 
 ###############################################################################
@@ -146,7 +146,6 @@ cpdef generateUniform(size_t generator, size_t outputPtr, size_t num):
     status = curandGenerateUniform(
         <Generator>generator, <float*>outputPtr, num)
     check_status(status)
-
 
 
 cpdef generateUniformDouble(size_t generator, size_t outputPtr, size_t num):

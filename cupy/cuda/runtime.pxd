@@ -77,7 +77,7 @@ cpdef memcpy(size_t dst, size_t src, size_t size, int kind)
 cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
                   size_t stream)
 cpdef memcpyPeer(size_t dst, int dstDevice, size_t src, int srcDevice,
-               size_t size)
+                 size_t size)
 cpdef memcpyPeerAsync(size_t dst, int dstDevice,
                       size_t src, int srcDevice,
                       size_t size, size_t stream)

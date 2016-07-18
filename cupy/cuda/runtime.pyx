@@ -34,9 +34,9 @@ cdef extern from *:
     ctypedef int DeviceAttr 'enum cudaDeviceAttr'
     ctypedef int MemoryKind 'enum cudaMemcpyKind'
 
-    ctypedef void (*StreamCallbackDef)(
+    ctypedef void StreamCallbackDef(
         driver.Stream stream, Error status, void* userData)
-    ctypedef StreamCallbackDef StreamCallback 'cudaStreamCallback_t'
+    ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
 
 
 cdef extern from "cupy_cuda.h":
@@ -53,7 +53,7 @@ cdef extern from "cupy_cuda.h":
     const char* cudaGetErrorString(Error error) nogil
 
     # Initialization
-    int cudaDriverGetVersion(int* driverVersion ) nogil
+    int cudaDriverGetVersion(int* driverVersion) nogil
 
     # Device operations
     int cudaGetDevice(int* device) nogil
@@ -226,7 +226,7 @@ cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
 
 
 cpdef memcpyPeer(size_t dst, int dstDevice, size_t src, int srcDevice,
-               size_t size):
+                 size_t size):
     with nogil:
         status = cudaMemcpyPeer(<void*>dst, dstDevice, <void*>src, srcDevice,
                                 size)

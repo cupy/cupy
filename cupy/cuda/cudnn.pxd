@@ -132,8 +132,8 @@ cpdef setTensorNdDescriptor(size_t tensorDesc, int dataType, int nbDims,
                             size_t dimA, size_t strideA)
 cpdef destroyTensorDescriptor(size_t tensorDesc)
 cpdef addTensor_v2(
-        size_t handle, int mode, size_t alpha, size_t biasDesc,
-        size_t biasData, size_t beta, size_t srcDestDesc, size_t srcDestData)
+    size_t handle, int mode, size_t alpha, size_t biasDesc,
+    size_t biasData, size_t beta, size_t srcDestDesc, size_t srcDestData)
 cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
                    size_t b, size_t beta, size_t yDesc, size_t y)
 
@@ -144,9 +144,9 @@ cpdef addTensor_v3(size_t handle, size_t alpha, size_t bDesc,
 
 cpdef size_t createFilterDescriptor() except *
 cpdef setFilter4dDescriptor_v3(
-        size_t filterDesc, int dataType, int k, int c, int h, int w)
+    size_t filterDesc, int dataType, int k, int c, int h, int w)
 cpdef setFilterNdDescriptor_v3(
-        size_t filterDesc, int dataType, int nbDims, size_t filterDimA)
+    size_t filterDesc, int dataType, int nbDims, size_t filterDimA)
 cpdef destroyFilterDescriptor(size_t filterDesc)
 
 
@@ -156,62 +156,62 @@ cpdef destroyFilterDescriptor(size_t filterDesc)
 
 cpdef size_t createConvolutionDescriptor() except *
 cpdef setConvolution2dDescriptor(
-        size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
-        int upscaley, int mode)
+    size_t convDesc, int pad_h, int pad_w, int u, int v, int upscalex,
+    int upscaley, int mode)
 cpdef setConvolutionNdDescriptor_v2(
-        size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-        size_t upscaleA, int mode)
+    size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
+    size_t upscaleA, int mode)
 cpdef setConvolutionNdDescriptor_v3(
-        size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
-        size_t upscaleA, int mode, int dataType)
+    size_t convDesc, int arrayLength, size_t padA, size_t filterStrideA,
+    size_t upscaleA, int mode, int dataType)
 cpdef destroyConvolutionDescriptor(size_t convDesc)
 cpdef int getConvolutionForwardAlgorithm(
-        size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, ConvolutionFwdPreference preference,
-        size_t memoryLimitInbytes) except *
+    size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
+    size_t destDesc, ConvolutionFwdPreference preference,
+    size_t memoryLimitInbytes) except *
 cpdef size_t getConvolutionForwardWorkspaceSize(
-        size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
-        size_t destDesc, int algo) except *
+    size_t handle, size_t srcDesc, size_t filterDesc, size_t convDesc,
+    size_t destDesc, int algo) except *
 cpdef convolutionForward(
-        size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
-        size_t filterDesc, size_t filterData, size_t convDesc, int algo,
-        size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
-        size_t destDesc, size_t destData)
+    size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
+    size_t filterDesc, size_t filterData, size_t convDesc, int algo,
+    size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
+    size_t destDesc, size_t destData)
 cpdef convolutionBackwardBias(
-        size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
-        size_t beta, size_t destDesc, size_t destData)
+    size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
+    size_t beta, size_t destDesc, size_t destData)
 cpdef int getConvolutionBackwardFilterAlgorithm(
-        size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
-        size_t filterDesc, ConvolutionBwdFilterPreference preference,
-        size_t memoryLimitInbytes) except *
+    size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
+    size_t filterDesc, ConvolutionBwdFilterPreference preference,
+    size_t memoryLimitInbytes) except *
 cpdef size_t getConvolutionBackwardFilterWorkspaceSize(
-        size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
-        size_t filterDesc, int algo) except *
+    size_t handle, size_t srcDesc, size_t diffDesc, size_t convDesc,
+    size_t filterDesc, int algo) except *
 cpdef convolutionBackwardFilter_v2(
-        size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
-        size_t diffDesc, size_t diffData, size_t convDesc, size_t beta,
-        size_t gradDesc, size_t gradData)
+    size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
+    size_t diffDesc, size_t diffData, size_t convDesc, size_t beta,
+    size_t gradDesc, size_t gradData)
 cpdef convolutionBackwardFilter_v3(
-        size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
-        size_t diffDesc, size_t diffData, size_t convDesc, int algo,
-        size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
-        size_t gradDesc, size_t gradData)
+    size_t handle, size_t alpha, size_t srcDesc, size_t srcData,
+    size_t diffDesc, size_t diffData, size_t convDesc, int algo,
+    size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
+    size_t gradDesc, size_t gradData)
 cpdef int getConvolutionBackwardDataAlgorithm(
-        size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
-        size_t gradDesc, size_t preference,
-        size_t memoryLimitInbytes) except *
+    size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
+    size_t gradDesc, size_t preference,
+    size_t memoryLimitInbytes) except *
 cpdef size_t getConvolutionBackwardDataWorkspaceSize(
-        size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
-        size_t gradDesc, int algo) except *
+    size_t handle, size_t filterDesc, size_t diffDesc, size_t convDesc,
+    size_t gradDesc, int algo) except *
 cpdef convolutionBackwardData_v2(
-        size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
-        size_t diffDesc, size_t diffData, size_t convDesc, size_t beta,
-        size_t gradDesc, size_t gradData)
+    size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
+    size_t diffDesc, size_t diffData, size_t convDesc, size_t beta,
+    size_t gradDesc, size_t gradData)
 cpdef convolutionBackwardData_v3(
-        size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
-        size_t diffDesc, size_t diffData, size_t convDesc, int algo,
-        size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
-        size_t gradDesc, size_t gradData)
+    size_t handle, size_t alpha, size_t filterDesc, size_t filterData,
+    size_t diffDesc, size_t diffData, size_t convDesc, int algo,
+    size_t workSpace, size_t workSpaceSizeInBytes, size_t beta,
+    size_t gradDesc, size_t gradData)
 
 
 ###############################################################################
@@ -220,21 +220,21 @@ cpdef convolutionBackwardData_v3(
 
 cpdef size_t createPoolingDescriptor() except *
 cpdef setPooling2dDescriptor_v3(
-        size_t poolingDesc, int mode, int windowHeight, int windowWidth,
-        int verticalPadding, int horizontalPadding, int verticalStride,
-        int horizontalStride)
+    size_t poolingDesc, int mode, int windowHeight, int windowWidth,
+    int verticalPadding, int horizontalPadding, int verticalStride,
+    int horizontalStride)
 cpdef setPoolingNdDescriptor_v3(
-        size_t poolingDesc, int mode, int nbDims, size_t windowDimA,
-        size_t paddingA, size_t strideA)
+    size_t poolingDesc, int mode, int nbDims, size_t windowDimA,
+    size_t paddingA, size_t strideA)
 cpdef destroyPoolingDescriptor(size_t poolingDesc)
 cpdef poolingForward(
-        size_t handle, size_t poolingDesc, size_t alpha, size_t srcDesc,
-        size_t srcData, size_t beta, size_t dstDesc, size_t dstData)
+    size_t handle, size_t poolingDesc, size_t alpha, size_t srcDesc,
+    size_t srcData, size_t beta, size_t dstDesc, size_t dstData)
 cpdef poolingBackward(
-        size_t handle, size_t poolingDesc, size_t alpha, size_t srcDesc,
-        size_t srcData, size_t srcDiffDesc, size_t srcDiffData,
-        size_t destDesc, size_t destData, size_t beta, size_t destDiffDesc,
-        size_t destDiffData)
+    size_t handle, size_t poolingDesc, size_t alpha, size_t srcDesc,
+    size_t srcData, size_t srcDiffDesc, size_t srcDiffData,
+    size_t destDesc, size_t destData, size_t beta, size_t destDiffDesc,
+    size_t destDiffData)
 
 ###############################################################################
 # Batch Normalization
@@ -275,17 +275,17 @@ cpdef batchNormalizationBackward(
 ###############################################################################
 
 cpdef softmaxForward(
-        size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
-        size_t srcData, size_t beta, size_t dstDesc, size_t dstData)
+    size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
+    size_t srcData, size_t beta, size_t dstDesc, size_t dstData)
 cpdef softmaxBackward(
-        size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
-        size_t srcData, size_t srcDiffDesc, size_t srcDiffData, size_t beta,
-        size_t destDiffDesc, size_t destDiffData)
+    size_t handle, int algorithm, int mode, size_t alpha, size_t srcDesc,
+    size_t srcData, size_t srcDiffDesc, size_t srcDiffData, size_t beta,
+    size_t destDiffDesc, size_t destDiffData)
 cpdef activationForward_v3(
-        size_t handle, int mode, size_t alpha, size_t srcDesc, size_t srcData,
-        size_t beta, size_t dstDesc, size_t dstData)
+    size_t handle, int mode, size_t alpha, size_t srcDesc, size_t srcData,
+    size_t beta, size_t dstDesc, size_t dstData)
 cpdef activationBackward_v3(
-        size_t handle, int mode, size_t alpha, size_t srcDesc, size_t srcData,
-        size_t srcDiffDesc, size_t srcDiffData, size_t destDesc,
-        size_t destData, size_t beta, size_t destDiffDesc,
-        size_t destDiffData)
+    size_t handle, int mode, size_t alpha, size_t srcDesc, size_t srcData,
+    size_t srcDiffDesc, size_t srcDiffData, size_t destDesc,
+    size_t destData, size_t beta, size_t destDiffDesc,
+    size_t destDiffData)

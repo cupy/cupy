@@ -51,7 +51,7 @@ cdef dict _typenames_base = {
 cdef str _all_type_chars = 'dfeqlihbQLIHB?'
 
 cdef dict _typenames = {
-    numpy.dtype(i).type:_typenames_base[numpy.dtype(i)]
+    numpy.dtype(i).type: _typenames_base[numpy.dtype(i)]
     for i in _all_type_chars}
 
 cdef tuple _python_scalar_type = six.integer_types + (float, bool)
@@ -308,7 +308,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
 
 cdef tuple _broadcast(list args, tuple params, bint use_size):
-    cpdef Py_ssize_t i 
+    cpdef Py_ssize_t i
     cpdef ParameterInfo p
     cpdef bint is_none, is_not_none
     value = []
@@ -766,7 +766,7 @@ class ufunc(object):
         args_info = _get_args_info(inout_args)
 
         kern = _get_ufunc_kernel(
-            in_types, out_types, routine, args_info, 
+            in_types, out_types, routine, args_info,
             self._params, self.name, self._preamble)
 
         kern.linear_launch(indexer.size, inout_args)
