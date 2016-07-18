@@ -12,8 +12,29 @@ class Initializer(object):
 
     """
 
+    dtype = numpy.float32
+
     def __init__(self, dtype=None):
-        self.dtype = dtype
+        if dtype is not None:
+            self.dtype = dtype
+
+    def get_array(self, shape, xp):
+        """Return initialized array.
+
+        The algorithms used to make the new values depend on the
+        concrete derived classes.
+
+        Args:
+            shape (tuple): Shape of a return array.
+            xp (module): :mod:`cupy` or :mod:`numpy`.
+
+        Returns:
+            numpy.ndarray or cupy.ndarray: An initialized array.
+
+        """
+        array = xp.empty(shape, dtype=self.dtype)
+        self(array)
+        return array
 
     def __call__(self, array):
         """Initializes given array.
@@ -25,12 +46,10 @@ class Initializer(object):
 
         Args:
             array (numpy.ndarray or cupy.ndarray):
-                An array to be initialized by this initializer. If ``None``,
-                this method returns new array.
-            shape (tuple): Shape of a return array. If ``None``, this method
-                uses ``array.shape``.
-            xp (module): :mod:`cupy` or :mod:`numpy`. If ``None``, this method
-                uses ``cuda.get_array_module(array)``.
+                An array to be initialized by this initializer.
+
+        Returns:
+            numpy.ndarray or cupy.ndarray: An initialized array.
 
         """
         raise NotImplementedError()
