@@ -16,23 +16,10 @@ class Identity(initializer.Initializer):
     """
 
     def __init__(self, scale=1.0, **kwargs):
-        super(Identity, self).__init__(**kwargs)
         self.scale = scale
+        super(Identity, self).__init__(**kwargs)
 
-    def __call__(self, array=None, shape=None, xp=None):
-        if array is None:
-            assert isinstance(shape, tuple)
-            if len(shape) != 2 or shape[0] != shape[1]:
-                raise ValueError('Identity matrix initialization can only be '
-                                 'used for 2D squared matrices.')
-            ret = xp.zeros(shape).astype(self.dtype)
-            if xp is numpy:
-                numpy.fill_diagonal(ret, self.scale)
-            else:
-                # TODO(okuta): Use fill_diagonal
-                ret.diagonal()[...] = self.scale
-            return ret
-        assert self.dtype is None or array.dtype == self.dtype
+    def __call__(self, array):
         shape = array.shape
         if len(shape) != 2 or shape[0] != shape[1]:
             raise ValueError('Identity matrix initialization can only be used '
@@ -53,25 +40,21 @@ class Constant(initializer.Initializer):
     """
 
     def __init__(self, fill_value, **kwargs):
-        super(Constant, self).__init__(**kwargs)
         self.fill_value = fill_value
+        super(Constant, self).__init__(**kwargs)
 
-    def __call__(self, array=None, shape=None, xp=None):
-        if array is None:
-            assert isinstance(shape, tuple)
-            return xp.full(shape, self.fill_value, self.dtype)
-        assert self.dtype is None or array.dtype == self.dtype
+    def __call__(self, array):
         xp = cuda.get_array_module(array)
         array[...] = xp.asarray(self.fill_value)
 
 
-def Zero(dtype=numpy.float32):
+def Zero(dtype=None):
     """Returns initializer that initializes array with the all-zero array."""
 
     return Constant(0.0, dtype=dtype)
 
 
-def One():
+def One(dtype=None):
     """Returns initializer that initializes array with the all-one array."""
 
     return Constant(1.0, dtype=dtype)

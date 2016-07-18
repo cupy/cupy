@@ -20,16 +20,10 @@ class Normal(initializer.Initializer):
     """
 
     def __init__(self, scale=0.05, **kwargs):
-        super(Normal, self).__init__(**kwargs)
         self.scale = scale
+        super(Normal, self).__init__(**kwargs)
 
-    def __call__(self, array=None, shape=None, xp=None):
-        if array is None:
-            assert isinstance(shape, tuple)
-            ret = xp.random.normal(
-                loc=0.0, scale=self.scale, size=shape).astype(self.dtype)
-            return ret
-        assert self.dtype is None or array.dtype == self.dtype
+    def __call__(self, array):
         xp = cuda.get_array_module(array)
         array[...] = xp.random.normal(
             loc=0.0, scale=self.scale, size=array.shape)
@@ -55,18 +49,13 @@ class GlorotNormal(initializer.Initializer):
     """
 
     def __init__(self, scale=1.0, **kwargs):
-        super(GlorotNormal, self).__init__(**kwargs)
         self.scale = scale
+        super(GlorotNormal, self).__init__(**kwargs)
 
-    def __call__(self, array=None, shape=None, xp=None):
-        if array is None:
-            assert isinstance(shape, tuple)
-            sh = shape
-        else:
-            sh = array.shape
-        fan_in, fan_out = initializer.get_fans(sh)
+    def __call__(self, array):
+        fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / (fan_in + fan_out))
-        return Normal(s, dtype=self.dtype)(array, shape, xp)
+        Normal(s)(array)
 
 
 class HeNormal(initializer.Initializer):
@@ -88,15 +77,10 @@ class HeNormal(initializer.Initializer):
     """
 
     def __init__(self, scale=1.0, **kwargs):
-        super(HeNormal, self).__init__(**kwargs)
         self.scale = scale
+        super(HeNormal, self).__init__(**kwargs)
 
-    def __call__(self, array=None, shape=None, xp=None):
-        if array is None:
-            assert isinstance(shape, tuple)
-            sh = shape
-        else:
-            sh = array.shape
-        fan_in, fan_out = initializer.get_fans(sh)
+    def __call__(self, array):
+        fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / fan_in)
-        return Normal(s, dtype=self.dtype)(array, shape, xp)
+        Normal(s)(array)
