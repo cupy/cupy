@@ -37,7 +37,7 @@ def _transpose(xs, length):
 
         x = xp.concatenate(xs, axis=0)
         o = xp.empty_like(x)
-        unit = numpy.prod(xs[0].shape[1:], dtype='i')
+        unit = xs[0].size // len(xs[0])
         size = length * len(xs) * unit
         cuda.elementwise(
             'int32 len, int32 unit, raw int32 off1, raw int32 off2, raw T vs',
