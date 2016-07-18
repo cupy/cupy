@@ -38,7 +38,7 @@ def get_mnist(withlabel=True, ndim=1, scale=1., dtype=numpy.float32,
 
     Returns:
         A tuple of two datasets. If ``withlabel`` is ``True``, both datasets
-        are :class:`~chainer.datasets.TupleDataset` instances. Othewrise, both
+        are :class:`~chainer.datasets.TupleDataset` instances. Otherwise, both
         datasets are arrays of images.
 
     """

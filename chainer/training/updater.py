@@ -215,7 +215,7 @@ class ParallelUpdater(StandardUpdater):
             of optimizers. If this is just an optimizer, then the optimizer is
             registered by the name ``'main'``.
         converter: Converter function to build input arrays. Each batch
-            extracted by the main iterator is split equaly between the
+            extracted by the main iterator is split equally between the
             devices and then passed with corresponding ``device`` option to
             this function. :func:`~chainer.dataset.concat_examples` is used by
             default.

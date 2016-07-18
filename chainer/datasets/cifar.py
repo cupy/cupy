@@ -17,7 +17,7 @@ def get_cifar10(withlabel=True, ndim=3, scale=1.):
     is represented by one-byte unsigned integer. This function scales the
     components to floating point values in the interval ``[0, scale]``.
 
-    This function returns the trainng set and the test set of the official
+    This function returns the training set and the test set of the official
     CIFAR-10 dataset. If ``withlabel`` is ``True``, each dataset consists of
     tuples of images and labels, otherwise it only consists of images.
 
@@ -34,7 +34,7 @@ def get_cifar10(withlabel=True, ndim=3, scale=1.):
 
     Returns:
         A tuple of two datasets. If ``withlabel`` is ``True``, both datasets
-        are :class:`~chainer.datasets.TupleDataset` instances. Othewrise, both
+        are :class:`~chainer.datasets.TupleDataset` instances. Otherwise, both
         datasets are arrays of images.
 
     """
@@ -55,7 +55,7 @@ def get_cifar100(withlabel=True, ndim=3, scale=1.):
     pixels is represented by one-byte unsigned integer. This function scales
     the components to floating point values in the interval ``[0, scale]``.
 
-    This function returns the trainng set and the test set of the official
+    This function returns the training set and the test set of the official
     CIFAR-100 dataset. If ``withlabel`` is ``True``, each dataset consists of
     tuples of images and labels, otherwise it only consists of images.
 
@@ -72,7 +72,7 @@ def get_cifar100(withlabel=True, ndim=3, scale=1.):
 
     Returns:
         A tuple of two datasets. If ``withlabel`` is ``True``, both
-        are :class:`~chainer.datasets.TupleDataset` instances. Othewrise, both
+        are :class:`~chainer.datasets.TupleDataset` instances. Otherwise, both
         datasets are arrays of images.
 
     """
