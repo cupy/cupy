@@ -988,17 +988,23 @@ class TestNegativePow(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
-@testing.parameterize(
-    {'left_const': False, 'right_const': False},
-    {'left_const': True, 'right_const': False},
-    {'left_const': False, 'right_const': True},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'left_const': False, 'right_const': False},
+        {'left_const': True, 'right_const': False},
+        {'left_const': False, 'right_const': True},
+    ], [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ]
+))
 class TestMatMulVarVar(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        self.y = numpy.random.uniform(-1, 1, (2, 4)).astype(numpy.float32)
-        self.gz = numpy.random.uniform(-1, 1, (3, 4)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype)
+        self.y = numpy.random.uniform(-1, 1, (2, 4)).astype(self.dtype)
+        self.gz = numpy.random.uniform(-1, 1, (3, 4)).astype(self.dtype)
 
     def check_forward(self, x_data, y_data):
         if self.left_const:
@@ -1034,7 +1040,7 @@ class TestMatMulVarVar(unittest.TestCase):
             op = lambda y: operator.matmul(x_data, y)
             data = y_data,
         else:
-            op = lambda x, y: operator.matmul(x, y)
+            op = operator.matmul
             data = x_data, y_data
 
         gradient_check.check_backward(
@@ -1046,8 +1052,10 @@ class TestMatMulVarVar(unittest.TestCase):
         self.check_backward(self.x, self.y, self.gz)
 
     @attr.gpu
-    @unittest.skipUnless(sys.version_info[0] >= 3 and sys.version_info[1] >= 5,
-                         'Only for Python3.5 or higher')
+    @unittest.skipUnless(
+        (sys.version_info.major >= 4 or
+            sys.version_info.major == 3 and sys.version_info.minor >= 5),
+        'Only for Python3.5 or higher')
     def test_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.y), cuda.to_gpu(self.gz))
