@@ -30,13 +30,14 @@ class TestRollaxis(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = functions.rollaxis(x, self.axis, self.start)
 
-        testing.assert_allclose(y.data, numpy.rollaxis(self.x, self.axis, self.start))
+        expect = numpy.rollaxis(self.x, self.axis, self.start)
+        testing.assert_allclose(y.data, expect)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
     @attr.gpu
-    def test_forward_cpu(self):
+    def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, g_data):
@@ -45,6 +46,10 @@ class TestRollaxis(unittest.TestCase):
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.g)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.g))
 
 
 testing.run_module(__name__, __file__)
