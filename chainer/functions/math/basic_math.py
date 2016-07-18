@@ -453,7 +453,7 @@ class MatMulVarConst(function.Function):
         a_type = in_types[0]
         b_type = self.value
 
-        type_check.expect(a_type.dtype == numpy.float32)
+        type_check.expect(a_type.dtype.kind == 'f')
 
         _matmul._check_ndim(a_type)
 
@@ -488,7 +488,7 @@ class MatMulConstVar(function.Function):
         a_type = self.value
         b_type = in_types[0]
 
-        type_check.expect(b_type.dtype == numpy.float32)
+        type_check.expect(b_type.dtype.kind == 'f')
 
         _matmul._check_ndim(b_type)
 

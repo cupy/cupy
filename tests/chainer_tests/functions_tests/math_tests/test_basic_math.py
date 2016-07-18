@@ -1016,8 +1016,12 @@ class TestMatMulVarVar(unittest.TestCase):
         else:
             y = chainer.Variable(y_data)
         z = operator.matmul(x, y)
+        if self.dtype == numpy.float16:
+            options = {'atol': 1e-3, 'rtol': 1e-3}
+        else:
+            options = {'atol': 1e-7, 'rtol': 1e-7}
         gradient_check.assert_allclose(
-            operator.matmul(self.x, self.y), z.data, atol=1e-7, rtol=1e-7)
+            operator.matmul(self.x, self.y), z.data, **options)
 
     @unittest.skipUnless(sys.version_info[0] >= 3 and sys.version_info[1] >= 5,
                          'Only for Python3.5 or higher')
@@ -1043,8 +1047,12 @@ class TestMatMulVarVar(unittest.TestCase):
             op = operator.matmul
             data = x_data, y_data
 
+        if self.dtype == numpy.float16:
+            options = {'eps': 1e-2, 'atol': 1e-2, 'rtol': 1e-1}
+        else:
+            options = {'atol': 1e-4, 'rtol': 1e-4}
         gradient_check.check_backward(
-            op, data, z_grad, atol=1e-4, rtol=1e-4)
+            op, data, z_grad, **options)
 
     @unittest.skipUnless(sys.version_info[0] >= 3 and sys.version_info[1] >= 5,
                          'Only for Python3.5 or higher')
