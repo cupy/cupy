@@ -1,4 +1,4 @@
-from chainer.training import reporter
+from chainer import reporter
 from chainer.training.trigger import IntervalTrigger
 
 
