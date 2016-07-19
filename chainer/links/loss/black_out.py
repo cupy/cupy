@@ -13,6 +13,11 @@ class BlackOut(link.Link):
 
     .. seealso:: :func:`~chainer.functions.black_out` for more detail.
 
+    Args:
+        in_size (int): Dimension of input vectors.
+        counts (int list): Number of each identifiers.
+        sample_size (int): Number of negative samples.
+
     Attributes:
         W (~chainer.Variable): Weight parameter matrix.
 
@@ -35,6 +40,17 @@ class BlackOut(link.Link):
             self.sampler.to_gpu()
 
     def __call__(self, x, t):
+        """Computes the loss value for given input and ground truth labels.
+
+        Args:
+            x (~chainer.Variable): Input of the weight matrix multiplication.
+            t (~chainer.Variable): Batch of ground truth labels.
+
+        Returns:
+            ~chainer.Variable: Loss value.
+
+        """
+
         batch_size = x.data.shape[0]
         if hasattr(self, 'sample_data'):
             # for test
