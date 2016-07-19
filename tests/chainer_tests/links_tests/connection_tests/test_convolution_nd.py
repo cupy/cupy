@@ -6,6 +6,7 @@ import six.moves.cPickle as pickle
 import chainer
 from chainer import cuda
 from chainer import gradient_check
+from chainer import initializers
 from chainer.links import convolution_nd
 from chainer import testing
 from chainer.testing import attr
@@ -26,9 +27,8 @@ class TestConvolutionND(unittest.TestCase):
         self.pad = (1,) * ndim
 
         self.link = convolution_nd.ConvolutionND(
-            ndim, 3, 2, self.ksize, stride=self.stride, pad=self.pad)
-        b = self.link.b.data
-        b[...] = numpy.random.uniform(-1, 1, b.shape)
+            ndim, 3, 2, self.ksize, stride=self.stride, pad=self.pad,
+            initial_bias=initializers.Uniform(1))
         self.link.zerograds()
 
         x_shape = (2, 3) + self.dims
