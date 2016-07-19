@@ -24,10 +24,10 @@ def _split(inputs, pos):
 }))
 class TestNStepLSTM(unittest.TestCase):
 
-    batches = [4, 3, 2, 1]
+    batches = [3, 2, 1]
     length = len(batches)
     in_size = 3
-    out_size = 4
+    out_size = 2
     n_layers = 2
     dropout = 0.0
     seed = 1337
