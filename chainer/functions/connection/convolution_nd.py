@@ -310,16 +310,16 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
 
     This is an implementation of N-dimensional convolution which is generalized
     two-dimensional convolution in ConvNets. It takes three variables: the
-    input image ``x``, the filter weight ``W`` and the bias vector ``b``.
+    input ``x``, the filter weight ``W`` and the bias vector ``b``.
 
     Notation: here is a notation for dimensionalities.
 
     - :math:`N` is the number of spatial dimensions.
     - :math:`n` is the batch size.
-    - :math:`c_I` and :math:`c_O` are the number of the input and output,
-      respectively.
-    - :math:`d_1, d_2, ..., d_N` are the size of each axis of the input image,
-      respectively.
+    - :math:`c_I` and :math:`c_O` are the number of the input and output
+      channels, respectively.
+    - :math:`d_1, d_2, ..., d_N` are the size of each axis of the input's
+      spatial dimensions, respectively.
     - :math:`k_1, k_2, ..., k_N` are the size of each axis of the filters,
       respectively.
 
@@ -328,8 +328,8 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
             :math:`(n, c_I, d_1, d_2, ..., d_N)`.
         W (~chainer.Variable): Weight variable of shape
             :math:`(c_O, c_I, k_1, k_2, ..., k_N)`.
-        b (~chainer.Variable): Bias variable of length :math:`c_O`
-            (optional).
+        b (~chainer.Variable): One-dimensional bias variable with length
+            :math:`c_O` (optional).
         stride (int or tuple of ints): Stride of filter applications
             :math:`(s_1, s_2, ..., s_N)`. ``stride=s`` is equivalent to
             ``(s, s, ..., s)``.
