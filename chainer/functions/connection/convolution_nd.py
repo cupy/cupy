@@ -75,7 +75,7 @@ class ConvolutionND(function.Function):
             x, ksize, stride, pad, cover_all=self.cover_all)
 
         # Compute correlation.
-        axes = tuple(moves.range(1, ndim+2))  # (1, 2, ..., N+1)
+        axes = tuple(moves.range(1, ndim + 2))  # (1, 2, ..., N+1)
         y = numpy.tensordot(self.col, W, (axes, axes)).astype(x.dtype)
 
         # Apply bias if given.
@@ -83,7 +83,7 @@ class ConvolutionND(function.Function):
             y += b
 
         # Roll c_O before the second in (n, y_1, y_2, ..., y_N, c_O).
-        return numpy.rollaxis(y, ndim+1, 1),
+        return numpy.rollaxis(y, ndim + 1, 1),
 
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
@@ -179,9 +179,9 @@ class ConvolutionND(function.Function):
 
         # Compute filter weight gradient.
         # (n, _, out_1, out_2, ..., out_N)
-        out_axes = (0,) + tuple(moves.range(2, ndim+2))
+        out_axes = (0,) + tuple(moves.range(2, ndim + 2))
         # (n, _, _, ..., _, out_1, out_2, ..., out_N)
-        col_axes = (0,) + tuple(moves.range(ndim+2, ndim*2+2))
+        col_axes = (0,) + tuple(moves.range(ndim + 2, ndim * 2 + 2))
         gW = numpy.tensordot(
             gy, self.col, (out_axes, col_axes)).astype(W.dtype)
 
@@ -197,7 +197,7 @@ class ConvolutionND(function.Function):
             return gx, gW
         else:
             # (n, _, out_1, out_2, ..., out_N)
-            axis = (0,) + tuple(moves.range(2, ndim+2))
+            axis = (0,) + tuple(moves.range(2, ndim + 2))
             gb = gy.sum(axis=axis)
             return gx, gW, gb
 
@@ -295,7 +295,7 @@ class ConvolutionND(function.Function):
             # Compute bias gradient if given.
             if b is not None:
                 # (n, _, out_1, out_2, ..., out_N)
-                axis = (0,) + tuple(moves.range(2, ndim+2))
+                axis = (0,) + tuple(moves.range(2, ndim + 2))
                 gb = gy.sum(axis=axis)
 
         if b is None:
