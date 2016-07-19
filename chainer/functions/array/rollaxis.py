@@ -42,7 +42,7 @@ class Rollaxis(function.Function):
             axis += 1
         else:
             start -= 1
-            
+
         return xp.rollaxis(grads[0], start, axis),
 
 
