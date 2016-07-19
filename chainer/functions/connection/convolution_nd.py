@@ -104,7 +104,7 @@ class ConvolutionND(function.Function):
 
         # Make empty array for result.
         y_shape = (n, out_c) + outs  # (n, c_O, out_1, out_2, ..., out_N)
-        y = cuda.empty(y_shape, dtype=x.dtype)
+        y = cuda.cupy.empty(y_shape, dtype=x.dtype)
         # Implementation using cuDNN.
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
             ndim > 1 and convolution_2d._check_cudnn_acceptable_type(
@@ -126,7 +126,7 @@ class ConvolutionND(function.Function):
                 self.bias_desc = cudnn.create_tensor_descriptor(b[b_index])
 
             workspace_size = cuda.get_max_workspace_size()
-            workspace = cuda.empty((workspace_size,), dtype='b')
+            workspace = cuda.cupy.empty((workspace_size,), dtype='b')
             algo = libcudnn.getConvolutionForwardAlgorithm(
                 handle, x_desc.value, self.filter_desc.value,
                 self.conv_desc.value, y_desc.value, _fwd_pref,
@@ -215,7 +215,7 @@ class ConvolutionND(function.Function):
         ndim = self.ndim
 
         # Compute filter weight gradient.
-        gW = cuda.empty_like(W)
+        gW = cuda.cupy.empty_like(W)
         # Implementation using cuDNN.
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
             ndim > 1 and convolution_2d._check_cudnn_acceptable_type(
@@ -283,7 +283,7 @@ class ConvolutionND(function.Function):
 
             # Compute patch array gradient.
             W_mat = W.reshape(out_c, -1)
-            gcol = cuda.empty_like(self.col)
+            gcol = cuda.cupy.empty_like(self.col)
             gcol_mats = gcol.reshape(
                 n, reduce(operator.mul, ksize, c), reduce(operator.mul, outs))
             for i in moves.range(n):

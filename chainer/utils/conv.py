@@ -42,7 +42,7 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all)
     out_w = get_conv_outsize(w, kw, sx, pw, cover_all)
 
-    col = cuda.empty((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
+    col = cuda.cupy.empty((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
     cuda.elementwise(
         'raw T img, int32 h, int32 w, int32 out_h, int32 out_w,'
         'int32 kh, int32 kw, int32 sy, int32 sx, int32 ph, int32 pw',
@@ -84,7 +84,7 @@ def col2im_cpu(col, sy, sx, ph, pw, h, w):
 def col2im_gpu(col, sy, sx, ph, pw, h, w):
     n, c, kh, kw, out_h, out_w = col.shape
 
-    img = cuda.empty((n, c, h, w), dtype=col.dtype)
+    img = cuda.cupy.empty((n, c, h, w), dtype=col.dtype)
     cuda.elementwise(
         'raw T col, int32 h, int32 w, int32 out_h, int32 out_w,'
         'int32 kh, int32 kw, int32 sy, int32 sx, int32 ph, int32 pw',
