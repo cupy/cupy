@@ -34,9 +34,8 @@ class TestConvolutionND(unittest.TestCase):
         x_shape = (2, 3) + self.dims
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
         gy_shape = (2, 2) + tuple(
-            [conv.get_conv_outsize(d, k, s, p)
-             for (d, k, s, p) in zip(
-                self.dims, self.ksize, self.stride, self.pad)])
+            conv.get_conv_outsize(d, k, s, p) for (d, k, s, p) in zip(
+                self.dims, self.ksize, self.stride, self.pad))
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(numpy.float32)
 
     @attr.gpu

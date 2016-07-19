@@ -41,8 +41,8 @@ class TestConvolutionND(unittest.TestCase):
         x_shape = (2, 3) + self.dims
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.x_dtype)
         gy_shape = (2, 2) + tuple(
-            [conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
-             for (d, k, s, p) in zip(self.dims, ksize, self.stride, self.pad)])
+            conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
+            for (d, k, s, p) in zip(self.dims, ksize, self.stride, self.pad))
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.x_dtype)
 
         self.check_forward_options = {}
@@ -175,8 +175,8 @@ class TestConvolutionNDCudnnCall(unittest.TestCase):
         self.W = cuda.cupy.random.normal(
             0, W_scale, W_shape).astype(self.dtype)
         gy_shape = (2, 2) + tuple(
-            [conv.get_conv_outsize(d, k, s, p)
-             for (d, k, s, p) in zip(self.dims, ksize, self.stride, self.pad)])
+            conv.get_conv_outsize(d, k, s, p) for (d, k, s, p) in zip(
+                self.dims, ksize, self.stride, self.pad))
         self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
         self.expect = self.use_cudnn and ndim > 1 and (
             cuda.cudnn.cudnn.getVersion() >= 3000 or

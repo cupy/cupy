@@ -51,8 +51,8 @@ class TestIm2ColND(unittest.TestCase):
             img = self.img
 
         col = im2col(img, ksize, stride, pad)
-        outs = tuple([conv_nd.get_conv_outsize(d, k, s, p)
-                      for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+        outs = tuple(conv_nd.get_conv_outsize(d, k, s, p)
+                     for (d, k, s, p) in zip(dims, ksize, stride, pad))
         expected_shape = (2, 3) + ksize + outs
         self.assertEqual(col.shape, expected_shape)
 
@@ -64,10 +64,10 @@ class TestIm2ColND(unittest.TestCase):
                         *[moves.range(out) for out in outs]):
                     for dxs in itertools.product(
                             *[moves.range(k) for k in ksize]):
-                        oxs = tuple([x * s - p + dx
-                                     for (x, s, p, dx)
-                                     in zip(xs, stride, pad, dxs)])
-                        if all([0 <= ox < d for (ox, d) in zip(oxs, dims)]):
+                        oxs = tuple(x * s - p + dx
+                                    for (x, s, p, dx)
+                                    in zip(xs, stride, pad, dxs))
+                        if all(0 <= ox < d for (ox, d) in zip(oxs, dims)):
                             col_index = (n, c) + dxs + xs
                             img_index = (n, c) + oxs
                             self.assertEqual(
@@ -135,8 +135,8 @@ class TestCol2ImND(unittest.TestCase):
 
     def check_col2im_nd(self, ksize, stride, pad, gpu):
         dims = self.dims
-        outs = tuple([conv_nd.get_conv_outsize(d, k, s, p)
-                      for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+        outs = tuple(conv_nd.get_conv_outsize(d, k, s, p)
+                     for (d, k, s, p) in zip(dims, ksize, stride, pad))
         col_shape = (2, 3) + ksize + outs
         col = numpy.random.uniform(-1, 1, col_shape).astype(numpy.float32)
 
@@ -158,14 +158,14 @@ class TestCol2ImND(unittest.TestCase):
                     v = numpy.float32(0.0)
                     for dxs in itertools.product(
                             *[moves.range(k) for k in ksize]):
-                        oxs = tuple([(x + p - dx) // s
-                                     for (x, p, dx, s)
-                                     in zip(xs, pad, dxs, stride)])
-                        if all([(x + p - dx) % s == 0
-                                for (x, p, dx, s)
-                                in zip(xs, pad, dxs, stride)]) and \
-                           all([0 <= ox < out
-                                for (ox, out) in zip(oxs, outs)]):
+                        oxs = tuple((x + p - dx) // s
+                                    for (x, p, dx, s)
+                                    in zip(xs, pad, dxs, stride))
+                        if all((x + p - dx) % s == 0
+                               for (x, p, dx, s)
+                               in zip(xs, pad, dxs, stride)) and \
+                            all(0 <= ox < out
+                                for (ox, out) in zip(oxs, outs)):
                             col_index = (n, c) + dxs + oxs
                             v += col[col_index]
                     img_index = (n, c) + xs
