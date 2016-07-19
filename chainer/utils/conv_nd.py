@@ -7,6 +7,13 @@ from chainer.utils.conv import get_conv_outsize
 from chainer.utils import conv_nd_kernel
 
 
+def as_tuple(x, n):
+    if hasattr(x, '__getitem__'):
+        assert len(x) == n
+        return tuple(x)
+    return (x,) * n
+
+
 def im2col_nd_cpu(img, ksize, stride, pad, pval=0, cover_all=False):
     # Assured consistency of dimensions of parameters by caller.
     n, c = img.shape[0:2]       # (n, c, d_1, d_2, ..., d_N)

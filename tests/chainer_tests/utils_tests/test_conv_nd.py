@@ -10,6 +10,28 @@ from chainer.testing import attr
 from chainer.utils import conv_nd
 
 
+class TestAsTuple(unittest.TestCase):
+
+    def test_scalar(self):
+        actual = conv_nd.as_tuple(1, 3)
+        expected = (1, 1, 1)
+        self.assertEqual(actual, expected)
+
+    def test_tuple(self):
+        actual = conv_nd.as_tuple((1, 2, 3), 3)
+        expected = (1, 2, 3)
+        self.assertEqual(actual, expected)
+
+    def test_list(self):
+        actual = conv_nd.as_tuple([1, 2, 3], 3)
+        expected = (1, 2, 3)
+        self.assertEqual(actual, expected)
+
+    def test_tuple_invalid_length(self):
+        with self.assertRaises(AssertionError):
+            conv_nd.as_tuple((1,), 3)
+
+
 @testing.parameterize(*testing.product({
     'dims': [(10,), (10, 8), (10, 8, 6)],
 }))

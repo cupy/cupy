@@ -1,6 +1,7 @@
 from chainer.functions.connection import convolution_nd
 from chainer import initializers
 from chainer import link
+from chainer.utils import conv_nd
 
 
 class ConvolutionND(link.Link):
@@ -47,9 +48,9 @@ class ConvolutionND(link.Link):
     def __init__(self, ndim, in_channels, out_channels, ksize, stride=1, pad=0,
                  wscale=1, bias=0, nobias=False, use_cudnn=True,
                  initialW=None, initial_bias=None):
-        ksize = _tuple(ksize, ndim)
-        self.stride = _tuple(stride, ndim)
-        self.pad = _tuple(pad, ndim)
+        ksize = conv_nd.as_tuple(ksize, ndim)
+        self.stride = conv_nd.as_tuple(stride, ndim)
+        self.pad = conv_nd.as_tuple(pad, ndim)
         self.use_cudnn = use_cudnn
 
         W_shape = (out_channels, in_channels) + ksize
@@ -77,9 +78,3 @@ class ConvolutionND(link.Link):
         """
         return convolution_nd.convolution_nd(
             x, self.W, self.b, self.stride, self.pad, self.use_cudnn)
-
-
-def _tuple(x, n):
-    if hasattr(x, '__getitem__'):
-        return x
-    return tuple([x] * n)
