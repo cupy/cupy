@@ -59,7 +59,7 @@ class StatelessLSTM(LSTMBase):
 
         Args:
             c (~chainer.Variable): Cell states of LSTM units.
-            h (~chainer.Variable): Output at the previous timestep.
+            h (~chainer.Variable): Output at the previous time step.
             x (~chainer.Variable): A new batch from the input sequence.
 
         Returns:
