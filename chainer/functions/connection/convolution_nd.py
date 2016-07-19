@@ -160,10 +160,7 @@ class ConvolutionND(function.Function):
         else:
             return self._forward_cudnn(x, W, b)
 
-    def backward_cpu(self, inputs, grad_outputs):
-        x, W = inputs[:2]
-        b = inputs[2] if len(inputs) == 3 else None
-        gy = grad_outputs[0]   # (n, c_O, out_1, out_2, ..., out_N)
+    def _backward_xp(self, x, W, b, gy, xp):
         dims = x.shape[2:]     # (n, c_I, d_1, d_2, ..., d_N)
         stride = self.stride
         pad = self.pad
@@ -174,15 +171,17 @@ class ConvolutionND(function.Function):
         out_axes = (0,) + tuple(moves.range(2, ndim + 2))
         # (n, _, _, ..., _, out_1, out_2, ..., out_N)
         col_axes = (0,) + tuple(moves.range(ndim + 2, ndim * 2 + 2))
-        gW = numpy.tensordot(
-            gy, self.col, (out_axes, col_axes)).astype(W.dtype)
+        gW = xp.tensordot(gy, self.col, (out_axes, col_axes)).astype(W.dtype)
 
         # Compute patch array gradient.
-        gcol = numpy.tensordot(W, gy, (0, 1)).astype(x.dtype)
-        gcol = numpy.rollaxis(gcol, ndim + 1)
+        gcol = xp.tensordot(W, gy, (0, 1)).astype(x.dtype)
+        gcol = xp.rollaxis(gcol, ndim + 1)
 
         # Compute input gradient.
-        gx = conv_nd.col2im_nd_cpu(gcol, stride, pad, dims)
+        if xp is numpy:
+            gx = conv_nd.col2im_nd_cpu(gcol, stride, pad, dims)
+        else:
+            gx = conv_nd.col2im_nd_gpu(gcol, stride, pad, dims)
 
         # Compute bias gradient if given and return gradients.
         if b is None:
@@ -193,99 +192,83 @@ class ConvolutionND(function.Function):
             gb = gy.sum(axis=axis)
             return gx, gW, gb
 
-    def backward_gpu(self, inputs, grad_putputs):
-        x, W = inputs[:2]
-        b = inputs[2] if len(inputs) == 3 else None
-        gy = grad_putputs[0]    # (n, c_O, out_1, out_2, ..., out_N)
-        n, c = x.shape[:2]      # (n, c_I, d_1, d_2, ..., d_N)
-        dims = x.shape[2:]
-        stride = self.stride
-        pad = self.pad
-        ndim = self.ndim
+    def _backward_cudnn(self, x, W, b, gy):
+        # Convert to C-contiguous arrays.
+        x = cuda.cupy.ascontiguousarray(x)
+        W = cuda.cupy.ascontiguousarray(W)
+        gy = cuda.cupy.ascontiguousarray(gy)
 
-        # Compute filter weight gradient.
+        # Make empty arrays for result.
+        gx = cuda.cupy.empty_like(x)
         gW = cuda.cupy.empty_like(W)
-        # Implementation using cuDNN.
-        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
-            ndim > 1 and convolution_2d._check_cudnn_acceptable_type(
-                x.dtype, W.dtype)):
-            x = cuda.cupy.ascontiguousarray(x)
-            W = cuda.cupy.ascontiguousarray(W)
-            gy = cuda.cupy.ascontiguousarray(gy)
 
-            handle = cudnn.get_handle()
-            x_desc = cudnn.create_tensor_descriptor(x)
-            gy_desc = cudnn.create_tensor_descriptor(gy)
-            oz_dtype = 'd' if x.dtype == 'd' else 'f'
-            one = numpy.array(1, dtype=oz_dtype).ctypes
-            zero = numpy.array(0, dtype=oz_dtype).ctypes
-            gx = cuda.cupy.empty_like(x)
+        # Get cuDNN handler and descriptors.
+        handle = cudnn.get_handle()
+        x_desc = cudnn.create_tensor_descriptor(x)
+        gy_desc = cudnn.create_tensor_descriptor(gy)
 
-            if _cudnn_version >= 4000:
-                workspace_size = cuda.get_max_workspace_size()
-                workspace = cuda.cupy.empty((workspace_size,), dtype='b')
+        # Compute gradients.
+        oz_dtype = 'd' if x.dtype == 'd' else 'f'
+        one = numpy.array(1, dtype=oz_dtype).ctypes
+        zero = numpy.array(0, dtype=oz_dtype).ctypes
+        if _cudnn_version >= 4000:
+            workspace_size = cuda.get_max_workspace_size()
+            workspace = cuda.cupy.empty((workspace_size,), dtype='b')
 
-                algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
-                    handle, x_desc.value, gy_desc.value,
-                    self.conv_desc.value, self.filter_desc.value,
-                    _bwd_filter_pref, workspace_size)
-                libcudnn.convolutionBackwardFilter_v3(
-                    handle, one.data, x_desc.value, x.data.ptr,
-                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
-                    algo, workspace.data.ptr, workspace_size,
-                    zero.data, self.filter_desc.value, gW.data.ptr)
-
-                algo = libcudnn.getConvolutionBackwardDataAlgorithm(
-                    handle, self.filter_desc.value, gy_desc.value,
-                    self.conv_desc.value, x_desc.value, _bwd_data_pref,
-                    workspace_size)
-                libcudnn.convolutionBackwardData_v3(
-                    handle, one.data, self.filter_desc.value, W.data.ptr,
-                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
-                    algo, workspace.data.ptr, workspace_size,
-                    zero.data, x_desc.value, gx.data.ptr)
-            else:
-                libcudnn.convolutionBackwardFilter_v2(
-                    handle, one.data, x_desc.value, x.data.ptr,
-                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
-                    zero.data, self.filter_desc.value, gW.data.ptr)
-                libcudnn.convolutionBackwardData_v2(
-                    handle, one.data, self.filter_desc.value, W.data.ptr,
-                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
-                    zero.data, x_desc.value, gx.data.ptr)
-
-            if b is not None:
-                gb = cuda.cupy.empty_like(b)
-                libcudnn.convolutionBackwardBias(
-                    handle, one.data, gy_desc.value, gy.data.ptr,
-                    zero.data, self.bias_desc.value, gb.data.ptr)
-        # Implementation using col2im.
-        else:
             # Compute filter weight gradient.
-            # (n, _, out_1, out_2, ..., out_N)
-            out_axes = (0,) + tuple(moves.range(2, ndim + 2))
-            # (n, _, _, ..., _, out_1, out_2, ..., out_N)
-            col_axes = (0,) + tuple(moves.range(ndim + 2, ndim * 2 + 2))
-            gW = cuda.cupy.tensordot(
-                gy, self.col, (out_axes, col_axes)).astype(W.dtype)
-
-            # Compute patch array gradient.
-            gcol = cuda.cupy.tensordot(W, gy, (0, 1)).astype(x.dtype)
-            gcol = cuda.cupy.rollaxis(gcol, ndim + 1)
+            algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
+                handle, x_desc.value, gy_desc.value,
+                self.conv_desc.value, self.filter_desc.value,
+                _bwd_filter_pref, workspace_size)
+            libcudnn.convolutionBackwardFilter_v3(
+                handle, one.data, x_desc.value, x.data.ptr,
+                gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                algo, workspace.data.ptr, workspace_size,
+                zero.data, self.filter_desc.value, gW.data.ptr)
 
             # Compute input gradient.
-            gx = conv_nd.col2im_nd_gpu(gcol, stride, pad, dims)
+            algo = libcudnn.getConvolutionBackwardDataAlgorithm(
+                handle, self.filter_desc.value, gy_desc.value,
+                self.conv_desc.value, x_desc.value, _bwd_data_pref,
+                workspace_size)
+            libcudnn.convolutionBackwardData_v3(
+                handle, one.data, self.filter_desc.value, W.data.ptr,
+                gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                algo, workspace.data.ptr, workspace_size,
+                zero.data, x_desc.value, gx.data.ptr)
+        else:
+            # Compute input and filter weight gradients.
+            libcudnn.convolutionBackwardFilter_v2(
+                handle, one.data, x_desc.value, x.data.ptr,
+                gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                zero.data, self.filter_desc.value, gW.data.ptr)
+            libcudnn.convolutionBackwardData_v2(
+                handle, one.data, self.filter_desc.value, W.data.ptr,
+                gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                zero.data, x_desc.value, gx.data.ptr)
 
-            # Compute bias gradient if given.
-            if b is not None:
-                # (n, _, out_1, out_2, ..., out_N)
-                axis = (0,) + tuple(moves.range(2, ndim + 2))
-                gb = gy.sum(axis=axis)
-
+        # Compute bias gradient if given and return gradients.
         if b is None:
             return gx, gW
         else:
+            gb = cuda.cupy.empty_like(b)
+            libcudnn.convolutionBackwardBias(
+                handle, one.data, gy_desc.value, gy.data.ptr,
+                zero.data, self.bias_desc.value, gb.data.ptr)
             return gx, gW, gb
+
+    def backward(self, inputs, grad_outputs):
+        x, W = inputs[:2]
+        b = inputs[2] if len(inputs) == 3 else None
+        gy = grad_outputs[0]    # (n, c_O, out_1, out_2, ..., out_N)
+
+        xp = cuda.get_array_module(*inputs)
+        if xp is numpy:
+            return self._backward_xp(x, W, b, gy, numpy)
+        elif not self._use_cudnn(x, W):
+            return self._backward_xp(x, W, b, gy, cuda.cupy)
+        else:
+            return self._backward_cudnn(x, W, b, gy)
 
 
 def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
