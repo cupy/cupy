@@ -1,5 +1,3 @@
-import math
-
 from chainer.functions.connection import convolution_nd
 from chainer import initializers
 from chainer import link
@@ -57,10 +55,7 @@ class ConvolutionND(link.Link):
         W_shape = (out_channels, in_channels) + ksize
         super(ConvolutionND, self).__init__(W=W_shape)
 
-        # For backward compatibility, the scale of weights is proportional to
-        # the square root of wscale.
-        initializers.init_weight(self.W.data, initialW,
-                                 scale=math.sqrt(wscale))
+        initializers.init_weight(self.W.data, initialW, scale=wscale)
 
         if nobias:
             self.b = None
