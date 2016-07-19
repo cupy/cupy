@@ -58,6 +58,7 @@ class BestValueTrigger(object):
 class MaxValueTrigger(BestValueTrigger):
 
     """Trigger invoked when specific value becomes maximum.
+
     For example you can use this trigger to take snapshot on the epoch the
     validation accuracy is maximum.
 
@@ -66,7 +67,6 @@ class MaxValueTrigger(BestValueTrigger):
             with this key becomes maximum.
 
     """
-
     def __init__(self, key):
         super(MaxValueTrigger, self).__init__(
             key, lambda max_value, new_value: new_value > max_value)
@@ -75,6 +75,7 @@ class MaxValueTrigger(BestValueTrigger):
 class MinValueTrigger(BestValueTrigger):
 
     """Trigger invoked when specific value becomes minimum.
+
     For example you can use this trigger to take snapshot on the epoch the
     validation loss is minimum.
 
@@ -83,7 +84,6 @@ class MinValueTrigger(BestValueTrigger):
             with this key becomes minimum.
 
     """
-
     def __init__(self, key):
         super(MinValueTrigger, self).__init__(
             key, lambda min_value, new_value: new_value < min_value)
