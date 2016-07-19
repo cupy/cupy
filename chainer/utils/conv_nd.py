@@ -56,8 +56,8 @@ def im2col_nd_gpu(img, ksize, stride, pad, cover_all=False):
     n, c = img.shape[0:2]       # (n, c, d_1, d_2, ..., d_N)
     dims = img.shape[2:]
     ndim = len(dims)
-    outs = tuple([get_conv_outsize(d, k, s, p, cover_all)
-                  for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+    outs = tuple(get_conv_outsize(d, k, s, p, cover_all)
+                 for (d, k, s, p) in zip(dims, ksize, stride, pad))
 
     # col_shape: (n, c, k_1, k_2, ..., k_N, out_1, out_2, ..., out_N)
     shape = (n, c) + ksize + outs
@@ -82,23 +82,23 @@ def col2im_nd_cpu(col, stride, pad, dims):
     colon = slice(None)
 
     # Image with padded size.
-    img_shape = (n, c) + tuple([d + 2 * p + s - 1
-                                for (d, p, s) in zip(dims, pad, stride)])
+    img_shape = (n, c) + tuple(d + 2 * p + s - 1
+                               for (d, p, s) in zip(dims, pad, stride))
     img = numpy.zeros(img_shape, dtype=col.dtype)
     for kxs in itertools.product(*[six.moves.range(k) for k in ksize]):
         # (:, :, kx_1:kx_lim_1:s_1, ..., kx_N:kx_lim_N:s_N)
-        kx_lims = tuple([kx + s * out
-                         for (kx, s, out) in zip(kxs, stride, outs)])
+        kx_lims = tuple(kx + s * out
+                        for (kx, s, out) in zip(kxs, stride, outs))
         img_index = (colon, colon) + tuple(
-            [slice(kx, kx_lim, s)
-             for (kx, kx_lim, s) in zip(kxs, kx_lims, stride)])
+            slice(kx, kx_lim, s)
+            for (kx, kx_lim, s) in zip(kxs, kx_lims, stride))
         # (:, :, kx_1, kx_2, ..., kx_N, :, :, ..., :)
         col_index = (colon, colon) + kxs + (colon,) * len(outs)
         img[img_index] += col[col_index]
 
     # (:, :, p_1:d_1 + p_1, p_2:d_2 + p_2, ..., p_N:d_N + p_N]
     img_index = (colon, colon) + tuple(
-        [slice(p, d + p) for (p, d) in zip(pad, dims)])
+        slice(p, d + p) for (p, d) in zip(pad, dims))
     return img[img_index]
 
 
