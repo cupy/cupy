@@ -91,11 +91,11 @@ class TestNStepLSTM(unittest.TestCase):
 
                 x = e_h
 
-            gradient_check.assert_allclose(
+            testing.assert_allclose(
                 ys[ind].data, x, rtol=1e-4, atol=1e-4)
 
-        gradient_check.assert_allclose(hy.data, e_hy, rtol=1e-4, atol=1e-4)
-        gradient_check.assert_allclose(cy.data, e_cy, rtol=1e-4, atol=1e-4)
+        testing.assert_allclose(hy.data, e_hy, rtol=1e-4, atol=1e-4)
+        testing.assert_allclose(cy.data, e_cy, rtol=1e-4, atol=1e-4)
 
     def test_forward_cpu(self):
         self.check_forward(self.hx, self.cx, self.xs, self.ws, self.bs, False)
