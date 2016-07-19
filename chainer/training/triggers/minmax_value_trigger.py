@@ -66,6 +66,7 @@ class MaxValueTrigger(BestValueTrigger):
             with this key becomes maximum.
 
     """
+
     def __init__(self, key):
         super(MaxValueTrigger, self).__init__(
             key, lambda max_value, new_value: new_value > max_value)
@@ -82,6 +83,7 @@ class MinValueTrigger(BestValueTrigger):
             with this key becomes minimum.
 
     """
+
     def __init__(self, key):
         super(MinValueTrigger, self).__init__(
             key, lambda min_value, new_value: new_value < min_value)
