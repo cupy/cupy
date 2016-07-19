@@ -139,6 +139,9 @@ class ConvolutionND(function.Function):
                 cudnn.add_tensor(
                     handle, one.data, self.bias_desc.value, b.data.ptr,
                     one.data, y_desc.value, y.data.ptr)
+
+            return y,
+
         # Implementation using im2col.
         else:
             # Make patch array.
@@ -146,20 +149,16 @@ class ConvolutionND(function.Function):
                 x, ksize, stride, pad, cover_all=self.cover_all)
 
             # Compute correlation.
-            W_mat = W.reshape(out_c, -1)
-            col_mats = self.col.reshape(n, -1, reduce(operator.mul, outs))
-            y_mats = y.reshape(n, out_c, -1)
-            # TODO(takagi): Use streams or batch gemm
-            for i in moves.range(n):
-                y_mats[i] = W_mat.dot(col_mats[i])
+            axes = tuple(moves.range(1, ndim + 2))  # (1, 2, ..., N+1)
+            y = cuda.cupy.tensordot(self.col, W, (axes, axes)).astype(x.dtype)
 
             # Apply bias if given.
             # TODO(takagi): Support unshared bias
             if b is not None:
-                index = (colon,) + (None,) * ndim  # (:, None, ..., None)
-                y += b[index]
+                y += b
 
-        return y,
+            # Roll c_O before the second in (n, y_1, y_2, ..., y_N, c_O).
+            return cuda.cupy.rollaxis(y, ndim + 1, 1),
 
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
