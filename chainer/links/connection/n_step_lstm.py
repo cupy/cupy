@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer.functions.array import permutate
 from chainer.functions.array import transpose_sequence
@@ -27,9 +28,9 @@ class NStepLSTM(link.ChainList):
             self, n_layers, in_size, out_size, dropout, seed=1337,
             use_cudnn=True):
         weights = []
-        for i in range(0, n_layers):
+        for i in six.moves.range(n_layers):
             weight = link.Link()
-            for j in range(0, 8):
+            for j in six.moves.range(8):
                 if i == 0 and j < 4:
                     w_in = in_size
                 else:
@@ -59,11 +60,11 @@ class NStepLSTM(link.ChainList):
 
         ws = []
         for w in self:
-            for i in range(0, 8):
+            for i in six.moves.range(8):
                 ws.append(getattr(w, 'w%d' % i))
         bs = []
         for w in self:
-            for i in range(0, 8):
+            for i in six.moves.range(8):
                 bs.append(getattr(w, 'b%d' % i))
         hy, cy, trans_y = rnn.n_step_lstm(
             self.n_layers, self.dropout, hx, cx, ws, bs, trans_x,

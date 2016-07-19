@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -116,8 +117,8 @@ class NStepLSTM(function.Function):
         in_size = x_types[0].shape[1]
         out_size = h_type.shape[2]
 
-        for layer in range(self.n_layers):
-            for i in range(8):
+        for layer in six.moves.range(self.n_layers):
+            for i in six.moves.range(8):
                 ind = layer * 8 + i
                 w_type = w_types[ind]
                 b_type = b_types[ind]
@@ -172,8 +173,8 @@ class NStepLSTM(function.Function):
         w = cuda.cupy.empty((weights_size // 4, 1, 1), dtype=numpy.float32)
         w_desc = cudnn.create_filter_descriptor(w)
 
-        for layer in range(self.n_layers):
-            for lin_layer_id in range(8):
+        for layer in six.moves.range(self.n_layers):
+            for lin_layer_id in six.moves.range(8):
                 mat = cudnn.get_rnn_lin_layer_matrix_params(
                     handle, rnn_desc, layer, x_desc, w_desc, w,
                     lin_layer_id)
@@ -243,7 +244,7 @@ class NStepLSTM(function.Function):
             dhy = cuda.cupy.zeros_like(hx)
         if dcy is None:
             dcy = cuda.cupy.zeros_like(cx)
-        for i in range(len(dy_list)):
+        for i in six.moves.range(len(dy_list)):
             if dy_list[i] is None:
                 dy_list[i] = cuda.cupy.zeros_like(x_list[i])
 
@@ -299,8 +300,8 @@ class NStepLSTM(function.Function):
         dx_desc = cudnn.create_tensor_nd_descriptor(dx)
         dws = [cuda.cupy.empty_like(w) for w in ws]
         dbs = [cuda.cupy.empty_like(b) for b in bs]
-        for layer in range(self.n_layers):
-            for lin_layer_id in range(8):
+        for layer in six.moves.range(self.n_layers):
+            for lin_layer_id in six.moves.range(8):
                 mat = cudnn.get_rnn_lin_layer_matrix_params(
                     handle, rnn_desc, layer, dx_desc, dw_desc, dw,
                     lin_layer_id)
@@ -350,7 +351,7 @@ def n_step_lstm(
         xbs = []
         hws = []
         hbs = []
-        for layer in range(n_layers):
+        for layer in six.moves.range(n_layers):
             w = ws[layer * 8: layer * 8 + 8]
             xws.append(_stack_weight([w[2], w[0], w[1], w[3]]))
             hws.append(_stack_weight([w[6], w[4], w[5], w[7]]))
@@ -364,7 +365,7 @@ def n_step_lstm(
             batch = len(x.data)
             h_next = []
             c_next = []
-            for layer in range(n_layers):
+            for layer in six.moves.range(n_layers):
                 h = hx[layer]
                 c = cx[layer]
                 if len(h.data) > batch:
