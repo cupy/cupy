@@ -99,8 +99,8 @@ class ConvolutionND(function.Function):
 
         # Compute output image's dimensions.
         outs = tuple(
-            [conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
-             for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+            conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
+            for (d, k, s, p) in zip(dims, ksize, stride, pad))
 
         # Make empty array for result.
         y_shape = (n, out_c) + outs  # (n, c_O, out_1, out_2, ..., out_N)

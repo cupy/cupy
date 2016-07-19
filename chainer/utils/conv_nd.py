@@ -11,12 +11,12 @@ def im2col_nd_cpu(img, ksize, stride, pad, pval=0, cover_all=False):
     # Assured consistency of dimensions of parameters by caller.
     n, c = img.shape[0:2]       # (n, c, d_1, d_2, ..., d_N)
     dims = img.shape[2:]
-    outs = tuple([get_conv_outsize(d, k, s, p, cover_all)
-                  for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+    outs = tuple(get_conv_outsize(d, k, s, p, cover_all)
+                 for (d, k, s, p) in zip(dims, ksize, stride, pad))
 
     # Pad around image.
     pad_width = ((0, 0), (0, 0)) + tuple(
-        [(p, p + s - 1) for (s, p) in zip(stride, pad)])
+        (p, p + s - 1) for (s, p) in zip(stride, pad))
     img = numpy.pad(img, pad_width, mode='constant', constant_values=(pval,))
 
     # Make patch array with which we will compute correlation with filter.
@@ -31,11 +31,11 @@ def im2col_nd_cpu(img, ksize, stride, pad, pval=0, cover_all=False):
         # col[:, :, kx_1, kx_2, ..., kx_N, :, :, ..., :]
         col_index = (colon, colon) + kxs + (colon,) * ndim
         # img[:, :, kx_1:kx_lim_1:s_1, ..., kx_N:kx_lim_N:s_N]
-        kx_lims = tuple([kx + s * out
-                         for (kx, s, out) in zip(kxs, stride, outs)])
+        kx_lims = tuple(kx + s * out
+                        for (kx, s, out) in zip(kxs, stride, outs))
         img_index = (colon, colon) + tuple(
-            [slice(kx, kx_lim, s)
-             for (kx, kx_lim, s) in zip(kxs, kx_lims, stride)])
+            slice(kx, kx_lim, s)
+            for (kx, kx_lim, s) in zip(kxs, kx_lims, stride))
         col[col_index] = img[img_index]
 
     return col
