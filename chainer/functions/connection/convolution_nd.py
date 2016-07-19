@@ -1,7 +1,5 @@
 import numpy
-import operator
 
-from functools import reduce
 from six import moves
 
 from chainer import cuda
@@ -199,11 +197,8 @@ class ConvolutionND(function.Function):
         x, W = inputs[:2]
         b = inputs[2] if len(inputs) == 3 else None
         gy = grad_putputs[0]    # (n, c_O, out_1, out_2, ..., out_N)
-        out_c = gy.shape[1]
-        outs = gy.shape[2:]
         n, c = x.shape[:2]      # (n, c_I, d_1, d_2, ..., d_N)
         dims = x.shape[2:]
-        ksize = W.shape[2:]     # (_, _, k_1, k_2, ..., k_N)
         stride = self.stride
         pad = self.pad
         ndim = self.ndim
@@ -266,22 +261,17 @@ class ConvolutionND(function.Function):
                     zero.data, self.bias_desc.value, gb.data.ptr)
         # Implementation using col2im.
         else:
-            gW_mat = gW.reshape(out_c, reduce(operator.mul, ksize, c))
-            col_mats = self.col.reshape(
-                n, reduce(operator.mul, ksize, c), reduce(operator.mul, outs))
-            gy_mats = gy.reshape(n, out_c, reduce(operator.mul, outs))
-            # TODO(takagi): Use streams or batch gemm
-            gW_mat[...] = 0
-            for i in moves.range(n):
-                gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
+            # Compute filter weight gradient.
+            # (n, _, out_1, out_2, ..., out_N)
+            out_axes = (0,) + tuple(moves.range(2, ndim + 2))
+            # (n, _, _, ..., _, out_1, out_2, ..., out_N)
+            col_axes = (0,) + tuple(moves.range(ndim + 2, ndim * 2 + 2))
+            gW = cuda.cupy.tensordot(
+                gy, self.col, (out_axes, col_axes)).astype(W.dtype)
 
             # Compute patch array gradient.
-            W_mat = W.reshape(out_c, -1)
-            gcol = cuda.cupy.empty_like(self.col)
-            gcol_mats = gcol.reshape(
-                n, reduce(operator.mul, ksize, c), reduce(operator.mul, outs))
-            for i in moves.range(n):
-                gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
+            gcol = cuda.cupy.tensordot(W, gy, (0, 1)).astype(x.dtype)
+            gcol = cuda.cupy.rollaxis(gcol, ndim + 1)
 
             # Compute input gradient.
             gx = conv_nd.col2im_nd_gpu(gcol, stride, pad, dims)
