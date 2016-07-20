@@ -43,7 +43,7 @@ class TestLocalResponseNormalization(unittest.TestCase):
             denom = (2 + 1e-4 * s) ** .75
             y_expect[n, c, h, w] = self.x[n, c, h, w] / denom
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y_data, **self.check_forward_optionss)
 
     @condition.retry(3)

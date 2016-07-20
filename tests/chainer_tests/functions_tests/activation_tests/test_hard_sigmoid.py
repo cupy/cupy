@@ -37,7 +37,7 @@ class TestHardSigmoid(unittest.TestCase):
         y = functions.hard_sigmoid(x)
         self.assertIs(y.data.dtype, x_data.dtype)
         expect = numpy.minimum(1.0, numpy.maximum(0.0, self.x * 0.2 + 0.5))
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y.data, expect, **self.check_forward_option)
 
     @condition.retry(3)

@@ -42,7 +42,7 @@ class InvFunctionTest(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.inv(x)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             _inv(self.x), y.data, **self.check_forward_options)
 
     def check_backward(self, x_data, y_grad, ):
@@ -54,8 +54,8 @@ class InvFunctionTest(unittest.TestCase):
         eye = _make_eye(self.x.shape)
         x = chainer.Variable(self.x)
         y = functions.matmul(x, functions.inv(x))
-        gradient_check.assert_allclose(y.data, eye,
-                                       **self.check_forward_options)
+        testing.assert_allclose(
+            y.data, eye, **self.check_forward_options)
 
     @attr.gpu
     @condition.retry(3)
@@ -63,8 +63,8 @@ class InvFunctionTest(unittest.TestCase):
         eye = cuda.to_gpu(_make_eye(self.x.shape))
         x = chainer.Variable(cuda.to_gpu(self.x))
         y = functions.matmul(x, functions.inv(x))
-        gradient_check.assert_allclose(y.data, eye,
-                                       **self.check_forward_options)
+        testing.assert_allclose(
+            y.data, eye, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -101,7 +101,7 @@ class BatchInvFunctionTest(unittest.TestCase):
     def check_forward(self, x_data, atol=1e-7, rtol=1e-7):
         x = chainer.Variable(x_data)
         y = functions.batch_inv(x)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             _inv(self.x), y.data, **self.check_forward_options)
 
     def check_backward(self, x_data, y_grad, **kwargs):
@@ -114,8 +114,8 @@ class BatchInvFunctionTest(unittest.TestCase):
         eye = _make_eye(self.x.shape)
         x = chainer.Variable(self.x)
         y = functions.batch_matmul(x, functions.batch_inv(x))
-        gradient_check.assert_allclose(y.data, eye,
-                                       **self.check_forward_options)
+        testing.assert_allclose(
+            y.data, eye, **self.check_forward_options)
 
     @attr.gpu
     @condition.retry(3)
@@ -123,8 +123,8 @@ class BatchInvFunctionTest(unittest.TestCase):
         eye = cuda.to_gpu(_make_eye(self.x.shape))
         x = chainer.Variable(cuda.to_gpu(self.x))
         y = functions.batch_matmul(x, functions.batch_inv(x))
-        gradient_check.assert_allclose(y.data, eye,
-                                       **self.check_forward_options)
+        testing.assert_allclose(
+            y.data, eye, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):

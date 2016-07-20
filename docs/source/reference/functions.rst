@@ -243,6 +243,14 @@ triplet
 Mathematical functions
 ----------------------
 
+argmax
+~~~~~~
+.. autofunction:: argmax
+
+argmin
+~~~~~~
+.. autofunction:: argmin
+
 batch_inv
 ~~~~~~~~~
 .. autofunction:: batch_inv
@@ -308,7 +316,7 @@ min
 .. autofunction:: min
 
 minimum
-~~~~~~
+~~~~~~~
 .. autofunction:: minimum
 
 scale
@@ -350,6 +358,10 @@ fixed_batch_normalization
 local_response_normalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: local_response_normalization
+
+normalize
+~~~~~~~~~
+.. autofunction:: normalize
 
 
 Spatial pooling

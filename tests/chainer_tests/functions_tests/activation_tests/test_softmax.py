@@ -44,7 +44,7 @@ class TestSoftmax(unittest.TestCase):
         for i in numpy.ndindex(y_roll.shape[:-1]):
             y_roll[i] /= y_roll[i].sum()
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y.data, **self.check_forward_options)
 
     @condition.retry(3)

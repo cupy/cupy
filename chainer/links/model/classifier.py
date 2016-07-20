@@ -1,6 +1,7 @@
 from chainer.functions.evaluation import accuracy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer import link
+from chainer import reporter
 
 
 class Classifier(link.Chain):
@@ -13,10 +14,12 @@ class Classifier(link.Chain):
     Args:
         predictor (~chainer.Link): Predictor network.
         lossfun (function): Loss function.
+        accfun (function): Function that computes accuracy.
 
     Attributes:
         predictor (~chainer.Link): Predictor network.
         lossfun (function): Loss function.
+        accfun (function): Function that computes accuracy.
         y (~chainer.Variable): Prediction for the last minibatch.
         loss (~chainer.Variable): Loss value for the last minibatch.
         accuracy (~chainer.Variable): Accuracy for the last minibatch.
@@ -28,9 +31,11 @@ class Classifier(link.Chain):
     compute_accuracy = True
 
     def __init__(self, predictor,
-                 lossfun=softmax_cross_entropy.softmax_cross_entropy):
+                 lossfun=softmax_cross_entropy.softmax_cross_entropy,
+                 accfun=accuracy.accuracy):
         super(Classifier, self).__init__(predictor=predictor)
         self.lossfun = lossfun
+        self.accfun = accfun
         self.y = None
         self.loss = None
         self.accuracy = None
@@ -61,6 +66,8 @@ class Classifier(link.Chain):
         self.accuracy = None
         self.y = self.predictor(*x)
         self.loss = self.lossfun(self.y, t)
+        reporter.report({'loss': self.loss}, self)
         if self.compute_accuracy:
-            self.accuracy = accuracy.accuracy(self.y, t)
+            self.accuracy = self.accfun(self.y, t)
+            reporter.report({'accuracy': self.accuracy}, self)
         return self.loss

@@ -54,7 +54,7 @@ class TestMaxPooling2D(unittest.TestCase):
                     expect = numpy.array([
                         [x[0:2, 0:2].max(), x[0:2, 1:3].max()],
                         [x[1:4, 0:2].max(), x[1:4, 1:3].max()]])
-                gradient_check.assert_allclose(expect, y_data[k, c])
+                testing.assert_allclose(expect, y_data[k, c])
 
     @condition.retry(3)
     def test_forward_cpu(self):

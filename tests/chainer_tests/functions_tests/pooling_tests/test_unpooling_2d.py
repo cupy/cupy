@@ -82,7 +82,7 @@ class TestUnpooling2D(unittest.TestCase):
                     ])
                 else:
                     raise ValueError('Unsupported outsize: {}'.format(outsize))
-                gradient_check.assert_allclose(expect, y_data[i, c])
+                testing.assert_allclose(expect, y_data[i, c])
 
     @condition.retry(3)
     def test_forward_cpu(self):

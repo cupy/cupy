@@ -57,7 +57,7 @@ class TestBatchNormalization(unittest.TestCase):
         y_expect = _batch_normalization(
             self.expander, self.gamma, self.beta, self.x, self.mean, self.var)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y.data, **self.check_forward_optionss)
 
     @condition.retry(3)
@@ -122,7 +122,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
         y_expect = _batch_normalization(
             self.expander, self.gamma, self.beta, self.x, self.mean, self.var)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y.data, **self.check_forward_optionss)
 
     @condition.retry(3)

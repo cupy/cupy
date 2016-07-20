@@ -44,7 +44,7 @@ class TestAveragePooling2D(unittest.TestCase):
                 expect = numpy.array([
                     [x[0:2, 0:2].sum(), x[0:2, 1:3].sum()],
                     [x[1:4, 0:2].sum(), x[1:4, 1:3].sum()]]) / 9
-                gradient_check.assert_allclose(
+                testing.assert_allclose(
                     expect, y_data[k, c], **self.check_forward_options)
 
     @condition.retry(3)

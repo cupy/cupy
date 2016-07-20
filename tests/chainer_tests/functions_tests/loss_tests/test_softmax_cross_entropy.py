@@ -74,7 +74,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         else:
             loss_expect /= len(t_data)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             loss_expect, loss_value, **self.check_forward_options)
 
     @condition.retry(3)

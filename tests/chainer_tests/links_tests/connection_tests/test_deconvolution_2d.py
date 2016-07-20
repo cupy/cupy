@@ -64,7 +64,7 @@ class TestDeconvolution2D(unittest.TestCase):
         y_gpu = self.link(x_gpu)
         self.assertEqual(y_gpu.data.dtype, numpy.float32)
 
-        gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
+        testing.assert_allclose(y_cpu.data, y_gpu.data.get())
 
     @attr.cudnn
     @condition.retry(3)

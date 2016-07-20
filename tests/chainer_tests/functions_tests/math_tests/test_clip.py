@@ -37,7 +37,7 @@ class TestClip(unittest.TestCase):
             elif self.x[i] > self.x_max:
                 y_expect[i] = self.x_max
 
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)

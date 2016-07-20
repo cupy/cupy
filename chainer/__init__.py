@@ -4,16 +4,26 @@ import sys
 import threading
 import warnings
 
+from chainer import cuda  # NOQA
+from chainer import dataset  # NOQA
+from chainer import datasets  # NOQA
 from chainer import flag
 from chainer import function
 from chainer import function_set
+from chainer import functions  # NOQA
 from chainer.functions import array
 from chainer.functions import basic_math
 from chainer import initializer
 from chainer import initializers
+from chainer import iterators  # NOQA
 from chainer import link
+from chainer import links  # NOQA
 from chainer import optimizer
+from chainer import optimizers  # NOQA
+from chainer import reporter
 from chainer import serializer
+from chainer import serializers  # NOQA
+from chainer import training  # NOQA
 from chainer import variable
 
 
@@ -27,19 +37,26 @@ AbstractSerializer = serializer.AbstractSerializer
 Chain = link.Chain
 ChainList = link.ChainList
 Deserializer = serializer.Deserializer
+DictSummary = reporter.DictSummary
 Flag = flag.Flag
 Function = function.Function
 FunctionSet = function_set.FunctionSet
 GradientMethod = optimizer.GradientMethod
 Link = link.Link
 Optimizer = optimizer.Optimizer
+Reporter = reporter.Reporter
 Serializer = serializer.Serializer
+Summary = reporter.Summary
 Variable = variable.Variable
 Initializer = initializer.Initializer
 
 ON = flag.ON
 OFF = flag.OFF
 AUTO = flag.AUTO
+
+get_current_reporter = reporter.get_current_reporter
+report = reporter.report
+report_scope = reporter.report_scope
 
 
 thread_local = threading.local()

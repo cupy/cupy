@@ -55,7 +55,7 @@ class TestCReLU(unittest.TestCase):
         expected = numpy.concatenate(
             (expected_former, expected_latter), axis=self.axis)
 
-        gradient_check.assert_allclose(expected, y.data)
+        testing.assert_allclose(expected, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):

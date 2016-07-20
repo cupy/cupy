@@ -115,7 +115,7 @@ def check_backward(func, x_data, y_grad, params=(),
     calls ``backward`` method to get gradients of the inputs.
     To check correctness of the gradients, the function calls
     :func:`numerical_grad` to calculate numerically the gradients and compares
-    the types of gradients with :func:`assert_allclose`.
+    the types of gradients with :func:`chainer.testing.assert_allclose`.
     If input objects (``x1_data`` or/and ``x2_data`` in this example) represent
     integer variables, their gradients are ignored.
 
@@ -181,9 +181,9 @@ def check_backward(func, x_data, y_grad, params=(),
             it is treated as ``(params,)``.
         eps (float): Epsilon value to be passed to :func:`numerical_grad`.
         atol (float): Absolute tolerance to be passed to
-            :func:`assert_allclose`.
+            :func:`chainer.testing.assert_allclose`.
         rtol (float): Relative tolerance to be passed to
-            :func:`assert_allclose`.
+            :func:`chainer.testing.assert_allclose`.
         no_grads (list of bool): Flag to skip variable for gradient assertion.
             It should be same length as ``x_data``.
 

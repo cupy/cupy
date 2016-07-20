@@ -87,8 +87,8 @@ class TestDeconvolution2DFunction(unittest.TestCase):
 
         self.assertEqual(y_cpu.data.dtype, self.x_dtype)
         self.assertEqual(y_gpu.data.dtype, self.x_dtype)
-        gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get(),
-                                       **self.test_forward_options)
+        testing.assert_allclose(
+            y_cpu.data, y_gpu.data.get(), **self.test_forward_options)
 
     @attr.gpu
     def test_forward_consistency_im2col(self):

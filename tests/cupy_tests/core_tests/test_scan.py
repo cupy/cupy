@@ -3,6 +3,7 @@
 import unittest
 
 import cupy
+from cupy import cuda
 from cupy import testing
 
 
@@ -24,4 +25,13 @@ class TestScan(unittest.TestCase):
     def test_check_1d_array(self):
         with self.assertRaises(TypeError):
             a = cupy.zeros((2, 2))
+            cupy.core.core.scan(a)
+
+    @testing.multi_gpu(2)
+    def test_multi_gpu(self):
+        with cuda.Device(0):
+            a = cupy.zeros((10,))
+            cupy.core.core.scan(a)
+        with cuda.Device(1):
+            a = cupy.zeros((10,))
             cupy.core.core.scan(a)

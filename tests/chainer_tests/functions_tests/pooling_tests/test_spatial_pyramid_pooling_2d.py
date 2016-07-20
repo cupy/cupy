@@ -61,7 +61,7 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
 
         self.assertEqual(y_data.shape, (self.n, self.output_dim, 1, 1))
         self.assertEqual(y_data.dtype, self.dtype)
-        gradient_check.assert_allclose(y_data, numpy.ones_like(y_data))
+        testing.assert_allclose(y_data, numpy.ones_like(y_data))
 
     @condition.retry(3)
     def test_forward_cpu(self):

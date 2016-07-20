@@ -5,7 +5,6 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 
@@ -46,7 +45,7 @@ class TestConcat(unittest.TestCase):
         xs = tuple(chainer.Variable(x_data) for x_data in xs_data)
         y = functions.concat(xs, axis=axis)
         self.assertEqual(y.data.dtype, self.dtype)
-        gradient_check.assert_allclose(y_data, y.data, atol=0, rtol=0)
+        testing.assert_allclose(y_data, y.data, atol=0, rtol=0)
         self.assertIsInstance(y.data.shape, tuple)
 
     def test_forward_cpu(self):
@@ -65,7 +64,7 @@ class TestConcat(unittest.TestCase):
         y.backward()
 
         for x in xs:
-            gradient_check.assert_allclose(x.data, x.grad, atol=0, rtol=0)
+            testing.assert_allclose(x.data, x.grad, atol=0, rtol=0)
 
     def test_backward_cpu(self):
         self.check_backward(self.xs, axis=self.axis)

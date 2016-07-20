@@ -39,7 +39,7 @@ class TestReLU(unittest.TestCase):
             if self.x[i] < 0:
                 expected[i] = 0
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             expected, y.data)
 
     @condition.retry(3)
