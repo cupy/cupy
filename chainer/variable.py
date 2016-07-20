@@ -73,12 +73,12 @@ class Variable(object):
         volatile (~chainer.Flag): Volatility flag. String ('on', 'off', or
             'auto') or boolean values can be used, too.
         name (str): Name of the variable.
+        grad (array): Initial gradient array.
 
     Attributes:
         data: Data array of type either :class:`numpy.ndarray` or
             :class:`cupy.ndarray`.
-        grad: Gradient array. It is ``None`` until backprop reaches this
-            variable.
+        grad: Gradient array.
         creator: The function who creates this variable. It is ``None`` if the
             variable is not created by any function.
         volatile: Ternary :class:`~chainer.Flag` object. If ON, the variable
