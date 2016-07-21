@@ -100,7 +100,6 @@ class BatchNormalization(link.Link):
 
         """
         use_batch_mean = not test or finetune
-        print('use_batch_mean = ', use_batch_mean)
         # use_batch_mean = (not test) or finetune
         if hasattr(self, 'gamma'):
             gamma = self.gamma
@@ -120,9 +119,8 @@ class BatchNormalization(link.Link):
             else:
                 decay = self.decay
 
-            print('decay = ', decay)
             func = batch_normalization.BatchNormalizationFunction(
-                self.avg_mean, self.avg_var, True, decay, self.eps)
+                self.eps, self.avg_mean, self.avg_var, True, decay)
             ret = func(x, gamma, beta)
 
             self.avg_mean = func.running_mean

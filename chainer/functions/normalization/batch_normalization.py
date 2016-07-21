@@ -3,6 +3,7 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
+from chainer import variable
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -21,7 +22,12 @@ def _as4darray(arr):
 
 class BatchNormalizationFunction(function.Function):
 
-    def __init__(self, mean, var, train, decay=0.9, eps=2e-5, use_cudnn=True):
+    def __init__(self, eps=2e-5, mean=None, var=None, train=False,
+                 decay=0.9, use_cudnn=True):
+        if isinstance(mean, variable.Variable):
+            mean = mean.data
+        if isinstance(var, variable.Variable):
+            var = var.data
         if train:
             self.running_mean = mean
             self.running_var = var
@@ -75,24 +81,25 @@ class BatchNormalizationFunction(function.Function):
         beta = beta[expander]
 
         if self.train:
-            self.running_mean = xp.array(self.running_mean)
-            self.running_var = xp.array(self.running_var)
+            if self.running_mean is None:
+                self.running_mean = xp.zeros_like(gamma)
+                self.running_var = xp.zeros_like(gamma)
+            else:
+                self.running_mean = xp.array(self.running_mean)
+                self.running_var = xp.array(self.running_var)
         else:
             # Make sure the attribute arrays are the same type (numpy/cupy)
             # as the inputs.
             self.fixed_mean = xp.array(self.fixed_mean)
             self.fixed_var = xp.array(self.fixed_var)
 
-        if (x.ndim == 2) or (x.ndim == 4):
-            # cuDNN only supports these tensor dimensions because they are
-            # the most commonly used. If there is a need to support other
-            # dimensions with cuDNN, we could consider reshaping the input
-            # into a 2-dim array with channels as second dim and m=<product
-            # of all dimensions except the 2nd dimension> as the first
-            # dimension.
-            self.cudnn_dim_ok = True
-        else:
-            self.cudnn_dim_ok = False
+        # cuDNN only supports these tensor dimensions because they are
+        # the most commonly used. If there is a need to support other
+        # dimensions with cuDNN, we could consider reshaping the input
+        # into a 2-dim array with channels as second dim and m=<product
+        # of all dimensions except the 2nd dimension> as the first
+        # dimension.
+        self.cudnn_dim_ok = x.ndim == 2 or x.ndim == 4
 
         cudnn_updated_running_stats = False
         if xp is numpy:
@@ -109,7 +116,9 @@ class BatchNormalizationFunction(function.Function):
             self.x_hat = x_mu / self.std[expander]
             y = gamma * self.x_hat
             y += beta
-        elif cuda.cudnn_enabled and self.use_cudnn and self.cudnn_dim_ok:
+            # cuDNN Batch normalization requires v5 or greater.
+        elif cuda.cudnn_enabled and self.use_cudnn and self.cudnn_dim_ok and \
+                (_cudnn_version >= 5000):
             if x.ndim == 4:
                 # for convolutional layer
                 self.mode = libcudnn.CUDNN_BATCHNORM_SPATIAL
@@ -134,13 +143,9 @@ class BatchNormalizationFunction(function.Function):
             # computation runningMean
             if self.mean_cache is None:
                 # Output cache to speed up bacward pass (recommended to enable)
-                self.mean_cache = xp.zeros_like(gamma)
+                self.mean_cache = xp.empty_like(gamma)
                 # Output cache to speed up bacward pass (recommended to enable)
-                self.var_cache = xp.zeros_like(gamma)
-
-            if self.running_mean is None:
-                self.running_mean = xp.zeros_like(gamma)
-                self.running_var = xp.zeros_like(gamma)
+                self.var_cache = xp.empty_like(gamma)
 
             if self.train:
                 # Note: cuDNN computes the mini-batch mean and variance
@@ -202,11 +207,6 @@ class BatchNormalizationFunction(function.Function):
     def backward(self, inputs, grad_outputs):
         x, gamma = inputs[:2]
         gy = grad_outputs[0]
-
-        if x[0].dtype == numpy.float16:
-            # cuDNN v5 batch normalization does not seem to support float16.
-            self.use_cudnn = False
-
         head_ndim = gamma.ndim + 1
         expander = (None, Ellipsis) + (None,) * (x.ndim - head_ndim)
         m = gamma.dtype.type(x.size // gamma.size)
@@ -284,8 +284,8 @@ class BatchNormalizationFunction(function.Function):
         return gx, ggamma, gbeta
 
 
-def batch_normalization(x, gamma, beta, running_mean=None,
-                        running_var=None, decay=0.9, eps=2e-5):
+def batch_normalization(x, gamma, beta, eps=2e-5, running_mean=None,
+                        running_var=None, decay=0.9, use_cudnn=True):
     """Batch normalization function.
 
     It takes the input variable ``x`` and two parameter variables ``gamma`` and
@@ -308,6 +308,7 @@ def batch_normalization(x, gamma, beta, running_mean=None,
         x (Variable): The input variable.
         gamma (Variable): The scaling parameter of normalized data.
         beta (Variable): The shifting parameter of scaled normalized data.
+        eps (float): Epsilon value for numerical stability.
         running_mean (array): The running average of the mean. This is a
         running average of the mean over several
             mini-batches using the decay parameter. If None, the running
@@ -320,7 +321,7 @@ def batch_normalization(x, gamma, beta, running_mean=None,
             this is None, then running_mean must also be None.
         decay (float): Decay rate of moving average. It is used during
             training.
-        eps (float): Epsilon value for numerical stability.
+
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
           Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
@@ -328,11 +329,12 @@ def batch_normalization(x, gamma, beta, running_mean=None,
     .. seealso:: :class:`links.BatchNormalization`
 
     """
-    return BatchNormalizationFunction(running_mean, running_var, True,
-                                      decay, eps)(x, gamma, beta)
+    return BatchNormalizationFunction(eps, running_mean, running_var, True,
+                                      decay, use_cudnn)(x, gamma, beta)
 
 
-def fixed_batch_normalization(x, gamma, beta, fixed_mean, fixed_var, eps=2e-5):
+def fixed_batch_normalization(x, gamma, beta, mean, var, eps=2e-5,
+                              use_cudnn=True):
     """Batch normalization function with fixed statistics.
 
     This is a variant of batch normalization, where the mean and variance
@@ -344,8 +346,8 @@ def fixed_batch_normalization(x, gamma, beta, fixed_mean, fixed_var, eps=2e-5):
         x (Variable): The input variable.
         gamma (Variable): The scaling parameter of normalized data.
         beta (Variable): The shifting parameter of scaled normalized data.
-        fixed_mean (array): The shifting parameter of input.
-        fixed_var (array): The square of scaling parameter of input.
+        mean (array or Variable): The shifting parameter of input.
+        var (array or Variable): The square of scaling parameter of input.
         eps (float): Epsilon value for numerical stability.
 
     .. seealso::
@@ -353,5 +355,5 @@ def fixed_batch_normalization(x, gamma, beta, fixed_mean, fixed_var, eps=2e-5):
        :class:`links.BatchNormalization`
 
     """
-    return BatchNormalizationFunction(fixed_mean, fixed_var, False, 0.0,
-                                      eps)(x, gamma, beta)
+    return BatchNormalizationFunction(eps, mean, var, False,
+                                      0.0, use_cudnn)(x, gamma, beta)

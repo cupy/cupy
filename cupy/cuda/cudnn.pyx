@@ -161,9 +161,9 @@ cdef extern from "cupy_cudnn.h":
 	    void* alpha, void* beta, TensorDescriptor xDesc,
 	    void* x, TensorDescriptor yDesc, void* y,
 	    TensorDescriptor bnScaleBiasMeanVarDesc, void* bnScale,
-	    void* bnBias, float exponentialAverageFactor,
+	    void* bnBias, double exponentialAverageFactor,
 	    void* resultRunningMean, void* resultRunningVariance,
-	    float epsilon, void* resultSaveMean, void* resultSaveInvVariance)
+	    double epsilon, void* resultSaveMean, void* resultSaveInvVariance)
 
     int cudnnBatchNormalizationForwardInference(
             Handle handle, BatchNormMode mode,
@@ -171,7 +171,7 @@ cdef extern from "cupy_cudnn.h":
 	    void* x, TensorDescriptor yDesc, void* y,
 	    TensorDescriptor bnScaleBiasMeanVarDesc, void* bnScale,
 	    void* bnBias, void* estimatedMean, void* estimatedVariance,
-	    float epsilon)
+	    double epsilon)
 
     int cudnnBatchNormalizationBackward(
             Handle handle, BatchNormMode mode,
@@ -182,7 +182,7 @@ cdef extern from "cupy_cudnn.h":
 	    TensorDescriptor dxDesc, void* dx,
 	    TensorDescriptor dBnScaleBiasDesc, void* bnScale,
 	    void* dBnScaleResult, void* dBnBiasResult,
-	    float epsilon, void* savedMean, void* savedInvVariance)
+	    double epsilon, void* savedMean, void* savedInvVariance)
 
     # Activation
     int cudnnSoftmaxForward(
@@ -634,17 +634,17 @@ cpdef batchNormalizationForwardTraining(
         size_t alpha, size_t beta, size_t xDesc,
         size_t x, size_t yDesc, size_t y,
         size_t bnScaleBiasMeanVarDesc, size_t bnScale,
-        size_t bnBias, float exponentialAverageFactor,
+        size_t bnBias, double exponentialAverageFactor,
         size_t resultRunningMean, size_t resultRunningVariance,
-        float epsilon, size_t resultSaveMean, size_t resultSaveInvVariance):
+        double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance):
         status = cudnnBatchNormalizationForwardTraining(
         <Handle>handle, <BatchNormMode> mode,
         <void*>alpha, <void*>beta, <TensorDescriptor>xDesc,
         <void*>x, <TensorDescriptor>yDesc, <void*>y,
         <TensorDescriptor>bnScaleBiasMeanVarDesc, <void*>bnScale,
-        <void*>bnBias, <float>exponentialAverageFactor,
+        <void*>bnBias, exponentialAverageFactor,
         <void*>resultRunningMean, <void*>resultRunningVariance,
-        <float>epsilon, <void*>resultSaveMean, <void*>resultSaveInvVariance)
+        epsilon, <void*>resultSaveMean, <void*>resultSaveInvVariance)
         check_status(status)
 
 cpdef batchNormalizationForwardInference(
@@ -653,14 +653,14 @@ cpdef batchNormalizationForwardInference(
         size_t x, size_t yDesc, size_t y,
         size_t bnScaleBiasMeanVarDesc, size_t bnScale,
         size_t bnBias, size_t estimatedMean, size_t estimatedVariance,
-        float epsilon):
+        double epsilon):
         status = cudnnBatchNormalizationForwardInference(
         <Handle>handle, <BatchNormMode> mode,
         <void*>alpha, <void*>beta, <TensorDescriptor>xDesc,
         <void*>x, <TensorDescriptor>yDesc, <void*>y,
         <TensorDescriptor>bnScaleBiasMeanVarDesc, <void*>bnScale,
         <void*>bnBias, <void*>estimatedMean, <void*>estimatedVariance,
-	    <float>epsilon)
+	    epsilon)
         check_status(status)
 
 cpdef batchNormalizationBackward(
@@ -671,7 +671,7 @@ cpdef batchNormalizationBackward(
         size_t dy, size_t dxDesc, size_t dx,
         size_t dBnScaleBiasDesc, size_t bnScale,
         size_t dBnScaleResult, size_t dBnBiasResult,
-        float epsilon, size_t savedMean, size_t savedInvVariance):
+        double epsilon, size_t savedMean, size_t savedInvVariance):
         status = cudnnBatchNormalizationBackward(
         <Handle>handle, <BatchNormMode>mode,
 	    <void*>alphaDataDiff, <void*>betaDataDiff,
@@ -681,7 +681,7 @@ cpdef batchNormalizationBackward(
 	    <TensorDescriptor>dxDesc, <void*>dx,
 	    <TensorDescriptor>dBnScaleBiasDesc, <void*>bnScale,
 	    <void*>dBnScaleResult, <void*>dBnBiasResult,
-	    <float>epsilon, <void*>savedMean, <void*>savedInvVariance)
+	    epsilon, <void*>savedMean, <void*>savedInvVariance)
         check_status(status)
 
 ###############################################################################
