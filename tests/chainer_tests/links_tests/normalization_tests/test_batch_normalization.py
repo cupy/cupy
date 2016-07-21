@@ -245,11 +245,13 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
         self.check_backward(x, gy)
 
 
+@testing.parameterize(*testing.product({
+    'size': [3, (2, 3)],
+}))
 class TestInitialize(unittest.TestCase):
 
     def setUp(self):
         self.decay = 0.9
-        self.size = 3
         self.initial_gamma = numpy.random.uniform(-1, 1, self.size)
         self.initial_gamma = self.initial_gamma.astype(numpy.float32)
         self.initial_beta = numpy.random.uniform(-1, 1, self.size)
