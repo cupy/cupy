@@ -6,6 +6,7 @@ import six.moves.cPickle as pickle
 import chainer
 from chainer import cuda
 from chainer import gradient_check
+from chainer import initializers
 from chainer.links import convolution_nd
 from chainer import testing
 from chainer.testing import attr
@@ -26,17 +27,15 @@ class TestConvolutionND(unittest.TestCase):
         self.pad = (1,) * ndim
 
         self.link = convolution_nd.ConvolutionND(
-            ndim, 3, 2, self.ksize, stride=self.stride, pad=self.pad)
-        b = self.link.b.data
-        b[...] = numpy.random.uniform(-1, 1, b.shape)
+            ndim, 3, 2, self.ksize, stride=self.stride, pad=self.pad,
+            initial_bias=initializers.Uniform(1))
         self.link.zerograds()
 
         x_shape = (2, 3) + self.dims
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
         gy_shape = (2, 2) + tuple(
-            [conv.get_conv_outsize(d, k, s, p)
-             for (d, k, s, p) in zip(
-                self.dims, self.ksize, self.stride, self.pad)])
+            conv.get_conv_outsize(d, k, s, p) for (d, k, s, p) in zip(
+                self.dims, self.ksize, self.stride, self.pad))
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(numpy.float32)
 
     @attr.gpu
@@ -124,5 +123,25 @@ class TestConvolutionND(unittest.TestCase):
     def test_pickling_gpu(self):
         self.link.to_gpu()
         self.check_pickling(cuda.to_gpu(self.x))
+
+
+class TestConvolutionNDInvalidInitialWeight(unittest.TestCase):
+
+    def test_invalid_initial_weight(self):
+        ndim = 3
+        ksize = 3
+        with self.assertRaises(ValueError):
+            convolution_nd.ConvolutionND(ndim, 3, 2, ksize, initialW=None)
+
+
+class TestConvolutionNDNoInitialBias(unittest.TestCase):
+
+    def test_no_initial_bias(self):
+        ndim = 3
+        ksize = 3
+        link = convolution_nd.ConvolutionND(
+            ndim, 3, 2, ksize, initial_bias=None)
+        self.assertIsNone(link.b)
+
 
 testing.run_module(__name__, __file__)
