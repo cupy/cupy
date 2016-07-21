@@ -9,6 +9,7 @@
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include <curand.h>
+#include <nvToolsExt.h>
 
 #else // #ifndef CUPY_NO_CUDA
 
@@ -547,6 +548,21 @@ int cudaProfilerStart() {
 
 int cudaProfilerStop() {
   return 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// nvToolsExt.h
+///////////////////////////////////////////////////////////////////////////////
+
+void nvtxMarkA(const char *message ) {
+}
+
+int nvtxRangePushA(const char *message ) {
+    return 0;
+}
+
+int nvtxRangePop() {
+    return 0;
 }
 
 #endif // #ifndef CUPY_NO_CUDA
