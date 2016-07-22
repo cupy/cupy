@@ -91,7 +91,11 @@ class LogReport(extension.Extension):
                 fd, path = tempfile.mkstemp(prefix=log_name, dir=trainer.out)
                 with os.fdopen(fd, 'w') as f:
                     json.dump(self._log, f, indent=4)
-                os.rename(path, os.path.join(trainer.out, log_name))
+
+                log_path = os.path.join(trainer.out, log_name)
+                if os.path.exists(log_path):
+                    os.remove(log_path)
+                os.rename(path, log_path)
 
             # reset the summary for the next output
             self._init_summary()
