@@ -16,14 +16,14 @@ class Rollaxis(function.Function):
         x_type = in_types[0]
 
         if self.axis >= 0:
-            type_check.expect(x_type.ndim >= self.axis)
+            type_check.expect(x_type.ndim > self.axis)
         else:
-            type_check.expect(x_type.ndim >= -self.axis - 1)
+            type_check.expect(x_type.ndim > -self.axis - 1)
 
         if self.start >= 0:
             type_check.expect(x_type.ndim >= self.start)
         else:
-            type_check.expect(x_type.ndim >= -self.start - 1)
+            type_check.expect(x_type.ndim > -self.start - 1)
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)

@@ -8,6 +8,7 @@ from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
+from chainer.utils import type_check
 
 
 @testing.parameterize(
@@ -17,6 +18,8 @@ from chainer.testing import attr
     {'axis': -3, 'start': 2, 'out_shape': (3, 2, 4)},
     {'axis': -1, 'start': 0, 'out_shape': (4, 2, 3)},
     {'axis': -2, 'start': -2, 'out_shape': (2, 3, 4)},
+    {'axis': 0, 'start': 3, 'out_shape': (3, 4, 2)},
+    {'axis': 2, 'start': -3, 'out_shape': (4, 2, 3)},
 )
 class TestRollaxis(unittest.TestCase):
 
@@ -50,6 +53,29 @@ class TestRollaxis(unittest.TestCase):
     @attr.gpu
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.g))
+
+
+@testing.parameterize(
+    {'axis': 3, 'start': 0},
+    {'axis': -4, 'start': 0},
+    {'axis': 0, 'start': 4},
+    {'axis': 0, 'start': -4},
+)
+class TestRollaxisTypeError(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f')
+
+    def check_type_error(self, x):
+        with self.assertRaises(type_check.InvalidType):
+            functions.rollaxis(self.x, self.axis, self.start)
+
+    def test_type_error_cpu(self):
+        self.check_type_error(self.x)
+
+    @attr.gpu
+    def test_type_error_cpu(self):
+        self.check_type_error(cuda.to_gpu(self.x))
 
 
 testing.run_module(__name__, __file__)
