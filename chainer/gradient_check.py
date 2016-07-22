@@ -257,7 +257,7 @@ def check_backward(func, x_data, y_grad, params=(),
         if dtype is None:
             assert gx.dtype == x.grad.dtype
         else:
-            assert gx.dtype == dtype
+            assert gx.dtype.kind == 'f' and gx.dtype == dtype
 
     for p in params:
         gp, = numerical_grad(f, (p.data,), y_grad, eps=eps)
