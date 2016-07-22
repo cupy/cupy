@@ -75,4 +75,11 @@ class TestConcat(unittest.TestCase):
                             axis=self.axis)
 
 
+class TestConcatInvalidAxisType(unittest.TestCase):
+
+    def test_invlaid_axis_type(self):
+        with self.assertRaises(TypeError):
+            functions.Concat('a')
+
+
 testing.run_module(__name__, __file__)
