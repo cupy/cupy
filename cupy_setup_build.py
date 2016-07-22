@@ -279,7 +279,7 @@ def check_extensions(extensions):
                 raise RuntimeError(msg)
 
 
-class chainer_build_ext(build_ext.build_ext):
+class cupy_build_ext(build_ext.build_ext):
 
     """`build_ext` command for cython files."""
 
