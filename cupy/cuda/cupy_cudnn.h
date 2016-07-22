@@ -118,6 +118,76 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
 #define cudnnSetPooling2dDescriptor_v3 cudnnSetPooling2dDescriptor
 #define cudnnSetPoolingNdDescriptor_v3 cudnnSetPoolingNdDescriptor
 
+cudnnStatus_t cudnnDeriveBNTensorDescriptor(
+         cudnnTensorDescriptor_t derivedBnDesc,
+         const cudnnTensorDescriptor_t xDesc,
+         cudnnBatchNormMode_t mode) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+
+cudnnStatus_t cudnnBatchNormalizationForwardTraining(
+                                cudnnHandle_t handle,
+                                cudnnBatchNormMode_t mode,
+                                const void *alpha,
+                                const void *beta,
+                                const cudnnTensorDescriptor_t xDesc,
+                                const void *x,
+                                const cudnnTensorDescriptor_t yDesc,
+                                void *y,
+                                const cudnnTensorDescriptor_t bnScaleBiasMeanVarDesc,
+                                const void *bnScale,
+                                const void *bnBias,
+                                double exponentialAverageFactor,
+                                void *resultRunningMean,
+                                void *resultRunningVariance,
+                                double epsilon,
+                                void *resultSaveMean,
+                                void *resultSaveInvVariance) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnBatchNormalizationForwardInference(
+                                cudnnHandle_t handle,
+                                cudnnBatchNormMode_t mode,
+                                const void *alpha,
+                                const void *beta,
+                                const cudnnTensorDescriptor_t xDesc,
+                                const void *x,
+                                const cudnnTensorDescriptor_t yDesc,
+                                void *y,
+                                const cudnnTensorDescriptor_t bnScaleBiasMeanVarDesc,
+                                const void *bnScale,
+                                const void *bnBias,
+                                const void *estimatedMean,
+                                const void *estimatedVariance,
+                                double epsilon) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
+cudnnStatus_t cudnnBatchNormalizationBackward(
+                                cudnnHandle_t handle,
+                                cudnnBatchNormMode_t mode,
+                                const void *alphaDataDiff,
+                                const void *betaDataDiff,
+                                const void *alphaParamDiff,
+                                const void *betaParamDiff,
+                                const cudnnTensorDescriptor_t xDesc,
+                                const void *x,
+                                const cudnnTensorDescriptor_t dyDesc,
+                                const void *dy,
+                                const cudnnTensorDescriptor_t dxDesc,
+                                void *dx,
+                                const cudnnTensorDescriptor_t dBnScaleBiasDesc,
+                                const void *bnScale,
+                                void *dBnScaleResult,
+                                void *dBnBiasResult,
+                                double epsilon,
+                                const void *savedMean,
+                                const void *savedInvVariance) {
+    return CUDNN_STATUS_NOT_SUPPORTED;
+}
+
 #endif // #if CUDNN_VERSION < 5000
 
 #if CUDNN_VERSION >= 5000
@@ -170,69 +240,6 @@ cudnnStatus_t cudnnConvolutionBackwardData_v2(
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-// Batch normalization
-
-cudnnStatus_t cudnnDeriveBNTensorDescriptor(
-         cudnnTensorDescriptor_t derivedBnDesc,
-         const cudnnTensorDescriptor_t xDesc,
-         cudnnBatchNormMode_t mode);
-
-
-cudnnStatus_t cudnnBatchNormalizationForwardTraining(
-                                cudnnHandle_t handle,
-                                cudnnBatchNormMode_t mode,
-                                const void *alpha,
-                                const void *beta,
-                                const cudnnTensorDescriptor_t xDesc,
-                                const void *x,
-                                const cudnnTensorDescriptor_t yDesc,
-                                void *y,
-                                const cudnnTensorDescriptor_t bnScaleBiasMeanVarDesc,
-                                const void *bnScale,
-                                const void *bnBias,
-                                double exponentialAverageFactor,
-                                void *resultRunningMean,
-                                void *resultRunningVariance,
-                                double epsilon,
-                                void *resultSaveMean,
-                                void *resultSaveInvVariance);
-
-cudnnStatus_t cudnnBatchNormalizationForwardInference(
-                                cudnnHandle_t handle,
-                                cudnnBatchNormMode_t mode,
-                                const void *alpha,
-                                const void *beta,
-                                const cudnnTensorDescriptor_t xDesc,
-                                const void *x,
-                                const cudnnTensorDescriptor_t yDesc,
-                                void *y,
-                                const cudnnTensorDescriptor_t bnScaleBiasMeanVarDesc,
-                                const void *bnScale,
-                                const void *bnBias,
-                                const void *estimatedMean,
-                                const void *estimatedVariance,
-                                double epsilon);
-
-cudnnStatus_t cudnnBatchNormalizationBackward(
-                                cudnnHandle_t handle,
-                                cudnnBatchNormMode_t mode,
-                                const void *alphaDataDiff,
-                                const void *betaDataDiff,
-                                const void *alphaParamDiff,
-                                const void *betaParamDiff,
-                                const cudnnTensorDescriptor_t xDesc,
-                                const void *x,
-                                const cudnnTensorDescriptor_t dyDesc,
-                                const void *dy,
-                                const cudnnTensorDescriptor_t dxDesc,
-                                void *dx,
-                                const cudnnTensorDescriptor_t dBnScaleBiasDesc,
-                                const void *bnScale,
-                                void *dBnScaleResult,
-                                void *dBnBiasResult,
-                                double epsilon,
-                                const void *savedMean,
-                                const void *savedInvVariance);
 
 #endif // CUDNN_VERSION >= 5000
 
@@ -263,6 +270,7 @@ typedef int cudnnTensorFormat_t;
 
 typedef int ActivationMode;
 typedef int AddMode;
+typedef int BatchNormMode;
 typedef int ConvolutionBwdDataAlgo;
 typedef int ConvolutionBwdDataPreference;
 typedef int ConvolutionBwdFilterAlgo;
@@ -582,6 +590,47 @@ int cudnnActivationBackward_v3(
         TensorDescriptor srcDiffDesc, void* srcDiffData,
         TensorDescriptor destDesc, void* destData, void* beta,
         TensorDescriptor destDiffDesc, void* destDiffData) {
+    return 0;
+}
+
+// Batch normalization
+int cudnnDeriveBNTensorDescriptor(
+    	TensorDescriptor derivedBnDesc, TensorDescriptor xDesc,
+	    BatchNormMode mode) {
+    return 0;
+}
+
+int cudnnBatchNormalizationForwardTraining(
+        Handle handle, BatchNormMode mode,
+	void* alpha, void* beta, TensorDescriptor xDesc,
+	void* x, TensorDescriptor yDesc, void* y,
+	TensorDescriptor bnScaleBiasMeanVarDesc, void* bnScale,
+	void* bnBias, double exponentialAverageFactor,
+	void* resultRunningMean, void* resultRunningVariance,
+	double epsilon, void* resultSaveMean, void* resultSaveInvVariance) {
+    return 0;
+}
+
+int cudnnBatchNormalizationForwardInference(
+        Handle handle, BatchNormMode mode,
+	void* alpha, void* beta, TensorDescriptor xDesc,
+	void* x, TensorDescriptor yDesc, void* y,
+	TensorDescriptor bnScaleBiasMeanVarDesc, void* bnScale,
+	void* bnBias, void* estimatedMean, void* estimatedVariance,
+	double epsilon) {
+    return 0;
+}
+
+int cudnnBatchNormalizationBackward(
+        Handle handle, BatchNormMode mode,
+	void* alphaDataDiff, void* betaDataDiff,
+	void* alphaParamDiff, void* betaParamDiff,
+	TensorDescriptor xDesc, void* x,
+	TensorDescriptor dyDesc, void* dy,
+	TensorDescriptor dxDesc, void* dx,
+	TensorDescriptor dBnScaleBiasDesc, void* bnScale,
+	void* dBnScaleResult, void* dBnBiasResult,
+	double epsilon, void* savedMean, void* savedInvVariance) {
     return 0;
 }
 
