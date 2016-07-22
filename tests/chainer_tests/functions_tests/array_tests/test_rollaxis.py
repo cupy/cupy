@@ -61,7 +61,7 @@ class TestRollaxis(unittest.TestCase):
     {'axis': 0, 'start': 4},
     {'axis': 0, 'start': -4},
 )
-class TestRollaxisTypeError(unittest.TestCase):
+class TestRollaxisInvalidType(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f')
@@ -76,6 +76,17 @@ class TestRollaxisTypeError(unittest.TestCase):
     @attr.gpu
     def test_type_error_cpu(self):
         self.check_type_error(cuda.to_gpu(self.x))
+
+
+class TestRollaxisInvalidTypeError(unittest.TestCase):
+
+    def test_invalid_axis(self):
+        with self.assertRaises(TypeError):
+            functions.Rollaxis('a', 0)
+
+    def test_invalid_start(self):
+        with self.assertRaises(TypeError):
+            functions.Rollaxis(0, 'a')
 
 
 testing.run_module(__name__, __file__)

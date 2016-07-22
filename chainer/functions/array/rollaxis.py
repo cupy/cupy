@@ -1,3 +1,5 @@
+import six
+
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -8,8 +10,13 @@ class Rollaxis(function.Function):
     """Roll axis of an array."""
 
     def __init__(self, axis, start):
-        self.axis = int(axis)
-        self.start = int(start)
+        if not isinstance(axis, six.integer_types):
+            raise TypeError('axis must be int')
+        if not isinstance(start, six.integer_types):
+            raise TypeError('start must be int')
+
+        self.axis = axis
+        self.start = start
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
