@@ -117,9 +117,10 @@ class LSTM(function.Function):
             gc_prev = numpy.empty_like(c_prev)
             # multiply f later
             gc_prev[:batch] = gh * self.o * _grad_tanh(co) + gc_update
-            ga[:] = gc_prev[:batch] * self.i * _grad_tanh(self.a)
-            gi[:] = gc_prev[:batch] * self.a * _grad_sigmoid(self.i)
-            gf[:] = gc_prev[:batch] * c_prev[:batch] * _grad_sigmoid(self.f)
+            gc = gc_prev[:batch]
+            ga[:] = gc * self.i * _grad_tanh(self.a)
+            gi[:] = gc * self.a * _grad_sigmoid(self.i)
+            gf[:] = gc * c_prev[:batch] * _grad_sigmoid(self.f)
             go[:] = gh * co * _grad_sigmoid(self.o)
             gc_prev[:batch] *= self.f  # multiply f here
             gc_prev[batch:] = gc_rest
