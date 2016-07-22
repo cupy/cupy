@@ -43,7 +43,7 @@ class LogReport(extension.Extension):
             output to the log file.
         log_name (str): Name of the log file under the output directory. It can
             be a format string: the last result dictionary is passed for the
-            formatting. For example, users can use '{.iteration}' to separate
+            formatting. For example, users can use '{iteration}' to separate
             the log files for different iterations. If the log name is None, it
             does not output the log to any file.
 
@@ -87,7 +87,7 @@ class LogReport(extension.Extension):
 
             # write to the log file
             if self._log_name is not None:
-                log_name = self._log_name.format(stats_cpu)
+                log_name = self._log_name.format(**stats_cpu)
                 fd, path = tempfile.mkstemp(prefix=log_name, dir=trainer.out)
                 with os.fdopen(fd, 'w') as f:
                     json.dump(self._log, f, indent=4)
