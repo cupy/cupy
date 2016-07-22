@@ -38,7 +38,7 @@ class NormalBase(unittest.TestCase):
 
     def check_shaped_initializer(self, xp):
         initializer = self.target(scale=0.1, dtype=self.dtype)
-        w = initializer.get_array(self.shape, xp)
+        w = initializer.generate_array(self.shape, xp)
         self.assertIs(cuda.get_array_module(w), xp)
         self.assertTupleEqual(w.shape, self.shape)
         self.assertEqual(w.dtype, self.dtype)

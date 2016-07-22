@@ -35,7 +35,7 @@ class OrthogonalBase(unittest.TestCase):
 
     def check_shaped_initializer(self, xp):
         initializer = initializers.Orthogonal(scale=2.0, dtype=self.dtype)
-        w = initializer.get_array(self.shape, xp)
+        w = initializer.generate_array(self.shape, xp)
         self.assertIs(cuda.get_array_module(w), xp)
         self.assertTupleEqual(w.shape, self.shape)
         self.assertEqual(w.dtype, self.dtype)

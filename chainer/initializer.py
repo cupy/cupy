@@ -9,7 +9,7 @@ class Initializer(object):
         if dtype is not None:
             self.dtype = dtype
 
-    def get_array(self, shape, xp):
+    def generate_array(self, shape, xp):
         """Return initialized array.
 
         The algorithms used to make the new values depend on the
