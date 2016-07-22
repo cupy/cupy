@@ -73,12 +73,12 @@ class Variable(object):
         volatile (~chainer.Flag): Volatility flag. String ('on', 'off', or
             'auto') or boolean values can be used, too.
         name (str): Name of the variable.
+        grad (array): Initial gradient array.
 
     Attributes:
         data: Data array of type either :class:`numpy.ndarray` or
             :class:`cupy.ndarray`.
-        grad: Gradient array. It is ``None`` until backprop reaches this
-            variable.
+        grad: Gradient array.
         creator: The function who creates this variable. It is ``None`` if the
             variable is not created by any function.
         volatile: Ternary :class:`~chainer.Flag` object. If ON, the variable
@@ -86,7 +86,7 @@ class Variable(object):
             :class:`~chainer.Flag` for the detail of ternary flags.
 
     """
-    def __init__(self, data, volatile=flag.OFF, name=None):
+    def __init__(self, data, volatile=flag.OFF, name=None, grad=None):
         if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
             msg = '''numpy.ndarray or cuda.ndarray are expected.
 Actual: {0}'''.format(type(data))
@@ -96,13 +96,13 @@ Actual: {0}'''.format(type(data))
         self.rank = 0
         self._volatile = flag.Flag(volatile)
 
-        self._grad = None
+        self._grad = grad
         self.creator = None
 
         self.name = name
 
     def __reduce__(self):
-        return Variable, (self.data, self.volatile, self.name)
+        return Variable, (self.data, self.volatile, self.name, self._grad)
 
     def __repr__(self):
         if self.name:
