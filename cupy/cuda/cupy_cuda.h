@@ -554,10 +554,17 @@ int cudaProfilerStop() {
 // nvToolsExt.h
 ///////////////////////////////////////////////////////////////////////////////
 
-void nvtxMarkA(const char *message ) {
+void nvtxMarkA(const char *message) {
 }
 
-int nvtxRangePushA(const char *message ) {
+void nvtxMarkEx(const struct nvtxEventAttributes_t *eventAttrib) {
+}
+
+int nvtxRangePushA(const char *message) {
+    return 0;
+}
+
+int nvtxRangePushEx(const struct nvtxEventAttributes_t *eventAttrib) {
     return 0;
 }
 
