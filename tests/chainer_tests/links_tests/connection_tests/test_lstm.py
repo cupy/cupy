@@ -165,6 +165,39 @@ class TestLSTMToCPUToGPU(unittest.TestCase):
         self.check_to_cpu_to_gpu(self.link.h)
 
 
+class TestLSTMInvalidSize(unittest.TestCase):
+
+    in_size = 10
+    out_size = 20
+
+    def setUp(self):
+        self.link = links.LSTM(self.in_size, self.out_size)
+        upward = self.link.upward.W.data
+        upward[...] = numpy.random.uniform(-1, 1, upward.shape)
+        lateral = self.link.lateral.W.data
+        lateral[...] = numpy.random.uniform(-1, 1, lateral.shape)
+
+        x1_shape = (4, self.in_size)
+        self.x1 = numpy.random.uniform(-1, 1, x1_shape).astype(numpy.float32)
+        x2_shape = (5, self.in_size)
+        self.x2 = numpy.random.uniform(-1, 1, x2_shape).astype(numpy.float32)
+
+    def check_forward_invalid_size(self, x1_data, x2_data):
+        x1 = chainer.Variable(x1_data)
+        x2 = chainer.Variable(x2_data)
+        self.link(x1)
+        with self.assertRaises(TypeError):
+            self.link(x2)
+
+    def test_forward_invalid_size_cpu(self):
+        self.check_forward_invalid_size(self.x1, self.x2)
+
+    def test_forward_invalid_size_gpu(self):
+        self.link.to_gpu()
+        self.check_forward_invalid_size(cuda.to_gpu(self.x1),
+                                        cuda.to_gpu(self.x2))
+
+
 @testing.parameterize(
     {'in_size': 10, 'out_size': 10},
     {'in_size': 10, 'out_size': 40},

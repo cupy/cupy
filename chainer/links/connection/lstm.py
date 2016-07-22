@@ -168,6 +168,10 @@ class LSTM(LSTMBase):
         if self.h is not None:
             if batch == 0:
                 h_rest = self.h
+            elif len(self.h.data) < batch:
+                msg = ('The batch size of x must be equal to or less than the '
+                       'size of the previous state h.')
+                raise TypeError(msg)
             elif len(self.h.data) > batch:
                 h_update, h_rest = split_axis.split_axis(
                     self.h, [batch], axis=0)
