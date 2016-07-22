@@ -11,12 +11,6 @@ class AxisConcatenator(object):
     For detailed documentation on usage, see `r_`.
 
     """
-    def _retval(self, res):
-        self.axis = self._axis
-        self.matrix = self._matrix
-        self.col = 0
-        return res
-
     def _output_obj(self, newobj, tempobj, ndmin, trans1d):
         k2 = ndmin - tempobj.ndim
         if (trans1d < 0):
@@ -56,23 +50,20 @@ class AxisConcatenator(object):
                 return NotImplementedError
             else:
                 newobj = key[k]
+                tempobj = cupy.array(newobj, copy=False)
+                newobj = cupy.array(newobj, copy=False, ndmin=ndmin)
                 if ndmin > 1:
-                    tempobj = cupy.array(newobj, copy=False)
-                    newobj = cupy.array(newobj, copy=False, ndmin=ndmin)
                     if trans1d != -1 and tempobj.ndim < ndmin:
                         newobj = self._output_obj(newobj, ndmin, trans1d)
                     del tempobj
                 elif ndmin == 1:
-                    tempobj = cupy.array(newobj, copy=False)
-                    newobj = cupy.array(newobj, copy=False, ndmin=ndmin)
                     if tempobj.ndim < ndmin:
                         newobj = self._output_obj(newobj, tempobj, ndmin, trans1d)
                     del tempobj
 
             objs.append(newobj)
 
-        res = cupy.concatenate(tuple(objs), axis=self.axis)
-        return self._retval(res)
+        return cupy.concatenate(tuple(objs), axis=self.axis)
 
     def __len__(self):
         return 0
@@ -81,7 +72,7 @@ class CClass(AxisConcatenator):
     def __init__(self):
         """Translates slice objects to concatenation along the second axis.
 
-        This is short-hand for ``np.r_[-1,2,0, index expression]``, which is
+        This is CuPy object that corresponds to np.r_['-1,2,0', index expression], which is
         useful because of its common occurrence. In particular, arrays will be
         stacked along their last axis after being upgraded to at least 2-D with
         1's post-pended to the shape (column vectors made out of 1-D arrays).
@@ -147,7 +138,7 @@ class RClass(AxisConcatenator):
         .. seealso:: :func:`numpy.r_`
 
         """
-        AxisConcatenator.__init__(self, 0)
+        AxisConcatenator.__init__(self)
 
 r_ = RClass()
 
