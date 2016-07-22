@@ -203,8 +203,9 @@ cpdef memcpy(size_t dst, size_t src, size_t size, int kind):
 
 cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
                   size_t stream):
-    status = cudaMemcpyAsync(
-        <void*>dst, <void*>src, size, <MemoryKind>kind, <Stream>stream)
+    with nogil:
+        status = cudaMemcpyAsync(
+            <void*>dst, <void*>src, size, <MemoryKind>kind, <Stream>stream)
     check_status(status)
 
 
@@ -268,7 +269,8 @@ cpdef streamDestroy(size_t stream):
 
 
 cpdef streamSynchronize(size_t stream):
-    status = cudaStreamSynchronize(<Stream>stream)
+    with nogil:
+        status = cudaStreamSynchronize(<Stream>stream)
     check_status(status)
 
 
