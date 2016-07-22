@@ -332,8 +332,7 @@ Actual: {0}'''.format(type(data))
                 heapq.heappush(cand_funcs, (-cand.rank, len(seen_set), cand))
                 seen_set.add(cand)
 
-        if self.creator is not None:
-            add_cand(self.creator)
+        add_cand(self.creator)
 
         while cand_funcs:
             _, _, func = heapq.heappop(cand_funcs)
