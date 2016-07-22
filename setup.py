@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-import chainer_setup_build
+import cupy_setup_build
 
 
 setup_requires = []
@@ -14,7 +14,7 @@ install_requires = [
     'six>=1.9.0',
 ]
 
-ext_modules = chainer_setup_build.get_ext_modules()
+ext_modules = cupy_setup_build.get_ext_modules()
 
 setup(
     name='cupy',
@@ -22,46 +22,9 @@ setup(
     description=('CuPy: NumPy-like API accelerated with CUDA'),
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='http://chainer.org/',
+    url='http://cupy-ndarray.org/',
     license='MIT License',
-    packages=['chainer',
-              'chainer.dataset',
-              'chainer.datasets',
-              'chainer.functions',
-              'chainer.functions.activation',
-              'chainer.functions.array',
-              'chainer.functions.caffe',
-              'chainer.functions.connection',
-              'chainer.functions.evaluation',
-              'chainer.functions.loss',
-              'chainer.functions.math',
-              'chainer.functions.noise',
-              'chainer.functions.normalization',
-              'chainer.functions.pooling',
-              'chainer.functions.theano',
-              'chainer.functions.util',
-              'chainer.function_hooks',
-              'chainer.iterators',
-              'chainer.initializers',
-              'chainer.links',
-              'chainer.links.activation',
-              'chainer.links.caffe',
-              'chainer.links.caffe.protobuf2',
-              'chainer.links.caffe.protobuf3',
-              'chainer.links.connection',
-              'chainer.links.loss',
-              'chainer.links.model',
-              'chainer.links.model.vision',
-              'chainer.links.normalization',
-              'chainer.links.theano',
-              'chainer.optimizers',
-              'chainer.serializers',
-              'chainer.testing',
-              'chainer.training',
-              'chainer.training.extensions',
-              'chainer.training.triggers',
-              'chainer.utils',
-              'cupy',
+    packages=['cupy',
               'cupy.binary',
               'cupy.core',
               'cupy.creation',
