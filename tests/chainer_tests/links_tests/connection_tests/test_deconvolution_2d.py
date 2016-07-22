@@ -66,7 +66,7 @@ class TestDeconvolution2D(unittest.TestCase):
 
         testing.assert_allclose(y_cpu.data, y_gpu.data.get())
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_consistency(self):
         self.link.use_cudnn = self.use_cudnn
@@ -84,7 +84,7 @@ class TestDeconvolution2D(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.link.use_cudnn = self.use_cudnn

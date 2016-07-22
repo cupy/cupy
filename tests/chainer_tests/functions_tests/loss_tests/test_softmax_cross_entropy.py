@@ -81,7 +81,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
@@ -101,7 +101,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
@@ -147,7 +147,7 @@ class TestSoftmaxCrossEntropyValueCheck(unittest.TestCase):
     def test_value_check_gpu(self):
         self.check_value_check(self.x, self.t, False)
 
-    @attr.cudnn
+    @attr.gpu
     def test_value_check_gpu_cudnn(self):
         self.check_value_check(cuda.to_gpu(self.x), cuda.to_gpu(self.t), True)
 
