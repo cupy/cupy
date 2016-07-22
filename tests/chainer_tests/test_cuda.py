@@ -91,6 +91,31 @@ class TestToCPU(unittest.TestCase):
         self.assertIsInstance(y, numpy.ndarray)
         numpy.testing.assert_array_equal(self.x, y)
 
+    @attr.gpu
+    def test_numpy_array_async(self):
+        y = cuda.to_cpu(self.x, stream=cuda.Stream())
+        self.assertIsInstance(y, numpy.ndarray)
+        self.assertIs(self.x, y)  # Do not copy
+
+    @attr.gpu
+    def test_cupy_array_async1(self):
+        x = cuda.to_gpu(self.x)
+        if not self.c_contiguous:
+            x = cuda.cupy.asfortranarray(x)
+        y = cuda.to_cpu(x, stream=cuda.Stream(null=True))
+        self.assertIsInstance(y, numpy.ndarray)
+        cuda.cupy.testing.assert_array_equal(self.x, y)
+
+    @attr.multi_gpu(2)
+    def test_cupy_array_async2(self):
+        x = cuda.to_gpu(self.x, device=1)
+        with x.device:
+            if not self.c_contiguous:
+                x = cuda.cupy.asfortranarray(x)
+        y = cuda.to_cpu(x, stream=cuda.Stream(null=True))
+        self.assertIsInstance(y, numpy.ndarray)
+        cuda.cupy.testing.assert_array_equal(self.x, y)
+
     def test_variable(self):
         x = chainer.Variable(self.x)
         with self.assertRaises(TypeError):
