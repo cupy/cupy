@@ -192,6 +192,7 @@ class TestLSTMInvalidSize(unittest.TestCase):
     def test_forward_invalid_size_cpu(self):
         self.check_forward_invalid_size(self.x1, self.x2)
 
+    @attr.gpu
     def test_forward_invalid_size_gpu(self):
         self.link.to_gpu()
         self.check_forward_invalid_size(cuda.to_gpu(self.x1),
