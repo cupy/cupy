@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
 from chainer.utils import conv_nd
 from chainer.utils import type_check
@@ -13,8 +14,7 @@ if cuda.cudnn_enabled:
     _cudnn_version = libcudnn.getVersion()
 
 
-def _check_cudnn_acceptable_type(x_dtype):
-    return _cudnn_version >= 3000 or x_dtype != numpy.float16
+_check_cudnn_acceptable_type = pooling_2d._check_cudnn_acceptable_type
 
 
 class PoolingND(function.Function):
