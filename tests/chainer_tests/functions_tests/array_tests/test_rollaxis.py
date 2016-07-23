@@ -74,7 +74,7 @@ class TestRollaxisInvalidType(unittest.TestCase):
         self.check_type_error(self.x)
 
     @attr.gpu
-    def test_type_error_cpu(self):
+    def test_type_error_gpu(self):
         self.check_type_error(cuda.to_gpu(self.x))
 
 
