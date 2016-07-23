@@ -53,7 +53,7 @@ class TestConvolution2DFunction(unittest.TestCase):
             self.check_backward_options = {
                 'eps': 2 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
 
-    @attr.cudnn
+    @attr.gpu
     def test_forward_consistency(self, nobias=False):
         x_cpu = chainer.Variable(self.x)
         W_cpu = chainer.Variable(self.W)
@@ -114,13 +114,13 @@ class TestConvolution2DFunction(unittest.TestCase):
     def test_backward_cpu_nobias(self):
         self.check_backward(self.x, self.W, None, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             cuda.to_gpu(self.b), cuda.to_gpu(self.gy))
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_nobias(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
