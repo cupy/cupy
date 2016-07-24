@@ -109,9 +109,10 @@ class TestDeconvolutionND(unittest.TestCase):
         if b_data is not None:
             inputs = inputs + (b_data,)
 
+        ndim = len(self.dims)
         gradient_check.check_backward(
             deconvolution_nd.DeconvolutionND(
-                self.stride, self.pad, self.outsize, use_cudnn),
+                ndim, self.stride, self.pad, self.outsize, use_cudnn),
             inputs, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
