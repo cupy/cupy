@@ -102,6 +102,8 @@ class DeconvolutionND(function.Function):
         ksize = W.shape[2:]
         n, in_c = x.shape[:2]   # x: n, C_I, d_1, d_2, ..., d_N
         dims = x.shape[2:]
+        ndim = self.ndim
+        colon = slice(None)
 
         # Make empty array for output.
         if self.outs is None:
@@ -125,8 +127,8 @@ class DeconvolutionND(function.Function):
         self.conv_desc = cudnn.create_convolution_descriptor(
             self.pad, self.stride)
         if b is not None:
-            self.bias_desc = cudnn.create_tensor_descriptor(
-                b[None, :, None, None])
+            b_index = (None, colon) + (None,) * ndim
+            self.bias_desc = cudnn.create_tensor_descriptor(b[b_index])
 
         # cuDNN forward computation.
         oz_dtype = 'd' if x.dtype == 'd' else 'f'
