@@ -21,6 +21,7 @@ from chainer.utils import conv
     'dims': [(4, 3)],
     'nobias': [True, False],
     'test_outsize': [True, False],
+    'c_contiguous': [True, False],
 #    'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
 #    'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'x_dtype': [numpy.float32],
