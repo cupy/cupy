@@ -1,6 +1,7 @@
 import unittest
 
 import functools
+import mock
 import numpy
 from operator import mul
 
@@ -134,3 +135,60 @@ class TestDeconvolutionND(unittest.TestCase):
         self.check_backward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.W), b,
             cuda.to_gpu(self.gy), use_cudnn=False)
+
+
+@testing.parameterize(*testing.product({
+    'dims': [(5, 4, 3), (4, 3), (3,)],
+    'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+@attr.cudnn
+class TestDeconvolutionNDCudnnCall(unittest.TestCase):
+
+    def setUp(self):
+        in_channels = 3
+        out_channels = 2
+        ndim = len(self.dims)
+        ksize = (3,) * ndim
+        stride = (1,) * ndim
+        pad = (1,) * ndim
+
+        W_scale = numpy.sqrt(1. / functools.reduce(mul, ksize, in_channels))
+        W_shape = (in_channels, out_channels) + ksize
+        self.W = cuda.cupy.random.normal(
+            0, W_scale, W_shape).astype(self.dtype)
+        outs = tuple(
+            conv.get_deconv_outsize(d, k, s, p)
+            for (d, k, s, p) in zip(self.dims, ksize, stride, pad))
+        x_shape = (2, in_channels) + self.dims
+        self.x = cuda.cupy.random.uniform(-1, 1, x_shape).astype(self.dtype)
+        gy_shape = (2, out_channels) + outs
+        self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
+        self.expected = self.use_cudnn and ndim > 1 and (
+            cuda.cudnn.cudnn.getVersion() >= 3000 or
+            self.dtype != numpy.float16)
+
+    def forward(self):
+        x = chainer.Variable(self.x)
+        W = chainer.Variable(self.W)
+        return F.deconvolution_nd(
+            x, W, None, stride=1, pad=1, use_cudnn=self.use_cudnn)
+
+    def test_call_cudnn_forward(self):
+        if cuda.cudnn.cudnn.getVersion() >= 4000:
+            name = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
+        else:
+            name = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
+        with mock.patch(name) as func:
+            self.forward()
+            self.assertEqual(func.called, self.expected)
+
+    def test_call_cudnn_backward(self):
+        y = self.forward()
+        y.grad = self.gy
+        with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
+            y.backward()
+            self.assertEqual(func.called, self.expected)
+
+
+testing.run_module(__name__, __file__)
