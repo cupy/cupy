@@ -69,9 +69,6 @@ def crf1d(cost, xs, ys):
 
 
 def argmax_crf1d(cost, xs):
-    n_label = cost.data.shape[0]
-    n_batch = xs[0].data.shape[0]
-
     alpha = xs[0]
     max_inds = []
     for x in xs[1:]:
