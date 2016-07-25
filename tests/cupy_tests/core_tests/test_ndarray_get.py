@@ -36,10 +36,10 @@ class TestArrayGet(unittest.TestCase):
     def test_contiguous_array_stream(self, dtype):
         def contiguous_array(xp):
             return testing.shaped_arange((3,), xp=xp, dtype=dtype)
-        self.check_get(contiguous_array, self.stream.ptr)
+        self.check_get(contiguous_array, self.stream)
 
     @testing.for_all_dtypes()
     def test_non_contiguous_array_stream(self, dtype):
         def non_contiguous_array(xp):
             return testing.shaped_arange((3,), xp=xp, dtype=dtype)[0::2]
-        self.check_get(non_contiguous_array, self.stream.ptr)
+        self.check_get(non_contiguous_array, self.stream)
