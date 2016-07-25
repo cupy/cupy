@@ -1,5 +1,7 @@
+import numpy
 import six
 
+import chainer
 from chainer.functions.activation import lstm
 from chainer import initializers
 from chainer import link
@@ -57,7 +59,7 @@ class StatelessLSTM(LSTMBase):
 
         Args:
             c (~chainer.Variable): Cell states of LSTM units.
-            h (~chainer.Variable): Output at the previous timestep.
+            h (~chainer.Variable): Output at the previous time step.
             x (~chainer.Variable): A new batch from the input sequence.
 
         Returns:
@@ -141,6 +143,29 @@ class LSTM(LSTMBase):
             self.c.to_gpu(device)
         if self.h is not None:
             self.h.to_gpu(device)
+
+    def set_state(self, c, h):
+        """Sets the internal state.
+
+        It sets the :attr:`c` and :attr:`h` attributes.
+
+        Args:
+            c (~chainer.Variable): A new cell states of LSTM units.
+            h (~chainer.Variable): A new output at the previous time step.
+
+        """
+        assert isinstance(c, chainer.Variable)
+        assert isinstance(h, chainer.Variable)
+        c_ = c
+        h_ = h
+        if self.xp == numpy:
+            c_.to_cpu()
+            h_.to_cpu()
+        else:
+            c_.to_gpu()
+            h_.to_gpu()
+        self.c = c_
+        self.h = h_
 
     def reset_state(self):
         """Resets the internal state.

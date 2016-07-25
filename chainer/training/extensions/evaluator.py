@@ -106,7 +106,7 @@ class Evaluator(extension.Extension):
         Unlike usual extensions, this extension can be executed without passing
         a trainer object. This extension reports the performance on validation
         dataset using the :func:`~chainer.report` function. Thus, users can use
-        this extension independently from any trainer by manutally configuring
+        this extension independently from any trainer by manually configuring
         a :class:`~chainer.Reporter` object.
 
         Args:

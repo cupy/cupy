@@ -135,6 +135,10 @@ split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
 
+stack
+~~~~~
+.. autofunction:: stack
+
 swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
@@ -316,7 +320,7 @@ min
 .. autofunction:: min
 
 minimum
-~~~~~~
+~~~~~~~
 .. autofunction:: minimum
 
 scale

@@ -18,7 +18,7 @@ class ExponentialShift(extension.Extension):
         rate (float): Rate of the exponential shift. This value is multiplied
             to the attribute at each call.
         init (float): Initial value of the attribute. If it is ``None``, the
-            extension exracts the attribute at the first call and uses it as
+            extension extracts the attribute at the first call and uses it as
             the initial value.
         target (float): Target value of the attribute. If the attribute reaches
             this value, the shift stops.

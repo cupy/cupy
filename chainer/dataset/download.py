@@ -26,7 +26,7 @@ def set_dataset_root(path):
     """Sets the root directory to download and cache datasets.
 
     There are two ways to set the dataset root directory. One is by setting the
-    environmant variable ``CHAINER_DATASET_ROOT``. The other is by using this
+    environment variable ``CHAINER_DATASET_ROOT``. The other is by using this
     function. If both are specified, one specified via this function is used.
     The default dataset root is ``$HOME/.chainer/dataset``.
 

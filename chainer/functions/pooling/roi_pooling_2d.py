@@ -330,7 +330,7 @@ def roi_pooling_2d(x, rois, outh, outw, spatial_scale):
         spatial_scale (float): Scale of the roi is resized.
 
     Returns:
-        ~chainer.Variable: Ouptut variable.
+        ~chainer.Variable: Output variable.
 
     See the original paper proposing ROIPooling:
     `Fast R-CNN <http://arxiv.org/abs/1504.08083>`_.

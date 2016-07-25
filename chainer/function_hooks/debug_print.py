@@ -24,9 +24,9 @@ class PrintHook(function.FunctionHook):
     ...     z.backward()
 
     In this example, ``PrintHook`` shows the debug information of
-    forward propagations of ``LinearFunction`` (which is implicitly
+    forward propagation of ``LinearFunction`` (which is implicitly
     called by ``l``) and ``Sum`` (called by ``F.sum``)
-    and backward propagations of ``z`` and ``y``.
+    and backward propagation of ``z`` and ``y``.
 
     Unlike simple "debug print" technique, where users insert print functions
     at every function to be inspected, we can show the information

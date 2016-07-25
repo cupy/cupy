@@ -410,8 +410,8 @@ Example: Multi-layer Perceptron on MNIST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now you can solve a multiclass classification task using a multi-layer perceptron.
-We use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing defacto "hello world" of machine learning.
-This MNIST example is also found in ``examples/mnist`` directory of the official repository.
+We use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing de facto "hello world" of machine learning.
+This MNIST example is also found in the `examples/mnist <https://github.com/pfnet/chainer/tree/master/examples/mnist>`_ directory of the official repository.
 We show how to use :class:`~training.Trainer` to construct and run the training loop in this section.
 
 We first have to prepare the MNIST dataset.
@@ -438,7 +438,7 @@ In this case, we can use :class:`iterators.SerialIterator`.
 
 .. doctest::
 
-   >>> train_iter = iterators.SerialIterator(train, batch_size=100)
+   >>> train_iter = iterators.SerialIterator(train, batch_size=100, shuffle=True)
 
 On the other hand, we do not have to shuffle the test dataset.
 In this case, we can pass ``shuffle=False`` argument to disable the shuffling.
@@ -496,7 +496,7 @@ We can set an arbitrary predictor link to an instance of the classifier.
 
 The :func:`~chainer.report` function reports the loss and accuracy values to the trainer.
 For the detailed mechanism of collecting training statistics, see :ref:`reporter`.
-You can also collect other types of obeservations like activation statistics by similar ways.
+You can also collect other types of observations like activation statistics in a similar ways.
 
 Note that a class similar to the Classifier above is defined as :class:`chainer.links.Classifier`.
 So instead of using the above example, we will use this predefined Classifier chain instead.

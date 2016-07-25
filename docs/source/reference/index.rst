@@ -21,3 +21,4 @@ Chainer Reference Manual
    extensions
    caffe
    graph
+   environment

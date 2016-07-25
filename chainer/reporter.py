@@ -210,7 +210,7 @@ def report(values, observer=None):
 def report_scope(observation):
     """Returns a report scope with the current reporter.
 
-    This is equivalant to ``get_current_reporter().scope(observation)``,
+    This is equivalent to ``get_current_reporter().scope(observation)``,
     except that it does not make the reporter current redundantly.
 
     """
