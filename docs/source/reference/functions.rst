@@ -127,6 +127,10 @@ reshape
 ~~~~~~~
 .. autofunction:: reshape
 
+rollaxis
+~~~~~~~
+.. autofunction:: rollaxis
+
 select_item
 ~~~~~~~~~~~
 .. autofunction:: select_item

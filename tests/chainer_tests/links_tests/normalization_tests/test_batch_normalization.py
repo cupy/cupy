@@ -10,6 +10,7 @@ from chainer import links
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import type_check
 
 
 def _batch_normalization(expander, gamma, beta, x, mean, var, eps, test):
@@ -244,11 +245,13 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
         self.check_backward(x, gy)
 
 
+@testing.parameterize(*testing.product({
+    'size': [3, (2, 3)],
+}))
 class TestInitialize(unittest.TestCase):
 
     def setUp(self):
         self.decay = 0.9
-        self.size = 3
         self.initial_gamma = numpy.random.uniform(-1, 1, self.size)
         self.initial_gamma = self.initial_gamma.astype(numpy.float32)
         self.initial_beta = numpy.random.uniform(-1, 1, self.size)
@@ -286,6 +289,32 @@ class TestDefaultInitializer(unittest.TestCase):
         self.link.to_gpu()
         testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
         testing.assert_allclose(numpy.zeros(self.size), self.link.beta.data)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(2, 4), (2, 5, 3, 4)],
+}))
+class TestInvalidInput(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.BatchNormalization(3)
+
+    def test_invalid_shape_cpu(self):
+        with self.assertRaises(type_check.InvalidType):
+            self.link(chainer.Variable(numpy.zeros(self.shape, dtype='f')))
+
+    @attr.gpu
+    def test_invalid_shape_gpu(self):
+        self.link.to_gpu()
+        with self.assertRaises(type_check.InvalidType):
+            self.link(chainer.Variable(cuda.cupy.zeros(self.shape, dtype='f')))
+
+
+class TestInvalidInitialize(unittest.TestCase):
+
+    def test_invalid_type(self):
+        with self.assertRaises(TypeError):
+            self.link = links.BatchNormalization({})
 
 
 testing.run_module(__name__, __file__)
