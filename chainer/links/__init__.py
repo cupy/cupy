@@ -35,7 +35,7 @@ Linear = linear.Linear
 LSTM = lstm.LSTM
 MLPConvolution2D = mlp_convolution_2d.MLPConvolution2D
 Parameter = parameter.Parameter
-Peephole = peephole.Peephole
+Peephole = peephole.StatefulPeepholeLSTM
 
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = negative_sampling.NegativeSampling
