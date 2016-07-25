@@ -17,6 +17,8 @@ class Normal(initializer.Initializer):
 
     Args:
         scale(float): Standard deviation of Gaussian distribution.
+        dtype: Data type specifier.
+
     """
 
     def __init__(self, scale=0.05, **kwargs):
@@ -45,6 +47,7 @@ class GlorotNormal(initializer.Initializer):
     Args:
         scale (float): A constant that determines the scale
             of the standard deviation.
+        dtype: Data type specifier.
 
     """
 
@@ -73,6 +76,7 @@ class HeNormal(initializer.Initializer):
     Args:
         scale (float): A constant that determines the scale
             of the standard deviation.
+        dtype: Data type specifier.
 
     """
 

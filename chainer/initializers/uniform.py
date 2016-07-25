@@ -17,6 +17,7 @@ class Uniform(initializer.Initializer):
     Attributes:
         scale (float): A constant that determines the
             scale of the uniform distribution.
+        dtype: Data type specifier.
 
     """
 
@@ -45,6 +46,7 @@ class LeCunUniform(initializer.Initializer):
     Attributes:
         scale (float): A constant that determines the
             scale of the uniform distribution.
+        dtype: Data type specifier.
 
     """
 
@@ -71,6 +73,7 @@ class GlorotUniform(initializer.Initializer):
     Attributes:
         scale (float): A constant that determines the
             scale of the uniform distribution.
+        dtype: Data type specifier.
 
     """
 
@@ -96,6 +99,7 @@ class HeUniform(initializer.Initializer):
     Attributes:
         scale (float): A constant that determines the
             scale of the uniform distribution.
+        dtype: Data type specifier.
 
     """
 
