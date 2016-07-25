@@ -89,5 +89,6 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError("All dimensions of input must be of equal length")
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
+    # Since the current cupy does not support a.flat,
     # we use a.ravel() instead of a.flat
     a.ravel()[:end:step] = val
