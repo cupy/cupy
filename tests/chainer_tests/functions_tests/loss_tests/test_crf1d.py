@@ -4,7 +4,6 @@ import numpy
 
 import chainer
 from chainer import functions
-from chainer import gradient_check
 from chainer import testing
 
 
