@@ -13,12 +13,15 @@ class TestArrayGet(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     def setUp(self):
-        self.stream = cuda.Stream()
+        self.stream = cuda.Stream(null=True)
 
     def check_get(self, f, stream):
         a_gpu = f(cupy)
-        a_cpu = f(numpy)
-        np_testing.assert_array_equal(a_gpu.get(stream), a_cpu)
+        a_cpu = a_gpu.get(stream)
+        if stream:
+            stream.synchronize()
+        b_cpu = f(numpy)
+        np_testing.assert_array_equal(a_cpu, b_cpu)
 
     @testing.for_all_dtypes()
     def test_contiguous_array(self, dtype):
