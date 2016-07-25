@@ -52,8 +52,7 @@ def crf1d(cost, xs, ys):
 
     alpha = xs[0]
     for x in xs[1:]:
-        b_alpha, b_cost = broadcast.broadcast(
-            reshape.reshape(alpha, (n_batch, n_label, 1)), cost)
+        b_alpha, b_cost = broadcast.broadcast(alpha[..., None], cost)
         alpha = logsumexp.logsumexp(b_alpha + b_cost, axis=1) + x
 
     logz = logsumexp.logsumexp(alpha, axis=1)
@@ -76,8 +75,7 @@ def argmax_crf1d(cost, xs):
     alpha = xs[0]
     max_inds = []
     for x in xs[1:]:
-        b_alpha, b_cost = broadcast.broadcast(
-            reshape.reshape(alpha, (n_batch, n_label, 1)), cost)
+        b_alpha, b_cost = broadcast.broadcast(alpha[..., None], cost)
         scores = b_alpha + b_cost
         max_ind = minmax.argmax(scores, axis=1)
         max_inds.append(max_ind)
