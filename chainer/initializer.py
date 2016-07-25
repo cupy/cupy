@@ -48,9 +48,6 @@ class Initializer(object):
             array (numpy.ndarray or cupy.ndarray):
                 An array to be initialized by this initializer.
 
-        Returns:
-            numpy.ndarray or cupy.ndarray: An initialized array.
-
         """
         raise NotImplementedError()
 

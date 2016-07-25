@@ -53,6 +53,10 @@ class Constant(initializer.Initializer):
 
 
 def Zero(dtype=None):
+    """Returns initializer that initializes array with the all-zero array.
+
+    Args:
+        dtype: Data type specifier.
 
     Returns:
         numpy.ndarray or cupy.ndarray: An initialized array.
@@ -71,3 +75,4 @@ def One(dtype=None):
         numpy.ndarray or cupy.ndarray: An initialized array.
 
     """
+    return Constant(1.0, dtype=dtype)
