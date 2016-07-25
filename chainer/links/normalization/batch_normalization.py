@@ -127,8 +127,10 @@ class BatchNormalization(link.Link):
             self.avg_var = func.running_var
         else:
             # Use running average statistics or fine-tuned statistics.
+            mean = variable.Variable(self.avg_mean, volatile='auto')
+            var = variable.Variable(self.avg_var, volatile='auto')
             ret = batch_normalization.fixed_batch_normalization(
-                x, gamma, beta, self.avg_mean, self.avg_var, self.eps)
+                x, gamma, beta, mean, var, self.eps)
         return ret
 
     def start_finetuning(self):

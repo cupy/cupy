@@ -118,7 +118,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
         self.mean = numpy.random.uniform(-1, 1, (3,)).astype(self.dtype)
         self.var = numpy.random.uniform(
             0.5, 1, (3,)).astype(self.dtype)
-        self.args = [self.x, self.gamma, self.beta]
+        self.args = [self.x, self.gamma, self.beta, self.mean, self.var]
         self.train = False
         self.check_forward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
         self.check_backward_optionss = {
@@ -130,8 +130,8 @@ class TestFixedBatchNormalization(unittest.TestCase):
 
     def check_forward(self, args, use_cudnn=True):
         y = functions.fixed_batch_normalization(
-            *[chainer.Variable(i) for i in args], mean=self.mean,
-            var=self.var, eps=self.eps, use_cudnn=use_cudnn)
+            *[chainer.Variable(i) for i in args],
+            eps=self.eps, use_cudnn=use_cudnn)
         self.assertEqual(y.data.dtype, self.dtype)
 
         y_expect = _batch_normalization(
@@ -157,7 +157,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
     def check_backward(self, args, y_grad):
         gradient_check.check_backward(
             batch_normalization.BatchNormalizationFunction(
-                mean=self.mean, var=self.var, train=self.train,
+                mean=None, var=None, train=self.train,
                 decay=self.decay, eps=self.eps),
             args, y_grad,  **self.check_backward_optionss)
 

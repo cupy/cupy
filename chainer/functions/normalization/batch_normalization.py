@@ -3,7 +3,6 @@ import numpy
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
-from chainer import variable
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
@@ -24,19 +23,9 @@ class BatchNormalizationFunction(function.Function):
 
     def __init__(self, eps=2e-5, mean=None, var=None, train=False,
                  decay=0.9, use_cudnn=True):
-        if isinstance(mean, variable.Variable):
-            mean = mean.data
-        if isinstance(var, variable.Variable):
-            var = var.data
-        if train:
-            self.running_mean = mean
-            self.running_var = var
-        else:
-            # Test/evaluation mode
-            self.running_mean = None
-            self.running_var = None
-            self.fixed_mean = mean
-            self.fixed_var = var
+        self.running_mean = mean
+        self.running_var = var
+
         # If train is true, use batch statistics (training mode). Otherwise, if
         # false, use the supplied mean and variance.
         self.train = train
@@ -55,8 +44,12 @@ class BatchNormalizationFunction(function.Function):
         self.decay = decay
 
     def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() == 3)
-        x_type, gamma_type, beta_type = in_types
+        n_in = in_types.size().eval()
+        if n_in != 3 and n_in != 5:
+            raise type_check.InvalidType(
+                '%s or %s' % (in_types.size() == 3, in_types.size() == 5),
+                '%s == %s' % (in_types.size(), n_in))
+        x_type, gamma_type, beta_type = in_types[:3]
         type_check.expect(
             x_type.dtype.kind == 'f',
             x_type.ndim >= gamma_type.ndim + 1,
@@ -65,12 +58,20 @@ class BatchNormalizationFunction(function.Function):
             beta_type.dtype == x_type.dtype,
             gamma_type.shape == beta_type.shape,
         )
+        if len(in_types) == 5:
+            mean_type, var_type = in_types[3:]
+            type_check.expect(
+                mean_type.dtype == x_type.dtype,
+                mean_type.shape == gamma_type.shape,
+                var_type.dtype == x_type.dtype,
+                var_type.shape == gamma_type.shape,
+            )
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
-        x, gamma, beta = inputs
+        x, gamma, beta = inputs[:3]
 
-        # TODO(vogel): Check for float16 support again in next cuDNN version.
+        # TODO(bkvogel): Check for float16 support again in next cuDNN version.
         if x[0].dtype == numpy.float16:
             # cuDNN v5 batch normalization does not seem to support float16.
             self.use_cudnn = False
@@ -87,11 +88,9 @@ class BatchNormalizationFunction(function.Function):
             else:
                 self.running_mean = xp.array(self.running_mean)
                 self.running_var = xp.array(self.running_var)
-        else:
-            # Make sure the attribute arrays are the same type (numpy/cupy)
-            # as the inputs.
-            self.fixed_mean = xp.array(self.fixed_mean)
-            self.fixed_var = xp.array(self.fixed_var)
+        elif len(inputs) == 5:
+                self.fixed_mean = xp.array(inputs[3])
+                self.fixed_var = xp.array(inputs[4])
 
         # cuDNN only supports these tensor dimensions because they are
         # the most commonly used. If there is a need to support other
@@ -166,7 +165,6 @@ class BatchNormalizationFunction(function.Function):
                     derivedBnDesc.value, gamma.data.ptr, beta.data.ptr,
                     self.fixed_mean.data.ptr, self.fixed_var.data.ptr,
                     self.eps)
-
         else:
             if self.train:
                 axis = (0,) + tuple(range(head_ndim, x.ndim))
@@ -212,6 +210,21 @@ class BatchNormalizationFunction(function.Function):
         m = gamma.dtype.type(x.size // gamma.size)
         axis = (0,) + tuple(range(head_ndim, x.ndim))
         xp = cuda.get_array_module(x)
+        if len(inputs) == 5:
+            # This case is unlikely to be used in practice and so does not
+            # need to be optimized for performance.
+            mean = inputs[3]
+            var = inputs[4]
+            std = xp.sqrt(var, dtype=var.dtype)
+            gs = gamma / std
+            gbeta = gy.sum(axis=axis)
+            x_mu = x - mean[expander]
+            x_hat = x_mu / std[expander]
+            ggamma = (gy * x_hat).sum(axis=axis)
+            gmean = -gs * gbeta
+            gvar = -0.5 * gamma / var * ggamma
+            gx = gs[expander] * gy
+            return gx, ggamma, gbeta, gmean, gvar
 
         if xp is numpy:
             gbeta = gy.sum(axis=axis)
@@ -346,8 +359,8 @@ def fixed_batch_normalization(x, gamma, beta, mean, var, eps=2e-5,
         x (Variable): The input variable.
         gamma (Variable): The scaling parameter of normalized data.
         beta (Variable): The shifting parameter of scaled normalized data.
-        mean (array or Variable): The shifting parameter of input.
-        var (array or Variable): The square of scaling parameter of input.
+        mean (Variable): The shifting parameter of input.
+        var (Variable): The square of scaling parameter of input.
         eps (float): Epsilon value for numerical stability.
 
     .. seealso::
@@ -355,5 +368,5 @@ def fixed_batch_normalization(x, gamma, beta, mean, var, eps=2e-5,
        :class:`links.BatchNormalization`
 
     """
-    return BatchNormalizationFunction(eps, mean, var, False,
-                                      0.0, use_cudnn)(x, gamma, beta)
+    return BatchNormalizationFunction(eps, None, None, False, 0.0,
+                                      use_cudnn)(x, gamma, beta, mean, var)
