@@ -187,7 +187,8 @@ def check_backward(func, x_data, y_grad, params=(),
         no_grads (list of bool): Flag to skip variable for gradient assertion.
             It should be same length as ``x_data``.
         dtype (~numpy.dtype): `x_data` and `y_grad` are casted to this dtype
-            when calculating numerical gradients. Only float type is allowed.
+            when calculating numerical gradients. Only float types and ``None``
+            are allowed.
 
     See:
        :func:`numerical_grad`
