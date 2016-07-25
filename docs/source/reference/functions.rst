@@ -139,6 +139,10 @@ split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
 
+stack
+~~~~~
+.. autofunction:: stack
+
 swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
