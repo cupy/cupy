@@ -4,9 +4,19 @@ import sys
 import numpy
 import six
 
+try:
+    from cupy import core
+except ImportError:
+    # core is a c-extension module.
+    # When a user cannot import core, it represents that CuPy is not correctly
+    # built.
+    msg = ('CuPy is not correctly installed. Please check your environment, '
+           'uninstall Chainer and reinstall it with `pip install chainer '
+           '--no-cache-dir -vvvv`.')
+    raise six.reraise(RuntimeError, RuntimeError(msg), sys.exc_info()[2])
+
 
 from cupy import binary
-from cupy import core
 from cupy import creation
 from cupy import indexing
 from cupy import io
@@ -125,6 +135,7 @@ concatenate = manipulation.join.concatenate
 dstack = manipulation.join.dstack
 hstack = manipulation.join.hstack
 vstack = manipulation.join.vstack
+stack = manipulation.join.stack
 
 asfortranarray = manipulation.kind.asfortranarray
 
@@ -193,7 +204,7 @@ mintypecode = numpy.mintypecode
 # -----------------------------------------------------------------------------
 take = indexing.indexing.take
 diagonal = indexing.indexing.diagonal
-
+ix_ = indexing.generate.ix_
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
@@ -318,6 +329,8 @@ fmin = math.misc.fmin
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 count_nonzero = sorting.count.count_nonzero
+nonzero = sorting.search.nonzero
+flatnonzero = sorting.search.flatnonzero
 
 argmax = sorting.search.argmax
 argmin = sorting.search.argmin

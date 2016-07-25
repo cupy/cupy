@@ -21,20 +21,20 @@ def _pair(x):
     return x, x
 
 
-@parameterize(
-    *testing.product({
-        'in_channels': [3],
-        'out_channels': [2],
-        'wscale': [1],
-        'ksize': [3],
-        'stride': [1, 2],
-        'pad': [1],
-        'nobias': [True, False],
-        'use_cudnn': [True, False],
-        'test_outsize': [True, False],
-        'c_contiguous': [True, False],
-    })
-)
+@parameterize(*testing.product({
+    'in_channels': [3],
+    'out_channels': [2],
+    'wscale': [1],
+    'ksize': [3],
+    'stride': [1, 2],
+    'pad': [1],
+    'nobias': [True, False],
+    'use_cudnn': [True, False],
+    'test_outsize': [True, False],
+    'c_contiguous': [True, False],
+    'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestDeconvolution2DFunction(unittest.TestCase):
 
     def setUp(self, use_cudnn=True):
@@ -44,9 +44,9 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         self.W = numpy.random.normal(
             0, self.wscale * numpy.sqrt(1. / (kh * kw * self.in_channels)),
             (self.in_channels, self.out_channels, kh, kw)
-        ).astype(numpy.float32)
+        ).astype(self.W_dtype)
         self.b = None if self.nobias else numpy.random.uniform(
-            -1, 1, self.out_channels).astype(numpy.float32)
+            -1, 1, self.out_channels).astype(self.x_dtype)
 
         N = 2
         inh, inw = 4, 3
@@ -54,11 +54,21 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         outw = conv.get_deconv_outsize(inw, kw, sw, pw)
         self.outsize = (outh, outw) if self.test_outsize else None
         self.x = numpy.random.uniform(
-            -1, 1, (N, self.in_channels, inh, inw)).astype(numpy.float32)
+            -1, 1, (N, self.in_channels, inh, inw)).astype(self.x_dtype)
         self.gy = numpy.random.uniform(
-            -1, 1, (N, self.out_channels, outh, outw)).astype(numpy.float32)
+            -1, 1, (N, self.out_channels, outh, outw)).astype(self.x_dtype)
+        self.test_forward_options = {}
+        self.check_backward_options = {
+            'eps': 1e-2, 'atol': 1e-4, 'rtol': 1e-3}
+        if self.x_dtype == numpy.float16:
+            self.test_forward_options = {'atol': 5e-3, 'rtol': 5e-2}
+            self.check_backward_options = {
+                'eps': 2**-3, 'atol': 1e-2, 'rtol': 1e-1}
+        elif self.W_dtype == numpy.float16:
+            self.check_backward_options = {
+                'eps': 2**-3, 'atol': 1e-3, 'rtol': 1e-2}
 
-    @attr.cudnn
+    @attr.gpu
     def test_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
         W_cpu = chainer.Variable(self.W)
@@ -75,10 +85,14 @@ class TestDeconvolution2DFunction(unittest.TestCase):
             x_gpu, W_gpu, b_gpu, stride=self.stride, pad=self.pad,
             outsize=self.outsize, use_cudnn=self.use_cudnn)
 
-        gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
+        self.assertEqual(y_cpu.data.dtype, self.x_dtype)
+        self.assertEqual(y_gpu.data.dtype, self.x_dtype)
+        testing.assert_allclose(
+            y_cpu.data, y_gpu.data.get(), **self.test_forward_options)
 
     @attr.gpu
     def test_forward_consistency_im2col(self):
+        self.use_cudnn = False
         self.test_forward_consistency()
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
@@ -103,24 +117,24 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         gradient_check.check_backward(
             deconvolution_2d.Deconvolution2DFunction(
                 self.stride, self.pad, self.outsize, self.use_cudnn),
-            args, y_grad, eps=1e-2)
+            args, y_grad, **self.check_backward_options)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.W, self.b, self.gy)
 
-    @attr.cudnn
-    @condition.retry(3)
+    @attr.gpu
+    @condition.retry(10)
     def test_backward_gpu(self):
         b = None if self.b is None else cuda.to_gpu(self.b)
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             b, cuda.to_gpu(self.gy))
 
 
-@testing.parameterize(
-    {'use_cudnn': True},
-    {'use_cudnn': False},
-)
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 @attr.cudnn
 class TestDeconvolution2DCudnnCall(unittest.TestCase):
 
@@ -133,15 +147,18 @@ class TestDeconvolution2DCudnnCall(unittest.TestCase):
         self.W = cuda.cupy.random.normal(
             0, numpy.sqrt(1. / (kh * kw * self.in_channels)),
             (self.in_channels, self.out_channels, kh, kw)
-        ).astype(numpy.float32)
+        ).astype(self.dtype)
         N = 2
         inh, inw = 4, 3
         outh = conv.get_deconv_outsize(inh, kh, sh, ph)
         outw = conv.get_deconv_outsize(inw, kw, sw, pw)
         self.x = cuda.cupy.random.uniform(
-            -1, 1, (N, self.in_channels, inh, inw)).astype(numpy.float32)
+            -1, 1, (N, self.in_channels, inh, inw)).astype(self.dtype)
         self.gy = cuda.cupy.random.uniform(
-            -1, 1, (N, self.out_channels, outh, outw)).astype(numpy.float32)
+            -1, 1, (N, self.out_channels, outh, outw)).astype(self.dtype)
+        self.expect = self.use_cudnn and (
+            cuda.cudnn.cudnn.getVersion() >= 3000 or
+            self.dtype != numpy.float16)
 
     def forward(self):
         x = chainer.Variable(self.x)
@@ -150,18 +167,20 @@ class TestDeconvolution2DCudnnCall(unittest.TestCase):
             x, W, None, stride=1, pad=1, use_cudnn=self.use_cudnn)
 
     def test_call_cudnn_forward(self):
-        v2 = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
-        v3 = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
-        with mock.patch(v2) as func_v2, mock.patch(v3) as func_v3:
+        if cuda.cudnn.cudnn.getVersion() >= 4000:
+            name = 'cupy.cudnn.cudnn.convolutionBackwardData_v3'
+        else:
+            name = 'cupy.cudnn.cudnn.convolutionBackwardData_v2'
+        with mock.patch(name) as func:
             self.forward()
-            self.assertEqual(func_v2.called or func_v3.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
-    def test_call_cudnn_backrward(self):
+    def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
         with mock.patch('cupy.cudnn.cudnn.convolutionForward') as func:
             y.backward()
-            self.assertEqual(func.called, self.use_cudnn)
+            self.assertEqual(func.called, self.expect)
 
 
 testing.run_module(__name__, __file__)

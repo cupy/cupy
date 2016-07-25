@@ -1,5 +1,5 @@
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
-    '''Returns the sum of an array along given axes.
+    """Returns the sum of an array along given axes.
 
     Args:
         a (cupy.ndarray): Array to take sum.
@@ -14,13 +14,13 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
 
     .. seealso:: :func:`numpy.sum`
 
-    '''
+    """
     # TODO(okuta): check type
     return a.sum(axis, dtype, out, keepdims)
 
 
 def prod(a, axis=None, dtype=None, out=None, keepdims=False):
-    '''Returns the product of an array along given axes.
+    """Returns the product of an array along given axes.
 
     Args:
         a (cupy.ndarray): Array to take product.
@@ -35,7 +35,7 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
 
     .. seealso:: :func:`numpy.prod`
 
-    '''
+    """
     # TODO(okuta): check type
     return a.prod(axis, dtype, out, keepdims)
 

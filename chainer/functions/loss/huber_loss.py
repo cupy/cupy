@@ -31,7 +31,8 @@ class HuberLoss(function.Function):
     def backward(self, inputs, gy):
         xp = cuda.get_array_module(*inputs)
         mask = xp.abs(self.diff) <= self.delta
-        gx = xp.where(mask, self.diff, self.delta * xp.sign(self.diff))
+        gx = gy[0].reshape(gy[0].shape + (1,) * (self.diff.ndim - 1)) * \
+            xp.where(mask, self.diff, self.delta * xp.sign(self.diff))
         return gx, -gx
 
 

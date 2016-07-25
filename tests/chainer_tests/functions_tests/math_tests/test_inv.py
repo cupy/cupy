@@ -36,23 +36,26 @@ class InvFunctionTest(unittest.TestCase):
                   numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
             numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
+        self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-4}
+        self.check_backward_options = {'atol': 1e-3, 'rtol': 1e-4}
 
-    def check_forward(self, x_data, atol=1e-7, rtol=1e-7):
+    def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.inv(x)
-        gradient_check.assert_allclose(
-            _inv(self.x), y.data, atol=atol, rtol=rtol)
+        testing.assert_allclose(
+            _inv(self.x), y.data, **self.check_forward_options)
 
-    def check_backward(self, x_data, y_grad, **kwargs):
+    def check_backward(self, x_data, y_grad, ):
         gradient_check.check_backward(
-            functions.Inv(), x_data, y_grad, **kwargs)
+            functions.Inv(), x_data, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
     def test_identity_cpu(self):
         eye = _make_eye(self.x.shape)
         x = chainer.Variable(self.x)
         y = functions.matmul(x, functions.inv(x))
-        gradient_check.assert_allclose(y.data, eye, rtol=1e-4, atol=1e-4)
+        testing.assert_allclose(
+            y.data, eye, **self.check_forward_options)
 
     @attr.gpu
     @condition.retry(3)
@@ -60,26 +63,26 @@ class InvFunctionTest(unittest.TestCase):
         eye = cuda.to_gpu(_make_eye(self.x.shape))
         x = chainer.Variable(cuda.to_gpu(self.x))
         y = functions.matmul(x, functions.inv(x))
-        gradient_check.assert_allclose(y.data, eye, rtol=1e-4, atol=1e-4)
+        testing.assert_allclose(
+            y.data, eye, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
-        self.check_forward(self.x, atol=1e-5, rtol=1e-5)
+        self.check_forward(self.x)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
-        self.check_forward(cuda.to_gpu(self.x), atol=1e-4, rtol=1e-4)
+        self.check_forward(cuda.to_gpu(self.x))
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.gy, atol=1e-4, rtol=1e-4)
+        self.check_backward(self.x, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy),
-                            atol=1e-4, rtol=1e-4)
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
 @testing.parameterize(*testing.product({
@@ -92,23 +95,27 @@ class BatchInvFunctionTest(unittest.TestCase):
                   numpy.random.uniform(-0.01, 0.01, self.shape)).astype(
             numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
+        self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-4}
+        self.check_backward_options = {'atol': 1e-3, 'rtol': 1e-4}
 
     def check_forward(self, x_data, atol=1e-7, rtol=1e-7):
         x = chainer.Variable(x_data)
         y = functions.batch_inv(x)
-        gradient_check.assert_allclose(
-            _inv(self.x), y.data, atol=atol, rtol=rtol)
+        testing.assert_allclose(
+            _inv(self.x), y.data, **self.check_forward_options)
 
     def check_backward(self, x_data, y_grad, **kwargs):
         gradient_check.check_backward(
-            functions.BatchInv(), x_data, y_grad, **kwargs)
+            functions.BatchInv(), x_data, y_grad,
+            **self.check_backward_options)
 
     @condition.retry(3)
     def test_identity_cpu(self):
         eye = _make_eye(self.x.shape)
         x = chainer.Variable(self.x)
         y = functions.batch_matmul(x, functions.batch_inv(x))
-        gradient_check.assert_allclose(y.data, eye, rtol=1e-4, atol=1e-4)
+        testing.assert_allclose(
+            y.data, eye, **self.check_forward_options)
 
     @attr.gpu
     @condition.retry(3)
@@ -116,26 +123,26 @@ class BatchInvFunctionTest(unittest.TestCase):
         eye = cuda.to_gpu(_make_eye(self.x.shape))
         x = chainer.Variable(cuda.to_gpu(self.x))
         y = functions.batch_matmul(x, functions.batch_inv(x))
-        gradient_check.assert_allclose(y.data, eye, rtol=1e-4, atol=1e-4)
+        testing.assert_allclose(
+            y.data, eye, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
-        self.check_forward(self.x, atol=1e-5, rtol=1e-5)
+        self.check_forward(self.x)
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
-        self.check_forward(cuda.to_gpu(self.x), atol=1e-5, rtol=1e-5)
+        self.check_forward(cuda.to_gpu(self.x))
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.gy, atol=1e-4, rtol=1e-4)
+        self.check_backward(self.x, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy),
-                            atol=1e-4, rtol=1e-4)
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
 class InvFunctionRaiseTest(unittest.TestCase):

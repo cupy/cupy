@@ -12,7 +12,7 @@ class Dropout(function.Function):
     def __init__(self, dropout_ratio):
         self.dropout_ratio = dropout_ratio
 
-    def check_type_forwrad(self, in_types):
+    def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         # TODO(okuta): float type check
         # type_check.expect(in_types[0].dtype == numpy.float32)

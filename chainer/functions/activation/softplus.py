@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer import utils
 from chainer.utils import type_check
 
 
@@ -10,24 +11,22 @@ class Softplus(function.Function):
     """Softplus function."""
 
     def __init__(self, beta=1.0):
-        self.beta = numpy.float32(beta)
-        self.beta_inv = numpy.float32(1.0 / beta)
+        self.beta = float(beta)
+        self.beta_inv = float(1.0 / beta)
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         x_type, = in_types
 
-        type_check.expect(
-            x_type.dtype == numpy.float32,
-        )
+        type_check.expect(x_type.dtype.kind == 'f')
 
     def forward_cpu(self, inputs):
         x, = inputs
         # y = log(1 + exp(beta * x)) / beta
         bx = self.beta * x
-        y = (numpy.fmax(bx, numpy.float32(0.0)) +
+        y = (numpy.fmax(bx, 0) +
              numpy.log1p(numpy.exp(-numpy.fabs(bx)))) * self.beta_inv
-        return y,
+        return utils.force_array(y.astype(x.dtype)),
 
     def forward_gpu(self, inputs):
         x, = inputs
@@ -44,7 +43,8 @@ class Softplus(function.Function):
     def backward_cpu(self, inputs, grads):
         x, = inputs
         g, = grads
-        return (1 - 1 / (1 + numpy.exp(self.beta * x))) * g,
+        gx = (1 - 1 / (1 + numpy.exp(self.beta * x))) * g
+        return utils.force_array(gx.astype(x.dtype)),
 
     def backward_gpu(self, inputs, grads):
         x, = inputs

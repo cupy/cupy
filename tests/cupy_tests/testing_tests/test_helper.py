@@ -2,6 +2,7 @@ import re
 import unittest
 
 import numpy
+import six
 
 import cupy
 from cupy import testing
@@ -38,14 +39,14 @@ class TestCheckCupyNumpyError(unittest.TestCase):
     def test_cupy_error(self):
         cupy_error = Exception()
         cupy_tb = 'xxxx'
-        with self.assertRaisesRegexp(AssertionError, cupy_tb):
+        with six.assertRaisesRegex(self, AssertionError, cupy_tb):
             helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
                                            None, None)
 
     def test_numpy_error(self):
         numpy_error = Exception()
         numpy_tb = 'yyyy'
-        with self.assertRaisesRegexp(AssertionError, numpy_tb):
+        with six.assertRaisesRegex(self, AssertionError, numpy_tb):
             helper._check_cupy_numpy_error(self, None, None,
                                            numpy_error, numpy_tb)
 
@@ -56,7 +57,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         numpy_tb = 'yyyy'
         # Use re.S mode to ignore new line characters
         pattern = re.compile(cupy_tb + '.*' + numpy_tb, re.S)
-        with self.assertRaisesRegexp(AssertionError, pattern):
+        with six.assertRaisesRegex(self, AssertionError, pattern):
             helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
                                            numpy_error, numpy_tb)
 
@@ -76,7 +77,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         numpy_tb = 'yyyy'
         # Use re.S mode to ignore new line characters
         pattern = re.compile(cupy_tb + '.*' + numpy_tb, re.S)
-        with self.assertRaisesRegexp(AssertionError, pattern):
+        with six.assertRaisesRegex(self, AssertionError, pattern):
             helper._check_cupy_numpy_error(
                 self, cupy_error, cupy_tb,
                 numpy_error, numpy_tb, accept_error=False)

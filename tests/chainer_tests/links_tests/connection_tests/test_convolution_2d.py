@@ -30,7 +30,7 @@ class TestConvolution2D(unittest.TestCase):
     def test_im2col_consistency(self):
         col_cpu = conv.im2col_cpu(self.x, 3, 3, 2, 2, 1, 1)
         col_gpu = conv.im2col_gpu(cuda.to_gpu(self.x), 3, 3, 2, 2, 1, 1)
-        gradient_check.assert_allclose(col_cpu, col_gpu.get(), atol=0, rtol=0)
+        testing.assert_allclose(col_cpu, col_gpu.get(), atol=0, rtol=0)
 
     @attr.gpu
     def test_col2im_consistency(self):
@@ -38,7 +38,7 @@ class TestConvolution2D(unittest.TestCase):
         h, w = self.x.shape[2:]
         im_cpu = conv.col2im_cpu(col, 2, 2, 1, 1, h, w)
         im_gpu = conv.col2im_gpu(cuda.to_gpu(col), 2, 2, 1, 1, h, w)
-        gradient_check.assert_allclose(im_cpu, im_gpu.get())
+        testing.assert_allclose(im_cpu, im_gpu.get())
 
     def check_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
@@ -50,9 +50,9 @@ class TestConvolution2D(unittest.TestCase):
         y_gpu = self.link(x_gpu)
         self.assertEqual(y_gpu.data.dtype, numpy.float32)
 
-        gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
+        testing.assert_allclose(y_cpu.data, y_gpu.data.get())
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_consistency(self):
         self.check_forward_consistency()
@@ -71,7 +71,7 @@ class TestConvolution2D(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.link.to_gpu()
@@ -99,7 +99,7 @@ class TestConvolution2D(unittest.TestCase):
         y = self.link(x)
         y_data2 = y.data
 
-        gradient_check.assert_allclose(y_data1, y_data2, atol=0, rtol=0)
+        testing.assert_allclose(y_data1, y_data2, atol=0, rtol=0)
 
     def test_pickling_cpu(self):
         self.check_pickling(self.x)

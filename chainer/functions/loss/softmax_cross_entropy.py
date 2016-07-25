@@ -15,8 +15,7 @@ if cuda.cudnn_enabled:
     _cudnn_version = libcudnn.getVersion()
 
 
-def logsumexp(x):
-    xp = cuda.get_array_module(x)
+def logsumexp(xp, x):
     m = x.max(axis=1, keepdims=True)
     y = x - m
     xp.exp(y, out=y)
@@ -25,11 +24,11 @@ def logsumexp(x):
 
 def softmax_log(x, use_cudnn):
     xp = cuda.get_array_module(x)
-    if xp != numpy and cuda.cudnn_enabled and use_cudnn \
-       and _cudnn_version >= 3000:
-        dtype = x.dtype
-        one = numpy.array(1, dtype=dtype).ctypes
-        zero = numpy.array(0, dtype=dtype).ctypes
+    if (xp != numpy and cuda.cudnn_enabled and use_cudnn and
+            _cudnn_version >= 3000):
+        oz_dtype = 'd' if x.dtype == 'd' else 'f'
+        one = numpy.array(1, dtype=oz_dtype).ctypes
+        zero = numpy.array(0, dtype=oz_dtype).ctypes
         handle = cudnn.get_handle()
         x_cube = x.reshape(x.shape[:2] + (-1, 1))
         desc = cudnn.create_tensor_descriptor(x_cube)
@@ -39,9 +38,8 @@ def softmax_log(x, use_cudnn):
             x_cube.data.ptr, zero.data, desc.value,
             y.data.ptr)
         return y
-
     else:
-        log_z = logsumexp(x)
+        log_z = logsumexp(xp, x)
         return x - log_z
 
 
@@ -61,7 +59,7 @@ class SoftmaxCrossEntropy(function.Function):
         x_type, t_type = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             t_type.dtype == numpy.int32,
             t_type.ndim == x_type.ndim - 1,
 
@@ -119,7 +117,7 @@ class SoftmaxCrossEntropy(function.Function):
         log_y = cupy.rollaxis(log_y, 1, log_y.ndim)
         ret = cuda.reduce(
             'S t, raw T log_y, int32 n_channel, raw T coeff', 'T out',
-            't == -1 ? 0 : log_y[_j * n_channel + t]',
+            't == -1 ? T(0) : log_y[_j * n_channel + t]',
             'a + b', 'out = a * -coeff[0]', '0', 'crossent_fwd'
         )(t, log_y.reduced_view(), log_y.shape[-1], self._coeff)
         return ret,
@@ -194,7 +192,7 @@ def softmax_cross_entropy(
             it only normalizes along a batch size.
         cache_score (bool): When it is ``True``, the function stores result
             of forward computation to use it on backward computation. It
-            reduces computational cost though consumes more memories.
+            reduces computational cost though consumes more memory.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.

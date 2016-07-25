@@ -29,16 +29,38 @@ class Inception(link.Chain):
         proj5 (int): Projection size of 5x5 convolution path.
         out5 (int): Output size of 5x5 convolution path.
         proj_pool (int): Projection size of max pooling path.
+        conv_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the convolution matrix weights.
+            Maybe be ``None`` to use default initialization.
+        bias_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the convolution bias weights.
+            Maybe be ``None`` to use default initialization.
 
     """
-    def __init__(self, in_channels, out1, proj3, out3, proj5, out5, proj_pool):
+
+    def __init__(self, in_channels, out1, proj3, out3, proj5, out5, proj_pool,
+                 conv_init=None, bias_init=None):
         super(Inception, self).__init__(
-            conv1=convolution_2d.Convolution2D(in_channels, out1, 1),
-            proj3=convolution_2d.Convolution2D(in_channels, proj3, 1),
-            conv3=convolution_2d.Convolution2D(proj3, out3, 3, pad=1),
-            proj5=convolution_2d.Convolution2D(in_channels, proj5, 1),
-            conv5=convolution_2d.Convolution2D(proj5, out5, 5, pad=2),
-            projp=convolution_2d.Convolution2D(in_channels, proj_pool, 1),
+            conv1=convolution_2d.Convolution2D(in_channels, out1, 1,
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
+            proj3=convolution_2d.Convolution2D(in_channels, proj3, 1,
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
+            conv3=convolution_2d.Convolution2D(proj3, out3, 3, pad=1,
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
+            proj5=convolution_2d.Convolution2D(in_channels, proj5, 1,
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
+            conv5=convolution_2d.Convolution2D(proj5, out5, 5, pad=2,
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
+            projp=convolution_2d.Convolution2D(in_channels, proj_pool, 1,
+                                               initialW=conv_init,
+                                               initial_bias=bias_init),
         )
 
     def __call__(self, x):

@@ -30,7 +30,7 @@ class Link(object):
        running statistics for batch normalization.
 
     Parameters and persistent values are referred by their names. They can be
-    accessed as attributes of the names. Link class itself manages the lists
+    accessed as attributes of the links. Link class itself manages the lists
     of names of parameters and persistent values to distinguish parameters and
     persistent values from other attributes.
 
@@ -178,6 +178,7 @@ class Link(object):
         d = ret.__dict__
         for name in ret._params:
             d[name] = copy.copy(d[name])
+            d[name].grad = None
         return ret
 
     def to_cpu(self):

@@ -23,9 +23,9 @@ class TestPReLUSingle(unittest.TestCase):
 
         # Avoid unstability of numerical gradient
         self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
-        for i in range(self.x.size):
-            if -0.01 < self.x.flat[i] < 0.01:
-                self.x.flat[i] = 0.5
+        for i in numpy.ndindex(self.x.shape):
+            if -0.01 < self.x[i] < 0.01:
+                self.x[i] = 0.5
         self.gy = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
 
     def check_forward(self, x_data):
@@ -38,7 +38,7 @@ class TestPReLUSingle(unittest.TestCase):
             if self.x[i] < 0:
                 y_expect[i] *= self.W
 
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -89,7 +89,7 @@ class TestPReLUMulti(TestPReLUSingle):
             if self.x[i] < 0:
                 y_expect[i] *= self.W[i[1]]
 
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
 
 testing.run_module(__name__, __file__)

@@ -57,11 +57,11 @@ install:
 
   - "conda install -y -q setuptools"
   - "conda install -y -q cython"
+  - "conda install -y -q h5py"
 
 build_script:
   # Build the compiled extension
   - "%CMD_IN_ENV% python setup.py build install -vvvv"
-  - "conda install -y -q h5py"
 
 test_script:
   # Run the project tests

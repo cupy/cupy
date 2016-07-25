@@ -139,9 +139,9 @@ class TestConvolution(TestCaffeFunctionBaseMock):
                 'bottom': ['x'],
                 'top': ['y'],
                 'convolution_param': {
-                    'kernel_size': 2,
-                    'stride': 3,
-                    'pad': 4,
+                    'kernel_size': [2],
+                    'stride': [3],
+                    'pad': [4],
                     'group': 3,
                     'bias_term': True,
                 },
@@ -545,6 +545,474 @@ class TestLeakyReLU(TestCaffeFunctionBaseMock):
         self.assertEqual(len(self.func.layers), 1)
         self.call(['x'], ['y'])
         self.mock.assert_called_once_with(self.inputs[0], slope=0.5)
+
+
+class TestBatchNorm(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.BatchNormalization.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'BatchNorm',
+                'bottom': ['x'],
+                'top': ['y'],
+                'blobs': [
+                    # For average mean.
+                    {
+                        'shape': {
+                            'dim': [3],
+                        },
+                        'data': list(six.moves.range(3)),
+                    },
+                    # For average variance.
+                    {
+                        'shape': {
+                            'dim': [3],
+                        },
+                        'data': list(six.moves.range(3)),
+                    },
+                ],
+                'batch_norm_param': {
+                    'use_global_stats': False,
+                }
+            }
+        ]
+    }
+
+    def test_batchnorm(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0],
+                                          test=False, finetune=False)
+
+
+class TestBatchNormUsingGlobalStats(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.BatchNormalization.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'BatchNorm',
+                'bottom': ['x'],
+                'top': ['y'],
+                'blobs': [
+                    # For average mean.
+                    {
+                        'shape': {
+                            'dim': [3],
+                        },
+                        'data': list(six.moves.range(3)),
+                    },
+                    # For average variance.
+                    {
+                        'shape': {
+                            'dim': [3],
+                        },
+                        'data': list(six.moves.range(3)),
+                    },
+                ],
+                'batch_norm_param': {
+                    'use_global_stats': True,
+                }
+            }
+        ]
+    }
+
+    def test_batchnorm(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0],
+                                          test=True, finetune=False)
+
+
+class TestEltwiseProd(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.variable.Variable.__mul__'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 0,  # PROD
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_prod(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x1', 'x2', 'x3'], ['y'])
+        self.mock.assert_has_calls([mock.call(self.inputs[1]),
+                                    mock.call(self.inputs[2])])
+
+
+class TestEltwiseSum(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.variable.Variable.__add__'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 1,  # SUM
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_sum(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x1', 'x2', 'x3'], ['y'])
+        self.mock.assert_has_calls([mock.call(self.inputs[1]),
+                                    mock.call(self.inputs[2])])
+
+
+class TestEltwiseSumCoeff(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.variable.Variable.__add__'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 1,  # SUM
+                    'coeff': list(six.moves.range(3)),
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_sum(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x1', 'x2', 'x3'], ['y'])
+        self.assertEqual(self.mock.call_count, 2)
+
+
+class TestEltwiseSumInvalidCoeff(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.variable.Variable.__add__'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 1,           # SUM
+                    # not same as number of bottoms
+                    'coeff': list(six.moves.range(2)),
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_sum(self):
+        self.init_func()
+        with self.assertRaises(AssertionError):
+            self.call(['x1', 'x2', 'x3'], ['y'])
+
+
+class TestEltwiseMax(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.maximum'
+    in_shapes = [(2, 3), (2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Eltwise',
+                'bottom': ['x1', 'x2', 'x3'],
+                'top': ['y'],
+                'eltwise_param': {
+                    'operation': 2,  # MAX
+                },
+            }
+        ]
+    }
+
+    def test_eltwise_max(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x1', 'x2', 'x3'], ['y'])
+        self.mock.assert_has_calls(
+            [mock.call(self.inputs[0], self.inputs[1]),
+             mock.call(self.outputs[0], self.inputs[2])])
+
+
+class TestScale(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.Scale.__call__'
+    in_shapes = [(2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Scale',
+                'bottom': ['x', 'y'],
+                'top': ['z'],
+                'scale_param': {
+                    'axis': 0,
+                }
+            }
+        ]
+    }
+
+    def test_scale(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x', 'y'], ['z'])
+        self.mock.assert_called_once_with(self.inputs[0], self.inputs[1])
+
+
+class TestScaleOneBottom(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.Scale.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Scale',
+                'bottom': ['x'],
+                'top': ['y'],
+                'blobs': [
+                    {
+                        'shape': {
+                            'dim': [2, 3],
+                        },
+                        'data': list(six.moves.range(6)),
+                    }
+                ],
+                'scale_param': {
+                    'axis': 0,
+                }
+            }
+        ]
+    }
+
+    def test_scale_one_bottom(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0])
+
+
+class TestScaleWithBias(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.Scale.__call__'
+    in_shapes = [(2, 3), (2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Scale',
+                'bottom': ['x', 'y'],
+                'top': ['z'],
+                'blobs': [
+                    {
+                        'shape': {
+                            'dim': [2, 3],
+                        },
+                        'data': list(six.moves.range(6)),
+                    }
+                ],
+                'scale_param': {
+                    'axis': 0,
+                    'bias_term': True,
+                }
+            }
+        ]
+    }
+
+    def test_scale_with_bias(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.assertTrue(hasattr(self.func.l1, 'bias'))
+        self.call(['x', 'y'], ['z'])
+        self.mock.assert_called_once_with(self.inputs[0], self.inputs[1])
+
+
+class TestScaleOneBottomWithBias(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.links.Scale.__call__'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Scale',
+                'bottom': ['x'],
+                'top': ['y'],
+                'blobs': [
+                    # For W parameter.
+                    {
+                        'shape': {
+                            'dim': [2, 3],
+                        },
+                        'data': list(six.moves.range(6)),
+                    },
+                    # For bias.
+                    {
+                        'shape': {
+                            'dim': [2, 3],
+                        },
+                        'data': list(six.moves.range(6)),
+                    }
+                ],
+                'scale_param': {
+                    'axis': 0,
+                    'bias_term': True,
+                }
+            }
+        ]
+    }
+
+    def test_scale_one_bottom_with_bias(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.assertTrue(hasattr(self.func.l1, 'bias'))
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0])
+
+
+class TestSoftmax(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.softmax'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Softmax',
+                'bottom': ['x'],
+                'top': ['y'],
+            }
+        ]
+    }
+
+    def test_softmax(self):
+        self.init_func()
+        self.assertEqual(len(self.func.layers), 1)
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0])
+
+
+class TestSoftmaxCaffeEngine(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.softmax'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Softmax',
+                'softmax_param': {
+                    'engine': 1,  # CAFFE
+                },
+                'bottom': ['x'],
+                'top': ['y'],
+            }
+        ]
+    }
+
+    def test_softmax_caffe_engine(self):
+        self.init_func()
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0], use_cudnn=False)
+
+
+class TestSoftmaxcuDnnEngine(TestCaffeFunctionBaseMock):
+
+    func_name = 'chainer.functions.softmax'
+    in_shapes = [(2, 3)]
+    out_shapes = [(2, 3)]
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Softmax',
+                'softmax_param': {
+                    'engine': 2,  # CUDNN
+                },
+                'bottom': ['x'],
+                'top': ['y'],
+            }
+        ]
+    }
+
+    def test_softmax_cuDNN_engine(self):
+        self.init_func()
+        self.call(['x'], ['y'])
+        self.mock.assert_called_once_with(self.inputs[0], use_cudnn=True)
+
+
+class TestSoftmaxInvalidAxis(TestCaffeFunctionBase):
+
+    data = {
+        'layer': [
+            {
+                'name': 'l1',
+                'type': 'Softmax',
+                'softmax_param': {
+                    'axis': 0,  # invalid axis
+                }
+            }
+        ]
+    }
+
+    def test_softmax_invalid_axis(self):
+        with self.assertRaises(RuntimeError):
+            self.init_func()
 
 
 class TestSoftmaxWithLoss(TestCaffeFunctionBaseMock):

@@ -5,28 +5,30 @@ import six
 
 import chainer
 from chainer import cuda
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import type_check
 
 
-@testing.parameterize(
-    {'shape': (9, 11)},
-    {'shape': (99,)},
-)
+@testing.parameterize(*testing.product({
+    'shape': [(9, 11), (99,)],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestBinaryAccuracy(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.t = numpy.random.randint(-1, 2, self.shape).astype(numpy.int32)
+        self.check_forward_options = {}
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
 
     def check_forward(self, x_data, t_data):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
         y = chainer.functions.binary_accuracy(x, t)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         self.assertEqual((), y.data.shape)
 
         count = 0
@@ -41,7 +43,8 @@ class TestBinaryAccuracy(unittest.TestCase):
                 correct += 1
             count += 1
         expected = float(correct) / count
-        gradient_check.assert_allclose(expected, cuda.to_cpu(y.data))
+        testing.assert_allclose(
+            expected, cuda.to_cpu(y.data), **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -53,20 +56,24 @@ class TestBinaryAccuracy(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestBinaryAccuracyIgnoreAll(unittest.TestCase):
 
     def setUp(self):
         shape = (5, 4)
-        self.x = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.t = -numpy.ones(shape).astype(numpy.int32)
 
     def check_forward(self, x_data, t_data):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
         y = chainer.functions.binary_accuracy(x, t)
+        self.assertEqual(y.data.dtype, self.dtype)
 
         expected = 0.0
-        gradient_check.assert_allclose(expected, cuda.to_cpu(y.data))
+        testing.assert_allclose(expected, cuda.to_cpu(y.data))
 
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)

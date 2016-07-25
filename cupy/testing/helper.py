@@ -518,7 +518,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
         return for_dtypes(_int_bool_dtypes, name=name)
 
 
-def for_dtypes_combination(types, names=['dtype'], full=None):
+def for_dtypes_combination(types, names=('dtype',), full=None):
     """Decorator that checks the fixture with a product set of dtypes.
 
     Args:
@@ -591,7 +591,7 @@ def for_dtypes_combination(types, names=['dtype'], full=None):
     return decorator
 
 
-def for_all_dtypes_combination(names=['dtyes'],
+def for_all_dtypes_combination(names=('dtyes',),
                                no_float16=False, no_bool=False, full=None):
     """Decorator that checks the fixture with a product set of all dtypes.
 
@@ -612,7 +612,7 @@ def for_all_dtypes_combination(names=['dtyes'],
     return for_dtypes_combination(types, names, full)
 
 
-def for_signed_dtypes_combination(names=['dtype'], full=None):
+def for_signed_dtypes_combination(names=('dtype',), full=None):
     """Decorator for parameterized test w.r.t. the product set of signed dtypes.
 
     Args:
@@ -627,7 +627,7 @@ def for_signed_dtypes_combination(names=['dtype'], full=None):
     return for_dtypes_combination(_signed_dtypes, names=names, full=full)
 
 
-def for_unsigned_dtypes_combination(names=['dtype'], full=None):
+def for_unsigned_dtypes_combination(names=('dtype',), full=None):
     """Decorator for parameterized test w.r.t. the product set of unsigned dtypes.
 
     Args:
@@ -642,7 +642,7 @@ def for_unsigned_dtypes_combination(names=['dtype'], full=None):
     return for_dtypes_combination(_unsigned_dtypes, names=names, full=full)
 
 
-def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=None):
+def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
     """Decorator for parameterized test w.r.t. the product set of int and boolean.
 
     Args:

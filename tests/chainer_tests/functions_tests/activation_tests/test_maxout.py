@@ -19,31 +19,40 @@ def _maxout(x, pool_size, axis):
     return x.max(axis=axis + 1)
 
 
-@testing.parameterize(
-    {'x_shape': (7, 12), 'pool_size': 2, 'axis': 1, 'y_shape': (7, 6)},
-    {'x_shape': (7, 12), 'pool_size': 12, 'axis': 1, 'y_shape': (7, 1)},
-    {'x_shape': (7, 3, 4), 'pool_size': 7, 'axis': 0, 'y_shape': (1, 3, 4)},
-    {'x_shape': (7, 3, 4), 'pool_size': 3, 'axis': 1, 'y_shape': (7, 1, 4)},
-    {'x_shape': (7, 3, 4), 'pool_size': 4, 'axis': 2, 'y_shape': (7, 3, 1)},
-    {'x_shape': (7, 2, 3, 4), 'pool_size': 2,
-     'axis': 3, 'y_shape': (7, 2, 3, 2)},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'x_shape': (7, 12), 'pool_size': 2, 'axis': 1, 'y_shape': (7, 6)},
+        {'x_shape': (7, 12), 'pool_size': 12, 'axis': 1, 'y_shape': (7, 1)},
+        {'x_shape': (7, 3, 4), 'pool_size': 7, 'axis': 0,
+         'y_shape': (1, 3, 4)},
+        {'x_shape': (7, 3, 4), 'pool_size': 3, 'axis': 1,
+         'y_shape': (7, 1, 4)},
+        {'x_shape': (7, 3, 4), 'pool_size': 4, 'axis': 2,
+         'y_shape': (7, 3, 1)},
+        {'x_shape': (7, 2, 3, 4), 'pool_size': 2, 'axis': 3,
+         'y_shape': (7, 2, 3, 2)},
+    ], [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ]
+))
 class TestNonparameterizedMaxout(unittest.TestCase):
 
     def setUp(self):
         x_size = numpy.prod(self.x_shape)
-        self.x = numpy.arange(x_size).reshape(
-            self.x_shape).astype(numpy.float32)
-        numpy.random.shuffle(self.x.ravel())
+        self.x = numpy.random.permutation(
+            numpy.arange(x_size)).reshape(self.x_shape).astype(self.dtype)
 
         self.y = _maxout(self.x, self.pool_size, self.axis)
         self.gy = numpy.random.uniform(
-            -1, 1, self.y.shape).astype(numpy.float32)
+            -1, 1, self.y.shape).astype(self.dtype)
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.maxout(x, self.pool_size, self.axis)
-        gradient_check.assert_allclose(self.y, y.data)
+        self.assertEqual(y.data.dtype, self.dtype)
+        testing.assert_allclose(self.y, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -57,7 +66,7 @@ class TestNonparameterizedMaxout(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             lambda x: functions.maxout(x, self.pool_size, self.axis),
-            x_data, y_grad, atol=1e-2)
+            x_data, y_grad, eps=0.125)
 
     @condition.retry(3)
     def test_backward_cpu(self):

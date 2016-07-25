@@ -10,7 +10,7 @@ from chainer.utils import type_check
 
 class SplitAxis(function.Function):
 
-    """Function that splits multiple arrays towards the specified axis."""
+    """Function that splits multiple arrays along the specified axis."""
 
     def __init__(self, indices_or_sections, axis):
         if not isinstance(indices_or_sections, (int, collections.Iterable)):
@@ -23,9 +23,10 @@ class SplitAxis(function.Function):
         type_check.expect(in_types[0].ndim > self.axis)
 
         if isinstance(self.indices_or_sections, collections.Iterable):
-            max_index = type_check.Variable(
-                self.indices_or_sections[-1], 'max_index')
-            type_check.expect(in_types[0].shape[self.axis] > max_index)
+            if len(self.indices_or_sections) > 0:
+                max_index = type_check.Variable(
+                    self.indices_or_sections[-1], 'max_index')
+                type_check.expect(in_types[0].shape[self.axis] > max_index)
         else:
             sections = type_check.Variable(
                 self.indices_or_sections, 'sections')

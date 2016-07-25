@@ -10,15 +10,13 @@ class ELU(function.Function):
     """Exponential Linear Unit."""
 
     def __init__(self, alpha=1.0):
-        self.alpha = numpy.float32(alpha)
+        self.alpha = float(alpha)
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         x_type, = in_types
 
-        type_check.expect(
-            x_type.dtype == numpy.float32,
-        )
+        type_check.expect(x_type.dtype.kind == 'f')
 
     def forward_cpu(self, x):
         y = x[0].copy()
@@ -29,7 +27,8 @@ class ELU(function.Function):
     def forward_gpu(self, x):
         y = cuda.elementwise(
             'T x, T alpha', 'T y',
-            'y = x >= 0 ? x : alpha * (exp(x) - 1)', 'elu_fwd')(
+            'y = x >= 0 ? x : (T)(alpha * (exp(x) - 1))',
+            'elu_fwd')(
                 x[0], self.alpha)
         return y,
 
@@ -42,7 +41,8 @@ class ELU(function.Function):
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
             'T x, T gy, T alpha', 'T gx',
-            'gx = x >= 0 ? gy : gy * alpha * exp(x)', 'elu_bwd')(
+            'gx = x >= 0 ? gy : (T)(gy * alpha * exp(x))',
+            'elu_bwd')(
                 x[0], gy[0], self.alpha)
         return gx,
 

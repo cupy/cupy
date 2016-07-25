@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer.functions.normalization import batch_normalization
+from chainer import initializers
 from chainer import link
 from chainer import variable
 
@@ -35,6 +36,10 @@ class BatchNormalization(link.Link):
         decay (float): Decay rate of moving average. It is used on training.
         eps (float): Epsilon value for numerical stability.
         dtype (numpy.dtype): Type to use in computing.
+        use_gamma (bool): If `True`, use scaling parameter. Otherwise, use
+            unit(1) which makes no effect.
+        use_beta (bool): If `True`, use shifting parameter. Otherwise, use
+            unit(0) which makes no effect.
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
           Internal Covariate Shift <http://arxiv.org/abs/1502.03167>`_
@@ -54,12 +59,20 @@ class BatchNormalization(link.Link):
             to the batch variances.
 
     """
-    def __init__(self, size, decay=0.9, eps=1e-5, dtype=numpy.float32):
+    def __init__(self, size, decay=0.9, eps=1e-5, dtype=numpy.float32,
+                 use_gamma=True, use_beta=True,
+                 initial_gamma=None, initial_beta=None):
         super(BatchNormalization, self).__init__()
-        self.add_param('gamma', size, dtype=dtype)
-        self.gamma.data.fill(1)
-        self.add_param('beta', size, dtype=dtype)
-        self.beta.data.fill(0)
+        if use_gamma:
+            self.add_param('gamma', size, dtype=dtype)
+            if initial_gamma is None:
+                initial_gamma = initializers.One()
+            initializers.init_weight(self.gamma.data, initial_gamma)
+        if use_beta:
+            self.add_param('beta', size, dtype=dtype)
+            if initial_beta is None:
+                initial_beta = initializers.Zero()
+            initializers.init_weight(self.beta.data, initial_beta)
         self.add_persistent('avg_mean', numpy.zeros(size, dtype=dtype))
         self.add_persistent('avg_var', numpy.zeros(size, dtype=dtype))
         self.add_persistent('N', 0)
@@ -89,9 +102,20 @@ class BatchNormalization(link.Link):
         """
         use_batch_mean = not test or finetune
 
+        if hasattr(self, 'gamma'):
+            gamma = self.gamma
+        else:
+            gamma = variable.Variable(self.xp.ones(
+                self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
+        if hasattr(self, 'beta'):
+            beta = self.beta
+        else:
+            beta = variable.Variable(self.xp.zeros(
+                self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
+
         if use_batch_mean:
             func = batch_normalization.BatchNormalizationFunction(self.eps)
-            ret = func(x, self.gamma, self.beta)
+            ret = func(x, gamma, beta)
 
             if finetune:
                 self.N += 1
@@ -100,7 +124,7 @@ class BatchNormalization(link.Link):
                 decay = self.decay
 
             with cuda.get_device(x.data):
-                m = x.data.size // self.gamma.data.size
+                m = x.data.size // gamma.data.size
                 adjust = m / max(m - 1., 1.)  # unbiased estimation
                 self.avg_mean *= decay
                 func.mean *= 1 - decay  # reuse buffer as a temporary
@@ -114,7 +138,7 @@ class BatchNormalization(link.Link):
             mean = variable.Variable(self.avg_mean, volatile='auto')
             var = variable.Variable(self.avg_var, volatile='auto')
             ret = batch_normalization.fixed_batch_normalization(
-                x, self.gamma, self.beta, mean, var, self.eps)
+                x, gamma, beta, mean, var, self.eps)
         return ret
 
     def start_finetuning(self):

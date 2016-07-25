@@ -18,6 +18,11 @@ if cuda.cudnn_enabled:
             libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
+def _check_cudnn_acceptable_type(x_dtype, W_dtype):
+    return x_dtype == W_dtype and (
+        _cudnn_version >= 3000 or x_dtype != numpy.float16)
+
+
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
@@ -26,10 +31,11 @@ def _pair(x):
 
 class Convolution2DFunction(function.Function):
 
-    def __init__(self, stride=1, pad=0, use_cudnn=True):
+    def __init__(self, stride=1, pad=0, use_cudnn=True, cover_all=False):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
         self.use_cudnn = use_cudnn
+        self.cover_all = cover_all
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -38,8 +44,8 @@ class Convolution2DFunction(function.Function):
         x_type = in_types[0]
         w_type = in_types[1]
         type_check.expect(
-            x_type.dtype == numpy.float32,
-            w_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
+            w_type.dtype.kind == 'f',
             x_type.ndim == 4,
             w_type.ndim == 4,
             x_type.shape[1] == w_type.shape[1],
@@ -48,7 +54,7 @@ class Convolution2DFunction(function.Function):
         if n_in.eval() == 3:
             b_type = in_types[2]
             type_check.expect(
-                b_type.dtype == numpy.float32,
+                b_type.dtype == x_type.dtype,
                 b_type.ndim == 1,
                 b_type.shape[0] == w_type.shape[0],
             )
@@ -58,8 +64,10 @@ class Convolution2DFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         self.col = conv.im2col_cpu(
-            x, kh, kw, self.sy, self.sx, self.ph, self.pw)
-        y = numpy.tensordot(self.col, W, ((1, 2, 3), (1, 2, 3)))
+            x, kh, kw, self.sy, self.sx, self.ph, self.pw,
+            cover_all=self.cover_all)
+        y = numpy.tensordot(
+            self.col, W, ((1, 2, 3), (1, 2, 3))).astype(x.dtype)
         if b is not None:
             y += b
         return numpy.rollaxis(y, 3, 1),
@@ -71,11 +79,14 @@ class Convolution2DFunction(function.Function):
         out_c, _, kh, kw = W.shape
         n, c, h, w = x.shape
 
-        out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph)
-        out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw)
+        out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph,
+                                      cover_all=self.cover_all)
+        out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw,
+                                      cover_all=self.cover_all)
 
         y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             if b is not None:
@@ -92,20 +103,16 @@ class Convolution2DFunction(function.Function):
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
 
-            self.max_workspace_size = c * kh * kw * 4
+            workspace_size = cuda.get_max_workspace_size()
+            workspace = cuda.cupy.empty((workspace_size,), dtype='b')
             algo = libcudnn.getConvolutionForwardAlgorithm(
                 handle, x_desc.value, self.filter_desc.value,
                 self.conv_desc.value, y_desc.value, _fwd_pref,
-                self.max_workspace_size)
-            workspace_size = libcudnn.getConvolutionForwardWorkspaceSize(
-                handle, x_desc.value, self.filter_desc.value,
-                self.conv_desc.value, y_desc.value, algo)
-            workspace = cuda.cupy.empty(
-                (max(workspace_size // 4, 1),), dtype=x.dtype)
+                workspace_size)
 
-            dtype = x.dtype
-            one = numpy.array(1, dtype=dtype).ctypes
-            zero = numpy.array(0, dtype=dtype).ctypes
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
             libcudnn.convolutionForward(
                 handle, one.data, x_desc.value, x.data.ptr,
                 self.filter_desc.value, W.data.ptr, self.conv_desc.value,
@@ -114,14 +121,14 @@ class Convolution2DFunction(function.Function):
 
             # TODO(beam2d): Support unshared bias
             if b is not None:
-                libcudnn.addTensor_v2(
-                    handle, libcudnn.CUDNN_ADD_SAME_C, one.data,
-                    self.bias_desc.value, b.data.ptr, one.data,
-                    y_desc.value, y.data.ptr)
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
         else:
             # Implementation using im2col
             self.col = conv.im2col_gpu(
-                x, kh, kw, self.sy, self.sx, self.ph, self.pw)
+                x, kh, kw, self.sy, self.sx, self.ph, self.pw,
+                cover_all=self.cover_all)
             W_mat = W.reshape(out_c, -1)
             col_mats = self.col.reshape(n, -1, out_h * out_w)
             y_mats = y.reshape(n, out_c, -1)
@@ -140,8 +147,9 @@ class Convolution2DFunction(function.Function):
         gy = grad_outputs[0]
         h, w = x.shape[2:]
 
-        gW = numpy.tensordot(gy, self.col, ((0, 2, 3), (0, 4, 5)))
-        gcol = numpy.tensordot(W, gy, (0, 1))
+        gW = numpy.tensordot(
+            gy, self.col, ((0, 2, 3), (0, 4, 5))).astype(W.dtype)
+        gcol = numpy.tensordot(W, gy, (0, 1)).astype(x.dtype)
         gcol = numpy.rollaxis(gcol, 3)
         gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
 
@@ -160,7 +168,8 @@ class Convolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
 
         gW = cuda.cupy.empty_like(W)
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
             W = cuda.cupy.ascontiguousarray(W)
             gy = cuda.cupy.ascontiguousarray(gy)
@@ -168,54 +177,39 @@ class Convolution2DFunction(function.Function):
             handle = cudnn.get_handle()
             x_desc = cudnn.create_tensor_descriptor(x)
             gy_desc = cudnn.create_tensor_descriptor(gy)
-            dtype = x.dtype
-            one = numpy.array(1, dtype=dtype).ctypes
-            zero = numpy.array(0, dtype=dtype).ctypes
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
+            gx = cuda.cupy.empty_like(x)
 
             if _cudnn_version >= 4000:
-                self.max_workspace_size = c * kh * kw * 4
+                workspace_size = cuda.get_max_workspace_size()
+                workspace = cuda.cupy.empty((workspace_size,), dtype='b')
+
                 algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
                     handle, x_desc.value, gy_desc.value,
                     self.conv_desc.value, self.filter_desc.value,
-                    _bwd_filter_pref, self.max_workspace_size)
-                workspace_size = \
-                    libcudnn.getConvolutionBackwardFilterWorkspaceSize(
-                        handle, x_desc.value, gy_desc.value,
-                        self.conv_desc.value, self.filter_desc.value, algo)
-                workspace = cuda.cupy.empty(
-                    (max(workspace_size // 4, 1),), dtype=x.dtype)
-
+                    _bwd_filter_pref, workspace_size)
                 libcudnn.convolutionBackwardFilter_v3(
                     handle, one.data, x_desc.value, x.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
                     algo, workspace.data.ptr, workspace_size,
                     zero.data, self.filter_desc.value, gW.data.ptr)
-            else:
-                libcudnn.convolutionBackwardFilter_v2(
-                    handle, one.data, x_desc.value, x.data.ptr,
-                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
-                    zero.data, self.filter_desc.value, gW.data.ptr)
 
-            gx = cuda.cupy.empty_like(x)
-
-            if _cudnn_version >= 4000:
                 algo = libcudnn.getConvolutionBackwardDataAlgorithm(
                     handle, self.filter_desc.value, gy_desc.value,
                     self.conv_desc.value, x_desc.value, _bwd_data_pref,
-                    self.max_workspace_size)
-                workspace_size = \
-                    libcudnn.getConvolutionBackwardDataWorkspaceSize(
-                        handle, self.filter_desc.value, gy_desc.value,
-                        self.conv_desc.value, x_desc.value, algo)
-                workspace = cuda.cupy.empty(
-                    (max(workspace_size // 4, 1),), dtype=x.dtype)
-
+                    workspace_size)
                 libcudnn.convolutionBackwardData_v3(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
                     algo, workspace.data.ptr, workspace_size,
                     zero.data, x_desc.value, gx.data.ptr)
             else:
+                libcudnn.convolutionBackwardFilter_v2(
+                    handle, one.data, x_desc.value, x.data.ptr,
+                    gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                    zero.data, self.filter_desc.value, gW.data.ptr)
                 libcudnn.convolutionBackwardData_v2(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
@@ -238,8 +232,9 @@ class Convolution2DFunction(function.Function):
             W_mat = W.reshape(out_c, -1)
             gcol = cuda.cupy.empty_like(self.col)
             gcol_mats = gcol.reshape(n, c * kh * kw, out_h * out_w)
+
             for i in moves.range(n):
-                cuda.cupy.dot(W_mat.T, gy_mats[i], gcol_mats[i])
+                gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
 
             gx = conv.col2im_gpu(
                 gcol, self.sy, self.sx, self.ph, self.pw, h, w)
@@ -253,7 +248,8 @@ class Convolution2DFunction(function.Function):
             return gx, gW, gb
 
 
-def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
+def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
+                   cover_all=False):
     """Two-dimensional convolution function.
 
     This is an implementation of two-dimensional convolution in ConvNets.
@@ -281,6 +277,8 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
+        cover_all (bool): If True, all spatial locations are convoluted into
+            some output pixels. It may make the output size larger.
 
 
     Returns:
@@ -311,7 +309,7 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True):
     .. seealso:: :class:`Convolution2D`
 
     """
-    func = Convolution2DFunction(stride, pad, use_cudnn)
+    func = Convolution2DFunction(stride, pad, use_cudnn, cover_all)
     if b is None:
         return func(x, W)
     else:

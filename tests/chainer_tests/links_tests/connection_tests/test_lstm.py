@@ -5,7 +5,6 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer import gradient_check
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
@@ -38,15 +37,15 @@ class TestLSTM(unittest.TestCase):
         c0 = chainer.Variable(xp.zeros((len(self.x), self.out_size),
                                        dtype=self.x.dtype))
         c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x))
-        gradient_check.assert_allclose(h1.data, h1_expect.data)
-        gradient_check.assert_allclose(self.link.h.data, h1_expect.data)
-        gradient_check.assert_allclose(self.link.c.data, c1_expect.data)
+        testing.assert_allclose(h1.data, h1_expect.data)
+        testing.assert_allclose(self.link.h.data, h1_expect.data)
+        testing.assert_allclose(self.link.c.data, c1_expect.data)
 
         h2 = self.link(x)
         c2_expect, h2_expect = \
             functions.lstm(c1_expect,
                            self.link.upward(x) + self.link.lateral(h1))
-        gradient_check.assert_allclose(h2.data, h2_expect.data)
+        testing.assert_allclose(h2.data, h2_expect.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -57,11 +56,15 @@ class TestLSTM(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
 
-class TestLSSTMRestState(unittest.TestCase):
+class TestLSTMState(unittest.TestCase):
 
     def setUp(self):
         self.link = links.LSTM(5, 7)
         self.x = chainer.Variable(
+            numpy.random.uniform(-1, 1, (3, 5)).astype(numpy.float32))
+        self.c = chainer.Variable(
+            numpy.random.uniform(-1, 1, (3, 5)).astype(numpy.float32))
+        self.h = chainer.Variable(
             numpy.random.uniform(-1, 1, (3, 5)).astype(numpy.float32))
 
     def check_state(self):
@@ -79,6 +82,21 @@ class TestLSSTMRestState(unittest.TestCase):
         self.link.to_gpu()
         self.x.to_gpu()
         self.check_state()
+
+    def check_set_state(self, c, h):
+        self.link.set_state(c, h)
+        self.assertIsInstance(self.link.c.data, self.link.xp.ndarray)
+        testing.assert_allclose(c.data, self.link.c.data)
+        self.assertIsInstance(self.link.h.data, self.link.xp.ndarray)
+        testing.assert_allclose(h.data, self.link.h.data)
+
+    def test_set_state_cpu(self):
+        self.check_set_state(self.c, self.h)
+
+    @attr.gpu
+    def test_set_state_gpu(self):
+        self.link.to_gpu()
+        self.check_set_state(self.c, self.h)
 
     def check_reset_state(self):
         self.link(self.x)
@@ -145,6 +163,52 @@ class TestLSTMToCPUToGPU(unittest.TestCase):
         self.link(self.x)
         self.check_to_cpu_to_gpu(self.link.c)
         self.check_to_cpu_to_gpu(self.link.h)
+
+
+@testing.parameterize(
+    {'in_size': 10, 'out_size': 10},
+    {'in_size': 10, 'out_size': 40},
+)
+class TestStatelessLSTM(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.StatelessLSTM(self.in_size, self.out_size)
+        upward = self.link.upward.W.data
+        upward[...] = numpy.random.uniform(-1, 1, upward.shape)
+        lateral = self.link.lateral.W.data
+        lateral[...] = numpy.random.uniform(-1, 1, lateral.shape)
+        self.link.zerograds()
+
+        self.upward = upward.copy()  # fixed on CPU
+        self.lateral = lateral.copy()  # fixed on CPU
+
+        x_shape = (4, self.in_size)
+        self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
+
+    def check_forward(self, x_data):
+        xp = self.link.xp
+        x = chainer.Variable(x_data)
+        c1, h1 = self.link(None, None, x)
+        c0 = chainer.Variable(xp.zeros((len(self.x), self.out_size),
+                                       dtype=self.x.dtype))
+        c1_expect, h1_expect = functions.lstm(c0, self.link.upward(x))
+        testing.assert_allclose(h1.data, h1_expect.data)
+        testing.assert_allclose(c1.data, c1_expect.data)
+
+        c2, h2 = self.link(c1, h1, x)
+        c2_expect, h2_expect = \
+            functions.lstm(c1_expect,
+                           self.link.upward(x) + self.link.lateral(h1))
+        testing.assert_allclose(h2.data, h2_expect.data)
+        testing.assert_allclose(c2.data, c2_expect.data)
+
+    def test_forward_cpu(self):
+        self.check_forward(self.x)
+
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.link.to_gpu()
+        self.check_forward(cuda.to_gpu(self.x))
 
 
 testing.run_module(__name__, __file__)

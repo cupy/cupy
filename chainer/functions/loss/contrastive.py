@@ -52,6 +52,8 @@ class Contrastive(function.Function):
         y = xp.repeat(y[:, None], x_dim, axis=1)
         alpha = gy[0] / y.shape[0]
         dist = xp.repeat(self.dist[:, None], x_dim, axis=1)
+        # avoid division by zero
+        dist = xp.maximum(dist, 1e-8)
         # similar pair
         gx0 = alpha * y * self.diff
         # dissimilar pair

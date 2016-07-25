@@ -8,29 +8,42 @@ from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
+from chainer.testing import condition
 from chainer.utils import type_check
 
 
-@testing.parameterize(
-    {'in_shapes': [(3, 1, 5), (1, 2, 5)], 'out_shape': (3, 2, 5)},
-    {'in_shapes': [(3, 2, 5), (5,)],      'out_shape': (3, 2, 5)},
-    {'in_shapes': [(3, 2, 5), ()],        'out_shape': (3, 2, 5)},
-    {'in_shapes': [(3, 2, 5), (3, 2, 5)], 'out_shape': (3, 2, 5)},
-    {'in_shapes': [(), ()],               'out_shape': ()},
-    {'in_shapes': [(1, 1, 1), (1,)],      'out_shape': (1, 1, 1)},
-    {'in_shapes': [(1, 1, 1), ()],        'out_shape': (1, 1, 1)},
-    {'in_shapes': [(3, 2, 5)],            'out_shape': (3, 2, 5)},
-    {'in_shapes': [(3, 1, 5), (1, 2, 5), (3, 2, 1)],
-     'out_shape': (3, 2, 5)},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'in_shapes': [(3, 1, 5), (1, 2, 5)], 'out_shape': (3, 2, 5)},
+        {'in_shapes': [(3, 2, 5), (5,)], 'out_shape': (3, 2, 5)},
+        {'in_shapes': [(3, 2, 5), ()], 'out_shape': (3, 2, 5)},
+        {'in_shapes': [(3, 2, 5), (3, 2, 5)], 'out_shape': (3, 2, 5)},
+        {'in_shapes': [(), ()], 'out_shape': ()},
+        {'in_shapes': [(1, 1, 1), (1,)], 'out_shape': (1, 1, 1)},
+        {'in_shapes': [(1, 1, 1), ()], 'out_shape': (1, 1, 1)},
+        {'in_shapes': [(3, 2, 5)], 'out_shape': (3, 2, 5)},
+        {'in_shapes': [(3, 1, 5), (1, 2, 5), (3, 2, 1)],
+         'out_shape': (3, 2, 5)},
+    ],
+    [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ],
+))
 class TestBroadcast(unittest.TestCase):
 
     def setUp(self):
         uniform = numpy.random.uniform
-        self.data = [uniform(0, 1, shape).astype(numpy.float32)
+        self.data = [uniform(0, 1, shape).astype(self.dtype)
                      for shape in self.in_shapes]
-        self.grads = [uniform(0, 1, self.out_shape).astype(numpy.float32)
+        self.grads = [uniform(0, 1, self.out_shape).astype(self.dtype)
                       for _ in range(len(self.in_shapes))]
+
+        self.check_backward_options = {}
+        if self.dtype == numpy.float16:
+            self.check_backward_options = {
+                'eps': 2 ** -5, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, data):
         xs = [chainer.Variable(x) for x in data]
@@ -42,6 +55,7 @@ class TestBroadcast(unittest.TestCase):
 
         for bx in bxs:
             self.assertEqual(bx.data.shape, self.out_shape)
+            self.assertEqual(bx.data.dtype, self.dtype)
 
     def test_forward_cpu(self):
         self.check_forward(self.data)
@@ -52,12 +66,15 @@ class TestBroadcast(unittest.TestCase):
 
     def check_backward(self, data, grads):
         gradient_check.check_backward(
-            functions.Broadcast(), data, grads)
+            functions.Broadcast(), data, grads,
+            **self.check_backward_options)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.data, self.grads)
 
     @attr.gpu
+    @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward([cuda.to_gpu(x) for x in self.data],
                             [cuda.to_gpu(x) for x in self.grads])
@@ -88,17 +105,28 @@ class TestBroadcastTypeError(unittest.TestCase):
             functions.broadcast()
 
 
-@testing.parameterize(
-    {'in_shape': (3, 1, 5), 'out_shape': (3, 2, 5)},
-    {'in_shape': (5,),      'out_shape': (3, 2, 5)},
-    {'in_shape': (3, 2, 5), 'out_shape': (3, 2, 5)},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'in_shape': (3, 1, 5), 'out_shape': (3, 2, 5)},
+        {'in_shape': (5,), 'out_shape': (3, 2, 5)},
+        {'in_shape': (3, 2, 5), 'out_shape': (3, 2, 5)},
+    ],
+    [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ],
+))
 class TestBroadcastTo(unittest.TestCase):
 
     def setUp(self):
         uniform = numpy.random.uniform
-        self.data = uniform(0, 1, self.in_shape).astype(numpy.float32)
-        self.grad = uniform(0, 1, self.out_shape).astype(numpy.float32)
+        self.data = uniform(0, 1, self.in_shape).astype(self.dtype)
+        self.grad = uniform(0, 1, self.out_shape).astype(self.dtype)
+        self.check_backward_options = {}
+        if self.dtype == numpy.float16:
+            self.check_backward_options = {
+                'eps': 2 ** -5, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, data):
         x = chainer.Variable(data)
@@ -113,17 +141,19 @@ class TestBroadcastTo(unittest.TestCase):
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.data))
 
-    def check_backward(self, data, grad):
+    @condition.retry(3)
+    def check_backward(self, data, grads):
         gradient_check.check_backward(
-            functions.BroadcastTo(self.out_shape), data, grad)
+            functions.BroadcastTo(self.out_shape), data, grads,
+            **self.check_backward_options)
 
+    @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.data, self.grad)
 
     @attr.gpu
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.data),
-                            cuda.to_gpu(self.grad))
+        self.check_backward(cuda.to_gpu(self.data), cuda.to_gpu(self.grad))
 
 
 @testing.parameterize(

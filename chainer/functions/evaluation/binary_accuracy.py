@@ -1,3 +1,5 @@
+from __future__ import division
+
 import numpy
 
 from chainer import cuda
@@ -14,7 +16,7 @@ class BinaryAccuracy(function.Function):
         x_type, t_type = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             t_type.dtype == numpy.int32,
             t_type.shape == x_type.shape,
         )
@@ -27,7 +29,7 @@ class BinaryAccuracy(function.Function):
         t = t.ravel()
         c = (y >= 0)
         count = xp.maximum(1, (t != self.ignore_label).sum())
-        return xp.asarray((c == t).sum(dtype='f') / count, dtype='f'),
+        return xp.asarray((c == t).sum() / count, dtype=y.dtype),
 
 
 def binary_accuracy(y, t):

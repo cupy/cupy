@@ -12,17 +12,28 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(*testing.product({
+    'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestNonparameterizedLinear(unittest.TestCase):
 
     def setUp(self):
         self.W = numpy.random.uniform(
-            -1, 1, (2, 3)).astype(numpy.float32)
+            -1, 1, (2, 3)).astype(self.W_dtype)
         self.b = numpy.random.uniform(
-            -1, 1, 2).astype(numpy.float32)
+            -1, 1, 2).astype(self.x_dtype)
 
-        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (4, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(self.x_dtype)
+        self.gy = numpy.random.uniform(-1, 1, (4, 2)).astype(self.x_dtype)
         self.y = self.x.dot(self.W.T) + self.b
+        self.check_forward_options = {}
+        self.check_backward_options = {}
+        if self.x_dtype == numpy.float16:
+            self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
+            self.check_backward_options = {'atol': 5e-2, 'rtol': 1e-1}
+        elif self.W_dtype == numpy.float16:
+            self.check_backward_options = {'atol': 5e-3, 'rtol': 5e-2}
 
     def check_forward(self, x_data, W_data, b_data, y_expect):
         x = chainer.Variable(x_data)
@@ -32,7 +43,9 @@ class TestNonparameterizedLinear(unittest.TestCase):
         else:
             b = chainer.Variable(b_data)
             y = functions.linear(x, W, b)
-        gradient_check.assert_allclose(y_expect, y.data)
+        self.assertEqual(y.data.dtype, self.x_dtype)
+        testing.assert_allclose(
+            y_expect, y.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -63,7 +76,8 @@ class TestNonparameterizedLinear(unittest.TestCase):
             args = args + (b_data,)
 
         gradient_check.check_backward(
-            linear.LinearFunction(), args, y_grad, eps=1e-2)
+            linear.LinearFunction(), args, y_grad,
+            eps=1e-2, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):

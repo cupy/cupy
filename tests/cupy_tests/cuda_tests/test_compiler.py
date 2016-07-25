@@ -1,6 +1,8 @@
 import os
 import unittest
 
+import six
+
 from cupy.cuda import compiler
 from cupy import testing
 
@@ -16,12 +18,12 @@ class NvccNotFoundTest(unittest.TestCase):
 
     def test_nvcc_without_command(self):
         # Check that error message includes command name `nvcc`
-        with self.assertRaisesRegexp(OSError, 'nvcc'):
+        with six.assertRaisesRegex(self, OSError, 'nvcc'):
             compiler.nvcc('')
 
     def test_preprocess_without_command(self):
         # Check that error message includes command name `nvcc`
-        with self.assertRaisesRegexp(OSError, 'nvcc'):
+        with six.assertRaisesRegex(self, OSError, 'nvcc'):
             compiler.preprocess('')
 
 
@@ -30,5 +32,5 @@ class TestNvccStderr(unittest.TestCase):
 
     def test(self):
         # An error message contains the file name `kern.cu`
-        with self.assertRaisesRegexp(RuntimeError, 'kern.cu'):
+        with six.assertRaisesRegex(self, RuntimeError, 'kern.cu'):
             compiler.nvcc('a')

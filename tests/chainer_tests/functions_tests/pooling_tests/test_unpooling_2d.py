@@ -12,17 +12,25 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(
-    # we assume insize as (2, 1)
-    # standard output size which is estimated with get_deconv_outsize function
-    {'cover_all': False, 'outsize': (4, 2)},
-    {'cover_all': True, 'outsize': (3, 1)},
-    {'cover_all': False, 'outsize': None, 'expected_outsize': (4, 2)},
-    {'cover_all': True, 'outsize': None, 'expected_outsize': (3, 1)},
-    # another sizes which can be outsize of insize (2, 1)
-    {'cover_all': False, 'outsize': (5, 2)},
-    {'cover_all': True, 'outsize': (4, 2)},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        # we assume insize as (2, 1)
+        # standard output size which is estimated with get_deconv_outsize
+        # function
+        {'cover_all': False, 'outsize': (4, 2)},
+        {'cover_all': True, 'outsize': (3, 1)},
+        {'cover_all': False, 'outsize': None, 'expected_outsize': (4, 2)},
+        {'cover_all': True, 'outsize': None, 'expected_outsize': (3, 1)},
+        # another sizes which can be outsize of insize (2, 1)
+        {'cover_all': False, 'outsize': (5, 2)},
+        {'cover_all': True, 'outsize': (4, 2)},
+    ],
+    [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ],
+))
 class TestUnpooling2D(unittest.TestCase):
 
     def setUp(self):
@@ -30,21 +38,24 @@ class TestUnpooling2D(unittest.TestCase):
         self.n_channels = 3
         inh, inw = 2, 1
         self.x = numpy.arange(
-            self.N * self.n_channels * inh * inw, dtype=numpy.float32)\
-            .reshape(self.N, self.n_channels, inh, inw)
+            self.N * self.n_channels * inh * inw,
+            dtype=self.dtype).reshape(self.N, self.n_channels, inh, inw)
         numpy.random.shuffle(self.x)
         self.x = 2 * self.x / self.x.size - 1
 
         self.ksize = 2
         outh, outw = self.outsize or self.expected_outsize
         self.gy = numpy.random.uniform(
-            -1, 1, (self.N, self.n_channels, outh, outw)).astype(numpy.float32)
+            -1, 1, (self.N, self.n_channels, outh, outw)).astype(self.dtype)
+        self.check_backward_options = {}
+        if self.dtype == numpy.float16:
+            self.check_backward_options = {'atol': 0.05, 'rtol': 0.05}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.unpooling_2d(x, self.ksize, outsize=self.outsize,
                                    cover_all=self.cover_all)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
@@ -53,7 +64,7 @@ class TestUnpooling2D(unittest.TestCase):
                 outsize = self.outsize or self.expected_outsize
                 assert y_data.shape[2:] == outsize
                 if outsize == (5, 2):
-                    expect = numpy.zeros(outsize, dtype=numpy.float32)
+                    expect = numpy.zeros(outsize, dtype=self.dtype)
                     expect[:2, :] = self.x[i, c, 0, 0]
                     expect[2:4, :] = self.x[i, c, 1, 0]
                 elif outsize == (4, 2):
@@ -71,7 +82,7 @@ class TestUnpooling2D(unittest.TestCase):
                     ])
                 else:
                     raise ValueError('Unsupported outsize: {}'.format(outsize))
-                gradient_check.assert_allclose(expect, y_data[i, c])
+                testing.assert_allclose(expect, y_data[i, c])
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -86,7 +97,7 @@ class TestUnpooling2D(unittest.TestCase):
         gradient_check.check_backward(
             functions.Unpooling2D(self.ksize, outsize=self.outsize,
                                   cover_all=self.cover_all),
-            x_data, y_grad)
+            x_data, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):

@@ -31,9 +31,17 @@ clipped_relu
 ~~~~~~~~~~~~
 .. autofunction:: clipped_relu
 
+crelu
+~~~~~~~~~~~~
+.. autofunction:: crelu
+
 elu
 ~~~
 .. autofunction:: elu
+
+hard_sigmoid
+~~~~~~~~~~~~
+.. autofunction:: hard_sigmoid
 
 leaky_relu
 ~~~~~~~~~~
@@ -91,6 +99,10 @@ broadcast_to
 ~~~~~~~~~~~~
 .. autofunction:: broadcast_to
 
+cast
+~~~~
+.. autofunction:: cast
+
 concat
 ~~~~~~
 .. autofunction:: concat
@@ -103,9 +115,21 @@ expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
 
+get_item
+~~~~~~~~
+.. autofunction:: get_item
+
+permutate
+~~~~~~~~~
+.. autofunction:: permutate
+
 reshape
 ~~~~~~~
 .. autofunction:: reshape
+
+rollaxis
+~~~~~~~
+.. autofunction:: rollaxis
 
 select_item
 ~~~~~~~~~~~
@@ -115,6 +139,10 @@ split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
 
+stack
+~~~~~
+.. autofunction:: stack
+
 swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
@@ -122,6 +150,10 @@ swapaxes
 transpose
 ~~~~~~~~~
 .. autofunction:: transpose
+
+transpose_sequence
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: transpose_sequence
 
 where
 ~~~~~
@@ -211,9 +243,21 @@ softmax_cross_entropy
 ~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: softmax_cross_entropy
 
+triplet
+~~~~~~~
+.. autofunction:: triplet
+
 
 Mathematical functions
 ----------------------
+
+argmax
+~~~~~~
+.. autofunction:: argmax
+
+argmin
+~~~~~~
+.. autofunction:: argmin
 
 batch_inv
 ~~~~~~~~~
@@ -226,6 +270,10 @@ batch_l2_norm_squared
 batch_matmul
 ~~~~~~~~~~~~
 .. autofunction:: batch_matmul
+
+bias
+~~~~
+.. autofunction:: bias
 
 clip
 ~~~~
@@ -247,9 +295,17 @@ inv
 ~~~
 .. autofunction:: inv
 
+linear_interpolate
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: linear_interpolate
+
 log
 ~~~
 .. autofunction:: log
+
+logsumexp
+~~~~~~~~~
+.. autofunction:: logsumexp
 
 matmul
 ~~~~~~
@@ -259,9 +315,21 @@ max
 ~~~
 .. autofunction:: max
 
+maximum
+~~~~~~~
+.. autofunction:: maximum
+
 min
 ~~~
 .. autofunction:: min
+
+minimum
+~~~~~~~
+.. autofunction:: minimum
+
+scale
+~~~~~
+.. autofunction:: scale
 
 sin
 ~~~
@@ -299,6 +367,10 @@ local_response_normalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: local_response_normalization
 
+normalize
+~~~~~~~~~
+.. autofunction:: normalize
+
 
 Spatial pooling
 ---------------
@@ -311,6 +383,10 @@ max_pooling_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: max_pooling_2d
 
+roi_pooling_2d
+~~~~~~~~~~~~~~
+.. autofunction:: roi_pooling_2d
+
 spatial_pyramid_pooling_2d
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: spatial_pyramid_pooling_2d
@@ -318,4 +394,3 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
-

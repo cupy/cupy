@@ -13,6 +13,9 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestSpatialPyramidPooling2D(unittest.TestCase):
     pyramid_height = 3
     output_dim = 63  # channels(c=3) * (1 + 4 + 16) = 63
@@ -21,27 +24,31 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
 
     def setUp(self):
         # Spacial pyramid pooling uses max pooling in its implementation.
-        # To avoid unstability of numerical gradient, use enoufh different
+        # To avoid instability of numerical gradient, use enough different
         # values.
         shape = (self.n, self.c, self.h, self.w)
         size = numpy.prod(shape)
-        self.x = numpy.arange(size, dtype=numpy.float32).reshape(shape)
+        self.x = numpy.arange(size, dtype=self.dtype).reshape(shape)
         numpy.random.shuffle(self.x)
         self.x += numpy.random.uniform(
-            0.4, 0.6, shape).astype(numpy.float32)
+            0.4, 0.6, shape).astype(self.dtype)
         self.x /= size
 
         self.one = numpy.ones(
-            (self.n, self.c, self.h, self.w)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (self.n, self.output_dim, 1, 1))
-        self.gy = self.gy.astype(numpy.float32)
+            (self.n, self.c, self.h, self.w)).astype(self.dtype)
+        self.gy = numpy.random.uniform(
+            -1, 1, (self.n, self.output_dim, 1, 1)).astype(self.dtype)
+        self.check_backward_options = {'eps': 2.0 ** -10}
+        if self.dtype == numpy.float16:
+            self.check_backward_options = {
+                'eps': 2.0 ** -10, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
         y = functions.spatial_pyramid_pooling_2d(
             x, self.pyramid_height, self.pooling_class,
             use_cudnn=use_cudnn)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         y_data = cuda.to_cpu(y.data)
 
         self.assertEqual(self.gy.shape, y_data.shape)
@@ -52,15 +59,16 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
             x, self.pyramid_height, self.pooling_class, use_cudnn=use_cudnn)
         y_data = cuda.to_cpu(y.data)
 
-        self.assertEqual((self.n, self.output_dim, 1, 1), y_data.shape)
-        gradient_check.assert_allclose(y_data, numpy.ones_like(y_data))
+        self.assertEqual(y_data.shape, (self.n, self.output_dim, 1, 1))
+        self.assertEqual(y_data.dtype, self.dtype)
+        testing.assert_allclose(y_data, numpy.ones_like(y_data))
 
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
         self.check_forward_ones(self.one)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
@@ -77,13 +85,13 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
             functions.SpatialPyramidPooling2D(
                 x_data.shape[1:], self.pyramid_height, self.pooling_class,
                 use_cudnn=use_cudnn),
-            x_data, y_grad, atol=1e-4)
+            x_data, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
@@ -92,25 +100,6 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy), False)
-
-
-class TestValidDtype(unittest.TestCase):
-
-    def setUp(self):
-        self.x = numpy.random.randn(5, 3, 5, 5)
-        self.v = chainer.Variable(self.x.astype(numpy.float32))
-
-    def check_valid_dtype(self):
-        functions.spatial_pyramid_pooling_2d(
-            self.v, 3, functions.MaxPooling2D)
-
-    def test_valid_dtype_cpu(self):
-        self.check_valid_dtype()
-
-    @attr.gpu
-    def test_valid_dtype_gpu(self):
-        self.v.to_gpu()
-        self.check_valid_dtype()
 
 
 class TestInvalidDtype(unittest.TestCase):
@@ -134,19 +123,19 @@ class TestInvalidDtype(unittest.TestCase):
             self.check_invalid_dtype()
 
 
-@testing.parameterize(
-    {'use_cudnn': True},
-    {'use_cudnn': False},
-)
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 @attr.cudnn
 class TestMaxPooling2DCudnnCall(unittest.TestCase):
 
     def setUp(self):
         shape = (2, 3, 9, 8)
         size = 2 * 3 * 9 * 8
-        self.x = cuda.cupy.arange(size, dtype=numpy.float32).reshape(shape)
+        self.x = cuda.cupy.arange(size, dtype=self.dtype).reshape(shape)
         self.gy = cuda.cupy.random.uniform(
-            -1, 1, (2, 63, 1, 1)).astype(numpy.float32)
+            -1, 1, (2, 63, 1, 1)).astype(self.dtype)
 
     def forward(self):
         x = chainer.Variable(self.x)
@@ -154,12 +143,18 @@ class TestMaxPooling2DCudnnCall(unittest.TestCase):
             x, 3, functions.MaxPooling2D,
             use_cudnn=self.use_cudnn)
 
+    @unittest.skipIf(cuda.cudnn_enabled and
+                     cuda.cudnn.cudnn.getVersion() < 3000,
+                     'Only cudnn ver>=3 supports spatial-pyramid-pooling2d')
     def test_call_cudnn_forward(self):
         with mock.patch('cupy.cudnn.cudnn.poolingForward') as func:
             self.forward()
             self.assertEqual(func.called, self.use_cudnn)
 
-    def test_call_cudnn_backrward(self):
+    @unittest.skipIf(cuda.cudnn_enabled and
+                     cuda.cudnn.cudnn.getVersion() < 3000,
+                     'Only cudnn ver>=3 supports spatial-pyramid-pooling2d')
+    def test_call_cudnn_backward(self):
         y = self.forward()
         y.grad = self.gy
         with mock.patch('cupy.cudnn.cudnn.poolingBackward') as func:

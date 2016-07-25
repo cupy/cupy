@@ -12,18 +12,26 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestLocalResponseNormalization(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1,
-                                      (2, 7, 3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1,
-                                       (2, 7, 3, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(
+            -1, 1, (2, 7, 3, 2)).astype(self.dtype)
+        self.gy = numpy.random.uniform(
+            -1, 1, (2, 7, 3, 2)).astype(self.dtype)
+        self.check_forward_optionss = {}
+        self.check_backward_optionss = {}
+        if self.dtype == numpy.float16:
+            self.check_forward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
+            self.check_backward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.local_response_normalization(x)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         y_data = cuda.to_cpu(y.data)
 
         # Naive implementation
@@ -35,7 +43,8 @@ class TestLocalResponseNormalization(unittest.TestCase):
             denom = (2 + 1e-4 * s) ** .75
             y_expect[n, c, h, w] = self.x[n, c, h, w] / denom
 
-        gradient_check.assert_allclose(y_expect, y_data, atol=1e-4)
+        testing.assert_allclose(
+            y_expect, y_data, **self.check_forward_optionss)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -49,7 +58,7 @@ class TestLocalResponseNormalization(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             functions.LocalResponseNormalization(), x_data, y_grad,
-            eps=1, atol=1e-4)
+            eps=1, **self.check_backward_optionss)
 
     @condition.retry(3)
     def test_backward_cpu(self):

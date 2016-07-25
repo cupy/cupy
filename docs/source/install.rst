@@ -42,7 +42,7 @@ CUDA support
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5
 
 Caffe model support
 
@@ -85,22 +85,28 @@ That shows all logs of installation. It may helps you::
   $ pip install chainer -vvvv
 
 
+.. _install_cuda:
+
 Install Chainer with CUDA
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You need to install CUDA Toolkit before installing Chainer.
-Chainer installer find CUDA automatically.
+If you have CUDA in a default directory or set ``CUDA_PATH`` correctly, Chainer installer finds CUDA automatically::
 
-If you installed CUDA to non-default directory, you need to specify the directory with ``CUDA_PATH`` environment variable::
-
-  $ CUDA_PATH=/opt/nvidia/cuda pip install chainer
+  $ pip install chainer
 
 
 .. note::
 
-   Chainer installer uses ``CUDA_PATH`` environment variable first.
-   If it's empty, the installer finds ``nvcc`` command from ``PATH`` environment variable and use its parent directory.
-   If ``nvcc`` is not found, the installer uses default directory, such as ``/usr/local/cuda``.
+   Chainer installer looks up ``CUDA_PATH`` environment variable first.
+   If it is empty, the installer looks for ``nvcc`` command from ``PATH`` environment variable and use its parent directory as the root directory of CUDA installation.
+   If ``nvcc`` command is also not found, the installer tries to use the default directory for Ubuntu ``/usr/local/cuda``.
+
+
+If you installed CUDA into a non-default directory, you need to specify the directory with ``CUDA_PATH`` environment variable::
+
+  $ CUDA_PATH=/opt/nvidia/cuda pip install chainer
+
 
 .. warning::
 

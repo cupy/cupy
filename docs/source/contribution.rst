@@ -33,9 +33,9 @@ This classification is based on following criteria:
 
 The release classification is reflected into the version number x.y.z, where x, y, and z corresponds to major, minor, and revision updates, respectively.
 
-We sets milestones for some future releases.
-A milestone for a revision release is set right after the last release.
-On the other hand, a milestone for a minor or major release is set four weeks prior to its due.
+We set a milestone for an upcoming release.
+The milestone is of name 'vX.Y.Z', where the version number represents a revision release at the outset.
+If at least one *feature* PR is merged in the period, we rename the milestone to represent a minor release (see the next section for the PR types).
 
 See also :doc:`compatibility`.
 
@@ -52,6 +52,7 @@ Issues and PRs are classified into following categories:
 * **Document**: document fixes and improvements
 * **Example**: fixes and improvements on the examples
 * **Install**: fixes installation script
+* **Contribution-Welcome**: issues that we request for contribution (only issues are categorized to this)
 * **Other**: other issues and PRs
 
 Issues and PRs are labeled by these categories.
@@ -68,13 +69,13 @@ You can contain your thoughts on **how** to realize it into the feature requests
    The issue tracker is not a place to share knowledge on practices.
    We may redirect question issues to Chainer User Group.
 
-If you can write codes to fix an issue, send a PR to the master branch.
-Before writing your codes for PRs, read through the :ref:`coding-guide`.
-The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your codes for developers, a very important part of your PR.
+If you can write code to fix an issue, send a PR to the master branch.
+Before writing your code for PRs, read through the :ref:`coding-guide`.
+The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your code for developers, a very important part of your PR.
 
 Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/chainer/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/pfnet/chainer>`_ for Windows.
 Your PR need to pass at least the test for Linux on Travis CI.
-After the automatic test passes, some of the core developers will start reviewing your codes.
+After the automatic test passes, some of the core developers will start reviewing your code.
 Note that this automatic PR test only includes CPU tests.
 
 .. note::
@@ -83,7 +84,7 @@ Note that this automatic PR test only includes CPU tests.
    Since this service is running on our internal server, we do not use it for automatic PR tests to keep the server secure.
 
 
-Even if your codes are not complete, you can send a pull request as a *work-in-progress PR* by putting the ``[WIP]`` prefix to the PR title.
+Even if your code is not complete, you can send a pull request as a *work-in-progress PR* by putting the ``[WIP]`` prefix to the PR title.
 If you write a precise explanation about the PR, core developers and other contributors can join the discussion about how to proceed the PR.
 
 .. _coding-guide:
@@ -125,7 +126,7 @@ Testing Guidelines
 
 Testing is one of the most important part of your code.
 You must test your code by unit tests following our testing guidelines.
-Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your codes::
+Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your code::
 
   $ pip install nose mock
 
@@ -143,10 +144,10 @@ In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` opti
   $ nosetests path/to/your/test.py --attr='!gpu'
 
 Some GPU tests involve multiple GPUs.
-If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--attr='gpu<N'`` where ``N`` is a concrete integer.
+If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--eval-attr='gpu<N'`` where ``N`` is a concrete integer.
 For example, if you have only one GPU, launch ``nosetests`` by the following command to skip multi-GPU tests::
 
-  $ nosetests path/to/gpu/test.py --attr='gpu<2'
+  $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
 
 Tests are put into the ``tests/chainer_tests``, ``tests/cupy_tests`` and ``tests/install_tests`` directories.
 These have the same structure as that of ``chainer``, ``cupy`` and ``install`` directories, respectively.

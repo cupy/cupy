@@ -11,28 +11,24 @@ class DotNode(object):
     with some utilities for dot language.
 
     """
-    def __init__(self, node):
+    def __init__(self, node, attribute=None):
         """Initializes DotNode.
 
         Args:
             node: :class: `Variable` object or :class: `Function` object.
+            attribute (dict): Attributes for the node.
 
         """
         assert isinstance(node, (variable.Variable, function.Function))
         self.node = node
         self.id_ = id(node)
-        self.attribute = {
-            "label": self.node.label,
-            "shape": self._shape()
-        }
-
-    def _shape(self):
-        """Returns shape type of node."""
-
-        if isinstance(self.node, variable.Variable):
-            return "oval"
+        self.attribute = {'label': node.label}
+        if isinstance(node, variable.Variable):
+            self.attribute.update({'shape': 'oval'})
         else:
-            return "box"
+            self.attribute.update({'shape': 'box'})
+        if attribute is not None:
+            self.attribute.update(attribute)
 
     @property
     def label(self):
@@ -57,17 +53,28 @@ class ComputationalGraph(object):
       We assume that the computational graph is directed and acyclic.
 
     """
-    def __init__(self, nodes, edges):
+    def __init__(self, nodes, edges, variable_style=None, function_style=None,
+                 rankdir='TB'):
         """Initializes computational graph.
 
         Args:
             nodes (list): List of nodes. Each node is either
                  :class:`Variable` object or :class:`Function` object.
             edges (list): List of edges. Each edge consists of pair of nodes.
+            variable_style (dict): Dot node style for variable.
+            function_style (dict): Dot node style for function.
+            rankdir (str): Direction of the graph that must be
+                TB (top to bottom), BT (bottom to top), LR (left to right)
+                or RL (right to left).
 
         """
         self.nodes = nodes
         self.edges = edges
+        self.variable_style = variable_style
+        self.function_style = function_style
+        if rankdir not in ('TB', 'BT', 'LR', 'RL'):
+            raise ValueError('rankdir must be in TB, BT, LR or RL.')
+        self.rankdir = rankdir
 
     def _to_dot(self):
         """Converts graph in dot format.
@@ -77,18 +84,28 @@ class ComputationalGraph(object):
             str: The graph in dot format.
 
         """
-        ret = "digraph graphname{"
+        ret = 'digraph graphname{rankdir=%s;' % self.rankdir
         for node in self.nodes:
             assert isinstance(node, (variable.Variable, function.Function))
-            ret += DotNode(node).label
+            if isinstance(node, variable.Variable):
+                ret += DotNode(node, self.variable_style).label
+            else:
+                ret += DotNode(node, self.function_style).label
         for edge in self.edges:
             head, tail = edge
-            assert (isinstance(head, variable.Variable) and
-                    isinstance(tail, function.Function)) or \
-                   (isinstance(head, function.Function) and
-                    isinstance(tail, variable.Variable))
-            head_node = DotNode(head)
-            tail_node = DotNode(tail)
+            if (isinstance(head, variable.Variable) and
+                    isinstance(tail, function.Function)):
+                head_attr = self.variable_style
+                tail_attr = self.function_style
+            elif (isinstance(head, function.Function) and
+                  isinstance(tail, variable.Variable)):
+                head_attr = self.function_style
+                tail_attr = self.variable_style
+            else:
+                raise TypeError(
+                    'head and tail should be the set of Variable and Function')
+            head_node = DotNode(head, head_attr)
+            tail_node = DotNode(tail, tail_attr)
             ret += "%s -> %s;" % (head_node.id_, tail_node.id_)
         ret += "}"
         return ret
@@ -110,7 +127,9 @@ class ComputationalGraph(object):
             NotImplementedError('Currently, only dot format is supported.')
 
 
-def build_computational_graph(outputs, remove_split=True):
+def build_computational_graph(outputs, remove_split=True,
+                              variable_style=None, function_style=None,
+                              rankdir='TB'):
     """Builds a graph of functions and variables backward-reachable from outputs.
 
     Args:
@@ -119,6 +138,12 @@ def build_computational_graph(outputs, remove_split=True):
             object or :class:`Function` object.
         remove_split(bool): It must be ``True``. This argument is left for
             backward compatibility.
+        variable_style(dict): Dot node style for variable.
+            Possible keys are 'shape', 'color', 'fillcolor', 'style', and etc.
+        function_style(dict): Dot node style for function.
+        rankdir (str): Direction of the graph that must be
+            TB (top to bottom), BT (bottom to top), LR (left to right)
+            or RL (right to left).
 
     Returns:
         ComputationalGraph: A graph consisting of nodes and edges that
@@ -186,9 +211,9 @@ def build_computational_graph(outputs, remove_split=True):
         elif isinstance(cand, function.Function):
             for input_ in cand.inputs:
                 if input_ is not cand and (input_, cand) not in seen_edges:
-                    creator = input_.creator
                     add_cand(input_)
                     seen_edges.add((input_, cand))
                     nodes.add(HashableObject(input_))
                     nodes.add(HashableObject(cand))
-    return ComputationalGraph(list(i.v for i in nodes), list(seen_edges))
+    return ComputationalGraph(list(i.v for i in nodes), list(seen_edges),
+                              variable_style, function_style, rankdir)

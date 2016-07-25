@@ -41,7 +41,7 @@ class TestEmbedID(unittest.TestCase):
             else:
                 y_expect[i] = self.W[int(self.x[i])]
 
-        gradient_check.assert_allclose(y_expect, y.data, atol=0, rtol=0)
+        testing.assert_allclose(y_expect, y.data, atol=0, rtol=0)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -100,6 +100,17 @@ class TestEmbedIDValueCheck(unittest.TestCase):
     @attr.gpu
     def test_value_check_gpu(self):
         self.check_value_check(self.t)
+
+
+class TestEmbedIDUnpickleOldFile(unittest.TestCase):
+
+    def test_old_unpickle(self):
+        embed = links.EmbedID(3, 4)
+        # To emulate an old pickled file
+        delattr(embed, 'ignore_label')
+        x = chainer.Variable(numpy.arange(2, dtype=numpy.int32))
+        y = embed(x)
+        self.assertEqual(y.data.shape, (2, 4))
 
 
 testing.run_module(__name__, __file__)

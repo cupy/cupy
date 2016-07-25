@@ -16,12 +16,12 @@ def _inv_gpu(b):
     n = a.shape[1]
     n_matrices = len(a)
     # Pivot array
-    p = cuda.cupy.empty((n, n_matrices), dtype='int32')
+    p = cuda.cupy.empty((n, n_matrices), dtype=numpy.int32)
     # Output array
     c = cuda.cupy.empty_like(a)
     # These arrays hold information on the execution success
     # or if the matrix was singular
-    info = cuda.cupy.empty(n_matrices, dtype=numpy.intp)
+    info = cuda.cupy.empty(n_matrices, dtype=numpy.int32)
     ap = matmul._mat_ptrs(a)
     cp = matmul._mat_ptrs(c)
     _, lda = matmul._get_ld(a)

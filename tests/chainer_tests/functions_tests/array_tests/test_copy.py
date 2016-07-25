@@ -17,21 +17,23 @@ def _to_gpu(x, device_id):
         return x
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class Copy(unittest.TestCase):
 
     def setUp(self):
         self.x_data = numpy.random.uniform(
-            -1, 1, (10, 5)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (10, 5)).astype(numpy.float32)
+            -1, 1, (10, 5)).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, (10, 5)).astype(self.dtype)
 
     def check_forward(self, src_id, dst_id):
         x_data = _to_gpu(self.x_data, src_id)
         x = chainer.Variable(x_data)
-
         y = functions.copy(x, dst_id)
 
-        numpy.testing.assert_array_equal(
-            self.x_data, cuda.to_cpu(y.data))
+        self.assertEqual(self.x_data.dtype, self.dtype)
+        numpy.testing.assert_array_equal(self.x_data, cuda.to_cpu(y.data))
 
     def check_backward(self, src_id, dst_id):
         x_data = _to_gpu(self.x_data, src_id)
@@ -62,6 +64,26 @@ class Copy(unittest.TestCase):
     def test_check_backward_gpu(self):
         device_id = cuda.Device().id
         self.check_forward(device_id, device_id)
+
+    @attr.gpu
+    def test_forward_cpu_to_gpu(self):
+        device_id = cuda.Device().id
+        self.check_forward(-1, device_id)
+
+    @attr.gpu
+    def test_backward_cpu_to_gpu(self):
+        device_id = cuda.Device().id
+        self.check_backward(-1, device_id)
+
+    @attr.gpu
+    def test_forward_gpu_to_cpu(self):
+        device_id = cuda.Device().id
+        self.check_forward(device_id, -1)
+
+    @attr.gpu
+    def test_backward_gpu_to_cpu(self):
+        device_id = cuda.Device().id
+        self.check_backward(device_id, -1)
 
     @attr.multi_gpu(2)
     def test_forward_multigpu(self):

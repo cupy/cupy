@@ -128,7 +128,9 @@ class Stream(object):
             arg (object): Argument to the callback.
 
         """
-        runtime.streamAddCallback(self.ptr, callback, arg)
+        def f(stream, status, dummy):
+            callback(self, status, arg)
+        runtime.streamAddCallback(self.ptr, f, 0)
 
     def record(self, event=None):
         """Records an event on the stream.

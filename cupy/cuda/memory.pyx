@@ -138,7 +138,7 @@ cdef class MemoryPointer:
         if size > 0:
             _set_peer_access(src.device.id, self.device.id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
-                                runtime.memcpyDefault, stream)
+                                runtime.memcpyDefault, stream.ptr)
 
     cpdef copy_from_host(self, mem, size_t size):
         """Copies a memory sequence from the host memory.
@@ -163,7 +163,7 @@ cdef class MemoryPointer:
         """
         if size > 0:
             runtime.memcpyAsync(self.ptr, mem.value, size,
-                                runtime.memcpyHostToDevice, stream)
+                                runtime.memcpyHostToDevice, stream.ptr)
 
     cpdef copy_from(self, mem, size_t size):
         """Copies a memory sequence from a (possibly different) device or host.
@@ -332,12 +332,18 @@ cdef class SingleDeviceMemoryPool:
         self._free = collections.defaultdict(list)
         self._alloc = allocator
         self._weakref = weakref.ref(self)
+        self._allocation_unit_size = 256
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
         cdef Memory mem
+
         if size == 0:
             return MemoryPointer(Memory(0), 0)
+
+        # Round up the memory size to fit memory alignment of cudaMalloc
+        unit = self._allocation_unit_size
+        size = (((size + unit - 1) // unit) * unit)
         free = self._free[size]
         if free:
             mem = free.pop()

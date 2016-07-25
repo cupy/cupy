@@ -131,6 +131,16 @@ class TestCTCWithAllPadding(TestCTC):
         self.l_length[...] = 1
 
 
+class TestCTCBlankSymbol(TestCTC):
+
+    def setUp(self):
+        super(TestCTCBlankSymbol, self).setUp()
+        self.x = numpy.random.uniform(-1, 1, (4, 2, 4)).astype(numpy.float32)
+        self.l = numpy.array([[3, 0, 3, 1, 3],
+                              [3, 1, 3, 0, 3]]).astype(numpy.int32)
+        self.blank_symbol = 3
+
+
 class TestCTCUseVolatile(unittest.TestCase):
 
     def test_volatile(self):
