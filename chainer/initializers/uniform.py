@@ -21,9 +21,9 @@ class Uniform(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=0.05, **kwargs):
+    def __init__(self, scale=0.05, dtype=None):
         self.scale = scale
-        super(Uniform, self).__init__(**kwargs)
+        super(Uniform, self).__init__(dtype)
 
     def __call__(self, array):
         xp = cuda.get_array_module(array)
@@ -50,9 +50,9 @@ class LeCunUniform(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=1.0, **kwargs):
+    def __init__(self, scale=1.0, dtype=None):
         self.scale = scale
-        super(LeCunUniform, self).__init__(**kwargs)
+        super(LeCunUniform, self).__init__(dtype)
 
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
@@ -77,9 +77,9 @@ class GlorotUniform(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=1.0, **kwargs):
+    def __init__(self, scale=1.0, dtype=None):
         self.scale = scale
-        super(GlorotUniform, self).__init__(**kwargs)
+        super(GlorotUniform, self).__init__(dtype)
 
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
@@ -103,9 +103,9 @@ class HeUniform(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=1.0, **kwargs):
+    def __init__(self, scale=1.0, dtype=None):
         self.scale = scale
-        super(HeUniform, self).__init__(**kwargs)
+        super(HeUniform, self).__init__(dtype)
 
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)

@@ -15,9 +15,9 @@ class Identity(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=1.0, **kwargs):
+    def __init__(self, scale=1.0, dtype=None):
         self.scale = scale
-        super(Identity, self).__init__(**kwargs)
+        super(Identity, self).__init__(dtype)
 
     def __call__(self, array):
         shape = array.shape
@@ -41,9 +41,9 @@ class Constant(initializer.Initializer):
 
     """
 
-    def __init__(self, fill_value, **kwargs):
+    def __init__(self, fill_value, dtype=None):
         self.fill_value = fill_value
-        super(Constant, self).__init__(**kwargs)
+        super(Constant, self).__init__(dtype)
 
     def __call__(self, array):
         xp = cuda.get_array_module(array)

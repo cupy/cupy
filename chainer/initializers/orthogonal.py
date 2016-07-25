@@ -34,9 +34,9 @@ class Orthogonal(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=1.1, **kwargs):
+    def __init__(self, scale=1.1, dtype=None):
         self.scale = scale
-        super(Orthogonal, self).__init__(**kwargs)
+        super(Orthogonal, self).__init__(dtype)
 
     # TODO(Kenta Oono)
     # How do we treat overcomplete base-system case?

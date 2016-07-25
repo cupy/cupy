@@ -21,9 +21,9 @@ class Normal(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=0.05, **kwargs):
+    def __init__(self, scale=0.05, dtype=None):
         self.scale = scale
-        super(Normal, self).__init__(**kwargs)
+        super(Normal, self).__init__(dtype)
 
     def __call__(self, array):
         xp = cuda.get_array_module(array)
@@ -51,9 +51,9 @@ class GlorotNormal(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=1.0, **kwargs):
+    def __init__(self, scale=1.0, dtype=None):
         self.scale = scale
-        super(GlorotNormal, self).__init__(**kwargs)
+        super(GlorotNormal, self).__init__(dtype)
 
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
@@ -80,9 +80,9 @@ class HeNormal(initializer.Initializer):
 
     """
 
-    def __init__(self, scale=1.0, **kwargs):
+    def __init__(self, scale=1.0, dtype=None):
         self.scale = scale
-        super(HeNormal, self).__init__(**kwargs)
+        super(HeNormal, self).__init__(dtype)
 
     def __call__(self, array):
         fan_in, fan_out = initializer.get_fans(array.shape)
