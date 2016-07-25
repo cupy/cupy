@@ -96,6 +96,7 @@ class TestClassificationSummary(unittest.TestCase):
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
 
+        # Suppress warning that arises from zero division.
         warnings.filterwarnings('ignore', category=RuntimeWarning)
 
     def check_forward(self, xp):
