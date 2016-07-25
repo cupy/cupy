@@ -226,7 +226,7 @@ cdef class MemoryPointer:
         """
         if size > 0:
             runtime.memcpyAsync(mem.value, self.ptr, size,
-                                runtime.memcpyDeviceToHost, stream)
+                                runtime.memcpyDeviceToHost, stream.ptr)
 
     cpdef memset(self, int value, size_t size):
         """Fills a memory sequence by constant byte value.
@@ -249,7 +249,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            runtime.memsetAsync(self.ptr, value, size, stream)
+            runtime.memsetAsync(self.ptr, value, size, stream.ptr)
 
 
 cpdef MemoryPointer _malloc(Py_ssize_t size):

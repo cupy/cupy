@@ -28,11 +28,11 @@ class TestSoftmax(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, self.x.shape).astype(self.dtype)
 
         self.check_forward_options = {}
-        self.check_backward_options = {'eps': 1e-2}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
             self.check_backward_options = {
-                'eps': 2.0 ** -4, 'atol': 5e-3, 'rtol': 5e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
