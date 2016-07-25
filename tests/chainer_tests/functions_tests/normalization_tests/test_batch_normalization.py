@@ -174,6 +174,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'use_cudnn': [True, False],
+    # TODO(bkvogel): Check float16 support again in next cuDNN version.
     'dtype': [numpy.float32, numpy.float64],
 }))
 @attr.cudnn
@@ -192,8 +193,7 @@ class TestBatchNormalizationCudnnCall(unittest.TestCase):
         self.mean = self.x.mean(axis=self.aggr_axes)
         self.var = self.x.var(axis=self.aggr_axes) + self.eps
         self.expect = self.use_cudnn and (
-            cuda.cudnn.cudnn.getVersion() >= 5000 or
-            self.dtype != numpy.float16)
+            cuda.cudnn.cudnn.getVersion() >= 5000)
 
     def forward(self):
         return functions.batch_normalization(
