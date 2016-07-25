@@ -26,7 +26,7 @@ class TestSigmoid(unittest.TestCase):
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-4, 'rtol': 1e-3}
             self.check_backward_options = {
-                'eps': 2 ** -5, 'atol': 5e-4, 'rtol': 5e-3}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
