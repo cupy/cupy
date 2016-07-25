@@ -126,7 +126,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
         if self.dtype == numpy.float16:
             self.check_forward_optionss = {'atol': 1e-3, 'rtol': 1e-2}
             self.check_backward_optionss = {
-                'eps': 2 ** -5, 'atol': 1e-2, 'rtol': 1e-1}
+                'eps': 2 ** -5, 'atol': 3e-2, 'rtol': 3e-1}
 
     def check_forward(self, args, use_cudnn=True):
         y = functions.fixed_batch_normalization(
