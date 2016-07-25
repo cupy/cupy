@@ -324,6 +324,7 @@ class Ident(chainer.Function):
         return grads
 
 
+# numpy.float16 is not tested because it is low precision.
 @testing.parameterize(*testing.product({
     'dtype': [None, numpy.float32, numpy.float64],
 }))
