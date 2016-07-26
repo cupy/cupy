@@ -39,7 +39,7 @@ LSTM = lstm.LSTM
 StatelessLSTM = lstm.StatelessLSTM
 MLPConvolution2D = mlp_convolution_2d.MLPConvolution2D
 Parameter = parameter.Parameter
-Peephole = peephole.StatefulPeepholeLSTM
+StatefulPeepholeLSTM = peephole.StatefulPeepholeLSTM
 Scale = scale.Scale
 
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
