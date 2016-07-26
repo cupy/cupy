@@ -138,6 +138,32 @@ class TestFunction(unittest.TestCase):
         self.setup_gpu()
         self.check_call()
 
+    def check_call_ndarray(self):
+        x1 = chainer.Variable(self.x1)
+        x2 = self.x2
+        x1.rank = 1
+        ys = self.f(x1, x2)
+
+        self.assertEqual(len(ys), 2)
+        self.check_check_type_forward()
+
+        for y in ys:
+            self.assertIsInstance(y, chainer.Variable)
+            # rank is (maximum rank in xs) + 1
+            self.assertEqual(y.rank, 2)
+            self.assertFalse(y.volatile)
+            self.assertIs(y.creator, self.f)
+
+        self.assertIsInstance(y.creator.outputs, tuple)
+
+    def test_call_ndarray_cpu(self):
+        self.check_call_ndarray()
+
+    @attr.gpu
+    def test_call_ndarray_gpu(self):
+        self.setup_gpu()
+        self.check_call_ndarray()
+
     def check_call_volatile(self):
         x1 = chainer.Variable(self.x1, volatile=True)
         x2 = chainer.Variable(self.x2, volatile=True)

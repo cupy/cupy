@@ -30,7 +30,7 @@ class EmbedIDFunction(function.Function):
         if chainer.is_debug():
             if not ((0 <= x).all() and
                     (x < len(W)).all()):
-                msg = 'Each `x` value need to satisfty `0 <= x < len(W)`'
+                msg = 'Each `x` value need to satisfy `0 <= x < len(W)`'
                 raise ValueError(msg)
 
         if self.ignore_label is not None:

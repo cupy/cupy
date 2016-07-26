@@ -48,7 +48,7 @@ class DetFunctionTest(unittest.TestCase):
         xt = chainer.Variable(ct)
         yn = self.det(xn)
         yt = self.det(xt)
-        gradient_check.assert_allclose(yn.data, yt.data, rtol=1e-4, atol=1)
+        testing.assert_allclose(yn.data, yt.data, rtol=1e-4, atol=1)
 
     @attr.gpu
     @condition.retry(3)
@@ -72,7 +72,7 @@ class DetFunctionTest(unittest.TestCase):
         sxv = chainer.Variable(sx)
         cxd = self.det(cxv)
         sxd = self.det(sxv)
-        gradient_check.assert_allclose(cxd.data * c, sxd.data)
+        testing.assert_allclose(cxd.data * c, sxd.data)
 
     @attr.gpu
     @condition.retry(3)
@@ -96,7 +96,7 @@ class DetFunctionTest(unittest.TestCase):
             idt = cuda.to_gpu(idt)
         idtv = chainer.Variable(idt)
         idtd = self.det(idtv)
-        gradient_check.assert_allclose(idtd.data, chk, rtol=1e-4, atol=1e-4)
+        testing.assert_allclose(idtd.data, chk, rtol=1e-4, atol=1e-4)
 
     @attr.gpu
     def test_det_identity_gpu(self):
@@ -116,8 +116,8 @@ class DetFunctionTest(unittest.TestCase):
         vy = chainer.Variable(cy)
         dxy1 = self.det(self.matmul(vx, vy))
         dxy2 = self.det(vx) * self.det(vy)
-        gradient_check.assert_allclose(dxy1.data, dxy2.data, rtol=1e-4,
-                                       atol=1e-4)
+        testing.assert_allclose(
+            dxy1.data, dxy2.data, rtol=1e-4, atol=1e-4)
 
     @condition.retry(3)
     def test_det_product_cpu(self):
@@ -196,7 +196,7 @@ class TestDetSmallCase(unittest.TestCase):
     def check_by_definition(self, x):
         ans = F.det(chainer.Variable(x)).data
         y = x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
-        gradient_check.assert_allclose(ans, y)
+        testing.assert_allclose(ans, y)
 
     @condition.retry(3)
     def test_answer_cpu(self):
@@ -224,7 +224,7 @@ class TestDetGPUCPUConsistency(unittest.TestCase):
         y = F.det(chainer.Variable(x))
         gpu = cuda.to_cpu(y.data)
         cpu = numpy.linalg.det(self.x)
-        gradient_check.assert_allclose(gpu, cpu)
+        testing.assert_allclose(gpu, cpu)
 
 
 @testing.parameterize(
@@ -244,7 +244,7 @@ class TestBatchDetGPUCPUConsistency(unittest.TestCase):
         y = F.batch_det(chainer.Variable(x))
         gpu = cuda.to_cpu(y.data)
         cpu = numpy.linalg.det(self.x)
-        gradient_check.assert_allclose(gpu, cpu)
+        testing.assert_allclose(gpu, cpu)
 
 
 class DetFunctionRaiseTest(unittest.TestCase):

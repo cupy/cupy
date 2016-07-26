@@ -1,5 +1,9 @@
 language: python
 
+cache:
+  - pip
+  - ccache
+
 matrix:
   include:
     - os: linux
@@ -42,6 +46,7 @@ before_install:
     fi
 
 install:
+  - pip install -U pip wheel
   - pip install cython
   - python setup.py sdist
   - pip install dist/*.tar.gz

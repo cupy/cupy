@@ -98,14 +98,21 @@ class Function(object):
            not need to take care of device selection.
 
         Args:
-            inputs: Tuple of input :class:`Variable` objects. The volatile
-                flags of all input variables must agree.
+            inputs: Tuple of input :class:`Variable`, :class:`numpy.ndarray` or
+                :class:`cupy.ndarray` objects. The volatile flags of all input
+                variables must agree. If the input is an :class:`numpy.ndarray`
+                or a :class:`cupy.ndarray`, it is automatically wrapped with
+                :class:`Variable`.
 
         Returns:
             One :class:`Variable` object or a tuple of multiple
             :class:`Variable` objects.
 
         """
+
+        inputs = [x if isinstance(x, chainer.Variable)
+                  else chainer.Variable(x, volatile=flag.AUTO)
+                  for x in inputs]
 
         in_data = tuple([x.data for x in inputs])
         if chainer.is_debug():

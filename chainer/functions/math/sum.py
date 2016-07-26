@@ -46,7 +46,9 @@ class Sum(function.Function):
         xp = cuda.get_array_module(*x)
 
         gx = xp.empty_like(x[0])
-        if self.axis is None:
+        if gx.ndim == 0:
+            gx = gy[0]
+        elif self.axis is None:
             gx[:] = gy[0]
         else:
             gy = gy[0]

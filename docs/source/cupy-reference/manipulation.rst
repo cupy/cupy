@@ -49,6 +49,7 @@ Joining arrays along axis
 .. autofunction:: cupy.vstack
 .. autofunction:: cupy.hstack
 .. autofunction:: cupy.dstack
+.. autofunction:: cupy.stack
 
 
 Splitting arrays along axis
