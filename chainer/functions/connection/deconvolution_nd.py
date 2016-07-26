@@ -281,7 +281,56 @@ class DeconvolutionND(function.Function):
 
 def deconvolution_nd(x, W, b=None, stride=1, pad=0,
                      outsize=None, use_cudnn=True):
-    """
+    """N-dimensional deconvolution function.
+
+    This is an implementation of N-dimensional deconvolution which generalizes
+    two-dimensional one. It takes three variables: input ``x``, the filter
+    weight ``W``, and the bias vector ``b``.
+
+    Args:
+        x (~chainer.Variable): Input variable of shape
+            :math:`(n, c_I, d_1, d_2, ..., d_N)`.
+        W (~chainer.Variable): Weight variable of shape
+            :math:`(c_O, c_I, k_1, k_2, ..., k_N)`.
+        b (~chainer.Variable): Bias variable of length :math:`c_O` (optional).
+        stride (int or tuple of ints): Stride of filter applications
+            :math:`(s_1, s_2, ..., s_N)`. ``stride=s`` is equivalent to
+            ``(s, s, ..., s)``.
+        pad (int or tuple of ints): Spatial padding size for input arrays
+            :math:`(p_1, p_2, ..., p_N)`. ``pad=p`` is equivalent to
+            ``(p, p, ..., p)``.
+        outsize (tuple of ints): Expected output size of deconvolutional
+            operation. It should be a tuple of ints
+            :math:`(out_1, out_2, ..., out_N)`. Default value is ``None`` and
+            the outsize is estimated by input size, stride and pad.
+        use_cudnn (bool): If ``True``, then this function uses cuDNN if
+            available. Deconvolution using cuDNN supports more than
+            one-dimensional one.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    The filter weight has the following dimensions
+    :math:`(c_I, c_O, k_1, k_2, ..., k_N)` which indicate the number of input
+    channels, that of output channels and the filter's spatial sizes,
+    respectively.
+
+    The one-dimensional bias vector is of size :math:`c_O`.
+
+    Let :math:`X` be the input tensor of dimensions
+    :math:`(n, c_I, d_1, d_2, ..., d_N)`, :math:`(s_1, s_2, ..., s_N)` the
+    stride of filter applications, and :math:`(p_1, p_2, ..., p_N)` the spacial
+    padding size. Then the output size :math:`(out_1, out_2, ..., out_N)` is
+    determined by the following equations:
+
+    .. math::
+
+        out_1 &= s_1 (d_1 - 1) + k_1 - 2 p_1,\\\\
+        out_2 &= s_2 (d_2 - 1) + k_2 - 2 p_2,\\\\
+        ...,\\\\
+        out_N &= s_N (d_N - 1) + k_N - 2 p_N.
+
+    .. seealso:: :class:`links.DeconvolutionND`, :func:`deconvolution_2d`
     """
     ndim = len(x.data.shape[2:])
     func = DeconvolutionND(ndim, stride, pad, outsize, use_cudnn)
