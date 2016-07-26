@@ -125,7 +125,7 @@ class TestPeepholeState(unittest.TestCase):
 
     def setUp(self):
         in_size, out_size = 10, 8
-        self.link = links.Peephole(in_size, out_size)
+        self.link = links.StatefulPeepholeLSTM(in_size, out_size)
 
     def check_reset_state(self):
         self.link.reset_state()
