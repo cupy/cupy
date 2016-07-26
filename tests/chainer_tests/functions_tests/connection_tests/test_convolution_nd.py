@@ -67,7 +67,7 @@ class TestConvolutionND(unittest.TestCase):
             x_gpu, W_gpu, b_gpu, stride=self.stride, pad=self.pad,
             use_cudnn=use_cudnn, cover_all=self.cover_all)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
 
     @attr.cudnn
