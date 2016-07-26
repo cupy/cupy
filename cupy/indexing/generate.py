@@ -22,9 +22,10 @@ class AxisConcatenator(object):
         newobj = newobj.transpose(axes)
         return newobj
 
-    def __init__(self, axis=0, ndmin=1, trans1d=-1):
+    def __init__(self, axis=0, matrix=False, ndmin=1, trans1d=-1):
         self.axis = axis
         self.trans1d = trans1d
+        self.matrix = matrix
         self.ndmin = ndmin
 
     def __getitem__(self, key):
