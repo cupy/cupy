@@ -47,7 +47,7 @@ def _peephole(func, c, h, x):
 class TestPeephole(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.Peephole(self.in_size, self.out_size)
+        self.link = links.StatefulPeepholeLSTM(self.in_size, self.out_size)
         upward = self.link.upward.W.data
         upward[...] = numpy.random.uniform(-1, 1, upward.shape)
         lateral = self.link.lateral.W.data
@@ -145,7 +145,7 @@ class TestPeepholeToCPUToGPU(unittest.TestCase):
 
     def setUp(self):
         in_size, out_size = 10, 8
-        self.link = links.Peephole(in_size, out_size)
+        self.link = links.StatefulPeepholeLSTM(in_size, out_size)
         self.c = chainer.Variable(
             numpy.random.uniform(-1, 1, (1, out_size)).astype(numpy.float32))
         self.h = chainer.Variable(
