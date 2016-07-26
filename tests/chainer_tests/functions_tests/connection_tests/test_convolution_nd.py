@@ -46,16 +46,11 @@ class TestConvolutionND(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.x_dtype)
 
         self.check_forward_options = {}
-        self.check_backward_options = {
-            'eps': 1e-2, 'atol': 5e-5, 'rtol': 5e-4}
-        if self.x_dtype == numpy.float16:
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.x_dtype == numpy.float16 or self.W_dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
-        elif self.W_dtype == numpy.float16:
-            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
-            self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward_consistency(self, nobias=False, use_cudnn=False):
         x_cpu = chainer.Variable(self.x)
