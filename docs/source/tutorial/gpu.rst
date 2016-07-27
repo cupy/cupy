@@ -416,6 +416,13 @@ After the gradients are prepared, we can update the optimizer in usual way.
 Note that the update only modifies the parameters of ``model_0``.
 So we must manually copy them to ``model_1`` using :meth:`Link.copyparams` method.
 
+.. note::
+
+   If the batchsize used in one model remain the same, the scale of the gradient
+   is roughly proportional to the number of models, when we aggregate
+   gradients from all models by :func:`chainer.Link.addgrads`. So you need to adjust the batchsize
+   and/or learning rate of the optimizer accordingly.
+
 --------
 
 Now you can use Chainer with GPUs.
