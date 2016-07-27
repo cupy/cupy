@@ -171,21 +171,26 @@ class TestLink(unittest.TestCase):
         self.assertEqual(l.z, 3)
 
 
-class CopyCountVariable(chainer.Variable):
+class CountVariable(chainer.Variable):
 
     def __init__(self, v):
-        super(CopyCountVariable, self).__init__(v.data, v.volatile, v.name)
+        super(CountVariable, self).__init__(v.data, v.volatile, v.name)
         self.grad = v.grad
         self.count_to_cpu = 0
         self.count_to_gpu = 0
+        self.count_zerograd = 0
 
     def to_cpu(self):
         self.count_to_cpu += 1
-        super(CopyCountVariable, self).to_cpu()
+        super(CountVariable, self).to_cpu()
 
     def to_gpu(self, device=None):
         self.count_to_gpu += 1
-        super(CopyCountVariable, self).to_gpu(device)
+        super(CountVariable, self).to_gpu(device)
+
+    def zerograd(self):
+        self.count_zerograd += 1
+        super(CountVariable, self).zerograd()
 
 
 class TestChain(unittest.TestCase):
@@ -259,14 +264,14 @@ class TestChain(unittest.TestCase):
         self.assertIs(self.l3.x.data, x3)
         self.assertIs(self.l3.x.grad, gx3)
 
-    def set_copy_count_variables(self):
-        self.l1.x = CopyCountVariable(self.l1.x)
-        self.l2.x = CopyCountVariable(self.l2.x)
-        self.l3.x = CopyCountVariable(self.l3.x)
+    def set_count_variables(self):
+        self.l1.x = CountVariable(self.l1.x)
+        self.l2.x = CountVariable(self.l2.x)
+        self.l3.x = CountVariable(self.l3.x)
 
     @attr.gpu
     def test_to_cpu(self):
-        self.set_copy_count_variables()
+        self.set_count_variables()
         self.c2.to_gpu()
         self.c2.to_cpu()
         self.assertIs(self.c2.xp, numpy)
@@ -289,7 +294,7 @@ class TestChain(unittest.TestCase):
 
     @attr.gpu
     def test_to_gpu(self):
-        self.set_copy_count_variables()
+        self.set_count_variables()
         cupy = cuda.cupy
         self.c2.to_gpu()
         self.assertIs(self.c2.xp, cupy)
@@ -368,10 +373,14 @@ class TestChain(unittest.TestCase):
         numpy.testing.assert_array_equal(self.l3.x.data, l3.x.data)
 
     def test_zerograds(self):
+        self.set_count_variables()
         self.c2.zerograds()
         numpy.testing.assert_array_equal(self.l1.x.grad, numpy.zeros((2, 3)))
         numpy.testing.assert_array_equal(self.l2.x.grad, numpy.zeros(2))
         numpy.testing.assert_array_equal(self.l3.x.grad, numpy.zeros(3))
+        numpy.testing.assert_array_equal(self.l1.x.count_zerograd, 1)
+        numpy.testing.assert_array_equal(self.l2.x.count_zerograd, 1)
+        numpy.testing.assert_array_equal(self.l3.x.count_zerograd, 1)
 
     def test_addgrads(self):
         l1 = chainer.Link(x=(2, 3))

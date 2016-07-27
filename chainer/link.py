@@ -315,8 +315,9 @@ class Link(object):
         iteration of the optimization.
 
         """
-        for param in self.params():
-            param.zerograd()
+        d = self.__dict__
+        for name in self._params:
+            d[name].zerograd()
 
     def addgrads(self, link):
         """Accumulates gradient values from given link.
