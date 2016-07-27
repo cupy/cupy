@@ -6,6 +6,7 @@ import numpy
 import six
 
 from cupy.core import flags
+from cupy.cuda import stream
 from cupy import util
 
 cimport cpython
@@ -351,7 +352,10 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
-        elementwise_copy(value, self, dtype=self.dtype)
+        if value == 0 and self._c_contiguous:
+            self.data.memset_async(0, self.nbytes, stream.Stream(True))
+        else:
+            elementwise_copy(value, self, dtype=self.dtype)
 
     # -------------------------------------------------------------------------
     # Shape manipulation
