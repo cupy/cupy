@@ -9,15 +9,15 @@ class TestSplit(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.numpy_cupy_array_equal()
-    def test_array_spliti1(self, xp):
+    def test_array_split1(self, xp):
         a = testing.shaped_arange((3, 11), xp)
         split = xp.array_split(a, 4, 1)
         return xp.concatenate(split, 1)
 
     @testing.numpy_cupy_array_equal()
-    def test_array_spliti2(self, xp):
+    def test_array_split2(self, xp):
         a = testing.shaped_arange((3, 11), xp)
-        split = xp.array_split(a, 4, 1)
+        split = xp.array_split(a, 4, -1)
         return xp.concatenate(split, -1)
 
     @testing.numpy_cupy_array_equal()
@@ -53,7 +53,7 @@ class TestSplit(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_split_by_sections2(self, xp):
         a = testing.shaped_arange((3, 11), xp)
-        split = xp.split(a, (2, 4, 9), 1)
+        split = xp.split(a, (2, 4, 9), -1)
         return xp.concatenate(split, -1)
 
     @testing.numpy_cupy_array_equal()

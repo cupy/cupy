@@ -13,7 +13,7 @@ class Identity(initializer.Initializer):
     Note that arrays to be passed must be 2D squared matrices.
 
     Attributes:
-        scale (scalar): A constant to be multipllied to identity matrices.
+        scale (scalar): A constant to be multiplied to identity matrices.
 
     """
 

@@ -59,15 +59,7 @@ class GoogLeNetBN(chainer.Chain):
         self.inc5a.train = value
         self.inc5b.train = value
 
-    def clear(self):
-        self.loss = None
-        self.loss1 = None
-        self.loss2 = None
-        self.loss3 = None
-        self.accuracy = None
-
     def __call__(self, x, t):
-        self.clear()
         test = not self.train
 
         h = F.max_pooling_2d(
@@ -84,7 +76,7 @@ class GoogLeNetBN(chainer.Chain):
         a = F.relu(self.norma(self.conva(a), test=test))
         a = F.relu(self.norma2(self.lina(a), test=test))
         a = self.outa(a)
-        self.loss1 = F.softmax_cross_entropy(a, t)
+        loss1 = F.softmax_cross_entropy(a, t)
 
         h = self.inc4b(h)
         h = self.inc4c(h)
@@ -94,14 +86,22 @@ class GoogLeNetBN(chainer.Chain):
         b = F.relu(self.normb(self.convb(b), test=test))
         b = F.relu(self.normb2(self.linb(b), test=test))
         b = self.outb(b)
-        self.loss2 = F.softmax_cross_entropy(b, t)
+        loss2 = F.softmax_cross_entropy(b, t)
 
         h = self.inc4e(h)
         h = self.inc5a(h)
         h = F.average_pooling_2d(self.inc5b(h), 7)
         h = self.out(h)
-        self.loss3 = F.softmax_cross_entropy(h, t)
+        loss3 = F.softmax_cross_entropy(h, t)
 
-        self.loss = 0.3 * (self.loss1 + self.loss2) + self.loss3
-        self.accuracy = F.accuracy(h, t)
-        return self.loss
+        loss = 0.3 * (loss1 + loss2) + loss3
+        accuracy = F.accuracy(h, t)
+
+        chainer.report({
+            'loss': loss,
+            'loss1': loss1,
+            'loss2': loss2,
+            'loss3': loss3,
+            'accuracy': accuracy,
+        }, self)
+        return loss

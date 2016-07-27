@@ -14,7 +14,7 @@ from chainer.testing import condition
 class TestROIPooling2D(unittest.TestCase):
 
     def setUp(self):
-        N = 4
+        N = 3
         n_channels = 3
         self.x = numpy.arange(
             N * n_channels * 12 * 8,
@@ -27,10 +27,12 @@ class TestROIPooling2D(unittest.TestCase):
             [1, 3, 1, 5, 10],
             [0, 3, 3, 3, 3]
         ], dtype=numpy.float32)
+        n_rois = self.rois.shape[0]
         self.outh, self.outw = 5, 7
         self.spatial_scale = 0.6
         self.gy = numpy.random.uniform(
-            -1, 1, (N, n_channels, self.outh, self.outw)).astype(numpy.float32)
+            -1, 1, (n_rois, n_channels,
+                    self.outh, self.outw)).astype(numpy.float32)
 
     def check_forward(self, x_data, roi_data):
         x = chainer.Variable(x_data)
@@ -68,24 +70,14 @@ class TestROIPooling2D(unittest.TestCase):
         y_gpu = functions.roi_pooling_2d(
             x_gpu, rois_gpu, outh=self.outh, outw=self.outw,
             spatial_scale=self.spatial_scale)
-        gradient_check.assert_allclose(y_cpu.data, cuda.to_cpu(y_gpu.data))
+        testing.assert_allclose(y_cpu.data, cuda.to_cpu(y_gpu.data))
 
     def check_backward(self, x_data, roi_data, y_grad):
-        x = chainer.Variable(x_data)
-        rois = chainer.Variable(roi_data)
-        y = functions.roi_pooling_2d(x, rois, outh=self.outh, outw=self.outw,
-                                     spatial_scale=self.spatial_scale)
-        y.grad = y_grad
-        y.backward()
-
-        xs = (x.data, rois.data)
-
-        def f():
-            func = y.creator
-            return func.forward(xs)
-
-        gx, _ = gradient_check.numerical_grad(f, xs, (y.grad,))
-        gradient_check.assert_allclose(cuda.to_cpu(gx), cuda.to_cpu(x.grad))
+        gradient_check.check_backward(
+            functions.ROIPooling2D(outh=self.outh,
+                                   outw=self.outw,
+                                   spatial_scale=self.spatial_scale),
+            (x_data, roi_data), y_grad, no_grads=[False, True])
 
     @condition.retry(3)
     def test_backward_cpu(self):

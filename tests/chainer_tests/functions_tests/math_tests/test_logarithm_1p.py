@@ -23,7 +23,7 @@ class Log1pFunctionTest(unittest.TestCase):
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = F.log1p(x)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             numpy.log1p(self.x), y.data, atol=1e-7, rtol=1e-7)
 
     @condition.retry(3)

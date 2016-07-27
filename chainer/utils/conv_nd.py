@@ -61,7 +61,7 @@ def im2col_nd_gpu(img, ksize, stride, pad, cover_all=False):
 
     # col_shape: (n, c, k_1, k_2, ..., k_N, out_1, out_2, ..., out_N)
     shape = (n, c) + ksize + outs
-    col = cuda.empty(shape, dtype=img.dtype)
+    col = cuda.cupy.empty(shape, dtype=img.dtype)
 
     if ndim not in _im2col_cache:
         _im2col_cache[ndim] = conv_nd_kernel.Im2colNDKernel(ndim).generate()
@@ -114,7 +114,7 @@ def col2im_nd_gpu(col, stride, pad, dims):
     ndim = len(dims)
 
     img_shape = (n, c) + dims   # (n, c, d_1, d_2, ..., d_N)
-    img = cuda.empty(img_shape, dtype=col.dtype)
+    img = cuda.cupy.empty(img_shape, dtype=col.dtype)
 
     if ndim not in _col2im_cache:
         _col2im_cache[ndim] = conv_nd_kernel.Col2imNDKernel(ndim).generate()

@@ -59,7 +59,7 @@ class LSTM(function.Function):
             x_type.shape[0] == c_type.shape[0],
             x_type.shape[1] == 4 * c_type.shape[1],
         )
-        for i in range(2, c_type.ndim.eval()):
+        for i in six.moves.range(2, c_type.ndim.eval()):
             type_check.expect(x_type.shape[i] == c_type.shape[i])
 
     def forward(self, inputs):

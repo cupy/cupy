@@ -146,6 +146,21 @@ def vstack(tup):
     return concatenate(cupy.atleast_2d(*tup), 0)
 
 
+def stack(tup, axis=0):
+    """Stacks arrays along a new axis.
+
+    Args:
+        tup (sequence of arrays): Arrays to be stacked.
+        axis (int): Axis along which the arrays are stacked.
+
+    Returns:
+        cupy.ndarray: Stacked array.
+
+    .. seealso:: :func:`numpy.stack`
+    """
+    return concatenate([cupy.expand_dims(x, axis) for x in tup], axis)
+
+
 def _get_positive_axis(ndim, axis):
     a = axis
     if a < 0:

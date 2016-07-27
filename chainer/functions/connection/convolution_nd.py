@@ -22,6 +22,9 @@ if cuda.cudnn_enabled:
             libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
+_check_cudnn_acceptable_type = convolution_2d._check_cudnn_acceptable_type
+
+
 class ConvolutionND(function.Function):
 
     def __init__(self, ndim, stride=1, pad=0, use_cudnn=True, cover_all=False):
@@ -58,7 +61,7 @@ class ConvolutionND(function.Function):
                 cuda.cudnn_enabled and
                 self.use_cudnn and
                 self.ndim > 1 and
-                convolution_2d._check_cudnn_acceptable_type(x.dtype, W.dtype))
+                _check_cudnn_acceptable_type(x.dtype, W.dtype))
 
     def _forward_xp(self, x, W, b, xp):
         ndim = self.ndim

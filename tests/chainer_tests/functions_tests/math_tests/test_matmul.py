@@ -18,7 +18,7 @@ class _TestMatMul(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = self.op(x1, x2)
-        gradient_check.assert_allclose(self.forward_answer, y.data)
+        testing.assert_allclose(self.forward_answer, y.data)
 
     @condition.retry(3)
     def test_matmul_forward_cpu(self):
