@@ -19,6 +19,12 @@ def _as4darray(arr):
         return arr.reshape(arr.shape[0], -1, 1, 1)
 
 
+def _xhat(x, mean, std, expander):
+    x_mu = x - mean[expander]
+    # Return x_hat
+    return x_mu / std[expander]
+
+
 class BatchNormalizationFunction(function.Function):
 
     def __init__(self, eps=2e-5, mean=None, var=None, train=False,
@@ -40,7 +46,6 @@ class BatchNormalizationFunction(function.Function):
                 raise RuntimeError(msg)
         self.use_cudnn = use_cudnn
         self.mean_cache = None
-        self.x_hat = None
         self.decay = decay
 
     def check_type_forward(self, in_types):
@@ -91,8 +96,8 @@ class BatchNormalizationFunction(function.Function):
                 self.running_mean = xp.array(self.running_mean)
                 self.running_var = xp.array(self.running_var)
         elif len(inputs) == 5:
-                self.fixed_mean = xp.array(inputs[3])
-                self.fixed_var = xp.array(inputs[4])
+                self.fixed_mean = inputs[3]
+                self.fixed_var = inputs[4]
 
         # cuDNN only supports these tensor dimensions because they are
         # the most commonly used. If there is a need to support other
@@ -103,23 +108,8 @@ class BatchNormalizationFunction(function.Function):
         self.cudnn_dim_ok = x.ndim == 2 or x.ndim == 4
 
         cudnn_updated_running_stats = False
-        if xp is numpy:
-            if self.train:
-                axis = (0,) + tuple(range(head_ndim, x.ndim))
-                mean = x.mean(axis=axis)
-                var = x.var(axis=axis)
-                var += self.eps
-            else:
-                mean = self.fixed_mean
-                var = self.fixed_var
-            self.std = xp.sqrt(var, dtype=var.dtype)
-            x_mu = x - mean[expander]
-            self.x_hat = x_mu / self.std[expander]
-            y = gamma * self.x_hat
-            y += beta
-            # cuDNN Batch normalization requires v5 or greater.
-        elif cuda.cudnn_enabled and self.use_cudnn and self.cudnn_dim_ok and \
-                (_cudnn_version >= 5000):
+        if xp is not numpy and cuda.cudnn_enabled and self.use_cudnn and \
+                self.cudnn_dim_ok and _cudnn_version >= 5000:
             if x.ndim == 4:
                 # for convolutional layer
                 self.mode = libcudnn.CUDNN_BATCHNORM_SPATIAL
@@ -141,14 +131,13 @@ class BatchNormalizationFunction(function.Function):
             y = cuda.cupy.empty_like(x)
             # Factor used in the moving average
             factor = 1 - self.decay
-            # computation runningMean
-            if self.mean_cache is None:
-                # Output cache to speed up bacward pass (recommended to enable)
-                self.mean_cache = xp.empty_like(gamma)
-                # Output cache to speed up bacward pass (recommended to enable)
-                self.var_cache = xp.empty_like(gamma)
 
             if self.train:
+                if self.mean_cache is None:
+                    # Output cache to speed up bacward pass.
+                    self.mean_cache = xp.empty_like(gamma)
+                    # Output cache to speed up bacward pass.
+                    self.var_cache = xp.empty_like(gamma)
                 # Note: cuDNN computes the mini-batch mean and variance
                 # internally. We can simply (optionally) pass
                 # it the running-average mean and variance arrays.
@@ -177,13 +166,19 @@ class BatchNormalizationFunction(function.Function):
                 mean = self.fixed_mean
                 var = self.fixed_var
             self.std = xp.sqrt(var, dtype=var.dtype)
-            self.x_hat, y = cuda.elementwise(
-                'T x, T mean, T std, T gamma, T beta', 'T x_hat, T y',
-                '''
-                   x_hat = (x - mean) / std;
-                   y = gamma * x_hat + beta;
-                ''',
-                'bn_fwd')(x, mean[expander], self.std[expander], gamma, beta)
+            if xp is numpy:
+                self.x_hat = _xhat(x, mean, self.std, expander)
+                y = gamma * self.x_hat
+                y += beta
+            else:
+                self.x_hat, y = cuda.elementwise(
+                    'T x, T mean, T std, T gamma, T beta', 'T x_hat, T y',
+                    '''
+                    x_hat = (x - mean) / std;
+                    y = gamma * x_hat + beta;
+                    ''',
+                    'bn_fwd')(x, mean[expander], self.std[expander], gamma,
+                              beta)
 
         if self.train and (not cudnn_updated_running_stats):
             # Note: If in training mode, the cuDNN forward training function
@@ -220,27 +215,17 @@ class BatchNormalizationFunction(function.Function):
             std = xp.sqrt(var, dtype=var.dtype)
             gs = gamma / std
             gbeta = gy.sum(axis=axis)
-            x_mu = x - mean[expander]
-            x_hat = x_mu / std[expander]
+            x_hat = _xhat(x, mean, std, expander)
             ggamma = (gy * x_hat).sum(axis=axis)
             gmean = -gs * gbeta
             gvar = -0.5 * gamma / var * ggamma
             gx = gs[expander] * gy
             return gx, ggamma, gbeta, gmean, gvar
 
-        if xp is numpy:
-            gbeta = gy.sum(axis=axis)
-            ggamma = (gy * self.x_hat).sum(axis=axis)
-            if self.train:
-                gx = (gamma / self.std)[expander] * (
-                    gy - (self.x_hat * ggamma[expander] + gbeta[expander]) / m)
-            else:
-                # Note: Under normal conditions, this will never be executed
-                # because fixed-mean-variance mode is normally
-                # only used at test/evaluation time.
-                gx = (gamma / self.std)[expander] * gy
-        elif cuda.cudnn_enabled and self.use_cudnn and self.cudnn_dim_ok and \
-                self.train:
+        # Note: If length of inputs is not 5, we must be in train mode.
+        assert self.train
+        if xp is not numpy and cuda.cudnn_enabled and self.use_cudnn and \
+                self.cudnn_dim_ok:
             # Note: cuDNN batch normalization backward only works in
             # "training mode." That is, it does not support
             # computing gradients in fixed-mean-variance mode, because there
@@ -266,8 +251,11 @@ class BatchNormalizationFunction(function.Function):
                 self.eps, self.mean_cache.data.ptr, self.var_cache.data.ptr)
         else:
             gbeta = gy.sum(axis=axis)
-            if self.train:
-                ggamma = (gy * self.x_hat).sum(axis=axis)
+            ggamma = (gy * self.x_hat).sum(axis=axis)
+            if xp is numpy:
+                gx = (gamma / self.std)[expander] * (
+                    gy - (self.x_hat * ggamma[expander] + gbeta[expander]) / m)
+            else:
                 inv_m = numpy.float32(1) / m
                 gx = cuda.elementwise(
                     'T gy, T x_hat, T gamma, T std, T ggamma, T gbeta, \
@@ -276,26 +264,8 @@ class BatchNormalizationFunction(function.Function):
                     'gx = (gamma / std) * (gy - (x_hat * ggamma + gbeta) * \
                     inv_m)',
                     'bn_bwd')(gy, self.x_hat, gamma[expander],
-                              self.std[expander],
-                              ggamma[expander], gbeta[expander], inv_m)
-            else:
-                # Note: Under normal conditions, this will never be executed
-                # because fixed-mean-variance mode is normally
-                # only used at test/evaluation time.
-                # If cuDNN was called on the forward call, self.x_hat will
-                # be None.
-                if self.x_hat is None:
-                    self.std = xp.sqrt(self.fixed_var,
-                                       dtype=self.fixed_var.dtype)
-                    x_mu = x - self.fixed_mean[expander]
-                    self.x_hat = x_mu / self.std[expander]
-                ggamma = (gy * self.x_hat).sum(axis=axis)
-                gx = cuda.elementwise(
-                    'T gy, T x_hat, T gamma, T std',
-                    'T gx',
-                    'gx = (gamma / std) * gy',
-                    'bn_bwd')(gy, self.x_hat, gamma[expander],
-                              self.std[expander])
+                              self.std[expander], ggamma[expander],
+                              gbeta[expander], inv_m)
         return gx, ggamma, gbeta
 
 
@@ -325,17 +295,19 @@ def batch_normalization(x, gamma, beta, eps=2e-5, running_mean=None,
         beta (Variable): The shifting parameter of scaled normalized data.
         eps (float): Epsilon value for numerical stability.
         running_mean (array): The running average of the mean. This is a
-        running average of the mean over several
-            mini-batches using the decay parameter. If None, the running
-            average is not computed. If this is None,
-            then runnng_var must also be None.
+            running average of the mean over several mini-batches using
+            the decay parameter. If ``None``, the running average is not
+            computed. If this is ``None``, then ``runnng_var`` must also
+            be ``None``.
         running_var (array): The running average of the variance. This is a
-        running average of the variance
-            over several mini-batches using the decay parameter. If None, the
-            running average is not computed. If
-            this is None, then running_mean must also be None.
+            running average of the variance over several mini-batches using
+            the decay parameter. If ``None``, the running average is not
+            computed. If this is ``None``, then ``running_mean`` must also
+            be ``None``.
         decay (float): Decay rate of moving average. It is used during
             training.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
 
     See: `Batch Normalization: Accelerating Deep Network Training by Reducing\
@@ -353,7 +325,7 @@ def fixed_batch_normalization(x, gamma, beta, mean, var, eps=2e-5,
     """Batch normalization function with fixed statistics.
 
     This is a variant of batch normalization, where the mean and variance
-    statistics are given by the caller as fixed parameters. This is
+    statistics are given by the caller as fixed variables. This is
     used on testing mode of the batch normalization layer, where batch
     statistics cannot be used for prediction consistency.
 
@@ -364,6 +336,8 @@ def fixed_batch_normalization(x, gamma, beta, mean, var, eps=2e-5,
         mean (Variable): The shifting parameter of input.
         var (Variable): The square of scaling parameter of input.
         eps (float): Epsilon value for numerical stability.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     .. seealso::
        :func:`functions.batch_normalization`,
