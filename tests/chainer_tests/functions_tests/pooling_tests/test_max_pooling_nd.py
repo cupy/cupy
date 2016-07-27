@@ -85,7 +85,7 @@ class TestMaxPoolingND(unittest.TestCase):
                     [x[idx].max() for idx in pooling_patches(
                         dims, ksize, stride, pad, self.cover_all)]
                 ).reshape(y_data.shape[2:])
-                gradient_check.assert_allclose(expect, y_data[k, c])
+                testing.assert_allclose(expect, y_data[k, c])
 
     @condition.retry(3)
     def test_forward_cpu(self):
