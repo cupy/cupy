@@ -96,7 +96,8 @@ from chainer.functions.util import forget
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
 from chainer.links.connection import convolution_2d as links_convolution_2d
-from chainer.links.connection import dilated_convolution_2d as links_dilated_convolution_2d
+from chainer.links.connection import dilated_convolution_2d \
+    as links_dilated_convolution_2d
 from chainer.links.connection import embed_id as links_embed_id
 from chainer.links.connection import inception
 from chainer.links.connection import inceptionbn
