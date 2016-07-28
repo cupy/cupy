@@ -277,23 +277,3 @@ class Col2imNDKernel(object):
         operation = self._operation()
         name = 'col2im_{}d'.format(self.ndim)
         return in_params, out_params, operation, name
-
-
-# just for debug.
-if __name__ == "__main__":
-    ndim = 3
-
-    print("Im2colNDKernel")
-    print("----------------")
-    print()
-    for x in Im2colNDKernel(ndim).generate():
-        print(x)
-        print()
-
-    print()
-    print("Col2imNDKernel")
-    print("----------------")
-    print()
-    for x in Col2imNDKernel(ndim).generate():
-        print(x)
-        print()
