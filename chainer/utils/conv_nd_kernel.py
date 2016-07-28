@@ -44,10 +44,10 @@ def _writer():
         if line is None:
             return '\n'.join(_lines)
         else:
-            if indent == 'dec':
+            if indent == 'dec' or indent == 'decinc':
                 _indent[0] -= 1
             _lines.append('  ' * _indent[0] + line)
-            if indent == 'inc':
+            if indent == 'inc' or indent == 'decinc':
                 _indent[0] += 1
     return _aux
 
@@ -113,28 +113,33 @@ class Im2colNDKernel(object):
         # 2D: int in_0 = kx_0 + out_x_0 * s_0 - p_0;
         #     int in_1 = kx_1 + out_x_1 * s_1 - p_1;
         #     if (0 <= in_0 && in_0 < d_0 && 0 <= in_1 && in_1 < d_1) {
-        #       col = img[(in_1 + d_1 * (in_0 + d_0 * c0))];
+        #       int idx_0 = in_0 * d_0 + c0;
+        #       int idx_1 = in_1 * d_1 + idx_0;
+        #       col = img[idx_1];
         #     } else {
         #       col = (T)0;
         #     }
-        def in_aux(_in, kx, out_x, s, p):
-            return 'int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p)
+        w = _writer()
+
         ins = _vars('in', self.ndim)
-        in_decls = map(in_aux, ins, kxs, out_xs, self.ss, self.ps)
+        for (_in, kx, out_x, s, p) in zip(ins, kxs, out_xs, self.ss, self.ps):
+            w('int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p))
 
         def rel_aux(_in, d):
             return '0 <= {} && {} < {}'.format(_in, _in, d)
-        test = andexp(map(rel_aux, ins, self.ds))
-        index = muladdexp(self.ds, ins, 'c0')
-        col_set = 'col = img[{}];'.format(index)
-        template = """if ({}) {{
-  {}
-}} else {{
-  col = (T)0;
-}}"""
-        col_set = template.format(test, col_set)
+        w('if ({}) {{'.format(andexp(map(rel_aux, ins, self.ds))), 'inc')
 
-        return in_decls + [col_set]
+        idxs = _vars('idx', self.ndim)
+        idx0s = ['c0'] + idxs[:-1]
+        for (idx, _in, d, idx0) in zip(idxs, ins, self.ds, idx0s):
+            w('int {} = {} * {} + {};'.format(idx, _in, d, idx0))
+
+        w('col = img[{}];'.format(idxs[-1]))
+        w('} else {', 'decinc')
+        w('col = (T)0;')
+        w('}', 'dec')
+
+        return [w()]
 
     def _operation(self):
         c0 = self._compile_c0()
