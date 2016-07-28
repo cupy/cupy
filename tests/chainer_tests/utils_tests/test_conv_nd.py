@@ -130,9 +130,6 @@ class TestIm2ColND(unittest.TestCase):
 }))
 class TestCol2ImND(unittest.TestCase):
 
-    def setUp(self):
-        pass
-
     def check_col2im_nd(self, ksize, stride, pad, gpu):
         dims = self.dims
         outs = tuple(conv_nd.get_conv_outsize(d, k, s, p)
