@@ -14,6 +14,9 @@ from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
 
+_cuda_version = runtime.runtimeGetVersion()
+
+
 class OutOfMemoryError(MemoryError):
 
     def __init__(self, size, total):
@@ -49,6 +52,47 @@ class Memory(object):
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
         return self.ptr
+
+
+class ManagedMemory(Memory):
+
+    """Managed memory allocation on a CUDA device.
+
+    This class provides an RAII interface of the CUDA managed memory
+    allocation.
+
+    Args:
+        device (cupy.cuda.Device): Device whose memory the pointer refers to.
+        size (int): Size of the memory allocation in bytes.
+
+    """
+
+    def __init__(self, Py_ssize_t size):
+        self.size = size
+        self.device = None
+        self.ptr = 0
+        if size > 0:
+            self.device = device.Device()
+            self.ptr = runtime.mallocManaged(size)
+
+    def prefetch(self, stream):
+        """ Prefetch memory.
+
+        Args:
+            stream (cupy.cuda.Stream): CUDA stream.
+        """
+        runtime.memPrefetchAsync(self.ptr, self.size, self.device.id,
+                                 stream.ptr)
+
+    def advise(self, int advise, device.Device device):
+        """ Advise about the usage of this memory.
+
+        Args:
+            advics (int): Advise to be applied for this memory.
+            device (cupy.cuda.Device): Device to apply the advice for.
+
+        """
+        runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
 
 cdef set _peer_access_checked = set()
@@ -302,6 +346,19 @@ cdef class MemoryPointer:
 
 cpdef MemoryPointer _malloc(Py_ssize_t size):
     mem = Memory(size)
+    return MemoryPointer(mem, 0)
+
+
+cpdef MemoryPointer malloc_managed(Py_ssize_t size):
+    """Allocate managed memory.
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+
+    Returns:
+        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+    """
+    mem = ManagedMemory(size)
     return MemoryPointer(mem, 0)
 
 
