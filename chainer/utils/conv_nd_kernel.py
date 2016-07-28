@@ -177,7 +177,7 @@ class Col2imNDKernel(object):
 
     def _compile_c0(self):
         # 2D: int c0 = i / (d_0 * d_1);
-        return ['int c0  = i / ({});'.format(mulexp(self.ds))]
+        return ['int c0 = i / ({});'.format(mulexp(self.ds))]
 
     def _compile_x(self):
         # 2D: int x_0 = i / (d_1) % d_0 + p_0;
@@ -210,9 +210,9 @@ class Col2imNDKernel(object):
         #     ... After-part here ...
         def aux(out_x0, out_x1, out, x, k, s):
             return [
-                'int {} = max(0,     ({} - {} + {}) / {});'.format(
+                'int {} = max(0, ({} - {} + {}) / {});'.format(
                     out_x0, x, k, s, s),
-                'int {} = min({}, ({}       + {}) / {});'.format(
+                'int {} = min({}, ({} + {}) / {});'.format(
                     out_x1, out, x, s, s)]
         out_x0s = _vars('out_x0', self.ndim)
         out_x1s = _vars('out_x1', self.ndim)
