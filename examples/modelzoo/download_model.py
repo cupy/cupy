@@ -29,7 +29,7 @@ elif args.model_type == 'resnet':
     name = 'models.zip'
 else:
     raise RuntimeError('Invalid model type. Choose from '
-                       'alexnet, caffenet, and googlenet.')
+                       'alexnet, caffenet, googlenet and resnet.')
 
 print('Downloading model file...')
 six.moves.urllib.request.urlretrieve(url, name)
