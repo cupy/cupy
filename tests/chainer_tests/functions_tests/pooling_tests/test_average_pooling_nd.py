@@ -3,8 +3,8 @@ import unittest
 import functools
 import itertools
 import mock
-import operator
 import numpy
+import operator
 import six
 
 import chainer
@@ -46,7 +46,7 @@ class TestAveragePoolingND(unittest.TestCase):
 
         outs = tuple(conv.get_conv_outsize(d, k, s, p, False)
                      for (d, k, s, p) in zip(
-                       self.dims, self.ksize, self.stride, self.pad))
+                         self.dims, self.ksize, self.stride, self.pad))
         gy_shape = (2, 3) + outs
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
