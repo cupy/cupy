@@ -31,7 +31,8 @@ def _pair(x):
 
 class DilatedConvolution2DFunction(function.Function):
 
-    def __init__(self, stride=1, pad=0, use_cudnn=True, cover_all=False, dilate=1):
+    def __init__(self, stride=1, pad=0, dilate=1,
+                 use_cudnn=True, cover_all=False):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
         self.dy, self.dx = _pair(dilate)
@@ -81,10 +82,10 @@ class DilatedConvolution2DFunction(function.Function):
         n, c, h, w = x.shape
         dkh, dkw = kh + (kh - 1) * (self.dy - 1), kw + (kw - 1) * (self.dx - 1)
 
-        out_h = conv.get_conv_outsize(h, dkh, self.sy, self.ph,
-                                      cover_all=self.cover_all)
-        out_w = conv.get_conv_outsize(w, dkw, self.sx, self.pw,
-                                      cover_all=self.cover_all)
+        out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph,
+                                      cover_all=self.cover_all, d=self.dy)
+        out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw,
+                                      cover_all=self.cover_all, d=self.dx)
 
         y = cuda.cupy.zeros((n, out_c, out_h, out_w), dtype=x.dtype)
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
@@ -176,50 +177,174 @@ class DilatedConvolution2DFunction(function.Function):
         _, out_c, out_h, out_w = gy.shape
         n, c, h, w = x.shape
         kh, kw = W.shape[2:]
+        dkh, dkw = kh + (kh - 1) * (self.dy - 1), kw + (kw - 1) * (self.dx - 1)
 
         gW = cuda.cupy.empty_like(W)
-        gW_mat = gW.reshape(out_c, c * kh * kw)
-        col_mats = self.col.reshape(n, c * kh * kw, out_h * out_w)
-        gy_mats = gy.reshape(n, out_c, out_h * out_w)
-        # TODO(beam2d): Use streams or batch gemm
-        gW_mat[...] = 0
-        for i in moves.range(n):
-            gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
+        if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
+                _check_cudnn_acceptable_type(x.dtype, W.dtype)):
 
-        W_mat = W.reshape(out_c, -1)
-        gcol = cuda.cupy.empty_like(self.col)
-        gcol_mats = gcol.reshape(n, c * kh * kw, out_h * out_w)
+            pad_x = cuda.cupy.zeros((n, c, h + 2 * self.ph, w + 2 * self.pw),
+                                    dtype=x.dtype)
+            pad_x[:, :, self.ph:self.ph + h, self.pw:self.pw + w] = x
 
-        for i in moves.range(n):
-            gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
+            out_h2 = out_h + (out_h - 1) * (self.sy - 1)
+            out_w2 = out_w + (out_w - 1) * (self.sx - 1)
+            ph_gy = (h + dkh - out_h2 - 1) / 2
+            pw_gy = (w + dkw - out_w2 - 1) / 2
+            pad_gy = cuda.cupy.zeros((n, out_c, h + dkh - 1, w + dkw - 1),
+                                     dtype=x.dtype)
+            pad_gy[:, :, ph_gy:ph_gy + out_h2:self.sy, pw_gy:pw_gy + out_w2:self.sx] = gy
 
-        # dilate col2im_gpu
-        # TODO(yasunorikudo): Write cuda.elementwise
-        img = cuda.cupy.zeros(
-            (n, c, h + 2 * self.ph + self.sy - 1, w + 2 * self.pw + self.sx - 1),
-            dtype=gcol.dtype)
-        for j in moves.range(kh):
-            q = j * self.dy
-            q_lim = q + self.sy * out_h
-            for i in moves.range(kw):
-                p = i * self.dx
-                p_lim = p + self.sx * out_w
-                img[:, :, q:q_lim:self.sy, p:p_lim:self.sx] += gcol[:, :, j, i, :, :]
-        gx = img[:, :, self.ph:h + self.ph, self.pw:w + self.pw]
+            for j in moves.range(kh):
+                for i in moves.range(kw):
+                    xji = cuda.cupy.ascontiguousarray(
+                        pad_x[:, :,
+                              j * self.dy:j * self.dy + h + 2 * self.ph - dkh + 1,
+                              i * self.dx:i * self.dx + w + 2 * self.pw - dkw + 1])
+                    gyji = cuda.cupy.ascontiguousarray(
+                        pad_gy[:, :,
+                               j * self.dy:j * self.dy + h,
+                               i * self.dx:i * self.dx + w])
+                    Wji = cuda.cupy.ascontiguousarray(
+                        W[:, :, -1::-1, -1::-1][:, :, j:j + 1, i:i + 1])
 
-        if b is not None:
-            gb = gy.sum(axis=(0, 2, 3))
+                    if i == 0 and j == 0:
+                        x = cuda.cupy.ascontiguousarray(x)
+                        gy = cuda.cupy.ascontiguousarray(gy)
+
+                        handle = cudnn.get_handle()
+                        x_desc = cudnn.create_tensor_descriptor(x)
+                        xji_desc = cudnn.create_tensor_descriptor(xji)
+                        gy_desc = cudnn.create_tensor_descriptor(gy)
+                        gyji_desc = cudnn.create_tensor_descriptor(gyji)
+                        conv_desc_data = cudnn.create_convolution_descriptor((0, 0), (1, 1))
+
+                        oz_dtype = 'd' if x.dtype == 'd' else 'f'
+                        one = numpy.array(1, dtype=oz_dtype).ctypes
+                        zero = numpy.array(0, dtype=oz_dtype).ctypes
+                        gx = cuda.cupy.zeros_like(x)
+                        gWji = cuda.cupy.empty((out_c, c, 1, 1), dtype=W.dtype)
+
+                        if _cudnn_version >= 4000:
+                            workspace_size = cuda.get_max_workspace_size()
+                            workspace = cuda.cupy.empty((workspace_size,), dtype='b')
+
+                            algo_filter = libcudnn.getConvolutionBackwardFilterAlgorithm(
+                                handle, xji_desc.value, gy_desc.value,
+                                self.conv_desc.value, self.filter_desc.value,
+                                _bwd_filter_pref, workspace_size)
+                            algo_data = libcudnn.getConvolutionBackwardDataAlgorithm(
+                                handle, self.filter_desc.value, gyji_desc.value,
+                                conv_desc_data.value, x_desc.value, _bwd_data_pref,
+                                workspace_size)
+
+                    if _cudnn_version >= 4000:
+                        libcudnn.convolutionBackwardFilter_v3(
+                            handle, one.data, xji_desc.value, xji.data.ptr,
+                            gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                            algo_filter, workspace.data.ptr, workspace_size,
+                            zero.data, self.filter_desc.value, gWji.data.ptr)
+                        libcudnn.convolutionBackwardData_v3(
+                            handle, one.data, self.filter_desc.value, Wji.data.ptr,
+                            gyji_desc.value, gyji.data.ptr, conv_desc_data.value,
+                            algo_data, workspace.data.ptr, workspace_size,
+                            one.data, x_desc.value, gx.data.ptr)
+                    else:
+                        libcudnn.convolutionBackwardFilter_v2(
+                            handle, one.data, xji_desc.value, xji.data.ptr,
+                            gy_desc.value, gy.data.ptr, self.conv_desc.value,
+                            zero.data, self.filter_desc.value, gWji.data.ptr)
+                        libcudnn.convolutionBackwardData_v2(
+                            handle, one.data, self.filter_desc.value, Wji.data.ptr,
+                            gyji_desc.value, gyji.data.ptr, conv_desc_data.value,
+                            one.data, x_desc.value, gx.data.ptr)
+                    gW[:, :, j:j + 1, i:i + 1] = gWji
+
+            if b is not None:
+                gb = cuda.cupy.empty_like(b)
+                libcudnn.convolutionBackwardBias(
+                    handle, one.data, gy_desc.value, gy.data.ptr,
+                    zero.data, self.bias_desc.value, gb.data.ptr)
+        else:
+            gW_mat = gW.reshape(out_c, c * kh * kw)
+            col_mats = self.col.reshape(n, c * kh * kw, out_h * out_w)
+            gy_mats = gy.reshape(n, out_c, out_h * out_w)
+            # TODO(beam2d): Use streams or batch gemm
+            gW_mat[...] = 0
+            for i in moves.range(n):
+                gW_mat += cuda.cupy.dot(gy_mats[i], col_mats[i].T)
+
+            W_mat = W.reshape(out_c, -1)
+            gcol = cuda.cupy.empty_like(self.col)
+            gcol_mats = gcol.reshape(n, c * kh * kw, out_h * out_w)
+
+            for i in moves.range(n):
+                gcol_mats[i] = cuda.cupy.dot(W_mat.T, gy_mats[i])
+
+            gx = conv.col2im_gpu(gcol, self.sy, self.sx, self.ph, self.pw,
+                                 h, w, dy=self.dy, dx=self.dx)
+
+            if b is not None:
+                gb = gy.sum(axis=(0, 2, 3))
 
         if b is None:
             return gx, gW
         else:
             return gx, gW, gb
 
-def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
-                   cover_all=False, dilate=1):
+
+def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
+                           use_cudnn=True, cover_all=False):
     """Two-dimensional dilated convolution function.
+    This is an implementation of two-dimensional dilated convolution
+    in ConvNets.
+    It takes three variables: the input image ``x``, the filter weight ``W``,
+    and the bias vector ``b``.
+    Notation: here is a notation for dimensionalities.
+    - :math:`n` is the batch size.
+    - :math:`c_I` and :math:`c_O` are the number of the input and output,
+      respectively.
+    - :math:`h` and :math:`w` are the height and width of the input image,
+      respectively.
+    - :math:`k_H` and :math:`k_W` are the height and width of the filters,
+      respectively.
+    Args:
+        x (~chainer.Variable): Input variable of shape :math:`(n, c_I, h, w)`.
+        W (~chainer.Variable): Weight variable of shape
+            :math:`(c_O, c_I, k_H, k_W)`.
+        b (~chainer.Variable): Bias variable of length :math:`c_O` (optional).
+        stride (int or pair of ints): Stride of filter applications.
+            ``stride=s`` and ``stride=(s, s)`` are equivalent.
+        pad (int or pair of ints): Spatial padding width for input arrays.
+            ``pad=p`` and ``pad=(p, p)`` are equivalent.
+        dilate (int or pair of ints): Dilate width of filter applications.
+            ``dilate=d`` and ``dilate=(d, d)`` are equivalent.
+        use_cudnn (bool): If ``True``, then this function uses cuDNN if
+            available.
+        cover_all (bool): If True, all spatial locations are convoluted into
+            some output pixels. It may make the output size larger.
+    Returns:
+        ~chainer.Variable: Output variable.
+    The two-dimensional dilated convolution function is defined as follows.
+    Then the ``DilatedConvolution2D`` function computes correlations
+    between filters and patches of size :math:`(k_H, k_W)` in ``x``.
+    Note that correlation here is equivalent to the inner product between
+    expanded vectors.
+    Patches are extracted at positions shifted by multiples of ``stride`` from
+    the first position ``-pad`` for each spatial axis.
+    The right-most (or bottom-most) patches do not run over the padded spatial
+    size.
+    Let :math:`(s_Y, s_X)` be the stride of filter application, and
+    :math:`(p_H, p_W)` the spatial padding size. Then, the output size
+    :math:`(h_O, w_O)` is determined by the following equations:
+    .. math::
+       h_O &= (h + 2p_H - k_H) / s_Y + 1,\\\\
+       w_O &= (w + 2p_W - k_W) / s_X + 1.
+    If the bias vector is given, then it is added to all spatial locations of
+    the output of convolution.
+    .. seealso:: :class:`DilatedConvolution2D`
     """
-    func = DilatedConvolution2DFunction(stride, pad, use_cudnn, cover_all, dilate)
+    func = DilatedConvolution2DFunction(stride, pad, dilate, use_cudnn, cover_all)
     if b is None:
         return func(x, W)
     else:
