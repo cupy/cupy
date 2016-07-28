@@ -3,10 +3,6 @@ import functools
 import six
 
 
-def identity(x):
-    return x
-
-
 def mulexp(xs, init=None):
     if init:
         return functools.reduce('{} * {}'.format, xs, init)
@@ -31,13 +27,9 @@ def muladdexp(xs, ys, init=None):
         return functools.reduce(aux, zip(xs, ys))
 
 
-def maplist(fn, xs):
-    # Imperative impl. because Python does not optimize tail recursion.
-    ret = []
-    while xs:
-        ret += [fn(xs)]
-        xs = xs[1:]
-    return ret
+def _succ_sublists(xs):
+    # Returns successive sublists of xs.
+    return [xs[i:] for i in six.moves.range(len(xs))]
 
 
 def _vars(prefix, n):
@@ -99,7 +91,7 @@ class Im2colNDKernel(object):
             else:
                 return 'int {} = i % {};'.format(kx, head)
         kxs = _vars('kx', self.ndim)
-        kx_decls = map(aux, kxs, maplist(identity, self.ks))
+        kx_decls = map(aux, kxs, _succ_sublists(self.ks))
         return kx_decls, kxs
 
     def _compile_out_x(self):
@@ -114,7 +106,7 @@ class Im2colNDKernel(object):
             else:
                 return 'int {} = i % {};'.format(out_x, head)
         out_xs = _vars('out_x', self.ndim)
-        out_x_decls = map(aux, out_xs, maplist(identity, self.outs))
+        out_x_decls = map(aux, out_xs, _succ_sublists(self.outs))
         return out_x_decls, out_xs
 
     def _compile_main(self, kxs, out_xs):
@@ -199,7 +191,7 @@ class Col2imNDKernel(object):
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
         xs = _vars('x', self.ndim)
-        x_decls = map(aux, xs, maplist(identity, self.ds), self.ps)
+        x_decls = map(aux, xs, _succ_sublists(self.ds), self.ps)
         return x_decls, xs
 
     def _compile_loop(self, xs):
