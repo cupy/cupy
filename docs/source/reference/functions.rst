@@ -32,7 +32,7 @@ clipped_relu
 .. autofunction:: clipped_relu
 
 crelu
-~~~~~~~~~~~~
+~~~~~
 .. autofunction:: crelu
 
 elu
@@ -128,7 +128,7 @@ reshape
 .. autofunction:: reshape
 
 rollaxis
-~~~~~~~
+~~~~~~~~
 .. autofunction:: rollaxis
 
 select_item

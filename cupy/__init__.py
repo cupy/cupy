@@ -391,7 +391,7 @@ def get_array_module(*args):
 
     .. admonition:: Example
 
-       A NumPy/CuPy generic function can be written as follows::
+       A NumPy/CuPy generic function can be written as follows
 
        >>> def softplus(x):
        ...     xp = cupy.get_array_module(x)
