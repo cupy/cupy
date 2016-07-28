@@ -21,8 +21,8 @@ def _as4darray(arr):
 
 def _xhat(x, mean, std, expander):
     x_mu = x - mean[expander]
-    # Return x_hat
-    return x_mu / std[expander]
+    x_mu /= std[expander]
+    return x_mu
 
 
 class BatchNormalizationFunction(function.Function):

@@ -100,7 +100,6 @@ class BatchNormalization(link.Link):
 
         """
         use_batch_mean = not test or finetune
-        # use_batch_mean = (not test) or finetune
         if hasattr(self, 'gamma'):
             gamma = self.gamma
         else:
