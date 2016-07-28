@@ -1,4 +1,6 @@
+import os
 import unittest
+import tempfile
 
 import numpy
 
@@ -7,6 +9,7 @@ from chainer import cuda
 from chainer import gradient_check
 from chainer import links
 from chainer import testing
+from chainer.serializers import npz
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import type_check
@@ -123,6 +126,20 @@ class TestLinearParameterShapePlaceholder(unittest.TestCase):
     def test_backward_gpu(self):
         self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+    def test_serialization(self):
+        lin1 = links.Linear(None, self.out_size)
+        x = chainer.Variable(self.x)
+        # Must call the link to initialize weights.
+        lin1(x)
+        w1 = lin1.W.data
+        fd, temp_file_path = tempfile.mkstemp()
+        os.close(fd)
+        npz.save_npz(temp_file_path, lin1)
+        lin2 = links.Linear(None, self.out_size)
+        npz.load_npz(temp_file_path, lin2)
+        w2 = lin2.W.data
+        self.assertEquals((w1 == w2).all(), True)
 
 
 class TestLinearWithSpatialDimensions(TestLinear):

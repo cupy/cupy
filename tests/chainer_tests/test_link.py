@@ -170,6 +170,20 @@ class TestLink(unittest.TestCase):
 
         self.assertEqual(l.z, 3)
 
+    def test_serialize_param_shape_placeholder(self):
+        serializer = mock.MagicMock(return_value=3)
+        l = chainer.Link(y=2)
+        l.add_uninitialized_param('x')
+        l.add_param('x', (2, 3))
+        l.add_persistent('z', 1)
+        l.serialize(serializer)
+        self.assertEqual(serializer.call_count, 3)
+        serializer.assert_any_call('x', l.x.data)
+        serializer.assert_any_call('y', l.y.data)
+        serializer.assert_any_call('z', 1)
+
+        self.assertEqual(l.z, 3)
+
 
 class CopyCountVariable(chainer.Variable):
 
