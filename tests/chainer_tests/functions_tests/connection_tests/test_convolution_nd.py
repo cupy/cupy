@@ -68,7 +68,7 @@ class TestConvolutionND(unittest.TestCase):
             use_cudnn=use_cudnn, cover_all=self.cover_all)
 
         testing.assert_allclose(
-            y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
+            y_cpu.data, y_gpu.data, **self.check_forward_options)
 
     @attr.cudnn
     def test_forward_consistency(self):
