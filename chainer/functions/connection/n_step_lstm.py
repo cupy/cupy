@@ -1,3 +1,4 @@
+import itertools
 import numpy
 import six
 
@@ -334,7 +335,12 @@ def n_step_lstm(
        _cudnn_version >= 5000:
         handle = cuda.cupy.cudnn.get_handle()
         states = DropoutStates.create(handle, dropout_ratio, seed)
-        inputs = (hx, cx) + tuple(ws) + tuple(bs) + tuple(xs)
+        # flatten all input variables
+        inputs = tuple(itertools.chain(
+            (hx, cx),
+            itertools.chain.from_iterable(ws),
+            itertools.chain.from_iterable(bs),
+            xs))
         rnn = NStepLSTM(n_layers, states, train=train)
         ret = rnn(*inputs)
         hy, cy = ret[:2]
@@ -347,18 +353,10 @@ def n_step_lstm(
         cx = split_axis.split_axis(cx, n_layers, axis=0, force_tuple=True)
         cx = [reshape.reshape(c, c.data.shape[1:]) for c in cx]
 
-        xws = []
-        xbs = []
-        hws = []
-        hbs = []
-        for layer in six.moves.range(n_layers):
-            w = ws[layer * 8: layer * 8 + 8]
-            xws.append(_stack_weight([w[2], w[0], w[1], w[3]]))
-            hws.append(_stack_weight([w[6], w[4], w[5], w[7]]))
-
-            b = bs[layer * 8: layer * 8 + 8]
-            xbs.append(_stack_weight([b[2], b[0], b[1], b[3]]))
-            hbs.append(_stack_weight([b[6], b[4], b[5], b[7]]))
+        xws = [_stack_weight([w[2], w[0], w[1], w[3]]) for w in ws]
+        hws = [_stack_weight([w[6], w[4], w[5], w[7]]) for w in ws]
+        xbs = [_stack_weight([b[2], b[0], b[1], b[3]]) for b in bs]
+        hbs = [_stack_weight([b[6], b[4], b[5], b[7]]) for b in bs]
 
         ys = []
         for x in xs:
