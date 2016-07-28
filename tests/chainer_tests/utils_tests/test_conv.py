@@ -159,4 +159,5 @@ class TestCol2Im(unittest.TestCase):
     def test_col2im_3_gpu(self):
         self.check_col2im(1, 2, 2, 1, 1, 2, gpu=True)
 
+
 testing.run_module(__name__, __file__)

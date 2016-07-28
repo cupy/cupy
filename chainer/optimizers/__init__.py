@@ -6,6 +6,7 @@ from chainer.optimizers import nesterov_ag
 from chainer.optimizers import rmsprop
 from chainer.optimizers import rmsprop_graves
 from chainer.optimizers import sgd
+from chainer.optimizers import smorms3
 
 AdaDelta = ada_delta.AdaDelta
 AdaGrad = ada_grad.AdaGrad
@@ -15,3 +16,4 @@ NesterovAG = nesterov_ag.NesterovAG
 RMSprop = rmsprop.RMSprop
 RMSpropGraves = rmsprop_graves.RMSpropGraves
 SGD = sgd.SGD
+SMORMS3 = smorms3.SMORMS3

@@ -46,9 +46,9 @@ class MaxPoolingND(pooling_nd.PoolingND):
 
         n, c = x[0].shape[:2]
         dims = x[0].shape[2:]
-        ys = tuple([conv_nd.get_conv_outsize(d, k, s, p, self.cover_all)
-                    for (d, k, s, p) in zip(
-                        dims, self.ksize, self.stride, self.pad)])
+        ys = tuple(conv_nd.get_conv_outsize(d, k, s, p, self.cover_all)
+                   for (d, k, s, p) in zip(
+                       dims, self.ksize, self.stride, self.pad))
         # (n, c, y_1, y_2, ..., y_N)
         y_shape = (n, c) + ys
         y = cuda.cupy.empty(y_shape, dtype=x[0].dtype)
@@ -114,7 +114,7 @@ def max_pooling_nd(x, ksize, stride=None, pad=0, cover_all=True,
     """N-dimensionally spatial max pooling function.
 
     This function provides a N-dimensionally generalized version of
-    :function:`~functions.max_pooling_2d'. This acts similarly to
+    :func:`~functions.max_pooling_2d`. This acts similarly to
     :class:`~functions.ConvolutionND`, but it computes the maximum of input
     spatial patch for each channel without any parameter instead of computing
     the inner products.

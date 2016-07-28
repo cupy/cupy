@@ -10,6 +10,28 @@ from chainer.testing import attr
 from chainer.utils import conv_nd
 
 
+class TestAsTuple(unittest.TestCase):
+
+    def test_scalar(self):
+        actual = conv_nd.as_tuple(1, 3)
+        expected = (1, 1, 1)
+        self.assertEqual(actual, expected)
+
+    def test_tuple(self):
+        actual = conv_nd.as_tuple((1, 2, 3), 3)
+        expected = (1, 2, 3)
+        self.assertEqual(actual, expected)
+
+    def test_list(self):
+        actual = conv_nd.as_tuple([1, 2, 3], 3)
+        expected = (1, 2, 3)
+        self.assertEqual(actual, expected)
+
+    def test_tuple_invalid_length(self):
+        with self.assertRaises(AssertionError):
+            conv_nd.as_tuple((1,), 3)
+
+
 @testing.parameterize(*testing.product({
     'dims': [(10,), (10, 8), (10, 8, 6)],
 }))
@@ -29,8 +51,8 @@ class TestIm2ColND(unittest.TestCase):
             img = self.img
 
         col = im2col(img, ksize, stride, pad)
-        outs = tuple([conv_nd.get_conv_outsize(d, k, s, p)
-                      for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+        outs = tuple(conv_nd.get_conv_outsize(d, k, s, p)
+                     for (d, k, s, p) in zip(dims, ksize, stride, pad))
         expected_shape = (2, 3) + ksize + outs
         self.assertEqual(col.shape, expected_shape)
 
@@ -42,10 +64,10 @@ class TestIm2ColND(unittest.TestCase):
                         *[moves.range(out) for out in outs]):
                     for dxs in itertools.product(
                             *[moves.range(k) for k in ksize]):
-                        oxs = tuple([x * s - p + dx
-                                     for (x, s, p, dx)
-                                     in zip(xs, stride, pad, dxs)])
-                        if all([0 <= ox < d for (ox, d) in zip(oxs, dims)]):
+                        oxs = tuple(x * s - p + dx
+                                    for (x, s, p, dx)
+                                    in zip(xs, stride, pad, dxs))
+                        if all(0 <= ox < d for (ox, d) in zip(oxs, dims)):
                             col_index = (n, c) + dxs + xs
                             img_index = (n, c) + oxs
                             self.assertEqual(
@@ -113,8 +135,8 @@ class TestCol2ImND(unittest.TestCase):
 
     def check_col2im_nd(self, ksize, stride, pad, gpu):
         dims = self.dims
-        outs = tuple([conv_nd.get_conv_outsize(d, k, s, p)
-                      for (d, k, s, p) in zip(dims, ksize, stride, pad)])
+        outs = tuple(conv_nd.get_conv_outsize(d, k, s, p)
+                     for (d, k, s, p) in zip(dims, ksize, stride, pad))
         col_shape = (2, 3) + ksize + outs
         col = numpy.random.uniform(-1, 1, col_shape).astype(numpy.float32)
 
@@ -136,14 +158,14 @@ class TestCol2ImND(unittest.TestCase):
                     v = numpy.float32(0.0)
                     for dxs in itertools.product(
                             *[moves.range(k) for k in ksize]):
-                        oxs = tuple([(x + p - dx) // s
-                                     for (x, p, dx, s)
-                                     in zip(xs, pad, dxs, stride)])
-                        if all([(x + p - dx) % s == 0
-                                for (x, p, dx, s)
-                                in zip(xs, pad, dxs, stride)]) and \
-                           all([0 <= ox < out
-                                for (ox, out) in zip(oxs, outs)]):
+                        oxs = tuple((x + p - dx) // s
+                                    for (x, p, dx, s)
+                                    in zip(xs, pad, dxs, stride))
+                        if all((x + p - dx) % s == 0
+                               for (x, p, dx, s)
+                               in zip(xs, pad, dxs, stride)) and \
+                            all(0 <= ox < out
+                                for (ox, out) in zip(oxs, outs)):
                             col_index = (n, c) + dxs + oxs
                             v += col[col_index]
                     img_index = (n, c) + xs
@@ -196,5 +218,6 @@ class TestCol2ImND(unittest.TestCase):
         pad = (1, 2, 1)[:ndim]
         self.check_col2im_nd(ksize, stride, pad, gpu=True)
         self.assertTrue(ndim in conv_nd._col2im_cache)
+
 
 testing.run_module(__name__, __file__)

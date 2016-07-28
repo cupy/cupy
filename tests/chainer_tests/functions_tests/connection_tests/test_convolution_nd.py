@@ -41,21 +41,16 @@ class TestConvolutionND(unittest.TestCase):
         x_shape = (2, 3) + self.dims
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.x_dtype)
         gy_shape = (2, 2) + tuple(
-            [conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
-             for (d, k, s, p) in zip(self.dims, ksize, self.stride, self.pad)])
+            conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
+            for (d, k, s, p) in zip(self.dims, ksize, self.stride, self.pad))
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.x_dtype)
 
         self.check_forward_options = {}
-        self.check_backward_options = {
-            'eps': 1e-2, 'atol': 5e-5, 'rtol': 5e-4}
-        if self.x_dtype == numpy.float16:
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.x_dtype == numpy.float16 or self.W_dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
-        elif self.W_dtype == numpy.float16:
-            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
-            self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward_consistency(self, nobias=False, use_cudnn=False):
         x_cpu = chainer.Variable(self.x)
@@ -72,7 +67,7 @@ class TestConvolutionND(unittest.TestCase):
             x_gpu, W_gpu, b_gpu, stride=self.stride, pad=self.pad,
             use_cudnn=use_cudnn, cover_all=self.cover_all)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
 
     @attr.cudnn
@@ -175,8 +170,8 @@ class TestConvolutionNDCudnnCall(unittest.TestCase):
         self.W = cuda.cupy.random.normal(
             0, W_scale, W_shape).astype(self.dtype)
         gy_shape = (2, 2) + tuple(
-            [conv.get_conv_outsize(d, k, s, p)
-             for (d, k, s, p) in zip(self.dims, ksize, self.stride, self.pad)])
+            conv.get_conv_outsize(d, k, s, p) for (d, k, s, p) in zip(
+                self.dims, ksize, self.stride, self.pad))
         self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
         self.expect = self.use_cudnn and ndim > 1 and (
             cuda.cudnn.cudnn.getVersion() >= 3000 or

@@ -8,6 +8,8 @@ from chainer.utils import type_check
 
 class NegativeSamplingFunction(function.Function):
 
+    ignore_label = -1
+
     def __init__(self, sampler, sample_size):
         self.sampler = sampler
         self.sample_size = sample_size
@@ -38,10 +40,12 @@ class NegativeSamplingFunction(function.Function):
 
     def forward_cpu(self, inputs):
         x, t, W = inputs
+        self.ignore_mask = (t != self.ignore_label)
         self._make_samples(t)
 
         loss = numpy.float32(0.0)
-        for ix, k in six.moves.zip(x, self.samples):
+        for ix, k in six.moves.zip(x[self.ignore_mask],
+                                   self.samples[self.ignore_mask]):
             w = W[k]
             f = w.dot(ix)
             f[0] *= -1  # positive sample
@@ -50,22 +54,26 @@ class NegativeSamplingFunction(function.Function):
 
     def forward_gpu(self, inputs):
         x, t, W = inputs
+        self.ignore_mask = (t != self.ignore_label)
         n_in = x.shape[1]
         self._make_samples(t)
 
         self.wx = cuda.elementwise(
-            'raw T W, raw T x, S k, int32 c, int32 m', 'T wx',
+            'raw T W, raw T x, bool mask, S k, int32 c, int32 m', 'T wx',
             '''
             T f = 0;
-            for (int j = 0; j < c; ++j) {
-              int x_ind[] = {(i / m), j};
-              int w_ind[] = {k, j};
-              f += x[x_ind] * W[w_ind];
+            if (mask == 1) {
+                for (int j = 0; j < c; ++j) {
+                  int x_ind[] = {(i / m), j};
+                  int w_ind[] = {k, j};
+                  f += x[x_ind] * W[w_ind];
+                }
             }
             wx = f;
             ''',
             'negative_sampling_wx'
-        )(W, x, self.samples, n_in, self.sample_size + 1)
+            )(W, x, self.ignore_mask[:, None], self.samples, n_in,
+              self.sample_size + 1)
 
         y = cuda.elementwise(
             'T wx, int32 c, int32 m', 'T y',
@@ -85,7 +93,7 @@ class NegativeSamplingFunction(function.Function):
             'negative_sampling_forward'
         )(self.wx, n_in, self.sample_size + 1)
         # TODO(okuta): merge elementwise
-        loss = cuda.cupy.sum(y)
+        loss = cuda.cupy.sum(y * self.ignore_mask[:, None].astype('float32'))
         return loss,
 
     def backward_cpu(self, inputs, grads):
@@ -94,7 +102,8 @@ class NegativeSamplingFunction(function.Function):
 
         gx = numpy.zeros_like(x)
         gW = numpy.zeros_like(W)
-        for i, (ix, k) in enumerate(six.moves.zip(x, self.samples)):
+        for i, (ix, k) in enumerate(six.moves.zip(x[self.ignore_mask],
+                                    self.samples[self.ignore_mask])):
             w = W[k]
             f = w.dot(ix)
 
@@ -130,28 +139,35 @@ class NegativeSamplingFunction(function.Function):
         )(self.wx, gloss, self.sample_size + 1)
         gx = cupy.zeros_like(x)
         cuda.elementwise(
-            'raw T g, raw T W, raw S k, int32 c, int32 m', 'T gx',
+            'raw T g, raw T W, bool mask, raw S k, int32 c, int32 m', 'T gx',
             '''
             int d = i / c;
             T w = 0;
-            for (int j = 0; j < m; ++j) {
-              w += g[d * m + j] * W[k[d * m + j] * c + i % c];
+            if (mask == 1){
+                for (int j = 0; j < m; ++j) {
+                  w += g[d * m + j] * W[k[d * m + j] * c + i % c];
+                }
             }
             gx = w;
             ''',
             'negative_sampling_calculate_gx'
-        )(g, W, self.samples, n_in, self.sample_size + 1, gx)
+            )(g, W, self.ignore_mask[:, None], self.samples, n_in,
+              self.sample_size + 1, gx)
         gW = cupy.zeros_like(W)
         cuda.elementwise(
-            'T g, raw T x, S k, int32 c, int32 m', 'raw T gW',
+            'T g, raw T x, S k, bool mask, int32 c, int32 m',
+            'raw T gW',
             '''
             T gi = g;
-            for (int j = 0; j < c; ++j) {
-              atomicAdd(&gW[k * c + j], gi * x[(i / m) * c + j]);
+            if (mask == 1) {
+                for (int j = 0; j < c; ++j) {
+                  atomicAdd(&gW[k * c + j], gi * x[(i / m) * c + j]);
+                }
             }
             ''',
             'negative_sampling_calculate_gw'
-        )(g, x, self.samples, n_in, self.sample_size + 1, gW)
+            )(g, x, self.samples, self.ignore_mask[:, None], n_in,
+              self.sample_size + 1, gW)
         return gx, None, gW
 
 
@@ -159,11 +175,11 @@ def negative_sampling(x, t, W, sampler, sample_size):
     """Negative sampling loss function.
 
     In natural language processing, especially language modeling, the number of
-    vocabulary is very large.
-    Therefore, you need to spend a lot of time to calculate the gradient of the
+    words in a vocabulary can be very large.
+    Therefore, you need to spend a lot of time calculating the gradient of the
     embedding matrix.
 
-    Instead, in negative sampling trick, you only need to calculate the
+    By using the negative sampling trick you only need to calculate the
     gradient for a few sampled negative examples.
 
     The objective function is below:

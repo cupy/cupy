@@ -31,9 +31,11 @@ class TestNonparameterizedLinear(unittest.TestCase):
         self.check_backward_options = {}
         if self.x_dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
-            self.check_backward_options = {'atol': 5e-2, 'rtol': 1e-1}
+            self.check_backward_options = {
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
         elif self.W_dtype == numpy.float16:
-            self.check_backward_options = {'atol': 5e-3, 'rtol': 5e-2}
+            self.check_backward_options = {
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, W_data, b_data, y_expect):
         x = chainer.Variable(x_data)
@@ -44,7 +46,7 @@ class TestNonparameterizedLinear(unittest.TestCase):
             b = chainer.Variable(b_data)
             y = functions.linear(x, W, b)
         self.assertEqual(y.data.dtype, self.x_dtype)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y.data, **self.check_forward_options)
 
     @condition.retry(3)

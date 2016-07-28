@@ -30,8 +30,8 @@ def pooling_patches(dims, ksize, stride, pad, cover_all):
             *[six.moves.range(-p, d+p-k+1, s)
               for (d, k, s, p) in zip(dims, ksize, stride, pad)])
     # Tuple of slices for pooling patches.
-    return [tuple([slice(max(x, 0), min(x+k, d))
-                   for (x, d, k) in zip(xs, dims, ksize)])
+    return [tuple(slice(max(x, 0), min(x+k, d))
+                  for (x, d, k) in zip(xs, dims, ksize))
             for xs in xss]
 
 
@@ -54,9 +54,9 @@ class TestMaxPoolingND(unittest.TestCase):
             functools.reduce(mul, x_shape), dtype=self.dtype).reshape(x_shape)
         self.x = 2 * self.x / self.x.size - 1
 
-        outs = tuple([conv.get_conv_outsize(d, k, s, p, self.cover_all)
-                      for (d, k, s, p)
-                      in zip(self.dims, self.ksize, self.stride, self.pad)])
+        outs = tuple(conv.get_conv_outsize(d, k, s, p, self.cover_all)
+                     for (d, k, s, p)
+                     in zip(self.dims, self.ksize, self.stride, self.pad))
         gy_shape = (2, 3) + outs
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
@@ -85,7 +85,7 @@ class TestMaxPoolingND(unittest.TestCase):
                     [x[idx].max() for idx in pooling_patches(
                         dims, ksize, stride, pad, self.cover_all)]
                 ).reshape(y_data.shape[2:])
-                gradient_check.assert_allclose(expect, y_data[k, c])
+                testing.assert_allclose(expect, y_data[k, c])
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -148,9 +148,9 @@ class TestMaxPoolingNDCudnnCall(unittest.TestCase):
         self.x = cuda.cupy.arange(functools.reduce(mul, x_shape),
                                   dtype=self.dtype).reshape(x_shape)
         gy_shape = (2, 3) + tuple(
-            [conv.get_conv_outsize(d, k, s, p)
-             for (d, k, s, p)
-             in zip(self.dims, self.ksize, self.stride, self.pad)])
+            conv.get_conv_outsize(d, k, s, p)
+            for (d, k, s, p)
+            in zip(self.dims, self.ksize, self.stride, self.pad))
         self.gy = cuda.cupy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
     def forward(self):

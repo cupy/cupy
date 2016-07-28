@@ -41,7 +41,7 @@ class TestBatchL2NormSquared(unittest.TestCase):
         for n in six.moves.range(len(self.x)):
             y_expect[n] = sum(map(lambda x: x * x, x_two_dim[n]))
 
-        gradient_check.assert_allclose(y_expect, y_data)
+        testing.assert_allclose(y_expect, y_data)
 
     @condition.retry(3)
     def test_forward_cpu(self):

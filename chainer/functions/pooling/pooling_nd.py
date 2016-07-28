@@ -2,7 +2,9 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
+from chainer.utils import conv_nd
 from chainer.utils import type_check
 
 
@@ -12,15 +14,7 @@ if cuda.cudnn_enabled:
     _cudnn_version = libcudnn.getVersion()
 
 
-def _check_cudnn_acceptable_type(x_dtype):
-    return _cudnn_version >= 3000 or x_dtype != numpy.float16
-
-
-def _tuple(x, n):
-    if hasattr(x, '__getitem__'):
-        assert len(x) == n
-        return x
-    return (x,) * n
+_check_cudnn_acceptable_type = pooling_2d._check_cudnn_acceptable_type
 
 
 class PoolingND(function.Function):
@@ -34,9 +28,9 @@ class PoolingND(function.Function):
             stride = ksize
 
         self.ndim = ndim
-        self.ksize = _tuple(ksize, ndim)
-        self.stride = _tuple(stride, ndim)
-        self.pad = _tuple(pad, ndim)
+        self.ksize = conv_nd.as_tuple(ksize, ndim)
+        self.stride = conv_nd.as_tuple(stride, ndim)
+        self.pad = conv_nd.as_tuple(pad, ndim)
 
         self.cover_all = cover_all
         self.use_cudnn = use_cudnn
@@ -53,9 +47,9 @@ class PoolingND(function.Function):
         x = x[0]
         n, c = x.shape[:2]
         dims = x.shape[2:]
-        ys = tuple([conv.get_conv_outsize(d, k, s, p, self.cover_all)
-                    for (d, k, s, p) in zip(
-                        dims, self.ksize, self.stride, self.pad)])
+        ys = tuple(conv.get_conv_outsize(d, k, s, p, self.cover_all)
+                   for (d, k, s, p) in zip(
+                       dims, self.ksize, self.stride, self.pad))
         y_shape = (n, c) + ys
         y = cuda.cupy.empty(y_shape, dtype=x.dtype)
 
