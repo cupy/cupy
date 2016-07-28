@@ -24,6 +24,29 @@ def permutate_list(lst, indices, inv):
 
 class NStepLSTM(link.ChainList):
 
+    """Stacked LSTM for sequnces.
+
+    This link is stacked version of LSTM for sequences. It calculates hidden
+    and cell states of all layer at end-of-string, and all hidden states of
+    the last layer for each time.
+
+    Unlike :func:`chainer.functions.n_step_lstm`, this function automatically
+    sort inputs in descending order by length, and transpose the seuqnece.
+    Users just need to call the link with a list of :class:`chainer.Variable`
+    holding sequences.
+
+    Args:
+        n_layers (int): Number of layers.
+        in_size (int): Dimensionality of input vectors.
+        out_size (int): Dimensionality of hidden states and output vectors.
+        dropout (float): Dropout ratio.
+        user_cudnn (bool): Use cuDNN.
+
+    .. seealso::
+        :func:`chainer.functions.n_step_lstm`
+
+    """
+
     def __init__(
             self, n_layers, in_size, out_size, dropout, seed=1337,
             use_cudnn=True):
@@ -50,6 +73,15 @@ class NStepLSTM(link.ChainList):
         self.use_cudnn = use_cudnn
 
     def __call__(self, hx, cx, xs, train=True):
+        """Calculate all hidden states and cell states.
+
+        Args:
+            hx (~chainer.Variable): Initial hidden states.
+            cx (~chainer.Variable): Initial cell states.
+            xs (list of ~chianer.Variable): List of input sequences.
+                Each element ``xs[i]`` is a :class:`chainer.Variable` holding
+                a sequence.
+        """
         assert isinstance(xs, (list, tuple))
         indices = argsort_list_descent(xs)
 
