@@ -92,9 +92,9 @@ class TestConvolutionND(unittest.TestCase):
             x_data = xp.asfortranarray(x_data)
             W_data = xp.asfortranarray(W_data)
             y_grad = xp.asfortranarray(y_grad)
-            self.assertFalse(x_data.flags.c_contiguous)
-            self.assertFalse(W_data.flags.c_contiguous)
-            self.assertFalse(y_grad.flags.c_contiguous)
+            self.assertTrue(x_data.flags.f_contiguous)
+            self.assertTrue(W_data.flags.f_contiguous)
+            self.assertTrue(y_grad.flags.f_contiguous)
             if b_data is not None:
                 b = xp.empty((len(b_data) * 2,), dtype=b_data.dtype)
                 b[::2] = b_data
