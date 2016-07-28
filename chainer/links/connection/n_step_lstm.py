@@ -58,14 +58,9 @@ class NStepLSTM(link.ChainList):
         cx = permutate.permutate(cx, indices, axis=1, inv=False)
         trans_x = transpose_sequence.transpose_sequence(xs)
 
-        ws = []
-        for w in self:
-            for i in six.moves.range(8):
-                ws.append(getattr(w, 'w%d' % i))
-        bs = []
-        for w in self:
-            for i in six.moves.range(8):
-                bs.append(getattr(w, 'b%d' % i))
+        ws = [[w.w0, w.w1, w.w2, w.w3, w.w4, w.w5, w.w6, w.w7] for w in self]
+        bs = [[w.b0, w.b1, w.b2, w.b3, w.b4, w.b5, w.b6, w.b7] for w in self]
+
         hy, cy, trans_y = rnn.n_step_lstm(
             self.n_layers, self.dropout, hx, cx, ws, bs, trans_x,
             seed=self.seed, train=train, use_cudnn=self.use_cudnn)
