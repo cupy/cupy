@@ -106,7 +106,8 @@ class TestDilatedConvolution2DFunction(unittest.TestCase):
 
         gradient_check.check_backward(
             dilated_convolution_2d.DilatedConvolution2DFunction(
-                self.stride, self.pad, self.dilate, self.use_cudnn, self.cover_all),
+                self.stride, self.pad, self.dilate,
+                self.use_cudnn, self.cover_all),
             args, y_grad, **self.check_backward_options)
 
     @condition.retry(3)

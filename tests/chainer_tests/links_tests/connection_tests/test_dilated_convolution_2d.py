@@ -16,7 +16,8 @@ from chainer.utils import conv
 class TestDilatedConvolution2D(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.DilatedConvolution2D(3, 2, 3, stride=2, pad=2, dilate=2)
+        self.link = links.DilatedConvolution2D(
+            3, 2, 3, stride=2, pad=2, dilate=2)
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
         self.link.zerograds()
@@ -29,7 +30,8 @@ class TestDilatedConvolution2D(unittest.TestCase):
     @attr.gpu
     def test_im2col_consistency(self):
         col_cpu = conv.im2col_cpu(self.x, 3, 3, 2, 2, 2, 2, dy=2, dx=2)
-        col_gpu = conv.im2col_gpu(cuda.to_gpu(self.x), 3, 3, 2, 2, 2, 2, dy=2, dx=2)
+        col_gpu = conv.im2col_gpu(
+            cuda.to_gpu(self.x), 3, 3, 2, 2, 2, 2, dy=2, dx=2)
         gradient_check.assert_allclose(col_cpu, col_gpu.get(), atol=0, rtol=0)
 
     @attr.gpu
@@ -37,7 +39,8 @@ class TestDilatedConvolution2D(unittest.TestCase):
         col = conv.im2col_cpu(self.x, 3, 3, 2, 2, 2, 2, dy=2, dx=2)
         h, w = self.x.shape[2:]
         im_cpu = conv.col2im_cpu(col, 2, 2, 2, 2, h, w, dy=2, dx=2)
-        im_gpu = conv.col2im_gpu(cuda.to_gpu(col), 2, 2, 2, 2, h, w, dy=2, dx=2)
+        im_gpu = conv.col2im_gpu(
+            cuda.to_gpu(col), 2, 2, 2, 2, h, w, dy=2, dx=2)
         gradient_check.assert_allclose(im_cpu, im_gpu.get())
 
     def check_forward_consistency(self):
