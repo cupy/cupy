@@ -75,7 +75,7 @@ class TestAveragePoolingND(unittest.TestCase):
                 size = functools.reduce(operator.mul, ksize)
                 expect = numpy.array([x[idx].sum() for idx in pooling_patches(
                     dims, ksize, stride, pad)]).reshape(y_data.shape[2:])/size
-                gradient_check.assert_allclose(
+                testing.assert_allclose(
                     expect, y_data[k, c], **self.check_forward_options)
 
     @condition.retry(3)
