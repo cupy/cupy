@@ -30,6 +30,10 @@ cpdef enum:
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2
 
+    cudaMemAttachGlobal = 1
+    cudaMemAttachHost = 2
+    cudaMemAttachSingle = 4
+
     hostAllocDefault = 0
     hostAllocPortable = 1
     hostAllocMapped = 2
@@ -91,6 +95,7 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 ###############################################################################
 
 cpdef size_t malloc(size_t size) except *
+cpdef size_t mallocManaged(size_t size, unsigned int flags=*) except *
 cpdef size_t hostAlloc(size_t size, unsigned int flags) except *
 cpdef free(size_t ptr)
 cpdef freeHost(size_t ptr)

@@ -7,6 +7,8 @@ cdef class Memory:
         public size_t ptr
         public Py_ssize_t size
 
+cdef class ManagedMemory(Memory):
+    pass
 
 cdef class Chunk:
 
