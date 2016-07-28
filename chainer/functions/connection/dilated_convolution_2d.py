@@ -95,13 +95,17 @@ class DilatedConvolution2DFunction(function.Function):
                                     dtype=x.dtype)
             pad_x[:, :, self.ph:self.ph + h, self.pw:self.pw + w] = x
 
+            out_h_s1 = h + 2 * self.ph - dkh + 1
+            out_w_s1 = w + 2 * self.pw - dkw + 1
+
             for j in moves.range(kh):
                 for i in moves.range(kw):
                     xji = cuda.cupy.ascontiguousarray(
                         pad_x[:, :,
-                        j * self.dy:j * self.dy + h + 2 * self.ph - dkh + 1,
-                        i * self.dx:i * self.dx + w + 2 * self.pw - dkw + 1])
-                    Wji = cuda.cupy.ascontiguousarray(W[:, :, j:j + 1, i:i + 1])
+                              j * self.dy:j * self.dy + out_h_s1,
+                              i * self.dx:i * self.dx + out_w_s1])
+                    Wji = cuda.cupy.ascontiguousarray(
+                        W[:, :, j:j + 1, i:i + 1])
 
                     if i == 0 and j == 0:
                         handle = cudnn.get_handle()
@@ -112,7 +116,8 @@ class DilatedConvolution2DFunction(function.Function):
                             (0, 0), (self.sy, self.sx))
 
                         workspace_size = cuda.get_max_workspace_size()
-                        workspace = cuda.cupy.empty((workspace_size,), dtype='b')
+                        workspace = cuda.cupy.empty(
+                            (workspace_size,), dtype='b')
                         algo = libcudnn.getConvolutionForwardAlgorithm(
                             handle, x_desc.value, self.filter_desc.value,
                             self.conv_desc.value, y_desc.value, _fwd_pref,
@@ -123,9 +128,9 @@ class DilatedConvolution2DFunction(function.Function):
 
                     libcudnn.convolutionForward(
                         handle, one.data, x_desc.value, xji.data.ptr,
-                        self.filter_desc.value, Wji.data.ptr, self.conv_desc.value,
-                        algo, workspace.data.ptr, workspace_size, one.data,
-                        y_desc.value, y.data.ptr)
+                        self.filter_desc.value, Wji.data.ptr,
+                        self.conv_desc.value, algo, workspace.data.ptr,
+                        workspace_size, one.data, y_desc.value, y.data.ptr)
 
             if b is not None:
                 b = cuda.cupy.ascontiguousarray(b)
@@ -183,24 +188,31 @@ class DilatedConvolution2DFunction(function.Function):
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
                 _check_cudnn_acceptable_type(x.dtype, W.dtype)):
 
-            pad_x = cuda.cupy.zeros((n, c, h + 2 * self.ph, w + 2 * self.pw),
-                                    dtype=x.dtype)
+            pad_x = cuda.cupy.zeros(
+                (n, c, h + 2 * self.ph, w + 2 * self.pw), dtype=x.dtype)
             pad_x[:, :, self.ph:self.ph + h, self.pw:self.pw + w] = x
 
-            out_h2 = out_h + (out_h - 1) * (self.sy - 1)
-            out_w2 = out_w + (out_w - 1) * (self.sx - 1)
-            ph_gy = (h + dkh - out_h2 - 1) / 2
-            pw_gy = (w + dkw - out_w2 - 1) / 2
-            pad_gy = cuda.cupy.zeros((n, out_c, h + dkh - 1, w + dkw - 1),
-                                     dtype=x.dtype)
-            pad_gy[:, :, ph_gy:ph_gy + out_h2:self.sy, pw_gy:pw_gy + out_w2:self.sx] = gy
+            out_h_s1 = h + 2 * self.ph - dkh + 1
+            out_w_s1 = w + 2 * self.pw - dkw + 1
+
+            out_sh = out_h + (out_h - 1) * (self.sy - 1)
+            out_sw = out_w + (out_w - 1) * (self.sx - 1)
+
+            gy_ph = (h + dkh - out_sh - 1) / 2
+            gy_pw = (w + dkw - out_sw - 1) / 2
+
+            pad_gy = cuda.cupy.zeros(
+                (n, out_c, h + dkh - 1, w + dkw - 1), dtype=x.dtype)
+            pad_gy[:, :,
+                   gy_ph:gy_ph + out_sh:self.sy,
+                   gy_pw:gy_pw + out_sw:self.sx] = gy
 
             for j in moves.range(kh):
                 for i in moves.range(kw):
                     xji = cuda.cupy.ascontiguousarray(
                         pad_x[:, :,
-                              j * self.dy:j * self.dy + h + 2 * self.ph - dkh + 1,
-                              i * self.dx:i * self.dx + w + 2 * self.pw - dkw + 1])
+                              j * self.dy:j * self.dy + out_h_s1,
+                              i * self.dx:i * self.dx + out_w_s1])
                     gyji = cuda.cupy.ascontiguousarray(
                         pad_gy[:, :,
                                j * self.dy:j * self.dy + h,
@@ -217,7 +229,8 @@ class DilatedConvolution2DFunction(function.Function):
                         xji_desc = cudnn.create_tensor_descriptor(xji)
                         gy_desc = cudnn.create_tensor_descriptor(gy)
                         gyji_desc = cudnn.create_tensor_descriptor(gyji)
-                        conv_desc_data = cudnn.create_convolution_descriptor((0, 0), (1, 1))
+                        conv_desc_data = cudnn.create_convolution_descriptor(
+                            (0, 0), (1, 1))
 
                         oz_dtype = 'd' if x.dtype == 'd' else 'f'
                         one = numpy.array(1, dtype=oz_dtype).ctypes
@@ -227,16 +240,21 @@ class DilatedConvolution2DFunction(function.Function):
 
                         if _cudnn_version >= 4000:
                             workspace_size = cuda.get_max_workspace_size()
-                            workspace = cuda.cupy.empty((workspace_size,), dtype='b')
+                            workspace = cuda.cupy.empty(
+                                (workspace_size,), dtype='b')
 
-                            algo_filter = libcudnn.getConvolutionBackwardFilterAlgorithm(
-                                handle, xji_desc.value, gy_desc.value,
-                                self.conv_desc.value, self.filter_desc.value,
-                                _bwd_filter_pref, workspace_size)
-                            algo_data = libcudnn.getConvolutionBackwardDataAlgorithm(
-                                handle, self.filter_desc.value, gyji_desc.value,
-                                conv_desc_data.value, x_desc.value, _bwd_data_pref,
-                                workspace_size)
+                            algo_filter = (
+                                libcudnn.getConvolutionBackwardFilterAlgorithm(
+                                    handle, xji_desc.value, gy_desc.value,
+                                    self.conv_desc.value,
+                                    self.filter_desc.value,
+                                    _bwd_filter_pref, workspace_size))
+                            algo_data = (
+                                libcudnn.getConvolutionBackwardDataAlgorithm(
+                                    handle, self.filter_desc.value,
+                                    gyji_desc.value, conv_desc_data.value,
+                                    x_desc.value, _bwd_data_pref,
+                                    workspace_size))
 
                     if _cudnn_version >= 4000:
                         libcudnn.convolutionBackwardFilter_v3(
@@ -245,8 +263,9 @@ class DilatedConvolution2DFunction(function.Function):
                             algo_filter, workspace.data.ptr, workspace_size,
                             zero.data, self.filter_desc.value, gWji.data.ptr)
                         libcudnn.convolutionBackwardData_v3(
-                            handle, one.data, self.filter_desc.value, Wji.data.ptr,
-                            gyji_desc.value, gyji.data.ptr, conv_desc_data.value,
+                            handle, one.data, self.filter_desc.value,
+                            Wji.data.ptr, gyji_desc.value,
+                            gyji.data.ptr, conv_desc_data.value,
                             algo_data, workspace.data.ptr, workspace_size,
                             one.data, x_desc.value, gx.data.ptr)
                     else:
@@ -255,8 +274,9 @@ class DilatedConvolution2DFunction(function.Function):
                             gy_desc.value, gy.data.ptr, self.conv_desc.value,
                             zero.data, self.filter_desc.value, gWji.data.ptr)
                         libcudnn.convolutionBackwardData_v2(
-                            handle, one.data, self.filter_desc.value, Wji.data.ptr,
-                            gyji_desc.value, gyji.data.ptr, conv_desc_data.value,
+                            handle, one.data, self.filter_desc.value,
+                            Wji.data.ptr, gyji_desc.value,
+                            gyji.data.ptr, conv_desc_data.value,
                             one.data, x_desc.value, gx.data.ptr)
                     gW[:, :, j:j + 1, i:i + 1] = gWji
 
@@ -296,11 +316,14 @@ class DilatedConvolution2DFunction(function.Function):
 def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
                            use_cudnn=True, cover_all=False):
     """Two-dimensional dilated convolution function.
+
     This is an implementation of two-dimensional dilated convolution
     in ConvNets.
     It takes three variables: the input image ``x``, the filter weight ``W``,
     and the bias vector ``b``.
+
     Notation: here is a notation for dimensionalities.
+
     - :math:`n` is the batch size.
     - :math:`c_I` and :math:`c_O` are the number of the input and output,
       respectively.
@@ -308,6 +331,7 @@ def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
       respectively.
     - :math:`k_H` and :math:`k_W` are the height and width of the filters,
       respectively.
+
     Args:
         x (~chainer.Variable): Input variable of shape :math:`(n, c_I, h, w)`.
         W (~chainer.Variable): Weight variable of shape
@@ -323,8 +347,10 @@ def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
             available.
         cover_all (bool): If True, all spatial locations are convoluted into
             some output pixels. It may make the output size larger.
+
     Returns:
         ~chainer.Variable: Output variable.
+
     The two-dimensional dilated convolution function is defined as follows.
     Then the ``DilatedConvolution2D`` function computes correlations
     between filters and patches of size :math:`(k_H, k_W)` in ``x``.
@@ -334,17 +360,24 @@ def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
     the first position ``-pad`` for each spatial axis.
     The right-most (or bottom-most) patches do not run over the padded spatial
     size.
+
     Let :math:`(s_Y, s_X)` be the stride of filter application, and
     :math:`(p_H, p_W)` the spatial padding size. Then, the output size
     :math:`(h_O, w_O)` is determined by the following equations:
+
     .. math::
+
        h_O &= (h + 2p_H - k_H) / s_Y + 1,\\\\
        w_O &= (w + 2p_W - k_W) / s_X + 1.
+
     If the bias vector is given, then it is added to all spatial locations of
     the output of convolution.
+
     .. seealso:: :class:`DilatedConvolution2D`
+
     """
-    func = DilatedConvolution2DFunction(stride, pad, dilate, use_cudnn, cover_all)
+    func = DilatedConvolution2DFunction(
+        stride, pad, dilate, use_cudnn, cover_all)
     if b is None:
         return func(x, W)
     else:

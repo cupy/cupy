@@ -8,8 +8,10 @@ from chainer import link
 class DilatedConvolution2D(link.Link):
 
     """Two-dimensional dilated convolutional layer.
+
     This link wraps the :func:`~chainer.functions.dilated_convolution_2d`
     function and holds the filter weight and bias vector as parameters.
+
     Args:
         in_channels (int): Number of channels of input arrays.
         out_channels (int): Number of channels of output arrays.
@@ -33,12 +35,15 @@ class DilatedConvolution2D(link.Link):
             function uses to initialize ``bias``.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
+
     .. seealso::
        See :func:`chainer.functions.dilated_convolution_2d`
        for the definition of two-dimensional dilated convolution.
+
     Attributes:
         W (~chainer.Variable): Weight parameter.
         b (~chainer.Variable): Bias parameter.
+
     """
 
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
@@ -68,13 +73,17 @@ class DilatedConvolution2D(link.Link):
 
     def __call__(self, x):
         """Applies the convolution layer.
+
         Args:
             x (~chainer.Variable): Input image.
+
         Returns:
             ~chainer.Variable: Output of the convolution.
+
         """
         return dilated_convolution_2d.dilated_convolution_2d(
-            x, self.W, self.b, self.stride, self.pad, self.dilate, self.use_cudnn)
+            x, self.W, self.b, self.stride,
+            self.pad, self.dilate, self.use_cudnn)
 
 
 def _pair(x):
