@@ -19,7 +19,8 @@ def get_deconv_outsize(size, k, s, p, cover_all=False):
         return s * (size - 1) + k - 2 * p
 
 
-def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False, dy=1, dx=1):
+def im2col_cpu(
+        img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False, dy=1, dx=1):
     n, c, h, w = img.shape
     dkh, dkw = kh + (kh - 1) * (dy - 1), kw + (kw - 1) * (dx - 1)
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all, dy)
@@ -41,7 +42,6 @@ def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False, dy=1, dx=1)
 
 def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False, dy=1, dx=1):
     n, c, h, w = img.shape
-    dkh, dkw = kh + (kh - 1) * (dy - 1), kw + (kw - 1) * (dx - 1)
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all, dy)
     out_w = get_conv_outsize(w, kw, sx, pw, cover_all, dx)
 
@@ -80,7 +80,8 @@ def col2im_cpu(col, sy, sx, ph, pw, h, w, dy=1, dx=1):
         j_lim = j + sy * out_h
         for i in six.moves.range(0, dkw, dx):
             i_lim = i + sx * out_w
-            img[:, :, j:j_lim:sy, i:i_lim:sx] += col[:, :, j / dy, i / dx, :, :]
+            img[:, :, j:j_lim:sy, i:i_lim:sx] += col[
+                :, :, j / dy, i / dx, :, :]
 
     return img[:, :, ph:h + ph, pw:w + pw]
 
@@ -120,12 +121,13 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w, dy=1, dx=1):
     else:
         # TODO(yasunorikudo): Use cuda.elementwise
         dkh, dkw = kh + (kh - 1) * (dy - 1), kw + (kw - 1) * (dx - 1)
-        img = cuda.cupy.zeros((n, c, h + 2 * ph + sy - 1, w + 2 * pw + sx - 1),
-                          dtype=col.dtype)
+        img = cuda.cupy.zeros(
+            (n, c, h + 2 * ph + sy - 1, w + 2 * pw + sx - 1), dtype=col.dtype)
         for j in six.moves.range(0, dkh, dy):
             j_lim = j + sy * out_h
             for i in six.moves.range(0, dkw, dx):
                 i_lim = i + sx * out_w
-                img[:, :, j:j_lim:sy, i:i_lim:sx] += col[:, :, j / dy, i / dx, :, :]
+                img[:, :, j:j_lim:sy, i:i_lim:sx] += col[
+                    :, :, j / dy, i / dx, :, :]
 
         return img[:, :, ph:h + ph, pw:w + pw]
