@@ -1,6 +1,6 @@
 import os
-import unittest
 import tempfile
+import unittest
 
 import numpy
 
@@ -8,8 +8,8 @@ import chainer
 from chainer import cuda
 from chainer import gradient_check
 from chainer import links
-from chainer import testing
 from chainer.serializers import npz
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 from chainer.utils import type_check
@@ -139,7 +139,7 @@ class TestLinearParameterShapePlaceholder(unittest.TestCase):
         lin2 = links.Linear(None, self.out_size)
         npz.load_npz(temp_file_path, lin2)
         w2 = lin2.W.data
-        self.assertEquals((w1 == w2).all(), True)
+        self.assertEqual((w1 == w2).all(), True)
 
 
 class TestLinearWithSpatialDimensions(TestLinear):
