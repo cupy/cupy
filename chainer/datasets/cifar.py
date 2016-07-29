@@ -22,7 +22,7 @@ def get_cifar10(withlabel=True, ndim=3, scale=1.):
     tuples of images and labels, otherwise it only consists of images.
 
     Args:
-        withlabel (bool): If ``True`1, it returns datasets with labels. In this
+        withlabel (bool): If ``True``, it returns datasets with labels. In this
             case, each example is a tuple of an image and a label. Otherwise,
             the datasets only contain images.
         ndim (int): Number of dimensions of each image. The shape of each image

@@ -539,13 +539,13 @@ class GradientNoise(object):
     to the gradient. By default it adds time-dependent annealed Gaussian
     noise to the gradient at every training step:
 
-    . math::
+    .. math::
 
         g_t \\leftarrow g_t + N(0, \\sigma_t^2)
 
     where
 
-    . math::
+    .. math::
 
         \\sigma_t^2 = \\frac{\\eta}{(1+t)^\\gamma}
 
