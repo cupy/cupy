@@ -15,9 +15,10 @@ def as_tuple(x, n):
 
 
 def im2col_nd_cpu(img, ksize, stride, pad, pval=0, cover_all=False):
-    # Assured consistency of dimensions of parameters by caller.
     n, c = img.shape[0:2]       # (n, c, d_1, d_2, ..., d_N)
     dims = img.shape[2:]
+    ndim = len(dims)
+    assert ndim == len(ksize) == len(stride) == len(pad)
     outs = tuple(get_conv_outsize(d, k, s, p, cover_all)
                  for (d, k, s, p) in zip(dims, ksize, stride, pad))
 
@@ -32,7 +33,6 @@ def im2col_nd_cpu(img, ksize, stride, pad, pval=0, cover_all=False):
     col = numpy.ndarray(shape, dtype=img.dtype)
 
     # Fill the patch array.
-    ndim = len(dims)
     colon = slice(None)
     for kxs in itertools.product(*[six.moves.range(k) for k in ksize]):
         # col[:, :, kx_1, kx_2, ..., kx_N, :, :, ..., :]
@@ -52,10 +52,10 @@ _im2col_cache = {}
 
 
 def im2col_nd_gpu(img, ksize, stride, pad, cover_all=False):
-    # Assured consistency of dimensions of parameters by caller.
     n, c = img.shape[0:2]       # (n, c, d_1, d_2, ..., d_N)
     dims = img.shape[2:]
     ndim = len(dims)
+    assert ndim == len(ksize) == len(stride) == len(pad)
     outs = tuple(get_conv_outsize(d, k, s, p, cover_all)
                  for (d, k, s, p) in zip(dims, ksize, stride, pad))
 
@@ -80,6 +80,7 @@ def col2im_nd_cpu(col, stride, pad, dims):
     ksize = col.shape[2:mid]
     outs = col.shape[mid:]
     colon = slice(None)
+    assert len(outs) == len(ksize) == len(stride) == len(pad) == len(dims)
 
     # Image with padded size.
     img_shape = (n, c) + tuple(d + 2 * p + s - 1
@@ -112,6 +113,7 @@ def col2im_nd_gpu(col, stride, pad, dims):
     ksize = col.shape[2:mid]
     outs = col.shape[mid:]
     ndim = len(dims)
+    assert len(outs) == len(ksize) == len(stride) == len(pad) == ndim
 
     img_shape = (n, c) + dims   # (n, c, d_1, d_2, ..., d_N)
     img = cuda.cupy.empty(img_shape, dtype=col.dtype)

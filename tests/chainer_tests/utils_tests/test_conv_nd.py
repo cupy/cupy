@@ -125,6 +125,45 @@ class TestIm2ColND(unittest.TestCase):
         self.assertTrue(ndim in conv_nd._im2col_cache)
 
 
+class TestIm2ColNDParameterRanks(unittest.TestCase):
+
+    def setUp(self):
+        shape = (2, 3, 4, 3)
+        self.ksize = (2, 2)
+        self.stride = (1, 1)
+        self.pad = (0, 0)
+        self.img = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)
+
+    def test_im2col_nd_cpu_parameter_ranks(self):
+        # Invalid ksize length.
+        with self.assertRaises(AssertionError):
+            conv_nd.im2col_nd_cpu(self.img, (2,), self.stride, self.pad)
+
+        # Invalid stride length.
+        with self.assertRaises(AssertionError):
+            conv_nd.im2col_nd_cpu(self.img, self.ksize, (1,), self.pad)
+
+        # Invalid pad length.
+        with self.assertRaises(AssertionError):
+            conv_nd.im2col_nd_cpu(self.img, self.ksize, self.stride, (0,))
+
+    @attr.gpu
+    def test_im2col_nd_gpu_parameter_ranks(self):
+        img_gpu = cuda.to_gpu(self.img)
+
+        # Invalid ksize length.
+        with self.assertRaises(AssertionError):
+            conv_nd.im2col_nd_gpu(img_gpu, (2,), self.stride, self.pad)
+
+        # Invalid stride length.
+        with self.assertRaises(AssertionError):
+            conv_nd.im2col_nd_gpu(img_gpu, self.ksize, (1,), self.pad)
+
+        # Invalid pad length.
+        with self.assertRaises(AssertionError):
+            conv_nd.im2col_nd_gpu(img_gpu, self.ksize, self.stride, (0,))
+
+
 @testing.parameterize(*testing.product({
     'dims': [(10,), (10, 8), (10, 8, 6)],
 }))
@@ -215,6 +254,62 @@ class TestCol2ImND(unittest.TestCase):
         pad = (1, 2, 1)[:ndim]
         self.check_col2im_nd(ksize, stride, pad, gpu=True)
         self.assertTrue(ndim in conv_nd._col2im_cache)
+
+
+class TestCol2ImNDParameterRanks(unittest.TestCase):
+
+    def setUp(self):
+        self.dims = (4, 3)
+        self.ksize = (2, 2)
+        self.stride = (1, 1)
+        self.pad = (0, 0)
+        self.outs = tuple(conv_nd.get_conv_outsize(d, k, s, p)
+                          for (d, k, s, p) in zip(
+                              self.dims, self.ksize, self.stride, self.pad))
+        col_shape = (2, 3) + self.ksize + self.outs
+        self.col = numpy.random.uniform(-1, 1, col_shape).astype(numpy.float32)
+
+    def test_col2im_nd_cpu_parameter_ranks(self):
+        # Invalid ksize length.
+        col_shape = (2, 3) + (2,) + self.outs
+        col = numpy.random.uniform(-1, 1, col_shape).astype(numpy.float32)
+        with self.assertRaises(AssertionError):
+            conv_nd.col2im_nd_cpu(col, self.stride, self.pad, self.dims)
+
+        # Invalid stride length.
+        with self.assertRaises(AssertionError):
+            conv_nd.col2im_nd_cpu(self.col, (1,), self.pad, self.dims)
+
+        # Invalid pad length.
+        with self.assertRaises(AssertionError):
+            conv_nd.col2im_nd_cpu(self.col, self.stride, (0,), self.dims)
+
+        # Invalid dims length.
+        with self.assertRaises(AssertionError):
+            conv_nd.col2im_nd_cpu(self.col, self.stride, self.pad, (4,))
+
+    @attr.gpu
+    def test_col2im_nd_gpu_parameter_ranks(self):
+        # Invalid ksize length.
+        col_shape = (2, 3) + (2,) + self.outs
+        col = numpy.random.uniform(-1, 1, col_shape).astype(numpy.float32)
+        col_gpu = cuda.to_gpu(col)
+        with self.assertRaises(AssertionError):
+            conv_nd.col2im_nd_gpu(col_gpu, self.stride, self.pad, self.dims)
+
+        col_gpu = cuda.to_gpu(self.col)
+
+        # Invalid stride length.
+        with self.assertRaises(AssertionError):
+            conv_nd.col2im_nd_gpu(col_gpu, (1,), self.pad, self.dims)
+
+        # Invalid pad length.
+        with self.assertRaises(AssertionError):
+            conv_nd.col2im_nd_gpu(col_gpu, self.stride, (0,), self.dims)
+
+        # Invalid dims length.
+        with self.assertRaises(AssertionError):
+            conv_nd.col2im_nd_gpu(col_gpu, self.stride, self.pad, (4,))
 
 
 testing.run_module(__name__, __file__)
