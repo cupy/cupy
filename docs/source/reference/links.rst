@@ -32,6 +32,11 @@ Convolution2D
 .. autoclass:: Convolution2D
    :members:
 
+ConvolutionND
+~~~~~~~~~~~~~
+.. autoclass:: ConvolutionND
+   :members:
+
 Deconvolution2D
 ~~~~~~~~~~~~~~~
 .. autoclass:: Deconvolution2D
