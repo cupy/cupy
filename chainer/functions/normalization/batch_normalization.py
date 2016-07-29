@@ -77,17 +77,6 @@ class BatchNormalizationFunction(function.Function):
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
         x, gamma, beta = inputs[:3]
-
-        # TODO(bkvogel): Check for float16 support again in next cuDNN version.
-        if x[0].dtype == numpy.float16:
-            # cuDNN v5 batch normalization does not seem to support float16.
-            self.use_cudnn = False
-
-        head_ndim = gamma.ndim + 1
-        expander = (None, Ellipsis) + (None,) * (x.ndim - head_ndim)
-        gamma = gamma[expander]
-        beta = beta[expander]
-
         if self.train:
             if self.running_mean is None:
                 self.running_mean = xp.zeros_like(gamma)
@@ -98,6 +87,16 @@ class BatchNormalizationFunction(function.Function):
         elif len(inputs) == 5:
                 self.fixed_mean = inputs[3]
                 self.fixed_var = inputs[4]
+
+        # TODO(bkvogel): Check for float16 support again in next cuDNN version.
+        if x[0].dtype == numpy.float16:
+            # cuDNN v5 batch normalization does not seem to support float16.
+            self.use_cudnn = False
+
+        head_ndim = gamma.ndim + 1
+        expander = (None, Ellipsis) + (None,) * (x.ndim - head_ndim)
+        gamma = gamma[expander]
+        beta = beta[expander]
 
         # cuDNN only supports these tensor dimensions because they are
         # the most commonly used. If there is a need to support other

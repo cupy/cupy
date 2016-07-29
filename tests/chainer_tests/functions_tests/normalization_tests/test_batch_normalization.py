@@ -49,12 +49,12 @@ class TestBatchNormalization(unittest.TestCase):
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
             self.check_backward_options = {
-                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
+                'dtype': numpy.float64, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, args, use_cudnn=True):
         y = functions.batch_normalization(
-            *[chainer.Variable(i) for i in args], running_mean=self.mean,
-            running_var=self.var, decay=self.decay, eps=self.eps,
+            *[chainer.Variable(i) for i in args], running_mean=None,
+            running_var=None, decay=self.decay, eps=self.eps,
             use_cudnn=use_cudnn)
         self.assertEqual(y.data.dtype, self.dtype)
 
@@ -81,7 +81,7 @@ class TestBatchNormalization(unittest.TestCase):
     def check_backward(self, args, y_grad):
         gradient_check.check_backward(
             batch_normalization.BatchNormalizationFunction(
-                mean=self.mean, var=self.var, train=self.train,
+                mean=None, var=None, train=self.train,
                 decay=self.decay, eps=self.eps), args, y_grad,
             **self.check_backward_options)
 
@@ -124,7 +124,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
             self.check_backward_options = {
-                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
+                'dtype': numpy.float64, 'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, args, use_cudnn=True):
         y = functions.fixed_batch_normalization(
