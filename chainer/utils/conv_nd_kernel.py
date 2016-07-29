@@ -113,8 +113,8 @@ class Im2colNDKernel(object):
         # 2D: int in_0 = kx_0 + out_x_0 * s_0 - p_0;
         #     int in_1 = kx_1 + out_x_1 * s_1 - p_1;
         #     if (0 <= in_0 && in_0 < d_0 && 0 <= in_1 && in_1 < d_1) {
-        #       int idx_0 = in_0 * d_0 + c0;
-        #       int idx_1 = in_1 * d_1 + idx_0;
+        #       int idx_0 = in_0 + d_0 * c0;
+        #       int idx_1 = in_1 + d_1 * idx_0;
         #       col = img[idx_1];
         #     } else {
         #       col = (T)0;
@@ -132,7 +132,7 @@ class Im2colNDKernel(object):
         idxs = _vars('idx', self.ndim)
         idx0s = ['c0'] + idxs[:-1]
         for (idx, _in, d, idx0) in zip(idxs, ins, self.ds, idx0s):
-            w('int {} = {} * {} + {};'.format(idx, _in, d, idx0))
+            w('int {} = {} + {} * {};'.format(idx, _in, d, idx0))
 
         w('col = img[{}];'.format(idxs[-1]))
         w('} else {', 'decinc')
