@@ -125,15 +125,6 @@ class TestConvolutionND(unittest.TestCase):
         self.check_pickling(cuda.to_gpu(self.x))
 
 
-class TestConvolutionNDInvalidInitialWeight(unittest.TestCase):
-
-    def test_invalid_initial_weight(self):
-        ndim = 3
-        ksize = 3
-        with self.assertRaises(ValueError):
-            convolution_nd.ConvolutionND(ndim, 3, 2, ksize, initialW=None)
-
-
 class TestConvolutionNDNoInitialBias(unittest.TestCase):
 
     def test_no_initial_bias(self):
