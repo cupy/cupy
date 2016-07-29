@@ -86,6 +86,31 @@ class TestConvolutionND(unittest.TestCase):
     def test_forward_consistency_im2col_nobias(self):
         self.check_forward_consistency(nobias=True, use_cudnn=False)
 
+    def check_forward_consistency_regression(self, nobias=False):
+        x = chainer.Variable(self.x)
+        W = chainer.Variable(self.W)
+        b = None if nobias else chainer.Variable(self.b)
+
+        y_nd = functions.convolution_nd(
+            x, W, b, stride=self.stride, pad=self.pad,
+            use_cudnn=False, cover_all=self.cover_all)
+        y_2d = functions.convolution_2d(
+            x, W, b, stride=self.stride, pad=self.pad,
+            use_cudnn=False, cover_all=self.cover_all)
+
+        testing.assert_allclose(
+            y_nd.data, y_2d.data, **self.check_forward_options)
+
+    def test_forward_consistency_regression(self):
+        # Regression test to convolution_2d.
+        if len(self.dims) == 2:
+            self.check_forward_consistency_regression(nobias=False)
+
+    def test_forward_consistency_regression_nobias(self):
+        # Regression test to convolution_2d.
+        if len(self.dims) == 2:
+            self.check_forward_consistency_regression(nobias=True)
+
     def check_backward(self, x_data, W_data, b_data, y_grad, use_cudnn=False):
         xp = cuda.get_array_module(x_data)
         if not self.c_contiguous:
