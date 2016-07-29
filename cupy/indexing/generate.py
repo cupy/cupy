@@ -32,7 +32,7 @@ class AxisConcatenator(object):
         trans1d = self.trans1d
         ndmin = self.ndmin
         objs = []
-        if isinstance(key, str):
+        if isinstance(key, six.string_types):
             return NotImplementedError
         if not isinstance(key, tuple):
             key = (key,)
@@ -40,7 +40,7 @@ class AxisConcatenator(object):
         for k in six.moves.range(len(key)):
             if isinstance(key[k], slice):
                 return NotImplementedError
-            elif isinstance(key[k], str):
+            elif isinstance(key[k], six.string_types):
                 if k != 0:
                     raise ValueError(
                     'special directives must be the first entry.')
