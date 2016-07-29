@@ -33,8 +33,11 @@ class ConvolutionND(link.Link):
             passes the value of ``initial_bias`` other than ``None`` to it as
             it is.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
+            See :func:`~chainer.functions.convolution_nd` for exact conditions
+            of cuDNN availability.
         cover_all (bool): If ``True``, all spatial locations are convoluted
             into some output pixels. It may make the output size larger.
+            ``cover_all`` needs to be ``False`` if you want to use cuDNN.
 
     .. seealso::
         See :func:`~chainer.functions.convolution_nd` for the definition of
