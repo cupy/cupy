@@ -22,13 +22,15 @@ def get_cifar10(withlabel=True, ndim=3, scale=1.):
     tuples of images and labels, otherwise it only consists of images.
 
     Args:
-        withlabel (bool): If ``True`1, it returns datasets with labels. In this
+        withlabel (bool): If ``True``, it returns datasets with labels. In this
             case, each example is a tuple of an image and a label. Otherwise,
             the datasets only contain images.
         ndim (int): Number of dimensions of each image. The shape of each image
             is determined depending on ndim as follows:
-                - ``ndim == 1``: the shape is ``(3072,)``
-                - ``ndim == 3``: the shape is ``(3, 32, 32)``
+
+            - ``ndim == 1``: the shape is ``(3072,)``
+            - ``ndim == 3``: the shape is ``(3, 32, 32)``
+
         scale (float): Pixel value scale. If it is 1 (default), pixels are
             scaled to the interval ``[0, 1]``.
 
@@ -65,8 +67,10 @@ def get_cifar100(withlabel=True, ndim=3, scale=1.):
             the datasets only contain images.
         ndim (int): Number of dimensions of each image. The shape of each image
             is determined depending on ndim as follows:
-                - ``ndim == 1``: the shape is ``(3072,)``
-                - ``ndim == 3``: the shape is ``(3, 32, 32)``
+
+            - ``ndim == 1``: the shape is ``(3072,)``
+            - ``ndim == 3``: the shape is ``(3, 32, 32)``
+
         scale (float): Pixel value scale. If it is 1 (default), pixels are
             scaled to the interval ``[0, 1]``.
 
