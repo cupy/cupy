@@ -82,6 +82,11 @@ StatefulGRU
 .. autoclass:: StatefulGRU
    :members:
 
+StatefulPeepholeLSTM
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: StatefulPeepholeLSTM
+   :members:
+
 StatelessLSTM
 ~~~~~~~~~~~~~
 .. autoclass:: StatelessLSTM
