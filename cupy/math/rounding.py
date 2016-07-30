@@ -10,7 +10,7 @@ from cupy.math import ufunc
 
 rint = ufunc.create_math_ufunc(
     'rint', 1, 'cupy_rint',
-    '''Rounds eacy element of an array to the nearest integer.
+    '''Rounds each element of an array to the nearest integer.
 
     .. seealso:: :data:`numpy.rint`
 
@@ -22,7 +22,7 @@ rint = ufunc.create_math_ufunc(
 
 floor = ufunc.create_math_ufunc(
     'floor', 1, 'cupy_floor',
-    '''Rounds each element of an array to its floow integer.
+    '''Rounds each element of an array to its floor integer.
 
     .. seealso:: :data:`numpy.floor`
 
@@ -31,7 +31,7 @@ floor = ufunc.create_math_ufunc(
 
 ceil = ufunc.create_math_ufunc(
     'ceil', 1, 'cupy_ceil',
-    '''Rounds each element of an array to its ceil integer.
+    '''Rounds each element of an array to its ceiling integer.
 
     .. seealso:: :data:`numpy.ceil`
 

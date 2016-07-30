@@ -4,9 +4,19 @@ import sys
 import numpy
 import six
 
+try:
+    from cupy import core
+except ImportError:
+    # core is a c-extension module.
+    # When a user cannot import core, it represents that CuPy is not correctly
+    # built.
+    msg = ('CuPy is not correctly installed. Please check your environment, '
+           'uninstall Chainer and reinstall it with `pip install chainer '
+           '--no-cache-dir -vvvv`.')
+    raise six.reraise(RuntimeError, RuntimeError(msg), sys.exc_info()[2])
+
 
 from cupy import binary
-from cupy import core
 from cupy import creation
 from cupy import indexing
 from cupy import io
@@ -125,6 +135,7 @@ concatenate = manipulation.join.concatenate
 dstack = manipulation.join.dstack
 hstack = manipulation.join.hstack
 vstack = manipulation.join.vstack
+stack = manipulation.join.stack
 
 asfortranarray = manipulation.kind.asfortranarray
 
@@ -193,8 +204,10 @@ mintypecode = numpy.mintypecode
 # -----------------------------------------------------------------------------
 take = indexing.indexing.take
 diagonal = indexing.indexing.diagonal
+
 r_ = indexing.generate.r_
 c_ = indexing.generate.c_
+ix_ = indexing.generate.ix_
 
 # -----------------------------------------------------------------------------
 # Input and output
@@ -320,6 +333,8 @@ fmin = math.misc.fmin
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 count_nonzero = sorting.count.count_nonzero
+nonzero = sorting.search.nonzero
+flatnonzero = sorting.search.flatnonzero
 
 argmax = sorting.search.argmax
 argmin = sorting.search.argmin
@@ -345,11 +360,11 @@ def asnumpy(a, stream=None):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
-        a: Arbitrary object that can be converted to numpy.ndarray.
+        a: Arbitrary object that can be converted to :class:`numpy.ndarray`.
         stream (cupy.cuda.Stream): CUDA stream object. If it is specified, then
             the device-to-host copy runs asynchronously. Otherwise, the copy is
-            synchronous. Note that if ``a`` is not a cupy.ndarray object, then
-            this argument has no effect.
+            synchronous. Note that if ``a`` is not a :class:`cupy.ndarray`
+            object, then this argument has no effect.
 
     Returns:
         numpy.ndarray: Converted array on the host memory.
@@ -380,11 +395,11 @@ def get_array_module(*args):
 
     .. admonition:: Example
 
-       A NumPy/CuPy generic function can be written as follows::
+       A NumPy/CuPy generic function can be written as follows
 
-           def softplus(x):
-               xp = cupy.get_array_module(x)
-               return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
+       >>> def softplus(x):
+       ...     xp = cupy.get_array_module(x)
+       ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
     if six.moves.builtins.any(isinstance(arg, ndarray) for arg in args):

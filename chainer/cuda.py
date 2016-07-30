@@ -9,11 +9,11 @@ codes).
  imported name                original name
 ============================ =================================
  ``chainer.cuda.cupy``        :mod:`cupy`
- ``chainer.cuda.ndarray``     :mod:`cupy.ndarray`
+ ``chainer.cuda.ndarray``     :class:`cupy.ndarray`
  ``chainer.cuda.cupy.cuda``   :mod:`cupy.cuda`
- ``chainer.cuda.Device``      :mod:`cupy.cuda.Device`
- ``chainer.cuda.Event``       :mod:`cupy.cuda.Event`
- ``chainer.cuda.Stream``      :mod:`cupy.cuda.Stream`
+ ``chainer.cuda.Device``      :class:`cupy.cuda.Device`
+ ``chainer.cuda.Event``       :class:`cupy.cuda.Event`
+ ``chainer.cuda.Stream``      :class:`cupy.cuda.Stream`
 ============================ =================================
 
 Chainer replaces the default allocator of CuPy by its memory pool
@@ -27,6 +27,8 @@ import os
 import warnings
 
 import numpy
+import six
+
 
 available = False
 cudnn_enabled = False
@@ -94,6 +96,9 @@ class DummyDeviceType(object):
     This class is used to represent CPU device.
 
     """
+
+    id = -1
+
     def __int__(self):
         return -1
 
@@ -110,7 +115,7 @@ class DummyDeviceType(object):
         pass
 
     def __eq__(self, other):
-        return isinstance(other, DummyDevice)
+        return isinstance(other, DummyDeviceType)
 
     def __ne__(self, other):
         return not (self == other)
@@ -139,12 +144,12 @@ def get_device(*args):
     protocol of Python for the *with* statement.
 
     Args:
-        args: Values to specify a GPU device. :class:`numpy.ndarray` objects
-            are skipped. If all arguments are numpy.ndarray objects, it returns
-            a dummy device object. Otherwise, the first non-numpy object is
-            used to select a device. If it is a :class:`cupy.ndarray` object,
-            its device is returned. Otherwise, the argument is passed to the
-            initializer of :class:`~cupy.cuda.Device` and it is returned.
+        args: Values to specify a GPU device. The first integer or
+            :class:`cupy.ndarray` object is used to select a device. If it is
+            an integer, the corresponding device is returned. If it is a CuPy
+            array, the device on which this array reside is returned. If any
+            arguments are neither integers nor CuPy arrays, a dummy device
+            object representing CPU is returned.
 
     Returns:
         Device object specified by given ``args``.
@@ -154,16 +159,13 @@ def get_device(*args):
 
     """
     for arg in args:
-        if arg is None:
-            continue
-        if not isinstance(arg, numpy.ndarray):
+        if type(arg) in six.integer_types:
             check_cuda_available()
-            if isinstance(arg, cupy.ndarray):
-                if arg.device is None:
-                    continue
-                return arg.device
-            else:
-                return Device(arg)
+            return Device(arg)
+        if isinstance(arg, ndarray):
+            if arg.device is None:
+                continue
+            return arg.device
 
     return DummyDevice
 
@@ -178,25 +180,44 @@ def to_gpu(array, device=None, stream=None):
     Args:
         array: Array to be sent to GPU.
         device: Device specifier.
-        stream (cupy.cuda.Stream): CUDA stream.
+        stream (cupy.cuda.Stream): CUDA stream. If not ``None``, the copy runs
+            asynchronously.
 
     Returns:
         cupy.ndarray: Array on GPU.
 
         If ``array`` is already on GPU, then this function just returns
         ``array`` without performing any copy. Note that this function does not
-        copy cupy.ndarray into specified device.
+        copy :class:`cupy.ndarray` into specified device.
 
     """
     check_cuda_available()
-    assert stream is None  # TODO(beam2d): FIX IT
     with get_device(device):
-        dev_id = int(get_device(array))
-        if dev_id != -1 and dev_id != cupy.cuda.device.get_device_id():
-            # Need to make a copy when an array is copied to another device
-            return cupy.array(array, copy=True)
-        else:
+        array_dev = get_device(array)
+        if array_dev.id == cupy.cuda.device.get_device_id():
+            return array
+
+        if stream is not None:
+            ret = cupy.empty_like(array)
+            if array_dev.id == -1:
+                # cpu to gpu
+                src = array.copy(order='C')
+                ret.set(src, stream)
+            else:
+                # gpu to gpu
+                with array_dev:
+                    src = array.copy()
+                ret.data.copy_from_device_async(src.data, src.nbytes, stream)
+
+            # to hold a reference until the end of the asynchronous memcpy
+            stream.add_callback(lambda *x: None, (src, ret))
+            return ret
+
+        if array_dev.id == -1:
             return cupy.asarray(array)
+
+        # Need to make a copy when an array is copied to another device
+        return cupy.array(array, copy=True)
 
 
 def to_cpu(array, stream=None):
@@ -214,16 +235,19 @@ def to_cpu(array, stream=None):
 
     """
     if isinstance(array, ndarray):
-        return array.get(stream)
+        check_cuda_available()
+        with get_device(array):
+            return array.get(stream)
     elif isinstance(array, numpy.ndarray):
         return array
     else:
         raise TypeError(
-            'The array sent to cpu must be numpy.ndarray or cupy.ndarray')
+            'The array sent to cpu must be numpy.ndarray or cupy.ndarray.'
+            '\nActual type: {0}.'.format(type(array)))
 
 
 def empty(shape, dtype=numpy.float32):
-    """Creates an uninitialized cupy.ndarray object.
+    """Creates an uninitialized :class:`cupy.ndarray` object.
 
     Args:
         shape (tuple of ints): The shape of array.
@@ -241,7 +265,7 @@ def empty(shape, dtype=numpy.float32):
 
 
 def full(shape, fill_value, dtype=numpy.float32, stream=None):
-    """Creates a constant-filled cupy.ndarray object.
+    """Creates a constant-filled :class:`cupy.ndarray` object.
 
     Args:
         shape (tuple of ints): The shape of array.
@@ -262,7 +286,7 @@ def full(shape, fill_value, dtype=numpy.float32, stream=None):
 
 
 def zeros(shape, dtype=numpy.float32, stream=None):
-    """Creates a zero-filled cupy.ndarray object.
+    """Creates a zero-filled :class:`cupy.ndarray` object.
 
     This function is equivalent to ``full(shape, 0, dtype, stream)``.
 
@@ -276,7 +300,7 @@ def zeros(shape, dtype=numpy.float32, stream=None):
 
 
 def ones(shape, dtype=numpy.float32, stream=None):
-    """Creates a zero-filled cupy.ndarray object.
+    """Creates a zero-filled :class:`cupy.ndarray` object.
 
     This function is equivalent to ``full(shape, 1, dtype, stream)``.
 
@@ -309,7 +333,7 @@ def empty_like(array):
 
 
 def full_like(array, fill_value, stream=None):
-    """Creates a constant-filled cupy.ndarray object like the given array.
+    """Creates a constant-filled :class:`cupy.ndarray` object like the given array.
 
     Args:
         array (cupy.ndarray or numpy.ndarray): Base array.
@@ -331,7 +355,7 @@ def full_like(array, fill_value, stream=None):
 
 
 def zeros_like(array, stream=None):
-    """Creates a zero-filled cupy.ndarray object like the given array.
+    """Creates a zero-filled :class:`cupy.ndarray` object like the given array.
 
     Args:
         array (cupy.ndarray or numpy.ndarray): Base array.
@@ -352,7 +376,7 @@ def zeros_like(array, stream=None):
 
 
 def ones_like(array, stream=None):
-    """Creates a one-filled cupy.ndarray object like the given array.
+    """Creates a one-filled :class:`cupy.ndarray` object like the given array.
 
     Args:
         array (cupy.ndarray or numpy.ndarray): Base array.
@@ -373,7 +397,7 @@ def ones_like(array, stream=None):
 
 
 def copy(array, out=None, out_device=None, stream=None):
-    """Copies a cupy.ndarray object using the default stream.
+    """Copies a :class:`cupy.ndarray` object using the default stream.
 
     This function can copy the device array to the destination array on another
     device.
@@ -497,3 +521,31 @@ def get_array_module(*args):
         return cupy.get_array_module(*args)
     else:
         return numpy
+
+
+_max_workspace_size = 8 * 1024 * 1024
+
+
+def get_max_workspace_size():
+    """Gets the workspace size for cuDNN.
+
+    Check "cuDNN Library User Guide" for detail.
+
+    Returns:
+        int: The workspace size for cuDNN.
+
+    """
+    return _max_workspace_size
+
+
+def set_max_workspace_size(size):
+    """Sets the workspace size for cuDNN.
+
+    Check "cuDNN Library User Guide" for detail.
+
+    Args:
+        size: The workspace size for cuDNN.
+
+    """
+    global _max_workspace_size
+    _max_workspace_size = size

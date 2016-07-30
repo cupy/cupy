@@ -13,7 +13,8 @@ def mean(a, axis=None, dtype=None, out=None, keepdims=False):
             used by default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis is remained as an axis of size one.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
 
     Returns:
         cupy.ndarray: The mean of the input array along the axis.
@@ -34,7 +35,8 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
             is used by default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis is remained as an axis of size one.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
 
     Returns:
         cupy.ndarray: The variance of the input array along the axis.
@@ -55,7 +57,8 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
             flattened array is used by default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis is remained as an axis of size one.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
 
     Returns:
         cupy.ndarray: The standard deviation of the input array along the axis.

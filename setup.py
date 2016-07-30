@@ -6,18 +6,14 @@ from setuptools import setup
 
 import chainer_setup_build
 
-numpy_version = 'numpy>=1.9.0'
-six_version = 'six>=1.9.0'
-setup_requires = [
-    numpy_version,
-    six_version,
-]
+
+setup_requires = []
 install_requires = [
     'filelock',
     'nose',
-    numpy_version,
+    'numpy>=1.9.0',
     'protobuf',
-    six_version,
+    'six>=1.9.0',
 ]
 
 
@@ -32,12 +28,14 @@ chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.7.0',
+    version='1.12.0',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     url='http://chainer.org/',
     packages=['chainer',
+              'chainer.dataset',
+              'chainer.datasets',
               'chainer.functions',
               'chainer.functions.activation',
               'chainer.functions.array',
@@ -49,6 +47,9 @@ setup(
               'chainer.functions.noise',
               'chainer.functions.normalization',
               'chainer.functions.pooling',
+              'chainer.function_hooks',
+              'chainer.iterators',
+              'chainer.initializers',
               'chainer.links',
               'chainer.links.activation',
               'chainer.links.caffe',
@@ -59,6 +60,8 @@ setup(
               'chainer.optimizers',
               'chainer.serializers',
               'chainer.testing',
+              'chainer.training',
+              'chainer.training.extensions',
               'chainer.utils',
               'cupy',
               'cupy.binary',
@@ -80,8 +83,8 @@ setup(
         'cupy': ['core/carray.cuh'],
     },
     zip_safe=False,
-    install_requires=install_requires,
     setup_requires=setup_requires,
+    install_requires=install_requires,
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext

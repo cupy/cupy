@@ -2,7 +2,9 @@ import math
 
 import numpy
 
+from chainer import cuda
 from chainer.functions.connection import deconvolution_2d
+from chainer import initializers
 from chainer import link
 
 
@@ -10,8 +12,8 @@ class Deconvolution2D(link.Link):
 
     """Two dimensional deconvolution function.
 
-    This link wraps the :func:`~chainer.functions.convolution_2d` function and
-    holds the filter weight and bias vector as parameters.
+    This link wraps the :func:`~chainer.functions.deconvolution_2d` function
+    and holds the filter weight and bias vector as parameters.
 
     Args:
         in_channels (int): Number of channels of input arrays.
@@ -24,16 +26,22 @@ class Deconvolution2D(link.Link):
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
         wscale (float): Scaling factor of the initial weight.
         bias (float): Initial bias value.
-        nobias (bool): If True, then this function does not use the bias term.
+        nobias (bool): If ``True``, then this function does not use the bias
+            term.
         outsize (tuple): Expected output size of deconvolutional operation.
             It should be pair of height and width :math:`(out_H, out_W)`.
             Default value is ``None`` and the outsize is estimated by
             input size, stride and pad.
-        use_cudnn (bool): If True, then this function uses CuDNN if available.
+        use_cudnn (bool): If ``True``, then this function uses cuDNN if
+            available.
         initialW (4-D array): Initial weight value. If ``None``, then this
             function uses to initialize ``wscale``.
+            May also be a callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
         initial_bias (1-D array): Initial bias value. If ``None``, then this
             function uses to initialize ``bias``.
+            May also be a callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`
     which indicate the number of the number of input channels, output channels,
@@ -50,6 +58,7 @@ class Deconvolution2D(link.Link):
     .. seealso::
        See :func:`chainer.functions.deconvolution_2d` for the definition of
        two-dimensional convolution.
+
     """
 
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
@@ -64,25 +73,22 @@ class Deconvolution2D(link.Link):
         W_shape = (in_channels, out_channels, kh, kw)
         super(Deconvolution2D, self).__init__(W=W_shape)
 
-        if initialW is not None:
-            assert initialW.shape == \
-                (in_channels, out_channels, kh, kw)
-            self.W.data[...] = initialW
-        else:
-            self.W.data = numpy.random.normal(
-                0, wscale * math.sqrt(1. / (kh * kw * in_channels)),
-                (in_channels, out_channels, kh, kw)
-            ).astype(numpy.float32)
+        if isinstance(initialW, (numpy.ndarray, cuda.ndarray)):
+            assert initialW.shape == (in_channels, out_channels, kh, kw)
+        # For backward compatibility, the scale of weights is proportional to
+        # the square root of wscale.
+        initializers.init_weight(self.W.data, initialW,
+                                 scale=math.sqrt(wscale))
 
-        if initial_bias is not None:
-            assert initial_bias.shape == (out_channels,)
-            self.add_param('b', out_channels)
-            self.b.data[...] = initial_bias
-        elif not nobias:
-            self.add_param('b', out_channels)
-            self.b.data = numpy.repeat(numpy.float32(bias), out_channels)
-        else:
+        if nobias:
             self.b = None
+        else:
+            self.add_param('b', out_channels)
+            if isinstance(initial_bias, (numpy.ndarray, cuda.ndarray)):
+                assert initial_bias.shape == (out_channels,)
+            if initial_bias is None:
+                initial_bias = bias
+            initializers.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
         return deconvolution_2d.deconvolution_2d(
@@ -93,4 +99,4 @@ class Deconvolution2D(link.Link):
 def _pair(x):
     if hasattr(x, '__getitem__'):
         return x
-    return (x, x)
+    return x, x

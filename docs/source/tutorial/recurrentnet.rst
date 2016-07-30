@@ -22,7 +22,7 @@ Recurrent Nets
 Recurrent nets are neural networks with loops.
 They are often used to learn from sequential input/output.
 Given an input stream :math:`x_1, x_2, \dots, x_t, \dots` and the initial state :math:`h_0`, a recurrent net iteratively updates its state by :math:`h_t = f(x_t, h_{t-1})`, and at some or every point in time :math:`t`, it outputs :math:`y_t = g(h_t)`.
-If we expand the procedure along the time axis, it looks like a regular feed-forward network except that same parameters are periodically used within the network.
+If we expand the procedure along the time axis, it looks like a regular feed-forward network except that same parameters are repeatedly used within the network.
 
 Here we learn how to write a simple one-layer recurrent net.
 The task is language modeling: given a finite sequence of words, we want to predict the next word at each position without peeking the successive words.
@@ -194,7 +194,7 @@ Volatile variables are also useful to evaluate feed-forward networks to reduce t
 
 Variable's volatility can be changed directly by setting the :attr:`Variable.volatile` attribute.
 This enables us to combine a fixed feature extractor network and a trainable predictor network.
-For example, suppose we want to train a feed-forward network ``predictor_func``, which is located on top of another fixed pretrained network ``fixed_func``.
+For example, suppose we want to train a feed-forward network ``predictor_func``, which is located on top of another fixed pre-trained network ``fixed_func``.
 We want to train ``predictor_func`` without storing the computation history for ``fixed_func``.
 This is simply done by following code snippets (suppose ``x_data`` and ``y_data`` indicate input data and label, respectively)::
 
@@ -212,6 +212,111 @@ Since the history of computation is only memorized between variables ``feat`` an
 
    It is not allowed to mix volatile and non-volatile variables as arguments to same function.
    If you want to create a variable that behaves like a non-volatile variable while can be mixed with volatile ones, use ``'auto'`` flag instead of ``'off'`` flag.
+
+
+Making it with Trainer
+~~~~~~~~~~~~~~~~~~~~~~
+
+The above codes are written with plain Function/Variable APIs.
+When we write a training loop, it is better to use Trainer, since we can then easily add functionalities by extensions.
+
+Before implementing it on Trainer, let's clarify the training settings.
+We here use Penn Tree Bank dataset as a set of sentences.
+Each sentence is represented as a word sequence.
+We concatenate all sentences into one long word sequence, in which each sentence is separated by a special word ``<eos>``, which stands for "End of Sequence".
+This dataset is easily obtained by :func:`chainer.datasets.get_ptb_words`.
+This function returns train, validation, and test dataset, each of which is represented as a long array of integers.
+Each integer represents a word ID.
+
+Our task is to learn a recurrent neural net language model from the long word sequence.
+We use words in different locations to form mini-batches.
+It means we maintain :math:`B` indices pointing to different locations in the sequence, read from these indices at each iteration, and increment all indices after the read.
+Of course, when one index reaches the end of the whole sequence, we turn the index back to 0.
+
+In order to implement this training procedure, we have to customize the following components of Trainer:
+
+- Iterator.
+  Built-in iterators do not support reading from different locations and aggregating them into a mini-batch.
+- Update function.
+  The default update function does not support truncated BPTT.
+
+When we write a dataset iterator dedicated to the dataset, the dataset implementation can be arbitrary; even the interface is not fixed.
+On the other hand, the iterator must support the :class:`~chainer.dataset.Iterator` interface.
+The important methods and attributes to implement are ``batch_size``, ``epoch``, ``epoch_detail``, ``is_new_epoch``, ``iteration``, ``__next__``, and ``serialize``.
+Following is a code from the official example in the ``examples/ptb`` directory.
+
+.. code-block:: python
+
+   from __future__ import division
+
+   class ParallelSequentialIterator(chainer.dataset.Iterator):
+       def __init__(self, dataset, batch_size, repeat=True):
+           self.dataset = dataset
+           self.batch_size = batch_size
+           self.epoch = 0
+           self.is_new_epoch = False
+           self.repeat = repeat
+           self.offsets = [i * len(dataset) // batch_size for i in range(batch_size)]
+           self.iteration = 0
+
+       def __next__(self):
+           length = len(self.dataset)
+           if not self.repeat and self.iteration * self.batch_size >= length:
+               raise StopIteration
+           cur_words = self.get_words()
+           self.iteration += 1
+           next_words = self.get_words()
+
+           epoch = self.iteration * self.batch_size // length
+           self.is_new_epoch = self.epoch < epoch
+           if self.is_new_epoch:
+               self.epoch = epoch
+
+           return list(zip(cur_words, next_words))
+
+       @property
+       def epoch_detail(self):
+           return self.iteration * self.batch_size / len(self.dataset)
+
+       def get_words(self):
+           return [self.dataset[(offset + self.iteration) % len(self.dataset)]
+                   for offset in self.offsets]
+
+       def serialize(self, serializer):
+           self.iteration = serializer('iteration', self.iteration)
+           self.epoch = serializer('epoch', self.epoch)
+
+   train_iter = ParallelSequentialIterator(train, 20)
+   val_iter = ParallelSequentialIterator(val, 1, repeat=False)
+
+Although the code is slightly long, the idea is simple.
+First, this iterator creates ``offsets`` pointing to positions equally spaced within the whole sequence.
+The i-th examples of mini-batches refer the sequence with the i-th offset.
+The iterator returns a list of tuples of the current words and the next words.
+Each mini-batch is converted to a tuple of integer arrays by the ``concat_examples`` function in the standard updater (see the previous tutorial).
+
+Backprop Through Time is implemented as follows.
+
+.. code-block:: python
+
+   def update_bptt(updater):
+       loss = 0
+       for i in range(35):
+           batch = train_iter.__next__()
+           x, t = chainer.dataset.concat_example(batch)
+           loss += model(chainer.Variable(x), chainer.Variable(t))
+
+       model.zerograds()
+       loss.backward()
+       loss.unchain_backward()  # truncate
+       optimizer.update()
+
+   updater = training.StandardUpdater(train_iter, optimizer, update_bptt)
+
+In this case, we update the parameters on every 35 consecutive words.
+The call of ``unchain_backward`` cuts the history of computation accumulated to the LSTM links.
+The rest of the code for setting up Trainer is almost same as one given in the previous tutorial.
+
 
 ---------
 

@@ -27,7 +27,8 @@ class MaxPooling2D(pooling_2d.Pooling2D):
         return y,
 
     def forward_gpu(self, x):
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                pooling_2d._check_cudnn_acceptable_type(x[0].dtype)):
             return super(MaxPooling2D, self).forward_gpu(x)
 
         n, c, h, w = x[0].shape
@@ -79,19 +80,25 @@ class MaxPooling2D(pooling_2d.Pooling2D):
     def backward_cpu(self, x, gy):
         n, c, out_h, out_w = gy[0].shape
         h, w = x[0].shape[2:]
-        gcol = numpy.zeros(
-            (n, c, self.kh, self.kw, out_h, out_w), dtype=numpy.float32)
+        kh, kw = self.kh, self.kw
 
-        # TODO(beam2d): Make it fast
-        gcol_r = numpy.rollaxis(gcol.reshape(n, c, -1, out_h, out_w), 2)
-        for i in numpy.ndindex(n, c, out_h, out_w):
-            gcol_r[self.indexes[i]][i] = gy[0][i]
+        gcol = numpy.zeros(
+            (n * c * out_h * out_w * kh * kw), dtype=x[0].dtype)
+
+        indexes = self.indexes.ravel()
+        indexes += numpy.arange(0, indexes.size * kh * kw, kh * kw)
+
+        gcol[indexes] = gy[0].ravel()
+        gcol = gcol.reshape(n, c, out_h, out_w, kh, kw)
+        gcol = numpy.swapaxes(gcol, 2, 4)
+        gcol = numpy.swapaxes(gcol, 3, 5)
 
         gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
         return gx,
 
     def backward_gpu(self, x, gy):
-        if cuda.cudnn_enabled and self.use_cudnn:
+        if (cuda.cudnn_enabled and self.use_cudnn and
+                pooling_2d._check_cudnn_acceptable_type(x[0].dtype)):
             return super(MaxPooling2D, self).backward_gpu(x, gy)
 
         n, c, h, w = x[0].shape
@@ -119,7 +126,7 @@ class MaxPooling2D(pooling_2d.Pooling2D):
                    int kx = x - out_x * sx;
                    int offset = out_x + out_w * (out_y + out_h * c0);
                    if (indexes[offset] == kx + kw * ky) {
-                     val += gy[offset];
+                     val = val + gy[offset];
                    }
                  }
                }
@@ -150,17 +157,17 @@ def max_pooling_2d(x, ksize, stride=None, pad=0, cover_all=True,
         ksize (int or pair of ints): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k)`` are equivalent.
         stride (int or pair of ints or None): Stride of pooling applications.
-            ``stride=s`` and ``stride=(s, s)`` are equivalent. If None is
+            ``stride=s`` and ``stride=(s, s)`` are equivalent. If ``None`` is
             specified, then it uses same stride as the pooling window size.
         pad (int or pair of ints): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        cover_all (bool): If True, all spatial locations are pooled into some
-            output pixels. It may make the output size larger.
-        use_cudnn (bool): If True and CuDNN is enabled, then this function
-            uses CuDNN as the core implementation.
+        cover_all (bool): If ``True``, all spatial locations are pooled into
+            some output pixels. It may make the output size larger.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     Returns:
-        ~chainer.Variable: Ouptut variable.
+        ~chainer.Variable: Output variable.
 
     """
     return MaxPooling2D(ksize, stride, pad, cover_all, use_cudnn)(x)

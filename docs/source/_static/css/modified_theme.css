@@ -2,17 +2,17 @@
 
 /* Main background color modification */
 .btn-info, .wy-menu-vertical a:active, .wy-side-nav-search, .wy-side-nav-search img, .wy-nav .wy-menu-vertical a:hover, .wy-nav-top img, .wy-tray-item-info, .wy-side-nav-search, .wy-dropdown-menu > dd > a:hover, .wy-dropdown-menu a:hover, .wy-nav-top {
-    background-color: #d17062;
+    background-color: #d17062 !important;
 }
 
 .wy-side-nav-search input[type=text] {
-    border-color: #a47224;
+    border-color: #a47224 !important;
 }
 
 .rst-content .note .admonition-title {
-    background-color: #c9c9c9;
+    background-color: #c9c9c9 !important;
 }
 
 .rst-content .note {
-    background-color: #e3e3e3;
+    background-color: #e3e3e3 !important;
 }

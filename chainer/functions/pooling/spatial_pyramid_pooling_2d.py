@@ -73,7 +73,7 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
     It performs pooling operation to the input 4D-array ``x`` with different
     kernel sizes and padding sizes, and then flattens all dimensions except
     first dimension of all pooling results, and finally concatenates them along
-    2nd dimension.
+    second dimension.
 
     At :math:`i`-th pyramid level, the kernel size
     :math:`(k_h^{(i)}, k_w^{(i)})` and padding size
@@ -96,16 +96,16 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
 
     Args:
         x (~chainer.Variable): Input variable. The shape of ``x`` should be
-            (batchsize, # of channels, height, width).
+            ``(batchsize, # of channels, height, width)``.
         pyramid_height (int): the number of pyramid levels
         pooling_class (MaxPooling2D or AveragePooling2D):
             Only MaxPooling2D class can be available for now.
-        use_cudnn (bool): If True and CuDNN is enabled, then this function
-            uses CuDNN as the core implementation.
+        use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
+            uses cuDNN as the core implementation.
 
     Returns:
-        ~chainer.Variable: Ouptut variable. The shape of the output variable
-            will be (batchsize, :math:`c \\sum_{h=0}^{H-1} 2^{2h}`, 1, 1),
+        ~chainer.Variable: Output variable. The shape of the output variable
+            will be :math:`(batchsize, c \\sum_{h=0}^{H-1} 2^{2h}, 1, 1)`,
             where :math:`c` is the number of channels of input variable ``x``
             and :math:`H` is the number of pyramid levels.
 

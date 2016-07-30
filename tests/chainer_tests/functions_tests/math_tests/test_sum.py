@@ -22,7 +22,7 @@ class TestSum(unittest.TestCase):
         y = functions.sum(x, axis=axis)
         self.assertEqual(y.data.dtype, numpy.float32)
         y_expect = self.x.sum(axis=axis)
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -98,6 +98,12 @@ class TestSum(unittest.TestCase):
         self.check_backward(self.x, self.gy)
 
     @condition.retry(3)
+    def test_backward_zerodim_cpu(self):
+        x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.check_backward(x, gy)
+
+    @condition.retry(3)
     def test_backward_axis_cpu(self):
         for i in range(self.x.ndim):
             gy = numpy.ones_like(self.x.sum(axis=i)) * self.gy
@@ -132,6 +138,13 @@ class TestSum(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_zerodim_gpu(self):
+        x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.check_backward(cuda.to_gpu(x), cuda.to_gpu(gy))
 
     @attr.gpu
     @condition.retry(3)

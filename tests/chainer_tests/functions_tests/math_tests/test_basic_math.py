@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import basic_math
@@ -11,19 +12,22 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-class BinaryOpTestBase(object):
-
-    def make_data(self):
-        raise NotImplementedError()
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TestBinaryOp(unittest.TestCase):
 
     def setUp(self):
-        self.x1, self.x2, self.gy = self.make_data()
+        self.x1 = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        self.x2 = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
 
     def check_forward(self, op, x1_data, x2_data):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = op(x1, x2)
-        gradient_check.assert_allclose(op(self.x1, self.x2), y.data)
+        testing.assert_allclose(op(self.x1, self.x2), y.data)
 
     def forward_cpu(self, op):
         self.check_forward(op, self.x1, self.x2)
@@ -128,12 +132,15 @@ class BinaryOpTestBase(object):
         z = y + x
         self.assertEqual(1, z.data.get()[0])
 
-    def check_backward(self, op, x1_data, x2_data, y_grad, atol):
+    def check_backward(self, op, x1_data, x2_data, y_grad):
+        options = {}
+        if self.dtype == numpy.float16:
+            options = {'atol': 5e-4, 'rtol': 5e-3}
         gradient_check.check_backward(op, (x1_data, x2_data), y_grad,
-                                      atol=atol)
+                                      dtype=numpy.float64, **options)
 
-    def backward_cpu(self, op, atol=1e-5):
-        self.check_backward(op, self.x1, self.x2, self.gy, atol)
+    def backward_cpu(self, op):
+        self.check_backward(op, self.x1, self.x2, self.gy)
 
     @condition.retry(3)
     def test_add_backward_cpu(self):
@@ -147,18 +154,18 @@ class BinaryOpTestBase(object):
     def test_mul_backward_cpu(self):
         self.backward_cpu(lambda x, y: x * y)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_div_backward_cpu(self):
         self.backward_cpu(lambda x, y: x / y)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_pow_backward_cpu(self):
-        self.backward_cpu(lambda x, y: x ** y, atol=1e-4)
+        self.backward_cpu(lambda x, y: x ** y)
 
-    def backward_gpu(self, op, atol=1e-5):
+    def backward_gpu(self, op):
         self.check_backward(
             op, cuda.to_gpu(self.x1), cuda.to_gpu(self.x2),
-            cuda.to_gpu(self.gy), atol)
+            cuda.to_gpu(self.gy))
 
     @attr.gpu
     @condition.retry(3)
@@ -176,34 +183,19 @@ class BinaryOpTestBase(object):
         self.backward_gpu(lambda x, y: x * y)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_div_backward_gpu(self):
         self.backward_gpu(lambda x, y: x / y)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_pow_backward_gpu(self):
-        self.backward_gpu(lambda x, y: x ** y, atol=1e-4)
+        self.backward_gpu(lambda x, y: x ** y)
 
 
-class TestBinaryOpSimple(BinaryOpTestBase, unittest.TestCase):
-
-    def make_data(self):
-        x1 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        x2 = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        return x1, x2, gy
-
-
-class TestBinaryOpZeroDimension(BinaryOpTestBase, unittest.TestCase):
-
-    def make_data(self):
-        x1 = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
-        x2 = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        return x1, x2, gy
-
-
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestBinaryOpConstant(unittest.TestCase):
 
     def _test_constant_one(self, func, lhs, rhs, gpu=False):
@@ -211,12 +203,12 @@ class TestBinaryOpConstant(unittest.TestCase):
             lhs = cuda.to_gpu(lhs)
         x = chainer.Variable(lhs)
         y = func(x, rhs)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         y.backward()
-        self.assertEqual(x.grad.dtype, numpy.float32)
+        self.assertEqual(x.grad.dtype, self.dtype)
 
     def _test_constant(self, func):
-        x_data = numpy.array(1, numpy.float32)
+        x_data = numpy.array(1, self.dtype)
 
         self._test_constant_one(func, x_data, 1)
         self._test_constant_one(func, x_data, 1.0)
@@ -224,7 +216,7 @@ class TestBinaryOpConstant(unittest.TestCase):
         self._test_constant_one(func, x_data, numpy.float64(1.0))
 
     def _test_constant_gpu(self, func):
-        x_data = numpy.array(1, numpy.float32)
+        x_data = numpy.array(1, self.dtype)
 
         self._test_constant_one(func, x_data, 1, True)
         self._test_constant_one(func, x_data, 1.0, True)
@@ -234,13 +226,13 @@ class TestBinaryOpConstant(unittest.TestCase):
     def _test_constant_array_one(self, func, lhs, rhs):
         x = chainer.Variable(lhs)
         y = func(x, rhs)
-        self.assertEqual(y.data.dtype, numpy.float32)
-        y.grad = numpy.ones_like(y.data, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
+        y.grad = numpy.ones_like(y.data, self.dtype)
         y.backward()
-        self.assertEqual(x.grad.dtype, numpy.float32)
+        self.assertEqual(x.grad.dtype, self.dtype)
 
     def _test_constant_array(self, func):
-        x_data = numpy.array([1.0, 2.0], numpy.float32)
+        x_data = numpy.array([1.0, 2.0], self.dtype)
 
         self._test_constant_array_one(
             func, x_data, numpy.array([3.0, 4.0], numpy.int32))
@@ -262,18 +254,18 @@ class TestBinaryOpConstant(unittest.TestCase):
             self._test_constant_array_one(func, x_data, (3.0, 4.0, 5.0))
         with self.assertRaises(ValueError):
             self._test_constant_array_one(
-                func, x_data, numpy.array([3.0, 4.0, 5.0], numpy.float32))
+                func, x_data, numpy.array([3.0, 4.0, 5.0], self.dtype))
 
     def _test_constant_array_gpu_one(self, func, lhs, rhs):
         x = chainer.Variable(cuda.to_gpu(lhs))
         y = func(x, rhs)
-        self.assertEqual(y.data.dtype, numpy.float32)
-        y.grad = chainer.cuda.cupy.ones_like(y.data).astype(numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
+        y.grad = chainer.cuda.cupy.ones_like(y.data).astype(self.dtype)
         y.backward()
-        self.assertEqual(x.grad.dtype, numpy.float32)
+        self.assertEqual(x.grad.dtype, self.dtype)
 
     def _test_constant_array_gpu(self, func, exception=TypeError):
-        x_data = numpy.array([1.0, 2.0], numpy.float32)
+        x_data = numpy.array([1.0, 2.0], self.dtype)
 
         self._test_constant_array_gpu_one(
             func, x_data, cuda.to_gpu(numpy.array([3.0, 4.0], numpy.int32)))
@@ -287,7 +279,12 @@ class TestBinaryOpConstant(unittest.TestCase):
         with self.assertRaises(exception):
             self._test_constant_array_one(
                 func, x_data, cuda.to_gpu(
-                    numpy.array([3.0, 4.0, 5.0], numpy.float32)))
+                    numpy.array([3.0, 4.0, 5.0], self.dtype)))
+
+        with six.assertRaisesRegex(self, ValueError, 'broadcast'):
+            self._test_constant_array_gpu_one(
+                func, x_data, cuda.to_gpu(
+                    numpy.array([[3.0, 4.0], [5.0, 6.0]], self.dtype)))
 
     def test_add_constant(self):
         self._test_constant(lambda x, y: x + y)
@@ -433,19 +430,31 @@ class TestBinaryOpConstant(unittest.TestCase):
         self._test_constant_array_gpu(lambda x, y: y ** x, exception=Exception)
 
 
-class VariableConstantOpTestBase(object):
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TestVariableConstantOp(unittest.TestCase):
 
     def make_date(self):
         raise NotImplementedError()
 
     def setUp(self):
-        self.x, self.gy, self.value = self.make_data()
+        self.x = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        self.gy = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        self.value = 0.5
 
     def check_forward(self, op, x_data):
         x = chainer.Variable(x_data)
         y = op(x, self.value)
-        gradient_check.assert_allclose(
-            op(self.x, self.value), y.data, atol=1e-7, rtol=1e-7)
+        if self.dtype == numpy.float16:
+            atol = 5e-4
+            rtol = 5e-4
+        else:
+            atol = 1e-7
+            rtol = 1e-7
+        testing.assert_allclose(
+            op(self.x, self.value), y.data, atol=atol, rtol=rtol)
 
     def forward_cpu(self, op):
         self.check_forward(op, self.x)
@@ -544,8 +553,12 @@ class VariableConstantOpTestBase(object):
         self.forward_gpu(lambda x, y: y ** x)
 
     def check_backward(self, op, x_data, y_grad):
+        options = {}
+        if self.dtype == numpy.float16:
+            options = {'atol': 5e-4, 'rtol': 5e-3}
         gradient_check.check_backward(lambda x: op(x, self.value),
-                                      x_data, y_grad)
+                                      x_data, y_grad,
+                                      dtype=numpy.float64, **options)
 
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -582,11 +595,11 @@ class VariableConstantOpTestBase(object):
     def test_rdiv_backward_cpu(self):
         self.backward_cpu(lambda x, y: y / x)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_pow_backward_cpu(self):
         self.backward_cpu(lambda x, y: x ** y)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_rpow_backward_cpu(self):
         self.backward_cpu(lambda x, y: y ** x)
 
@@ -634,42 +647,25 @@ class VariableConstantOpTestBase(object):
         self.backward_gpu(lambda x, y: y / x)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_pow_backward_gpu(self):
         self.backward_gpu(lambda x, y: x ** y)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_rpow_backward_gpu(self):
         self.backward_gpu(lambda x, y: y ** x)
 
 
-class TestVariableConstantOpSimple(VariableConstantOpTestBase,
-                                   unittest.TestCase):
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        value = .5
-        return x, gy, value
-
-
-class TestVariableConstantOpZeroDimension(VariableConstantOpTestBase,
-                                          unittest.TestCase):
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        value = .5
-        return x, gy, value
-
-
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestVariableConstantArrayOp(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        self.value = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(.5, 1, (3, 2)).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype)
+        self.value = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype)
 
     def check_forward(self, op, x_data, gpu, positive):
         value = self.value
@@ -680,8 +676,13 @@ class TestVariableConstantArrayOp(unittest.TestCase):
             v = cuda.to_gpu(v)
         x = chainer.Variable(x_data)
         y = op(x, v)
-        gradient_check.assert_allclose(
-            op(self.x, value), y.data, atol=1e-6, rtol=1e-6)
+        if self.dtype == numpy.float16:
+            tol = 1e-3
+        else:
+            tol = 1e-6
+
+        testing.assert_allclose(
+            op(self.x, value), y.data, atol=tol, rtol=tol)
 
     def forward_cpu(self, op, positive=False):
         self.check_forward(op, self.x, False, positive)
@@ -785,9 +786,11 @@ class TestVariableConstantArrayOp(unittest.TestCase):
             value = numpy.abs(value)
         if gpu:
             value = cuda.to_gpu(value)
-
+        options = {}
+        if self.dtype == numpy.float16:
+            options = {'atol': 5e-4, 'rtol': 5e-3}
         gradient_check.check_backward(lambda x: op(x, value), x_data, y_grad,
-                                      atol=1e-4, rtol=1e-4)
+                                      dtype=numpy.float64, **options)
 
     def backward_cpu(self, op, positive=False):
         self.check_backward(op, self.x, self.gy, False, positive)
@@ -816,7 +819,7 @@ class TestVariableConstantArrayOp(unittest.TestCase):
     def test_rmul_backward_cpu(self):
         self.backward_cpu(lambda x, y: y * x)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_div_backward_cpu(self):
         self.backward_cpu(lambda x, y: x / y)
 
@@ -824,11 +827,11 @@ class TestVariableConstantArrayOp(unittest.TestCase):
     def test_rdiv_backward_cpu(self):
         self.backward_cpu(lambda x, y: y / x)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_pow_backward_cpu(self):
         self.backward_cpu(lambda x, y: x ** y)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_rpow_backward_cpu(self):
         self.backward_cpu(lambda x, y: y ** x, positive=True)
 
@@ -862,38 +865,43 @@ class TestVariableConstantArrayOp(unittest.TestCase):
         self.backward_gpu(lambda x, y: y * x)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_div_backward_gpu(self):
         self.backward_gpu(lambda x, y: x / y)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_rdiv_backward_gpu(self):
         self.backward_gpu(lambda x, y: y / x)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_pow_backward_gpu(self):
         self.backward_gpu(lambda x, y: x ** y)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_rpow_backward_gpu(self):
         self.backward_gpu(lambda x, y: y ** x, positive=True)
 
 
-class UnaryFunctionsTestBase(object):
-
-    def make_data(self):
-        raise NotImplementedError()
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TestUnaryFunctions(unittest.TestCase):
 
     def setUp(self):
-        self.x, self.gy = self.make_data()
+        self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        for i in numpy.ndindex(self.shape):
+            if -0.1 < self.x[i] < 0.1:
+                self.x[i] = 0.5
+        self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
 
     def check_forward(self, op, op_np, x_data):
         x = chainer.Variable(x_data)
         y = op(x)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             op_np(self.x), y.data, atol=1e-7, rtol=1e-7)
 
     def forward_cpu(self, op, op_np):
@@ -921,7 +929,11 @@ class UnaryFunctionsTestBase(object):
         self.forward_gpu(lambda x: abs(x), lambda x: abs(x))
 
     def check_backward(self, op, x_data, y_grad):
-        gradient_check.check_backward(op, x_data, y_grad)
+        options = {}
+        if self.dtype == numpy.float16:
+            options = {'atol': 5e-4, 'rtol': 5e-3}
+        gradient_check.check_backward(
+            op, x_data, y_grad, dtype=numpy.float64, **options)
 
     def backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -948,37 +960,28 @@ class UnaryFunctionsTestBase(object):
         self.backward_gpu(lambda x: abs(x))
 
 
-class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        return x, gy
-
-
-class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
-                                      unittest.TestCase):
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        return x, gy
-
-
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestNegativePow(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 0, (3, 2)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 0, (3, 2)).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype)
 
     def check_backward(self, x_data, y_grad):
+        options = {}
+        if self.dtype == numpy.float16:
+            options = {'atol': 5e-4, 'rtol': 5e-3}
         gradient_check.check_backward(
-            lambda x: x ** 2, x_data, y_grad, atol=1e-4, rtol=1e-4)
+            lambda x: x ** 2, x_data, y_grad, dtype=numpy.float64, **options)
 
+    @condition.retry(10)
     def test_cpu(self):
         self.check_backward(self.x, self.gy)
 
     @attr.gpu
+    @condition.retry(10)
     def test_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 

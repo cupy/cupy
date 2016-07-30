@@ -1,10 +1,85 @@
+import numpy
+import six
+
+import chainer
 from chainer.functions.activation import lstm
+from chainer import initializers
 from chainer import link
 from chainer.links.connection import linear
 from chainer import variable
 
 
-class LSTM(link.Chain):
+class LSTMBase(link.Chain):
+
+    def __init__(self, in_size, out_size,
+                 lateral_init=None, upward_init=None,
+                 bias_init=0, forget_bias_init=0):
+        super(LSTMBase, self).__init__(
+            upward=linear.Linear(in_size, 4 * out_size, initialW=0),
+            lateral=linear.Linear(out_size, 4 * out_size,
+                                  initialW=0, nobias=True),
+        )
+        self.state_size = out_size
+
+        for i in six.moves.range(0, 4 * out_size, out_size):
+            initializers.init_weight(
+                self.lateral.W.data[i:i + out_size, :], lateral_init)
+            initializers.init_weight(
+                self.upward.W.data[i:i + out_size, :], upward_init)
+
+        a, i, f, o = lstm._extract_gates(
+            self.upward.b.data.reshape(1, 4 * out_size, 1))
+        initializers.init_weight(a, bias_init)
+        initializers.init_weight(i, bias_init)
+        initializers.init_weight(f, forget_bias_init)
+        initializers.init_weight(o, bias_init)
+
+
+class StatelessLSTM(LSTMBase):
+
+    """Stateless LSTM layer.
+
+    This is a fully-connected LSTM layer as a chain. Unlike the
+    :func:`~chainer.functions.lstm` function, this chain holds upward and
+    lateral connections as child links. This link doesn't keep cell and
+    hidden states.
+
+    Args:
+        in_size (int): Dimensionality of input vectors.
+        out_size (int): Dimensionality of output vectors.
+
+    Attributes:
+        upward (chainer.links.Linear): Linear layer of upward connections.
+        lateral (chainer.links.Linear): Linear layer of lateral connections.
+
+    """
+
+    def __call__(self, c, h, x):
+        """Returns new cell state and updated output of LSTM.
+
+        Args:
+            c (~chainer.Variable): Cell states of LSTM units.
+            h (~chainer.Variable): Output at the previous time step.
+            x (~chainer.Variable): A new batch from the input sequence.
+
+        Returns:
+            tuple of ~chainer.Variable: Returns ``(c_new, h_new)``, where
+                ``c_new`` represents new cell state, and ``h_new`` is updated
+                output of LSTM units.
+
+        """
+        lstm_in = self.upward(x)
+        if h is not None:
+            lstm_in += self.lateral(h)
+        if c is None:
+            xp = self.xp
+            c = variable.Variable(
+                xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
+                volatile='auto')
+        return lstm.lstm(c, lstm_in)
+
+
+class LSTM(LSTMBase):
 
     """Fully-connected LSTM layer.
 
@@ -19,20 +94,40 @@ class LSTM(link.Chain):
     Args:
         in_size (int): Dimensionality of input vectors.
         out_size (int): Dimensionality of output vectors.
+        lateral_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the lateral connections.
+            Maybe be ``None`` to use default initialization.
+        upward_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the upward connections.
+            Maybe be ``None`` to use default initialization.
+        bias_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value
+            It is used for initialization of the biases of cell input,
+            input gate and output gate.and gates of the upward connection.
+            Maybe a scalar, in that case, the bias is
+            initialized by this value.
+            Maybe be ``None`` to use default initialization.
+        forget_bias_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value
+            It is used for initialization of the biases of the forget gate of
+            the upward connection.
+            Maybe a scalar, in that case, the bias is
+            initialized by this value.
+            Maybe be ``None`` to use default initialization.
+
 
     Attributes:
-        upward (chainer.links.Linear): Linear layer of upward connections.
-        lateral (chainer.links.Linear): Linear layer of lateral connections.
-        c (chainer.Variable): Cell states of LSTM units.
-        h (chainer.Variable): Output at the previous timestep.
+        upward (~chainer.links.Linear): Linear layer of upward connections.
+        lateral (~chainer.links.Linear): Linear layer of lateral connections.
+        c (~chainer.Variable): Cell states of LSTM units.
+        h (~chainer.Variable): Output at the previous time step.
 
     """
-    def __init__(self, in_size, out_size):
-        super(LSTM, self).__init__(
-            upward=linear.Linear(in_size, 4 * out_size),
-            lateral=linear.Linear(out_size, 4 * out_size, nobias=True),
-        )
-        self.state_size = out_size
+
+    def __init__(self, in_size, out_size, **kwargs):
+        super(LSTM, self).__init__(in_size, out_size, **kwargs)
         self.reset_state()
 
     def to_cpu(self):
@@ -49,10 +144,33 @@ class LSTM(link.Chain):
         if self.h is not None:
             self.h.to_gpu(device)
 
+    def set_state(self, c, h):
+        """Sets the internal state.
+
+        It sets the :attr:`c` and :attr:`h` attributes.
+
+        Args:
+            c (~chainer.Variable): A new cell states of LSTM units.
+            h (~chainer.Variable): A new output at the previous time step.
+
+        """
+        assert isinstance(c, chainer.Variable)
+        assert isinstance(h, chainer.Variable)
+        c_ = c
+        h_ = h
+        if self.xp == numpy:
+            c_.to_cpu()
+            h_.to_cpu()
+        else:
+            c_.to_gpu()
+            h_.to_gpu()
+        self.c = c_
+        self.h = h_
+
     def reset_state(self):
         """Resets the internal state.
 
-        It sets None to the :attr:`c` and :attr:`h` attributes.
+        It sets ``None`` to the :attr:`c` and :attr:`h` attributes.
 
         """
         self.c = self.h = None

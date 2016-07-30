@@ -93,7 +93,7 @@ class TestNestedFunctionSet(TestFunctionSetBase):
         self.assertTrue(
             (self.fs2.fs1.a.p.data == fs2_loaded.fs1.a.p.data).all())
 
-    def check_getter(self, fs, gpu, attribute):
+    def check_getter(self, fs, attribute):
         params = getattr(fs, attribute)
         self.assertEqual(len(params), 2)
         if attribute == 'parameters':
@@ -105,12 +105,12 @@ class TestNestedFunctionSet(TestFunctionSetBase):
                 'attribute should be parameters or gradients')
 
     def test_parameters_getter_cpu(self):
-        self.check_getter(self.fs2, False, 'parameters')
+        self.check_getter(self.fs2, 'parameters')
 
     @attr.gpu
     def test_parameters_getter_gpu(self):
         self.fs2.to_gpu()
-        self.check_getter(self.fs2, True, 'parameters')
+        self.check_getter(self.fs2, 'parameters')
 
     def test_parameters_setter_cpu(self):
         self._check_setter(self.fs2, False, 'parameters')
@@ -137,12 +137,12 @@ class TestNestedFunctionSet(TestFunctionSetBase):
         self._check_setter_invalid(self.fs2, -1, cuda.cupy, 'parameters')
 
     def test_gradients_getter_cpu(self):
-        self.check_getter(self.fs2, False, 'gradients')
+        self.check_getter(self.fs2, 'gradients')
 
     @attr.gpu
     def test_gradients_getter_gpu(self):
         self.fs2.to_gpu()
-        self.check_getter(self.fs2, True, 'gradients')
+        self.check_getter(self.fs2, 'gradients')
 
     def test_gradients_setter_cpu(self):
         self._check_setter(self.fs2, False, 'gradients')
@@ -260,7 +260,7 @@ class TestFunctionSet(TestFunctionSetBase):
         with self.assertRaises(AttributeError):
             self.fs['not_found']
 
-    def check_getter(self, fs, gpu, attribute):
+    def check_getter(self, fs, attribute):
         params = getattr(fs, attribute)
         self.assertEqual(len(params), 4)
         if attribute == 'parameters':
@@ -275,12 +275,12 @@ class TestFunctionSet(TestFunctionSetBase):
                  self.fs.b.W.grad, self.fs.b.b.grad])
 
     def test_parameters_getter_cpu(self):
-        self.check_getter(self.fs, False, 'parameters')
+        self.check_getter(self.fs, 'parameters')
 
     @attr.gpu
     def test_parameters_getter_gpu(self):
         self.fs.to_gpu()
-        self.check_getter(self.fs, True, 'parameters')
+        self.check_getter(self.fs, 'parameters')
 
     def test_parameters_setter_cpu(self):
         self._check_setter(self.fs, False, 'parameters')
@@ -305,12 +305,12 @@ class TestFunctionSet(TestFunctionSetBase):
         self._check_setter_invalid(self.fs, -1, cuda.cupy, 'parameters')
 
     def test_gradients_getter_cpu(self):
-        self.check_getter(self.fs, False, 'gradients')
+        self.check_getter(self.fs, 'gradients')
 
     @attr.gpu
     def test_gradients_getter_gpu(self):
         self.fs.to_gpu()
-        self.check_getter(self.fs, True, 'gradients')
+        self.check_getter(self.fs, 'gradients')
 
     def test_gradients_setter_cpu(self):
         self._check_setter(self.fs, False, 'gradients')

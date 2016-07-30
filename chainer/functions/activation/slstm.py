@@ -53,10 +53,10 @@ class SLSTM(function.Function):
         c1_type, c2_type, x1_type, x2_type = in_types
 
         type_check.expect(
-            c1_type.dtype == numpy.float32,
-            c2_type.dtype == numpy.float32,
-            x1_type.dtype == numpy.float32,
-            x2_type.dtype == numpy.float32,
+            c1_type.dtype.kind == 'f',
+            c2_type.dtype == c1_type.dtype,
+            x1_type.dtype == c1_type.dtype,
+            x2_type.dtype == c1_type.dtype,
 
             c1_type.ndim >= 2,
             c2_type.ndim >= 2,
@@ -182,7 +182,7 @@ def slstm(c_prev1, c_prev2, x1, x2):
 
     """S-LSTM units as an activation function.
 
-    This function implements S-LSTM unit. It is an extention of LSTM unit
+    This function implements S-LSTM unit. It is an extension of LSTM unit
     applied to tree structures.
     The function is applied to binary trees. Each node has two child nodes.
     It gets four arguments, previous cell states :math:`c_1` and

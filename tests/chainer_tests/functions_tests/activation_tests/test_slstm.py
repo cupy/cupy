@@ -15,18 +15,28 @@ def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestSLSTM(unittest.TestCase):
 
     def setUp(self):
         self.c_prev1 = numpy.random.uniform(-1,
-                                            1, (3, 2, 4)).astype(numpy.float32)
+                                            1, (3, 2, 4)).astype(self.dtype)
         self.c_prev2 = numpy.random.uniform(-1,
-                                            1, (3, 2, 4)).astype(numpy.float32)
-        self.x1 = numpy.random.uniform(-1, 1, (3, 8, 4)).astype(numpy.float32)
-        self.x2 = numpy.random.uniform(-1, 1, (3, 8, 4)).astype(numpy.float32)
+                                            1, (3, 2, 4)).astype(self.dtype)
+        self.x1 = numpy.random.uniform(-1, 1, (3, 8, 4)).astype(self.dtype)
+        self.x2 = numpy.random.uniform(-1, 1, (3, 8, 4)).astype(self.dtype)
 
-        self.gc = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
-        self.gh = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
+        self.gc = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
+        self.gh = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
+
+        self.check_forward_options = {}
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_backward_options = {
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def flat(self):
         self.c_prev1 = self.c_prev1[:, :, 0].copy()
@@ -42,8 +52,8 @@ class TestSLSTM(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         c, h = functions.slstm(c_prev1, c_prev2, x1, x2)
-        self.assertEqual(c.data.dtype, numpy.float32)
-        self.assertEqual(h.data.dtype, numpy.float32)
+        self.assertEqual(c.data.dtype, self.dtype)
+        self.assertEqual(h.data.dtype, self.dtype)
 
         # Compute expected out
         a1_in = self.x1[:, [0, 4]]
@@ -61,8 +71,10 @@ class TestSLSTM(unittest.TestCase):
             _sigmoid(f2_in) * self.c_prev2
         h_expect = _sigmoid(o1_in + o2_in) * numpy.tanh(c_expect)
 
-        gradient_check.assert_allclose(c_expect, c.data)
-        gradient_check.assert_allclose(h_expect, h.data)
+        testing.assert_allclose(
+            c_expect, c.data, **self.check_forward_options)
+        testing.assert_allclose(
+            h_expect, h.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -92,7 +104,7 @@ class TestSLSTM(unittest.TestCase):
         gradient_check.check_backward(
             functions.SLSTM(),
             (c_prev1_data, c_prev2_data, x1_data, x2_data),
-            (c_grad, h_grad), eps=1e-2)
+            (c_grad, h_grad), **self.check_backward_options)
 
     @condition.retry(3)
     def test_full_backward_cpu(self):

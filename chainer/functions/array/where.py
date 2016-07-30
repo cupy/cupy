@@ -7,7 +7,7 @@ from chainer.utils import type_check
 
 class Where(function.Function):
 
-    """Choose elements dependeing on condition."""
+    """Choose elements depending on condition."""
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 3)
@@ -34,7 +34,7 @@ class Where(function.Function):
 
 
 def where(condition, x, y):
-    """Choose elements dependeing on condition.
+    """Choose elements depending on condition.
 
     This function choose values depending on a given ``condition``.
     All ``condition``, ``x``, and ``y`` must have the same shape.

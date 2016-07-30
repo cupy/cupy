@@ -73,12 +73,12 @@ class Variable(object):
         volatile (~chainer.Flag): Volatility flag. String ('on', 'off', or
             'auto') or boolean values can be used, too.
         name (str): Name of the variable.
+        grad (array): Initial gradient array.
 
     Attributes:
         data: Data array of type either :class:`numpy.ndarray` or
             :class:`cupy.ndarray`.
-        grad: Gradient array. It is ``None`` until backprop reaches this
-            variable.
+        grad: Gradient array.
         creator: The function who creates this variable. It is ``None`` if the
             variable is not created by any function.
         volatile: Ternary :class:`~chainer.Flag` object. If ON, the variable
@@ -86,20 +86,23 @@ class Variable(object):
             :class:`~chainer.Flag` for the detail of ternary flags.
 
     """
-    def __init__(self, data, volatile=flag.OFF, name=None):
-        assert isinstance(data, (numpy.ndarray, cuda.ndarray))
+    def __init__(self, data, volatile=flag.OFF, name=None, grad=None):
+        if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
+            msg = '''numpy.ndarray or cuda.ndarray are expected.
+Actual: {0}'''.format(type(data))
+            raise TypeError(msg)
 
         self.data = data
         self.rank = 0
         self._volatile = flag.Flag(volatile)
 
-        self._grad = None
+        self._grad = grad
         self.creator = None
 
         self.name = name
 
     def __reduce__(self):
-        return (Variable, (self.data, self.volatile, self.name))
+        return Variable, (self.data, self.volatile, self.name, self._grad)
 
     def __repr__(self):
         if self.name:
@@ -171,7 +174,7 @@ class Variable(object):
 
     @property
     def label(self):
-        """Short text that represents the function."""
+        """Short text that represents the variable."""
         if self.data.shape == ():
             return str(self.data.dtype)
         return '(%s), %s' % (', '.join(map(str, self.data.shape)),
@@ -252,7 +255,7 @@ class Variable(object):
         if src is None:
             raise ValueError('Source gradient is not set.')
         if dst is None:
-            raise ValueError('Target graidient is not set.')
+            raise ValueError('Target gradient is not set.')
 
         xp = cuda.get_array_module(dst)
         if xp is numpy:
@@ -297,7 +300,7 @@ class Variable(object):
         loss value.
 
         Args:
-            retain_grad (bool): If True, the gradient arrays of all
+            retain_grad (bool): If ``True``, the gradient arrays of all
                 intermediate variables are kept. Otherwise, :data:`grad` of the
                 intermediate variables are set to ``None`` on appropriate
                 timing, which may reduce the maximum memory consumption.
@@ -315,7 +318,7 @@ class Variable(object):
         seen_vars = set()
         need_copy = set()
 
-        # Initilize error by 1, if this is a loss variable
+        # Initialize error by 1, if this is a loss variable
         if self.data.size == 1 and self.grad is None:
             with cuda.get_device(self.data) as device:
                 if device is cuda.DummyDevice:
@@ -329,8 +332,7 @@ class Variable(object):
                 heapq.heappush(cand_funcs, (-cand.rank, len(seen_set), cand))
                 seen_set.add(cand)
 
-        if self.creator is not None:
-            add_cand(self.creator)
+        add_cand(self.creator)
 
         while cand_funcs:
             _, _, func = heapq.heappop(cand_funcs)
@@ -349,7 +351,8 @@ class Variable(object):
                 hook.backward_postprocess(func, in_data, out_grad)
 
             if chainer.is_debug():
-                if any(cuda.get_array_module(gx).isnan(gx).any()
+                if any(gx is not None and
+                       cuda.get_array_module(gx).isnan(gx).any()
                        for gx in gxs):
                     msg = 'NaN is detected on backward computation'
                     raise RuntimeError(msg)
@@ -364,7 +367,7 @@ class Variable(object):
 
                 _check_grad_type(func, x, gx)
 
-                # Accumulate the graident to x. It is a bit tricky to handle
+                # Accumulate the gradient to x. It is a bit tricky to handle
                 # branches and parameter gradient accumulation correctly.
                 with cuda.get_device(gx):
                     id_x = id(x)

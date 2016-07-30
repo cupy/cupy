@@ -12,7 +12,7 @@ def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):
         max_line_width (int): The maximum number of line lengths.
         precision (int): Floating point precision. It uses the current printing
             precision of NumPy.
-        suppress_small (bool): If True, very small numbers are printed as
+        suppress_small (bool): If ``True``, very small numbers are printed as
             zeros
 
     Returns:
@@ -34,7 +34,7 @@ def array_str(arr, max_line_width=None, precision=None, suppress_small=None):
         max_line_width (int): The maximum number of line lengths.
         precision (int): Floating point precision. It uses the current printing
             precision of NumPy.
-        suppress_small (bool): If True, very small number are printed as
+        suppress_small (bool): If ``True``, very small number are printed as
             zeros.
 
     .. seealso:: :func:`numpy.array_str`

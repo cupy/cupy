@@ -91,13 +91,15 @@ def convert_tree(vocab, exp):
         return {'label': int(label), 'node': node}
 
 
-def read_corpus(path, vocab):
+def read_corpus(path, vocab, max_size):
     with codecs.open(path, encoding='utf-8') as f:
         trees = []
         for line in f:
             line = line.strip()
             tree = SexpParser(line).parse()
             trees.append(convert_tree(vocab, tree))
+            if max_size and len(trees) >= max_size:
+                break
 
         return trees
 
@@ -173,15 +175,13 @@ def evaluate(model, test_trees):
         acc_root, result['correct_root'], result['total_root']))
 
 vocab = {}
-train_trees = read_corpus('trees/train.txt', vocab)
 if args.test:
-    train_trees = train_trees[:10]
-test_trees = read_corpus('trees/test.txt', vocab)
-if args.test:
-    train_trees = train_trees[:10]
-develop_trees = read_corpus('trees/dev.txt', vocab)
-if args.test:
-    train_trees = train_trees[:10]
+    max_size = 10
+else:
+    max_size = None
+train_trees = read_corpus('trees/train.txt', vocab, max_size)
+test_trees = read_corpus('trees/test.txt', vocab, max_size)
+develop_trees = read_corpus('trees/dev.txt', vocab, max_size)
 
 model = RecursiveNet(len(vocab), n_units)
 
@@ -219,8 +219,8 @@ for epoch in range(n_epoch):
     print('loss: {:.2f}'.format(total_loss))
 
     now = time.time()
-    throuput = float(len(train_trees)) / (now - cur_at)
-    print('{:.2f} iters/sec, {:.2f} sec'.format(throuput, now - cur_at))
+    throughput = float(len(train_trees)) / (now - cur_at)
+    print('{:.2f} iters/sec, {:.2f} sec'.format(throughput, now - cur_at))
     print()
 
     if (epoch + 1) % epoch_per_eval == 0:

@@ -5,7 +5,7 @@ from cupy import core
 
 
 def arange(start, stop=None, step=1, dtype=None):
-    """Rerurns an array with evenly spaced values within a given interval.
+    """Returns an array with evenly spaced values within a given interval.
 
     Values are generated within the half-open interval [start, stop). The first
     three arguments are mapped like the ``range`` built-in function, i.e. start
@@ -54,9 +54,9 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None):
         start: Start of the interval.
         stop: End of the interval.
         num: Number of elements.
-        endpoint (bool): If True, the stop value is included as the last
+        endpoint (bool): If ``True``, the stop value is included as the last
             element. Otherwise, the stop value is omitted.
-        retstep (bool): If True, this function returns (array, step).
+        retstep (bool): If ``True``, this function returns (array, step).
             Otherwise, it returns only the array.
         dtype: Data type specifier. It is inferred from the start and stop
             arguments by default.

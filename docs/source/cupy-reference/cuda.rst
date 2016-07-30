@@ -30,3 +30,12 @@ Streams and events
    :members:
 
 .. autofunction:: cupy.cuda.get_elapsed_time
+
+
+Profiler
+--------
+
+.. autofunction:: cupy.cuda.profile
+.. autofunction:: cupy.cuda.profiler.initialize
+.. autofunction:: cupy.cuda.profiler.start
+.. autofunction:: cupy.cuda.profiler.stop

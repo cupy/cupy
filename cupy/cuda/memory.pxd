@@ -49,6 +49,7 @@ cdef class SingleDeviceMemoryPool:
         object _free
         object __weakref__
         object _weakref
+        Py_ssize_t _allocation_unit_size
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size)
     cpdef free(self, size_t ptr, Py_ssize_t size)

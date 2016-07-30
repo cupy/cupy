@@ -52,6 +52,8 @@ class Contrastive(function.Function):
         y = xp.repeat(y[:, None], x_dim, axis=1)
         alpha = gy[0] / y.shape[0]
         dist = xp.repeat(self.dist[:, None], x_dim, axis=1)
+        # avoid division by zero
+        dist = xp.maximum(dist, 1e-8)
         # similar pair
         gx0 = alpha * y * self.diff
         # dissimilar pair
@@ -70,7 +72,7 @@ def contrastive(x0, x1, y, margin=1):
     those two input variables are similar, or 0 when they are dissimilar. Let
     :math:`N` and :math:`K` denote mini-batchsize and the dimension of input
     variables, respectively. The shape of both input variables should be
-    (N, K).
+    ``(N, K)``.
 
     .. math::
         L = \\frac{1}{2N} \\left( \\sum_{n=1}^N y_n d_n^2
@@ -89,12 +91,12 @@ def contrastive(x0, x1, y, margin=1):
         x1 (~chainer.Variable): The second input variable. The shape should be
             the same as x0.
         y (~chainer.Variable): Labels. All values should be 0 or 1. The shape
-            should be (N,), where N denotes the minibatch size.
+            should be ``(N,)``, where N denotes the minibatch size.
         margin (float): A parameter for contrastive loss. It should be positive
             value.
 
     Returns:
-        ~chainer.Varible: A variable holding a scalar that is the loss value
+        ~chainer.Variable: A variable holding a scalar that is the loss value
             calculated by the above equation.
 
     .. note::

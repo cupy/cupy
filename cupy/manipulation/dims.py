@@ -13,7 +13,8 @@ def atleast_1d(*arys):
 
     Args:
         arys (tuple of arrays): Arrays to be converted. All arguments must be
-            cupy.ndarray objects. Only zero-dimensional array is affected.
+            :class:`cupy.ndarray` objects. Only zero-dimensional array is
+            affected.
 
     Returns:
         If there are only one input, then it returns its converted version.
@@ -42,7 +43,7 @@ def atleast_2d(*arys):
 
     Args:
         arys (tuple of arrays): Arrays to be converted. All arguments must be
-            cupy.ndarray objects.
+            :class:`cupy.ndarray` objects.
 
     Returns:
         If there are only one input, then it returns its converted version.
@@ -58,7 +59,7 @@ def atleast_2d(*arys):
         if a.ndim == 0:
             a = a.reshape(1, 1)
         elif a.ndim == 1:
-            a = a[cupy.newaxis, :]
+            a = a[None, :]
         res.append(a)
     if len(res) == 1:
         res = res[0]
@@ -79,7 +80,7 @@ def atleast_3d(*arys):
 
     Args:
         arys (tuple of arrays): Arrays to be converted. All arguments must be
-            cupy.ndarray objects.
+            :class:`cupy.ndarray` objects.
 
     Returns:
         If there are only one input, then it returns its converted version.
@@ -95,9 +96,9 @@ def atleast_3d(*arys):
         if a.ndim == 0:
             a = a.reshape(1, 1, 1)
         elif a.ndim == 1:
-            a = a[cupy.newaxis, :, cupy.newaxis]
+            a = a[None, :, None]
         elif a.ndim == 2:
-            a = a[:, :, cupy.newaxis]
+            a = a[:, :, None]
         res.append(a)
     if len(res) == 1:
         res = res[0]

@@ -463,6 +463,34 @@ class TestChainList(unittest.TestCase):
         self.assertIs(c2[1].x.data, self.l3.x.data)
         self.assertIs(c2[1].x.grad, None)
 
+    @attr.gpu
+    def test_copy_and_send_to_gpu(self):
+        c2 = self.c2.copy()
+        self.c2.to_gpu()
+        self.assertIsInstance(self.c2[0][0].x.data, cuda.cupy.ndarray)
+        self.assertIsInstance(self.c2[0][1].x.data, cuda.cupy.ndarray)
+        self.assertIsInstance(c2[0][0].x.data, numpy.ndarray)
+        self.assertIsInstance(c2[0][1].x.data, numpy.ndarray)
+
+    @attr.gpu
+    def test_copy_and_send_to_gpu_2(self):
+        c2 = self.c2.copy()
+        c2.to_gpu()
+        self.assertIsInstance(self.c2[0][0].x.data, numpy.ndarray)
+        self.assertIsInstance(self.c2[0][1].x.data, numpy.ndarray)
+        self.assertIsInstance(c2[0][0].x.data, cuda.cupy.ndarray)
+        self.assertIsInstance(c2[0][1].x.data, cuda.cupy.ndarray)
+
+    @attr.multi_gpu(2)
+    def test_copy_and_send_to_gpu_multi(self):
+        c2 = self.c2.copy()
+        self.c2.to_gpu(0)
+        c2.to_gpu(1)
+        self.assertEqual(self.c2[0][0].x.data.device.id, 0)
+        self.assertEqual(self.c2[0][1].x.data.device.id, 0)
+        self.assertEqual(c2[0][0].x.data.device.id, 1)
+        self.assertEqual(c2[0][1].x.data.device.id, 1)
+
     def test_to_cpu_on_cpu(self):
         x1 = self.l1.x.data
         gx1 = self.l1.x.grad

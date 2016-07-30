@@ -3,13 +3,13 @@ import unittest
 import numpy
 
 from chainer import cuda
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer import utils
 
 
 class TestWalkerAlias(unittest.TestCase):
+
     def setUp(self):
         self.ps = numpy.array([5, 3, 4, 1, 2], dtype=numpy.int32)
         self.sampler = utils.WalkerAlias(self.ps)
@@ -21,7 +21,7 @@ class TestWalkerAlias(unittest.TestCase):
             numpy.add.at(counts, cuda.to_cpu(vs), 1)
         counts /= (1000 * 12)
         counts *= sum(self.ps)
-        gradient_check.assert_allclose(self.ps, counts, atol=0.1, rtol=0.1)
+        testing.assert_allclose(self.ps, counts, atol=0.1, rtol=0.1)
 
     def test_sample_cpu(self):
         self.check_sample()

@@ -13,9 +13,10 @@ def lognormal(mean=0.0, sigma=1.0, size=None, dtype=float):
     Args:
         mean (float): Mean of the normal distribution.
         sigma (float): Standard deviation of the normal distribution.
-        size (int or tuple of ints): The shape of the array. If None, a zero-
-            dimensional array is generated.
-        dtype: Data type specifier. Only float32 and float64 types are allowed.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
 
     Returns:
         cupy.ndarray: Samples drawn from the log normal distribution.
@@ -33,9 +34,10 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     Args:
         loc (float): Mean of the normal distribution.
         scale (float): Standard deviation of the normal distribution.
-        size (int or tuple of ints): The shape of the array. If None, a zero-
-             dimensional array is generated.
-        dtype: Data type specifier. Only float32 and float64 types are allowed.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
 
     Returns:
         cupy.ndarray: Normally distributed samples.
@@ -53,30 +55,30 @@ def standard_normal(size=None, dtype=float):
     This is a variant of :func:`cupy.random.randn`.
 
     Args:
-        size (int or tuple of ints): The shape of the array. If None, a zero-
-            dimensional array is generated.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
         dtype: Data type specifier.
 
     Returns:
         cupy.ndarray: Samples drawn from the standard normal distribution.
 
-    .. seealso:: :func:`numpy.randomm.standard_normal`
+    .. seealso:: :func:`numpy.random.standard_normal`
 
     """
     return normal(size=size, dtype=dtype)
 
 
 def uniform(low=0.0, high=1.0, size=None, dtype=float):
-    """Returns an array of uniformlly-distributed samples over an interval.
+    """Returns an array of uniformly-distributed samples over an interval.
 
-    Samples are drawn from a uniform distribution over the half-open interaval
+    Samples are drawn from a uniform distribution over the half-open interval
     ``[low, high)``.
 
     Args:
         low (float): Lower end of the interval.
         high (float): Upper end of the interval.
-        size (int or tuple of ints): The shape of the array. If None, a zero-
-            dimensional array is generated.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
         dtype: Data type specifier.
 
     Returns:

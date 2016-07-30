@@ -15,48 +15,128 @@ Chainer provides many :class:`~chainer.Link` implementations in the
 
 Learnable connections
 ---------------------
+
+Bias
+~~~~
+
+.. autoclass:: Bias
+   :members:
+
+Bilinear
+~~~~~~~~
 .. autoclass:: Bilinear
    :members:
+
+Convolution2D
+~~~~~~~~~~~~~
 .. autoclass:: Convolution2D
    :members:
+
+Deconvolution2D
+~~~~~~~~~~~~~~~
 .. autoclass:: Deconvolution2D
    :members:
+
+EmbedID
+~~~~~~~
 .. autoclass:: EmbedID
    :members:
+
+GRU
+~~~
 .. autoclass:: GRU
    :members:
+
+Inception
+~~~~~~~~~
 .. autoclass:: Inception
    :members:
+
+InceptionBN
+~~~~~~~~~~~
 .. autoclass:: InceptionBN
    :members:
+
+Linear
+~~~~~~
 .. autoclass:: Linear
    :members:
+
+LSTM
+~~~~
 .. autoclass:: LSTM
    :members:
+
+MLPConvolution2D
+~~~~~~~~~~~~~~~~
 .. autoclass:: MLPConvolution2D
    :members:
+
+Scale
+~~~~~
+.. autoclass:: Scale
+   :members:
+
+StatefulGRU
+~~~~~~~~~~~
 .. autoclass:: StatefulGRU
    :members:
 
+StatefulPeepholeLSTM
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: StatefulPeepholeLSTM
+   :members:
+
+StatelessLSTM
+~~~~~~~~~~~~~
+.. autoclass:: StatelessLSTM
+   :members:
+
 Activation/loss/normalization functions with parameters
---------------------------------------------------------
+-------------------------------------------------------
+
+BatchNormalization
+~~~~~~~~~~~~~~~~~~
 .. autoclass:: BatchNormalization
    :members:
+
+BinaryHierarchicalSoftmax
+~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: BinaryHierarchicalSoftmax
    :members:
+
+CRF1d
+~~~~~
+.. autoclass:: CRF1d
+   :members:
+
+PReLU
+~~~~~
 .. autoclass:: PReLU
    :members:
+
+Maxout
+~~~~~~
 .. autoclass:: Maxout
    :members:
+
+NegativeSampling
+~~~~~~~~~~~~~~~~
 .. autoclass:: NegativeSampling
    :members:
 
 Machine learning models
 -----------------------
+
+Classifier
+~~~~~~~~~~
 .. autoclass:: Classifier
    :members:
 
 Deprecated links
 ----------------
+
+Parameter
+~~~~~~~~~
 .. autoclass:: Parameter
    :members:

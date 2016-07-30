@@ -2,7 +2,7 @@ API Compatibility Policy
 ========================
 
 This document expresses the design policy on compatibilities of Chainer APIs.
-Dev team should obey this policy on deciding to add, extend, and change APIs and their behaviors.
+Development team should obey this policy on deciding to add, extend, and change APIs and their behaviors.
 
 This document is written for both users and developers.
 Users can decide the level of dependencies on Chainer’s implementations in their codes based on this document.
@@ -11,7 +11,7 @@ Note that this document may contain ambiguities on the level of supported compat
 
 
 Targeted Versions
-------------------
+-----------------
 
 This policy is applied to Chainer of versions v1.5.1 and higher.
 Note that this policy is not applied to Chainer of lower versions.
@@ -52,7 +52,6 @@ The actual dropping should be done through the following steps:
 - At the major version announced in the above update, drop the API.
 
 Consequently, it takes at least two minor versions to drop any APIs after the first deprecation.
-Since each minor update is made for every six weeks, this dropping procedure takes at least 12 weeks (~ 3 months).
 
 API Changes and Its Preparation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

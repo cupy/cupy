@@ -27,17 +27,17 @@ In particular, we are using the master branch for our development, and releases 
 Releases are classified into three groups: major, minor, and revision.
 This classification is based on following criteria:
 
-* A **major** release contains catastrophic changes on the interface that may break existing user codes.
-* A **minor** release contains additions and modifications on the interface.
-  It may break some existing user codes, though they must be fixed by small efforts.
-* A **revision** release contains changes that does not affect the documented interface.
-  It mainly consists of bug fixes, implementation improvements, and test/document/example updates.
+- **Major update** contains disruptive changes that break the backward compatibility.
+- **Minor update** contains additions and extensions to the APIs keeping the supported backward compatibility.
+- **Revision update** contains improvements on the API implementations without changing any API specification.
 
 The release classification is reflected into the version number x.y.z, where x, y, and z corresponds to major, minor, and revision updates, respectively.
 
-We sets milestones for some future releases.
-A milestone for a revision release is set right after the last release.
-On the other hand, a milestone for a minor or major release is set four weeks prior to its due.
+We set a milestone for an upcoming release.
+The milestone is of name 'vX.Y.Z', where the version number represents a revision release at the outset.
+If at least one *feature* PR is merged in the period, we rename the milestone to represent a minor release (see the next section for the PR types).
+
+See also :doc:`compatibility`.
 
 Issues and PRs
 --------------
@@ -47,13 +47,16 @@ Issues and PRs are classified into following categories:
 * **Bug**: bug reports (issues) and bug fixes (PRs)
 * **Enhancement**: implementation improvements without breaking the interface
 * **Feature**: feature requests (issues) and their implementations (PRs)
+* **NoCompat**: disrupts backward compatibility
 * **Test**: test fixes and updates
 * **Document**: document fixes and improvements
 * **Example**: fixes and improvements on the examples
+* **Install**: fixes installation script
+* **Contribution-Welcome**: issues that we request for contribution (only issues are categorized to this)
 * **Other**: other issues and PRs
 
 Issues and PRs are labeled by these categories.
-This classification is often reflected into its corresponding release category: Feature issues/PRs are contained into minor/major releases, while other issues/PRs can be contained into any releases including revision ones.
+This classification is often reflected into its corresponding release category: Feature issues/PRs are contained into minor/major releases and NoCompat issues/PRs are contained into major releases, while other issues/PRs can be contained into any releases including revision ones.
 
 On registering an issue, write precise explanations on what you want Chainer to be.
 Bug reports must include necessary and sufficient conditions to reproduce the bugs.
@@ -66,21 +69,22 @@ You can contain your thoughts on **how** to realize it into the feature requests
    The issue tracker is not a place to share knowledge on practices.
    We may redirect question issues to Chainer User Group.
 
-If you can write codes to fix an issue, send a PR to the master branch.
-Before writing your codes for PRs, read through the :ref:`coding-guide`.
-The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your codes for developers, a very important part of your PR.
+If you can write code to fix an issue, send a PR to the master branch.
+Before writing your code for PRs, read through the :ref:`coding-guide`.
+The description of any PR must contain a precise explanation of **what** and **how** you want to do; it is the first documentation of your code for developers, a very important part of your PR.
 
-Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/chainer/>`_.
-After the automatic test passes, some of the core developers will start reviewing your codes.
+Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/pfnet/chainer/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/pfnet/chainer>`_ for Windows.
+Your PR need to pass at least the test for Linux on Travis CI.
+After the automatic test passes, some of the core developers will start reviewing your code.
 Note that this automatic PR test only includes CPU tests.
 
 .. note::
 
-   We are also running continuous integrations with GPU tests for the master branch.
+   We are also running continuous integration with GPU tests for the master branch.
    Since this service is running on our internal server, we do not use it for automatic PR tests to keep the server secure.
 
 
-Even if your codes are not complete, you can send a pull request as a *work-in-progress PR* by putting the ``[WIP]`` prefix to the PR title.
+Even if your code is not complete, you can send a pull request as a *work-in-progress PR* by putting the ``[WIP]`` prefix to the PR title.
 If you write a precise explanation about the PR, core developers and other contributors can join the discussion about how to proceed the PR.
 
 .. _coding-guide:
@@ -89,14 +93,6 @@ Coding Guidelines
 -----------------
 
 We use `PEP8 <https://www.python.org/dev/peps/pep-0008/>`_ and a part of `OpenStack Style Guidelines <http://docs.openstack.org/developer/hacking/>`_ related to general coding style as our basic style guidelines.
-
-Before checking your code, you can use automatic formatter to set appropriate spacing, etc.
-We recommend you to install the ``pyformat`` and ``isort`` packages, and run the following commands::
-
-  $ pyformat -i path/to/your/code.py
-  $ isort path/to/your/code.py
-
-Note that these formatters do not cover all part of the style guidelines.
 
 To check your code, use ``flake8`` command installed by ``hacking`` package::
 
@@ -115,7 +111,7 @@ Here is a (not-complete) list of the rules that ``flake8`` cannot check.
 * Import statements must be organized into three parts: standard libraries, third-party libraries, and internal imports. [H306]
 
 In addition, we restrict the usage of *shortcut symbols* in our code base.
-They are symbols imported by packages and subpackages of ``chainer``.
+They are symbols imported by packages and sub-packages of ``chainer``.
 For example, ``chainer.Variable`` is a shortcut of ``chainer.variable.Variable``.
 **It is not allowed to use such shortcuts in the ``chainer`` library implementation**.
 Note that you can still use them in ``tests`` and ``examples`` directories.
@@ -130,11 +126,11 @@ Testing Guidelines
 
 Testing is one of the most important part of your code.
 You must test your code by unit tests following our testing guidelines.
-Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your codes::
+Note that we are using the nose package and the mock package for testing, so install nose and mock before writing your code::
 
   $ pip install nose mock
 
-In order to run unittests at the repository root, you first have to build Cython files in place by running the following command::
+In order to run unit tests at the repository root, you first have to build Cython files in place by running the following command::
 
   $ python setup.py develop
 
@@ -143,18 +139,18 @@ Once the Cython modules are built, you can run unit tests simply by running ``no
   $ nosetests
 
 It requires CUDA by default.
-In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the nosetests command::
+In order to run unit tests that do not require CUDA, pass ``--attr='!gpu'`` option to the ``nosetests`` command::
 
   $ nosetests path/to/your/test.py --attr='!gpu'
 
 Some GPU tests involve multiple GPUs.
-If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--attr='gpu<N'`` where ``N`` is a concrete integer.
-For example, if you have only one GPU, launch nosetests by the following command to skip multi-GPU tests::
+If you want to run GPU tests with insufficient number of GPUs, specify the number of available GPUs by ``--eval-attr='gpu<N'`` where ``N`` is a concrete integer.
+For example, if you have only one GPU, launch ``nosetests`` by the following command to skip multi-GPU tests::
 
-  $ nosetests path/to/gpu/test.py --attr='gpu<2'
+  $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
 
-Tests are put into the ``tests/chainer_tests`` and ``tests/cupy_tests`` directories.
-These have the same structure as that of ``chainer`` and ``cupy`` directories, respectively.
+Tests are put into the ``tests/chainer_tests``, ``tests/cupy_tests`` and ``tests/install_tests`` directories.
+These have the same structure as that of ``chainer``, ``cupy`` and ``install`` directories, respectively.
 In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
 
 * The name of each subdirectory of ``tests`` must end with the ``_tests`` suffix.
@@ -168,6 +164,7 @@ Or you can also specify a root directory to search test scripts from::
 
   $ nosetests tests/chainer_tests  # to just run tests of Chainer
   $ nosetests tests/cupy_tests     # to just run tests of CuPy
+  $ nosetests tests/install_tests  # to just run tests of installation modules
 
 If you modify the code related to existing unit tests, you must run appropriate commands.
 
@@ -198,7 +195,7 @@ Test functions that require CUDA must be tagged by the ``chainer.testing.attr.gp
           ...
 
 The functions tagged by the ``gpu`` decorator are skipped if ``--attr='!gpu'`` is given.
-We also have the ``chainer.testing.attr.cudnn`` decorator to let nosetests know that the test depends on CuDNN.
+We also have the ``chainer.testing.attr.cudnn`` decorator to let ``nosetests`` know that the test depends on cuDNN.
 
 The test functions decorated by ``gpu`` must not depend on multiple GPUs.
 In order to write tests for multiple GPUs, use ``chainer.testing.attr.multi_gpu()`` or ``cupy.testing.attr.multi_gpu()`` decorators instead::

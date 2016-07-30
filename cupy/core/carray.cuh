@@ -57,6 +57,34 @@ public:
     return (data_ & 0x8000u) != 0;
   }
 
+  template<typename T>
+  inline __device__ float16& operator+=(const T& rhs)
+  {
+    *this = *this + rhs;
+    return *this;
+  }
+
+  template<typename T>
+  inline __device__ float16& operator-=(const T& rhs)
+  {
+    *this = *this - rhs;
+    return *this;
+  }
+
+  template<typename T>
+  inline __device__ float16& operator*=(const T& rhs)
+  {
+    *this = *this * rhs;
+    return *this;
+  }
+
+  template<typename T>
+  inline __device__ float16& operator/=(const T& rhs)
+  {
+    *this = *this + rhs;
+    return *this;
+  }
+
   static __device__ float16 copysign(float16 x, float16 y) {
     float16 ret;
     ret.data_ = (x.data_ & 0x7fffu) | (y.data_ & 0x8000u);

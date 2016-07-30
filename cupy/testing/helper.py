@@ -110,8 +110,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
-         rtol(float): Relative torelance.
-         atol(float): Absolute torelance
+         rtol(float): Relative tolerance.
+         atol(float): Absolute tolerance
          err_msg(str): The error message to be printed in case of failure.
          verbose(bool): If ``True``, the conflicting values are
              appended to the error message.
@@ -119,14 +119,15 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
          accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occured are identical between NumPy and CuPy.
+             the errors occurred are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the arrays whose values are
     close between ``numpy`` case and ``cupy`` case.
-    For example, this test case checks ``numpy.foo`` and ``cupy.foo``
+    For example, this test case checks ``numpy.zeros`` and ``cupy.zeros``
     should return same value.
 
-    >>> @testing.gpu
+    >>> from cupy import testing
+    ... @testing.gpu
     ... class TestFoo(unittest.TestCase):
     ...
     ...     @testing.numpy_cupy_allclose()
@@ -135,7 +136,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     ...         # Prepare data with xp
     ...         # ...
     ...
-    ...         xp_result = xp.foo(...)
+    ...         xp_result = xp.zeros(10)
     ...         return xp_result
 
     .. seealso:: :func:`cupy.testing.assert_allclose`
@@ -160,7 +161,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
          accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occured are identical between NumPy and CuPy.
+             the errors occurred are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`cupy.testing.assert_array_almost_equal`
@@ -184,7 +185,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
          accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occured are identical between NumPy and CuPy.
+             the errors occurred are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`cupy.testing.assert_array_almost_equal_nulp`
@@ -210,7 +211,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
          accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occured are identical between NumPy and CuPy.
+             the errors occurred are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`assert_array_max_ulp`
@@ -236,7 +237,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
          accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occured are identical between NumPy and CuPy.
+             the errors occurred are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`numpy_cupy_array_equal`
@@ -290,7 +291,7 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
          accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occured are identical between NumPy and CuPy.
+             the errors occurred are identical between NumPy and CuPy.
 
     Decorated test fixture is required to return the smaller array
     when ``xp`` is ``cupy`` than the one when ``xp`` is ``numpy``.
@@ -352,7 +353,7 @@ def for_dtypes(dtypes, name='dtype'):
     This decorator adds a keyword argument specified by ``name``
     to the test fixture. Then, it runs the fixtures in parallel
     by passing the each element of ``dtypes`` to the named
-    arugment.
+    argument.
     """
     def decorator(impl):
         @functools.wraps(impl)
@@ -413,6 +414,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     :class:`cupy.ndarray` for various dtypes.
     ``dtype`` is an argument inserted by the decorator.
 
+    >>> from cupy import testing
     >>> @testing.gpu
     ... class TestNpz(unittest.TestCase):
     ...
@@ -428,6 +430,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     :func:`cupy.testing.numpy_cupy_allclose`.
     The following is such an example.
 
+    >>> from cupy import testing
     >>> @testing.gpu
     ... class TestMean(unittest.TestCase):
     ...
@@ -515,7 +518,7 @@ def for_int_dtypes(name='dtype', no_bool=False):
         return for_dtypes(_int_bool_dtypes, name=name)
 
 
-def for_dtypes_combination(types, names=['dtype'], full=None):
+def for_dtypes_combination(types, names=('dtype',), full=None):
     """Decorator that checks the fixture with a product set of dtypes.
 
     Args:
@@ -536,13 +539,13 @@ def for_dtypes_combination(types, names=['dtype'], full=None):
     all combinations of ``types`` are tested.
     Sometimes, such an exhaustive test can be costly.
     So, if ``full`` is ``False``, only the subset of possible
-    combinations is tested. Specificially, at first,
+    combinations is tested. Specifically, at first,
     the shuffled lists of ``types`` are made for each argument
     name in ``names``.
     Let the lists be ``D1``, ``D2``, ..., ``Dn``
     where :math:`n` is the number of arguments.
     Then, the combinations to be tested will be ``zip(D1, ..., Dn)``.
-    If ``full`` is ``None``, the behaivior is switched
+    If ``full`` is ``None``, the behavior is switched
     by setting the environment variable ``CUPY_TEST_FULL_COMBINATION=1``.
 
     For example, let ``types`` be ``[float16, float32, float64]``
@@ -588,7 +591,7 @@ def for_dtypes_combination(types, names=['dtype'], full=None):
     return decorator
 
 
-def for_all_dtypes_combination(names=['dtyes'],
+def for_all_dtypes_combination(names=('dtyes',),
                                no_float16=False, no_bool=False, full=None):
     """Decorator that checks the fixture with a product set of all dtypes.
 
@@ -609,7 +612,7 @@ def for_all_dtypes_combination(names=['dtyes'],
     return for_dtypes_combination(types, names, full)
 
 
-def for_signed_dtypes_combination(names=['dtype'], full=None):
+def for_signed_dtypes_combination(names=('dtype',), full=None):
     """Decorator for parameterized test w.r.t. the product set of signed dtypes.
 
     Args:
@@ -624,7 +627,7 @@ def for_signed_dtypes_combination(names=['dtype'], full=None):
     return for_dtypes_combination(_signed_dtypes, names=names, full=full)
 
 
-def for_unsigned_dtypes_combination(names=['dtype'], full=None):
+def for_unsigned_dtypes_combination(names=('dtype',), full=None):
     """Decorator for parameterized test w.r.t. the product set of unsigned dtypes.
 
     Args:
@@ -639,7 +642,7 @@ def for_unsigned_dtypes_combination(names=['dtype'], full=None):
     return for_dtypes_combination(_unsigned_dtypes, names=names, full=full)
 
 
-def for_int_dtypes_combination(names=['dtype'], no_bool=False, full=None):
+def for_int_dtypes_combination(names=('dtype',), no_bool=False, full=None):
     """Decorator for parameterized test w.r.t. the product set of int and boolean.
 
     Args:
@@ -667,9 +670,11 @@ def with_requires(*requirements):
 
        This test case runs only when `numpy>=1.10` is installed.
 
-       >>> @helper.with_requires('numpy>=1.10')
-       ... def test_for_numpy_1_10(self):
-       ...     pass
+       >>> from cupy import testing
+       ... class Test(unittest.TestCase):
+       ...     @testing.with_requires('numpy>=1.10')
+       ...     def test_for_numpy_1_10(self):
+       ...         pass
 
     Args:
         requirements: A list of string representing requirement condition to
@@ -772,5 +777,5 @@ class NumpyError(object):
         self.err = numpy.geterr()
         numpy.seterr(**self.kw)
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         numpy.seterr(**self.err)

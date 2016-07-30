@@ -138,7 +138,7 @@ cdef class MemoryPointer:
         if size > 0:
             _set_peer_access(src.device.id, self.device.id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
-                                runtime.memcpyDefault, stream)
+                                runtime.memcpyDefault, stream.ptr)
 
     cpdef copy_from_host(self, mem, size_t size):
         """Copies a memory sequence from the host memory.
@@ -163,7 +163,7 @@ cdef class MemoryPointer:
         """
         if size > 0:
             runtime.memcpyAsync(self.ptr, mem.value, size,
-                                runtime.memcpyHostToDevice, stream)
+                                runtime.memcpyHostToDevice, stream.ptr)
 
     cpdef copy_from(self, mem, size_t size):
         """Copies a memory sequence from a (possibly different) device or host.
@@ -226,7 +226,7 @@ cdef class MemoryPointer:
         """
         if size > 0:
             runtime.memcpyAsync(mem.value, self.ptr, size,
-                                runtime.memcpyDeviceToHost, stream)
+                                runtime.memcpyDeviceToHost, stream.ptr)
 
     cpdef memset(self, int value, size_t size):
         """Fills a memory sequence by constant byte value.
@@ -249,7 +249,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            runtime.memsetAsync(self.ptr, value, size, stream)
+            runtime.memsetAsync(self.ptr, value, size, stream.ptr)
 
 
 cpdef MemoryPointer _malloc(Py_ssize_t size):
@@ -332,12 +332,18 @@ cdef class SingleDeviceMemoryPool:
         self._free = collections.defaultdict(list)
         self._alloc = allocator
         self._weakref = weakref.ref(self)
+        self._allocation_unit_size = 256
 
     cpdef MemoryPointer malloc(self, Py_ssize_t size):
         cdef list free
         cdef Memory mem
+
         if size == 0:
             return MemoryPointer(Memory(0), 0)
+
+        # Round up the memory size to fit memory alignment of cudaMalloc
+        unit = self._allocation_unit_size
+        size = (((size + unit - 1) // unit) * unit)
         free = self._free[size]
         if free:
             mem = free.pop()
@@ -385,9 +391,9 @@ cdef class MemoryPool(object):
 
     .. note::
        When the allocation is skipped by reusing the pre-allocated block, it
-       does not call cudaMalloc and therefore CPU-GPU synchronization does not
-       occur. It makes interleaves of memory allocations and kernel invocations
-       very fast.
+       does not call ``cudaMalloc`` and therefore CPU-GPU synchronization does
+       not occur. It makes interleaves of memory allocations and kernel
+       invocations very fast.
 
     .. note::
        The memory pool holds allocated blocks without freeing as much as

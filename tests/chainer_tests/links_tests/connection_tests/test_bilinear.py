@@ -16,7 +16,7 @@ def _check_forward(e1, e2, f, y_expect):
     e1 = chainer.Variable(e1)
     e2 = chainer.Variable(e2)
     y = f(e1, e2)
-    gradient_check.assert_allclose(y_expect, y.data)
+    testing.assert_allclose(y_expect, y.data)
 
 
 def _check_backward(e1, e2, y_grad, link, bias):
@@ -274,6 +274,8 @@ class InvalidInitialParameter(InitByInitialParameter):
 
     def test_invalidW_cpu(self):
         self.check_invalid(self.invalidW, (self.V1, self.V2, self.b), False)
+
+    def test_invalidW_cpu2(self):
         self.check_invalid(self.invalidW, None, True)
 
     def test_invalidV1_cpu(self):

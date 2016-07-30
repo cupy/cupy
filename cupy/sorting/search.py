@@ -10,8 +10,8 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
             default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis ``axis`` is preserved as an axis of
-            length one.
+        keepdims (bool): If ``True``, the axis ``axis`` is preserved as an axis
+            of length one.
 
     Returns:
         cupy.ndarray: The indices of the maximum of ``a`` along an axis.
@@ -35,8 +35,8 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
             default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
-        keepdims (bool): If True, the axis ``axis`` is preserved as an axis of
-            length one.
+        keepdims (bool): If ``True``, the axis ``axis`` is preserved as an axis
+            of length one.
 
     Returns:
         cupy.ndarray: The indices of the minimum of ``a`` along an axis.
@@ -54,10 +54,39 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
 # TODO(okuta): Implement argwhere
 
 
-# TODO(okuta): Implement nonzero
+def nonzero(a):
+    """Return the indices of the elements that are non-zero.
+
+    Returns a tuple of arrays, one for each dimension of a,
+    containing the indices of the non-zero elements in that dimension.
+
+    Args:
+        a (cupy.ndarray): array
+
+    Returns:
+        tuple of arrays: Indices of elements that are non-zero.
+
+    .. seealso:: :func:`numpy.nonzero`
+
+    """
+    return a.nonzero()
 
 
-# TODO(okuta): Implement flatnonzero
+def flatnonzero(a):
+    """Return indices that are non-zero in the flattened version of a.
+
+    This is equivalent to a.ravel().nonzero()[0].
+
+    Args:
+        a (cupy.ndarray): input array
+
+    Returns:
+        cupy.ndarray: Output array,
+        containing the indices of the elements of a.ravel() that are non-zero.
+
+    .. seealso:: :func:`numpy.flatnonzero`
+    """
+    return a.ravel().nonzero()[0]
 
 
 def where(condition, x=None, y=None):
@@ -65,7 +94,7 @@ def where(condition, x=None, y=None):
 
     .. note::
 
-       Currently Cupy doesn't support ``where(condition)``, that Numpy
+       Currently CuPy doesn't support ``where(condition)``, that NumPy
        supports.
 
     Args:

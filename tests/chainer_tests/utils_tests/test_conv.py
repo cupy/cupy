@@ -128,8 +128,8 @@ class TestCol2Im(unittest.TestCase):
                         v = numpy.float32(0.0)
                         for dy in range(kh):
                             for dx in range(kw):
-                                oy = (y + ph - dy) / sy
-                                ox = (x + pw - dx) / sx
+                                oy = (y + ph - dy) // sy
+                                ox = (x + pw - dx) // sx
                                 if (y + ph - dy) % sy == 0 and \
                                    (x + pw - dx) % sx == 0 and \
                                    0 <= oy < col_h and \

@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import function
 from chainer.utils import type_check
 
@@ -18,8 +16,8 @@ class LinearFunction(function.Function):
         x_type, w_type = in_types[:2]
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
-            w_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
+            w_type.dtype.kind == 'f',
             x_type.ndim >= 2,
             w_type.ndim == 2,
             type_check.prod(x_type.shape[1:]) == w_type.shape[1],
@@ -27,7 +25,7 @@ class LinearFunction(function.Function):
         if n_in.eval() == 3:
             b_type = in_types[2]
             type_check.expect(
-                b_type.dtype == numpy.float32,
+                b_type.dtype == x_type.dtype,
                 b_type.ndim == 1,
                 b_type.shape[0] == w_type.shape[0],
             )
@@ -35,7 +33,7 @@ class LinearFunction(function.Function):
     def forward(self, inputs):
         x = _as_mat(inputs[0])
         W = inputs[1]
-        y = x.dot(W.T)
+        y = x.dot(W.T).astype(x.dtype)
         if len(inputs) == 3:
             b = inputs[2]
             y += b
@@ -46,8 +44,8 @@ class LinearFunction(function.Function):
         W = inputs[1]
         gy = grad_outputs[0]
 
-        gx = gy.dot(W).reshape(inputs[0].shape)
-        gW = gy.T.dot(x)
+        gx = gy.dot(W).astype(x.dtype).reshape(inputs[0].shape)
+        gW = gy.T.dot(x).astype(W.dtype)
         if len(inputs) == 3:
             gb = gy.sum(0)
             return gx, gW, gb
@@ -67,7 +65,7 @@ def linear(x, W, b=None):
             to be the *minibatch dimension*. The other dimensions are treated
             as concatenated one dimension whose size must be ``N``.
         W (~chainer.Variable): Weight variable of shape ``(M, N)``.
-        b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``..
+        b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``.
 
     Returns:
         ~chainer.Variable: Output variable.

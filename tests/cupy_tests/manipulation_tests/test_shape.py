@@ -11,7 +11,7 @@ class TestShape(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal(type_check=False)
     def test_reshape_strides(self, xp):
-        a = testing.shaped_arange((1, 1, 1, 2, 2))
+        a = testing.shaped_arange((1, 1, 1, 2, 2), xp)
         return a.strides
 
     @testing.numpy_cupy_array_equal(type_check=False)

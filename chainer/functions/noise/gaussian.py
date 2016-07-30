@@ -9,7 +9,7 @@ class Gaussian(function.Function):
 
     """Gaussian sampling function.
 
-    In forward calculation, this funciton takes mean and logarithm of variance
+    In forward calculation, this function takes mean and logarithm of variance
     as inputs, and draw a sample from a gaussian distribution.
     """
 

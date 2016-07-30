@@ -205,7 +205,7 @@ class TestGroupHierachy(unittest.TestCase):
         keys = ('child/linear/W',
                 'child/linear/b',
                 'child/Wc') + state
-        self.assertSetEqual(set(file.keys()), set([prefix + x for x in keys]))
+        self.assertSetEqual(set(file.keys()), {prefix + x for x in keys})
 
     def _check_optimizer_group(self, file, state, prefix=''):
         keys = ('child/linear/W/msg',
@@ -215,7 +215,7 @@ class TestGroupHierachy(unittest.TestCase):
                 'child/Wc/msg',
                 'child/Wc/msdx') + state
         self.assertSetEqual(set(file.keys()),
-                            set([prefix + x for x in keys]))
+                            {prefix + x for x in keys})
 
     def test_save_chain(self):
         d = {}
@@ -237,7 +237,7 @@ class TestGroupHierachy(unittest.TestCase):
     def test_save_chain2(self):
         npz.save_npz(self.temp_file_path, self.parent, self.compress)
         with numpy.load(self.temp_file_path) as f:
-            self._check_chain_group(f, ('Wp', ))
+            self._check_chain_group(f, ('Wp',))
 
     def test_save_optimizer2(self):
         npz.save_npz(self.temp_file_path, self.optimizer, self.compress)

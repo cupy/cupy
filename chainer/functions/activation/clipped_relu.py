@@ -25,15 +25,17 @@ class ClippedReLU(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         x_type, = in_types
-        type_check.expect(x_type.dtype == numpy.float32)
+        type_check.expect(x_type.dtype.kind == 'f')
 
     def forward_cpu(self, x):
+        x = x[0]
         return utils.force_array(numpy.minimum(
-            numpy.maximum(0, x[0]), self.cap)).astype(numpy.float32),
+            numpy.maximum(0, x), self.cap)).astype(x.dtype),
 
     def backward_cpu(self, x, gy):
+        x = x[0]
         return utils.force_array(
-            gy[0] * (0 < x[0]) * (x[0] < self.cap)).astype(numpy.float32),
+            gy[0] * (0 < x) * (x < self.cap)).astype(x.dtype),
 
     def forward_gpu(self, x):
         return cuda.elementwise(
@@ -43,7 +45,7 @@ class ClippedReLU(function.Function):
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
             'T x, T gy, T z', 'T gx',
-            'gx = ((x > 0) & (x < z))? gy : 0',
+            'gx = ((x > 0) & (x < z))? gy : (T)0',
             'clipped_relu_bwd')(x[0], gy[0], self.cap)
         return gx,
 

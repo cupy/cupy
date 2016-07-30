@@ -51,11 +51,11 @@ def bernoulli_nll(x, y):
         -B(x; p) = -\\sum_i {x_i \\log(p_i) + (1 - x_i)\\log(1 - p_i)},
 
     where :math:`p = \\sigma(y)`, and :math:`\\sigma(\\cdot)` is a sigmoid
-    funciton.
+    function.
 
     .. note::
 
-       As this funtion uses a sigmoid function, you can pass a result of
+       As this function uses a sigmoid function, you can pass a result of
        fully-connected layer (that means :class:`Linear`) to this function
        directly.
 
@@ -71,7 +71,7 @@ def bernoulli_nll(x, y):
     assert isinstance(x, variable.Variable)
     assert isinstance(y, variable.Variable)
 
-    return sum.sum(softplus.softplus(-y)) + sum.sum(y) - sum.sum(y * x)
+    return sum.sum(softplus.softplus(y)) - sum.sum(x * y)
 
 
 def gaussian_nll(x, mean, ln_var):

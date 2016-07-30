@@ -58,8 +58,8 @@ def save_npz(filename, obj, compression=True):
     Args:
         filename (str): Target file name.
         obj: Object to be serialized. It must support serialization protocol.
-        compression (bool): If True, compression in the resulting zip file is
-            enabled.
+        compression (bool): If ``True``, compression in the resulting zip file
+            is enabled.
 
     """
     s = DictionarySerializer()
@@ -79,7 +79,7 @@ class NpzDeserializer(serializer.Deserializer):
     to read an object serialized by :func:`save_npz`.
 
     Args:
-        npz: `npz` file opbject.
+        npz: `npz` file object.
         path: The base path that the deserialization starts from.
 
     """

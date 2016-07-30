@@ -302,7 +302,7 @@ class ReductionKernel(object):
     :meth:`~ReductionKernel.__call__` method, which is cached for each device.
     The compiled binary is also cached into a file under the
     ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
-    binary is resued by other processes.
+    binary is reused by other processes.
 
     Args:
         in_params (str): Input argument list.
@@ -315,8 +315,8 @@ class ReductionKernel(object):
             readability of the performance profiling.
         reduce_type (str): Type of values to be used for reduction. This type
             is used to store the special variables ``a``.
-        reduce_dims (bool): If True, input arrays are reshaped without copy to
-            smaller dimensions for efficiency.
+        reduce_dims (bool): If ``True``, input arrays are reshaped without copy
+            to smaller dimensions for efficiency.
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
             top of the cu file.
         options (tuple of str): Additional compilation options.

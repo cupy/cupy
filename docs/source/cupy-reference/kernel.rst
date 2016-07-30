@@ -108,24 +108,26 @@ The ElementwiseKernel class does the indexing with broadcasting automatically, w
 On the other hand, we sometimes want to write a kernel with manual indexing for some arguments.
 We can tell the ElementwiseKernel class to use manual indexing by adding the ``raw`` keyword preceding the type specifier.
 
-We can use the special variables ``n`` and ``i`` for the manual indexing.
-``n`` indicates total number of elements to apply the elementwise operation.
+We can use the special variable ``i`` and method ``_ind.size()`` for the manual indexing.
 ``i`` indicates the index within the loop.
+``_ind.size()`` indicates total number of elements to apply the elementwise operation.
+Note that it represents the size **after** broadcast operation.
+
 For example, a kernel that adds two vectors with reversing one of them can be written as follows:
 
 .. doctest::
 
    >>> add_reverse = cupy.ElementwiseKernel(
    ...     'T x, raw T y', 'T z',
-   ...     'z = x + y[n - i - 1]',
+   ...     'z = x + y[_ind.size() - i - 1]',
    ...     'add_reverse')
 
 (Note that this is an artificial example and you can write such operation just by ``z = x + y[::-1]`` without defining a new kernel).
 A raw argument can be used like an array.
-The indexing operator ``y[n - i]`` involves an indexing computation on ``y``, so ``y`` can be arbitrarily shaped and strided.
+The indexing operator ``y[_ind.size() - i - 1]`` involves an indexing computation on ``y``, so ``y`` can be arbitrarily shaped and strode.
 
-Note that raw arguments are not involved in the broadcasting and the determination of ``n``.
-If you want to mark all arguments as ``raw``, you must specify the ``size`` argument on invocation, which defines the value of ``n``.
+Note that raw arguments are not involved in the broadcasting.
+If you want to mark all arguments as ``raw``, you must specify the ``size`` argument on invocation, which defines the value of ``_ind.size()``.
 
 
 Reduction kernels
@@ -135,7 +137,7 @@ Reduction kernels can be defined by the :class:`~cupy.ReductionKernel` class.
 We can use it by defining four parts of the kernel code:
 
 1. Identity value: This value is used for the initial value of reduction.
-2. Mapping expression: It is used for the preprocessing of each element to be reduced.
+2. Mapping expression: It is used for the pre-processing of each element to be reduced.
 3. Reduction expression: It is an operator to reduce the multiple mapped values.
    The special variables ``a`` and ``b`` are used for its operands.
 4. Post mapping expression: It is used to transform the resulting reduced values.

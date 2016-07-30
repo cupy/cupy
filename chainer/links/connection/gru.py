@@ -9,16 +9,23 @@ from chainer.links.connection import linear
 
 class GRUBase(link.Chain):
 
-    def __init__(self, n_units, n_inputs=None):
+    def __init__(self, n_units, n_inputs=None, init=None,
+                 inner_init=None, bias_init=0):
         if n_inputs is None:
             n_inputs = n_units
         super(GRUBase, self).__init__(
-            W_r=linear.Linear(n_inputs, n_units),
-            U_r=linear.Linear(n_units, n_units),
-            W_z=linear.Linear(n_inputs, n_units),
-            U_z=linear.Linear(n_units, n_units),
-            W=linear.Linear(n_inputs, n_units),
-            U=linear.Linear(n_units, n_units),
+            W_r=linear.Linear(n_inputs, n_units,
+                              initialW=init, initial_bias=bias_init),
+            U_r=linear.Linear(n_units, n_units,
+                              initialW=inner_init, initial_bias=bias_init),
+            W_z=linear.Linear(n_inputs, n_units,
+                              initialW=init, initial_bias=bias_init),
+            U_z=linear.Linear(n_units, n_units,
+                              initialW=inner_init, initial_bias=bias_init),
+            W=linear.Linear(n_inputs, n_units,
+                            initialW=init, initial_bias=bias_init),
+            U=linear.Linear(n_units, n_units,
+                            initialW=inner_init, initial_bias=bias_init),
         )
 
 
@@ -28,7 +35,7 @@ class GRU(GRUBase):
 
     GRU function has six parameters :math:`W_r`, :math:`W_z`, :math:`W`,
     :math:`U_r`, :math:`U_z`, and :math:`U`. All these parameters are
-    :math:`n \\times n` matricies, where :math:`n` is the dimension of
+    :math:`n \\times n` matrices, where :math:`n` is the dimension of
     hidden vectors.
 
     Given two inputs a previous hidden vector :math:`h` and an input vector
@@ -51,7 +58,7 @@ class GRU(GRUBase):
     Args:
         n_units(int): Dimension of hidden vector :math:`h`.
         n_inputs(int): Dimension of input vector :math:`x`. If ``None``,
-        it is set to the same value as ``n_units``.
+            it is set to the same value as ``n_units``.
 
     See:
         - `On the Properties of Neural Machine Translation: Encoder-Decoder
@@ -63,6 +70,7 @@ class GRU(GRUBase):
 
 
     .. seealso:: :class:`~chainer.links.StatefulGRU`
+
     """
 
     def __call__(self, h, x):
@@ -78,7 +86,7 @@ class StatefulGRU(GRUBase):
 
     Stateful GRU function has six parameters :math:`W_r`, :math:`W_z`,
     :math:`W`, :math:`U_r`, :math:`U_z`, and :math:`U`.
-    All these parameters are :math:`n \\times n` matricies,
+    All these parameters are :math:`n \\times n` matrices,
     where :math:`n` is the dimension of hidden vectors.
 
     Given input vector :math:`x`, Stateful GRU returns the next
@@ -100,16 +108,32 @@ class StatefulGRU(GRUBase):
     Args:
         in_size(int): Dimension of input vector :math:`x`.
         out_size(int): Dimension of hidden vector :math:`h`.
+        init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the
+            GRU's input units (:math:`W`). Maybe be `None` to use default
+            initialization.
+        inner_init: A callable that takes ``numpy.ndarray`` or
+            ``cupy.ndarray`` and edits its value.
+            It is used for initialization of the GRU's inner
+            recurrent units (:math:`U`).
+            Maybe be ``None`` to use default initialization.
+        bias_init: A callable or scalar used to initialize the bias values for
+            both the GRU's inner and input units. Maybe be ``None`` to use
+            default initialization.
 
     Attributes:
         h(~chainer.Variable): Hidden vector that indicates the state of
-        :class:`~chainer.links.StatefulGRU`.
+            :class:`~chainer.links.StatefulGRU`.
 
     .. seealso:: :class:`~chainer.functions.GRU`
+
     """
 
-    def __init__(self, in_size, out_size):
-        super(StatefulGRU, self).__init__(out_size, in_size)
+    def __init__(self, in_size, out_size, init=None,
+                 inner_init=None, bias_init=0):
+        super(StatefulGRU, self).__init__(
+            out_size, in_size, init, inner_init, bias_init)
         self.state_size = out_size
         self.reset_state()
 

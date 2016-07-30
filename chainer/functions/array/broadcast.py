@@ -54,11 +54,11 @@ def broadcast(*args):
     """Broadcast given variables.
 
     Args:
-      args (Variables): Variables to be broadcasted.
+        args (Variables): Variables to be broadcasted.
 
     Returns:
-      ``tuple``: Tuple of :class:`~chainer.Variable` objects which are
-          broadcasted from given arguments.
+        tuple: Tuple of :class:`~chainer.Variable` objects which are
+        broadcasted from given arguments.
     """
     return Broadcast()(*args)
 
@@ -106,10 +106,10 @@ def broadcast_to(x, shape):
     """Broadcast a given variable to a given shape.
 
     Args:
-      x (~chainer.Variable): Variable to be broadcasted.
-      shape (tuple of int): The shape of the output variable.
+        x (~chainer.Variable): Variable to be broadcasted.
+        shape (tuple of int): The shape of the output variable.
 
     Returns:
-        ~chainer.Variable: Output variable broacasted to the given shape.
+        ~chainer.Variable: Output variable broadcasted to the given shape.
     """
     return BroadcastTo(shape)(x)

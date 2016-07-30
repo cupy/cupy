@@ -13,7 +13,7 @@ def memoize(bint for_each_device=False):
     This decorator provides automatic memoization of the function result.
 
     Args:
-        for_each_device (bool): If True, it memoizes the results for each
+        for_each_device (bool): If ``True``, it memoizes the results for each
             device. Otherwise, it memoizes the results only based on the
             arguments.
 

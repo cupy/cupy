@@ -63,7 +63,7 @@ class TestArrayUnaryOp(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def check_zerodim_op(self, op, xp, dtype):
-        a = xp.array(-2)
+        a = xp.array(-2, dtype)
         return op(a)
 
     def test_neg_zerodim(self):
@@ -93,7 +93,7 @@ class TestArrayIntUnaryOp(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def check_zerodim_op(self, op, xp, dtype):
-        a = xp.array(-2)
+        a = xp.array(-2, dtype)
         return op(a)
 
     def test_invert_zerodim(self):

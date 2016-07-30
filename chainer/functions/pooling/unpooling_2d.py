@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
@@ -21,7 +19,7 @@ class Unpooling2D(pooling_2d.Pooling2D):
         x_type = in_types[0]
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             x_type.ndim == 4,
         )
 
@@ -43,7 +41,7 @@ class Unpooling2D(pooling_2d.Pooling2D):
             self.outw = conv.get_deconv_outsize(
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
         xp = cuda.get_array_module(*x)
-        col = xp.tile(x[0][:, :, xp.newaxis, xp.newaxis],
+        col = xp.tile(x[0][:, :, None, None],
                       (1, 1, self.kh, self.kw, 1, 1))
         if isinstance(x[0], cuda.ndarray):
             y = conv.col2im_gpu(col, self.sy, self.sx, self.ph, self.pw,
@@ -90,12 +88,15 @@ def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
             If outsize is not ``None``, the result of outsize applied to
             :func:`~chainer.utils.conv.get_conv_outsize` must be equal to
             the shape of the 2d array in the input batch ``x``.
-        cover_all (bool): If ``True``, all spatial locations are pooled
-            into some output pixels, and the output size is larger than that
-            when cover_all is ``False``.
+        cover_all (bool): If ``True``, the output size may be smaller than
+            the size if ``cover_all`` is ``False``. This flag serves to
+            align behavior to the pooling functions which can cover all
+            input locations, see :func:`~chainer.functions.max_pooling_2d`
+            and :func:`~chainer.functions.convolution_2d`.
+
 
     Returns:
-        ~chainer.Variable: Ouptut variable.
+        ~chainer.Variable: Output variable.
 
     """
     return Unpooling2D(ksize, stride, pad, outsize, cover_all)(x)

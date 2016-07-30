@@ -35,9 +35,7 @@ environment:
       PYTHON_VERSION: "3.5.x"
       PYTHON_ARCH: "64"
 
-
 install:
-
   - ECHO "Filesystem root:"
   - ps: "ls \"C:/\""
 
@@ -58,7 +56,8 @@ install:
   - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
 
   - "conda install -y -q setuptools"
-  - "conda install -y -q cython h5py"
+  - "conda install -y -q cython"
+  - "conda install -y -q h5py"
 
 build_script:
   # Build the compiled extension
@@ -67,6 +66,6 @@ build_script:
 test_script:
   # Run the project tests
   - "%CMD_IN_ENV% pip install nose mock hacking"
-  - "%CMD_IN_ENV% flake8"
-  - "%CMD_IN_ENV% nosetests -A \"gpu<1\" tests\\chainer_tests"
-
+  - "flake8"
+  - "cd tests\\chainer_tests"
+  - "nosetests -A \"gpu<1\""

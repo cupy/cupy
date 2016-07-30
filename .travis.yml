@@ -1,5 +1,9 @@
 language: python
 
+cache:
+  - pip
+  - ccache
+
 matrix:
   include:
     - os: linux
@@ -34,7 +38,7 @@ before_install:
       brew outdated pyenv || brew upgrade --quiet pyenv;
       brew install homebrew/boneyard/pyenv-pip-rehash;
 
-      pyenv install -ks $PYTHON_VERSION;
+      PYTHON_CONFIGURE_OPTS="--enable-unicode=ucs2" pyenv install -ks $PYTHON_VERSION;
       pyenv global $PYTHON_VERSION;
       python --version;
 
@@ -42,6 +46,7 @@ before_install:
     fi
 
 install:
+  - pip install -U pip wheel
   - pip install cython
   - python setup.py sdist
   - pip install dist/*.tar.gz
@@ -49,8 +54,10 @@ install:
   - pip install nose hacking mock
 
 script:
-  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' tests/chainer_tests
   - flake8
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest tests/install_tests
+  - cd tests
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest chainer_tests
 
 sudo: false
 

@@ -1,4 +1,3 @@
-import math
 import unittest
 
 import mock
@@ -14,44 +13,76 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(*testing.product({
+    'shape': [None, (2, 3), (2, 3, 2), (2, 3, 2, 2)],
+    'cache_score': [True, False],
+    'normalize': [True, False],
+    'ignore_index': [None, (slice(None),), (0,), (0, 1), (0, 1, 0)],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestSoftmaxCrossEntropy(unittest.TestCase):
 
-    backward_atol = 1e-4
-
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
-        self.t = numpy.random.randint(0, 3, (4,)).astype(numpy.int32)
+        if self.shape is None:
+            if self.dtype == numpy.float16:
+                self.x = numpy.array([[-5, 1]], dtype=self.dtype)
+            else:
+                self.x = numpy.array([[-1000, 1]], dtype=self.dtype)
+            self.t = numpy.array([0], dtype=numpy.int32)
+        else:
+            self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            out_shape = (self.shape[0],) + self.shape[2:]
+            self.t = numpy.random.randint(0, 3, out_shape).astype(numpy.int32)
+            if (self.ignore_index is not None and
+                    len(self.ignore_index) <= self.t.ndim):
+                self.t[self.ignore_index] = -1
+        self.check_forward_options = {}
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_backward_options = {
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, t_data, use_cudnn=True):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
-        loss = functions.softmax_cross_entropy(x, t, use_cudnn)
+        loss = functions.softmax_cross_entropy(
+            x, t, use_cudnn=use_cudnn, normalize=self.normalize,
+            cache_score=self.cache_score)
         self.assertEqual(loss.data.shape, ())
-        self.assertEqual(loss.data.dtype, numpy.float32)
+        self.assertEqual(loss.data.dtype, self.dtype)
+        self.assertEqual(hasattr(loss.creator, 'y'), self.cache_score)
         loss_value = float(cuda.to_cpu(loss.data))
 
         # Compute expected value
         loss_expect = 0.0
         count = 0
-        for i in six.moves.range(self.x.shape[0]):
-            if self.t[i] == -1:
+        x = numpy.rollaxis(self.x, 1, self.x.ndim).reshape(
+            (self.t.size, self.x.shape[1]))
+        t = self.t.ravel()
+        for xi, ti in six.moves.zip(x, t):
+            if ti == -1:
                 continue
-            log_z = numpy.ufunc.reduce(numpy.logaddexp, self.x[i])
-            loss_expect -= (self.x[i] - log_z)[self.t[i]]
+            log_z = numpy.ufunc.reduce(numpy.logaddexp, xi)
+            loss_expect -= (xi - log_z)[ti]
             count += 1
 
-        if count == 0:
-            loss_expect = 0.0
+        if self.normalize:
+            if count == 0:
+                loss_expect = 0.0
+            else:
+                loss_expect /= count
         else:
-            loss_expect /= count
+            loss_expect /= len(t_data)
 
-        self.assertAlmostEqual(loss_expect, loss_value, places=5)
+        testing.assert_allclose(
+            loss_expect, loss_value, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
@@ -63,14 +94,15 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
 
     def check_backward(self, x_data, t_data, use_cudnn=True):
         gradient_check.check_backward(
-            functions.SoftmaxCrossEntropy(use_cudnn),
-            (x_data, t_data), None, eps=0.02, atol=self.backward_atol)
+            functions.SoftmaxCrossEntropy(
+                use_cudnn=use_cudnn, cache_score=self.cache_score),
+            (x_data, t_data), None, eps=0.02, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
@@ -79,127 +111,6 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t), False)
-
-
-class TestSoftmaxCrossEntropyUnstable(TestSoftmaxCrossEntropy):
-
-    backward_atol = 1e-3
-
-    def setUp(self):
-        self.x = numpy.array([[-1000, 1]], dtype=numpy.float32)
-        self.t = numpy.array([0], dtype=numpy.int32)
-
-
-class TestReplicatedSoftmaxCrossEntropy1(TestSoftmaxCrossEntropy):
-
-    def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (4, 3, 2)).astype(numpy.float32)
-        self.t = numpy.random.randint(0, 3, (4, 2)).astype(numpy.int32)
-
-    def check_forward(self, x_data, t_data, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        loss = functions.softmax_cross_entropy(
-            x, t, use_cudnn, normalize=True)
-        self.assertEqual(loss.data.shape, ())
-        self.assertEqual(loss.data.dtype, numpy.float32)
-        loss_value = float(cuda.to_cpu(loss.data))
-
-        # Compute expected value
-        y = numpy.exp(self.x)
-        loss_expect = 0.0
-        count = 0
-        for i in six.moves.range(y.shape[0]):
-            for k in six.moves.range(y.shape[2]):
-                if self.t[i, k] == -1:
-                    continue
-                loss_expect -= math.log(
-                    y[i, self.t[i, k], k] / y[i, :, k].sum())
-                count += 1
-
-        if count == 0:
-            loss_expect = 0.0
-        else:
-            loss_expect /= count
-
-        self.assertAlmostEqual(loss_expect, loss_value, places=4)
-
-
-class TestReplicatedSoftmaxCrossEntropy2(TestSoftmaxCrossEntropy):
-
-    def setUp(self):
-        self.x = numpy.random.uniform(
-            -1, 1, (4, 3, 2, 5)).astype(numpy.float32)
-        self.t = numpy.random.randint(0, 3, (4, 2, 5)).astype(numpy.int32)
-
-    def check_forward(self, x_data, t_data, use_cudnn=True):
-        x = chainer.Variable(x_data)
-        t = chainer.Variable(t_data)
-        loss = functions.softmax_cross_entropy(
-            x, t, use_cudnn, normalize=False)
-        self.assertEqual(loss.data.shape, ())
-        self.assertEqual(loss.data.dtype, numpy.float32)
-        loss_value = float(cuda.to_cpu(loss.data))
-
-        # Compute expected value
-        y = numpy.exp(self.x)
-        loss_expect = 0.0
-        for i in six.moves.range(y.shape[0]):
-            for k in six.moves.range(y.shape[2]):
-                for l in six.moves.range(y.shape[3]):
-                    if self.t[i, k, l] == -1:
-                        continue
-                    loss_expect -= math.log(
-                        y[i, self.t[i, k, l], k, l] / y[i, :, k, l].sum())
-        loss_expect /= y.shape[0]
-
-        self.assertAlmostEqual(loss_expect, loss_value, places=4)
-
-
-class TestSoftmaxCrossEntropyWithIgnoreLabel(TestSoftmaxCrossEntropy):
-
-    def setUp(self):
-        super(TestSoftmaxCrossEntropyWithIgnoreLabel, self).setUp()
-        self.t[2] = -1
-
-
-class TestSoftmaxCrossEntropyIgnoreAll(TestSoftmaxCrossEntropy):
-
-    def setUp(self):
-        super(TestSoftmaxCrossEntropyIgnoreAll, self).setUp()
-        self.t[:] = -1
-
-
-class TestReplicatedSoftmaxCrossEntropy1IgnoreLabel(
-        TestReplicatedSoftmaxCrossEntropy1):
-
-    def setUp(self):
-        super(TestReplicatedSoftmaxCrossEntropy1IgnoreLabel, self).setUp()
-        self.t[0, 1] = -1
-
-
-class TestReplicatedSoftmaxCrossEntropy2IgnoreLabel(
-        TestReplicatedSoftmaxCrossEntropy2):
-
-    def setUp(self):
-        super(TestReplicatedSoftmaxCrossEntropy2IgnoreLabel, self).setUp()
-        self.t[0, 1, 2] = -1
-
-
-class TestReplicatedSoftmaxCrossEntropy1IgnoreAll(
-        TestReplicatedSoftmaxCrossEntropy1):
-
-    def setUp(self):
-        super(TestReplicatedSoftmaxCrossEntropy1IgnoreAll, self).setUp()
-        self.t[:] = -1
-
-
-class TestReplicatedSoftmaxCrossEntropy2IgnoreAll(
-        TestReplicatedSoftmaxCrossEntropy2):
-
-    def setUp(self):
-        super(TestReplicatedSoftmaxCrossEntropy2IgnoreAll, self).setUp()
-        self.t[:] = -1
 
 
 @testing.parameterize(
@@ -237,20 +148,20 @@ class TestSoftmaxCrossEntropyValueCheck(unittest.TestCase):
     def test_value_check_gpu(self):
         self.check_value_check(self.x, self.t, False)
 
-    @attr.cudnn
+    @attr.gpu
     def test_value_check_gpu_cudnn(self):
         self.check_value_check(cuda.to_gpu(self.x), cuda.to_gpu(self.t), True)
 
 
-@testing.parameterize(
-    {'use_cudnn': True},
-    {'use_cudnn': False},
-)
+@testing.parameterize(*testing.product({
+    'use_cudnn': [True, False],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 @attr.cudnn
 class TestSoftmaxCrossEntropyCudnnCall(unittest.TestCase):
 
     def setUp(self):
-        self.x = cuda.cupy.random.uniform(-1, 1, (4, 3)).astype(numpy.float32)
+        self.x = cuda.cupy.random.uniform(-1, 1, (4, 3)).astype(self.dtype)
         self.t = cuda.cupy.random.randint(0, 3, (4,)).astype(numpy.int32)
 
     def forward(self):

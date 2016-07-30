@@ -9,11 +9,11 @@ class Event(object):
     instance is destroyed by the GC, its handle is also destroyed.
 
     Args:
-        block (bool): If True, the event blocks on the
+        block (bool): If ``True``, the event blocks on the
             :meth:`~cupy.cuda.Event.synchronize` method.
-        disable_timing (bool): If True, the event does not prepare the timing
-            data.
-        interprocess (bool): If True, the event can be passed to other
+        disable_timing (bool): If ``True``, the event does not prepare the
+            timing data.
+        interprocess (bool): If ``True``, the event can be passed to other
             processes.
 
     Attributes:
@@ -86,11 +86,11 @@ class Stream(object):
     instance is destroyed by the GC, its handle is also destroyed.
 
     Args:
-        null (bool): If True, the stream is a null stream (i.e. the default
+        null (bool): If ``True``, the stream is a null stream (i.e. the default
             stream that synchronizes with all streams). Otherwise, a plain new
             stream is created.
-        non_blocking (bool): If True, the stream does not synchronize with the
-            NULL stream.
+        non_blocking (bool): If ``True``, the stream does not synchronize with
+            the NULL stream.
 
     Attributes:
         ptr (cupy.cuda.runtime.Stream): Raw stream handle. It can be passed to
@@ -128,14 +128,16 @@ class Stream(object):
             arg (object): Argument to the callback.
 
         """
-        runtime.streamAddCallback(self.ptr, callback, arg)
+        def f(stream, status, dummy):
+            callback(self, status, arg)
+        runtime.streamAddCallback(self.ptr, f, 0)
 
     def record(self, event=None):
         """Records an event on the stream.
 
         Args:
-            event (None or cupy.cuda.Event): CUDA event. If None, then a new
-                plain event is created and used.
+            event (None or cupy.cuda.Event): CUDA event. If ``None``, then a
+                new plain event is created and used.
 
         Returns:
             cupy.cuda.Event: The recorded event.

@@ -15,8 +15,7 @@ if cuda.cudnn_enabled:
     _cudnn_version = libcudnn.getVersion()
 
 
-def logsumexp(x):
-    xp = cuda.get_array_module(x)
+def logsumexp(xp, x):
     m = x.max(axis=1, keepdims=True)
     y = x - m
     xp.exp(y, out=y)
@@ -25,11 +24,11 @@ def logsumexp(x):
 
 def softmax_log(x, use_cudnn):
     xp = cuda.get_array_module(x)
-    if xp != numpy and cuda.cudnn_enabled and use_cudnn \
-       and _cudnn_version >= 3000:
-        dtype = x.dtype
-        one = numpy.array(1, dtype=dtype).ctypes
-        zero = numpy.array(0, dtype=dtype).ctypes
+    if (xp != numpy and cuda.cudnn_enabled and use_cudnn and
+            _cudnn_version >= 3000):
+        oz_dtype = 'd' if x.dtype == 'd' else 'f'
+        one = numpy.array(1, dtype=oz_dtype).ctypes
+        zero = numpy.array(0, dtype=oz_dtype).ctypes
         handle = cudnn.get_handle()
         x_cube = x.reshape(x.shape[:2] + (-1, 1))
         desc = cudnn.create_tensor_descriptor(x_cube)
@@ -39,9 +38,8 @@ def softmax_log(x, use_cudnn):
             x_cube.data.ptr, zero.data, desc.value,
             y.data.ptr)
         return y
-
     else:
-        log_z = logsumexp(x)
+        log_z = logsumexp(xp, x)
         return x - log_z
 
 
@@ -51,16 +49,17 @@ class SoftmaxCrossEntropy(function.Function):
 
     ignore_label = -1
 
-    def __init__(self, use_cudnn=True, normalize=True):
+    def __init__(self, use_cudnn=True, normalize=True, cache_score=True):
         self.use_cudnn = use_cudnn
         self.normalize = normalize
+        self.cache_score = cache_score
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         x_type, t_type = in_types
 
         type_check.expect(
-            x_type.dtype == numpy.float32,
+            x_type.dtype.kind == 'f',
             t_type.dtype == numpy.int32,
             t_type.ndim == x_type.ndim - 1,
 
@@ -82,7 +81,8 @@ class SoftmaxCrossEntropy(function.Function):
             self._check_input_values(x, t)
 
         log_y = softmax_log(x, False)
-        self.y = numpy.exp(log_y)
+        if self.cache_score:
+            self.y = numpy.exp(log_y)
         log_yd = numpy.rollaxis(log_y, 1)
         log_yd = log_yd.reshape(len(log_yd), -1)
 
@@ -106,7 +106,8 @@ class SoftmaxCrossEntropy(function.Function):
             self._check_input_values(x, t)
 
         log_y = softmax_log(x, self.use_cudnn)
-        self.y = cupy.exp(log_y)
+        if self.cache_score:
+            self.y = cupy.exp(log_y)
         if getattr(self, 'normalize', True):
             coeff = cupy.maximum(1, (t != self.ignore_label).sum())
         else:
@@ -116,7 +117,7 @@ class SoftmaxCrossEntropy(function.Function):
         log_y = cupy.rollaxis(log_y, 1, log_y.ndim)
         ret = cuda.reduce(
             'S t, raw T log_y, int32 n_channel, raw T coeff', 'T out',
-            't == -1 ? 0 : log_y[_j * n_channel + t]',
+            't == -1 ? T(0) : log_y[_j * n_channel + t]',
             'a + b', 'out = a * -coeff[0]', '0', 'crossent_fwd'
         )(t, log_y.reduced_view(), log_y.shape[-1], self._coeff)
         return ret,
@@ -125,20 +126,25 @@ class SoftmaxCrossEntropy(function.Function):
         x, t = inputs
         gloss = grad_outputs[0]
         n_unit = t.size // len(t)
-        if self.y.ndim == 2:
-            gx = self.y.copy()
+        if hasattr(self, 'y'):
+            y = self.y.copy()
+        else:
+            log_y = softmax_log(x, self.use_cudnn)
+            y = numpy.exp(log_y)
+        if y.ndim == 2:
+            gx = y
             gx[six.moves.xrange(len(t)), numpy.maximum(t, 0)] -= 1
             gx *= (t != self.ignore_label).reshape((len(t), 1))
         else:
             # in the case where y.ndim is higher than 2,
             # we think that a current implementation is inefficient
             # because it yields two provisional arrays for indexing.
-            gx = self.y.copy().reshape(self.y.shape[0], self.y.shape[1], -1)
+            gx = y.reshape(y.shape[0], y.shape[1], -1)
             fst_index = numpy.arange(t.size) // n_unit
             trd_index = numpy.arange(t.size) % n_unit
             gx[fst_index, numpy.maximum(t.ravel(), 0), trd_index] -= 1
             gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
-            gx = gx.reshape(self.y.shape)
+            gx = gx.reshape(y.shape)
 
         gx *= gloss * self._coeff
         return gx, None
@@ -146,6 +152,11 @@ class SoftmaxCrossEntropy(function.Function):
     def backward_gpu(self, inputs, grad_outputs):
         cupy = cuda.cupy
         x, t = inputs
+        if hasattr(self, 'y'):
+            y = self.y
+        else:
+            y = softmax_log(x, self.use_cudnn)
+            cupy.exp(y, out=y)
         gloss = grad_outputs[0]
         n_unit = t.size // len(t)
         coeff = gloss * self._coeff
@@ -157,11 +168,12 @@ class SoftmaxCrossEntropy(function.Function):
                gx = (t == -1) ? 0 : (coeff[0] * (y - (c == t)));
             ''',
             'softmax_crossent_bwd')(
-                self.y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit)
+                y, cupy.expand_dims(t, 1), coeff, x.shape[1], n_unit)
         return gx, None
 
 
-def softmax_cross_entropy(x, t, use_cudnn=True, normalize=True):
+def softmax_cross_entropy(
+        x, t, use_cudnn=True, normalize=True, cache_score=True):
     """Computes cross entropy loss for pre-softmax activations.
 
     Args:
@@ -172,12 +184,15 @@ def softmax_cross_entropy(x, t, use_cudnn=True, normalize=True):
             a usual softmax cross entropy if the number of dimensions is equal
             to 2, it computes a cross entropy of the replicated softmax if the
             number of dimensions is greater than 2.
-        t (Variable): Variable holding an int32 vector of groundtruth labels.
-            If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
+        t (Variable): Variable holding an int32 vector of ground truth labels.
+            If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
         normalize (Variable): Variable holding a boolean value which
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,
             it only normalizes along a batch size.
+        cache_score (bool): When it is ``True``, the function stores result
+            of forward computation to use it on backward computation. It
+            reduces computational cost though consumes more memory.
 
     Returns:
         Variable: A variable holding a scalar array of the cross entropy loss.
@@ -187,4 +202,4 @@ def softmax_cross_entropy(x, t, use_cudnn=True, normalize=True):
        This function is differentiable only by ``x``.
 
     """
-    return SoftmaxCrossEntropy(use_cudnn, normalize)(x, t)
+    return SoftmaxCrossEntropy(use_cudnn, normalize, cache_score)(x, t)

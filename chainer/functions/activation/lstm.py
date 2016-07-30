@@ -7,8 +7,8 @@ from chainer.utils import type_check
 
 
 def _extract_gates(x):
-    r = x.reshape((x.shape[0], x.shape[1] // 4, 4) + x.shape[2:])
-    return (r[:, :, i] for i in six.moves.range(4))
+    r = x.reshape((len(x), x.shape[1] // 4, 4) + x.shape[2:])
+    return [r[:, :, i] for i in six.moves.range(4)]
 
 
 def _sigmoid(x):
@@ -49,8 +49,8 @@ class LSTM(function.Function):
         c_type, x_type = in_types
 
         type_check.expect(
-            c_type.dtype == numpy.float32,
-            x_type.dtype == numpy.float32,
+            c_type.dtype.kind == 'f',
+            x_type.dtype == c_type.dtype,
 
             c_type.ndim >= 2,
             x_type.ndim >= 2,
@@ -59,7 +59,7 @@ class LSTM(function.Function):
             x_type.shape[0] == c_type.shape[0],
             x_type.shape[1] == 4 * c_type.shape[1],
         )
-        for i in range(2, c_type.ndim.eval()):
+        for i in six.moves.range(2, c_type.ndim.eval()):
             type_check.expect(x_type.shape[i] == c_type.shape[i])
 
     def forward(self, inputs):
@@ -142,7 +142,7 @@ def lstm(c_prev, x):
     It means that :math:`x` 's second axis must have 4 times the length of
     :math:`c_{\\text{prev}}`.
 
-    The splitted input signals are corresponding to:
+    The split input signals are corresponding to:
 
         - :math:`a` : sources of cell input
         - :math:`i` : sources of input gate
@@ -181,9 +181,13 @@ def lstm(c_prev, x):
         function. Each of ``y``, ``c`` and ``h`` has ``n_units`` channels.
         Most typical preparation of ``x`` is:
 
-        >>> model = FunctionSet(w=F.Linear(n_units, 4 * n_units),
-        ...                     v=F.Linear(n_units, 4 * n_units),
-        ...                     ...)
+        >>> import chainer, chainer.functions as F
+        >>> n_units = 100
+        >>> y = chainer.Variable(numpy.zeros((1, n_units), 'f'))
+        >>> h = chainer.Variable(numpy.zeros((1, n_units), 'f'))
+        >>> c = chainer.Variable(numpy.zeros((1, n_units), 'f'))
+        >>> model = chainer.Chain(w=F.Linear(n_units, 4 * n_units),
+        ...                       v=F.Linear(n_units, 4 * n_units),)
         >>> x = model.w(y) + model.v(h)
         >>> c, h = F.lstm(c, x)
 

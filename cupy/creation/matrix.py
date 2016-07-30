@@ -16,7 +16,8 @@ def diag(v, k=0):
         cupy.ndarray: If ``v`` indicates a 1-D array, then it returns a 2-D
         array with the specified diagonal filled by ``v``. If ``v`` indicates a
         2-D array, then it returns the specified diagonal of ``v``. In latter
-        case, if ``v`` is a cupy.ndarray object, then its view is returned.
+        case, if ``v`` is a :class:`cupy.ndarray` object, then its view is
+        returned.
 
     .. seealso:: :func:`numpy.diag`
 

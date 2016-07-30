@@ -60,9 +60,9 @@ def sigmoid_cross_entropy(x, t, use_cudnn=True, normalize=True):
         x (Variable): A variable object holding a matrix whose (i, j)-th
             element indicates the unnormalized log probability of the j-th unit
             at the i-th example.
-        t (Variable): Variable holding an int32 vector of groundtruth labels.
-            If ``t[i] == -1``, correspondig ``x[i]`` is ignored.
-            Loss is zero if all groundtruth labels are ``-1``.
+        t (Variable): Variable holding an int32 vector of ground truth labels.
+            If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
+            Loss is zero if all ground truth labels are ``-1``.
         normalize (bool): Variable holding a boolean value which
             determines the normalization constant. If true, this function
             normalizes the cross entropy loss across all instances. If else,

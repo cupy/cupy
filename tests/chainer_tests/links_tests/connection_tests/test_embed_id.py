@@ -12,13 +12,16 @@ from chainer.testing import condition
 
 
 @testing.parameterize(
-    {'x_data': [0, 1, 0]},
-    {'x_data': [[0, 1, 0], [1, 0, 1]]},
+    {'x_data': [0, 1, 0], 'ignore_label': None},
+    {'x_data': [[0, 1, 0], [1, 0, 1]], 'ignore_label': None},
+    {'x_data': [0, 1, -1], 'ignore_label': -1},
+    {'x_data': [[0, 1, -1], [-1, 0, 1]], 'ignore_label': -1},
 )
 class TestEmbedID(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.EmbedID(3, 2)
+        self.link = links.EmbedID(3, 2, ignore_label=self.ignore_label)
+        self.link.ignore_label
         self.link.zerograds()
 
         self.W = self.link.W.data.copy()  # fixed on CPU
@@ -33,9 +36,12 @@ class TestEmbedID(unittest.TestCase):
 
         y_expect = numpy.empty_like(self.gy)
         for i in numpy.ndindex(self.x.shape):
-            y_expect[i] = self.W[int(self.x[i])]
+            if self.x[i] == -1:
+                y_expect[i] = 0
+            else:
+                y_expect[i] = self.W[int(self.x[i])]
 
-        gradient_check.assert_allclose(y_expect, y.data, atol=0, rtol=0)
+        testing.assert_allclose(y_expect, y.data, atol=0, rtol=0)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -94,6 +100,17 @@ class TestEmbedIDValueCheck(unittest.TestCase):
     @attr.gpu
     def test_value_check_gpu(self):
         self.check_value_check(self.t)
+
+
+class TestEmbedIDUnpickleOldFile(unittest.TestCase):
+
+    def test_old_unpickle(self):
+        embed = links.EmbedID(3, 4)
+        # To emulate an old pickled file
+        delattr(embed, 'ignore_label')
+        x = chainer.Variable(numpy.arange(2, dtype=numpy.int32))
+        y = embed(x)
+        self.assertEqual(y.data.shape, (2, 4))
 
 
 testing.run_module(__name__, __file__)

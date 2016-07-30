@@ -12,8 +12,10 @@ def array_split(ary, indices_or_sections, axis=0):
     .. seealso:: :func:`cupy.split` for more detail, :func:`numpy.array_split`
 
     """
-    if ary.ndim <= axis:
+    ndim = ary.ndim
+    if -ndim > axis or ndim <= axis:
         raise IndexError('Axis exceeds ndim')
+    axis %= ndim
     size = ary.shape[axis]
 
     if numpy.isscalar(indices_or_sections):
@@ -32,8 +34,7 @@ def array_split(ary, indices_or_sections, axis=0):
     for index in indices:
         ret.append(ary[skip + (slice(i, index),)])
         i = index
-    ret.append(ary[skip + (slice(index, size),)])
-
+    ret.append(ary[skip + (slice(i, size),)])
     return ret
 
 
@@ -80,7 +81,7 @@ def split(ary, indices_or_sections, axis=0):
         axis (int): Axis along which the array is split.
 
     Returns:
-        A list of sub arrays. Eacy array is a view of the corresponding input
+        A list of sub arrays. Each array is a view of the corresponding input
         array.
 
     .. seealso:: :func:`numpy.split`

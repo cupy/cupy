@@ -46,6 +46,12 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.viewcode']
 
+try:
+    import sphinxcontrib.spelling  # noqa
+    extensions.append('sphinxcontrib.spelling')
+except ImportError:
+    pass
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -118,12 +124,14 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
+# Napoleon settings
+napoleon_use_ivar = True
 
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-if not os.environ.get('READTHEDOCS'):
+if not on_rtd:
     html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -157,7 +165,6 @@ html_static_path = ['_static']
 
 html_style = 'css/modified_theme.css'
 
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
     html_context = {
         'css_files': [
@@ -314,7 +321,7 @@ texinfo_documents = [
 autosummary_generate = True
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/2/', None),
+    'python': ('https://docs.python.org/3/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
 }
 
@@ -322,10 +329,15 @@ doctest_global_setup = '''
 import numpy as np
 import cupy
 import chainer
-from chainer import cuda, Function, gradient_check, Variable, optimizers, serializers, utils
+from chainer import cuda, Function, gradient_check, training, utils, Variable
+from chainer import datasets, iterators, optimizers, serializers
 from chainer import Link, Chain, ChainList
 import chainer.functions as F
 import chainer.links as L
+from chainer.training import extensions
 np.random.seed(0)
 '''
-doctest_test_doctest_blocks = None
+doctest_test_doctest_blocks = ''
+
+spelling_lang = 'en_US'
+spelling_word_list_filename = 'spelling_wordlist.txt'

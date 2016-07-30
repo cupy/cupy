@@ -88,7 +88,8 @@ class HDF5Deserializer(serializer.Deserializer):
         self.group = group
 
     def __getitem__(self, key):
-        return HDF5Deserializer(self.group[key])
+        name = self.group.name + '/' + key
+        return HDF5Deserializer(self.group.require_group(name))
 
     def __call__(self, key, value):
         dataset = self.group[key]

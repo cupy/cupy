@@ -4,7 +4,29 @@ from cupy import testing
 
 
 @testing.gpu
-class TestGanerate(unittest.TestCase):
+class TestIX_(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_ix_list(self, xp):
+        return xp.ix_([0, 1], [2, 4])
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_list_equal()
+    def test_ix_ndarray(self, xp, dtype):
+        return xp.ix_(xp.array([0, 1], dtype), xp.array([2, 3], dtype))
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_ix_empty_ndarray(self, xp):
+        return xp.ix_(xp.array([]))
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_ix_bool_ndarray(self, xp):
+        return xp.ix_(xp.array([True, False] * 2))
+
+@testing.gpu
+class TestR_(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
@@ -56,6 +78,9 @@ class TestGanerate(unittest.TestCase):
         with self.assertRaises(ValueError):
             testing.r_[a, b]
 
+@testing.gpu
+class TestC_(unittest.TestCase):
+
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
     def test_c_1(self, xp, dtype):
@@ -76,6 +101,8 @@ class TestGanerate(unittest.TestCase):
         with self.assertRaises(ValueError):
             testing.c_[a, b]
 
+@testing.gpu
+class TestAxisConcatenator(unittest.TestCase):
     def test_AxisConcatenator_init1(self):
         with self.assertRaises(TypeError):
             testing.AxisConcatenator.__init__()
