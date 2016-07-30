@@ -369,7 +369,7 @@ class PowVarConst(function.Function):
 
     def forward(self, x):
         value = _preprocess_const(x[0], self.value)
-        return utils.force_array((x[0] ** value).astype(x[0].dtype)),
+        return utils.force_array(x[0] ** value, x[0].dtype),
 
     def backward_cpu(self, x, gy):
         val_1 = _preprocess_const(x[0], self.value - 1)

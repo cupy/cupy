@@ -23,7 +23,7 @@ class Log1p(function.Function):
         return cuda.cupy.log1p(x[0]),
 
     def backward(self, x, gy):
-        return utils.force_array((gy[0] / (x[0] + 1.0)).astype(numpy.float32)),
+        return utils.force_array(gy[0] / (x[0] + x[0].dtype.type(1.0))),
 
 
 def log1p(x):
