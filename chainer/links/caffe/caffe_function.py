@@ -21,11 +21,11 @@ def _protobuf3():
 
 
 if _protobuf3():
-    from chainer.links.caffe import caffe_pb3 as caffe_pb
+    from chainer.links.caffe.protobuf3 import caffe_pb2 as caffe_pb
     available = True
 elif sys.version_info < (3, 0, 0):
     # caffe_pb2 does not support Py3
-    from chainer.links.caffe import caffe_pb2 as caffe_pb
+    from chainer.links.caffe.protobuf2 import caffe_pb2 as caffe_pb
     available = True
 else:
     available = False
