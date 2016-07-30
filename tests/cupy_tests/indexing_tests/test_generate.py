@@ -25,7 +25,6 @@ class TestIX_(unittest.TestCase):
     def test_ix_bool_ndarray(self, xp):
         return xp.ix_(xp.array([True, False] * 2))
 
-@testing.gpu
 class TestR_(unittest.TestCase):
 
     _multiprocess_can_split_ = True
@@ -72,6 +71,7 @@ class TestR_(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             testing.r_['r', [1, 2, 3], [4, 5, 6]]
 
+    @testing.for_all_dtypes(name='dtype')
     def test_r_9(self, xp):
         a = testing.shaped_arange((3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 5), xp, dtype)
@@ -81,6 +81,8 @@ class TestR_(unittest.TestCase):
 @testing.gpu
 class TestC_(unittest.TestCase):
 
+    _multiprocess_can_split_ = True
+
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
     def test_c_1(self, xp, dtype):
@@ -88,6 +90,7 @@ class TestC_(unittest.TestCase):
         b = testing.shaped_reverse_arange((4, 3), xp, dtype)
         return xp.c_[a, b]
 
+    @testing.for_all_dtypes(name='dtype')
     def test_c_2(self, xp, dtype):
         a = testing.shaped_arange((4, 2), xp, dtype)
         b = testing.shaped_reverse_arange((4, 3), xp, dtype)
@@ -101,8 +104,10 @@ class TestC_(unittest.TestCase):
         with self.assertRaises(ValueError):
             testing.c_[a, b]
 
-@testing.gpu
 class TestAxisConcatenator(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
+
     def test_AxisConcatenator_init1(self):
         with self.assertRaises(TypeError):
             testing.AxisConcatenator.__init__()
