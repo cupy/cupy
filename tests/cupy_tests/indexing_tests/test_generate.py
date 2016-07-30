@@ -74,7 +74,7 @@ class TestR_(unittest.TestCase):
             testing.r_['r', [1, 2, 3], [4, 5, 6]]
 
     @testing.for_all_dtypes()
-    def test_r_9(self, xp):
+    def test_r_9(self, xp, dtype):
         a = testing.shaped_arange((3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 5), xp, dtype)
         with self.assertRaises(ValueError):
@@ -101,7 +101,7 @@ class TestC_(unittest.TestCase):
         return xp.c_[a, b, c]
 
     @testing.for_all_dtypes()
-    def test_c_3(self, xp):
+    def test_c_3(self, xp, dtype):
         a = testing.shaped_arange((3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 5), xp, dtype)
         with self.assertRaises(ValueError):
