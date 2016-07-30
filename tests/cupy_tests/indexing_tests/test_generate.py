@@ -25,11 +25,13 @@ class TestIX_(unittest.TestCase):
     def test_ix_bool_ndarray(self, xp):
         return xp.ix_(xp.array([True, False] * 2))
 
+
+@testing.gpu
 class TestR_(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_r_1(self, xp, dtype):
         a = testing.shaped_arange((3, 4), xp, dtype)
@@ -42,7 +44,7 @@ class TestR_(unittest.TestCase):
         c = testing.shaped_reverse_arange((1, 4), xp, dtype)
         return xp.r_[a, b, c]
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_r_2(self, xp, dtype):
         a = testing.shaped_arange((1, 3), xp, dtype)
@@ -53,7 +55,7 @@ class TestR_(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             testing.r_[-1:1:6j, [0] * 3, 5, 6]
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes()
     def test_r_4(self, xp, dtype):
         a = testing.shaped_arange((1, 3), xp, dtype)
         with self.assertRaises(NotImplementedError):
@@ -71,39 +73,42 @@ class TestR_(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             testing.r_['r', [1, 2, 3], [4, 5, 6]]
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes()
     def test_r_9(self, xp):
         a = testing.shaped_arange((3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 5), xp, dtype)
         with self.assertRaises(ValueError):
             testing.r_[a, b]
 
+
 @testing.gpu
 class TestC_(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_c_1(self, xp, dtype):
         a = testing.shaped_arange((4, 2), xp, dtype)
         b = testing.shaped_reverse_arange((4, 3), xp, dtype)
         return xp.c_[a, b]
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes()
     def test_c_2(self, xp, dtype):
         a = testing.shaped_arange((4, 2), xp, dtype)
         b = testing.shaped_reverse_arange((4, 3), xp, dtype)
         c = testing.shaped_reverse_arange((4, 1), xp, dtype)
         return xp.c_[a, b, c]
 
-    @testing.for_all_dtypes(name='dtype')
+    @testing.for_all_dtypes()
     def test_c_3(self, xp):
         a = testing.shaped_arange((3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 5), xp, dtype)
         with self.assertRaises(ValueError):
             testing.c_[a, b]
 
+
+@testing.gpu
 class TestAxisConcatenator(unittest.TestCase):
 
     _multiprocess_can_split_ = True
