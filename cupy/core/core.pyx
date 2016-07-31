@@ -2418,8 +2418,7 @@ def _add_scan_blocked_sum_kernel(dtype):
     source = string.Template("""
     extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst){
         long long n = src_dst.size();
-        unsigned int idx = threadIdx.x + (blockDim.x + 1) * blockIdx.x;
-        unsigned int idxAdded = idx + (blockDim.x + 1);
+        unsigned int idxAdded = threadIdx.x + (blockDim.x + 1) * (blockIdx.x + 1);
         unsigned int idxAdd = (blockDim.x + 1) * (blockIdx.x + 1) - 1;
 
         if(idxAdded < n){
