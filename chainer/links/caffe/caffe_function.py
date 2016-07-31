@@ -29,7 +29,7 @@ if _protobuf3():
         # model files when a user uses cpp-implementation.
         from google.protobuf.pyext import _message
         _message.SetAllowOversizeProtos(True)
-    except:
+    except ImportError:
         pass
 
 elif sys.version_info < (3, 0, 0):
