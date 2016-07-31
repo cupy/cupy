@@ -117,6 +117,7 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
 #define cudnnSetFilterNdDescriptor_v3 cudnnSetFilterNdDescriptor
 #define cudnnSetPooling2dDescriptor_v3 cudnnSetPooling2dDescriptor
 #define cudnnSetPoolingNdDescriptor_v3 cudnnSetPoolingNdDescriptor
+typedef int cudnnBatchNormMode_t;
 
 cudnnStatus_t cudnnDeriveBNTensorDescriptor(
          cudnnTensorDescriptor_t derivedBnDesc,
