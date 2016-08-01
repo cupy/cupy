@@ -28,11 +28,11 @@ class TestLSTM(unittest.TestCase):
         self.gh = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
 
         self.check_forward_options = {}
-        self.check_backward_options = {'eps': 1e-2}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-3, 'rtol': 1e-2}
             self.check_backward_options = {
-                'eps': 0.125, 'atol': 5e-3, 'rtol': 5e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def flat(self):
         self.c_prev = self.c_prev[:, :, 0].copy()
@@ -57,9 +57,9 @@ class TestLSTM(unittest.TestCase):
             _sigmoid(f_in) * self.c_prev
         h_expect = _sigmoid(o_in) * numpy.tanh(c_expect)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             c_expect, c.data, **self.check_forward_options)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             h_expect, h.data, **self.check_forward_options)
 
     @condition.retry(3)

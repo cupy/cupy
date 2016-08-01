@@ -23,6 +23,7 @@ from chainer.functions.array import expand_dims
 from chainer.functions.array import get_item
 from chainer.functions.array import permutate
 from chainer.functions.array import reshape
+from chainer.functions.array import rollaxis
 from chainer.functions.array import select_item
 from chainer.functions.array import split_axis
 from chainer.functions.array import stack
@@ -38,6 +39,7 @@ from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
 from chainer.functions.loss import contrastive
+from chainer.functions.loss import crf1d
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
 from chainer.functions.loss import hinge
@@ -70,6 +72,7 @@ from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
 from chainer.functions.noise import gaussian
 from chainer.functions.normalization import batch_normalization
+from chainer.functions.normalization import l2_normalization
 from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
@@ -140,6 +143,8 @@ Permutate = permutate.Permutate
 permutate = permutate.permutate
 Reshape = reshape.Reshape
 reshape = reshape.reshape
+Rollaxis = rollaxis.Rollaxis
+rollaxis = rollaxis.rollaxis
 SplitAxis = split_axis.SplitAxis
 split_axis = split_axis.split_axis
 SelectItem = select_item.SelectItem
@@ -169,6 +174,7 @@ bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 Contrastive = contrastive.Contrastive
 contrastive = contrastive.contrastive
+crf1d = crf1d.crf1d
 CrossCovariance = cross_covariance.CrossCovariance
 cross_covariance = cross_covariance.cross_covariance
 gaussian_kl_divergence = vae.gaussian_kl_divergence
@@ -187,6 +193,10 @@ softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 Triplet = triplet.Triplet
 triplet = triplet.triplet
 
+ArgMax = minmax.ArgMax
+argmax = minmax.argmax
+ArgMin = minmax.ArgMin
+argmin = minmax.argmin
 BatchDet = det.BatchDet
 batch_det = det.batch_det
 BatchInv = inv.BatchInv
@@ -244,6 +254,8 @@ LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization
 local_response_normalization = \
     local_response_normalization.local_response_normalization
+NormalizeL2 = l2_normalization.NormalizeL2
+normalize = l2_normalization.normalize
 
 AveragePooling2D = average_pooling_2d.AveragePooling2D
 average_pooling_2d = average_pooling_2d.average_pooling_2d

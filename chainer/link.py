@@ -225,6 +225,7 @@ class Link(object):
         d = ret.__dict__
         for name in ret._params:
             d[name] = copy.copy(d[name])
+            d[name].grad = None
         return ret
 
     def to_cpu(self):

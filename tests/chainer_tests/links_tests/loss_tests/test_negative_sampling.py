@@ -39,9 +39,9 @@ class TestNegativeSampling(unittest.TestCase):
             f, (x.data, W.data), (y.grad,), eps=1e-2)
         del negative_sampling.NegativeSamplingFunction.samples  # clean up
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             cuda.to_cpu(gx), cuda.to_cpu(x.grad), atol=1.e-4)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             cuda.to_cpu(gW), cuda.to_cpu(W.grad), atol=1.e-4)
         return x.grad, W.grad
 
@@ -66,7 +66,7 @@ class TestNegativeSampling(unittest.TestCase):
         self.assertEqual(y_g.data.dtype, numpy.float32)
         self.assertEqual(y_g.data.shape, ())
 
-        gradient_check.assert_allclose(y.data, y_g.data, atol=1.e-4)
+        testing.assert_allclose(y.data, y_g.data, atol=1.e-4)
         return y.data, y_g.data
 
     @condition.retry(3)
@@ -105,7 +105,7 @@ class TestNegativeSampling(unittest.TestCase):
         y_g = self.link(xg, tg)
         y_g.backward()
 
-        gradient_check.assert_allclose(x.grad, xg.grad, atol=1.e-4)
+        testing.assert_allclose(x.grad, xg.grad, atol=1.e-4)
 
 
 class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
@@ -133,7 +133,7 @@ class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
         x0 = chainer.Variable(x0_data)
         t0 = chainer.Variable(t0_data)
         y0 = self.link(x0, t0)
-        gradient_check.assert_allclose(y.data, y0.data, atol=1.e-4)
+        testing.assert_allclose(y.data, y0.data, atol=1.e-4)
 
     def test_ignore_forward_cpu(self):
         self.check_ignore_forward(self.x, self.t, self.x0, self.t0)
@@ -152,9 +152,9 @@ class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
         gx, gw = self.check_backward(x_data, t_data, gy_data)
         self.link.zerograds()
         gx0, gw0 = self.check_backward(x0_data, t0_data, gy0_data)
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             cuda.to_cpu(gx)[self.idx, :], gx0, atol=1.e-4)
-        gradient_check.assert_allclose(gw, gw0, atol=1.e-4)
+        testing.assert_allclose(gw, gw0, atol=1.e-4)
 
     def test_ignore_backward_cpu(self):
         self.check_ignore_backward(

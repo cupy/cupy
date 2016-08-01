@@ -68,12 +68,12 @@ class TestTriplet(unittest.TestCase):
             functions.Triplet(self.margin),
             (a_data, p_data, n_data), None, rtol=1e-4, atol=1e-4)
 
-    @condition.retry(3)
+    @condition.retry(10)
     def test_backward_cpu(self):
         self.check_backward(self.a, self.p, self.n)
 
     @attr.gpu
-    @condition.retry(3)
+    @condition.retry(10)
     def test_backward_gpu_no_cudnn(self):
         self.check_backward(cuda.to_gpu(self.a), cuda.to_gpu(self.p),
                             cuda.to_gpu(self.n))

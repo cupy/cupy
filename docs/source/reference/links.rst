@@ -82,6 +82,11 @@ StatefulGRU
 .. autoclass:: StatefulGRU
    :members:
 
+StatefulPeepholeLSTM
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: StatefulPeepholeLSTM
+   :members:
+
 StatelessLSTM
 ~~~~~~~~~~~~~
 .. autoclass:: StatelessLSTM
@@ -98,6 +103,11 @@ BatchNormalization
 BinaryHierarchicalSoftmax
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: BinaryHierarchicalSoftmax
+   :members:
+
+CRF1d
+~~~~~
+.. autoclass:: CRF1d
    :members:
 
 PReLU

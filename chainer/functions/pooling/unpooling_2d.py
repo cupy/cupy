@@ -88,9 +88,12 @@ def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
             If outsize is not ``None``, the result of outsize applied to
             :func:`~chainer.utils.conv.get_conv_outsize` must be equal to
             the shape of the 2d array in the input batch ``x``.
-        cover_all (bool): If ``True``, all spatial locations are pooled
-            into some output pixels, and the output size is larger than that
-            when cover_all is ``False``.
+        cover_all (bool): If ``True``, the output size may be smaller than
+            the size if ``cover_all`` is ``False``. This flag serves to
+            align behavior to the pooling functions which can cover all
+            input locations, see :func:`~chainer.functions.max_pooling_2d`
+            and :func:`~chainer.functions.convolution_2d`.
+
 
     Returns:
         ~chainer.Variable: Output variable.

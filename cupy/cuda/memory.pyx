@@ -138,7 +138,7 @@ cdef class MemoryPointer:
         if size > 0:
             _set_peer_access(src.device.id, self.device.id)
             runtime.memcpyAsync(self.ptr, src.ptr, size,
-                                runtime.memcpyDefault, stream)
+                                runtime.memcpyDefault, stream.ptr)
 
     cpdef copy_from_host(self, mem, size_t size):
         """Copies a memory sequence from the host memory.
@@ -163,7 +163,7 @@ cdef class MemoryPointer:
         """
         if size > 0:
             runtime.memcpyAsync(self.ptr, mem.value, size,
-                                runtime.memcpyHostToDevice, stream)
+                                runtime.memcpyHostToDevice, stream.ptr)
 
     cpdef copy_from(self, mem, size_t size):
         """Copies a memory sequence from a (possibly different) device or host.
@@ -226,7 +226,7 @@ cdef class MemoryPointer:
         """
         if size > 0:
             runtime.memcpyAsync(mem.value, self.ptr, size,
-                                runtime.memcpyDeviceToHost, stream)
+                                runtime.memcpyDeviceToHost, stream.ptr)
 
     cpdef memset(self, int value, size_t size):
         """Fills a memory sequence by constant byte value.
@@ -249,7 +249,7 @@ cdef class MemoryPointer:
 
         """
         if size > 0:
-            runtime.memsetAsync(self.ptr, value, size, stream)
+            runtime.memsetAsync(self.ptr, value, size, stream.ptr)
 
 
 cpdef MemoryPointer _malloc(Py_ssize_t size):

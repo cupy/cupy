@@ -42,7 +42,7 @@ class TestLinear(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.link(x)
         self.assertEqual(y.data.dtype, numpy.float32)
-        gradient_check.assert_allclose(self.y, y.data)
+        testing.assert_allclose(self.y, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):

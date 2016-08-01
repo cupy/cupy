@@ -10,6 +10,7 @@ from chainer import links
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+from chainer.utils import type_check
 
 
 def _batch_normalization(expander, gamma, beta, x, mean, var, eps, test):
@@ -71,7 +72,7 @@ class BatchNormalizationTest(unittest.TestCase):
             self.expander, self.gamma, self.beta, self.x, self.mean,
             self.var, self.link.eps, self.test)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_expect, y.data, **self.check_forward_optionss)
 
     @condition.retry(3)
@@ -129,9 +130,9 @@ class TestPopulationStatistics(unittest.TestCase):
     def check_statistics(self, x):
         x = chainer.Variable(x)
         self.link(x, finetune=True)
-        gradient_check.assert_allclose(self.x.mean(axis=0), self.link.avg_mean)
+        testing.assert_allclose(self.x.mean(axis=0), self.link.avg_mean)
         unbiased_var = self.x.var(axis=0) * self.nx / (self.nx - 1)
-        gradient_check.assert_allclose(unbiased_var, self.link.avg_var)
+        testing.assert_allclose(unbiased_var, self.link.avg_var)
 
     @condition.retry(3)
     def test_statistics_cpu(self):
@@ -159,8 +160,8 @@ class TestPopulationStatistics(unittest.TestCase):
         # But the multiplier is ny / (ny - 1) in current implementation
         # these two values are different when nx is not equal to ny.
         unbiased_var = var * self.ny / (self.ny - 1)
-        gradient_check.assert_allclose(mean, self.link.avg_mean)
-        gradient_check.assert_allclose(unbiased_var, self.link.avg_var)
+        testing.assert_allclose(mean, self.link.avg_mean)
+        testing.assert_allclose(unbiased_var, self.link.avg_var)
 
     @condition.retry(3)
     def test_statistics2_cpu(self):
@@ -215,7 +216,7 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
     def check_forward(self, x_data, y_expected):
         x = chainer.Variable(x_data)
         y = self.link(x, test=self.test)
-        gradient_check.assert_allclose(y_expected, y.data)
+        testing.assert_allclose(y_expected, y.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x, self.y_expected)
@@ -244,11 +245,13 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
         self.check_backward(x, gy)
 
 
+@testing.parameterize(*testing.product({
+    'size': [3, (2, 3)],
+}))
 class TestInitialize(unittest.TestCase):
 
     def setUp(self):
         self.decay = 0.9
-        self.size = 3
         self.initial_gamma = numpy.random.uniform(-1, 1, self.size)
         self.initial_gamma = self.initial_gamma.astype(numpy.float32)
         self.initial_beta = numpy.random.uniform(-1, 1, self.size)
@@ -286,6 +289,32 @@ class TestDefaultInitializer(unittest.TestCase):
         self.link.to_gpu()
         testing.assert_allclose(numpy.ones(self.size), self.link.gamma.data)
         testing.assert_allclose(numpy.zeros(self.size), self.link.beta.data)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(2, 4), (2, 5, 3, 4)],
+}))
+class TestInvalidInput(unittest.TestCase):
+
+    def setUp(self):
+        self.link = links.BatchNormalization(3)
+
+    def test_invalid_shape_cpu(self):
+        with self.assertRaises(type_check.InvalidType):
+            self.link(chainer.Variable(numpy.zeros(self.shape, dtype='f')))
+
+    @attr.gpu
+    def test_invalid_shape_gpu(self):
+        self.link.to_gpu()
+        with self.assertRaises(type_check.InvalidType):
+            self.link(chainer.Variable(cuda.cupy.zeros(self.shape, dtype='f')))
+
+
+class TestInvalidInitialize(unittest.TestCase):
+
+    def test_invalid_type(self):
+        with self.assertRaises(TypeError):
+            self.link = links.BatchNormalization({})
 
 
 testing.run_module(__name__, __file__)

@@ -32,7 +32,7 @@ clipped_relu
 .. autofunction:: clipped_relu
 
 crelu
-~~~~~~~~~~~~
+~~~~~
 .. autofunction:: crelu
 
 elu
@@ -127,6 +127,10 @@ reshape
 ~~~~~~~
 .. autofunction:: reshape
 
+rollaxis
+~~~~~~~~
+.. autofunction:: rollaxis
+
 select_item
 ~~~~~~~~~~~
 .. autofunction:: select_item
@@ -134,6 +138,10 @@ select_item
 split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
+
+stack
+~~~~~
+.. autofunction:: stack
 
 swapaxes
 ~~~~~~~~
@@ -199,6 +207,10 @@ contrastive
 ~~~~~~~~~~~
 .. autofunction:: contrastive
 
+crf1d
+~~~~~
+.. autofunction:: crf1d
+
 cross_covariance
 ~~~~~~~~~~~~~~~~
 .. autofunction:: cross_covariance
@@ -242,6 +254,14 @@ triplet
 
 Mathematical functions
 ----------------------
+
+argmax
+~~~~~~
+.. autofunction:: argmax
+
+argmin
+~~~~~~
+.. autofunction:: argmin
 
 batch_inv
 ~~~~~~~~~
@@ -308,7 +328,7 @@ min
 .. autofunction:: min
 
 minimum
-~~~~~~
+~~~~~~~
 .. autofunction:: minimum
 
 scale
@@ -350,6 +370,10 @@ fixed_batch_normalization
 local_response_normalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: local_response_normalization
+
+normalize
+~~~~~~~~~
+.. autofunction:: normalize
 
 
 Spatial pooling

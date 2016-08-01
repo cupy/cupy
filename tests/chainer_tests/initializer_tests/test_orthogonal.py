@@ -1,7 +1,6 @@
 import unittest
 
 from chainer import cuda
-from chainer import gradient_check
 from chainer import initializers
 from chainer import testing
 from chainer.testing import attr
@@ -41,7 +40,7 @@ class TestOrthogonal(OrthogonalBase, unittest.TestCase):
         xp = cuda.get_array_module(w)
         w = w.reshape(len(w), -1)
         dots = xp.tensordot(w, w, (1, 1))
-        gradient_check.assert_allclose(dots, xp.identity(len(w)))
+        testing.assert_allclose(dots, xp.identity(len(w)))
 
     def test_orthogonality_cpu(self):
         self.check_orthogonality(self.w)
@@ -60,7 +59,7 @@ class TestZeroDim(OrthogonalBase, unittest.TestCase):
     def check_orthogonality(self, w):
         self.initializer(w)
         xp = cuda.get_array_module(w)
-        gradient_check.assert_allclose(w, xp.ones((), dtype=numpy.float32) * 2)
+        testing.assert_allclose(w, xp.ones((), dtype=numpy.float32) * 2)
 
     def test_orthogonality_cpu(self):
         self.check_orthogonality(self.w)
