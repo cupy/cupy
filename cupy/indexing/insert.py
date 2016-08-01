@@ -31,50 +31,7 @@ def fill_diagonal(a, val, wrap=False):
     array([[5, 0, 0],
            [0, 5, 0],
            [0, 0, 5]])
-    The same function can operate on a 4-D array:
-    >>> a = cupy.zeros((3, 3, 3, 3), int)
-    >>> cupy.fill_diagonal(a, 4)
-    We only show a few blocks for clarity:
-    >>> a[0, 0]
-    array([[4, 0, 0],
-           [0, 0, 0],
-           [0, 0, 0]])
-    >>> a[1, 1]
-    array([[0, 0, 0],
-           [0, 4, 0],
-           [0, 0, 0]])
-    >>> a[2, 2]
-    array([[0, 0, 0],
-           [0, 0, 0],
-           [0, 0, 4]])
-    The wrap option affects only tall matrices:
-    >>> # tall matrices no wrap
-    >>> a = cupy.zeros((5, 3),int)
-    >>> cupy.fill_diagonal(a, 4)
-    >>> a
-    array([[4, 0, 0],
-           [0, 4, 0],
-           [0, 0, 4],
-           [0, 0, 0],
-           [0, 0, 0]])
-    >>> # tall matrices wrap
-    >>> a = cupy.zeros((5, 3),int)
-    >>> cupy.fill_diagonal(a, 4, wrap=True)
-    >>> a
-    array([[4, 0, 0],
-           [0, 4, 0],
-           [0, 0, 4],
-           [0, 0, 0],
-           [4, 0, 0]])
-    >>> # wide matrices
-    >>> a = cupy.zeros((3, 5),int)
-    >>> fill_diagonal(a, 4, wrap=True)
-    >>> a
-    array([[4, 0, 0, 0, 0],
-           [0, 4, 0, 0, 0],
-           [0, 0, 4, 0, 0]])
-
-    .. seealso:: :func:`numpy.fill_diagonal`
+     .. seealso:: :func:`numpy.fill_diagonal`
     """
     # The followings are imported from the original numpy
     if a.ndim < 2:
