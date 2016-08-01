@@ -34,7 +34,7 @@ class Evaluator(extension.Extension):
 
     There are two ways to modify the evaluation behavior besides setting a
     custom evaluation function. One is by setting a custom evaluation loop via
-    the ``eval_loop`` argument. The other is by inheriting this class and
+    the ``eval_func`` argument. The other is by inheriting this class and
     overriding the :meth:`evaluate` method. In latter case, users have to
     create and handle a reporter object manually. Users also have to copy the
     iterators before using them, in order to reuse them at the next time of
