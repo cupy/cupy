@@ -135,9 +135,9 @@ def _retrieve_cifar(name):
 
         train_x = train_x.reshape(50000, 3072)
         train_y = train_y.reshape(50000)
-
+        
         numpy.savez_compressed(path, train_x=train_x, train_y=train_y,
-                               test_x=text_x, test_y=test_y)
+                               test_x=test_x, test_y=test_y)
         return {'train_x': train_x, 'train_y': train_y,
                 'test_x': test_x, 'test_y': test_y}
 
