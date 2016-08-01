@@ -19,3 +19,9 @@ class TestInsert(unittest.TestCase):
         a = testing.shaped_arange(self.shape, xp, dtype)
         xp.fill_diagonal(a, val=self.val, wrap=self.wrap)
         return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_raises()
+    def test_1darray(self, xp, dtype):
+        a = testing.shaped_arange(5, xp, dtype)
+        xp.fill_diagonal(a, val=self.val, wrap=self.wrap)
