@@ -2421,14 +2421,13 @@ def _add_scan_blocked_sum_kernel(dtype):
     name = "add_scan_blocked_sum_kernel"
     dtype = _get_typename(dtype)
     source = string.Template("""
-    extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst,
-        CArray<${dtype}, 1> sum){
+    extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst){
         long long n = src_dst.size();
-        unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
-        unsigned int idxSum = idx + blockDim.x;
+        unsigned int idxAdded = threadIdx.x + (blockDim.x + 1) * (blockIdx.x + 1);
+        unsigned int idxAdd = (blockDim.x + 1) * (blockIdx.x + 1) - 1;
 
-        if(idx < n){
-            src_dst[idxSum] = src_dst[idxSum] + sum[blockIdx.x];
+        if(idxAdded < n){
+            src_dst[idxAdded] += src_dst[idxAdd];
         }
     }
     """).substitute(name=name, dtype=dtype)
@@ -2494,11 +2493,13 @@ def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
 
     return module.get_function(name)
 
-def scan(a):
+def scan(a, out=None):
     """Return the prefix sum(scan) of the elements.
 
     Args:
         a (cupy.ndarray): input array.
+        out (cupy.ndarray): Alternative output array in which to place
+         the result. The same size and same type as the input array(a).
 
     Returns:
         cupy.ndarray: A new array holding the result is returned.
@@ -2509,20 +2510,23 @@ def scan(a):
 
     block_size = 256
 
-    scanned_array = ndarray(a.shape, dtype=a.dtype)
+    if out is None:
+        out = ndarray(a.shape, dtype=a.dtype)
+    else:
+        if a.size != out.size:
+            raise ValueError("Provided out is the wrong size")
+
     kern_scan = _inclusive_scan_kernel(a.dtype, block_size)
     kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
               block=(block_size,),
-              args=(a, scanned_array),
+              args=(a, out),
               shared_mem=a.itemsize * block_size * 2)
 
-    if a.size // (block_size * 2) > 0:
-        blocked_sum = scanned_array[block_size * 2 - 1:-1:block_size * 2]
-        scanned_blocked_sum = scan(blocked_sum)
-
-        kern_add = _add_scan_blocked_sum_kernel(scanned_array.dtype)
+    if (a.size - 1) // (block_size * 2) > 0:
+        blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
+        scan(blocked_sum, blocked_sum)
+        kern_add = _add_scan_blocked_sum_kernel(out.dtype)
         kern_add(grid=((a.size - 1) // (2 * block_size),),
-                 block=(2 * block_size,),
-                 args=(scanned_array, scanned_blocked_sum))
-
-    return scanned_array
+                 block=(2 * block_size - 1,),
+                 args=(out,))
+    return out
