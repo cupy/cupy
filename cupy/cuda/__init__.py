@@ -31,7 +31,7 @@ get_elapsed_time = stream.get_elapsed_time
 def profile():
     """Enable CUDA profiling during with statement.
 
-    This function enable profiling on entering with statement, and disable
+    This function enables profiling on entering a with statement, and disables
     profiling on leaving the statement.
 
     >>> with cupy.cuda.profile():
