@@ -315,9 +315,8 @@ class Link(object):
         iteration of the optimization.
 
         """
-        d = self.__dict__
-        for name in self._params:
-            d[name].zerograd()
+        for param in self.params():
+            param.zerograd()
 
     def addgrads(self, link):
         """Accumulates gradient values from given link.
@@ -528,12 +527,6 @@ class Chain(Link):
         for name in self._children:
             dst[name].copyparams(src[name])
 
-    def zerograds(self):
-        super(Chain, self).zerograds()
-        d = self.__dict__
-        for name in self._children:
-            d[name].zerograds()
-
     def addgrads(self, link):
         super(Chain, self).addgrads(link)
         src = link.__dict__
@@ -677,11 +670,6 @@ class ChainList(Link):
         super(ChainList, self).copyparams(link)
         for idx, child in enumerate(self._children):
             child.copyparams(link[idx])
-
-    def zerograds(self):
-        super(ChainList, self).zerograds()
-        for child in self._children:
-            child.zerograds()
 
     def addgrads(self, link):
         super(ChainList, self).addgrads(link)
