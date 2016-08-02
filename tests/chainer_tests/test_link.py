@@ -167,7 +167,6 @@ class TestLink(unittest.TestCase):
         serializer.assert_any_call('x', l.x.data)
         serializer.assert_any_call('y', l.y.data)
         serializer.assert_any_call('z', 1)
-
         self.assertEqual(l.z, 3)
 
     def test_serialize_param_shape_placeholder(self):
@@ -181,8 +180,27 @@ class TestLink(unittest.TestCase):
         serializer.assert_any_call('x', l.x.data)
         serializer.assert_any_call('y', l.y.data)
         serializer.assert_any_call('z', 1)
-
         self.assertEqual(l.z, 3)
+
+    def test_duplicate_uninitialized_param(self):
+        l = chainer.Link(y=2)
+        l.add_uninitialized_param('x')
+        with self.assertRaises(AttributeError):
+            l.add_uninitialized_param('x')
+
+    def test_uninitialized_param_already_param(self):
+        l = chainer.Link(y=2)
+        l.add_param('x', (2, 3))
+        with self.assertRaises(AttributeError):
+            l.add_uninitialized_param('x')
+
+    def test_has_uninitialized_params(self):
+        l = chainer.Link(y=2)
+        self.assertFalse(l.has_uninitialized_params)
+        l.add_uninitialized_param('x')
+        self.assertTrue(l.has_uninitialized_params)
+        l.add_param('x', (2, 3))
+        self.assertFalse(l.has_uninitialized_params)
 
 
 class CopyCountVariable(chainer.Variable):

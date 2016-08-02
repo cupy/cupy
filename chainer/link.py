@@ -176,7 +176,8 @@ class Link(object):
     def has_uninitialized_params(self):
         """Check if the link has uninitialized parameters.
 
-        Returns: True if the link has any uninitialized parameters. Otherwise
+        Returns:
+            bool: True if the link has any uninitialized parameters. Otherwise
             return False.
 
         """
