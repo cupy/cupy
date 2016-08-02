@@ -9,7 +9,7 @@ def separate(x, axis=0):
     an array is ``(2, 3, 4)``. When it separates the array with ``axis=1``, it
     returns three ``(2, 4)`` arrays.
 
-    This function is an invers of :func:`chainer.functions.stack`.
+    This function is an inverse of :func:`chainer.functions.stack`.
 
     Args:
         x (chainer.Variable): Variable to be separated.
