@@ -66,8 +66,8 @@ class TestCRF1d(unittest.TestCase):
 
     def check_backward(self, cost_data, xs_data, ys_data):
         def f(cost, *args):
-            xs = args[:len(args) / 2]
-            ys = args[len(args) / 2:]
+            xs = args[:len(args) // 2]
+            ys = args[len(args) // 2:]
             return functions.crf1d(cost, xs, ys)
 
         args = [cost_data] + xs_data + ys_data
