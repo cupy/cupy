@@ -33,7 +33,7 @@ class LinearFunction(function.Function):
     def forward(self, inputs):
         x = _as_mat(inputs[0])
         W = inputs[1]
-        y = x.dot(W.T).astype(x.dtype)
+        y = x.dot(W.T).astype(x.dtype, copy=False)
         if len(inputs) == 3:
             b = inputs[2]
             y += b
@@ -44,8 +44,8 @@ class LinearFunction(function.Function):
         W = inputs[1]
         gy = grad_outputs[0]
 
-        gx = gy.dot(W).astype(x.dtype).reshape(inputs[0].shape)
-        gW = gy.T.dot(x).astype(W.dtype)
+        gx = gy.dot(W).astype(x.dtype, copy=False).reshape(inputs[0].shape)
+        gW = gy.T.dot(x).astype(W.dtype, copy=False)
         if len(inputs) == 3:
             gb = gy.sum(0)
             return gx, gW, gb

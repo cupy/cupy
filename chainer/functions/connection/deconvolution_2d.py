@@ -75,7 +75,7 @@ class Deconvolution2DFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
         kh, kw = W.shape[2:]
         _, _, h, w = x.shape
-        gcol = numpy.tensordot(W, x, (0, 1)).astype(x.dtype)
+        gcol = numpy.tensordot(W, x, (0, 1)).astype(x.dtype, copy=False)
         # - k, m, n: shape of out_channel
         # - b: number of inputs
         # - h, w: height and width of kernels
@@ -169,8 +169,10 @@ class Deconvolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
         col = conv.im2col_cpu(
             gy, kh, kw, self.sy, self.sx, self.ph, self.pw)
-        gW = numpy.tensordot(x, col, ([0, 2, 3], [0, 4, 5])).astype(W.dtype)
-        gx = numpy.tensordot(col, W, ([1, 2, 3], [1, 2, 3])).astype(x.dtype)
+        gW = numpy.tensordot(
+            x, col, ([0, 2, 3], [0, 4, 5])).astype(W.dtype, copy=False)
+        gx = numpy.tensordot(
+            col, W, ([1, 2, 3], [1, 2, 3])).astype(x.dtype, copy=False)
         gx = numpy.rollaxis(gx, 3, 1)
 
         if b is None:
