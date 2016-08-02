@@ -1,6 +1,8 @@
 from chainer.functions.array import broadcast
+from chainer.functions.array import concat
 from chainer.functions.array import reshape
 from chainer.functions.array import select_item
+from chainer.functions.array import split_axis
 from chainer.functions.connection import embed_id
 from chainer.functions.math import logsumexp
 from chainer.functions.math import minmax
@@ -50,27 +52,52 @@ def crf1d(cost, xs, ys):
     n_batch = xs[0].shape[0]
 
     alpha = xs[0]
+    alphas = []
     for x in xs[1:]:
+        batch = x.shape[0]
+        if alpha.shape[0] > batch:
+            alpha, alpha_rest = split_axis.split_axis(alpha, [batch], axis=0)
+            alphas.append(alpha_rest)
         b_alpha, b_cost = broadcast.broadcast(alpha[..., None], cost)
         alpha = logsumexp.logsumexp(b_alpha + b_cost, axis=1) + x
 
+    if len(alphas) > 0:
+        alphas.append(alpha)
+        alpha = concat.concat(alphas[::-1], axis=0)
+
     logz = logsumexp.logsumexp(alpha, axis=1)
 
-    score = 0
     cost = reshape.reshape(cost, (cost.size, 1))
-    for y1, y2 in zip(ys[:-1], ys[1:]):
-        score += reshape.reshape(
-            embed_id.embed_id(y1 * n_label + y2, cost), (n_batch,))
-    for x, y in zip(xs, ys):
-        score += select_item.select_item(x, y)
+    score = select_item.select_item(xs[0], ys[0])
+    scores = []
+    for x, y, y_prev in zip(xs[1:], ys[1:], ys[:-1]):
+        batch = x.shape[0]
+        if score.shape[0] > batch:
+            y_prev, _ = split_axis.split_axis(y_prev, [batch], axis=0)
+            score, score_rest = split_axis.split_axis(score, [batch], axis=0)
+            scores.append(score_rest)
+        score += (select_item.select_item(x, y)
+                  + reshape.reshape(
+                      embed_id.embed_id(y_prev * n_label + y, cost), (batch,)))
+
+    if len(scores) > 0:
+        scores.append(score)
+        score = concat.concat(scores[::-1], axis=0)
 
     return _sum.sum(logz - score) / n_batch
 
 
 def argmax_crf1d(cost, xs):
     alpha = xs[0]
+    alphas = []
     max_inds = []
     for x in xs[1:]:
+        batch = x.shape[0]
+        if alpha.shape[0] > batch:
+            alpha, alpha_rest = split_axis.split_axis(alpha, [batch], axis=0)
+            alphas.append(alpha_rest)
+        else:
+            alphas.append(None)
         b_alpha, b_cost = broadcast.broadcast(alpha[..., None], cost)
         scores = b_alpha + b_cost
         max_ind = minmax.argmax(scores, axis=1)
@@ -79,9 +106,17 @@ def argmax_crf1d(cost, xs):
 
     inds = minmax.argmax(alpha, axis=1)
     path = [inds.data]
-    for m in reversed(max_inds):
+    for m, a in zip(max_inds[::-1], alphas[::-1]):
         inds = select_item.select_item(m, inds)
+        if a is not None:
+            inds = concat.concat([inds, minmax.argmax(a, axis=1)], axis=0)
         path.append(inds.data)
     path.reverse()
 
-    return minmax.max(alpha, axis=1), path
+    score = minmax.max(alpha, axis=1)
+    for a in alphas[::-1]:
+        if a is None:
+            continue
+        score = concat.concat([score, minmax.max(a, axis=1)], axis=0)
+
+    return score, path
