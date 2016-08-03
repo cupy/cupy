@@ -250,10 +250,10 @@ class ParallelUpdater(StandardUpdater):
             models = {'main': optimizer.target}
             for name in names:
                 model = optimizer.target.copy()
-                if devices[name] is not None and devices[name] >= 0:
+                if devices[name] >= 0:
                     model.to_gpu(devices[name])
                 models[name] = model
-            if devices['main'] is not None and devices['main'] >= 0:
+            if devices['main'] >= 0:
                 optimizer.target.to_gpu(devices['main'])
 
         self._devices = devices
