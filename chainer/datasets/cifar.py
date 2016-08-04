@@ -123,13 +123,13 @@ def _retrieve_cifar(name):
             # training set
             for i in range(5):
                 file_name = '{}/data_batch_{}'.format(dir_name, i + 1)
-                d = pickle.load(archive.extractfile(file_name))
+                d = pickle.load(archive.extractfile(file_name), encoding='latin-1')
                 train_x[i] = d['data']
                 train_y[i] = d['labels']
 
             # test set
             file_name = '{}/test_batch'.format(dir_name)
-            d = pickle.load(archive.extractfile(file_name))
+            d = pickle.load(archive.extractfile(file_name), encoding='latin-1')
             test_x = d['data']
             test_y[...] = d['labels']  # copy to array
 
