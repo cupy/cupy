@@ -4,14 +4,14 @@ import six
 
 
 def mulexp(xs, init=None):
-    if init:
+    if init is not None:
         return functools.reduce('{} * {}'.format, xs, init)
     else:
         return functools.reduce('{} * {}'.format, xs)
 
 
 def andexp(xs, init=None):
-    if init:
+    if init is not None:
         return functools.reduce('{} && {}'.format, xs, init)
     else:
         return functools.reduce('{} && {}'.format, xs)
@@ -21,7 +21,7 @@ def muladdexp(xs, ys, init=None):
     def aux(exp, arg):
         x, y = arg
         return '({} + {} * {})'.format(y, x, exp)
-    if init:
+    if init is not None:
         return functools.reduce(aux, zip(xs, ys), init)
     else:
         return functools.reduce(aux, zip(xs, ys))
