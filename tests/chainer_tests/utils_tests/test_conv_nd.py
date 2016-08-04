@@ -104,7 +104,6 @@ class TestIm2ColND(unittest.TestCase):
         stride = (1,) * ndim
         pad = (1,) * ndim
         self.check_im2col_nd(ksize, stride, pad, gpu=True)
-        self.assertTrue(ndim in conv_nd._im2col_cache)
 
     @attr.gpu
     def test_im2col_nd_2_gpu(self):
@@ -113,7 +112,6 @@ class TestIm2ColND(unittest.TestCase):
         stride = (2,) * ndim
         pad = (2,) * ndim
         self.check_im2col_nd(ksize, stride, pad, gpu=True)
-        self.assertTrue(ndim in conv_nd._im2col_cache)
 
     @attr.gpu
     def test_im2col_nd_3_gpu(self):
@@ -122,7 +120,6 @@ class TestIm2ColND(unittest.TestCase):
         stride = (2, 1, 2)[:ndim]
         pad = (1, 2, 1)[:ndim]
         self.check_im2col_nd(ksize, stride, pad, gpu=True)
-        self.assertTrue(ndim in conv_nd._im2col_cache)
 
 
 class TestIm2ColNDParameterRanks(unittest.TestCase):
@@ -235,7 +232,6 @@ class TestCol2ImND(unittest.TestCase):
         stride = (1,) * ndim
         pad = (1,) * ndim
         self.check_col2im_nd(ksize, stride, pad, gpu=True)
-        self.assertTrue(ndim in conv_nd._col2im_cache)
 
     @attr.gpu
     def test_col2im_2_gpu(self):
@@ -244,7 +240,6 @@ class TestCol2ImND(unittest.TestCase):
         stride = (2,) * ndim
         pad = (2,) * ndim
         self.check_col2im_nd(ksize, stride, pad, gpu=True)
-        self.assertTrue(ndim in conv_nd._col2im_cache)
 
     @attr.gpu
     def test_col2im_3_gpu(self):
@@ -253,7 +248,6 @@ class TestCol2ImND(unittest.TestCase):
         stride = (2, 1, 2)[:ndim]
         pad = (1, 2, 1)[:ndim]
         self.check_col2im_nd(ksize, stride, pad, gpu=True)
-        self.assertTrue(ndim in conv_nd._col2im_cache)
 
 
 class TestCol2ImNDParameterRanks(unittest.TestCase):

@@ -1,6 +1,8 @@
 import functools
 import six
 
+import chainer
+
 
 def mulexp(xs, init=None):
     if init is not None:
@@ -147,12 +149,17 @@ class Im2colNDKernel(object):
         main = self._compile_main(kxs, out_xs)
         return '\n'.join(c0 + kx + out_x + main)
 
-    def generate(self):
+    def _generate(self):
         in_params = self._in_params()
         out_params = self._out_params()
         operation = self._operation()
         name = name = 'im2col_{}d'.format(self.ndim)
         return in_params, out_params, operation, name
+
+    @staticmethod
+    @chainer.cuda.memoize()
+    def generate(ndim):
+        return Im2colNDKernel(ndim)._generate()
 
 
 #
@@ -267,9 +274,14 @@ class Col2imNDKernel(object):
         return '\n'.join(
             c0 + x + loop_bounds + before + loop_main(main) + after)
 
-    def generate(self):
+    def _generate(self):
         in_params = self._in_params()
         out_params = self._out_params()
         operation = self._operation()
         name = 'col2im_{}d'.format(self.ndim)
         return in_params, out_params, operation, name
+
+    @staticmethod
+    @chainer.cuda.memoize()
+    def generate(ndim):
+        return Col2imNDKernel(ndim)._generate()
