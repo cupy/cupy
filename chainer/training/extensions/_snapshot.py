@@ -25,9 +25,11 @@ def snapshot_object(target, filename, savefun=npz.save_npz,
             ``'snapshot_10000'`` at the 10,000th iteration.
         savefun: Function to save the object. It takes two arguments: the
             output file path and the object to serialize.
-        trigger: Trigger that decides when to take snapshot. If it is a tuple
-            in the form ``<int>, 'epoch'`` or ``<int>, 'iteration'``, it is
-            passed to :class:`IntervalTrigger`.
+        trigger: Trigger that decides when to take snapshot. It can be either
+            an already built trigger object (i.e., a callable object that
+            accepts a trainer object and returns a bool value), or a tuple in
+            the form ``<int>, 'epoch'`` or ``<int>, 'iteration'``. In latter
+            case, the tuple is passed to IntervalTrigger.
 
     Returns:
         An extension function.
@@ -64,9 +66,11 @@ def snapshot(savefun=npz.save_npz,
         filename (str): Name of the file into which the trainer is serialized.
             It can be a format string, where the trainer object is passed to
             the :meth:`str.format` method.
-        trigger: Trigger that decides when to take snapshot. If it is a tuple
-            in the form ``<int>, 'epoch'`` or ``<int>, 'iteration'``, it is
-            passed to :class:`IntervalTrigger`.
+        trigger: Trigger that decides when to take snapshot. It can be either
+            an already built trigger object (i.e., a callable object that
+            accepts a trainer object and returns a bool value), or a tuple in
+            the form ``<int>, 'epoch'`` or ``<int>, 'iteration'``. In latter
+            case, the tuple is passed to IntervalTrigger.
 
     """
     @extension.make_extension(trigger=trigger, priority=-100)
