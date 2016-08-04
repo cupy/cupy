@@ -117,7 +117,7 @@ def _retrieve_cifar(name):
         train_y = numpy.empty((5, 10000), dtype=numpy.uint8)
         test_y = numpy.empty(10000, dtype=numpy.uint8)
 
-        dir_name = '{}-batches-py/'.format(name)
+        dir_name = '{}-batches-py'.format(name)
 
         with tarfile.open(archive_path, 'r:gz') as archive:
             # training set
@@ -136,7 +136,8 @@ def _retrieve_cifar(name):
         train_x = train_x.reshape(50000, 3072)
         train_y = train_y.reshape(50000)
 
-        numpy.savez_compressed(path, x=train_x, y=train_y)
+        numpy.savez_compressed(path, train_x=train_x, train_y=train_y,
+                               test_x=test_x, test_y=test_y)
         return {'train_x': train_x, 'train_y': train_y,
                 'test_x': test_x, 'test_y': test_y}
 
