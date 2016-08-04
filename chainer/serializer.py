@@ -44,7 +44,7 @@ class AbstractSerializer(object):
         Args:
             key (str): Name of the serialization entry.
             value (scalar, array, None, or str): Object to be (de)serialized.
-            ``None`` is only supported by deserializers.
+                ``None`` is only supported by deserializers.
 
         Returns:
             Serialized or deserialized value.
