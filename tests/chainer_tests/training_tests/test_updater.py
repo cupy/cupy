@@ -102,7 +102,8 @@ class TestUpdater(unittest.TestCase):
                          ['iterator:main'])
 
         self.assertEqual(len(self.optimizer.serialize_called), 1)
-        self.assertEqual(self.optimizer.serialize_called[0].path, ['optimizer:main'])
+        self.assertEqual(
+            self.optimizer.serialize_called[0].path, ['optimizer:main'])
 
         self.assertEqual(serializer.called, [('iteration', 0)])
 
