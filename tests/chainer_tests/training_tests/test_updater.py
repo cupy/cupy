@@ -15,16 +15,30 @@ class DummyIterator(dataset.Iterator):
     is_new_epoch = True
 
     def __init__(self, next_data):
-        self.finalize = mock.MagicMock()
-        self.__next__ = mock.MagicMock(return_value=next_data)
-        self.serialize = mock.MagicMock()
+        self.finalize_called = 0
+        self.next_called = 0
+        self.next_data = next_data
+        self.serialize_called = []
+
+    def finalize(self):
+        self.finalize_called += 1
+
+    def __next__(self):
+        self.next_called += 1
+        return self.next_data
+
+    def serialize(self, serializer):
+        self.serialize_called.append(serializer)
 
 
 class DummyOptimizer(chainer.Optimizer):
 
     def __init__(self):
         self.update = mock.MagicMock()
-        self.serialize = mock.MagicMock()
+        self.serialize_called = []
+
+    def serialize(self, serializer):
+        self.serialize_called.append(serializer)
 
 
 class DummySerializer(chainer.Serializer):
@@ -73,27 +87,22 @@ class TestUpdater(unittest.TestCase):
     def test_update(self):
         self.updater.update()
         self.assertEqual(self.updater.iteration, 1)
-        self.assertEqual(self.iterator.__next__.call_count, 1)
+        self.assertEqual(self.iterator.next_called, 1)
 
     def test_finalizer(self):
         self.updater.finalize()
-        self.assertEqual(self.iterator.finalize.call_count, 1)
+        self.assertEqual(self.iterator.finalize_called, 1)
 
     def test_serialize(self):
         serializer = DummySerializer()
         self.updater.serialize(serializer)
 
-        self.assertEqual(self.iterator.serialize.call_count, 1)
-        args, kwargs = self.iterator.serialize.call_args
-        self.assertEqual(len(args), 1)
-        self.assertEqual(len(kwargs), 0)
-        self.assertEqual(args[0].path, ['iterator:main'])
+        self.assertEqual(len(self.iterator.serialize_called), 1)
+        self.assertEqual(self.iterator.serialize_called[0].path,
+                         ['iterator:main'])
 
-        self.assertEqual(self.optimizer.serialize.call_count, 1)
-        args, kwargs = self.optimizer.serialize.call_args
-        self.assertEqual(len(args), 1)
-        self.assertEqual(len(kwargs), 0)
-        self.assertEqual(args[0].path, ['optimizer:main'])
+        self.assertEqual(len(self.optimizer.serialize_called), 1)
+        self.assertEqual(self.optimizer.serialize_called[0].path, ['optimizer:main'])
 
         self.assertEqual(serializer.called, [('iteration', 0)])
 
@@ -123,7 +132,7 @@ class TestUpdaterUpdateArguments(unittest.TestCase):
         self.assertIsInstance(v2, chainer.Variable)
         self.assertEqual(v2 .data, 2)
 
-        self.assertEqual(iterator.__next__.call_count, 1)
+        self.assertEqual(iterator.next_called, 1)
 
     def test_update_dict(self):
         iterator = DummyIterator([{'x': numpy.array(1), 'y': numpy.array(2)}])
@@ -145,7 +154,7 @@ class TestUpdaterUpdateArguments(unittest.TestCase):
         self.assertIsInstance(v2, chainer.Variable)
         self.assertEqual(v2 .data, 2)
 
-        self.assertEqual(iterator.__next__.call_count, 1)
+        self.assertEqual(iterator.next_called, 1)
 
     def test_update_var(self):
         iterator = DummyIterator([numpy.array(1)])
@@ -163,7 +172,7 @@ class TestUpdaterUpdateArguments(unittest.TestCase):
         self.assertIsInstance(v1, chainer.Variable)
         self.assertEqual(v1.data, 1)
 
-        self.assertEqual(iterator.__next__.call_count, 1)
+        self.assertEqual(iterator.next_called, 1)
 
 
 testing.run_module(__name__, __file__)
