@@ -2,7 +2,7 @@
 """Example code of learning a large scale convnet from ILSVRC2012 dataset.
 
 Prerequisite: To run this example, crop the center of ILSVRC2012 training and
-validation images, scale them to 256x256 and convert them to color, and make
+validation images, scale them to 256x256 and convert them to RGB, and make
 two lists of space-separated CSV whose first column is full path to image and
 second column is zero-origin label (this format is same as that used by Caffe's
 ImageDataLayer).
