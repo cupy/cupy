@@ -43,15 +43,15 @@ class _Writer(object):
         self._indent = 0
         self._lines = []
 
-    def __call__(self, line=None, indent=None):
-        if line is None:
-            return '\n'.join(self._lines)
-        else:
-            if indent == 'dec' or indent == 'decinc':
-                self._indent -= 1
-            self._lines.append('  ' * self._indent + line)
-            if indent == 'inc' or indent == 'decinc':
-                self._indent += 1
+    def write(self, line, indent=None):
+        if indent == 'dec' or indent == 'decinc':
+            self._indent -= 1
+        self._lines.append('  ' * self._indent + line)
+        if indent == 'inc' or indent == 'decinc':
+            self._indent += 1
+
+    def get(self):
+        return '\n'.join(self._lines)
 
 
 #
@@ -125,23 +125,26 @@ class Im2colNDKernel(object):
 
         ins = _vars('in', self.ndim)
         for (_in, kx, out_x, s, p) in zip(ins, kxs, out_xs, self.ss, self.ps):
-            w('int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p))
+            w.write(
+                'int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p))
 
         def rel_aux(_in, d):
             return '0 <= {} && {} < {}'.format(_in, _in, d)
-        w('if ({}) {{'.format(andexp(map(rel_aux, ins, self.ds))), 'inc')
+        w.write(
+            'if ({}) {{'.format(andexp(map(rel_aux, ins, self.ds))),
+            indent='inc')
 
         idxs = _vars('idx', self.ndim)
         idx0s = ['c0'] + idxs[:-1]
         for (idx, _in, d, idx0) in zip(idxs, ins, self.ds, idx0s):
-            w('int {} = {} + {} * {};'.format(idx, _in, d, idx0))
+            w.write('int {} = {} + {} * {};'.format(idx, _in, d, idx0))
 
-        w('col = img[{}];'.format(idxs[-1]))
-        w('} else {', 'decinc')
-        w('col = (T)0;')
-        w('}', 'dec')
+        w.write('col = img[{}];'.format(idxs[-1]))
+        w.write('} else {', indent='decinc')
+        w.write('col = (T)0;')
+        w.write('}', indent='dec')
 
-        return [w()]
+        return [w.get()]
 
     def _operation(self):
         c0 = self._compile_c0()
@@ -240,21 +243,21 @@ class Col2imNDKernel(object):
             kxs1 = ['c0'] + kxs[:-1]
             for (out_x, out_x0, out_x1, kx, s, x, k, kx1) in zip(
                     out_xs, out_x0s, out_x1s, kxs, self.ss, xs, self.ks, kxs1):
-                w('for (int {} = {}; {} < {}; ++{}) {{'.format(
-                    out_x, out_x0, out_x, out_x1, out_x), 'inc')
-                w('int {} = {} - {} * {} + {} * {};'.format(
+                w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
+                    out_x, out_x0, out_x, out_x1, out_x), indent='inc')
+                w.write('int {} = {} - {} * {} + {} * {};'.format(
                     kx, x, out_x, s, k, kx1))
 
             # Main-part.
             kx = kxs[-1]
             for l in main(kx, out_xs).split('\n'):
-                w(l)
+                w.write(l)
 
             # Loop closings.
             for _ in out_xs:
-                w('}', 'dec')
+                w.write('}', indent='dec')
 
-            return [w()]
+            return [w.get()]
 
         return bounds, _loop_main
 
