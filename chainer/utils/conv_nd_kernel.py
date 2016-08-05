@@ -37,20 +37,21 @@ def _vars(prefix, n):
     return ['{}_{}'.format(prefix, i) for i in six.moves.range(n)]
 
 
-def _writer():
-    _indent = [0]
-    _lines = []
+class _Writer(object):
 
-    def _aux(line=None, indent=None):
+    def __init__(self):
+        self._indent = 0
+        self._lines = []
+
+    def __call__(self, line=None, indent=None):
         if line is None:
-            return '\n'.join(_lines)
+            return '\n'.join(self._lines)
         else:
             if indent == 'dec' or indent == 'decinc':
-                _indent[0] -= 1
-            _lines.append('  ' * _indent[0] + line)
+                self._indent -= 1
+            self._lines.append('  ' * self._indent + line)
             if indent == 'inc' or indent == 'decinc':
-                _indent[0] += 1
-    return _aux
+                self._indent += 1
 
 
 #
@@ -120,7 +121,7 @@ class Im2colNDKernel(object):
         #     } else {
         #       col = (T)0;
         #     }
-        w = _writer()
+        w = _Writer()
 
         ins = _vars('in', self.ndim)
         for (_in, kx, out_x, s, p) in zip(ins, kxs, out_xs, self.ss, self.ps):
@@ -231,7 +232,7 @@ class Col2imNDKernel(object):
             aux, out_x0s, out_x1s, self.outs, xs, self.ks, self.ss), [])
 
         def _loop_main(main):
-            w = _writer()
+            w = _Writer()
 
             # Loop openings.
             out_xs = _vars('out_x', self.ndim)
