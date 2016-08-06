@@ -14,7 +14,7 @@ class BestValueTrigger(object):
     """
     def __init__(self, key, compare):
         self._key = key
-        self._min_value = None
+        self._best_value = None
         self._interval_trigger = IntervalTrigger(1, 'epoch')
         self._init_summary()
         self._compare = compare
@@ -46,8 +46,8 @@ class BestValueTrigger(object):
         value = stats[key]
         self._init_summary()
 
-        if self._min_value is None or self._compare(self._min_value, value):
-            self._min_value = value
+        if self._best_value is None or self._compare(self._best_value, value):
+            self._best_value = value
             return True
         return False
 
