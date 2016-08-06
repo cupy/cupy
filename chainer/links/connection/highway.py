@@ -8,18 +8,17 @@ class Highway(link.Chain):
 
     """Highway module.
 
-    This is a network allowing unimpeded information flow across layer on
-    information highways.
-    It applies two different gates. One gate is transform gate
-    (:math:`tanh(W_h x + b_h)`), and the other is carry gate
-    (:math:`sigma(W_t x + b_t)`). Carry gate enable us to propagete large
-    gradient value to previous layer.
+    In highway network, two gates are added to the ordinal non-linear
+    transformation (:math:H(x) = activate(W_h x + b_h)).
+    One gate is the transform gate :math:T(x) = sigma(W_t x + b_t), and the
+    other is the carry gate :math:C(x).
+    For simplicity, the author defined :math:C = 1 - T.
 
     Highway module returns :math:`y` defined as
 
     .. math::
 
-    y &=& Relu(W_h x + b_h)\\odot\\sigma(W_t x + b_t)) +
+    y &=& activate(W_h x + b_h)\\odot\\sigma(W_t x + b_t)) +
           x\\odot(1 - \\sigma(W_t x + b_t))
 
     The output array has the same spatial size as the input. In order to
