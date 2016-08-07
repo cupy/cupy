@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 
+from chainer import testing
 from chainer import training
 from chainer.training import triggers
 
@@ -58,3 +59,6 @@ class TestMinValueTrigger(unittest.TestCase):
                                    dtype=numpy.float32)
         expected = [False, True, False, False, False, True, False, False]
         _test_trigger(self, trigger, key, accuracies, expected)
+
+
+testing.run_module(__name__, __file__)
