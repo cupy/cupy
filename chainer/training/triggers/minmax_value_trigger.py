@@ -9,13 +9,18 @@ class BestValueTrigger(object):
     Args:
         key (str): Key of value.
         compare (function): Compare function which takes current best value and
-        new value and returns whether new value is better than current best.
+            new value and returns whether new value is better than current
+            best.
+        trigger: Trigger that decides the comparison interval between current
+            best value and new value. This must be a tuple in the form of
+            ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
+            :class`IntervalTrigger`.
 
     """
-    def __init__(self, key, compare):
+    def __init__(self, key, compare, trigger=(1, 'epoch')):
         self._key = key
         self._best_value = None
-        self._interval_trigger = IntervalTrigger(1, 'epoch')
+        self._interval_trigger = IntervalTrigger(*trigger)
         self._init_summary()
         self._compare = compare
 
@@ -65,11 +70,15 @@ class MaxValueTrigger(BestValueTrigger):
     Args:
         key (str): Key of value. The trigger fires when the value associated
             with this key becomes maximum.
+        trigger: Trigger that decides the comparison interval between current
+            best value and new value. This must be a tuple in the form of
+            ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
+            :class`IntervalTrigger`.
 
     """
-    def __init__(self, key):
+    def __init__(self, key, trigger=(1, 'epoch')):
         super(MaxValueTrigger, self).__init__(
-            key, lambda max_value, new_value: new_value > max_value)
+            key, lambda max_value, new_value: new_value > max_value, trigger)
 
 
 class MinValueTrigger(BestValueTrigger):
@@ -82,8 +91,12 @@ class MinValueTrigger(BestValueTrigger):
     Args:
         key (str): Key of value. The trigger fires when the value associated
             with this key becomes minimum.
+        trigger: Trigger that decides the comparison interval between current
+            best value and new value. This must be a tuple in the form of
+            ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
+            :class`IntervalTrigger`.
 
     """
-    def __init__(self, key):
+    def __init__(self, key, trigger=(1, 'epoch')):
         super(MinValueTrigger, self).__init__(
-            key, lambda min_value, new_value: new_value < min_value)
+            key, lambda min_value, new_value: new_value < min_value, trigger)
