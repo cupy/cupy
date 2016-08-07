@@ -68,8 +68,10 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
 def main():
     archs = {
         'alex': alex.Alex,
+        'alex_fp16': alex.Alex_fp16,
         'googlenet': googlenet.GoogLeNet,
         'googlenetbn': googlenetbn.GoogLeNetBN,
+        'googlenetbn_fp16': googlenetbn.GoogLeNetBN_fp16,
         'nin': nin.NIN
     }
 
