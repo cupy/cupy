@@ -1,5 +1,6 @@
 import numpy
 
+from chainer import initializer
 from chainer.initializers import constant
 from chainer.initializers import normal
 from chainer.initializers import orthogonal
@@ -76,3 +77,29 @@ def init_weight(weights, initializer, scale=1.0):
     assert callable(initializer)
     initializer(weights)
     weights *= scale
+
+
+class _ScaledInitializer(initializer.Initializer):
+
+    def __init__(self, initializer, scale=1.0):
+        self.initializer = initializer
+        self.scale = scale
+        super(Identity, self).__init__(self.initializer.dtype)
+
+    def __call__(self, array):
+        self.initializer(array)
+        array *= self.scale
+
+
+def _get_initializer(initializer, scale=1.0):
+    if initializer is None:
+        return HeNormal(scale / numpy.sqrt(2))
+    if numpy.isscalar(initializer):
+        return Constant(initializer * scale)
+    if isinstance(initializer, numpy.ndarray):
+        return Constant(initializer * scale)
+
+    assert callable(initializer)
+    if scale == 1.0:
+        return initializer
+    return _ScaledInitializer(initializer, scale)
