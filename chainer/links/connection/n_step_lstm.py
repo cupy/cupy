@@ -48,8 +48,7 @@ class NStepLSTM(link.ChainList):
     """
 
     def __init__(
-            self, n_layers, in_size, out_size, dropout, seed=1337,
-            use_cudnn=True):
+            self, n_layers, in_size, out_size, dropout, use_cudnn=True):
         weights = []
         for i in six.moves.range(n_layers):
             weight = link.Link()
@@ -69,7 +68,6 @@ class NStepLSTM(link.ChainList):
 
         self.n_layers = n_layers
         self.dropout = dropout
-        self.seed = seed
         self.use_cudnn = use_cudnn
 
     def __call__(self, hx, cx, xs, train=True):
@@ -95,7 +93,7 @@ class NStepLSTM(link.ChainList):
 
         hy, cy, trans_y = rnn.n_step_lstm(
             self.n_layers, self.dropout, hx, cx, ws, bs, trans_x,
-            seed=self.seed, train=train, use_cudnn=self.use_cudnn)
+            train=train, use_cudnn=self.use_cudnn)
 
         hy = permutate.permutate(hy, indices, axis=1, inv=True)
         cy = permutate.permutate(cy, indices, axis=1, inv=True)

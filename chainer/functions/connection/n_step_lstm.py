@@ -1,4 +1,8 @@
+import binascii
 import itertools
+import os
+import time
+
 import numpy
 import six
 
@@ -60,8 +64,7 @@ class DropoutStates(object):
         self.desc = desc
 
     @staticmethod
-    def create(handle, dropout, seed):
-        states = cudnn.create_dropout_states(handle)
+    def create(handle, states, dropout, seed):
         desc = cudnn.create_dropout_descriptor(
             handle, dropout, states.data.ptr, states.size, seed)
         return DropoutStates(states, desc)
@@ -70,6 +73,45 @@ class DropoutStates(object):
     def from_states(handle, states, dropout):
         desc = cudnn.create_dropout_descriptor(handle, dropout, 0, 0, 0)
         return DropoutStates(states, desc)
+
+
+class DropoutRandomStates(object):
+
+    def __init__(self, seed):
+        self._states = None
+
+        if seed is None:
+            try:
+                seed_str = binascii.hexlify(os.urandom(8))
+                seed = numpy.uint64(int(seed_str, 16))
+            except NotImplementedError:
+                seed = numpy.uint64(time.clock() * 1000000)
+        else:
+            seed = numpy.uint64(seed)
+
+        self._seed = seed
+
+    def create_dropout_states(self, dropout):
+        handle = cudnn.get_handle()
+        if self._states is None:
+            self._states = cudnn.create_dropout_states(handle)
+            return DropoutStates.create(
+                handle, self._states, dropout, self._seed)
+        else:
+            return DropoutStates.from_states(handle, self._states, dropout)
+
+
+_random_states = {}
+
+
+def get_random_state():
+    global _random_states
+    dev = cuda.Device()
+    rs = _random_states.get(dev.id, None)
+    if rs is None:
+        rs = DropoutRandomStates(os.getenv('CHAINER_SEED'))
+        _random_states[dev.id] = rs
+    return rs
 
 
 def _split(inputs, pos):
@@ -327,7 +369,7 @@ def _stack_weight(ws):
 
 
 def n_step_lstm(
-        n_layers, dropout_ratio, hx, cx, ws, bs, xs, seed=1337, train=True,
+        n_layers, dropout_ratio, hx, cx, ws, bs, xs, train=True,
         use_cudnn=True):
     """Stacked Long Short-Term Memory function for sequence inputs.
 
@@ -413,8 +455,7 @@ def n_step_lstm(
 
     if use_cudnn and xp is not numpy and cuda.cudnn_enabled and \
        _cudnn_version >= 5000:
-        handle = cuda.cupy.cudnn.get_handle()
-        states = DropoutStates.create(handle, dropout_ratio, seed)
+        states = get_random_state().create_dropout_states(dropout_ratio)
         # flatten all input variables
         inputs = tuple(itertools.chain(
             (hx, cx),
