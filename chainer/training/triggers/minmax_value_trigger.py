@@ -48,7 +48,7 @@ class BestValueTrigger(object):
             return False
 
         stats = summary.compute_mean()
-        value = stats[key]
+        value = float(stats[key])  # copy to CPU
         self._init_summary()
 
         if self._best_value is None or self._compare(self._best_value, value):
