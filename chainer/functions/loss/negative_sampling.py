@@ -102,8 +102,8 @@ class NegativeSamplingFunction(function.Function):
 
         gx = numpy.zeros_like(x)
         gW = numpy.zeros_like(W)
-        for i, (ix, k) in enumerate(six.moves.zip(x[self.ignore_mask],
-                                                  self.samples[self.ignore_mask])):
+        for i, (ix, k) in enumerate(six.moves.zip(
+                x[self.ignore_mask], self.samples[self.ignore_mask])):
             w = W[k]
             f = w.dot(ix)
 
