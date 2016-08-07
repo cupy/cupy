@@ -71,14 +71,12 @@ class Convolution2D(link.Link):
             if initial_bias is None:
                 initial_bias = bias
             bias_initilizer = initializers._get_initializer(initial_bias)
-            self.add_param('b', out_channels, bias_initilizer.dtype)
-            bias_initilizer(self.b.data)
+            self.add_param('b', out_channels, initializer=bias_initilizer)
 
     def _initialize_params(self, in_channels):
         kh, kw = _pair(self.ksize)
         W_shape = (self.out_channels, in_channels, kh, kw)
-        self.add_param('W', W_shape, self.W_initializer.dtype)
-        self.W_initializer(self.W.data)
+        self.add_param('W', W_shape, initializer=self.W_initializer)
 
     def __call__(self, x):
         """Applies the convolution layer.

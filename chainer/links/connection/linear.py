@@ -64,12 +64,11 @@ class Linear(link.Link):
             if initial_bias is None:
                 initial_bias = bias
             bias_initializer = initializers._get_initializer(initial_bias)
-            self.add_param('b', out_size, bias_initializer.dtype)
-            bias_initializer(self.b.data)
+            self.add_param('b', out_size, initializer=bias_initializer)
 
     def _initialize_params(self, in_size):
-        self.add_param('W', (self.out_size, in_size), self.W_initializer.dtype)
-        self.W_initializer(self.W.data)
+        self.add_param('W', (self.out_size, in_size),
+                       initializer=self.W_initializer)
 
     def __call__(self, x):
         """Applies the linear layer.
