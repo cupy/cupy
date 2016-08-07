@@ -361,9 +361,9 @@ def n_step_lstm(
         n_layers(int): Number of layers.
         dropout_ratio(float): Dropout ratio.
         hx (chainer.Variable): Variable holding stacked hidden states.
-            Its shape is ``(S, B, N)`` where `S` is number of layers and is
-            equal to `n_layers`, `B` is mini-batch size, and `N` is dimention
-            of hidden units.
+            Its shape is ``(S, B, N)`` where ``S`` is number of layers and is
+            equal to ``n_layers``, ``B`` is mini-batch size, and ``N`` is
+            dimention of hidden units.
         cx (chainer.Variable): Variable holding stacked cell states.
             It has the same shape as ``hx``.
         ws (list of list of chainer.Variable): Weight matrices. ``ws[i]``
@@ -381,7 +381,7 @@ def n_step_lstm(
             hidden units.
         xs (list of chainer.Variable): A list of :class:`chainer.Variable`
             holding input values. Each element ``xs[t]`` holds input value
-            for time ``t``. Its shape is ``(B_t, I)``, where ``B_t` is
+            for time ``t``. Its shape is ``(B_t, I)``, where ``B_t`` is
             mini-batch size for time ``t``, and ``I`` is size of input units.
             Note that this functions supports variable length sequences.
             When sequneces has different lengths, sort sequences in descending

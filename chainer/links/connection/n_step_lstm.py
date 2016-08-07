@@ -40,7 +40,7 @@ class NStepLSTM(link.ChainList):
         in_size (int): Dimensionality of input vectors.
         out_size (int): Dimensionality of hidden states and output vectors.
         dropout (float): Dropout ratio.
-        user_cudnn (bool): Use cuDNN.
+        use_cudnn (bool): Use cuDNN.
 
     .. seealso::
         :func:`chainer.functions.n_step_lstm`
