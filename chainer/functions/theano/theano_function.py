@@ -85,7 +85,8 @@ Please install theano to activate theano function.
         outputs = self.func(*inputs)
 
         if gpu:
-            outputs = [_theano_output_to_cupy_array(x) for x in outputs]
+            device = theano.sandbox.cuda.active_device_number()
+            outputs = [_theano_output_to_cupy_array(x, device) for x in outputs]
         return tuple(outputs)
 
     def backward(self, inputs, grads):
@@ -98,7 +99,8 @@ Please install theano to activate theano function.
         assert len(outs) == len(inputs)
 
         if gpu:
-            outs = [_theano_output_to_cupy_array(x) for x in outs]
+            device = theano.sandbox.cuda.active_device_number()
+            outs = [_theano_output_to_cupy_array(x, device) for x in outs]
 
         outputs = []
         for o, i in zip(outs, inputs):
@@ -130,23 +132,23 @@ def _cupy_array_to_theano_array(x):
 
 class CudaNdarrayMemory(object):
 
-    def __init__(self, array):
+    def __init__(self, array, device):
         self._array = array
-        self.device = cuda.cupy.cuda.Device()
+        self.device = cuda.Device(device)
         self.ptr = array.gpudata
 
 
-def _theano_array_to_cupy_array(x):
-    mem = CudaNdarrayMemory(x)
+def _theano_array_to_cupy_array(x, device):
+    mem = CudaNdarrayMemory(x, device)
     memptr = cuda.cupy.cuda.MemoryPointer(mem, 0)
     # Theano's CudaNdarray is always float32
     return cuda.cupy.ndarray(x.shape, dtype=numpy.float32, memptr=memptr)
 
 
-def _theano_output_to_cupy_array(x):
+def _theano_output_to_cupy_array(x, device):
     if x is None:
         return None
     elif isinstance(x, theano_cuda.CudaNdarray):
-        return _theano_array_to_cupy_array(x)
+        return _theano_array_to_cupy_array(x, device)
     else:
         return cuda.to_gpu(x)
