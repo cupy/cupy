@@ -96,6 +96,9 @@ Please install theano to activate theano function.
         outs = self.grad(*args)
         assert len(outs) == len(inputs)
 
+        if gpu:
+            outs = [_theano_output_to_cupy_array(x) for x in outs]
+
         outputs = []
         for o, i in zip(outs, inputs):
             if i.dtype.kind != 'f':
@@ -103,9 +106,6 @@ Please install theano to activate theano function.
             elif o.dtype != i.dtype:
                 o = o.astype(i.dtype)
             outputs.append(o)
-
-        if gpu:
-            outputs = [_theano_output_to_cupy_array(x) for x in outputs]
         return tuple(outputs)
 
 
