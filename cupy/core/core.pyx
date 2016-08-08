@@ -75,7 +75,6 @@ cdef class ndarray:
     def __init__(self, shape, dtype=float, memptr=None):
         cdef Py_ssize_t size
         self._shape = internal.get_size(shape)
-        ndim = self._shape.size()
         for x in self._shape:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
