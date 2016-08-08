@@ -30,7 +30,6 @@ class TestNStepLSTM(unittest.TestCase):
     out_size = 2
     n_layers = 2
     dropout = 0.0
-    seed = 1337
 
     def setUp(self):
         self.xs = [numpy.random.uniform(-1, 1, (b, self.in_size)).astype('f')
@@ -179,7 +178,6 @@ class TestNStepLSTMCudnnCall(unittest.TestCase):
     out_size = 4
     n_layers = 2
     dropout = 0.0
-    seed = 1337
 
     def setUp(self):
         self.xs = [cuda.cupy.random.uniform(

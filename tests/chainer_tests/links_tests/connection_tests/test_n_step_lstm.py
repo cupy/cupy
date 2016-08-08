@@ -24,7 +24,6 @@ class TestNStepLSTM(unittest.TestCase):
     in_size = 3
     out_size = 2
     dropout = 0.0
-    seed = 1337
 
     def setUp(self):
         shape = (self.n_layer, len(self.lengths), self.out_size)
@@ -40,7 +39,7 @@ class TestNStepLSTM(unittest.TestCase):
             numpy.random.uniform(-1, 1, (l, self.out_size)).astype('f')
             for l in self.lengths]
         self.rnn = links.NStepLSTM(
-            self.n_layer, self.in_size, self.out_size, self.dropout, self.seed,
+            self.n_layer, self.in_size, self.out_size, self.dropout,
             use_cudnn=self.use_cudnn)
 
         for layer in self.rnn:
