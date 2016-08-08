@@ -104,20 +104,6 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
 #define cudnnConvolutionBackwardFilter_v2 cudnnConvolutionBackwardFilter
 #define cudnnSetConvolutionNdDescriptor_v2 cudnnSetConvolutionNdDescriptor
 
-#endif // #if CUDNN_VERSION < 4000
-
-#if CUDNN_VERSION < 5000
-
-// ***_v3 functions are not declared in cuDNN v2, v3 and v4.
-// Following definitions are for compatibility with cuDNN v5.
-
-#define cudnnActivationForward_v3 cudnnActivationForward
-#define cudnnActivationBackward_v3 cudnnActivationBackward
-#define cudnnSetFilter4dDescriptor_v3 cudnnSetFilter4dDescriptor
-#define cudnnSetFilterNdDescriptor_v3 cudnnSetFilterNdDescriptor
-#define cudnnSetPooling2dDescriptor_v3 cudnnSetPooling2dDescriptor
-#define cudnnSetPoolingNdDescriptor_v3 cudnnSetPoolingNdDescriptor
-typedef int cudnnBatchNormMode_t;
 
 cudnnStatus_t cudnnDeriveBNTensorDescriptor(
          cudnnTensorDescriptor_t derivedBnDesc,
@@ -188,6 +174,21 @@ cudnnStatus_t cudnnBatchNormalizationBackward(
                                 const void *savedInvVariance) {
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
+
+
+#endif // #if CUDNN_VERSION < 4000
+
+#if CUDNN_VERSION < 5000
+
+// ***_v3 functions are not declared in cuDNN v2, v3 and v4.
+// Following definitions are for compatibility with cuDNN v5.
+
+#define cudnnActivationForward_v3 cudnnActivationForward
+#define cudnnActivationBackward_v3 cudnnActivationBackward
+#define cudnnSetFilter4dDescriptor_v3 cudnnSetFilter4dDescriptor
+#define cudnnSetFilterNdDescriptor_v3 cudnnSetFilterNdDescriptor
+#define cudnnSetPooling2dDescriptor_v3 cudnnSetPooling2dDescriptor
+#define cudnnSetPoolingNdDescriptor_v3 cudnnSetPoolingNdDescriptor
 
 #endif // #if CUDNN_VERSION < 5000
 

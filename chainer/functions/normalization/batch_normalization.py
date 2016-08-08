@@ -224,7 +224,7 @@ class BatchNormalizationFunction(function.Function):
         # Note: If length of inputs is not 5, we must be in train mode.
         assert self.train
         if xp is not numpy and cuda.cudnn_enabled and self.use_cudnn and \
-                self.cudnn_dim_ok:
+                self.cudnn_dim_ok and _cudnn_version >= 5000:
             # Note: cuDNN batch normalization backward only works in
             # "training mode." That is, it does not support
             # computing gradients in fixed-mean-variance mode, because there
