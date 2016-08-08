@@ -32,6 +32,46 @@ def _to_var_tuple(vs):
 
 class TheanoFunction(function.Function):
 
+    """Theano function wrapper.
+
+    This function wrapps Theano function as a :class:`chainer.Function`.
+    A user needs to make input Theano variables and output Theano variables.
+    This function automatically creates Theano function for forward calculation
+    and backward calculation from inputs and ouptuts. And then, it sends data
+    in :class:`chainer.Variable` to the function and gets results from Theano.
+
+    If a user want to use GPUs, he/she can directly send GPU data to Theano
+    function without copying.
+    
+    .. admonition:: Example
+
+       >>> x = theano.tensor.fvector()
+       >>> y = theano.tensor.fvector()
+       >>> z = x + y
+       >>> w = x - y
+       >>> f = F.TheanoFunction(inputs=[x, y], outputs=[z, w], gpu=False)
+       >>> a = chainer.Variable(numpy.array([1, 2], dtype='f'))
+       >>> b = chainer.Variable(numpy.array([2, 3], dtype='f'))
+       >>> c, d = f(a, b)
+       >>> c.data
+       array([ 3.,  5.], dtype=float32)
+       >>> d.data
+       array([-1., -1.], dtype=float32)
+
+    Args:
+        inputs (tuple of ~theano.tensor.TensorVariable): Input variables of
+            Theano. This function accepts the same number of
+            :class:`~chainer.Variable`s in forward computation.
+        outputs (tuple of ~theano.tensor.TensorVariable): Output variables of
+            Theano. The function returns the same number
+            :class:`~chainder.Variable`s as ``outputs``.
+        optimize_gpu (bool): If True, remove CPU/GPU copying as much as
+            possible. If False, it always copies :class:`cupy.ndarray` to CPU
+            before passing it to Theano. Note that this feature only supports
+            ``float32`` data.
+
+    """
+
     def __init__(self, inputs, outputs, optimize_gpu=True):
         if not _available:
             msg = '''theano is not installed on your environment.
