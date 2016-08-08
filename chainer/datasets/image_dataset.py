@@ -59,6 +59,9 @@ class ImageDataset(dataset_mixin.DatasetMixin):
         path = os.path.join(self._root, self._paths[i])
         with Image.open(path) as f:
             image = numpy.asarray(f, dtype=self._dtype)
+        if image.ndim == 2:
+            # image is greyscale
+            image = image[:, :, numpy.newaxis]
         return image.transpose(2, 0, 1)
 
 
@@ -119,6 +122,9 @@ class LabeledImageDataset(dataset_mixin.DatasetMixin):
         full_path = os.path.join(self._root, path)
         with Image.open(full_path) as f:
             image = numpy.asarray(f, dtype=self._dtype)
+        if image.ndim == 2:
+            # image is greyscale
+            image = image[:, :, numpy.newaxis]
         label = numpy.array(int_label, dtype=self._label_dtype)
         return image.transpose(2, 0, 1), label
 
