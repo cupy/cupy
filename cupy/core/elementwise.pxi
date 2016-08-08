@@ -714,7 +714,7 @@ class ufunc(object):
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
-        # Note default behavie of casting is 'same_kind' on numpy>=1.10
+        # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', 'same_kind')
         if dtype is not None:
             dtype = numpy.dtype(dtype).type
