@@ -28,13 +28,13 @@ class BestValueTrigger(object):
         """Decides whether the extension should be called on this iteration.
 
         Args:
-            trainer (Trainer): Trainer object that this trigger is associated
-                with. The updater associated with this trainer is used to
-                determine if the trigger should fire.
+            trainer (~chainer.training.Trainer): Trainer object that this
+                trigger is associated with. The ``observation`` of this trainer
+                is used to determine if the trigger should fire.
 
         Returns:
-            bool: True if the corresponding extension should be invoked in this
-                iteration.
+            bool: ``True`` if the corresponding extension should be invoked in
+                this iteration.
 
         """
 
