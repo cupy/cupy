@@ -334,7 +334,7 @@ cdef class ndarray:
         v._strides = self._strides
         v._c_contiguous = self._c_contiguous
         v._f_contiguous = self._f_contiguous
-        v.dtype = self.dtype
+        v.dtype = self.dtype if dtype is None else numpy.dtype(dtype)
         v.data = self.data
         v.base = self.base if self.base is not None else self
         return v
