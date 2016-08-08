@@ -104,6 +104,7 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
 #define cudnnConvolutionBackwardFilter_v2 cudnnConvolutionBackwardFilter
 #define cudnnSetConvolutionNdDescriptor_v2 cudnnSetConvolutionNdDescriptor
 
+typedef int cudnnBatchNormMode_t;
 
 cudnnStatus_t cudnnDeriveBNTensorDescriptor(
          cudnnTensorDescriptor_t derivedBnDesc,
