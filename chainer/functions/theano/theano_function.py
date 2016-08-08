@@ -15,7 +15,7 @@ from chainer import function
 from chainer.utils import type_check
 
 
-def _make_var_tuple(vs):
+def _to_var_tuple(vs):
     msg = ('inputs and outputs must be a TensorVariable, a list '
            'of TensorVariable or a tuple of TensorVariable')
 
@@ -40,11 +40,11 @@ Please install theano to activate theano function.
   $ pip install theano'''
             raise RuntimeError(msg)
 
-        inputs = _make_var_tuple(inputs)
-        outputs = _make_var_tuple(outputs)
+        inputs = _to_var_tuple(inputs)
+        outputs = _to_var_tuple(outputs)
         if gpu:
             outs = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(o)
-                         if o.type.dtype == 'float32' else o for o in outputs)
+                         if o.dtype == 'float32' else o for o in outputs)
         else:
             outs = outputs
 
@@ -58,7 +58,7 @@ Please install theano to activate theano function.
 
         if gpu:
             grad = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(g)
-                         if g.type.dtype == 'float32' else g for g in grad)
+                         if g.dtype == 'float32' else g for g in grad)
 
         self.grad = theano.function(
             inputs=inputs + gs,
@@ -79,19 +79,19 @@ Please install theano to activate theano function.
     def forward(self, inputs):
         gpu = cuda.get_array_module(*inputs) is not numpy
         if gpu:
-            inputs = [_make_theano_array(x) for x in inputs]
+            inputs = [_cupy_array_to_theano_input(x) for x in inputs]
 
         outputs = self.func(*inputs)
 
         if gpu:
-            outputs = [_make_cupy_array(x) for x in outputs]
+            outputs = [_theano_output_to_cupy_array(x) for x in outputs]
         return tuple(outputs)
 
     def backward(self, inputs, grads):
         args = inputs + grads
         gpu = cuda.get_array_module(*args) is not numpy
         if gpu:
-            args = [_make_theano_array(x) for x in args]
+            args = [_cupy_array_to_theano_input(x) for x in args]
 
         outs = self.grad(*args)
         assert len(outs) == len(inputs)
@@ -105,22 +105,24 @@ Please install theano to activate theano function.
             outputs.append(o)
 
         if gpu:
-            outputs = [_make_cupy_array(x) for x in outputs]
+            outputs = [_theano_output_to_cupy_array(x) for x in outputs]
         return tuple(outputs)
 
 
-def _make_theano_array(x):
+def _cupy_array_to_theano_input(x):
+    # CudaNdarray only supports float32
     if isinstance(x, cuda.cupy.ndarray) and x.dtype == numpy.float32:
-        return _cupy_to_theano_array(x)
+        return _cupy_array_to_theano_array(x)
     else:
         return cuda.to_cpu(x)
 
 
-def _cupy_to_theano_array(x):
+def _cupy_array_to_theano_array(x):
     if six.PY2:
         ptr = long(x.data.ptr)  # NOQA
     else:
         ptr = int(x.data.ptr)
+    # CuPy's stride is written in bytes, but CudaNdarray uses size
     strides = [s // 4 for s in x.strides]
     return theano_cuda.from_gpu_pointer(ptr, x.shape, strides, x)
 
@@ -133,16 +135,17 @@ class CudaNdarrayMemory(object):
         self.ptr = array.gpudata
 
 
-def _theano_to_cupy_array(x):
+def _theano_array_to_cupy_array(x):
     mem = CudaNdarrayMemory(x)
     memptr = cuda.cupy.cuda.MemoryPointer(mem, 0)
+    # Theano's CudaNdarray is always float32
     return cuda.cupy.ndarray(x.shape, dtype=numpy.float32, memptr=memptr)
 
 
-def _make_cupy_array(x):
+def _theano_output_to_cupy_array(x):
     if x is None:
         return None
     elif isinstance(x, theano_cuda.CudaNdarray):
-        return _theano_to_cupy_array(x)
+        return _theano_array_to_cupy_array(x)
     else:
         return cuda.to_gpu(x)
