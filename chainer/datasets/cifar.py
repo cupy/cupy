@@ -1,4 +1,5 @@
 import os
+import sys
 import tarfile
 
 import numpy
@@ -123,13 +124,13 @@ def _retrieve_cifar(name):
             # training set
             for i in range(5):
                 file_name = '{}/data_batch_{}'.format(dir_name, i + 1)
-                d = pickle.load(archive.extractfile(file_name))
+                d = _pickle_load(archive.extractfile(file_name))
                 train_x[i] = d['data']
                 train_y[i] = d['labels']
 
             # test set
             file_name = '{}/test_batch'.format(dir_name)
-            d = pickle.load(archive.extractfile(file_name))
+            d = _pickle_load(archive.extractfile(file_name))
             test_x = d['data']
             test_y[...] = d['labels']  # copy to array
 
@@ -142,3 +143,12 @@ def _retrieve_cifar(name):
                 'test_x': test_x, 'test_y': test_y}
 
     return download.cache_or_load_file(path, creator, numpy.load)
+
+
+def _pickle_load(f):
+    if sys.version_info > (3, ):
+        # python3
+        return pickle.load(f, encoding='latin-1')
+    else:
+        # python2
+        return pickle.load(f)
