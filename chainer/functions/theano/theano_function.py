@@ -32,7 +32,7 @@ def _to_var_tuple(vs):
 
 class TheanoFunction(function.Function):
 
-    def __init__(self, inputs, outputs, gpu=True):
+    def __init__(self, inputs, outputs, optimize_gpu=True):
         if not _available:
             msg = '''theano is not installed on your environment.
 Please install theano to activate theano function.
@@ -40,37 +40,15 @@ Please install theano to activate theano function.
   $ pip install theano'''
             raise RuntimeError(msg)
 
-        inputs = _to_var_tuple(inputs)
-        outputs = _to_var_tuple(outputs)
-        if gpu:
-            outs = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(o)
-                         if o.dtype == 'float32' else o for o in outputs)
-        else:
-            outs = outputs
-
-        self.func = theano.function(inputs=inputs, outputs=outs)
-        gs = tuple(o.type('g_{}'.format(i)) for i, o in enumerate(outputs))
-        known_grads = dict(zip(outputs, gs))
-
-        grad = theano.tensor.grad(
-            cost=None, wrt=inputs, known_grads=known_grads,
-            disconnected_inputs='ignore')
-
-        if gpu:
-            grad = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(g)
-                         if g.dtype == 'float32' else g for g in grad)
-
-        self.grad = theano.function(
-            inputs=inputs + gs,
-            outputs=grad,
-            on_unused_input='ignore')
+        self._inputs = _to_var_tuple(inputs)
+        self._outputs = _to_var_tuple(outputs)
+        self.optimize_gpu = optimize_gpu
 
     def check_type_forward(self, in_types):
-        type_check.expect(in_types.size() == len(self.func.input_storage))
+        type_check.expect(in_types.size() == len(self._inputs))
 
-        for actual_type, storage in six.moves.zip(
-                in_types, self.func.input_storage):
-            expect_type = storage.type
+        for actual_type, variable in six.moves.zip(in_types, self._inputs):
+            expect_type = variable.type
             # Theano cannot check shapes of variables
             type_check.expect(
                 actual_type.ndim == expect_type.ndim,
@@ -79,23 +57,45 @@ Please install theano to activate theano function.
 
     def forward(self, inputs):
         gpu = cuda.get_array_module(*inputs) is not numpy
-        if gpu:
+        if gpu and self.optimize_gpu:
+            outs = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(o)
+                         if o.dtype == 'float32' else o for o in self._outputs)
             inputs = [_cupy_array_to_theano_input(x) for x in inputs]
+        else:
+            outs = self._outputs
 
+        self.func = theano.function(inputs=self._inputs, outputs=outs)
         outputs = self.func(*inputs)
 
         if gpu:
             device = theano.sandbox.cuda.active_device_number()
-            outputs = [_theano_output_to_cupy_array(x, device) for x in outputs]
+            outputs = [_theano_output_to_cupy_array(x, device)
+                       for x in outputs]
         return tuple(outputs)
 
     def backward(self, inputs, grads):
         args = inputs + grads
         gpu = cuda.get_array_module(*args) is not numpy
-        if gpu:
+
+        gs = tuple(
+            o.type('g_{}'.format(i)) for i, o in enumerate(self._outputs))
+        known_grads = dict(zip(self._outputs, gs))
+
+        grad = theano.tensor.grad(
+            cost=None, wrt=self._inputs, known_grads=known_grads,
+            disconnected_inputs='ignore')
+
+        if gpu and self.optimize_gpu:
+            grad = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(g)
+                         if g.dtype == 'float32' else g for g in grad)
             args = [_cupy_array_to_theano_input(x) for x in args]
 
-        outs = self.grad(*args)
+        grad_func = theano.function(
+            inputs=self._inputs + gs,
+            outputs=grad,
+            on_unused_input='ignore')
+
+        outs = grad_func(*args)
         assert len(outs) == len(inputs)
 
         if gpu:
