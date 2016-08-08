@@ -18,6 +18,9 @@ if theano_function._available:
 @unittest.skipUnless(theano_function._available, 'theano is not available')
 class TheanoFunctionTestBase(object):
 
+    forward_test_options = {}
+    backward_test_options = {'atol': 1e-4}
+
     def setUp(self):
         self.input_data = [
             numpy.random.uniform(
@@ -45,7 +48,8 @@ class TheanoFunctionTestBase(object):
 
         self.assertEqual(len(outputs), len(expect))
         for o, e in zip(outputs, expect):
-            gradient_check.assert_allclose(o.data, e)
+            gradient_check.assert_allclose(
+                o.data, e, **self.forward_test_options)
 
     def test_forward_cpu(self):
         self.check_forward(self.input_data)
@@ -59,7 +63,7 @@ class TheanoFunctionTestBase(object):
         gpu = isinstance(input_data[0], cuda.ndarray)
         func = self.make_func(gpu)
         gradient_check.check_backward(
-            func, input_data, grad_data, atol=1e-4)
+            func, input_data, grad_data, **self.backward_test_options)
 
     def test_backward_cpu(self):
         self.check_backward(self.input_data, self.grad_data)
@@ -84,6 +88,11 @@ class TheanoFunctionTestBase(object):
     {'inputs': [{'shape': (3, 2), 'type': 'float32'},
                 {'shape': (3, 2), 'type': 'float64'}],
      'outputs': [{'shape': (3, 2), 'type': 'float64'}]},
+    {'inputs': [{'shape': (3, 2), 'type': 'float16'},
+                {'shape': (3, 2), 'type': 'float32'}],
+     'outputs': [{'shape': (3, 2), 'type': 'float32'}],
+     'forward_test_options': {'atol': 1e-3, 'rtol': 1e-3},
+     'backward_test_options': {'eps': 1, 'atol': 1e-3, 'rtol': 1e-3}},
 )
 class TestTheanoFunction(TheanoFunctionTestBase, unittest.TestCase):
 
