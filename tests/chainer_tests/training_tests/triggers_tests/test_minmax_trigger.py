@@ -7,7 +7,7 @@ from chainer import training
 from chainer.training import triggers
 
 
-class dummyUpdater(training.Updater):
+class DummyUpdater(training.Updater):
 
     def __init__(self):
         self.iteration = 0
@@ -31,7 +31,7 @@ class dummyUpdater(training.Updater):
 
 
 def _test_trigger(self, trigger, key, accuracies, expected):
-    updater = dummyUpdater()
+    updater = DummyUpdater()
     trainer = training.Trainer(updater)
     for accuracy, expected in zip(accuracies, expected):
         updater.update()
