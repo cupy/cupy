@@ -85,8 +85,8 @@ class BatchNormalizationFunction(function.Function):
                 self.running_mean = xp.array(self.running_mean)
                 self.running_var = xp.array(self.running_var)
         elif len(inputs) == 5:
-                self.fixed_mean = inputs[3]
-                self.fixed_var = inputs[4]
+            self.fixed_mean = inputs[3]
+            self.fixed_var = inputs[4]
 
         # TODO(bkvogel): Check for float16 support again in next cuDNN version.
         if x[0].dtype == numpy.float16:

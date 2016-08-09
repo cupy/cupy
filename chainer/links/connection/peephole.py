@@ -49,6 +49,7 @@ class StatefulPeepholeLSTM(link.Chain):
         h (~chainer.Variable): Output at the current time step.
 
     """
+
     def __init__(self, in_size, out_size):
         super(StatefulPeepholeLSTM, self).__init__(
             upward=linear.Linear(in_size, 4 * out_size),
