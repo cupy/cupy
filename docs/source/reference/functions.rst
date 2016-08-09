@@ -347,6 +347,10 @@ sum
 ~~~
 .. autofunction:: sum
 
+tan
+~~~
+.. autofunction:: tan
+
 
 Noise injections
 ----------------

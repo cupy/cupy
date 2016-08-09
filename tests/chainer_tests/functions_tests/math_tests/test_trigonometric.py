@@ -39,6 +39,10 @@ class UnaryFunctionsTestBase(object):
     def test_sin_forward_cpu(self):
         self.check_forward_cpu(F.sin, numpy.sin)
 
+    @condition.retry(3)
+    def test_tan_forward_cpu(self):
+        self.check_forward_cpu(F.tan, numpy.tan)
+
     @attr.gpu
     @condition.retry(3)
     def test_cos_forward_gpu(self):
@@ -48,6 +52,11 @@ class UnaryFunctionsTestBase(object):
     @condition.retry(3)
     def test_sin_forward_gpu(self):
         self.check_forward_gpu(F.sin, numpy.sin)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_tan_forward_gpu(self):
+        self.check_forward_gpu(F.tan, numpy.tan)
 
     def check_backward(self, op, x_data, y_grad):
         gradient_check.check_backward(op, x_data, y_grad)
@@ -66,6 +75,10 @@ class UnaryFunctionsTestBase(object):
     def test_sin_backward_cpu(self):
         self.check_backward_cpu(F.sin)
 
+    @condition.retry(3)
+    def test_tan_backward_cpu(self):
+        self.check_backward_cpu(F.tan)
+
     @attr.gpu
     @condition.retry(3)
     def test_cos_backward_gpu(self):
@@ -76,11 +89,19 @@ class UnaryFunctionsTestBase(object):
     def test_sin_backward_gpu(self):
         self.check_backward_gpu(F.sin)
 
+    @attr.gpu
+    @condition.retry(3)
+    def test_tan_backward_gpu(self):
+        self.check_backward_gpu(F.tan)
+
     def test_sin(self):
         self.assertEqual(F.Sin().label, 'sin')
 
     def test_cos(self):
         self.assertEqual(F.Cos().label, 'cos')
+
+    def test_tan(self):
+        self.assertEqual(F.Tan().label, 'tan')
 
 
 class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
