@@ -21,6 +21,7 @@ cdef extern from *:
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
     ctypedef int TensorFormat 'cudnnTensorFormat_t'
+    ctypedef int BatchNormMode 'cudnnBatchNormMode_t'
 
     ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
     ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
@@ -235,6 +236,39 @@ cpdef poolingBackward(
         size_t destDesc, size_t destData, size_t beta, size_t destDiffDesc,
         size_t destDiffData)
 
+###############################################################################
+# Batch Normalization
+###############################################################################
+
+cpdef deriveBNTensorDescriptor(
+        size_t derivedBnDesc, size_t xDesc, int mode)
+
+cpdef batchNormalizationForwardTraining(
+        size_t handle, int mode,
+        size_t alpha, size_t beta, size_t xDesc,
+        size_t x, size_t yDesc, size_t y,
+        size_t bnScaleBiasMeanVarDesc, size_t bnScale,
+        size_t bnBias, double exponentialAverageFactor,
+        size_t resultRunningMean, size_t resultRunningVariance,
+        double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance)
+
+cpdef batchNormalizationForwardInference(
+        size_t handle, int mode,
+        size_t alpha, size_t beta, size_t xDesc,
+        size_t x, size_t yDesc, size_t y,
+        size_t bnScaleBiasMeanVarDesc, size_t bnScale,
+        size_t bnBias, size_t estimatedMean, size_t estimatedVariance,
+        double epsilon)
+
+cpdef batchNormalizationBackward(
+        size_t handle, int mode,
+        size_t alphaDataDiff, size_t betaDataDiff,
+        size_t alphaParamDiff, size_t betaParamDiff,
+        size_t xDesc, size_t x, size_t dyDesc,
+        size_t dy, size_t dxDesc, size_t dx,
+        size_t dBnScaleBiasDesc, size_t bnScale,
+        size_t dBnScaleResult, size_t dBnBiasResult,
+        double epsilon, size_t savedMean, size_t savedInvVariance)
 
 ###############################################################################
 # Activation

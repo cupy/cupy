@@ -151,6 +151,39 @@ cdef extern from "cupy_cudnn.h":
             TensorDescriptor destDesc, void* destData, void* beta,
             TensorDescriptor destDiffDesc, void* destDiffData)
 
+    # Batch Normalization
+    int cudnnDeriveBNTensorDescriptor(
+    	    TensorDescriptor derivedBnDesc, TensorDescriptor xDesc,
+	    BatchNormMode mode)
+
+    int cudnnBatchNormalizationForwardTraining(
+            Handle handle, BatchNormMode mode,
+	    void* alpha, void* beta, TensorDescriptor xDesc,
+	    void* x, TensorDescriptor yDesc, void* y,
+	    TensorDescriptor bnScaleBiasMeanVarDesc, void* bnScale,
+	    void* bnBias, double exponentialAverageFactor,
+	    void* resultRunningMean, void* resultRunningVariance,
+	    double epsilon, void* resultSaveMean, void* resultSaveInvVariance)
+
+    int cudnnBatchNormalizationForwardInference(
+            Handle handle, BatchNormMode mode,
+	    void* alpha, void* beta, TensorDescriptor xDesc,
+	    void* x, TensorDescriptor yDesc, void* y,
+	    TensorDescriptor bnScaleBiasMeanVarDesc, void* bnScale,
+	    void* bnBias, void* estimatedMean, void* estimatedVariance,
+	    double epsilon)
+
+    int cudnnBatchNormalizationBackward(
+            Handle handle, BatchNormMode mode,
+	    void* alphaDataDiff, void* betaDataDiff,
+	    void* alphaParamDiff, void* betaParamDiff,
+	    TensorDescriptor xDesc, void* x,
+	    TensorDescriptor dyDesc, void* dy,
+	    TensorDescriptor dxDesc, void* dx,
+	    TensorDescriptor dBnScaleBiasDesc, void* bnScale,
+	    void* dBnScaleResult, void* dBnBiasResult,
+	    double epsilon, void* savedMean, void* savedInvVariance)
+
     # Activation
     int cudnnSoftmaxForward(
             Handle handle, SoftmaxAlgorithm algorithm, SoftmaxMode mode,
@@ -585,6 +618,71 @@ cpdef poolingBackward(
         <TensorDescriptor>destDiffDesc, <void*>destDiffData)
     check_status(status)
 
+###############################################################################
+# Batch Normalization
+###############################################################################
+
+cpdef deriveBNTensorDescriptor(
+        size_t derivedBnDesc, size_t xDesc, int mode):
+    status = cudnnDeriveBNTensorDescriptor(
+        <TensorDescriptor>derivedBnDesc, <TensorDescriptor>xDesc,
+        <BatchNormMode> mode)
+    check_status(status)
+
+cpdef batchNormalizationForwardTraining(
+        size_t handle, int mode,
+        size_t alpha, size_t beta, size_t xDesc,
+        size_t x, size_t yDesc, size_t y,
+        size_t bnScaleBiasMeanVarDesc, size_t bnScale,
+        size_t bnBias, double exponentialAverageFactor,
+        size_t resultRunningMean, size_t resultRunningVariance,
+        double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance):
+        status = cudnnBatchNormalizationForwardTraining(
+        <Handle>handle, <BatchNormMode> mode,
+        <void*>alpha, <void*>beta, <TensorDescriptor>xDesc,
+        <void*>x, <TensorDescriptor>yDesc, <void*>y,
+        <TensorDescriptor>bnScaleBiasMeanVarDesc, <void*>bnScale,
+        <void*>bnBias, exponentialAverageFactor,
+        <void*>resultRunningMean, <void*>resultRunningVariance,
+        epsilon, <void*>resultSaveMean, <void*>resultSaveInvVariance)
+        check_status(status)
+
+cpdef batchNormalizationForwardInference(
+        size_t handle, int mode,
+        size_t alpha, size_t beta, size_t xDesc,
+        size_t x, size_t yDesc, size_t y,
+        size_t bnScaleBiasMeanVarDesc, size_t bnScale,
+        size_t bnBias, size_t estimatedMean, size_t estimatedVariance,
+        double epsilon):
+        status = cudnnBatchNormalizationForwardInference(
+        <Handle>handle, <BatchNormMode> mode,
+        <void*>alpha, <void*>beta, <TensorDescriptor>xDesc,
+        <void*>x, <TensorDescriptor>yDesc, <void*>y,
+        <TensorDescriptor>bnScaleBiasMeanVarDesc, <void*>bnScale,
+        <void*>bnBias, <void*>estimatedMean, <void*>estimatedVariance,
+	    epsilon)
+        check_status(status)
+
+cpdef batchNormalizationBackward(
+        size_t handle, int mode,
+        size_t alphaDataDiff, size_t betaDataDiff,
+        size_t alphaParamDiff, size_t betaParamDiff,
+        size_t xDesc, size_t x, size_t dyDesc,
+        size_t dy, size_t dxDesc, size_t dx,
+        size_t dBnScaleBiasDesc, size_t bnScale,
+        size_t dBnScaleResult, size_t dBnBiasResult,
+        double epsilon, size_t savedMean, size_t savedInvVariance):
+        status = cudnnBatchNormalizationBackward(
+        <Handle>handle, <BatchNormMode>mode,
+	    <void*>alphaDataDiff, <void*>betaDataDiff,
+	    <void*>alphaParamDiff, <void*>betaParamDiff,
+	    <TensorDescriptor>xDesc, <void*>x,
+	    <TensorDescriptor>dyDesc, <void*>dy,
+	    <TensorDescriptor>dxDesc, <void*>dx,
+	    <TensorDescriptor>dBnScaleBiasDesc, <void*>bnScale,
+	    <void*>dBnScaleResult, <void*>dBnBiasResult,
+	    epsilon, <void*>savedMean, <void*>savedInvVariance)
+        check_status(status)
 
 ###############################################################################
 # Activation
