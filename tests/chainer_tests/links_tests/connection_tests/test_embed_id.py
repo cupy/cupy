@@ -69,14 +69,15 @@ class TestEmbedID(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'t_value': -1, 'valid': False},
-    {'t_value': 3,  'valid': False},
-    {'t_value': 0,  'valid': True},
+    {'t_value': -1, 'valid': False, 'ignore_label': None},
+    {'t_value': 3,  'valid': False, 'ignore_label': None},
+    {'t_value': 0,  'valid': True,  'ignore_label': None},
+    {'t_value': -1, 'valid': True,  'ignore_label': -1},
 )
 class TestEmbedIDValueCheck(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.EmbedID(2, 2)
+        self.link = links.EmbedID(2, 2, ignore_label=self.ignore_label)
         self.t = numpy.array([self.t_value], dtype=numpy.int32)
         self.original_debug = chainer.is_debug()
         chainer.set_debug(True)
