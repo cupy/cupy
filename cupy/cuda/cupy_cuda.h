@@ -10,6 +10,24 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 
+#if CUDA_VERSION < 8000
+enum cudaDataType_t {};
+typedef enum cudaDataType_t cudaDataType;
+#endif // #if CUDA_VERSION < 8000
+
+#if CUDA_VERSION < 7050
+int cublasSgemmEx(
+        cublasHandle_t handle, cublasOperation_t transa,
+        cublasOperation_t transb, int m, int n, int k,
+        const float *alpha, const void *A, cudaDataType Atype,
+        int lda, const void *B, cudaDataType Btype, int ldb,
+        const float *beta, void *C, cudaDataType Ctype, int ldc) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+#endif // #if CUDA_VERSION < 7050
+
+
+
 #else // #ifndef CUPY_NO_CUDA
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -83,10 +101,12 @@ int cuLaunchKernel(
 ///////////////////////////////////////////////////////////////////////////////
 
 typedef int cudaError_t;
+enum cudaDataType_t {};
 enum cudaDeviceAttr {};
 enum cudaMemcpyKind {};
 
 typedef int Error;
+typedef enum cudaDataType_t cudaDataType;
 typedef enum cudaDeviceAttr DeviceAttr;
 typedef enum cudaMemcpyKind MemoryKind;
 
@@ -118,7 +138,11 @@ const char* cudaGetErrorString(Error error) {
 
 
 // Initialization
-int cudaDriverGetVersion(int* driverVersion ) {
+int cudaDriverGetVersion(int* driverVersion) {
+    return 0;
+}
+
+int cudaRuntimeGetVersion(int* runtimeVersion) {
     return 0;
 }
 
@@ -405,6 +429,13 @@ int cublasSgemmBatched(
         float** Carray, int ldc, int batchCount) {
     return 0;
 }
+
+int cublasSgemmEx(
+        cublasHandle_t handle, cublasOperation_t transa,
+        cublasOperation_t transb, int m, int n, int k,
+        const float *alpha, const void *A, cudaDataType Atype,
+        int lda, const void *B, cudaDataType Btype, int ldb,
+        const float *beta, void *C, cudaDataType Ctype, int ldc);
 
 
 // BLAS extension

@@ -95,7 +95,10 @@ cpdef sgemmBatched(size_t handle, int transa, int transb,
                    int m, int n, int k, float alpha, size_t Aarray, int lda,
                    size_t Barray, int ldb, float beta, size_t Carray, int ldc,
                    int batchCount)
-
+cpdef sgemmEx(size_t handle, int transa, int transb, int m, int n, int k,
+              float alpha, size_t A, int Atype, int lda, size_t B,
+              int Btype, int ldb, float beta, size_t C, int Ctype,
+              int ldc)
 
 ###############################################################################
 # BLAS extension

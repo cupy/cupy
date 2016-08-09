@@ -2,6 +2,7 @@
 cimport cython
 
 from cupy.cuda cimport driver
+from cupy.cuda cimport runtime
 
 
 ###############################################################################
@@ -67,6 +68,12 @@ cdef extern from 'cupy_cuda.h':
         int n, int k, const float* alpha, const float** Aarray,
         int lda, const float** Barray, int ldb, const float* beta,
         float** Carray, int ldc, int batchCount)
+    int cublasSgemmEx(
+        Handle handle, Operation transa,
+        Operation transb, int m, int n, int k,
+        const float *alpha, const void *A, runtime.DataType Atype,
+        int lda, const void *B, runtime.DataType Btype, int ldb,
+        const float *beta, void *C, runtime.DataType Ctype, int ldc)
 
     # BLAS extension
     int cublasSdgmm(
@@ -299,6 +306,18 @@ cpdef sgemmBatched(
         <float**>Carray, ldc, batchCount)
     check_status(status)
 
+
+cpdef sgemmEx(
+        size_t handle, int transa, int transb, int m, int n, int k,
+        float alpha, size_t A, int Atype, int lda, size_t B,
+        int Btype, int ldb, float beta, size_t C, int Ctype,
+        int ldc):
+    status = cublasSgemmEx(
+        <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+        &alpha, <const void*>A, <runtime.DataType> Atype, lda, <const void*>B,
+        <runtime.DataType>Btype, ldb, &beta, <void*> C,
+        <runtime.DataType> Ctype, ldc)
+    check_status(status)
 
 ###############################################################################
 # BLAS extension
