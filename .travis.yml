@@ -55,6 +55,7 @@ install:
 
 script:
   - flake8
+  - flake8 --filename='*.pyx,*.px*' --ignore E901,E225,E226,E227
   - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest tests/install_tests
   - cd tests
   - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest chainer_tests
