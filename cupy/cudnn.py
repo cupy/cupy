@@ -75,7 +75,7 @@ def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
 
 
 def create_uninitialized_tensor_descriptor():
-    """Create unititialized tensor descriptor.
+    """Create uninitialized tensor descriptor.
 
     Create a cudnnCreateTensorDescriptor_t that is not yet initialized.
     This is used by the batch normalization functions.
