@@ -69,6 +69,11 @@ def cos(x):
     return Cos()(x)
 
 
+_preamble = '''
+template <typename T> __device__ T sqr(T x) { return x * x; }
+'''
+
+
 class Tan(function.Function):
 
     @property
@@ -94,8 +99,9 @@ class Tan(function.Function):
         gx = cuda.elementwise(
             'T x, T gy',
             'T gx',
-            'gx = 1.0 / pow(cos(x), (T)2.0) * gy',
-            'tan_bwd'
+            'gx = 1.0 / sqr(cos(x)) * gy',
+            'tan_bwd',
+            preamble=_preamble
         )(x[0], gy[0])
         return gx,
 
