@@ -241,34 +241,34 @@ cpdef poolingBackward(
 ###############################################################################
 
 cpdef deriveBNTensorDescriptor(
-        size_t derivedBnDesc, size_t xDesc, int mode)
+    size_t derivedBnDesc, size_t xDesc, int mode)
 
 cpdef batchNormalizationForwardTraining(
-        size_t handle, int mode,
-        size_t alpha, size_t beta, size_t xDesc,
-        size_t x, size_t yDesc, size_t y,
-        size_t bnScaleBiasMeanVarDesc, size_t bnScale,
-        size_t bnBias, double exponentialAverageFactor,
-        size_t resultRunningMean, size_t resultRunningVariance,
-        double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance)
+    size_t handle, int mode,
+    size_t alpha, size_t beta, size_t xDesc,
+    size_t x, size_t yDesc, size_t y,
+    size_t bnScaleBiasMeanVarDesc, size_t bnScale,
+    size_t bnBias, double exponentialAverageFactor,
+    size_t resultRunningMean, size_t resultRunningVariance,
+    double epsilon, size_t resultSaveMean, size_t resultSaveInvVariance)
 
 cpdef batchNormalizationForwardInference(
-        size_t handle, int mode,
-        size_t alpha, size_t beta, size_t xDesc,
-        size_t x, size_t yDesc, size_t y,
-        size_t bnScaleBiasMeanVarDesc, size_t bnScale,
-        size_t bnBias, size_t estimatedMean, size_t estimatedVariance,
-        double epsilon)
+    size_t handle, int mode,
+    size_t alpha, size_t beta, size_t xDesc,
+    size_t x, size_t yDesc, size_t y,
+    size_t bnScaleBiasMeanVarDesc, size_t bnScale,
+    size_t bnBias, size_t estimatedMean, size_t estimatedVariance,
+    double epsilon)
 
 cpdef batchNormalizationBackward(
-        size_t handle, int mode,
-        size_t alphaDataDiff, size_t betaDataDiff,
-        size_t alphaParamDiff, size_t betaParamDiff,
-        size_t xDesc, size_t x, size_t dyDesc,
-        size_t dy, size_t dxDesc, size_t dx,
-        size_t dBnScaleBiasDesc, size_t bnScale,
-        size_t dBnScaleResult, size_t dBnBiasResult,
-        double epsilon, size_t savedMean, size_t savedInvVariance)
+    size_t handle, int mode,
+    size_t alphaDataDiff, size_t betaDataDiff,
+    size_t alphaParamDiff, size_t betaParamDiff,
+    size_t xDesc, size_t x, size_t dyDesc,
+    size_t dy, size_t dxDesc, size_t dx,
+    size_t dBnScaleBiasDesc, size_t bnScale,
+    size_t dBnScaleResult, size_t dBnBiasResult,
+    double epsilon, size_t savedMean, size_t savedInvVariance)
 
 ###############################################################################
 # Activation
