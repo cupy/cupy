@@ -48,6 +48,9 @@ def im2col_nd_cpu(img, ksize, stride, pad, pval=0, cover_all=False):
     return col
 
 
+_im2col_nd_kernel = conv_nd_kernel.Im2colNDKernel()
+
+
 def im2col_nd_gpu(img, ksize, stride, pad, cover_all=False):
     n, c = img.shape[0:2]       # (n, c, d_1, d_2, ..., d_N)
     dims = img.shape[2:]
@@ -60,8 +63,7 @@ def im2col_nd_gpu(img, ksize, stride, pad, cover_all=False):
     shape = (n, c) + ksize + outs
     col = cuda.cupy.empty(shape, dtype=img.dtype)
 
-    in_params, out_params, operation, name = \
-        conv_nd_kernel.Im2colNDKernel.generate(ndim)
+    in_params, out_params, operation, name = _im2col_nd_kernel.generate(ndim)
 
     cuda.elementwise(in_params, out_params, operation, name)(
         img.reduced_view(), *(dims + outs + ksize + stride + pad + (col,)))
@@ -99,6 +101,9 @@ def col2im_nd_cpu(col, stride, pad, dims):
     return img[img_index]
 
 
+_col2im_nd_kernel = conv_nd_kernel.Col2imNDKernel()
+
+
 def col2im_nd_gpu(col, stride, pad, dims):
     # Assured consistency of dimensions of parameters by caller.
     n, c = col.shape[:2]        # (n, c, k_1, ..., k_N, out_1, ..., out_N)
@@ -111,8 +116,7 @@ def col2im_nd_gpu(col, stride, pad, dims):
     img_shape = (n, c) + dims   # (n, c, d_1, d_2, ..., d_N)
     img = cuda.cupy.empty(img_shape, dtype=col.dtype)
 
-    in_params, out_params, operation, name = \
-        conv_nd_kernel.Col2imNDKernel.generate(ndim)
+    in_params, out_params, operation, name = _col2im_nd_kernel.generate(ndim)
 
     cuda.elementwise(in_params, out_params, operation, name)(
         col.reduced_view(), *(dims + outs + ksize + stride + pad + (img,)))
