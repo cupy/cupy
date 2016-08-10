@@ -42,7 +42,7 @@ class TheanoFunction(function.Function):
 
     If a user want to use GPUs, he/she can directly send GPU data to Theano
     function without copying.
-    
+
     .. admonition:: Example
 
        >>> x = theano.tensor.fvector()
