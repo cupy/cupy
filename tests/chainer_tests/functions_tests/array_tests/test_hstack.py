@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import cuda
@@ -13,9 +14,12 @@ from chainer.utils import type_check
 
 @testing.parameterize(*testing.product_dict(
     [
-        {'shape': (3, 4), 'y_shape': (3, 8)},
-        {'shape': (3), 'y_shape': (6,)},
-        {'shape': (), 'y_shape': (2,)},
+        {'shape': (3, 4), 'y_shape': (3, 8), 'xs_length': 2},
+        {'shape': (3), 'y_shape': (6,), 'xs_length': 2},
+        {'shape': (), 'y_shape': (2,), 'xs_length': 2},
+        {'shape': (3, 4), 'y_shape': (3, 4), 'xs_length': 1},
+        {'shape': (3), 'y_shape': (3,), 'xs_length': 1},
+        {'shape': (), 'y_shape': (1,), 'xs_length': 1},
     ],
     [
         {'dtype': numpy.float16},
@@ -27,8 +31,8 @@ class TestHstack(unittest.TestCase):
 
     def setUp(self):
         self.xs = [
-            numpy.random.uniform(-1, 1, self.shape).astype(self.dtype),
-            numpy.random.uniform(-1, 1, self.shape).astype(self.dtype),
+            numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            for i in six.moves.range(self.xs_length)
         ]
         self.g = numpy.random.uniform(-1, 1, self.y_shape).astype(self.dtype)
 
