@@ -1,5 +1,50 @@
-from chainer.functions.array import concat
-from chainer.functions.array import expand_dims
+import numpy
+
+from chainer import cuda
+from chainer import function
+from chainer.utils import type_check
+
+
+class Hstack(function.Function):
+
+    """Concatenate multiple tensors horizontally (column wise)."""
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() > 0)
+
+        ndim = in_types[0].ndim.eval()
+        for i in range(1, in_types.size().eval()):
+            type_check.expect(
+                in_types[0].dtype == in_types[i].dtype,
+                in_types[0].ndim == in_types[i].ndim,
+            )
+            if ndim <= 1:
+                continue
+            for d in range(0, ndim):
+                if d == 1:
+                    continue
+                type_check.expect(in_types[0].shape[d] == in_types[i].shape[d])
+
+    def forward(self, xs):
+        xp = cuda.get_array_module(*xs)
+        xs = [xp.atleast_1d(x) for x in xs]
+        return xp.hstack(xs),
+
+    def backward(self, xs, gy):
+        if not xs[:-1]:
+            return gy
+
+        xp = cuda.get_array_module(*xs)
+
+        if xs[0].ndim == 0:
+            ys = xp.hsplit(gy[0], len(xs))
+            return [y.reshape(()) for y in ys]
+
+        if xs[0].ndim == 1:
+            sizes = numpy.array([x.shape[0] for x in xs[:-1]]).cumsum()
+        else:
+            sizes = numpy.array([x.shape[1] for x in xs[:-1]]).cumsum()
+        return xp.hsplit(gy[0], sizes)
 
 
 def hstack(xs):
@@ -12,9 +57,5 @@ def hstack(xs):
         ~chainer.Variable: Output variable.
 
     """
-    if xs[0].data.ndim == 0:
-        xs = [expand_dims.expand_dims(x, 0) for x in xs]
-    if xs[0].data.ndim == 1:
-        return concat.concat(xs, axis=0)
-    else:
-        return concat.concat(xs, axis=1)
+
+    return Hstack()(*xs)
