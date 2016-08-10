@@ -82,11 +82,13 @@ def check_cuda_available():
                '(see https://github.com/pfnet/chainer#installation).')
         msg += str(_resolution_error)
         raise RuntimeError(msg)
-    if not cudnn_enabled:
+    if (not cudnn_enabled and
+            not getattr(check_cuda_available, '_already_warned', False)):
         warnings.warn(
             'cuDNN is not enabled.\n'
             'Please reinstall chainer after you install cudnn\n'
             '(see https://github.com/pfnet/chainer#installation).')
+        check_cuda_available._already_warned = True
 
 
 class DummyDeviceType(object):
