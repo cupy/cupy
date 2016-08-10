@@ -31,6 +31,8 @@ class Hstack(function.Function):
 
     def backward(self, xs, gy):
         if not xs[:-1]:
+            if xs[0].ndim == 0:
+                return (gy[0].reshape(()), )
             return gy
 
         xp = cuda.get_array_module(*xs)
