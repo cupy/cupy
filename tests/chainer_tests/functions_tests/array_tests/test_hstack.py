@@ -8,6 +8,7 @@ from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
+from chainer.utils import type_check
 
 
 @testing.parameterize(*testing.product_dict(
@@ -59,6 +60,36 @@ class TestHstack(unittest.TestCase):
     def test_backward_gpu(self):
         self.check_backward(
             [cuda.to_gpu(x) for x in self.xs], cuda.to_gpu(self.g))
+
+
+@testing.parameterize(
+    {'a_shape': (3, 4), 'b_shape': (4, 4), 'valid': False},
+    {'a_shape': (3, 4), 'b_shape': (3, 3), 'valid': True},
+    {'a_shape': (3,), 'b_shape': (4,), 'valid': True},
+    {'a_shape': (3), 'b_shape': (3, 3), 'valid': False},
+)
+class TestHstackTypeCheck(unittest.TestCase):
+
+    def setUp(self):
+        self.xs = [
+            numpy.random.uniform(-1, 1, self.a_shape).astype(numpy.float32),
+            numpy.random.uniform(-1, 1, self.b_shape).astype(numpy.float32),
+        ]
+
+    def check_value_check(self):
+        if self.valid:
+            # Check if it throws nothing
+            functions.hstack(self.xs)
+        else:
+            with self.assertRaises(type_check.InvalidType):
+                functions.hstack(self.xs)
+
+    def test_value_check_cpu(self):
+        self.check_value_check()
+
+    @attr.gpu
+    def test_value_check_gpu(self):
+        self.check_value_check()
 
 
 testing.run_module(__name__, __file__)
