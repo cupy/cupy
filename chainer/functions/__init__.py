@@ -68,6 +68,7 @@ from chainer.functions.math import maximum
 from chainer.functions.math import minimum
 from chainer.functions.math import minmax
 from chainer.functions.math import scale
+from chainer.functions.math import sqrt
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -242,6 +243,8 @@ min = minmax.min
 scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
+Sqrt = sqrt.Sqrt
+sqrt = sqrt.sqrt
 Sum = sum.Sum
 sum = sum.sum
 
