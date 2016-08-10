@@ -929,7 +929,7 @@ class TestSlice(TestCaffeFunctionBaseMock):
     data = {
         'layer': [
             {
-                'name': 'slice',
+                'name': 'l1',
                 'type': 'Slice',
                 'bottom': ['x'],
                 'top': ['y1', 'y2'],
