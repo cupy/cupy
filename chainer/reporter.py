@@ -221,6 +221,13 @@ def report_scope(observation):
     current.observation = old
 
 
+def _get_device(x):
+    if numpy.isscalar(x):
+        return cuda.DummyDevice
+    else:
+        return cuda.get_device(x)
+
+
 class Summary(object):
 
     """Online summarization of a sequence of scalars.
@@ -241,7 +248,7 @@ class Summary(object):
                 a zero-dimensional array (on CPU or GPU).
 
         """
-        with cuda.get_device(value):
+        with _get_device(value):
             self._x += value
             self._x2 += value * value
             self._n += 1
@@ -249,7 +256,7 @@ class Summary(object):
     def compute_mean(self):
         """Computes the mean."""
         x, n = self._x, self._n
-        with cuda.get_device(x):
+        with _get_device(x):
             return x / n
 
     def make_statistics(self):
@@ -261,10 +268,10 @@ class Summary(object):
         """
         x, n = self._x, self._n
         xp = cuda.get_array_module(x)
-        with cuda.get_device(x):
+        with _get_device(x):
             mean = x / n
             var = self._x2 / n - mean * mean
-            std = xp.sqrt(var, var)
+            std = xp.sqrt(var)
             return mean, std
 
 
