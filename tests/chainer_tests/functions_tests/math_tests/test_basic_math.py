@@ -1054,16 +1054,14 @@ class TestMatMulVarVar(unittest.TestCase):
         gradient_check.check_backward(
             op, data, z_grad, **options)
 
-    @unittest.skipUnless(sys.version_info[0] >= 3 and sys.version_info[1] >= 5,
+    @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
     def test_backward_cpu(self):
         self.check_backward(self.x, self.y, self.gz)
 
     @attr.gpu
-    @unittest.skipUnless(
-        (sys.version_info.major >= 4 or
-            sys.version_info.major == 3 and sys.version_info.minor >= 5),
-        'Only for Python3.5 or higher')
+    @unittest.skipUnless(sys.version_info >= (3, 5),
+                         'Only for Python3.5 or higher')
     def test_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x), cuda.to_gpu(self.y), cuda.to_gpu(self.gz))
