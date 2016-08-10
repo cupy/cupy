@@ -1020,16 +1020,16 @@ class TestMatMulVarVar(unittest.TestCase):
             options = {'atol': 1e-3, 'rtol': 1e-3}
         else:
             options = {'atol': 1e-7, 'rtol': 1e-7}
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             operator.matmul(self.x, self.y), z.data, **options)
 
-    @unittest.skipUnless(sys.version_info[0] >= 3 and sys.version_info[1] >= 5,
+    @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.y)
 
-    @unittest.skipUnless(sys.version_info[0] >= 3 and sys.version_info[1] >= 5,
+    @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
     @attr.gpu
     @condition.retry(3)
