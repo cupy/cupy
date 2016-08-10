@@ -88,21 +88,12 @@ class Tan(function.Function):
         xp = cuda.get_array_module(*x)
         return utils.force_array(xp.tan(x[0])),
 
-    def backward_cpu(self, x, gy):
-        gx = utils.force_array(numpy.cos(x[0]))
-        numpy.square(gx, out=gx)
-        numpy.reciprocal(gx, out=gx)
+    def backward(self, x, gy):
+        xp = cuda.get_array_module(*x)
+        gx = utils.force_array(xp.cos(x[0]))
+        xp.square(gx, out=gx)
+        xp.reciprocal(gx, out=gx)
         gx *= gy[0]
-        return gx,
-
-    def backward_gpu(self, x, gy):
-        gx = cuda.elementwise(
-            'T x, T gy',
-            'T gx',
-            'gx = 1.0 / sqr(cos(x)) * gy',
-            'tan_bwd',
-            preamble=_preamble
-        )(x[0], gy[0])
         return gx,
 
 
