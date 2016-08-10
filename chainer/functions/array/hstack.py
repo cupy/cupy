@@ -27,7 +27,6 @@ class Hstack(function.Function):
 
     def forward(self, xs):
         xp = cuda.get_array_module(*xs)
-        xs = [xp.atleast_1d(x) for x in xs]
         return xp.hstack(xs),
 
     def backward(self, xs, gy):
