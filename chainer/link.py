@@ -5,6 +5,7 @@ import numpy
 import six
 
 from chainer import cuda
+from chainer import initializers
 from chainer import variable
 
 
@@ -145,7 +146,7 @@ class Link(object):
         if initializer is None:
             data = self.xp.full(shape, numpy.nan, dtype=dtype)
         else:
-            data = initializer.generate_array(shape, self.xp)
+            data = initializers.generate_array(initializer, shape, self.xp)
         grad = self.xp.full_like(data, numpy.nan)
         var = variable.Variable(data, volatile='auto', name=name)
         var.grad = grad
