@@ -1,5 +1,3 @@
-import numpy
-
 from chainer import cuda
 from chainer import initializer
 
@@ -27,13 +25,7 @@ class Identity(initializer.Initializer):
                              'for 2D squared matrices.')
         array[...] = 0
         xp = cuda.get_array_module(array)
-        d = xp.diagonal(array)
-        if xp == numpy:
-            writeable = d.flags.writeable
-            d.flags.writeable = True
-        d[...] = self.scale
-        if xp == numpy:
-            d.flags.writeable = writeable
+        xp.fill_diagonal(array, self.scale)
 
 
 class Constant(initializer.Initializer):
