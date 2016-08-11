@@ -48,6 +48,8 @@ class Constant(initializer.Initializer):
         super(Constant, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         xp = cuda.get_array_module(array)
         array[...] = xp.asarray(self.fill_value)
 

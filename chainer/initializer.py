@@ -12,29 +12,8 @@ class Initializer(object):
 
     """
 
-    dtype = numpy.float32
-
     def __init__(self, dtype=None):
-        if dtype is not None:
-            self.dtype = dtype
-
-    def get_array(self, shape, xp):
-        """Return initialized array.
-
-        The algorithms used to make the new values depend on the
-        concrete derived classes.
-
-        Args:
-            shape (tuple): Shape of a return array.
-            xp (module): :mod:`cupy` or :mod:`numpy`.
-
-        Returns:
-            numpy.ndarray or cupy.ndarray: An initialized array.
-
-        """
-        array = xp.empty(shape, dtype=self.dtype)
-        self(array)
-        return array
+        self.dtype = dtype
 
     def __call__(self, array):
         """Initializes given array.
