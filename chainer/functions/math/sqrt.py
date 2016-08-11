@@ -35,7 +35,8 @@ def sqrt(x):
     .. math::
        y_i = \\sqrt x_i.
 
-    If the value of :math:`x_i` is negative, it returns ``Nan`` for :math:`y_i` respect to underlying numpy and cupy specification.
+    If the value of :math:`x_i` is negative, it returns ``Nan`` for :math:`y_i`
+    respect to underlying numpy and cupy specification.
 
     Args:
         x (~chainer.Variable): Input variable.
