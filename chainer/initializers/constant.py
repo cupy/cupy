@@ -20,6 +20,8 @@ class Identity(initializer.Initializer):
         super(Identity, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         shape = array.shape
         if len(shape) != 2 or shape[0] != shape[1]:
             raise ValueError('Identity matrix initialization can only be used '
@@ -46,6 +48,8 @@ class Constant(initializer.Initializer):
         super(Constant, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         xp = cuda.get_array_module(array)
         array[...] = xp.asarray(self.fill_value)
 

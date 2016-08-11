@@ -20,6 +20,30 @@ GlorotUniform = uniform.GlorotUniform
 HeUniform = uniform.HeUniform
 
 
+def generate_array(initializer, shape, xp):
+    """Return initialized array.
+
+    The algorithms used to make the new values depend on the
+    concrete derived classes.
+
+    Args:
+        initializer: The callable object that takes :class:`numpy.ndarray`
+             or :class:`cupy.ndarray` and edits its value.
+        shape (tuple): Shape of a return array.
+        xp (module): :mod:`cupy` or :mod:`numpy`.
+
+    Returns:
+        numpy.ndarray or cupy.ndarray: An initialized array.
+
+    """
+    dtype = numpy.float32
+    if hasattr(initializer, 'dtype') and initializer.dtype is not None:
+        dtype = initializer.dtype
+    array = xp.empty(shape, dtype=dtype)
+    initializer(array)
+    return array
+
+
 def init_weight(weights, initializer, scale=1.0):
     """Helper function for initialization of the weight tensor.
 

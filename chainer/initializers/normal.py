@@ -56,6 +56,8 @@ class GlorotNormal(initializer.Initializer):
         super(GlorotNormal, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / (fan_in + fan_out))
         Normal(s)(array)
@@ -85,6 +87,8 @@ class HeNormal(initializer.Initializer):
         super(HeNormal, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / fan_in)
         Normal(s)(array)

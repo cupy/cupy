@@ -26,6 +26,8 @@ class Uniform(initializer.Initializer):
         super(Uniform, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         xp = cuda.get_array_module(array)
         array[...] = xp.random.uniform(
             low=-self.scale, high=self.scale, size=array.shape)
@@ -82,6 +84,8 @@ class GlorotUniform(initializer.Initializer):
         super(GlorotUniform, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(6. / (fan_in + fan_out))
         Uniform(s)(array)
@@ -108,6 +112,8 @@ class HeUniform(initializer.Initializer):
         super(HeUniform, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(6. / fan_in)
         Uniform(s)(array)

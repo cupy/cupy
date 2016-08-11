@@ -39,7 +39,7 @@ class TestIdentity(unittest.TestCase):
     def check_shaped_initializer(self, xp):
         initializer = initializers.Identity(
             scale=self.scale, dtype=self.dtype)
-        w = initializer.generate_array(self.shape, xp)
+        w = initializers.generate_array(initializer, self.shape, xp)
         self.assertIs(cuda.get_array_module(w), xp)
         self.assertTupleEqual(w.shape, self.shape)
         self.assertEqual(w.dtype, self.dtype)
@@ -103,7 +103,7 @@ class TestConstant(unittest.TestCase):
     def check_shaped_initializer(self, xp):
         initializer = initializers.Constant(
             fill_value=self.fill_value, dtype=self.dtype)
-        w = initializer.generate_array(self.shape, xp)
+        w = initializers.generate_array(initializer, self.shape, xp)
         self.assertIs(cuda.get_array_module(w), xp)
         self.assertTupleEqual(w.shape, self.shape)
         self.assertEqual(w.dtype, self.dtype)
