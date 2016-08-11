@@ -11,7 +11,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-class TestUnaryFunctionBase(unittest.TestCase):
+class UnaryFunctionsTestBase(unittest.TestCase):
 
     def make_data(self):
         raise NotImplementedError
@@ -50,7 +50,7 @@ class TestUnaryFunctionBase(unittest.TestCase):
     'shape': [(3, 2), ()],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
-class TestSqrt(TestUnaryFunctionBase):
+class TestSqrt(UnaryFunctionsTestBase):
 
     def make_data(self):
         x = numpy.random.uniform(0.1, 1, self.shape).astype(self.dtype)
