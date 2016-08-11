@@ -79,4 +79,38 @@ class TestSqrt(TestUnaryFunctionBase):
         self.check_label(F.Sqrt, 'sqrt')
 
 
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TestRsqrt(TestUnaryFunctionBase):
+
+    def make_data(self):
+        x = numpy.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        return x, gy
+
+    @condition.retry(3)
+    def test_forward_cpu(self):
+        def np_rsqrt(x, dtype=numpy.float32):
+            return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
+        self.check_forward_cpu(F.rsqrt, np_rsqrt)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        def cp_rsqrt(x, dtype=numpy.float32):
+            return cuda.cupy.reciprocal(cuda.cupy.sqrt(x, dtype=dtype))
+        self.check_forward_gpu(F.rsqrt, cuda.cupy.rsqrt)
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
+        self.check_backward_cpu(F.rsqrt)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.check_backward_gpu(F.rsqrt)
+
+
 testing.run_module(__name__, __file__)
