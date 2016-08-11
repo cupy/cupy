@@ -30,5 +30,17 @@ class Sqrt(function.Function):
 
 
 def sqrt(x):
-    """Elementwise square root function."""
+    """Elementwise square root function.
+
+    .. math::
+       y_i = \\sqrt x_i.
+
+    If the value of :math:`x_i` is negative, it returns ``Nan`` for :math:`y_i` respect to underlying numpy and cupy specification.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
     return Sqrt()(x)
