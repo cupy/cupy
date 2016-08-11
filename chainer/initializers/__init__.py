@@ -84,7 +84,8 @@ class _ScaledInitializer(initializer.Initializer):
     def __init__(self, initializer, scale=1.0):
         self.initializer = initializer
         self.scale = scale
-        super(Identity, self).__init__(self.initializer.dtype)
+        dtype = getattr(initializer, 'dtype', None)
+        super(Identity, self).__init__(dtype)
 
     def __call__(self, array):
         self.initializer(array)
