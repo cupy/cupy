@@ -355,6 +355,12 @@ sum
 ~~~
 .. autofunction:: sum
 
+tanh
+~~~~
+Hyperbolic tangent function is described in "Activation functions" section.
+
+.. seealso:: :func:`~chainer.functions.tanh`
+
 
 Noise injections
 ----------------
