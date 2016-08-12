@@ -32,7 +32,8 @@ class UnaryFunctionsTestBase(unittest.TestCase):
         self.check_forward(op, op_xp, cuda.to_gpu(self.x))
 
     def check_backward(self, op, x_data, y_grad):
-        gradient_check.check_backward(op, x_data, y_grad)
+        gradient_check.check_backward(
+            op, x_data, y_grad, atol=1e-4, rtol=1e-3, dtype=numpy.float64)
 
     def check_backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
