@@ -291,6 +291,10 @@ cos
 ~~~
 .. autofunction:: cos
 
+cosh
+~~~~
+.. autofunction:: cosh
+
 exp
 ~~~
 .. autofunction:: exp
@@ -342,6 +346,10 @@ scale
 sin
 ~~~
 .. autofunction:: sin
+
+sinh
+~~~~
+.. autofunction:: sinh
 
 sum
 ~~~
