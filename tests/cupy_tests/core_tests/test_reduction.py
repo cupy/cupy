@@ -50,6 +50,10 @@ class SimpleReductionFunction(unittest.TestCase):
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=0)
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=1)
 
+    def test_shape5(self):
+        self.check_int8_sum((4 * 1024 * 1024, 1), axis=1)
+        self.check_int8_sum((4 * 1024 * 1024, 1), axis=0)
+
 
 @testing.gpu
 class TestReductionKernel(unittest.TestCase):
