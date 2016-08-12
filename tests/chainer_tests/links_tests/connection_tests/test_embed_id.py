@@ -73,6 +73,8 @@ class TestEmbedID(unittest.TestCase):
     {'t_value': 3,  'valid': False, 'ignore_label': None},
     {'t_value': 0,  'valid': True,  'ignore_label': None},
     {'t_value': -1, 'valid': True,  'ignore_label': -1},
+    {'t_value': 3,  'valid': False, 'ignore_label': -1},
+    {'t_value': 0,  'valid': True,  'ignore_label': -1},
 )
 class TestEmbedIDValueCheck(unittest.TestCase):
 
