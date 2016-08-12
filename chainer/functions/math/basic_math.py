@@ -516,7 +516,7 @@ def matmul(lhs, rhs):  # lhs @ rhs
     return MatMulVarConst(rhs)(lhs)
 
 
-def rmatmul(lhs, rhs):  # rhs / lhs
+def rmatmul(lhs, rhs):  # rhs @ lhs
     if isinstance(rhs, variable.Variable):
         return MatMulVarVar()(rhs, lhs)
     _check_constant_type(rhs)
