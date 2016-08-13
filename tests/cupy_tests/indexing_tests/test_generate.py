@@ -1,5 +1,6 @@
 import unittest
 
+from chainer import cuda
 from cupy import testing
 
 
