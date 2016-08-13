@@ -5,9 +5,6 @@
 # Types
 ###############################################################################
 
-from cupy.cuda.driver cimport Stream
-
-
 cdef extern from *:
     ctypedef void* Handle 'cublasHandle_t'
 

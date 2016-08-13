@@ -209,6 +209,7 @@ r_ = indexing.generate.r_
 c_ = indexing.generate.c_
 ix_ = indexing.generate.ix_
 
+fill_diagonal = indexing.insert.fill_diagonal
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------

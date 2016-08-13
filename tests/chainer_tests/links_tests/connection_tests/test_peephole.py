@@ -76,16 +76,16 @@ class TestPeephole(unittest.TestCase):
 
         h1 = self.link(x)
         c1_expect, h1_expect = _peephole(self.link, c_data, h_data, x_data)
-        gradient_check.assert_allclose(h1.data, h1_expect)
-        gradient_check.assert_allclose(self.link.c.data, c1_expect)
-        gradient_check.assert_allclose(self.link.h.data, h1_expect)
+        testing.assert_allclose(h1.data, h1_expect)
+        testing.assert_allclose(self.link.c.data, c1_expect)
+        testing.assert_allclose(self.link.h.data, h1_expect)
 
         h2 = self.link(x)
         c2_expect, h2_expect = _peephole(self.link,
                                          c1_expect, h1_expect, x_data)
-        gradient_check.assert_allclose(h2.data, h2_expect)
-        gradient_check.assert_allclose(self.link.c.data, c2_expect)
-        gradient_check.assert_allclose(self.link.h.data, h2_expect)
+        testing.assert_allclose(h2.data, h2_expect)
+        testing.assert_allclose(self.link.c.data, c2_expect)
+        testing.assert_allclose(self.link.h.data, h2_expect)
 
     def test_forward_cpu(self):
         self.check_forward(self.c, self.h, self.x)
@@ -107,7 +107,7 @@ class TestPeephole(unittest.TestCase):
             c, y = _peephole(self.link, c_data, h_data, x_data)
             return y,
         gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-3)
+        testing.assert_allclose(gx, x.grad, atol=1e-3)
 
     def test_backward_cpu(self):
         self.check_backward(self.c, self.h, self.x, self.gy)

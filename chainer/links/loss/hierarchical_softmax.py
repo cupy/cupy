@@ -55,8 +55,8 @@ class TreeParser(object):
 
         else:
             # leaf node
-            self.paths[node] = numpy.array(self.path).astype(numpy.int32)
-            self.codes[node] = numpy.array(self.code).astype(numpy.float32)
+            self.paths[node] = numpy.array(self.path, dtype=numpy.int32)
+            self.codes[node] = numpy.array(self.code, dtype=numpy.float32)
 
 
 class BinaryHierarchicalSoftmaxFunction(function.Function):

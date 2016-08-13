@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tempfile
 
 import six
@@ -91,7 +92,9 @@ class LogReport(extension.Extension):
                 fd, path = tempfile.mkstemp(prefix=log_name, dir=trainer.out)
                 with os.fdopen(fd, 'w') as f:
                     json.dump(self._log, f, indent=4)
-                os.rename(path, os.path.join(trainer.out, log_name))
+
+                new_path = os.path.join(trainer.out, log_name)
+                shutil.move(path, new_path)
 
             # reset the summary for the next output
             self._init_summary()

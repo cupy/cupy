@@ -102,8 +102,8 @@ def contrastive(x0, x1, y, margin=1):
     .. note::
         This cost can be used to train siamese networks. See `Learning a
         Similarity Metric Discriminatively, with Application to Face
-        Verification` <http://yann.lecun.com/exdb/publis/pdf/chopra-05.pdf> for
-        details.
+        Verification <http://yann.lecun.com/exdb/publis/pdf/chopra-05.pdf>`_
+        for details.
 
     """
     return Contrastive(margin)(x0, x1, y)

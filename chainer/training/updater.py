@@ -250,9 +250,11 @@ class ParallelUpdater(StandardUpdater):
             models = {'main': optimizer.target}
             for name in names:
                 model = optimizer.target.copy()
-                model.to_gpu(devices[name])
+                if devices[name] >= 0:
+                    model.to_gpu(devices[name])
                 models[name] = model
-            optimizer.target.to_gpu(devices['main'])
+            if devices['main'] >= 0:
+                optimizer.target.to_gpu(devices['main'])
 
         self._devices = devices
         self._models = models
@@ -294,7 +296,7 @@ class ParallelUpdater(StandardUpdater):
             if isinstance(in_arrays, tuple):
                 in_vars = tuple(variable.Variable(x) for x in in_arrays)
                 losses.append(loss_func(*in_vars))
-            elif isinstance(in_arrays[0], dict):
+            elif isinstance(in_arrays, dict):
                 in_vars = {key: variable.Variable(x)
                            for key, x in six.iteritems(in_arrays)}
                 losses.append(loss_func(**in_vars))

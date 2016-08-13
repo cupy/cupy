@@ -2,7 +2,7 @@ import numpy
 
 
 def chi_square_test(observed, expected, alpha=0.05, df=None):
-    """Testing Goodness-of-fit Test with Peason's Chi-squared Test.
+    """Testing Goodness-of-fit Test with Pearson's Chi-squared Test.
 
     Args:
         observed (list of ints): List of # of counts each element is observed.

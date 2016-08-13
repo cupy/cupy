@@ -1,4 +1,5 @@
 import os
+import sys
 import tarfile
 
 import numpy
@@ -117,27 +118,37 @@ def _retrieve_cifar(name):
         train_y = numpy.empty((5, 10000), dtype=numpy.uint8)
         test_y = numpy.empty(10000, dtype=numpy.uint8)
 
-        dir_name = '{}-batches-py/'.format(name)
+        dir_name = '{}-batches-py'.format(name)
 
         with tarfile.open(archive_path, 'r:gz') as archive:
             # training set
             for i in range(5):
                 file_name = '{}/data_batch_{}'.format(dir_name, i + 1)
-                d = pickle.load(archive.extractfile(file_name))
+                d = _pickle_load(archive.extractfile(file_name))
                 train_x[i] = d['data']
                 train_y[i] = d['labels']
 
             # test set
             file_name = '{}/test_batch'.format(dir_name)
-            d = pickle.load(archive.extractfile(file_name))
+            d = _pickle_load(archive.extractfile(file_name))
             test_x = d['data']
             test_y[...] = d['labels']  # copy to array
 
         train_x = train_x.reshape(50000, 3072)
         train_y = train_y.reshape(50000)
 
-        numpy.savez_compressed(path, x=train_x, y=train_y)
+        numpy.savez_compressed(path, train_x=train_x, train_y=train_y,
+                               test_x=test_x, test_y=test_y)
         return {'train_x': train_x, 'train_y': train_y,
                 'test_x': test_x, 'test_y': test_y}
 
     return download.cache_or_load_file(path, creator, numpy.load)
+
+
+def _pickle_load(f):
+    if sys.version_info > (3, ):
+        # python3
+        return pickle.load(f, encoding='latin-1')
+    else:
+        # python2
+        return pickle.load(f)

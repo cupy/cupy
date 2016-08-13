@@ -93,7 +93,9 @@ class HDF5Deserializer(serializer.Deserializer):
 
     def __call__(self, key, value):
         dataset = self.group[key]
-        if isinstance(value, numpy.ndarray):
+        if value is None:
+            return numpy.asarray(dataset)
+        elif isinstance(value, numpy.ndarray):
             dataset.read_direct(value)
         elif isinstance(value, cuda.ndarray):
             value.set(numpy.asarray(dataset))

@@ -135,6 +135,10 @@ select_item
 ~~~~~~~~~~~
 .. autofunction:: select_item
 
+separate
+~~~~~~~~
+.. autofunction:: separate
+
 split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
