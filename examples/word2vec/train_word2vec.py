@@ -14,8 +14,13 @@ import six
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import chainer.initializers as I
 import chainer.links as L
 import chainer.optimizers as O
+from chainer import reporter
+from chainer import training
+from chainer.training import extensions
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -37,13 +42,16 @@ parser.add_argument('--out-type', '-o', choices=['hsm', 'ns', 'original'],
                     default='hsm',
                     help='output model type ("hsm": hierarchical softmax, '
                     '"ns": negative sampling, "original": no approximation)')
+parser.add_argument('--out', default='result',
+                    help='Directory to output the result')
 parser.add_argument('--test', dest='test', action='store_true')
 parser.set_defaults(test=False)
 
 args = parser.parse_args()
+
 if args.gpu >= 0:
+    chainer.cuda.get_device(args.gpu).use()
     cuda.check_cuda_available()
-xp = cuda.cupy if args.gpu >= 0 else np
 
 print('GPU: {}'.format(args.gpu))
 print('# unit: {}'.format(args.unit))
@@ -59,57 +67,66 @@ class ContinuousBoW(chainer.Chain):
 
     def __init__(self, n_vocab, n_units, loss_func):
         super(ContinuousBoW, self).__init__(
-            embed=F.EmbedID(n_vocab, n_units),
+            embed=F.EmbedID(n_vocab, n_units,
+                            initialW=I.Uniform(1. / n_units)),
             loss_func=loss_func,
         )
 
-    def __call__(self, x, context):
-        e = model.embed(context)
-        h = F.sum(e, axis=0) * (1. / len(context.data))
-        return self.loss_func(h, x)
+    def __call__(self, context, x):
+        e = self.embed(context)
+        h = F.sum(e, axis=1) * (1. / context.data.shape[1])
+        loss = self.loss_func(h, x)
+        reporter.report({'loss': loss}, self)
+        return loss
 
 
 class SkipGram(chainer.Chain):
 
     def __init__(self, n_vocab, n_units, loss_func):
         super(SkipGram, self).__init__(
-            embed=L.EmbedID(n_vocab, n_units),
+            embed=L.EmbedID(n_vocab, n_units,
+                            initialW=I.Uniform(1. / n_units)),
             loss_func=loss_func,
         )
 
-    def __call__(self, x, context):
-        e = model.embed(context)
+    def __call__(self, context, x):
+        e = self.embed(context)
         shape = e.data.shape
-        x = F.broadcast_to(x, (shape[0], shape[1]))
+        x = F.broadcast_to(x[:, None], (shape[0], shape[1]))
         e = F.reshape(e, (shape[0] * shape[1], shape[2]))
         x = F.reshape(x, (shape[0] * shape[1],))
-        return self.loss_func(e, x)
+        loss = self.loss_func(e, x)
+        reporter.report({'loss': loss}, self)
+        return loss
 
 
 class SoftmaxCrossEntropyLoss(chainer.Chain):
 
     def __init__(self, n_in, n_out):
         super(SoftmaxCrossEntropyLoss, self).__init__(
-            out=L.Linear(n_in, n_out),
+            out=L.Linear(n_in, n_out, initialW=0),
         )
-        self.out.W.data[...] = 0
 
     def __call__(self, x, t):
         return F.softmax_cross_entropy(self.out(x), t)
 
 
-def calculate_loss(model, dataset, position):
-    # use random window size in the same way as the original word2vec
-    # implementation.
-    w = np.random.randint(args.window - 1) + 1
-    # offset is [-w, ..., -1, 1, ..., w]
-    offset = np.concatenate([np.arange(-w, 0), np.arange(1, w + 1)])
-    pos = np.expand_dims(position, 0) + np.expand_dims(offset, 1)
-    d = xp.asarray(dataset.take(pos))
-    context = chainer.Variable(d)
-    x_data = xp.asarray(dataset.take(position))
-    x = chainer.Variable(x_data)
-    return model(x, context)
+class WindowDataset(chainer.dataset.DatasetMixin):
+
+    def __init__(self, data, window):
+        self.data = np.array(data, dtype=np.int32)
+        self.window = window
+        # offset is [0, ..., w-1, w+1, ..., 2w+1]
+        self.offset = np.concatenate(
+            [np.arange(0, window), np.arange(window + 1, window * 2 + 1)])
+
+    def get_example(self, i):
+        context = self.data.take(self.offset + i)
+        center = self.data[i + self.window]
+        return context, center
+
+    def __len__(self):
+        return len(self.data) - self.window * 2
 
 
 if args.gpu >= 0:
@@ -149,49 +166,23 @@ elif args.model == 'cbow':
 else:
     raise Exception('Unknown model type: {}'.format(args.model))
 
-model.embed.W.data[...] = np.random.uniform(-1, 1, (n_vocab, args.unit)) \
-                                   .astype(np.float32) / args.unit
-
 if args.gpu >= 0:
     model.to_gpu()
 
-dataset = np.array(train, dtype=np.int32)
 
 optimizer = O.Adam()
 optimizer.setup(model)
 
-begin_time = time.time()
-cur_at = begin_time
-word_count = 0
-skip = (len(dataset) - args.window * 2) // args.batchsize
-next_count = 100000
-for epoch in range(args.epoch):
-    accum_loss = 0
-    print('epoch: {0}'.format(epoch))
-    indexes = np.random.permutation(skip)
-    position = np.arange(0, args.batchsize * skip, skip) + args.window
-    for i in indexes:
-        if word_count >= next_count:
-            now = time.time()
-            duration = now - cur_at
-            throughput = 100000. / (now - cur_at)
-            print('{} words, {:.2f} sec, {:.2f} Kwords/sec'.format(
-                word_count, duration, throughput / 1000.))
-            next_count += 100000
-            cur_at = now
-
-        loss = calculate_loss(model, dataset, position)
-        accum_loss += loss.data
-        word_count += args.batchsize
-
-        model.cleargrads()
-        loss.backward()
-        del loss
-        optimizer.update()
-
-        position += 1
-
-    print(accum_loss)
+train_dataset = WindowDataset(train, args.window)
+train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize)
+updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
+trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
+trainer.extend(extensions.LogReport())
+trainer.extend(extensions.PrintReport(
+    ['epoch', 'main/loss', 'validation/main/loss',
+     'main/accuracy', 'validation/main/accuracy']))
+trainer.extend(extensions.ProgressBar())
+trainer.run()
 
 with open('word2vec.model', 'w') as f:
     f.write('%d %d\n' % (len(index2word), args.unit))
