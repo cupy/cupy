@@ -72,7 +72,7 @@ class ContinuousBoW(chainer.Chain):
             loss_func=loss_func,
         )
 
-    def __call__(self, context, x):
+    def __call__(self, x, context):
         e = self.embed(context)
         h = F.sum(e, axis=1) * (1. / context.data.shape[1])
         loss = self.loss_func(h, x)
@@ -89,7 +89,7 @@ class SkipGram(chainer.Chain):
             loss_func=loss_func,
         )
 
-    def __call__(self, context, x):
+    def __call__(self, x, context):
         e = self.embed(context)
         shape = e.data.shape
         x = F.broadcast_to(x[:, None], (shape[0], shape[1]))
@@ -130,7 +130,7 @@ class WindowDataset(chainer.dataset.DatasetMixin):
              np.arange(self.window + i + 1, end)])
         context = self.data.take(offset)
         center = self.data[i + self.window]
-        return context, center
+        return center, context
 
     def __len__(self):
         return len(self.data) - self.window * 2
