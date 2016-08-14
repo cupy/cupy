@@ -182,6 +182,7 @@ vocab = chainer.datasets.get_ptb_words_vocabulary()
 index2word = {wid: word for word, wid in six.iteritems(vocab)}
 
 counts = collections.Counter(train)
+counts.update(collections.Counter(val))
 n_vocab = max(train) + 1
 
 print('n_vocab: %d' % n_vocab)
