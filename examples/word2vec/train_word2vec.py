@@ -111,37 +111,73 @@ class SoftmaxCrossEntropyLoss(chainer.Chain):
         return F.softmax_cross_entropy(self.out(x), t)
 
 
-class WindowDataset(chainer.dataset.DatasetMixin):
+class WindowIterator(chainer.dataset.Iterator):
 
-    def __init__(self, data, window):
-        self.data = np.array(data, dtype=np.int32)
+    def __init__(self, dataset, window, batch_size, repeat=True):
+        self.dataset = np.array(dataset, np.int32)
         self.window = window
-        self.actual_window = window
+        self.batch_size = batch_size
+        self._repeat = repeat
 
-    def set_random_window(self):
-        self.actual_window = np.random.randint(self.window - 1) + 1
+        self.order = np.random.permutation(
+            len(dataset) - window * 2).astype(np.int32)
+        self.order += window
+        self.current_position = 0
+        self.epoch = 0
+        self.is_new_epoch = False
 
-    def get_example(self, i):
-        begin = self.window - self.actual_window + i
-        end = self.window + 1 + self.actual_window + i
-        # offset is [i, ..., w_i-1, w+i+1, ..., 2w+i+1]
-        offset = np.concatenate(
-            [np.arange(begin, self.window + i),
-             np.arange(self.window + i + 1, end)])
-        context = self.data.take(offset)
-        center = self.data[i + self.window]
+    def __next__(self):
+        if not self._repeat and self.epoch > 0:
+            raise StopIteration
+
+        i = self.current_position
+        i_end = i + self.batch_size
+        position = self.order[i: i_end]
+        w = np.random.randint(self.window - 1) + 1
+        offset = np.concatenate([np.arange(-w, 0), np.arange(1, w + 1)])
+        pos = position[:, None] + offset[None, :]
+        context = self.dataset.take(pos)
+        center = self.dataset.take(position)
+
+        if i_end >= len(self.order):
+            np.random.shuffle(self.order)
+            self.epoch += 1
+            self.is_new_epoch = True
+            self.current_position = 0
+        else:
+            self.is_new_epoch = False
+            self.current_position = i_end
+
         return center, context
 
-    def __len__(self):
-        return len(self.data) - self.window * 2
+    @property
+    def epoch_detail(self):
+        return self.epoch + float(self.current_position) / len(self.order)
+
+    def serialize(self, serializer):
+        self.current_position = serializer('current_position',
+                                           self.current_position)
+        self.epoch = serializer('epoch', self.epoch)
+        self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
+        if self._order is not None:
+            serializer('_order', self._order)
+
+
+def convert(batch, device):
+    center, context = batch
+    if device >= 0:
+        center = cuda.to_gpu(center)
+        context = cuda.to_gpu(context)
+    return center, context
 
 
 if args.gpu >= 0:
     cuda.get_device(args.gpu).use()
 
-train, _, _ = chainer.datasets.get_ptb_words()
+train, val, _ = chainer.datasets.get_ptb_words()
 if args.test:
     train = train[:100]
+    val = val[:100]
 
 vocab = chainer.datasets.get_ptb_words_vocabulary()
 index2word = {wid: word for word, wid in six.iteritems(vocab)}
@@ -180,20 +216,17 @@ if args.gpu >= 0:
 optimizer = O.Adam()
 optimizer.setup(model)
 
-train_dataset = WindowDataset(train, args.window)
-train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize)
-updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
+train_iter = WindowIterator(train, args.window, args.batchsize)
+val_iter = WindowIterator(val, args.window, args.batchsize, repeat=False)
+updater = training.StandardUpdater(
+    train_iter, optimizer, converter=convert, device=args.gpu)
 trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-@training.make_extension(trigger=(1, 'iteration'), invoke_before_training=True)
-def set_window(trainer):
-    train_dataset.set_random_window()
-
-trainer.extend(set_window)
+trainer.extend(extensions.Evaluator(
+    val_iter, model, converter=convert, device=args.gpu))
 trainer.extend(extensions.LogReport())
 trainer.extend(extensions.PrintReport(
-    ['epoch', 'main/loss', 'validation/main/loss',
-     'main/accuracy', 'validation/main/accuracy']))
+    ['epoch', 'main/loss', 'validation/main/loss']))
 trainer.extend(extensions.ProgressBar())
 trainer.run()
 
