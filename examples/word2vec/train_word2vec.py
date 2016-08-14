@@ -6,7 +6,6 @@ Use ../ptb/download.py to download 'ptb.train.txt'.
 """
 import argparse
 import collections
-import time
 
 import numpy as np
 import six
@@ -67,8 +66,8 @@ class ContinuousBoW(chainer.Chain):
 
     def __init__(self, n_vocab, n_units, loss_func):
         super(ContinuousBoW, self).__init__(
-            embed=F.EmbedID(n_vocab, n_units,
-                            initialW=I.Uniform(1. / n_units)),
+            embed=F.EmbedID(
+                n_vocab, n_units, initialW=I.Uniform(1. / n_units)),
             loss_func=loss_func,
         )
 
@@ -84,8 +83,8 @@ class SkipGram(chainer.Chain):
 
     def __init__(self, n_vocab, n_units, loss_func):
         super(SkipGram, self).__init__(
-            embed=L.EmbedID(n_vocab, n_units,
-                            initialW=I.Uniform(1. / n_units)),
+            embed=L.EmbedID(
+                n_vocab, n_units, initialW=I.Uniform(1. / n_units)),
             loss_func=loss_func,
         )
 
