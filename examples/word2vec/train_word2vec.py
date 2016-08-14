@@ -116,12 +116,19 @@ class WindowDataset(chainer.dataset.DatasetMixin):
     def __init__(self, data, window):
         self.data = np.array(data, dtype=np.int32)
         self.window = window
-        # offset is [0, ..., w-1, w+1, ..., 2w+1]
-        self.offset = np.concatenate(
-            [np.arange(0, window), np.arange(window + 1, window * 2 + 1)])
+        self.actual_window = window
+
+    def set_random_window(self):
+        self.actual_window = np.random.randint(self.window - 1) + 1
 
     def get_example(self, i):
-        context = self.data.take(self.offset + i)
+        begin = self.window - self.actual_window + i
+        end = self.window + 1 + self.actual_window + i
+        # offset is [i, ..., w_i-1, w+i+1, ..., 2w+i+1]
+        offset = np.concatenate(
+            [np.arange(begin, self.window + i),
+             np.arange(self.window + i + 1, end)])
+        context = self.data.take(offset)
         center = self.data[i + self.window]
         return context, center
 
@@ -177,6 +184,12 @@ train_dataset = WindowDataset(train, args.window)
 train_iter = chainer.iterators.SerialIterator(train_dataset, args.batchsize)
 updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
 trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
+
+@training.make_extension(trigger=(1, 'iteration'), invoke_before_training=True)
+def set_window(trainer):
+    train_dataset.set_random_window()
+
+trainer.extend(set_window)
 trainer.extend(extensions.LogReport())
 trainer.extend(extensions.PrintReport(
     ['epoch', 'main/loss', 'validation/main/loss',
