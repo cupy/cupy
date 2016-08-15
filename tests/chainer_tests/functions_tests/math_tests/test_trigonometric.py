@@ -16,10 +16,7 @@ from chainer.testing import condition
     'shape': [(3, 2), ()],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
-class UnaryFunctionsTest(unittest.TestCase):
-
-    def make_data(self):
-        raise NotImplementedError
+class TrigonometricFunctionsTest(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
