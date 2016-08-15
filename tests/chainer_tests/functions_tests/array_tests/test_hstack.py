@@ -14,6 +14,7 @@ from chainer.utils import type_check
 
 @testing.parameterize(*testing.product_dict(
     [
+        {'shape': (2, 3, 4), 'y_shape': (2, 6, 4), 'xs_length': 2},
         {'shape': (3, 4), 'y_shape': (3, 8), 'xs_length': 2},
         {'shape': (3), 'y_shape': (6,), 'xs_length': 2},
         {'shape': (), 'y_shape': (2,), 'xs_length': 2},
@@ -67,6 +68,9 @@ class TestHstack(unittest.TestCase):
 
 
 @testing.parameterize(
+    {'a_shape': (2, 4, 5), 'b_shape': (3, 4, 5), 'valid': False},
+    {'a_shape': (3, 4, 6), 'b_shape': (3, 4, 5), 'valid': False},
+    {'a_shape': (3, 6, 5), 'b_shape': (3, 4, 5), 'valid': True},
     {'a_shape': (3, 4), 'b_shape': (4, 4), 'valid': False},
     {'a_shape': (3, 4), 'b_shape': (3, 3), 'valid': True},
     {'a_shape': (3,), 'b_shape': (4,), 'valid': True},
