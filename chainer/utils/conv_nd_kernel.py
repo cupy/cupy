@@ -143,8 +143,7 @@ class Im2colNDKernel(object):
         main = self._compile_main(ndim, ds, ks, ss, ps, kxs, out_xs)
         return '\n'.join(c0 + kx + out_x + main)
 
-    @chainer.cuda.memoize()
-    def generate(self, ndim):
+    def _generate(self, ndim):
         ds = _vars('d', ndim)
         outs = _vars('out', ndim)
         ks = _vars('k', ndim)
@@ -156,6 +155,13 @@ class Im2colNDKernel(object):
         operation = self._operation(ndim, ds, outs, ks, ss, ps)
         name = name = 'im2col_{}d'.format(ndim)
         return in_params, out_params, operation, name
+
+    @staticmethod
+    @chainer.cuda.memoize()
+    def generate(ndim):
+        return _im2col_nd_kernel._generate(ndim)
+
+_im2col_nd_kernel = Im2colNDKernel()
 
 
 #
@@ -261,8 +267,7 @@ class Col2imNDKernel(object):
             c0 + x + loop_bounds + before + loop_main(
                 main, ndim, ks, ss) + after)
 
-    @chainer.cuda.memoize()
-    def generate(self, ndim):
+    def _generate(self, ndim):
         ds = _vars('d', ndim)
         outs = _vars('out', ndim)
         ks = _vars('k', ndim)
@@ -274,3 +279,10 @@ class Col2imNDKernel(object):
         operation = self._operation(ndim, ds, outs, ks, ss, ps)
         name = 'col2im_{}d'.format(ndim)
         return in_params, out_params, operation, name
+
+    @staticmethod
+    @chainer.cuda.memoize()
+    def generate(ndim):
+        return _col2im_nd_kernel._generate(ndim)
+
+_col2im_nd_kernel = Col2imNDKernel()
