@@ -129,8 +129,8 @@ class MatMul(function.Function):
         a_type, b_type = in_types
 
         type_check.expect(
-            a_type.dtype == numpy.float32,
-            b_type.dtype == numpy.float32
+            a_type.dtype.kind == 'f',
+            a_type.dtype == b_type.dtype
         )
 
         _check_ndim(a_type)
