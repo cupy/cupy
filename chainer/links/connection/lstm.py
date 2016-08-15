@@ -91,13 +91,15 @@ class LSTM(LSTMBase):
     It also maintains *states*, including the cell state and the output
     at the previous time step. Therefore, it can be used as a *stateful LSTM*.
 
-    This link supports variable length inputs. The mini-batch size of ``c``
-    and ``h`` is determined as the mini-batch size of the first input ``x``.
-    When mini-batch size of ``i``-th input is lower than previous input, this
-    link only updates ``c[0:len(x)]`` and ``h[0:len(x)]`` and don't change the
-    rest of ``c`` and ``h``.
-    So, please sort input sequneces by descending lengths before applying the
-    function.
+    This link supports variable length inputs. The mini-batch size of the
+    current input must be equal to or smaller than that of the previous one.
+    The mini-batch size of ``c`` and ``h`` is determined as that of the first
+    input ``x``.
+    When mini-batch size of ``i``-th input is smaller than that of the previous
+    input, this link only updates ``c[0:len(x)]`` and ``h[0:len(x)]`` and
+    doesn't change the rest of ``c`` and ``h``.
+    So, please sort input sequneces in descending order of lengths before
+    applying the function.
 
     Args:
         in_size (int): Dimensionality of input vectors.
