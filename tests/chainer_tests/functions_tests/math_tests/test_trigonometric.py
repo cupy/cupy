@@ -14,6 +14,7 @@ from chainer.testing import condition
 @testing.parameterize(*testing.product({
     'func_name': ['cos', 'sin', 'tan'],
     'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class UnaryFunctionsTest(unittest.TestCase):
 
@@ -21,18 +22,24 @@ class UnaryFunctionsTest(unittest.TestCase):
         raise NotImplementedError
 
     def setUp(self):
-        self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.func = getattr(F, self.func_name)
         camel_name = self.func_name[0].upper() + self.func_name[1:]
         self.func_class = getattr(F, camel_name)
         self.np_func = getattr(numpy, self.func_name)
 
+        if self.dtype == numpy.float16:
+            self.backward_options = {
+                'eps': 2 ** -4, 'atol': 2 ** -4, 'rtol': 2 ** -4}
+        else:
+            self.backward_options = {}
+
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = self.func(x)
         testing.assert_allclose(
-            self.np_func(self.x), y.data, atol=1e-7, rtol=1e-7)
+            self.np_func(self.x), y.data, atol=1e-4, rtol=1e-4)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -44,7 +51,8 @@ class UnaryFunctionsTest(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        gradient_check.check_backward(self.func, x_data, y_grad)
+        gradient_check.check_backward(
+            self.func, x_data, y_grad, **self.backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
