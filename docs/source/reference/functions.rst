@@ -311,6 +311,10 @@ log
 ~~~
 .. autofunction:: log
 
+log1p
+~~~~~
+.. autofunction:: log1p
+
 logsumexp
 ~~~~~~~~~
 .. autofunction:: logsumexp
