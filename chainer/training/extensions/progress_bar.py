@@ -61,7 +61,7 @@ class ProgressBar(extension.Extension):
         if iteration % self._update_interval == 0:
             epoch = trainer.updater.epoch_detail
             recent_timing = self._recent_timing
-            now = time.clock()
+            now = time.time()
 
             if len(recent_timing) >= 1:
                 out.write('\033[J')
