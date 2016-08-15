@@ -33,7 +33,7 @@ class TestHuberLoss(unittest.TestCase):
         expected_result[mask] = 0.5 * diff_data[mask]**2
         expected_result[~mask] = numpy.abs(diff_data[~mask]) - 0.5
         loss_expect = numpy.sum(expected_result, axis=1)
-        gradient_check.assert_allclose(loss_value, loss_expect)
+        testing.assert_allclose(loss_value, loss_expect)
 
     @condition.retry(3)
     def test_forward_cpu(self):

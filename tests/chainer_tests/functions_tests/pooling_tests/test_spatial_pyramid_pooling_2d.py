@@ -38,10 +38,10 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
             (self.n, self.c, self.h, self.w)).astype(self.dtype)
         self.gy = numpy.random.uniform(
             -1, 1, (self.n, self.output_dim, 1, 1)).astype(self.dtype)
-        self.check_backward_options = {'eps': 2.0 ** -10}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
             self.check_backward_options = {
-                'eps': 2.0 ** -10, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -61,14 +61,14 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
 
         self.assertEqual(y_data.shape, (self.n, self.output_dim, 1, 1))
         self.assertEqual(y_data.dtype, self.dtype)
-        gradient_check.assert_allclose(y_data, numpy.ones_like(y_data))
+        testing.assert_allclose(y_data, numpy.ones_like(y_data))
 
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
         self.check_forward_ones(self.one)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
@@ -91,7 +91,7 @@ class TestSpatialPyramidPooling2D(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))

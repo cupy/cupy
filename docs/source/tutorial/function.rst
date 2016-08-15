@@ -456,7 +456,7 @@ First, we have to define a function on variables:
    class LinearFunction(Function):
        def forward(self, inputs):
            x, W, b = inputs
-           return x.dot(W.t) + b,
+           return x.dot(W.T) + b,
 
        def backward(self, inputs, grad_outputs):
            x, W, b = inputs
@@ -529,10 +529,10 @@ The summation can be weighted by changing ``gy``.
    :func:`~gradient_check.numerical_grad` function accepts both CPU and GPU arrays.
    Note that we cannot mix CPU and GPU arrays.
 
-Another utility is :func:`~gradient_check.assert_allclose` function.
+Another utility is :func:`chainer.testing.assert_allclose` function.
 This is similar to :func:`numpy.testing.assert_allclose` function.
 The difference is that Chainer's version accepts CPU and GPU arrays as inputs.
-We can mix them in one invocation of :func:`~gradient_check.assert_allclose`.
+We can mix them in one invocation of :func:`chainer.testing.assert_allclose`.
 The default values of optional arguments are also different.
 
 Here is a typical usage of gradient checking utilities.
@@ -541,6 +541,8 @@ This is a test example of :func:`functions.relu` function
 .. testcode::
 
    import unittest
+
+   from chainer import testing
 
    class TestReLU(unittest.TestCase):
        def test_backward_cpu(self):
@@ -552,7 +554,7 @@ This is a test example of :func:`functions.relu` function
            f = lambda: (F.relu(x).data,)
            gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
 
-           gradient_check.assert_allclose(gx, x.grad)
+           testing.assert_allclose(gx, x.grad)
 
 
 .. testcode::

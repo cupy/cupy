@@ -38,7 +38,7 @@ class TestPReLUSingle(unittest.TestCase):
             if self.x[i] < 0:
                 y_expect[i] *= self.W
 
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -89,7 +89,7 @@ class TestPReLUMulti(TestPReLUSingle):
             if self.x[i] < 0:
                 y_expect[i] *= self.W[i[1]]
 
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
 
 testing.run_module(__name__, __file__)

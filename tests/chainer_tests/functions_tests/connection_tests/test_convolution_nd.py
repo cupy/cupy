@@ -46,16 +46,11 @@ class TestConvolutionND(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.x_dtype)
 
         self.check_forward_options = {}
-        self.check_backward_options = {
-            'eps': 1e-2, 'atol': 5e-5, 'rtol': 5e-4}
-        if self.x_dtype == numpy.float16:
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.x_dtype == numpy.float16 or self.W_dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
-        elif self.W_dtype == numpy.float16:
-            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
-            self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward_consistency(self, nobias=False, use_cudnn=False):
         x_cpu = chainer.Variable(self.x)
@@ -72,8 +67,8 @@ class TestConvolutionND(unittest.TestCase):
             x_gpu, W_gpu, b_gpu, stride=self.stride, pad=self.pad,
             use_cudnn=use_cudnn, cover_all=self.cover_all)
 
-        gradient_check.assert_allclose(
-            y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
+        testing.assert_allclose(
+            y_cpu.data, y_gpu.data, **self.check_forward_options)
 
     @attr.cudnn
     def test_forward_consistency(self):
@@ -91,15 +86,40 @@ class TestConvolutionND(unittest.TestCase):
     def test_forward_consistency_im2col_nobias(self):
         self.check_forward_consistency(nobias=True, use_cudnn=False)
 
+    def check_forward_consistency_regression(self, nobias=False):
+        x = chainer.Variable(self.x)
+        W = chainer.Variable(self.W)
+        b = None if nobias else chainer.Variable(self.b)
+
+        y_nd = functions.convolution_nd(
+            x, W, b, stride=self.stride, pad=self.pad,
+            use_cudnn=False, cover_all=self.cover_all)
+        y_2d = functions.convolution_2d(
+            x, W, b, stride=self.stride, pad=self.pad,
+            use_cudnn=False, cover_all=self.cover_all)
+
+        testing.assert_allclose(
+            y_nd.data, y_2d.data, **self.check_forward_options)
+
+    def test_forward_consistency_regression(self):
+        # Regression test to convolution_2d.
+        if len(self.dims) == 2:
+            self.check_forward_consistency_regression(nobias=False)
+
+    def test_forward_consistency_regression_nobias(self):
+        # Regression test to convolution_2d.
+        if len(self.dims) == 2:
+            self.check_forward_consistency_regression(nobias=True)
+
     def check_backward(self, x_data, W_data, b_data, y_grad, use_cudnn=False):
         xp = cuda.get_array_module(x_data)
         if not self.c_contiguous:
             x_data = xp.asfortranarray(x_data)
             W_data = xp.asfortranarray(W_data)
             y_grad = xp.asfortranarray(y_grad)
-            self.assertFalse(x_data.flags.c_contiguous)
-            self.assertFalse(W_data.flags.c_contiguous)
-            self.assertFalse(y_grad.flags.c_contiguous)
+            self.assertTrue(x_data.flags.f_contiguous)
+            self.assertTrue(W_data.flags.f_contiguous)
+            self.assertTrue(y_grad.flags.f_contiguous)
             if b_data is not None:
                 b = xp.empty((len(b_data) * 2,), dtype=b_data.dtype)
                 b[::2] = b_data

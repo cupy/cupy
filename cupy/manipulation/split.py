@@ -12,8 +12,10 @@ def array_split(ary, indices_or_sections, axis=0):
     .. seealso:: :func:`cupy.split` for more detail, :func:`numpy.array_split`
 
     """
-    if ary.ndim <= axis:
+    ndim = ary.ndim
+    if -ndim > axis or ndim <= axis:
         raise IndexError('Axis exceeds ndim')
+    axis %= ndim
     size = ary.shape[axis]
 
     if numpy.isscalar(indices_or_sections):
@@ -33,7 +35,6 @@ def array_split(ary, indices_or_sections, axis=0):
         ret.append(ary[skip + (slice(i, index),)])
         i = index
     ret.append(ary[skip + (slice(i, size),)])
-
     return ret
 
 

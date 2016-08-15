@@ -62,19 +62,15 @@ def _to_ctypes_array(tup, dtype=numpy.intc):
     return numpy.array(tup, dtype=dtype).ctypes
 
 
-def maplist(fn, xs):
-    # Imperative impl. because Python does not optimize tail recursion.
-    ret = []
-    while xs:
-        ret += [fn(xs)]
-        xs = xs[1:]
-    return ret
+def _succ_sublists(xs):
+    # Returns successive sublists of xs.
+    return [xs[i:] for i in six.moves.range(len(xs))]
 
 
 def _compute_strides(shape):
     def aux(xs):
         return functools.reduce(operator.mul, xs[1:], 1)
-    return tuple(map(aux, maplist(lambda x: x, shape)))
+    return tuple(map(aux, _succ_sublists(shape)))
 
 
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):

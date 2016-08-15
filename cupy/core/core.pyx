@@ -303,7 +303,8 @@ cdef class ndarray:
 
         a = self
         if not self._c_contiguous:
-            a = ascontiguousarray(self)
+            with self.device:
+                a = ascontiguousarray(self)
             if a.data.device.id == device.get_device_id():
                 return a
         newarray = ndarray(a.shape, a.dtype)
@@ -576,7 +577,40 @@ cdef class ndarray:
     # TODO(okuta): Implement partition
     # TODO(okuta): Implement argpartition
     # TODO(okuta): Implement searchsorted
-    # TODO(okuta): Implement nonzero
+
+    def nonzero(self):
+        """Return the indices of the elements that are non-zero.
+        containing the indices of the non-zero elements in that dimension.
+
+        Returns:
+            tuple of arrays: Indices of elements that are non-zero.
+
+        .. seealso:: :func:`numpy.nonzero`
+        """
+
+        condition = self != 0
+        dtype = numpy.int64
+
+        scan_index = scan(condition.astype(dtype).ravel())
+        count_nonzero = int(scan_index[-1])
+
+        if self.ndim <= 1:
+            dst = ndarray((count_nonzero,), dtype=dtype)
+
+            kern = _nonzero_1d_kernel(self.dtype, dtype)
+            kern.linear_launch(self.size, (self.ravel(), scan_index, dst))
+
+            return dst,
+        else:
+            dst = ndarray((count_nonzero * self.ndim,), dtype=dtype)
+
+            kern = _nonzero_kernel(self.dtype, self.ndim, dtype, dtype)
+            kern.linear_launch(self.size,
+                               (self.ravel(), Indexer(self.shape),
+                                scan_index, dst))
+            return tuple([dst[i::self.ndim]
+                          for i in six.moves.range(self.ndim)])
+
     # TODO(okuta): Implement compress
 
     cpdef ndarray diagonal(self, offset=0, axis1=0, axis2=1):
@@ -952,7 +986,7 @@ cdef class ndarray:
         ellipsis = -1
         n_newaxes = n_ellipses = 0
         for i, s in enumerate(slices):
-            if s == newaxis:
+            if s is None:
                 n_newaxes += 1
             elif s == Ellipsis:
                 n_ellipses += 1
@@ -971,7 +1005,7 @@ cdef class ndarray:
         j = 0
         offset = 0
         for i, s in enumerate(slices):
-            if s is newaxis:
+            if s is None:
                 shape.push_back(1)
                 if j < ndim:
                     strides.push_back(self._strides[j])
@@ -1814,8 +1848,14 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         b = rollaxis(b, b_axis, 0)
 
     k = a._shape[0]
-    m = b.size // k
-    n = a.size // k
+    if k != 0:
+        m = b.size // k
+        n = a.size // k
+    else:
+        # When k==0, the function must returns a matrix filled with zero
+        # like NumPy.
+        m = 0
+        n = 0
 
     ret_shape.assign(a._shape.begin() + 1, a._shape.end())
     ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
@@ -1828,7 +1868,7 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         elif b_is_vec:
             ret_shape.erase(ret_shape.begin())
     else:
-        if out.size != n * m:
+        if k != 0 and out.size != n * m:
             raise ValueError('Output array has an invalid size')
         if not out._c_contiguous:
             raise ValueError('Output array must be C-contiguous')
@@ -1857,8 +1897,6 @@ cpdef ndarray tensordot_core(
     b = b.astype(dtype, copy=False)
 
     if not a.size or not b.size:
-        if a.size or b.size:
-            raise ValueError('cannot dot zero-sized and non-zero-sized arrays')
         if out is None:
             out = ndarray(ret_shape, dtype=ret_dtype)
         out.fill(0)
@@ -2306,3 +2344,185 @@ cdef _mean = create_reduction_func(
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d'),
     ('in0', 'a + b', 'out0 = a / (_in_ind.size() / _out_ind.size())', None))
+
+# -----------------------------------------------------------------------------
+# scan
+# -----------------------------------------------------------------------------
+
+@util.memoize(for_each_device=True)
+def _inclusive_scan_kernel(dtype, block_size):
+    """return Prefix Sum(Scan) cuda kernel
+
+    e.g
+    if blocksize * 2 >= len(src)
+    src [1, 2, 3, 4]
+    dst [1, 3, 6, 10]
+
+    if blocksize * 2 < len(src)
+    block_size: 2
+    src [1, 2, 3, 4, 5, 6]
+    dst [1, 3, 6, 10, 5, 11]
+
+    Args:
+        dtype: src, dst array type
+        block_size: block_size
+
+    Returns:
+         cupy.cuda.Function: cuda function
+    """
+
+    name = "inclusive_scan_kernel"
+    dtype = _get_typename(dtype)
+    source = string.Template("""
+    extern "C" __global__ void ${name}(const CArray<${dtype}, 1> src,
+        CArray<${dtype}, 1> dst){
+        long long n = src.size();
+        extern __shared__ ${dtype} temp[];
+        unsigned int thid = threadIdx.x;
+        unsigned int block = 2 * blockIdx.x * blockDim.x;
+
+        unsigned int idx0 = thid + block;
+        unsigned int idx1 = thid + blockDim.x + block;
+
+        temp[thid] = (idx0 < n) ? src[idx0] : (${dtype})0;
+        temp[thid + blockDim.x] = (idx1 < n) ? src[idx1] : (${dtype})0;
+        __syncthreads();
+
+        for(int i = 1; i <= ${block_size}; i <<= 1){
+            int index = (threadIdx.x + 1) * i * 2 - 1;
+            if (index < (${block_size} << 1)){
+                temp[index] = temp[index] + temp[index - i];
+            }
+            __syncthreads();
+        }
+
+        for(int i = ${block_size} >> 1; i > 0; i >>= 1){
+            int index = (threadIdx.x + 1) * i * 2 - 1;
+            if(index + i < (${block_size} << 1)){
+                temp[index + i] = temp[index + i] + temp[index];
+            }
+            __syncthreads();
+        }
+
+        if(idx0 < n){
+            dst[idx0] = temp[thid];
+        }
+        if(idx1 < n){
+            dst[idx1] = temp[thid + blockDim.x];
+        }
+    }
+    """).substitute(name=name, dtype=dtype, block_size=block_size)
+    module = compile_with_cache(source)
+
+    return module.get_function(name)
+
+@util.memoize(for_each_device=True)
+def _add_scan_blocked_sum_kernel(dtype):
+    name = "add_scan_blocked_sum_kernel"
+    dtype = _get_typename(dtype)
+    source = string.Template("""
+    extern "C" __global__ void ${name}(CArray<${dtype}, 1> src_dst,
+        CArray<${dtype}, 1> sum){
+        long long n = src_dst.size();
+        unsigned int idx = threadIdx.x + blockDim.x * blockIdx.x;
+        unsigned int idxSum = idx + blockDim.x;
+
+        if(idx < n){
+            src_dst[idxSum] = src_dst[idxSum] + sum[blockIdx.x];
+        }
+    }
+    """).substitute(name=name, dtype=dtype)
+    module = compile_with_cache(source)
+
+    return module.get_function(name)
+
+@util.memoize(for_each_device=True)
+def _nonzero_1d_kernel(src_dtype, index_dtype):
+    name = "nonzero_1d_kernel"
+    src_dtype = _get_typename(src_dtype)
+    index_dtype = _get_typename(index_dtype)
+
+    source = string.Template("""
+    extern "C" __global__ void ${name}(const CArray<${src_dtype}, 1> src,
+        const CArray<${index_dtype}, 1> scaned_index,
+        CArray<${index_dtype}, 1> dst){
+        int thid = blockIdx.x * blockDim.x + threadIdx.x;
+        int n = src.size();
+        if (thid < n){
+            if (src[thid] != 0){
+                dst[scaned_index[thid] - 1] = thid;
+            }
+        }
+    }
+    """).substitute(name=name, src_dtype=src_dtype, index_dtype=index_dtype)
+    module = compile_with_cache(source)
+
+    return module.get_function(name)
+
+@util.memoize(for_each_device=True)
+def _nonzero_kernel(src_dtype, src_ndim, index_dtype, dst_dtype):
+    name = "nonzero_kernel"
+    src_dtype = _get_typename(src_dtype)
+    index_dtype = _get_typename(index_dtype)
+    dst_dtype = _get_typename(dst_dtype)
+
+    source = string.Template("""
+        extern "C" __global__ void ${name}(const CArray<${src_dtype}, 1> src,
+            CIndexer<${src_ndim}> shape,
+            const CArray<${index_dtype}, 1> scaned_index,
+            CArray<${dst_dtype}, 1> dst){
+
+            int thid = blockIdx.x * blockDim.x + threadIdx.x;
+
+            if (thid < src.size()){
+                if (src[thid] != 0){
+                    ${index_dtype} idx = scaned_index[thid] - 1;
+                    int s = shape.size();
+
+                    shape.set(thid);
+
+                    for(int i = 0; i < ${src_ndim}; i++){
+                        dst[idx * ${src_ndim} + i] = shape.get()[i];
+                    }
+                }
+            }
+        }
+        """).substitute(name=name, src_dtype=src_dtype,
+                        src_ndim=src_ndim, index_dtype=index_dtype,
+                        dst_dtype=dst_dtype)
+    module = compile_with_cache(source)
+
+    return module.get_function(name)
+
+def scan(a):
+    """Return the prefix sum(scan) of the elements.
+
+    Args:
+        a (cupy.ndarray): input array.
+
+    Returns:
+        cupy.ndarray: A new array holding the result is returned.
+
+    """
+    if a.ndim != 1:
+        raise TypeError("Input array should be 1D array.")
+
+    block_size = 256
+
+    scanned_array = ndarray(a.shape, dtype=a.dtype)
+    kern_scan = _inclusive_scan_kernel(a.dtype, block_size)
+    kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
+              block=(block_size,),
+              args=(a, scanned_array),
+              shared_mem=a.itemsize * block_size * 2)
+
+    if a.size // (block_size * 2) > 0:
+        blocked_sum = scanned_array[block_size * 2 - 1:-1:block_size * 2]
+        scanned_blocked_sum = scan(blocked_sum)
+
+        kern_add = _add_scan_blocked_sum_kernel(scanned_array.dtype)
+        kern_add(grid=((a.size - 1) // (2 * block_size),),
+                 block=(2 * block_size,),
+                 args=(scanned_array, scanned_blocked_sum))
+
+    return scanned_array

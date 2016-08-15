@@ -9,6 +9,7 @@ There are four differences compared to the original C API.
 4. The resulting values are returned directly instead of references.
 
 """
+cimport cpython
 cimport cython
 
 
@@ -202,8 +203,9 @@ cpdef memcpy(size_t dst, size_t src, size_t size, int kind):
 
 cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
                   size_t stream):
-    status = cudaMemcpyAsync(
-        <void*>dst, <void*>src, size, <MemoryKind>kind, <Stream>stream)
+    with nogil:
+        status = cudaMemcpyAsync(
+            <void*>dst, <void*>src, size, <MemoryKind>kind, <Stream>stream)
     check_status(status)
 
 
@@ -267,17 +269,21 @@ cpdef streamDestroy(size_t stream):
 
 
 cpdef streamSynchronize(size_t stream):
-    status = cudaStreamSynchronize(<Stream>stream)
+    with nogil:
+        status = cudaStreamSynchronize(<Stream>stream)
     check_status(status)
 
 
-cdef _streamCallbackFunc(Stream hStream, int status, void* userData):
-    func, data = <tuple>userData
-    func(<size_t>hStream, status, data)
+cdef _streamCallbackFunc(Stream hStream, int status, void* func_arg) with gil:
+    obj = <object>func_arg
+    func, arg = obj
+    func(<size_t>hStream, status, arg)
+    cpython.Py_DECREF(obj)
 
 cpdef streamAddCallback(size_t stream, callback, size_t arg,
                         unsigned int flags=0):
     func_arg = (callback, arg)
+    cpython.Py_INCREF(func_arg)
     status = cudaStreamAddCallback(
         <Stream>stream, <StreamCallback>_streamCallbackFunc,
         <void*>func_arg, flags)

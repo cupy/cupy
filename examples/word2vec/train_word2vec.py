@@ -9,6 +9,7 @@ import collections
 import time
 
 import numpy as np
+import six
 
 import chainer
 from chainer import cuda
@@ -23,13 +24,15 @@ parser.add_argument('--unit', '-u', default=100, type=int,
                     help='number of units')
 parser.add_argument('--window', '-w', default=5, type=int,
                     help='window size')
-parser.add_argument('--batchsize', '-b', type=int, default=100,
+parser.add_argument('--batchsize', '-b', type=int, default=1000,
                     help='learning minibatch size')
-parser.add_argument('--epoch', '-e', default=10, type=int,
+parser.add_argument('--epoch', '-e', default=20, type=int,
                     help='number of epochs to learn')
 parser.add_argument('--model', '-m', choices=['skipgram', 'cbow'],
                     default='skipgram',
                     help='model type ("skipgram", "cbow")')
+parser.add_argument('--negative-size', default=5, type=int,
+                    help='number of negative samples')
 parser.add_argument('--out-type', '-o', choices=['hsm', 'ns', 'original'],
                     default='hsm',
                     help='output model type ("hsm": hierarchical softmax, '
@@ -61,11 +64,8 @@ class ContinuousBoW(chainer.Chain):
         )
 
     def __call__(self, x, context):
-        h = None
-        for c in context:
-            e = self.embed(c)
-            h = h + e if h is not None else e
-
+        e = model.embed(context)
+        h = F.sum(e, axis=0) * (1. / len(context.data))
         return self.loss_func(h, x)
 
 
@@ -78,38 +78,35 @@ class SkipGram(chainer.Chain):
         )
 
     def __call__(self, x, context):
-        loss = None
-        for c in context:
-            e = self.embed(c)
-
-            loss_i = self.loss_func(e, x)
-            loss = loss_i if loss is None else loss + loss_i
-
-        return loss
+        e = model.embed(context)
+        shape = e.data.shape
+        x = F.broadcast_to(x, (shape[0], shape[1]))
+        e = F.reshape(e, (shape[0] * shape[1], shape[2]))
+        x = F.reshape(x, (shape[0] * shape[1],))
+        return self.loss_func(e, x)
 
 
 class SoftmaxCrossEntropyLoss(chainer.Chain):
     def __init__(self, n_in, n_out):
         super(SoftmaxCrossEntropyLoss, self).__init__(
-            W=L.Linear(n_in, n_out),
+            out=L.Linear(n_in, n_out),
         )
+        self.out.W.data[...] = 0
 
     def __call__(self, x, t):
-        return F.softmax_cross_entropy(self.W(x), t)
+        return F.softmax_cross_entropy(self.out(x), t)
 
 
 def calculate_loss(model, dataset, position):
     # use random window size in the same way as the original word2vec
     # implementation.
     w = np.random.randint(args.window - 1) + 1
-    context = []
-    for offset in range(-w, w + 1):
-        if offset == 0:
-            continue
-        c_data = xp.asarray(dataset[position + offset])
-        c = chainer.Variable(c_data)
-        context.append(c)
-    x_data = xp.asarray(dataset[position])
+    # offset is [-w, ..., -1, 1, ..., w]
+    offset = np.concatenate([np.arange(-w, 0), np.arange(1, w + 1)])
+    pos = np.expand_dims(position, 0) + np.expand_dims(offset, 1)
+    d = xp.asarray(dataset.take(pos))
+    context = chainer.Variable(d)
+    x_data = xp.asarray(dataset.take(position))
     x = chainer.Variable(x_data)
     return model(x, context)
 
@@ -117,36 +114,28 @@ def calculate_loss(model, dataset, position):
 if args.gpu >= 0:
     cuda.get_device(args.gpu).use()
 
-index2word = {}
-word2index = {}
-counts = collections.Counter()
-dataset = []
-with open('ptb.train.txt') as f:
-    for line in f:
-        for word in line.split():
-            if word not in word2index:
-                ind = len(word2index)
-                word2index[word] = ind
-                index2word[ind] = word
-            counts[word2index[word]] += 1
-            dataset.append(word2index[word])
-            if args.test and len(dataset) >= 100:
-                break
-        if args.test and len(dataset) >= 100:
-            break
+train, _, _ = chainer.datasets.get_ptb_words()
+if args.test:
+    train = train[:100]
 
-n_vocab = len(word2index)
+vocab = chainer.datasets.get_ptb_words_vocabulary()
+index2word = {wid: word for word, wid in six.iteritems(vocab)}
+
+counts = collections.Counter(train)
+n_vocab = max(train) + 1
 
 print('n_vocab: %d' % n_vocab)
-print('data length: %d' % len(dataset))
+print('data length: %d' % len(train))
 
 if args.out_type == 'hsm':
     HSM = L.BinaryHierarchicalSoftmax
     tree = HSM.create_huffman_tree(counts)
     loss_func = HSM(args.unit, tree)
+    loss_func.W.data[...] = 0
 elif args.out_type == 'ns':
     cs = [counts[w] for w in range(len(counts))]
-    loss_func = L.NegativeSampling(args.unit, cs, 20)
+    loss_func = L.NegativeSampling(args.unit, cs, args.negative_size)
+    loss_func.W.data[...] = 0
 elif args.out_type == 'original':
     loss_func = SoftmaxCrossEntropyLoss(args.unit, n_vocab)
 else:
@@ -159,10 +148,13 @@ elif args.model == 'cbow':
 else:
     raise Exception('Unknown model type: {}'.format(args.model))
 
+model.embed.W.data[...] = np.random.uniform(-1, 1, (n_vocab, args.unit)) \
+                                   .astype(np.float32) / args.unit
+
 if args.gpu >= 0:
     model.to_gpu()
 
-dataset = np.array(dataset, dtype=np.int32)
+dataset = np.array(train, dtype=np.int32)
 
 optimizer = O.Adam()
 optimizer.setup(model)
@@ -176,18 +168,17 @@ for epoch in range(args.epoch):
     accum_loss = 0
     print('epoch: {0}'.format(epoch))
     indexes = np.random.permutation(skip)
+    position = np.arange(0, args.batchsize * skip, skip) + args.window
     for i in indexes:
         if word_count >= next_count:
             now = time.time()
             duration = now - cur_at
             throuput = 100000. / (now - cur_at)
-            print('{} words, {:.2f} sec, {:.2f} words/sec'.format(
-                word_count, duration, throuput))
+            print('{} words, {:.2f} sec, {:.2f} Kwords/sec'.format(
+                word_count, duration, throuput / 1000.))
             next_count += 100000
             cur_at = now
 
-        position = np.array(
-            range(0, args.batchsize)) * skip + (args.window + i)
         loss = calculate_loss(model, dataset, position)
         accum_loss += loss.data
         word_count += args.batchsize
@@ -197,11 +188,13 @@ for epoch in range(args.epoch):
         del loss
         optimizer.update()
 
+        position += 1
+
     print(accum_loss)
 
 with open('word2vec.model', 'w') as f:
     f.write('%d %d\n' % (len(index2word), args.unit))
-    w = model.embed.W.data
-    for i in range(w.shape[0]):
-        v = ' '.join(['%f' % v for v in w[i]])
+    w = cuda.to_cpu(model.embed.W.data)
+    for i, wi in enumerate(w):
+        v = ' '.join(map(str, wi))
         f.write('%s %s\n' % (index2word[i], v))

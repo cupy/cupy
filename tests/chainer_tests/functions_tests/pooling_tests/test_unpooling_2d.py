@@ -49,7 +49,8 @@ class TestUnpooling2D(unittest.TestCase):
             -1, 1, (self.N, self.n_channels, outh, outw)).astype(self.dtype)
         self.check_backward_options = {}
         if self.dtype == numpy.float16:
-            self.check_backward_options = {'atol': 0.05, 'rtol': 0.05}
+            self.check_backward_options = {
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
@@ -82,7 +83,7 @@ class TestUnpooling2D(unittest.TestCase):
                     ])
                 else:
                     raise ValueError('Unsupported outsize: {}'.format(outsize))
-                gradient_check.assert_allclose(expect, y_data[i, c])
+                testing.assert_allclose(expect, y_data[i, c])
 
     @condition.retry(3)
     def test_forward_cpu(self):

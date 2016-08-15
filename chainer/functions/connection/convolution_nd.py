@@ -22,6 +22,9 @@ if cuda.cudnn_enabled:
             libcudnn.CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT
 
 
+_check_cudnn_acceptable_type = convolution_2d._check_cudnn_acceptable_type
+
+
 class ConvolutionND(function.Function):
 
     def __init__(self, ndim, stride=1, pad=0, use_cudnn=True, cover_all=False):
@@ -58,7 +61,7 @@ class ConvolutionND(function.Function):
                 cuda.cudnn_enabled and
                 self.use_cudnn and
                 self.ndim > 1 and
-                convolution_2d._check_cudnn_acceptable_type(x.dtype, W.dtype))
+                _check_cudnn_acceptable_type(x.dtype, W.dtype))
 
     def _forward_xp(self, x, W, b, xp):
         ndim = self.ndim
@@ -302,12 +305,25 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
             :math:`(p_1, p_2, ..., p_N)`. ``pad=p`` is equivalent to
             ``(p, p, ..., p)``.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
-            available. cuDNN supports more than one-dimensional convolution.
+            available. See below for the excact conditions.
         cover_all (bool): If ``True``, all spatial locations are convoluted
             into some output pixels. It may make the output size larger.
+            `cover_all` needs to be ``False`` if you want to use cuDNN.
 
     Returns:
         ~chainer.Variable: Output variable.
+
+    This function uses cuDNN implementation for its forward and backward
+    computation if ALL of the following conditions are satisfied:
+
+    - ``cuda.cudnn_enabled`` is ``True``
+    - ``use_cudnn`` is ``True``
+    - The number of spatial dimensions is more than one.
+    - ``cover_all`` is ``False``
+    - The input's ``dtype`` is equal to the filter weight's.
+    - The ``dtype`` is FP32, FP64 or FP16(cuDNN version is equal to or greater
+      than v3)
+
 
     .. seealso:: :class:`ConvolutionND`, :func:`convolution_2d`
     """

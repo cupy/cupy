@@ -26,9 +26,7 @@ class TestClippedReLU(unittest.TestCase):
 
         self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.z = 0.75
-        self.check_backward_options = {}
-        if self.dtype == numpy.float16:
-            self.check_backward_options = {'eps': 2.0 ** -8}
+        self.check_backward_options = {'dtype': numpy.float64}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
@@ -42,7 +40,7 @@ class TestClippedReLU(unittest.TestCase):
             elif self.x[i] > self.z:
                 y_expect[i] = self.z
 
-        gradient_check.assert_allclose(y_expect, y.data)
+        testing.assert_allclose(y_expect, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):
