@@ -406,3 +406,11 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
+
+
+Utility functions
+-----------------
+
+forget
+~~~~~~
+.. autofunction:: forget

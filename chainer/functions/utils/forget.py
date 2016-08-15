@@ -59,4 +59,59 @@ class Forget(function.Function):
 
 
 def forget(func, *xs):
+    """Call a function without storing internal results.
+
+    On a forward-propagation Chainer stores all internal results of
+    :class:`Function` on a computational graph as they are required on
+    backward-propagation. These results consume too many memories. This method
+    **forgets** such internal results on forward-propagation, though supports
+    back-propagation with recalculation.
+
+    In a forward propagation, this method calls a given function with given
+    variables without creating a computational graph. That means, no iternal
+    results are stored. In a backward propagation this method calls the given
+    function again to create a computation graph to execute back-propagation.
+
+    This method reduces internal memory usage. Instead it requires more
+    calculation time as it calls the function twice.
+
+    .. admonition:: Example
+
+       Let ``f`` be a function defined as:
+
+       >>> def f(a, b):
+       ...  return a + b + a
+
+       and, ``x`` and ``y`` be :class:`~chainer.Variable`:
+
+       >>> x = chainer.Variable(numpy.random.uniform(-1, 1, 5, 'f'))
+       >>> y = chainer.Variable(numpy.random.uniform(-1, 1, 5, 'f'))
+
+       When ``z`` is calculated as ``z = f(x, y)``, its internal result
+       ``x + y`` is stored in memory. Instead if you call ``f`` with
+       :meth:`forget`:
+
+       >>> z = forget(f, x, y)
+
+       internal ``x + y`` is forgotten.
+
+    .. note::
+
+      The method does not support functions behaving randmly, such as
+      :meth:`~chainer.functions.dropout` and
+      :meth:`~chainer.functions.negative_sampling`. It is because first results
+      of these function differ from the second one.
+
+    Args:
+        func (callable): A function to call. It needs to be called with
+            :class:`~chainer.Variable` and to return a
+            :class:`~chainer.Variable` or a tuple of
+            :class:`~chainer.Variable`.
+        xs (~chainer.Variable): Argument variables of the function.
+
+    Returns:
+        ~chainer.Variable: A variable ``func`` returns. If it returns a tuple,
+        the method returns a tuple too.
+
+    """
     return Forget(func)(*xs)
