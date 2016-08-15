@@ -62,6 +62,7 @@ setup(
               'chainer.testing',
               'chainer.training',
               'chainer.training.extensions',
+              'chainer.training.triggers',
               'chainer.utils',
               'cupy',
               'cupy.binary',
