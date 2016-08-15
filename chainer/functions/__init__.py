@@ -246,6 +246,8 @@ Sin = trigonometric.Sin
 sin = trigonometric.sin
 Sum = sum.Sum
 sum = sum.sum
+Tan = trigonometric.Tan
+tan = trigonometric.tan
 
 Dropout = dropout.Dropout
 dropout = dropout.dropout
