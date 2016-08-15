@@ -307,7 +307,7 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
             available.
         deterministic (bool): The output of this function can be
             non-deterministic when it uses cuDNN.
-            If this option is `True`, then it forces cuDNN to use
+            If this option is ``True``, then it forces cuDNN to use
             a deterministic algorithm.
 
 

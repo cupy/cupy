@@ -255,9 +255,6 @@ class TestConvolution2DFunctionDeterministic(unittest.TestCase):
             self.assertFalse(b_data.flags.c_contiguous)
         return x_data, W_data, b_data, gy_data
 
-    def _make_gpu_args(self):
-        return tuple(cuda.to_gpu(data) for data in (self.x, self.W, self.b))
-
     def _run(self):
         # verify data continuity and move to gpu
         x_data, W_data, b_data, gy_data = \
