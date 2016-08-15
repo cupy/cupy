@@ -39,6 +39,10 @@ class UnaryFunctionsTestBase(object):
     def test_log_forward_cpu(self):
         self.check_forward_cpu(F.log, numpy.log)
 
+    @condition.retry(3)
+    def test_log2_forward_cpu(self):
+        self.check_forward_cpu(F.log2, numpy.log2)
+
     @attr.gpu
     @condition.retry(3)
     def test_exp_forward_gpu(self):
@@ -48,6 +52,11 @@ class UnaryFunctionsTestBase(object):
     @condition.retry(3)
     def test_log_forward_gpu(self):
         self.check_forward_gpu(F.log, numpy.log)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_log2_forward_gpu(self):
+        self.check_forward_gpu(F.log2, numpy.log2)
 
     def check_backward(self, op, x_data, y_grad):
         gradient_check.check_backward(op, x_data, y_grad)
@@ -66,6 +75,10 @@ class UnaryFunctionsTestBase(object):
     def test_log_backward_cpu(self):
         self.check_backward_cpu(F.log)
 
+    @condition.retry(3)
+    def test_log2_backward_cpu(self):
+        self.check_backward_cpu(F.log2)
+
     @attr.gpu
     @condition.retry(3)
     def test_exp_backward_gpu(self):
@@ -76,11 +89,19 @@ class UnaryFunctionsTestBase(object):
     def test_log_backward_gpu(self):
         self.check_backward_gpu(F.log)
 
+    @attr.gpu
+    @condition.retry(3)
+    def test_log2_backward_gpu(self):
+        self.check_backward_gpu(F.log2)
+
     def test_exp(self):
         self.assertEqual(F.Exp().label, 'exp')
 
     def test_log(self):
         self.assertEqual(F.Log().label, 'log')
+
+    def test_log2(self):
+        self.assertEqual(F.Log2().label, 'log2')
 
 
 class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
