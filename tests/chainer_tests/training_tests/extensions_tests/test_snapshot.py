@@ -4,11 +4,14 @@ import mock
 
 from chainer import testing
 from chainer.training import extensions
+from chainer.training import trigger
 
 
 @testing.parameterize(
     {'trigger': ('epoch', 2)},
     {'trigger': ('iteration', 10)},
+    {'trigger': trigger.IntervalTrigger(5, 'epoch')},
+    {'trigger': trigger.IntervalTrigger(20, 'iteration')},
 )
 class TestSnapshotObject(unittest.TestCase):
 
@@ -22,6 +25,8 @@ class TestSnapshotObject(unittest.TestCase):
 @testing.parameterize(
     {'trigger': ('epoch', 2)},
     {'trigger': ('iteration', 10)},
+    {'trigger': trigger.IntervalTrigger(5, 'epoch')},
+    {'trigger': trigger.IntervalTrigger(20, 'iteration')},
 )
 class TestSnapshot(unittest.TestCase):
 
