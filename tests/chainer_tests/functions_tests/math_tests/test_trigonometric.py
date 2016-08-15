@@ -11,13 +11,17 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-class UnaryFunctionsTestBase(object):
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+}))
+class UnaryFunctionsTest(unittest.TestCase):
 
     def make_data(self):
         raise NotImplementedError
 
     def setUp(self):
-        self.x, self.gy = self.make_data()
+        self.x = numpy.random.uniform(.5, 1, self.shape).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
 
     def check_forward(self, op, op_np, x_data):
         x = chainer.Variable(x_data)
@@ -102,23 +106,6 @@ class UnaryFunctionsTestBase(object):
 
     def test_tan(self):
         self.assertEqual(F.Tan().label, 'tan')
-
-
-class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        return x, gy
-
-
-class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
-                                      unittest.TestCase):
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        return x, gy
 
 
 testing.run_module(__name__, __file__)
