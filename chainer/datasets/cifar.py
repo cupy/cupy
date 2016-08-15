@@ -81,7 +81,7 @@ def get_cifar100(withlabel=True, ndim=3, scale=1.):
         datasets are arrays of images.
 
     """
-    raw = _retrieve_cifar('cifar-100')
+    raw = _retrieve_cifar_100()
     train = _preprocess_cifar(raw['train_x'], raw['train_y'],
                               withlabel, ndim, scale)
     test = _preprocess_cifar(raw['test_x'], raw['test_y'],
@@ -104,6 +104,32 @@ def _preprocess_cifar(images, labels, withlabel, ndim, scale):
         return tuple_dataset.TupleDataset(images, labels)
     else:
         return images
+
+
+def _retrieve_cifar_100():
+    root = download.get_dataset_directory('pfnet/chainer/cifar')
+    path = os.path.join(root, 'cifar-100.npz')
+    url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
+
+    def creator(path):
+
+        def load(archive, file_name):
+            d = _pickle_load(archive.extractfile(file_name))
+            x = d['data'].reshape((-1, 3072))
+            y = numpy.array(d['fine_labels'], dtype=numpy.uint8)
+            return x, y
+
+        archive_path = download.cached_download(url)
+        with tarfile.open(archive_path, 'r:gz') as archive:
+            train_x, train_y = load(archive, 'cifar-100-python/train')
+            test_x, test_y = load(archive, 'cifar-100-python/test')
+
+        numpy.savez_compressed(path, train_x=train_x, train_y=train_y,
+                               test_x=test_x, test_y=test_y)
+        return {'train_x': train_x, 'train_y': train_y,
+                'test_x': test_x, 'test_y': test_y}
+
+    return download.cache_or_load_file(path, creator, numpy.load)
 
 
 def _retrieve_cifar(name):
