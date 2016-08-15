@@ -176,6 +176,12 @@ def lstm(c_prev, x):
 
     These are returned as a tuple of two variables.
 
+    This function supports variable length inputs. When mini-batch size of
+    ``x`` is lower than mini-batch size of ``c``, this funciton only updates
+    ``c[0:len(x)]`` and don't change the rest of ``c``, ``c[len(x):]``.
+    So, please sort input sequneces by descending lengths before applying the
+    function.
+
     Args:
         c_prev (~chainer.Variable): Variable that holds the previous cell
             state. The cell state should be a zero array or the output of the
