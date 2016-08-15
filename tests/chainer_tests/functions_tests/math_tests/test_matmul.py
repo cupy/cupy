@@ -43,7 +43,7 @@ class _TestMatMul(unittest.TestCase):
     def test_matmul_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x1), cuda.to_gpu(self.x2),
-            cuda.to_gpu(self.gy), atol=1e-2)
+            cuda.to_gpu(self.gy), atol=1e-2, rtol=1e-2)
 
 m = 2
 k = 5
