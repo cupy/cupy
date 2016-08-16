@@ -186,6 +186,8 @@ def _get_simple_reduction_function(
 
 class simple_reduction_function(object):
 
+    _block_size = 512
+
     def __init__(self, name, ops, identity, preamble):
         self.name = name
         self._ops = ops
@@ -235,7 +237,7 @@ class simple_reduction_function(object):
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, in_args[0].shape, None)
 
-        block_size = 512
+        block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
         # Rounding Up to the Next Power of 2
