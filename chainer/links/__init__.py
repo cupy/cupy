@@ -7,6 +7,7 @@ from chainer.links.connection import bilinear
 from chainer.links.connection import convolution_2d
 from chainer.links.connection import convolution_nd
 from chainer.links.connection import deconvolution_2d
+from chainer.links.connection import deconvolution_nd
 from chainer.links.connection import embed_id
 from chainer.links.connection import gru
 from chainer.links.connection import inception
@@ -30,6 +31,7 @@ Bilinear = bilinear.Bilinear
 Convolution2D = convolution_2d.Convolution2D
 ConvolutionND = convolution_nd.ConvolutionND
 Deconvolution2D = deconvolution_2d.Deconvolution2D
+DeconvolutionND = deconvolution_nd.DeconvolutionND
 EmbedID = embed_id.EmbedID
 GRU = gru.GRU
 StatefulGRU = gru.StatefulGRU
