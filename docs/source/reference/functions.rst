@@ -347,6 +347,10 @@ sin
 ~~~
 .. autofunction:: sin
 
+sqrt
+~~~~
+.. autofunction:: sqrt
+
 sum
 ~~~
 .. autofunction:: sum
