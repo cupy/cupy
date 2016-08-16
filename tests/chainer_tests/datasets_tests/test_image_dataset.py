@@ -8,10 +8,10 @@ from chainer.datasets import image_dataset
 from chainer import testing
 
 
-@unittest.skipUnless(image_dataset.available, 'image_cataset is not available')
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.int32],
 }))
+@unittest.skipUnless(image_dataset.available, 'image_cataset is not available')
 class TestImageDataset(unittest.TestCase):
 
     def setUp(self):
@@ -33,10 +33,10 @@ class TestImageDataset(unittest.TestCase):
         self.assertEqual(img.shape, (1, 300, 300))
 
 
-@unittest.skipUnless(image_dataset.available, 'image_cataset is not available')
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.int32],
 }))
+@unittest.skipUnless(image_dataset.available, 'image_cataset is not available')
 class TestLabeledImageDataset(unittest.TestCase):
 
     def setUp(self):
