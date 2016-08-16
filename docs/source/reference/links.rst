@@ -42,6 +42,11 @@ Deconvolution2D
 .. autoclass:: Deconvolution2D
    :members:
 
+DeconvolutionND
+~~~~~~~~~~~~~~~
+.. autoclass:: DeconvolutionND
+   :members:
+
 EmbedID
 ~~~~~~~
 .. autoclass:: EmbedID
