@@ -49,6 +49,22 @@ class TestVariable(unittest.TestCase):
         x = chainer.Variable(self.x, name='x')
         self.assertEqual(str(x), 'x')
 
+    def check_attributes(self, gpu):
+        x = self.x
+        if gpu:
+            x = cuda.to_gpu(x)
+        x = chainer.Variable(x)
+        self.assertEqual(x.shape, self.x.shape)
+        self.assertEqual(x.ndim, self.x.ndim)
+        self.assertEqual(x.size, self.x.size)
+
+    def test_attributes_cpu(self):
+        self.check_attributes(False)
+
+    @attr.gpu
+    def test_attributes_gpu(self):
+        self.check_attributes(True)
+
     def check_len(self, gpu):
         x = self.x
         if gpu:
