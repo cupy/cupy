@@ -296,7 +296,7 @@ class BinaryHierarchicalSoftmax(link.Link):
         self._func = BinaryHierarchicalSoftmaxFunction(tree)
         super(BinaryHierarchicalSoftmax, self).__init__(
             W=(self._func.parser_size, in_size))
-        self.W.data[...] = numpy.random.uniform(-1, 1, self.W.data.shape)
+        self.W.data[...] = numpy.random.uniform(-1, 1, self.W.shape)
 
     def to_gpu(self, device=None):
         with cuda.get_device(device):
