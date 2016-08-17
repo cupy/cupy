@@ -57,6 +57,7 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(x.shape, self.x.shape)
         self.assertEqual(x.ndim, self.x.ndim)
         self.assertEqual(x.size, self.x.size)
+        self.assertEqual(x.dtype, self.x.dtype)
 
     def test_attributes_cpu(self):
         self.check_attributes(False)
