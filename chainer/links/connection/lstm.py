@@ -197,17 +197,18 @@ class LSTM(LSTMBase):
             ~chainer.Variable: Outputs of updated LSTM units.
 
         """
-        batch = len(x.data)
+        batch = x.shape[0]
         lstm_in = self.upward(x)
         h_rest = None
         if self.h is not None:
+            h_size = self.h.shape[0]
             if batch == 0:
                 h_rest = self.h
-            elif len(self.h.data) < batch:
+            elif h_size < batch:
                 msg = ('The batch size of x must be equal to or less than the '
                        'size of the previous state h.')
                 raise TypeError(msg)
-            elif len(self.h.data) > batch:
+            elif h_size > batch:
                 h_update, h_rest = split_axis.split_axis(
                     self.h, [batch], axis=0)
                 lstm_in += self.lateral(h_update)
@@ -216,7 +217,7 @@ class LSTM(LSTMBase):
         if self.c is None:
             xp = self.xp
             self.c = variable.Variable(
-                xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
+                xp.zeros((batch, self.state_size), dtype=x.data.dtype),
                 volatile='auto')
         self.c, y = lstm.lstm(self.c, lstm_in)
 
