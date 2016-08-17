@@ -1,6 +1,6 @@
+import mock
 import unittest
 
-import mock
 import numpy
 
 import chainer
@@ -220,6 +220,27 @@ class TestConvolution2DFunctionDeterministic(unittest.TestCase):
 
     @attr.gpu
     @attr.cudnn
+    def test_called(self):
+        if cuda.cudnn.cudnn.getVersion() >= 4000:
+            with mock.patch(
+                    'chainer.functions.connection.convolution_2d.libcudnn'
+            ) as mlibcudnn:
+                x, W, b, y = self._run()
+
+        expect = not self.deterministic
+
+        # in Convolution2DFunction.backward_gpu()
+        self.assertEqual(
+            mlibcudnn.getConvolutionBackwardFilterAlgorithm.called,
+            expect)
+        mlibcudnn.convolutionBackwardFilter_v3.assert_called_once()
+        self.assertEqual(
+            mlibcudnn.getConvolutionBackwardDataAlgorithm.called,
+            expect)
+        mlibcudnn.convolutionBackwardData_v3.assert_called_once()
+
+    @attr.gpu
+    @attr.cudnn
     def test_deterministic(self):
         """Check deterministic behaviour.
 
@@ -233,9 +254,6 @@ class TestConvolution2DFunctionDeterministic(unittest.TestCase):
         cuda.cupy.testing.assert_array_equal(y1.data, y2.data)
         if self.deterministic:
             cuda.cupy.testing.assert_array_equal(W1.grad, W2.grad)
-        else:
-            with self.assertRaises(AssertionError):
-                cuda.cupy.testing.assert_array_equal(W1.grad, W2.grad)
 
         if not self.nobias:
             cuda.cupy.testing.assert_array_equal(b1.grad, b2.grad)
