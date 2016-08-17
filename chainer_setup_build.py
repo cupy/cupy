@@ -111,6 +111,9 @@ def check_library(compiler, includes=(), libraries=(),
 
         return True
 
+    except distutils.errors.DistutilsError:
+        return False
+
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
