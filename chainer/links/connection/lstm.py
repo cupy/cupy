@@ -76,7 +76,7 @@ class StatelessLSTM(LSTMBase):
         if c is None:
             xp = self.xp
             c = variable.Variable(
-                xp.zeros((len(x.data), self.state_size), dtype=x.dtype),
+                xp.zeros((x.shape[0], self.state_size), dtype=x.dtype),
                 volatile='auto')
         return lstm.lstm(c, lstm_in)
 
