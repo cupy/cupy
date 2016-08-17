@@ -190,6 +190,18 @@ Actual: {0}'''.format(type(data))
             _check_grad_type(None, self, g)
         self._grad = g
 
+    @property
+    def shape(self):
+        return self.data.shape
+
+    @property
+    def ndim(self):
+        return self.data.ndim
+
+    @property
+    def size(self):
+        return self.data.size
+
     def to_cpu(self):
         """Copies the data and gradient arrays to CPU."""
         self.data = cuda.to_cpu(self.data)
