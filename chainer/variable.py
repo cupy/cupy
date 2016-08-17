@@ -202,6 +202,10 @@ Actual: {0}'''.format(type(data))
     def size(self):
         return self.data.size
 
+    @property
+    def dtype(self):
+        return self.data.dtype
+
     def to_cpu(self):
         """Copies the data and gradient arrays to CPU."""
         self.data = cuda.to_cpu(self.data)

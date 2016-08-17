@@ -244,7 +244,7 @@ def check_backward(func, x_data, y_grad, params=(),
         return tuple(y.data for y in ys)
 
     if no_grads is None:
-        no_grads = [x.data.dtype.kind != 'f' for x in xs]
+        no_grads = [x.dtype.kind != 'f' for x in xs]
     else:
         if len(no_grads) != len(xs):
             raise ValueError(

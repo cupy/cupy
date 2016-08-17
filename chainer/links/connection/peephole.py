@@ -98,7 +98,7 @@ class StatefulPeepholeLSTM(link.Chain):
         if self.c is None:
             xp = self.xp
             self.c = variable.Variable(
-                xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
+                xp.zeros((x.shape[0], self.state_size), dtype=x.dtype),
                 volatile='auto')
         lstm_in = reshape.reshape(lstm_in, (len(lstm_in.data),
                                             lstm_in.shape[1] // 4,

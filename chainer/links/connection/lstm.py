@@ -76,7 +76,7 @@ class StatelessLSTM(LSTMBase):
         if c is None:
             xp = self.xp
             c = variable.Variable(
-                xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
+                xp.zeros((len(x.data), self.state_size), dtype=x.dtype),
                 volatile='auto')
         return lstm.lstm(c, lstm_in)
 
@@ -217,7 +217,7 @@ class LSTM(LSTMBase):
         if self.c is None:
             xp = self.xp
             self.c = variable.Variable(
-                xp.zeros((batch, self.state_size), dtype=x.data.dtype),
+                xp.zeros((batch, self.state_size), dtype=x.dtype),
                 volatile='auto')
         self.c, y = lstm.lstm(self.c, lstm_in)
 
