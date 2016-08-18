@@ -15,15 +15,32 @@ from chainer import variable
 
 
 _thread_local = threading.local()
-_thread_local.eval_mode = False
+_thread_local.default_backprop = True
 
 
 @contextlib.contextmanager
-def evaluation_mode():
-    default = _thread_local.eval_mode
-    _thread_local.eval_mode = True
+def no_backprop_mode():
+    """Disable back-propagation for Variable whose volale is auto.
+
+    In the default setting :class:`~chainer.Variable` whose `volatile`
+    attribute is `'auto'` behaves like **non-volatile** variable. That means
+    such a :class:`~chainer.Variable`: builds a computational graph, consumes
+    memory to store the graph, and you can execute back-propagation for it.
+    With this context such a :class:`~chainer.Variable`: behaves **volatile**
+    variable. So, you can easily switch training and evaluation.
+
+    In this example volatily of ``x`` and ``y`` is ``'auto'``. So, ``y``
+    doesn't have a computational graph.
+
+    >>> x = chainer.Variable(numpy.array([1,], 'f'), volatile='auto')
+    >>> with chainer.no_backprop_mode():
+    ...    y = x + 1
+
+    """
+    default = _thread_local.default_backprop
+    _thread_local.default_backprop = False
     yield
-    _thread_local.eval_mode = default
+    _thread_local.default_backprop = default
 
 
 class Function(object):
@@ -162,7 +179,7 @@ class Function(object):
         elif out_v == 'off':
             build_graph = True
         else:
-            build_graph = not _thread_local.eval_mode
+            build_graph = _thread_local.default_backprop
 
         if build_graph:
             # Topological ordering
