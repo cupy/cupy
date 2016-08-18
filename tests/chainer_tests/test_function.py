@@ -277,10 +277,11 @@ class TestFunction(unittest.TestCase):
         y1, y2 = f.outputs
         # As _y1 is alive, this weak ref is also alive
         y1_ref = y1()
-        self.assertTrue(y1_ref is not None and y1_ref.creator is None)
+        self.assertIsNotNone(y1_ref)
+        self.assertIsNone(y1_ref.creator)
         # This weak ref is dead by unchain
         y2_ref = y2()
-        self.assertTrue(y2_ref is None)
+        self.assertIsNone(y2_ref)
 
         self.assertIsNone(f.inputs)
 
