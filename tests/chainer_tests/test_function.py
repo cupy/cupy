@@ -436,4 +436,21 @@ class TestFunctionBackwardDebug(unittest.TestCase):
         self.check_debug_backward(*input_value)
 
 
+class TestNoBackpropMode(unittest.TestCase):
+
+    def setUp(self):
+        self.x = chainer.Variable(numpy.array([1.], 'f'), 'auto')
+
+    def test_no_backprop_mode(self):
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        with chainer.no_backprop_mode():
+            y = self.x + 1
+        self.assertTrue(y.creator is None)
+
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+
 testing.run_module(__name__, __file__)
