@@ -119,6 +119,10 @@ get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
+hstack
+~~~~~~~~
+.. autofunction:: hstack
+
 permutate
 ~~~~~~~~~
 .. autofunction:: permutate
