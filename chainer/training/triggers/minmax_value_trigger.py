@@ -17,6 +17,7 @@ class BestValueTrigger(object):
             :class`IntervalTrigger`.
 
     """
+
     def __init__(self, key, compare, trigger=(1, 'epoch')):
         self._key = key
         self._best_value = None
@@ -76,6 +77,7 @@ class MaxValueTrigger(BestValueTrigger):
             :class`IntervalTrigger`.
 
     """
+
     def __init__(self, key, trigger=(1, 'epoch')):
         super(MaxValueTrigger, self).__init__(
             key, lambda max_value, new_value: new_value > max_value, trigger)
@@ -97,6 +99,7 @@ class MinValueTrigger(BestValueTrigger):
             :class`IntervalTrigger`.
 
     """
+
     def __init__(self, key, trigger=(1, 'epoch')):
         super(MinValueTrigger, self).__init__(
             key, lambda min_value, new_value: new_value < min_value, trigger)
