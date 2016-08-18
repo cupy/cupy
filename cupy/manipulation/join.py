@@ -123,7 +123,7 @@ def hstack(tup):
     axis = 1
     if arrs[0].ndim == 1:
         axis = 0
-    return concatenate(tup, axis)
+    return concatenate(arrs, axis)
 
 
 def vstack(tup):
