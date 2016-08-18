@@ -40,6 +40,7 @@ Deserializer = serializer.Deserializer
 DictSummary = reporter.DictSummary
 Flag = flag.Flag
 Function = function.Function
+evaluation_mode = function.evaluation_mode
 FunctionSet = function_set.FunctionSet
 GradientMethod = optimizer.GradientMethod
 Link = link.Link
