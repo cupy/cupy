@@ -51,7 +51,8 @@ class SimpleReductionFunction(unittest.TestCase):
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=1)
 
     def test_shape5(self):
-        size = 2 << 32 // cupy.core.core.simple_reduction_function._block_size
+        size = ((2 << 32)
+                // cupy.core.core.simple_reduction_function._block_size)
         self.check_int8_sum((size, 1), axis=1)
         self.check_int8_sum((size, 1), axis=0)
 
