@@ -7,6 +7,7 @@ from chainer.links.connection import linear
 class Highway(link.Chain):
 
     """Highway module.
+
     In highway network, two gates are added to the ordinal non-linear
     transformation (:math:`H(x) = activate(W_h x + b_h)`).
     One gate is the transform gate :math:`T(x) = \\sigma(W_t x + b_t)`, and the
@@ -61,6 +62,7 @@ class Highway(link.Chain):
 
     def __call__(self, x):
         """Computes the output of the Highway module.
+
         Args:
             x (~chainer.Variable): Input variable.
         Returns:
