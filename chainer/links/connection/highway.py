@@ -13,15 +13,15 @@ class Highway(link.Chain):
     other is the carry gate :math:`C(x)`.
     For simplicity, the author defined :math:`C = 1 - T`.
     Highway module returns :math:`y` defined as
-    
+
     .. math::
-    
+
         y = activate(W_h x + b_h) \\odot \\sigma(W_t x + b_t) +
         x \\odot(1 - \\sigma(W_t x + b_t))
-          
+
     The output array has the same spatial size as the input. In order to
     satisfy this, :math:`W_h` and :math:`W_t` must be square matrix.
-    
+
     Args:
         in_out_size (int): Dimension of input and output vectors.
         nobias (bool): If ``True``, then this function does not use the bias.
@@ -44,7 +44,7 @@ class Highway(link.Chain):
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
             Negative value is sufficient for learning (e.g. -1, -3, ...).
-    
+
     See:
         `Highway Networks <https://arxiv.org/abs/1505.00387>`_.
     """
