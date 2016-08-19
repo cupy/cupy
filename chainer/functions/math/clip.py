@@ -22,7 +22,7 @@ class Clip(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
         x_type, = in_types
-        type_check.expect(x_type.dtype == numpy.float32)
+        type_check.expect(x_type.dtype.kind == 'f')
 
     def forward_cpu(self, x):
         return utils.force_array(
@@ -38,7 +38,7 @@ class Clip(function.Function):
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
             'T x, T gy, T x_min, T x_max', 'T gx',
-            'gx = ((x > x_min) & (x < x_max)) ? gy : 0',
+            'gx = ((x > x_min) & (x < x_max)) ? gy : T(0)',
             'clip_bwd')(x[0], gy[0], self.x_min, self.x_max)
         return gx,
 
