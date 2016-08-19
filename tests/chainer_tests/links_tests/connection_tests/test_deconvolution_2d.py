@@ -42,7 +42,7 @@ class TestDeconvolution2D(unittest.TestCase):
             self.link.b.data[...] = numpy.random.uniform(
                 -1, 1, self.link.b.data.shape).astype(numpy.float32)
 
-        self.link.zerograds()
+        self.link.cleargrads()
 
         N = 2
         h, w = 3, 2
