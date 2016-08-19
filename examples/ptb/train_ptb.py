@@ -135,7 +135,7 @@ class BPTTUpdater(training.StandardUpdater):
             # Compute the loss at this time step and accumulate it
             loss += optimizer.target(chainer.Variable(x), chainer.Variable(t))
 
-        optimizer.target.zerograds()  # Initialize the parameter gradients
+        optimizer.target.cleargrads()  # Clear the parameter gradients
         loss.backward()  # Backprop
         loss.unchain_backward()  # Truncate the graph
         optimizer.update()  # Update the parameters
