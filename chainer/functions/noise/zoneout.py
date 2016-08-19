@@ -7,7 +7,12 @@ from chainer.utils import type_check
 
 class Zoneout(function.Function):
 
-    """Zonepout regularization."""
+    """Zoneout regularization.
+
+    See the paper: `Zoneout: Regularizing RNNs by Randomly Preserving Hidden \
+    Activations <http://arxiv.org/abs/1606.013050>`_.
+
+    """
 
     def __init__(self, zoneout_ratio):
         self.zoneout_ratio = zoneout_ratio
@@ -37,20 +42,17 @@ class Zoneout(function.Function):
 def zoneout(h, x, ratio=.5, train=True):
     """Instead of dropping out, units zone out and are set to their previous value.
 
-    This function adds their previous value randomly with probability ``ratio``
-    to hidden activation ``x``. In testing mode, returns ``x``.
+    This function stochastically forces some hidden units to maintain their
+    previous values.
 
     Args:
         h (~chainer.Variable): Previous variable.
         x (~chainer.Variable): Input variable.
         ratio (float): Zoneout ratio.
-        train (bool): If ``True``, executes dropout. Otherwise, return x.
+        train (bool): If ``True``, executes zoneout. Otherwise, return x.
 
     Returns:
         ~chainer.Variable: Output variable.
-
-    See the paper: `Zoneout: Regularizing RNNs by Randomly Preserving Hidden \
-    Activations <http://arxiv.org/abs/1606.013050>`_.
 
     """
     if train:
