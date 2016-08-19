@@ -11,18 +11,29 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
+@testing.parameterize(
+    {'dtype': numpy.float16},
+    {'dtype': numpy.float32},
+    {'dtype': numpy.float64},
+)
 class TestSum(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(numpy.float32)
-        self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, (3, 2, 4)).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
 
     def check_forward(self, x_data, axis=None):
         x = chainer.Variable(x_data)
         y = functions.sum(x, axis=axis)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         y_expect = self.x.sum(axis=axis)
-        testing.assert_allclose(y_expect, y.data)
+
+        if self.dtype == numpy.float16:
+            options = {'atol': 1e-3, 'rtol': 1e-3}
+        else:
+            options = {}
+
+        testing.assert_allclose(y_expect, y.data, **options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -91,7 +102,8 @@ class TestSum(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad, axis=None):
         gradient_check.check_backward(
-            functions.Sum(axis), x_data, y_grad, atol=1e-4)
+            functions.Sum(axis), x_data, y_grad, atol=1e-4,
+            dtype=numpy.float64)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -99,8 +111,8 @@ class TestSum(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_zerodim_cpu(self):
-        x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        x = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
+        gy = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
         self.check_backward(x, gy)
 
     @condition.retry(3)
@@ -142,8 +154,8 @@ class TestSum(unittest.TestCase):
     @attr.gpu
     @condition.retry(3)
     def test_backward_zerodim_gpu(self):
-        x = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
+        x = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
+        gy = numpy.random.uniform(-1, 1, ()).astype(self.dtype)
         self.check_backward(cuda.to_gpu(x), cuda.to_gpu(gy))
 
     @attr.gpu
