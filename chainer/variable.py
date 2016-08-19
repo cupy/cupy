@@ -226,6 +226,10 @@ Actual: {0}'''.format(type(data))
             if self._grad is not None:
                 self._grad = cuda.to_gpu(self._grad)
 
+    def cleargrad(self):
+        """Clears the gradient array."""
+        self._grad = None
+
     def zerograd(self):
         """Initializes the gradient array by zeros."""
         with cuda.get_device(self.data) as dev:

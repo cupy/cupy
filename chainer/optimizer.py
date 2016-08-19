@@ -384,8 +384,16 @@ class GradientMethod(Optimizer):
 
         """
         if lossfun is not None:
+            if 'use_cleargrads' in kwds:
+                use_cleargrads = kwds['use_cleargrads']
+                del kwds['use_cleargrads']
+            else:
+                use_cleargrads = True
             loss = lossfun(*args, **kwds)
-            self.target.zerograds()
+            if use_cleargrads:
+                self.target.cleargrads()
+            else:
+                self.target.zerograds()
             loss.backward()
             del loss
         self.call_hooks()

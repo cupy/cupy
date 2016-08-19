@@ -357,6 +357,16 @@ class Link(object):
         for name in self._params:
             dst[name].copydata(src[name])
 
+    def cleargrads(self):
+        """Clears all gradient arrays.
+
+        This method should be called before the backward computation at every
+        iteration of the optimization.
+
+        """
+        for param in self.params():
+            param.cleargrad()
+
     def zerograds(self):
         """Initializes all gradient arrays by zero.
 
