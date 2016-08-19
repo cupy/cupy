@@ -17,7 +17,7 @@ class CReLU(function.Function):
     def check_type_forward(self, in_types):
         type_check.expect(
             in_types.size() == 1,
-            in_types[0].dtype == numpy.float32,
+            in_types[0].dtype.kind == 'f',
             in_types[0].ndim > self.axis,
             in_types[0].ndim >= -self.axis
         )
@@ -30,7 +30,7 @@ class CReLU(function.Function):
     def forward(self, x):
         x, = x
         xp = cuda.get_array_module(x)
-        y = xp.empty(self.get_output_shape(x.shape), dtype=numpy.float32)
+        y = xp.empty(self.get_output_shape(x.shape), dtype=x.dtype)
         y_former, y_latter = xp.split(y, 2, axis=self.axis)
         zero = x.dtype.type(0)
         xp.maximum(zero, x, out=y_former)
