@@ -40,7 +40,7 @@ def expected_unpooling_nd(x_data, outs, ksize, stride, pad):
 
 
 @testing.parameterize(*testing.product({
-    'dims': [(4, 3)],
+    'dims': [(5,), (5, 4), (5, 4, 3)],
     '_ksize': [1, 2, 3],
     '_stride': [1, 2, 3],
     '_pad': [0, 1],
