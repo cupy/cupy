@@ -394,9 +394,9 @@ class CaffeFunction(link.Chain):
             axis = 1
 
         if layer.slice_param.slice_point:
-            indices_or_sections = len(list(layer.top))
-        else:
             indices_or_sections = list(layer.slice_param.slice_point)
+        else:
+            indices_or_sections = len(list(layer.top))
 
         self.forwards[layer.name] = _SingleArgumentFunction(
             functions.split_axis,
