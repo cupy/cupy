@@ -39,7 +39,7 @@ def unary_function_test(func, func_expected=None):
     Chainer functions and to give their expected values.
 
     Decorated test class tests forward and backward computation for CPU and GPU
-    across the following :func:`~chainer.testing.parameterize`ed parameters:
+    across the following :func:`~chainer.testing.parameterize` ed parameters:
 
     - dtype: ``numpy.float16``, ``numpy.float32`` and ``numpy.float64``
     - shape: rank of zero and more
