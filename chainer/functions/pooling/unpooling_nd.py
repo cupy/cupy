@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -65,6 +66,18 @@ class UnpoolingND(function.Function):
         y = col2im_nd(col, stride, pad, self.outs)
 
         return y,
+
+    def backward(self, x, gy):
+        xp = cuda.get_array_module(*x)
+        if xp is numpy:
+            im2col_nd = conv_nd.im2col_nd_cpu
+        else:
+            im2col_nd = conv_nd.im2col_nd_gpu
+        gcol = im2col_nd(gy[0], self.ksize, self.stride, self.pad,
+                         cover_all=self.cover_all)
+        gcol_axis = tuple(six.moves.range(2, 2 + self.ndim))
+        gx = gcol.sum(axis=gcol_axis)
+        return gx,
 
 
 def unpooling_nd(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):

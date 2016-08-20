@@ -7,6 +7,7 @@ import six
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
@@ -96,16 +97,20 @@ class TestUnpoolingND(unittest.TestCase):
         self.check_forward(cuda.to_gpu(self.x))
 
     def check_backward(self, x_data, y_grad):
-        pass
+        ndim = len(self.dims)
+        gradient_check.check_backward(
+            functions.UnpoolingND(ndim, self.ksize, self.stride, self.pad,
+                                  cover_all=self.cover_all),
+            x_data, y_grad, dtype=numpy.float64, atol=5e-4, rtol=5e-3)
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        pass
+        self.check_backward(self.x, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        pass
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
 @testing.parameterize(*testing.product({
