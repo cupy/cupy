@@ -1,5 +1,6 @@
-from chainer.training import extension
 import time
+
+from chainer.training import extension
 
 
 def observe_value(key, target_func):
