@@ -3,6 +3,7 @@ import nose
 from chainer.testing import array
 from chainer.testing import helper
 from chainer.testing import parameterized
+from chainer.testing import unary_function_test
 
 
 assert_allclose = array.assert_allclose
@@ -10,6 +11,8 @@ assert_allclose = array.assert_allclose
 parameterize = parameterized.parameterize
 product = parameterized.product
 product_dict = parameterized.product_dict
+
+unary_function_test = unary_function_test.unary_function_test
 
 with_requires = helper.with_requires
 
