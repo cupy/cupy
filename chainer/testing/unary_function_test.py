@@ -15,12 +15,13 @@ def func_class(func):
     return getattr(F, name, None)
 
 
-def setattr1(klass, method):
-    if not hasattr(klass, method.__name__):
-        setattr(klass, method.__name__, method)
+def make_data_default(self, dtype, shape):
+    x = numpy.random.uniform(-1, 1, shape).astype(dtype)
+    gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
+    return x, gy
 
 
-def unary_function_test(func, func_expected=None):
+def unary_function_test(func, func_expected=None, make_data=None):
     """Decorator to test Chainer functions lifting unary numpy/cupy functions.
 
     This decorator is for testing Chainer functions lifted from corresponding
@@ -33,10 +34,15 @@ def unary_function_test(func, func_expected=None):
         func_expected: Optional. Numpy function that is used on testing forward
             computation to get expected values. If not given, a corresponding
             numpy function for ``func`` is implicitly picked up from its name.
+        make_data: Optional. Function that takes ``dtype`` and ``shape`` to
+            return a tuple of input and gradient data. If not given, default
+            input and gradient are used.
 
     ``func`` takes a Chainer function to be tested and usually it is enough.
-    ``func_expected`` is used on testing Chainer functions composed with other
-    Chainer functions and to give their expected values.
+    ``func_expected`` is used on testing Chainer functions composed with others
+    and to give their expected values. ``make_data`` is used to customize input
+    and gradient data for testing. By default, uniform distribution ranged
+    [-1, 1] is used for both.
 
     Decorated test class tests forward and backward computation for CPU and GPU
     across the following :func:`~chainer.testing.parameterize` ed parameters:
@@ -48,10 +54,6 @@ def unary_function_test(func, func_expected=None):
     function has its corresponding function class. Decorator searches a Chainer
     function class in ``chainer.functions`` module from name of the Chainer
     function.
-
-    Test data to be used may be customized via defining ``make_data`` method
-    explicitly. By default, uniform distribution ranged [-1, 1] is used for
-    input and gradient test data.
 
     .. admonition:: Example
 
@@ -87,20 +89,20 @@ def unary_function_test(func, func_expected=None):
 
        We may also customize test data to be used. The following is an example
        of testing ``sqrt`` Chainer function which we want to test in positive
-       value domain of input ``x``.
+       value domain leaving some margin around zero of input ``x``.
 
-       >>> @unary_function_test(F.sqrt)
+       >>> def make_data(dtype, shape):
+       >>>     x = numpy.random.uniform(0.1, 1, shape).astype(dtype)
+       >>>     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
+       >>>     return x, gy
+       >>>
+       >>> @unary_function_test(F.sqrt, make_data=make_data)
        >>> class TestSqrt(unittest.TestCase):
-       >>>     def make_data(self):
-       >>>         x = numpy.random.uniform(
-       >>>             0.1, 1, self.shape).astype(self.dtype)
-       >>>         gy = numpy.random.uniform(
-       >>>              -1, 1, self.shape).astype(self.dtype)
-       >>>         return x, gy
+       >>>     pass
 
-       We define ``make_data`` method to return input and gradient arrays
-       generated in proper value domains with ``self.dtype`` and ``self.shape``
-       parameters.
+       We define ``make_data`` function to return input and gradient ndarrays
+       generated in proper value domains with given ``dtype`` and ``shape``
+       parameters, then passing it to the decorator's ``make_data`` argument.
 
     """
 
@@ -112,24 +114,21 @@ def unary_function_test(func, func_expected=None):
         name = func.__name__
         func_expected = getattr(numpy, name)
 
+    if make_data is None:
+        make_data = make_data_default
+
     def f(klass):
         assert issubclass(klass, unittest.TestCase)
 
-        def make_data(self):
-            x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
-            gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
-            return x, gy
-        setattr1(klass, make_data)
-
         def setUp(self):
-            self.x, self.gy = self.make_data()
+            self.x, self.gy = make_data(self.dtype, self.shape)
             if self.dtype == numpy.float16:
                 self.backward_options = {
                     'eps': 2 ** -4, 'atol': 2 ** -4, 'rtol': 2 ** -4,
                     'dtype': numpy.float64}
             else:
                 self.backward_options = {}
-        setattr(klass, "setUp", setUp)  # Overwrite setUp method.
+        setattr(klass, "setUp", setUp)
 
         def check_forward(self, x_data):
             x = chainer.Variable(x_data)
@@ -137,40 +136,40 @@ def unary_function_test(func, func_expected=None):
             self.assertEqual(y.data.dtype, x_data.dtype)
             y_expected = func_expected(cuda.to_cpu(x_data), dtype=x_data.dtype)
             testing.assert_allclose(y_expected, y.data, atol=1e-4, rtol=1e-4)
-        setattr1(klass, check_forward)
+        setattr(klass, "check_forward", check_forward)
 
         @condition.retry(3)
         def test_forward_cpu(self):
             self.check_forward(self.x)
-        setattr1(klass, test_forward_cpu)
+        setattr(klass, "test_forward_cpu", test_forward_cpu)
 
         @attr.gpu
         @condition.retry(3)
         def test_forward_gpu(self):
             self.check_forward(cuda.to_gpu(self.x))
-        setattr1(klass, test_forward_gpu)
+        setattr(klass, "test_forward_gpu", test_forward_gpu)
 
         def check_backward(self, x_data, y_grad):
             gradient_check.check_backward(
                 func, x_data, y_grad, **self.backward_options)
-        setattr1(klass, check_backward)
+        setattr(klass, "check_backward", check_backward)
 
         @condition.retry(3)
         def test_backward_cpu(self):
             self.check_backward(self.x, self.gy)
-        setattr1(klass, test_backward_cpu)
+        setattr(klass, "test_backward_cpu", test_backward_cpu)
 
         @attr.gpu
         @condition.retry(3)
         def test_backward_gpu(self):
             self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
-        setattr1(klass, test_backward_gpu)
+        setattr(klass, "test_backward_gpu", test_backward_gpu)
 
         def test_label(self):
             klass = func_class(func)
             self.assertEqual(klass().label, func.__name__)
         if func_class(func) is not None:
-            setattr1(klass, test_label)
+            setattr(klass, "test_label", test_label)
 
         # Return parameterized class.
         return testing.parameterize(*testing.product({
