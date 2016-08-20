@@ -31,7 +31,7 @@ def unary_function_test(func, func_expected=None, make_data=None):
 
     Args:
         func: Required. Chainer function to be tested by decorated test class.
-        func_expected: Optional. Numpy function that is used on testing forward
+        func_expected: Optional. Function that is used on testing forward
             computation to get expected values. If not given, a corresponding
             numpy function for ``func`` is implicitly picked up from its name.
         make_data: Optional. Function that takes ``dtype`` and ``shape`` to
@@ -76,8 +76,8 @@ def unary_function_test(func, func_expected=None, make_data=None):
 
        >>> import numpy, unittest, chainer.functions as F
        >>>
-       >>> def rsqrt(x):
-       >>>     return numpy.reciprocal(numpy.sqrt(x))
+       >>> def rsqrt(x, dtype=numpy.float32):
+       >>>     return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
        >>>
        >>> @unary_function_test(F.rsqrt, rsqrt)
        >>> class TestRsqrt(unittest.TestCase):
