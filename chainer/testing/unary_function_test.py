@@ -24,8 +24,9 @@ def unary_function_test(func, func_expected=None):
     """Decorator to test Chainer functions lifting unary numpy/cupy functions.
 
     This decorator is for testing Chainer functions lifted from corresponding
-    unary numpy and cupy functions. Forward and backward computations on CPU
-    and GPU across parameterized ``dtype`` and ``shape`` are tested.
+    unary numpy and cupy functions, and optionally ones composed with such
+    other Chainer functions. Forward and backward computations on CPU and GPU
+    across parameterized ``dtype`` and ``shape`` are tested.
 
     Args:
         func: Required. Chainer function to be tested by decorated test class.
