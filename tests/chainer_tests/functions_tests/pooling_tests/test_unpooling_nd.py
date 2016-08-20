@@ -45,7 +45,7 @@ def expected_unpooling_nd(x_data, outs, ksize, stride, pad):
     '_ksize': [1, 2, 3],
     '_stride': [1, 2, 3],
     '_pad': [0, 1],
-    'dtype': [numpy.float32],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
     'cover_all': [True, False],
 }))
 class TestUnpoolingND(unittest.TestCase):
@@ -68,6 +68,14 @@ class TestUnpoolingND(unittest.TestCase):
         gy_shape = (N, c) + outs
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 2**-4, 'rtol': 2**-4}
+            self.check_backward_options = {
+                'dtype': numpy.float64, 'atol': 2**-4, 'rtol': 2**-4}
+        else:
+            self.check_forward_options = {}
+            self.check_backward_options = {'atol': 5e-4, 'rtol': 5e-4}
+
     def check_forward(self, x_data):
         ksize = self.ksize
         stride = self.stride
@@ -85,7 +93,8 @@ class TestUnpoolingND(unittest.TestCase):
         # Test output's value.
         outs = self.gy.shape[2:]
         y_expected = expected_unpooling_nd(self.x, outs, ksize, stride, pad)
-        testing.assert_allclose(y_expected, y.data)
+        testing.assert_allclose(
+            y_expected, y.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
@@ -101,7 +110,7 @@ class TestUnpoolingND(unittest.TestCase):
         gradient_check.check_backward(
             functions.UnpoolingND(ndim, self.ksize, self.stride, self.pad,
                                   cover_all=self.cover_all),
-            x_data, y_grad, dtype=numpy.float64, atol=5e-4, rtol=5e-3)
+            x_data, y_grad, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
