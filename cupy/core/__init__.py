@@ -89,3 +89,7 @@ remainder = core.remainder
 
 sqrt_fixed = core.sqrt_fixed
 absolute = core.absolute
+
+
+nanmax = core.nanmax
+nanmin = core.nanmin
