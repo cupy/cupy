@@ -355,6 +355,10 @@ sqrt
 ~~~~
 .. autofunction:: sqrt
 
+square
+~~~~
+.. autofunction:: square
+
 sum
 ~~~
 .. autofunction:: sum
