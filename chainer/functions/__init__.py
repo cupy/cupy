@@ -32,6 +32,7 @@ from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
+from chainer.functions.array import vstack
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
@@ -199,6 +200,7 @@ SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 Triplet = triplet.Triplet
 triplet = triplet.triplet
+vstack = vstack.vstack
 
 ArgMax = minmax.ArgMax
 argmax = minmax.argmax
