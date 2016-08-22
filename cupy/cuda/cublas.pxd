@@ -5,6 +5,11 @@
 # Types
 ###############################################################################
 
+cdef extern from "cuComplex.h":
+    ctypedef void* cuComplexPtr 'cuComplex*'
+    ctypedef void* cuDoubleComplexPtr 'cuDoubleComplex*'
+
+
 cdef extern from *:
     ctypedef void* Handle 'cublasHandle_t'
 
@@ -63,6 +68,14 @@ cpdef sdot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
 cpdef ddot(size_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
+cpdef cdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+            size_t result)
+cpdef cdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+            size_t result)
+cpdef zdotu(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+            size_t result)
+cpdef zdotc(size_t handle, int n, size_t x, int incx, size_t y, int incy,
+            size_t result)
 cpdef float snrm2(size_t handle, int n, size_t x, int incx) except *
 cpdef sscal(size_t handle, int n, float alpha, size_t x, int incx)
 
@@ -75,10 +88,24 @@ cpdef sgemv(size_t handle, int trans, int m, int n, float alpha, size_t A,
             int lda, size_t x, int incx, float beta, size_t y, int incy)
 cpdef dgemv(size_t handle, int trans, int m, int n, double alpha, size_t A,
             int lda, size_t x, int incx, double beta, size_t y, int incy)
+cpdef cgemv(size_t handle, int trans, int m, int n, float complex alpha,
+            size_t A, int lda, size_t x, int incx, float complex beta,
+            size_t y, int incy)
+cpdef zgemv(size_t handle, int trans, int m, int n, double complex alpha,
+            size_t A, int lda, size_t x, int incx, double complex beta,
+            size_t y, int incy)
 cpdef sger(size_t handle, int m, int n, float alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda)
 cpdef dger(size_t handle, int m, int n, double alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda)
+cpdef cgeru(size_t handle, int m, int n, float complex alpha, size_t x,
+            int incx, size_t y, int incy, size_t A, int lda)
+cpdef cgerc(size_t handle, int m, int n, float complex alpha, size_t x,
+            int incx, size_t y, int incy, size_t A, int lda)
+cpdef zgeru(size_t handle, int m, int n, double complex alpha, size_t x,
+            int incx, size_t y, int incy, size_t A, int lda)
+cpdef zgerc(size_t handle, int m, int n, double complex alpha, size_t x,
+            int incx, size_t y, int incy, size_t A, int lda)
 
 
 ###############################################################################
@@ -91,10 +118,28 @@ cpdef sgemm(size_t handle, int transa, int transb,
 cpdef dgemm(size_t handle, int transa, int transb,
             int m, int n, int k, double alpha, size_t A, int lda,
             size_t B, int ldb, double beta, size_t C, int ldc)
+cpdef cgemm(size_t handle, int transa, int transb,
+            int m, int n, int k, float complex alpha, size_t A, int lda,
+            size_t B, int ldb, float complex beta, size_t C, int ldc)
+cpdef zgemm(size_t handle, int transa, int transb,
+            int m, int n, int k, double complex alpha, size_t A, int lda,
+            size_t B, int ldb, double complex beta, size_t C, int ldc)
 cpdef sgemmBatched(size_t handle, int transa, int transb,
                    int m, int n, int k, float alpha, size_t Aarray, int lda,
                    size_t Barray, int ldb, float beta, size_t Carray, int ldc,
                    int batchCount)
+cpdef dgemmBatched(size_t handle, int transa, int transb,
+                   int m, int n, int k, double alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, double beta, size_t Carray, int ldc,
+                   int batchCount)
+cpdef cgemmBatched(size_t handle, int transa, int transb,
+                   int m, int n, int k, float complex alpha, size_t Aarray,
+                   int lda, size_t Barray, int ldb, float complex beta,
+                   size_t Carray, int ldc, int batchCount)
+cpdef zgemmBatched(size_t handle, int transa, int transb,
+                   int m, int n, int k, double complex alpha, size_t Aarray,
+                   int lda, size_t Barray, int ldb, double complex beta,
+                   size_t Carray, int ldc, int batchCount)
 
 
 ###############################################################################

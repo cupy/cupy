@@ -1892,7 +1892,7 @@ cpdef ndarray tensordot_core(
         ret_dtype = numpy.find_common_type((ret_dtype, b.dtype), ()).char
 
     # Cast to float32 or float64
-    if ret_dtype == 'f' or ret_dtype == 'd':
+    if ret_dtype in 'fdFD':
         dtype = ret_dtype
     else:
         dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
@@ -1955,6 +1955,14 @@ cpdef ndarray tensordot_core(
             elif dtype == 'd':
                 cublas.dger(handle, m, n, 1, b.data.ptr, incb, a.data.ptr,
                             inca, c.data.ptr, m)
+            elif dtype == 'F':
+                cublas.cgeru(handle, m, n, 1, b.data.ptr, incb, a.data.ptr,
+                             inca, c.data.ptr, m)
+            elif dtype == 'D':
+                cublas.zgeru(handle, m, n, 1, b.data.ptr, incb, a.data.ptr,
+                             inca, c.data.ptr, m)
+            else:
+                raise ValueError('Invalid dtype: %s' % str(dtype))
         if dtype != ret_dtype:
             elementwise_copy(out, ret)
         return ret
@@ -1975,6 +1983,14 @@ cpdef ndarray tensordot_core(
                 elif dtype == 'd':
                     cublas.ddot(handle, k, a.data.ptr, inca, b.data.ptr, incb,
                                 c.data.ptr)
+                elif dtype == 'F':
+                    cublas.cdotu(handle, k, a.data.ptr, inca, b.data.ptr, incb,
+                                 c.data.ptr)
+                elif dtype == 'D':
+                    cublas.zdotu(handle, k, a.data.ptr, inca, b.data.ptr, incb,
+                                 c.data.ptr)
+                else:
+                    raise ValueError('Invalid dtype: %s' % str(dtype))
             finally:
                 cublas.setPointerMode(handle, mode)
         else:
@@ -1991,6 +2007,14 @@ cpdef ndarray tensordot_core(
             elif dtype == 'd':
                 cublas.dgemv(handle, transb, m, k, 1, b.data.ptr, ldb,
                              a.data.ptr, inca, 0, c.data.ptr, 1)
+            elif dtype == 'F':
+                cublas.cgemv(handle, transb, m, k, 1, b.data.ptr, ldb,
+                             a.data.ptr, inca, 0, c.data.ptr, 1)
+            elif dtype == 'D':
+                cublas.zgemv(handle, transb, m, k, 1, b.data.ptr, ldb,
+                             a.data.ptr, inca, 0, c.data.ptr, 1)
+            else:
+                raise ValueError('Invalid dtype: %s' % str(dtype))
     elif m == 1:
         # Matrix-vector product A^T * B
         a, transa, lda = _mat_to_cublas_contiguous(a, 1)
@@ -2005,6 +2029,14 @@ cpdef ndarray tensordot_core(
         elif dtype == 'd':
             cublas.dgemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr,
                          incb, 0, c.data.ptr, 1)
+        elif dtype == 'F':
+            cublas.cgemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr,
+                         incb, 0, c.data.ptr, 1)
+        elif dtype == 'D':
+            cublas.zgemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr,
+                         incb, 0, c.data.ptr, 1)
+        else:
+            raise ValueError('Invalid dtype: %s' % str(dtype))
     else:
         # Matrix-Matrix product A^T * B
         # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
@@ -2017,6 +2049,14 @@ cpdef ndarray tensordot_core(
         elif dtype == 'd':
             cublas.dgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
                          a.data.ptr, lda, 0, c.data.ptr, m)
+        elif dtype == 'F':
+            cublas.cgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
+                         a.data.ptr, lda, 0, c.data.ptr, m)
+        elif dtype == 'D':
+            cublas.zgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
+                         a.data.ptr, lda, 0, c.data.ptr, m)
+        else:
+            raise ValueError('Invalid dtype: %s' % str(dtype))
 
     if dtype != ret_dtype:
         elementwise_copy(out, ret)
