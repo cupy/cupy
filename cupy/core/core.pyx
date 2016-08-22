@@ -936,6 +936,26 @@ cdef class ndarray:
     def __ixor__(self, other):
         return bitwise_xor(self, other, self)
 
+    def conj(self):
+        if self.dtype.kind == 'c':
+            return conj(self)
+        else:
+            return self
+
+    def real(self):
+        if self.dtype.kind == 'c':
+            return real(self)
+        else:
+            return self
+
+    def imag(self):
+        if self.dtype.kind == 'c':
+            return imag(self)
+        else:
+            new_array = ndarray(self.shape, dtype=self.dtype)
+            new_array.fill(0)
+            return new_array
+
     # -------------------------------------------------------------------------
     # Special methods
     # -------------------------------------------------------------------------
@@ -2200,6 +2220,50 @@ add = create_arithmetic(
     '''Adds two arrays elementwise.
 
     .. seealso:: :data:`numpy.add`
+
+    ''')
+
+
+conj = create_ufunc(
+    'cupy_conj',
+    ('F->F', 'D->D'),
+    'out0 = thrust::conj(in0)',
+    doc='''Return the complex conjugate, element-wise.
+
+    .. seealso:: :data:`numpy.conj`
+
+    ''')
+
+
+angle = create_ufunc(
+    'cupy_angle',
+    ('F->F', 'D->D'),
+    'out0 = thrust::arg(in0)',
+    doc='''Return the angle of the complex argument.
+
+    .. seealso:: :data:`numpy.angle`
+
+    ''')
+
+
+real = create_ufunc(
+    'cupy_real',
+    ('F->f', 'D->f'),
+    'out0 = in0.real()',
+    doc='''Return the real part of the elements of the array.
+
+    .. seealso:: :data:`numpy.real`
+
+    ''')
+
+
+imag = create_ufunc(
+    'cupy_imag',
+    ('F->f', 'D->f'),
+    'out0 = in0.imag()',
+    doc='''Return the imaginary part of the elements of the array.
+
+    .. seealso:: :data:`numpy.imag`
 
     ''')
 

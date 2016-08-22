@@ -79,6 +79,10 @@ not_equal = core.not_equal
 
 add = core.add
 negative = core.negative
+conj = core.conj
+angle = core.angle
+real = core.real
+imag = core.imag
 multiply = core.multiply
 divide = core.divide
 power = core.power

@@ -21,6 +21,18 @@ reciprocal = core.create_ufunc(
 negative = core.negative
 
 
+conj = core.conj
+
+
+angle = core.angle
+
+
+real = core.real
+
+
+imag = core.imag
+
+
 multiply = core.multiply
 
 
