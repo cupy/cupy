@@ -459,18 +459,6 @@ def memoize(for_each_device=False):
     return dummy_decorator
 
 
-def clear_memo():
-    """Clears the memoized results for all functions decorated by memoize.
-
-    This function works like :func:`cupy.clear_memo` as a counterpart for
-    :func:`chainer.cuda.memoize`. It can be used even if CUDA is not available.
-    In such a case, this function does nothing.
-
-    """
-    if available:
-        cupy.clear_memo()
-
-
 # ------------------------------------------------------------------------------
 # Kernel definition utility
 # ------------------------------------------------------------------------------
