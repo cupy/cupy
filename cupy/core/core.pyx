@@ -1340,7 +1340,10 @@ struct min_max_st{
     __device__ min_max_st(T v, int i) : value(v), index(i) { }
 };
 
-#define ISNAN(x) (x != x)
+template <typename T>
+inline __device__ bool is_nan(T x) {
+    return x != x;
+}
 
 template <typename T>
 __device__ min_max_st<T> my_min(
@@ -1354,8 +1357,8 @@ __device__ min_max_st<T> my_min_float(
         const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    if (ISNAN(a.value)) return a;
-    if (ISNAN(b.value)) return b;
+    if (is_nan(a.value)) return a;
+    if (is_nan(b.value)) return b;
     return min_max_st<T>(min(a.value, b.value));
 }
 
@@ -1371,8 +1374,8 @@ __device__ min_max_st<T> my_max_float(
         const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    if (ISNAN(a.value)) return a;
-    if (ISNAN(b.value)) return b;
+    if (is_nan(a.value)) return a;
+    if (is_nan(b.value)) return b;
     return min_max_st<T>(max(a.value, b.value));
 }
 
@@ -1392,8 +1395,8 @@ __device__ min_max_st<T> my_argmin_float(
     if (b.index == -1) return a;
     if (a.value == b.value)
         return min_max_st<T>(a.value, min(a.index, b.index));
-    if (ISNAN(a.value)) return a;
-    if (ISNAN(b.value)) return b;
+    if (is_nan(a.value)) return a;
+    if (is_nan(b.value)) return b;
     return (a.value <= b.value) ? a : b;
 }
 
@@ -1413,8 +1416,8 @@ __device__ min_max_st<T> my_argmax_float(
     if (b.index == -1) return a;
     if (a.value == b.value)
         return min_max_st<T>(a.value, min(a.index, b.index));
-    if (ISNAN(a.value)) return a;
-    if (ISNAN(b.value)) return b;
+    if (is_nan(a.value)) return a;
+    if (is_nan(b.value)) return b;
     return (a.value >= b.value) ? a : b;
 }
 '''
