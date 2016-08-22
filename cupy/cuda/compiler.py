@@ -12,6 +12,17 @@ from cupy.cuda import device
 from cupy.cuda import function
 
 
+_nvcc_version = None
+
+
+def _get_nvcc_version():
+    if _nvcc_version is None:
+        cmd = ['nvcc', '--version']
+        _nvcc_version = _run_nvcc(cmd, '.')
+
+    return _nvcc_version
+
+
 def _get_arch():
     cc = device.Device().compute_capability
     return 'sm_%s' % cc
@@ -111,13 +122,14 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
             options += '-m32',
 
     env = (arch, options)
+    nvcc_ver = _get_nvcc_version()
     if '#include' in source:
-        pp_src = '%s %s' % (env, preprocess(source, options))
+        pp_src = '%s %s %s' % (nvcc_ver, env, preprocess(source, options))
     else:
         base = _empty_file_preprocess_cache.get(env, None)
         if base is None:
             base = _empty_file_preprocess_cache[env] = preprocess('', options)
-        pp_src = '%s %s %s' % (env, base, source)
+        pp_src = '%s %s %s %s' % (nvcc_ver, env, base, source)
 
     if isinstance(pp_src, six.text_type):
         pp_src = pp_src.encode('utf-8')
