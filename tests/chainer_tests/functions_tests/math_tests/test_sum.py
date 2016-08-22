@@ -11,11 +11,9 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(
-    {'dtype': numpy.float16},
-    {'dtype': numpy.float32},
-    {'dtype': numpy.float64},
-)
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestSum(unittest.TestCase):
 
     def setUp(self):
