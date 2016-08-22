@@ -41,6 +41,8 @@ from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
+from chainer.functions.evaluation import classification_summary \
+    as classification_summary_
 from chainer.functions.loss import black_out
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import crf1d
@@ -177,6 +179,11 @@ Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 BinaryAccuracy = binary_accuracy.BinaryAccuracy
 binary_accuracy = binary_accuracy.binary_accuracy
+ClassificationSummary = classification_summary_.ClassificationSummary
+classification_summary = classification_summary_.classification_summary
+precision = classification_summary_.precision
+recall = classification_summary_.recall
+f1_score = classification_summary_.f1_score
 
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
