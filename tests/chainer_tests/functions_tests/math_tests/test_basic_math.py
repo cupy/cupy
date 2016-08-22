@@ -1048,11 +1048,11 @@ class TestMatMulVarVar(unittest.TestCase):
             data = x_data, y_data
 
         if self.dtype == numpy.float16:
-            options = {'eps': 1e-2, 'atol': 1e-2, 'rtol': 1e-1}
+            options = {'atol': 1e-3, 'rtol': 1e-3}
         else:
             options = {'atol': 1e-4, 'rtol': 1e-4}
         gradient_check.check_backward(
-            op, data, z_grad, **options)
+            op, data, z_grad, dtype=numpy.float64, **options)
 
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
