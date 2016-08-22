@@ -95,8 +95,13 @@ def _make_decorator(check_func, name, type_check, accept_error):
             # values are negative.
             if _contains_signed_and_unsigned(kw):
                 inds = _make_positive_indices(self, impl, args, kw)
-                cupy_result = cupy.asnumpy(cupy_result)[inds]
-                numpy_result = cupy.asnumpy(numpy_result)[inds]
+                try:
+                    cupy_result = cupy.asnumpy(cupy_result)[inds]
+                    numpy_result = cupy.asnumpy(numpy_result)[inds]
+                except IndexError:
+                    # inds does not work with scalars
+                    cupy_result = cupy.asnumpy(cupy_result)
+                    numpy_result = cupy.asnumpy(numpy_result)
 
             check_func(cupy_result, numpy_result)
             if type_check:
@@ -369,7 +374,7 @@ def for_dtypes(dtypes, name='dtype'):
         return test_func
     return decorator
 
-
+_complex_dtypes = (numpy.complex64, numpy.complex128)
 _regular_float_dtypes = (numpy.float64, numpy.float32)
 _float_dtypes = _regular_float_dtypes + (numpy.float16,)
 _signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
@@ -380,20 +385,32 @@ _regular_dtypes = _regular_float_dtypes + _int_bool_dtypes
 _dtypes = _float_dtypes + _int_bool_dtypes
 
 
-def _make_all_dtypes(no_float16, no_bool):
-    if no_float16:
-        if no_bool:
-            return _regular_float_dtypes + _int_dtypes
+def _make_all_dtypes(no_float16, no_bool, no_complex):
+    if no_complex:
+        if no_float16:
+            if no_bool:
+                return _regular_float_dtypes + _int_dtypes
+            else:
+                return _regular_dtypes
         else:
-            return _regular_dtypes
+            if no_bool:
+                return _float_dtypes + _int_dtypes
+            else:
+                return _dtypes
     else:
-        if no_bool:
-            return _float_dtypes + _int_dtypes
+        if no_float16:
+            if no_bool:
+                return _regular_float_dtypes + _int_dtypes + _complex_dtypes
+            else:
+                return _regular_dtypes + _complex_dtypes
         else:
-            return _dtypes
+            if no_bool:
+                return _float_dtypes + _int_dtypes + _complex_dtypes
+            else:
+                return _dtypes + _complex_dtypes
 
 
-def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
+def for_all_dtypes(name='dtype', no_float16=False, no_bool=False, no_complex=False):
     """Decorator that checks the fixture with all dtypes.
 
     Args:
@@ -442,7 +459,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
 
     .. seealso:: :func:`cupy.testing.for_dtypes`
     """
-    return for_dtypes(_make_all_dtypes(no_float16, no_bool), name=name)
+    return for_dtypes(_make_all_dtypes(no_float16, no_bool, no_complex), name=name)
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
@@ -592,7 +609,8 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
 
 def for_all_dtypes_combination(names=('dtyes',),
-                               no_float16=False, no_bool=False, full=None):
+                               no_float16=False, no_bool=False,
+                               no_complex=False, full=None):
     """Decorator that checks the fixture with a product set of all dtypes.
 
     Args:
@@ -608,7 +626,7 @@ def for_all_dtypes_combination(names=('dtyes',),
 
     .. seealso:: :func:`cupy.testing.for_dtypes_combination`
     """
-    types = _make_all_dtypes(no_float16, no_bool)
+    types = _make_all_dtypes(no_float16, no_bool, no_complex)
     return for_dtypes_combination(types, names, full)
 
 
