@@ -10,11 +10,9 @@ from chainer.testing import attr
 
 
 # TODO(Kenta OONO): This test fixture check types only. Add more detailed test.
-@testing.parameterize(
-    {'dtype': numpy.float16},
-    {'dtype': numpy.float32},
-    {'dtype': numpy.float64},
-)
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestDropout(unittest.TestCase):
 
     def setUp(self):
