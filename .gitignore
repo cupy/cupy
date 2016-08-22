@@ -12,3 +12,4 @@ build
 chainer.egg-info/
 dist/
 htmlcov/
+.idea
