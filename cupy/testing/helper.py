@@ -30,7 +30,7 @@ def _call_func(self, impl, args, kw):
 
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
-                            numpy_tb, accept_error=True):
+                            numpy_tb, accept_error=False):
     if cupy_error is None and numpy_error is None:
         self.fail('Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
@@ -106,7 +106,7 @@ def _make_decorator(check_func, name, type_check, accept_error):
 
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
-                        name='xp', type_check=True, accept_error=True):
+                        name='xp', type_check=True, accept_error=False):
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
@@ -149,7 +149,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
                                   name='xp', type_check=True,
-                                  accept_error=True):
+                                  accept_error=False):
     """Decorator that checks NumPy results and CuPy ones are almost equal.
 
     Args:
@@ -176,7 +176,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
 
 
 def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
-                                       accept_error=True):
+                                       accept_error=False):
     """Decorator that checks results of NumPy and CuPy are equal w.r.t. spacing.
 
     Args:
@@ -199,7 +199,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
 
 
 def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
-                             accept_error=True):
+                             accept_error=False):
     """Decorator that checks results of NumPy and CuPy ones are equal w.r.t. ulp.
 
     Args:
@@ -226,7 +226,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
 
 
 def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
-                           type_check=True, accept_error=True):
+                           type_check=True, accept_error=False):
     """Decorator that checks NumPy results and CuPy ones are equal.
 
     Args:
@@ -280,7 +280,7 @@ def numpy_cupy_array_list_equal(err_msg='', verbose=True, name='xp'):
 
 
 def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
-                          type_check=True, accept_error=True):
+                          type_check=True, accept_error=False):
     """Decorator that checks the CuPy result is less than NumPy result.
 
     Args:
