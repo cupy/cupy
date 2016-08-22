@@ -1,6 +1,6 @@
 import unittest
+import warnings
 
-import cupy
 from cupy import testing
 
 
