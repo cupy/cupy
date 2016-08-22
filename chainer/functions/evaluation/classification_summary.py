@@ -90,9 +90,10 @@ def classification_summary(y, t, label_num=None, beta=1.0, ignore_label=-1):
     into account for calculating the above quantities.
     By default, it is set to -1 so that all instances are taken
     into consideration, as labels are supposed to be non-negative integers.
-    If ``ignore_label`` is "valid", that is, it is a non-negative
-    integer less than ``label_num``, then the ``ignore_label``-th
-    entries in output arrays do not contain correct quantities.
+    Setting ignore_label to a non-negative integer less than label_num is
+    illegal and yields undefined behavior. In the current implementation,
+    it arises RuntimeWarning and ignore_label-th entries in output
+    arrays do not contain correct quantities.
 
     Args:
         y (~chainer.Variable): Variable holding a vector of scores.
