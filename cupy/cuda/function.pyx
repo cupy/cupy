@@ -55,7 +55,17 @@ cdef class CInt64(CPointer):
         self.ptr = <void*>&self.val
 
 
-cdef set _pointer_numpy_types = {numpy.dtype(i).type for i in '?bhilqBHILQefd'}
+cdef class CInt128(CPointer):
+    cdef:
+        double complex val
+
+    def __init__(self, double complex v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
+cdef set _pointer_numpy_types = {numpy.dtype(i).type
+                                 for i in '?bhilqBHILQefdFD'}
 
 
 cdef inline CPointer _pointer(x):
@@ -84,6 +94,8 @@ cdef inline CPointer _pointer(x):
         return CInt32(x.view(numpy.int32))
     if itemsize == 8:
         return CInt64(x.view(numpy.int64))
+    if itemsize == 16:
+        return CInt128(x.view(numpy.complex128))
     raise TypeError('Unsupported type %s. (size=%d)', type(x), itemsize)
 
 
