@@ -644,7 +644,10 @@ cdef tuple _guess_routine(str name, dict cache, list ops, list in_args, dtype):
 
     if op:
         return op
-    raise TypeError('Wrong type of arguments for %s' % name)
+    if dtype is None:
+        dtype = tuple([i.dtype.type for i in in_args])
+    raise TypeError('Wrong type (%s) of arguments for %s' %
+                    (dtype, name))
 
 
 class ufunc(object):

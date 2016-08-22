@@ -1153,7 +1153,8 @@ cdef class ndarray:
             raise TypeError('{} array cannot be set to {} array'.format(
                 arr.dtype, self.dtype))
         if self.shape != arr.shape:
-            raise ValueError('Shape mismatch')
+            raise ValueError('Shape mismatch. Old shape: {}, new shape: {}'
+                             ''.format(self.shape, arr.shape))
         if not self._c_contiguous:
             raise RuntimeError('Cannot set to non-contiguous array')
 
