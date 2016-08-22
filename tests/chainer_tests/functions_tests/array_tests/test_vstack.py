@@ -75,6 +75,7 @@ class TestVstack(unittest.TestCase):
     {'a_shape': (3, 4), 'b_shape': (3, 3), 'valid': False},
     {'a_shape': (3,), 'b_shape': (4,), 'valid': False},
     {'a_shape': (3), 'b_shape': (3, 3), 'valid': False},
+    {'a_shape': (), 'b_shape': (1), 'valid': False},
 )
 class TestVstackTypeCheck(unittest.TestCase):
 

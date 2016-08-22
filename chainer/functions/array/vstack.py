@@ -22,9 +22,7 @@ class Vstack(function.Function):
             if ndim <= 1:
                 type_check.expect(in_types[0].shape == in_types[i].shape)
                 continue
-            for d in six.moves.range(0, ndim):
-                if d == 0:
-                    continue
+            for d in six.moves.range(1, ndim):
                 type_check.expect(in_types[0].shape[d] == in_types[i].shape[d])
 
     def forward(self, xs):
