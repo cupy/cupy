@@ -10,16 +10,10 @@ from chainer import testing
 from chainer.testing import attr
 
 
-@testing.parameterize(*testing.product_dict(
-    [
-        {'shape': (3, 2)},
-        {'shape': ()},
-    ], [
-        {'dtype': numpy.float16},
-        {'dtype': numpy.float32},
-        {'dtype': numpy.float64},
-    ]
-))
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestClip(unittest.TestCase):
 
     def setUp(self):
