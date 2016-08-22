@@ -384,6 +384,28 @@ class CaffeFunction(link.Chain):
         self.forwards[layer.name] = _CallChildLink(self, layer.name)
         self._add_layer(layer)
 
+    @_layer('Slice', 'SLICE')
+    def _setup_slice(self, layer):
+        if layer.slice_param.HasField('axis'):
+            axis = layer.slice_param.axis
+        elif layer.slice_param.HasField('slice_dim'):
+            axis = layer.slice_param.slice_dim
+        else:
+            axis = 1
+
+        if layer.slice_param.slice_point:
+            indices_or_sections = list(layer.slice_param.slice_point)
+        else:
+            indices_or_sections = len(list(layer.top))
+
+        self.forwards[layer.name] = _SingleArgumentFunction(
+            functions.split_axis,
+            indices_or_sections=indices_or_sections,
+            axis=axis
+        )
+
+        self._add_layer(layer)
+
     @_layer('Softmax', 'SOFTMAX')
     def _setup_softmax(self, layer):
         if layer.softmax_param.axis != 1:
