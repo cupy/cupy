@@ -35,6 +35,7 @@ from chainer.functions.array import transpose_sequence
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
+from chainer.functions.connection import convolution_nd
 from chainer.functions.connection import deconvolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
@@ -167,6 +168,7 @@ where = where.where
 
 bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
+convolution_nd = convolution_nd.convolution_nd
 deconvolution_2d = deconvolution_2d.deconvolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
