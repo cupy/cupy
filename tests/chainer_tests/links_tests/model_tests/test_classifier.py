@@ -1,22 +1,39 @@
 import unittest
 
+
 import mock
 import numpy
 
 import chainer
+from chainer import functions
 from chainer import links
 from chainer import testing
 from chainer.testing import attr
 
 
+# testing.parameterize takes a list of dictionaries.
+# Currently, we cannot set a function to the value of the dictionaries.
+# As a workaround, we wrap the function and invoke it in __call__ method.
+# See issue #1337 for detail.
+class AccuracyWithIgnoreLabel(object):
+
+    def __call__(self, y, t):
+        return functions.accuracy(y, t, ignore_label=1)
+
+
 @testing.parameterize(*testing.product({
+    'accfun': [AccuracyWithIgnoreLabel(), None],
     'compute_accuracy': [True, False],
     'x_num': [1, 2]
 }))
 class TestClassifier(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.Classifier(chainer.Link())
+        if self.accfun is None:
+            self.link = links.Classifier(chainer.Link())
+        else:
+            self.link = links.Classifier(chainer.Link(),
+                                         accfun=self.accfun)
         self.link.compute_accuracy = self.compute_accuracy
 
         self.x = numpy.random.uniform(-1, 1, (5, 10)).astype(numpy.float32)

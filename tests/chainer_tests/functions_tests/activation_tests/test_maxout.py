@@ -52,7 +52,7 @@ class TestNonparameterizedMaxout(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = functions.maxout(x, self.pool_size, self.axis)
         self.assertEqual(y.data.dtype, self.dtype)
-        gradient_check.assert_allclose(self.y, y.data)
+        testing.assert_allclose(self.y, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):

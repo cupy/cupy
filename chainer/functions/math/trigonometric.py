@@ -67,3 +67,36 @@ class Cos(function.Function):
 def cos(x):
     """Elementwise cos function."""
     return Cos()(x)
+
+
+_preamble = '''
+template <typename T> __device__ T sqr(T x) { return x * x; }
+'''
+
+
+class Tan(function.Function):
+
+    @property
+    def label(self):
+        return 'tan'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
+
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.tan(x[0])),
+
+    def backward(self, x, gy):
+        xp = cuda.get_array_module(*x)
+        gx = utils.force_array(xp.cos(x[0]))
+        xp.square(gx, out=gx)
+        xp.reciprocal(gx, out=gx)
+        gx *= gy[0]
+        return gx,
+
+
+def tan(x):
+    """Elementwise tan function."""
+    return Tan()(x)

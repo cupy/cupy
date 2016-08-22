@@ -11,93 +11,57 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-class UnaryFunctionsTestBase(object):
-
-    def make_data(self):
-        raise NotImplementedError
+@testing.parameterize(*testing.product({
+    'func_name': ['cos', 'sin', 'tan'],
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TrigonometricFunctionsTest(unittest.TestCase):
 
     def setUp(self):
-        self.x, self.gy = self.make_data()
+        self.x = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        self.gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.func = getattr(F, self.func_name)
+        camel_name = self.func_name[0].upper() + self.func_name[1:]
+        self.func_class = getattr(F, camel_name)
+        self.np_func = getattr(numpy, self.func_name)
 
-    def check_forward(self, op, op_np, x_data):
+        if self.dtype == numpy.float16:
+            self.backward_options = {
+                'eps': 2 ** -4, 'atol': 2 ** -4, 'rtol': 2 ** -4}
+        else:
+            self.backward_options = {}
+
+    def check_forward(self, x_data):
         x = chainer.Variable(x_data)
-        y = op(x)
-        gradient_check.assert_allclose(
-            op_np(self.x), y.data, atol=1e-7, rtol=1e-7)
-
-    def check_forward_cpu(self, op, op_np):
-        self.check_forward(op, op_np, self.x)
-
-    def check_forward_gpu(self, op, op_np):
-        self.check_forward(op, op_np, cuda.to_gpu(self.x))
+        y = self.func(x)
+        testing.assert_allclose(
+            self.np_func(self.x), y.data, atol=1e-4, rtol=1e-4)
 
     @condition.retry(3)
-    def test_cos_forward_cpu(self):
-        self.check_forward_cpu(F.cos, numpy.cos)
-
-    @condition.retry(3)
-    def test_sin_forward_cpu(self):
-        self.check_forward_cpu(F.sin, numpy.sin)
+    def test_forward_cpu(self):
+        self.check_forward(self.x)
 
     @attr.gpu
     @condition.retry(3)
-    def test_cos_forward_gpu(self):
-        self.check_forward_gpu(F.cos, numpy.cos)
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x))
+
+    def check_backward(self, x_data, y_grad):
+        gradient_check.check_backward(
+            self.func, x_data, y_grad, **self.backward_options)
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.gy)
 
     @attr.gpu
     @condition.retry(3)
-    def test_sin_forward_gpu(self):
-        self.check_forward_gpu(F.sin, numpy.sin)
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
-    def check_backward(self, op, x_data, y_grad):
-        gradient_check.check_backward(op, x_data, y_grad)
-
-    def check_backward_cpu(self, op):
-        self.check_backward(op, self.x, self.gy)
-
-    def check_backward_gpu(self, op):
-        self.check_backward(op, cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
-
-    @condition.retry(3)
-    def test_cos_backward_cpu(self):
-        self.check_backward_cpu(F.cos)
-
-    @condition.retry(3)
-    def test_sin_backward_cpu(self):
-        self.check_backward_cpu(F.sin)
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_cos_backward_gpu(self):
-        self.check_backward_gpu(F.cos)
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_sin_backward_gpu(self):
-        self.check_backward_gpu(F.sin)
-
-    def test_sin(self):
-        self.assertEqual(F.Sin().label, 'sin')
-
-    def test_cos(self):
-        self.assertEqual(F.Cos().label, 'cos')
-
-
-class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
-        return x, gy
-
-
-class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
-                                      unittest.TestCase):
-
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        return x, gy
+    def test_label(self):
+        self.assertEqual(self.func_class().label, self.func_name)
 
 
 testing.run_module(__name__, __file__)

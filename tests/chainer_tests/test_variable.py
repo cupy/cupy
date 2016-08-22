@@ -49,6 +49,23 @@ class TestVariable(unittest.TestCase):
         x = chainer.Variable(self.x, name='x')
         self.assertEqual(str(x), 'x')
 
+    def check_attributes(self, gpu):
+        x = self.x
+        if gpu:
+            x = cuda.to_gpu(x)
+        x = chainer.Variable(x)
+        self.assertEqual(x.shape, self.x.shape)
+        self.assertEqual(x.ndim, self.x.ndim)
+        self.assertEqual(x.size, self.x.size)
+        self.assertEqual(x.dtype, self.x.dtype)
+
+    def test_attributes_cpu(self):
+        self.check_attributes(False)
+
+    @attr.gpu
+    def test_attributes_gpu(self):
+        self.check_attributes(True)
+
     def check_len(self, gpu):
         x = self.x
         if gpu:
@@ -386,6 +403,25 @@ class TestVariable(unittest.TestCase):
             b = cp.full(3, 20, dtype=np.float32)
             c = cp.full(3, 30, dtype=np.float32)
         self.check_addgrad(a, b, c)
+
+    def test_pickle_cpu(self):
+        x = chainer.Variable(self.x)
+        x.grad = np.ones_like(x.data)
+        binary = six.moves.cPickle.dumps(x)
+        d = six.moves.cPickle.loads(binary)
+        np.testing.assert_array_equal(x.data, d.data)
+        np.testing.assert_array_equal(x.grad, d.grad)
+
+    @attr.gpu
+    def test_pickle_gpu(self):
+        cp = cuda.cupy
+        x = chainer.Variable(self.x)
+        x.grad = np.ones_like(x.data)
+        x.to_gpu()
+        binary = six.moves.cPickle.dumps(x)
+        d = six.moves.cPickle.loads(binary)
+        cp.testing.assert_array_equal(x.data, d.data)
+        cp.testing.assert_array_equal(x.grad, d.grad)
 
 
 class TestDebugPrint(unittest.TestCase):

@@ -10,8 +10,7 @@ class FunctionSet(link.Chain):
     """Set of links (as "parameterized functions").
 
     FunctionSet is a subclass of :class:`~chainer.Chain`. Function
-    registration is done just by adding an attribute to :class:`
-    object.
+    registration is done just by adding an attribute to :class:`object`.
 
     .. deprecated:: v1.5
        Use :class:`~chainer.Chain` instead.

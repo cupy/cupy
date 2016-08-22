@@ -26,7 +26,7 @@ class Softplus(function.Function):
         bx = self.beta * x
         y = (numpy.fmax(bx, 0) +
              numpy.log1p(numpy.exp(-numpy.fabs(bx)))) * self.beta_inv
-        return utils.force_array(y.astype(x.dtype)),
+        return utils.force_array(y, x.dtype),
 
     def forward_gpu(self, inputs):
         x, = inputs
@@ -44,7 +44,7 @@ class Softplus(function.Function):
         x, = inputs
         g, = grads
         gx = (1 - 1 / (1 + numpy.exp(self.beta * x))) * g
-        return utils.force_array(gx.astype(x.dtype)),
+        return utils.force_array(gx, x.dtype),
 
     def backward_gpu(self, inputs, grads):
         x, = inputs

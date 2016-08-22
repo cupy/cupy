@@ -52,6 +52,8 @@ class Contrastive(function.Function):
         y = xp.repeat(y[:, None], x_dim, axis=1)
         alpha = gy[0] / y.shape[0]
         dist = xp.repeat(self.dist[:, None], x_dim, axis=1)
+        # avoid division by zero
+        dist = xp.maximum(dist, 1e-8)
         # similar pair
         gx0 = alpha * y * self.diff
         # dissimilar pair
@@ -100,8 +102,8 @@ def contrastive(x0, x1, y, margin=1):
     .. note::
         This cost can be used to train siamese networks. See `Learning a
         Similarity Metric Discriminatively, with Application to Face
-        Verification` <http://yann.lecun.com/exdb/publis/pdf/chopra-05.pdf> for
-        details.
+        Verification <http://yann.lecun.com/exdb/publis/pdf/chopra-05.pdf>`_
+        for details.
 
     """
     return Contrastive(margin)(x0, x1, y)

@@ -20,7 +20,9 @@ class Linear(link.Link):
     does not hold a bias vector.
 
     Args:
-        in_size (int): Dimension of input vectors.
+        in_size (int): Dimension of input vectors. If None, parameter
+            initialization will be deferred until the first forward data pass
+            at which time the size will be determined.
         out_size (int): Dimension of output vectors.
         wscale (float): Scaling factor of the weight matrix.
         bias (float): Initial bias value.
@@ -44,12 +46,15 @@ class Linear(link.Link):
 
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
                  initialW=None, initial_bias=None):
-        super(Linear, self).__init__(W=(out_size, in_size))
+        super(Linear, self).__init__()
+        self.initialW = initialW
+        self.wscale = wscale
+        self.out_size = out_size
 
-        # For backward compatibility, the scale of weights is proportional to
-        # the square root of wscale.
-        initializers.init_weight(self.W.data, initialW,
-                                 scale=math.sqrt(wscale))
+        if in_size is None:
+            self.add_uninitialized_param('W')
+        else:
+            self._initialize_params(in_size)
 
         if nobias:
             self.b = None
@@ -58,6 +63,13 @@ class Linear(link.Link):
             if initial_bias is None:
                 initial_bias = bias
             initializers.init_weight(self.b.data, initial_bias)
+
+    def _initialize_params(self, in_size):
+        self.add_param('W', (self.out_size, in_size))
+        # For backward compatibility, the scale of weights is proportional to
+        # the square root of wscale.
+        initializers.init_weight(self.W.data, self.initialW,
+                                 scale=math.sqrt(self.wscale))
 
     def __call__(self, x):
         """Applies the linear layer.
@@ -69,4 +81,6 @@ class Linear(link.Link):
             ~chainer.Variable: Output of the linear layer.
 
         """
+        if self.has_uninitialized_params:
+            self._initialize_params(x.shape[1])
         return linear.linear(x, self.W, self.b)

@@ -62,7 +62,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
@@ -85,7 +85,7 @@ class TestSigmoidCrossEntropy(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))

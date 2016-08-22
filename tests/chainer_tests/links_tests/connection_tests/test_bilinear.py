@@ -16,7 +16,7 @@ def _check_forward(e1, e2, f, y_expect):
     e1 = chainer.Variable(e1)
     e2 = chainer.Variable(e2)
     y = f(e1, e2)
-    gradient_check.assert_allclose(y_expect, y.data)
+    testing.assert_allclose(y_expect, y.data)
 
 
 def _check_backward(e1, e2, y_grad, link, bias):

@@ -1,7 +1,7 @@
 import numpy
 
-from chainer import cuda
 from chainer.functions.normalization import batch_normalization
+from chainer import initializers
 from chainer import link
 from chainer import variable
 
@@ -58,15 +58,20 @@ class BatchNormalization(link.Link):
             to the batch variances.
 
     """
-    def __init__(self, size, decay=0.9, eps=1e-5, dtype=numpy.float32,
-                 use_gamma=True, use_beta=True):
+    def __init__(self, size, decay=0.9, eps=2e-5, dtype=numpy.float32,
+                 use_gamma=True, use_beta=True,
+                 initial_gamma=None, initial_beta=None):
         super(BatchNormalization, self).__init__()
         if use_gamma:
             self.add_param('gamma', size, dtype=dtype)
-            self.gamma.data.fill(1)
+            if initial_gamma is None:
+                initial_gamma = initializers.One()
+            initializers.init_weight(self.gamma.data, initial_gamma)
         if use_beta:
             self.add_param('beta', size, dtype=dtype)
-            self.beta.data.fill(0)
+            if initial_beta is None:
+                initial_beta = initializers.Zero()
+            initializers.init_weight(self.beta.data, initial_beta)
         self.add_persistent('avg_mean', numpy.zeros(size, dtype=dtype))
         self.add_persistent('avg_var', numpy.zeros(size, dtype=dtype))
         self.add_persistent('N', 0)
@@ -95,40 +100,32 @@ class BatchNormalization(link.Link):
 
         """
         use_batch_mean = not test or finetune
-
         if hasattr(self, 'gamma'):
             gamma = self.gamma
         else:
             gamma = variable.Variable(self.xp.ones(
-                self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
+                self.avg_mean.shape, dtype=x.dtype), volatile='auto')
         if hasattr(self, 'beta'):
             beta = self.beta
         else:
             beta = variable.Variable(self.xp.zeros(
-                self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
+                self.avg_mean.shape, dtype=x.dtype), volatile='auto')
 
         if use_batch_mean:
-            func = batch_normalization.BatchNormalizationFunction(self.eps)
-            ret = func(x, gamma, beta)
-
             if finetune:
                 self.N += 1
                 decay = 1. - 1. / self.N
             else:
                 decay = self.decay
 
-            with cuda.get_device(x.data):
-                m = x.data.size // gamma.data.size
-                adjust = m / max(m - 1., 1.)  # unbiased estimation
-                self.avg_mean *= decay
-                func.mean *= 1 - decay  # reuse buffer as a temporary
-                self.avg_mean += func.mean
-                del func.mean
-                self.avg_var *= decay
-                func.var *= (1 - decay) * adjust  # reuse buffer as a temporary
-                self.avg_var += func.var
-                del func.var
+            func = batch_normalization.BatchNormalizationFunction(
+                self.eps, self.avg_mean, self.avg_var, True, decay)
+            ret = func(x, gamma, beta)
+
+            self.avg_mean = func.running_mean
+            self.avg_var = func.running_var
         else:
+            # Use running average statistics or fine-tuned statistics.
             mean = variable.Variable(self.avg_mean, volatile='auto')
             var = variable.Variable(self.avg_var, volatile='auto')
             ret = batch_normalization.fixed_batch_normalization(

@@ -55,6 +55,7 @@ install:
 
 script:
   - flake8
+  - flake8 --config=.flake8.cython
   - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest tests/install_tests
   - cd tests
   - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest chainer_tests

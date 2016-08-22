@@ -52,6 +52,7 @@ Issues and PRs are classified into following categories:
 * **Document**: document fixes and improvements
 * **Example**: fixes and improvements on the examples
 * **Install**: fixes installation script
+* **Contribution-Welcome**: issues that we request for contribution (only issues are categorized to this)
 * **Other**: other issues and PRs
 
 Issues and PRs are labeled by these categories.
@@ -97,6 +98,10 @@ To check your code, use ``flake8`` command installed by ``hacking`` package::
 
   $ pip install hacking
   $ flake8 path/to/your/code.py
+
+To check Cython code, use ``.flake8.cython`` config file::
+
+  $ flake8 --config=.flake8.cython path/to/your/cython/code.pyx
 
 The ``flake8`` command lets you know the part of your code not obeying our style guidelines.
 Before sending a pull request, be sure to check that your code passes the ``flake8`` checking.

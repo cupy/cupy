@@ -31,6 +31,10 @@ clipped_relu
 ~~~~~~~~~~~~
 .. autofunction:: clipped_relu
 
+crelu
+~~~~~
+.. autofunction:: crelu
+
 elu
 ~~~
 .. autofunction:: elu
@@ -115,6 +119,10 @@ get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
+hstack
+~~~~~~~~
+.. autofunction:: hstack
+
 permutate
 ~~~~~~~~~
 .. autofunction:: permutate
@@ -123,13 +131,25 @@ reshape
 ~~~~~~~
 .. autofunction:: reshape
 
+rollaxis
+~~~~~~~~
+.. autofunction:: rollaxis
+
 select_item
 ~~~~~~~~~~~
 .. autofunction:: select_item
 
+separate
+~~~~~~~~
+.. autofunction:: separate
+
 split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
+
+stack
+~~~~~
+.. autofunction:: stack
 
 swapaxes
 ~~~~~~~~
@@ -158,6 +178,10 @@ bilinear
 convolution_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: convolution_2d
+
+convolution_nd
+~~~~~~~~~~~~~~
+.. autofunction:: convolution_nd
 
 deconvolution_2d
 ~~~~~~~~~~~~~~~~
@@ -195,6 +219,10 @@ contrastive
 ~~~~~~~~~~~
 .. autofunction:: contrastive
 
+crf1d
+~~~~~
+.. autofunction:: crf1d
+
 cross_covariance
 ~~~~~~~~~~~~~~~~
 .. autofunction:: cross_covariance
@@ -231,9 +259,21 @@ softmax_cross_entropy
 ~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: softmax_cross_entropy
 
+triplet
+~~~~~~~
+.. autofunction:: triplet
+
 
 Mathematical functions
 ----------------------
+
+argmax
+~~~~~~
+.. autofunction:: argmax
+
+argmin
+~~~~~~
+.. autofunction:: argmin
 
 batch_inv
 ~~~~~~~~~
@@ -279,6 +319,10 @@ log
 ~~~
 .. autofunction:: log
 
+log1p
+~~~~~
+.. autofunction:: log1p
+
 logsumexp
 ~~~~~~~~~
 .. autofunction:: logsumexp
@@ -300,7 +344,7 @@ min
 .. autofunction:: min
 
 minimum
-~~~~~~
+~~~~~~~
 .. autofunction:: minimum
 
 scale
@@ -311,9 +355,17 @@ sin
 ~~~
 .. autofunction:: sin
 
+sqrt
+~~~~
+.. autofunction:: sqrt
+
 sum
 ~~~
 .. autofunction:: sum
+
+tan
+~~~
+.. autofunction:: tan
 
 
 Noise injections
@@ -343,6 +395,10 @@ local_response_normalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: local_response_normalization
 
+normalize
+~~~~~~~~~
+.. autofunction:: normalize
+
 
 Spatial pooling
 ---------------
@@ -366,4 +422,3 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
-

@@ -80,13 +80,18 @@ class MaxPooling2D(pooling_2d.Pooling2D):
     def backward_cpu(self, x, gy):
         n, c, out_h, out_w = gy[0].shape
         h, w = x[0].shape[2:]
-        gcol = numpy.zeros(
-            (n, c, self.kh, self.kw, out_h, out_w), dtype=x[0].dtype)
+        kh, kw = self.kh, self.kw
 
-        # TODO(beam2d): Make it fast
-        gcol_r = numpy.rollaxis(gcol.reshape(n, c, -1, out_h, out_w), 2)
-        for i in numpy.ndindex(n, c, out_h, out_w):
-            gcol_r[self.indexes[i]][i] = gy[0][i]
+        gcol = numpy.zeros(
+            (n * c * out_h * out_w * kh * kw), dtype=x[0].dtype)
+
+        indexes = self.indexes.ravel()
+        indexes += numpy.arange(0, indexes.size * kh * kw, kh * kw)
+
+        gcol[indexes] = gy[0].ravel()
+        gcol = gcol.reshape(n, c, out_h, out_w, kh, kw)
+        gcol = numpy.swapaxes(gcol, 2, 4)
+        gcol = numpy.swapaxes(gcol, 3, 5)
 
         gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
         return gx,
