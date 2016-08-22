@@ -37,6 +37,8 @@ cdef dict _typenames_base = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
+    numpy.dtype('complex64'): 'thrust::complex<float>',
+    numpy.dtype('complex128'): 'thrust::complex<double>',
     numpy.dtype('int64'): 'long long',
     numpy.dtype('int32'): 'int',
     numpy.dtype('int16'): 'short',
@@ -48,7 +50,25 @@ cdef dict _typenames_base = {
     numpy.dtype('bool'): 'bool',
 }
 
-cdef str _all_type_chars = 'dfeqlihbQLIHB?'
+cdef str _all_type_chars = 'dfDFeqlihbQLIHB?'
+# for c in 'dDfFeqlihbQLIHB?':
+#    print('#', c, '...', np.dtype(c).name)
+# d ... float64
+# D ... complex128
+# f ... float32
+# F ... complex64
+# e ... float16
+# q ... int64
+# l ... int64
+# i ... int32
+# h ... int16
+# b ... int8
+# Q ... uint64
+# L ... uint64
+# I ... uint32
+# H ... uint16
+# B ... uint8
+# ? ... bool
 
 cdef dict _typenames = {
     numpy.dtype(i).type: _typenames_base[numpy.dtype(i)]
@@ -66,11 +86,13 @@ cdef dict _kind_score = {
     'u': 1,
     'i': 1,
     'f': 2,
+    'c': 3,
 }
 
 
 cdef dict _python_type_to_numpy_type = {
     float: numpy.dtype(float).type,
+    complex: numpy.dtype(complex).type,
     bool: numpy.dtype(bool).type}
 for i in six.integer_types:
     _python_type_to_numpy_type[i] = numpy.dtype(i).type
@@ -103,6 +125,8 @@ cpdef list _preprocess_args(args):
         elif isinstance(arg, _python_scalar_type + _numpy_scalar_type):
             arg = numpy.dtype(type(arg)).type(arg)
             assert arg in _numpy_scalar_type
+        elif isinstance(arg, complex):
+            arg = numpy.dtype(type(arg)).type(arg)
         else:
             raise TypeError('Unsupported type %s' % type(arg))
         ret.append(arg)

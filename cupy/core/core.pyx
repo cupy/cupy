@@ -1414,7 +1414,7 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
         return a
     else:
         a_cpu = numpy.array(obj, dtype=dtype, copy=False, ndmin=ndmin)
-        if a_cpu.dtype.char not in '?bhilqBHILQefd':
+        if a_cpu.dtype.char not in '?bhilqBHILQefdFD':
             raise ValueError('Unsupported dtype %s' % a_cpu.dtype)
         if a_cpu.ndim > 0:
             a_cpu = numpy.ascontiguousarray(a_cpu)
@@ -2168,7 +2168,7 @@ negative = create_ufunc(
     'cupy_negative',
     (('?->?', 'out0 = !in0'),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = -in0',
     doc='''Takes numerical negative elementwise.
 
@@ -2192,7 +2192,9 @@ divide = create_ufunc(
      'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = in0 / in1'),
      ('ff->f', 'out0 = in0 / in1'),
-     ('dd->d', 'out0 = in0 / in1')),
+     ('dd->d', 'out0 = in0 / in1'),
+     ('FF->F', 'out0 = in0 / in1'),
+     ('DD->D', 'out0 = in0 / in1')),
     'out0 = in1 == 0 ? 0 : floor((double)in0 / (double)in1)',
     doc='''Divides arguments elementwise.
 
@@ -2207,7 +2209,9 @@ power = create_ufunc(
      'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
-     ('dd->d', 'out0 = pow(in0, in1)')),
+     ('dd->d', 'out0 = pow(in0, in1)'),
+     ('FF->F', 'out0 = thrust::pow(in0, in1)'),
+     ('DD->D', 'out0 = thrust::pow(in0, in1)')),
     'out0 = rint(pow((double)in0, (double)in1))',
     doc='''Computes ``x1 ** x2`` elementwise.
 
@@ -2228,7 +2232,7 @@ subtract = create_arithmetic(
 true_divide = create_ufunc(
     'cupy_true_divide',
     ('bb->d', 'BB->d', 'hh->d', 'HH->d', 'ii->d', 'II->d', 'll->d', 'LL->d',
-     'qq->d', 'QQ->d', 'ee->e', 'ff->f', 'dd->d'),
+     'qq->d', 'QQ->d', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
     'out0 = (out0_type)in0 / (out0_type)in1',
     doc='''Elementwise true division (i.e. division as floating values).
 
@@ -2276,7 +2280,9 @@ absolute = create_ufunc(
      'q->q', ('Q->Q', 'out0 = in0'),
      ('e->e', 'out0 = fabsf(in0)'),
      ('f->f', 'out0 = fabsf(in0)'),
-     ('d->d', 'out0 = fabs(in0)')),
+     ('d->d', 'out0 = fabs(in0)'),
+     ('F->f', 'out0 = thrust::abs(in0)'),
+     ('D->d', 'out0 = thrust::abs(in0)')),
     'out0 = in0 > 0 ? in0 : -in0',
     doc='''Elementwise absolute value function.
 
@@ -2288,14 +2294,17 @@ absolute = create_ufunc(
 # Fixed version of sqrt
 sqrt_fixed = create_ufunc(
     'cupy_sqrt',
-    ('e->e', 'f->f', 'd->d'),
+    ('e->e', 'f->f', 'd->d',
+     ('F->F', 'out0 = thrust::sqrt(in0)'),
+     ('D->D', 'out0 = thrust::sqrt(in0)')),
     'out0 = sqrt(in0)')
 
 
 cdef _clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
-     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),
+     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d',
+     'FFF->F', 'DDD->D'),
     'out0 = min(in2, max(in1, in0))')
 
 
