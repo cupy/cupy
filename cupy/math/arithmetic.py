@@ -9,7 +9,9 @@ reciprocal = core.create_ufunc(
     ('b', 'B', 'h', 'H', 'i', 'I', 'l', 'L', 'q', 'Q',
      ('e', 'out0 = 1 / in0'),
      ('f', 'out0 = 1 / in0'),
-     ('d', 'out0 = 1 / in0')),
+     ('d', 'out0 = 1 / in0'),
+     ('F', 'out0 = in0_type(1) / in0'),
+     ('D', 'out0 = in0_type(1) / in0')),
     'out0 = in0 == 0 ? 0 : (1 / in0)',
     doc='''Computes ``1 / x`` elementwise.
 

@@ -3,7 +3,11 @@ from cupy import core
 
 def _create_float_test_ufunc(name, doc):
     return core.create_ufunc(
-        'cupy_' + name, ('e->?', 'f->?', 'd->?'), 'out0 = %s(in0)' % name,
+        'cupy_' + name,
+        ('e->?', 'f->?', 'd->?',
+         ('F->?', '{0}(in0.real()) && {0}(in0.real())'.format(name)),
+         ('D->?', '{0}(in0.real()) && {0}(in0.real())'.format(name)),
+         ), 'out0 = %s(in0)' % name,
         doc=doc)
 
 

@@ -1306,8 +1306,9 @@ cdef _id = 'out0 = in0'
 _elementwise_copy = create_ufunc(
     'cupy_copy',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    _id)
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = out0_type(in0)')
+# complex numbers requires out0 = thrust::complex<T>(in0)
 
 
 def elementwise_copy(*args, **kwargs):
@@ -1318,7 +1319,7 @@ def elementwise_copy(*args, **kwargs):
 _elementwise_copy_where = create_ufunc(
     'cupy_copy_where',
     ('??->?', 'b?->b', 'B?->B', 'h?->h', 'H?->H', 'i?->i', 'I?->I', 'l?->l',
-     'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d'),
+     'L?->L', 'q?->q', 'Q?->Q', 'e?->e', 'f?->f', 'd?->d', 'F?->F', 'D?->D'),
     'if (in1) out0 = in0')
 
 
@@ -1418,7 +1419,6 @@ cdef _argmax = create_reduction_func(
 # -----------------------------------------------------------------------------
 # Array creation routines
 # -----------------------------------------------------------------------------
-
 cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
     # TODO(beam2d): Support order and subok options
     cdef Py_ssize_t nvidem
@@ -2104,11 +2104,18 @@ cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
 # Logic functions
 # -----------------------------------------------------------------------------
 
-cpdef create_comparison(name, op, doc=''):
+cpdef create_comparison(name, op, doc='', require_sortable_dtype=True):
+
+    if require_sortable_dtype:
+        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
+               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
+    else:
+        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
+               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'FF->?',
+               'dd->?', 'DD->?')
     return create_ufunc(
         'cupy_' + name,
-        ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-         'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?'),
+        ops,
         'out0 = in0 %s in1' % op,
         doc=doc)
 
@@ -2155,7 +2162,7 @@ equal = create_comparison(
 
     .. seealso:: :data:`numpy.equal`
 
-    ''')
+    ''', False)
 
 
 not_equal = create_comparison(
@@ -2164,13 +2171,15 @@ not_equal = create_comparison(
 
     .. seealso:: :data:`numpy.equal`
 
-    ''')
+    ''', False)
 
 
 cdef _all = create_reduction_func(
     'cupy_all',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
+     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?',
+     ('F->?', ('in0 != type_in0_raw(0)', 'a & b', 'out0 = a', 'bool')),
+     ('D->?', ('in0 != type_in0_raw(0)', 'a & b', 'out0 = a', 'bool'))),
     ('in0', 'a & b', 'out0 = a', 'bool'),
     'true', '')
 
@@ -2178,7 +2187,9 @@ cdef _all = create_reduction_func(
 cdef _any = create_reduction_func(
     'cupy_any',
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
-     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
+     'q->?', 'Q->?', 'e->?', 'f->?', 'd->?',
+     ('F->?', ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool')),
+     ('D->?', ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool'))),
     ('in0', 'a | b', 'out0 = a', 'bool'),
     'false', '')
 
@@ -2192,7 +2203,7 @@ cdef _sum = create_reduction_func(
     ('?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'),
+     'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b', 'out0 = a', None), 0)
 
 
@@ -2201,7 +2212,7 @@ cdef _prod = create_reduction_func(
     ['?->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'],
+     'f->f', 'd->d', 'F->F', 'D->D'],
     ('in0', 'a * b', 'out0 = a', None), 1)
 
 
@@ -2210,7 +2221,8 @@ cdef create_arithmetic(name, op, boolop, doc):
         'cupy_' + name,
         (('??->?', 'out0 = in0 %s in1' % boolop),
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
+         'DD->D'),
         'out0 = in0 %s in1' % op,
         doc=doc)
 
@@ -2418,6 +2430,9 @@ cdef _clip = create_ufunc(
 
 cpdef ndarray _var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
                    keepdims=False):
+    assert a.dtype.kind != 'c', 'Variance for complex numbers is not ' \
+                                'implemented. Current implemention does not ' \
+                                'convert the dtype'
     if axis is None:
         axis = tuple(range(a.ndim))
     if not isinstance(axis, tuple):
@@ -2461,7 +2476,11 @@ cdef _mean = create_reduction_func(
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
      ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d'),
+     'f->f', 'd->d',
+     ('F->F', ('in0', 'a + b',
+               'out0 = a / float(_in_ind.size() / _out_ind.size())', None)),
+     ('D->D', ('in0', 'a + b',
+               'out0 = a / double(_in_ind.size() / _out_ind.size())', None))),
     ('in0', 'a + b', 'out0 = a / (_in_ind.size() / _out_ind.size())', None))
 
 
