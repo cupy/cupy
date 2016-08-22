@@ -16,6 +16,7 @@ _nvcc_version = None
 
 
 def _get_nvcc_version():
+    global _nvcc_version
     if _nvcc_version is None:
         cmd = ['nvcc', '--version']
         _nvcc_version = _run_nvcc(cmd, '.')
