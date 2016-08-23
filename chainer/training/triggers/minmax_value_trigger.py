@@ -1,5 +1,5 @@
-import chainer
 from chainer import reporter
+from chainer.training import util
 
 
 class BestValueTrigger(object):
@@ -20,7 +20,7 @@ class BestValueTrigger(object):
     def __init__(self, key, compare, trigger=(1, 'epoch')):
         self._key = key
         self._best_value = None
-        self._interval_trigger = chainer.training.trigger.get_trigger(trigger)
+        self._interval_trigger = util.get_trigger(trigger)
         self._init_summary()
         self._compare = compare
 
