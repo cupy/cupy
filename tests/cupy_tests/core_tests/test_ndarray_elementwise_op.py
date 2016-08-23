@@ -17,7 +17,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False,
                               no_complex=False):
-        if no_complex and (x_type.kind == 'c' or y_type.kind == 'c'):
+        if no_complex and (numpy.dtype(x_type).kind == 'c'
+                           or numpy.dtype(y_type).kind == 'c'):
             return
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         if swap:
@@ -255,7 +256,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def check_array_broadcasted_op(self, op, xp, x_type, y_type,
                                    no_complex=False):
         if no_complex:
-            if x_type.kind == 'c' or y_type.kind == 'c':
+            if numpy.dtype(x_type).kind == 'c' \
+                    or numpy.dtype(y_type).kind == 'c':
                 return
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
@@ -311,7 +313,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.with_requires('numpy>=1.10')
     def test_broadcasted_ifloordiv(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(operator.ifloordiv, no_complex=True)
+            self.check_array_broadcasted_op(operator.ifloordiv,
+                                            no_complex=True)
 
     def test_broadcasted_pow(self):
         self.check_array_broadcasted_op(operator.pow)
@@ -359,7 +362,8 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type,
                                           no_complex=False):
         if no_complex:
-            if x_type.kind == 'c' or y_type.kind == 'c':
+            if numpy.dtype(x_type).kind == 'c' \
+                    or numpy.dtype(y_type).kind == 'c':
                 return
         a = xp.array([[[1, 2, 3]], [[4, 5, 6]]], x_type)
         b = xp.array([[1], [2], [3]], y_type)

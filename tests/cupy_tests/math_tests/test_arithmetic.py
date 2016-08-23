@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 from cupy import testing
 
 
@@ -17,7 +19,7 @@ class TestArithmetic(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_binary(self, name, xp, dtype, no_complex=False):
-        if no_complex and dtype.kind == 'c':
+        if no_complex and numpy.dtype(dtype).kind == 'c':
             pass
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
@@ -32,7 +34,7 @@ class TestArithmetic(unittest.TestCase):
     @testing.for_dtypes(['?', 'b', 'h', 'i', 'q', 'e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_binary_negative(self, name, xp, dtype, no_complex=False):
-        if no_complex and dtype.kind == 'c':
+        if no_complex and numpy.dtype(dtype).kind == 'c':
             pass
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
         b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)

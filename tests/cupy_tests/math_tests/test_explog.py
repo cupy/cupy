@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 from cupy import testing
 
 
@@ -18,7 +20,7 @@ class TestExplog(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_binary(self, name, xp, dtype, no_complex=False):
         if no_complex:
-            if dtype.kind == 'c':
+            if numpy.dtype(dtype).kind == 'c':
                 return
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
