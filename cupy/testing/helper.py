@@ -30,7 +30,9 @@ def _call_func(self, impl, args, kw):
 
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
-                            numpy_tb, accept_error=True):
+                            numpy_tb, accept_error=True,
+                            exception_class=Exception):
+    # ToDo: expected_regexp like numpy.testing.assert_raises_regex
     if cupy_error is None and numpy_error is None:
         self.fail('Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
@@ -54,6 +56,17 @@ cupy
 numpy
 %s
 ''' % (cupy_tb, numpy_tb)
+        self.fail(msg)
+    elif not isinstance(cupy_error, exception_class):
+        msg = '''Both cupy and numpy raise exceptions
+Expected exception: %s
+
+Got:
+cupy
+%s
+numpy
+%s
+        ''' % (exception_class, cupy_tb, numpy_tb)
         self.fail(msg)
 
 
@@ -105,7 +118,8 @@ def _make_decorator(check_func, name, type_check, accept_error):
 
             check_func(cupy_result, numpy_result)
             if type_check:
-                self.assertEqual(cupy_result.dtype, numpy_result.dtype)
+                self.assertEqual(cupy_result.dtype, numpy_result.dtype,
+                                 'cupy dtype unequal numpy dtype')
         return test_func
     return decorator
 
@@ -308,12 +322,14 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     return _make_decorator(check_func, name, type_check, accept_error)
 
 
-def numpy_cupy_raises(name='xp'):
+def numpy_cupy_raises(name='xp', exception_class=Exception):
     """Decorator that checks the NumPy and CuPy throw same errors.
 
     Args:
          name(str): Argument name whose value is either
          ``numpy`` or ``cupy`` module.
+         exception_class: The allowed exceptions. Default Exception, which
+         means all are allowed.
 
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
@@ -343,7 +359,8 @@ def numpy_cupy_raises(name='xp'):
                 numpy_tb = traceback.format_exc()
 
             _check_cupy_numpy_error(self, cupy_error, cupy_tb,
-                                    numpy_error, numpy_tb, accept_error=True)
+                                    numpy_error, numpy_tb, accept_error=True,
+                                    exception_class=exception_class)
         return test_func
     return decorator
 
@@ -410,7 +427,8 @@ def _make_all_dtypes(no_float16, no_bool, no_complex):
                 return _dtypes + _complex_dtypes
 
 
-def for_all_dtypes(name='dtype', no_float16=False, no_bool=False, no_complex=False):
+def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
+                   no_complex=False):
     """Decorator that checks the fixture with all dtypes.
 
     Args:
@@ -459,7 +477,8 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False, no_complex=Fal
 
     .. seealso:: :func:`cupy.testing.for_dtypes`
     """
-    return for_dtypes(_make_all_dtypes(no_float16, no_bool, no_complex), name=name)
+    return for_dtypes(_make_all_dtypes(no_float16, no_bool, no_complex),
+                      name=name)
 
 
 def for_float_dtypes(name='dtype', no_float16=False):
