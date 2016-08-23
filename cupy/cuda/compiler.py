@@ -122,15 +122,14 @@ def compile_with_cache(source, options=(), arch=None, cache_dir=None):
         elif sys.maxsize == 2147483647:
             options += '-m32',
 
-    env = (arch, options)
-    nvcc_ver = _get_nvcc_version()
+    env = (arch, options, _get_nvcc_version())
     if '#include' in source:
-        pp_src = '%s %s %s' % (nvcc_ver, env, preprocess(source, options))
+        pp_src = '%s %s' % (env, preprocess(source, options))
     else:
         base = _empty_file_preprocess_cache.get(env, None)
         if base is None:
             base = _empty_file_preprocess_cache[env] = preprocess('', options)
-        pp_src = '%s %s %s %s' % (nvcc_ver, env, base, source)
+        pp_src = '%s %s %s' % (env, base, source)
 
     if isinstance(pp_src, six.text_type):
         pp_src = pp_src.encode('utf-8')
