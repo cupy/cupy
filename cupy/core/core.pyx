@@ -942,19 +942,36 @@ cdef class ndarray:
         else:
             return self
 
-    def real(self):
-        if self.dtype.kind == 'c':
-            return real(self)
-        else:
-            return self
+    property real:
 
-    def imag(self):
-        if self.dtype.kind == 'c':
-            return imag(self)
-        else:
-            new_array = ndarray(self.shape, dtype=self.dtype)
-            new_array.fill(0)
-            return new_array
+        def __get__(self):
+            if self.dtype.kind == 'c':
+                return real(self)
+            else:
+                return self
+
+        def __set__(self, value):
+            if self.dtype.kind == 'c':
+                _real_setter(value, self)
+            else:
+                elementwise_copy(value, self)
+
+    property imag:
+
+        def __get__(self):
+            if self.dtype.kind == 'c':
+                return imag(self)
+            else:
+                new_array = ndarray(self.shape, dtype=self.dtype)
+                new_array.fill(0)
+                return new_array
+
+        def __set__(self, value):
+            if self.dtype.kind == 'c':
+                _imag_setter(value, self)
+            else:
+                raise TypeError('cupy.ndarray '
+                                'does not have imaginary part to set')
 
     # -------------------------------------------------------------------------
     # Special methods
@@ -2249,7 +2266,7 @@ conj = create_ufunc(
 
 angle = create_ufunc(
     'cupy_angle',
-    ('F->F', 'D->D'),
+    ('F->f', 'D->d'),
     'out0 = thrust::arg(in0)',
     doc='''Return the angle of the complex argument.
 
@@ -2260,7 +2277,7 @@ angle = create_ufunc(
 
 real = create_ufunc(
     'cupy_real',
-    ('F->f', 'D->f'),
+    ('F->f', 'D->d'),
     'out0 = in0.real()',
     doc='''Return the real part of the elements of the array.
 
@@ -2269,14 +2286,30 @@ real = create_ufunc(
     ''')
 
 
+_real_setter = create_ufunc(
+    'cupy_real_setter',
+    ('f->F', 'd->D'),
+    'out0.real(in0)',
+    doc='''Sets the real part of the elements of the array.
+    ''')
+
+
 imag = create_ufunc(
     'cupy_imag',
-    ('F->f', 'D->f'),
+    ('F->f', 'D->d'),
     'out0 = in0.imag()',
     doc='''Return the imaginary part of the elements of the array.
 
     .. seealso:: :data:`numpy.imag`
 
+    ''')
+
+
+_imag_setter = create_ufunc(
+    'cupy_imag_setter',
+    ('f->F', 'd->D'),
+    'out0.imag(in0)',
+    doc='''Sets the imag part of the elements of the array.
     ''')
 
 
