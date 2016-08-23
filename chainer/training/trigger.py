@@ -1,4 +1,3 @@
-from chainer.training import triggers
 from chainer.training.triggers import interval
 
 
