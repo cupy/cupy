@@ -9,7 +9,7 @@ def observe_value(key, target_func):
     Args:
         key (str): Key of observation to record.
         target_func (function): Function that returns the value to record.
-            It must take one argument: trainer object.
+            It must take one argument: :class:~chainer.training.Trainer object.
     Returns:
         The extension function.
     """
@@ -37,7 +37,7 @@ def observe_lr(optimizer, key='lr'):
     """Returns a trainer extension to record the learning rate.
 
     Args:
-        optimizer: Optimizer object whose learning rate is recorded.
+        optimizer (~chainer.Optimizer): Optimizer object whose learning rate is recorded.
         key (str): Key of observation to record.
 
     Returns:
