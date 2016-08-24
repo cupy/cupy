@@ -104,7 +104,7 @@ To check Cython code, use ``.flake8.cython`` config file::
 
   $ flake8 --config=.flake8.cython path/to/your/cython/code.pyx
 
-The ``autopep8`` supports automatically format Python code to conform to the PEP 8 style guide::
+The autopep8 supports automatically correct Python code to conform to the PEP 8 style guide::
 
   $ autopep8 --in-place --global-config .pep8 path/to/your/code.py
 
