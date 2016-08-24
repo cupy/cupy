@@ -101,7 +101,7 @@ class TestRsqrt(UnaryFunctionsTestBase):
     def test_forward_gpu(self):
         def cp_rsqrt(x, dtype=numpy.float32):
             return cuda.cupy.reciprocal(cuda.cupy.sqrt(x, dtype=dtype))
-        self.check_forward_gpu(F.rsqrt, cuda.cupy.rsqrt)
+        self.check_forward_gpu(F.rsqrt, cp_rsqrt)
 
     @condition.retry(3)
     def test_backward_cpu(self):
