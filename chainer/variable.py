@@ -86,6 +86,7 @@ class Variable(object):
             :class:`~chainer.Flag` for the detail of ternary flags.
 
     """
+
     def __init__(self, data, volatile=flag.OFF, name=None, grad=None):
         if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
             msg = '''numpy.ndarray or cuda.ndarray are expected.

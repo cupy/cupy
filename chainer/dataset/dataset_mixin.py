@@ -11,6 +11,7 @@ class DatasetMixin(object):
     :meth:`__len__` operator explicitly.
 
     """
+
     def __getitem__(self, index):
         """Returns an example or a sequence of examples.
 

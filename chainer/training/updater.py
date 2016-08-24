@@ -13,6 +13,7 @@ class Updater(object):
     TODO(beam2d): document it.
 
     """
+
     def connect_trainer(self, trainer):
         """Connects the updater to the trainer that will call it.
 
@@ -114,6 +115,7 @@ class StandardUpdater(Updater):
         iteration: Current number of completed updates.
 
     """
+
     def __init__(self, iterator, optimizer, converter=convert.concat_examples,
                  device=None, loss_func=None):
         if isinstance(iterator, iterator_module.Iterator):
@@ -228,6 +230,7 @@ class ParallelUpdater(StandardUpdater):
             default.
 
     """
+
     def __init__(self, iterator, optimizer, converter=convert.concat_examples,
                  models=None, devices=None, loss_func=None):
         super(ParallelUpdater, self).__init__(

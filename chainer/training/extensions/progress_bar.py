@@ -26,6 +26,7 @@ class ProgressBar(extension.Extension):
         out: Stream to print the bar. Standard output is used by default.
 
     """
+
     def __init__(self, training_length=None, update_interval=100,
                  bar_length=50, out=sys.stdout):
         self._training_length = training_length
