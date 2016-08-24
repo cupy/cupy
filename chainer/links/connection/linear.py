@@ -82,5 +82,5 @@ class Linear(link.Link):
 
         """
         if self.has_uninitialized_params:
-            self._initialize_params(x.shape[1])
+            self._initialize_params(x.size // len(x.data))
         return linear.linear(x, self.W, self.b)
