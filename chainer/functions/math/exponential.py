@@ -93,3 +93,40 @@ def log2(x):
         ~chainer.Variable: Output variable.
     """
     return Log2()(x)
+
+
+class Log10(function.Function):
+
+    @property
+    def label(self):
+        return 'log10'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
+
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.log10(x[0])),
+
+    def backward(self, x, gy):
+        xp = cuda.get_array_module(*x)
+        gx = utils.force_array(xp.reciprocal(x[0]))
+        gx /= xp.log(10)
+        gx *= gy[0]
+        return gx,
+
+
+def log10(x):
+    """Elementwise logarithm function to the base 10.
+
+    .. math::
+       y_i = \\log_10 x_i.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+    return Log10()(x)

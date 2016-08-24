@@ -11,7 +11,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-class UnaryFunctionsTestBase(object):
+class UnaryFunctionsTestBase(unittest.TestCase):
 
     def make_data(self):
         raise NotImplementedError
@@ -22,6 +22,7 @@ class UnaryFunctionsTestBase(object):
     def check_forward(self, op, op_np, x_data):
         x = chainer.Variable(x_data)
         y = op(x)
+        self.assertEqual(x.data.dtype, y.data.dtype)
         testing.assert_allclose(
             op_np(self.x), y.data, atol=1e-7, rtol=1e-7)
 
@@ -31,35 +32,9 @@ class UnaryFunctionsTestBase(object):
     def check_forward_gpu(self, op, op_np):
         self.check_forward(op, op_np, cuda.to_gpu(self.x))
 
-    @condition.retry(3)
-    def test_exp_forward_cpu(self):
-        self.check_forward_cpu(F.exp, numpy.exp)
-
-    @condition.retry(3)
-    def test_log_forward_cpu(self):
-        self.check_forward_cpu(F.log, numpy.log)
-
-    @condition.retry(3)
-    def test_log2_forward_cpu(self):
-        self.check_forward_cpu(F.log2, numpy.log2)
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_exp_forward_gpu(self):
-        self.check_forward_gpu(F.exp, numpy.exp)
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_log_forward_gpu(self):
-        self.check_forward_gpu(F.log, numpy.log)
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_log2_forward_gpu(self):
-        self.check_forward_gpu(F.log2, numpy.log2)
-
     def check_backward(self, op, x_data, y_grad):
-        gradient_check.check_backward(op, x_data, y_grad)
+        gradient_check.check_backward(
+            op, x_data, y_grad, atol=1e-4, rtol=1e-3, dtype=numpy.float64)
 
     def check_backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
@@ -67,58 +42,140 @@ class UnaryFunctionsTestBase(object):
     def check_backward_gpu(self, op):
         self.check_backward(op, cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
+    def check_label(self, op, expected):
+        self.assertEqual(op().label, expected)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TestExp(UnaryFunctionsTestBase):
+
+    def make_data(self):
+        x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        return x, gy
+
     @condition.retry(3)
-    def test_exp_backward_cpu(self):
+    def test_forward_cpu(self):
+        self.check_forward_cpu(F.exp, numpy.exp)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.check_forward_gpu(F.exp, numpy.exp)
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
         self.check_backward_cpu(F.exp)
 
+    @attr.gpu
     @condition.retry(3)
-    def test_log_backward_cpu(self):
-        self.check_backward_cpu(F.log)
+    def test_backward_gpu(self):
+        self.check_backward_gpu(F.exp)
+
+    def test_label(self):
+        self.check_label(F.Exp, 'exp')
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TestLog(UnaryFunctionsTestBase):
+
+    def make_data(self):
+        x = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        return x, gy
 
     @condition.retry(3)
-    def test_log2_backward_cpu(self):
+    def test_forward_cpu(self):
+        self.check_forward_cpu(F.log, numpy.log)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.check_forward_gpu(F.log, numpy.log)
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
+        self.check_backward_cpu(F.log)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.check_backward_gpu(F.log)
+
+    def test_label(self):
+        self.check_label(F.Log, 'log')
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TestLog2(UnaryFunctionsTestBase):
+
+    def make_data(self):
+        x = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        return x, gy
+
+    @condition.retry(3)
+    def test_forward_cpu(self):
+        self.check_forward_cpu(F.log2, numpy.log2)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.check_forward_gpu(F.log2, numpy.log2)
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
         self.check_backward_cpu(F.log2)
 
     @attr.gpu
     @condition.retry(3)
-    def test_exp_backward_gpu(self):
-        self.check_backward_gpu(F.exp)
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_log_backward_gpu(self):
-        self.check_backward_gpu(F.log)
-
-    @attr.gpu
-    @condition.retry(3)
-    def test_log2_backward_gpu(self):
+    def test_backward_gpu(self):
         self.check_backward_gpu(F.log2)
 
-    def test_exp(self):
-        self.assertEqual(F.Exp().label, 'exp')
-
-    def test_log(self):
-        self.assertEqual(F.Log().label, 'log')
-
-    def test_log2(self):
-        self.assertEqual(F.Log2().label, 'log2')
+    def test_label(self):
+        self.check_label(F.Log2, 'log2')
 
 
-class TestUnaryFunctionsSimple(UnaryFunctionsTestBase, unittest.TestCase):
+@testing.parameterize(*testing.product({
+    'shape': [(3, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
+}))
+class TestLog10(UnaryFunctionsTestBase):
 
     def make_data(self):
-        x = numpy.random.uniform(.5, 1, (3, 2)).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, (3, 2)).astype(numpy.float32)
+        x = numpy.random.uniform(.5, 1, self.shape).astype(self.dtype)
+        gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         return x, gy
 
+    @condition.retry(3)
+    def test_forward_cpu(self):
+        self.check_forward_cpu(F.log10, numpy.log10)
 
-class TestUnaryFunctionsZeroDimension(UnaryFunctionsTestBase,
-                                      unittest.TestCase):
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.check_forward_gpu(F.log10, numpy.log10)
 
-    def make_data(self):
-        x = numpy.random.uniform(.5, 1, ()).astype(numpy.float32)
-        gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
-        return x, gy
+    @condition.retry(3)
+    def test_backward_cpu(self):
+        self.check_backward_cpu(F.log10)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.check_backward_gpu(F.log10)
+
+    def test_label(self):
+        self.check_label(F.Log10, 'log10')
 
 
 testing.run_module(__name__, __file__)
