@@ -351,6 +351,10 @@ minimum
 ~~~~~~~
 .. autofunction:: minimum
 
+rsqrt
+~~~~~
+.. autofunction:: rsqrt
+
 scale
 ~~~~~
 .. autofunction:: scale

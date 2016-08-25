@@ -255,6 +255,7 @@ Minimum = minimum.Minimum
 minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
+rsqrt = sqrt.rsqrt
 scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin

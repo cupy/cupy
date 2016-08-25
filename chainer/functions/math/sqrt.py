@@ -45,3 +45,20 @@ def sqrt(x):
         ~chainer.Variable: Output variable.
     """
     return Sqrt()(x)
+
+
+def rsqrt(x):
+    """Computes elementwise reciprocal of square root of input :math:`x_i`.
+
+    .. math::
+       y_i = {1 \\over \\sqrt x_i}.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    .. seealso:: :func:`~chainer.functions.sqrt`
+    """
+    return 1.0 / sqrt(x)
