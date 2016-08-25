@@ -34,7 +34,7 @@ class UnaryFunctionsTestBase(unittest.TestCase):
 
     def check_backward(self, op, x_data, y_grad):
         gradient_check.check_backward(
-            op, x_data, y_grad, atol=1e-4, rtol=1e-3, dtype=numpy.float64)
+            op, x_data, y_grad, atol=5e-4, rtol=5e-3, dtype=numpy.float64)
 
     def check_backward_cpu(self, op):
         self.check_backward(op, self.x, self.gy)
