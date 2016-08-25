@@ -125,7 +125,7 @@ class DeconvolutionND(function.Function):
         y_desc = cudnn.create_tensor_descriptor(y)
         self.filter_desc = cudnn.create_filter_descriptor(W)
         self.conv_desc = cudnn.create_convolution_descriptor(
-            self.pad, self.stride)
+            self.pad, self.stride, x.dtype)
         if b is not None:
             b_index = (None, colon) + (None,) * ndim
             self.bias_desc = cudnn.create_tensor_descriptor(b[b_index])
