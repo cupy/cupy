@@ -89,6 +89,17 @@ def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     return desc
 
 
+def create_uninitialized_tensor_descriptor():
+    """Create uninitialized tensor descriptor.
+
+    Create a cudnnCreateTensorDescriptor_t that is not yet initialized.
+    This is used by the batch normalization functions.
+    """
+    desc = Descriptor(cudnn.createTensorDescriptor(),
+                      cudnn.destroyTensorDescriptor)
+    return desc
+
+
 def create_filter_descriptor(arr, mode=cudnn.CUDNN_CROSS_CORRELATION):
     desc = Descriptor(cudnn.createFilterDescriptor(),
                       cudnn.destroyFilterDescriptor)
@@ -103,8 +114,10 @@ def create_filter_descriptor(arr, mode=cudnn.CUDNN_CROSS_CORRELATION):
     return desc
 
 
-def create_convolution_descriptor(pad, stride,
+def create_convolution_descriptor(pad, stride, dtype,
                                   mode=cudnn.CUDNN_CROSS_CORRELATION):
+    # dtype is used when ndim != 2 and cuDNN is newer than cuDNN 2, otherwise
+    # it is ignored.
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
                       cudnn.destroyConvolutionDescriptor)
     ndim = len(pad)
@@ -118,8 +131,15 @@ def create_convolution_descriptor(pad, stride,
         c_pad = _to_ctypes_array(pad)
         c_stride = _to_ctypes_array(stride)
         c_upscale = _to_ctypes_array((1,) * ndim)
-        cudnn.setConvolutionNdDescriptor_v2(
-            desc.value, ndim, c_pad.data, c_stride.data, c_upscale.data, mode)
+        if _cudnn_version >= 3000:
+            data_type = get_data_type(dtype)
+            cudnn.setConvolutionNdDescriptor_v3(
+                desc.value, ndim, c_pad.data, c_stride.data, c_upscale.data,
+                mode, data_type)
+        else:
+            cudnn.setConvolutionNdDescriptor_v2(
+                desc.value, ndim, c_pad.data, c_stride.data, c_upscale.data,
+                mode)
 
     return desc
 

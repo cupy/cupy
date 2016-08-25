@@ -11,6 +11,7 @@ class AdaGrad(optimizer.GradientMethod):
     See: http://jmlr.org/papers/v12/duchi11a.html
 
     """
+
     def __init__(self, lr=0.001, eps=1e-8):
         self.lr = lr
         self.eps = eps

@@ -440,6 +440,7 @@ class InvalidType(Exception):
     """Raised when types of data for forward/backward are invalid.
 
     """
+
     def __init__(self, expect, actual, msg=None):
         if msg is None:
             msg = 'Expect: {0}\nActual: {1}'.format(expect, actual)

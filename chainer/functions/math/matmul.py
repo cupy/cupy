@@ -120,6 +120,7 @@ def _get_check_index(trans, right, row_idx=0, col_idx=1):
 
 
 class MatMul(function.Function):
+
     def __init__(self, transa=False, transb=False):
         self.transa = transa
         self.transb = transb
@@ -129,8 +130,8 @@ class MatMul(function.Function):
         a_type, b_type = in_types
 
         type_check.expect(
-            a_type.dtype == numpy.float32,
-            b_type.dtype == numpy.float32
+            a_type.dtype.kind == 'f',
+            a_type.dtype == b_type.dtype
         )
 
         _check_ndim(a_type)
@@ -150,10 +151,10 @@ class MatMul(function.Function):
     def backward(self, x, gy):
         gx0 = _matmul(
             gy[0], x[1], transb=not self.transb, transout=self.transa
-            ).reshape(x[0].shape)
+        ).reshape(x[0].shape)
         gx1 = _matmul(
             x[0], gy[0], transa=not self.transa, transout=self.transb
-            ).reshape(x[1].shape)
+        ).reshape(x[1].shape)
         return gx0, gx1
 
 
@@ -179,6 +180,7 @@ def matmul(a, b, transa=False, transb=False):
 
 
 class BatchMatMul(function.Function):
+
     def __init__(self, transa=False, transb=False):
         self.transa = transa
         self.transb = transb

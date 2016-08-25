@@ -35,15 +35,15 @@ cpdef _get_simple_reduction_kernel(
       int _J_offset = _tid / _block_stride;
       int _j_offset = _J_offset * _out_ind.size();
       int _J_stride = ${block_size};
-      int _j_stride = ${block_size} * _out_ind.size();
+      long long _j_stride = ${block_size}LL * _out_ind.size();
 
       for (int _i_base = blockIdx.x * _block_stride;
            _i_base < _out_ind.size();
            _i_base += gridDim.x * _block_stride) {
         _type_reduce _s = _type_reduce(${identity});
         int _i = _i_base + _tid % _block_stride;
-        for (int _j = _i + _j_offset, _J = _J_offset;
-             _j < _in_ind.size();
+        int _J = _J_offset;
+        for (long long _j = _i + _j_offset; _j < _in_ind.size();
              _j += _j_stride, _J += _J_stride) {
           _in_ind.set(_j);
           ${input_expr}
@@ -186,6 +186,8 @@ def _get_simple_reduction_function(
 
 class simple_reduction_function(object):
 
+    _block_size = 512
+
     def __init__(self, name, ops, identity, preamble):
         self.name = name
         self._ops = ops
@@ -235,7 +237,7 @@ class simple_reduction_function(object):
         in_args, in_shape = _get_trans_args(
             in_args, axis + raxis, in_args[0].shape, None)
 
-        block_size = 512
+        block_size = self._block_size
         in_indexer = Indexer(in_shape)
         out_indexer = Indexer(out_shape)
         # Rounding Up to the Next Power of 2

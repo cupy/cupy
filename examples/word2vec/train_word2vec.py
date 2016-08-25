@@ -87,6 +87,7 @@ class SkipGram(chainer.Chain):
 
 
 class SoftmaxCrossEntropyLoss(chainer.Chain):
+
     def __init__(self, n_in, n_out):
         super(SoftmaxCrossEntropyLoss, self).__init__(
             out=L.Linear(n_in, n_out),
@@ -173,9 +174,9 @@ for epoch in range(args.epoch):
         if word_count >= next_count:
             now = time.time()
             duration = now - cur_at
-            throuput = 100000. / (now - cur_at)
+            throughput = 100000. / (now - cur_at)
             print('{} words, {:.2f} sec, {:.2f} Kwords/sec'.format(
-                word_count, duration, throuput / 1000.))
+                word_count, duration, throughput / 1000.))
             next_count += 100000
             cur_at = now
 

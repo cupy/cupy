@@ -26,6 +26,7 @@ class ProgressBar(extension.Extension):
         out: Stream to print the bar. Standard output is used by default.
 
     """
+
     def __init__(self, training_length=None, update_interval=100,
                  bar_length=50, out=sys.stdout):
         self._training_length = training_length
@@ -61,7 +62,7 @@ class ProgressBar(extension.Extension):
         if iteration % self._update_interval == 0:
             epoch = trainer.updater.epoch_detail
             recent_timing = self._recent_timing
-            now = time.clock()
+            now = time.time()
 
             if len(recent_timing) >= 1:
                 out.write('\033[J')

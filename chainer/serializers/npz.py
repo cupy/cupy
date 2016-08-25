@@ -32,6 +32,7 @@ class DictionarySerializer(serializer.Serializer):
             :func:`numpy.savez_compressed` to serialize it in the NPZ format.
 
     """
+
     def __init__(self, target=None, path=''):
         self.target = {} if target is None else target
         self.path = path
@@ -83,6 +84,7 @@ class NpzDeserializer(serializer.Deserializer):
         path: The base path that the deserialization starts from.
 
     """
+
     def __init__(self, npz, path=''):
         self.npz = npz
         self.path = path
@@ -94,7 +96,9 @@ class NpzDeserializer(serializer.Deserializer):
     def __call__(self, key, value):
         key = key.lstrip('/')
         dataset = self.npz[self.path + key]
-        if isinstance(value, numpy.ndarray):
+        if value is None:
+            return dataset
+        elif isinstance(value, numpy.ndarray):
             numpy.copyto(value, dataset)
         elif isinstance(value, cuda.ndarray):
             value.set(numpy.asarray(dataset))

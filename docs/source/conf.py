@@ -337,7 +337,7 @@ import chainer.links as L
 from chainer.training import extensions
 np.random.seed(0)
 '''
-doctest_test_doctest_blocks = None
+doctest_test_doctest_blocks = ''
 
 spelling_lang = 'en_US'
 spelling_word_list_filename = 'spelling_wordlist.txt'

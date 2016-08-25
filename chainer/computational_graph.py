@@ -11,6 +11,7 @@ class DotNode(object):
     with some utilities for dot language.
 
     """
+
     def __init__(self, node, attribute=None):
         """Initializes DotNode.
 
@@ -53,6 +54,7 @@ class ComputationalGraph(object):
       We assume that the computational graph is directed and acyclic.
 
     """
+
     def __init__(self, nodes, edges, variable_style=None, function_style=None,
                  rankdir='TB'):
         """Initializes computational graph.

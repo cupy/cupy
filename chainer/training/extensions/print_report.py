@@ -20,6 +20,7 @@ class PrintReport(extension.Extension):
         out: Stream to print the bar. Standard output is used by default.
 
     """
+
     def __init__(self, entries, log_report='LogReport', out=sys.stdout):
         self._entries = entries
         self._log_report = log_report

@@ -33,7 +33,7 @@ class Triplet(function.Function):
         N = anchor.shape[0]
 
         dist = xp.sum(
-            (anchor - positive)**2 - (anchor - negative)**2,
+            (anchor - positive) ** 2 - (anchor - negative) ** 2,
             axis=1) + self.margin
         self.dist_hinge = xp.maximum(dist, 0)
         loss = xp.sum(self.dist_hinge) / N

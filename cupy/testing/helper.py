@@ -38,7 +38,7 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
     elif numpy_error is None:
         self.fail('Only cupy raises error\n\n' + cupy_tb)
     elif type(cupy_error) is not type(numpy_error):
-        msg = '''Differnet types of errors occurred
+        msg = '''Different types of errors occurred
 
 cupy
 %s
@@ -567,7 +567,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     else:
         ts = []
         for _ in range(len(names)):
-            # Make shffuled list of types for each name
+            # Make shuffled list of types for each name
             t = list(types)
             random.shuffle(t)
             ts.append(t)
@@ -755,7 +755,7 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
              given shape, array module,
 
     If ``dtype`` is ``numpy.bool_``, the elements are
-    independetly drawn from ``True`` and ``False``
+    independently drawn from ``True`` and ``False``
     with same probabilities.
     Otherwise, the array is filled with samples
     independently and identically drawn
@@ -770,6 +770,7 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
 
 
 class NumpyError(object):
+
     def __init__(self, **kw):
         self.kw = kw
 

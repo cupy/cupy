@@ -1,6 +1,7 @@
 cimport cpython
 cimport cython
 
+
 @cython.profile(False)
 cpdef inline Py_ssize_t prod(args, Py_ssize_t init=1) except *:
     cdef Py_ssize_t arg

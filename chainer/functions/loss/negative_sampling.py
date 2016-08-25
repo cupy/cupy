@@ -72,8 +72,8 @@ class NegativeSamplingFunction(function.Function):
             wx = f;
             ''',
             'negative_sampling_wx'
-            )(W, x, self.ignore_mask[:, None], self.samples, n_in,
-              self.sample_size + 1)
+        )(W, x, self.ignore_mask[:, None], self.samples, n_in,
+          self.sample_size + 1)
 
         y = cuda.elementwise(
             'T wx, int32 c, int32 m', 'T y',
@@ -102,8 +102,8 @@ class NegativeSamplingFunction(function.Function):
 
         gx = numpy.zeros_like(x)
         gW = numpy.zeros_like(W)
-        for i, (ix, k) in enumerate(six.moves.zip(x[self.ignore_mask],
-                                    self.samples[self.ignore_mask])):
+        for i, (ix, k) in enumerate(six.moves.zip(
+                x[self.ignore_mask], self.samples[self.ignore_mask])):
             w = W[k]
             f = w.dot(ix)
 
@@ -151,8 +151,8 @@ class NegativeSamplingFunction(function.Function):
             gx = w;
             ''',
             'negative_sampling_calculate_gx'
-            )(g, W, self.ignore_mask[:, None], self.samples, n_in,
-              self.sample_size + 1, gx)
+        )(g, W, self.ignore_mask[:, None], self.samples, n_in,
+          self.sample_size + 1, gx)
         gW = cupy.zeros_like(W)
         cuda.elementwise(
             'T g, raw T x, S k, bool mask, int32 c, int32 m',
@@ -166,8 +166,8 @@ class NegativeSamplingFunction(function.Function):
             }
             ''',
             'negative_sampling_calculate_gw'
-            )(g, x, self.samples, self.ignore_mask[:, None], n_in,
-              self.sample_size + 1, gW)
+        )(g, x, self.samples, self.ignore_mask[:, None], n_in,
+          self.sample_size + 1, gW)
         return gx, None, gW
 
 

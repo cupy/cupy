@@ -463,8 +463,8 @@ def clear_memo():
     """Clears the memoized results for all functions decorated by memoize.
 
     This function works like :func:`cupy.clear_memo` as a counterpart for
-    :func:`chainer.cuda.memoize`. It also can be used even if CUDA is not
-    available. In such case, this function does nothing.
+    :func:`chainer.cuda.memoize`. It can be used even if CUDA is not available.
+    In such a case, this function does nothing.
 
     """
     if available:

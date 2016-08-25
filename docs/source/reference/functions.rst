@@ -32,7 +32,7 @@ clipped_relu
 .. autofunction:: clipped_relu
 
 crelu
-~~~~~~~~~~~~
+~~~~~
 .. autofunction:: crelu
 
 elu
@@ -119,6 +119,10 @@ get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
+hstack
+~~~~~~~~
+.. autofunction:: hstack
+
 permutate
 ~~~~~~~~~
 .. autofunction:: permutate
@@ -128,12 +132,16 @@ reshape
 .. autofunction:: reshape
 
 rollaxis
-~~~~~~~
+~~~~~~~~
 .. autofunction:: rollaxis
 
 select_item
 ~~~~~~~~~~~
 .. autofunction:: select_item
+
+separate
+~~~~~~~~
+.. autofunction:: separate
 
 split_axis
 ~~~~~~~~~~
@@ -214,6 +222,10 @@ connectionist_temporal_classification
 contrastive
 ~~~~~~~~~~~
 .. autofunction:: contrastive
+
+crf1d
+~~~~~
+.. autofunction:: crf1d
 
 cross_covariance
 ~~~~~~~~~~~~~~~~
@@ -311,6 +323,18 @@ log
 ~~~
 .. autofunction:: log
 
+log10
+~~~~~
+.. autofunction:: log10
+
+log1p
+~~~~~
+.. autofunction:: log1p
+
+log2
+~~~~
+.. autofunction:: log2
+
 logsumexp
 ~~~~~~~~~
 .. autofunction:: logsumexp
@@ -343,9 +367,17 @@ sin
 ~~~
 .. autofunction:: sin
 
+sqrt
+~~~~
+.. autofunction:: sqrt
+
 sum
 ~~~
 .. autofunction:: sum
+
+tan
+~~~
+.. autofunction:: tan
 
 
 Noise injections

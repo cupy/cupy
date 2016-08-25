@@ -81,7 +81,7 @@ public:
   template<typename T>
   inline __device__ float16& operator/=(const T& rhs)
   {
-    *this = *this + rhs;
+    *this = *this / rhs;
     return *this;
   }
 

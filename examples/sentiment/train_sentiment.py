@@ -219,8 +219,8 @@ for epoch in range(n_epoch):
     print('loss: {:.2f}'.format(total_loss))
 
     now = time.time()
-    throuput = float(len(train_trees)) / (now - cur_at)
-    print('{:.2f} iters/sec, {:.2f} sec'.format(throuput, now - cur_at))
+    throughput = float(len(train_trees)) / (now - cur_at)
+    print('{:.2f} iters/sec, {:.2f} sec'.format(throughput, now - cur_at))
     print()
 
     if (epoch + 1) % epoch_per_eval == 0:
