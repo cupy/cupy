@@ -23,8 +23,8 @@ cpdef moduleUnload(size_t module)
 cpdef size_t moduleGetFunction(size_t module, str funcname) except *
 cpdef size_t moduleGetGlobal(size_t module, str varname) except *
 cpdef launchKernel(
-        size_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
-        unsigned int grid_dim_z, unsigned int block_dim_x,
-        unsigned int block_dim_y, unsigned int block_dim_z,
-        unsigned int shared_mem_bytes, size_t stream, size_t kernel_params,
-        size_t extra)
+    size_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
+    unsigned int grid_dim_z, unsigned int block_dim_x,
+    unsigned int block_dim_y, unsigned int block_dim_z,
+    unsigned int shared_mem_bytes, size_t stream, size_t kernel_params,
+    size_t extra)

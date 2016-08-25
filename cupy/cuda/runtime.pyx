@@ -12,6 +12,8 @@ There are four differences compared to the original C API.
 cimport cpython
 cimport cython
 
+from cupy.cuda cimport driver
+
 
 cdef class PointerAttributes:
 
@@ -27,6 +29,16 @@ cdef class PointerAttributes:
 ###############################################################################
 # Extern
 ###############################################################################
+cdef extern from *:
+    ctypedef int Error 'cudaError_t'
+    ctypedef int DeviceAttr 'enum cudaDeviceAttr'
+    ctypedef int MemoryKind 'enum cudaMemcpyKind'
+
+    ctypedef void StreamCallbackDef(
+        driver.Stream stream, Error status, void* userData)
+    ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
+
+
 cdef extern from "cupy_cuda.h":
     # Types
     struct _PointerAttributes 'cudaPointerAttributes':
@@ -41,7 +53,7 @@ cdef extern from "cupy_cuda.h":
     const char* cudaGetErrorString(Error error) nogil
 
     # Initialization
-    int cudaDriverGetVersion(int* driverVersion ) nogil
+    int cudaDriverGetVersion(int* driverVersion) nogil
 
     # Device operations
     int cudaGetDevice(int* device) nogil
@@ -61,34 +73,37 @@ cdef extern from "cupy_cuda.h":
     int cudaMemcpy(void* dst, const void* src, size_t count,
                    MemoryKind kind) nogil
     int cudaMemcpyAsync(void* dst, const void* src, size_t count,
-                        MemoryKind kind, Stream stream) nogil
+                        MemoryKind kind, driver.Stream stream) nogil
     int cudaMemcpyPeer(void* dst, int dstDevice, const void* src,
                        int srcDevice, size_t count) nogil
     int cudaMemcpyPeerAsync(void* dst, int dstDevice, const void* src,
-                       int srcDevice, size_t count, Stream stream) nogil
+                            int srcDevice, size_t count,
+                            driver.Stream stream) nogil
     int cudaMemset(void* devPtr, int value, size_t count) nogil
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
-                        Stream stream) nogil
+                        driver.Stream stream) nogil
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
                                  const void* ptr) nogil
 
     # Stream and Event
-    int cudaStreamCreate(Stream* pStream) nogil
-    int cudaStreamCreateWithFlags(Stream* pStream, unsigned int flags) nogil
-    int cudaStreamDestroy(Stream stream) nogil
-    int cudaStreamSynchronize(Stream stream) nogil
-    int cudaStreamAddCallback(Stream stream, StreamCallback callback,
+    int cudaStreamCreate(driver.Stream* pStream) nogil
+    int cudaStreamCreateWithFlags(driver.Stream* pStream,
+                                  unsigned int flags) nogil
+    int cudaStreamDestroy(driver.Stream stream) nogil
+    int cudaStreamSynchronize(driver.Stream stream) nogil
+    int cudaStreamAddCallback(driver.Stream stream, StreamCallback callback,
                               void* userData, unsigned int flags) nogil
-    int cudaStreamQuery(Stream stream) nogil
-    int cudaStreamWaitEvent(Stream stream, Event event,
+    int cudaStreamQuery(driver.Stream stream) nogil
+    int cudaStreamWaitEvent(driver.Stream stream, driver.Event event,
                             unsigned int flags) nogil
-    int cudaEventCreate(Event* event) nogil
-    int cudaEventCreateWithFlags(Event* event, unsigned int flags) nogil
-    int cudaEventDestroy(Event event) nogil
-    int cudaEventElapsedTime(float* ms, Event start, Event end) nogil
-    int cudaEventQuery(Event event) nogil
-    int cudaEventRecord(Event event, Stream stream) nogil
-    int cudaEventSynchronize(Event event) nogil
+    int cudaEventCreate(driver.Event* event) nogil
+    int cudaEventCreateWithFlags(driver.Event* event, unsigned int flags) nogil
+    int cudaEventDestroy(driver.Event event) nogil
+    int cudaEventElapsedTime(float* ms, driver.Event start,
+                             driver.Event end) nogil
+    int cudaEventQuery(driver.Event event) nogil
+    int cudaEventRecord(driver.Event event, driver.Stream stream) nogil
+    int cudaEventSynchronize(driver.Event event) nogil
 
 
 ###############################################################################
@@ -205,23 +220,23 @@ cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
                   size_t stream):
     with nogil:
         status = cudaMemcpyAsync(
-            <void*>dst, <void*>src, size, <MemoryKind>kind, <Stream>stream)
+            <void*>dst, <void*>src, size, <MemoryKind>kind,
+            <driver.Stream>stream)
     check_status(status)
 
 
 cpdef memcpyPeer(size_t dst, int dstDevice, size_t src, int srcDevice,
-               size_t size):
+                 size_t size):
     with nogil:
         status = cudaMemcpyPeer(<void*>dst, dstDevice, <void*>src, srcDevice,
                                 size)
     check_status(status)
 
 
-cpdef memcpyPeerAsync(size_t dst, int dstDevice,
-                      size_t src, int srcDevice,
+cpdef memcpyPeerAsync(size_t dst, int dstDevice, size_t src, int srcDevice,
                       size_t size, size_t stream):
-    status = cudaMemcpyPeerAsync(<void*>dst, dstDevice,
-                                 <void*>src, srcDevice, size, <Stream> stream)
+    status = cudaMemcpyPeerAsync(<void*>dst, dstDevice, <void*>src, srcDevice,
+                                 size, <driver.Stream> stream)
     check_status(status)
 
 
@@ -232,7 +247,7 @@ cpdef memset(size_t ptr, int value, size_t size):
 
 
 cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream):
-    status = cudaMemsetAsync(<void*>ptr, value, size, <Stream> stream)
+    status = cudaMemsetAsync(<void*>ptr, value, size, <driver.Stream> stream)
     check_status(status)
 
 
@@ -250,90 +265,93 @@ cpdef PointerAttributes pointerGetAttributes(size_t ptr):
 ###############################################################################
 
 cpdef size_t streamCreate() except *:
-    cdef Stream stream
+    cdef driver.Stream stream
     status = cudaStreamCreate(&stream)
     check_status(status)
     return <size_t>stream
 
 
 cpdef size_t streamCreateWithFlags(unsigned int flags) except *:
-    cdef Stream stream
+    cdef driver.Stream stream
     status = cudaStreamCreateWithFlags(&stream, flags)
     check_status(status)
     return <size_t>stream
 
 
 cpdef streamDestroy(size_t stream):
-    status = cudaStreamDestroy(<Stream>stream)
+    status = cudaStreamDestroy(<driver.Stream>stream)
     check_status(status)
 
 
 cpdef streamSynchronize(size_t stream):
     with nogil:
-        status = cudaStreamSynchronize(<Stream>stream)
+        status = cudaStreamSynchronize(<driver.Stream>stream)
     check_status(status)
 
 
-cdef _streamCallbackFunc(Stream hStream, int status, void* func_arg) with gil:
+cdef _streamCallbackFunc(driver.Stream hStream, int status,
+                         void* func_arg) with gil:
     obj = <object>func_arg
     func, arg = obj
     func(<size_t>hStream, status, arg)
     cpython.Py_DECREF(obj)
+
 
 cpdef streamAddCallback(size_t stream, callback, size_t arg,
                         unsigned int flags=0):
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     status = cudaStreamAddCallback(
-        <Stream>stream, <StreamCallback>_streamCallbackFunc,
+        <driver.Stream>stream, <StreamCallback>_streamCallbackFunc,
         <void*>func_arg, flags)
     check_status(status)
 
 
 cpdef streamQuery(size_t stream):
-    return cudaStreamQuery(<Stream>stream)
+    return cudaStreamQuery(<driver.Stream>stream)
 
 
 cpdef streamWaitEvent(size_t stream, size_t event, unsigned int flags=0):
-    status = cudaStreamWaitEvent(<Stream>stream, <Event>event, flags)
+    status = cudaStreamWaitEvent(<driver.Stream>stream,
+                                 <driver.Event>event, flags)
     check_status(status)
 
 
 cpdef size_t eventCreate() except *:
-    cdef Event event
+    cdef driver.Event event
     status = cudaEventCreate(&event)
     check_status(status)
     return <size_t>event
 
 cpdef size_t eventCreateWithFlags(unsigned int flags) except *:
-    cdef Event event
+    cdef driver.Event event
     status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)
     return <size_t>event
 
 
 cpdef eventDestroy(size_t event):
-    status = cudaEventDestroy(<Event>event)
+    status = cudaEventDestroy(<driver.Event>event)
     check_status(status)
 
 
 cpdef float eventElapsedTime(size_t start, size_t end) except *:
     cdef float ms
-    status = cudaEventElapsedTime(&ms, <Event>start, <Event>end)
+    status = cudaEventElapsedTime(&ms, <driver.Event>start, <driver.Event>end)
     check_status(status)
     return ms
 
 
 cpdef eventQuery(size_t event):
-    return cudaEventQuery(<Event>event)
+    return cudaEventQuery(<driver.Event>event)
 
 
 cpdef eventRecord(size_t event, size_t stream):
-    status = cudaEventRecord(<Event>event, <Stream>stream)
+    status = cudaEventRecord(<driver.Event>event, <driver.Stream>stream)
     check_status(status)
 
 
 cpdef eventSynchronize(size_t event):
     with nogil:
-        status = cudaEventSynchronize(<Event>event)
+        status = cudaEventSynchronize(<driver.Event>event)
     check_status(status)

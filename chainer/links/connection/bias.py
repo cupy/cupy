@@ -26,6 +26,7 @@ class Bias(link.Link):
             no attributes.
 
     """
+
     def __init__(self, axis=1, shape=None):
         super(Bias, self).__init__()
 

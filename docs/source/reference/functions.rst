@@ -119,6 +119,10 @@ get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
+hstack
+~~~~~~~~
+.. autofunction:: hstack
+
 permutate
 ~~~~~~~~~
 .. autofunction:: permutate
@@ -311,6 +315,18 @@ log
 ~~~
 .. autofunction:: log
 
+log10
+~~~~~
+.. autofunction:: log10
+
+log1p
+~~~~~
+.. autofunction:: log1p
+
+log2
+~~~~
+.. autofunction:: log2
+
 logsumexp
 ~~~~~~~~~
 .. autofunction:: logsumexp
@@ -354,6 +370,10 @@ sqrt
 sum
 ~~~
 .. autofunction:: sum
+
+tan
+~~~
+.. autofunction:: tan
 
 
 Noise injections

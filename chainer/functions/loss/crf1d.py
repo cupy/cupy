@@ -8,7 +8,6 @@ from chainer.functions.math import sum as _sum
 
 
 def crf1d(cost, xs, ys):
-
     """Calculates negative log-likelihood of linear-chain CRF.
 
     It takes a transition cost matrix, a sequence of costs, and a sequence of
@@ -45,10 +44,10 @@ def crf1d(cost, xs, ys):
         <http://repository.upenn.edu/cis_papers/159/>`_.
 
     """
-    assert xs[0].data.shape[1] == cost.data.shape[0]
+    assert xs[0].shape[1] == cost.shape[0]
 
-    n_label = cost.data.shape[0]
-    n_batch = xs[0].data.shape[0]
+    n_label = cost.shape[0]
+    n_batch = xs[0].shape[0]
 
     alpha = xs[0]
     for x in xs[1:]:
@@ -58,7 +57,7 @@ def crf1d(cost, xs, ys):
     logz = logsumexp.logsumexp(alpha, axis=1)
 
     score = 0
-    cost = reshape.reshape(cost, (cost.data.size, 1))
+    cost = reshape.reshape(cost, (cost.size, 1))
     for y1, y2 in zip(ys[:-1], ys[1:]):
         score += reshape.reshape(
             embed_id.embed_id(y1 * n_label + y2, cost), (n_batch,))

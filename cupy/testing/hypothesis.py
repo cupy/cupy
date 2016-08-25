@@ -27,7 +27,7 @@ def chi_square_test(observed, expected, alpha=0.05, df=None):
     else:
         raise ValueError('support only alpha == 0.05 or 0.01')
 
-    chi_square = numpy.sum((observed-expected) ** 2 / expected)
+    chi_square = numpy.sum((observed - expected) ** 2 / expected)
     return chi_square < chi_square_table[alpha_idx][df]
 
 

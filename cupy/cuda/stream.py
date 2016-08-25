@@ -21,6 +21,7 @@ class Event(object):
             the CUDA Runtime API via ctypes.
 
     """
+
     def __init__(self, block=False, disable_timing=False, interprocess=False):
         self.ptr = 0
 
@@ -97,6 +98,7 @@ class Stream(object):
             the CUDA Runtime API via ctypes.
 
     """
+
     def __init__(self, null=False, non_blocking=False):
         if null:
             self.ptr = 0

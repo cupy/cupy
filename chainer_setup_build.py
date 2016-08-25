@@ -116,7 +116,6 @@ def check_library(compiler, includes=(), libraries=(),
 
 
 def make_extensions(options, compiler):
-
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']

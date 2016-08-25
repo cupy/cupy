@@ -165,6 +165,7 @@ class TestMomentumSGD(OptimizerTestBase, unittest.TestCase):
     'dtype': [numpy.float16, numpy.float32, numpy.float64]
 }))
 class NesterovAG(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.NesterovAG(0.1)
 
@@ -200,6 +201,7 @@ class TestSGD(OptimizerTestBase, unittest.TestCase):
     'dtype': [numpy.float16, numpy.float32, numpy.float64]
 }))
 class TestSMORMS3(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.SMORMS3(0.1)
 

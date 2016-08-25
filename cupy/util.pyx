@@ -21,7 +21,6 @@ def memoize(bint for_each_device=False):
     def decorator(f):
         memo = {}
         _memos.append(memo)
-        none = object()
 
         @functools.wraps(f)
         def ret(*args, **kwargs):

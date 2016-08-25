@@ -16,6 +16,7 @@ from chainer.links.connection import mlp_convolution_2d
 from chainer.links.connection import parameter
 from chainer.links.connection import peephole
 from chainer.links.connection import scale
+from chainer.links.loss import black_out
 from chainer.links.loss import crf1d
 from chainer.links.loss import hierarchical_softmax
 from chainer.links.loss import negative_sampling
@@ -43,6 +44,7 @@ Parameter = parameter.Parameter
 StatefulPeepholeLSTM = peephole.StatefulPeepholeLSTM
 Scale = scale.Scale
 
+BlackOut = black_out.BlackOut
 CRF1d = crf1d.CRF1d
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = negative_sampling.NegativeSampling

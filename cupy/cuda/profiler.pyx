@@ -1,13 +1,10 @@
 """Thin wrapper of cuda profiler."""
-cimport cython
-
 from cupy.cuda cimport runtime
-from cupy.cuda import runtime
 
 
 cdef extern from "cupy_cuda.h":
-    runtime.Error cudaProfilerInitialize(const char *configFile, 
-                                         const char *outputFile, 
+    runtime.Error cudaProfilerInitialize(const char *configFile,
+                                         const char *outputFile,
                                          int outputMode)
     runtime.Error cudaProfilerStart()
     runtime.Error cudaProfilerStop()

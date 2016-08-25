@@ -49,6 +49,7 @@ class StatefulPeepholeLSTM(link.Chain):
         h (~chainer.Variable): Output at the current time step.
 
     """
+
     def __init__(self, in_size, out_size):
         super(StatefulPeepholeLSTM, self).__init__(
             upward=linear.Linear(in_size, 4 * out_size),
@@ -98,16 +99,16 @@ class StatefulPeepholeLSTM(link.Chain):
         if self.c is None:
             xp = self.xp
             self.c = variable.Variable(
-                xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
+                xp.zeros((x.shape[0], self.state_size), dtype=x.dtype),
                 volatile='auto')
         lstm_in = reshape.reshape(lstm_in, (len(lstm_in.data),
-                                            lstm_in.data.shape[1] // 4,
+                                            lstm_in.shape[1] // 4,
                                             4))
         a, i, f, o = split_axis.split_axis(lstm_in, 4, 2)
-        a = reshape.reshape(a, (len(a.data), a.data.shape[1]))
-        i = reshape.reshape(i, (len(i.data), i.data.shape[1]))
-        f = reshape.reshape(f, (len(f.data), f.data.shape[1]))
-        o = reshape.reshape(o, (len(o.data), o.data.shape[1]))
+        a = reshape.reshape(a, (len(a.data), a.shape[1]))
+        i = reshape.reshape(i, (len(i.data), i.shape[1]))
+        f = reshape.reshape(f, (len(f.data), f.shape[1]))
+        o = reshape.reshape(o, (len(o.data), o.shape[1]))
         peep_in_i = self.peep_i(self.c)
         peep_in_f = self.peep_f(self.c)
         a = tanh.tanh(a)

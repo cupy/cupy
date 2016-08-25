@@ -1,7 +1,11 @@
 import unittest
 
+import numpy
+
 import chainer
+from chainer import cuda
 from chainer import testing
+from chainer.testing import attr
 
 
 class TestReporter(unittest.TestCase):
@@ -113,6 +117,60 @@ class TestReport(unittest.TestCase):
         self.assertIn('x', observation)
         self.assertEqual(observation['x'], 1)
         self.assertNotIn('x', reporter.observation)
+
+
+class TestSummary(unittest.TestCase):
+
+    def setUp(self):
+        self.summary = chainer.reporter.Summary()
+
+    def test_numpy(self):
+        self.summary.add(numpy.array(1, 'f'))
+        self.summary.add(numpy.array(-2, 'f'))
+
+        mean = self.summary.compute_mean()
+        testing.assert_allclose(mean, numpy.array(-0.5, 'f'))
+
+        mean, std = self.summary.make_statistics()
+        testing.assert_allclose(mean, numpy.array(-0.5, 'f'))
+        testing.assert_allclose(std, numpy.array(1.5, 'f'))
+
+    @attr.gpu
+    def test_cupy(self):
+        xp = cuda.cupy
+        self.summary.add(xp.array(1, 'f'))
+        self.summary.add(xp.array(-2, 'f'))
+
+        mean = self.summary.compute_mean()
+        testing.assert_allclose(mean, numpy.array(-0.5, 'f'))
+
+        mean, std = self.summary.make_statistics()
+        testing.assert_allclose(mean, numpy.array(-0.5, 'f'))
+        testing.assert_allclose(std, numpy.array(1.5, 'f'))
+
+    def test_int(self):
+        self.summary.add(1)
+        self.summary.add(2)
+        self.summary.add(3)
+
+        mean = self.summary.compute_mean()
+        testing.assert_allclose(mean, 2)
+
+        mean, std = self.summary.make_statistics()
+        testing.assert_allclose(mean, 2)
+        testing.assert_allclose(std, numpy.sqrt(2 / 3))
+
+    def test_float(self):
+        self.summary.add(1.)
+        self.summary.add(2.)
+        self.summary.add(3.)
+
+        mean = self.summary.compute_mean()
+        testing.assert_allclose(mean, 2.)
+
+        mean, std = self.summary.make_statistics()
+        testing.assert_allclose(mean, 2.)
+        testing.assert_allclose(std, numpy.sqrt(2. / 3.))
 
 
 testing.run_module(__name__, __file__)
