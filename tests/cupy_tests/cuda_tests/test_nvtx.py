@@ -1,6 +1,6 @@
-import unittest
 from chainer.testing import attr
 from cupy.cuda import nvtx
+import unittest
 
 
 class TestNVTX(unittest.TestCase):
