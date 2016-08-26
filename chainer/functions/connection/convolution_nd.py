@@ -144,9 +144,15 @@ class ConvolutionND(function.Function):
         # Add bias if given.
         # TODO(takagi) Support unshared bias
         if b is not None:
-            cudnn.add_tensor(
-                handle, one.data, self.bias_desc.value, b.data.ptr,
-                one.data, y_desc.value, y.data.ptr)
+            if _cudnn_version >= 3000 or ndim == 2:
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
+            else:
+                # cuDNN v2 seems not to support bias addition in spatial
+                # dimensions of three or more.
+                b_index = (None, colon) + (None,) * ndim
+                y += b[b_index]
 
         return y,
 
