@@ -21,8 +21,6 @@ from cupy.cuda cimport memory
 
 DEF MAX_NDIM = 25
 
-_cuda_runtime_version = runtime.runtimeGetVersion()
-
 
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
@@ -1959,6 +1957,9 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     return tensordot_core(a, b, out, n, m, k, ret_shape)
 
 
+cdef _cuda_runtime_version = None
+
+
 cpdef ndarray tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
         Py_ssize_t k, vector.vector[Py_ssize_t] ret_shape):
@@ -1976,6 +1977,10 @@ cpdef ndarray tensordot_core(
             out = ndarray(ret_shape, dtype=ret_dtype)
         out.fill(0)
         return out
+
+    global _cuda_runtime_version
+    if _cuda_runtime_version is None:
+        _cuda_runtime_version =  runtime.runtimeGetVersion()
 
     use_sgemmEx = (_cuda_runtime_version >= 7500 and
                    a.dtype == 'e' and b.dtype == 'e' and
