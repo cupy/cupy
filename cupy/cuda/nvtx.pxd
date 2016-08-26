@@ -32,8 +32,8 @@ cdef extern from "cupy_cuda.h":
         int64_t    llValue
         double      dValue
     cdef union message_t:
-        char*     ascii
-        wchar_t*  unicode
+        char* ascii
+        wchar_t* unicode
     cdef struct nvtxEventAttributes_v1:
         uint16_t   version
         uint16_t   size
