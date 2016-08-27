@@ -135,7 +135,7 @@ def create_convolution_descriptor(pad, stride, dtype,
             #     storing precision of FP16 in spatial dimensions of three or
             #     more.
             if ndim > 2 and dtype == numpy.float16:
-                data_type = get_data_type(numpy.float32)
+                data_type = cudnn.CUDNN_DATA_FLOAT
             cudnn.setConvolutionNdDescriptor_v3(
                 desc.value, ndim, c_pad.data, c_stride.data, c_upscale.data,
                 mode, data_type)
