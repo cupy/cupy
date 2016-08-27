@@ -150,7 +150,7 @@ class ConvolutionND(function.Function):
                     one.data, y_desc.value, y.data.ptr)
             else:
                 # cuDNN v2 seems not to support bias addition in spatial
-                # dimensions of three or more.
+                # dimensions other than two.
                 b_index = (None, colon) + (None,) * ndim
                 y += b[b_index]
 
@@ -258,11 +258,19 @@ class ConvolutionND(function.Function):
         # Compute bias gradient if given and return gradients.
         if b is None:
             return gx, gW
-        else:
+        elif _cudnn_version >= 3000 or self.ndim == 2:
             gb = cuda.cupy.empty_like(b)
             libcudnn.convolutionBackwardBias(
                 handle, one.data, gy_desc.value, gy.data.ptr,
                 zero.data, self.bias_desc.value, gb.data.ptr)
+            return gx, gW, gb
+        else:
+            # cuDNN v2 seems not to support bias backward in spatial dimensions
+            # other than two.
+
+            # (n, _, out_1, out_2, ..., out_N)
+            axis = (0,) + tuple(moves.range(2, self.ndim + 2))
+            gb = gy.sum(axis=axis)
             return gx, gW, gb
 
     def backward(self, inputs, grad_outputs):
