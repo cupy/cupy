@@ -24,7 +24,8 @@ def generate_array(initializer, shape, xp):
     """Return initialized array.
 
     The algorithms used to make the new values depend on the
-    concrete derived classes.
+    concrete derived classes. The dtype of a generated array depends on
+    ``initializer.dtype``.
 
     Args:
         initializer: The callable object that takes :class:`numpy.ndarray`

@@ -2,6 +2,15 @@ import numpy
 
 
 class Initializer(object):
+    """Initializes array.
+
+    It initializes the given array.
+
+    Attributes:
+        dtype: Data type specifier. It is for type check in ``__call__``
+            function.
+
+    """
 
     def __init__(self, dtype=None):
         self.dtype = dtype
