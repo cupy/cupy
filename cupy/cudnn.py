@@ -132,9 +132,8 @@ def create_convolution_descriptor(pad, stride, dtype,
         if _cudnn_version >= 3000:
             data_type = get_data_type(dtype)
             # TODO(takag) Temporarily use computing precision of FP32 for
-            #     storing precision of FP16 in spatial dimensions of three or
-            #     more.
-            if ndim > 2 and dtype == numpy.float16:
+            #     storing precision of FP16.
+            if dtype == numpy.float16:
                 data_type = cudnn.CUDNN_DATA_FLOAT
             cudnn.setConvolutionNdDescriptor_v3(
                 desc.value, ndim, c_pad.data, c_stride.data, c_upscale.data,
