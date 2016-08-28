@@ -94,6 +94,7 @@ class Link(object):
         self._persistent = []
         self._uninitialized_params = set()
         self._cpu = True
+        self._device_id = None
         self.name = None
 
         for name, shape in six.iteritems(params):
@@ -250,6 +251,7 @@ class Link(object):
             if isinstance(value, cuda.ndarray):
                 d[name] = value.get()
         self._cpu = True
+        self._device_id = None
         return self
 
     def to_gpu(self, device=None):
@@ -277,6 +279,7 @@ class Link(object):
                 value = d[name]
                 if isinstance(value, numpy.ndarray):
                     d[name] = cuda.to_gpu(value)
+            self._device_id = cuda.cupy.cuda.get_device_id()
         self._cpu = False
         return self
 
