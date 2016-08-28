@@ -388,7 +388,7 @@ class GradientMethod(Optimizer):
                 use_cleargrads = kwds['use_cleargrads']
                 del kwds['use_cleargrads']
             else:
-                use_cleargrads = True
+                use_cleargrads = False
             loss = lossfun(*args, **kwds)
             if use_cleargrads:
                 self.target.cleargrads()
