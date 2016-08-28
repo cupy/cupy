@@ -1980,7 +1980,7 @@ cpdef ndarray tensordot_core(
 
     global _cuda_runtime_version
     if _cuda_runtime_version is None:
-        _cuda_runtime_version =  runtime.runtimeGetVersion()
+        _cuda_runtime_version = runtime.runtimeGetVersion()
 
     use_sgemmEx = (_cuda_runtime_version >= 7500 and
                    a.dtype == 'e' and b.dtype == 'e' and
