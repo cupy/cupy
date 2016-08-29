@@ -25,6 +25,9 @@ class IntervalTrigger(object):
     def __call__(self, trainer):
         """Decides whether the extension should be called on this iteration.
 
+        In order to support non-integer epoch intervals, it does not rely on
+        ``updater.iterator.is_new_epoch``.
+
         Args:
             trainer (Trainer): Trainer object that this trigger is associated
                 with. The updater associated with this trainer is used to
