@@ -40,6 +40,7 @@ class RandomState(object):
                cupy.cuda.curand.CURAND_RNG_PHILOX4_32_10
 
     """
+
     def __init__(self, seed=None, method=curand.CURAND_RNG_PSEUDO_DEFAULT):
         self._generator = curand.createGenerator(method)
         self.seed(seed)

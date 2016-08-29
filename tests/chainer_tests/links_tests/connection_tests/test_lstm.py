@@ -22,7 +22,7 @@ class TestLSTM(unittest.TestCase):
         upward[...] = numpy.random.uniform(-1, 1, upward.shape)
         lateral = self.link.lateral.W.data
         lateral[...] = numpy.random.uniform(-1, 1, lateral.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.upward = upward.copy()  # fixed on CPU
         self.lateral = lateral.copy()  # fixed on CPU
@@ -230,7 +230,7 @@ class TestStatelessLSTM(unittest.TestCase):
         upward[...] = numpy.random.uniform(-1, 1, upward.shape)
         lateral = self.link.lateral.W.data
         lateral[...] = numpy.random.uniform(-1, 1, lateral.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.upward = upward.copy()  # fixed on CPU
         self.lateral = lateral.copy()  # fixed on CPU

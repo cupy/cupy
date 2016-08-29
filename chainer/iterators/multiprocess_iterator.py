@@ -31,6 +31,7 @@ class MultiprocessIterator(iterator.Iterator):
             used by default.
 
     """
+
     def __init__(self, dataset, batch_size, repeat=True, shuffle=True,
                  n_processes=None):
         self.dataset = dataset

@@ -295,6 +295,10 @@ cos
 ~~~
 .. autofunction:: cos
 
+cosh
+~~~~
+.. autofunction:: cosh
+
 exp
 ~~~
 .. autofunction:: exp
@@ -315,9 +319,17 @@ log
 ~~~
 .. autofunction:: log
 
+log10
+~~~~~
+.. autofunction:: log10
+
 log1p
 ~~~~~
 .. autofunction:: log1p
+
+log2
+~~~~
+.. autofunction:: log2
 
 logsumexp
 ~~~~~~~~~
@@ -343,6 +355,10 @@ minimum
 ~~~~~~~
 .. autofunction:: minimum
 
+rsqrt
+~~~~~
+.. autofunction:: rsqrt
+
 scale
 ~~~~~
 .. autofunction:: scale
@@ -351,6 +367,10 @@ sin
 ~~~
 .. autofunction:: sin
 
+sinh
+~~~~
+.. autofunction:: sinh
+
 sqrt
 ~~~~
 .. autofunction:: sqrt
@@ -358,6 +378,12 @@ sqrt
 sum
 ~~~
 .. autofunction:: sum
+
+tanh
+~~~~
+Hyperbolic tangent function is described in "Activation functions" section.
+
+.. seealso:: :func:`~chainer.functions.tanh`
 
 tan
 ~~~

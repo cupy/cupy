@@ -8,7 +8,6 @@ from chainer.functions.math import sum as _sum
 
 
 def crf1d(cost, xs, ys):
-
     """Calculates negative log-likelihood of linear-chain CRF.
 
     It takes a transition cost matrix, a sequence of costs, and a sequence of

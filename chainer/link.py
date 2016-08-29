@@ -88,6 +88,7 @@ class Link(object):
         name (str): Name of this link, given by the parent chain (if exists).
 
     """
+
     def __init__(self, **params):
         self._params = []
         self._persistent = []
@@ -356,11 +357,21 @@ class Link(object):
         for name in self._params:
             dst[name].copydata(src[name])
 
-    def zerograds(self):
-        """Initializes all gradient arrays by zero.
+    def cleargrads(self):
+        """Clears all gradient arrays.
 
         This method should be called before the backward computation at every
         iteration of the optimization.
+
+        """
+        for param in self.params():
+            param.cleargrad()
+
+    def zerograds(self):
+        """Initializes all gradient arrays by zero.
+
+        This method can be used for the same purpose of cleargrads, but less
+        efficient. This method is left for backward compatibility.
 
         """
         for param in self.params():
@@ -470,6 +481,7 @@ class Chain(Link):
             also set to the links.
 
     """
+
     def __init__(self, **links):
         super(Chain, self).__init__()
         self._children = []
@@ -616,6 +628,7 @@ class ChainList(Link):
         links: Initial child links.
 
     """
+
     def __init__(self, *links):
         super(ChainList, self).__init__()
         self._children = []

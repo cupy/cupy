@@ -55,7 +55,7 @@ class LinearModel(object):
         for _ in six.moves.range(self.EPOCH):
             x, t = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu,
                                  self.dtype)
-            model.zerograds()
+            model.cleargrads()
             y = model(x)
             loss = F.softmax_cross_entropy(y, t)
             loss.backward()
@@ -165,6 +165,7 @@ class TestMomentumSGD(OptimizerTestBase, unittest.TestCase):
     'dtype': [numpy.float16, numpy.float32, numpy.float64]
 }))
 class NesterovAG(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.NesterovAG(0.1)
 
@@ -200,6 +201,7 @@ class TestSGD(OptimizerTestBase, unittest.TestCase):
     'dtype': [numpy.float16, numpy.float32, numpy.float64]
 }))
 class TestSMORMS3(OptimizerTestBase, unittest.TestCase):
+
     def create(self):
         return optimizers.SMORMS3(0.1)
 
