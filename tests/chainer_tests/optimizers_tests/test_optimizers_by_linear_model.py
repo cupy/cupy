@@ -55,7 +55,7 @@ class LinearModel(object):
         for _ in six.moves.range(self.EPOCH):
             x, t = _make_dataset(self.BATCH_SIZE, self.UNIT_NUM, gpu,
                                  self.dtype)
-            model.zerograds()
+            model.cleargrads()
             y = model(x)
             loss = F.softmax_cross_entropy(y, t)
             loss.backward()

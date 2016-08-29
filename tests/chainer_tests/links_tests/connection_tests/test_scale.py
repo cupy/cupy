@@ -44,7 +44,7 @@ class TestScale(unittest.TestCase):
                 axis, None, bias_term, bias_shape)
             if bias_term:
                 self.link.bias.b.data = self.b
-        self.link.zerograds()
+        self.link.cleargrads()
 
     def test_attribute_presence(self):
         self.assertEqual(self.learn_W, hasattr(self.link, 'W'))

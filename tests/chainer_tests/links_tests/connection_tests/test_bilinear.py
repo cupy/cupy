@@ -49,7 +49,7 @@ class TestBilinear(unittest.TestCase):
         self.f.V1.data[...] = _uniform(*self.f.V1.data.shape)
         self.f.V2.data[...] = _uniform(*self.f.V2.data.shape)
         self.f.b.data[...] = _uniform(*self.f.b.data.shape)
-        self.f.zerograds()
+        self.f.cleargrads()
 
         self.W = self.f.W.data.copy()
         self.V1 = self.f.V1.data.copy()
@@ -153,7 +153,7 @@ class TestBilinearWOBias(TestBilinear):
             self.in_shape[0], self.in_shape[1], self.out_size, True)
         W = self.f.W.data
         W[...] = numpy.random.uniform(-1, 1, W.shape)
-        self.f.zerograds()
+        self.f.cleargrads()
 
         self.W = W.copy()
 

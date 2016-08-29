@@ -267,6 +267,29 @@ class TestVariable(unittest.TestCase):
         cp.testing.assert_array_equal(a.data, b)
         cp.testing.assert_array_equal(a.grad, gb)
 
+    def check_cleargrad(self, a_data, fill=False):
+        xp = cuda.get_array_module(a_data)
+        a = chainer.Variable(a_data)
+        if fill:
+            a.grad = xp.full_like(a_data, np.nan)
+
+        a.cleargrad()
+        self.assertIsNone(a.grad)
+
+    def test_cleargrad_cpu(self):
+        self.check_cleargrad(np.empty(3, dtype=np.float32))
+
+    def test_cleargrad_fill_cpu(self):
+        self.check_cleargrad(np.empty(3, dtype=np.float32), fill=True)
+
+    @attr.gpu
+    def test_cleargrad_gpu(self):
+        self.check_cleargrad(cuda.cupy.empty(3, dtype=np.float32))
+
+    @attr.gpu
+    def test_cleargrad_fill_gpu(self):
+        self.check_cleargrad(cuda.cupy.empty(3, dtype=np.float32), fill=True)
+
     def check_zerograd(self, a_data, fill=False):
         xp = cuda.get_array_module(a_data)
         a = chainer.Variable(a_data)

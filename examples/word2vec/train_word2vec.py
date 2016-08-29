@@ -184,7 +184,7 @@ for epoch in range(args.epoch):
         accum_loss += loss.data
         word_count += args.batchsize
 
-        model.zerograds()
+        model.cleargrads()
         loss.backward()
         del loss
         optimizer.update()
