@@ -35,5 +35,5 @@ class Alex(chainer.Chain):
         h = self.fc8(h)
 
         loss = F.softmax_cross_entropy(h, t)
-        chainer.report({'loss': loss, 'acuracy': F.accuracy(h, t)}, self)
+        chainer.report({'loss': loss, 'accuracy': F.accuracy(h, t)}, self)
         return loss
