@@ -105,6 +105,7 @@ class DebugMode(object):
     Args:
         debug (bool): Debug mode used in the context.
     """
+
     def __init__(self, debug):
         self._debug = debug
 

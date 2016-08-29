@@ -205,6 +205,8 @@ mintypecode = numpy.mintypecode
 take = indexing.indexing.take
 diagonal = indexing.indexing.diagonal
 ix_ = indexing.generate.ix_
+
+fill_diagonal = indexing.insert.fill_diagonal
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------

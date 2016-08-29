@@ -19,7 +19,7 @@ class TestConvolution2D(unittest.TestCase):
         self.link = links.Convolution2D(3, 2, 3, stride=2, pad=1)
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.x = numpy.random.uniform(-1, 1,
                                       (2, 3, 4, 3)).astype(numpy.float32)
@@ -120,7 +120,7 @@ class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
         self.link(chainer.Variable(self.x))
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
         self.gy = numpy.random.uniform(-1, 1,
                                        (2, 2, 2, 2)).astype(numpy.float32)
 
@@ -128,7 +128,7 @@ class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
     def test_im2col_consistency(self):
         col_cpu = conv.im2col_cpu(self.x, 3, 3, 2, 2, 1, 1)
         col_gpu = conv.im2col_gpu(cuda.to_gpu(self.x), 3, 3, 2, 2, 1, 1)
-        gradient_check.assert_allclose(col_cpu, col_gpu.get(), atol=0, rtol=0)
+        testing.assert_allclose(col_cpu, col_gpu.get(), atol=0, rtol=0)
 
     @attr.gpu
     def test_col2im_consistency(self):
@@ -136,7 +136,7 @@ class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
         h, w = self.x.shape[2:]
         im_cpu = conv.col2im_cpu(col, 2, 2, 1, 1, h, w)
         im_gpu = conv.col2im_gpu(cuda.to_gpu(col), 2, 2, 1, 1, h, w)
-        gradient_check.assert_allclose(im_cpu, im_gpu.get())
+        testing.assert_allclose(im_cpu, im_gpu.get())
 
     def check_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
@@ -148,7 +148,7 @@ class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
         y_gpu = self.link(x_gpu)
         self.assertEqual(y_gpu.data.dtype, numpy.float32)
 
-        gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
+        testing.assert_allclose(y_cpu.data, y_gpu.data.get())
 
     @attr.cudnn
     @condition.retry(3)
@@ -197,7 +197,7 @@ class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
         y = self.link(x)
         y_data2 = y.data
 
-        gradient_check.assert_allclose(y_data1, y_data2, atol=0, rtol=0)
+        testing.assert_allclose(y_data1, y_data2, atol=0, rtol=0)
 
     def test_pickling_cpu(self):
         self.check_pickling(self.x)

@@ -127,7 +127,7 @@ cdef class MemoryPointer:
                            runtime.memcpyDefault)
 
     cpdef copy_from_device_async(self, MemoryPointer src, size_t size, stream):
-        """Copies a memory sequence from a (possibly different) device asynchronously.
+        """Copies a memory from a (possibly different) device asynchronously.
 
         Args:
             src (cupy.cuda.MemoryPointer): Source memory pointer.

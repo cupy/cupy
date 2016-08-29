@@ -91,7 +91,7 @@ class Convolution2D(link.Link):
 
         """
         if self.has_uninitialized_params:
-            self._initialize_params(x.data.shape[1])
+            self._initialize_params(x.shape[1])
         return convolution_2d.convolution_2d(
             x, self.W, self.b, self.stride, self.pad, self.use_cudnn)
 

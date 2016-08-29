@@ -90,10 +90,6 @@ typedef int Error;
 typedef enum cudaDeviceAttr DeviceAttr;
 typedef enum cudaMemcpyKind MemoryKind;
 
-
-typedef void* _Pointer;
-
-
 typedef void (*cudaStreamCallback_t)(
     Stream stream, Error status, void* userData);
 
@@ -432,7 +428,7 @@ int cublasSgetriBatched(
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// cublas_v2.h
+// curand.h
 ///////////////////////////////////////////////////////////////////////////////
 
 typedef int curandOrdering_t;

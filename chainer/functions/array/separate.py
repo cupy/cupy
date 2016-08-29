@@ -21,7 +21,7 @@ def separate(x, axis=0):
     .. seealso:: :func:`chainer.functions.stack`
 
     """
-    shape = list(x.data.shape)
+    shape = list(x.shape)
     del shape[axis]
-    ys = split_axis.split_axis(x, x.data.shape[axis], axis, force_tuple=True)
+    ys = split_axis.split_axis(x, x.shape[axis], axis, force_tuple=True)
     return tuple(reshape.reshape(y, shape) for y in ys)

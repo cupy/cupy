@@ -74,6 +74,7 @@ class BinaryHierarchicalSoftmaxFunction(function.Function):
        See :class:`BinaryHierarchicalSoftmax` for details.
 
     """
+
     def __init__(self, tree):
         parser = TreeParser()
         parser.parse(tree)
@@ -291,12 +292,13 @@ class BinaryHierarchicalSoftmax(link.Link):
     AISTAT2005].
 
     """
+
     def __init__(self, in_size, tree):
         # This function object is copied on every forward computation.
         self._func = BinaryHierarchicalSoftmaxFunction(tree)
         super(BinaryHierarchicalSoftmax, self).__init__(
             W=(self._func.parser_size, in_size))
-        self.W.data[...] = numpy.random.uniform(-1, 1, self.W.data.shape)
+        self.W.data[...] = numpy.random.uniform(-1, 1, self.W.shape)
 
     def to_gpu(self, device=None):
         with cuda.get_device(device):

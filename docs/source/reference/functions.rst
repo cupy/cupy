@@ -119,6 +119,10 @@ get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
+hstack
+~~~~~~~~
+.. autofunction:: hstack
+
 permutate
 ~~~~~~~~~
 .. autofunction:: permutate
@@ -315,6 +319,18 @@ log
 ~~~
 .. autofunction:: log
 
+log10
+~~~~~
+.. autofunction:: log10
+
+log1p
+~~~~~
+.. autofunction:: log1p
+
+log2
+~~~~
+.. autofunction:: log2
+
 logsumexp
 ~~~~~~~~~
 .. autofunction:: logsumexp
@@ -339,6 +355,10 @@ minimum
 ~~~~~~~
 .. autofunction:: minimum
 
+rsqrt
+~~~~~
+.. autofunction:: rsqrt
+
 scale
 ~~~~~
 .. autofunction:: scale
@@ -351,6 +371,10 @@ sinh
 ~~~~
 .. autofunction:: sinh
 
+sqrt
+~~~~
+.. autofunction:: sqrt
+
 sum
 ~~~
 .. autofunction:: sum
@@ -360,6 +384,10 @@ tanh
 Hyperbolic tangent function is described in "Activation functions" section.
 
 .. seealso:: :func:`~chainer.functions.tanh`
+
+tan
+~~~
+.. autofunction:: tan
 
 
 Noise injections
