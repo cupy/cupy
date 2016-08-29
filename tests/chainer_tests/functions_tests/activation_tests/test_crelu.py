@@ -19,32 +19,38 @@ def _replace_near_zero_values(x):
             x.flat[i] = 0.5
 
 
-@testing.parameterize(
-    {'shape': (5, 4), 'y_shape': (10, 4), 'axis': 0},
-    {'shape': (5, 4), 'y_shape': (5, 8), 'axis': 1},
-    {'shape': (5, 4), 'y_shape': (5, 8), 'axis': -1},
-    {'shape': (5, 4), 'y_shape': (10, 4), 'axis': -2},
-    {'shape': (5, 4, 3, 2), 'y_shape': (10, 4, 3, 2), 'axis': 0},
-    {'shape': (5, 4, 3, 2), 'y_shape': (5, 8, 3, 2), 'axis': 1},
-    {'shape': (5, 4, 3, 2), 'y_shape': (5, 4, 6, 2), 'axis': 2},
-    {'shape': (5, 4, 3, 2), 'y_shape': (5, 4, 3, 4), 'axis': 3},
-    {'shape': (5, 4, 3, 2), 'y_shape': (5, 4, 3, 4), 'axis': -1},
-    {'shape': (5, 4, 3, 2), 'y_shape': (5, 4, 6, 2), 'axis': -2},
-    {'shape': (5, 4, 3, 2), 'y_shape': (5, 8, 3, 2), 'axis': -3},
-    {'shape': (5, 4, 3, 2), 'y_shape': (10, 4, 3, 2), 'axis': -4},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'shape': (5, 4), 'y_shape': (10, 4), 'axis': 0},
+        {'shape': (5, 4), 'y_shape': (5, 8), 'axis': 1},
+        {'shape': (5, 4), 'y_shape': (5, 8), 'axis': -1},
+        {'shape': (5, 4), 'y_shape': (10, 4), 'axis': -2},
+        {'shape': (5, 4, 3, 2), 'y_shape': (10, 4, 3, 2), 'axis': 0},
+        {'shape': (5, 4, 3, 2), 'y_shape': (5, 8, 3, 2), 'axis': 1},
+        {'shape': (5, 4, 3, 2), 'y_shape': (5, 4, 6, 2), 'axis': 2},
+        {'shape': (5, 4, 3, 2), 'y_shape': (5, 4, 3, 4), 'axis': 3},
+        {'shape': (5, 4, 3, 2), 'y_shape': (5, 4, 3, 4), 'axis': -1},
+        {'shape': (5, 4, 3, 2), 'y_shape': (5, 4, 6, 2), 'axis': -2},
+        {'shape': (5, 4, 3, 2), 'y_shape': (5, 8, 3, 2), 'axis': -3},
+        {'shape': (5, 4, 3, 2), 'y_shape': (10, 4, 3, 2), 'axis': -4},
+    ], [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ]
+))
 class TestCReLU(unittest.TestCase):
 
     def setUp(self):
-        self.x = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         _replace_near_zero_values(self.x)
         self.gy = numpy.random.uniform(
-            -1, 1, self.y_shape).astype(numpy.float32)
+            -1, 1, self.y_shape).astype(self.dtype)
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
         y = functions.crelu(x, axis=self.axis)
-        self.assertEqual(y.data.dtype, numpy.float32)
+        self.assertEqual(y.data.dtype, self.dtype)
         self.assertEqual(y.data.shape, self.y_shape)
 
         expected_former = self.x.copy()
@@ -68,7 +74,7 @@ class TestCReLU(unittest.TestCase):
 
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            functions.CReLU(self.axis), x_data, y_grad)
+            functions.CReLU(self.axis), x_data, y_grad, dtype=numpy.float64)
 
     @condition.retry(3)
     def test_backward_cpu(self):

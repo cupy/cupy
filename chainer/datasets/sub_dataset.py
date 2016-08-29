@@ -43,6 +43,7 @@ class SubDataset(dataset_mixin.DatasetMixin):
             If this is ``None``, then the ascending order of indexes is used.
 
     """
+
     def __init__(self, dataset, start, finish, order=None):
         if start < 0 or finish > len(dataset):
             raise ValueError('subset overruns the base dataset.')

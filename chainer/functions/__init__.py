@@ -21,6 +21,7 @@ from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
 from chainer.functions.array import get_item
+from chainer.functions.array import hstack
 from chainer.functions.array import permutate
 from chainer.functions.array import reshape
 from chainer.functions.array import rollaxis
@@ -39,6 +40,8 @@ from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
+from chainer.functions.evaluation import classification_summary \
+    as classification_summary_
 from chainer.functions.loss import black_out
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import crf1d
@@ -69,6 +72,7 @@ from chainer.functions.math import maximum
 from chainer.functions.math import minimum
 from chainer.functions.math import minmax
 from chainer.functions.math import scale
+from chainer.functions.math import sqrt
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -141,6 +145,7 @@ ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
 GetItem = get_item.GetItem
 get_item = get_item.get_item
+hstack = hstack.hstack
 Permutate = permutate.Permutate
 permutate = permutate.permutate
 Reshape = reshape.Reshape
@@ -172,6 +177,11 @@ Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 BinaryAccuracy = binary_accuracy.BinaryAccuracy
 binary_accuracy = binary_accuracy.binary_accuracy
+ClassificationSummary = classification_summary_.ClassificationSummary
+classification_summary = classification_summary_.classification_summary
+precision = classification_summary_.precision
+recall = classification_summary_.recall
+f1_score = classification_summary_.f1_score
 
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
@@ -227,8 +237,12 @@ LinearInterpolate = linear_interpolate.LinearInterpolate
 linear_interpolate = linear_interpolate.linear_interpolate
 Log = exponential.Log
 log = exponential.log
+Log10 = exponential.Log10
+log10 = exponential.log10
 Log1p = logarithm_1p.Log1p
 log1p = logarithm_1p.log1p
+Log2 = exponential.Log2
+log2 = exponential.log2
 LogSumExp = logsumexp.LogSumExp
 logsumexp = logsumexp.logsumexp
 MatMul = matmul.MatMul
@@ -241,11 +255,16 @@ Minimum = minimum.Minimum
 minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
+rsqrt = sqrt.rsqrt
 scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
+Sqrt = sqrt.Sqrt
+sqrt = sqrt.sqrt
 Sum = sum.Sum
 sum = sum.sum
+Tan = trigonometric.Tan
+tan = trigonometric.tan
 
 Dropout = dropout.Dropout
 dropout = dropout.dropout

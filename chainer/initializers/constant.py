@@ -47,14 +47,12 @@ class Constant(initializer.Initializer):
 
 
 def Zero():
-
     """Returns initializer that initializes array with the all-zero array."""
 
     return Constant(0.0)
 
 
 def One():
-
     """Returns initializer that initializes array with the all-one array."""
 
     return Constant(1.0)

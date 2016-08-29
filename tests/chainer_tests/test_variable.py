@@ -49,6 +49,23 @@ class TestVariable(unittest.TestCase):
         x = chainer.Variable(self.x, name='x')
         self.assertEqual(str(x), 'x')
 
+    def check_attributes(self, gpu):
+        x = self.x
+        if gpu:
+            x = cuda.to_gpu(x)
+        x = chainer.Variable(x)
+        self.assertEqual(x.shape, self.x.shape)
+        self.assertEqual(x.ndim, self.x.ndim)
+        self.assertEqual(x.size, self.x.size)
+        self.assertEqual(x.dtype, self.x.dtype)
+
+    def test_attributes_cpu(self):
+        self.check_attributes(False)
+
+    @attr.gpu
+    def test_attributes_gpu(self):
+        self.check_attributes(True)
+
     def check_len(self, gpu):
         x = self.x
         if gpu:
@@ -419,7 +436,7 @@ class TestDebugPrint(unittest.TestCase):
         self.assertIn('dtype: float32', result)
         # py2.7 on win64 returns shape as long
         self.assertTrue(re.match(r'- shape: \(5L?, 3L?, 5L?, 5L?\)',
-                        result.splitlines()[4]))
+                                 result.splitlines()[4]))
 
         # no grad
         msg = 'statistics: mean={mean:.8f}, std={std:.8f}'
@@ -462,6 +479,7 @@ class TestDebugPrint(unittest.TestCase):
 
 
 class TestVariableSetCreator(unittest.TestCase):
+
     class MockFunction(object):
         pass
 

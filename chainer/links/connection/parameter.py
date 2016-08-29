@@ -18,6 +18,7 @@ class Parameter(link.Link):
         W (~chainer.Variable): Parameter variable.
 
     """
+
     def __init__(self, array):
         super(Parameter, self).__init__()
         self.add_param('W', array.shape, dtype=array.dtype)

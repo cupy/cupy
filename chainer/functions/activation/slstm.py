@@ -48,6 +48,7 @@ class SLSTM(function.Function):
     to the number of units.
 
     """
+
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 4)
         c1_type, c2_type, x1_type, x2_type = in_types
@@ -179,7 +180,6 @@ class SLSTM(function.Function):
 
 
 def slstm(c_prev1, c_prev2, x1, x2):
-
     """S-LSTM units as an activation function.
 
     This function implements S-LSTM unit. It is an extension of LSTM unit

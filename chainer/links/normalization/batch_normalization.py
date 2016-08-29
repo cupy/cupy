@@ -58,6 +58,7 @@ class BatchNormalization(link.Link):
             to the batch variances.
 
     """
+
     def __init__(self, size, decay=0.9, eps=2e-5, dtype=numpy.float32,
                  use_gamma=True, use_beta=True,
                  initial_gamma=None, initial_beta=None):
@@ -104,12 +105,12 @@ class BatchNormalization(link.Link):
             gamma = self.gamma
         else:
             gamma = variable.Variable(self.xp.ones(
-                self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
+                self.avg_mean.shape, dtype=x.dtype), volatile='auto')
         if hasattr(self, 'beta'):
             beta = self.beta
         else:
             beta = variable.Variable(self.xp.zeros(
-                self.avg_mean.shape, dtype=x.data.dtype), volatile='auto')
+                self.avg_mean.shape, dtype=x.dtype), volatile='auto')
 
         if use_batch_mean:
             if finetune:

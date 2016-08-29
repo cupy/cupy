@@ -770,6 +770,7 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
 
 
 class NumpyError(object):
+
     def __init__(self, **kw):
         self.kw = kw
 

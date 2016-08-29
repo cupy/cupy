@@ -51,7 +51,7 @@ class BlackOut(link.Link):
 
         """
 
-        batch_size = x.data.shape[0]
+        batch_size = x.shape[0]
         if hasattr(self, 'sample_data'):
             # for test
             sample_data = self.sample_data

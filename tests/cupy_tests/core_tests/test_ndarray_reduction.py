@@ -38,6 +38,12 @@ class TestArrayReduction(unittest.TestCase):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return a.max(axis=2)
 
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_max_nan(self, xp, dtype):
+        a = xp.array([float('nan'), 1, -1], dtype)
+        return a.max()
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_min_all(self, xp, dtype):
@@ -67,3 +73,9 @@ class TestArrayReduction(unittest.TestCase):
     def test_min_axis2(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return a.min(axis=2)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_min_nan(self, xp, dtype):
+        a = xp.array([float('nan'), 1, -1], dtype)
+        return a.min()
