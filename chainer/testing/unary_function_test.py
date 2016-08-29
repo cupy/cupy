@@ -112,7 +112,11 @@ def unary_function_test(func, func_expected=None, make_data=None):
 
     if func_expected is None:
         name = func.__name__
-        func_expected = getattr(numpy, name)
+        try:
+            func_expected = getattr(numpy, name)
+        except AttributeError:
+            raise ValueError("numpy has no function corresponding "
+                             "to Chainer function '{}'.".format(func.__name__))
 
     if make_data is None:
         make_data = make_data_default
