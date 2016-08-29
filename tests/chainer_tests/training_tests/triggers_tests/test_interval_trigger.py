@@ -5,6 +5,7 @@ import numpy
 from chainer import testing
 from chainer import training
 
+
 class DummyUpdater(training.Updater):
 
     def __init__(self, iters_per_epoch):
@@ -27,7 +28,7 @@ class DummyUpdater(training.Updater):
     @property
     def epoch_detail(self):
         return self.iteration / self.iters_per_epoch
-    
+
     @property
     def is_new_epoch(self):
         return 0 <= self.iteration % self.iters_per_epoch < 1
@@ -56,6 +57,7 @@ class TestEpochIntervalTrigger(unittest.TestCase):
         trigger = training.trigger.IntervalTrigger(1, 'epoch')
         expected = [False, False, False, False, True, False, False]
         _test_trigger(self, updater, trigger, expected)
+
 
 class TestFractionalEpochIntervalTrigger(unittest.TestCase):
 
