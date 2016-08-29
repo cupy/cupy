@@ -28,9 +28,11 @@ def get_mnist(withlabel=True, ndim=1, scale=1., dtype=numpy.float32,
             the datasets only contain images.
         ndim (int): Number of dimensions of each image. The shape of each image
             is determined depending on ``ndim`` as follows:
-                - ``ndim == 1``: the shape is ``(784,)``
-                - ``ndim == 2``: the shape is ``(28, 28)``
-                - ``ndim == 3``: the shape is ``(1, 28, 28)``
+
+            - ``ndim == 1``: the shape is ``(784,)``
+            - ``ndim == 2``: the shape is ``(28, 28)``
+            - ``ndim == 3``: the shape is ``(1, 28, 28)``
+
         scale (float): Pixel value scale. If it is 1 (default), pixels are
             scaled to the interval ``[0, 1]``.
         dtype: Data type of resulting image arrays.

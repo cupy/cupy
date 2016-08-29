@@ -291,7 +291,7 @@ The copy supports backprop, which just reversely transfers an output gradient to
    Above code is not parallelized on CPU, but is parallelized on GPU.
    This is because all the functions in the above code run asynchronously to the host CPU.
 
-An almost identical example code can be found at ``examples/mnist/net.py``.
+An almost identical example code can be found at `examples/mnist/train_mnist_model_parallel.py <https://github.com/pfnet/chainer/blob/master/examples/mnist/train_mnist_model_parallel.py>`_.
 
 
 Data-parallel Computation on Multiple GPUs with Trainer
@@ -327,6 +327,8 @@ The original model is sent to this device, so the optimization runs on the main 
 In the above example, the model is also cloned and sent to GPU 1.
 Half of each mini batch is fed to this cloned model.
 After every backward computation, the gradient is accumulated into the main device, the parameter update runs on it, and then the updated parameters are sent to GPU 1 again.
+
+See also the example code in `examples/mnist/train_mnist_data_parallel.py <https://github.com/pfnet/chainer/blob/master/examples/mnist/train_mnist_data_parallel.py>`_.
 
 
 Data-parallel Computation on Multiple GPUs without Trainer
@@ -413,6 +415,13 @@ This method adds the gradients of a given link to those of the self.
 After the gradients are prepared, we can update the optimizer in usual way.
 Note that the update only modifies the parameters of ``model_0``.
 So we must manually copy them to ``model_1`` using :meth:`Link.copyparams` method.
+
+.. note::
+
+   If the batchsize used in one model remain the same, the scale of the gradient
+   is roughly proportional to the number of models, when we aggregate
+   gradients from all models by :func:`chainer.Link.addgrads`. So you need to adjust the batchsize
+   and/or learning rate of the optimizer accordingly.
 
 --------
 

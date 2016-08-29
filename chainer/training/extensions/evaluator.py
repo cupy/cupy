@@ -34,7 +34,7 @@ class Evaluator(extension.Extension):
 
     There are two ways to modify the evaluation behavior besides setting a
     custom evaluation function. One is by setting a custom evaluation loop via
-    the ``eval_loop`` argument. The other is by inheriting this class and
+    the ``eval_func`` argument. The other is by inheriting this class and
     overriding the :meth:`evaluate` method. In latter case, users have to
     create and handle a reporter object manually. Users also have to copy the
     iterators before using them, in order to reuse them at the next time of
@@ -164,14 +164,15 @@ class Evaluator(extension.Extension):
             with reporter_module.report_scope(observation):
                 in_arrays = self.converter(batch, self.device)
                 if isinstance(in_arrays, tuple):
-                    in_vars = tuple(variable.Variable(x) for x in in_arrays)
+                    in_vars = tuple(variable.Variable(x, volatile='on')
+                                    for x in in_arrays)
                     eval_func(*in_vars)
                 elif isinstance(in_arrays, dict):
-                    in_vars = {key: variable.Variable(x)
+                    in_vars = {key: variable.Variable(x, volatile='on')
                                for key, x in six.iteritems(in_arrays)}
                     eval_func(**in_vars)
                 else:
-                    in_var = variable.Variable(in_arrays)
+                    in_var = variable.Variable(in_arrays, volatile='on')
                     eval_func(in_var)
 
             summary.add(observation)

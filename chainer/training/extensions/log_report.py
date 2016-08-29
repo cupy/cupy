@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tempfile
 
 import six
@@ -43,11 +44,12 @@ class LogReport(extension.Extension):
             output to the log file.
         log_name (str): Name of the log file under the output directory. It can
             be a format string: the last result dictionary is passed for the
-            formatting. For example, users can use '{.iteration}' to separate
+            formatting. For example, users can use '{iteration}' to separate
             the log files for different iterations. If the log name is None, it
             does not output the log to any file.
 
     """
+
     def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
                  log_name='log'):
         self._keys = keys
@@ -78,6 +80,7 @@ class LogReport(extension.Extension):
 
             updater = trainer.updater
             stats_cpu['epoch'] = updater.epoch
+            stats_cpu['epoch_detail'] = updater.epoch_detail
             stats_cpu['iteration'] = updater.iteration
 
             if self._postprocess is not None:
@@ -87,11 +90,13 @@ class LogReport(extension.Extension):
 
             # write to the log file
             if self._log_name is not None:
-                log_name = self._log_name.format(stats_cpu)
+                log_name = self._log_name.format(**stats_cpu)
                 fd, path = tempfile.mkstemp(prefix=log_name, dir=trainer.out)
                 with os.fdopen(fd, 'w') as f:
                     json.dump(self._log, f, indent=4)
-                os.rename(path, os.path.join(trainer.out, log_name))
+
+                new_path = os.path.join(trainer.out, log_name)
+                shutil.move(path, new_path)
 
             # reset the summary for the next output
             self._init_summary()

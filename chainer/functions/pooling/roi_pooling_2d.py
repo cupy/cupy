@@ -72,7 +72,7 @@ class ROIPooling2D(function.Function):
         n_rois = bottom_rois.shape[0]
         top_data = numpy.empty((n_rois, channels, self.outh, self.outw),
                                dtype=numpy.float32)
-        self.argmax_data = numpy.empty_like(top_data).astype(numpy.int32)
+        self.argmax_data = numpy.empty(top_data.shape, numpy.int32)
 
         for i_roi in six.moves.range(n_rois):
             idx, xmin, ymin, xmax, ymax = bottom_rois[i_roi]
@@ -115,7 +115,7 @@ class ROIPooling2D(function.Function):
         n_rois = bottom_rois.shape[0]
         top_data = cuda.cupy.empty((n_rois, channels, self.outh,
                                     self.outw), dtype=numpy.float32)
-        self.argmax_data = cuda.cupy.empty_like(top_data).astype(numpy.int32)
+        self.argmax_data = cuda.cupy.empty(top_data.shape, numpy.int32)
         cuda.cupy.ElementwiseKernel(
             '''
             raw float32 bottom_data, float32 spatial_scale, int32 channels,

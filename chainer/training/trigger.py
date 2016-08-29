@@ -15,6 +15,7 @@ class IntervalTrigger(object):
             either ``'iteration'`` or ``'epoch'``.
 
     """
+
     def __init__(self, period, unit):
         self.period = period
         assert unit == 'epoch' or unit == 'iteration'

@@ -108,7 +108,7 @@ def det(a):
         ~chainer.Variable: Scalar determinant of the matrix a.
 
     """
-    shape = (1, len(a.data), a.data.shape[1])
+    shape = (1, a.shape[0], a.shape[1])
     batched_a = reshape.Reshape(shape)(a)
     batched_det = BatchDet()(batched_a)
     return reshape.Reshape(())(batched_det)

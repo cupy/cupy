@@ -58,17 +58,16 @@ class TestDeconvolution2DFunction(unittest.TestCase):
         self.gy = numpy.random.uniform(
             -1, 1, (N, self.out_channels, outh, outw)).astype(self.x_dtype)
         self.test_forward_options = {}
-        self.check_backward_options = {
-            'eps': 1e-2, 'atol': 1e-4, 'rtol': 1e-3}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.x_dtype == numpy.float16:
             self.test_forward_options = {'atol': 5e-3, 'rtol': 5e-2}
             self.check_backward_options = {
-                'eps': 2**-3, 'atol': 1e-2, 'rtol': 1e-1}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
         elif self.W_dtype == numpy.float16:
             self.check_backward_options = {
-                'eps': 2**-3, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
-    @attr.cudnn
+    @attr.gpu
     def test_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
         W_cpu = chainer.Variable(self.W)
@@ -123,7 +122,7 @@ class TestDeconvolution2DFunction(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.W, self.b, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(10)
     def test_backward_gpu(self):
         b = None if self.b is None else cuda.to_gpu(self.b)

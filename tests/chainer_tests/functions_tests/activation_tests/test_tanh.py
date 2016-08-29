@@ -24,7 +24,7 @@ class TestTanh(unittest.TestCase):
         self.check_backward_options = {}
         if self.dtype == numpy.float16:
             self.check_backward_options = {
-                'eps': 2.0 ** -5, 'atol': 5e-4, 'rtol': 5e-3}
+                'dtype': numpy.float64, 'atol': 1e-4, 'rtol': 1e-3}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -33,12 +33,12 @@ class TestTanh(unittest.TestCase):
         y_expect = functions.tanh(chainer.Variable(self.x))
         testing.assert_allclose(y_expect.data, y.data)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), True)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu_non_contiguous(self):
         self.check_forward(cuda.cupy.asfortranarray(cuda.to_gpu(self.x)), True)
@@ -57,12 +57,12 @@ class TestTanh(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_non_contiguous(self):
         self.check_backward(cuda.cupy.asfortranarray(cuda.to_gpu(self.x)),

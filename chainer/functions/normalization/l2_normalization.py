@@ -53,7 +53,7 @@ class NormalizeL2(function.Function):
         norm = norm[:, numpy.newaxis]
 
         gx = gy * norm - (x * gy).sum(axis=1)[:, numpy.newaxis] * x / norm
-        gx = gx / norm**2
+        gx = gx / norm ** 2
 
         return gx,
 

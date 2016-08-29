@@ -80,6 +80,13 @@ class TestJoin(unittest.TestCase):
         return xp.hstack((a, b))
 
     @testing.numpy_cupy_array_equal()
+    def test_hstack_scalars(self, xp):
+        a = testing.shaped_arange((), xp)
+        b = testing.shaped_arange((), xp)
+        c = testing.shaped_arange((), xp)
+        return xp.hstack((a, b, c))
+
+    @testing.numpy_cupy_array_equal()
     def test_hstack(self, xp):
         a = testing.shaped_arange((2, 1), xp)
         b = testing.shaped_arange((2, 2), xp)
@@ -91,6 +98,11 @@ class TestJoin(unittest.TestCase):
         a = xp.arange(3)
         b = xp.arange(2, -1, -1)
         return xp.vstack((a, b))
+
+    @testing.numpy_cupy_array_equal()
+    def test_vstack_single_element(self, xp):
+        a = xp.arange(3)
+        return xp.vstack((a,))
 
     def test_vstack_wrong_ndim(self):
         a = cupy.empty((3,))

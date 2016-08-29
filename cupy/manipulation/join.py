@@ -123,7 +123,7 @@ def hstack(tup):
     axis = 1
     if arrs[0].ndim == 1:
         axis = 0
-    return concatenate(tup, axis)
+    return concatenate(arrs, axis)
 
 
 def vstack(tup):
@@ -143,7 +143,7 @@ def vstack(tup):
     .. seealso:: :func:`numpy.dstack`
 
     """
-    return concatenate(cupy.atleast_2d(*tup), 0)
+    return concatenate([cupy.atleast_2d(m) for m in tup], 0)
 
 
 def stack(tup, axis=0):

@@ -116,14 +116,27 @@ class TestHDF5Deserializer(unittest.TestCase):
         numpy.testing.assert_array_equal(cuda.to_cpu(y), self.data)
         self.assertIs(ret, y)
 
+    def check_deserialize_none_value(self, y):
+        ret = self.deserializer('y', None)
+        numpy.testing.assert_array_equal(cuda.to_cpu(ret), self.data)
+
     def test_deserialize_cpu(self):
         y = numpy.empty((2, 3), dtype=numpy.float32)
         self.check_deserialize(y)
+
+    def test_deserialize_none_value_cpu(self):
+        y = numpy.empty((2, 3), dtype=numpy.float32)
+        self.check_deserialize_none_value(y)
 
     @attr.gpu
     def test_deserialize_gpu(self):
         y = numpy.empty((2, 3), dtype=numpy.float32)
         self.check_deserialize(cuda.to_gpu(y))
+
+    @attr.gpu
+    def test_deserialize_none_value_gpu(self):
+        y = numpy.empty((2, 3), dtype=numpy.float32)
+        self.check_deserialize_none_value(cuda.to_gpu(y))
 
     def test_deserialize_scalar(self):
         z = 5
