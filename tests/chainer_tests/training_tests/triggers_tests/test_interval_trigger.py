@@ -1,6 +1,6 @@
-import unittest
-
 from __future__ import division
+
+import unittest
 
 from chainer import testing
 from chainer import training
