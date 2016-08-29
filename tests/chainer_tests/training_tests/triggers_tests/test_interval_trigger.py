@@ -28,9 +28,9 @@ class DummyUpdater(training.Updater):
     def epoch_detail(self):
         return self.iteration / self.iters_per_epoch
     
-    # @property
-    # def is_new_epoch(self):
-    #     return False
+    @property
+    def is_new_epoch(self):
+        return 0 <= self.iteration % self.iters_per_epoch < 1
 
 
 def _test_trigger(self, updater, trigger, expecteds):
@@ -55,6 +55,14 @@ class TestEpochIntervalTrigger(unittest.TestCase):
         updater = DummyUpdater(iters_per_epoch=5)
         trigger = training.trigger.IntervalTrigger(1, 'epoch')
         expected = [False, False, False, False, True, False, False]
+        _test_trigger(self, updater, trigger, expected)
+
+class TestFractionalEpochIntervalTrigger(unittest.TestCase):
+
+    def test_epoch_interval_trigger(self):
+        updater = DummyUpdater(iters_per_epoch=2)
+        trigger = training.trigger.IntervalTrigger(1.5, 'epoch')
+        expected = [False, False, True, False, False, True, False]
         _test_trigger(self, updater, trigger, expected)
 
 
