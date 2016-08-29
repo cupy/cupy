@@ -99,6 +99,11 @@ class TestJoin(unittest.TestCase):
         b = xp.arange(2, -1, -1)
         return xp.vstack((a, b))
 
+    @testing.numpy_cupy_array_equal()
+    def test_vstack_single_element(self, xp):
+        a = xp.arange(3)
+        return xp.vstack((a,))
+
     def test_vstack_wrong_ndim(self):
         a = cupy.empty((3,))
         b = cupy.empty((3, 1))

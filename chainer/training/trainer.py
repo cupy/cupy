@@ -118,6 +118,7 @@ class Trainer(object):
         reporter: Reporter object to report observed values.
 
     """
+
     def __init__(self, updater, stop_trigger=None, out='result'):
         self.updater = updater
         self.stop_trigger = trigger_module.get_trigger(stop_trigger)

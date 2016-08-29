@@ -17,7 +17,7 @@ class TestPReLUSingle(unittest.TestCase):
         self.link = links.PReLU()
         W = self.link.W.data
         W[...] = numpy.random.uniform(-1, 1, W.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.W = W.copy()  # fixed on CPU
 
@@ -71,7 +71,7 @@ class TestPReLUMulti(TestPReLUSingle):
         self.link = links.PReLU(shape=(3,))
         W = self.link.W.data
         W[...] = numpy.random.uniform(-1, 1, W.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.W = W.copy()  # fixed on CPU
 

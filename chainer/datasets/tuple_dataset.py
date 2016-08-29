@@ -14,6 +14,7 @@ class TupleDataset(object):
             length.
 
     """
+
     def __init__(self, *datasets):
         if not datasets:
             raise ValueError('no datasets are given')

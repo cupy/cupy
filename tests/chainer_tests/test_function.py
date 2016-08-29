@@ -312,6 +312,7 @@ class TestFunctionInvalidType(unittest.TestCase):
 
     def test_forward_invalid1(self):
         class Function(chainer.Function):
+
             def check_type_forward(self, in_types):
                 x_type, = in_types
                 type_check.expect(

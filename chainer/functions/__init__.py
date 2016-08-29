@@ -41,6 +41,8 @@ from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
+from chainer.functions.evaluation import classification_summary \
+    as classification_summary_
 from chainer.functions.loss import black_out
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import crf1d
@@ -61,6 +63,7 @@ from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
+from chainer.functions.math import hyperbolic
 from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import linear_interpolate
@@ -176,6 +179,11 @@ Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 BinaryAccuracy = binary_accuracy.BinaryAccuracy
 binary_accuracy = binary_accuracy.binary_accuracy
+ClassificationSummary = classification_summary_.ClassificationSummary
+classification_summary = classification_summary_.classification_summary
+precision = classification_summary_.precision
+recall = classification_summary_.recall
+f1_score = classification_summary_.f1_score
 
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
@@ -219,6 +227,8 @@ Clip = clip.Clip
 clip = clip.clip
 Cos = trigonometric.Cos
 cos = trigonometric.cos
+Cosh = hyperbolic.Cosh
+cosh = hyperbolic.cosh
 det = det.det
 Exp = exponential.Exp
 exp = exponential.exp
@@ -232,8 +242,12 @@ LinearInterpolate = linear_interpolate.LinearInterpolate
 linear_interpolate = linear_interpolate.linear_interpolate
 Log = exponential.Log
 log = exponential.log
+Log10 = exponential.Log10
+log10 = exponential.log10
 Log1p = logarithm_1p.Log1p
 log1p = logarithm_1p.log1p
+Log2 = exponential.Log2
+log2 = exponential.log2
 LogSumExp = logsumexp.LogSumExp
 logsumexp = logsumexp.logsumexp
 MatMul = matmul.MatMul
@@ -246,9 +260,12 @@ Minimum = minimum.Minimum
 minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
+rsqrt = sqrt.rsqrt
 scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
+Sinh = hyperbolic.Sinh
+sinh = hyperbolic.sinh
 Sqrt = sqrt.Sqrt
 sqrt = sqrt.sqrt
 Sum = sum.Sum

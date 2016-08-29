@@ -29,6 +29,7 @@ class Iterator(object):
     iteration.
 
     """
+
     def __iter__(self):
         """Returns self."""
         return self

@@ -1331,66 +1331,143 @@ divmod = create_ufunc(
 
 
 cdef _min_max_preamble = '''
+template <typename T>
 struct min_max_st{
-    type_in0_raw value;
+    T value;
     int index;
     __device__ min_max_st() : index(-1) { }
-    __device__ min_max_st(type_in0_raw v) : value(v), index(0) { }
-    __device__ min_max_st(type_in0_raw v, int i) : value(v), index(i) { }
+    __device__ min_max_st(T v) : value(v), index(0) { }
+    __device__ min_max_st(T v, int i) : value(v), index(i) { }
 };
-__device__ min_max_st my_min(const min_max_st& a, const min_max_st& b) {
-    if (a.index == -1) return b;
-    if (b.index == -1) return a;
-    return min_max_st(min(a.value, b.value));
+
+template <typename T>
+inline __device__ bool is_nan(T x) {
+    return x != x;
 }
-__device__ min_max_st my_max(const min_max_st& a, const min_max_st& b) {
+
+template <typename T>
+__device__ min_max_st<T> my_min(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    return min_max_st(max(a.value, b.value));
+    return min_max_st<T>(min(a.value, b.value));
 }
-__device__ min_max_st my_argmin(const min_max_st& a, const min_max_st& b) {
+template <typename T>
+__device__ min_max_st<T> my_min_float(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    if (a.value == b.value) return min_max_st(a.value, min(a.index, b.index));
+    if (is_nan(a.value)) return a;
+    if (is_nan(b.value)) return b;
+    return min_max_st<T>(min(a.value, b.value));
+}
+
+template <typename T>
+__device__ min_max_st<T> my_max(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    return min_max_st<T>(max(a.value, b.value));
+}
+template <typename T>
+__device__ min_max_st<T> my_max_float(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (is_nan(a.value)) return a;
+    if (is_nan(b.value)) return b;
+    return min_max_st<T>(max(a.value, b.value));
+}
+
+template <typename T>
+__device__ min_max_st<T> my_argmin(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (a.value == b.value)
+        return min_max_st<T>(a.value, min(a.index, b.index));
     return (a.value <= b.value) ? a : b;
 }
-__device__ min_max_st my_argmax(const min_max_st& a, const min_max_st& b) {
+template <typename T>
+__device__ min_max_st<T> my_argmin_float(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
     if (a.index == -1) return b;
     if (b.index == -1) return a;
-    if (a.value == b.value) return min_max_st(a.value, min(a.index, b.index));
+    if (a.value == b.value)
+        return min_max_st<T>(a.value, min(a.index, b.index));
+    if (is_nan(a.value)) return a;
+    if (is_nan(b.value)) return b;
+    return (a.value <= b.value) ? a : b;
+}
+
+template <typename T>
+__device__ min_max_st<T> my_argmax(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (a.value == b.value)
+        return min_max_st<T>(a.value, min(a.index, b.index));
     return (a.value >= b.value) ? a : b;
-}'''
+}
+template <typename T>
+__device__ min_max_st<T> my_argmax_float(
+        const min_max_st<T>& a, const min_max_st<T>& b) {
+    if (a.index == -1) return b;
+    if (b.index == -1) return a;
+    if (a.value == b.value)
+        return min_max_st<T>(a.value, min(a.index, b.index));
+    if (is_nan(a.value)) return a;
+    if (is_nan(b.value)) return b;
+    return (a.value >= b.value) ? a : b;
+}
+'''
 
 
 cdef _amin = create_reduction_func(
     'cupy_min',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    ('min_max_st(in0)', 'my_min(a, b)', 'out0 = a.value', 'min_max_st'),
+     'q->q', 'Q->Q',
+     ('e->e', (None, 'my_min_float(a, b)', None, None)),
+     ('f->f', (None, 'my_min_float(a, b)', None, None)),
+     ('d->d', (None, 'my_min_float(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
+     'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
 cdef _amax = create_reduction_func(
     'cupy_max',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
-    ('min_max_st(in0)', 'my_max(a, b)', 'out0 = a.value', 'min_max_st'),
+     'q->q', 'Q->Q',
+     ('e->e', (None, 'my_max_float(a, b)', None, None)),
+     ('f->f', (None, 'my_max_float(a, b)', None, None)),
+     ('d->d', (None, 'my_max_float(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
+     'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
 cdef _argmin = create_reduction_func(
     'cupy_argmin',
     ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
-     'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'),
-    ('min_max_st(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index', 'min_max_st'),
+     'q->l', 'Q->l',
+     ('e->l', (None, 'my_argmin_float(a, b)', None, None)),
+     ('f->l', (None, 'my_argmin_float(a, b)', None, None)),
+     ('d->l', (None, 'my_argmin_float(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
+     'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 
 cdef _argmax = create_reduction_func(
     'cupy_argmax',
     ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
-     'q->l', 'Q->l', 'e->l', 'f->l', 'd->l'),
-    ('min_max_st(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index', 'min_max_st'),
+     'q->l', 'Q->l',
+     ('e->l', (None, 'my_argmax_float(a, b)', None, None)),
+     ('f->l', (None, 'my_argmax_float(a, b)', None, None)),
+     ('d->l', (None, 'my_argmax_float(a, b)', None, None))),
+    ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
+     'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
 
 

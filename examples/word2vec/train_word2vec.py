@@ -87,6 +87,7 @@ class SkipGram(chainer.Chain):
 
 
 class SoftmaxCrossEntropyLoss(chainer.Chain):
+
     def __init__(self, n_in, n_out):
         super(SoftmaxCrossEntropyLoss, self).__init__(
             out=L.Linear(n_in, n_out),
@@ -183,7 +184,7 @@ for epoch in range(args.epoch):
         accum_loss += loss.data
         word_count += args.batchsize
 
-        model.zerograds()
+        model.cleargrads()
         loss.backward()
         del loss
         optimizer.update()

@@ -61,7 +61,7 @@ class Bilinear(link.Link):
         # that of Linear function.
 
         if isinstance(initialW, (numpy.ndarray, cuda.ndarray)):
-            assert initialW.shape == self.W.data.shape
+            assert initialW.shape == self.W.shape
         initializers.init_weight(self.W.data, initialW)
 
         if not self.nobias:
@@ -78,11 +78,11 @@ class Bilinear(link.Link):
                 raise ValueError('initial_bias must be tuple or None')
 
             if isinstance(V1, (numpy.ndarray, cuda.ndarray)):
-                assert V1.shape == self.V1.data.shape
+                assert V1.shape == self.V1.shape
             if isinstance(V2, (numpy.ndarray, cuda.ndarray)):
-                assert V2.shape == self.V2.data.shape
+                assert V2.shape == self.V2.shape
             if isinstance(b, (numpy.ndarray, cuda.ndarray)):
-                assert b.shape == self.b.data.shape
+                assert b.shape == self.b.shape
             initializers.init_weight(self.V1.data, V1)
             initializers.init_weight(self.V2.data, V2)
             initializers.init_weight(self.b.data, b)
