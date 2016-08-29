@@ -1,7 +1,5 @@
 import unittest
 
-import numpy
-
 from chainer import testing
 from chainer import training
 
