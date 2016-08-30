@@ -28,7 +28,7 @@ def generate_array(initializer, shape, xp):
     ``initializer.dtype``.
 
     Args:
-        initializer: The callable object that takes :class:`numpy.ndarray`
+        initializer: A callable object that takes :class:`numpy.ndarray`
              or :class:`cupy.ndarray` and edits its value.
         shape (tuple): Shape of a return array.
         xp (module): :mod:`cupy` or :mod:`numpy`.
