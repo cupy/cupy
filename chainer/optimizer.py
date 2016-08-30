@@ -384,7 +384,7 @@ class GradientMethod(Optimizer):
 
         """
         if lossfun is not None:
-            use_cleargrads = kwds.pop('use_cleargrads', False)
+            use_cleargrads = getattr(self, '_use_cleargrads', False)
             loss = lossfun(*args, **kwds)
             if use_cleargrads:
                 self.target.cleargrads()
@@ -436,6 +436,16 @@ class GradientMethod(Optimizer):
 
         """
         raise NotImplementedError
+
+    def use_cleargrads(self, use=True):
+        """Enables or disables use of :func:`~chainer.Link.cleargrads` in `update`.
+
+        Args:
+            use (bool): If true, this function enables use of `cleargrads`.
+                If false, disables use of `cleargrads`.
+
+        """
+        self._use_cleargrads = use
 
 
 class WeightDecay(object):
