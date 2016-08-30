@@ -20,17 +20,18 @@ _thread_local.default_backprop = True
 
 @contextlib.contextmanager
 def no_backprop_mode():
-    """Disable back-propagation for Variable whose volale is auto.
+    """Disable back-propagation for Variable whose volatile is auto.
 
-    In the default setting :class:`~chainer.Variable` whose `volatile`
-    attribute is `'auto'` behaves like **non-volatile** variable. That means
-    such a :class:`~chainer.Variable`: builds a computational graph, consumes
-    memory to store the graph, and you can execute back-propagation for it.
-    With this context such a :class:`~chainer.Variable`: behaves **volatile**
-    variable. So, you can easily switch training and evaluation.
+    In the default setting a :class:`~chainer.Variable` object whose `volatile`
+    attribute is `'auto'` behaves like a **non-volatile** variable. That means
+    such a :class:`~chainer.Variable`: object builds a computational graph,
+    consumes memory to store the graph, and you can execute back-propagation
+    for it. With this context such a :class:`~chainer.Variable`: object behaves
+    like a **volatile** variable. So, you can easily switch training and
+    evaluation.
 
-    In this example volatily of ``x`` and ``y`` is ``'auto'``. So, ``y``
-    doesn't have a computational graph.
+    In this example, the volatility of ``x`` and ``y`` is ``'auto'``. So, ``y``
+    does not have a computational graph.
 
     >>> x = chainer.Variable(numpy.array([1,], 'f'), volatile='auto')
     >>> with chainer.no_backprop_mode():
