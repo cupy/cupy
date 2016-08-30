@@ -61,7 +61,7 @@ class Forget(function.Function):
 def forget(func, *xs):
     """Call a function without storing internal results.
 
-    On a forward-propagation Chainer stores all internal results of
+    On a forward propagation Chainer stores all internal results of
     :class:`Function` on a computational graph as they are required on
     backward-propagation. These results consume too many memories. This method
     **forgets** such internal results on forward propagation, though supports
