@@ -54,6 +54,7 @@ class TestLabeledImageDataset(unittest.TestCase):
         self.assertEqual(img.dtype, self.dtype)
         self.assertEqual(img.shape, (4, 300, 300))
 
+        self.assertEqual(label.dtype, self.label_dtype)
         self.assertEqual(label, 0)
 
     def test_get_grey(self):
@@ -61,6 +62,7 @@ class TestLabeledImageDataset(unittest.TestCase):
         self.assertEqual(img.dtype, self.dtype)
         self.assertEqual(img.shape, (1, 300, 300))
 
+        self.assertEqual(label.dtype, self.label_dtype)
         self.assertEqual(label, 1)
 
 
