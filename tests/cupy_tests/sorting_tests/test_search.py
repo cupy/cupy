@@ -23,7 +23,7 @@ class TestSearch(unittest.TestCase):
         return xp.argmax(a)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=True)
     def test_argmax_nan(self, xp, dtype):
         a = xp.array([float('nan'), -1, 1], dtype)
         return a.argmax()
@@ -65,7 +65,7 @@ class TestSearch(unittest.TestCase):
         return a.argmin()
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=True)
     def test_argmin_nan(self, xp, dtype):
         a = xp.array([float('nan'), -1, 1], dtype)
         return a.argmin()
