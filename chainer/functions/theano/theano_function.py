@@ -49,7 +49,8 @@ class TheanoFunction(function.Function):
        >>> y = theano.tensor.fvector()
        >>> z = x + y
        >>> w = x - y
-       >>> f = F.TheanoFunction(inputs=[x, y], outputs=[z, w], gpu=False)
+       >>> f = F.TheanoFunction(
+       ...     inputs=[x, y], outputs=[z, w], optimize_gpu=False)
        >>> a = chainer.Variable(numpy.array([1, 2], dtype='f'))
        >>> b = chainer.Variable(numpy.array([2, 3], dtype='f'))
        >>> c, d = f(a, b)
