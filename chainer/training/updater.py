@@ -289,6 +289,9 @@ class ParallelUpdater(StandardUpdater):
             in_arrays_list[key] = self.converter(
                 batch[i::n], self._devices[key])
 
+        for model in six.itervalues(self._models):
+            model.cleargrads()
+
         losses = []
         for model_key, model in six.iteritems(self._models):
             in_arrays = in_arrays_list[model_key]
@@ -305,8 +308,9 @@ class ParallelUpdater(StandardUpdater):
                 in_vars = variable.Variable(in_arrays)
                 losses.append(loss_func(in_vars))
 
+        # For _uninitialized_params
         for model in six.itervalues(self._models):
-            model.zerograds()
+            model.cleargrads()
 
         for loss in losses:
             loss.backward()

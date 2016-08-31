@@ -40,7 +40,7 @@ class BatchNormalizationTest(unittest.TestCase):
         gamma[...] = numpy.random.uniform(.5, 1, gamma.shape)
         beta = self.link.beta.data
         beta[...] = numpy.random.uniform(-1, 1, beta.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.gamma = gamma.copy()[self.expander]  # fixed on CPU
         self.beta = beta.copy()[self.expander]   # fixed on CPU
@@ -190,7 +190,7 @@ class BatchNormalizationTestWithoutGammaAndBeta(unittest.TestCase):
             self.link.avg_mean[...] = mean
             var = numpy.random.uniform(0.5, 1, (3,)).astype(numpy.float32)
             self.link.avg_var[...] = var
-        self.link.zerograds()
+        self.link.cleargrads()
 
         shape = (7, 3) + (2,) * self.ndim
         self.x = numpy.random.uniform(-1, 1, shape).astype(numpy.float32)

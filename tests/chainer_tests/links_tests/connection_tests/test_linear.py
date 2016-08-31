@@ -27,7 +27,7 @@ class TestLinear(unittest.TestCase):
         W[...] = numpy.random.uniform(-1, 1, W.shape)
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.W = W.copy()  # fixed on CPU
         self.b = b.copy()  # fixed on CPU
@@ -86,7 +86,7 @@ class TestLinearParameterShapePlaceholder(unittest.TestCase):
         W[...] = numpy.random.uniform(-1, 1, W.shape)
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.W = W.copy()  # fixed on CPU
         self.b = b.copy()  # fixed on CPU

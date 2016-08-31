@@ -22,7 +22,7 @@ class TestEmbedID(unittest.TestCase):
     def setUp(self):
         self.link = links.EmbedID(3, 2, ignore_label=self.ignore_label)
         self.link.ignore_label
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.W = self.link.W.data.copy()  # fixed on CPU
         self.x = numpy.array(self.x_data, dtype=numpy.int32)

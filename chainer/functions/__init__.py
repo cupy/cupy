@@ -62,6 +62,7 @@ from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
+from chainer.functions.math import hyperbolic
 from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import linear_interpolate
@@ -224,6 +225,8 @@ Clip = clip.Clip
 clip = clip.clip
 Cos = trigonometric.Cos
 cos = trigonometric.cos
+Cosh = hyperbolic.Cosh
+cosh = hyperbolic.cosh
 det = det.det
 Exp = exponential.Exp
 exp = exponential.exp
@@ -255,9 +258,12 @@ Minimum = minimum.Minimum
 minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
+rsqrt = sqrt.rsqrt
 scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
+Sinh = hyperbolic.Sinh
+sinh = hyperbolic.sinh
 Sqrt = sqrt.Sqrt
 sqrt = sqrt.sqrt
 Sum = sum.Sum
