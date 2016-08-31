@@ -1,3 +1,4 @@
+import copy
 import six
 
 from chainer.dataset import convert
@@ -252,7 +253,7 @@ class ParallelUpdater(StandardUpdater):
 
             models = {'main': optimizer.target}
             for name in names:
-                model = optimizer.target.copy()
+                model = copy.deepcopy(optimizer.target)
                 if devices[name] >= 0:
                     model.to_gpu(devices[name])
                 models[name] = model
@@ -288,9 +289,6 @@ class ParallelUpdater(StandardUpdater):
             in_arrays_list[key] = self.converter(
                 batch[i::n], self._devices[key])
 
-        for model in six.itervalues(self._models):
-            model.zerograds()
-
         losses = []
         for model_key, model in six.iteritems(self._models):
             in_arrays = in_arrays_list[model_key]
@@ -306,6 +304,9 @@ class ParallelUpdater(StandardUpdater):
             else:
                 in_vars = variable.Variable(in_arrays)
                 losses.append(loss_func(in_vars))
+
+        for model in six.itervalues(self._models):
+            model.zerograds()
 
         for loss in losses:
             loss.backward()
