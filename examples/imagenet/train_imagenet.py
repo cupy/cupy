@@ -147,7 +147,7 @@ def main():
     # (it determines when to emit log rather than when to read observations)
     trainer.extend(extensions.LogReport(trigger=log_interval))
     trainer.extend(extensions.observe_time(), trigger=log_interval)
-    trainer.extend(extensions.observe_lr(optimizer), trigger=log_interval)
+    trainer.extend(extensions.observe_lr(), trigger=log_interval)
     trainer.extend(extensions.PrintReport([
         'time', 'epoch', 'iteration', 'main/loss', 'validation/main/loss',
         'main/accuracy', 'validation/main/accuracy', 'lr'
