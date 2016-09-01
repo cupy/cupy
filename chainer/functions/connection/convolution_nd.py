@@ -149,7 +149,7 @@ class ConvolutionND(function.Function):
                     handle, one.data, self.bias_desc.value, b.data.ptr,
                     one.data, y_desc.value, y.data.ptr)
             else:
-                # cuDNN v2 seems not to support bias addition in spatial
+                # cuDNN v2 does not seem to support bias addition in spatial
                 # dimensions other than two.
                 b_index = (None, colon) + (None,) * ndim
                 y += b[b_index]
@@ -265,8 +265,8 @@ class ConvolutionND(function.Function):
                 zero.data, self.bias_desc.value, gb.data.ptr)
             return gx, gW, gb
         else:
-            # cuDNN v2 seems not to support bias backward in spatial dimensions
-            # other than two.
+            # cuDNN v2 does not seem to support bias backward in spatial
+            # dimensions other than two.
 
             # (n, _, out_1, out_2, ..., out_N)
             axis = (0,) + tuple(moves.range(2, self.ndim + 2))
