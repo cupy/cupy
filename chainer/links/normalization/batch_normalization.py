@@ -89,18 +89,17 @@ class BatchNormalization(link.Link):
             x (Variable): An input variable.
             test (bool): If ``True``, BatchNormalization runs in testing mode;
                 it normalizes the input using pre-computed statistics.
-            finetune (bool): If ``True``, BatchNormalization runs in
-                fine-tuning mode; it accumulates the input array to compute
-                population statistics for normalization, and normalizes the
-                input using batch statistics.
+            finetune (bool): If ``finetune`` is ``True`` and ``test`` is
+                ``False``, BatchNormalization runs in fine-tuning mode; it
+                accumulates the input array to compute population statistics
+                for normalization, and normalizes the input using batch
+                statistics.
 
-        If ``test`` and ``finetune`` are both ``False``, then
-        BatchNormalization runs in training mode; it computes moving averages
-        of mean and variance for evaluation during training, and normalizes the
-        input using batch statistics.
+        If ``test`` is ``False``, then BatchNormalization runs in training mode;
+        it computes moving averages of mean and variance for evaluation during
+        training, and normalizes the input using batch statistics.
 
         """
-        use_batch_mean = not test or finetune
         if hasattr(self, 'gamma'):
             gamma = self.gamma
         else:
@@ -112,7 +111,7 @@ class BatchNormalization(link.Link):
             beta = variable.Variable(self.xp.zeros(
                 self.avg_mean.shape, dtype=x.dtype), volatile='auto')
 
-        if use_batch_mean:
+        if not test:
             if finetune:
                 self.N += 1
                 decay = 1. - 1. / self.N
