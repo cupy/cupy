@@ -11,8 +11,12 @@
 #include <curand.h>
 
 #if CUDA_VERSION < 8000
+#if CUDA_VERSION >= 7050
+typedef cublasDataType_t cudaDataType;
+#else
 enum cudaDataType_t {};
 typedef enum cudaDataType_t cudaDataType;
+#endif // #if CUDA_VERSION >= 7050
 #endif // #if CUDA_VERSION < 8000
 
 #if CUDA_VERSION < 7050

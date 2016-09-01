@@ -68,17 +68,17 @@ cdef extern from 'cupy_cuda.h':
         int n, int k, const float* alpha, const float** Aarray,
         int lda, const float** Barray, int ldb, const float* beta,
         float** Carray, int ldc, int batchCount)
+
+    # BLAS extension
+    int cublasSdgmm(
+        Handle handle, SideMode mode, int m, int n, float* A, int lda,
+        float* x, int incx, float* C, int ldc)
     int cublasSgemmEx(
         Handle handle, Operation transa,
         Operation transb, int m, int n, int k,
         const float *alpha, const void *A, runtime.DataType Atype,
         int lda, const void *B, runtime.DataType Btype, int ldb,
         const float *beta, void *C, runtime.DataType Ctype, int ldc)
-
-    # BLAS extension
-    int cublasSdgmm(
-        Handle handle, SideMode mode, int m, int n, float* A, int lda,
-        float* x, int incx, float* C, int ldc)
     int cublasSgetrfBatched(
         Handle handle, int n, float **Aarray, int lda,
         int *PivotArray, int *infoArray, int batchSize)
@@ -325,9 +325,9 @@ cpdef sgemmEx(
         int ldc):
     status = cublasSgemmEx(
         <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-        &alpha, <const void*>A, <runtime.DataType> Atype, lda, <const void*>B,
-        <runtime.DataType>Btype, ldb, &beta, <void*> C,
-        <runtime.DataType> Ctype, ldc)
+        &alpha, <const void*>A, <runtime.DataType>Atype, lda, <const void*>B,
+        <runtime.DataType>Btype, ldb, &beta, <void*>C,
+        <runtime.DataType>Ctype, ldc)
     check_status(status)
 
 
