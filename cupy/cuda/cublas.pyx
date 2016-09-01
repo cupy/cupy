@@ -306,6 +306,17 @@ cpdef sgemmBatched(
         <float**>Carray, ldc, batchCount)
     check_status(status)
 
+###############################################################################
+# BLAS extension
+###############################################################################
+
+cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc):
+    status = cublasSdgmm(
+        <Handle>handle, <SideMode>mode, m, n, <float*>A, lda, <float*>x, incx,
+        <float*>C, ldc)
+    check_status(status)
+
 
 cpdef sgemmEx(
         size_t handle, int transa, int transb, int m, int n, int k,
@@ -317,17 +328,6 @@ cpdef sgemmEx(
         &alpha, <const void*>A, <runtime.DataType> Atype, lda, <const void*>B,
         <runtime.DataType>Btype, ldb, &beta, <void*> C,
         <runtime.DataType> Ctype, ldc)
-    check_status(status)
-
-###############################################################################
-# BLAS extension
-###############################################################################
-
-cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
-            size_t x, int incx, size_t C, int ldc):
-    status = cublasSdgmm(
-        <Handle>handle, <SideMode>mode, m, n, <float*>A, lda, <float*>x, incx,
-        <float*>C, ldc)
     check_status(status)
 
 
