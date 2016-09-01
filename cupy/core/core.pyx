@@ -109,7 +109,7 @@ cdef class ndarray:
 
         """
         return flags.Flags(self._c_contiguous, self._f_contiguous,
-                           self.base is not None)
+                           self.base is None)
 
     property shape:
         """Lengths of axes.
