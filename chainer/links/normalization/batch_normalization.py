@@ -95,9 +95,9 @@ class BatchNormalization(link.Link):
                 for normalization, and normalizes the input using batch
                 statistics.
 
-        If ``test`` is ``False``, then BatchNormalization runs in training
-        mode; it computes moving averages of mean and variance for evaluation
-        during training, and normalizes the input using batch statistics.
+        If ``test`` is ``False``, then BatchNormalization runs in training mode;
+        it computes moving averages of mean and variance for evaluation during
+        training, and normalizes the input using batch statistics.
 
         """
         if hasattr(self, 'gamma'):
