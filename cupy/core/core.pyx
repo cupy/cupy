@@ -1986,7 +1986,6 @@ cpdef ndarray tensordot_core(
                    a.dtype == 'e' and b.dtype == 'e' and
                    (ret_dtype == 'e' or ret_dtype == 'f'))
 
-    # Cast to float32 or float64
     if use_sgemmEx or ret_dtype == 'f' or ret_dtype == 'd':
         dtype = ret_dtype
     else:
