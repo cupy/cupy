@@ -196,14 +196,15 @@ class ConnectionistTemporalClassification(function.Function):
         t = inputs[2]
         xs = inputs[3:]
 
-        # Batch size check.
-        assert len(xs[0]) == len(t)
-        assert len(xs[0]) == len(self.input_length)
-        assert len(xs[0]) == len(label_length)
+        if chainer.is_debug():
+            # Batch size check.
+            assert len(xs[0]) == len(t)
+            assert len(xs[0]) == len(self.input_length)
+            assert len(xs[0]) == len(label_length)
 
-        # Length check.
-        assert len(xs) >= xp.max(self.input_length)
-        assert len(t[0]) >= xp.max(label_length)
+            # Length check.
+            assert len(xs) >= xp.max(self.input_length)
+            assert len(t[0]) >= xp.max(label_length)
 
         self.path_length = 2 * label_length + 1
 
