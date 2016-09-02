@@ -296,8 +296,6 @@ Some parameter/gradient manipulations, e.g. weight decay and gradient clipping, 
 Hook functions are called after the gradient computation and right before the actual update of parameters.
 For example, we can set weight decay regularization by running the next line beforehand:
 
-.. doctest::
-
    >>> optimizer.add_hook(chainer.optimizer.WeightDecay(0.0005))
 
 Of course, you can write your own hook functions.
@@ -312,8 +310,6 @@ We here review the latter case.
 There are further two ways to use the optimizer directly.
 One is manually computing gradients and then call the :meth:`~Optimizer.update` method with no arguments.
 Do not forget to clear gradients beforehand!
-
-.. doctest::
 
    >>> model.cleargrads()
    >>> # compute gradient here...
