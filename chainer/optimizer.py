@@ -269,7 +269,7 @@ class Optimizer(object):
         """Fills all gradient arrays by zeros.
 
         .. deprecated:: v1.5
-           Use the :meth:`chainer.Link.zerograds` method for the target link
+           Use the :meth:`chainer.Link.cleargrads` method for the target link
            instead.
 
         """
