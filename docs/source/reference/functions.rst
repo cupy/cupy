@@ -168,7 +168,7 @@ transpose_sequence
 .. autofunction:: transpose_sequence
 
 vstack
-~~~~~
+~~~~~~
 .. autofunction:: vstack
 
 where
