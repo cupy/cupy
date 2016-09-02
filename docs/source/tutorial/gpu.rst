@@ -50,7 +50,7 @@ Basics of :class:`cupy.ndarray`
 
 .. note::
 
-   CuPy does not require explicit initialization, so ``cuda.init()`` function is removed as of v1.3.0.
+   CuPy does not require explicit initialization, so ``cuda.init()`` function is deprecated.
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
 The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
