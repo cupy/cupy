@@ -1,6 +1,7 @@
 import collections
 import heapq
 import traceback
+import warnings
 
 import numpy
 import six
@@ -231,7 +232,15 @@ Actual: {0}'''.format(type(data))
         self._grad = None
 
     def zerograd(self):
-        """Initializes the gradient array by zeros."""
+        """Initializes the gradient array by zeros.
+
+        .. deprecated:: v1.15
+           Use :meth:`cleargrad` instead.
+
+        """
+        warnings.warn(
+            'Variable.zerograd is deprecated. Use Variable.cleargard instead.',
+            DeprecationWarning)
         with cuda.get_device(self.data) as dev:
             if self._grad is None:
                 xp = numpy if int(dev) == -1 else cuda.cupy
