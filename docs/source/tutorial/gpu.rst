@@ -153,27 +153,6 @@ In this subsection, the code is based on :ref:`our first MNIST example in this t
 
 A :class:`Link` object can be transferred to the specified GPU using the :meth:`~Link.to_gpu` method.
 
-.. testcode::
-   :hide:
-
-   class MLP(Chain):
-       def __init__(self, n_in, n_units, n_out):
-           super(MLP, self).__init__(
-               l1=L.Linear(n_in, n_units),
-               l2=L.Linear(n_units, n_units),
-               l3=L.Linear(n_units, n_out),
-           )
-
-       def __call__(self, x):
-           h1 = F.relu(self.l1(x))
-           h2 = F.relu(self.l2(h1))
-           y = self.l3(h2)
-           return y
-
-   model = L.Classifier(MLP(784, 1000, 10)).to_gpu()  # to_gpu returns itself
-   optimizer = optimizers.SGD()
-   optimizer.setup(model)
-
 This time, we make the number of input, hidden, and output units configurable.
 The :meth:`~Link.to_gpu` method also accepts a device ID like ``model.to_gpu(0)``.
 In this case, the link object is transferred to the appropriate GPU device.
@@ -260,10 +239,13 @@ Let's write a link for the whole network.
    class ParallelMLP(Chain):
        def __init__(self):
            super(ParallelMLP, self).__init__(
-               mlp1_gpu0=MLP(784, 1000, 2000).to_gpu(0),
-               mlp1_gpu1=MLP(784, 1000, 2000).to_gpu(1),
-               mlp2_gpu0=MLP(2000, 1000, 10).to_gpu(0),
-               mlp2_gpu1=MLP(2000, 1000, 10).to_gpu(1),
+               # the input size, 784, is inferred
+               mlp1_gpu0=MLP(1000, 2000).to_gpu(0),
+               mlp1_gpu1=MLP(1000, 2000).to_gpu(1),
+
+               # the input size, 2000, is inferred
+               mlp2_gpu0=MLP(1000, 10).to_gpu(0),
+               mlp2_gpu1=MLP(1000, 10).to_gpu(1),
            )
 
        def __call__(self, x):
@@ -280,7 +262,7 @@ Let's write a link for the whole network.
 
            # sync
            y = y0 + F.copy(y1, 0)
-           return y
+           return y  # output is on GPU0
 
 Recall that the :meth:`Link.to_gpu` method returns the link itself.
 The :func:`~chainer.functions.copy` function copies an input variable to specified GPU device and returns a new variable on the device.
@@ -308,7 +290,7 @@ First, define a model and optimizer instances:
 
 .. doctest::
 
-   model = L.Classifier(MLP(784, 1000, 10))
+   model = L.Classifier(MLP(1000, 10))  # the input size, 784, is inferred
    optimizer = optimizers.SGD()
    optimizer.setup(model)
 
@@ -345,7 +327,7 @@ First, we define a model.
 
 .. testcode::
 
-   model_0 = L.Classifier(MLP(784, 1000, 10))
+   model_0 = L.Classifier(MLP(1000, 10))
 
 We want to make two copies of this instance on different GPUs.
 The :meth:`Link.to_gpu` method runs in place, so we cannot use it to make a copy.
