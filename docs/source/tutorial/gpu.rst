@@ -383,8 +383,8 @@ Then, we can write a data-parallel learning loop as follows (codes for Trainer i
            x_batch = x_train[indexes[i : i + batchsize]]
            y_batch = y_train[indexes[i : i + batchsize]]
 
-           model_0.zerograds()
-           model_1.zerograds()
+           model_0.cleargrads()
+           model_1.cleargrads()
 
            x0 = Variable(cuda.to_gpu(x_batch[:batchsize//2], 0))
            t0 = Variable(cuda.to_gpu(y_batch[:batchsize//2], 0))

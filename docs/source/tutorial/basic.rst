@@ -180,12 +180,12 @@ An instance of the Linear link acts like a usual function:
 
 Gradients of parameters are computed by :meth:`~Variable.backward` method.
 Note that gradients are **accumulated** by the method rather than overwritten.
-So first you must initialize gradients to zero to renew the computation.
-It can be done by calling the :meth:`~Link.zerograds` method.
+So first you must clear gradients to renew the computation.
+It can be done by calling the :meth:`~Link.cleargrads` method.
 
 .. doctest::
 
-   >>> f.zerograds()
+   >>> f.cleargrads()
 
 Now we can compute the gradients of parameters by simply calling backward method.
 
@@ -287,6 +287,7 @@ Here we use the simplest one, called Stochastic Gradient Descent (SGD):
 
    >>> model = MyChain()
    >>> optimizer = optimizers.SGD()
+   >>> optimizer.use_cleargrads()
    >>> optimizer.setup(model)
 
 The method :meth:`~Optimizer.setup` prepares for the optimization given a link.
@@ -310,16 +311,16 @@ We here review the latter case.
 
 There are further two ways to use the optimizer directly.
 One is manually computing gradients and then call the :meth:`~Optimizer.update` method with no arguments.
-Do not forget resetting gradients beforehand!
+Do not forget to clear gradients beforehand!
 
 .. doctest::
 
-   >>> model.zerograds()
+   >>> model.cleargrads()
    >>> # compute gradient here...
    >>> optimizer.update()
 
 The other way is just passing a loss function to the :meth:`~Optimizer.update` method.
-In this case, :meth:`~Link.zerograds` is automatically called by the update method, so user do not have to call it manually.
+In this case, :meth:`~Link.cleargrads` is automatically called by the update method, so user do not have to call it manually.
 
    >>> def lossfun(args...):
    ...     ...
