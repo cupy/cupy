@@ -115,6 +115,10 @@ expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
 
+flatten
+~~~~~~~
+.. autofunction:: flatten
+
 get_item
 ~~~~~~~~
 .. autofunction:: get_item

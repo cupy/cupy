@@ -20,6 +20,7 @@ from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
+from chainer.functions.array import flatten
 from chainer.functions.array import get_item
 from chainer.functions.array import hstack
 from chainer.functions.array import permutate
@@ -145,6 +146,8 @@ Copy = copy.Copy
 copy = copy.copy
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
+Flatten = flatten.Flatten
+flatten = flatten.flatten
 GetItem = get_item.GetItem
 get_item = get_item.get_item
 hstack = hstack.hstack
