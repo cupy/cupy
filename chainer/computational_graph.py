@@ -115,11 +115,11 @@ class ComputationalGraph(object):
     def dump(self, format='dot'):
         """Dumps graph as a text.
 
-        Args
+        Args:
             format(str): The graph language name of the output.
             Currently, it must be 'dot'.
 
-        Returns
+        Returns:
             str: The graph in specified format.
 
         """

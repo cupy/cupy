@@ -100,7 +100,7 @@ class LSTM(LSTMBase):
     When mini-batch size of ``i``-th input is smaller than that of the previous
     input, this link only updates ``c[0:len(x)]`` and ``h[0:len(x)]`` and
     doesn't change the rest of ``c`` and ``h``.
-    So, please sort input sequneces in descending order of lengths before
+    So, please sort input sequences in descending order of lengths before
     applying the function.
 
     Args:

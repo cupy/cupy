@@ -336,7 +336,7 @@ When we want to train neural networks, we have to run *training loops* that upda
 A typical training loop consists of following procedures:
 
 1. Iterations over training datasets
-2. Preprocessing of extracted minibatches
+2. Preprocessing of extracted mini-batches
 3. Forward/backward computations of the neural networks
 4. Parameter updates
 5. Evaluations of the current parameters on validation datasets
@@ -415,7 +415,7 @@ This MNIST example is also found in the `examples/mnist <https://github.com/pfne
 We show how to use :class:`~training.Trainer` to construct and run the training loop in this section.
 
 We first have to prepare the MNIST dataset.
-The MNIST dataset consists of 70,000 grayscale images of size 28x28 (i.e. 784 pixels) and corresponding digit labels.
+The MNIST dataset consists of 70,000 greyscale images of size 28x28 (i.e. 784 pixels) and corresponding digit labels.
 The dataset is divided into 60,000 training images and 10,000 test images by default.
 We can obtain the vectorized version (i.e., a set of 784 dimensional vectors) by :func:`datasets.get_mnist`.
 
