@@ -21,7 +21,7 @@ class BatchNormalization(link.Link):
 
     In fine-tuning mode, it accumulates the input to compute *population
     statistics*. In order to correctly compute the population statistics, a
-    user must use this mode to feed mini batches running through whole training
+    user must use this mode to feed mini-batches running through whole training
     dataset.
 
     In testing mode, it uses pre-computed population statistics to normalize

@@ -13,7 +13,7 @@ def separate(x, axis=0):
 
     Args:
         x (chainer.Variable): Variable to be separated.
-        axis (int): Axis alog which variables are separated.
+        axis (int): Axis along which variables are separated.
 
     Returns:
         tuple of chainer.Variable: Output variables.

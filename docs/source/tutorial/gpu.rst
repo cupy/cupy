@@ -418,9 +418,9 @@ So we must manually copy them to ``model_1`` using :meth:`Link.copyparams` metho
 
 .. note::
 
-   If the batchsize used in one model remain the same, the scale of the gradient
+   If the batch size used in one model remain the same, the scale of the gradient
    is roughly proportional to the number of models, when we aggregate
-   gradients from all models by :func:`chainer.Link.addgrads`. So you need to adjust the batchsize
+   gradients from all models by :func:`chainer.Link.addgrads`. So you need to adjust the batch size
    and/or learning rate of the optimizer accordingly.
 
 --------
