@@ -72,7 +72,5 @@ addons:
   apt:
     packages:
       - gfortran
-      - libatlas-dev
-      - libblas-dev
       - libhdf5-serial-dev
       - liblapack-dev
