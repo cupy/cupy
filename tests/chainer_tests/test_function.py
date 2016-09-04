@@ -452,5 +452,18 @@ class TestNoBackpropMode(unittest.TestCase):
         y = self.x + 1
         self.assertTrue(y.creator is not None)
 
+    def test_force_backprop_mode(self):
+        with chainer.no_backprop_mode():
+            with chainer.force_backprop_mode():
+                y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        with chainer.force_backprop_mode():
+            y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
 
 testing.run_module(__name__, __file__)

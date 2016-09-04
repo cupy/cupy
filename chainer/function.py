@@ -44,6 +44,41 @@ def no_backprop_mode():
     _thread_local.default_backprop = default
 
 
+@contextlib.contextmanager
+def force_backprop_mode():
+    """Enable back-propagation for Variable whose volatile is auto.
+
+    When you want to enable back-propagation in :func:`no_backprop_mode`,
+    call this method. In this context, :class:`~chainer.Variable` object
+    whose ``volatile`` attribute is ``'auto'`` behaves like a **volatile**
+    variable. That means you can disable :func:`no_backprop_mode` in this
+    context.
+
+    If you call this method outside of :func:`no_backprop_mode` context, it
+    changes nothing. :class:`~chainer.Variable` object with ``volatile='auto'``
+    behaves like a volatile variable by default.
+
+    In this example, the volatility of ``x`` and ``y`` is ``'auto'``. In
+    :func:`no_backprop_mode` context, ``y`` does not have a computational graph
+    but in :func:`force_backprop_mode` it has a graph.
+
+    >>> with chainer.no_backprop_mode():
+    ...   # Variable with volatile='auto' behaves like volatile='on'
+    ...   with chainer.force_backprop_mode():
+    ...     # Variable with volatile='auto' behaves like volatile='off'
+    ...     y = x + 1
+
+    .. seealso::
+
+       See :func:`no_backprop_mode` for details of back-prop mode.
+
+    """
+    default = _thread_local.default_backprop
+    _thread_local.default_backprop = True
+    yield
+    _thread_local.default_backprop = default
+
+
 class Function(object):
 
     """Function on variables with backpropagation ability.

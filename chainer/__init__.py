@@ -39,6 +39,7 @@ ChainList = link.ChainList
 Deserializer = serializer.Deserializer
 DictSummary = reporter.DictSummary
 Flag = flag.Flag
+force_backprop_mode = function.force_backprop_mode
 Function = function.Function
 no_backprop_mode = function.no_backprop_mode
 FunctionSet = function_set.FunctionSet
