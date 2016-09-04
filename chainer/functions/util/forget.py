@@ -63,9 +63,10 @@ def forget(func, *xs):
 
     On a forward propagation Chainer stores all internal results of
     :class:`Function` on a computational graph as they are required on
-    backward-propagation. These results consume too many memories. This method
-    **forgets** such internal results on forward propagation, though supports
-    back-propagation with recalculation.
+    backward-propagation. These results consume too much memories when the
+    internal results are too large. This method **forgets** such internal
+    results on forward propagation, though supports back-propagation with
+    recalculation.
 
     In a forward propagation, this method calls a given function with given
     variables without creating a computational graph. That means, no internal
@@ -80,7 +81,7 @@ def forget(func, *xs):
        Let ``f`` be a function defined as:
 
        >>> def f(a, b):
-       ...  return a + b + a
+       ...   return a + b + a
 
        and, ``x`` and ``y`` be :class:`~chainer.Variable`:
 
@@ -104,9 +105,9 @@ def forget(func, *xs):
 
     Args:
         func (callable): A function to call. It needs to be called with
-            :class:`~chainer.Variable` and to return a
+            :class:`~chainer.Variable` (s) and to return a
             :class:`~chainer.Variable` or a tuple of
-            :class:`~chainer.Variable`.
+            :class:`~chainer.Variable` s.
         xs (~chainer.Variable): Argument variables of the function.
 
     Returns:
