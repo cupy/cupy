@@ -124,8 +124,12 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occurred are identical between NumPy and CuPy.
+         accept_error(bool, Exception or tuple of Exception): Sepcify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
+             If it is ``True`` all error types are acceptable.
+             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required to return the arrays whose values are
     close between ``numpy`` case and ``cupy`` case.
@@ -166,8 +170,12 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occurred are identical between NumPy and CuPy.
+         accept_error(bool, Exception or tuple of Exception): Sepcify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
+             If it is ``True`` all error types are acceptable.
+             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`cupy.testing.assert_array_almost_equal`
@@ -190,8 +198,12 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occurred are identical between NumPy and CuPy.
+         accept_error(bool, Exception or tuple of Exception): Sepcify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
+             If it is ``True`` all error types are acceptable.
+             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`cupy.testing.assert_array_almost_equal_nulp`
@@ -216,8 +228,12 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occurred are identical between NumPy and CuPy.
+         accept_error(bool, Exception or tuple of Exception): Sepcify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
+             If it is ``True`` all error types are acceptable.
+             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`assert_array_max_ulp`
@@ -242,8 +258,12 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occurred are identical between NumPy and CuPy.
+         accept_error(bool, Exception or tuple of Exception): Sepcify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
+             If it is ``True`` all error types are acceptable.
+             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required to return the same arrays
     in the sense of :func:`numpy_cupy_array_equal`
@@ -296,8 +316,12 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
          name(str): Argument name whose value is either
              ``numpy`` or ``cupy`` module.
          type_check(bool): If ``True``, consistency of dtype is also checked.
-         accept_error(bool): If ``True``, errors are not raised as long as
-             the errors occurred are identical between NumPy and CuPy.
+         accept_error(bool, Exception or tuple of Exception): Sepcify
+             acceptable errors. When both NumPy test and CuPy test raises the
+             same type of errors, and the type of the errors is specified with
+             this argument, the errors are ignored and not raised.
+             If it is ``True`` all error types are acceptable.
+             If it is ``False`` no error is acceptable.
 
     Decorated test fixture is required to return the smaller array
     when ``xp`` is ``cupy`` than the one when ``xp`` is ``numpy``.
