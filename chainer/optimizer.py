@@ -613,5 +613,4 @@ class GradientHardClipping(object):
         for param in opt.target.params():
             grad = param.grad
             with cuda.get_device(grad):
-                grad = xp.clip(grad, self.lower_bound, self.upper_bound,
-                               out=grad)
+                xp.clip(grad, self.lower_bound, self.upper_bound, out=grad)
