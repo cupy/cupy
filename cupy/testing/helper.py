@@ -32,7 +32,7 @@ def _call_func(self, impl, args, kw):
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
     # For backward compatibility
-    if accept_error == True:
+    if accept_error is True:
         accept_error = Exception
     elif not accept_error:
         accept_error = ()
