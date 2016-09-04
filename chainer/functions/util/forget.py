@@ -105,9 +105,9 @@ def forget(func, *xs):
 
     Args:
         func (callable): A function to call. It needs to be called with
-            :class:`~chainer.Variable` (s) and to return a
-            :class:`~chainer.Variable` or a tuple of
-            :class:`~chainer.Variable` s.
+            :class:`~chainer.Variable` object(s) and to return a
+            :class:`~chainer.Variable` object or a tuple of
+            :class:`~chainer.Variable` objects.
         xs (~chainer.Variable): Argument variables of the function.
 
     Returns:
