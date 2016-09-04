@@ -31,6 +31,12 @@ def _call_func(self, impl, args, kw):
 
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
+    # For backward compatibility
+    if accept_error == True:
+        accept_error = Exception
+    elif not accept_error:
+        accept_error = ()
+
     if cupy_error is None and numpy_error is None:
         self.fail('Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
@@ -46,7 +52,7 @@ numpy
 %s
 ''' % (cupy_tb, numpy_tb)
         self.fail(msg)
-    elif not accept_error:
+    elif not isinstance(cupy_error, accept_error):
         msg = '''Both cupy and numpy raise exceptions
 
 cupy
@@ -338,7 +344,8 @@ def numpy_cupy_raises(name='xp'):
                 numpy_tb = traceback.format_exc()
 
             _check_cupy_numpy_error(self, cupy_error, cupy_tb,
-                                    numpy_error, numpy_tb, accept_error=True)
+                                    numpy_error, numpy_tb,
+                                    accept_error=Exception)
         return test_func
     return decorator
 

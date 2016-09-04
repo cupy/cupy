@@ -46,7 +46,7 @@ class TestDot(unittest.TestCase):
     @testing.for_float_dtypes(name='dtype_a')
     @testing.for_float_dtypes(name='dtype_b')
     @testing.for_float_dtypes(name='dtype_c')
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=ValueError)
     def test_dot_with_out(self, xp, dtype_a, dtype_b, dtype_c):
         shape_a, shape_b = self.shape
         if self.trans_a:

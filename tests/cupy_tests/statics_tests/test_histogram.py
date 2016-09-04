@@ -41,26 +41,26 @@ class TestHistogram(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @for_all_dtypes_bincount()
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_bincount(self, xp, dtype):
         x = testing.shaped_arange((3,), xp, dtype)
         return xp.bincount(x)
 
     @for_all_dtypes_bincount()
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_bincount_duplicated_value(self, xp, dtype):
         x = xp.array([1, 2, 2, 1, 2, 4], dtype)
         return xp.bincount(x)
 
     @for_all_dtypes_combination_bincount(names=['x_type', 'w_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_bincount_with_weight(self, xp, x_type, w_type):
         x = testing.shaped_arange((3,), xp, x_type)
         w = testing.shaped_arange((3,), xp, w_type)
         return xp.bincount(x, weights=w)
 
     @for_all_dtypes_bincount()
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_bincount_with_minlength(self, xp, dtype):
         x = testing.shaped_arange((3,), xp, dtype)
         return xp.bincount(x, minlength=5)

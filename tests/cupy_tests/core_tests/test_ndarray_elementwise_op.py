@@ -14,7 +14,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False):
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         if swap:
@@ -104,7 +104,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_scalar_op(operator.pow, swap=True)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(atol=1.0, accept_error=True)
+    @testing.numpy_cupy_allclose(atol=1.0, accept_error=TypeError)
     def check_ipow_scalar(self, xp, x_type, y_type):
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         return operator.ipow(a, y_type(3))
@@ -148,7 +148,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_scalar_op(operator.ne)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_array_op(self, op, xp, x_type, y_type):
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
@@ -210,7 +210,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_array_op(operator.pow)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(atol=1.0, accept_error=True)
+    @testing.numpy_cupy_allclose(atol=1.0, accept_error=TypeError)
     def check_ipow_array(self, xp, x_type, y_type):
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
@@ -247,7 +247,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_array_op(operator.ne)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_broadcasted_op(self, op, xp, x_type, y_type):
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
@@ -310,7 +310,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(atol=1.0, accept_error=True)
+    @testing.numpy_cupy_allclose(atol=1.0, accept_error=TypeError)
     def check_broadcasted_ipow(self, xp, x_type, y_type):
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
@@ -477,7 +477,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False):
         a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
         if swap:
@@ -524,7 +524,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
             self.check_array_scalar_op(operator.mod, swap=True)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_scalarzero_op(self, op, xp, x_type, y_type, swap=False):
         a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
         if swap:
@@ -571,7 +571,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
             self.check_array_scalarzero_op(operator.mod, swap=True)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_array_op(self, op, xp, x_type, y_type):
         a = xp.array([[0, 1, 2], [1, 0, 2]], dtype=x_type)
         b = xp.array([[0, 0, 1], [0, 1, 2]], dtype=y_type)
@@ -622,7 +622,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
             self.check_array_array_op(operator.imod)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_broadcasted_op(self, op, xp, x_type, y_type):
         a = xp.array([[0, 1, 2], [1, 0, 2], [2, 1, 0]], dtype=x_type)
         b = xp.array([[0, 0, 1]], dtype=y_type)
@@ -673,7 +673,7 @@ class TestArrayIntElementwiseOp(unittest.TestCase):
             self.check_array_broadcasted_op(operator.imod)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type):
         a = xp.array([[[0, 1, 2]], [[1, 0, 2]]], dtype=x_type)
         b = xp.array([[0], [0], [1]], dtype=y_type)

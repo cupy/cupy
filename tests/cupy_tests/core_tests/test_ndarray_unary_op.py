@@ -91,7 +91,7 @@ class TestArrayIntUnaryOp(unittest.TestCase):
         self.check_array_op(operator.invert)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(accept_error=True)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def check_zerodim_op(self, op, xp, dtype):
         a = xp.array(-2, dtype)
         return op(a)

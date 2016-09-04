@@ -69,7 +69,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
         # Nothing happens
         helper._check_cupy_numpy_error(self, cupy_error, cupy_tb,
                                        numpy_error, numpy_tb,
-                                       accept_error=True)
+                                       accept_error=Exception)
 
     def test_forbidden_error(self):
         cupy_error = Exception()
