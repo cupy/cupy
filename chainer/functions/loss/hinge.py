@@ -96,7 +96,7 @@ def hinge(x, t, norm='L1'):
             L = \\frac{1}{N} \\sum_{n=1}^N \\sum_{k=1}^K \\left[
             \\max(0, 1 - \\delta\\{l_n = k\\} t_{nk}) \\right]^p
 
-        where :math:`N` denotes the batchsize, :math:`K` is the number of
+        where :math:`N` denotes the batch size, :math:`K` is the number of
         classes of interest,
 
         .. math::

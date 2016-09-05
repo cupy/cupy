@@ -54,10 +54,11 @@ except Exception as e:
         pass  # for type testing
 
 if available:
+    _cudnn_disabled_by_user = int(os.environ.get('CHAINER_CUDNN', '1')) == 0
     try:
         import cupy.cudnn
         cudnn = cupy.cudnn
-        cudnn_enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
+        cudnn_enabled = not _cudnn_disabled_by_user
     except Exception as e:
         _resolution_error = e
 
@@ -82,11 +83,14 @@ def check_cuda_available():
                '(see https://github.com/pfnet/chainer#installation).')
         msg += str(_resolution_error)
         raise RuntimeError(msg)
-    if not cudnn_enabled:
+    if (not cudnn_enabled and
+            not _cudnn_disabled_by_user and
+            not getattr(check_cuda_available, '_already_warned', False)):
         warnings.warn(
             'cuDNN is not enabled.\n'
             'Please reinstall chainer after you install cudnn\n'
             '(see https://github.com/pfnet/chainer#installation).')
+        check_cuda_available._already_warned = True
 
 
 class DummyDeviceType(object):
@@ -457,6 +461,18 @@ def memoize(for_each_device=False):
             return f(*args, **kwargs)
         return ret
     return dummy_decorator
+
+
+def clear_memo():
+    """Clears the memoized results for all functions decorated by memoize.
+
+    This function works like :func:`cupy.clear_memo` as a counterpart for
+    :func:`chainer.cuda.memoize`. It can be used even if CUDA is not available.
+    In such a case, this function does nothing.
+
+    """
+    if available:
+        cupy.clear_memo()
 
 
 # ------------------------------------------------------------------------------

@@ -136,6 +136,11 @@ class TestLink(unittest.TestCase):
         numpy.testing.assert_array_equal(self.link.y.data, l.y.data)
         numpy.testing.assert_array_equal(self.link.y.grad, gy)
 
+    def test_cleargrads(self):
+        self.link.cleargrads()
+        self.assertIsNone(self.link.x.grad)
+        self.assertIsNone(self.link.y.grad)
+
     def test_zerograds(self):
         gx_expect = numpy.zeros_like(self.link.x.data)
         gy_expect = numpy.zeros_like(self.link.y.data)

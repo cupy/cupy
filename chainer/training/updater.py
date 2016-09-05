@@ -289,7 +289,7 @@ class ParallelUpdater(StandardUpdater):
                 batch[i::n], self._devices[key])
 
         for model in six.itervalues(self._models):
-            model.zerograds()
+            model.cleargrads()
 
         losses = []
         for model_key, model in six.iteritems(self._models):

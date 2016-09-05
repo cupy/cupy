@@ -180,9 +180,9 @@ def lstm(c_prev, x):
     This function supports variable length inputs. The mini-batch size of
     the current input must be equal to or smaller than that of the previous
     one. When mini-batch size of ``x`` is smaller than that of ``c``, this
-    funciton only updates ``c[0:len(x)]`` and doesn't change the rest of ``c``,
+    function only updates ``c[0:len(x)]`` and doesn't change the rest of ``c``,
     ``c[len(x):]``.
-    So, please sort input sequneces in descending order of lengths before
+    So, please sort input sequences in descending order of lengths before
     applying the function.
 
     Args:
