@@ -153,12 +153,33 @@ In this subsection, the code is based on :ref:`our first MNIST example in this t
 
 A :class:`Link` object can be transferred to the specified GPU using the :meth:`~Link.to_gpu` method.
 
+.. testcode::
+   :hide:
+
+   class MLP(Chain):
+       def __init__(self, n_units, n_out):
+           super(MLP, self).__init__(
+               l1=L.Linear(None, n_units),
+               l2=L.Linear(None, n_units),
+               l3=L.Linear(None, n_out),
+           )
+
+       def __call__(self, x):
+           h1 = F.relu(self.l1(x))
+           h2 = F.relu(self.l2(h1))
+           y = self.l3(h2)
+           return y
+
+   model = L.Classifier(MLP(1000, 10)).to_gpu()  # to_gpu returns itself
+   optimizer = optimizers.SGD()
+   optimizer.setup(model)
+
 This time, we make the number of input, hidden, and output units configurable.
 The :meth:`~Link.to_gpu` method also accepts a device ID like ``model.to_gpu(0)``.
 In this case, the link object is transferred to the appropriate GPU device.
 The current device is used by default.
 
-If we use :class:`chainer.training.Trainer`, what we have to do is just letting the updater know the device ID to send each minibatch.
+If we use :class:`chainer.training.Trainer`, what we have to do is just let the updater know the device ID to send each mini-batch.
 
 .. testcode::
    :hide:
@@ -181,7 +202,7 @@ We also have to specify the device ID for an evaluator extension as well.
 
    trainer.extend(extensions.Evaluator(test_iter, model, device=0))
 
-When we write down the training loop by hand, we have to transfer each minibatch to the GPU manually:
+When we write down the training loop by hand, we have to transfer each mini-batch to the GPU manually:
 
 .. testcode::
    :hide:
@@ -307,7 +328,7 @@ The ``devices`` option specifies which devices to use in data-parallel learning.
 The device with name ``'main'`` is used as the main device.
 The original model is sent to this device, so the optimization runs on the main device.
 In the above example, the model is also cloned and sent to GPU 1.
-Half of each mini batch is fed to this cloned model.
+Half of each mini-batch is fed to this cloned model.
 After every backward computation, the gradient is accumulated into the main device, the parameter update runs on it, and then the updated parameters are sent to GPU 1 again.
 
 See also the example code in `examples/mnist/train_mnist_data_parallel.py <https://github.com/pfnet/chainer/blob/master/examples/mnist/train_mnist_data_parallel.py>`_.
@@ -327,7 +348,7 @@ First, we define a model.
 
 .. testcode::
 
-   model_0 = L.Classifier(MLP(1000, 10))
+   model_0 = L.Classifier(MLP(1000, 10))  # the input size, 784, is inferred
 
 We want to make two copies of this instance on different GPUs.
 The :meth:`Link.to_gpu` method runs in place, so we cannot use it to make a copy.
@@ -335,7 +356,8 @@ In order to make a copy, we can use :meth:`Link.copy` method.
 
 .. testcode::
 
-   model_1 = model_0.copy()
+   import copy
+   model_1 = copy.deepcopy(model_0)
    model_0.to_gpu(0)
    model_1.to_gpu(1)
 
@@ -352,7 +374,7 @@ Then, set up an optimizer:
 Here we use the first copy of the model as *the master model*.
 Before its update, gradients of ``model_1`` must be aggregated to those of ``model_0``.
 
-Then, we can write a data-parallel learning loop as follows (codes for Trainer is in preparation):
+Then, we can write a data-parallel learning loop as follows:
 
 .. testcode::
 
@@ -365,9 +387,6 @@ Then, we can write a data-parallel learning loop as follows (codes for Trainer i
            x_batch = x_train[indexes[i : i + batchsize]]
            y_batch = y_train[indexes[i : i + batchsize]]
 
-           model_0.zerograds()
-           model_1.zerograds()
-
            x0 = Variable(cuda.to_gpu(x_batch[:batchsize//2], 0))
            t0 = Variable(cuda.to_gpu(y_batch[:batchsize//2], 0))
            x1 = Variable(cuda.to_gpu(x_batch[batchsize//2:], 1))
@@ -375,6 +394,9 @@ Then, we can write a data-parallel learning loop as follows (codes for Trainer i
 
            loss_0 = model_0(x0, t0)
            loss_1 = model_1(x1, t1)
+
+           model_0.cleargrads()
+           model_1.cleargrads()
 
            loss_0.backward()
            loss_1.backward()
@@ -390,8 +412,8 @@ Then, we can write a data-parallel learning loop as follows (codes for Trainer i
    epoch 0
    ...
 
-Do not forget initializing the gradients of both model copies!
-One half of the minibatch is forwarded to GPU 0, the other half to GPU 1.
+Do not forget to clear the gradients of both model copies!
+One half of the mini-batch is forwarded to GPU 0, the other half to GPU 1.
 Then the gradients are accumulated by the :meth:`Link.addgrads` method.
 This method adds the gradients of a given link to those of the self.
 After the gradients are prepared, we can update the optimizer in usual way.

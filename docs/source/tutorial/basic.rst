@@ -557,8 +557,4 @@ These extensions perform the following tasks:
 There are many extensions implemented in the :mod:`chainer.training.extensions` module.
 The most important one that is not included above is :func:`~training.extensions.snapshot`, which saves the snapshot of the training procedure (i.e., the Trainer object) to a file in the output directory.
 
-The `example code <https://github
-.com/pfnet/chainer/blob/master/examples/mnist/train_mnist.py>`_ in the
-`examples/mnist` directory additionally contains GPU support, though the
-essential part is same as the code in this tutorial. We will review in later
- sections how to use GPU(s).
+The `example code <https://github.com/pfnet/chainer/blob/master/examples/mnist/train_mnist.py>`_ in the `examples/mnist` directory additionally contains GPU support, though the essential part is same as the code in this tutorial. We will review in later sections how to use GPU(s).
