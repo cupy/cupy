@@ -294,6 +294,8 @@ Here we use the simplest one, called Stochastic Gradient Descent (SGD):
    >>> optimizer.use_cleargrads()
    >>> optimizer.setup(model)
 
+The method :meth:`~GradientMethod.use_cleargrads` is for efficiency. See :meth:`~GradientMethod.use_cleargrads` for detail.
+
 The method :meth:`~Optimizer.setup` prepares for the optimization given a link.
 
 Some parameter/gradient manipulations, e.g. weight decay and gradient clipping, can be done by setting *hook functions* to the optimizer.
