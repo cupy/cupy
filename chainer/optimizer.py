@@ -365,6 +365,10 @@ class GradientMethod(Optimizer):
     - :meth:`update_one` or both :meth:`update_one_cpu` and
       :meth:`update_one_gpu`
 
+    .. note::
+       It is recommended to call :meth:`use_cleargrads` after creating a
+       :class:`GradientMethod` object for efficiency.
+
     """
 
     def update(self, lossfun=None, *args, **kwds):
@@ -384,7 +388,7 @@ class GradientMethod(Optimizer):
 
         """
         if lossfun is not None:
-            use_cleargrads = kwds.pop('use_cleargrads', False)
+            use_cleargrads = getattr(self, '_use_cleargrads', False)
             loss = lossfun(*args, **kwds)
             if use_cleargrads:
                 self.target.cleargrads()
@@ -436,6 +440,22 @@ class GradientMethod(Optimizer):
 
         """
         raise NotImplementedError
+
+    def use_cleargrads(self, use=True):
+        """Enables or disables use of :func:`~chainer.Link.cleargrads` in `update`.
+
+        Args:
+            use (bool): If true, this function enables use of `cleargrads`.
+                If false, disables use of `cleargrads` (`zerograds` is used).
+
+        .. note::
+           Note that :meth:`update` calls :meth:`~Link.zerograds` by default
+           for backward compatibility. It is recommended to call this method
+           before first call of `update` because `cleargrads` is more
+           efficient than `zerograds`.
+
+        """
+        self._use_cleargrads = use
 
 
 class WeightDecay(object):
