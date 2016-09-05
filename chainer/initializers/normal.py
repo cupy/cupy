@@ -17,10 +17,13 @@ class Normal(initializer.Initializer):
 
     Args:
         scale(float): Standard deviation of Gaussian distribution.
+        dtype: Data type specifier.
+
     """
 
-    def __init__(self, scale=0.05):
+    def __init__(self, scale=0.05, dtype=None):
         self.scale = scale
+        super(Normal, self).__init__(dtype)
 
     def __call__(self, array):
         xp = cuda.get_array_module(array)
@@ -44,16 +47,20 @@ class GlorotNormal(initializer.Initializer):
     Args:
         scale (float): A constant that determines the scale
             of the standard deviation.
+        dtype: Data type specifier.
 
     """
 
-    def __init__(self, scale=1.0):
+    def __init__(self, scale=1.0, dtype=None):
         self.scale = scale
+        super(GlorotNormal, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / (fan_in + fan_out))
-        return Normal(s)(array)
+        Normal(s)(array)
 
 
 class HeNormal(initializer.Initializer):
@@ -71,13 +78,17 @@ class HeNormal(initializer.Initializer):
     Args:
         scale (float): A constant that determines the scale
             of the standard deviation.
+        dtype: Data type specifier.
 
     """
 
-    def __init__(self, scale=1.0):
+    def __init__(self, scale=1.0, dtype=None):
         self.scale = scale
+        super(HeNormal, self).__init__(dtype)
 
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         fan_in, fan_out = initializer.get_fans(array.shape)
         s = self.scale * numpy.sqrt(2. / fan_in)
-        return Normal(s)(array)
+        Normal(s)(array)

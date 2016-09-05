@@ -50,7 +50,7 @@ Basics of :class:`cupy.ndarray`
 
 .. note::
 
-   CuPy does not require explicit initialization, so ``cuda.init()`` function is removed as of v1.3.0.
+   CuPy does not require explicit initialization, so ``cuda.init()`` function is deprecated.
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
 The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
@@ -383,8 +383,8 @@ Then, we can write a data-parallel learning loop as follows (codes for Trainer i
            x_batch = x_train[indexes[i : i + batchsize]]
            y_batch = y_train[indexes[i : i + batchsize]]
 
-           model_0.zerograds()
-           model_1.zerograds()
+           model_0.cleargrads()
+           model_1.cleargrads()
 
            x0 = Variable(cuda.to_gpu(x_batch[:batchsize//2], 0))
            t0 = Variable(cuda.to_gpu(y_batch[:batchsize//2], 0))
@@ -418,9 +418,9 @@ So we must manually copy them to ``model_1`` using :meth:`Link.copyparams` metho
 
 .. note::
 
-   If the batchsize used in one model remain the same, the scale of the gradient
+   If the batch size used in one model remain the same, the scale of the gradient
    is roughly proportional to the number of models, when we aggregate
-   gradients from all models by :func:`chainer.Link.addgrads`. So you need to adjust the batchsize
+   gradients from all models by :func:`chainer.Link.addgrads`. So you need to adjust the batch size
    and/or learning rate of the optimizer accordingly.
 
 --------

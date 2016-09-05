@@ -19,7 +19,7 @@ class TestConvolution2D(unittest.TestCase):
         self.link = links.Convolution2D(3, 2, 3, stride=2, pad=1)
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.x = numpy.random.uniform(-1, 1,
                                       (2, 3, 4, 3)).astype(numpy.float32)
@@ -120,7 +120,7 @@ class TestConvolution2DParameterShapePlaceholder(unittest.TestCase):
         self.link(chainer.Variable(self.x))
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
         self.gy = numpy.random.uniform(-1, 1,
                                        (2, 2, 2, 2)).astype(numpy.float32)
 

@@ -20,6 +20,7 @@ from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
+from chainer.functions.array import flatten
 from chainer.functions.array import get_item
 from chainer.functions.array import hstack
 from chainer.functions.array import permutate
@@ -32,6 +33,7 @@ from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
+from chainer.functions.array import vstack
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
@@ -64,6 +66,7 @@ from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
+from chainer.functions.math import hyperbolic
 from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import linear_interpolate
@@ -145,6 +148,8 @@ Copy = copy.Copy
 copy = copy.copy
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
+Flatten = flatten.Flatten
+flatten = flatten.flatten
 GetItem = get_item.GetItem
 get_item = get_item.get_item
 hstack = hstack.hstack
@@ -210,6 +215,7 @@ SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 Triplet = triplet.Triplet
 triplet = triplet.triplet
+vstack = vstack.vstack
 
 ArgMax = minmax.ArgMax
 argmax = minmax.argmax
@@ -228,6 +234,8 @@ Clip = clip.Clip
 clip = clip.clip
 Cos = trigonometric.Cos
 cos = trigonometric.cos
+Cosh = hyperbolic.Cosh
+cosh = hyperbolic.cosh
 det = det.det
 Exp = exponential.Exp
 exp = exponential.exp
@@ -259,9 +267,12 @@ Minimum = minimum.Minimum
 minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
+rsqrt = sqrt.rsqrt
 scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
+Sinh = hyperbolic.Sinh
+sinh = hyperbolic.sinh
 Sqrt = sqrt.Sqrt
 sqrt = sqrt.sqrt
 Sum = sum.Sum

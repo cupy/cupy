@@ -115,6 +115,10 @@ expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
 
+flatten
+~~~~~~~
+.. autofunction:: flatten
+
 get_item
 ~~~~~~~~
 .. autofunction:: get_item
@@ -162,6 +166,10 @@ transpose
 transpose_sequence
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: transpose_sequence
+
+vstack
+~~~~~~
+.. autofunction:: vstack
 
 where
 ~~~~~
@@ -303,6 +311,10 @@ cos
 ~~~
 .. autofunction:: cos
 
+cosh
+~~~~
+.. autofunction:: cosh
+
 exp
 ~~~
 .. autofunction:: exp
@@ -359,6 +371,10 @@ minimum
 ~~~~~~~
 .. autofunction:: minimum
 
+rsqrt
+~~~~~
+.. autofunction:: rsqrt
+
 scale
 ~~~~~
 .. autofunction:: scale
@@ -367,6 +383,10 @@ sin
 ~~~
 .. autofunction:: sin
 
+sinh
+~~~~
+.. autofunction:: sinh
+
 sqrt
 ~~~~
 .. autofunction:: sqrt
@@ -374,6 +394,12 @@ sqrt
 sum
 ~~~
 .. autofunction:: sum
+
+tanh
+~~~~
+Hyperbolic tangent function is described in "Activation functions" section.
+
+.. seealso:: :func:`~chainer.functions.tanh`
 
 tan
 ~~~

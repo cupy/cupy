@@ -46,7 +46,7 @@ class TestDot(unittest.TestCase):
     @testing.for_float_dtypes(name='dtype_a')
     @testing.for_float_dtypes(name='dtype_b')
     @testing.for_float_dtypes(name='dtype_c')
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(accept_error=ValueError)
     def test_dot_with_out(self, xp, dtype_a, dtype_b, dtype_c):
         shape_a, shape_b = self.shape
         if self.trans_a:
@@ -106,13 +106,13 @@ class TestProduct(unittest.TestCase):
         return c
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_raises()
     def test_transposed_dot_with_out2(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(1, 0, 2)
         b = testing.shaped_arange((4, 2, 3), xp, dtype).transpose(2, 0, 1)
         c = xp.ndarray((3, 2, 3, 2)[::-1], dtype=dtype).T
+        # Only C-contiguous array is acceptable
         xp.dot(a, b, out=c)
-        return c
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
