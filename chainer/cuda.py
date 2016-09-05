@@ -54,10 +54,11 @@ except Exception as e:
         pass  # for type testing
 
 if available:
+    _cudnn_disabled_by_user = int(os.environ.get('CHAINER_CUDNN', '1')) == 0
     try:
         import cupy.cudnn
         cudnn = cupy.cudnn
-        cudnn_enabled = int(os.environ.get('CHAINER_CUDNN', '1')) != 0
+        cudnn_enabled = not _cudnn_disabled_by_user
     except Exception as e:
         _resolution_error = e
 
@@ -83,6 +84,7 @@ def check_cuda_available():
         msg += str(_resolution_error)
         raise RuntimeError(msg)
     if (not cudnn_enabled and
+            not _cudnn_disabled_by_user and
             not getattr(check_cuda_available, '_already_warned', False)):
         warnings.warn(
             'cuDNN is not enabled.\n'
