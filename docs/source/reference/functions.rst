@@ -187,6 +187,10 @@ convolution_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: convolution_2d
 
+convolution_nd
+~~~~~~~~~~~~~~
+.. autofunction:: convolution_nd
+
 deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
