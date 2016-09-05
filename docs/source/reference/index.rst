@@ -19,6 +19,7 @@ Chainer Reference Manual
    datasets
    iterators
    extensions
+   triggers
    caffe
    graph
    environment

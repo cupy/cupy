@@ -23,10 +23,11 @@ def get_trigger(trigger):
         trigger: Trigger object. It can be either an already built trigger
             object (i.e., a callable object that accepts a trainer object and
             returns a bool value), or a tuple. In latter case, the tuple is
-            passed to :class:`IntervalTrigger`.
+            passed to :class:`~chainer.training.triggers.IntervalTrigger`.
 
     Returns:
-        ``trigger`` if it is a callable, otherwise a :class:`IntervalTrigger`
+        ``trigger`` if it is a callable, otherwise a
+        :class:`~chainer.training.triggers.IntervalTrigger`
         object made from ``trigger``.
 
     """
