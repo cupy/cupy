@@ -1,5 +1,3 @@
-import time
-
 from chainer.training import extension
 
 
@@ -18,19 +16,6 @@ def observe_value(observation_key, target_func):
     def _observe_value(trainer):
         trainer.observation[observation_key] = target_func(trainer)
     return _observe_value
-
-
-def observe_time(observation_key='time'):
-    """Returns a trainer extension to record the elapsed time.
-
-    Args:
-        observation_key (str): Key of observation to record.
-
-    Returns:
-        The extension function.
-    """
-    start_time = time.time()
-    return observe_value(observation_key, lambda _: time.time() - start_time)
 
 
 def observe_lr(optimizer_name='main', observation_key='lr'):

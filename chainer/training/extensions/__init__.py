@@ -19,5 +19,4 @@ snapshot_object = _snapshot.snapshot_object
 PrintReport = print_report.PrintReport
 ProgressBar = progress_bar.ProgressBar
 observe_value = value_observation.observe_value
-observe_time = value_observation.observe_time
 observe_lr = value_observation.observe_lr
