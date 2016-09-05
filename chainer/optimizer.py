@@ -446,7 +446,13 @@ class GradientMethod(Optimizer):
 
         Args:
             use (bool): If true, this function enables use of `cleargrads`.
-                If false, disables use of `cleargrads`.
+                If false, disables use of `cleargrads` (`zerograds` is used).
+
+        .. note::
+           Note that :meth:`update` calls :meth:`~Link.zerograds` by default
+           for backward compatibility. It is recommended to call this method
+           before first call of `update` because `cleargrads` is more
+           efficient than `zerograds`.
 
         """
         self._use_cleargrads = use
