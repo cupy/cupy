@@ -2041,7 +2041,7 @@ cpdef ndarray tensordot_core(
         cublas.dgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
                      a.data.ptr, lda, 0, c.data.ptr, m)
 
-    if dtype != ret_dtype:
+    if out is not ret:
         elementwise_copy(out, ret)
     return ret
 
