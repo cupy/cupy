@@ -365,6 +365,10 @@ class GradientMethod(Optimizer):
     - :meth:`update_one` or both :meth:`update_one_cpu` and
       :meth:`update_one_gpu`
 
+    .. note::
+       It is recommended to call :meth:`use_cleargrads` after creating a
+       :class:`GradientMethod` object for efficiency.
+
     """
 
     def update(self, lossfun=None, *args, **kwds):
