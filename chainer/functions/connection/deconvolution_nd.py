@@ -111,7 +111,7 @@ class DeconvolutionND(function.Function):
                 conv.get_deconv_outsize(d, k, s, p)
                 for d, k, s, p in zip(dims, ksize, self.stride, self.pad))
         y_shape = (n, c) + self.outs  # (n, c_O, out_1, out_2, ..., out_N)
-        y = cuda.cupy.empty(y_shape,  dtype=x.dtype)
+        y = cuda.cupy.empty(y_shape, dtype=x.dtype)
 
         # Convert to C-contiguous arrays.
         x = cuda.cupy.ascontiguousarray(x)
