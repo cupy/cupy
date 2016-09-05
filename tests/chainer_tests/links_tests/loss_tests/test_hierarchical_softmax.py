@@ -37,7 +37,7 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
     def setUp(self):
         tree = ((0, 1), ((2, 3), 4))
         self.link = links.BinaryHierarchicalSoftmax(3, tree)
-        self.link.zerograds()
+        self.link.cleargrads()
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
         self.t = numpy.array([0, 2]).astype(numpy.int32)
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
@@ -76,7 +76,7 @@ class TestBinaryHierarchicalSoftmax(unittest.TestCase):
         self.link.to_gpu()
         gpu_loss = self.link(chainer.Variable(cuda.to_gpu(self.x)),
                              chainer.Variable(cuda.to_gpu(self.t))).data
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             cpu_loss, cuda.to_cpu(gpu_loss))
 
     def check_backward(self, x_data, t_data, y_grad):

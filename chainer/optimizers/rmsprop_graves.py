@@ -11,6 +11,7 @@ class RMSpropGraves(optimizer.GradientMethod):
     See http://arxiv.org/abs/1308.0850
 
     """
+
     def __init__(self, lr=1e-4, alpha=0.95, momentum=0.9, eps=1e-4):
         # Default parameter values are the ones in the original paper.
         self.lr = lr

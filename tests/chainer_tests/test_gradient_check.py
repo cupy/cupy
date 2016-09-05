@@ -57,7 +57,7 @@ class NumericalGradientTest(unittest.TestCase):
         print('eps: {}'.format(eps))
         self.assertEqual(len(dx_expect), len(dx_actual))
         for e, a in zip(dx_expect, dx_actual):
-            gradient_check.assert_allclose(e, a, atol=1e-3, rtol=1e-3)
+            testing.assert_allclose(e, a, atol=1e-3, rtol=1e-3)
 
     def check_numerical_grad(self, f, df, xs, gys, eps=None):
         if eps is None:
@@ -167,7 +167,7 @@ class NumericalGradientReferenceTest(unittest.TestCase):
         def func():
             return x,
         gx, = gradient_check.numerical_grad(func, (x,), (1,))
-        gradient_check.assert_allclose(cuda.to_cpu(gx), 1)
+        testing.assert_allclose(cuda.to_cpu(gx), 1)
 
     def test_reference_cpu(self):
         self.check_reference(self.x)
@@ -262,7 +262,7 @@ class AssertAllCloseTest(unittest.TestCase):
         self.y = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
 
     def check_identical(self, x):
-        gradient_check.assert_allclose(x, x, atol=0, rtol=0)
+        testing.assert_allclose(x, x, atol=0, rtol=0)
 
     @condition.repeat(5)
     def test_identical_cpu(self):
@@ -278,8 +278,8 @@ class AssertAllCloseTest(unittest.TestCase):
         y_cpu = cuda.to_cpu(y)
         max_abs_diff = numpy.max(numpy.abs(x_cpu - y_cpu))
         with self.assertRaises(AssertionError):
-            gradient_check.assert_allclose(x, y, atol=max_abs_diff - 1, rtol=0)
-        gradient_check.assert_allclose(x, y, atol=max_abs_diff + 1, rtol=0)
+            testing.assert_allclose(x, y, atol=max_abs_diff - 1, rtol=0)
+        testing.assert_allclose(x, y, atol=max_abs_diff + 1, rtol=0)
 
     @condition.repeat(5)
     def test_atol_cpu(self):
@@ -302,8 +302,8 @@ class AssertAllCloseTest2(unittest.TestCase):
         y_cpu = cuda.to_cpu(y)
         max_ratio = numpy.max(numpy.abs(x_cpu - y_cpu) / y_cpu)
         with self.assertRaises(AssertionError):
-            gradient_check.assert_allclose(x, y, atol=0, rtol=max_ratio - 1)
-        gradient_check.assert_allclose(x, y, atol=0, rtol=max_ratio + 1)
+            testing.assert_allclose(x, y, atol=0, rtol=max_ratio - 1)
+        testing.assert_allclose(x, y, atol=0, rtol=max_ratio + 1)
 
     @condition.repeat(5)
     def test_rtol_cpu(self):
@@ -324,6 +324,10 @@ class Ident(chainer.Function):
         return grads
 
 
+# numpy.float16 is not tested because it is low precision.
+@testing.parameterize(*testing.product({
+    'dtype': [None, numpy.float32, numpy.float64],
+}))
 class TestCheckBackward(unittest.TestCase):
 
     def test_multiple_output(self):
@@ -337,7 +341,7 @@ class TestCheckBackward(unittest.TestCase):
             u = Ident()(t)
             return s, u
 
-        gradient_check.check_backward(f, (x1, x2), (g1, g2))
+        gradient_check.check_backward(f, (x1, x2), (g1, g2), dtype=self.dtype)
 
     def test_no_grads_for_not_float(self):
         x1 = numpy.array([1], dtype='f')

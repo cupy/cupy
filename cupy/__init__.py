@@ -13,7 +13,7 @@ except ImportError:
     msg = ('CuPy is not correctly installed. Please check your environment, '
            'uninstall Chainer and reinstall it with `pip install chainer '
            '--no-cache-dir -vvvv`.')
-    raise six.reraise(RuntimeError, msg, sys.exc_info()[2])
+    raise six.reraise(RuntimeError, RuntimeError(msg), sys.exc_info()[2])
 
 
 from cupy import binary
@@ -205,6 +205,8 @@ mintypecode = numpy.mintypecode
 take = indexing.indexing.take
 diagonal = indexing.indexing.diagonal
 ix_ = indexing.generate.ix_
+
+fill_diagonal = indexing.insert.fill_diagonal
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
@@ -391,7 +393,7 @@ def get_array_module(*args):
 
     .. admonition:: Example
 
-       A NumPy/CuPy generic function can be written as follows::
+       A NumPy/CuPy generic function can be written as follows
 
        >>> def softplus(x):
        ...     xp = cupy.get_array_module(x)

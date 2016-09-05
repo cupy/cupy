@@ -11,6 +11,9 @@ class Concat(function.Function):
 
     # concat along the channel dimension by default
     def __init__(self, axis=1):
+        if not isinstance(axis, int):
+            raise TypeError('axis must be int')
+
         self.axis = axis
 
     def check_type_forward(self, in_types):

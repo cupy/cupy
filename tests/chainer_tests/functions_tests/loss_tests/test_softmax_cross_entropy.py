@@ -37,10 +37,11 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
                     len(self.ignore_index) <= self.t.ndim):
                 self.t[self.ignore_index] = -1
         self.check_forward_options = {}
-        self.check_backward_options = {'atol': 1e-4, 'rtol': 1e-3}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
-            self.check_backward_options = {'atol': 5e-2, 'rtol': 1e-1}
+            self.check_backward_options = {
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, t_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -74,14 +75,14 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
         else:
             loss_expect /= len(t_data)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             loss_expect, loss_value, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
@@ -101,7 +102,7 @@ class TestSoftmaxCrossEntropy(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.t)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.t))
@@ -147,7 +148,7 @@ class TestSoftmaxCrossEntropyValueCheck(unittest.TestCase):
     def test_value_check_gpu(self):
         self.check_value_check(self.x, self.t, False)
 
-    @attr.cudnn
+    @attr.gpu
     def test_value_check_gpu_cudnn(self):
         self.check_value_check(cuda.to_gpu(self.x), cuda.to_gpu(self.t), True)
 

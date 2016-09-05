@@ -68,7 +68,7 @@ class LogSumExp(function.Function):
 def logsumexp(x, axis=None):
     """Log-sum-exp of array elements over a given axis.
 
-    This function calculates logarithm of sum of exponetial of array elements.
+    This function calculates logarithm of sum of exponential of array elements.
 
     .. math::
 

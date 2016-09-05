@@ -5,7 +5,6 @@ import six
 
 import chainer
 from chainer import cuda
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
@@ -44,7 +43,7 @@ class TestBinaryAccuracy(unittest.TestCase):
                 correct += 1
             count += 1
         expected = float(correct) / count
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             expected, cuda.to_cpu(y.data), **self.check_forward_options)
 
     @condition.retry(3)
@@ -74,7 +73,7 @@ class TestBinaryAccuracyIgnoreAll(unittest.TestCase):
         self.assertEqual(y.data.dtype, self.dtype)
 
         expected = 0.0
-        gradient_check.assert_allclose(expected, cuda.to_cpu(y.data))
+        testing.assert_allclose(expected, cuda.to_cpu(y.data))
 
     def test_forward_cpu(self):
         self.check_forward(self.x, self.t)

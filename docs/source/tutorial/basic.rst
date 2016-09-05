@@ -29,7 +29,7 @@ Most existing deep learning frameworks are based on the **"Define-and-Run"** sch
 That is, first a network is defined and fixed, and then the user periodically feeds it with mini-batches.
 Since the network is statically defined before any forward/backward computation, all the logic must be embedded into the network architecture as *data*.
 Consequently, defining a network architecture in such systems (e.g. Caffe) follows a declarative approach.
-Note that one can still produce such a static network definition using imperative languages (e.g. Torch7 and Theano-based frameworks).
+Note that one can still produce such a static network definition using imperative languages (e.g. torch.nn, Theano-based frameworks, and TensorFlow).
 
 In contrast, Chainer adopts a **"Define-by-Run"** scheme, i.e., the network is defined on-the-fly via the actual forward computation.
 More precisely, Chainer stores the history of computation instead of programming logic.
@@ -48,12 +48,14 @@ We will review such amenities in later sections of this tutorial.
 
      import numpy as np
      import chainer
-     from chainer import cuda, Function, gradient_check, Variable, optimizers, serializers, utils
+     from chainer import cuda, Function, gradient_check, report, training, utils, Variable
+     from chainer import datasets, iterators, optimizers, serializers
      from chainer import Link, Chain, ChainList
      import chainer.functions as F
      import chainer.links as L
+     from chainer.training import extensions
 
-   These imports appear widely in Chainer's codes and examples. For simplicity, we omit this idiom in this tutorial.
+   These imports appear widely in Chainer's codes and examples. For simplicity, we omit these imports in this tutorial.
 
 
 Forward/Backward Computation
@@ -67,10 +69,6 @@ Here we start with simple :class:`~numpy.ndarray` with only one element:
 
    >>> x_data = np.array([5], dtype=np.float32)
    >>> x = Variable(x_data)
-
-.. warning::
-
-   Chainer currently only supports 32-bit float for most computations.
 
 A Variable object has basic arithmetic operators.
 In order to compute :math:`y = x^2 - 2x + 1`, just write:
@@ -130,7 +128,7 @@ This is simply done by setting the :attr:`~Variable.grad` attribute of the outpu
 
 .. note::
 
-   Many functions taking :class:`Variable` object(s) are defined in the :mod:`functions` module.
+   Many functions taking :class:`Variable` object(s) are defined in the :mod:`~chainer.functions` module.
    You can combine them to realize complicated functions with automatic backward computation.
 
 
@@ -144,13 +142,10 @@ Link is an object that holds parameters (i.e. optimization targets).
 The most fundamental ones are links that behave like regular functions while replacing some arguments by their parameters.
 We will introduce higher level links, but here think links just like functions with parameters.
 
-.. note::
-   Actually, these are corresponding to "parameterized functions" in versions up to v1.4.
-
 One of the most frequently-used links is the :class:`~functions.Linear` link (a.k.a. *fully-connected layer* or *affine transformation*).
 It represents a mathematical function :math:`f(x) = Wx + b`, where the matrix :math:`W` and the vector :math:`b` are parameters.
 This link is corresponding to its pure counterpart :func:`~functions.linear`, which accepts :math:`x, W, b` as arguments.
-A linear link from three-dimensional space to two-dimensional space is defined by:
+A linear link from three-dimensional space to two-dimensional space is defined by the following line:
 
 .. doctest::
 
@@ -210,7 +205,7 @@ Write a model as a chain
 
 Most neural network architectures contain multiple links.
 For example, a multi-layer perceptron consists of multiple linear layers.
-We can write complex procedures with parameters by combining multiple links like:
+We can write complex procedures with parameters by combining multiple links like this:
 
 .. doctest::
 
@@ -220,7 +215,7 @@ We can write complex procedures with parameters by combining multiple links like
    ...     h = l1(x)
    ...     return l2(h)
 
-Here the ``L`` indicates the :mod:`chainer.links` module.
+Here the ``L`` indicates the :mod:`~chainer.links` module.
 A procedure with parameters defined in this way is hard to reuse.
 More Pythonic way is combining the links and procedures into a class:
 
@@ -277,7 +272,7 @@ Another way to define a chain is using the :class:`ChainList` class, which behav
    ...         return self[1](h)
 
 ChainList is convenient to use an arbitrary number of links.
-If the number of links is fixed like above case, the Chain class is recommended as a base class.
+If the number of links is fixed like the above case, the Chain class is recommended as a base class.
 
 
 Optimizer
@@ -285,8 +280,8 @@ Optimizer
 
 In order to get good values for parameters, we have to optimize them by the :class:`Optimizer` class.
 It runs a numerical optimization algorithm given a link.
-Many algorithms are implemented in :mod:`optimizers` module.
-Here we use the simplest one, called Stochastic Gradient Descent:
+Many algorithms are implemented in :mod:`~chainer.optimizers` module.
+Here we use the simplest one, called Stochastic Gradient Descent (SGD):
 
 .. doctest::
 
@@ -296,7 +291,24 @@ Here we use the simplest one, called Stochastic Gradient Descent:
 
 The method :meth:`~Optimizer.setup` prepares for the optimization given a link.
 
-There are two ways to run optimization.
+Some parameter/gradient manipulations, e.g. weight decay and gradient clipping, can be done by setting *hook functions* to the optimizer.
+Hook functions are called after the gradient computation and right before the actual update of parameters.
+For example, we can set weight decay regularization by running the next line beforehand:
+
+.. doctest::
+
+   >>> optimizer.add_hook(chainer.optimizer.WeightDecay(0.0005))
+
+Of course, you can write your own hook functions.
+It should be a function or a callable object, taking the optimizer as the argument.
+
+There are two ways to use the optimizer.
+One is using it via :class:`~chainer.training.Trainer`, which we will see in the following sections.
+The other way is using it directly.
+We here review the latter case.
+*If you are interested in getting able to use the optimizer in a simple way, skip this section and go to the next one.*
+
+There are further two ways to use the optimizer directly.
 One is manually computing gradients and then call the :meth:`~Optimizer.update` method with no arguments.
 Do not forget resetting gradients beforehand!
 
@@ -314,24 +326,45 @@ In this case, :meth:`~Link.zerograds` is automatically called by the update meth
    ...     return loss
    >>> optimizer.update(lossfun, args...)
 
-Some parameter/gradient manipulations, e.g. weight decay and gradient clipping, can be done by setting *hook functions* to the optimizer.
-Hook functions are called by the :meth:`~Optimizer.update` method in advance of the actual update.
-For example, we can set weight decay regularization by running the next line beforehand:
+See :meth:`Optimizer.update` for the full specification.
 
-.. doctest::
 
-   >>> optimizer.add_hook(chainer.optimizer.WeightDecay(0.0005))
+Trainer
+~~~~~~~
 
-Of course, you can write your own hook functions.
-It should be a function or a callable object, taking the optimizer as the argument.
+When we want to train neural networks, we have to run *training loops* that update parameters many times.
+A typical training loop consists of following procedures:
+
+1. Iterations over training datasets
+2. Preprocessing of extracted mini-batches
+3. Forward/backward computations of the neural networks
+4. Parameter updates
+5. Evaluations of the current parameters on validation datasets
+6. Logging and printing of the intermediate results
+
+Chainer provides a simple yet powerful way to make it easy to write such training processes.
+The training loop abstraction mainly consists of two components:
+
+- **Dataset abstraction**.
+  It implements 1 and 2 in the above list.
+  The core components are defined in the :mod:`dataset` module.
+  There are also many implementations of datasets and iterators in :mod:`~chainer.datasets` and :mod:`~chainer.iterators` modules, respectively.
+- **Trainer**.
+  It implements 3, 4, 5, and 6 in the above list.
+  The whole procedure is implemented by :class:`~training.Trainer`.
+  The way to update parameters (3 and 4) is defined by :class:`~training.Updater`, which can be freely customized.
+  The 5 and 6 are implemented by instances of :class:`~training.Extension`, which appends an extra procedure to the training loop.
+  Users can freely customize the training procedure by adding extensions. Users can also implement their own extensions.
+
+We will see how to use Trainer in the example section below.
 
 
 Serializer
 ~~~~~~~~~~
 
-The last core feature described in this page is serializer.
+Before proceeding to the first example, we introduce Serializer, which is the last core feature described in this page.
 Serializer is a simple interface to serialize or deserialize an object.
-:class:`Link` and :class:`Optimizer` supports serialization by serializers.
+:class:`Link`, :class:`Optimizer`, and :class:`~training.Trainer` supports serialization.
 
 Concrete serializers are defined in the :mod:`serializers` module.
 It supports NumPy NPZ and HDF5 formats.
@@ -377,31 +410,48 @@ Example: Multi-layer Perceptron on MNIST
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now you can solve a multiclass classification task using a multi-layer perceptron.
-Here we use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing defacto "hello world" of machine learning.
-This MNIST example is also found in ``examples/mnist`` directory of the official repository.
+We use hand-written digits dataset called `MNIST <http://yann.lecun.com/exdb/mnist/>`_, which is one of the long-standing de facto "hello world" of machine learning.
+This MNIST example is also found in the `examples/mnist <https://github.com/pfnet/chainer/tree/master/examples/mnist>`_ directory of the official repository.
+We show how to use :class:`~training.Trainer` to construct and run the training loop in this section.
 
-In order to use MNIST, we prepared ``load_mnist_data`` function at ``examples/mnist/data.py``::
+We first have to prepare the MNIST dataset.
+The MNIST dataset consists of 70,000 greyscale images of size 28x28 (i.e. 784 pixels) and corresponding digit labels.
+The dataset is divided into 60,000 training images and 10,000 test images by default.
+We can obtain the vectorized version (i.e., a set of 784 dimensional vectors) by :func:`datasets.get_mnist`.
 
-   >>> import data
-   >>> mnist = data.load_mnist_data()
+   >>> train, test = datasets.get_mnist()
 
 .. testcode::
    :hide:
 
-   mnist = {'data': np.random.randint(255, size=(70000, 784)).astype(np.uint8),
-            'target': np.random.randint(10, size=70000).astype(np.uint8)}
+   data = np.random.rand(70000, 784).astype(np.float32)
+   target = np.random.randint(10, size=70000).astype(np.int32)
+   train = datasets.TupleDataset(data[:60000], target[:60000])
+   test = datasets.TupleDataset(data[60000:], target[60000:])
 
-The mnist dataset consists of 70,000 grayscale images of size 28x28 (i.e. 784 pixels) and corresponding digit labels.
-First, we scale pixels to [0, 1] values, and divide the dataset into 60,000 training samples and 10,000 test samples.
+This code automatically downloads the MNIST dataset and saves the NumPy arrays to the ``$(HOME)/.chainer`` directory.
+The returned ``train`` and ``test`` can be seen as lists of image-label pairs (strictly speaking, they are instances of :class:`~datasets.TupleDataset`).
+
+We also have to define how to iterate over these datasets.
+We want to shuffle the training dataset for every *epoch*, i.e. at the beginning of every sweep over the dataset.
+In this case, we can use :class:`iterators.SerialIterator`.
 
 .. doctest::
 
-   >>> x_all = mnist['data'].astype(np.float32) / 255
-   >>> y_all = mnist['target'].astype(np.int32)
-   >>> x_train, x_test = np.split(x_all, [60000])
-   >>> y_train, y_test = np.split(y_all, [60000])
+   >>> train_iter = iterators.SerialIterator(train, batch_size=100, shuffle=True)
 
-Next, we want to define the architecture.
+On the other hand, we do not have to shuffle the test dataset.
+In this case, we can pass ``shuffle=False`` argument to disable the shuffling.
+It makes the iteration faster when the underlying dataset supports fast slicing.
+
+.. doctest::
+
+   >>> test_iter = iterators.SerialIterator(test, batch_size=100, repeat=False, shuffle=False)
+
+We also pass ``repeat=False``, which means we stop iteration when all examples are visited.
+This option is usually required for the test/validation datasets; without this option, the iteration enters an infinite loop.
+
+Next, we define the architecture.
 We use a simple three-layer rectifier network with 100 units per layer as an example.
 
 .. doctest::
@@ -433,16 +483,22 @@ In order to compute loss values or evaluate the accuracy of the predictions, we 
    ...         
    ...     def __call__(self, x, t):
    ...         y = self.predictor(x)
-   ...         self.loss = F.softmax_cross_entropy(y, t)
-   ...         self.accuracy = F.accuracy(y, t)
-   ...         return self.loss
+   ...         loss = F.softmax_cross_entropy(y, t)
+   ...         accuracy = F.accuracy(y, t)
+   ...         report({'loss': loss, 'accuracy': accuracy}, self)
+   ...         return loss
 
 This Classifier class computes accuracy and loss, and returns the loss value.
+The pair of arguments ``x`` and ``t`` corresponds to each example in the datasets (a tuple of an image and a label).
 :func:`~functions.softmax_cross_entropy` computes the loss value given prediction and ground truth labels.
 :func:`~functions.accuracy` computes the prediction accuracy.
 We can set an arbitrary predictor link to an instance of the classifier.
 
-Note that a similar class is defined as :class:`chainer.links.Classifier`.
+The :func:`~chainer.report` function reports the loss and accuracy values to the trainer.
+For the detailed mechanism of collecting training statistics, see :ref:`reporter`.
+You can also collect other types of observations like activation statistics in a similar ways.
+
+Note that a class similar to the Classifier above is defined as :class:`chainer.links.Classifier`.
 So instead of using the above example, we will use this predefined Classifier chain instead.
 
 .. doctest::
@@ -451,65 +507,54 @@ So instead of using the above example, we will use this predefined Classifier ch
    >>> optimizer = optimizers.SGD()
    >>> optimizer.setup(model)
 
-Finally, we can write a learning loop as following:
+Now we can build a trainer object.
+
+.. doctest::
+
+   >>> updater = training.StandardUpdater(train_iter, optimizer)
+   >>> trainer = training.Trainer(updater, (20, 'epoch'), out='result')
+
+The second argument ``(20, 'epoch')`` represents the duration of training.
+We can use either ``epoch`` or ``iteration`` as the unit.
+In this case, we train the multi-layer perceptron by iterating over the training set 20 times.
+
+In order to invoke the training loop, we just call the :meth:`~training.Trainer.run` method.
+
+.. doctest::
+
+   >>> trainer.run()
 
 .. testcode::
    :hide:
 
-   datasize = 600
+   trainer = training.Trainer(updater, (20, 'epoch'), out='result')
+
+This method executes the whole training sequence.
+
+The above code just optimizes the parameters.
+In most cases, we want to see how the training proceeds, where we can use extensions inserted before calling the ``run`` method.
 
 .. doctest::
 
-   >>> batchsize = 100
-   >>> datasize = 60000  #doctest: +SKIP
-   >>> for epoch in range(20):
-   ...     print('epoch %d' % epoch)
-   ...     indexes = np.random.permutation(datasize)
-   ...     for i in range(0, datasize, batchsize):
-   ...         x = Variable(x_train[indexes[i : i + batchsize]])
-   ...         t = Variable(y_train[indexes[i : i + batchsize]])
-   ...         optimizer.update(model, x, t)
-   epoch 0...
+   >>> trainer.extend(extensions.Evaluator(test_iter, model))
+   >>> trainer.extend(extensions.LogReport())
+   >>> trainer.extend(extensions.PrintReport(['epoch', 'main/accuracy', 'validation/main/accuracy']))
+   >>> trainer.extend(extensions.ProgressBar())
+   >>> trainer.run()  # doctest: +SKIP
 
-Only the last three lines are the code related to Chainer, which are already described above.
-Note that, in the last line, we pass ``model`` as a loss function.
+These extensions perform the following tasks:
 
-These three lines can also be rewritten as follows, with explicit gradient computation:
+:class:`~training.extensions.Evaluator`
+   Evaluates the current model on the test dataset at the end of every epoch.
+:class:`~training.extensions.LogReport`
+   Accumulates the reported values and emits them to the log file in the output directory.
+:class:`~training.extensions.PrintReport`
+   Prints the selected items in the LogReport.
+:class:`~training.extensions.ProgressBar`
+   Shows the progress bar.
 
-.. doctest::
-
-   >>> batchsize = 100
-   >>> datasize = 60000  #doctest: +SKIP
-   >>> for epoch in range(20):
-   ...     print('epoch %d' % epoch)
-   ...     indexes = np.random.permutation(datasize)
-   ...     for i in range(0, datasize, batchsize):
-   ...         x = Variable(x_train[indexes[i : i + batchsize]])
-   ...         t = Variable(y_train[indexes[i : i + batchsize]])
-   ...         model.zerograds()
-   ...         loss = model(x, t)
-   ...         loss.backward()
-   ...         optimizer.update()
-   epoch 0...
-
-You may find that, at each iteration, the network is defined by forward computation, used for backprop, and then disposed.
-By leveraging this "Define-by-Run" scheme, you can imagine that recurrent nets with variable length input are simply handled by just using loop over different length input for each iteration.
-
-After or during optimization, we want to evaluate the model on the test set.
-It can be achieved simply by calling forward function:
-
-.. doctest::
-
-   >>> sum_loss, sum_accuracy = 0, 0
-   >>> for i in range(0, 10000, batchsize):
-   ...     x = Variable(x_test[i : i + batchsize])
-   ...     t = Variable(y_test[i : i + batchsize])
-   ...     loss = model(x, t)
-   ...     sum_loss += loss.data * batchsize
-   ...     sum_accuracy += model.accuracy.data * batchsize
-   ...     
-   >>> mean_loss = sum_loss / 10000
-   >>> mean_accuracy = sum_accuracy / 10000
+There are many extensions implemented in the :mod:`chainer.training.extensions` module.
+The most important one that is not included above is :func:`~training.extensions.snapshot`, which saves the snapshot of the training procedure (i.e., the Trainer object) to a file in the output directory.
 
 The example code in the `examples/mnist` directory contains GPU support, though the essential part is same as the code in this tutorial.
 We will review in later sections how to use GPU(s).

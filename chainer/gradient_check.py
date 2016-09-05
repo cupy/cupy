@@ -93,7 +93,7 @@ def _as_tuple(x):
 
 
 def check_backward(func, x_data, y_grad, params=(),
-                   eps=1e-3, atol=1e-5, rtol=1e-4, no_grads=None):
+                   eps=1e-3, atol=1e-5, rtol=1e-4, no_grads=None, dtype=None):
     """Test backward procedure of a given function.
 
     This function automatically check backward-process of given function.
@@ -115,7 +115,7 @@ def check_backward(func, x_data, y_grad, params=(),
     calls ``backward`` method to get gradients of the inputs.
     To check correctness of the gradients, the function calls
     :func:`numerical_grad` to calculate numerically the gradients and compares
-    the types of gradients with :func:`assert_allclose`.
+    the types of gradients with :func:`chainer.testing.assert_allclose`.
     If input objects (``x1_data`` or/and ``x2_data`` in this example) represent
     integer variables, their gradients are ignored.
 
@@ -181,11 +181,14 @@ def check_backward(func, x_data, y_grad, params=(),
             it is treated as ``(params,)``.
         eps (float): Epsilon value to be passed to :func:`numerical_grad`.
         atol (float): Absolute tolerance to be passed to
-            :func:`assert_allclose`.
+            :func:`chainer.testing.assert_allclose`.
         rtol (float): Relative tolerance to be passed to
-            :func:`assert_allclose`.
+            :func:`chainer.testing.assert_allclose`.
         no_grads (list of bool): Flag to skip variable for gradient assertion.
             It should be same length as ``x_data``.
+        dtype (~numpy.dtype): `x_data` and `y_grad` are casted to this dtype
+            when calculating numerical gradients. Only float types and ``None``
+            are allowed.
 
     See:
        :func:`numerical_grad`
@@ -211,7 +214,7 @@ def check_backward(func, x_data, y_grad, params=(),
         if len(y) != len(y_grad):
             raise ValueError(
                 '`y_grad` must have the same length of output values')
-        for iy, igy in zip(y, y_grad):
+        for iy, igy in six.moves.zip(y, y_grad):
             iy.grad = igy
     else:
         if len(y) != 1:
@@ -224,24 +227,38 @@ def check_backward(func, x_data, y_grad, params=(),
     # `Variable.backward` method calls `Function.backward` of its creator.
     y[0].backward()
 
+    if dtype is None:
+        casted_xs = [variable.Variable(x) for x in x_data]
+    else:
+        if numpy.dtype(dtype).kind != 'f':
+            raise ValueError('`dtype` is allowed only float type')
+        if len(params) > 0:
+            raise ValueError('`dtype` is available only if `params` is empty')
+        casted_xs = [variable.Variable(x.astype(dtype, copy=False)
+                                       if x.dtype.kind == 'f' else x)
+                     for x in x_data]
+
     def f():
-        ys = func(*xs)
+        ys = func(*casted_xs)
         ys = _as_tuple(ys)
         return tuple(y.data for y in ys)
 
     if no_grads is None:
-        no_grads = [x.data.dtype.kind != 'f' for x in xs]
+        no_grads = [x.dtype.kind != 'f' for x in xs]
     else:
         if len(no_grads) != len(xs):
             raise ValueError(
                 'Length of no_grads param and xs should be same.')
-    for skip, x in six.moves.zip(no_grads, xs):
+    for skip, x, cx in six.moves.zip(no_grads, xs, casted_xs):
         if skip:
             assert x.grad is None
             continue
-        gx, = numerical_grad(f, (x.data,), y_grad, eps=eps)
+        gx, = numerical_grad(f, (cx.data,), y_grad, eps=eps)
         testing.assert_allclose(gx, x.grad, atol=atol, rtol=rtol)
-        assert gx.dtype is x.grad.dtype
+        if dtype is None:
+            assert gx.dtype == x.grad.dtype
+        else:
+            assert gx.dtype.kind == 'f' and gx.dtype == dtype
 
     for p in params:
         gp, = numerical_grad(f, (p.data,), y_grad, eps=eps)

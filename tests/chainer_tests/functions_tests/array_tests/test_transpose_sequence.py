@@ -35,7 +35,7 @@ class TestTransposeSequence(unittest.TestCase):
 
         for i, l in enumerate(self.trans_lengths):
             for j in six.moves.range(l):
-                gradient_check.assert_allclose(ys[i].data[j], self.xs[j][i])
+                testing.assert_allclose(ys[i].data[j], self.xs[j][i])
 
     def test_forward_cpu(self):
         self.check_forward(self.xs)

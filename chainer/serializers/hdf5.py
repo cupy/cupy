@@ -32,6 +32,7 @@ class HDF5Serializer(serializer.Serializer):
         compression (int): Gzip compression level.
 
     """
+
     def __init__(self, group, compression=4):
         _check_available()
 
@@ -83,6 +84,7 @@ class HDF5Deserializer(serializer.Deserializer):
         group (h5py.Group): The group that the deserialization starts from.
 
     """
+
     def __init__(self, group):
         _check_available()
         self.group = group
@@ -93,7 +95,9 @@ class HDF5Deserializer(serializer.Deserializer):
 
     def __call__(self, key, value):
         dataset = self.group[key]
-        if isinstance(value, numpy.ndarray):
+        if value is None:
+            return numpy.asarray(dataset)
+        elif isinstance(value, numpy.ndarray):
             dataset.read_direct(value)
         elif isinstance(value, cuda.ndarray):
             value.set(numpy.asarray(dataset))

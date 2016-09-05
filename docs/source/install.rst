@@ -42,7 +42,7 @@ CUDA support
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5, v5.1
 
 Caffe model support
 
@@ -84,6 +84,8 @@ That shows all logs of installation. It may helps you::
 
   $ pip install chainer -vvvv
 
+
+.. _install_cuda:
 
 Install Chainer with CUDA
 ~~~~~~~~~~~~~~~~~~~~~~~~~

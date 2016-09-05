@@ -8,7 +8,7 @@ from chainer.utils import type_check
 
 class HardSigmoid(function.Function):
 
-    """Hard-sigmoid funciton."""
+    """Hard-sigmoid function."""
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -19,7 +19,7 @@ class HardSigmoid(function.Function):
     def forward_cpu(self, inputs):
         x = inputs[0]
         y = numpy.clip(x * 0.2 + 0.5, 0.0, 1.0)
-        return utils.force_array(y).astype(x.dtype),
+        return utils.force_array(y, x.dtype),
 
     def forward_gpu(self, inputs):
         x = inputs[0]
@@ -33,7 +33,7 @@ class HardSigmoid(function.Function):
         x = inputs[0]
         g = grads[0]
         gx = ((-2.5 < x) & (x < 2.5)) * g * 0.2
-        return utils.force_array(gx).astype(x.dtype),
+        return utils.force_array(gx, x.dtype),
 
     def backward_gpu(self, inputs, grads):
         x = inputs[0]

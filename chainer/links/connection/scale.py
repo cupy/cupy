@@ -26,15 +26,16 @@ class Scale(link.Chain):
             the bias has the same shape ``W_shape`` with the weight parameter
             and ``bias_shape`` is ignored.
 
-    .. seealso:: See :func:`chainer.functions.scale` for details.
+    .. seealso:: See :func:`~chainer.functions.scale` for details.
 
     Attributes:
-        W (~chainer.Variable): Weight parameter if `W_shape` is given.
+        W (~chainer.Variable): Weight parameter if ``W_shape`` is given.
             Otherwise, no W attribute.
-        bias (~chainer.links.Bias): Bias term if `bias_term` is True.
+        bias (~chainer.links.Bias): Bias term if ``bias_term`` is True.
             Otherwise, no bias attribute.
 
     """
+
     def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
         super(Scale, self).__init__()
 
@@ -59,7 +60,7 @@ class Scale(link.Chain):
         """Applies broadcasted elementwise product.
 
         Args:
-            xs (list of ~chainer.Variable): Input variables whose length should
+            xs (list of Variables): Input variables whose length should
                 be one if the link has a learnable weight parameter, otherwise
                 should be two.
         """

@@ -5,7 +5,6 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer.functions import vae
-from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
@@ -28,7 +27,7 @@ class TestGaussianKLDivergence(unittest.TestCase):
         m = chainer.Variable(mean)
         v = chainer.Variable(ln_var)
         actual = cuda.to_cpu(vae.gaussian_kl_divergence(m, v).data)
-        gradient_check.assert_allclose(self.expect, actual)
+        testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
     def test_gaussian_kl_divergence_cpu(self):
@@ -57,7 +56,7 @@ class TestBernoulliNLL(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = chainer.Variable(y_data)
         actual = cuda.to_cpu(vae.bernoulli_nll(x, y).data)
-        gradient_check.assert_allclose(self.expect, actual)
+        testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
     def test_bernoulli_nll_cpu(self):
@@ -92,7 +91,7 @@ class TestGaussianNLL(unittest.TestCase):
         mean = chainer.Variable(mean_data)
         ln_var = chainer.Variable(ln_var_data)
         actual = cuda.to_cpu(vae.gaussian_nll(x, mean, ln_var).data)
-        gradient_check.assert_allclose(self.expect, actual)
+        testing.assert_allclose(self.expect, actual)
 
     @condition.retry(3)
     def test_gaussian_nll_cpu(self):

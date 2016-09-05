@@ -63,7 +63,7 @@ def accuracy(y, t, ignore_label=None):
             indicates the score of the class j at the i-th example.
         t (Variable): Variable holding an int32 vector of ground truth labels.
         ignore_label (int or None): Skip calculating accuracy
-            if the ture label is ``ignore_label``.
+            if the true label is ``ignore_label``.
 
     Returns:
         Variable: A variable holding a scalar array of the accuracy.

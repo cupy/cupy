@@ -2,10 +2,6 @@
 # Types
 ###############################################################################
 
-from cupy.cuda.driver cimport Event
-from cupy.cuda.driver cimport Stream
-
-
 cdef class PointerAttributes:
     cdef:
         public int device
@@ -17,14 +13,7 @@ cdef class PointerAttributes:
 
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
-    ctypedef int DeviceAttr 'enum cudaDeviceAttr'
-    ctypedef int MemoryKind 'enum cudaMemcpyKind'
-
-    ctypedef size_t _Pointer 'void*'
-
-    ctypedef void (*StreamCallbackDef)(
-        Stream stream, Error status, void* userData)
-    ctypedef StreamCallbackDef StreamCallback 'cudaStreamCallback_t'
+    ctypedef int DataType 'cudaDataType'
 
 
 ###############################################################################
@@ -49,12 +38,31 @@ cpdef enum:
     eventDisableTiming = 2
     eventInterprocess = 4
 
+    CUDA_R_32F = 0  # 32 bit real
+    CUDA_R_64F = 1  # 64 bit real
+    CUDA_R_16F = 2  # 16 bit real
+    CUDA_R_8I = 3  # 8 bit real as a signed integer
+    CUDA_C_32F = 4  # 32 bit complex
+    CUDA_C_64F = 5  # 64 bit complex
+    CUDA_C_16F = 6  # 16 bit complex
+    CUDA_C_8I = 7  # 8 bit complex as a pair of signed integers
+    CUDA_R_8U = 8  # 8 bit real as a signed integer
+    CUDA_C_8U = 9  # 8 bit complex as a pair of signed integers
+
+
+###############################################################################
+# Error handling
+###############################################################################
+
+cpdef check_status(int status)
+
 
 ###############################################################################
 # Initialization
 ###############################################################################
 
 cpdef int driverGetVersion() except *
+cpdef int runtimeGetVersion() except *
 
 
 ###############################################################################
@@ -82,7 +90,7 @@ cpdef memcpy(size_t dst, size_t src, size_t size, int kind)
 cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,
                   size_t stream)
 cpdef memcpyPeer(size_t dst, int dstDevice, size_t src, int srcDevice,
-               size_t size)
+                 size_t size)
 cpdef memcpyPeerAsync(size_t dst, int dstDevice,
                       size_t src, int srcDevice,
                       size_t size, size_t stream)

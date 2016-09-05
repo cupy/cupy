@@ -19,13 +19,14 @@ class Bias(link.Link):
             explicit bias needs to be given to its ``__call__`` method's second
             input.
 
-    .. seealso:: See :func:`chainer.functions.bias` for details.
+    .. seealso:: See :func:`~chainer.functions.bias` for details.
 
     Attributes:
-        b (~chainer.Variable): Bias parameter if `shape` is given. Otherwise,
+        b (~chainer.Variable): Bias parameter if ``shape`` is given. Otherwise,
             no attributes.
 
     """
+
     def __init__(self, axis=1, shape=None):
         super(Bias, self).__init__()
 
@@ -40,7 +41,7 @@ class Bias(link.Link):
         """Applies broadcasted elementwise summation.
 
         Args:
-            xs (list of ~chainer.Variable): Input variables whose length should
+            xs (list of Variables): Input variables whose length should
                 be one if the link has a learnable bias parameter, otherwise
                 should be two.
         """

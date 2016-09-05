@@ -16,10 +16,10 @@ class Cast(function.Function):
         type_check.expect(x_type.dtype.kind == 'f')
 
     def forward(self, x):
-        return x[0].astype(self.type),
+        return x[0].astype(self.type, copy=False),
 
     def backward(self, x, g):
-        return g[0].astype(x[0].dtype.type),
+        return g[0].astype(x[0].dtype.type, copy=False),
 
 
 def cast(x, typ):

@@ -42,7 +42,7 @@ class TestDeconvolution2D(unittest.TestCase):
             self.link.b.data[...] = numpy.random.uniform(
                 -1, 1, self.link.b.data.shape).astype(numpy.float32)
 
-        self.link.zerograds()
+        self.link.cleargrads()
 
         N = 2
         h, w = 3, 2
@@ -64,9 +64,9 @@ class TestDeconvolution2D(unittest.TestCase):
         y_gpu = self.link(x_gpu)
         self.assertEqual(y_gpu.data.dtype, numpy.float32)
 
-        gradient_check.assert_allclose(y_cpu.data, y_gpu.data.get())
+        testing.assert_allclose(y_cpu.data, y_gpu.data.get())
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_consistency(self):
         self.link.use_cudnn = self.use_cudnn
@@ -84,7 +84,7 @@ class TestDeconvolution2D(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.link.use_cudnn = self.use_cudnn

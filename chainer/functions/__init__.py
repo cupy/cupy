@@ -20,24 +20,34 @@ from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
+from chainer.functions.array import flatten
 from chainer.functions.array import get_item
+from chainer.functions.array import hstack
 from chainer.functions.array import permutate
 from chainer.functions.array import reshape
+from chainer.functions.array import rollaxis
 from chainer.functions.array import select_item
+from chainer.functions.array import separate
 from chainer.functions.array import split_axis
 from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
+from chainer.functions.array import vstack
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
+from chainer.functions.connection import convolution_nd
 from chainer.functions.connection import deconvolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
+from chainer.functions.evaluation import classification_summary \
+    as classification_summary_
+from chainer.functions.loss import black_out
 from chainer.functions.loss import contrastive
+from chainer.functions.loss import crf1d
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
 from chainer.functions.loss import hinge
@@ -55,6 +65,7 @@ from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
+from chainer.functions.math import hyperbolic
 from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import linear_interpolate
@@ -65,11 +76,13 @@ from chainer.functions.math import maximum
 from chainer.functions.math import minimum
 from chainer.functions.math import minmax
 from chainer.functions.math import scale
+from chainer.functions.math import sqrt
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
 from chainer.functions.noise import gaussian
 from chainer.functions.normalization import batch_normalization
+from chainer.functions.normalization import l2_normalization
 from chainer.functions.normalization import local_response_normalization
 from chainer.functions.pooling import average_pooling_2d
 from chainer.functions.pooling import max_pooling_2d
@@ -134,16 +147,22 @@ Copy = copy.Copy
 copy = copy.copy
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
+Flatten = flatten.Flatten
+flatten = flatten.flatten
 GetItem = get_item.GetItem
 get_item = get_item.get_item
+hstack = hstack.hstack
 Permutate = permutate.Permutate
 permutate = permutate.permutate
 Reshape = reshape.Reshape
 reshape = reshape.reshape
+Rollaxis = rollaxis.Rollaxis
+rollaxis = rollaxis.rollaxis
 SplitAxis = split_axis.SplitAxis
 split_axis = split_axis.split_axis
 SelectItem = select_item.SelectItem
 select_item = select_item.select_item
+separate = separate.separate
 stack = stack.stack
 Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
@@ -156,6 +175,7 @@ where = where.where
 
 bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
+convolution_nd = convolution_nd.convolution_nd
 deconvolution_2d = deconvolution_2d.deconvolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
@@ -164,11 +184,18 @@ Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 BinaryAccuracy = binary_accuracy.BinaryAccuracy
 binary_accuracy = binary_accuracy.binary_accuracy
+ClassificationSummary = classification_summary_.ClassificationSummary
+classification_summary = classification_summary_.classification_summary
+precision = classification_summary_.precision
+recall = classification_summary_.recall
+f1_score = classification_summary_.f1_score
 
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
+black_out = black_out.black_out
 Contrastive = contrastive.Contrastive
 contrastive = contrastive.contrastive
+crf1d = crf1d.crf1d
 CrossCovariance = cross_covariance.CrossCovariance
 cross_covariance = cross_covariance.cross_covariance
 gaussian_kl_divergence = vae.gaussian_kl_divergence
@@ -186,7 +213,12 @@ SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 Triplet = triplet.Triplet
 triplet = triplet.triplet
+vstack = vstack.vstack
 
+ArgMax = minmax.ArgMax
+argmax = minmax.argmax
+ArgMin = minmax.ArgMin
+argmin = minmax.argmin
 BatchDet = det.BatchDet
 batch_det = det.batch_det
 BatchInv = inv.BatchInv
@@ -200,6 +232,8 @@ Clip = clip.Clip
 clip = clip.clip
 Cos = trigonometric.Cos
 cos = trigonometric.cos
+Cosh = hyperbolic.Cosh
+cosh = hyperbolic.cosh
 det = det.det
 Exp = exponential.Exp
 exp = exponential.exp
@@ -213,8 +247,12 @@ LinearInterpolate = linear_interpolate.LinearInterpolate
 linear_interpolate = linear_interpolate.linear_interpolate
 Log = exponential.Log
 log = exponential.log
+Log10 = exponential.Log10
+log10 = exponential.log10
 Log1p = logarithm_1p.Log1p
 log1p = logarithm_1p.log1p
+Log2 = exponential.Log2
+log2 = exponential.log2
 LogSumExp = logsumexp.LogSumExp
 logsumexp = logsumexp.logsumexp
 MatMul = matmul.MatMul
@@ -227,11 +265,18 @@ Minimum = minimum.Minimum
 minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
+rsqrt = sqrt.rsqrt
 scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
+Sinh = hyperbolic.Sinh
+sinh = hyperbolic.sinh
+Sqrt = sqrt.Sqrt
+sqrt = sqrt.sqrt
 Sum = sum.Sum
 sum = sum.sum
+Tan = trigonometric.Tan
+tan = trigonometric.tan
 
 Dropout = dropout.Dropout
 dropout = dropout.dropout
@@ -244,6 +289,8 @@ LocalResponseNormalization = \
     local_response_normalization.LocalResponseNormalization
 local_response_normalization = \
     local_response_normalization.local_response_normalization
+NormalizeL2 = l2_normalization.NormalizeL2
+normalize = l2_normalization.normalize
 
 AveragePooling2D = average_pooling_2d.AveragePooling2D
 average_pooling_2d = average_pooling_2d.average_pooling_2d

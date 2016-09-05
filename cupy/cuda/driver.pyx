@@ -29,11 +29,11 @@ cdef extern from "cupy_cuda.h":
     int cuModuleGetGlobal(Deviceptr* dptr, size_t* bytes, Module hmod,
                           char* name)
     int cuLaunchKernel(
-            Function f, unsigned int gridDimX, unsigned int gridDimY,
-            unsigned int gridDimZ, unsigned int blockDimX,
-            unsigned int blockDimY, unsigned int blockDimZ,
-            unsigned int sharedMemBytes, Stream hStream,
-            void** kernelParams, void** extra)
+        Function f, unsigned int gridDimX, unsigned int gridDimY,
+        unsigned int gridDimZ, unsigned int blockDimX,
+        unsigned int blockDimY, unsigned int blockDimZ,
+        unsigned int sharedMemBytes, Stream hStream,
+        void** kernelParams, void** extra)
 
 
 ###############################################################################

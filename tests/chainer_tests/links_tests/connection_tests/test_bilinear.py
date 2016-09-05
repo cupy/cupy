@@ -16,7 +16,7 @@ def _check_forward(e1, e2, f, y_expect):
     e1 = chainer.Variable(e1)
     e2 = chainer.Variable(e2)
     y = f(e1, e2)
-    gradient_check.assert_allclose(y_expect, y.data)
+    testing.assert_allclose(y_expect, y.data)
 
 
 def _check_backward(e1, e2, y_grad, link, bias):
@@ -49,7 +49,7 @@ class TestBilinear(unittest.TestCase):
         self.f.V1.data[...] = _uniform(*self.f.V1.data.shape)
         self.f.V2.data[...] = _uniform(*self.f.V2.data.shape)
         self.f.b.data[...] = _uniform(*self.f.b.data.shape)
-        self.f.zerograds()
+        self.f.cleargrads()
 
         self.W = self.f.W.data.copy()
         self.V1 = self.f.V1.data.copy()
@@ -153,7 +153,7 @@ class TestBilinearWOBias(TestBilinear):
             self.in_shape[0], self.in_shape[1], self.out_size, True)
         W = self.f.W.data
         W[...] = numpy.random.uniform(-1, 1, W.shape)
-        self.f.zerograds()
+        self.f.cleargrads()
 
         self.W = W.copy()
 

@@ -18,7 +18,7 @@ class _TestMatMul(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = self.op(x1, x2)
-        gradient_check.assert_allclose(self.forward_answer, y.data)
+        testing.assert_allclose(self.forward_answer, y.data)
 
     @condition.retry(3)
     def test_matmul_forward_cpu(self):
@@ -29,20 +29,21 @@ class _TestMatMul(unittest.TestCase):
     def test_matmul_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
 
-    def check_backward(self, x1_data, x2_data, y_grad, atol):
+    def check_backward(self, x1_data, x2_data, y_grad, atol, rtol):
         gradient_check.check_backward(
-            self.op, (x1_data, x2_data), y_grad, atol=atol)
+            self.op, (x1_data, x2_data), y_grad, atol=atol, rtol=rtol,
+            dtype=numpy.float32)
 
     @condition.retry(3)
     def test_matmul_backward_cpu(self):
-        self.check_backward(self.x1, self.x2, self.gy, atol=1e-2)
+        self.check_backward(self.x1, self.x2, self.gy, atol=1e-2, rtol=5e-2)
 
     @attr.gpu
     @condition.retry(3)
     def test_matmul_backward_gpu(self):
         self.check_backward(
             cuda.to_gpu(self.x1), cuda.to_gpu(self.x2),
-            cuda.to_gpu(self.gy), atol=1e-2)
+            cuda.to_gpu(self.gy), atol=1e-2, rtol=1e-2)
 
 m = 2
 k = 5
@@ -55,6 +56,26 @@ class TestMatMulMatrixMatrix(_TestMatMul):
         self.x1 = numpy.random.uniform(.5, 1, (m, k)).astype(numpy.float32)
         self.x2 = numpy.random.uniform(.5, 1, (k, n)).astype(numpy.float32)
         self.gy = numpy.random.uniform(-1, 1, (m, n)).astype(numpy.float32)
+        self.op = lambda x, y: F.matmul(x, y)
+        self.forward_answer = numpy.dot(self.x1, self.x2)
+
+
+class TestMatMulMatrixMatrixFP16(_TestMatMul):
+
+    def setUp(self):
+        self.x1 = numpy.random.uniform(.5, 1, (m, k)).astype(numpy.float16)
+        self.x2 = numpy.random.uniform(.5, 1, (k, n)).astype(numpy.float16)
+        self.gy = numpy.random.uniform(-1, 1, (m, n)).astype(numpy.float16)
+        self.op = lambda x, y: F.matmul(x, y)
+        self.forward_answer = numpy.dot(self.x1, self.x2)
+
+
+class TestMatMulMatrixMatrixFP64(_TestMatMul):
+
+    def setUp(self):
+        self.x1 = numpy.random.uniform(.5, 1, (m, k)).astype(numpy.float64)
+        self.x2 = numpy.random.uniform(.5, 1, (k, n)).astype(numpy.float64)
+        self.gy = numpy.random.uniform(-1, 1, (m, n)).astype(numpy.float64)
         self.op = lambda x, y: F.matmul(x, y)
         self.forward_answer = numpy.dot(self.x1, self.x2)
 
@@ -247,6 +268,5 @@ class TestBatchMatMulBroadcastedMatrix2(_TestMatMul):
         self.forward_answer = numpy.array([
             numpy.dot(self.x1[i], self.x2)
             for i in six.moves.range(batch_size)])
-
 
 testing.run_module(__name__, __file__)

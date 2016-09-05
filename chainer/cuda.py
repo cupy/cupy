@@ -82,11 +82,13 @@ def check_cuda_available():
                '(see https://github.com/pfnet/chainer#installation).')
         msg += str(_resolution_error)
         raise RuntimeError(msg)
-    if not cudnn_enabled:
+    if (not cudnn_enabled and
+            not getattr(check_cuda_available, '_already_warned', False)):
         warnings.warn(
             'cuDNN is not enabled.\n'
             'Please reinstall chainer after you install cudnn\n'
             '(see https://github.com/pfnet/chainer#installation).')
+        check_cuda_available._already_warned = True
 
 
 class DummyDeviceType(object):
@@ -96,6 +98,9 @@ class DummyDeviceType(object):
     This class is used to represent CPU device.
 
     """
+
+    id = -1
+
     def __int__(self):
         return -1
 
@@ -141,13 +146,12 @@ def get_device(*args):
     protocol of Python for the *with* statement.
 
     Args:
-        args: Values to specify a GPU device. :class:`numpy.ndarray` objects
-            are skipped. If all arguments are :class:`numpy.ndarray` objects,
-            it returns a dummy device object. Otherwise, the first
-            non-:mod:`numpy` object is used to select a device. If it is a
-            :class:`cupy.ndarray` object, its device is returned. Otherwise,
-            the argument is passed to the initializer of
-            :class:`~cupy.cuda.Device` and it is returned.
+        args: Values to specify a GPU device. The first integer or
+            :class:`cupy.ndarray` object is used to select a device. If it is
+            an integer, the corresponding device is returned. If it is a CuPy
+            array, the device on which this array reside is returned. If any
+            arguments are neither integers nor CuPy arrays, a dummy device
+            object representing CPU is returned.
 
     Returns:
         Device object specified by given ``args``.
@@ -157,17 +161,13 @@ def get_device(*args):
 
     """
     for arg in args:
-        if arg is None:
-            continue
         if type(arg) in six.integer_types:
             check_cuda_available()
             return Device(arg)
-        if not isinstance(arg, numpy.ndarray):
-            check_cuda_available()
-            if isinstance(arg, cupy.ndarray):
-                if arg.device is None:
-                    continue
-                return arg.device
+        if isinstance(arg, ndarray):
+            if arg.device is None:
+                continue
+            return arg.device
 
     return DummyDevice
 
@@ -182,7 +182,8 @@ def to_gpu(array, device=None, stream=None):
     Args:
         array: Array to be sent to GPU.
         device: Device specifier.
-        stream (cupy.cuda.Stream): CUDA stream.
+        stream (cupy.cuda.Stream): CUDA stream. If not ``None``, the copy runs
+            asynchronously.
 
     Returns:
         cupy.ndarray: Array on GPU.
@@ -193,14 +194,32 @@ def to_gpu(array, device=None, stream=None):
 
     """
     check_cuda_available()
-    assert stream is None  # TODO(beam2d): FIX IT
     with get_device(device):
-        dev_id = int(get_device(array))
-        if dev_id != -1 and dev_id != cupy.cuda.device.get_device_id():
-            # Need to make a copy when an array is copied to another device
-            return cupy.array(array, copy=True)
-        else:
+        array_dev = get_device(array)
+        if array_dev.id == cupy.cuda.device.get_device_id():
+            return array
+
+        if stream is not None:
+            ret = cupy.empty_like(array)
+            if array_dev.id == -1:
+                # cpu to gpu
+                src = array.copy(order='C')
+                ret.set(src, stream)
+            else:
+                # gpu to gpu
+                with array_dev:
+                    src = array.copy()
+                ret.data.copy_from_device_async(src.data, src.nbytes, stream)
+
+            # to hold a reference until the end of the asynchronous memcpy
+            stream.add_callback(lambda *x: None, (src, ret))
+            return ret
+
+        if array_dev.id == -1:
             return cupy.asarray(array)
+
+        # Need to make a copy when an array is copied to another device
+        return cupy.array(array, copy=True)
 
 
 def to_cpu(array, stream=None):
@@ -440,6 +459,18 @@ def memoize(for_each_device=False):
             return f(*args, **kwargs)
         return ret
     return dummy_decorator
+
+
+def clear_memo():
+    """Clears the memoized results for all functions decorated by memoize.
+
+    This function works like :func:`cupy.clear_memo` as a counterpart for
+    :func:`chainer.cuda.memoize`. It can be used even if CUDA is not available.
+    In such a case, this function does nothing.
+
+    """
+    if available:
+        cupy.clear_memo()
 
 
 # ------------------------------------------------------------------------------

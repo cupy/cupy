@@ -29,13 +29,12 @@ class ClippedReLU(function.Function):
 
     def forward_cpu(self, x):
         x = x[0]
-        return utils.force_array(numpy.minimum(
-            numpy.maximum(0, x), self.cap)).astype(x.dtype),
+        return utils.force_array(numpy.minimum(numpy.maximum(0, x), self.cap),
+                                 x.dtype),
 
     def backward_cpu(self, x, gy):
         x = x[0]
-        return utils.force_array(
-            gy[0] * (0 < x) * (x < self.cap)).astype(x.dtype),
+        return utils.force_array(gy[0] * (0 < x) * (x < self.cap), x.dtype),
 
     def forward_gpu(self, x):
         return cuda.elementwise(

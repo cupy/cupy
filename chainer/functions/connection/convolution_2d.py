@@ -67,7 +67,7 @@ class Convolution2DFunction(function.Function):
             x, kh, kw, self.sy, self.sx, self.ph, self.pw,
             cover_all=self.cover_all)
         y = numpy.tensordot(
-            self.col, W, ((1, 2, 3), (1, 2, 3))).astype(x.dtype)
+            self.col, W, ((1, 2, 3), (1, 2, 3))).astype(x.dtype, copy=False)
         if b is not None:
             y += b
         return numpy.rollaxis(y, 3, 1),
@@ -98,7 +98,7 @@ class Convolution2DFunction(function.Function):
 
             self.filter_desc = cudnn.create_filter_descriptor(W)
             self.conv_desc = cudnn.create_convolution_descriptor(
-                (self.ph, self.pw), (self.sy, self.sx))
+                (self.ph, self.pw), (self.sy, self.sx), x.dtype)
             if b is not None:
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])
@@ -148,8 +148,8 @@ class Convolution2DFunction(function.Function):
         h, w = x.shape[2:]
 
         gW = numpy.tensordot(
-            gy, self.col, ((0, 2, 3), (0, 4, 5))).astype(W.dtype)
-        gcol = numpy.tensordot(W, gy, (0, 1)).astype(x.dtype)
+            gy, self.col, ((0, 2, 3), (0, 4, 5))).astype(W.dtype, copy=False)
+        gcol = numpy.tensordot(W, gy, (0, 1)).astype(x.dtype, copy=False)
         gcol = numpy.rollaxis(gcol, 3)
         gx = conv.col2im_cpu(gcol, self.sy, self.sx, self.ph, self.pw, h, w)
 

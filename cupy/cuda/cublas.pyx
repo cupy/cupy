@@ -1,6 +1,9 @@
 """Thin wrapper of CUBLAS."""
 cimport cython
 
+from cupy.cuda cimport driver
+from cupy.cuda cimport runtime
+
 
 ###############################################################################
 # Extern
@@ -15,8 +18,8 @@ cdef extern from 'cupy_cuda.h':
     int cublasSetPointerMode(Handle handle, PointerMode mode)
 
     # Stream
-    int cublasSetStream(Handle handle, Stream streamId)
-    int cublasGetStream(Handle handle, Stream* streamId)
+    int cublasSetStream(Handle handle, driver.Stream streamId)
+    int cublasGetStream(Handle handle, driver.Stream* streamId)
 
     # BLAS Level 1
     int cublasIsamax(Handle handle, int n, float* x, int incx, int* result)
@@ -37,46 +40,52 @@ cdef extern from 'cupy_cuda.h':
 
     # BLAS Level 2
     int cublasSgemv(
-            Handle handle, Operation trans, int m, int n, float* alpha,
-            float* A, int lda, float* x, int incx, float* beta,
-            float* y, int incy)
+        Handle handle, Operation trans, int m, int n, float* alpha,
+        float* A, int lda, float* x, int incx, float* beta,
+        float* y, int incy)
     int cublasDgemv(
-            Handle handle, Operation trans, int m, int n, double* alpha,
-            double* A, int lda, double* x, int incx, double* beta,
-            double* y, int incy)
+        Handle handle, Operation trans, int m, int n, double* alpha,
+        double* A, int lda, double* x, int incx, double* beta,
+        double* y, int incy)
     int cublasSger(
-            Handle handle, int m, int n, float* alpha, float* x, int incx,
-            float* y, int incy, float* A, int lda)
+        Handle handle, int m, int n, float* alpha, float* x, int incx,
+        float* y, int incy, float* A, int lda)
     int cublasDger(
-            Handle handle, int m, int n, double* alpha, double* x,
-            int incx, double* y, int incy, double* A, int lda)
+        Handle handle, int m, int n, double* alpha, double* x,
+        int incx, double* y, int incy, double* A, int lda)
 
     # BLAS Level 3
     int cublasSgemm(
-            Handle handle, Operation transa, Operation transb, int m,
-            int n, int k, float* alpha, float* A, int lda, float* B,
-            int ldb, float* beta, float* C, int ldc)
+        Handle handle, Operation transa, Operation transb, int m,
+        int n, int k, float* alpha, float* A, int lda, float* B,
+        int ldb, float* beta, float* C, int ldc)
     int cublasDgemm(
-            Handle handle, Operation transa, Operation transb, int m,
-            int n, int k, double* alpha, double* A, int lda, double* B,
-            int ldb, double* beta, double* C, int ldc)
+        Handle handle, Operation transa, Operation transb, int m,
+        int n, int k, double* alpha, double* A, int lda, double* B,
+        int ldb, double* beta, double* C, int ldc)
     int cublasSgemmBatched(
-            Handle handle, Operation transa, Operation transb, int m,
-            int n, int k, const float* alpha, const float** Aarray,
-            int lda, const float** Barray, int ldb, const float* beta,
-            float** Carray, int ldc, int batchCount)
+        Handle handle, Operation transa, Operation transb, int m,
+        int n, int k, const float* alpha, const float** Aarray,
+        int lda, const float** Barray, int ldb, const float* beta,
+        float** Carray, int ldc, int batchCount)
 
     # BLAS extension
     int cublasSdgmm(
-            Handle handle, SideMode mode, int m, int n, float* A, int lda,
-            float* x, int incx, float* C, int ldc)
+        Handle handle, SideMode mode, int m, int n, float* A, int lda,
+        float* x, int incx, float* C, int ldc)
+    int cublasSgemmEx(
+        Handle handle, Operation transa,
+        Operation transb, int m, int n, int k,
+        const float *alpha, const void *A, runtime.DataType Atype,
+        int lda, const void *B, runtime.DataType Btype, int ldb,
+        const float *beta, void *C, runtime.DataType Ctype, int ldc)
     int cublasSgetrfBatched(
-            Handle handle, int n, float **Aarray, int lda,
-            int *PivotArray, int *infoArray, int batchSize)
+        Handle handle, int n, float **Aarray, int lda,
+        int *PivotArray, int *infoArray, int batchSize)
     int cublasSgetriBatched(
-            Handle handle, int n, const float **Aarray, int lda,
-            int *PivotArray, float *Carray[], int ldc, int *infoArray,
-            int batchSize)
+        Handle handle, int n, const float **Aarray, int lda,
+        int *PivotArray, float *Carray[], int ldc, int *infoArray,
+        int batchSize)
 
 
 ###############################################################################
@@ -150,12 +159,12 @@ cpdef setPointerMode(size_t handle, int mode):
 ###############################################################################
 
 cpdef setStream(size_t handle, size_t stream):
-    status = cublasSetStream(<Handle>handle, <Stream>stream)
+    status = cublasSetStream(<Handle>handle, <driver.Stream>stream)
     check_status(status)
 
 
 cpdef size_t getStream(size_t handle) except *:
-    cdef Stream stream
+    cdef driver.Stream stream
     status = cublasGetStream(<Handle>handle, &stream)
     check_status(status)
     return <size_t>stream
@@ -282,7 +291,7 @@ cpdef dgemm(size_t handle, int transa, int transb,
             int m, int n, int k, double alpha, size_t A, int lda,
             size_t B, int ldb, double beta, size_t C, int ldc):
     status = cublasDgemm(
-        <Handle>handle, <Operation>transa, <Operation>transb,m, n, k,
+        <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
         &alpha, <double*>A, lda, <double*>B, ldb, &beta, <double*>C, ldc)
     check_status(status)
 
@@ -297,7 +306,6 @@ cpdef sgemmBatched(
         <float**>Carray, ldc, batchCount)
     check_status(status)
 
-
 ###############################################################################
 # BLAS extension
 ###############################################################################
@@ -307,6 +315,19 @@ cpdef sdgmm(size_t handle, int mode, int m, int n, size_t A, int lda,
     status = cublasSdgmm(
         <Handle>handle, <SideMode>mode, m, n, <float*>A, lda, <float*>x, incx,
         <float*>C, ldc)
+    check_status(status)
+
+
+cpdef sgemmEx(
+        size_t handle, int transa, int transb, int m, int n, int k,
+        float alpha, size_t A, int Atype, int lda, size_t B,
+        int Btype, int ldb, float beta, size_t C, int Ctype,
+        int ldc):
+    status = cublasSgemmEx(
+        <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+        &alpha, <const void*>A, <runtime.DataType>Atype, lda, <const void*>B,
+        <runtime.DataType>Btype, ldb, &beta, <void*>C,
+        <runtime.DataType>Ctype, ldc)
     check_status(status)
 
 

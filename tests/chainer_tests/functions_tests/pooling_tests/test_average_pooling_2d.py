@@ -24,11 +24,11 @@ class TestAveragePooling2D(unittest.TestCase):
         self.gy = numpy.random.uniform(-1, 1,
                                        (2, 3, 2, 2)).astype(self.dtype)
         self.check_forward_options = {}
-        self.check_backward_options = {'eps': 1e-2}
+        self.check_backward_options = {'dtype': numpy.float64}
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'eps': 1e-1, 'atol': 5e-3, 'rtol': 5e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
     def check_forward(self, x_data, use_cudnn=True):
         x = chainer.Variable(x_data)
@@ -44,14 +44,14 @@ class TestAveragePooling2D(unittest.TestCase):
                 expect = numpy.array([
                     [x[0:2, 0:2].sum(), x[0:2, 1:3].sum()],
                     [x[1:4, 0:2].sum(), x[1:4, 1:3].sum()]]) / 9
-                gradient_check.assert_allclose(
+                testing.assert_allclose(
                     expect, y_data[k, c], **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
         self.check_forward(self.x)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x))
@@ -70,7 +70,7 @@ class TestAveragePooling2D(unittest.TestCase):
     def test_backward_cpu(self):
         self.check_backward(self.x, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))

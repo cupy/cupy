@@ -111,12 +111,15 @@ def check_library(compiler, includes=(), libraries=(),
 
         return True
 
+    except distutils.errors.DistutilsError as e:
+        print('distutils raises an error: %s' % e)
+        return False
+
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def make_extensions(options, compiler):
-
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']
@@ -278,7 +281,7 @@ class chainer_build_ext(build_ext.build_ext):
             cythonize_options = {
                 key: _arg_options[key] for key in cythonize_option_keys}
 
-            compiler = distutils.ccompiler.new_compiler(self.compiler)
+            compiler = distutils.ccompiler.new_compiler(compiler=self.compiler)
             distutils.sysconfig.customize_compiler(compiler)
 
             extensions = make_extensions(_arg_options, compiler)

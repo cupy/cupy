@@ -1,4 +1,5 @@
 import copy
+import warnings
 
 import numpy
 import six
@@ -88,9 +89,11 @@ class Link(object):
         name (str): Name of this link, given by the parent chain (if exists).
 
     """
+
     def __init__(self, **params):
         self._params = []
         self._persistent = []
+        self._uninitialized_params = set()
         self._cpu = True
         self.name = None
 
@@ -114,11 +117,17 @@ class Link(object):
         deserialization, and involved in the optimization. The data and
         gradient of the variable are initialized by NaN arrays.
 
+        If the supplied ``name`` argument corresponds to an uninitialized
+        parameter (that is, one that was added with the
+        :meth:`add_uninitialized_param` method), ``name`` will be removed
+        from the set of uninitialized parameters.
+
         The parameter is set to an attribute of the link with the given name.
 
         Args:
             name (str): Name of the parameter. This name is also used as the
-                attribute name.
+                attribute name. Any uninitialized parameters with the same
+                name will be removed.
             shape (int or tuple of ints): Shape of the parameter array.
             dtype: Data type of the parameter array.
 
@@ -134,6 +143,47 @@ class Link(object):
         var.grad = grad
         self._params.append(name)
         d[name] = var
+        if name in self._uninitialized_params:
+            self._uninitialized_params.remove(name)
+
+    def add_uninitialized_param(self, name):
+        """Registers an uninitialized parameter to the link.
+
+        An uninitialized parameter is defined as a parameter that has a name
+        but that does not yet have a shape. If the shape of a parameter
+        depends on the shape of the inputs to the ``__call__`` operator,
+        it can be useful to defer initialization (that is, setting the shape)
+        until the first forward call of the link. Such parameters are
+        intended to be defined as uninitialized parameters in the initializer
+        and then initialized during the first forward call.
+
+        An uninitialized parameter is intended to be registered to a link by
+        calling this method in the initializer method. Then, during the
+        first forward call, the shape of the parameter will be determined
+        from the size of the inputs and the parameter must be initialized by
+        calling the :meth:`add_param` method.
+
+        Args:
+            name: (str): Name of the uninitialized parameter.
+
+        """
+        d = self.__dict__
+        if (name in self._uninitialized_params) or (name in d):
+            raise AttributeError(
+                'cannot register a new uninitialized parameter %s: exists'
+                % name)
+        self._uninitialized_params.add(name)
+
+    @property
+    def has_uninitialized_params(self):
+        """Check if the link has uninitialized parameters.
+
+        Returns:
+            bool: True if the link has any uninitialized parameters. Otherwise
+            return False.
+
+        """
+        return len(self._uninitialized_params) > 0
 
     def add_persistent(self, name, value):
         """Registers a persistent value to the link.
@@ -178,6 +228,7 @@ class Link(object):
         d = ret.__dict__
         for name in ret._params:
             d[name] = copy.copy(d[name])
+            d[name].grad = None
         return ret
 
     def to_cpu(self):
@@ -307,13 +358,29 @@ class Link(object):
         for name in self._params:
             dst[name].copydata(src[name])
 
-    def zerograds(self):
-        """Initializes all gradient arrays by zero.
+    def cleargrads(self):
+        """Clears all gradient arrays.
 
         This method should be called before the backward computation at every
         iteration of the optimization.
 
         """
+        for param in self.params():
+            param.cleargrad()
+
+    def zerograds(self):
+        """Initializes all gradient arrays by zero.
+
+        This method can be used for the same purpose of cleargrads, but less
+        efficient. This method is left for backward compatibility.
+
+        .. deprecated:: v1.15
+           Use :meth:`cleargrads` instead.
+
+        """
+        warnings.warn(
+            'Link.zerograds is deprecated. Use Link.cleargrads instead.',
+            DeprecationWarning)
         for param in self.params():
             param.zerograd()
 
@@ -345,6 +412,16 @@ class Link(object):
             serializer(name, d[name].data)
         for name in self._persistent:
             d[name] = serializer(name, d[name])
+        for name in self._uninitialized_params.copy():
+            # Note: There should only be uninitialized parameters
+            # during deserialization.
+            initialized_value = serializer(name, None)
+            self.add_param(name, initialized_value.shape)
+            uninitialized_value = d[name].data
+            if isinstance(uninitialized_value, numpy.ndarray):
+                numpy.copyto(uninitialized_value, initialized_value)
+            elif isinstance(uninitialized_value, cuda.ndarray):
+                uninitialized_value.set(numpy.asarray(initialized_value))
 
 
 class Chain(Link):
@@ -411,6 +488,7 @@ class Chain(Link):
             also set to the links.
 
     """
+
     def __init__(self, **links):
         super(Chain, self).__init__()
         self._children = []
@@ -526,12 +604,6 @@ class Chain(Link):
         for name in self._children:
             dst[name].copyparams(src[name])
 
-    def zerograds(self):
-        super(Chain, self).zerograds()
-        d = self.__dict__
-        for name in self._children:
-            d[name].zerograds()
-
     def addgrads(self, link):
         super(Chain, self).addgrads(link)
         src = link.__dict__
@@ -563,6 +635,7 @@ class ChainList(Link):
         links: Initial child links.
 
     """
+
     def __init__(self, *links):
         super(ChainList, self).__init__()
         self._children = []
@@ -675,11 +748,6 @@ class ChainList(Link):
         super(ChainList, self).copyparams(link)
         for idx, child in enumerate(self._children):
             child.copyparams(link[idx])
-
-    def zerograds(self):
-        super(ChainList, self).zerograds()
-        for child in self._children:
-            child.zerograds()
 
     def addgrads(self, link):
         super(ChainList, self).addgrads(link)

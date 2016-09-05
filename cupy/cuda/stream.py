@@ -21,6 +21,7 @@ class Event(object):
             the CUDA Runtime API via ctypes.
 
     """
+
     def __init__(self, block=False, disable_timing=False, interprocess=False):
         self.ptr = 0
 
@@ -97,6 +98,7 @@ class Stream(object):
             the CUDA Runtime API via ctypes.
 
     """
+
     def __init__(self, null=False, non_blocking=False):
         if null:
             self.ptr = 0
@@ -128,7 +130,9 @@ class Stream(object):
             arg (object): Argument to the callback.
 
         """
-        runtime.streamAddCallback(self.ptr, callback, arg)
+        def f(stream, status, dummy):
+            callback(self, status, arg)
+        runtime.streamAddCallback(self.ptr, f, 0)
 
     def record(self, event=None):
         """Records an event on the stream.
