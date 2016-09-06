@@ -33,9 +33,9 @@ def unary_function_test(func, func_expected=None, label_expected=None,
     Args:
         func(~chainer.Function): Chainer function to be tested by
             decorated test class.
-        func_expected: Function that is used on testing forward
-            computation to get expected values. If not given, a corresponding
-            numpy function for ``func`` is implicitly picked up from its name.
+        func_expected: Function that is used on testing forward computation to
+            get expected values. If not given, a corresponding numpy function
+            for ``func`` is implicitly picked up from its name.
         label_expected(string): String that is used on testing a Chainer
             function's label to get expected one. If not given, the name of
             ``func`` is implicitly used. If given for Chainer function that
