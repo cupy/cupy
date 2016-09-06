@@ -23,8 +23,7 @@ def make_data_default(self, dtype, shape):
 
 def math_function_test(func, func_expected=None, label_expected=None,
                        make_data=None):
-    """Decorator to test Chainer functions lifting mathematical numpy and cupy
-    functions.
+    """Decorator to test Chainer functions lifting mathematical numpy functions.
 
     This decorator is for testing Chainer functions lifted from corresponding
     mathematical numpy and cupy functions, and optionally ones composed with
