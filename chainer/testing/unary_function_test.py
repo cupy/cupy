@@ -37,8 +37,9 @@ def unary_function_test(func, func_expected=None, label_expected=None,
             computation to get expected values. If not given, a corresponding
             numpy function for ``func`` is implicitly picked up from its name.
         label_expected(string): String that is used on testing a Chainer
-            function label to get expected one. If not given, the name of
-            ``func`` is implicitly used.
+            function's label to get expected one. If not given, the name of
+            ``func`` is implicitly used. If given for Chainer function that
+            does not have its label, raises ``ValueError``.
         make_data: Function that takes ``dtype`` and ``shape`` to
             return a tuple of input and gradient data. If not given, default
             input and gradient are used.
@@ -137,6 +138,9 @@ def unary_function_test(func, func_expected=None, label_expected=None,
 
     if label_expected is None:
         label_expected = func.__name__
+    elif func_class(func) is None:
+        raise ValueError('Expected label is given even though Chainer '
+                         'function does not have its label.')
 
     if make_data is None:
         make_data = make_data_default
