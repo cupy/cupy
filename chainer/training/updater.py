@@ -308,8 +308,9 @@ class ParallelUpdater(StandardUpdater):
                 in_vars = variable.Variable(in_arrays)
                 losses.append(loss_func(in_vars))
 
+        # For _uninitialized_params
         for model in six.itervalues(self._models):
-            model.zerograds()
+            model.cleargrads()
 
         for loss in losses:
             loss.backward()
