@@ -21,14 +21,15 @@ def make_data_default(self, dtype, shape):
     return x, gy
 
 
-def unary_function_test(func, func_expected=None, label_expected=None,
-                        make_data=None):
-    """Decorator to test Chainer functions lifting unary numpy/cupy functions.
+def math_function_test(func, func_expected=None, label_expected=None,
+                       make_data=None):
+    """Decorator to test Chainer functions lifting mathematical numpy and cupy
+    functions.
 
     This decorator is for testing Chainer functions lifted from corresponding
-    unary numpy and cupy functions, and optionally ones composed with such
-    other Chainer functions. Forward and backward computations on CPU and GPU
-    across parameterized ``dtype`` and ``shape`` are tested.
+    mathematical numpy and cupy functions, and optionally ones composed with
+    such other Chainer functions. Forward and backward computations on CPU and
+    GPU across parameterized ``dtype`` and ``shape`` are tested.
 
     Args:
         func(~chainer.Function): Chainer function to be tested by
@@ -72,16 +73,16 @@ def unary_function_test(func, func_expected=None, label_expected=None,
        >>> from chainer import testing
        >>> from chainer import functions as F
        >>>
-       >>> @testing.unary_function_test(F.sin)
+       >>> @testing.math_function_test(F.sin)
        >>> class TestSin(unittest.TestCase):
        >>>     pass
 
        Because test methods are implicitly injected to ``TestSin`` class by the
        decorator, we just place ``pass`` in the class definition.
 
-       We may use this decorator to test unary Chainer functions implemented
-       with composing other Chainer functions, like ``rsqrt`` which computes
-       reciprocal of square root.
+       We may use this decorator to test mathematical Chainer functions
+       implemented with composing other Chainer functions, like ``rsqrt``
+       which computes reciprocal of square root.
 
        >>> import numpy
        >>> import unittest
@@ -91,13 +92,13 @@ def unary_function_test(func, func_expected=None, label_expected=None,
        >>> def rsqrt(x, dtype=numpy.float32):
        >>>     return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
        >>>
-       >>> @testing.unary_function_test(F.rsqrt, func_expected=rsqrt)
+       >>> @testing.math_function_test(F.rsqrt, func_expected=rsqrt)
        >>> class TestRsqrt(unittest.TestCase):
        >>>     pass
 
        Here we define ``rsqrt`` function composing numpy functions to get
        expected values, passing it to ``func_expected`` keyword parameter of
-       ``@testing.unary_function_test`` decorator.
+       ``@testing.math_function_test`` decorator.
 
        We may also customize test data to be used. The following is an example
        of testing ``sqrt`` Chainer function which we want to test in positive
@@ -113,7 +114,7 @@ def unary_function_test(func, func_expected=None, label_expected=None,
        >>>     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
        >>>     return x, gy
        >>>
-       >>> @testing.unary_function_test(F.sqrt, make_data=make_data)
+       >>> @testing.math_function_test(F.sqrt, make_data=make_data)
        >>> class TestSqrt(unittest.TestCase):
        >>>     pass
 
