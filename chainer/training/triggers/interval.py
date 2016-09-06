@@ -7,7 +7,7 @@ class IntervalTrigger(object):
     the number of updates, while `epoch` means the number of sweeps over the
     training dataset. Both values are defined by the updater.
 
-    For the description of triggers, see :func:`get_trigger`.
+    For the description of triggers, see :func:`~chainer.training.get_trigger`.
 
     Args:
         period (int): Length of the interval.
