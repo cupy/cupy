@@ -31,14 +31,15 @@ def unary_function_test(func, func_expected=None, label_expected=None,
     across parameterized ``dtype`` and ``shape`` are tested.
 
     Args:
-        func: Required. Chainer function to be tested by decorated test class.
-        func_expected: Optional. Function that is used on testing forward
+        func(~chainer.Function): Chainer function to be tested by
+            decorated test class.
+        func_expected: Function that is used on testing forward
             computation to get expected values. If not given, a corresponding
             numpy function for ``func`` is implicitly picked up from its name.
-        label_expected: Optional. String that is used on testing a Chainer
+        label_expected(string): String that is used on testing a Chainer
             function label to get expected one. If not given, the name of
             ``func`` is implicitly used.
-        make_data: Optional. Function that takes ``dtype`` and ``shape`` to
+        make_data: Function that takes ``dtype`` and ``shape`` to
             return a tuple of input and gradient data. If not given, default
             input and gradient are used.
 
@@ -47,7 +48,7 @@ def unary_function_test(func, func_expected=None, label_expected=None,
     and to give their expected values. ``label_expected`` is used to test
     Chainer functions that override their labels. ``make_data`` is used to
     customize input and gradient data for testing. By default, uniform
-    distribution ranged [-1, 1] is used for both.
+    distribution ranged ``[-1, 1]`` is used for both.
 
     Decorated test class tests forward and backward computation for CPU and GPU
     across the following :func:`~chainer.testing.parameterize` ed parameters:
@@ -57,7 +58,7 @@ def unary_function_test(func, func_expected=None, label_expected=None,
 
     Additionally, it tests the label of Chainer function class if a Chainer
     function has its corresponding function class. Decorator searches a Chainer
-    function class in ``chainer.functions`` module from name of the Chainer
+    function class in ``chainer.functions`` module from the name of the Chainer
     function.
 
     .. admonition:: Example
