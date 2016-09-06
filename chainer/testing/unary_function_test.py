@@ -61,48 +61,59 @@ def unary_function_test(func, func_expected=None, make_data=None):
        Chainer function that takes a variable with ``dtype`` of float and
        returns another with the same ``dtype``.
 
-       >>> import unittest, chainer.functions as F
+       >>> import unittest
+       >>> from chainer import testing
+       >>> from chainer import functions as F
        >>>
-       >>> @unary_function_test(F.sin)
+       >>> @testing.unary_function_test(F.sin)
        >>> class TestSin(unittest.TestCase):
        >>>     pass
 
        Because test methods are implicitly injected to ``TestSin`` class by the
-       decorator, we only place ``pass`` in the class definition.
+       decorator, we just place ``pass`` in the class definition.
 
        We may use this decorator to test unary Chainer functions implemented
        with composing other Chainer functions, like ``rsqrt`` which computes
        reciprocal of square root.
 
-       >>> import numpy, unittest, chainer.functions as F
+       >>> import numpy
+       >>> import unittest
+       >>> from chainer import testing
+       >>> from chainer import functions as F
        >>>
        >>> def rsqrt(x, dtype=numpy.float32):
        >>>     return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
        >>>
-       >>> @unary_function_test(F.rsqrt, rsqrt)
+       >>> @testing.unary_function_test(F.rsqrt, func_expected=rsqrt)
        >>> class TestRsqrt(unittest.TestCase):
        >>>     pass
 
        Here we define ``rsqrt`` function composing numpy functions to get
-       expected values, passing it to the second argument of
-       ``@unary_function_test`` decorator.
+       expected values, passing it to ``func_expected`` keyword parameter of
+       ``@testing.unary_function_test`` decorator.
 
        We may also customize test data to be used. The following is an example
        of testing ``sqrt`` Chainer function which we want to test in positive
        value domain leaving some margin around zero of input ``x``.
 
+       >>> import numpy
+       >>> import unittest
+       >>> from chainer import testing
+       >>> from chainer import functions as F
+       >>>
        >>> def make_data(dtype, shape):
        >>>     x = numpy.random.uniform(0.1, 1, shape).astype(dtype)
        >>>     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
        >>>     return x, gy
        >>>
-       >>> @unary_function_test(F.sqrt, make_data=make_data)
+       >>> @testing.unary_function_test(F.sqrt, make_data=make_data)
        >>> class TestSqrt(unittest.TestCase):
        >>>     pass
 
        We define ``make_data`` function to return input and gradient ndarrays
        generated in proper value domains with given ``dtype`` and ``shape``
-       parameters, then passing it to the decorator's ``make_data`` argument.
+       parameters, then passing it to the decorator's ``make_data`` keyword
+       parameter.
 
     """
 
