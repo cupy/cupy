@@ -4,6 +4,7 @@ import unittest
 
 
 class TestNVTX(unittest.TestCase):
+
     @attr.gpu
     def test_Mark(self):
         nvtx.Mark("test:Mark", 0)
