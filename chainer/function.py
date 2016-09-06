@@ -1,8 +1,9 @@
 import collections
 import os
-import six
 import traceback
 import weakref
+
+import six
 
 import chainer
 from chainer import cuda
@@ -194,7 +195,8 @@ class Function(object):
 Invalid operation is performed in: {0} (Forward)
 
 {1}""".format(self.label, str(e))
-            raise type_check.InvalidType(e.expect, e.actual, msg=msg)
+            six.raise_from(
+                type_check.InvalidType(e.expect, e.actual, msg=msg), None)
 
     def check_type_forward(self, in_types):
         """Checks types of input data before forward propagation.

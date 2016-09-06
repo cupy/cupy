@@ -12,7 +12,7 @@ class StatefulPeepholeLSTM(link.Chain):
     """Fully-connected LSTM layer with peephole connections.
 
     This is a fully-connected LSTM layer with peephole connections as a chain.
-    Unlike the :link:`~chainer.links.lstm` link, this chain holds ``peep_i``,
+    Unlike the :class:`~chainer.links.LSTM` link, this chain holds ``peep_i``,
     ``peep_f`` and ``peep_o`` as child links besides ``upward`` and
     ``lateral``.
 

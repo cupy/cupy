@@ -50,7 +50,7 @@ install:
   - pip install cython
   - python setup.py sdist
   - pip install dist/*.tar.gz
-  - pip install h5py
+  - pip install h5py pillow
   - pip install nose hacking mock
   - pip install autopep8
 

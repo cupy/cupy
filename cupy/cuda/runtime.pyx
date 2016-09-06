@@ -14,7 +14,6 @@ cimport cython
 
 from cupy.cuda cimport driver
 
-
 cdef class PointerAttributes:
 
     def __init__(self, int device, size_t devicePointer, size_t hostPointer,
@@ -54,6 +53,7 @@ cdef extern from "cupy_cuda.h":
 
     # Initialization
     int cudaDriverGetVersion(int* driverVersion) nogil
+    int cudaRuntimeGetVersion(int* runtimeVersion) nogil
 
     # Device operations
     int cudaGetDevice(int* device) nogil
@@ -133,6 +133,13 @@ cpdef inline check_status(int status):
 cpdef int driverGetVersion() except *:
     cdef int version
     status = cudaDriverGetVersion(&version)
+    check_status(status)
+    return version
+
+
+cpdef int runtimeGetVersion() except *:
+    cdef int version
+    status = cudaRuntimeGetVersion(&version)
     check_status(status)
     return version
 

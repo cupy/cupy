@@ -61,14 +61,14 @@ class ParallelSequentialIterator(chainer.dataset.Iterator):
         self.is_new_epoch = False
         self.repeat = repeat
         length = len(dataset)
-        # Offsets maintain the position of each sequence in the minibatch.
+        # Offsets maintain the position of each sequence in the mini-batch.
         self.offsets = [i * length // batch_size for i in range(batch_size)]
         # NOTE: this is not a count of parameter updates. It is just a count of
         # calls of ``__next__``.
         self.iteration = 0
 
     def __next__(self):
-        # This iterator returns a list representing a mini batch. Each item
+        # This iterator returns a list representing a mini-batch. Each item
         # indicates a different position in the original sequence. Each item is
         # represented by a pair of two word IDs. The first word is at the
         # "current" position, while the second word at the next position.
@@ -135,7 +135,7 @@ class BPTTUpdater(training.StandardUpdater):
             # Compute the loss at this time step and accumulate it
             loss += optimizer.target(chainer.Variable(x), chainer.Variable(t))
 
-        optimizer.target.zerograds()  # Initialize the parameter gradients
+        optimizer.target.cleargrads()  # Clear the parameter gradients
         loss.backward()  # Backprop
         loss.unchain_backward()  # Truncate the graph
         optimizer.update()  # Update the parameters
@@ -152,9 +152,9 @@ def compute_perplexity(result):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batchsize', '-b', type=int, default=20,
-                        help='Number of examples in each mini batch')
+                        help='Number of examples in each mini-batch')
     parser.add_argument('--bproplen', '-l', type=int, default=35,
-                        help='Number of words in each mini batch '
+                        help='Number of words in each mini-batch '
                              '(= length of truncated BPTT)')
     parser.add_argument('--epoch', '-e', type=int, default=39,
                         help='Number of sweeps over the dataset to train')
