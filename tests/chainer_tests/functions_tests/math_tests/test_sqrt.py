@@ -27,7 +27,7 @@ def rsqrt(x, dtype=numpy.float32):
     return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
 
 
-@testing.unary_function_test(F.rsqrt, rsqrt, make_data)
+@testing.unary_function_test(F.rsqrt, func_expected=rsqrt, make_data=make_data)
 class TestRsqrt(unittest.TestCase):
     pass
 
