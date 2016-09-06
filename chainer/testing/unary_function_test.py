@@ -21,7 +21,8 @@ def make_data_default(self, dtype, shape):
     return x, gy
 
 
-def unary_function_test(func, func_expected=None, make_data=None):
+def unary_function_test(func, func_expected=None, label_expected=None,
+                        make_data=None):
     """Decorator to test Chainer functions lifting unary numpy/cupy functions.
 
     This decorator is for testing Chainer functions lifted from corresponding
@@ -34,15 +35,19 @@ def unary_function_test(func, func_expected=None, make_data=None):
         func_expected: Optional. Function that is used on testing forward
             computation to get expected values. If not given, a corresponding
             numpy function for ``func`` is implicitly picked up from its name.
+        label_expected: Optional. String that is used on testing a Chainer
+            function label to get expected one. If not given, the name of
+            ``func`` is implicitly used.
         make_data: Optional. Function that takes ``dtype`` and ``shape`` to
             return a tuple of input and gradient data. If not given, default
             input and gradient are used.
 
     ``func`` takes a Chainer function to be tested and usually it is enough.
     ``func_expected`` is used on testing Chainer functions composed with others
-    and to give their expected values. ``make_data`` is used to customize input
-    and gradient data for testing. By default, uniform distribution ranged
-    [-1, 1] is used for both.
+    and to give their expected values. ``label_expected`` is used to test
+    Chainer functions that override their labels. ``make_data`` is used to
+    customize input and gradient data for testing. By default, uniform
+    distribution ranged [-1, 1] is used for both.
 
     Decorated test class tests forward and backward computation for CPU and GPU
     across the following :func:`~chainer.testing.parameterize` ed parameters:
@@ -129,6 +134,9 @@ def unary_function_test(func, func_expected=None, make_data=None):
             raise ValueError("numpy has no function corresponding "
                              "to Chainer function '{}'.".format(name))
 
+    if label_expected is None:
+        label_expected = func.__name__
+
     if make_data is None:
         make_data = make_data_default
 
@@ -182,7 +190,7 @@ def unary_function_test(func, func_expected=None, make_data=None):
 
         def test_label(self):
             klass = func_class(func)
-            self.assertEqual(klass().label, func.__name__)
+            self.assertEqual(klass().label, label_expected)
         if func_class(func) is not None:
             setattr(klass, "test_label", test_label)
 
