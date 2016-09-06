@@ -80,7 +80,6 @@ class LogReport(extension.Extension):
 
             updater = trainer.updater
             stats_cpu['epoch'] = updater.epoch
-            stats_cpu['epoch_detail'] = updater.epoch_detail
             stats_cpu['iteration'] = updater.iteration
 
             if self._postprocess is not None:
