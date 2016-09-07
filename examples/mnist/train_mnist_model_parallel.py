@@ -46,7 +46,7 @@ class ParallelMLP(chainer.Chain):
 def main():
     parser = argparse.ArgumentParser(description='Chainer example: MNIST')
     parser.add_argument('--batchsize', '-b', type=int, default=100,
-                        help='Number of images in each mini batch')
+                        help='Number of images in each mini-batch')
     parser.add_argument('--epoch', '-e', default=20, type=int,
                         help='Number of sweeps over the dataset to train')
     parser.add_argument('--gpu0', '-g', default=0, type=int,
@@ -86,7 +86,7 @@ def main():
 
     trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu0))
     trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.snapshot())
+    trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',

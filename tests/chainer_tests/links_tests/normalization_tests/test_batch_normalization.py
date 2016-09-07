@@ -127,22 +127,28 @@ class TestPopulationStatistics(unittest.TestCase):
         self.y = numpy.random.uniform(
             -1, 1, (self.ny, self.size)).astype(numpy.float32)
 
-    def check_statistics(self, x):
+    def check_statistics(self, x, y):
         x = chainer.Variable(x)
         self.link(x, finetune=True)
-        testing.assert_allclose(self.x.mean(axis=0), self.link.avg_mean)
+        mean = self.x.mean(axis=0)
+        testing.assert_allclose(mean, self.link.avg_mean)
         unbiased_var = self.x.var(axis=0) * self.nx / (self.nx - 1)
+        testing.assert_allclose(unbiased_var, self.link.avg_var)
+
+        y = chainer.Variable(y)
+        self.link(y, test=True, finetune=True)
+        testing.assert_allclose(mean, self.link.avg_mean)
         testing.assert_allclose(unbiased_var, self.link.avg_var)
 
     @condition.retry(3)
     def test_statistics_cpu(self):
-        self.check_statistics(self.x)
+        self.check_statistics(self.x, self.y)
 
     @attr.gpu
     @condition.retry(3)
     def test_statistics_gpu(self):
         self.link.to_gpu()
-        self.check_statistics(cuda.to_gpu(self.x))
+        self.check_statistics(cuda.to_gpu(self.x), cuda.to_gpu(self.y))
 
     def check_statistics2(self, x, y):
         x = chainer.Variable(x)

@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+from six import moves
 
 from chainer import cuda
 from chainer import testing
@@ -61,12 +62,12 @@ class TestIm2Col(unittest.TestCase):
 
         col = cuda.to_cpu(col)
 
-        for n in range(2):
-            for c in range(3):
-                for y in range(col_h):
-                    for x in range(col_w):
-                        for dy in range(kh):
-                            for dx in range(kw):
+        for n in moves.range(2):
+            for c in moves.range(3):
+                for y in moves.range(col_h):
+                    for x in moves.range(col_w):
+                        for dy in moves.range(kh):
+                            for dx in moves.range(kw):
                                 oy = y * sy - ph + dy
                                 ox = x * sx - pw + dx
                                 if 0 <= oy < self.h and 0 <= ox < self.w:
@@ -121,13 +122,13 @@ class TestCol2Im(unittest.TestCase):
         img = col2im(col_data, sy, sx, ph, pw, self.h, self.w)
         img = cuda.to_cpu(img)
         self.assertEqual(img.shape, (2, 3, self.h, self.w))
-        for n in range(2):
-            for c in range(3):
-                for y in range(self.h):
-                    for x in range(self.w):
+        for n in moves.range(2):
+            for c in moves.range(3):
+                for y in moves.range(self.h):
+                    for x in moves.range(self.w):
                         v = numpy.float32(0.0)
-                        for dy in range(kh):
-                            for dx in range(kw):
+                        for dy in moves.range(kh):
+                            for dx in moves.range(kw):
                                 oy = (y + ph - dy) // sy
                                 ox = (x + pw - dx) // sx
                                 if (y + ph - dy) % sy == 0 and \

@@ -20,6 +20,7 @@ from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
 from chainer.functions.array import expand_dims
+from chainer.functions.array import flatten
 from chainer.functions.array import get_item
 from chainer.functions.array import hstack
 from chainer.functions.array import permutate
@@ -32,9 +33,11 @@ from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
+from chainer.functions.array import vstack
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
+from chainer.functions.connection import convolution_nd
 from chainer.functions.connection import deconvolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
@@ -145,6 +148,8 @@ Copy = copy.Copy
 copy = copy.copy
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
+Flatten = flatten.Flatten
+flatten = flatten.flatten
 GetItem = get_item.GetItem
 get_item = get_item.get_item
 hstack = hstack.hstack
@@ -171,6 +176,7 @@ where = where.where
 
 bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
+convolution_nd = convolution_nd.convolution_nd
 deconvolution_2d = deconvolution_2d.deconvolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
@@ -208,6 +214,7 @@ SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 Triplet = triplet.Triplet
 triplet = triplet.triplet
+vstack = vstack.vstack
 
 ArgMax = minmax.ArgMax
 argmax = minmax.argmax

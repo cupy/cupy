@@ -180,12 +180,16 @@ An instance of the Linear link acts like a usual function:
 
 Gradients of parameters are computed by :meth:`~Variable.backward` method.
 Note that gradients are **accumulated** by the method rather than overwritten.
-So first you must initialize gradients to zero to renew the computation.
-It can be done by calling the :meth:`~Link.zerograds` method.
+So first you must clear gradients to renew the computation.
+It can be done by calling the :meth:`~Link.cleargrads` method.
 
 .. doctest::
 
-   >>> f.zerograds()
+   >>> f.cleargrads()
+
+.. note::
+   :meth:`~Link.cleargrads` is introduced in v1.15 to replace :meth:`~Link.zerograds` for efficiency.
+   :meth:`~Link.zerograds` is left only for backward compatibility.
 
 Now we can compute the gradients of parameters by simply calling backward method.
 
@@ -287,15 +291,16 @@ Here we use the simplest one, called Stochastic Gradient Descent (SGD):
 
    >>> model = MyChain()
    >>> optimizer = optimizers.SGD()
+   >>> optimizer.use_cleargrads()
    >>> optimizer.setup(model)
+
+The method :meth:`~GradientMethod.use_cleargrads` is for efficiency. See :meth:`~GradientMethod.use_cleargrads` for detail.
 
 The method :meth:`~Optimizer.setup` prepares for the optimization given a link.
 
 Some parameter/gradient manipulations, e.g. weight decay and gradient clipping, can be done by setting *hook functions* to the optimizer.
 Hook functions are called after the gradient computation and right before the actual update of parameters.
 For example, we can set weight decay regularization by running the next line beforehand:
-
-.. doctest::
 
    >>> optimizer.add_hook(chainer.optimizer.WeightDecay(0.0005))
 
@@ -310,16 +315,14 @@ We here review the latter case.
 
 There are further two ways to use the optimizer directly.
 One is manually computing gradients and then call the :meth:`~Optimizer.update` method with no arguments.
-Do not forget resetting gradients beforehand!
+Do not forget to clear gradients beforehand!
 
-.. doctest::
-
-   >>> model.zerograds()
+   >>> model.cleargrads()
    >>> # compute gradient here...
    >>> optimizer.update()
 
 The other way is just passing a loss function to the :meth:`~Optimizer.update` method.
-In this case, :meth:`~Link.zerograds` is automatically called by the update method, so user do not have to call it manually.
+In this case, :meth:`~Link.cleargrads` is automatically called by the update method, so user do not have to call it manually.
 
    >>> def lossfun(args...):
    ...     ...
@@ -336,7 +339,7 @@ When we want to train neural networks, we have to run *training loops* that upda
 A typical training loop consists of following procedures:
 
 1. Iterations over training datasets
-2. Preprocessing of extracted minibatches
+2. Preprocessing of extracted mini-batches
 3. Forward/backward computations of the neural networks
 4. Parameter updates
 5. Evaluations of the current parameters on validation datasets
@@ -415,7 +418,7 @@ This MNIST example is also found in the `examples/mnist <https://github.com/pfne
 We show how to use :class:`~training.Trainer` to construct and run the training loop in this section.
 
 We first have to prepare the MNIST dataset.
-The MNIST dataset consists of 70,000 grayscale images of size 28x28 (i.e. 784 pixels) and corresponding digit labels.
+The MNIST dataset consists of 70,000 greyscale images of size 28x28 (i.e. 784 pixels) and corresponding digit labels.
 The dataset is divided into 60,000 training images and 10,000 test images by default.
 We can obtain the vectorized version (i.e., a set of 784 dimensional vectors) by :func:`datasets.get_mnist`.
 

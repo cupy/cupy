@@ -115,6 +115,10 @@ expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
 
+flatten
+~~~~~~~
+.. autofunction:: flatten
+
 get_item
 ~~~~~~~~
 .. autofunction:: get_item
@@ -163,6 +167,10 @@ transpose_sequence
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: transpose_sequence
 
+vstack
+~~~~~~
+.. autofunction:: vstack
+
 where
 ~~~~~
 .. autofunction:: where
@@ -178,6 +186,10 @@ bilinear
 convolution_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: convolution_2d
+
+convolution_nd
+~~~~~~~~~~~~~~
+.. autofunction:: convolution_nd
 
 deconvolution_2d
 ~~~~~~~~~~~~~~~~
