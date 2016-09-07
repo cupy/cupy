@@ -111,6 +111,10 @@ copy
 ~~~~
 .. autofunction:: copy
 
+dstack
+~~~~
+.. autofunction:: dstack
+
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
