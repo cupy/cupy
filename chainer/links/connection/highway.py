@@ -21,30 +21,31 @@ class Highway(link.Chain):
         x \\odot(1 - \\sigma(W_t x + b_t))
 
     The output array has the same spatial size as the input. In order to
-    satisfy this, :math:`W_h` and :math:`W_t` must be square matrix.
+    satisfy this, :math:`W_h` and :math:`W_t` must be square matrices.
 
     Args:
         in_out_size (int): Dimension of input and output vectors.
         nobias (bool): If ``True``, then this function does not use the bias.
         activate: Activation function of plain array. :math:`tanh` is also
-        enable.
+        available.
         init_Wh (2-D array): Initial weight value of plain array. If ``None``,
-            then this function uses to initialize ``wscale``.
+            then this function uses it to initialize ``wscale``.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
         init_bh (1-D array): Initial bias value of plain array. If ``None``,
-            then this function uses to initialize zero vector.
+            then this function uses it to initialize zero vector.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
         init_Wt (2-D array): Initial weight value of transform array.
-            If ``None``, then this function uses to initialize ``wscale``.
+            If ``None``, then this function uses it to initialize ``wscale``.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
         init_bt (1-D array): Initial bias value of transform array.
             Default value is -1 vector.
             May also be a callable that takes ``numpy.ndarray`` or
             ``cupy.ndarray`` and edits its value.
-            Negative value is sufficient for learning (e.g. -1, -3, ...).
+            Negative value is recommended by the author of the paper.
+            (e.g. -1, -3, ...).
 
     See:
         `Highway Networks <https://arxiv.org/abs/1505.00387>`_.
