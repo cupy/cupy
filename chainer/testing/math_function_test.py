@@ -15,7 +15,7 @@ def func_class(func):
     return getattr(F, name, None)
 
 
-def make_data_default(self, dtype, shape):
+def make_data_default(dtype, shape):
     x = numpy.random.uniform(-1, 1, shape).astype(dtype)
     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
     return x, gy
