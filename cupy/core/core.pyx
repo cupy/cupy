@@ -2319,7 +2319,7 @@ cdef _clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
      'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),
-    'out0 = (in0 < in1 ? in1 : (in0 > in2 ? in2 : in0))')
+    'out0 = in0 < in1 ? in1 : (in0 > in2 ? in2 : in0)')
 
 
 # -----------------------------------------------------------------------------
