@@ -65,6 +65,7 @@ from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
+from chainer.functions.math import floor
 from chainer.functions.math import hyperbolic
 from chainer.functions.math import identity
 from chainer.functions.math import inv
@@ -239,6 +240,8 @@ Exp = exponential.Exp
 exp = exponential.exp
 Expm1 = exponential_m1.Expm1
 expm1 = exponential_m1.expm1
+Floor = floor.Floor
+floor = floor.floor
 Identity = identity.Identity
 identity = identity.identity
 Inv = inv.Inv
