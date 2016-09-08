@@ -65,6 +65,7 @@ from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
+from chainer.functions.math import fmod
 from chainer.functions.math import hyperbolic
 from chainer.functions.math import identity
 from chainer.functions.math import inv
@@ -277,6 +278,8 @@ Sum = sum.Sum
 sum = sum.sum
 Tan = trigonometric.Tan
 tan = trigonometric.tan
+Fmod = fmod.Fmod
+fmod = fmod.fmod
 
 Dropout = dropout.Dropout
 dropout = dropout.dropout
