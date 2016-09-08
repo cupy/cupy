@@ -51,7 +51,7 @@ class UnaryFunctionsTestBase(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [()],
+    'shape': [(3, 2), ()],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestFmod(UnaryFunctionsTestBase):
