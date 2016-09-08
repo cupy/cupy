@@ -17,7 +17,7 @@ from chainer.utils import conv
 @parameterize(*testing.product({
     'dims': [(5, 4, 3), (4, 3), (3,)],
     'nobias': [True, False],
-    'dtype': [numpy.float32],   # TODO(takagi) other dtypes.
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
     'use_cudnn': [True, False],
     'used_outsize': ['case1', 'case2', 'None'],
 }))
