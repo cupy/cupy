@@ -19,7 +19,7 @@ from chainer.utils import conv
     'nobias': [True, False],
     'dtype': [numpy.float32],   # TODO(takagi) other dtypes.
     'use_cudnn': [True, False],
-    'use_outsize': [True, False],
+    'used_outsize': ['case1', 'case2', 'None'],
 }))
 class TestDeconvolutionND(unittest.TestCase):
 
@@ -32,18 +32,30 @@ class TestDeconvolutionND(unittest.TestCase):
         stride = (2,) * ndim
         pad = (1,) * ndim
 
-        outs = tuple(
-            conv.get_deconv_outsize(d, k, s, p)
-            for (d, k, s, p) in zip(self.dims, ksize, stride, pad))
+        if self.used_outsize == 'case1' or self.used_outsize == 'None':
+            # Use output size determined with get_deconv_outsize.
+            outs = tuple(
+                conv.get_deconv_outsize(d, k, s, p)
+                for (d, k, s, p) in zip(self.dims, ksize, stride, pad))
+        elif self.used_outsize == 'case2':
+            # Use possible output size other than the one determined with
+            # get_deconv_outsize.
+            outs = tuple(
+                conv.get_deconv_outsize(d, k, s, p) + 1
+                for (d, k, s, p) in zip(self.dims, ksize, stride, pad))
 
-        outsize = outs if self.use_outsize else None
+        if self.used_outsize != 'None':
+            outsize = outs
+        else:
+            outsize = None
+
         initial_bias = \
             initializers.Uniform(scale=1) if not self.nobias else None
 
         self.link = deconvolution_nd.DeconvolutionND(
             ndim, in_channels, out_channels, ksize, stride=stride, pad=pad,
             outsize=outsize, initial_bias=initial_bias)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         x_shape = (N, in_channels) + self.dims
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.dtype)
