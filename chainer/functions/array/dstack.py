@@ -8,7 +8,7 @@ from chainer.utils import type_check
 
 class Dstack(function.Function):
 
-    """Concatenate multiple tensors along third axis (deep wise)."""
+    """Concatenate multiple tensors along third axis (depth wise)."""
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() > 0)
@@ -48,7 +48,7 @@ class Dstack(function.Function):
 
 
 def dstack(xs):
-    """Concatenate variables along third axis (deep wise).
+    """Concatenate variables along third axis (depth wise).
 
     Args:
         xs (list of chainer.Variable): Variables to be concatenated.

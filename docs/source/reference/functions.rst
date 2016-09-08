@@ -112,7 +112,7 @@ copy
 .. autofunction:: copy
 
 dstack
-~~~~
+~~~~~~
 .. autofunction:: dstack
 
 expand_dims
