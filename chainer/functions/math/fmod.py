@@ -18,16 +18,16 @@ class Fmod(function.Function):
         )
 
     def forward(self, inputs):
+        xp = cuda.get_array_module(*inputs)
         x, divisor = inputs
-        xp = cuda.get_array_module(*x)
         m = xp.fmod(x, divisor)
-        return utils.force_array(m, x[0].dtype),
+        return utils.force_array(m, x.dtype),
 
     def backward(self, inputs, grad_outputs):
+        xp = cuda.get_array_module(*inputs)
         gw, = grad_outputs
         x, divisor = inputs
-        xp = cuda.get_array_module(*x)
-        return gw, -1 * xp.fix(x / divisor) * gw
+        return gw, utils.force_array(xp.fix(x / divisor) * -1 * gw, x.dtype)
 
 
 def fmod(x, divisor):
