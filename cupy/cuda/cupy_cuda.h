@@ -9,6 +9,7 @@
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include <curand.h>
+#include <nvToolsExt.h>
 
 #if CUDA_VERSION < 8000
 #if CUDA_VERSION >= 7050
@@ -582,6 +583,28 @@ int cudaProfilerStart() {
 
 int cudaProfilerStop() {
   return 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// nvToolsExt.h
+///////////////////////////////////////////////////////////////////////////////
+
+void nvtxMarkA(const char *message) {
+}
+
+void nvtxMarkEx(const struct nvtxEventAttributes_t *eventAttrib) {
+}
+
+int nvtxRangePushA(const char *message) {
+    return 0;
+}
+
+int nvtxRangePushEx(const struct nvtxEventAttributes_t *eventAttrib) {
+    return 0;
+}
+
+int nvtxRangePop() {
+    return 0;
 }
 
 #endif // #ifndef CUPY_NO_CUDA
