@@ -83,8 +83,10 @@ class Deconvolution2DFunction(function.Function):
         gcol = numpy.rollaxis(gcol, 3)
         if self.outh is None:
             self.outh = conv.get_deconv_outsize(h, kh, self.sy, self.ph)
+            assert self.outh > 0, 'Output height should be positive.'
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(w, kw, self.sx, self.pw)
+            assert self.outw > 0, 'Output width should be positive.'
         y = conv.col2im_cpu(
             gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
         # b, k, h, w
