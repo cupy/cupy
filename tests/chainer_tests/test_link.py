@@ -12,7 +12,7 @@ from chainer.testing import attr
 class TestLink(unittest.TestCase):
 
     def setUp(self):
-        self.link = chainer.Link(x=(2, 3), y=2)
+        self.link = chainer.Link(x=((2, 3), 'd'), y=2)
         self.p = numpy.array([1, 2, 3], dtype='f')
         self.link.add_persistent('p', self.p)
         self.link.name = 'a'
@@ -30,7 +30,7 @@ class TestLink(unittest.TestCase):
         self.assertTrue(numpy.all(numpy.isnan(var.grad)))
 
     def test_init(self):
-        self.check_param_init('x', (2, 3), 'f')
+        self.check_param_init('x', (2, 3), 'd')
         self.check_param_init('y', (2,), 'f')
 
     def test_add_param(self):
