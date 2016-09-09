@@ -84,7 +84,7 @@ def cached_download(url):
     try:
         os.makedirs(cache_root)
     except OSError:
-        if not os.path.exists(cache_root):
+        if not os.path.isdir(cache_root):
             raise RuntimeError('cannot create download cache directory')
 
     lock_path = os.path.join(cache_root, '_dl_lock')
@@ -142,7 +142,7 @@ def cache_or_load_file(path, creator, loader):
     try:
         os.makedirs(_dataset_root)
     except OSError:
-        if not os.path.exists(_dataset_root):
+        if not os.path.isdir(_dataset_root):
             raise RuntimeError('cannot create dataset directory')
 
     lock_path = os.path.join(_dataset_root, '_create_lock')

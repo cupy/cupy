@@ -82,6 +82,30 @@ class TestCacheOrLoadFile(unittest.TestCase):
             shutil.rmtree(dir_path)
 
 
+class TestCacheOrLoadFileFileExists(unittest.TestCase):
+
+    def setUp(self):
+        self.default_dataset_root = dataset.get_dataset_root()
+        self.temp_file = tempfile.NamedTemporaryFile(delete=False)
+        dataset.set_dataset_root(self.temp_file.name)
+        self.dir_path = tempfile.mkdtemp()
+
+    def tearDown(self):
+        dataset.set_dataset_root(self.default_dataset_root)
+        os.remove(self.temp_file.name)
+        shutil.rmtree(self.dir_path)
+
+    def test_file_exists(self):
+        creator = mock.Mock()
+        loader = mock.Mock()
+
+        # This file always does not exists as the directory is new.
+        path = os.path.join(self.dir_path, 'cahche')
+
+        with self.assertRaises(RuntimeError):
+            dataset.cache_or_load_file(path, creator, loader)
+
+
 class TestCachedDownload(unittest.TestCase):
 
     def setUp(self):
@@ -98,6 +122,13 @@ class TestCachedDownload(unittest.TestCase):
             f.side_effect = OSError()
             with self.assertRaises(RuntimeError):
                 dataset.cached_download('http://example.com')
+
+    def test_file_exists(self):
+        # Make an empty file which has the same name as the cache directory
+        with open(os.path.join(self.temp_dir, '_dl_cache'), 'w'):
+            pass
+        with self.assertRaises(RuntimeError):
+            dataset.cached_download('http://example.com')
 
     def test_cached_download(self):
         with mock.patch('six.moves.urllib.request.urlretrieve') as f:
