@@ -59,14 +59,15 @@ class DeconvolutionND(link.Link):
 
         W_shape = (in_channels, out_channels) + ksize
         super(DeconvolutionND, self).__init__(W=W_shape)
-        if isinstance(initialW, initializer) and initialW.dtype is not None:
+        if isinstance(initialW, initializer.Initializer) and \
+           initialW.dtype is not None:
             self.W.data.astype(initialW.dtype, copy=False)
         initializers.init_weight(self.W.data, initialW)
 
         if initial_bias is None:
             self.b = None
         else:
-            if isinstance(initial_bias, initializer) and \
+            if isinstance(initial_bias, initializer.Initializer) and \
                initial_bias.dtype is not None:
                 self.add_param('b', out_channels, dtype=initial_bias.dtype)
             else:
