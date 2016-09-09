@@ -21,7 +21,9 @@ def get_deconv_outsize(size, k, s, p, cover_all=False):
 def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
     n, c, h, w = img.shape
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all)
+    assert out_h > 0, 'Output height should be positive.'
     out_w = get_conv_outsize(w, kw, sx, pw, cover_all)
+    assert out_w > 0, 'Output width should be positive.'
 
     img = numpy.pad(img,
                     ((0, 0), (0, 0), (ph, ph + sy - 1), (pw, pw + sx - 1)),
@@ -40,7 +42,9 @@ def im2col_cpu(img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False):
 def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False):
     n, c, h, w = img.shape
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all)
+    assert out_h > 0, 'Output height should be positive.'
     out_w = get_conv_outsize(w, kw, sx, pw, cover_all)
+    assert out_w > 0, 'Output width should be positive.'
 
     col = cuda.cupy.empty((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
     cuda.elementwise(
