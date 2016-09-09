@@ -62,6 +62,14 @@ class TestDeconvolutionND(unittest.TestCase):
         gy_shape = (N, out_channels) + outs
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
+        self.check_forward_options = {}
+        self.check_backward_options = {
+            'eps': 1e-2, 'atol': 1e-4, 'rtol': 1e-3}
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 5e-3, 'rtol': 5e-2}
+            self.check_backward_options = {
+                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
+
     def check_forward_consistency(self, link, x_data):
         x_cpu = chainer.Variable(x_data)
         y_cpu = link(x_cpu)
@@ -72,7 +80,8 @@ class TestDeconvolutionND(unittest.TestCase):
         y_gpu = link(x_gpu)
         self.assertEqual(y_gpu.data.dtype, x_data.dtype)
 
-        testing.assert_allclose(y_cpu.data, y_gpu.data)
+        testing.assert_allclose(
+            y_cpu.data, y_gpu.data, **self.check_forward_options)
 
     @attr.gpu
     @condition.retry(3)
@@ -86,7 +95,7 @@ class TestDeconvolutionND(unittest.TestCase):
             params.append(link.b)
 
         gradient_check.check_backward(
-            link, x_data, y_grad, params, eps=1e-2, rtol=1e-4, atol=1e-4)
+            link, x_data, y_grad, params, **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
