@@ -60,10 +60,8 @@ class DeconvolutionND(link.Link):
         self.use_cudnn = use_cudnn
         self.outsize = outsize
 
-        super(DeconvolutionND, self).__init__()
-
         W_shape = (in_channels, out_channels) + ksize
-        self.add_param('W', W_shape, dtype=W_dtype)
+        super(DeconvolutionND, self).__init__(W=(W_shape, W_dtype))
         initializers.init_weight(self.W.data, initialW)
 
         if initial_bias is None:
