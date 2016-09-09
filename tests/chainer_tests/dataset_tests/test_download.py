@@ -31,6 +31,15 @@ class TestGetDatasetDirectory(unittest.TestCase):
 
 class TestCacheOrLoadFile(unittest.TestCase):
 
+    def setUp(self):
+        self.default_dataset_root = dataset.get_dataset_root()
+        self.temp_dir = tempfile.mkdtemp()
+        dataset.set_dataset_root(self.temp_dir)
+
+    def tearDown(self):
+        dataset.set_dataset_root(self.default_dataset_root)
+        shutil.rmtree(self.temp_dir)
+
     def test_cache_exists(self):
         creator = mock.Mock()
         loader = mock.Mock()
