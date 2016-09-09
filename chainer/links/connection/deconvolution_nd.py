@@ -1,4 +1,5 @@
 from chainer.functions.connection import deconvolution_nd
+from chainer import initializer
 from chainer import initializers
 from chainer import link
 from chainer.utils import conv_nd
@@ -58,12 +59,18 @@ class DeconvolutionND(link.Link):
 
         W_shape = (in_channels, out_channels) + ksize
         super(DeconvolutionND, self).__init__(W=W_shape)
+        if isinstance(initialW, initializer) and initialW.dtype is not None:
+            self.W.data.astype(initialW.dtype, copy=False)
         initializers.init_weight(self.W.data, initialW)
 
         if initial_bias is None:
             self.b = None
         else:
-            self.add_param('b', out_channels)
+            if isinstance(initial_bias, initializer) and \
+               initial_bias.dtype is not None:
+                self.add_param('b', out_channels, dtype=initial_bias.dtype)
+            else:
+                self.add_param('b', out_channels)
             initializers.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
