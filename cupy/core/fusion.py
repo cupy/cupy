@@ -514,3 +514,153 @@ class Fusion(object):
 
 def fuse(*args, **kwargs):
     return lambda f: Fusion(f, *args, **kwargs)
+
+
+class ufunc(object):
+
+    def __init__(self, fusion_op, cupy_op, numpy_op,
+                 default_reduce=None, reduce_def=None):
+        self.name = fusion_op.name
+        self.nin = fusion_op.nin
+        self.nout = fusion_op.nout
+        self.nargs = fusion_op.nargs
+        self._ops = fusion_op._ops
+        self._preamble = fusion_op._preamble
+        self.__doc__ = fusion_op.__doc__
+        self._params = fusion_op._params
+        self._routine_cache = fusion_op._routine_cache
+
+        self.fusion_op = fusion_op
+        self.cupy_op = cupy_op
+        self.numpy_op = numpy_op
+        self.default_reduce = default_reduce
+        self.reduce_def = reduce_def
+
+    def __repr__(self):
+        return repr(self.cupy_op)
+
+    def __type__(self):
+        return type(self.cupy_op)
+
+    def __call__(self, *args, **kwargs):
+        if any(type(i) == FusionRef for i in args):
+            return convert(self.fusion_op)(*args, **kwargs)
+        elif any(type(i) == numpy.ndarray for i in args):
+            return self.numpy_op(*args, **kwargs)
+        else:
+            return self.cupy_op(*args, **kwargs)
+
+
+def create_ufunc(cupy_ufunc, numpy_ufunc, *args):
+    return ufunc(cupy_ufunc, cupy_ufunc, numpy_ufunc, *args)
+
+
+_where = ufunc(sorting.search._where_ufunc,
+               sorting.search.where, numpy.where)
+
+
+def where(*args, **kwargs):
+    return _where(*args, **kwargs)
+
+
+_clip = ufunc(core._clip, math.misc.clip, numpy.clip)
+
+
+def clip(*args, **kwargs):
+    return _clip(*args, **kwargs)
+
+
+bitwise_and = create_ufunc(core.bitwise_and, numpy.bitwise_and)
+bitwise_or = create_ufunc(core.bitwise_or, numpy.bitwise_or)
+bitwise_xor = create_ufunc(core.bitwise_xor, numpy.bitwise_xor)
+invert = create_ufunc(core.invert, numpy.invert)
+left_shift = create_ufunc(core.left_shift, numpy.left_shift)
+right_shift = create_ufunc(core.right_shift, numpy.right_shift)
+
+greater = create_ufunc(core.greater, numpy.greater)
+greater_equal = create_ufunc(core.greater_equal, numpy.greater_equal)
+less = create_ufunc(core.less, numpy.less)
+less_equal = create_ufunc(core.less_equal, numpy.less_equal)
+equal = create_ufunc(core.equal, numpy.equal)
+not_equal = create_ufunc(core.not_equal, numpy.not_equal)
+
+isfinite = create_ufunc(logic.content.isfinite, numpy.isfinite)
+isinf = create_ufunc(logic.content.isinf, numpy.isinf)
+isnan = create_ufunc(logic.content.isnan, numpy.isnan)
+
+logical_and = create_ufunc(logic.ops.logical_and, numpy.logical_and,
+                           logic.truth.all, core._all)
+logical_or = create_ufunc(logic.ops.logical_or, numpy.logical_or,
+                          logic.truth.any, core._any)
+logical_not = create_ufunc(logic.ops.logical_not, numpy.logical_not)
+logical_xor = create_ufunc(logic.ops.logical_xor, numpy.logical_xor)
+
+sin = create_ufunc(math.trigonometric.sin, numpy.sin)
+cos = create_ufunc(math.trigonometric.cos, numpy.cos)
+tan = create_ufunc(math.trigonometric.tan, numpy.tan)
+arcsin = create_ufunc(math.trigonometric.arcsin, numpy.arcsin)
+arccos = create_ufunc(math.trigonometric.arccos, numpy.arccos)
+arctan = create_ufunc(math.trigonometric.arctan, numpy.arctan)
+arctan2 = create_ufunc(math.trigonometric.arctan2, numpy.arctan2)
+hypot = create_ufunc(math.trigonometric.hypot, numpy.hypot)
+deg2rad = create_ufunc(math.trigonometric.deg2rad, numpy.deg2rad)
+rad2deg = create_ufunc(math.trigonometric.rad2deg, numpy.rad2deg)
+degrees = create_ufunc(math.trigonometric.degrees, numpy.degrees)
+radians = create_ufunc(math.trigonometric.radians, numpy.radians)
+
+sinh = create_ufunc(math.hyperbolic.sinh, numpy.sinh)
+cosh = create_ufunc(math.hyperbolic.cosh, numpy.cosh)
+tanh = create_ufunc(math.hyperbolic.tanh, numpy.tanh)
+arcsinh = create_ufunc(math.hyperbolic.arcsinh, numpy.arcsinh)
+arccosh = create_ufunc(math.hyperbolic.arccosh, numpy.arccosh)
+arctanh = create_ufunc(math.hyperbolic.arctanh, numpy.arctanh)
+
+rint = create_ufunc(math.rounding.rint, numpy.rint)
+floor = create_ufunc(math.rounding.floor, numpy.floor)
+ceil = create_ufunc(math.rounding.ceil, numpy.ceil)
+trunc = create_ufunc(math.rounding.trunc, numpy.trunc)
+
+exp = create_ufunc(math.explog.exp, numpy.exp)
+expm1 = create_ufunc(math.explog.expm1, numpy.expm1)
+exp2 = create_ufunc(math.explog.exp2, numpy.exp2)
+log = create_ufunc(math.explog.log, numpy.log)
+log10 = create_ufunc(math.explog.log10, numpy.log10)
+log2 = create_ufunc(math.explog.log2, numpy.log2)
+log1p = create_ufunc(math.explog.log1p, numpy.log1p)
+logaddexp = create_ufunc(math.explog.logaddexp, numpy.logaddexp)
+logaddexp2 = create_ufunc(math.explog.logaddexp2, numpy.logaddexp2)
+
+signbit = create_ufunc(math.floating.signbit, numpy.signbit)
+copysign = create_ufunc(math.floating.copysign, numpy.copysign)
+ldexp = create_ufunc(math.floating.ldexp, numpy.ldexp)
+frexp = create_ufunc(math.floating.frexp, numpy.frexp)
+nextafter = create_ufunc(math.floating.nextafter, numpy.nextafter)
+
+add = create_ufunc(math.arithmetic.add, numpy.add,
+                   math.sumprod.sum, core._sum)
+reciprocal = create_ufunc(math.arithmetic.reciprocal, numpy.reciprocal)
+negative = create_ufunc(math.arithmetic.negative, numpy.negative)
+multiply = create_ufunc(math.arithmetic.multiply, numpy.multiply,
+                        math.sumprod.prod, core._prod)
+divide = create_ufunc(math.arithmetic.divide, numpy.divide)
+power = create_ufunc(math.arithmetic.power, numpy.power)
+subtract = create_ufunc(math.arithmetic.subtract, numpy.subtract)
+true_divide = create_ufunc(math.arithmetic.true_divide, numpy.true_divide)
+floor_divide = create_ufunc(math.arithmetic.floor_divide, numpy.floor_divide)
+fmod = create_ufunc(math.arithmetic.fmod, numpy.fmod)
+mod = create_ufunc(math.arithmetic.remainder, numpy.mod)
+modf = create_ufunc(math.arithmetic.modf, numpy.modf)
+remainder = create_ufunc(math.arithmetic.remainder, numpy.remainder)
+
+sqrt = create_ufunc(math.misc.sqrt, numpy.sqrt)
+sqrt_fixed = create_ufunc(math.misc.sqrt_fixed, numpy.sqrt)
+square = create_ufunc(math.misc.square, numpy.square)
+absolute = create_ufunc(math.misc.absolute, numpy.absolute)
+abs = create_ufunc(math.misc.absolute, numpy.abs)
+sign = create_ufunc(math.misc.sign, numpy.sign)
+maximum = create_ufunc(math.misc.maximum, numpy.maximum,
+                       statistics.order.amax, core._amax)
+minimum = create_ufunc(math.misc.minimum, numpy.minimum,
+                       statistics.order.amin, core._amin)
+fmax = create_ufunc(math.misc.fmax, numpy.fmax)
+fmin = create_ufunc(math.misc.fmin, numpy.fmin)
