@@ -1,5 +1,6 @@
+import numpy
+
 from chainer.functions.connection import deconvolution_nd
-from chainer import initializer
 from chainer import initializers
 from chainer import link
 from chainer.utils import conv_nd
@@ -30,12 +31,14 @@ class DeconvolutionND(link.Link):
             :func:`~chainer.init_weight` helper function can take. This link
             uses :func:`~chainer.init_weight` to initialize the filter weight
             and passes the value of ``initialW`` to it as it is.
+        W_dtype: Data type of the filter weight.
         initial_bias: Value used to initialize the bias vector. May be an
             initializer instance or another value except ``None`` that
             :func:`~chainer.init_weight` helper function can take. If ``None``
             is given, this link does not use the bias vector. This link uses
             :func:`~chainer.init_weight` to initialize the bias vector and
             passes the value of ``initial_bias`` to it as it is.
+        bias_dtype: Data type of the bias vector.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
 
     .. seealso::
@@ -49,29 +52,24 @@ class DeconvolutionND(link.Link):
     """
 
     def __init__(self, ndim, in_channels, out_channels, ksize, stride=1, pad=0,
-                 outsize=None, initialW=None, initial_bias=None,
-                 use_cudnn=True):
+                 outsize=None, initialW=None, W_dtype=numpy.float32,
+                 initial_bias=None, bias_dtype=numpy.float32, use_cudnn=True):
         ksize = conv_nd.as_tuple(ksize, ndim)
         self.stride = stride
         self.pad = pad
         self.use_cudnn = use_cudnn
         self.outsize = outsize
 
+        super(DeconvolutionND, self).__init__()
+
         W_shape = (in_channels, out_channels) + ksize
-        super(DeconvolutionND, self).__init__(W=W_shape)
-        if isinstance(initialW, initializer.Initializer) and \
-           initialW.dtype is not None:
-            self.W.data.astype(initialW.dtype, copy=False)
+        self.add_param('W', W_shape, dtype=W_dtype)
         initializers.init_weight(self.W.data, initialW)
 
         if initial_bias is None:
             self.b = None
         else:
-            if isinstance(initial_bias, initializer.Initializer) and \
-               initial_bias.dtype is not None:
-                self.add_param('b', out_channels, dtype=initial_bias.dtype)
-            else:
-                self.add_param('b', out_channels)
+            self.add_param('b', out_channels, dtype=bias_dtype)
             initializers.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
