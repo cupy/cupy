@@ -155,9 +155,15 @@ class DeconvolutionND(function.Function):
         # Add bias if given.
         # TODO(takagi) Support unshared bias
         if b is not None:
-            cudnn.add_tensor(
-                handle, one.data, self.bias_desc.value, b.data.ptr, one.data,
-                y_desc.value, y.data.ptr)
+            if _cudnn_version >= 3000 or ndim == 2:
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
+            else:
+                # cuDNN v2 does not seem to support bias addition in spatial
+                # dimensions other than two.
+                b_index = (None, colon) + (None,) * ndim
+                y += b[b_index]
 
         return y,
 
@@ -237,10 +243,18 @@ class DeconvolutionND(function.Function):
 
         # Compute bias gradient.
         if b is not None:
-            gb = cuda.cupy.empty_like(b)
-            libcudnn.convolutionBackwardBias(
-                handle, one.data, gy_desc.value, gy.data.ptr,
-                zero.data, self.bias_desc.value, gb.data.ptr)
+            if _cudnn_version >= 3000 or self.ndim == 2:
+                gb = cuda.cupy.empty_like(b)
+                libcudnn.convolutionBackwardBias(
+                    handle, one.data, gy_desc.value, gy.data.ptr,
+                    zero.data, self.bias_desc.value, gb.data.ptr)
+            else:
+                # cuDNN v2 does not seem to support bias backward in spatial
+                # dimensions other than two.
+
+                # (n, _, out_1, out_2, ..., out_N)
+                axis = (0,) + tuple(six.moves.range(2, self.ndim + 2))
+                gb = gy.sum(axis=axis)
 
         # Compute filter gradient.
         if _cudnn_version >= 4000:
