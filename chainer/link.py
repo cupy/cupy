@@ -8,6 +8,16 @@ from chainer import cuda
 from chainer import variable
 
 
+def _ensure_shape_dtype(value):
+    if isinstance(value, tuple) and \
+       len(value) == 2 and \
+       not isinstance(value[1], six.integer_types):
+        # Approximately identify a shape-dtype pair.
+        return value
+    else:
+        return (value, numpy.float32)
+
+
 class Link(object):
 
     """Building block of model definitions.
@@ -83,7 +93,9 @@ class Link(object):
 
     Args:
         params: Shapes of initial parameters. The keywords are used as their
-            names. The names are also set to the parameter variables.
+            names. The names are also set to the parameter variables. You may
+            pass tuples of a shape and a dtype ``(shape, dtype)`` to add
+            parameters with specifying their dtypes.
 
     Attributes:
         name (str): Name of this link, given by the parent chain (if exists).
@@ -97,8 +109,9 @@ class Link(object):
         self._cpu = True
         self.name = None
 
-        for name, shape in six.iteritems(params):
-            self.add_param(name, shape)
+        for name, value in six.iteritems(params):
+            shape, dtype = _ensure_shape_dtype(value)
+            self.add_param(name, shape, dtype=dtype)
 
     @property
     def xp(self):
