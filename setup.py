@@ -33,6 +33,7 @@ setup(
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     url='http://chainer.org/',
+    license='MIT License',
     packages=['chainer',
               'chainer.dataset',
               'chainer.datasets',
