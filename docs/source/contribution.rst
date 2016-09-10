@@ -158,6 +158,11 @@ For example, if you have only one GPU, launch ``nosetests`` by the following com
 
   $ nosetests path/to/gpu/test.py --eval-attr='gpu<2'
 
+Some tests spend too much time.
+If you want to skip such tests, pass ``--attr='!slow'`` option to the ``nosetests`` command::
+
+  $ nosetests path/to/your/test.py --attr='!slow'
+
 Tests are put into the ``tests/chainer_tests``, ``tests/cupy_tests`` and ``tests/install_tests`` directories.
 These have the same structure as that of ``chainer``, ``cupy`` and ``install`` directories, respectively.
 In order to enable test runner to find test scripts correctly, we are using special naming convention for the test subdirectories and the test scripts.
@@ -217,6 +222,19 @@ In order to write tests for multiple GPUs, use ``chainer.testing.attr.multi_gpu(
 
       @attr.multi_gpu(2)  # specify the number of required GPUs here
       def test_my_two_gpu_func(self):
+          ...
+
+If your test requires too much time, add ``chainer.testing.attr.slow`` decorator.
+The test functions decorated by ``slow`` are skipped if ``--attr='!slow'`` is given::
+
+  import unittest
+  from chainer.testing import attr
+
+  class TestMyFunc(unittest.TestCase):
+      ...
+
+      @attr.slow
+      def test_my_slow_func(self):
           ...
 
 Once you send a pull request, your code is automatically tested by `Travis-CI <https://travis-ci.org/pfnet/chainer/>`_ **with --attr='!gpu' option**.
