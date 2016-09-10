@@ -1,3 +1,4 @@
+import collections
 import copy
 import warnings
 
@@ -8,14 +9,24 @@ from chainer import cuda
 from chainer import variable
 
 
-def _ensure_shape_dtype(value):
-    if isinstance(value, tuple) and \
-       len(value) == 2 and \
-       not isinstance(value[1], six.integer_types):
-        # Approximately identify a shape-dtype pair.
-        return value
+def _is_shape(value):
+    if value is None:
+        return True
+    elif isinstance(value, six.integer_types):
+        return True
+    elif isinstance(value, collections.Sequence):
+        return all(isinstance(x, six.integer_types) for x in value)
     else:
-        return (value, numpy.float32)
+        return False
+
+
+def _ensure_shape_dtype(value):
+    # Return value paired with dtype FP32 if it is a shape.
+    if _is_shape(value):
+        return (value, 'f')
+    # Otherwise, returns it with assuming a shape-dtype pair.
+    else:
+        return value
 
 
 class Link(object):
