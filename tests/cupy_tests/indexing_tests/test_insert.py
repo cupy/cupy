@@ -14,7 +14,7 @@ class TestInsert(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=False)
+    @testing.numpy_cupy_array_equal()
     def test_fill_diagonal(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         xp.fill_diagonal(a, val=self.val, wrap=self.wrap)
