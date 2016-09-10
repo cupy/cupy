@@ -84,7 +84,7 @@ def is_debug():
 def set_debug(debug):
     """Set the debug mode.
 
-    note::
+    .. note::
 
         This method changes global state. When you use this method on
         multi-threading environment, it may affects other threads.
