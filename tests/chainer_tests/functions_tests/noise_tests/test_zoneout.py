@@ -10,6 +10,12 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
+@testing.parameterize(
+    {'ratio': 1},
+    {'ratio': 0},
+    {'ratio': 0.5},
+)
+
 
 class TestZoneout(unittest.TestCase):
 
@@ -21,18 +27,16 @@ class TestZoneout(unittest.TestCase):
     def check_forward(self, h_data, x_data):
         h = chainer.Variable(h_data)
         x = chainer.Variable(x_data)
-        h_next = functions.zoneout(h, x, ratio=0)
-        testing.assert_allclose(h_next.data, x.data)
-        h_next = functions.zoneout(h, x, ratio=1.0)
-        testing.assert_allclose(h_next.data, h.data)
+        h_next = functions.zoneout(h, x, ratio=self.ratio)
+        if self.ratio == 0:
+            h_next_expect = x
+        elif self.ratio == 1:
+            h_next_expect = h
+        testing.assert_allclose(h_next.data, h_next_expect.data)
 
     def check_backward(self, h_data, x_data, y_grad):
         gradient_check.check_backward(
-            functions.Zoneout(0.0), (h_data, x_data), y_grad,
-            atol=1e-4, rtol=1e-3)
-
-        gradient_check.check_backward(
-            functions.Zoneout(1.0), (h_data, x_data), y_grad,
+            functions.Zoneout(self.ratio), (h_data, x_data), y_grad,
             atol=1e-4, rtol=1e-3)
 
     def test_forward_cpu(self):

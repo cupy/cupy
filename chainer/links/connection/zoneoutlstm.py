@@ -12,11 +12,11 @@ from chainer.links.connection import linear
 from chainer import variable
 
 
-class ZoneoutLSTM(link.Chain):
+class StatefulZoneoutLSTM(link.Chain):
 
     def __init__(self, in_size, out_size,
                  c_ratio=0.5, h_ratio=0.5, train=True):
-        super(ZoneoutLSTM, self).__init__(
+        super(StatefulZoneoutLSTM, self).__init__(
             upward=linear.Linear(in_size, 4 * out_size),
             lateral=linear.Linear(out_size, 4 * out_size, nobias=True),
         )
@@ -27,14 +27,14 @@ class ZoneoutLSTM(link.Chain):
         self.reset_state()
 
     def to_cpu(self):
-        super(ZoneoutLSTM, self).to_cpu()
+        super(StatefulZoneoutLSTM, self).to_cpu()
         if self.c is not None:
             self.c.to_cpu()
         if self.h is not None:
             self.h.to_cpu()
 
     def to_gpu(self, device=None):
-        super(ZoneoutLSTM, self).to_gpu(device)
+        super(StatefulZoneoutLSTM, self).to_gpu(device)
         if self.c is not None:
             self.c.to_gpu(device)
         if self.h is not None:
