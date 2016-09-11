@@ -67,7 +67,7 @@ class TestDims(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=False)
+    @testing.numpy_cupy_array_equal()
     def test_broadcast_to(self, xp, dtype):
         # Note that broadcast_to is only supported on numpy>=1.10
         a = testing.shaped_arange((3, 1, 4), xp, dtype)
@@ -91,7 +91,7 @@ class TestDims(unittest.TestCase):
         xp.broadcast_to(a, (3, 4))
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=False)
+    @testing.numpy_cupy_array_equal()
     def test_broadcast_to_numpy19(self, xp, dtype):
         # Note that broadcast_to is only supported on numpy>=1.10
         a = testing.shaped_arange((3, 1, 4), xp, dtype)
