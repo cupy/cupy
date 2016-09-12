@@ -219,6 +219,10 @@ bernoulli_nll
 ~~~~~~~~~~~~~
 .. autofunction:: bernoulli_nll
 
+black_out
+~~~~~~~~~
+.. autofunction:: black_out
+
 connectionist_temporal_classification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: connectionist_temporal_classification
