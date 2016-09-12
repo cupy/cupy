@@ -6,16 +6,9 @@ from libc cimport string
 
 cdef extern from "cupy_cuda.h":
     cdef int NVTX_VERSION
-    cdef int NVTX_EVENT_ATTRIB_STRUCT_SIZE
-    cdef int NVTX_NO_PUSH_POP_TRACKING
     cdef enum nvtxColorType_t:
         NVTX_COLOR_UNKNOWN
         NVTX_COLOR_ARGB
-    cdef enum nvtxPayloadType_t:
-        NVTX_PAYLOAD_UNKNOWN
-        NVTX_PAYLOAD_TYPE_UNSIGNED_INT64
-        NVTX_PAYLOAD_TYPE_INT64
-        NVTX_PAYLOAD_TYPE_DOUBLE
     cdef enum nvtxMessageType_t:
         NVTX_MESSAGE_UNKNOWN
         NVTX_MESSAGE_TYPE_ASCII
@@ -87,7 +80,7 @@ cpdef void MarkC(str message, uint32_t color=0) except *:
     cdef nvtxEventAttributes_t attrib
     string.memset(&attrib, 0, sizeof(attrib))
     attrib.version = NVTX_VERSION
-    attrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE
+    attrib.size = sizeof(attrib)
     attrib.messageType = NVTX_MESSAGE_TYPE_ASCII
     attrib.message.ascii = b_message
     attrib.colorType = NVTX_COLOR_ARGB
@@ -136,7 +129,7 @@ cpdef void RangePushC(str message, uint32_t color=0) except *:
     cdef nvtxEventAttributes_t attrib
     string.memset(&attrib, 0, sizeof(attrib))
     attrib.version = NVTX_VERSION
-    attrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE
+    attrib.size = sizeof(attrib)
     attrib.messageType = NVTX_MESSAGE_TYPE_ASCII
     attrib.message.ascii = b_message
     attrib.colorType = NVTX_COLOR_ARGB
