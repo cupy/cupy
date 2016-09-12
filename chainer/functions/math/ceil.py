@@ -22,7 +22,7 @@ class Ceil(function.Function):
 
     def backward(self, x, grad_outputs):
         xp = cuda.get_array_module(*x)
-        return utils.force_array(xp.zeros_like(x[0])),
+        return xp.zeros_like(x[0]),
 
 
 def ceil(x):
