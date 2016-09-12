@@ -24,8 +24,8 @@ def black_out(x, t, W, samples):
 
     .. math::
 
-       p(y) = \\frac{\\exp(W_y^\\trans x)}{
-       \\sum_{s \\in samples} \\exp(W_s^\\trans x)}.
+       p(y) = \\frac{\\exp(W_y^\\top x)}{
+       \\sum_{s \\in samples} \\exp(W_s^\\top x)}.
 
     Args:
         x (~chainer.Variable): Batch of input vectors.
