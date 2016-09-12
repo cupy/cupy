@@ -174,16 +174,16 @@ if args.gpu >= 0:
     cuda.get_device(args.gpu).use()
 
 train, val, _ = chainer.datasets.get_ptb_words()
+counts = collections.Counter(train)
+counts.update(collections.Counter(val))
 n_vocab = max(train) + 1
+
 if args.test:
     train = train[:100]
     val = val[:100]
 
 vocab = chainer.datasets.get_ptb_words_vocabulary()
 index2word = {wid: word for word, wid in six.iteritems(vocab)}
-
-counts = collections.Counter(train)
-counts.update(collections.Counter(val))
 
 print('n_vocab: %d' % n_vocab)
 print('data length: %d' % len(train))
