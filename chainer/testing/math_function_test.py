@@ -1,6 +1,6 @@
-import unittest
-
 import numpy
+import string
+import unittest
 
 import chainer
 from chainer import cuda
@@ -10,8 +10,7 @@ from chainer.testing import condition
 
 
 def func_class(func):
-    name = func.__name__
-    name = name[0].upper() + name[1:]
+    name = string.capitalize(func.__name__)
     return getattr(F, name, None)
 
 
