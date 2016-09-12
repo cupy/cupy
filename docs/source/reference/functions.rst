@@ -316,7 +316,7 @@ exp
 .. autofunction:: exp
 
 floor
-~~~
+~~~~~
 .. autofunction:: floor
 
 identity
