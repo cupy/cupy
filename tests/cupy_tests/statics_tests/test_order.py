@@ -43,16 +43,18 @@ class TestOrder(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_nanmax_nan(self, xp, dtype):
         a = xp.array([float('nan'), 1, -1], dtype)
-        return xp.nanmax(a)
+        with warnings.catch_warnings():
+            return xp.nanmax(a)
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmax_all_nan(self, xp, dtype):
         a = xp.array([float('nan'), float('nan')], dtype)
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             m = xp.nanmax(a)
         self.assertEqual(len(w), 1)
-        self.assertIsInstance(w[0], RuntimeWarning)
+        self.assertIs(w[0].category, RuntimeWarning)
         return m
 
     @testing.for_all_dtypes()
@@ -89,14 +91,16 @@ class TestOrder(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_nanmin_nan(self, xp, dtype):
         a = xp.array([float('nan'), 1, -1], dtype)
-        return xp.nanmin(a)
+        with warnings.catch_warnings():
+            return xp.nanmin(a)
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmin_all_nan(self, xp, dtype):
         a = xp.array([float('nan'), float('nan')], dtype)
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             m = xp.nanmin(a)
         self.assertEqual(len(w), 1)
-        self.assertIsInstance(w[0], RuntimeWarning)
+        self.assertIs(w[0].category, RuntimeWarning)
         return m
