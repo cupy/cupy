@@ -5,6 +5,7 @@ from chainer.utils import type_check
 
 
 class Fmod(function.Function):
+
     @property
     def label(self):
         return 'fmod'
