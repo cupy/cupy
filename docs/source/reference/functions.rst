@@ -299,6 +299,10 @@ bias
 ~~~~
 .. autofunction:: bias
 
+ceil
+~~~~
+.. autofunction:: ceil
+
 clip
 ~~~~
 .. autofunction:: clip

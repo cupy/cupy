@@ -61,6 +61,7 @@ from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared
 from chainer.functions.math import bias
+from chainer.functions.math import ceil
 from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
@@ -229,6 +230,8 @@ batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
 bias = bias.bias
+Ceil = ceil.Ceil
+ceil = ceil.ceil
 Clip = clip.Clip
 clip = clip.clip
 Cos = trigonometric.Cos
