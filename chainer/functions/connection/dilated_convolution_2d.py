@@ -341,7 +341,7 @@ def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
         pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        dilate (int or pair of ints): Dilate width of filter applications.
+        dilate (int or pair of ints): Dilation of filter applications.
             ``dilate=d`` and ``dilate=(d, d)`` are equivalent.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
@@ -361,14 +361,15 @@ def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
     The right-most (or bottom-most) patches do not run over the padded spatial
     size.
 
-    Let :math:`(s_Y, s_X)` be the stride of filter application, and
-    :math:`(p_H, p_W)` the spatial padding size. Then, the output size
+    Let :math:`(s_Y, s_X)` be the stride of filter application,
+    :math:`(p_H, p_W)` the spatial padding size, and :math:`(d_Y, d_X)`
+    the dilation of filter application. Then, the output size
     :math:`(h_O, w_O)` is determined by the following equations:
 
     .. math::
 
-       h_O &= (h + 2p_H - k_H) / s_Y + 1,\\\\
-       w_O &= (w + 2p_W - k_W) / s_X + 1.
+       h_O &= (h + 2p_H - k_H - (k_H - 1) * (d_Y - 1)) / s_Y + 1,\\\\
+       w_O &= (w + 2p_W - k_W - (k_W - 1) * (d_X - 1)) / s_X + 1.
 
     If the bias vector is given, then it is added to all spatial locations of
     the output of convolution.

@@ -23,7 +23,7 @@ class DilatedConvolution2D(link.Link):
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
         pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        dilate (int or pair of ints): Dilate width of filter applications.
+        dilate (int or pair of ints): Dilation of filter applications.
             ``dilate=d`` and ``dilate=(d, d)`` are equivalent.
         wscale (float): Scaling factor of the initial weight.
         bias (float): Initial bias value.
