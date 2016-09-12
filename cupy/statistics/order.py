@@ -59,7 +59,7 @@ def amax(a, axis=None, out=None, keepdims=False, dtype=None):
 
 
 def nanmin(a, axis=None, out=None, keepdims=False):
-    """Return the minimum of an array along an axis ignoreing NaN.
+    """Return the minimum of an array along an axis ignoring NaN.
 
     When all NaN slices are found, a :class:`RuntimeWarning` is raised and NaN
     is returned.
@@ -86,7 +86,7 @@ def nanmin(a, axis=None, out=None, keepdims=False):
 
 
 def nanmax(a, axis=None, out=None, keepdims=False):
-    """Return the maximum of an array along an axis ignoreing NaN.
+    """Return the maximum of an array along an axis ignoring NaN.
 
     When all NaN slices are found, a :class:`RuntimeWarning` is raised and NaN
     is returned.
