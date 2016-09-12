@@ -22,14 +22,14 @@ class Ceil(function.Function):
 
     def backward(self, x, grad_outputs):
         xp = cuda.get_array_module(*x)
-        return utils.force_array(xp.zeros(x[0].shape), dtype=x[0].dtype),
+        return utils.force_array(xp.zeros_like(x[0])),
 
 
 def ceil(x):
     """Elementwise ceil function.
 
     .. math::
-       y_i = ceil(x_i)
+       y_i = \lceil x_i \rceil
     Args:
         x (~chainer.Variable): Input variable.
 
