@@ -316,7 +316,7 @@ exp
 .. autofunction:: exp
 
 fmod
-~~~
+~~~~
 .. autofunction:: fmod
 
 identity
