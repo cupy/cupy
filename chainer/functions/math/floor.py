@@ -29,7 +29,7 @@ def floor(x):
     """Elementwise floor function.
 
     .. math::
-       y_i = \lfloor x_i \rfloor
+       y_i = \\lfloor x_i \\rfloor
 
     Args:
         x (~chainer.Variable): Input variable.
