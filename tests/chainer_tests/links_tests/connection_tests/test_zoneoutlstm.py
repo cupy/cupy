@@ -37,8 +37,6 @@ def _zoneoutlstm(func, c, h, x, ratio):
     if ratio == 1.0:
         c_next = c
         y = h
-#    print("hogehgoe:h.shape={}".format(h.data.shape))
-#    print("hogehgoe:y.shape={}".format(y.data.shape))
     return c_next, y
 
 
@@ -51,7 +49,9 @@ def _zoneoutlstm(func, c, h, x, ratio):
 class TestZoneoutlstm(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.StatefulZoneoutLSTM(self.in_size, self.out_size,c_ratio=self.ratio, h_ratio=self.ratio)
+        self.link = links.StatefulZoneoutLSTM(self.in_size, self.out_size,
+                                              c_ratio=self.ratio,
+                                              h_ratio=self.ratio)
         upward = self.link.upward.W.data
         upward[...] = numpy.random.uniform(-1, 1, upward.shape)
         lateral = self.link.lateral.W.data
@@ -73,18 +73,15 @@ class TestZoneoutlstm(unittest.TestCase):
         x = chainer.Variable(x_data)
 
         h1 = self.link(x)
-        c1_expect, h1_expect = _zoneoutlstm(self.link, c_data, h_data, x_data, self.ratio)
-#        print("h1={}".format(h1.data.shape))
-#        print("h1_expect={}".format(h1_expect.data.shape))
-        print("h1={}".format(h1.data))
-        print("h1_expect={}".format(h1_expect))
+        c1_expect, h1_expect = _zoneoutlstm(self.link, c_data, h_data,
+                                            x_data, self.ratio)
         gradient_check.assert_allclose(h1.data, h1_expect)
         gradient_check.assert_allclose(self.link.c.data, c1_expect)
         gradient_check.assert_allclose(self.link.h.data, h1_expect)
 
         h2 = self.link(x)
-        c2_expect, h2_expect = _zoneoutlstm(self.link,
-                                         c1_expect, h1_expect, x_data, self.ratio)
+        c2_expect, h2_expect = _zoneoutlstm(self.link, c1_expect, h1_expect,
+                                            x_data, self.ratio)
         gradient_check.assert_allclose(h2.data, h2_expect)
         gradient_check.assert_allclose(self.link.c.data, c2_expect)
         gradient_check.assert_allclose(self.link.h.data, h2_expect)
@@ -109,9 +106,6 @@ class TestZoneoutlstm(unittest.TestCase):
             c, y = _zoneoutlstm(self.link, c_data, h_data, x_data, self.ratio)
             return y,
         gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
-        print("gx={}".format(gx))
-        print("x.grad={}".format(x.grad))
-        print("h.grad={}".format(h.grad))
         gradient_check.assert_allclose(gx, x.grad, atol=1e-3)
 
     def test_backward_cpu(self):
@@ -124,6 +118,7 @@ class TestZoneoutlstm(unittest.TestCase):
                             cuda.to_gpu(self.h),
                             cuda.to_gpu(self.x),
                             cuda.to_gpu(self.gy))
+
 
 class TestZoneoutState(unittest.TestCase):
 
@@ -144,7 +139,8 @@ class TestZoneoutState(unittest.TestCase):
         self.link.to_gpu()
         self.check_reset_state()
 
-class TestPeepholeToCPUToGPU(unittest.TestCase):
+
+class TestZoneoutToCPUToGPU(unittest.TestCase):
 
     def setUp(self):
         in_size, out_size = 10, 8

@@ -10,13 +10,11 @@ from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
+
 @testing.parameterize(
     {'ratio': 1},
     {'ratio': 0},
-    {'ratio': 0.5},
 )
-
-
 class TestZoneout(unittest.TestCase):
 
     def setUp(self):

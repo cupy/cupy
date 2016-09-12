@@ -7,12 +7,7 @@ from chainer.utils import type_check
 
 class Zoneout(function.Function):
 
-    """Zoneout regularization.
-
-    See the paper: `Zoneout: Regularizing RNNs by Randomly Preserving Hidden \
-    Activations <http://arxiv.org/abs/1606.013050>`_.
-
-    """
+    """Zoneout regularization."""
 
     def __init__(self, zoneout_ratio):
         self.zoneout_ratio = zoneout_ratio
@@ -23,13 +18,12 @@ class Zoneout(function.Function):
     def forward(self, inputs):
         h, x = inputs
         xp = cuda.get_array_module(*x)
-        if xp == numpy:
+        if xp is numpy:
             flag_x = xp.random.rand(*h[0].shape) >= self.zoneout_ratio
         else:
-            flag_x = (xp.random.rand(*h[0].shape, dtype=numpy.float32) >=
+            flag_x = (xp.random.rand(*h[0].shape) >=
                       self.zoneout_ratio)
-        flag_h = xp.ones_like(flag_x) - flag_x
-        self.flag_h = flag_h
+        self.flag_h = xp.ones_like(flag_x) - flag_x
         self.flag_x = flag_x
         return h * self.flag_h + x * self.flag_x,
 
@@ -40,10 +34,11 @@ class Zoneout(function.Function):
 
 
 def zoneout(h, x, ratio=.5, train=True):
-    """Instead of dropping out, units zone out and are set to their previous value.
+    """Drops elements of input variable and sets to previous variable randomly.
 
-    This function stochastically forces some hidden units to maintain their
-    previous values.
+    This function drops input elements randomly with probability ``ratio`` and
+    instead sets dropping element to their previous variable. In testing mode ,
+    it does nothing and just returns ``x``.
 
     Args:
         h (~chainer.Variable): Previous variable.
@@ -53,6 +48,9 @@ def zoneout(h, x, ratio=.5, train=True):
 
     Returns:
         ~chainer.Variable: Output variable.
+
+    See the paper: `Zoneout: Regularizing RNNs by Randomly Preserving Hidden \
+    Activations <http://arxiv.org/abs/1606.01305>`_.
 
     """
     if train:

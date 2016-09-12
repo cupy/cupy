@@ -54,7 +54,7 @@ class StatefulZoneoutLSTM(link.Chain):
         assert isinstance(h, chainer.Variable)
         c_ = c
         h_ = h
-        if self.xp == numpy:
+        if self.xp is numpy:
             c_.to_cpu()
             h_.to_cpu()
         else:
