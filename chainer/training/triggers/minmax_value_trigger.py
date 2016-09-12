@@ -14,7 +14,7 @@ class BestValueTrigger(object):
         trigger: Trigger that decides the comparison interval between current
             best value and new value. This must be a tuple in the form of
             ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
-            :class`IntervalTrigger`.
+            :class:`~chainer.training.triggers.IntervalTrigger`.
 
     """
 
@@ -74,7 +74,7 @@ class MaxValueTrigger(BestValueTrigger):
         trigger: Trigger that decides the comparison interval between current
             best value and new value. This must be a tuple in the form of
             ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
-            :class`IntervalTrigger`.
+            :class:`~chainer.training.triggers.IntervalTrigger`.
 
     """
 
@@ -96,7 +96,7 @@ class MinValueTrigger(BestValueTrigger):
         trigger: Trigger that decides the comparison interval between current
             best value and new value. This must be a tuple in the form of
             ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
-            :class`IntervalTrigger`.
+            :class:`~chainer.training.triggers.IntervalTrigger`.
 
     """
 
