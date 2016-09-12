@@ -341,7 +341,7 @@ def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
             ``stride=s`` and ``stride=(s, s)`` are equivalent.
         pad (int or pair of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        dilate (int or pair of ints): Dilation of filter applications.
+        dilate (int or pair of ints): Dilation factor of filter applications.
             ``dilate=d`` and ``dilate=(d, d)`` are equivalent.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
             available.
@@ -354,16 +354,17 @@ def dilated_convolution_2d(x, W, b=None, stride=1, pad=0, dilate=1,
     The two-dimensional dilated convolution function is defined as follows.
     Then the ``DilatedConvolution2D`` function computes correlations
     between filters and patches of size :math:`(k_H, k_W)` in ``x``.
+    Patches here are extracted at intervals of the dilation factor.
     Note that correlation here is equivalent to the inner product between
     expanded vectors.
-    Patches are extracted at positions shifted by multiples of ``stride`` from
-    the first position ``-pad`` for each spatial axis.
-    The right-most (or bottom-most) patches do not run over the padded spatial
-    size.
+    Patches are extracted at intervals of the dilation factor and at positions
+    shifted by multiples of ``stride`` from the first position ``-pad`` for
+    each spatial axis. The right-most (or bottom-most) patches do not run over
+    the padded spatial size.
 
     Let :math:`(s_Y, s_X)` be the stride of filter application,
     :math:`(p_H, p_W)` the spatial padding size, and :math:`(d_Y, d_X)`
-    the dilation of filter application. Then, the output size
+    the dilation factor of filter application. Then, the output size
     :math:`(h_O, w_O)` is determined by the following equations:
 
     .. math::
