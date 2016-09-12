@@ -29,7 +29,7 @@ def ceil(x):
     """Elementwise ceil function.
 
     .. math::
-       y_i = \lceil x_i \rceil
+       y_i = \\lceil x_i \\rceil.
     Args:
         x (~chainer.Variable): Input variable.
 
