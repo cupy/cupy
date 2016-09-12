@@ -5,6 +5,7 @@ from chainer.utils import type_check
 
 
 class Floor(function.Function):
+
     @property
     def label(self):
         return 'floor'
@@ -21,14 +22,14 @@ class Floor(function.Function):
 
     def backward(self, x, grad_outputs):
         xp = cuda.get_array_module(*x)
-        return utils.force_array(xp.zeros(x[0].shape), dtype=x[0].dtype),
+        return xp.zeros_like(x[0]),
 
 
 def floor(x):
     """Elementwise floor function.
 
     .. math::
-       y_i = floor(x_i)
+       y_i = \lfloor x_i \rfloor
 
     Args:
         x (~chainer.Variable): Input variable.
