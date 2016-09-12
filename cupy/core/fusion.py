@@ -1,3 +1,4 @@
+import __builtin__
 import inspect
 import string
 import warnings
@@ -176,8 +177,8 @@ def const_val(val):
 def normalize_arg(arg):
     if type(arg) == FusionRef:
         return arg.var
-    if any([type(arg) == int, type(arg) == float, type(arg) == bool,
-            (hasattr(arg, 'dtype') and arg.dtype in dtype_set)]):
+    if __builtin__.any([type(arg) in [int, float, bool],
+                        (hasattr(arg, 'dtype') and arg.dtype in dtype_set)]):
         t = numpy.dtype(type(arg))
         return FusionVar(None, None, t, const=arg)
     raise Exception('Unsupported type %s' % type(arg))
@@ -340,19 +341,11 @@ def get_pre_code(var_list, nin, operation):
     return module_code
 
 
-def get_reduce_code(reduce_vars, operation, reduce_out):
-    module_code = string.Template('''
-    __device__ ${return_type} _reduce(${type0} v0, ${type1} v1) {
-      ${operation};
-      return v${return_var};
-    }
-    ''').substitute(
-        type0=_dtype_to_ctype[reduce_vars[0].ty],
-        type1=_dtype_to_ctype[reduce_vars[1].ty],
-        return_type=_dtype_to_ctype[reduce_vars[reduce_out.num].ty],
-        operation=operation,
-        return_var=reduce_out.num)
-    return module_code
+def get_reduce_op(ops, dtype):
+    for i in ops._ops:
+        if numpy.can_cast(dtype.type, i[0][0]):
+            return i
+    raise TypeError("Type is mismatched. %s(...), %s" % (ops.name, dtype.type))
 
 
 def get_post_code(post_vars, operation, post_out):
@@ -384,7 +377,7 @@ def fusion(func, nin, immutable_num,
     ret_vars = map(normalize_arg, ret_refs)
     ret_types = [var.ty for var in ret_vars]
     if input_types[nin:] != ret_types[:(immutable_num - nin)]:
-        raise TypeError('Invalid type')
+        raise TypeError('Type is mismatched')
 
     output_vars = [FusionVar(None, None, t, i + immutable_num)
                    for (i, t) in enumerate(ret_types)]
@@ -412,30 +405,22 @@ def fusion(func, nin, immutable_num,
         if nin != immutable_num or nout != 1:
             raise Exception("Wrong number of number of arguments")
         # pre-map
+        pre_type = ret_vars[0].ty
         pre_code = get_pre_code(var_list, nin, operation)
 
         # reduce
-        reduce_type = ret_vars[0].ty
-        reduce_in = [FusionVar(None, None, reduce_type, 0),
-                     FusionVar(None, None, reduce_type, 1)]
-        reduce_out = normalize_arg(reduce(*map(FusionRef, reduce_in)))
-        assert (reduce_out.ty == reduce_type)
-        if type(reduce_out) == tuple:
-            raise Exception('Invalid hoge hoge')
-        reduce_vars = reduce_in
-        reduce_ops = []
-        get_var_list([reduce_out], reduce_vars, Counter(2))
-        get_operation_list([reduce_out], reduce_ops, Counter(0))
-        reduce_code = ''.join(map(declaration_from_var, reduce_vars[2:]))
-        reduce_code += ''.join(map(declaration_from_op,  reduce_ops))
-        reduce_code += '\n'.join(map(operation_code, reduce_ops))
-        reduce_code = get_reduce_code(reduce_vars, reduce_code, reduce_out)
+        reduce_op = get_reduce_op(reduce._raw, pre_type)
+        reduce_code = reduce_op[2][1]
+        reduce_type = numpy.dtype(reduce_op[1][0])
+        rtype = reduce_op[2][3]
+        post_type = "type_in0_raw" if rtype is None else rtype
+        pre_code += "typedef %s type_in0_raw;\n" % _dtype_to_ctype[reduce_type]
 
         # post-map
         post_in = [FusionVar(None, None, reduce_type, 0)]
         post_out = normalize_arg(post_map(*map(FusionRef, post_in)))
         if type(post_out) == tuple:
-            raise Exception('Invalid hoge hoge')
+            raise Exception("Can't reduce a tuple")
         post_vars = post_in
         post_ops = []
         get_var_list([post_out], post_vars, Counter(1))
@@ -445,17 +430,17 @@ def fusion(func, nin, immutable_num,
         post_code += '\n'.join(map(operation_code, post_ops))
         post_code = get_post_code(post_vars, post_code, post_out)
 
-        submodules = gather_submodules(operation_list + reduce_ops + post_ops)
+        submodules = gather_submodules(operation_list + post_ops)
         submodule_code = ''.join(get_submodule_code(v)
                                  for v in submodules.values())
-        submodule_code += pre_code + reduce_code + post_code
+        submodule_code += pre_code + post_code
         operation = '_pre_map(' + ', '.join(['v' + str(i)
                                              for i in range(nin)]) + ')'
         out_params = '%s res' % post_out.ty
         return core.ReductionKernel(in_params, out_params, operation,
-                                    '_reduce(a, b)', 'res = _post_map(a)',
-                                    identity,
-                                    reduce_type=_dtype_to_ctype[reduce_type],
+                                    reduce_code, 'res = _post_map(a)',
+                                    str(identity),
+                                    reduce_type=post_type,
                                     preamble=submodule_code)
 
 
@@ -469,20 +454,18 @@ class Fusion(object):
         self.immutable_num = immutable_num
         self.reduce = reduce
         self.post_map = post_map
-        if reduce is None:
-            self.identity = None
-        else:
-            self.identity = self.reduce.reduce_def.identity
+        self.identity = None if reduce is None else self.reduce._raw.identity
         self.memo = {}
-        # TODO(type check assert)
 
     def __repr__(self):
         return "<Fusion '%s'>" % self.name
 
     def __call__(self, *args, **kwargs):
-        axis = kwargs['axis'] if 'axis' in kwargs else 0
-        if len(args) > 0 and all(map(lambda a: hasattr(a, 'dtype') and
-                                     type(a) != numpy.ndarray, args)):
+        axis = kwargs['axis'] if 'axis' in kwargs else None
+        if len(args) == 0:
+            raise Exception('number of arguments must be more than 0')
+        if __builtin__.all(map(lambda a: hasattr(a, 'dtype') and
+                               type(a) != numpy.ndarray, args)):
             types = map(lambda x: x.dtype, args)
             key = tuple(types)
             if key not in self.memo:
@@ -495,21 +478,16 @@ class Fusion(object):
             else:
                 return f(*args, axis=axis)
         else:
-            types = '.'.join(map(repr, map(type, args)))
-            message = "Can't fuse \n %s(%s)" % (self.name, types)
-            if any(map(lambda a: type(a) == core.ndarray, args)):
+            if __builtin__.any(map(lambda a: type(a) == core.ndarray, args)):
+                types = '.'.join(map(repr, map(type, args)))
+                message = "Can't fuse \n %s(%s)" % (self.name, types)
                 warnings.warn(message)
-                if self.reduce is None:
-                    return self.func(*args)
-                else:
-                    reduce = self.reduce.default_reduce
-                    return self.post_map(reduce(self.func(*args), axis=axis))
+            if self.reduce is None:
+                return self.func(*args)
+            elif axis is None:
+                return self.post_map(self.reduce(self.func(*args)))
             else:
-                if self.reduce is None:
-                    return self.func(*args)
-                else:
-                    reduce = self.reduce.numpy_op.reduce
-                    return self.post_map(reduce(self.func(*args), axis=axis))
+                return self.post_map(self.reduce(self.func(*args), axis=axis))
 
 
 def fuse(*args, **kwargs):
@@ -518,8 +496,7 @@ def fuse(*args, **kwargs):
 
 class ufunc(object):
 
-    def __init__(self, fusion_op, cupy_op, numpy_op,
-                 default_reduce=None, reduce_def=None):
+    def __init__(self, fusion_op, cupy_op, numpy_op):
         self.name = fusion_op.name
         self.nin = fusion_op.nin
         self.nout = fusion_op.nout
@@ -533,8 +510,6 @@ class ufunc(object):
         self.fusion_op = fusion_op
         self.cupy_op = cupy_op
         self.numpy_op = numpy_op
-        self.default_reduce = default_reduce
-        self.reduce_def = reduce_def
 
     def __repr__(self):
         return repr(self.cupy_op)
@@ -543,16 +518,16 @@ class ufunc(object):
         return type(self.cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if any(type(i) == FusionRef for i in args):
+        if __builtin__.any(type(i) == FusionRef for i in args):
             return convert(self.fusion_op)(*args, **kwargs)
-        elif any(type(i) == numpy.ndarray for i in args):
+        elif __builtin__.any(type(i) == numpy.ndarray for i in args):
             return self.numpy_op(*args, **kwargs)
         else:
             return self.cupy_op(*args, **kwargs)
 
 
-def create_ufunc(cupy_ufunc, numpy_ufunc, *args):
-    return ufunc(cupy_ufunc, cupy_ufunc, numpy_ufunc, *args)
+def create_ufunc(cupy_ufunc, numpy_ufunc):
+    return ufunc(cupy_ufunc, cupy_ufunc, numpy_ufunc)
 
 
 _where = ufunc(sorting.search._where_ufunc,
@@ -588,10 +563,8 @@ isfinite = create_ufunc(logic.content.isfinite, numpy.isfinite)
 isinf = create_ufunc(logic.content.isinf, numpy.isinf)
 isnan = create_ufunc(logic.content.isnan, numpy.isnan)
 
-logical_and = create_ufunc(logic.ops.logical_and, numpy.logical_and,
-                           logic.truth.all, core._all)
-logical_or = create_ufunc(logic.ops.logical_or, numpy.logical_or,
-                          logic.truth.any, core._any)
+logical_and = create_ufunc(logic.ops.logical_and, numpy.logical_and)
+logical_or = create_ufunc(logic.ops.logical_or, numpy.logical_or)
 logical_not = create_ufunc(logic.ops.logical_not, numpy.logical_not)
 logical_xor = create_ufunc(logic.ops.logical_xor, numpy.logical_xor)
 
@@ -636,12 +609,10 @@ ldexp = create_ufunc(math.floating.ldexp, numpy.ldexp)
 frexp = create_ufunc(math.floating.frexp, numpy.frexp)
 nextafter = create_ufunc(math.floating.nextafter, numpy.nextafter)
 
-add = create_ufunc(math.arithmetic.add, numpy.add,
-                   math.sumprod.sum, core._sum)
+add = create_ufunc(math.arithmetic.add, numpy.add)
 reciprocal = create_ufunc(math.arithmetic.reciprocal, numpy.reciprocal)
 negative = create_ufunc(math.arithmetic.negative, numpy.negative)
-multiply = create_ufunc(math.arithmetic.multiply, numpy.multiply,
-                        math.sumprod.prod, core._prod)
+multiply = create_ufunc(math.arithmetic.multiply, numpy.multiply)
 divide = create_ufunc(math.arithmetic.divide, numpy.divide)
 power = create_ufunc(math.arithmetic.power, numpy.power)
 subtract = create_ufunc(math.arithmetic.subtract, numpy.subtract)
@@ -658,9 +629,60 @@ square = create_ufunc(math.misc.square, numpy.square)
 absolute = create_ufunc(math.misc.absolute, numpy.absolute)
 abs = create_ufunc(math.misc.absolute, numpy.abs)
 sign = create_ufunc(math.misc.sign, numpy.sign)
-maximum = create_ufunc(math.misc.maximum, numpy.maximum,
-                       statistics.order.amax, core._amax)
-minimum = create_ufunc(math.misc.minimum, numpy.minimum,
-                       statistics.order.amin, core._amin)
+maximum = create_ufunc(math.misc.maximum, numpy.maximum)
+minimum = create_ufunc(math.misc.minimum, numpy.minimum)
 fmax = create_ufunc(math.misc.fmax, numpy.fmax)
 fmin = create_ufunc(math.misc.fmin, numpy.fmin)
+
+
+class reduction(object):
+
+    def __init__(self, cupy_op, numpy_op):
+        self.cupy_op = cupy_op
+        self.numpy_op = numpy_op
+
+    def __call__(self, *args, **kwargs):
+        if __builtin__.any(type(i) == numpy.ndarray for i in args):
+            return self.numpy_op(*args, **kwargs)
+        else:
+            return self.cupy_op(*args, **kwargs)
+
+
+_all = reduction(logic.truth.all, numpy.all)
+_any = reduction(logic.truth.any, numpy.any)
+_sum = reduction(math.sumprod.sum, numpy.sum)
+_prod = reduction(math.sumprod.prod, numpy.prod)
+_amax = reduction(statistics.order.amax, numpy.amin)
+_amin = reduction(statistics.order.amin, numpy.amin)
+
+
+def all(*args, **kwargs):
+    return _all(*args, **kwargs)
+
+
+def any(*args, **kwargs):
+    return _any(*args, **kwargs)
+
+
+def sum(*args, **kwargs):
+    return _sum(*args, **kwargs)
+
+
+def prod(*args, **kwargs):
+    return _prod(*args, **kwargs)
+
+
+def amax(*args, **kwargs):
+    return _amax(*args, **kwargs)
+
+
+def amin(*args, **kwargs):
+    return _amin(*args, **kwargs)
+
+
+all._raw = core._all
+any._raw = core._any
+sum._raw = core._sum
+prod._raw = core._prod
+amax._raw = core._amax
+amin._raw = core._amin

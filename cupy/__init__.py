@@ -22,9 +22,7 @@ from cupy import creation  # NOQA
 from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
-from cupy import logic  # NOQA
 from cupy import manipulation  # NOQA
-from cupy import math  # NOQA
 from cupy import padding  # NOQA
 from cupy import random  # NOQA
 from cupy import sorting  # NOQA
@@ -293,8 +291,8 @@ from cupy.core.fusion import less  # NOQA
 from cupy.core.fusion import less_equal  # NOQA
 from cupy.core.fusion import not_equal  # NOQA
 
-from cupy.logic.truth import all  # NOQA
-from cupy.logic.truth import any  # NOQA
+from cupy.core.fusion import all  # NOQA
+from cupy.core.fusion import any  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -326,8 +324,8 @@ from cupy.core.fusion import rint  # NOQA
 from cupy.core.fusion import trunc  # NOQA
 
 from cupy.math.sumprod import cumsum  # NOQA
-from cupy.math.sumprod import prod  # NOQA
-from cupy.math.sumprod import sum  # NOQA
+from cupy.core.fusion import prod  # NOQA
+from cupy.core.fusion import sum  # NOQA
 
 from cupy.core.fusion import exp  # NOQA
 from cupy.core.fusion import exp2  # NOQA
@@ -390,10 +388,10 @@ from cupy.sorting.search import where  # NOQA
 # -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
-from cupy.statistics.order import amax  # NOQA
-from cupy.statistics.order import amax as max  # NOQA
-from cupy.statistics.order import amin  # NOQA
-from cupy.statistics.order import amin as min  # NOQA
+from cupy.core.fusion import amax  # NOQA
+from cupy.core.fusion import amax as max  # NOQA
+from cupy.core.fusion import amin  # NOQA
+from cupy.core.fusion import amin as min  # NOQA
 from cupy.statistics.order import nanmax  # NOQA
 from cupy.statistics.order import nanmin  # NOQA
 

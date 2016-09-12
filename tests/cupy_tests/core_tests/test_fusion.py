@@ -588,7 +588,8 @@ class TestFusionMisc(unittest.TestCase):
         def g(x, y, z):
             return cupy.clip(x, y, z)
 
-        return g(a, dtype(3), dtype(13))
+        ty = numpy.dtype(dtype).type
+        return g(a, ty(3), ty(13))
 
     def test_sqrt(self):
         self.check_unary('sqrt')
@@ -671,25 +672,38 @@ class TestFusionFuse(unittest.TestCase):
     @testing.for_dtypes(_dtypes)
     @testing.numpy_cupy_array_equal()
     def test_reduce1(self, xp, dtype):
-        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
-        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
-        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
+        a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
+        b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
+        c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
 
-        @fusion.fuse(reduce=cupy.add)
+        @fusion.fuse(reduce=cupy.sum)
         def g(x, y, z):
-            x * y + z
+            return x * y + z
 
         return g(a, b, c)
 
     @testing.for_dtypes(_dtypes)
     @testing.numpy_cupy_array_equal()
     def test_reduce2(self, xp, dtype):
-        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
-        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
-        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
+        a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
+        b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
+        c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
 
-        @fusion.fuse(reduce=cupy.add)
+        @fusion.fuse(reduce=cupy.sum)
         def g(x, y, z):
             return x * y + z
 
         return g(a, b, c, axis=0)
+
+    @testing.for_dtypes(_dtypes)
+    @testing.numpy_cupy_array_equal()
+    def test_reduce3(self, xp, dtype):
+        a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
+        b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
+        c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
+
+        @fusion.fuse(reduce=cupy.sum)
+        def g(x, y, z):
+            return x * y + z
+
+        return g(a, b, c, axis=1)
