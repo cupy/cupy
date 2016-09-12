@@ -45,7 +45,7 @@ Deconvolution2D
 DilatedConvolution2D
 ~~~~~~~~~~~~~~~
 .. autoclass:: DilatedConvolution2D
- :members:
+   :members:
 
 EmbedID
 ~~~~~~~
