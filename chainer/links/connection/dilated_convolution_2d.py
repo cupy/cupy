@@ -13,7 +13,9 @@ class DilatedConvolution2D(link.Link):
     function and holds the filter weight and bias vector as parameters.
 
     Args:
-        in_channels (int): Number of channels of input arrays.
+        in_channels (int): Number of channels of input arrays. If None,
+            parameter initialization will be deferred until the first forward
+            data pass at which time the size will be determined.
         out_channels (int): Number of channels of output arrays.
         ksize (int or pair of ints): Size of filters (a.k.a. kernels).
             ``ksize=k`` and ``ksize=(k, k)`` are equivalent.
@@ -49,19 +51,20 @@ class DilatedConvolution2D(link.Link):
     def __init__(self, in_channels, out_channels, ksize, stride=1, pad=0,
                  dilate=1, wscale=1, bias=0, nobias=False, use_cudnn=True,
                  initialW=None, initial_bias=None):
-        kh, kw = _pair(ksize)
+        super(DilatedConvolution2D, self).__init__()
+        self.ksize = ksize
         self.stride = _pair(stride)
         self.pad = _pair(pad)
         self.dilate = _pair(dilate)
         self.use_cudnn = use_cudnn
+        self.out_channels = out_channels
+        self.initialW = initialW
+        self.wscale = wscale
 
-        W_shape = (out_channels, in_channels, kh, kw)
-        super(DilatedConvolution2D, self).__init__(W=W_shape)
-
-        # For backward compatibility, the scale of weights is proportional to
-        # the square root of wscale.
-        initializers.init_weight(self.W.data, initialW,
-                                 scale=math.sqrt(wscale))
+        if in_channels is None:
+            self.add_uninitialized_param('W')
+        else:
+            self._initialize_params(in_channels)
 
         if nobias:
             self.b = None
@@ -70,6 +73,15 @@ class DilatedConvolution2D(link.Link):
             if initial_bias is None:
                 initial_bias = bias
             initializers.init_weight(self.b.data, initial_bias)
+
+    def _initialize_params(self, in_channels):
+        kh, kw = _pair(self.ksize)
+        W_shape = (self.out_channels, in_channels, kh, kw)
+        self.add_param('W', W_shape)
+        # For backward compatibility, the scale of weights is proportional to
+        # the square root of wscale.
+        initializers.init_weight(self.W.data, self.initialW,
+                                 scale=math.sqrt(self.wscale))
 
     def __call__(self, x):
         """Applies the convolution layer.
@@ -81,6 +93,8 @@ class DilatedConvolution2D(link.Link):
             ~chainer.Variable: Output of the convolution.
 
         """
+        if self.has_uninitialized_params:
+            self._initialize_params(x.shape[1])
         return dilated_convolution_2d.dilated_convolution_2d(
             x, self.W, self.b, self.stride,
             self.pad, self.dilate, self.use_cudnn)
