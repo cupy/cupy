@@ -289,6 +289,7 @@ class ParallelUpdater(StandardUpdater):
             in_arrays_list[key] = self.converter(
                 batch[i::n], self._devices[key])
 
+        # For reducing memory
         for model in six.itervalues(self._models):
             model.cleargrads()
 
