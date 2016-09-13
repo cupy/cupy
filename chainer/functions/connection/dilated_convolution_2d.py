@@ -113,7 +113,7 @@ class DilatedConvolution2DFunction(function.Function):
                         y_desc = cudnn.create_tensor_descriptor(y)
                         self.filter_desc = cudnn.create_filter_descriptor(Wji)
                         self.conv_desc = cudnn.create_convolution_descriptor(
-                            (0, 0), (self.sy, self.sx))
+                            (0, 0), (self.sy, self.sx), xji.dtype)
 
                         workspace_size = cuda.get_max_workspace_size()
                         workspace = cuda.cupy.empty(
@@ -230,7 +230,7 @@ class DilatedConvolution2DFunction(function.Function):
                         gy_desc = cudnn.create_tensor_descriptor(gy)
                         gyji_desc = cudnn.create_tensor_descriptor(gyji)
                         conv_desc_data = cudnn.create_convolution_descriptor(
-                            (0, 0), (1, 1))
+                            (0, 0), (1, 1), xji.dtype)
 
                         oz_dtype = 'd' if x.dtype == 'd' else 'f'
                         one = numpy.array(1, dtype=oz_dtype).ctypes
