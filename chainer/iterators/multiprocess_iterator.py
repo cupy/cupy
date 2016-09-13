@@ -1,5 +1,7 @@
 from __future__ import division
 import multiprocessing
+from multiprocessing import sharedctypes
+import threading
 
 import numpy
 import six
@@ -33,7 +35,7 @@ class MultiprocessIterator(iterator.Iterator):
     """
 
     def __init__(self, dataset, batch_size, repeat=True, shuffle=True,
-                 n_processes=None):
+                 n_processes=None, n_prefetch=1, sharedmem_size=1000000):
         self.dataset = dataset
         self.batch_size = batch_size
         self._repeat = repeat
@@ -49,6 +51,8 @@ class MultiprocessIterator(iterator.Iterator):
         self._pushed_position = None  # initialized at the first iteration
 
         self.n_processes = n_processes or multiprocessing.cpu_count()
+        self.n_prefetch = n_prefetch
+        self.sharedmem_size = sharedmem_size
 
         self._start = False
         self._finalized = False
@@ -63,7 +67,10 @@ class MultiprocessIterator(iterator.Iterator):
         self.is_new_epoch = False
         if not self._start:
             self._init()  # start workers
-            self._invoke_prefetch()  # load for the first iteration
+            # load for the first iteration
+            for _ in six.moves.range(self.n_prefetch):
+                self._invoke_prefetch()
+
         batch = self._get()
         self._invoke_prefetch()  # prefetch for the next iteration
         return batch
@@ -85,7 +92,7 @@ class MultiprocessIterator(iterator.Iterator):
         except six.moves.queue.Empty:
             pass
         for _ in self._workers:
-            self._index_queue.put(-1)  # termination signal
+            self._index_queue.put((-1, -1, -1))  # termination signal
         for worker in self._workers:
             worker.join()
 
@@ -97,17 +104,31 @@ class MultiprocessIterator(iterator.Iterator):
         serializer('order', self._order)
 
     def _init(self):
-        queue_size = max(self.n_processes, self.batch_size)
-        self._index_queue = multiprocessing.Queue(queue_size)
-        self._data_queue = multiprocessing.Queue(queue_size)
+        self._index_queue = multiprocessing.Queue()
+        self._data_queue = multiprocessing.Queue()
+        self._orderd_data_queue = six.moves.queue.Queue()
+        self._unused_sharedmem_queue = six.moves.queue.Queue()
 
-        args = self.dataset, self._index_queue, self._data_queue
+        self._sharedmem_list = [
+            sharedctypes.RawArray('b', self.sharedmem_size)
+            for _ in six.moves.range(self.batch_size * self.n_prefetch)]
+        for i in six.moves.range(len(self._sharedmem_list)):
+            self._unused_sharedmem_queue.put(i)
+        self._cnt = 0
+
+        args = (self.dataset, self._index_queue, self._data_queue,
+                self._sharedmem_list)
         self._workers = []
         for _ in range(self.n_processes):
             worker = multiprocessing.Process(target=_worker, args=args)
             worker.daemon = True
             self._workers.append(worker)
             worker.start()
+        self._get_data_loop_thread = threading.Thread(
+            target=self._get_data_loop, name="get_data_loop")
+        self._get_data_loop_thread.daemon = True
+        self._get_data_loop_thread.start()
+
         self._start = True
 
     def _invoke_prefetch(self):
@@ -130,18 +151,38 @@ class MultiprocessIterator(iterator.Iterator):
                     order = order.copy()
                     numpy.random.shuffle(order)
             index = i if order is None else order[i]
-            self._index_queue.put(index)
+            self._index_queue.put(
+                (self._cnt, self._unused_sharedmem_queue.get(), index))
+            self._cnt += 1
             i += 1
 
         self._prefetch_order = order  # Temporarily store the shuffled order.
         self._pushed_position = i
 
+    def _get_data_loop(self):
+        buf = dict()
+        cnt = 0
+        while not self._finalized:
+            if cnt in buf:
+                data = buf.pop(cnt)
+            else:
+                c, mem_index, data = self._data_queue.get()
+                data = _unpack(data, self._sharedmem_list[mem_index])
+                self._unused_sharedmem_queue.put(mem_index)
+                if c != cnt:
+                    buf[c] = data
+                    continue
+            self._orderd_data_queue.put(data)
+            del data
+            cnt += 1
+
     def _get(self):
         N = len(self.dataset)
         i = self.current_position
+
         batch = []
         for k in six.moves.range(self.batch_size):
-            batch.append(self._data_queue.get())
+            batch.append(self._orderd_data_queue.get())
             i += 1
             if i >= N:
                 self.epoch += 1
@@ -155,11 +196,65 @@ class MultiprocessIterator(iterator.Iterator):
         return batch
 
 
-def _worker(dataset, in_queue, out_queue):
+class _PackedNdarray(object):
+
+    def __init__(self, array, mem, offset):
+        self.shape = array.shape
+        self.dtype = array.dtype
+        self.nbytes = array.nbytes
+        self.size = array.size
+        self.offset = offset
+        total = self.offset + self.nbytes
+        if total > len(mem):
+            raise ValueError(
+                'Shared memory size is too small. expect:{}, actual:{}'.format(
+                    total, len(mem)))
+        target = numpy.frombuffer(mem, self.dtype, self.size, self.offset)
+        target[...] = array.ravel()
+
+    def unpack(self, mem):
+        ret = numpy.frombuffer(mem, self.dtype, self.size, self.offset)
+        ret = ret.reshape(self.shape).copy()
+        return ret
+
+
+def _pack(data, mem):
+    if len(mem) == 0:
+        return data
+    t = type(data)
+    if t is tuple or t is list:
+        ret = []
+        offset = 0
+        for v in data:
+            if isinstance(v, numpy.ndarray):
+                v = _PackedNdarray(v, mem, offset)
+                offset += v.nbytes
+            ret.append(v)
+        data = t(ret)
+    return data
+
+
+def _unpack(data, mem):
+    if len(mem) == 0:
+        return data
+    t = type(data)
+    if t is tuple or t is list:
+        ret = []
+        for v in data:
+            if isinstance(v, _PackedNdarray):
+                v = v.unpack(mem)
+            ret.append(v)
+        data = t(ret)
+    return data
+
+
+def _worker(dataset, in_queue, out_queue, sharedmem_list):
     while True:
-        index = in_queue.get()
-        if index < 0:
+        cnt, mem_index, index = in_queue.get()
+        if cnt < 0:
             break
-        out_queue.put(dataset[index])
+        mem = sharedmem_list[mem_index]
+        data = _pack(dataset[index], mem)
+        out_queue.put((cnt, mem_index, data))
     out_queue.close()
     out_queue.cancel_join_thread()
