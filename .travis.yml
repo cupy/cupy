@@ -59,9 +59,9 @@ script:
   - flake8 --config=.flake8.cython
   - autopep8 -r . --global-config .pep8 | tee check_autopep8
   - test ! -s check_autopep8
-  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest tests/install_tests
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest tests/install_tests
   - cd tests
-  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest chainer_tests
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest chainer_tests
 
 sudo: false
 
