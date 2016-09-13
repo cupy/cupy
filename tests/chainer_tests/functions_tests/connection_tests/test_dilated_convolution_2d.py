@@ -44,17 +44,13 @@ class TestDilatedConvolution2DFunction(unittest.TestCase):
             self.gy = numpy.random.uniform(
                 -1, 1, (2, 2, 2, 2)).astype(self.x_dtype)
         self.check_forward_options = {}
-        self.check_backward_options = {'eps': 1e-2}
-        if self.x_dtype == numpy.float16:
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.x_dtype == numpy.float16 or self.W_dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-2, 'rtol': 1e-1}
-        elif self.W_dtype == numpy.float16:
-            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
-            self.check_backward_options = {
-                'eps': 2 ** -3, 'atol': 1e-3, 'rtol': 1e-2}
+                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
 
-    @attr.cudnn
+    @attr.gpu
     def test_forward_consistency(self, nobias=False):
         x_cpu = chainer.Variable(self.x)
         W_cpu = chainer.Variable(self.W)
@@ -72,7 +68,7 @@ class TestDilatedConvolution2DFunction(unittest.TestCase):
             dilate=self.dilate, use_cudnn=self.use_cudnn,
             cover_all=self.cover_all)
 
-        gradient_check.assert_allclose(
+        testing.assert_allclose(
             y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
 
     @attr.gpu
@@ -118,13 +114,13 @@ class TestDilatedConvolution2DFunction(unittest.TestCase):
     def test_backward_cpu_nobias(self):
         self.check_backward(self.x, self.W, None, self.gy)
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             cuda.to_gpu(self.b), cuda.to_gpu(self.gy))
 
-    @attr.cudnn
+    @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_nobias(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
