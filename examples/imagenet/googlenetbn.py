@@ -110,7 +110,7 @@ class GoogLeNetBN(chainer.Chain):
         return loss
 
 
-class GoogLeNetBN_fp16(GoogLeNetBN):
+class GoogLeNetBNFp16(GoogLeNetBN):
 
     """New GoogLeNet of BatchNormalization version."""
 

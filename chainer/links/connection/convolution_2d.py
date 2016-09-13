@@ -55,9 +55,14 @@ class Convolution2D(link.Link):
         self.pad = _pair(pad)
         self.use_cudnn = use_cudnn
         self.out_channels = out_channels
+
+        # For backward compatibility
+        self.initialW = initialW
+        self.wscale = wscale
+
         # For backward compatibility, the scale of weights is proportional to
         # the square root of wscale.
-        self.W_initializer = initializers._get_initializer(
+        self._W_initializer = initializers._get_initializer(
             initialW, scale=math.sqrt(wscale))
 
         if in_channels is None:
@@ -76,7 +81,7 @@ class Convolution2D(link.Link):
     def _initialize_params(self, in_channels):
         kh, kw = _pair(self.ksize)
         W_shape = (self.out_channels, in_channels, kh, kw)
-        self.add_param('W', W_shape, initializer=self.W_initializer)
+        self.add_param('W', W_shape, initializer=self._W_initializer)
 
     def __call__(self, x):
         """Applies the convolution layer.

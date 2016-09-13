@@ -42,7 +42,7 @@ class Alex(chainer.Chain):
         return loss
 
 
-class Alex_fp16(Alex):
+class AlexFp16(Alex):
 
     """Single-GPU AlexNet without partition toward the channel axis."""
 

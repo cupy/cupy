@@ -47,10 +47,15 @@ class Linear(link.Link):
     def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
                  initialW=None, initial_bias=None):
         super(Linear, self).__init__()
+
+        # For backward compatibility
+        self.initialW = initialW
+        self.wscale = wscale
+
         self.out_size = out_size
         # For backward compatibility, the scale of weights is proportional to
         # the square root of wscale.
-        self.W_initializer = initializers._get_initializer(
+        self._W_initializer = initializers._get_initializer(
             initialW, math.sqrt(wscale))
 
         if in_size is None:
@@ -68,7 +73,7 @@ class Linear(link.Link):
 
     def _initialize_params(self, in_size):
         self.add_param('W', (self.out_size, in_size),
-                       initializer=self.W_initializer)
+                       initializer=self._W_initializer)
 
     def __call__(self, x):
         """Applies the linear layer.

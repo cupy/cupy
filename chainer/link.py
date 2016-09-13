@@ -133,9 +133,9 @@ class Link(object):
                 name will be removed.
             shape (int or tuple of ints): Shape of the parameter array.
             dtype: Data type of the parameter array.
-            initializer(chainer.initializer.Initializer): If not ``None``,
-                the data is initialized by initializer. In that case,
-                ``dtype`` argument is ignored.
+            initializer(chainer.initializer.Initializer): If it is not
+                ``None``, the data is initialized with the given initializer.
+                Note that in this case ``dtype`` argument is ignored.
 
         """
         d = self.__dict__
