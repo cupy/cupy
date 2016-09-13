@@ -1,5 +1,6 @@
 import math
 
+from chainer import cuda
 from chainer.functions.connection import dilated_convolution_2d
 from chainer import initializers
 from chainer import link
@@ -94,7 +95,8 @@ class DilatedConvolution2D(link.Link):
 
         """
         if self.has_uninitialized_params:
-            self._initialize_params(x.shape[1])
+            with cuda.get_device(self._device_id):
+                self._initialize_params(x.shape[1])
         return dilated_convolution_2d.dilated_convolution_2d(
             x, self.W, self.b, self.stride,
             self.pad, self.dilate, self.use_cudnn)
