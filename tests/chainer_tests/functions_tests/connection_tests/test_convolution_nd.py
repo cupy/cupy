@@ -23,6 +23,7 @@ from chainer.utils import conv
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
+@attr.slow
 class TestConvolutionND(unittest.TestCase):
 
     def setUp(self):
