@@ -192,12 +192,14 @@ class TestConvolution2DCudnnCall(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'c_contiguous': [True, False],
-    'deterministic': [True, False],
     'nobias': [True, False],
 }))
+@attr.gpu
+@attr.cudnn
 class TestConvolution2DFunctionDeterministic(unittest.TestCase):
 
     def setUp(self):
+        self.cudnn_version = cuda.cudnn.cudnn.getVersion()
         self.stride = 2
         self.pad = 1
         batch_sz = 2
@@ -218,46 +220,37 @@ class TestConvolution2DFunctionDeterministic(unittest.TestCase):
         self.gy = numpy.random.uniform(
             -1, 1, (batch_sz, out_channels, out_h, out_w)).astype(x_dtype)
 
-    @attr.gpu
-    @attr.cudnn
     def test_called(self):
-        if cuda.cudnn.cudnn.getVersion() >= 4000:
-            with mock.patch(
-                    'chainer.functions.connection.convolution_2d.libcudnn'
-            ) as mlibcudnn:
-                x, W, b, y = self._run()
+        with mock.patch(
+                'chainer.functions.connection.convolution_2d.libcudnn'
+        ) as mlibcudnn:
+            if self.cudnn_version < 4000:
+                with self.assertRaises(ValueError):
+                    x, W, b, y = self._run()
+                return
 
-        expect = not self.deterministic
+            # cuDNN version >= v4 supports `deterministic` option
+            x, W, b, y = self._run()
 
-        # in Convolution2DFunction.backward_gpu()
-        self.assertEqual(
-            mlibcudnn.getConvolutionBackwardFilterAlgorithm.called,
-            expect)
-        mlibcudnn.convolutionBackwardFilter_v3.assert_called_once()
-        self.assertEqual(
-            mlibcudnn.getConvolutionBackwardDataAlgorithm.called,
-            expect)
-        mlibcudnn.convolutionBackwardData_v3.assert_called_once()
+            # in Convolution2DFunction.backward_gpu()
+            self.assertFalse(
+                mlibcudnn.getConvolutionBackwardFilterAlgorithm.called)
+            mlibcudnn.convolutionBackwardFilter_v3.assert_called_once()
+            self.assertFalse(
+                mlibcudnn.getConvolutionBackwardDataAlgorithm.called)
+            mlibcudnn.convolutionBackwardData_v3.assert_called_once()
 
-    @attr.gpu
-    @attr.cudnn
     def test_deterministic(self):
-        """Check deterministic behaviour.
+        if self.cudnn_version < 4000:
+            # `deterministic` option is not supported
+            return
 
-        Result of gradient of W after backward computation might be
-        non-deterministic.
-
-        """
         x1, W1, b1, y1 = self._run()
         x2, W2, b2, y2 = self._run()
 
-        cuda.cupy.testing.assert_array_equal(y1.data, y2.data)
-        if self.deterministic:
-            cuda.cupy.testing.assert_array_equal(W1.grad, W2.grad)
-
-        if not self.nobias:
-            cuda.cupy.testing.assert_array_equal(b1.grad, b2.grad)
         cuda.cupy.testing.assert_array_equal(x1.grad, x2.grad)
+        cuda.cupy.testing.assert_array_equal(y1.data, y2.data)
+        cuda.cupy.testing.assert_array_equal(W1.grad, W2.grad)
 
     def _contiguous(self, x_data, W_data, b_data, gy_data):
         if not self.c_contiguous:
@@ -290,7 +283,7 @@ class TestConvolution2DFunctionDeterministic(unittest.TestCase):
         b = None if self.nobias else chainer.Variable(b_data)
         y = functions.convolution_2d(
             x, W, b, stride=self.stride, pad=self.pad, use_cudnn=True,
-            cover_all=False, deterministic=self.deterministic)
+            cover_all=False, deterministic=True)
         return x, W, b, y
 
 
