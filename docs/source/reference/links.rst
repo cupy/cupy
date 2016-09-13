@@ -115,6 +115,10 @@ BinaryHierarchicalSoftmax
 .. autoclass:: BinaryHierarchicalSoftmax
    :members:
 
+BlackOut
+~~~~~~~~
+.. autoclass:: BlackOut
+
 CRF1d
 ~~~~~
 .. autoclass:: CRF1d
