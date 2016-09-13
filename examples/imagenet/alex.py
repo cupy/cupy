@@ -11,14 +11,14 @@ class Alex(chainer.Chain):
 
     def __init__(self):
         super(Alex, self).__init__(
-            conv1=L.Convolution2D(3,  96, 11, stride=4),
-            conv2=L.Convolution2D(96, 256,  5, pad=2),
-            conv3=L.Convolution2D(256, 384,  3, pad=1),
-            conv4=L.Convolution2D(384, 384,  3, pad=1),
-            conv5=L.Convolution2D(384, 256,  3, pad=1),
-            fc6=L.Linear(9216, 4096),
-            fc7=L.Linear(4096, 4096),
-            fc8=L.Linear(4096, 1000),
+            conv1=L.Convolution2D(None,  96, 11, stride=4),
+            conv2=L.Convolution2D(None, 256,  5, pad=2),
+            conv3=L.Convolution2D(None, 384,  3, pad=1),
+            conv4=L.Convolution2D(None, 384,  3, pad=1),
+            conv5=L.Convolution2D(None, 256,  3, pad=1),
+            fc6=L.Linear(None, 4096),
+            fc7=L.Linear(None, 4096),
+            fc8=L.Linear(None, 1000),
         )
         self.train = True
 

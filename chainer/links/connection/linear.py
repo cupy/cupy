@@ -1,5 +1,6 @@
 import math
 
+from chainer import cuda
 from chainer.functions.connection import linear
 from chainer import initializers
 from chainer import link
@@ -82,5 +83,6 @@ class Linear(link.Link):
 
         """
         if self.has_uninitialized_params:
-            self._initialize_params(x.shape[1])
+            with cuda.get_device(self._device_id):
+                self._initialize_params(x.size // len(x.data))
         return linear.linear(x, self.W, self.b)
