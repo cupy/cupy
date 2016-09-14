@@ -154,7 +154,7 @@ def math_function_test(func, func_expected=None, label_expected=None,
                     'eps': 2 ** -4, 'atol': 2 ** -4, 'rtol': 2 ** -4,
                     'dtype': numpy.float64}
             else:
-                self.backward_options = {}
+                self.backward_options = {'atol': 1e-4, 'rtol': 1e-4}
         setattr(klass, "setUp", setUp)
 
         def check_forward(self, x_data):
