@@ -12,7 +12,9 @@ from chainer.testing import attr
 
 def _sigmoid(x):
     xp = cuda.get_array_module(x)
-    return 1 / (1 + xp.exp(-x))
+    half = x.dtype.type(0.5)
+    return xp.tanh(x * half) * half + half
+
 
 
 def _peephole(func, c, h, x):
