@@ -131,7 +131,7 @@ class VGG16Layers(chainer.Chain):
     def available_layers(self):
         return list(self.functions.iterkeys())
 
-    def __call__(self, x, layers=[]):
+    def __call__(self, x, layers=['prob']):
         h = x
         activations = {}
         target_layers = set(layers)
