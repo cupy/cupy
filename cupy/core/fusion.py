@@ -148,6 +148,14 @@ class FusionRef(object):
     def __bool__(self):
         raise Exception("Can't cast to bool")
 
+
+_kind_score = {
+    'b': 0,
+    'u': 1,
+    'i': 1,
+    'f': 2,
+}
+
 _dtype_to_ctype = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
@@ -192,11 +200,24 @@ def convert(f):
     raise Exception("Can't convert from %s to FusionOp" % type(f))
 
 
+def _should_use_min_scalar(in_args):
+    max_array_kind = -2
+    max_scalar_kind = -1
+    for i in in_args:
+        kind = _kind_score[i.ty.kind]
+        if i.const is None:
+            max_array_kind = max(max_array_kind, kind)
+        else:
+            max_scalar_kind = max(max_scalar_kind, kind)
+    return (max_scalar_kind != -1 and
+            max_array_kind >= max_scalar_kind)
+
+
 def convert_from_ufunc(ufunc):
     nin = ufunc.nin
     nout = ufunc.nout
 
-    def can_cast(args, ty_ins):
+    def can_cast1(args, ty_ins):
         for i in range(nin):
             if args[i].const is None:
                 if not numpy.can_cast(args[i].ty, ty_ins[i]):
@@ -206,16 +227,23 @@ def convert_from_ufunc(ufunc):
                     return False
         return True
 
+    def can_cast2(args, ty_ins):
+        for i in range(nin):
+            if not numpy.can_cast(args[i].ty, ty_ins[i]):
+                return False
+        return True
+
     def res(*args):
         assert nin <= len(args) and len(args) <= nin + nout
         vars = map(normalize_arg, args)
+        can_cast = can_cast1 if _should_use_min_scalar(vars) else can_cast2
         for ty_ins, ty_outs, op in ufunc._ops:
             ty_ins = map(numpy.dtype, ty_ins)
             ty_outs = map(numpy.dtype, ty_outs)
             if can_cast(vars, ty_ins):
-                for (var, ty) in zip(vars, ty_ins):
-                    if var.ty is None:
-                        var.ty = ty
+                # for (var, ty) in zip(vars, ty_ins):
+                #     if var.ty is None:
+                #         var.ty = ty
                 param_names = (['in%d' % i for i in range(nin)] +
                                ['out%d' % i for i in range(nout)])
                 op = FusionOp(ufunc.name, op, param_names, nin, nout,
@@ -362,6 +390,20 @@ def get_post_code(post_vars, operation, post_out):
     return module_code
 
 
+def get_fix_code(data_type, fixed_type, operation):
+    module_code = string.Template('''
+    __device__ ${fixed_type} _post_fix(${data_type} a) {
+      ${fixed_type} out0;
+      ${operation};
+      return out0;
+    }
+    ''').substitute(
+        data_type=data_type,
+        fixed_type=_dtype_to_ctype[fixed_type],
+        operation=operation)
+    return module_code
+
+
 def fusion(func, nin, immutable_num,
            reduce, post_map, identity, input_types):
     if nin is None:
@@ -429,17 +471,19 @@ def fusion(func, nin, immutable_num,
         post_code += ''.join(map(declaration_from_op,  post_ops))
         post_code += '\n'.join(map(operation_code, post_ops))
         post_code = get_post_code(post_vars, post_code, post_out)
+        post_code += get_fix_code(post_type, reduce_type, reduce_op[2][2])
 
         submodules = gather_submodules(operation_list + post_ops)
         submodule_code = ''.join(get_submodule_code(v)
                                  for v in submodules.values())
-        submodule_code += pre_code + post_code
+        submodule_code += reduce._raw._preamble + pre_code + post_code
         operation = '_pre_map(' + ', '.join(['v' + str(i)
                                              for i in range(nin)]) + ')'
         out_params = '%s res' % post_out.ty
         return core.ReductionKernel(in_params, out_params, operation,
-                                    reduce_code, 'res = _post_map(a)',
-                                    str(identity),
+                                    reduce_code,
+                                    'res = _post_map(_post_fix(a))',
+                                    identity,
                                     reduce_type=post_type,
                                     preamble=submodule_code)
 
@@ -652,7 +696,7 @@ _all = reduction(logic.truth.all, numpy.all)
 _any = reduction(logic.truth.any, numpy.any)
 _sum = reduction(math.sumprod.sum, numpy.sum)
 _prod = reduction(math.sumprod.prod, numpy.prod)
-_amax = reduction(statistics.order.amax, numpy.amin)
+_amax = reduction(statistics.order.amax, numpy.amax)
 _amin = reduction(statistics.order.amin, numpy.amin)
 
 

@@ -662,6 +662,108 @@ class TestFusionFuse(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_fuse3(self, xp, dtype):
+        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
+        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
+        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
+
+        @fusion.fuse()
+        def g(x, y, z):
+            x = 10 + (-x) * (x - y) + 10
+            x = 2 * (100 - x - 30)
+            x /= y + 1 / y
+            return z // x + x // z + 100 // x + 100 // z
+
+        return g(a, b, c)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_fuse4(self, xp, dtype):
+        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
+        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
+        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
+
+        @fusion.fuse()
+        def g(x, y, z):
+            x = x * y % z + 10 % x << x << y >> z
+            return x + (1 << y) + (1 << z) + (120 >> y) + (120 >> y)
+
+        return g(a, b, c)
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_fuse5(self, xp, dtype):
+        a = xp.arange(15, dtype=dtype)
+        b = a * a[::-1]
+        a = a * 3 + 11
+        c = (a * b) ** 2 % 63
+
+        @fusion.fuse()
+        def g(x, y, z):
+            x = ~(x & y) | (x ^ z) ^ (z | y)
+            y = 109 & y
+            z = 109 | z
+            z = 88 ^ z
+            return x + y + z
+
+        return g(a, b, c)
+
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_fuse6(self, xp, dtype):
+        a = xp.arange(15, dtype=dtype)
+        b = a * a[::-1]
+        a = a * 3 + 11
+        c = (a * b) ** 2 % 63
+
+        @fusion.fuse()
+        def g(x, y, z):
+            x = ~(x & y) | (x ^ z) ^ (z | y)
+            y = 109 & y
+            z = 109 | z
+            z = 88 ^ z
+            return x + y + z
+
+        return g(a, b, c)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_fuse7(self, xp, dtype):
+        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
+        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
+        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
+
+        def toi(x):
+            return cupy.where(x, 1, 0)
+
+        @fusion.fuse()
+        def g(p, q, r, s, t, u):
+            x = toi(p == q) + toi(r < s) + toi(t > u)
+            x += toi(p != r) + toi(q <= t) + toi(s >= u)
+            return x
+
+        return g(a, b, c, a, b, c)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_fuse8(self, xp, dtype):
+        a = xp.array([2, 2, 2, 2, 3, 3, 3, 3], dtype=dtype)
+        b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
+        c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
+
+        def toi(x):
+            return cupy.where(x, 1, 0)
+
+        @fusion.fuse()
+        def g(p, q, r):
+            x = toi(2 == p) + toi(2 != q) + toi(3 > r)
+            y = toi(2 < p) + toi(2 >= q) + toi(3 <= r)
+            return x + y << 3
+
+        return g(a, b, c)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_reduce1(self, xp, dtype):
         a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
         b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
@@ -698,3 +800,36 @@ class TestFusionFuse(unittest.TestCase):
             return x * y + z
 
         return g(a, b, c, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduce4(self, xp, dtype):
+        a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
+
+        @fusion.fuse(reduce=cupy.prod)
+        def g(x):
+            return x
+
+        return g(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduce5(self, xp, dtype):
+        a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
+
+        @fusion.fuse(reduce=cupy.max)
+        def g(x):
+            return x
+
+        return g(a, axis=0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_reduce6(self, xp, dtype):
+        a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
+
+        @fusion.fuse(reduce=cupy.min)
+        def g(x):
+            return x
+
+        return g(a, axis=0)

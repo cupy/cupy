@@ -383,7 +383,7 @@ from cupy.sorting.search import nonzero  # NOQA
 
 from cupy.sorting.search import argmax  # NOQA
 from cupy.sorting.search import argmin  # NOQA
-from cupy.sorting.search import where  # NOQA
+from cupy.core.fusion import where  # NOQA
 
 # -----------------------------------------------------------------------------
 # Statistics
