@@ -1,5 +1,4 @@
 import numpy
-import string
 import unittest
 
 import chainer
