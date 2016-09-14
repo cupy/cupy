@@ -10,7 +10,7 @@ from chainer.testing import condition
 
 
 def func_class(func):
-    name = string.capitalize(func.__name__)
+    name = func.__name__.capitalize()
     return getattr(F, name, None)
 
 
