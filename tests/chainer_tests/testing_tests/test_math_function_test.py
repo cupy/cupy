@@ -15,7 +15,7 @@ class TestInvalidExpectedLabel(unittest.TestCase):
 
     def test_invalid_expected_label(self):
         with self.assertRaises(ValueError):
-            # no numpy.rsqrt
+            # No F.Rsqrt Function subclass.
             testing.math_function_test(F.rsqrt, label_expected="FOO")
 
 
