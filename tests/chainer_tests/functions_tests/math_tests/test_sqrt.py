@@ -7,7 +7,7 @@ from chainer import testing
 
 
 def make_data(dtype, shape):
-    x = numpy.random.uniform(0.1, 1, shape).astype(dtype)
+    x = numpy.random.uniform(0.1, 5, shape).astype(dtype)
     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
     return x, gy
 
