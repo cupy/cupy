@@ -1,3 +1,4 @@
+import collections
 import copy
 import warnings
 
@@ -6,6 +7,26 @@ import six
 
 from chainer import cuda
 from chainer import variable
+
+
+def _is_shape(value):
+    if value is None:
+        return True
+    elif isinstance(value, six.integer_types):
+        return True
+    elif isinstance(value, collections.Sequence):
+        return all(isinstance(x, six.integer_types) for x in value)
+    else:
+        return False
+
+
+def _ensure_shape_dtype(value):
+    # Return value paired with dtype FP32 if it is a shape.
+    if _is_shape(value):
+        return (value, 'f')
+    # Otherwise, returns it with assuming a shape-dtype pair.
+    else:
+        return value
 
 
 class Link(object):
@@ -82,8 +103,11 @@ class Link(object):
        operator.
 
     Args:
-        params: Shapes of initial parameters. The keywords are used as their
-            names. The names are also set to the parameter variables.
+        params: Names, shapes, and optional dtypes of initial parameters. The
+            keywords are used as the parameter names and the corresponding
+            values consist either of the shape or a tuple of shape and a dtype
+            `(shape, dtype)`. If only the shape is supplied, the default dtype
+            will be used.
 
     Attributes:
         name (str): Name of this link, given by the parent chain (if exists).
@@ -98,8 +122,9 @@ class Link(object):
         self._device_id = None
         self.name = None
 
-        for name, shape in six.iteritems(params):
-            self.add_param(name, shape)
+        for name, value in six.iteritems(params):
+            shape, dtype = _ensure_shape_dtype(value)
+            self.add_param(name, shape, dtype=dtype)
 
     @property
     def xp(self):
