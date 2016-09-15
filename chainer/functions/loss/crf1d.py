@@ -25,6 +25,37 @@ def crf1d(cost, xs, ys):
     where :math:`l` is the length of the input sequence and :math:`Z` is the
     normalizing constant called partition function.
 
+    .. note::
+
+       When you want to calculate the negative log-likelihood of sequences
+       which have different lengths, sort the sequences in descending order of
+       lengths and transpose the sequences.
+       For example, you have three input seuqnces:
+
+       >>> a = [a1, a2, a3, a4]
+       >>> b = [b1, b2, b3]
+       >>> c = [c1, c2]
+
+       where ``a1`` and all other variables are arrays with ``(K,)`` shape.
+       Make a transpose of the sequences:
+
+       >>> x1 = np.stack([a1, b1, c1])
+       >>> x2 = np.stack([a2, b2, c2])
+       >>> x3 = np.stack([a3, b3])
+       >>> x4 = np.stack([a4])
+
+       and make a list of the arrays:
+
+       >>> xs = [x1, x2, x3, x4]
+
+       You need to make label sequences in the same fashion.
+       And then, call the function:
+
+       >>> F.crf1d(cost, xs, ys)
+
+       It calculates sum of the negative log-likelihood of the three sequences.
+
+
     Args:
         cost (Variable): A :math:`K \\times K` matrix which holds transition
             cost between two labels, where :math:`K` is the number of labels.
