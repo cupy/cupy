@@ -2,6 +2,7 @@ from __future__ import division
 import multiprocessing
 from multiprocessing import sharedctypes
 import threading
+import warnings
 
 import numpy
 import six
@@ -96,6 +97,8 @@ class MultiprocessIterator(iterator.Iterator):
         for worker in self._workers:
             worker.join()
 
+        self._get_data_loop_thread.join()
+
     def serialize(self, serializer):
         self.current_position = serializer('current_position',
                                            self.current_position)
@@ -166,7 +169,10 @@ class MultiprocessIterator(iterator.Iterator):
             if cnt in buf:
                 data = buf.pop(cnt)
             else:
-                c, mem_index, data = self._data_queue.get()
+                try:
+                    c, mem_index, data = self._data_queue.get(timeout=1)
+                except six.moves.queue.Empty:
+                    continue
                 data = _unpack(data, self._sharedmem_list[mem_index])
                 self._unused_sharedmem_queue.put(mem_index)
                 if c != cnt:
@@ -225,11 +231,19 @@ def _pack(data, mem):
     if t is tuple or t is list:
         ret = []
         offset = 0
+        expect = 0
         for v in data:
             if isinstance(v, numpy.ndarray):
-                v = _PackedNdarray(v, mem, offset)
-                offset += v.nbytes
+                expect += v.nbytes
+                if v.nbytes + offset <= len(mem):
+                    v = _PackedNdarray(v, mem, offset)
+                    offset += v.nbytes
+
             ret.append(v)
+        if expect > len(mem):
+            warnings.warn(
+                'Shared memory size is too small. expect:{}, actual:{}'.format(
+                    expect, len(mem)), UserWarning)
         data = t(ret)
     return data
 
