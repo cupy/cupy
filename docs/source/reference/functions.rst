@@ -195,6 +195,10 @@ deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
 
+dilated_convolution_2d
+~~~~~~~~~~~~~~~~
+.. autofunction:: dilated_convolution_2d
+
 embed_id
 ~~~~~~~~
 .. autofunction:: embed_id
