@@ -16,7 +16,6 @@ def _sigmoid(x):
     return xp.tanh(x * half) * half + half
 
 
-
 def _peephole(func, c, h, x):
     xp = cuda.get_array_module(x)
 
