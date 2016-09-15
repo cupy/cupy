@@ -2,7 +2,6 @@ import numpy
 import unittest
 
 import cupy
-from cupy.core import fusion
 from cupy import testing
 
 
@@ -11,7 +10,7 @@ def fusion_default_array_equal():
         def res(xxx, name, xp, dtype):
             f = getattr(cupy, name)
 
-            @fusion.fuse(input_num=f.nin)
+            @cupy.fuse(input_num=f.nin)
             def g(*args):
                 return f(*args)
 
@@ -373,7 +372,7 @@ class TestFusionFloating(unittest.TestCase):
         a = xp.array([-3, -2, -1, 0, 1, 2, 3], dtype=ftype)
         b = xp.array([-3, -2, -1, 0, 1, 2, 3], dtype=itype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y):
             return cupy.ldexp(x, y)
 
@@ -390,7 +389,7 @@ class TestFusionFloating(unittest.TestCase):
         numpy_a = numpy.array([-300, -20, -10, -1, 0, 1, 10, 20, 300],
                               dtype=dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x):
             return cupy.frexp(x)
 
@@ -497,7 +496,7 @@ class TestFusionArithmetic(unittest.TestCase):
     def test_modf(self, xp, dtype):
         a = xp.array([-2.5, -1.5, -0.5, 0, 0.5, 1.5, 2.5], dtype=dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x):
             return cupy.modf(x)
 
@@ -528,7 +527,7 @@ class TestFusionMisc(unittest.TestCase):
             return numpy.int_(0)
         a = testing.shaped_arange((2, 3), xp, dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x):
             return getattr(cupy, name)(x)
 
@@ -542,7 +541,7 @@ class TestFusionMisc(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y):
             return getattr(cupy, name)(x, y)
         return g(a, b)
@@ -554,7 +553,7 @@ class TestFusionMisc(unittest.TestCase):
             return numpy.int_(0)
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x):
             return getattr(cupy, name)(x)
 
@@ -575,7 +574,7 @@ class TestFusionMisc(unittest.TestCase):
     def test_external_clip(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y, z):
             return cupy.clip(x, y, z)
 
@@ -637,7 +636,7 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
         c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y, z):
             w = x * y + z
             (x, w) = (w, x)
@@ -652,7 +651,7 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
         c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y, z):
             x += z
             cupy.add(x, y, z)
@@ -667,7 +666,7 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
         c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y, z):
             x = 10 + (-x) * (x - y) + 10
             x = 2 * (100 - x - 30)
@@ -683,7 +682,7 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([2, 2, 3, 3, 2, 2, 3, 3], dtype=dtype)
         c = xp.array([2, 3, 2, 3, 2, 3, 2, 3], dtype=dtype)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y, z):
             x = x * y % z + 10 % x << x << y >> z
             return x + (1 << y) + (1 << z) + (120 >> y) + (120 >> y)
@@ -698,7 +697,7 @@ class TestFusionFuse(unittest.TestCase):
         a = a * 3 + 11
         c = (a * b) ** 2 % 63
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y, z):
             x = ~(x & y) | (x ^ z) ^ (z | y)
             y = 109 & y
@@ -716,7 +715,7 @@ class TestFusionFuse(unittest.TestCase):
         a = a * 3 + 11
         c = (a * b) ** 2 % 63
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(x, y, z):
             x = ~(x & y) | (x ^ z) ^ (z | y)
             y = 109 & y
@@ -736,7 +735,7 @@ class TestFusionFuse(unittest.TestCase):
         def toi(x):
             return cupy.where(x, 1, 0)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(p, q, r, s, t, u):
             x = toi(p == q) + toi(r < s) + toi(t > u)
             x += toi(p != r) + toi(q <= t) + toi(s >= u)
@@ -754,7 +753,7 @@ class TestFusionFuse(unittest.TestCase):
         def toi(x):
             return cupy.where(x, 1, 0)
 
-        @fusion.fuse()
+        @cupy.fuse()
         def g(p, q, r):
             x = toi(2 == p) + toi(2 != q) + toi(3 > r)
             y = toi(2 < p) + toi(2 >= q) + toi(3 <= r)
@@ -769,7 +768,7 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
         c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
 
-        @fusion.fuse(reduce=cupy.sum)
+        @cupy.fuse(reduce=cupy.sum)
         def g(x, y, z):
             return x * y + z
 
@@ -782,7 +781,7 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
         c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
 
-        @fusion.fuse(reduce=cupy.sum)
+        @cupy.fuse(reduce=cupy.sum)
         def g(x, y, z):
             return x * y + z
 
@@ -795,7 +794,7 @@ class TestFusionFuse(unittest.TestCase):
         b = xp.array([[2, 2, 3, 3], [2, 2, 3, 3]], dtype=dtype)
         c = xp.array([[2, 3, 2, 3], [2, 3, 2, 3]], dtype=dtype)
 
-        @fusion.fuse(reduce=cupy.sum)
+        @cupy.fuse(reduce=cupy.sum)
         def g(x, y, z):
             return x * y + z
 
@@ -806,7 +805,7 @@ class TestFusionFuse(unittest.TestCase):
     def test_reduce4(self, xp, dtype):
         a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
 
-        @fusion.fuse(reduce=cupy.prod)
+        @cupy.fuse(reduce=cupy.prod)
         def g(x):
             return x
 
@@ -817,7 +816,7 @@ class TestFusionFuse(unittest.TestCase):
     def test_reduce5(self, xp, dtype):
         a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
 
-        @fusion.fuse(reduce=cupy.max)
+        @cupy.fuse(reduce=cupy.max)
         def g(x):
             return x
 
@@ -828,7 +827,7 @@ class TestFusionFuse(unittest.TestCase):
     def test_reduce6(self, xp, dtype):
         a = xp.array([[2, 2, 2, 2], [3, 3, 3, 3]], dtype=dtype)
 
-        @fusion.fuse(reduce=cupy.min)
+        @cupy.fuse(reduce=cupy.min)
         def g(x):
             return x
 
