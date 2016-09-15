@@ -103,10 +103,11 @@ class Link(object):
        operator.
 
     Args:
-        params: Shapes of initial parameters. The keywords are used as their
-            names. The names are also set to the parameter variables. You may
-            pass tuples of a shape and a dtype ``(shape, dtype)`` to add
-            parameters with specifying their dtypes.
+        params: Names, shapes, and optional dtypes of initial parameters. The
+            keywords are used as the parameter names and the corresponding
+            values consist either of the shape or a tuple of shape and a dtype
+            `(shape, dtype)`. If only the shape is supplied, the default dtype
+            will be used.
 
     Attributes:
         name (str): Name of this link, given by the parent chain (if exists).
