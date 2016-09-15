@@ -21,11 +21,20 @@ def _protobuf3():
 
 
 if _protobuf3():
-    from chainer.links.caffe import caffe_pb3 as caffe_pb
+    from chainer.links.caffe.protobuf3 import caffe_pb2 as caffe_pb
     available = True
+
+    try:
+        # This method is undocumented, but is required to read large size of
+        # model files when a user uses cpp-implementation.
+        from google.protobuf.pyext import _message
+        _message.SetAllowOversizeProtos(True)
+    except ImportError:
+        pass
+
 elif sys.version_info < (3, 0, 0):
     # caffe_pb2 does not support Py3
-    from chainer.links.caffe import caffe_pb2 as caffe_pb
+    from chainer.links.caffe.protobuf2 import caffe_pb2 as caffe_pb
     available = True
 else:
     available = False

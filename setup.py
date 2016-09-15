@@ -55,6 +55,8 @@ setup(
               'chainer.links',
               'chainer.links.activation',
               'chainer.links.caffe',
+              'chainer.links.caffe.protobuf2',
+              'chainer.links.caffe.protobuf3',
               'chainer.links.connection',
               'chainer.links.loss',
               'chainer.links.model',
