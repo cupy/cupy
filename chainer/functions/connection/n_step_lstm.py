@@ -432,6 +432,8 @@ def n_step_lstm(
             of :func:`~chainer.Variable` holding sequence.
             So ``xs`` needs to satisfy
             ``len(xs[t].data) >= len(xs[t + 1].data)``.
+        train (bool): If ``True``, this function executes dropout.
+        use_cudnn (bool): If ``True``, this function uses cuDNN if available.
 
     Returns:
         tuple: This functions returns a tuple concaining three elements,
