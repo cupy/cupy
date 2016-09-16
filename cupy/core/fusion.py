@@ -237,9 +237,6 @@ def _convert_from_ufunc(ufunc):
             ty_ins = map(numpy.dtype, ty_ins)
             ty_outs = map(numpy.dtype, ty_outs)
             if can_cast(vars, ty_ins):
-                # for (var, ty) in zip(vars, ty_ins):
-                #     if var.ty is None:
-                #         var.ty = ty
                 param_names = (['in%d' % i for i in range(nin)] +
                                ['out%d' % i for i in range(nout)])
                 op = FusionOp(ufunc.name, op, param_names, nin, nout,
@@ -486,8 +483,17 @@ def _get_fusion(func, nin, immutable_num,
 
 class Fusion(object):
 
-    def __init__(self, func, input_num=None, immutable_num=None,
-                 reduce=None, post_map=lambda x: x):
+    """Function class.
+
+    This class can be get by using `fuse` and
+    works like ElementwiseKernel or ReductionKernel.
+
+    Attributes:
+        func (function): Rhe function before fusing.
+        name (str): The name of the function.
+    """
+
+    def __init__(self, func, input_num, immutable_num, reduce, post_map):
         self.func = func
         self.name = func.__name__
         self.input_num = input_num
@@ -531,11 +537,27 @@ class Fusion(object):
                 return self.post_map(self.reduce(self.func(*args), axis=axis))
 
 
-def fuse(*args, **kwargs):
-    return lambda f: Fusion(f, *args, **kwargs)
+def fuse(input_num=None, immutable_num=None,
+         reduce=None, post_map=lambda x: x):
+    """Function fusing decorator.
+
+    This decorator can be used to define an elementwise or reduction kernel
+    more easily than ElementwiseKernel class.
+
+    This decorator makes Fusion class from an function.
+
+    Args:
+        input_num (int): Number of input arguments of the function.
+        immutable_num (int): Number of immutable input arguments of
+            the function.
+        reduce (function): The reduce function which is applied after
+            pre-mapping step.
+        post_map (function): post-map function.
+    """
+    return lambda f: Fusion(f, input_num, immutable_num, reduce, post_map)
 
 
-class ufunc(object):
+class ufunc(core.ufunc):
 
     def __init__(self, fusion_op, cupy_op, numpy_op):
         self.name = fusion_op.name
@@ -555,9 +577,6 @@ class ufunc(object):
     def __repr__(self):
         return repr(self._cupy_op)
 
-    def __type__(self):
-        return type(self._cupy_op)
-
     def __call__(self, *args, **kwargs):
         if __builtin__.any(type(i) == FusionRef for i in args):
             return _convert(self._fusion_op)(*args, **kwargs)
@@ -565,6 +584,9 @@ class ufunc(object):
             return self._numpy_op(*args, **kwargs)
         else:
             return self._cupy_op(*args, **kwargs)
+
+    __doc__ = core.ufunc.__doc__
+    __call__.__doc__ = core.ufunc.__call__.__doc__
 
 
 def _create_ufunc(cupy_ufunc, numpy_ufunc):
