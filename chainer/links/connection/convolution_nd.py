@@ -1,3 +1,5 @@
+import numpy
+
 from chainer.functions.connection import convolution_nd
 from chainer import initializers
 from chainer import link
@@ -25,6 +27,7 @@ class ConvolutionND(link.Link):
             :func:`~chainer.init_weight` helper function can take. This link
             uses :func:`~chainer.init_weight` to initialize the filter weight
             and passes the value of ``initialW`` to it as it is.
+        W_dtype: Data type of the filter weight.
         initial_bias: Value used to initialize the bias vector. May be an
             initializer instance or another value except ``None`` that
             :func:`~chainer.init_weight` helper function can take. If ``None``
@@ -32,6 +35,7 @@ class ConvolutionND(link.Link):
             :func:`~chainer.init_weight` to initialize the bias vector and
             passes the value of ``initial_bias`` other than ``None`` to it as
             it is.
+        bias_dtype: Data type of the bias vector.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
             See :func:`~chainer.functions.convolution_nd` for exact conditions
             of cuDNN availability.
@@ -53,8 +57,8 @@ class ConvolutionND(link.Link):
     """
 
     def __init__(self, ndim, in_channels, out_channels, ksize, stride=1, pad=0,
-                 initialW=None, initial_bias=None, use_cudnn=True,
-                 cover_all=False):
+                 initialW=None, W_dtype=numpy.float32, initial_bias=None,
+                 bias_dtype=numpy.float32, use_cudnn=True, cover_all=False):
         ksize = conv_nd.as_tuple(ksize, ndim)
         self.stride = stride
         self.pad = pad
@@ -62,13 +66,13 @@ class ConvolutionND(link.Link):
         self.cover_all = cover_all
 
         W_shape = (out_channels, in_channels) + ksize
-        super(ConvolutionND, self).__init__(W=W_shape)
+        super(ConvolutionND, self).__init__(W=(W_shape, W_dtype))
         initializers.init_weight(self.W.data, initialW)
 
         if initial_bias is None:
             self.b = None
         else:
-            self.add_param('b', out_channels)
+            self.add_param('b', out_channels, dtype=bias_dtype)
             initializers.init_weight(self.b.data, initial_bias)
 
     def __call__(self, x):
