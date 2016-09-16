@@ -44,7 +44,4 @@ Trigger is a callable object to decide when to process some specific event withi
 
 It is mainly used to determine when to call an extension. It is also used to determine when to quit the training loop.
 
-.. autoclass:: IntervalTrigger
-   :members:
-
 .. autofunction:: get_trigger

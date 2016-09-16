@@ -199,6 +199,10 @@ deconvolution_nd
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_nd
 
+dilated_convolution_2d
+~~~~~~~~~~~~~~~~
+.. autofunction:: dilated_convolution_2d
+
 embed_id
 ~~~~~~~~
 .. autofunction:: embed_id
@@ -222,6 +226,10 @@ Loss functions
 bernoulli_nll
 ~~~~~~~~~~~~~
 .. autofunction:: bernoulli_nll
+
+black_out
+~~~~~~~~~
+.. autofunction:: black_out
 
 connectionist_temporal_classification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -303,6 +311,10 @@ bias
 ~~~~
 .. autofunction:: bias
 
+ceil
+~~~~
+.. autofunction:: ceil
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -318,6 +330,10 @@ cosh
 exp
 ~~~
 .. autofunction:: exp
+
+floor
+~~~~~
+.. autofunction:: floor
 
 identity
 ~~~~~~~~
@@ -460,3 +476,11 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
+
+
+Utility functions
+-----------------
+
+forget
+~~~~~~
+.. autofunction:: forget

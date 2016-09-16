@@ -40,6 +40,7 @@ from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import convolution_nd
 from chainer.functions.connection import deconvolution_2d
 from chainer.functions.connection import deconvolution_nd
+from chainer.functions.connection import dilated_convolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
 from chainer.functions.evaluation import accuracy
@@ -62,10 +63,12 @@ from chainer.functions.loss import vae  # NOQA
 from chainer.functions.math import basic_math  # NOQA
 from chainer.functions.math import batch_l2_norm_squared
 from chainer.functions.math import bias
+from chainer.functions.math import ceil
 from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
+from chainer.functions.math import floor
 from chainer.functions.math import hyperbolic
 from chainer.functions.math import identity
 from chainer.functions.math import inv
@@ -90,9 +93,12 @@ from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
+from chainer.functions.util import forget
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
 from chainer.links.connection import convolution_2d as links_convolution_2d
+from chainer.links.connection import dilated_convolution_2d \
+    as links_dilated_convolution_2d
 from chainer.links.connection import embed_id as links_embed_id
 from chainer.links.connection import inception
 from chainer.links.connection import inceptionbn
@@ -179,6 +185,7 @@ convolution_2d = convolution_2d.convolution_2d
 convolution_nd = convolution_nd.convolution_nd
 deconvolution_2d = deconvolution_2d.deconvolution_2d
 deconvolution_nd = deconvolution_nd.deconvolution_nd
+dilated_convolution_2d = dilated_convolution_2d.dilated_convolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
 
@@ -230,6 +237,8 @@ batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
 bias = bias.bias
+Ceil = ceil.Ceil
+ceil = ceil.ceil
 Clip = clip.Clip
 clip = clip.clip
 Cos = trigonometric.Cos
@@ -241,6 +250,8 @@ Exp = exponential.Exp
 exp = exponential.exp
 Expm1 = exponential_m1.Expm1
 expm1 = exponential_m1.expm1
+Floor = floor.Floor
+floor = floor.floor
 Identity = identity.Identity
 identity = identity.identity
 Inv = inv.Inv
@@ -307,11 +318,15 @@ spatial_pyramid_pooling_2d = \
 Unpooling2D = unpooling_2d.Unpooling2D
 unpooling_2d = unpooling_2d.unpooling_2d
 
+Forget = forget.Forget
+forget = forget.forget
+
 # Import for backward compatibility
 PReLU = links_prelu.PReLU
 
 Bilinear = links_bilinear.Bilinear
 Convolution2D = links_convolution_2d.Convolution2D
+DilatedConvolution2D = links_dilated_convolution_2d.DilatedConvolution2D
 EmbedID = links_embed_id.EmbedID
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN

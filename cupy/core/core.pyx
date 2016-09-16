@@ -2041,7 +2041,7 @@ cpdef ndarray tensordot_core(
         cublas.dgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
                      a.data.ptr, lda, 0, c.data.ptr, m)
 
-    if dtype != ret_dtype:
+    if out is not ret:
         elementwise_copy(out, ret)
     return ret
 
@@ -2050,7 +2050,11 @@ cpdef ndarray tensordot_core(
 cpdef inline tuple _mat_to_cublas_contiguous(ndarray a, Py_ssize_t trans):
     assert a.ndim == 2
     if a._f_contiguous:
-        return a, trans, max(a._strides[1] // a.itemsize, a._shape[0])
+        # builtin max function is not used for Cython 0.23
+        lda = a._strides[1] // a.itemsize
+        if lda < a._shape[0]:
+            lda = a._shape[0]
+        return a, trans, lda
     if not a._c_contiguous:
         a = a.copy()
     return a, 1 - trans, a._strides[0] // a.itemsize
@@ -2319,7 +2323,7 @@ cdef _clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
      'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),
-    'out0 = min(in2, max(in1, in0))')
+    'out0 = in0 < in1 ? in1 : (in0 > in2 ? in2 : in0)')
 
 
 # -----------------------------------------------------------------------------

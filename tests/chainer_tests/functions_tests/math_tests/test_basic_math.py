@@ -1021,7 +1021,7 @@ class TestMatMulVarVar(unittest.TestCase):
         else:
             options = {'atol': 1e-7, 'rtol': 1e-7}
         testing.assert_allclose(
-            operator.matmul(self.x, self.y), z.data, **options)
+            self.x.dot(self.y), z.data, **options)
 
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
