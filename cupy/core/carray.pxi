@@ -17,7 +17,7 @@ cdef class CArray(cupy.cuda.function.CPointer):
         _CArray val
 
     def __init__(self, ndarray arr):
-        cdef int i, ndim = arr.ndim
+        cdef Py_ssize_t i, ndim = arr.ndim
         self.val.data = <void*>arr.data.ptr
         self.val.size = arr.size
         for i in range(ndim):
@@ -37,7 +37,7 @@ cdef class CIndexer(cupy.cuda.function.CPointer):
 
     def __init__(self, Py_ssize_t size, tuple shape):
         self.val.size = size
-        cdef int i
+        cdef Py_ssize_t i
         for i in range(len(shape)):
             self.val.shape_and_index[i] = shape[i]
         self.ptr = <void*>&self.val
