@@ -29,7 +29,7 @@ class TestConvolutionND(unittest.TestCase):
         self.link = convolution_nd.ConvolutionND(
             ndim, 3, 2, self.ksize, stride=self.stride, pad=self.pad,
             initial_bias=initializers.Uniform(1))
-        self.link.zerograds()
+        self.link.cleargrads()
 
         x_shape = (2, 3) + self.dims
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
