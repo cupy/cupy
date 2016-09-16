@@ -26,7 +26,7 @@ def _grad_tanh(x):
 
 _preamble = '''
 template <typename T> __device__ T sigmoid(T x) {
-    T half = 0.5;
+    const T half = 0.5;
     return tanh(x * half) * half + half;
 }
 template <typename T> __device__ T grad_sigmoid(T y) { return y * (1 - y); }
