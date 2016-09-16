@@ -6,6 +6,7 @@ import numpy
 import six
 
 from chainer import cuda
+from chainer import initializers
 from chainer import variable
 
 
@@ -136,12 +137,14 @@ class Link(object):
         """
         return numpy if self._cpu else cuda.cupy
 
-    def add_param(self, name, shape, dtype=numpy.float32):
+    def add_param(self, name, shape, dtype=numpy.float32, initializer=None):
         """Registers a parameter to the link.
 
         The registered parameter is saved and loaded on serialization and
         deserialization, and involved in the optimization. The data and
         gradient of the variable are initialized by NaN arrays.
+        If ``initializer`` is not ``None``, the data is initialized by
+        ``initializer``.
 
         If the supplied ``name`` argument corresponds to an uninitialized
         parameter (that is, one that was added with the
@@ -156,6 +159,9 @@ class Link(object):
                 name will be removed.
             shape (int or tuple of ints): Shape of the parameter array.
             dtype: Data type of the parameter array.
+            initializer(chainer.initializer.Initializer): If it is not
+                ``None``, the data is initialized with the given initializer.
+                Note that in this case ``dtype`` argument is ignored.
 
         """
         d = self.__dict__
@@ -163,8 +169,11 @@ class Link(object):
             raise AttributeError(
                 'cannot register a new parameter %s: attribute exists'
                 % name)
-        data = self.xp.full(shape, numpy.nan, dtype=dtype)
-        grad = data.copy()
+        if initializer is None:
+            data = self.xp.full(shape, numpy.nan, dtype=dtype)
+        else:
+            data = initializers.generate_array(initializer, shape, self.xp)
+        grad = self.xp.full_like(data, numpy.nan)
         var = variable.Variable(data, volatile='auto', name=name)
         var.grad = grad
         self._params.append(name)
