@@ -15,10 +15,13 @@ def _sigmoid(x):
     return 1 / (1 + numpy.exp(-x))
 
 
-@testing.parameterize(*testing.product({
+@testing.parameterize(*(testing.product({
     'batch': [3, 2, 0],
+    'dtype': [numpy.float32],
+}) + testing.product({
+    'batch': [3],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestLSTM(unittest.TestCase):
 
     def setUp(self):

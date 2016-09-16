@@ -16,7 +16,7 @@ from chainer.utils import conv_nd
 
 
 @testing.parameterize(*testing.product({
-    'dims': [(10,), (10, 8), (10, 8, 6)],
+    'dims': [(5,), (5, 4), (4, 3, 2)],
 }))
 class TestConvolutionND(unittest.TestCase):
 
