@@ -104,15 +104,16 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w, dy=1, dx=1):
            T val = 0;
            for (int ky = 0; ky < kh; ++ky) {
              int out_y = (y + ph - ky * dy);
+             if (0 > out_y || out_y >= out_h * sy) continue;
              if (out_y % sy != 0) continue;
              out_y /= sy;
              for (int kx = 0; kx < kw; ++kx) {
                int out_x = (x + pw - kx * dx);
+               if (0 > out_x || out_x >= out_w * sx) continue;
                if (out_x % sx != 0) continue;
                out_x /= sx;
                int k = out_y + out_h * (kx + kw * (ky + kh * c0));
                val = val + col[out_x + out_w * k];
-               //val = out_x;
              }
            }
            img = val;

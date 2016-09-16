@@ -53,6 +53,7 @@ class TestConv(unittest.TestCase):
         (1, 2, 2, 1, 1, 2, 1, 1),
         (1, 2, 3, 4, 1, 2, 1, 1),
         (1, 2, 3, 4, 4, 5, 2, 3),
+        (3, 3, 2, 2, 1, 1, 1, 1),
     ],
 }))
 class TestIm2Col(unittest.TestCase):
@@ -109,6 +110,7 @@ class TestIm2Col(unittest.TestCase):
         (1, 2, 2, 1, 1, 2, 1, 1),
         (1, 2, 3, 4, 1, 2, 1, 1),
         (1, 2, 3, 4, 4, 5, 2, 3),
+        (3, 3, 2, 2, 1, 1, 1, 1),
     ],
 }))
 class TestCol2Im(unittest.TestCase):
