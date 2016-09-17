@@ -12,7 +12,8 @@ from chainer.testing import condition
 
 
 def _sigmoid(x):
-    return 1 / (1 + numpy.exp(-x))
+    half = x.dtype.type(0.5)
+    return numpy.tanh(x * half) * half + half
 
 
 @testing.parameterize(*(testing.product({
