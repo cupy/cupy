@@ -403,12 +403,12 @@ cdef class ndarray:
             ret._f_contiguous = self._c_contiguous
             return ret
 
-        if axes.size() != ndim:
+        if <Py_ssize_t>axes.size() != ndim:
             raise ValueError('Invalid axes value: %s' % str(axes))
 
         for i in range(ndim):
             a_axes.push_back(i)
-            axis = <Py_ssize_t?>axes[i]
+            axis = axes[i]
             if axis < -ndim or axis >= ndim:
                 raise IndexError('Axes overrun')
             axes[i] = axis % ndim
@@ -518,9 +518,9 @@ cdef class ndarray:
 
         """
         cdef vector.vector[Py_ssize_t] vec_axis, newshape, newstrides
-        cdef Py_ssize_t j, n
+        cdef Py_ssize_t i, j, n
         if axis is None:
-            for i in range(self._shape.size()):
+            for i in range(<Py_ssize_t>self._shape.size()):
                 n = self._shape[i]
                 if n == 1:
                     vec_axis.push_back(i)
@@ -532,9 +532,9 @@ cdef class ndarray:
         if vec_axis.size() == 0:
             return self
         j = 0
-        for i in range(self._shape.size()):
+        for i in range(<Py_ssize_t>self._shape.size()):
             n = self._shape[i]
-            if j < vec_axis.size() and i == vec_axis[j]:
+            if j < <Py_ssize_t>vec_axis.size() and i == vec_axis[j]:
                 if n != 1:
                     raise RuntimeError('Cannot squeeze dimension of size > 1')
                 j += 1
@@ -1183,7 +1183,7 @@ cdef class ndarray:
             return self
         internal.get_reduced_dims(
             self._shape, self._strides, self.itemsize, shape, strides)
-        if ndim == shape.size():
+        if ndim == <Py_ssize_t>shape.size():
             return self
 
         view = self.view(dtype=dtype)
@@ -1208,7 +1208,7 @@ cdef class ndarray:
             for i in self._shape:
                 if i == 1:
                     count += 1
-            self._f_contiguous = self._shape.size() - count <= 1
+            self._f_contiguous = (<Py_ssize_t>self._shape.size()) - count <= 1
             return
         rev_shape.assign(self._shape.rbegin(), self._shape.rend())
         rev_strides.assign(self._strides.rbegin(), self._strides.rend())
@@ -1580,15 +1580,15 @@ cdef class broadcast:
             if not isinstance(x, ndarray):
                 continue
             a = x
-            self.nd = max(self.nd, a._shape.size())
+            self.nd = max(self.nd, <Py_ssize_t>a._shape.size())
             r_shape.assign(a._shape.rbegin(), a._shape.rend())
             shape_arr.push_back(r_shape)
 
         r_shape.clear()
         for i in range(self.nd):
             ss = 0
-            for j in range(shape_arr.size()):
-                if i < shape_arr[j].size():
+            for j in range(<Py_ssize_t>shape_arr.size()):
+                if i < <Py_ssize_t>shape_arr[j].size():
                     s = shape_arr[j][i]
                     ss = max(ss, s)
             r_shape.push_back(ss)
