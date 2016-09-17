@@ -22,7 +22,6 @@ from chainer.utils import type_check
 }))
 class TestLinear(unittest.TestCase):
 
-    in_shape = (3,)
     out_size = 2
 
     def setUp(self):

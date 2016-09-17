@@ -17,9 +17,9 @@ class TestHighway(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(
-            -1, 1, (10, self.in_out_size)).astype(numpy.float32)
+            -1, 1, (5, self.in_out_size)).astype(numpy.float32)
         self.gy = numpy.random.uniform(
-            -1, 1, (10, self.in_out_size)).astype(numpy.float32)
+            -1, 1, (5, self.in_out_size)).astype(numpy.float32)
         self.link = links.Highway(
             self.in_out_size)
 
