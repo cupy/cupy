@@ -1,10 +1,10 @@
 import unittest
 
 import numpy
+import six
 
 import chainer
 from chainer import functions
-from chainer import gradient_check
 from chainer import testing
 
 
@@ -19,7 +19,7 @@ class TestForget(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = chainer.Variable(y_data)
         z = functions.forget(lambda x, y: (x + y + x,), x, y)
-        gradient_check.assert_allclose(x_data + y_data + x_data, z.data)
+        testing.assert_allclose(x_data + y_data + x_data, z.data)
 
     def test_forward_cpu(self):
         self.check_forward(self.x, self.y)
@@ -31,8 +31,8 @@ class TestForget(unittest.TestCase):
         z.grad = gz_data
         z.backward()
 
-        gradient_check.assert_allclose(x.grad, gz_data * 2)
-        gradient_check.assert_allclose(y.grad, gz_data)
+        testing.assert_allclose(x.grad, gz_data * 2)
+        testing.assert_allclose(y.grad, gz_data)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.y, self.gz)
@@ -48,35 +48,35 @@ class TestForgetError(unittest.TestCase):
             functions.forget(1)
 
     def test_invalid_type(self):
-        with self.assertRaisesRegexp(RuntimeError, 'int'):
+        with six.assertRaisesRegex(self, RuntimeError, 'int'):
             functions.forget(lambda: 1)
 
     def test_invalid_tuple_type_1st(self):
-        with self.assertRaisesRegexp(RuntimeError, '1st.*int'):
+        with six.assertRaisesRegex(self, RuntimeError, '1st.*int'):
             functions.forget(lambda: (1,))
 
     def test_invalid_tuple_type_2nd(self):
-        with self.assertRaisesRegexp(RuntimeError, '2nd.*int'):
+        with six.assertRaisesRegex(self, RuntimeError, '2nd.*int'):
             functions.forget(lambda: (self.v, 1))
 
     def test_invalid_tuple_type_3rd(self):
-        with self.assertRaisesRegexp(RuntimeError, '3rd.*int'):
+        with six.assertRaisesRegex(self, RuntimeError, '3rd.*int'):
             functions.forget(lambda: (self.v, self.v, 1))
 
     def test_invalid_tuple_type_4th(self):
-        with self.assertRaisesRegexp(RuntimeError, '4th.*int'):
+        with six.assertRaisesRegex(self, RuntimeError, '4th.*int'):
             functions.forget(lambda: (self.v,) * 3 + (1,))
 
     def test_invalid_tuple_type_11th(self):
-        with self.assertRaisesRegexp(RuntimeError, '11th.*int'):
+        with six.assertRaisesRegex(self, RuntimeError, '11th.*int'):
             functions.forget(lambda: (self.v,) * 10 + (1,))
 
     def test_invalid_tuple_type_12th(self):
-        with self.assertRaisesRegexp(RuntimeError, '12th.*int'):
+        with six.assertRaisesRegex(self, RuntimeError, '12th.*int'):
             functions.forget(lambda: (self.v,) * 11 + (1,))
 
     def test_invalid_tuple_type_13th(self):
-        with self.assertRaisesRegexp(RuntimeError, '13th.*int'):
+        with six.assertRaisesRegex(self, RuntimeError, '13th.*int'):
             functions.forget(lambda: (self.v,) * 12 + (1,))
 
 
