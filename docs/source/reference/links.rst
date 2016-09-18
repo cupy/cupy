@@ -43,7 +43,7 @@ Deconvolution2D
    :members:
 
 DilatedConvolution2D
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: DilatedConvolution2D
    :members:
 
