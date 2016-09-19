@@ -66,59 +66,75 @@ def math_function_test(func, func_expected=None, label_expected=None,
        Chainer function that takes a variable with ``dtype`` of float and
        returns another with the same ``dtype``.
 
-       >>> import unittest
-       >>> from chainer import testing
-       >>> from chainer import functions as F
-       >>>
-       >>> @testing.math_function_test(F.sin)
-       >>> class TestSin(unittest.TestCase):
-       >>>     pass
+       .. doctest::
+
+          >>> import unittest
+          >>> from chainer import testing
+          >>> from chainer import functions as F
+          >>>
+          >>> @testing.math_function_test(F.sin)
+          ... class TestSin(unittest.TestCase):
+          ...     pass
 
        Because test methods are implicitly injected to ``TestSin`` class by the
        decorator, we just place ``pass`` in the class definition.
 
-       We may use this decorator to test mathematical Chainer functions
-       implemented with composing other Chainer functions, like ``rsqrt``
-       which computes reciprocal of square root.
+       The test is run with ``nose`` module.
 
-       >>> import numpy
-       >>> import unittest
-       >>> from chainer import testing
-       >>> from chainer import functions as F
-       >>>
-       >>> def rsqrt(x, dtype=numpy.float32):
-       >>>     return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
-       >>>
-       >>> @testing.math_function_test(F.rsqrt, func_expected=rsqrt)
-       >>> class TestRsqrt(unittest.TestCase):
-       >>>     pass
+       .. doctest::
 
-       Here we define ``rsqrt`` function composing numpy functions to get
-       expected values, passing it to ``func_expected`` keyword parameter of
-       ``@testing.math_function_test`` decorator.
+          >>> import nose
+          >>> nose.run(
+          ...     defaultTest=__name__, argv=['', '-a', '!gpu'], exit=False)
+          True
 
        We may also customize test data to be used. The following is an example
        of testing ``sqrt`` Chainer function which we want to test in positive
        value domain leaving some margin around zero of input ``x``.
 
-       >>> import numpy
-       >>> import unittest
-       >>> from chainer import testing
-       >>> from chainer import functions as F
-       >>>
-       >>> def make_data(dtype, shape):
-       >>>     x = numpy.random.uniform(0.1, 1, shape).astype(dtype)
-       >>>     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
-       >>>     return x, gy
-       >>>
-       >>> @testing.math_function_test(F.sqrt, make_data=make_data)
-       >>> class TestSqrt(unittest.TestCase):
-       >>>     pass
+       .. doctest::
+
+          >>> import numpy
+          >>>
+          >>> def make_data(dtype, shape):
+          ...     x = numpy.random.uniform(0.1, 1, shape).astype(dtype)
+          ...     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
+          ...     return x, gy
+          ...
+          >>> @testing.math_function_test(F.sqrt, make_data=make_data)
+          ... class TestSqrt(unittest.TestCase):
+          ...     pass
+          ...
+          >>> nose.run(
+          ...     defaultTest=__name__, argv=['', '-a', '!gpu'], exit=False)
+          True
 
        We define ``make_data`` function to return input and gradient ndarrays
        generated in proper value domains with given ``dtype`` and ``shape``
        parameters, then passing it to the decorator's ``make_data`` keyword
        parameter.
+
+       We may use this decorator to test mathematical Chainer functions
+       implemented with composing other Chainer functions, like ``rsqrt``
+       which computes reciprocal of square root.
+
+       .. doctest::
+
+          >>> def rsqrt(x, dtype=numpy.float32):
+          ...     return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
+          ...
+          >>> @testing.math_function_test(
+          ...     F.rsqrt, func_expected=rsqrt, make_data=make_data)
+          ... class TestRsqrt(unittest.TestCase):
+          ...     pass
+          ...
+          >>> nose.run(
+          ...     defaultTest=__name__, argv=['', '-a', '!gpu'], exit=False)
+          True
+
+       Here we define ``rsqrt`` function composing numpy functions to get
+       expected values, passing it to ``func_expected`` keyword parameter of
+       ``@testing.math_function_test`` decorator.
 
     """
 

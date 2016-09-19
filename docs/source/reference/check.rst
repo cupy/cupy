@@ -45,3 +45,10 @@ and :class:`cupy.ndarray`.
 
 .. automodule:: chainer.testing
 .. autofunction:: assert_allclose
+
+Function testing utilities
+--------------------------
+Chainer provides some utilities for testing its functions.
+
+.. automodule:: chainer.testing
+.. autofunction:: math_function_test
