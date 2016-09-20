@@ -1,5 +1,6 @@
 import __builtin__
 import inspect
+import six
 import string
 import warnings
 
@@ -214,7 +215,7 @@ def _convert_from_ufunc(ufunc):
     nout = ufunc.nout
 
     def can_cast1(args, ty_ins):
-        for i in range(nin):
+        for i in six.moves.range(nin):
             if args[i].const is None:
                 if not numpy.can_cast(args[i].ty, ty_ins[i]):
                     return False
@@ -224,7 +225,7 @@ def _convert_from_ufunc(ufunc):
         return True
 
     def can_cast2(args, ty_ins):
-        for i in range(nin):
+        for i in six.moves.range(nin):
             if not numpy.can_cast(args[i].ty, ty_ins[i]):
                 return False
         return True
@@ -237,12 +238,13 @@ def _convert_from_ufunc(ufunc):
             ty_ins = map(numpy.dtype, ty_ins)
             ty_outs = map(numpy.dtype, ty_outs)
             if can_cast(vars, ty_ins):
-                param_names = (['in%d' % i for i in range(nin)] +
-                               ['out%d' % i for i in range(nout)])
+                param_names = (['in%d' % i for i in six.moves.range(nin)] +
+                               ['out%d' % i for i in six.moves.range(nout)])
                 op = FusionOp(ufunc.name, op, param_names, nin, nout,
                               vars, ty_ins + ty_outs)
-                ret = [_FusionVar(op, i, ty_outs[i]) for i in range(nout)]
-                for i in range(len(args) - nin):
+                ret = [_FusionVar(op, i, ty_outs[i])
+                       for i in six.moves.range(nout)]
+                for i in six.moves.range(len(args) - nin):
                     args[i + nin]._var = ret[i]
                 ret = map(FusionRef, ret)
                 return ret[0] if len(ret) == 1 else tuple(ret)
@@ -311,7 +313,7 @@ def _get_operation_code(op):
     code = ''.join('v%d_%d = v%d;\n' % (op.num, i, v.num)
                    for i, v in enumerate(op.in_vars))
     params = ['v%d_%d' % (op.num, i)
-              for i in range(op.nin + op.nout)]
+              for i in six.moves.range(op.nin + op.nout)]
     code += op.name + '(' + ', '.join(params) + ');\n'
     code += ''.join('v%d = v%d_%d;\n' %
                     (v, op.num, i + op.nin)
@@ -402,7 +404,8 @@ def _get_fusion(func, nin, immutable_num,
         immutable_num = nin
     assert nin == len(input_types)
     assert immutable_num <= nin
-    input_vars = [_FusionVar(None, None, input_types[i], i) for i in range(nin)]
+    input_vars = [_FusionVar(None, None, input_types[i], i)
+                  for i in six.moves.range(nin)]
     input_refs = map(FusionRef, input_vars)
     ret_refs = func(*input_refs)
     ret_refs = list(ret_refs) if type(ret_refs) == tuple else [ret_refs]
@@ -467,8 +470,8 @@ def _get_fusion(func, nin, immutable_num,
         submodule_code = ''.join(_get_submodule_code(v)
                                  for v in submodules.values())
         submodule_code += reduce._raw._preamble + pre_code + post_code
-        operation = '_pre_map(' + ', '.join(['v' + str(i)
-                                             for i in range(nin)]) + ')'
+        operation_args = ['v' + str(i) for i in six.moves.range(nin)]
+        operation = '_pre_map(' + ', '.join(operation_args) + ')'
         out_params = '%s res' % post_out.ty
         return core.ReductionKernel(in_params, out_params, operation,
                                     reduce_code,
