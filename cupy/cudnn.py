@@ -257,7 +257,7 @@ def get_rnn_lin_layer_matrix_params(
     offset = (ptr - w.data.ptr) // 4
     _, _, _, dim = cudnn.getFilterNdDescriptor(mat_desc.value, 3)
     size = numpy.prod(dim)
-    mat = w[offset: offset+size]
+    mat = w[offset: offset + size]
     return mat
 
 
@@ -272,7 +272,7 @@ def get_rnn_lin_layer_bias_params(
     offset = (ptr - w.data.ptr) // 4
     _, _, _, dim = cudnn.getFilterNdDescriptor(bias_desc.value, 3)
     size = numpy.prod(dim)
-    bias = w[offset: offset+size]
+    bias = w[offset: offset + size]
     return bias
 
 
