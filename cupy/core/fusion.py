@@ -257,7 +257,7 @@ def _convert_from_elementwise(elem):
     raise Exception('Not Impletmented')
 
 
-class Counter(object):
+class _Counter(object):
 
     def __init__(self, n):
         self.n = n
@@ -422,8 +422,8 @@ def _get_fusion(func, nin, immutable_num,
 
     var_list = input_vars[:immutable_num] + output_vars
     operation_list = []
-    _get_var_list(ret_vars, var_list, Counter(nargs))
-    _get_operation_list(ret_vars, operation_list, Counter(0))
+    _get_var_list(ret_vars, var_list, _Counter(nargs))
+    _get_operation_list(ret_vars, operation_list, _Counter(0))
     in_params = ', '.join(map(_get_parameters, var_list[:immutable_num]))
     out_params = ', '.join(map(_get_parameters, var_list[immutable_num:nargs]))
     operation = ''.join(map(_get_declaration_from_var, var_list[nargs:]))
@@ -459,8 +459,8 @@ def _get_fusion(func, nin, immutable_num,
             raise Exception("Can't reduce a tuple")
         post_vars = post_in
         post_ops = []
-        _get_var_list([post_out], post_vars, Counter(1))
-        _get_operation_list([post_out], post_ops, Counter(0))
+        _get_var_list([post_out], post_vars, _Counter(1))
+        _get_operation_list([post_out], post_ops, _Counter(0))
         post_code = ''.join(map(_get_declaration_from_var, post_vars[1:]))
         post_code += ''.join(map(_get_declaration_from_op,  post_ops))
         post_code += '\n'.join(map(_get_operation_code, post_ops))
