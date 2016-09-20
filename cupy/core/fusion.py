@@ -38,14 +38,14 @@ class _FusionVar(object):
         self.ty = ty
 
 
-class FusionRef(object):
+class _FusionRef(object):
 
     def __init__(self, var):
         self._var = var
         self.dtype = var.ty
 
     def __repr__(self):
-        return "<FusionRef, dtype=%s>" % self.dtype
+        return "<_FusionRef, dtype=%s>" % self.dtype
 
     def __neg__(self):
         return negative(self)
@@ -181,7 +181,7 @@ def _const_to_str(val):
 
 def _normalize_arg(arg):
     arg_type = type(arg)
-    if arg_type is FusionRef:
+    if arg_type is _FusionRef:
         return arg._var
     if __builtin__.any([arg_type in [int, float, bool],
                         (hasattr(arg, 'dtype') and arg.dtype in _dtype_list)]):
@@ -247,7 +247,7 @@ def _convert_from_ufunc(ufunc):
                        for i in six.moves.range(nout)]
                 for i in six.moves.range(len(args) - nin):
                     args[i + nin]._var = ret[i]
-                ret = map(FusionRef, ret)
+                ret = map(_FusionRef, ret)
                 return ret[0] if len(ret) == 1 else tuple(ret)
         raise TypeError('Invalid type cast')
     return res
@@ -407,7 +407,7 @@ def _get_fusion(func, nin, immutable_num,
     assert immutable_num <= nin
     input_vars = [_FusionVar(None, None, input_types[i], i)
                   for i in six.moves.range(nin)]
-    input_refs = map(FusionRef, input_vars)
+    input_refs = map(_FusionRef, input_vars)
     ret_refs = func(*input_refs)
     ret_refs = list(ret_refs) if type(ret_refs) == tuple else [ret_refs]
     ret_vars = map(_normalize_arg, ret_refs)
@@ -454,7 +454,7 @@ def _get_fusion(func, nin, immutable_num,
 
         # post-map
         post_in = [_FusionVar(None, None, reduce_type, 0)]
-        post_out = _normalize_arg(post_map(*map(FusionRef, post_in)))
+        post_out = _normalize_arg(post_map(*map(_FusionRef, post_in)))
         if type(post_out) == tuple:
             raise Exception("Can't reduce a tuple")
         post_vars = post_in
@@ -579,7 +579,7 @@ class ufunc(core.ufunc):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if __builtin__.any(type(i) is FusionRef for i in args):
+        if __builtin__.any(type(i) is _FusionRef for i in args):
             return _convert(self._fusion_op)(*args, **kwargs)
         elif __builtin__.any(type(i) is numpy.ndarray for i in args):
             return self._numpy_op(*args, **kwargs)
