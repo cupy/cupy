@@ -9,7 +9,9 @@
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include <curand.h>
+#ifndef _WIN32
 #include <nvToolsExt.h>
+#endif
 
 #if CUDA_VERSION < 8000
 #if CUDA_VERSION >= 7050
@@ -589,17 +591,59 @@ int cudaProfilerStop() {
 // nvToolsExt.h
 ///////////////////////////////////////////////////////////////////////////////
 
+#define NVTX_VERSION 1
+
+typedef enum nvtxColorType_t
+{
+    NVTX_COLOR_UNKNOWN  = 0,
+    NVTX_COLOR_ARGB     = 1
+} nvtxColorType_t;
+
+typedef enum nvtxMessageType_t
+{
+    NVTX_MESSAGE_UNKNOWN          = 0,
+    NVTX_MESSAGE_TYPE_ASCII       = 1,
+    NVTX_MESSAGE_TYPE_UNICODE     = 2,
+} nvtxMessageType_t;
+
+typedef union nvtxMessageValue_t
+{
+    const char* ascii;
+    const wchar_t* unicode;
+} nvtxMessageValue_t;
+
+typedef struct nvtxEventAttributes_v1
+{
+    uint16_t version;
+    uint16_t size;
+    uint32_t category;
+    int32_t colorType;
+    uint32_t color;
+    int32_t payloadType;
+    int32_t reserved0;
+    union payload_t
+    {
+        uint64_t ullValue;
+        int64_t llValue;
+        double dValue;
+    } payload;
+    int32_t messageType;
+    nvtxMessageValue_t message;
+} nvtxEventAttributes_v1;
+
+typedef nvtxEventAttributes_v1 nvtxEventAttributes_t;
+
 void nvtxMarkA(const char *message) {
 }
 
-void nvtxMarkEx(const struct nvtxEventAttributes_t *eventAttrib) {
+void nvtxMarkEx(const nvtxEventAttributes_t *eventAttrib) {
 }
 
 int nvtxRangePushA(const char *message) {
     return 0;
 }
 
-int nvtxRangePushEx(const struct nvtxEventAttributes_t *eventAttrib) {
+int nvtxRangePushEx(const nvtxEventAttributes_t *eventAttrib) {
     return 0;
 }
 

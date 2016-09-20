@@ -16,7 +16,7 @@ class TestNegativeSampling(unittest.TestCase):
 
     def setUp(self):
         self.link = links.NegativeSampling(3, [10, 5, 2, 5, 2], 2)
-        self.link.zerograds()
+        self.link.cleargrads()
         self.x = numpy.random.uniform(-1, 1, (2, 3)).astype(numpy.float32)
         self.t = numpy.array([0, 2]).astype(numpy.int32)
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)
@@ -115,7 +115,7 @@ class TestNegativeSamplingIgnoreMask(TestNegativeSampling):
         # negative targets explicitly removed. Both cases should have identical
         # outcomes.
         self.link = links.NegativeSampling(3, [10, 5, 2, 5, 2], 2)
-        self.link.zerograds()
+        self.link.cleargrads()
         self.x = numpy.random.uniform(-1, 1, (3, 3)).astype(numpy.float32)
         self.t = numpy.array([-1, 1, 2]).astype(numpy.int32)
         self.gy = numpy.random.uniform(-1, 1, ()).astype(numpy.float32)

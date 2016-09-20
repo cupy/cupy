@@ -16,13 +16,19 @@ from chainer.testing import condition
 from chainer.utils import conv
 
 
-@testing.parameterize(*testing.product({
-    'dims': [(10,), (10, 8), (10, 8, 6)],
-    'c_contiguous': [True, False],
+@testing.parameterize(*(testing.product({
+    'dims': [(6,), (5, 4), (4, 3, 3)],
     'cover_all': [True, False],
+    'c_contiguous': [True],
+    'x_dtype': [numpy.float32],
+    'W_dtype': [numpy.float32],
+}) + testing.product({
+    'dims': [(4,)],
+    'cover_all': [False],
+    'c_contiguous': [True, False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestConvolutionND(unittest.TestCase):
 
     def setUp(self):

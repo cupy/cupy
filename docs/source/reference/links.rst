@@ -42,6 +42,11 @@ Deconvolution2D
 .. autoclass:: Deconvolution2D
    :members:
 
+DilatedConvolution2D
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: DilatedConvolution2D
+   :members:
+
 EmbedID
 ~~~~~~~
 .. autoclass:: EmbedID
@@ -114,6 +119,10 @@ BinaryHierarchicalSoftmax
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: BinaryHierarchicalSoftmax
    :members:
+
+BlackOut
+~~~~~~~~
+.. autoclass:: BlackOut
 
 CRF1d
 ~~~~~
