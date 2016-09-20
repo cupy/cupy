@@ -175,11 +175,11 @@ _dtype_list = map(numpy.dtype, '?bhilqBHILQefd')
 
 
 def _const_to_str(val):
-    return str(val).lower() if type(val) == bool else str(val)
+    return str(val).lower() if type(val) is bool else str(val)
 
 
 def _normalize_arg(arg):
-    if type(arg) == FusionRef:
+    if type(arg) is FusionRef:
         return arg._var
     if __builtin__.any([type(arg) in [int, float, bool],
                         (hasattr(arg, 'dtype') and arg.dtype in _dtype_list)]):
@@ -189,9 +189,9 @@ def _normalize_arg(arg):
 
 
 def _convert(f):
-    if type(f) == core.ufunc:
+    if type(f) is core.ufunc:
         return _convert_from_ufunc(f)
-    if type(f) == core.ElementwiseKernel:
+    if type(f) is core.ElementwiseKernel:
         return _convert_from_elementwise(f)
     raise Exception("Can't convert from %s to FusionOp" % type(f))
 
@@ -508,7 +508,7 @@ class Fusion(object):
         if len(args) == 0:
             raise Exception('number of arguments must be more than 0')
         if __builtin__.all(map(lambda a: hasattr(a, 'dtype') and
-                               type(a) != numpy.ndarray, args)):
+                               type(a) is not numpy.ndarray, args)):
             types = map(lambda x: x.dtype, args)
             key = tuple(types)
             if key not in self.memo:
@@ -522,7 +522,7 @@ class Fusion(object):
             else:
                 return f(*args, axis=axis)
         else:
-            if __builtin__.any(map(lambda a: type(a) == core.ndarray, args)):
+            if __builtin__.any(map(lambda a: type(a) is core.ndarray, args)):
                 types = '.'.join(map(repr, map(type, args)))
                 message = "Can't fuse \n %s(%s)" % (self.name, types)
                 warnings.warn(message)
@@ -575,9 +575,9 @@ class ufunc(core.ufunc):
         return repr(self._cupy_op)
 
     def __call__(self, *args, **kwargs):
-        if __builtin__.any(type(i) == FusionRef for i in args):
+        if __builtin__.any(type(i) is FusionRef for i in args):
             return _convert(self._fusion_op)(*args, **kwargs)
-        elif __builtin__.any(type(i) == numpy.ndarray for i in args):
+        elif __builtin__.any(type(i) is numpy.ndarray for i in args):
             return self._numpy_op(*args, **kwargs)
         else:
             return self._cupy_op(*args, **kwargs)
