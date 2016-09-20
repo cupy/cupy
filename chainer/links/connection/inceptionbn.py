@@ -99,11 +99,13 @@ class InceptionBN(link.Chain):
         self.train = True
 
     def __call__(self, x, test=None):
-        """
+        """Computes the output of the InceptionBN module.
+
         Args:
             x (Variable): An input variable.
-            test (bool): If ``True``, batch normalization layers run in testing mode;
-                if ``test`` is omitted, ``not self.train`` is used as ``test``.
+            test (bool): If ``True``, batch normalization layers run in testing
+                mode; if ``test`` is omitted, ``not self.train`` is used as
+                ``test``.
 
         """
         if test is None:
