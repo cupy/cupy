@@ -98,8 +98,16 @@ class InceptionBN(link.Chain):
 
         self.train = True
 
-    def __call__(self, x):
-        test = not self.train
+    def __call__(self, x, test=None):
+        """
+        Args:
+            x (Variable): An input variable.
+            test (bool): If ``True``, batch normalization layers run in testing mode;
+                if ``test`` is omitted, ``not self.train`` is used as ``test``.
+
+        """
+        if test is None:
+            test = not self.train
         outs = []
 
         if self.out1 > 0:
