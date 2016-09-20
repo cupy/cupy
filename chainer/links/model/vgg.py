@@ -15,33 +15,6 @@ from chainer import serializers
 from chainer import Variable
 
 
-class ImagePreprocessor(chainer.dataset.DatasetMixin):
-
-    def __init__(self, images, size=None, mean=None, rgb_to_bgr=False):
-        self.images = images
-        self.size = size
-        self.mean = mean
-        self.rgb_to_bgr = rgb_to_bgr
-
-    def __len__(self):
-        return len(self.images)
-
-    def get_example(self, i):
-        img = self.images[i]
-        if isinstance(img, numpy.ndarray):
-            img = Image.fromarray(img)
-        img = img.convert('RGB')
-        if self.size is not None:
-            img = img.resize(self.size)
-        img = numpy.asarray(img, dtype=numpy.float32)
-        if self.rgb_to_bgr:
-            img = img[:, :, ::-1]
-        if self.mean is not None:
-            img -= self.mean
-        img = img.transpose((2, 0, 1))
-        return img
-
-
 def _make_npz(path_npz, url, model):
     path_caffemodel = chainer.dataset.cached_download(url)
     print('Now loading caffemodel (usually it may take few and ten minutes)')
@@ -124,8 +97,6 @@ class VGG16Layers(chainer.Chain):
             ('fc8', [self.fc8, F.relu]),
             ('prob', [F.softmax]),
         ])
-        self.mean = numpy.asarray(
-            [103.939, 116.779, 123.68], dtype=numpy.float32)
 
     @property
     def available_layers(self):
@@ -149,17 +120,23 @@ class VGG16Layers(chainer.Chain):
                 break
         return activations
 
-    def preprocess(self, images, resize=True):
-        kwargs = {'images': images, 'mean': self.mean, 'rgb_to_bgr': True}
+    @classmethod
+    def prepare(cls, image, resize=True):
+        if isinstance(image, numpy.ndarray):
+            image = Image.fromarray(image)
+        image = image.convert('RGB')
         if resize:
-            kwargs['size'] = (224, 224)
-        processor = ImagePreprocessor(**kwargs)
-        batch = chainer.iterators.SerialIterator(
-            processor, 2**32, repeat=False, shuffle=False).next()
-        return chainer.dataset.concat_examples(batch)
+            image = image.resize((224, 224))
+        image = numpy.asarray(image, dtype=numpy.float32)
+        image = image[:, :, ::-1]
+        image -= numpy.array(
+            [103.939, 116.779, 123.68], dtype=numpy.float32)
+        image = image.transpose((2, 0, 1))
+        return image
 
     def extract(self, images, layers=['fc7'], resize=True):
-        x = self.preprocess(images, resize=resize)
+        x = chainer.dataset.concat_examples(
+            [self.prepare(img, resize=resize) for img in images])
         x = Variable(self.xp.asarray(x))
         return self(x, layers=layers)
 
