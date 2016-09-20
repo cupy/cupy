@@ -7,7 +7,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-def make_data_default(dtype, shape):
+def make_data_default(shape, dtype):
     x = numpy.random.uniform(-1, 1, shape).astype(dtype)
     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
     return x, gy
@@ -19,7 +19,7 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
 
     This decorator makes test classes test unary mathematical Chainer
     functions. Tested are forward and backward computations on CPU and GPU
-    across parameterized ``dtype`` and ``shape``.
+    across parameterized ``shape`` and ``dtype``.
 
     Args:
         func(~chainer.Function): Chainer function to be tested by the decorated
@@ -31,7 +31,7 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
             functions. If not given, the class name of ``func`` lowered is
             implicitly used.
         make_data: Function to customize input and gradient data used
-            in the tests. It takes ``dtype`` and ``shape`` as its arguments,
+            in the tests. It takes ``shape`` and ``dtype`` as its arguments,
             and returns a tuple of input and gradient data. By default, uniform
             destribution ranged ``[-1, 1]`` is used for both.
 
@@ -39,8 +39,8 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
     GPU across the following :func:`~chainer.testing.parameterize` ed
     parameters:
 
-    - dtype: ``numpy.float16``, ``numpy.float32`` and ``numpy.float64``
     - shape: rank of zero, and rank of more than zero
+    - dtype: ``numpy.float16``, ``numpy.float32`` and ``numpy.float64``
 
     Additionally, it tests the label of the Chainer function.
 
@@ -87,7 +87,7 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
 
           >>> import numpy
           >>>
-          >>> def make_data(dtype, shape):
+          >>> def make_data(shape, dtype):
           ...     x = numpy.random.uniform(0.1, 1, shape).astype(dtype)
           ...     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
           ...     return x, gy
@@ -128,7 +128,7 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
         assert issubclass(klass, unittest.TestCase)
 
         def setUp(self):
-            self.x, self.gy = make_data(self.dtype, self.shape)
+            self.x, self.gy = make_data(self.shape, self.dtype)
             if self.dtype == numpy.float16:
                 self.backward_options = {
                     'eps': 2 ** -4, 'atol': 2 ** -4, 'rtol': 2 ** -4,
