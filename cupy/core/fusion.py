@@ -180,13 +180,14 @@ def _const_to_str(val):
 
 
 def _normalize_arg(arg):
-    if type(arg) is FusionRef:
+    arg_type = type(arg)
+    if arg_type is FusionRef:
         return arg._var
-    if __builtin__.any([type(arg) in [int, float, bool],
+    if __builtin__.any([arg_type in [int, float, bool],
                         (hasattr(arg, 'dtype') and arg.dtype in _dtype_list)]):
-        t = numpy.dtype(type(arg))
+        t = numpy.dtype(arg_type)
         return _FusionVar(None, None, t, const=arg)
-    raise Exception('Unsupported type %s' % type(arg))
+    raise Exception('Unsupported type %s' % arg_type)
 
 
 def _convert(f):
