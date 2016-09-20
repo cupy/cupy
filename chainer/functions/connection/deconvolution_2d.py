@@ -83,10 +83,10 @@ class Deconvolution2DFunction(function.Function):
         gcol = numpy.rollaxis(gcol, 3)
         if self.outh is None:
             self.outh = conv.get_deconv_outsize(h, kh, self.sy, self.ph)
-            assert self.outh > 0, 'Output height should be positive.'
+            assert self.outh > 0, 'Height in the output should be positive.'
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(w, kw, self.sx, self.pw)
-            assert self.outw > 0, 'Output width should be positive.'
+            assert self.outw > 0, 'Width in the output should be positive.'
         y = conv.col2im_cpu(
             gcol, self.sy, self.sx, self.ph, self.pw, self.outh, self.outw)
         # b, k, h, w
@@ -100,14 +100,12 @@ class Deconvolution2DFunction(function.Function):
         kh, kw = W.shape[2:]
         n, in_c, in_h, in_w = x.shape
         c = W.shape[1]  # out_c
-
         if self.outh is None:
             self.outh = conv.get_deconv_outsize(in_h, kh, self.sy, self.ph)
-            assert self.outh > 0, 'Output height should be positive.'
+            assert self.outh > 0, 'Height in the output should be positive.'
         if self.outw is None:
             self.outw = conv.get_deconv_outsize(in_w, kw, self.sx, self.pw)
-            assert self.outw > 0, 'Output width should be positive.'
-
+            assert self.outw > 0, 'Width in the output should be positive.'
         if (cuda.cudnn_enabled and self.use_cudnn and
                 _check_cudnn_acceptable_type(x.dtype, W.dtype)):
             x = cuda.cupy.ascontiguousarray(x)
