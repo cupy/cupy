@@ -3,14 +3,8 @@ import unittest
 
 import chainer
 from chainer import cuda
-import chainer.functions as F
 from chainer.testing import attr
 from chainer.testing import condition
-
-
-def func_class(func):
-    name = func.__name__.capitalize()
-    return getattr(F, name, None)
 
 
 def make_data_default(dtype, shape):
@@ -143,7 +137,7 @@ def math_function_test(func, func_expected=None, label_expected=None,
     from chainer import testing
 
     if func_expected is None:
-        name = func.__name__
+        name = func.__class__.__name__.lower()
         try:
             func_expected = getattr(numpy, name)
         except AttributeError:
@@ -151,10 +145,7 @@ def math_function_test(func, func_expected=None, label_expected=None,
                              "to Chainer function '{}'.".format(name))
 
     if label_expected is None:
-        label_expected = func.__name__
-    elif func_class(func) is None:
-        raise ValueError('Expected label is given even though Chainer '
-                         'function does not have its label.')
+        label_expected = func.__class__.__name__.lower()
 
     if make_data is None:
         make_data = make_data_default
@@ -208,10 +199,8 @@ def math_function_test(func, func_expected=None, label_expected=None,
         setattr(klass, "test_backward_gpu", test_backward_gpu)
 
         def test_label(self):
-            klass = func_class(func)
-            self.assertEqual(klass().label, label_expected)
-        if func_class(func) is not None:
-            setattr(klass, "test_label", test_label)
+            self.assertEqual(func.label, label_expected)
+        setattr(klass, "test_label", test_label)
 
         # Return parameterized class.
         return testing.parameterize(*testing.product({
