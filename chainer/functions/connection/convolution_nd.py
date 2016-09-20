@@ -103,7 +103,6 @@ class ConvolutionND(function.Function):
             conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
             for (d, k, s, p) in zip(dims, ksize, stride, pad))
         assert (out > 0 for out in outs).all(), 'Output sizes should be positive.'
-
         y_shape = (n, out_c) + outs  # (n, c_O, out_1, out_2, ..., out_N)
         y = cuda.cupy.empty(y_shape, dtype=x.dtype)
 
