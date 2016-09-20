@@ -501,7 +501,7 @@ class Fusion(object):
         self.reduce = reduce
         self.post_map = post_map
         self.identity = None if reduce is None else self.reduce._raw.identity
-        self.memo = {}
+        self._memo = {}
 
     def __repr__(self):
         return "<Fusion '%s'>" % self.name
@@ -514,12 +514,12 @@ class Fusion(object):
                                type(a) is not numpy.ndarray, args)):
             types = map(lambda x: x.dtype, args)
             key = tuple(types)
-            if key not in self.memo:
+            if key not in self._memo:
                 f = _get_fusion(self.func, self.input_num,
                                 self.immutable_num, self.reduce,
                                 self.post_map, self.identity, types)
-                self.memo[key] = f
-            f = self.memo[key]
+                self._memo[key] = f
+            f = self._memo[key]
             if self.reduce is None:
                 return f(*args)
             else:
