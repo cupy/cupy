@@ -121,12 +121,12 @@ class VGG16Layers(chainer.Chain):
         return activations
 
     @classmethod
-    def prepare(cls, image, resize=True):
+    def prepare(cls, image, size=(224, 224)):
         if isinstance(image, numpy.ndarray):
             image = Image.fromarray(image)
         image = image.convert('RGB')
-        if resize:
-            image = image.resize((224, 224))
+        if size is not None:
+            image = image.resize(size)
         image = numpy.asarray(image, dtype=numpy.float32)
         image = image[:, :, ::-1]
         image -= numpy.array(
@@ -134,11 +134,11 @@ class VGG16Layers(chainer.Chain):
         image = image.transpose((2, 0, 1))
         return image
 
-    def extract(self, images, layers=['fc7'], resize=True):
+    def extract(self, images, layers=['fc7'], size=(224, 224)):
         x = chainer.dataset.concat_examples(
-            [self.prepare(img, resize=resize) for img in images])
+            [self.prepare(img, size=size) for img in images])
         x = Variable(self.xp.asarray(x))
         return self(x, layers=layers)
 
     def predict(self, images):
-        return self.extract(images, layers=['prob'], resize=True)['prob']
+        return self.extract(images, layers=['prob'])['prob']
