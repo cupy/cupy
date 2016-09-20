@@ -40,6 +40,10 @@ class InceptionBN(link.Chain):
 
     .. seealso:: :class:`Inception`
 
+    Attributes:
+        train (bool): If ``True``, then batch normalization layers are used in
+            training mode. If ``False``, they are used in testing mode.
+
     """
 
     def __init__(self, in_channels, out1, proj3, out3, proj33, out33,
@@ -92,7 +96,10 @@ class InceptionBN(link.Chain):
         if pooltype != 'max' and pooltype != 'avg':
             raise NotImplementedError()
 
-    def __call__(self, x, test=False):
+        self.train = True
+
+    def __call__(self, x):
+        test = not self.train
         outs = []
 
         if self.out1 > 0:
