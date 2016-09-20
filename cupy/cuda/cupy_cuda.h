@@ -9,7 +9,9 @@
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 #include <curand.h>
+#ifndef _WIN32
 #include <nvToolsExt.h>
+#endif
 
 #if CUDA_VERSION < 8000
 #if CUDA_VERSION >= 7050
