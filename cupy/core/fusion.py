@@ -27,7 +27,7 @@ class FusionOp(object):
         self.num = None
 
 
-class FusionVar(object):
+class _FusionVar(object):
 
     def __init__(self, op, idx, ty, num=None, const=None):
         self.op = op
@@ -44,7 +44,7 @@ class FusionRef(object):
         self.dtype = var.ty
 
     def __repr__(self):
-        return "<FusionVariable, dtype=%s>" % self.dtype
+        return "<FusionRef, dtype=%s>" % self.dtype
 
     def __neg__(self):
         return negative(self)
@@ -184,7 +184,7 @@ def _normalize_arg(arg):
     if __builtin__.any([type(arg) in [int, float, bool],
                         (hasattr(arg, 'dtype') and arg.dtype in _dtype_list)]):
         t = numpy.dtype(type(arg))
-        return FusionVar(None, None, t, const=arg)
+        return _FusionVar(None, None, t, const=arg)
     raise Exception('Unsupported type %s' % type(arg))
 
 
@@ -241,7 +241,7 @@ def _convert_from_ufunc(ufunc):
                                ['out%d' % i for i in range(nout)])
                 op = FusionOp(ufunc.name, op, param_names, nin, nout,
                               vars, ty_ins + ty_outs)
-                ret = [FusionVar(op, i, ty_outs[i]) for i in range(nout)]
+                ret = [_FusionVar(op, i, ty_outs[i]) for i in range(nout)]
                 for i in range(len(args) - nin):
                     args[i + nin]._var = ret[i]
                 ret = map(FusionRef, ret)
@@ -402,7 +402,7 @@ def _get_fusion(func, nin, immutable_num,
         immutable_num = nin
     assert nin == len(input_types)
     assert immutable_num <= nin
-    input_vars = [FusionVar(None, None, input_types[i], i) for i in range(nin)]
+    input_vars = [_FusionVar(None, None, input_types[i], i) for i in range(nin)]
     input_refs = map(FusionRef, input_vars)
     ret_refs = func(*input_refs)
     ret_refs = list(ret_refs) if type(ret_refs) == tuple else [ret_refs]
@@ -411,7 +411,7 @@ def _get_fusion(func, nin, immutable_num,
     if input_types[nin:] != ret_types[:(immutable_num - nin)]:
         raise TypeError('Type is mismatched')
 
-    output_vars = [FusionVar(None, None, t, i + immutable_num)
+    output_vars = [_FusionVar(None, None, t, i + immutable_num)
                    for i, t in enumerate(ret_types)]
     nout = len(output_vars)
     nargs = immutable_num + nout
@@ -449,7 +449,7 @@ def _get_fusion(func, nin, immutable_num,
         pre_code += "typedef %s type_in0_raw;\n" % _dtype_to_ctype[reduce_type]
 
         # post-map
-        post_in = [FusionVar(None, None, reduce_type, 0)]
+        post_in = [_FusionVar(None, None, reduce_type, 0)]
         post_out = _normalize_arg(post_map(*map(FusionRef, post_in)))
         if type(post_out) == tuple:
             raise Exception("Can't reduce a tuple")
