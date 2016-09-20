@@ -15,50 +15,47 @@ def make_data_default(dtype, shape):
 
 def unary_math_function_test(func, func_expected=None, label_expected=None,
                              make_data=None):
-    """Decorator to test Chainer functions lifting mathematical numpy functions.
+    """Decorator for testing unary mathematical Chainer functions.
 
-    This decorator is for testing Chainer functions lifted from corresponding
-    mathematical numpy and cupy functions, and optionally ones composed with
-    such other Chainer functions. Forward and backward computations on CPU and
-    GPU across parameterized ``dtype`` and ``shape`` are tested.
+    This decorator makes test classes test unary mathematical Chainer
+    functions. Tested are forward and backward computations on CPU and GPU
+    across parameterized ``dtype`` and ``shape``.
 
     Args:
-        func(~chainer.Function): Chainer function to be tested by
-            decorated test class.
-        func_expected: Function that is used on testing forward computation to
-            get expected values. If not given, a corresponding numpy function
-            for ``func`` is implicitly picked up from its name.
-        label_expected(string): String that is used on testing a Chainer
-            function's label to get expected one. If not given, the name of
-            ``func`` is implicitly used. If given for Chainer function that
-            does not have its label, raises ``ValueError``.
-        make_data: Function that takes ``dtype`` and ``shape`` to
-            return a tuple of input and gradient data. If not given, default
-            input and gradient are used.
+        func(~chainer.Function): Chainer function to be tested by the decorated
+            test class.
+        func_expected: Function used to provide expected values for
+            testing forward computation. If not given, a corresponsing numpy
+            function for ``func`` is implicitly picked up by its class name.
+        label_expected(string): String used to test labels of Chainer
+            functions. If not given, the class name of ``func`` lowered is
+            implicitly used.
+        make_data: Function to customize input and gradient data used
+            in the tests. It takes ``dtype`` and ``shape`` as its arguments,
+            and returns a tuple of input and gradient data. By default, uniform
+            destribution ranged ``[-1, 1]`` is used for both.
 
-    ``func`` takes a Chainer function to be tested and usually it is enough.
-    ``func_expected`` is used on testing Chainer functions composed with others
-    and to give their expected values. ``label_expected`` is used to test
-    Chainer functions that override their labels. ``make_data`` is used to
-    customize input and gradient data for testing. By default, uniform
-    distribution ranged ``[-1, 1]`` is used for both.
-
-    Decorated test class tests forward and backward computation for CPU and GPU
-    across the following :func:`~chainer.testing.parameterize` ed parameters:
+    The decorated test class tests forward and backward computations on CPU and
+    GPU across the following :func:`~chainer.testing.parameterize` ed
+    parameters:
 
     - dtype: ``numpy.float16``, ``numpy.float32`` and ``numpy.float64``
-    - shape: rank of zero and more
+    - shape: rank of zero, and rank of more than zero
 
-    Additionally, it tests the label of Chainer function class if a Chainer
-    function has its corresponding function class. Decorator searches a Chainer
-    function class in ``chainer.functions`` module from the name of the Chainer
-    function.
+    Additionally, it tests the label of the Chainer function.
+
+    Chainer functions tested by the test class decorated with the decorator
+    should have the following properties:
+
+    - Unary, taking one parameter and returning one value
+    - ``dtype`` of input and output are the same
+    - Elementwise operation for the supplied ndarray
 
     .. admonition:: Example
 
-       The following code defines a test class that tests trigonometric ``sin``
-       Chainer function that takes a variable with ``dtype`` of float and
-       returns another with the same ``dtype``.
+       The following code defines a test class that tests
+       :func:`~chainer.functions.sin` Chainer function, which takes a parameter
+       with ``dtype`` of float and returns a value with the same ``dtype``.
 
        .. doctest::
 
@@ -66,14 +63,14 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
           >>> from chainer import testing
           >>> from chainer import functions as F
           >>>
-          >>> @testing.unary_math_function_test(F.sin)
+          >>> @testing.unary_math_function_test(F.Sin())
           ... class TestSin(unittest.TestCase):
           ...     pass
 
-       Because test methods are implicitly injected to ``TestSin`` class by the
-       decorator, we just place ``pass`` in the class definition.
+       Because the test methods are implicitly injected to ``TestSin`` class by
+       the decorator, it is enough to place ``pass`` in the class definition.
 
-       The test is run with ``nose`` module.
+       Now the test is run with ``nose`` module.
 
        .. doctest::
 
@@ -82,9 +79,9 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
           ...     defaultTest=__name__, argv=['', '-a', '!gpu'], exit=False)
           True
 
-       We may also customize test data to be used. The following is an example
-       of testing ``sqrt`` Chainer function which we want to test in positive
-       value domain leaving some margin around zero of input ``x``.
+       To customize test data, ``make_data`` optional parameter can be used.
+       The following is an example of testing ``sqrt`` Chainer function, which
+       is tested in positive value domain here instead of the default input.
 
        .. doctest::
 
@@ -95,7 +92,7 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
           ...     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
           ...     return x, gy
           ...
-          >>> @testing.unary_math_function_test(F.sqrt, make_data=make_data)
+          >>> @testing.unary_math_function_test(F.Sqrt(), make_data=make_data)
           ... class TestSqrt(unittest.TestCase):
           ...     pass
           ...
@@ -103,32 +100,9 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
           ...     defaultTest=__name__, argv=['', '-a', '!gpu'], exit=False)
           True
 
-       We define ``make_data`` function to return input and gradient ndarrays
-       generated in proper value domains with given ``dtype`` and ``shape``
-       parameters, then passing it to the decorator's ``make_data`` keyword
-       parameter.
-
-       We may use this decorator to test mathematical Chainer functions
-       implemented with composing other Chainer functions, like ``rsqrt``
-       which computes reciprocal of square root.
-
-       .. doctest::
-
-          >>> def rsqrt(x, dtype=numpy.float32):
-          ...     return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
-          ...
-          >>> @testing.unary_math_function_test(
-          ...     F.rsqrt, func_expected=rsqrt, make_data=make_data)
-          ... class TestRsqrt(unittest.TestCase):
-          ...     pass
-          ...
-          >>> nose.run(
-          ...     defaultTest=__name__, argv=['', '-a', '!gpu'], exit=False)
-          True
-
-       Here we define ``rsqrt`` function composing numpy functions to get
-       expected values, passing it to ``func_expected`` keyword parameter of
-       ``@testing.unary_math_function_test`` decorator.
+       ``make_data`` function which returns input and gradient data generated
+       in proper value domains with given ``shape`` and ``dtype`` parameters is
+       defined, then passed to the decorator's ``make_data`` parameter.
 
     """
 
