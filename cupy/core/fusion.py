@@ -22,7 +22,7 @@ class FusionOp(object):
         self.nin = nin
         self.nout = nout
         self.in_vars = in_vars
-        self.out_nums = [None for i in range(self.nout)]
+        self.out_nums = [None] * self.nout
         self.types = types
         self.num = None
 
@@ -285,10 +285,7 @@ def _get_operation_list(trees, res, counter):
 
 
 def _gather_submodules(ops):
-    res = {}
-    for op in ops:
-        res[(op.name, tuple(op.types))] = op
-    return res
+    return {(op.name, tuple(op.types)): op for op in ops}
 
 
 def _get_parameters(var):
@@ -307,24 +304,24 @@ def _get_declaration_from_var(var):
 
 def _get_declaration_from_op(op):
     return ''.join('%s v%d_%d;\n' % (_dtype_to_ctype[t], op.num, i)
-                   for (i, t) in enumerate(op.types))
+                   for i, t in enumerate(op.types))
 
 
 def _get_operation_code(op):
     code = ''.join('v%d_%d = v%d;\n' % (op.num, i, v.num)
-                   for (i, v) in enumerate(op.in_vars))
+                   for i, v in enumerate(op.in_vars))
     params = ['v%d_%d' % (op.num, i)
               for i in range(op.nin + op.nout)]
     code += op.name + '(' + ', '.join(params) + ');\n'
     code += ''.join('v%d = v%d_%d;\n' %
                     (v, op.num, i + op.nin)
-                    for (i, v) in enumerate(op.out_nums))
+                    for i, v in enumerate(op.out_nums))
     return code
 
 
 def _get_submodule_code(op):
     parameters = ', '.join('%s &%s' % (_dtype_to_ctype[t], name)
-                           for (i, (name, t))
+                           for i, (name, t)
                            in enumerate(zip(op.param_names, op.types)))
     typedecl = ''.join(('typedef %s in%d_type;\n' % (_dtype_to_ctype[t], i))
                        for i, t in enumerate(op.types[:op.nin]))
@@ -415,7 +412,7 @@ def _get_fusion(func, nin, immutable_num,
         raise TypeError('Type is mismatched')
 
     output_vars = [FusionVar(None, None, t, i + immutable_num)
-                   for (i, t) in enumerate(ret_types)]
+                   for i, t in enumerate(ret_types)]
     nout = len(output_vars)
     nargs = immutable_num + nout
 
@@ -429,7 +426,7 @@ def _get_fusion(func, nin, immutable_num,
     operation += ''.join(map(_get_declaration_from_op,  operation_list))
     operation += '\n'.join(map(_get_operation_code, operation_list))
     operation += ''.join('v%d = v%d;\n' % (i + immutable_num, v.num)
-                         for (i, v) in enumerate(ret_vars))
+                         for i, v in enumerate(ret_vars))
     if reduce is None:
         submodules = _gather_submodules(operation_list)
         submodule_code = ''.join(
