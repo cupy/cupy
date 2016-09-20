@@ -183,8 +183,9 @@ def _normalize_arg(arg):
     arg_type = type(arg)
     if arg_type is _FusionRef:
         return arg._var
-    if __builtin__.any([arg_type in [int, float, bool],
-                        (hasattr(arg, 'dtype') and arg.dtype in _dtype_list)]):
+    is_scalar = arg_type in [int, float, bool]
+    is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
+    if is_scalar or is_ndarray:
         t = numpy.dtype(arg_type)
         return _FusionVar(None, None, t, const=arg)
     raise Exception('Unsupported type %s' % arg_type)
@@ -511,8 +512,8 @@ class Fusion(object):
         axis = kwargs['axis'] if 'axis' in kwargs else None
         if len(args) == 0:
             raise Exception('number of arguments must be more than 0')
-        if __builtin__.all(map(lambda a: hasattr(a, 'dtype') and
-                               type(a) is not numpy.ndarray, args)):
+        is_cupy_data = lambda a: isinstance(a, (core.ndarray, numpy.generic))
+        if __builtin__.all(map(is_cupy_data, args)):
             types = map(lambda x: x.dtype, args)
             key = tuple(types)
             if key not in self._memo:
