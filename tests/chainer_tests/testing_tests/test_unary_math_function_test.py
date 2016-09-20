@@ -11,7 +11,7 @@ class TestNoNumpyFunction(unittest.TestCase):
 
     def test_no_numpy_function(self):
         with self.assertRaises(ValueError):
-            testing.math_function_test(Dummy())  # no numpy.dummy
+            testing.unary_math_function_test(Dummy())  # no numpy.dummy
 
 
 testing.run_module(__name__, __file__)

@@ -13,8 +13,8 @@ def make_data_default(dtype, shape):
     return x, gy
 
 
-def math_function_test(func, func_expected=None, label_expected=None,
-                       make_data=None):
+def unary_math_function_test(func, func_expected=None, label_expected=None,
+                             make_data=None):
     """Decorator to test Chainer functions lifting mathematical numpy functions.
 
     This decorator is for testing Chainer functions lifted from corresponding
@@ -66,7 +66,7 @@ def math_function_test(func, func_expected=None, label_expected=None,
           >>> from chainer import testing
           >>> from chainer import functions as F
           >>>
-          >>> @testing.math_function_test(F.sin)
+          >>> @testing.unary_math_function_test(F.sin)
           ... class TestSin(unittest.TestCase):
           ...     pass
 
@@ -95,7 +95,7 @@ def math_function_test(func, func_expected=None, label_expected=None,
           ...     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
           ...     return x, gy
           ...
-          >>> @testing.math_function_test(F.sqrt, make_data=make_data)
+          >>> @testing.unary_math_function_test(F.sqrt, make_data=make_data)
           ... class TestSqrt(unittest.TestCase):
           ...     pass
           ...
@@ -117,7 +117,7 @@ def math_function_test(func, func_expected=None, label_expected=None,
           >>> def rsqrt(x, dtype=numpy.float32):
           ...     return numpy.reciprocal(numpy.sqrt(x, dtype=dtype))
           ...
-          >>> @testing.math_function_test(
+          >>> @testing.unary_math_function_test(
           ...     F.rsqrt, func_expected=rsqrt, make_data=make_data)
           ... class TestRsqrt(unittest.TestCase):
           ...     pass
@@ -128,7 +128,7 @@ def math_function_test(func, func_expected=None, label_expected=None,
 
        Here we define ``rsqrt`` function composing numpy functions to get
        expected values, passing it to ``func_expected`` keyword parameter of
-       ``@testing.math_function_test`` decorator.
+       ``@testing.unary_math_function_test`` decorator.
 
     """
 

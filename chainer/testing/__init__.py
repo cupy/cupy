@@ -2,7 +2,7 @@ import nose
 
 from chainer.testing import array
 from chainer.testing import helper
-from chainer.testing import math_function_test
+from chainer.testing import unary_math_function_test
 from chainer.testing import parameterized
 
 
@@ -12,7 +12,7 @@ parameterize = parameterized.parameterize
 product = parameterized.product
 product_dict = parameterized.product_dict
 
-math_function_test = math_function_test.math_function_test
+unary_math_function_test = unary_math_function_test.unary_math_function_test
 
 with_requires = helper.with_requires
 
