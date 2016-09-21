@@ -35,7 +35,7 @@ def im2col_cpu(
         j_lim = j + sy * out_h
         for i in six.moves.range(0, dkw, dx):
             i_lim = i + sx * out_w
-            col[:, :, j / dy, i / dx, :, :] = img[:, :, j:j_lim:sy, i:i_lim:sx]
+            col[:, :, j // dy, i // dx] = img[:, :, j:j_lim:sy, i:i_lim:sx]
 
     return col
 
@@ -81,7 +81,7 @@ def col2im_cpu(col, sy, sx, ph, pw, h, w, dy=1, dx=1):
         for i in six.moves.range(0, dkw, dx):
             i_lim = i + sx * out_w
             img[:, :, j:j_lim:sy, i:i_lim:sx] += col[
-                :, :, j / dy, i / dx, :, :]
+                :, :, j // dy, i // dx, :, :]
 
     return img[:, :, ph:h + ph, pw:w + pw]
 
@@ -128,6 +128,6 @@ def col2im_gpu(col, sy, sx, ph, pw, h, w, dy=1, dx=1):
             for i in six.moves.range(0, dkw, dx):
                 i_lim = i + sx * out_w
                 img[:, :, j:j_lim:sy, i:i_lim:sx] += col[
-                    :, :, j / dy, i / dx, :, :]
+                    :, :, j // dy, i // dx]
 
         return img[:, :, ph:h + ph, pw:w + pw]

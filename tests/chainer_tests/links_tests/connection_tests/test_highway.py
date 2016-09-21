@@ -17,9 +17,9 @@ class TestHighway(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(
-            -1, 1, (10, self.in_out_size)).astype(numpy.float32)
+            -1, 1, (5, self.in_out_size)).astype(numpy.float32)
         self.gy = numpy.random.uniform(
-            -1, 1, (10, self.in_out_size)).astype(numpy.float32)
+            -1, 1, (5, self.in_out_size)).astype(numpy.float32)
         self.link = links.Highway(
             self.in_out_size)
 
@@ -32,7 +32,7 @@ class TestHighway(unittest.TestCase):
         Wt[...] = numpy.random.uniform(-1, 1, Wt.shape)
         bt = self.link.transform.b.data
         bt[...] = numpy.random.uniform(-1, 1, bt.shape)
-        self.link.zerograds()
+        self.link.cleargrads()
 
         self.Wh = Wh.copy()  # fixed on CPU
         self.bh = bh.copy()  # fixed on CPU
@@ -55,7 +55,7 @@ class TestHighway(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.link(x)
         self.assertEqual(y.data.dtype, numpy.float32)
-        gradient_check.assert_allclose(self.y, y.data)
+        testing.assert_allclose(self.y, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):

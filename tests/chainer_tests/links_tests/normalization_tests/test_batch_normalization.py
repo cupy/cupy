@@ -23,12 +23,17 @@ def _batch_normalization(expander, gamma, beta, x, mean, var, eps, test):
     return y_expect
 
 
-@testing.parameterize(*testing.product({
+@testing.parameterize(*(testing.product({
     'test': [True, False],
-    'volatile': ['on', 'off'],
+    'volatile': ['on'],
+    'ndim': [0],
+    'dtype': [numpy.float32],
+}) + testing.product({
+    'test': [True, False],
+    'volatile': ['off'],
     'ndim': [0, 1, 2, 3],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class BatchNormalizationTest(unittest.TestCase):
 
     def setUp(self):
@@ -45,7 +50,7 @@ class BatchNormalizationTest(unittest.TestCase):
         self.gamma = gamma.copy()[self.expander]  # fixed on CPU
         self.beta = beta.copy()[self.expander]   # fixed on CPU
 
-        shape = (7, 3) + (2,) * self.ndim
+        shape = (5, 3) + (2,) * self.ndim
         self.x = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
 
