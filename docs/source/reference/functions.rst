@@ -283,6 +283,10 @@ arcsin
 ~~~~~~
 .. autofunction:: arcsin
 
+arctan
+~~~~~~
+.. autofunction:: arctan
+
 argmax
 ~~~~~~
 .. autofunction:: argmax

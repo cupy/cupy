@@ -80,4 +80,9 @@ class TestArccos(unittest.TestCase):
     pass
 
 
+@testing.unary_math_function_test(F.Arctan())
+class TestArctan(unittest.TestCase):
+    pass
+
+
 testing.run_module(__name__, __file__)

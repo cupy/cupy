@@ -195,3 +195,48 @@ def arccos(x):
         ~chainer.Variable: Output variable.
     """
     return Arccos()(x)
+
+
+class Arctan(function.Function):
+
+    @property
+    def label(self):
+        return 'arctan'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
+
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.arctan(x[0])),
+
+    def backward_cpu(self, x, gy):
+        gx = utils.force_array(numpy.square(x[0]))
+        gx += 1
+        numpy.reciprocal(gx, out=gx)
+        gx *= gy[0]
+        return gx,
+
+    def backward_gpu(self, x, gy):
+        gx = cuda.elementwise(
+            'T x, T gy', 'T gx',
+            'gx = (T)1.0 / ((T)1.0 + x * x)',
+            'arctan_bwd'
+        )(x[0], gy[0])
+        return gx,
+
+
+def arctan(x):
+    """Elementwise arctangent function.
+
+    .. math::
+       y_i = \\arctan x_i.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+    return Arctan()(x)
