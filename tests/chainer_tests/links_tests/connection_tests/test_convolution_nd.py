@@ -66,7 +66,7 @@ class TestConvolutionND(unittest.TestCase):
         self.assertEqual(y_cpu.data.dtype, self.x.dtype)
 
         self.link.to_gpu()
-        x_gpu = chainer.Variable(cuda.to_gpu(self.x.dtype))
+        x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         y_gpu = self.link(x_gpu)
         self.assertEqual(y_gpu.data.dtype, self.x.dtype)
 
