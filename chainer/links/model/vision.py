@@ -37,10 +37,9 @@ class VGG16Layers(chainer.Chain):
     """A pre-trained CNN model with 16 layers provided by VGG team [1].
 
     During initialization, this chain model automatically downloads
-    the pre-trained caffemodel from the internet, convert to another
-    chainer model, store it on your local directory, and initialize
-    all the parameters with it.
-    This model would be useful when you want to extract a semantic
+    the pre-trained caffemodel, convert to another chainer model,
+    store it on your local directory, and initialize all the parameters
+    with it. This model would be useful when you want to extract a semantic
     feature vector from a given image, or fine-tune the model
     on a different dataset.
 
@@ -199,7 +198,7 @@ class VGG16Layers(chainer.Chain):
         """Extracts all the feature maps of given images.
 
         The difference of directory executing ``__call__`` is that
-        it directory accepts the list of images as an input, and
+        it directly accepts the list of images as an input, and
         automatically transforms them to a proper variable. That is,
         it is also interpreted as a shortcut method that implicitly call
         ``prepare`` and ``__call__`` methods.
