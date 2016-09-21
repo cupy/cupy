@@ -145,6 +145,7 @@ class VGG16Layers(chainer.Chain):
             Dictionary of ~chainer.Variable: The directory in which
             the key contains the layer name and the value contains
             the corresponding variable.
+
         """
 
         h = x
@@ -179,6 +180,7 @@ class VGG16Layers(chainer.Chain):
 
         Returns:
             numpy.ndarray: The converted output array.
+
         """
 
         if isinstance(image, numpy.ndarray):
@@ -231,5 +233,7 @@ class VGG16Layers(chainer.Chain):
         Returns:
             ~chainer.Variable: Output that contains the class probabilities
                 of given images.
+
         """
+
         return self.extract(images, layers=['prob'])['prob']
