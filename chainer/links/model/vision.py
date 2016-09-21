@@ -34,6 +34,38 @@ def _retrieve(name, url, model):
 
 class VGG16Layers(chainer.Chain):
 
+    """A pre-trained CNN model with 16 layers provided by VGG team [1].
+
+    During initialization, this chain model automatically downloads
+    the pre-trained caffemodel from the internet, convert to another
+    chainer model, store it on your local directory, and initialize
+    all the parameters with it.
+    This model would be useful when you want to extract a semantic
+    feature vector from a given image, or fine-tune the model
+    on a different dataset.
+
+    Note that this pre-trained model is released under Creative Commons
+    Attribution License.
+
+    [1] ``Very Deep Convolutional Networks for Large-Scale Image
+    Recognition <https://arxiv.org/abs/1409.1556>``
+
+    Args:
+        pretrained_model (str): the destination of the pre-trained
+            caffemodel. If this argument is specified as ``auto``,
+            it automatically downloads the caffemodel from the internet.
+            Note that in this case the converted chainer model is stored
+            on ``$CHAINER_DATASET_ROOT/pfnet/chainer/models`` directory,
+            where ``$CHAINER_DATASET_ROOT`` is set as
+            ``$HOME/.chainer/dataset`` unless you specify another value
+            as a environment variable.
+
+    Attributes:
+        available_layers (list of str): The list of available layer names
+            used by ``__call__`` and ``extract`` methods.
+
+    """
+
     def __init__(self, pretrained_model='auto'):
         if pretrained_model:
             # As a sampling process is time-consuming,
@@ -103,6 +135,18 @@ class VGG16Layers(chainer.Chain):
         return list(self.functions.iterkeys())
 
     def __call__(self, x, layers=['prob']):
+        """Computes all the feature maps specified by ``layers``.
+
+        Args:
+            x (~chainer.Variable): Input variable.
+            layers (list of str): The list of layernames you want to extract.
+
+        Returns:
+            Dictionary of ~chainer.Variable: The directory in which
+            the key contains the layer name and the value contains
+            the corresponding variable.
+        """
+
         h = x
         activations = {}
         target_layers = set(layers)
@@ -120,8 +164,23 @@ class VGG16Layers(chainer.Chain):
                 break
         return activations
 
-    @classmethod
-    def prepare(cls, image, size=(224, 224)):
+    def prepare(self, image, size=(224, 224)):
+        """Converts the given image to the numpy array.
+
+        Note that you have to call this method before ``__call__``
+        because the pre-trained vgg model requires to resize the given image,
+        covert the RGB to the BGR, subtract the mean,
+        and permute the dimensions before calling.
+
+        Args:
+            image (PIL.Image or numpy.ndarray): Input image.
+            size (pair of ints): Size of converted images.
+                If ``None``, the given image is not resized.
+
+        Returns:
+            numpy.ndarray: The converted output array.
+        """
+
         if isinstance(image, numpy.ndarray):
             image = Image.fromarray(image)
         image = image.convert('RGB')
@@ -135,10 +194,42 @@ class VGG16Layers(chainer.Chain):
         return image
 
     def extract(self, images, layers=['fc7'], size=(224, 224)):
+        """Extracts all the feature maps of given images.
+
+        The difference of directory executing ``__call__`` is that
+        it directory accepts the list of images as an input, and
+        automatically transforms them to a proper variable. That is,
+        it is also interpreted as a shortcut method that implicitly call
+        ``prepare`` and ``__call__`` methods.
+
+        Args:
+            image (list of PIL.Image or numpy.ndarray): Input images.
+            layers (list of str): The list of layernames you want to extract.
+            size (pair of ints): The resolution of resized images used as
+                an input of CNN. All the given images are not resized
+                if this argument is ``None``, but the resolutions of
+                all the images should be the same.
+
+        Returns:
+            Dictionary of ~chainer.Variable: The directory in which
+            the key contains the layer name and the value contains
+            the corresponding variable.
+
+        """
+
         x = chainer.dataset.concat_examples(
             [self.prepare(img, size=size) for img in images])
         x = Variable(self.xp.asarray(x))
         return self(x, layers=layers)
 
     def predict(self, images):
+        """Computes all the probabilities of given images.
+
+        Args:
+            image (list of PIL.Image or numpy.ndarray): Input images.
+
+        Returns:
+            ~chainer.Variable: Output that contains the class probabilities
+                of given images.
+        """
         return self.extract(images, layers=['prob'])['prob']
