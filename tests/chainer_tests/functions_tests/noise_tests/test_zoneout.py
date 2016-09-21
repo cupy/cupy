@@ -5,9 +5,15 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
+from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+
+
+def _zoneout(h, x, creator):
+    h_next = h * creator.flag_h + x * creator.flag_x
+    return h_next
 
 
 @testing.parameterize(
@@ -26,22 +32,26 @@ class TestZoneout(unittest.TestCase):
     def check_forward(self, h_data, x_data):
         h = chainer.Variable(h_data)
         x = chainer.Variable(x_data)
-        f = functions.Zoneout(self.ratio)
-        h_next = f(h, x)
-        h_next_expect = h * f.flag_h + x * f.flag_x
+        h_next = functions.zoneout(h, x, self.ratio)
+        h_next_expect = h * h_next.creator.flag_h + x * h_next.creator.flag_x
         testing.assert_allclose(h_next.data, h_next_expect.data)
 
     def check_backward(self, h_data, x_data, y_grad):
         h = chainer.Variable(h_data)
         x = chainer.Variable(x_data)
-        f = functions.Zoneout(self.ratio)
-        h_next = f(h, x)
-        h_next.grad = y_grad
-        h_next.backward()
-        gh_expect = y_grad * f.flag_h
-        gx_expect = y_grad * f.flag_x
-        testing.assert_allclose(h.grad, gh_expect)
-        testing.assert_allclose(x.grad, gx_expect)
+        y = functions.zoneout(h, x, self.ratio)
+        creator = y.creator
+        y.grad = y_grad
+        y.backward()
+
+        def f():
+            nonlocal creator
+            y = _zoneout(h_data, x_data, creator)
+            return y,
+        gh, gx, = gradient_check.numerical_grad(f, (h.data, x.data,),
+                                                (y.grad,))
+        gradient_check.assert_allclose(gh, h.grad, atol=1e-3)
+        gradient_check.assert_allclose(gx, x.grad, atol=1e-3)
 
     def test_forward_cpu(self):
         self.check_forward(self.h, self.x)

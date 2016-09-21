@@ -15,7 +15,7 @@ def _sigmoid(x):
     return 1 / (1 + xp.exp(-x))
 
 
-def _zoneoutlstm(func, c, h, x, ratio):
+def _zoneoutlstm(func, c, h, x, c_creator, h_creator):
     xp = cuda.get_array_module(x)
 
     lstm_in = x.dot(func.upward.W.data.T)
@@ -29,29 +29,27 @@ def _zoneoutlstm(func, c, h, x, ratio):
     f = xp.reshape(f, (len(f), f.shape[1]))
     o = xp.reshape(o, (len(o), o.shape[1]))
 
-    # Zoneout where ratio = 0
-    c_next = xp.tanh(a) * _sigmoid(i) + _sigmoid(f) * c
-    y = _sigmoid(o) * xp.tanh(c_next)
+    c_tmp = xp.tanh(a) * _sigmoid(i) + _sigmoid(f) * c
+    c_next = c * c_creator.flag_h + c_tmp * c_creator.flag_x
+    h_next = h * h_creator.flag_h + \
+        (_sigmoid(o) * xp.tanh(c_tmp)) * h_creator.flag_x
 
-    # Zoneout where ratio = 1.0
-    if ratio == 1.0:
-        c_next = c
-        y = h
-    return c_next, y
+    return c_next, h_next
 
 
 @testing.parameterize(
-    {'in_size': 10, 'out_size': 10, 'ratio': 1},
-    {'in_size': 10, 'out_size': 40, 'ratio': 1},
-    {'in_size': 10, 'out_size': 10, 'ratio': 0},
-    {'in_size': 10, 'out_size': 40, 'ratio': 0},
+    {'in_size': 10, 'out_size': 10, 'c_ratio': 0.5, 'h_ratio': 0.25},
+    {'in_size': 10, 'out_size': 40, 'c_ratio': 0.25, 'h_ratio': 0.5},
+    {'in_size': 10, 'out_size': 10, 'c_ratio': 0.3, 'h_ratio': 0.3},
+    {'in_size': 10, 'out_size': 10, 'c_ratio': 1.0, 'h_ratio': 1.0},
+    {'in_size': 10, 'out_size': 40, 'c_ratio': 0.0, 'h_ratio': 0.0},
 )
 class TestZoneoutlstm(unittest.TestCase):
 
     def setUp(self):
         self.link = links.StatefulZoneoutLSTM(self.in_size, self.out_size,
-                                              c_ratio=self.ratio,
-                                              h_ratio=self.ratio)
+                                              c_ratio=self.c_ratio,
+                                              h_ratio=self.h_ratio)
         upward = self.link.upward.W.data
         upward[...] = numpy.random.uniform(-1, 1, upward.shape)
         lateral = self.link.lateral.W.data
@@ -73,15 +71,18 @@ class TestZoneoutlstm(unittest.TestCase):
         x = chainer.Variable(x_data)
 
         h1 = self.link(x)
+        c1 = self.link.c
         c1_expect, h1_expect = _zoneoutlstm(self.link, c_data, h_data,
-                                            x_data, self.ratio)
+                                            x_data, c1.creator, h1.creator)
         gradient_check.assert_allclose(h1.data, h1_expect)
         gradient_check.assert_allclose(self.link.c.data, c1_expect)
         gradient_check.assert_allclose(self.link.h.data, h1_expect)
 
         h2 = self.link(x)
+        c2 = self.link.c
         c2_expect, h2_expect = _zoneoutlstm(self.link, c1_expect, h1_expect,
-                                            x_data, self.ratio)
+                                            x_data, c2.creator, h2.creator)
+
         gradient_check.assert_allclose(h2.data, h2_expect)
         gradient_check.assert_allclose(self.link.c.data, c2_expect)
         gradient_check.assert_allclose(self.link.h.data, h2_expect)
@@ -99,11 +100,17 @@ class TestZoneoutlstm(unittest.TestCase):
     def check_backward(self, c_data, h_data, x_data, y_grad):
         x = chainer.Variable(x_data)
         y = self._forward(self.link, x)
+        c = self.link.c
+        c_creator = c.creator
+        y_creator = y.creator
         y.grad = y_grad
         y.backward()
 
         def f():
-            c, y = _zoneoutlstm(self.link, c_data, h_data, x_data, self.ratio)
+            nonlocal c_creator
+            nonlocal y_creator
+            c, y = _zoneoutlstm(self.link, c_data, h_data,
+                                x_data, c_creator, y_creator)
             return y,
         gx, = gradient_check.numerical_grad(f, (x.data,), (y.grad,))
         gradient_check.assert_allclose(gx, x.grad, atol=1e-3)
