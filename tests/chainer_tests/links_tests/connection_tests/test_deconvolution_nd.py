@@ -49,12 +49,14 @@ class TestDeconvolutionND(unittest.TestCase):
         else:
             outsize = None
 
-        initial_bias = \
-            initializers.Uniform(scale=1) if not self.nobias else None
+        if not self.nobias:
+            initial_bias = initializers.Uniform(scale=1, dtype=self.dtype)
+        else:
+            initial_bias = None
 
         self.link = deconvolution_nd.DeconvolutionND(
             ndim, in_channels, out_channels, ksize, stride=stride, pad=pad,
-            outsize=outsize, initial_bias=initial_bias, bias_dtype=self.dtype)
+            outsize=outsize, initial_bias=initial_bias)
         self.link.cleargrads()
 
         x_shape = (N, in_channels) + self.dims
