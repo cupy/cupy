@@ -487,12 +487,14 @@ class Fusion(object):
 
     """Function class.
 
-    This class can be get by using `fuse` and
-    works like ElementwiseKernel or ReductionKernel.
+    This class can be get by using `fuse` function and
+    works like `ElementwiseKernel` or `ReductionKernel`.
 
     Attributes:
-        func (function): Rhe function before fusing.
+        func (function): The function before fusing.
         name (str): The name of the function.
+        reduce (ufunc): Reduction ufunc.
+        post_map (function): Mapping function for reduced values.
     """
 
     def __init__(self, func, input_num, immutable_num, reduce, post_map):
@@ -544,17 +546,18 @@ def fuse(input_num=None, immutable_num=None,
     """Function fusing decorator.
 
     This decorator can be used to define an elementwise or reduction kernel
-    more easily than ElementwiseKernel class.
+    more easily than `ElementwiseKernel` class or `ReductionKernel` class.
 
-    This decorator makes Fusion class from an function.
+    This decorator makes `Fusion` class from the given function.
 
     Args:
-        input_num (int): Number of input arguments of the function.
+        input_num (int): Number of input arguments of the given function.
         immutable_num (int): Number of immutable input arguments of
-            the function.
+            the given function.
         reduce (function): The reduce function which is applied after
-            pre-mapping step.
-        post_map (function): post-map function.
+            pre-mapping step. If not assigned, reduction step is skipped.
+        post_map (function): Mapping function for reduced values.
+            If not assigned, post_map step is skipped.
     """
     return lambda f: Fusion(f, input_num, immutable_num, reduce, post_map)
 
