@@ -65,7 +65,7 @@ class TrigonometricFunctionsTest(unittest.TestCase):
 
 
 def make_data(shape, dtype):
-    x = numpy.random.uniform(-.95, .95, shape).astype(dtype)
+    x = numpy.random.uniform(-.9, .9, shape).astype(dtype)
     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
     return x, gy
 
