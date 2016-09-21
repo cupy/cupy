@@ -275,6 +275,10 @@ triplet
 Mathematical functions
 ----------------------
 
+arccos
+~~~~~~
+.. autofunction:: arccos
+
 argmax
 ~~~~~~
 .. autofunction:: argmax

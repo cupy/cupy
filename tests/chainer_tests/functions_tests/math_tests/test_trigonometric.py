@@ -64,4 +64,15 @@ class TrigonometricFunctionsTest(unittest.TestCase):
         self.assertEqual(self.func_class().label, self.func_name)
 
 
+def make_data(shape, dtype):
+    x = numpy.random.uniform(-.95, .95, shape).astype(dtype)
+    gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
+    return x, gy
+
+
+@testing.unary_math_function_test(F.Arccos(), make_data=make_data)
+class TestArccos(unittest.TestCase):
+    pass
+
+
 testing.run_module(__name__, __file__)
