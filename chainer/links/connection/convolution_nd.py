@@ -23,19 +23,12 @@ class ConvolutionND(link.Link):
         pad (int or tuple of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p, ..., p)`` are equivalent.
         initialW: Value used to initialize the filter weight. May be an
-            initializer instance or another value that
-            :func:`~chainer.init_weight` helper function can take. This link
-            uses :func:`~chainer.init_weight` to initialize the filter weight
-            and passes the value of ``initialW`` to it as it is.
-        W_dtype: Data type of the filter weight.
+            initializer instance or another value the same with that
+            :func:`~chainer.init_weight` function can take.
         initial_bias: Value used to initialize the bias vector. May be an
-            initializer instance or another value except ``None`` that
-            :func:`~chainer.init_weight` helper function can take. If ``None``
-            is given, this link does not use the bias vector. This link uses
-            :func:`~chainer.init_weight` to initialize the bias vector and
-            passes the value of ``initial_bias`` other than ``None`` to it as
-            it is.
-        bias_dtype: Data type of the bias vector.
+            initializer instance or another value except ``None`` the same
+            with that :func:`~chainer.init_weight` function can take. If
+            ``None`` is supplied, the link does not have the bias vector.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
             See :func:`~chainer.functions.convolution_nd` for exact conditions
             of cuDNN availability.
@@ -57,23 +50,25 @@ class ConvolutionND(link.Link):
     """
 
     def __init__(self, ndim, in_channels, out_channels, ksize, stride=1, pad=0,
-                 initialW=None, W_dtype=numpy.float32, initial_bias=None,
-                 bias_dtype=numpy.float32, use_cudnn=True, cover_all=False):
+                 initialW=None, initial_bias=None, use_cudnn=True,
+                 cover_all=False):
         ksize = conv_nd.as_tuple(ksize, ndim)
         self.stride = stride
         self.pad = pad
         self.use_cudnn = use_cudnn
         self.cover_all = cover_all
 
+        super(ConvolutionND, self).__init__()
+
         W_shape = (out_channels, in_channels) + ksize
-        super(ConvolutionND, self).__init__(W=(W_shape, W_dtype))
-        initializers.init_weight(self.W.data, initialW)
+        initialW = initializers._get_initializer(initialW)
+        self.add_param('W', W_shape, initializer=initialW)
 
         if initial_bias is None:
             self.b = None
         else:
-            self.add_param('b', out_channels, dtype=bias_dtype)
-            initializers.init_weight(self.b.data, initial_bias)
+            initial_bias = initializers._get_initializer(initial_bias)
+            self.add_param('b', out_channels, initializer=initial_bias)
 
     def __call__(self, x):
         """Applies N-dimensional convolution layer.

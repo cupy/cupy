@@ -29,7 +29,7 @@ class TestConvolutionND(unittest.TestCase):
 
         self.link = convolution_nd.ConvolutionND(
             ndim, 3, 2, self.ksize, stride=self.stride, pad=self.pad,
-            initial_bias=initializers.Uniform(1), bias_dtype=self.dtype)
+            initial_bias=initializers.Uniform(scale=1., dtype=self.dtype))
         self.link.cleargrads()
 
         x_shape = (2, 3) + self.dims
