@@ -42,16 +42,22 @@ class VGG16Layers(chainer.Chain):
     with it. This model would be useful when you want to extract a semantic
     feature vector from a given image, or fine-tune the model
     on a different dataset.
-
     Note that this pre-trained model is released under Creative Commons
     Attribution License.
+
+    If you want to convert the pre-trained caffemodel to a chainer model
+    that can be spesified in the constractor,
+    please make an instance of ``chainer.links.caffe.CaffeFunction``
+    with the pre-trained caffemodel, and serialize it with
+    ``chainer.serializers.save_npz`` function.
 
     [1] ``Very Deep Convolutional Networks for Large-Scale Image
     Recognition <https://arxiv.org/abs/1409.1556>``
 
     Args:
         pretrained_model (str): the destination of the pre-trained
-            caffemodel. If this argument is specified as ``auto``,
+            chainer model serialized as a ``.npz`` file.
+            If this argument is specified as ``auto``,
             it automatically downloads the caffemodel from the internet.
             Note that in this case the converted chainer model is stored
             on ``$CHAINER_DATASET_ROOT/pfnet/chainer/models`` directory,
