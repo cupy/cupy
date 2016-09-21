@@ -70,6 +70,11 @@ def make_data(shape, dtype):
     return x, gy
 
 
+@testing.unary_math_function_test(F.Arcsin(), make_data=make_data)
+class TestArcsin(unittest.TestCase):
+    pass
+
+
 @testing.unary_math_function_test(F.Arccos(), make_data=make_data)
 class TestArccos(unittest.TestCase):
     pass

@@ -279,6 +279,10 @@ arccos
 ~~~~~~
 .. autofunction:: arccos
 
+arcsin
+~~~~~~
+.. autofunction:: arcsin
+
 argmax
 ~~~~~~
 .. autofunction:: argmax
