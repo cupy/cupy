@@ -2,8 +2,8 @@ import nose
 
 from chainer.testing import array
 from chainer.testing import helper
-from chainer.testing import unary_math_function_test
 from chainer.testing import parameterized
+from chainer.testing import unary_math_function_test
 
 
 assert_allclose = array.assert_allclose
