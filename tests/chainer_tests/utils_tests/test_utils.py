@@ -6,22 +6,35 @@ from chainer import testing
 from chainer import utils
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [None, numpy.float16, numpy.float32, numpy.float64],
+}))
 class TestForceArray(unittest.TestCase):
 
     def test_scalar(self):
-        x = utils.force_array(numpy.float32(1))
+        x = utils.force_array(numpy.float32(1), dtype=self.dtype)
         self.assertIsInstance(x, numpy.ndarray)
-        self.assertEqual(x.dtype, numpy.float32)
+        if self.dtype is None:
+            self.assertEqual(x.dtype, numpy.float32)
+        else:
+            self.assertEqual(x.dtype, self.dtype)
 
     def test_0dim_array(self):
-        x = utils.force_array(numpy.array(1, numpy.float32))
+        x = utils.force_array(numpy.array(1, numpy.float32), dtype=self.dtype)
         self.assertIsInstance(x, numpy.ndarray)
-        self.assertEqual(x.dtype, numpy.float32)
+        if self.dtype is None:
+            self.assertEqual(x.dtype, numpy.float32)
+        else:
+            self.assertEqual(x.dtype, self.dtype)
 
     def test_array(self):
-        x = utils.force_array(numpy.array([1], numpy.float32))
+        x = utils.force_array(numpy.array([1], numpy.float32),
+                              dtype=self.dtype)
         self.assertIsInstance(x, numpy.ndarray)
-        self.assertEqual(x.dtype, numpy.float32)
+        if self.dtype is None:
+            self.assertEqual(x.dtype, numpy.float32)
+        else:
+            self.assertEqual(x.dtype, self.dtype)
 
 
 class TestForceType(unittest.TestCase):

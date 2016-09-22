@@ -73,7 +73,7 @@ class TestMaxout(unittest.TestCase):
                                  self.wscale, initialW, initial_bias)
 
         self.y = _maxout(self.x, initialW, initial_bias)
-        self.link.zerograds()
+        self.link.cleargrads()
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)

@@ -35,7 +35,7 @@ def gaussian_kl_divergence(mean, ln_var):
     assert isinstance(mean, variable.Variable)
     assert isinstance(ln_var, variable.Variable)
 
-    J = mean.data.size
+    J = mean.size
     var = exponential.exp(ln_var)
     return (sum.sum(mean * mean) + sum.sum(var) - sum.sum(ln_var) - J) * 0.5
 
@@ -105,7 +105,7 @@ def gaussian_nll(x, mean, ln_var):
     assert isinstance(mean, variable.Variable)
     assert isinstance(ln_var, variable.Variable)
 
-    D = x.data.size
+    D = x.size
     x_prec = exponential.exp(-ln_var)
     x_diff = x - mean
     x_power = (x_diff * x_diff) * x_prec * -0.5

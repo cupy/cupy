@@ -88,7 +88,7 @@ def prelu(x, W):
 
     For example :math:`W` has the shape of :math:`(2, 3, 4)`,
     :math:`x` must have the shape of :math:`(B, 2, 3, 4, S1, ..., SN)`
-    where B is batchsize and the number of trailing S's
+    where B is batch size and the number of trailing S's
     is arbitrary non-negative integer.
 
     Args:

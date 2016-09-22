@@ -16,10 +16,11 @@ class PrintReport(extension.Extension):
         log_report (str or LogReport): Log report to accumulate the
             observations. This is either the name of a LogReport extensions
             registered to the trainer, or a LogReport instance to use
-            interanlly.
+            internally.
         out: Stream to print the bar. Standard output is used by default.
 
     """
+
     def __init__(self, entries, log_report='LogReport', out=sys.stdout):
         self._entries = entries
         self._log_report = log_report

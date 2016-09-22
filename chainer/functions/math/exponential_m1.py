@@ -25,7 +25,7 @@ class Expm1(function.Function):
         return self.y,
 
     def backward(self, x, gy):
-        return utils.force_array((self.y + 1.0).astype(numpy.float32) * gy[0]),
+        return utils.force_array((self.y + self.y.dtype.type(1.0)) * gy[0]),
 
 
 def expm1(x):

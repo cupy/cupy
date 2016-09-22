@@ -21,23 +21,32 @@ def _pair(x):
     return x, x
 
 
-@parameterize(*testing.product({
-    'in_channels': [3],
-    'out_channels': [2],
-    'wscale': [1],
-    'ksize': [3],
-    'stride': [1, 2],
-    'pad': [1],
-    'nobias': [True, False],
-    'use_cudnn': [True, False],
-    'test_outsize': [True, False],
+@parameterize(*(testing.product({
     'c_contiguous': [True, False],
+    'test_outsize': [True, False],
+    'nobias': [True, False],
+    'stride': [1, 2],
+    'use_cudnn': [True],
+    'x_dtype': [numpy.float32],
+    'W_dtype': [numpy.float32],
+}) + testing.product({
+    'c_contiguous': [False],
+    'test_outsize': [True],
+    'nobias': [False],
+    'stride': [1, 2],
+    'use_cudnn': [True, False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestDeconvolution2DFunction(unittest.TestCase):
 
-    def setUp(self, use_cudnn=True):
+    in_channels = 3
+    out_channels = 2
+    wscale = 1
+    ksize = 3
+    pad = 1
+
+    def setUp(self):
         kh, kw = _pair(self.ksize)
         sh, sw = _pair(self.stride)
         ph, pw = _pair(self.pad)

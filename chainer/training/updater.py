@@ -1,3 +1,4 @@
+import copy
 import six
 
 from chainer.dataset import convert
@@ -13,6 +14,7 @@ class Updater(object):
     TODO(beam2d): document it.
 
     """
+
     def connect_trainer(self, trainer):
         """Connects the updater to the trainer that will call it.
 
@@ -114,6 +116,7 @@ class StandardUpdater(Updater):
         iteration: Current number of completed updates.
 
     """
+
     def __init__(self, iterator, optimizer, converter=convert.concat_examples,
                  device=None, loss_func=None):
         if isinstance(iterator, iterator_module.Iterator):
@@ -228,6 +231,7 @@ class ParallelUpdater(StandardUpdater):
             default.
 
     """
+
     def __init__(self, iterator, optimizer, converter=convert.concat_examples,
                  models=None, devices=None, loss_func=None):
         super(ParallelUpdater, self).__init__(
@@ -249,10 +253,12 @@ class ParallelUpdater(StandardUpdater):
 
             models = {'main': optimizer.target}
             for name in names:
-                model = optimizer.target.copy()
-                model.to_gpu(devices[name])
+                model = copy.deepcopy(optimizer.target)
+                if devices[name] >= 0:
+                    model.to_gpu(devices[name])
                 models[name] = model
-            optimizer.target.to_gpu(devices['main'])
+            if devices['main'] >= 0:
+                optimizer.target.to_gpu(devices['main'])
 
         self._devices = devices
         self._models = models
@@ -283,8 +289,9 @@ class ParallelUpdater(StandardUpdater):
             in_arrays_list[key] = self.converter(
                 batch[i::n], self._devices[key])
 
+        # For reducing memory
         for model in six.itervalues(self._models):
-            model.zerograds()
+            model.cleargrads()
 
         losses = []
         for model_key, model in six.iteritems(self._models):
@@ -294,13 +301,17 @@ class ParallelUpdater(StandardUpdater):
             if isinstance(in_arrays, tuple):
                 in_vars = tuple(variable.Variable(x) for x in in_arrays)
                 losses.append(loss_func(*in_vars))
-            elif isinstance(in_arrays[0], dict):
+            elif isinstance(in_arrays, dict):
                 in_vars = {key: variable.Variable(x)
                            for key, x in six.iteritems(in_arrays)}
                 losses.append(loss_func(**in_vars))
             else:
                 in_vars = variable.Variable(in_arrays)
                 losses.append(loss_func(in_vars))
+
+        # For _uninitialized_params
+        for model in six.itervalues(self._models):
+            model.cleargrads()
 
         for loss in losses:
             loss.backward()

@@ -16,7 +16,7 @@ class SimpleReductionFunction(unittest.TestCase):
         self.my_int8_sum = core.create_reduction_func(
             'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
 
-    @testing.numpy_cupy_allclose(accept_error=False)
+    @testing.numpy_cupy_allclose()
     def check_int8_sum(self, shape, xp, axis=None, keepdims=False):
         a = testing.shaped_random(shape, xp, 'b')
         if xp == cupy:
@@ -50,6 +50,12 @@ class SimpleReductionFunction(unittest.TestCase):
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=0)
         self.check_int8_sum((512 + 1, 256 * 256 + 1), axis=1)
 
+    def test_shape5(self):
+        size = ((2 << 32)
+                // cupy.core.core.simple_reduction_function._block_size)
+        self.check_int8_sum((size, 1), axis=1)
+        self.check_int8_sum((size, 1), axis=0)
+
 
 @testing.gpu
 class TestReductionKernel(unittest.TestCase):
@@ -60,7 +66,7 @@ class TestReductionKernel(unittest.TestCase):
         self.my_sum = core.ReductionKernel(
             'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
 
-    @testing.numpy_cupy_allclose(accept_error=False)
+    @testing.numpy_cupy_allclose()
     def check_int8_sum(self, shape, xp, axis=None, keepdims=False):
         a = testing.shaped_random(shape, xp, 'b')
         if xp == cupy:

@@ -15,13 +15,13 @@ class NIN(chainer.Chain):
         w = math.sqrt(2)  # MSRA scaling
         super(NIN, self).__init__(
             mlpconv1=L.MLPConvolution2D(
-                3, (96, 96, 96), 11, stride=4, wscale=w),
+                None, (96, 96, 96), 11, stride=4, wscale=w),
             mlpconv2=L.MLPConvolution2D(
-                96, (256, 256, 256), 5, pad=2, wscale=w),
+                None, (256, 256, 256), 5, pad=2, wscale=w),
             mlpconv3=L.MLPConvolution2D(
-                256, (384, 384, 384), 3, pad=1, wscale=w),
+                None, (384, 384, 384), 3, pad=1, wscale=w),
             mlpconv4=L.MLPConvolution2D(
-                384, (1024, 1024, 1000), 3, pad=1, wscale=w),
+                None, (1024, 1024, 1000), 3, pad=1, wscale=w),
         )
         self.train = True
 

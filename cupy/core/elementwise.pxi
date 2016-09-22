@@ -51,7 +51,7 @@ cdef dict _typenames_base = {
 cdef str _all_type_chars = 'dfeqlihbQLIHB?'
 
 cdef dict _typenames = {
-    numpy.dtype(i).type:_typenames_base[numpy.dtype(i)]
+    numpy.dtype(i).type: _typenames_base[numpy.dtype(i)]
     for i in _all_type_chars}
 
 cdef tuple _python_scalar_type = six.integer_types + (float, bool)
@@ -170,7 +170,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     for i in range(1, ndim):
         if vecshape[i - 1] == 1:
             continue
-        for j in range(args_strides.size()):
+        for j in range(<Py_ssize_t>args_strides.size()):
             if args_strides[j][i] * vecshape[i] != args_strides[j][i - 1]:
                 cnt += 1
                 axis = i - 1
@@ -308,7 +308,7 @@ def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
 
 
 cdef tuple _broadcast(list args, tuple params, bint use_size):
-    cpdef Py_ssize_t i 
+    cpdef Py_ssize_t i
     cpdef ParameterInfo p
     cpdef bint is_none, is_not_none
     value = []
@@ -478,9 +478,9 @@ cdef class ElementwiseKernel:
         """Compiles and invokes the elementwise kernel.
 
         The compilation runs only if the kernel is not cached. Note that the
-        kernels with different argument dtypes or dimensions are not compatible.
-        It means that single ElementwiseKernel object may be compiled into
-        multiple kernel binaries.
+        kernels with different argument dtypes or dimensions are not
+        compatible. It means that single ElementwiseKernel object may be
+        compiled into multiple kernel binaries.
 
         Args:
             args: Arguments of the kernel.
@@ -714,7 +714,7 @@ class ufunc(object):
 
         out = kwargs.pop('out', None)
         dtype = kwargs.pop('dtype', None)
-        # Note default behavie of casting is 'same_kind' on numpy>=1.10
+        # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', 'same_kind')
         if dtype is not None:
             dtype = numpy.dtype(dtype).type
@@ -766,7 +766,7 @@ class ufunc(object):
         args_info = _get_args_info(inout_args)
 
         kern = _get_ufunc_kernel(
-            in_types, out_types, routine, args_info, 
+            in_types, out_types, routine, args_info,
             self._params, self.name, self._preamble)
 
         kern.linear_launch(indexer.size, inout_args)

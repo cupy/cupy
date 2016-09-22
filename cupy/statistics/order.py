@@ -1,6 +1,11 @@
 def amin(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the minimum of an array or the minimum along an axis.
 
+    .. note::
+
+       When at least one element is NaN, the corresponding min value will be
+       NaN.
+
     Args:
         a (cupy.ndarray): Array to take the minimum.
         axis (int): Along which axis to take the minimum. The flattened array
@@ -22,6 +27,11 @@ def amin(a, axis=None, out=None, keepdims=False, dtype=None):
 
 def amax(a, axis=None, out=None, keepdims=False, dtype=None):
     """Returns the maximum of an array or the maximum along an axis.
+
+    .. note::
+
+       When at least one element is NaN, the corresponding min value will be
+       NaN.
 
     Args:
         a (cupy.ndarray): Array to take the maximum.

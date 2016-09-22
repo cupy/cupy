@@ -2,9 +2,6 @@
 # Types
 ###############################################################################
 
-from cupy.cuda.driver cimport Stream
-
-
 cdef extern from *:
     ctypedef int Ordering 'curandOrdering_t'
     ctypedef int RngType 'curandRngType_t'
