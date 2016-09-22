@@ -101,14 +101,13 @@ class TestZoneoutlstm(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self._forward(self.link, x)
         c = self.link.c
-        c_creator = c.creator
-        y_creator = y.creator
+        d = {'c_creator': c.creator, 'y_creator': y.creator}
         y.grad = y_grad
         y.backward()
 
         def f():
-            nonlocal c_creator
-            nonlocal y_creator
+            c_creator = d['c_creator']
+            y_creator = d['y_creator']
             c, y = _zoneoutlstm(self.link, c_data, h_data,
                                 x_data, c_creator, y_creator)
             return y,

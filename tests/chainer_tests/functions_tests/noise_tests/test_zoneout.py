@@ -33,19 +33,19 @@ class TestZoneout(unittest.TestCase):
         h = chainer.Variable(h_data)
         x = chainer.Variable(x_data)
         h_next = functions.zoneout(h, x, self.ratio)
-        h_next_expect = h * h_next.creator.flag_h + x * h_next.creator.flag_x
-        testing.assert_allclose(h_next.data, h_next_expect.data)
+        h_next_expect = _zoneout(h_data, x_data, h_next.creator)
+        testing.assert_allclose(h_next.data, h_next_expect)
 
     def check_backward(self, h_data, x_data, y_grad):
         h = chainer.Variable(h_data)
         x = chainer.Variable(x_data)
         y = functions.zoneout(h, x, self.ratio)
-        creator = y.creator
+        d = {'creator': y.creator}
         y.grad = y_grad
         y.backward()
 
         def f():
-            nonlocal creator
+            creator = d['creator']
             y = _zoneout(h_data, x_data, creator)
             return y,
         gh, gx, = gradient_check.numerical_grad(f, (h.data, x.data,),
