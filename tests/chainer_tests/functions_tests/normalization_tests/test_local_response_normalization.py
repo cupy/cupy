@@ -26,7 +26,7 @@ class TestLocalResponseNormalization(unittest.TestCase):
         self.check_backward_optionss = {}
         if self.dtype == numpy.float16:
             self.check_forward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
-            self.check_backward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
+            self.check_backward_optionss = {'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
