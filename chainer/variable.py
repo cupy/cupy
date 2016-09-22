@@ -370,8 +370,10 @@ Actual: {0}'''.format(type(data))
 
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
-            hooks = collections.OrderedDict(chainer.get_function_hooks())
-            hooks.update(func.local_function_hooks)
+            hooks = chainer.get_function_hooks()
+            if func.n_local_function_hooks != 0:
+                hooks = collections.OrderedDict(hooks)
+                hooks.update(func.local_function_hooks)
             for hook in six.itervalues(hooks):
                 hook.backward_preprocess(func, in_data, out_grad)
             with cuda.get_device(*(in_data + out_grad)):
