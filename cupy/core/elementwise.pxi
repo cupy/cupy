@@ -134,10 +134,9 @@ cpdef str _get_kernel_params(tuple params, tuple args_info):
             t = _get_typename(dtype)
             if is_array:
                 t = 'CArray<%s, %d>' % (t, ndim)
-        ret.append('%s%s %s%s' % ('const ' if p.is_const else '',
-                                  t,
-                                  '_raw_' if is_array and not p.raw else '',
-                                  p.name))
+        ret.append('%s %s%s' % (t,
+                                '_raw_' if is_array and not p.raw else '',
+                                p.name))
     return ', '.join(ret)
 
 
@@ -398,7 +397,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
     for p, a in six.moves.zip(params, args_info):
         if not p.raw and a[0] == ndarray:
             if p.is_const:
-                fmt = 'const {t} {n} = _raw_{n}[_ind.get()];'
+                fmt = '{t} {n} = _raw_{n}[_ind.get()];'
             else:
                 fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             op.append(fmt.format(t=p.ctype, n=p.name))

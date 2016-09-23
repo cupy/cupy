@@ -7,6 +7,7 @@ import warnings
 import numpy
 
 from cupy.core import core
+from cupy import creation
 from cupy import logic
 from cupy import math
 from cupy import sorting
@@ -16,33 +17,63 @@ from cupy import statistics
 class FusionOp(object):
 
     def __init__(self, name, operation, param_names,
-                 nin, nout, in_vars, types):
+                 nin, nout, in_vars, out_vars, types, num):
         self.name = name
         self.operation = operation
         self.param_names = param_names
         self.nin = nin
         self.nout = nout
         self.in_vars = in_vars
-        self.out_nums = [None] * self.nout
+        self.out_vars = out_vars
         self.types = types
-        self.num = None
+        self.num = num
 
 
 class _FusionVar(object):
 
-    def __init__(self, op, idx, ty, num=None, const=None):
-        self.op = op
-        self.idx = idx
+    def __init__(self, num, ty, const=None):
         self.num = num
-        self.const = const
         self.ty = ty
+        self.const = const
+
+
+class _Counter(object):
+
+    def __init__(self, n):
+        self.n = n
+
+    def __call__(self):
+        ret = self.n
+        self.n = self.n + 1
+        return ret
+
+
+class _FusionMem(object):
+
+    def __init__(self, var_list):
+        self.op_list = []
+        self.var_list = var_list[:]
+
+    def get_fresh(self, ty, **kwargs):
+        n = len(self.var_list)
+        ret = _FusionVar(n, ty, **kwargs)
+        self.var_list.append(ret)
+        return ret
+
+    def set_op(self, name, operation, param_names,
+               nin, nout, in_vars, out_vars, types):
+        num = len(self.op_list)
+        op = FusionOp(name, operation, param_names,
+                      nin, nout, in_vars, out_vars, types, num)
+        self.op_list.append(op)
 
 
 class _FusionRef(object):
 
-    def __init__(self, var):
+    def __init__(self, var, mem):
         self._var = var
         self.dtype = var.ty
+        self._mem = mem
 
     def __repr__(self):
         return "<_FusionRef, dtype=%s>" % self.dtype
@@ -53,11 +84,17 @@ class _FusionRef(object):
     def __add__(self, other):
         return add(self, other)
 
+    def __iadd__(self, other):
+        return add(self, other, self)
+
     def __radd__(self, other):
         return add(other, self)
 
     def __sub__(self, other):
         return subtract(self, other)
+
+    def __isub__(self, other):
+        return subtract(self, other, self)
 
     def __rsub__(self, other):
         return subtract(other, self)
@@ -65,11 +102,17 @@ class _FusionRef(object):
     def __mul__(self, other):
         return multiply(self, other)
 
+    def __imul__(self, other):
+        return multiply(self, other, self)
+
     def __rmul__(self, other):
         return multiply(other, self)
 
     def __div__(self, other):
         return divide(self, other)
+
+    def __idiv__(self, other):
+        return divide(self, other, self)
 
     def __rdiv__(self, other):
         return divide(other, self)
@@ -88,6 +131,9 @@ class _FusionRef(object):
 
     def __mod__(self, other):
         return remainder(self, other)
+
+    def __imod__(self, other):
+        return remainder(self, other, self)
 
     def __rmod__(self, other):
         return remainder(other, self)
@@ -149,6 +195,9 @@ class _FusionRef(object):
     def __bool__(self):
         raise Exception("Can't cast to bool")
 
+    def copy(self):
+        return copy(self)
+
 
 _kind_score = {
     'b': 0,
@@ -179,15 +228,14 @@ def _const_to_str(val):
     return str(val).lower() if type(val) is bool else str(val)
 
 
-def _normalize_arg(arg):
+def _normalize_arg(arg, mem):
     arg_type = type(arg)
     if arg_type is _FusionRef:
         return arg._var
     is_scalar = arg_type in [int, float, bool]
     is_ndarray = hasattr(arg, 'dtype') and arg.dtype in _dtype_list
     if is_scalar or is_ndarray:
-        t = numpy.dtype(arg_type)
-        return _FusionVar(None, None, t, const=arg)
+        return mem.get_fresh(numpy.dtype(arg_type), const=arg)
     raise Exception('Unsupported type %s' % arg_type)
 
 
@@ -216,6 +264,12 @@ def _convert_from_ufunc(ufunc):
     nin = ufunc.nin
     nout = ufunc.nout
 
+    def get_mem(args):
+        for i in args:
+            if type(i) == _FusionRef:
+                return i._mem
+        raise Exception('number of ndarray arguments must be more than 0')
+
     def can_cast1(args, ty_ins):
         for i in six.moves.range(nin):
             if args[i].const is None:
@@ -232,23 +286,39 @@ def _convert_from_ufunc(ufunc):
                 return False
         return True
 
-    def res(*args):
-        assert nin <= len(args) and len(args) <= nin + nout
-        vars = map(_normalize_arg, args)
-        can_cast = can_cast1 if _should_use_min_scalar(vars) else can_cast2
+    def res(*args, **kwargs):
+        mem = get_mem(args)
+        var_list = map(lambda i: _normalize_arg(i, mem), args)
+        if 'out' in kwargs:
+            var_list.append(_normalize_arg.pop('out'))
+        if kwargs:
+            raise TypeError('Wrong arguments %s' % kwargs)
+        assert nin <= len(var_list) and len(var_list) <= nin + nout
+        in_vars = var_list[:nin]
+        out_vars = var_list[nin:]
+        can_cast = can_cast1 if _should_use_min_scalar(in_vars) else can_cast2
         for ty_ins, ty_outs, op in ufunc._ops:
             ty_ins = map(numpy.dtype, ty_ins)
             ty_outs = map(numpy.dtype, ty_outs)
-            if can_cast(vars, ty_ins):
+            if can_cast(in_vars, ty_ins):
                 param_names = (['in%d' % i for i in six.moves.range(nin)] +
                                ['out%d' % i for i in six.moves.range(nout)])
-                op = FusionOp(ufunc.name, op, param_names, nin, nout,
-                              vars, ty_ins + ty_outs)
-                ret = [_FusionVar(op, i, ty_outs[i])
-                       for i in six.moves.range(nout)]
-                for i in six.moves.range(len(args) - nin):
-                    args[i + nin]._var = ret[i]
-                ret = map(_FusionRef, ret)
+                ret = []
+                for i in six.moves.range(nout):
+                    if i >= len(out_vars):
+                        v = mem.get_fresh(ty_outs[i])
+                        out_vars.append(v)
+                        ret.append(_FusionRef(v, mem))
+                    elif numpy.can_cast(ty_outs[i], out_vars[i].ty,
+                                        "same_kind"):
+                        v = out_vars[i]
+                        ret.append(_FusionRef(v, mem))
+                    else:
+                        raise TypeError("Cannot cast from %s to %s"
+                                        % (ty_outs[i], out_vars[i].ty)
+                                        + " with casting rule 'same_kind'")
+                mem.set_op(ufunc.name, op, param_names, nin, nout,
+                           in_vars, out_vars, ty_ins + ty_outs)
                 return ret[0] if len(ret) == 1 else tuple(ret)
         raise TypeError('Invalid type cast')
     return res
@@ -258,42 +328,16 @@ def _convert_from_elementwise(elem):
     raise Exception('Not Impletmented')
 
 
-class _Counter(object):
-
-    def __init__(self, n):
-        self.n = n
-
-    def __call__(self):
-        ret = self.n
-        self.n = self.n + 1
-        return ret
-
-
-def _get_var_list(trees, res, counter):
-    for tree in trees:
-        if tree.num is None:
-            tree.num = counter()
-            res.append(tree)
-            if tree.op is not None:
-                _get_var_list(tree.op.in_vars, res, counter)
-                tree.op.out_nums[tree.idx] = tree.num
-
-
-def _get_operation_list(trees, res, counter):
-    for tree in trees:
-        op = tree.op
-        if op is not None and op.num is None:
-            _get_operation_list(op.in_vars, res, counter)
-            op.num = counter()
-            res.append(op)
-
-
 def _gather_submodules(ops):
     return {(op.name, tuple(op.types)): op for op in ops}
 
 
-def _get_parameters(var):
-    return '%s v%d' % (var.ty, var.num)
+def _get_params(var_list):
+    return ['%s v%d' % (var.ty, var.num) for var in var_list]
+
+
+def _get_out_params(var_list):
+    return ['%s ret%d' % (var.ty, i) for i, var in enumerate(var_list)]
 
 
 def _get_declaration_from_var(var):
@@ -307,8 +351,8 @@ def _get_declaration_from_var(var):
 
 
 def _get_declaration_from_op(op):
-    return ''.join('%s v%d_%d;\n' % (_dtype_to_ctype[t], op.num, i)
-                   for i, t in enumerate(op.types))
+    return ''.join('%s v%d_%d;\n' % (_dtype_to_ctype[t], op.num, j)
+                   for j, t in enumerate(op.types))
 
 
 def _get_operation_code(op):
@@ -318,8 +362,8 @@ def _get_operation_code(op):
               for i in six.moves.range(op.nin + op.nout)]
     code += op.name + '(' + ', '.join(params) + ');\n'
     code += ''.join('v%d = v%d_%d;\n' %
-                    (v, op.num, i + op.nin)
-                    for i, v in enumerate(op.out_nums))
+                    (v.num, op.num, i + op.nin)
+                    for i, v in enumerate(op.out_vars))
     return code
 
 
@@ -341,25 +385,26 @@ def _get_submodule_code(op):
         parameters=parameters,
         operation=op.operation,
         typedecl=typedecl)
-    return module_code
+    return module_code + '\n'
 
 
-def _get_pre_code(var_list, nin, operation):
-    params = ', '.join('%s v%s' % (_dtype_to_ctype[v.ty], v.num)
-                       for v in var_list[:nin])
-    declaration = '%s v%s;\n' % (_dtype_to_ctype[var_list[nin].ty], nin)
+def _get_pre_code(in_vars, out_vars, operation):
+    in_params = ', '.join('%s v%s' % (_dtype_to_ctype[v.ty], v.num)
+                          for v in in_vars)
+    out_params = ''.join('%s v%s;\n' % (_dtype_to_ctype[v.ty], v.num)
+                         for v in out_vars)
     module_code = string.Template('''
-    __device__ ${return_type} _pre_map(${params}) {
-      ${declaration}
+    __device__ ${return_type} _pre_map(${in_params}) {
+      ${out_params}
       ${operation};
       return ${return_var};
     }
     ''').substitute(
-        return_type=_dtype_to_ctype[var_list[nin].ty],
-        params=params,
-        declaration=declaration,
+        return_type=_dtype_to_ctype[out_vars[0].ty],
+        in_params=in_params,
+        out_params=out_params,
         operation=operation,
-        return_var='v%d' % nin)
+        return_var='v%d' % out_vars[0].num)
     return module_code
 
 
@@ -398,52 +443,45 @@ def _get_fix_code(data_type, fixed_type, operation):
     return module_code
 
 
-def _get_fusion(func, nin, immutable_num,
-                reduce, post_map, identity, input_types):
+def _get_fusion(func, nin, reduce, post_map, identity, input_types):
     if nin is None:
         nin = len(inspect.getargspec(func).args)
-    if immutable_num is None:
-        immutable_num = nin
     assert nin == len(input_types)
-    assert immutable_num <= nin
-    input_vars = [_FusionVar(None, None, input_types[i], i)
-                  for i in six.moves.range(nin)]
-    input_refs = map(_FusionRef, input_vars)
-    ret_refs = func(*input_refs)
-    ret_refs = list(ret_refs) if type(ret_refs) == tuple else [ret_refs]
-    ret_vars = map(_normalize_arg, ret_refs)
-    ret_types = [var.ty for var in ret_vars]
-    if input_types[nin:] != ret_types[:(immutable_num - nin)]:
-        raise TypeError('Type is mismatched')
+    in_vars = [_FusionVar(i, t) for i, t in enumerate(input_types)]
+    mem = _FusionMem(in_vars)
+    in_refs = map(lambda i: _FusionRef(i, mem), in_vars)
+    out_refs = func(*in_refs)
+    out_refs = list(out_refs) if type(out_refs) == tuple else [out_refs]
+    out_refs = filter(lambda i: i is not None, out_refs)
+    out_refs = map(lambda i: _FusionRef(_normalize_arg(i, mem), mem), out_refs)
+    out_vars = map(lambda i: _normalize_arg(copy(i), mem), out_refs)
+    out_types = [var.ty for var in out_vars]
+    nout = len(out_vars)
+    nargs = nin + nout
+    var_list = mem.var_list
+    op_list = mem.op_list
+    tmpvars = mem.var_list[nin:-nout] if nout > 0 else mem.var_list[nin:]
 
-    output_vars = [_FusionVar(None, None, t, i + immutable_num)
-                   for i, t in enumerate(ret_types)]
-    nout = len(output_vars)
-    nargs = immutable_num + nout
+    in_params = ', '.join(_get_params(in_vars))
+    out_params = ', '.join(_get_params(out_vars))
+    operation = ''.join(map(_get_declaration_from_var, tmpvars))
+    operation += ''.join(map(_get_declaration_from_op, op_list))
+    operation += '\n'.join(map(_get_operation_code, op_list))
 
-    var_list = input_vars[:immutable_num] + output_vars
-    operation_list = []
-    _get_var_list(ret_vars, var_list, _Counter(nargs))
-    _get_operation_list(ret_vars, operation_list, _Counter(0))
-    in_params = ', '.join(map(_get_parameters, var_list[:immutable_num]))
-    out_params = ', '.join(map(_get_parameters, var_list[immutable_num:nargs]))
-    operation = ''.join(map(_get_declaration_from_var, var_list[nargs:]))
-    operation += ''.join(map(_get_declaration_from_op,  operation_list))
-    operation += '\n'.join(map(_get_operation_code, operation_list))
-    operation += ''.join('v%d = v%d;\n' % (i + immutable_num, v.num)
-                         for i, v in enumerate(ret_vars))
     if reduce is None:
-        submodules = _gather_submodules(operation_list)
-        submodule_code = ''.join(
-            [_get_submodule_code(submodules[p]) for p in submodules]) + '\n'
+        if not out_params:
+            in_params = ', '.join(_get_params(in_vars[:-1]))
+            out_params = ', '.join(_get_params([in_vars[-1]]))
+        submodules = _gather_submodules(op_list)
+        submodule_code = ''.join(map(_get_submodule_code, submodules.values()))
         return core.ElementwiseKernel(in_params, out_params,
                                       operation, preamble=submodule_code)
     else:
-        if nin != immutable_num or nout != 1:
+        if nout != 1:
             raise Exception("Wrong number of number of arguments")
         # pre-map
-        pre_type = ret_vars[0].ty
-        pre_code = _get_pre_code(var_list, nin, operation)
+        pre_type = out_vars[0].ty
+        pre_code = _get_pre_code(in_vars, out_vars, operation)
 
         # reduce
         reduce_op = _get_reduce_op(reduce._raw, pre_type)
@@ -454,21 +492,21 @@ def _get_fusion(func, nin, immutable_num,
         pre_code += "typedef %s type_in0_raw;\n" % _dtype_to_ctype[reduce_type]
 
         # post-map
-        post_in = [_FusionVar(None, None, reduce_type, 0)]
-        post_out = _normalize_arg(post_map(*map(_FusionRef, post_in)))
+        post_in = [_FusionVar(0, reduce_type)]
+        mem = _FusionMem(post_in)
+        post_in_ref = map(lambda i: _FusionRef(i, mem), post_in)
+        post_out = _normalize_arg(post_map(*post_in_ref), mem)
         if type(post_out) == tuple:
             raise Exception("Can't reduce a tuple")
-        post_vars = post_in
-        post_ops = []
-        _get_var_list([post_out], post_vars, _Counter(1))
-        _get_operation_list([post_out], post_ops, _Counter(0))
+        post_vars = mem.var_list
+        post_ops = mem.op_list
         post_code = ''.join(map(_get_declaration_from_var, post_vars[1:]))
-        post_code += ''.join(map(_get_declaration_from_op,  post_ops))
+        post_code += ''.join(map(_get_declaration_from_op, post_ops))
         post_code += '\n'.join(map(_get_operation_code, post_ops))
         post_code = _get_post_code(post_vars, post_code, post_out)
         post_code += _get_fix_code(post_type, reduce_type, reduce_op[2][2])
 
-        submodules = _gather_submodules(operation_list + post_ops)
+        submodules = _gather_submodules(op_list + post_ops)
         submodule_code = ''.join(_get_submodule_code(v)
                                  for v in submodules.values())
         submodule_code += reduce._raw._preamble + pre_code + post_code
@@ -497,11 +535,10 @@ class Fusion(object):
         post_map (function): Mapping function for reduced values.
     """
 
-    def __init__(self, func, input_num, immutable_num, reduce, post_map):
+    def __init__(self, func, input_num, reduce, post_map):
         self.func = func
         self.name = func.__name__
         self.input_num = input_num
-        self.immutable_num = immutable_num
         self.reduce = reduce
         self.post_map = post_map
         self.identity = None if reduce is None else self.reduce._raw.identity
@@ -519,8 +556,7 @@ class Fusion(object):
             types = map(lambda x: x.dtype, args)
             key = tuple(types)
             if key not in self._memo:
-                f = _get_fusion(self.func, self.input_num,
-                                self.immutable_num, self.reduce,
+                f = _get_fusion(self.func, self.input_num, self.reduce,
                                 self.post_map, self.identity, types)
                 self._memo[key] = f
             f = self._memo[key]
@@ -541,8 +577,7 @@ class Fusion(object):
                 return self.post_map(self.reduce(self.func(*args), axis=axis))
 
 
-def fuse(input_num=None, immutable_num=None,
-         reduce=None, post_map=lambda x: x):
+def fuse(input_num=None, reduce=None, post_map=lambda x: x):
     """Function fusing decorator.
 
     This decorator can be used to define an elementwise or reduction kernel
@@ -559,7 +594,7 @@ def fuse(input_num=None, immutable_num=None,
         post_map (function): Mapping function for reduced values.
             If not assigned, post_map step is skipped.
     """
-    return lambda f: Fusion(f, input_num, immutable_num, reduce, post_map)
+    return lambda f: Fusion(f, input_num, reduce, post_map)
 
 
 class ufunc(core.ufunc):
@@ -601,16 +636,22 @@ def _create_ufunc(cupy_ufunc, numpy_ufunc):
 _where = ufunc(sorting.search._where_ufunc,
                sorting.search.where, numpy.where)
 
+_clip = ufunc(core._clip, math.misc.clip, numpy.clip)
+
+_elementwise_copy = ufunc(core._elementwise_copy,
+                          creation.from_data.copy, numpy.copy)
+
 
 def where(*args, **kwargs):
     return _where(*args, **kwargs)
 
 
-_clip = ufunc(core._clip, math.misc.clip, numpy.clip)
-
-
 def clip(*args, **kwargs):
     return _clip(*args, **kwargs)
+
+
+def copy(*args, **kwargs):
+    return _elementwise_copy(*args, **kwargs)
 
 
 bitwise_and = _create_ufunc(core.bitwise_and, numpy.bitwise_and)

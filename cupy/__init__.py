@@ -128,7 +128,7 @@ from cupy.creation.from_data import array  # NOQA
 from cupy.creation.from_data import asanyarray  # NOQA
 from cupy.creation.from_data import asarray  # NOQA
 from cupy.creation.from_data import ascontiguousarray  # NOQA
-from cupy.creation.from_data import copy  # NOQA
+from cupy.core.fusion import copy  # NOQA
 
 from cupy.creation.ranges import arange  # NOQA
 from cupy.creation.ranges import linspace  # NOQA
