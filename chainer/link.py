@@ -13,12 +13,17 @@ from chainer import variable
 def _is_shape(value):
     if value is None:
         return True
-    elif isinstance(value, six.integer_types):
-        return True
     elif isinstance(value, collections.Sequence):
-        return all(isinstance(x, six.integer_types) for x in value)
-    else:
+        try:
+            return all(isinstance(int(x), six.integer_types) for x in value)
+        except:
+            return False
+    try:
+        return isinstance(int(value), six.integer_types)
+    except:
         return False
+
+    return False
 
 
 def _ensure_shape_dtype(value):
