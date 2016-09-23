@@ -584,8 +584,6 @@ def fuse(input_num=None, reduce=None, post_map=lambda x: x):
 
     Args:
         input_num (int): Number of input arguments of the given function.
-        immutable_num (int): Number of immutable input arguments of
-            the given function.
         reduce (function): The reduce function which is applied after
             pre-mapping step. If not assigned, reduction step is skipped.
         post_map (function): Mapping function for reduced values.
