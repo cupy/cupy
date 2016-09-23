@@ -110,25 +110,26 @@ class VGG16Layers(chainer.Chain):
         elif pretrained_model:
             serializers.load_npz(pretrained_model, self)
 
+        max_pooling_2d = lambda x: F.max_pooling_2d(x, ksize=2)
         self.functions = OrderedDict([
             ('conv1_1', [self.conv1_1, F.relu]),
             ('conv1_2', [self.conv1_2, F.relu]),
-            ('pool1', [(F.max_pooling_2d, {'ksize': 2})]),
+            ('pool1', [max_pooling_2d]),
             ('conv2_1', [self.conv2_1, F.relu]),
             ('conv2_2', [self.conv2_2, F.relu]),
-            ('pool2', [(F.max_pooling_2d, {'ksize': 2})]),
+            ('pool2', [max_pooling_2d]),
             ('conv3_1', [self.conv3_1, F.relu]),
             ('conv3_2', [self.conv3_2, F.relu]),
             ('conv3_3', [self.conv3_3, F.relu]),
-            ('pool3', [(F.max_pooling_2d, {'ksize': 2})]),
+            ('pool3', [max_pooling_2d]),
             ('conv4_1', [self.conv4_1, F.relu]),
             ('conv4_2', [self.conv4_2, F.relu]),
             ('conv4_3', [self.conv4_3, F.relu]),
-            ('pool4', [(F.max_pooling_2d, {'ksize': 2})]),
+            ('pool4', [max_pooling_2d]),
             ('conv5_1', [self.conv5_1, F.relu]),
             ('conv5_2', [self.conv5_2, F.relu]),
             ('conv5_3', [self.conv5_3, F.relu]),
-            ('pool5', [(F.max_pooling_2d, {'ksize': 2})]),
+            ('pool5', [max_pooling_2d]),
             ('fc6', [self.fc6, F.relu]),
             ('fc7', [self.fc7, F.relu]),
             ('fc8', [self.fc8, F.relu]),
@@ -157,17 +158,13 @@ class VGG16Layers(chainer.Chain):
         activations = {}
         target_layers = set(layers)
         for key, funcs in self.functions.iteritems():
+            if len(target_layers) == 0:
+                break
             for func in funcs:
-                if isinstance(func, tuple):
-                    func, kwargs = func
-                    h = func(h, **kwargs)
-                else:
-                    h = func(h)
+                h = func(h)
             if key in target_layers:
                 activations[key] = h
                 target_layers.remove(key)
-            if len(target_layers) == 0:
-                break
         return activations
 
     def prepare(self, image, size=(224, 224)):
@@ -180,6 +177,8 @@ class VGG16Layers(chainer.Chain):
 
         Args:
             image (PIL.Image or numpy.ndarray): Input image.
+                If an input is ``numpy.ndarray``, its shape must be
+                ``(height, width)`` or ``(height, width, channels)``.
             size (pair of ints): Size of converted images.
                 If ``None``, the given image is not resized.
 
