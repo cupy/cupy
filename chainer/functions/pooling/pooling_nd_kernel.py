@@ -1,10 +1,9 @@
 from __future__ import print_function
 
-from chainer.utils.conv_nd_kernel import identity
-from chainer.utils.conv_nd_kernel import maplist
+from chainer.utils.conv_nd_kernel import succ_sublists
 from chainer.utils.conv_nd_kernel import mulexp
 from chainer.utils.conv_nd_kernel import vars
-from chainer.utils.conv_nd_kernel import writer
+from chainer.utils.conv_nd_kernel import Writer
 
 
 #
@@ -81,7 +80,7 @@ class PoolingNDKernelFwd(object):
             else:
                 return 'int {} = i % {};'.format(out_x, head)
         out_xs = vars('out_x', self.ndim)
-        out_xs_decls = map(aux, out_xs, maplist(identity, self.outs))
+        out_xs_decls = map(aux, out_xs, succ_sublists(self.outs))
         return out_xs_decls, out_xs
 
     def _compile_loop(self, out_xs):
@@ -111,7 +110,7 @@ class PoolingNDKernelFwd(object):
             ), [])
 
         def _loop_main(main):
-            w = writer()
+            w = Writer()
 
             # Loop openings.
             xs = vars('x', self.ndim)
@@ -120,20 +119,21 @@ class PoolingNDKernelFwd(object):
             offsets1 = ['d_0 * c0'] + offsets[:-1]
             for (x, in_x0, in_x1, offset, offset1, d1) in zip(
                     xs, in_x0s, in_x1s, offsets, offsets1, ds1):
-                w('for (int {} = {}; {} < {}; ++{}) {{'.format(
+                w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     x, in_x0, x, in_x1, x), 'inc')
-                w('int {} = {} * ({} + {});'.format(offset, d1, x, offset1))
+                w.write(
+                    'int {} = {} * ({} + {});'.format(offset, d1, x, offset1))
 
             # Write main-part.
             offset = offsets[-1]
             for l in main(offset, xs).split('\n'):
-                w(l)
+                w.write(l)
 
             # Loop closings.
             for _ in xs:
-                w('}', 'dec')
+                w.write('}', 'dec')
 
-            return [w()]
+            return [w.get()]
 
         return bounds, _loop_main
 
@@ -227,7 +227,7 @@ class PoolingNDKernelBwd(object):
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
         xs = vars('x', self.ndim)
-        xs_decls = map(aux, xs, maplist(identity, self.ds), self.ps)
+        xs_decls = map(aux, xs, succ_sublists(self.ds), self.ps)
         return xs_decls, xs
 
     def _compile_loop(self, xs):
@@ -256,7 +256,7 @@ class PoolingNDKernelBwd(object):
             aux, out_x0s, out_x1s, xs, self.outs, self.ks, self.ss), [])
 
         def _loop_main(main):
-            w = writer()
+            w = Writer()
 
             # Loop openings.
             out_xs = vars('out_x', self.ndim)
@@ -265,21 +265,21 @@ class PoolingNDKernelBwd(object):
             offsets1 = ['out_0 * c0'] + offsets[:-1]
             for (out_x, out_x0, out_x1, offset, offset1, out1) in zip(
                     out_xs, out_x0s, out_x1s, offsets, offsets1, outs1):
-                w('for (int {} = {}; {} < {}; ++{}) {{'.format(
+                w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     out_x, out_x0, out_x, out_x1, out_x), 'inc')
-                w('int {} = {} * ({} + {});'.format(
+                w.write('int {} = {} * ({} + {});'.format(
                     offset, out1, out_x, offset1))
 
             # Write main-part.
             offset = offsets[-1]
             for l in main(offset, xs, out_xs).split('\n'):
-                w(l)
+                w.write(l)
 
             # Loop closings.
             for _ in out_xs:
-                w('}', 'dec')
+                w.write('}', 'dec')
 
-            return [w()]
+            return [w.get()]
 
         return bounds, _loop_main
 
