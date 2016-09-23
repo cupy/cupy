@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from chainer.utils.conv_nd_kernel import succ_sublists
+from chainer.utils.conv_nd_kernel import _map
 from chainer.utils.conv_nd_kernel import mulexp
 from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
@@ -10,14 +11,6 @@ from chainer.utils.conv_nd_kernel import Writer
 # PoolingNDKernelFwd
 
 class PoolingNDKernelFwd(object):
-
-    def __init__(self, ndim):
-        self.ndim = ndim
-        self.ds = vars('d', ndim)
-        self.outs = vars('out', ndim)
-        self.ks = vars('k', ndim)
-        self.ss = vars('s', ndim)
-        self.ps = vars('p', ndim)
 
     def name(self):
         raise NotImplementedError()
@@ -37,7 +30,18 @@ class PoolingNDKernelFwd(object):
     def after(self, out_xs):
         raise NotImplementedError()
 
-    def generate(self):
+    @staticmethod
+    def generate(ndim):
+        raise NotImplementedError()
+
+    def _generate(self, ndim):
+        self.ndim = ndim
+        self.ds = vars('d', ndim)
+        self.outs = vars('out', ndim)
+        self.ks = vars('k', ndim)
+        self.ss = vars('s', ndim)
+        self.ps = vars('p', ndim)
+
         in_params = self._in_params()
         out_params = self._out_params()
         operation = self._operation()
@@ -56,8 +60,8 @@ class PoolingNDKernelFwd(object):
             in_params = in_params[1]
         else:
             raws = []
-        return ', '.join(['raw T in'] + raws + map(
-            aux, self.ds + self.outs + self.ks + self.ss + self.ps)+in_params)
+        vars = self.ds + self.outs + self.ks + self.ss + self.ps
+        return ', '.join(['raw T in'] + raws + _map(aux, vars) + in_params)
 
     def _out_params(self):
         # T out, ...
@@ -80,7 +84,7 @@ class PoolingNDKernelFwd(object):
             else:
                 return 'int {} = i % {};'.format(out_x, head)
         out_xs = vars('out_x', self.ndim)
-        out_xs_decls = map(aux, out_xs, succ_sublists(self.outs))
+        out_xs_decls = _map(aux, out_xs, succ_sublists(self.outs))
         return out_xs_decls, out_xs
 
     def _compile_loop(self, out_xs):
@@ -99,13 +103,13 @@ class PoolingNDKernelFwd(object):
         #     ... After-part here ...
         def aux(in_x0, in_x1, d, out, k, s, p):
             return [
-                'int {} = max(0,   {} * {}       - {});'.format(
+                'int {} = max(0, {} * {} - {});'.format(
                     in_x0, out, s, p),
                 'int {} = min({}, {} * {} + {} - {});'.format(
                     in_x1, d, out, s, k, p)]
         in_x0s = vars('in_x0', self.ndim)
         in_x1s = vars('in_x1', self.ndim)
-        bounds = sum(map(
+        bounds = sum(_map(
             aux, in_x0s, in_x1s, self.ds, out_xs, self.ks, self.ss, self.ps
             ), [])
 
@@ -158,14 +162,6 @@ class PoolingNDKernelFwd(object):
 
 class PoolingNDKernelBwd(object):
 
-    def __init__(self, ndim):
-        self.ndim = ndim
-        self.ds = vars('d', ndim)
-        self.outs = vars('out', ndim)
-        self.ks = vars('k', ndim)
-        self.ss = vars('s', ndim)
-        self.ps = vars('p', ndim)
-
     def name(self):
         raise NotImplementedError()
 
@@ -184,7 +180,18 @@ class PoolingNDKernelBwd(object):
     def after(self, xs):
         raise NotImplementedError()
 
-    def generate(self):
+    @staticmethod
+    def generate(ndim):
+        raise NotImplementedError()
+
+    def _generate(self, ndim):
+        self.ndim = ndim
+        self.ds = vars('d', ndim)
+        self.outs = vars('out', ndim)
+        self.ks = vars('k', ndim)
+        self.ss = vars('s', ndim)
+        self.ps = vars('p', ndim)
+
         in_params = self._in_params()
         out_params = self._out_params()
         operation = self._operation()
@@ -203,8 +210,8 @@ class PoolingNDKernelBwd(object):
             in_params = in_params[1]
         else:
             raws = []
-        return ', '.join(['raw T gy'] + raws + map(
-            aux, self.ds + self.outs + self.ks + self.ss + self.ps)+in_params)
+        vars = self.ds + self.outs + self.ks + self.ss + self.ps
+        return ', '.join(['raw T gy'] + raws + _map(aux, vars) + in_params)
 
     def _out_params(self):
         # T gx, ...
@@ -227,7 +234,7 @@ class PoolingNDKernelBwd(object):
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
         xs = vars('x', self.ndim)
-        xs_decls = map(aux, xs, succ_sublists(self.ds), self.ps)
+        xs_decls = _map(aux, xs, succ_sublists(self.ds), self.ps)
         return xs_decls, xs
 
     def _compile_loop(self, xs):
@@ -246,13 +253,13 @@ class PoolingNDKernelBwd(object):
         #     ... After-part here ...
         def aux(out_x0, out_x1, x, out, k, s):
             return [
-                'int {} = max(0,     ({} - {} + {}) / {});'.format(
+                'int {} = max(0, ({} - {} + {}) / {});'.format(
                     out_x0, x, k, s, s),
-                'int {} = min({}, ({}       + {}) / {});'.format(
+                'int {} = min({}, ({} + {}) / {});'.format(
                     out_x1, out, x, s, s)]
         out_x0s = vars('out_x0', self.ndim)
         out_x1s = vars('out_x1', self.ndim)
-        bounds = sum(map(
+        bounds = sum(_map(
             aux, out_x0s, out_x1s, xs, self.outs, self.ks, self.ss), [])
 
         def _loop_main(main):

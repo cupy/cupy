@@ -1,6 +1,8 @@
 from __future__ import print_function
 
+import chainer
 from chainer.functions.pooling import pooling_nd_kernel
+from chainer.utils.conv_nd_kernel import _map
 from chainer.utils.conv_nd_kernel import muladdexp
 from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
@@ -23,7 +25,7 @@ class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
         def aux(argmax):
             return 'int {} = 0;'.format(argmax)
         self.argmaxs = vars('argmax', self.ndim)
-        argmax_decls = map(aux, self.argmaxs)
+        argmax_decls = _map(aux, self.argmaxs)
         return '\n'.join(['T maxval = (T)-INFINITY;'] + argmax_decls)
 
     def main(self, offset, xs):
@@ -36,7 +38,7 @@ class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
         w = Writer()
         w.write('T v = in[{}];'.format(offset))
         w.write('if (maxval < v) {', 'inc')
-        w.write('maxval   = v;')
+        w.write('maxval = v;')
         for (argmax, x) in zip(self.argmaxs, xs):
             w.write('{} = {};'.format(argmax, x))
         w.write('}', 'dec')
@@ -51,11 +53,18 @@ class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
             return 'int {} = {} + {} - {} * {};'.format(
                 argmax_k, argmax, p, out, s)
         argmax_ks = vars('argmax_k', self.ndim)
-        argmax_k_decls = map(
+        argmax_k_decls = _map(
             aux, argmax_ks, self.argmaxs, self.ps, out_xs, self.ss)
         indexes_set = 'indexes = {};'.format(
             muladdexp(self.ks[1:], argmax_ks[1:], argmax_ks[0]))
         return '\n'.join(['out = maxval;'] + argmax_k_decls + [indexes_set])
+
+    @staticmethod
+    @chainer.cuda.memoize()
+    def generate(ndim):
+        return _max_pooling_nd_kernel_fwd._generate(ndim)
+
+_max_pooling_nd_kernel_fwd = MaxPoolingNDKernelFwd()
 
 
 class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
@@ -83,7 +92,7 @@ class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
             return '{} - {} * {}'.format(x, out_x, s)
         w = Writer()
         w.write('int kx = {};'.format(
-            muladdexp(self.ks, map(aux, xs, out_xs, self.ss), '0')))
+            muladdexp(self.ks, _map(aux, xs, out_xs, self.ss), '0')))
         w.write('if (indexes[{}] == kx) {{'.format(offset), 'inc')
         w.write('val = val + gy[{}];'.format(offset))
         w.write('}', 'dec')
@@ -91,6 +100,13 @@ class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
 
     def after(self, xs):
         return 'gx = val;'
+
+    @staticmethod
+    @chainer.cuda.memoize()
+    def generate(ndim):
+        return _max_pooling_nd_kernel_bwd._generate(ndim)
+
+_max_pooling_nd_kernel_bwd = MaxPoolingNDKernelBwd()
 
 
 # just for debug.
@@ -100,13 +116,13 @@ if __name__ == "__main__":
     print("MaxPoolingNDKernelFwd")
     print("----------------")
     print()
-    for x in MaxPoolingNDKernelFwd(ndim).generate():
+    for x in MaxPoolingNDKernelFwd.generate(ndim):
         print(x)
         print()
 
     print("MaxPoolingNDKernelBwd")
     print("----------------")
     print()
-    for x in MaxPoolingNDKernelBwd(ndim).generate():
+    for x in MaxPoolingNDKernelBwd.generate(ndim):
         print(x)
         print()
