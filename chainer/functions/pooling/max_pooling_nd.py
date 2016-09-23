@@ -13,9 +13,6 @@ if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
 
-_forward_cache = {}
-_backward_cache = {}
-
 
 class MaxPoolingND(pooling_nd.PoolingND):
 
@@ -54,11 +51,8 @@ class MaxPoolingND(pooling_nd.PoolingND):
         y = cuda.cupy.empty(y_shape, dtype=x[0].dtype)
         self.indexes = cuda.cupy.empty(y_shape, dtype=numpy.int32)
 
-        ndim = self.ndim
-        if ndim not in _forward_cache:
-            _forward_cache[ndim] = \
-                max_pooling_nd_kernel.MaxPoolingNDKernelFwd(ndim).generate()
-        in_params, out_params, operation, name = _forward_cache[ndim]
+        in_params, out_params, operation, name = \
+            max_pooling_nd_kernel.MaxPoolingNDKernelFwd.generate(self.ndim)
         cuda.elementwise(in_params, out_params, operation, name)(
             x[0].reduced_view(),
             *(dims + ys + self.ksize + self.stride + self.pad +
@@ -94,11 +88,8 @@ class MaxPoolingND(pooling_nd.PoolingND):
         ys = gy[0].shape[2:]
         gx = cuda.cupy.empty_like(x[0])
 
-        ndim = self.ndim
-        if ndim not in _backward_cache:
-            _backward_cache[ndim] = \
-                max_pooling_nd_kernel.MaxPoolingNDKernelBwd(ndim).generate()
-        in_params, out_params, operation, name = _backward_cache[ndim]
+        in_params, out_params, operation, name = \
+            max_pooling_nd_kernel.MaxPoolingNDKernelBwd.generate(self.ndim)
         cuda.elementwise(in_params, out_params, operation, name)(
             gy[0].reduced_view(), self.indexes.reduced_view(),
             *(dims + ys + self.ksize + self.stride + self.pad + (gx,)))
