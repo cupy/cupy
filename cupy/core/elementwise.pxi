@@ -397,7 +397,7 @@ def _get_elementwise_kernel(args_info, types, params, operation, name,
     for p, a in six.moves.zip(params, args_info):
         if not p.raw and a[0] == ndarray:
             if p.is_const:
-                fmt = '{t} {n} = _raw_{n}[_ind.get()];'
+                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             else:
                 fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
             op.append(fmt.format(t=p.ctype, n=p.name))

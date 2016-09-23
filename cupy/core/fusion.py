@@ -455,10 +455,7 @@ def _get_fusion(func, nin, reduce, post_map, identity, input_types):
     out_refs = filter(lambda i: i is not None, out_refs)
     out_refs = map(lambda i: _FusionRef(_normalize_arg(i, mem), mem), out_refs)
     out_vars = map(lambda i: _normalize_arg(copy(i), mem), out_refs)
-    out_types = [var.ty for var in out_vars]
     nout = len(out_vars)
-    nargs = nin + nout
-    var_list = mem.var_list
     op_list = mem.op_list
     tmpvars = mem.var_list[nin:-nout] if nout > 0 else mem.var_list[nin:]
 
