@@ -16,11 +16,11 @@ def _is_shape(value):
     elif isinstance(value, collections.Sequence):
         try:
             return all(isinstance(int(x), six.integer_types) for x in value)
-        except:
+        except TypeError:
             return False
     try:
         return isinstance(int(value), six.integer_types)
-    except:
+    except TypeError:
         return False
 
     return False
