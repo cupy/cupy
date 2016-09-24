@@ -1,6 +1,6 @@
 import chainer
-from chainer.utils.conv_nd_kernel import succ_sublists
 from chainer.utils.conv_nd_kernel import _map
+from chainer.utils.conv_nd_kernel import succ_sublists
 from chainer.utils.conv_nd_kernel import mulexp
 from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
@@ -110,7 +110,7 @@ class PoolingNDKernelForward(object):
         in_x1s = vars('in_x1', self.ndim)
         bounds = sum(_map(
             aux, in_x0s, in_x1s, self.ds, out_xs, self.ks, self.ss, self.ps
-            ), [])
+        ), [])
 
         def _loop_main(main):
             w = Writer()
