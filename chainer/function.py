@@ -13,9 +13,7 @@ from chainer import flag
 from chainer.utils import type_check
 from chainer import variable
 
-
-_thread_local = threading.local()
-_thread_local.default_backprop = True
+_backprop_mode = True
 
 
 @contextlib.contextmanager
@@ -38,10 +36,11 @@ def no_backprop_mode():
     ...    y = x + 1
 
     """
-    default = _thread_local.default_backprop
-    _thread_local.default_backprop = False
+    global _backprop_mode
+    default = _backprop_mode
+    _backprop_mode = False
     yield
-    _thread_local.default_backprop = default
+    _backprop_mode = default
 
 
 @contextlib.contextmanager
@@ -73,14 +72,14 @@ def force_backprop_mode():
        See :func:`no_backprop_mode` for details of back-prop mode.
 
     """
-    default = _thread_local.default_backprop
-    _thread_local.default_backprop = True
+    global _backprop_mode
+    default = _backprop_mode
+    _backprop_mode = True
     yield
-    _thread_local.default_backprop = default
+    _backprop_mode = default
 
 
 class Function(object):
-
     """Function on variables with backpropagation ability.
 
     All function implementations defined in :mod:`chainer.functions` inherit
@@ -215,7 +214,7 @@ class Function(object):
         elif out_v == 'off':
             build_graph = True
         else:
-            build_graph = _thread_local.default_backprop
+            build_graph = _backprop_mode
 
         if build_graph:
             # Topological ordering
