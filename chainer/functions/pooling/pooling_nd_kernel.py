@@ -1,5 +1,4 @@
-from __future__ import print_function
-
+import chainer
 from chainer.utils.conv_nd_kernel import succ_sublists
 from chainer.utils.conv_nd_kernel import _map
 from chainer.utils.conv_nd_kernel import mulexp
@@ -8,9 +7,9 @@ from chainer.utils.conv_nd_kernel import Writer
 
 
 #
-# PoolingNDKernelFwd
+# PoolingNDKernelForward
 
-class PoolingNDKernelFwd(object):
+class PoolingNDKernelForward(object):
 
     def name(self):
         raise NotImplementedError()
@@ -30,9 +29,10 @@ class PoolingNDKernelFwd(object):
     def after(self, out_xs):
         raise NotImplementedError()
 
-    @staticmethod
-    def generate(ndim):
-        raise NotImplementedError()
+    @classmethod
+    @chainer.cuda.memoize()
+    def generate(klass, ndim):
+        return klass()._generate(ndim)
 
     def _generate(self, ndim):
         self.ndim = ndim
@@ -103,8 +103,7 @@ class PoolingNDKernelFwd(object):
         #     ... After-part here ...
         def aux(in_x0, in_x1, d, out, k, s, p):
             return [
-                'int {} = max(0, {} * {} - {});'.format(
-                    in_x0, out, s, p),
+                'int {} = max(0, {} * {} - {});'.format(in_x0, out, s, p),
                 'int {} = min({}, {} * {} + {} - {});'.format(
                     in_x1, d, out, s, k, p)]
         in_x0s = vars('in_x0', self.ndim)

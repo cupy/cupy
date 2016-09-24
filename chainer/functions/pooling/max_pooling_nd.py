@@ -52,7 +52,7 @@ class MaxPoolingND(pooling_nd.PoolingND):
         self.indexes = cuda.cupy.empty(y_shape, dtype=numpy.int32)
 
         in_params, out_params, operation, name = \
-            max_pooling_nd_kernel.MaxPoolingNDKernelFwd.generate(self.ndim)
+            max_pooling_nd_kernel.MaxPoolingNDKernelForward.generate(self.ndim)
         cuda.elementwise(in_params, out_params, operation, name)(
             x[0].reduced_view(),
             *(dims + ys + self.ksize + self.stride + self.pad +

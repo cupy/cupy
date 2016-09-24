@@ -8,7 +8,7 @@ from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
 
 
-class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
+class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
 
     def name(self):
         # max_pool_{N}d_fwd
@@ -49,22 +49,15 @@ class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
         #     int argmax_k_0 = argmax_0 + p_0 - out_x_0 * s_0;
         #     int argmax_k_1 = argmax_1 + p_1 - out_x_1 * s_1;
         #     indexes = (argmax_k_1 + k_1 * argmax_k_0);
-        def aux(argmax_k, argmax, p, out, s):
+        def aux(argmax_k, argmax, p, out_x, s):
             return 'int {} = {} + {} - {} * {};'.format(
-                argmax_k, argmax, p, out, s)
+                argmax_k, argmax, p, out_x, s)
         argmax_ks = vars('argmax_k', self.ndim)
         argmax_k_decls = _map(
             aux, argmax_ks, self.argmaxs, self.ps, out_xs, self.ss)
         indexes_set = 'indexes = {};'.format(
             muladdexp(self.ks[1:], argmax_ks[1:], argmax_ks[0]))
         return '\n'.join(['out = maxval;'] + argmax_k_decls + [indexes_set])
-
-    @staticmethod
-    @chainer.cuda.memoize()
-    def generate(ndim):
-        return _max_pooling_nd_kernel_fwd._generate(ndim)
-
-_max_pooling_nd_kernel_fwd = MaxPoolingNDKernelFwd()
 
 
 class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
@@ -100,29 +93,3 @@ class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
 
     def after(self, xs):
         return 'gx = val;'
-
-    @staticmethod
-    @chainer.cuda.memoize()
-    def generate(ndim):
-        return _max_pooling_nd_kernel_bwd._generate(ndim)
-
-_max_pooling_nd_kernel_bwd = MaxPoolingNDKernelBwd()
-
-
-# just for debug.
-if __name__ == "__main__":
-    ndim = 3
-
-    print("MaxPoolingNDKernelFwd")
-    print("----------------")
-    print()
-    for x in MaxPoolingNDKernelFwd.generate(ndim):
-        print(x)
-        print()
-
-    print("MaxPoolingNDKernelBwd")
-    print("----------------")
-    print()
-    for x in MaxPoolingNDKernelBwd.generate(ndim):
-        print(x)
-        print()
