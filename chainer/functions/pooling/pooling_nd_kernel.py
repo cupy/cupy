@@ -157,9 +157,9 @@ class PoolingNDKernelForward(object):
 
 
 #
-# PoolingNDKernelBwd
+# PoolingNDKernelBackward
 
-class PoolingNDKernelBwd(object):
+class PoolingNDKernelBackward(object):
 
     def name(self):
         raise NotImplementedError()
@@ -179,9 +179,10 @@ class PoolingNDKernelBwd(object):
     def after(self, xs):
         raise NotImplementedError()
 
-    @staticmethod
-    def generate(ndim):
-        raise NotImplementedError()
+    @classmethod
+    @chainer.cuda.memoize()
+    def generate(klass, ndim):
+        return klass()._generate(ndim)
 
     def _generate(self, ndim):
         self.ndim = ndim

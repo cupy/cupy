@@ -59,7 +59,7 @@ class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
         return '\n'.join(['out = maxval;'] + argmax_k_decls + [indexes_set])
 
 
-class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
+class MaxPoolingNDKernelBackward(pooling_nd_kernel.PoolingNDKernelBackward):
 
     def name(self):
         # max_pool_{N}d_bwd
