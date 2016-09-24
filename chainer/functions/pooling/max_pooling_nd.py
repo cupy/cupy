@@ -131,5 +131,5 @@ def max_pooling_nd(x, ksize, stride=None, pad=0, cover_all=True,
         ~chainer.Variable: Output variable.
 
     """
-    ndim = len(x.data.shape[2:])
+    ndim = len(x.shape[2:])
     return MaxPoolingND(ndim, ksize, stride, pad, cover_all, use_cudnn)(x)
