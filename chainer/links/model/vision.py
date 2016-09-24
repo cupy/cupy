@@ -202,7 +202,7 @@ class VGG16Layers(chainer.Chain):
     def extract(self, images, layers=['fc7'], size=(224, 224)):
         """Extracts all the feature maps of given images.
 
-        The difference of directory executing ``__call__`` is that
+        The difference of directly executing ``__call__`` is that
         it directly accepts the list of images as an input, and
         automatically transforms them to a proper variable. That is,
         it is also interpreted as a shortcut method that implicitly call
