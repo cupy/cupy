@@ -26,7 +26,7 @@ class TestLocalResponseNormalization(unittest.TestCase):
         self.check_backward_optionss = {}
         if self.dtype == numpy.float16:
             self.check_forward_optionss = {'atol': 1e-4, 'rtol': 1e-3}
-            self.check_backward_optionss = {'atol': 1e-3, 'rtol': 1e-2}
+            self.check_backward_optionss = {'atol': 5e-3, 'rtol': 5e-3}
 
     def check_forward(self, x_data):
         x = chainer.Variable(x_data)
@@ -58,7 +58,7 @@ class TestLocalResponseNormalization(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             functions.LocalResponseNormalization(), x_data, y_grad,
-            eps=1, **self.check_backward_optionss)
+            eps=1, dtype=numpy.float64, **self.check_backward_optionss)
 
     @condition.retry(3)
     def test_backward_cpu(self):

@@ -41,7 +41,7 @@ class TestBias(unittest.TestCase):
         x = (x1_data, x2_data)
         gradient_check.check_backward(
             lambda x, y: functions.bias(x, y, axis),
-            x, y_grad, atol=1e-3, rtol=1e-4)
+            x, y_grad, dtype=numpy.float64)
 
     @condition.retry(3)
     def test_backward_cpu(self):
