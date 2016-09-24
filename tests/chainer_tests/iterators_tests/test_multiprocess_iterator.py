@@ -97,13 +97,15 @@ class TestMultiprocessIterator(unittest.TestCase):
                     self.assertTrue(it.is_new_epoch)
                 for x in batch:
                     self.assertIsInstance(x, dict)
-                    k, v = six.viewitems(x)[0]
+                    k = tuple(x)[0]
+                    v = x[k]
                     self.assertIsInstance(v, numpy.ndarray)
                     batches[k] = v
 
             self.assertEqual(len(batches), len(dataset))
             for k, v in six.iteritems(batches):
-                numpy.testing.assert_allclose(six.viewvalues(dataset[k])[0], v)
+                x = dataset[k][tuple(dataset[k])[0]]
+                numpy.testing.assert_allclose(x, v)
 
     def test_iterator_repeat_not_even(self):
         dataset = [1, 2, 3, 4, 5]
