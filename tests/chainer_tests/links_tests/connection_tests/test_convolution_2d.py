@@ -32,7 +32,7 @@ class TestConvolution2D(unittest.TestCase):
                                        (2, 2, 2, 2)).astype(self.x_dtype)
         self.check_backward_options = {}
         if self.x_dtype == numpy.float16 or self.W_dtype == numpy.float16:
-            self.check_backward_options = {'atol': 1e-2, 'rtol': 5e-2}
+            self.check_backward_options = {'atol': 3e-2, 'rtol': 5e-2}
 
     @attr.gpu
     def test_im2col_consistency(self):
