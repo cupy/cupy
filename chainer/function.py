@@ -1,7 +1,6 @@
 import collections
 import contextlib
 import os
-import threading
 import traceback
 import weakref
 
