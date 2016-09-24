@@ -12,7 +12,9 @@ from chainer.testing import attr
 class TestLink(unittest.TestCase):
 
     def setUp(self):
-        self.link = chainer.Link(x=((2, 3), 'd'), y=2)
+        x_shape_0 = 2
+        x_shape_1 = numpy.int64(3)
+        self.link = chainer.Link(x=((x_shape_0, x_shape_1), 'd'), y=2)
         self.p = numpy.array([1, 2, 3], dtype='f')
         self.link.add_persistent('p', self.p)
         self.link.name = 'a'
