@@ -12,7 +12,7 @@ class TestStream(unittest.TestCase):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
-        stream = cuda.Stream(null=True)
+        stream = cuda.NullStream
         out = []
         for i in range(N):
             numpy_array = cupy_arrays[i].get(stream=stream)
