@@ -46,20 +46,22 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     grads = tuple(xp.zeros_like(x) for x in inputs)
 
     prev_mode = function.Function.type_check_enable
-    function.Function.type_check_enable = False
-    for x, gx in six.moves.zip(inputs, grads):
-        for i in numpy.ndindex(x.shape):
-            orig = x[i].copy()  # hold original value
-            x[i] = orig + eps
-            ys1 = [xp.copy(j) for j in f()]
-            x[i] = orig - eps
-            ys2 = [xp.copy(j) for j in f()]
-            x[i] = orig
-            for y1, y2, gy in six.moves.zip(ys1, ys2, grad_outputs):
-                if gy is not None:
-                    dot = ((y1 - y2) * gy).sum()
-                    gx[i] += dot / (2 * eps)
-    function.Function.type_check_enable = prev_mode
+    try:
+        function.Function.type_check_enable = False
+        for x, gx in six.moves.zip(inputs, grads):
+            for i in numpy.ndindex(x.shape):
+                orig = x[i].copy()  # hold original value
+                x[i] = orig + eps
+                ys1 = [xp.copy(j) for j in f()]
+                x[i] = orig - eps
+                ys2 = [xp.copy(j) for j in f()]
+                x[i] = orig
+                for y1, y2, gy in six.moves.zip(ys1, ys2, grad_outputs):
+                    if gy is not None:
+                        dot = ((y1 - y2) * gy).sum()
+                        gx[i] += dot / (2 * eps)
+    finally:
+        function.Function.type_check_enable = prev_mode
     return grads
 
 
