@@ -73,7 +73,7 @@ class TestMaxPoolingND(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = functions.max_pooling_nd(x, ksize, stride=stride, pad=pad,
                                      cover_all=self.cover_all,
-                                     user_cudnn=use_cudnn)
+                                     use_cudnn=use_cudnn)
         self.assertEqual(y.data.dtype, self.dtype)
         y_data = cuda.to_cpu(y.data)
 
