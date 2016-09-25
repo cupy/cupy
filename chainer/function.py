@@ -15,7 +15,6 @@ from chainer import variable
 
 
 _thread_local = threading.local()
-_thread_local.default_backprop = True
 
 
 @contextlib.contextmanager
@@ -38,7 +37,7 @@ def no_backprop_mode():
     ...    y = x + 1
 
     """
-    default = _thread_local.default_backprop
+    default = getattr(_thread_local, 'default_backprop', True)
     _thread_local.default_backprop = False
     yield
     _thread_local.default_backprop = default
@@ -73,7 +72,7 @@ def force_backprop_mode():
        See :func:`no_backprop_mode` for details of back-prop mode.
 
     """
-    default = _thread_local.default_backprop
+    default = getattr(_thread_local, 'default_backprop', True)
     _thread_local.default_backprop = True
     yield
     _thread_local.default_backprop = default
@@ -215,7 +214,7 @@ class Function(object):
         elif out_v == 'off':
             build_graph = True
         else:
-            build_graph = _thread_local.default_backprop
+            build_graph = getattr(_thread_local, 'default_backprop', True)
 
         if build_graph:
             # Topological ordering
