@@ -136,7 +136,7 @@ class MultiprocessIterator(iterator.Iterator):
         assert len(self._workers) == 0
         assert self._shared_mem_size is not None
         mem_size = self._shared_mem_size
-        for i in six.moves.range(self.batch_size * self.n_prefetch):
+        for i in six.moves.range(self.batch_size * (self.n_prefetch + 1)):
             self._mem_list.append(sharedctypes.RawArray('b', mem_size))
             self._unused_mem_queue.put(i)
 
