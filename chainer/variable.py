@@ -352,6 +352,8 @@ Actual: {0}'''.format(type(data))
         if self.creator is None:
             return
 
+        is_debug = chainer.is_debug()
+
         cand_funcs = []
         seen_set = set()
         seen_vars = set()
@@ -375,10 +377,10 @@ Actual: {0}'''.format(type(data))
 
         while cand_funcs:
             _, _, func = heapq.heappop(cand_funcs)
-            outputs = tuple(y() for y in func.outputs)  # access via weak ref
+            outputs = [y() for y in func.outputs]  # access via weak ref
 
-            in_data = tuple(x.data for x in func.inputs)
-            out_grad = tuple(None if y is None else y.grad for y in outputs)
+            in_data = tuple([x.data for x in func.inputs])
+            out_grad = tuple([None if y is None else y.grad for y in outputs])
             hooks = chainer.get_function_hooks()
             if func._n_local_function_hooks != 0:
                 hooks = collections.OrderedDict(hooks)
@@ -391,7 +393,7 @@ Actual: {0}'''.format(type(data))
             for hook in six.itervalues(hooks):
                 hook.backward_postprocess(func, in_data, out_grad)
 
-            if chainer.is_debug():
+            if is_debug:
                 if any(gx is not None and
                        cuda.get_array_module(gx).isnan(gx).any()
                        for gx in gxs):
