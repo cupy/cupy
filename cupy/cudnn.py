@@ -16,12 +16,11 @@ _handles = {}
 
 
 def get_handle():
-    global _handles
-    device = cuda.Device()
-    handle = _handles.get(device.id, None)
-    if handle is None:
-        handle = cudnn.create()
-        _handles[device.id] = handle
+    dev = cuda.get_device_id()
+    if dev in _handles:
+        return _handles[dev]
+    handle = cudnn.create()
+    _handles[dev] = handle
     return handle
 
 
