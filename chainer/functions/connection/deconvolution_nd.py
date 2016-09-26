@@ -78,7 +78,7 @@ class DeconvolutionND(function.Function):
         pad = self.pad
 
         # gcol: C_O, k_1, ..., k_N, n, d_1, ..., d_N
-        gcol = xp.tensordot(W, x, (0, 1)).astype(x.dtype)
+        gcol = xp.tensordot(W, x, (0, 1)).astype(x.dtype, copy=False)
         # Roll n, which is batch size, before the first.
         gcol = xp.rollaxis(gcol, ndim + 1)
 
@@ -193,12 +193,13 @@ class DeconvolutionND(function.Function):
         # col: n, C_I, k_1, k_2, ..., k_N, d_1, d_2, ..., d_N
         x_axes = (0,) + tuple(six.moves.range(2, ndim + 2))
         col_axes = (0,) + tuple(six.moves.range(ndim + 2, ndim * 2 + 2))
-        gW = xp.tensordot(x, col, (x_axes, col_axes)).astype(W.dtype)
+        gW = xp.tensordot(x, col, (x_axes, col_axes)).astype(
+            W.dtype, copy=False)
 
         # col: n, C_I, k_1, k_2, ..., k_N, d_1, d_2, ..., d_N
         # W  : C_I, C_O, k_1, k_2, ..., k_N
         axes = (1,) + tuple(six.moves.range(2, ndim + 2))
-        gx = xp.tensordot(col, W, (axes, axes)).astype(x.dtype)
+        gx = xp.tensordot(col, W, (axes, axes)).astype(x.dtype, copy=False)
         gx = xp.rollaxis(gx, ndim + 1, 1)
 
         if b is None:
