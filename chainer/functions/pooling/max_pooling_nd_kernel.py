@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from chainer.functions.pooling import pooling_nd_kernel
 from chainer.utils.conv_nd_kernel import _map
 from chainer.utils.conv_nd_kernel import muladdexp
