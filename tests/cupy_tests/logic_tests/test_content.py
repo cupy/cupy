@@ -10,19 +10,24 @@ class TestContent(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
-    @testing.for_float_dtypes()
+    @testing.for_dtypes('efFdD')
     @testing.numpy_cupy_array_equal()
     def check_unary_inf(self, name, xp, dtype):
-        a = xp.array([-3, dtype('inf'), -1, -dtype('inf'), 0, 1, 2],
+        a = xp.array([-3, dtype(numpy.inf), -1, -dtype(numpy.inf), 0, 1, 2],
                      dtype=dtype)
         return getattr(xp, name)(a)
 
-    @testing.for_float_dtypes()
+    @testing.for_dtypes('efFdD')
     @testing.numpy_cupy_array_equal()
     def check_unary_nan(self, name, xp, dtype):
-        a = xp.array(
-            [-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, dtype('inf')],
-            dtype=dtype)
+        if numpy.dtype(dtype).kind == 'c':
+            a = xp.array(
+                [-3.+1j, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, dtype(numpy.inf)],
+                dtype=dtype)
+        else:
+            a = xp.array(
+                [-3, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN, dtype('inf')],
+                dtype=dtype)
         return getattr(xp, name)(a)
 
     def test_isfinite(self):

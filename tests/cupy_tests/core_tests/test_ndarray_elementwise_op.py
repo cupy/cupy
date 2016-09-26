@@ -19,7 +19,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
                               no_complex=False):
         if no_complex and (numpy.dtype(x_type).kind == 'c'
                            or numpy.dtype(y_type).kind == 'c'):
-            return
+            return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         if swap:
             return op(y_type(3), a)
@@ -120,19 +120,23 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_divmod0_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0])
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0],
+                                       no_complex=True)
 
     def test_divmod1_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1])
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1],
+                                       no_complex=True)
 
     def test_rdivmod0_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0], swap=True)
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[0], swap=True,
+                                       no_complex=True)
 
     def test_rdivmod1_scalar(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1], swap=True)
+            self.check_array_scalar_op(lambda x, y: divmod(x, y)[1], swap=True,
+                                       no_complex=True)
 
     def test_lt_scalar(self):
         self.check_array_scalar_op(operator.lt, no_complex=True)
@@ -258,7 +262,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         if no_complex:
             if numpy.dtype(x_type).kind == 'c' \
                     or numpy.dtype(y_type).kind == 'c':
-                return
+                return xp.array(True)
         a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
         b = xp.array([[1], [2]], y_type)
         return op(a, b)
@@ -333,11 +337,13 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_broadcasted_divmod0(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[0])
+            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[0],
+                                            no_complex=True)
 
     def test_broadcasted_divmod1(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[1])
+            self.check_array_broadcasted_op(lambda x, y: divmod(x, y)[1],
+                                            no_complex=True)
 
     def test_broadcasted_lt(self):
         self.check_array_broadcasted_op(operator.lt, no_complex=True)
@@ -364,7 +370,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         if no_complex:
             if numpy.dtype(x_type).kind == 'c' \
                     or numpy.dtype(y_type).kind == 'c':
-                return
+                return x_type(True)
         a = xp.array([[[1, 2, 3]], [[4, 5, 6]]], x_type)
         b = xp.array([[1], [2], [3]], y_type)
         return op(a, b)
@@ -399,12 +405,14 @@ class TestArrayElementwiseOp(unittest.TestCase):
     def test_doubly_broadcasted_divmod0(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_doubly_broadcasted_op(
-                lambda x, y: divmod(x, y)[0])
+                lambda x, y: divmod(x, y)[0],
+                no_complex=True)
 
     def test_doubly_broadcasted_divmod1(self):
         with testing.NumpyError(divide='ignore'):
             self.check_array_doubly_broadcasted_op(
-                lambda x, y: divmod(x, y)[1])
+                lambda x, y: divmod(x, y)[1],
+                no_complex=True)
 
     def test_doubly_broadcasted_lt(self):
         self.check_array_doubly_broadcasted_op(operator.lt, no_complex=True)

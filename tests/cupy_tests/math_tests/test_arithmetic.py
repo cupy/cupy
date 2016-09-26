@@ -20,7 +20,7 @@ class TestArithmetic(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_binary(self, name, xp, dtype, no_complex=False):
         if no_complex and numpy.dtype(dtype).kind == 'c':
-            pass
+            return dtype(True)
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3), xp, dtype)
         return getattr(xp, name)(a, b)
@@ -35,7 +35,7 @@ class TestArithmetic(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_binary_negative(self, name, xp, dtype, no_complex=False):
         if no_complex and numpy.dtype(dtype).kind == 'c':
-            pass
+            return dtype(True)
         a = xp.array([-3, -2, -1, 1, 2, 3], dtype=dtype)
         b = xp.array([4, 3, 2, 1, -1, -2], dtype=dtype)
         return getattr(xp, name)(a, b)
@@ -85,11 +85,11 @@ class TestArithmetic(unittest.TestCase):
 
     def test_fmod(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('fmod')
+            self.check_binary('fmod', no_complex=True)
 
     def test_fmod_negative(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_negative('fmod')
+            self.check_binary_negative('fmod', no_complex=True)
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
@@ -103,8 +103,8 @@ class TestArithmetic(unittest.TestCase):
 
     def test_remainder(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary('remainder')
+            self.check_binary('remainder', no_complex=True)
 
     def test_remainder_negative(self):
         with testing.NumpyError(divide='ignore'):
-            self.check_binary_negative('remainder')
+            self.check_binary_negative('remainder', no_complex=True)
