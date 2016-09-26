@@ -106,6 +106,14 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
 
     """
 
+    # TODO(takagi) In the future, the Chainer functions that could be tested
+    #     with the decorator would be extended as:
+    #
+    #     - Multiple input parameters
+    #     - Multiple output values
+    #     - Other types than float: integer
+    #     - Other operators other than analytic math: basic math
+
     # Import here to avoid mutual import.
     from chainer import gradient_check
     from chainer import testing
