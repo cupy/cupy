@@ -1,3 +1,4 @@
+import threading
 import unittest
 
 import mock
@@ -464,6 +465,24 @@ class TestNoBackpropMode(unittest.TestCase):
         with chainer.force_backprop_mode():
             y = self.x + 1
         self.assertTrue(y.creator is not None)
+
+
+class MyThread(threading.Thread):
+
+    def run(self):
+        x = chainer.Variable(numpy.array([1], dtype='f'), volatile='auto')
+        with chainer.no_backprop_mode():
+            y = x + 1
+        self.creator_is_none = y.creator is None
+
+
+class TestBackpropModeMultiThread(unittest.TestCase):
+
+    def test_multi_thread(self):
+        t = MyThread()
+        t.start()
+        t.join()
+        self.assertTrue(t.creator_is_none)
 
 
 testing.run_module(__name__, __file__)
