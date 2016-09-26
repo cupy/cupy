@@ -36,7 +36,7 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
         accept_error = Exception
     elif not accept_error:
         accept_error = ()
-
+    # ToDo: expected_regexp like numpy.testing.assert_raises_regex
     if cupy_error is None and numpy_error is None:
         self.fail('Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
@@ -376,7 +376,7 @@ def numpy_cupy_raises(name='xp', exception_class=Exception):
                 numpy_tb = traceback.format_exc()
 
             _check_cupy_numpy_error(self, cupy_error, cupy_tb,
-                                    numpy_error, numpy_tb, 
+                                    numpy_error, numpy_tb,
                                     accept_error=exception_class)
         return test_func
     return decorator
@@ -398,8 +398,11 @@ def for_dtypes(dtypes, name='dtype'):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
             for dtype in dtypes:
+                if not cupy.cupy_complex_available and \
+                                numpy.dtype(dtype).kind == 'c':
+                    continue
                 try:
-                    kw[name] = dtype
+                    kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', dtype)
