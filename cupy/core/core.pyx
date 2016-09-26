@@ -29,6 +29,15 @@ cdef inline _should_use_rop(x, y):
     return xp < yp and not isinstance(y, ndarray)
 
 
+cdef:
+    int _cuda_version = runtime.runtimeGetVersion()
+    int _cupy_complex_require_cuda_version = 7050
+    bint c_cupy_complex_available = _cuda_version >= _cupy_complex_require_cuda_version
+
+
+cupy_complex_available = c_cupy_complex_available
+
+
 cdef class ndarray:
 
     """Multi-dimensional array on a CUDA device.
@@ -78,6 +87,12 @@ cdef class ndarray:
             if x < 0:
                 raise ValueError('Negative dimensions are not allowed')
         self.dtype = numpy.dtype(dtype)
+        if not c_cupy_complex_available and \
+                numpy.issubdtype(self.dtype, complex):
+            raise TypeError('Complex Types are not allowed with CUDA {}.'
+                            'Minimum CUDA version {}'.format(
+                _cuda_version, _cupy_complex_require_cuda_version))
+
         self.size = internal.prod_ssize_t(self._shape)
         self._strides = internal.get_contiguous_strides(
             self._shape, self.itemsize)
@@ -2079,7 +2094,7 @@ cpdef ndarray tensordot_core(
     elif dtype == 'd':
         cublas.dgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
                      a.data.ptr, lda, 0, c.data.ptr, m)
-	elif dtype == 'F':
+    elif dtype == 'F':
         cublas.cgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
                      a.data.ptr, lda, 0, c.data.ptr, m)
     elif dtype == 'D':
@@ -2087,7 +2102,6 @@ cpdef ndarray tensordot_core(
                      a.data.ptr, lda, 0, c.data.ptr, m)
     else:
         raise ValueError('Invalid dtype: %s' % str(dtype))
-
     if out is not ret:
         elementwise_copy(out, ret)
     return ret

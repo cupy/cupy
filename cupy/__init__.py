@@ -30,6 +30,8 @@ from cupy import statistics
 from cupy import testing  # NOQA
 from cupy import util
 
+cupy_complex_available = core.core.cupy_complex_available
+
 random = cupy.random
 
 ndarray = core.ndarray

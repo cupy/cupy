@@ -4,6 +4,8 @@ from cupy import cuda
 
 from cupy.cuda cimport function
 
+from cupy.core.core cimport c_cupy_complex_available
+
 
 cdef struct _CArray:
     void* data
@@ -75,9 +77,14 @@ cdef str _header_source = None
 cpdef str _get_header_source():
     global _header_source
     if _header_source is None:
-        header_path = os.path.join(os.path.dirname(__file__), 'carray.cuh')
+        dirname = os.path.dirname(__file__)
+        header_path = os.path.join(dirname, 'carray.cuh')
         with open(header_path) as header_file:
             _header_source = header_file.read()
+        if c_cupy_complex_available:
+            header_path = os.path.join(dirname, 'complex.cuh')
+            with open(header_path) as header_file:
+                _header_source += header_file.read()
     return _header_source
 
 

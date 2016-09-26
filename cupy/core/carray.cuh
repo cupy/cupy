@@ -3,8 +3,6 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
-#include <thrust/complex.h>
-
 // float16
 class float16
 {
@@ -133,10 +131,6 @@ __device__ int isfinite(float16 x) {return x.isfinite();}
 __device__ int signbit(float16 x) {return x.signbit();}
 __device__ float16 copysign(float16 x, float16 y) {return float16::copysign(x, y);}
 __device__ float16 nextafter(float16 x, float16 y) {return float16::nextafter(x, y);}
-
-
-// thrust::complex
-// ToDo: assignment operator for thrust::complex<T> = T2 for T2 all types
 
 
 // CArray
