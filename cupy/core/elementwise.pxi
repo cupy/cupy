@@ -590,7 +590,7 @@ def _get_ufunc_kernel(
     for i, x in enumerate(out_types):
         types.append('typedef %s out%d_type;' % (
             _get_typename(args_info[i + len(in_types)][1]), i))
-        op.append('out0_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
+        op.append('out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
 
     op.append(routine)
     operation = '\n'.join(op)
