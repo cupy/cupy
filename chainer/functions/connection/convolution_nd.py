@@ -79,7 +79,7 @@ class ConvolutionND(function.Function):
 
         # Compute correlation.
         axes = tuple(moves.range(1, ndim + 2))  # (1, 2, ..., N+1)
-        y = xp.tensordot(self.col, W, (axes, axes)).astype(x.dtype)
+        y = xp.tensordot(self.col, W, (axes, axes)).astype(x.dtype, copy=False)
 
         # Apply bias if given.
         if b is not None:
@@ -180,10 +180,11 @@ class ConvolutionND(function.Function):
         out_axes = (0,) + tuple(moves.range(2, ndim + 2))
         # (n, _, _, ..., _, out_1, out_2, ..., out_N)
         col_axes = (0,) + tuple(moves.range(ndim + 2, ndim * 2 + 2))
-        gW = xp.tensordot(gy, self.col, (out_axes, col_axes)).astype(W.dtype)
+        gW = xp.tensordot(gy, self.col, (out_axes, col_axes)).astype(
+            W.dtype, copy=False)
 
         # Compute patch array gradient.
-        gcol = xp.tensordot(W, gy, (0, 1)).astype(x.dtype)
+        gcol = xp.tensordot(W, gy, (0, 1)).astype(x.dtype, copy=False)
         gcol = xp.rollaxis(gcol, ndim + 1)
 
         # Compute input gradient.
