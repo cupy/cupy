@@ -115,7 +115,7 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
         try:
             func_expected = getattr(numpy, name)
         except AttributeError:
-            raise ValueError("numpy has no function corresponding "
+            raise ValueError("NumPy has no functions corresponding "
                              "to Chainer function '{}'.".format(name))
 
     if label_expected is None:
