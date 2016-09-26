@@ -423,7 +423,7 @@ cdef class ndarray:
 
         for i in range(ndim):
             a_axes.push_back(i)
-            axis = <Py_ssize_t?>axes[i]
+            axis = axes[i]
             if axis < -ndim or axis >= ndim:
                 raise IndexError('Axes overrun')
             axes[i] = axis % ndim
