@@ -3,9 +3,9 @@ import unittest
 import mock
 
 import chainer
+from chainer.functions.pooling import pooling_nd_kernel
 from chainer import testing
 from chainer.testing import attr
-from chainer.functions.pooling import pooling_nd_kernel
 
 
 @testing.parameterize(*testing.product({
