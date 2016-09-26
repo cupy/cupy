@@ -22,7 +22,7 @@ class TestContent(unittest.TestCase):
     def check_unary_nan(self, name, xp, dtype):
         if numpy.dtype(dtype).kind == 'c':
             a = xp.array(
-                [-3.+1j, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN,
+                [-3. + 1j, numpy.NAN, -1, numpy.NAN, 0, numpy.NAN,
                  dtype(numpy.inf)],
                 dtype=dtype)
         else:
