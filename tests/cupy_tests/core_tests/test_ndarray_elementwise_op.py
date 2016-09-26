@@ -14,7 +14,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError)
     def check_array_scalar_op(self, op, xp, x_type, y_type, swap=False,
                               no_complex=False):
         if no_complex and (numpy.dtype(x_type).kind == 'c'
