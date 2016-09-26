@@ -30,7 +30,8 @@ sqrt = core.create_ufunc(
     'cupy_sqrt',
     # I think this order is a bug of NumPy, though we select this "buggy"
     # behavior for compatibility with NumPy.
-    ('f->f', 'd->d', 'e->e'),
+    ('f->f', 'd->d', 'e->e', ('F->F', 'out0 = thrust::sqrt(in0)'),
+     ('D->D', 'out0 = thrust::sqrt(in0)')),
     'out0 = sqrt(in0)',
     doc='''Elementwise positive square-root function.
 
