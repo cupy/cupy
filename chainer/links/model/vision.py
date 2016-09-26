@@ -18,8 +18,7 @@ from chainer import Variable
 def _make_npz(path_npz, url, model):
     path_caffemodel = chainer.dataset.cached_download(url)
     print('Now loading caffemodel (usually it may take few and ten minutes)')
-    caffemodel = CaffeFunction(path_caffemodel)
-    serializers.save_npz(path_npz, caffemodel, compression=False)
+    VGG16Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
     serializers.load_npz(path_npz, model)
     return model
 
@@ -139,6 +138,11 @@ class VGG16Layers(chainer.Chain):
     @property
     def available_layers(self):
         return list(self.functions.iterkeys())
+
+    @classmethod
+    def convert_caffemodel_to_npz(cls, path_caffemodel, path_npz):
+        caffemodel = CaffeFunction(path_caffemodel)
+        serializers.save_npz(path_npz, caffemodel, compression=False)
 
     def __call__(self, x, layers=['prob']):
         """Computes all the feature maps specified by ``layers``.
