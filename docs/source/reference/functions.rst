@@ -111,16 +111,24 @@ copy
 ~~~~
 .. autofunction:: copy
 
+dstack
+~~~~~~
+.. autofunction:: dstack
+
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
+
+flatten
+~~~~~~~
+.. autofunction:: flatten
 
 get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
 hstack
-~~~~~~~~
+~~~~~~
 .. autofunction:: hstack
 
 permutate
@@ -163,6 +171,10 @@ transpose_sequence
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: transpose_sequence
 
+vstack
+~~~~~~
+.. autofunction:: vstack
+
 where
 ~~~~~
 .. autofunction:: where
@@ -179,9 +191,17 @@ convolution_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: convolution_2d
 
+convolution_nd
+~~~~~~~~~~~~~~
+.. autofunction:: convolution_nd
+
 deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
+
+dilated_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: dilated_convolution_2d
 
 embed_id
 ~~~~~~~~
@@ -206,6 +226,10 @@ Loss functions
 bernoulli_nll
 ~~~~~~~~~~~~~
 .. autofunction:: bernoulli_nll
+
+black_out
+~~~~~~~~~
+.. autofunction:: black_out
 
 connectionist_temporal_classification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -287,6 +311,10 @@ bias
 ~~~~
 .. autofunction:: bias
 
+ceil
+~~~~
+.. autofunction:: ceil
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -295,9 +323,17 @@ cos
 ~~~
 .. autofunction:: cos
 
+cosh
+~~~~
+.. autofunction:: cosh
+
 exp
 ~~~
 .. autofunction:: exp
+
+floor
+~~~~~
+.. autofunction:: floor
 
 identity
 ~~~~~~~~
@@ -315,9 +351,17 @@ log
 ~~~
 .. autofunction:: log
 
+log10
+~~~~~
+.. autofunction:: log10
+
 log1p
 ~~~~~
 .. autofunction:: log1p
+
+log2
+~~~~
+.. autofunction:: log2
 
 logsumexp
 ~~~~~~~~~
@@ -343,6 +387,10 @@ minimum
 ~~~~~~~
 .. autofunction:: minimum
 
+rsqrt
+~~~~~
+.. autofunction:: rsqrt
+
 scale
 ~~~~~
 .. autofunction:: scale
@@ -350,6 +398,10 @@ scale
 sin
 ~~~
 .. autofunction:: sin
+
+sinh
+~~~~
+.. autofunction:: sinh
 
 sqrt
 ~~~~
@@ -362,6 +414,12 @@ square
 sum
 ~~~
 .. autofunction:: sum
+
+tanh
+~~~~
+Hyperbolic tangent function is described in "Activation functions" section.
+
+.. seealso:: :func:`~chainer.functions.tanh`
 
 tan
 ~~~
@@ -422,3 +480,11 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
+
+
+Utility functions
+-----------------
+
+forget
+~~~~~~
+.. autofunction:: forget

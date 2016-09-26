@@ -13,13 +13,19 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(*testing.product({
+@testing.parameterize(*(testing.product({
     'shape': [None, (2, 3), (2, 3, 2), (2, 3, 2, 2)],
     'cache_score': [True, False],
     'normalize': [True, False],
     'ignore_index': [None, (slice(None),), (0,), (0, 1), (0, 1, 0)],
+    'dtype': [numpy.float32],
+}) + testing.product({
+    'shape': [None, (2, 3), (2, 3, 2), (2, 3, 2, 2)],
+    'cache_score': [False],
+    'normalize': [True],
+    'ignore_index': [(0, 1)],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestSoftmaxCrossEntropy(unittest.TestCase):
 
     def setUp(self):

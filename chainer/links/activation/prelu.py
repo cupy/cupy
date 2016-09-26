@@ -20,6 +20,7 @@ class PReLU(link.Link):
         W (~chainer.Variable): Coefficient of parametric ReLU.
 
     """
+
     def __init__(self, shape=(), init=0.25):
         super(PReLU, self).__init__(W=shape)
         self.W.data.fill(init)

@@ -1,5 +1,5 @@
 from chainer import reporter
-from chainer.training import trigger as trigger_module
+from chainer.training import util
 
 
 class BestValueTrigger(object):
@@ -14,13 +14,14 @@ class BestValueTrigger(object):
         trigger: Trigger that decides the comparison interval between current
             best value and new value. This must be a tuple in the form of
             ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
-            :class`IntervalTrigger`.
+            :class:`~chainer.training.triggers.IntervalTrigger`.
 
     """
+
     def __init__(self, key, compare, trigger=(1, 'epoch')):
         self._key = key
         self._best_value = None
-        self._interval_trigger = trigger_module.get_trigger(trigger)
+        self._interval_trigger = util.get_trigger(trigger)
         self._init_summary()
         self._compare = compare
 
@@ -73,9 +74,10 @@ class MaxValueTrigger(BestValueTrigger):
         trigger: Trigger that decides the comparison interval between current
             best value and new value. This must be a tuple in the form of
             ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
-            :class`IntervalTrigger`.
+            :class:`~chainer.training.triggers.IntervalTrigger`.
 
     """
+
     def __init__(self, key, trigger=(1, 'epoch')):
         super(MaxValueTrigger, self).__init__(
             key, lambda max_value, new_value: new_value > max_value, trigger)
@@ -94,9 +96,10 @@ class MinValueTrigger(BestValueTrigger):
         trigger: Trigger that decides the comparison interval between current
             best value and new value. This must be a tuple in the form of
             ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
-            :class`IntervalTrigger`.
+            :class:`~chainer.training.triggers.IntervalTrigger`.
 
     """
+
     def __init__(self, key, trigger=(1, 'epoch')):
         super(MinValueTrigger, self).__init__(
             key, lambda min_value, new_value: new_value < min_value, trigger)

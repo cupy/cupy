@@ -1,8 +1,8 @@
 import unittest
 
-from chainer import cuda
-from chainer.testing import attr
+from cupy import cuda
 from cupy import testing
+from cupy.testing import attr
 
 
 class TestStream(unittest.TestCase):

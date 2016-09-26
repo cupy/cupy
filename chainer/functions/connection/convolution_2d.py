@@ -81,8 +81,10 @@ class Convolution2DFunction(function.Function):
 
         out_h = conv.get_conv_outsize(h, kh, self.sy, self.ph,
                                       cover_all=self.cover_all)
+        assert out_h > 0, 'Height in the output should be positive.'
         out_w = conv.get_conv_outsize(w, kw, self.sx, self.pw,
                                       cover_all=self.cover_all)
+        assert out_w > 0, 'Width in the output should be positive.'
 
         y = cuda.cupy.empty((n, out_c, out_h, out_w), dtype=x.dtype)
         if (not self.cover_all and cuda.cudnn_enabled and self.use_cudnn and
@@ -98,7 +100,7 @@ class Convolution2DFunction(function.Function):
 
             self.filter_desc = cudnn.create_filter_descriptor(W)
             self.conv_desc = cudnn.create_convolution_descriptor(
-                (self.ph, self.pw), (self.sy, self.sx))
+                (self.ph, self.pw), (self.sy, self.sx), x.dtype)
             if b is not None:
                 self.bias_desc = cudnn.create_tensor_descriptor(
                     b[None, :, None, None])

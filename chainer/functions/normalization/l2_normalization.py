@@ -53,7 +53,7 @@ class NormalizeL2(function.Function):
         norm = norm[:, numpy.newaxis]
 
         gx = gy * norm - (x * gy).sum(axis=1)[:, numpy.newaxis] * x / norm
-        gx = gx / norm**2
+        gx = gx / norm ** 2
 
         return gx,
 
@@ -92,8 +92,8 @@ def normalize(x, eps=1e-5):
 
     This function implements L2 normalization on a 1D vector. No reduction
     is done along batch axis.  Let :math:`x` be an input vector of dimension
-    :math:`(N, K)`, where :math:`N` and :math:`K` denote mini-batchsize and the
-    dimension of the input variable. Then, this function computes an output
+    :math:`(N, K)`, where :math:`N` and :math:`K` denote mini-batch size and
+    the dimension of the input variable. Then, this function computes an output
     vector :math:`y` by the following equation:
 
     .. math::

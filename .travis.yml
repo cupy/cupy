@@ -50,15 +50,20 @@ install:
   - pip install cython
   - python setup.py sdist
   - pip install dist/*.tar.gz
-  - pip install h5py
+  - pip install h5py pillow
   - pip install nose hacking mock
+  - pip install autopep8
 
 script:
   - flake8
   - flake8 --config=.flake8.cython
-  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest tests/install_tests
+  - autopep8 -r . --global-config .pep8 | tee check_autopep8
+  - test ! -s check_autopep8
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest tests/install_tests
   - cd tests
-  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu' --with-doctest chainer_tests
+  - PYTHONWARNINGS='module::DeprecationWarning' nosetests -a '!gpu,!slow' --with-doctest chainer_tests
+  - cd ..
+  - READTHEDOCS=True python setup.py develop
 
 sudo: false
 

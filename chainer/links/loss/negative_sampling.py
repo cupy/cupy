@@ -26,6 +26,7 @@ class NegativeSampling(link.Link):
         W (~chainer.Variable): Weight parameter matrix.
 
     """
+
     def __init__(self, in_size, counts, sample_size, power=0.75):
         vocab_size = len(counts)
         super(NegativeSampling, self).__init__(W=(vocab_size, in_size))

@@ -12,7 +12,8 @@ from chainer.testing import attr
 
 def _sigmoid(x):
     xp = cuda.get_array_module(x)
-    return 1 / (1 + xp.exp(-x))
+    half = x.dtype.type(0.5)
+    return xp.tanh(x * half) * half + half
 
 
 def _gru(func, h, x):
@@ -26,10 +27,10 @@ def _gru(func, h, x):
 
 
 @testing.parameterize(
-    {'gru': links.GRU, 'state': 'random', 'in_size': 4, 'out_size': 8},
-    {'gru': links.GRU, 'state': 'random', 'out_size': 8},
-    {'gru': links.StatefulGRU, 'state': 'random', 'in_size': 4, 'out_size': 8},
-    {'gru': links.StatefulGRU, 'state': 'zero', 'in_size': 4, 'out_size': 8},
+    {'gru': links.GRU, 'state': 'random', 'in_size': 3, 'out_size': 5},
+    {'gru': links.GRU, 'state': 'random', 'out_size': 5},
+    {'gru': links.StatefulGRU, 'state': 'random', 'in_size': 3, 'out_size': 5},
+    {'gru': links.StatefulGRU, 'state': 'zero', 'in_size': 3, 'out_size': 5},
 )
 class TestGRU(unittest.TestCase):
 

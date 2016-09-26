@@ -208,7 +208,7 @@ for epoch in range(n_epoch):
         count += 1
 
         if count >= batchsize:
-            model.zerograds()
+            model.cleargrads()
             accum_loss.backward()
             optimizer.update()
             total_loss += float(accum_loss.data)
