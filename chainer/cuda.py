@@ -36,6 +36,7 @@ cudnn_enabled = False
 
 try:
     import cupy
+    from cupy.core import fusion # NOQA
     from cupy import cuda  # NOQA
     from cupy.cuda import cublas  # NOQA
 
@@ -48,6 +49,7 @@ try:
     available = True
 except Exception as e:
     _resolution_error = e
+    fusion = numpy
 
     class ndarray(object):
         pass  # for type testing
@@ -591,3 +593,153 @@ def set_max_workspace_size(size):
     """
     global _max_workspace_size
     _max_workspace_size = size
+
+# ------------------------------------------------------------------------------
+# numpy/cupy compatible ufunc
+# ------------------------------------------------------------------------------
+
+
+class Fusion(object):
+
+    def __init__(self, func, input_num, reduce_f, post_map):
+        self.func = func
+        self.input_num = input_num
+        self.reduce = reduce_f
+        self.post_map = post_map
+
+    def __call__(self, *args, **kwargs):
+        if self.reduce is None:
+            return self.func(*args)
+        else:
+            axis = kwargs['axis'] if 'axis' in kwargs else None
+            reduce_f = self.reduce
+            if axis is None:
+                return self.post_map(reduce_f(self.func(*args)))
+            else:
+                return self.post_map(reduce_f(self.func(*args), axis=axis))
+
+
+if available:
+    fuse = fusion.fuse
+    sqrt_fixed = fusion.sqrt_fixed
+
+else:
+    def fuse(input_num=None, reduce=None, post_map=lambda x: x):
+        """Function fusing decorator.
+
+        This decorator can be used to define an elementwise or reduction kernel
+        more easily than `ElementwiseKernel` class or `ReductionKernel` class.
+
+        This decorator makes `Fusion` class from the given function.
+
+        Args:
+            input_num (int): Number of input arguments of the given function.
+            immutable_num (int): Number of immutable input arguments of
+                the given function.
+            reduce (function): The reduce function which is applied after
+                pre-mapping step. If not assigned, reduction step is skipped.
+            post_map (function): Mapping function for reduced values.
+                If not assigned, post_map step is skipped.
+    """
+        return lambda f: Fusion(f, input_num, reduce, post_map)
+
+    sqrt_fixed = numpy.sqrt
+
+
+where = fusion.where
+clip = fusion.clip
+
+bitwise_and = fusion.bitwise_and
+bitwise_or = fusion.bitwise_or
+bitwise_xor = fusion.bitwise_xor
+invert = fusion.invert
+left_shift = fusion.left_shift
+right_shift = fusion.right_shift
+
+greater = fusion.greater
+greater_equal = fusion.greater_equal
+less = fusion.less
+less_equal = fusion.less_equal
+equal = fusion.equal
+not_equal = fusion.not_equal
+
+isfinite = fusion.isfinite
+isinf = fusion.isinf
+isnan = fusion.isnan
+
+logical_and = fusion.logical_and
+logical_or = fusion.logical_or
+logical_not = fusion.logical_not
+logical_xor = fusion.logical_xor
+
+sin = fusion.sin
+cos = fusion.cos
+tan = fusion.tan
+arcsin = fusion.arcsin
+arccos = fusion.arccos
+arctan = fusion.arctan
+hypot = fusion.hypot
+deg2rad = fusion.deg2rad
+rad2deg = fusion.rad2deg
+degrees = fusion.degrees
+radians = fusion.radians
+
+sinh = fusion.sinh
+cosh = fusion.cosh
+tanh = fusion.tanh
+arcsinh = fusion.arcsinh
+arccosh = fusion.arccosh
+arctanh = fusion.arctanh
+
+rint = fusion.rint
+floor = fusion.floor
+ceil = fusion.ceil
+trunc = fusion.trunc
+
+exp = fusion.exp
+expm1 = fusion.expm1
+exp2 = fusion.exp2
+log = fusion.log
+log10 = fusion.log10
+log2 = fusion.log2
+log1p = fusion.log1p
+logaddexp = fusion.logaddexp
+logaddexp2 = fusion.logaddexp2
+
+signbit = fusion.signbit
+copysign = fusion.copysign
+ldexp = fusion.ldexp
+frexp = fusion.frexp
+nextafter = fusion.nextafter
+
+add = fusion.add
+reciprocal = fusion.reciprocal
+negative = fusion.negative
+multiply = fusion.multiply
+divide = fusion.divide
+power = fusion.power
+subtract = fusion.subtract
+true_divide = fusion.true_divide
+floor_divide = fusion.floor_divide
+fmod = fusion.fmod
+mod = fusion.mod
+modf = fusion.modf
+remainder = fusion.remainder
+
+clip = fusion.clip
+sqrt = fusion.sqrt
+square = fusion.square
+absolute = fusion.absolute
+abs = fusion.abs
+sign = fusion.sign
+maximum = fusion.maximum
+minimum = fusion.minimum
+fmax = fusion.fmax
+fmin = fusion.fmin
+
+all = fusion.all
+any = fusion.any
+sum = fusion.sum
+prod = fusion.prod
+amax = fusion.amax
+amin = fusion.amin
