@@ -19,6 +19,7 @@ from chainer.functions.array import broadcast
 from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
+from chainer.functions.array import dstack
 from chainer.functions.array import expand_dims
 from chainer.functions.array import flatten
 from chainer.functions.array import get_item
@@ -152,6 +153,7 @@ Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
+dstack = dstack.dstack
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
 Flatten = flatten.Flatten
