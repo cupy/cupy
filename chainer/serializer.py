@@ -56,6 +56,7 @@ class AbstractSerializer(object):
 class Serializer(AbstractSerializer):
 
     """Base class of all serializers."""
+
     def save(self, obj):
         """Saves an object by this serializer.
 
@@ -71,6 +72,7 @@ class Serializer(AbstractSerializer):
 class Deserializer(AbstractSerializer):
 
     """Base class of all deserializers."""
+
     def load(self, obj):
         """Loads an object from this deserializer.
 

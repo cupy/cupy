@@ -21,11 +21,20 @@ def _protobuf3():
 
 
 if _protobuf3():
-    from chainer.links.caffe import caffe_pb3 as caffe_pb
+    from chainer.links.caffe.protobuf3 import caffe_pb2 as caffe_pb
     available = True
+
+    try:
+        # This method is undocumented, but is required to read large size of
+        # model files when a user uses cpp-implementation.
+        from google.protobuf.pyext import _message
+        _message.SetAllowOversizeProtos(True)
+    except ImportError:
+        pass
+
 elif sys.version_info < (3, 0, 0):
     # caffe_pb2 does not support Py3
-    from chainer.links.caffe import caffe_pb2 as caffe_pb
+    from chainer.links.caffe.protobuf2 import caffe_pb2 as caffe_pb
     available = True
 else:
     available = False
@@ -115,6 +124,7 @@ class CaffeFunction(link.Chain):
         forwards (dict): A mapping from layer names to corresponding functions.
 
     """
+
     def __init__(self, model_path):
         if not available:
             msg = 'CaffeFunction is only supported on protobuf>=3 in Python3'
@@ -177,8 +187,8 @@ class CaffeFunction(link.Chain):
         variables = dict(inputs)
         for func_name, bottom, top in self.layers:
             if (func_name in disable or
-               func_name not in self.forwards or
-               any(blob not in variables for blob in bottom)):
+                func_name not in self.forwards or
+                    any(blob not in variables for blob in bottom)):
                 continue
 
             func = self.forwards[func_name]
@@ -228,12 +238,13 @@ class CaffeFunction(link.Chain):
         part_size = len(blobs[0].data) // param.group
         for i in six.moves.range(param.group):
             in_slice = slice(i * n_in // param.group,
-                             (i+1) * n_in // param.group)
+                             (i + 1) * n_in // param.group)
             out_slice = slice(i * n_out // param.group,
-                              (i+1) * n_out // param.group)
+                              (i + 1) * n_out // param.group)
             w = func.W.data[out_slice, in_slice]
 
-            data = numpy.array(blobs[0].data[i*part_size:(i+1)*part_size])
+            data = numpy.array(
+                blobs[0].data[i * part_size:(i + 1) * part_size])
             w[:] = data.reshape(w.shape)
 
         if param.bias_term:
@@ -519,6 +530,7 @@ def _get_width(blob):
 # Internal class
 
 class _SingleArgumentFunction(object):
+
     def __init__(self, func, *args, **kwargs):
         self.func = func
         self.args = args
@@ -529,6 +541,7 @@ class _SingleArgumentFunction(object):
 
 
 class _ListArgumentFcuntion(object):
+
     def __init__(self, func, **kwargs):
         self.func = func
         self.kwargs = kwargs
@@ -538,6 +551,7 @@ class _ListArgumentFcuntion(object):
 
 
 class _DropoutFunction(object):
+
     def __init__(self, caffe_func, ratio):
         # `caffe_func.train` is determined when calling `__call__`
         self.caffe_func = caffe_func
@@ -549,6 +563,7 @@ class _DropoutFunction(object):
 
 
 class _CallChildLink(object):
+
     def __init__(self, caffe_func, name):
         self.name = name
         self.caffe_func = caffe_func
@@ -558,6 +573,7 @@ class _CallChildLink(object):
 
 
 class _EltwiseFunction(object):
+
     def __init__(self, operation, coeffs=None):
         if coeffs is not None:
             assert len(coeffs) > 0

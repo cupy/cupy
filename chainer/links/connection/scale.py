@@ -35,6 +35,7 @@ class Scale(link.Chain):
             Otherwise, no bias attribute.
 
     """
+
     def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
         super(Scale, self).__init__()
 

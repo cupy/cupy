@@ -56,6 +56,7 @@ class Reporter(object):
         observation: Dictionary of observed values.
 
     """
+
     def __init__(self):
         self._observer_names = {}
         self.observation = {}
@@ -235,6 +236,7 @@ class Summary(object):
     Summary computes the statistics of given scalars online.
 
     """
+
     def __init__(self):
         self._x = 0
         self._x2 = 0
@@ -284,6 +286,7 @@ class DictSummary(object):
     values in the dictionaries.
 
     """
+
     def __init__(self):
         self._summaries = collections.defaultdict(Summary)
 

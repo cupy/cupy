@@ -23,6 +23,12 @@ class TestSearch(unittest.TestCase):
         return xp.argmax(a)
 
     @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(accept_error=ValueError)
+    def test_argmax_nan(self, xp, dtype):
+        a = xp.array([float('nan'), -1, 1], dtype)
+        return a.argmax()
+
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_argmax_axis_large(self, xp, dtype):
         a = testing.shaped_random((3, 1000), xp, dtype)
@@ -59,6 +65,12 @@ class TestSearch(unittest.TestCase):
         return a.argmin()
 
     @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(accept_error=ValueError)
+    def test_argmin_nan(self, xp, dtype):
+        a = xp.array([float('nan'), -1, 1], dtype)
+        return a.argmin()
+
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_external_argmin_all(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)

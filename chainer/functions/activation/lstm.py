@@ -12,7 +12,8 @@ def _extract_gates(x):
 
 
 def _sigmoid(x):
-    return 1 / (1 + numpy.exp(-x))
+    half = x.dtype.type(0.5)
+    return numpy.tanh(x * half) * half + half
 
 
 def _grad_sigmoid(x):
@@ -24,7 +25,10 @@ def _grad_tanh(x):
 
 
 _preamble = '''
-template <typename T> __device__ T sigmoid(T x) { return 1 / (1 + exp(-x)); }
+template <typename T> __device__ T sigmoid(T x) {
+    const T half = 0.5;
+    return tanh(x * half) * half + half;
+}
 template <typename T> __device__ T grad_sigmoid(T y) { return y * (1 - y); }
 template <typename T> __device__ T grad_tanh(T y) { return 1 - y * y; }
 
@@ -44,6 +48,7 @@ class LSTM(function.Function):
     state. x must have four times channels compared to the number of units.
 
     """
+
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 2)
         c_type, x_type = in_types
@@ -179,9 +184,9 @@ def lstm(c_prev, x):
     This function supports variable length inputs. The mini-batch size of
     the current input must be equal to or smaller than that of the previous
     one. When mini-batch size of ``x`` is smaller than that of ``c``, this
-    funciton only updates ``c[0:len(x)]`` and doesn't change the rest of ``c``,
+    function only updates ``c[0:len(x)]`` and doesn't change the rest of ``c``,
     ``c[len(x):]``.
-    So, please sort input sequneces in descending order of lengths before
+    So, please sort input sequences in descending order of lengths before
     applying the function.
 
     Args:

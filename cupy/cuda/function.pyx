@@ -69,7 +69,7 @@ cdef set _pointer_numpy_types = {numpy.dtype(i).type
 
 
 cdef inline CPointer _pointer(x):
-    cdef int itemsize
+    cdef Py_ssize_t itemsize
     if x is None:
         return CPointer()
     if hasattr(x, 'cstruct'):

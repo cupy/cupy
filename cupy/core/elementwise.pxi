@@ -194,7 +194,7 @@ cpdef tuple _reduce_dims(list args, tuple params, tuple shape):
     for i in range(1, ndim):
         if vecshape[i - 1] == 1:
             continue
-        for j in range(args_strides.size()):
+        for j in range(<Py_ssize_t>args_strides.size()):
             if args_strides[j][i] * vecshape[i] != args_strides[j][i - 1]:
                 cnt += 1
                 axis = i - 1

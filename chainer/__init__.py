@@ -1,8 +1,8 @@
 import collections
+import os
 import pkg_resources
 import sys
 import threading
-import warnings
 
 from chainer import cuda  # NOQA
 from chainer import dataset  # NOQA
@@ -28,7 +28,15 @@ from chainer import variable
 
 
 if sys.version_info[:3] == (3, 5, 0):
-    warnings.warn('Python 3.5.0 is not recommended. Use newer version.')
+    if not int(os.getenv('CHAINER_PYTHON_350_FORCE', '0')):
+        msg = """
+Chainer does not work with Python 3.5.0.
+
+We strongly recommend to use another version of Python.
+If you want to use Chainer with Python 3.5.0 at your own risk,
+set 1 to CHAINER_PYTHON_350_FORCE environment variable."""
+
+        raise Exception(msg)
 
 
 __version__ = pkg_resources.get_distribution('chainer').version
@@ -39,7 +47,9 @@ ChainList = link.ChainList
 Deserializer = serializer.Deserializer
 DictSummary = reporter.DictSummary
 Flag = flag.Flag
+force_backprop_mode = function.force_backprop_mode
 Function = function.Function
+no_backprop_mode = function.no_backprop_mode
 FunctionSet = function_set.FunctionSet
 GradientMethod = optimizer.GradientMethod
 Link = link.Link
@@ -82,7 +92,7 @@ def is_debug():
 def set_debug(debug):
     """Set the debug mode.
 
-    note::
+    .. note::
 
         This method changes global state. When you use this method on
         multi-threading environment, it may affects other threads.
@@ -105,6 +115,7 @@ class DebugMode(object):
     Args:
         debug (bool): Debug mode used in the context.
     """
+
     def __init__(self, debug):
         self._debug = debug
 

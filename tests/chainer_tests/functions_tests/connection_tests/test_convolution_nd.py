@@ -16,13 +16,19 @@ from chainer.testing import condition
 from chainer.utils import conv
 
 
-@testing.parameterize(*testing.product({
-    'dims': [(10,), (10, 8), (10, 8, 6)],
-    'c_contiguous': [True, False],
+@testing.parameterize(*(testing.product({
+    'dims': [(6,), (5, 4), (4, 3, 3)],
     'cover_all': [True, False],
+    'c_contiguous': [True],
+    'x_dtype': [numpy.float32],
+    'W_dtype': [numpy.float32],
+}) + testing.product({
+    'dims': [(4,)],
+    'cover_all': [False],
+    'c_contiguous': [True, False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestConvolutionND(unittest.TestCase):
 
     def setUp(self):
@@ -50,7 +56,7 @@ class TestConvolutionND(unittest.TestCase):
         if self.x_dtype == numpy.float16 or self.W_dtype == numpy.float16:
             self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
             self.check_backward_options = {
-                'dtype': numpy.float64, 'atol': 5e-4, 'rtol': 5e-3}
+                'dtype': numpy.float64, 'atol': 2 ** -4, 'rtol': 2 ** -4}
 
     def check_forward_consistency(self, nobias=False, use_cudnn=False):
         x_cpu = chainer.Variable(self.x)

@@ -42,7 +42,7 @@ CUDA support
 
 cuDNN support
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5
+* `cuDNN <https://developer.nvidia.com/cudnn>`_ v2, v3, v4, v5, v5.1
 
 Caffe model support
 
@@ -50,6 +50,10 @@ Caffe model support
 * protobuf>=3.0.0 is required for Py3
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
+
+Image dataset is optional
+
+* `Pillow <https://pillow.readthedocs.io/>`_
 
 HDF5 serialization is optional
 
@@ -145,6 +149,15 @@ We recommend to use ``pip`` with ``-e`` option for editable mode::
   $ pip install -e .
 
 Users need not to install Cython as a distribution package of Chainer only contains generated sources.
+
+
+Support image dataset
+~~~~~~~~~~~~~~~~~~~~~
+
+Install Pillow manually to activate image dataset.
+This feature is optional::
+
+  $ pip install pillow
 
 
 Support HDF5 serialization

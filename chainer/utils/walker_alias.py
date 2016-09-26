@@ -18,6 +18,7 @@ class WalkerAlias(object):
     See: `Wikipedia article <https://en.wikipedia.org/wiki/Alias_method>`_
 
     """
+
     def __init__(self, probs):
         prob = numpy.array(probs, numpy.float32)
         prob /= numpy.sum(prob)
