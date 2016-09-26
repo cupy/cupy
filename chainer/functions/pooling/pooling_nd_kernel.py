@@ -6,9 +6,6 @@ from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
 
 
-#
-# PoolingNDKernelForward
-
 class PoolingNDKernelForward(object):
 
     def name(self):
@@ -155,9 +152,6 @@ class PoolingNDKernelForward(object):
         return '\n'.join(
             c0 + out_x + loop_bounds + before + loop_main(main) + after)
 
-
-#
-# PoolingNDKernelBackward
 
 class PoolingNDKernelBackward(object):
 
