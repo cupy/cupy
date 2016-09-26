@@ -51,6 +51,10 @@ Caffe model support
 
 All these libraries are automatically installed with ``pip`` or ``setup.py``.
 
+Image dataset is optional
+
+* `Pillow <https://pillow.readthedocs.io/>`_
+
 HDF5 serialization is optional
 
 * `h5py <http://www.h5py.org/>`_ 2.5.0
@@ -145,6 +149,15 @@ We recommend to use ``pip`` with ``-e`` option for editable mode::
   $ pip install -e .
 
 Users need not to install Cython as a distribution package of Chainer only contains generated sources.
+
+
+Support image dataset
+~~~~~~~~~~~~~~~~~~~~~
+
+Install Pillow manually to activate image dataset.
+This feature is optional::
+
+  $ pip install pillow
 
 
 Support HDF5 serialization

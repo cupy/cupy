@@ -12,7 +12,8 @@ def _extract_gates(x):
 
 
 def _sigmoid(x):
-    return 1 / (1 + numpy.exp(-x))
+    half = x.dtype.type(0.5)
+    return numpy.tanh(x * half) * half + half
 
 
 def _grad_sigmoid(x):
@@ -24,7 +25,10 @@ def _grad_tanh(x):
 
 
 _preamble = '''
-template <typename T> __device__ T sigmoid(T x) { return 1 / (1 + exp(-x)); }
+template <typename T> __device__ T sigmoid(T x) {
+    const T half = 0.5;
+    return tanh(x * half) * half + half;
+}
 template <typename T> __device__ T grad_sigmoid(T y) { return y * (1 - y); }
 template <typename T> __device__ T grad_tanh(T y) { return 1 - y * y; }
 

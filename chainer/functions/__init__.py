@@ -19,6 +19,7 @@ from chainer.functions.array import broadcast
 from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
+from chainer.functions.array import dstack
 from chainer.functions.array import expand_dims
 from chainer.functions.array import flatten
 from chainer.functions.array import get_item
@@ -43,6 +44,7 @@ from chainer.functions.connection import deconvolution_nd
 from chainer.functions.connection import dilated_convolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
+from chainer.functions.connection import n_step_lstm
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
 from chainer.functions.evaluation import classification_summary \
@@ -152,6 +154,7 @@ Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
+dstack = dstack.dstack
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
 Flatten = flatten.Flatten
@@ -188,6 +191,8 @@ deconvolution_nd = deconvolution_nd.deconvolution_nd
 dilated_convolution_2d = dilated_convolution_2d.dilated_convolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
+NStepLSTM = n_step_lstm.NStepLSTM
+n_step_lstm = n_step_lstm.n_step_lstm
 
 Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy

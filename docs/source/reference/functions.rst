@@ -111,6 +111,10 @@ copy
 ~~~~
 .. autofunction:: copy
 
+dstack
+~~~~~~
+.. autofunction:: dstack
+
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
@@ -124,7 +128,7 @@ get_item
 .. autofunction:: get_item
 
 hstack
-~~~~~~~~
+~~~~~~
 .. autofunction:: hstack
 
 permutate
@@ -200,7 +204,7 @@ deconvolution_nd
 .. autofunction:: deconvolution_nd
 
 dilated_convolution_2d
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: dilated_convolution_2d
 
 embed_id

@@ -35,7 +35,7 @@ class Sigmoid(function.Function):
             self.y = cuda.cupy.cudnn.activation_forward(x, _mode)
         else:
             self.y = cuda.elementwise(
-                'T x', 'T y', 'y = 1 / (1 + exp(-x))',
+                'T x', 'T y', 'y = tanh(x * 0.5) * 0.5 + 0.5',
                 'sigmoid_fwd')(x)
         return self.y,
 

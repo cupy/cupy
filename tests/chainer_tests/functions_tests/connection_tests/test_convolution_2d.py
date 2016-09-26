@@ -13,21 +13,26 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-@testing.parameterize(*testing.product({
+@testing.parameterize(*(testing.product({
     'c_contiguous': [True, False],
     'cover_all': [True, False],
+    'x_dtype': [numpy.float32],
+    'W_dtype': [numpy.float32],
+}) + testing.product({
+    'c_contiguous': [False],
+    'cover_all': [False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestConvolution2DFunction(unittest.TestCase):
 
-    def setUp(self, use_cudnn=True):
+    def setUp(self):
         in_channels = 3
         out_channels = 2
         kh, kw = (3, 3)
         self.stride = 2
         self.pad = 1
-        self.use_cudnn = use_cudnn
+        self.use_cudnn = True
         self.W = numpy.random.normal(
             0, numpy.sqrt(1. / (kh * kw * in_channels)),
             (out_channels, in_channels, kh, kw)).astype(self.W_dtype)
