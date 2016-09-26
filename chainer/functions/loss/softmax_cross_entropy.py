@@ -36,7 +36,7 @@ class SoftmaxCrossEntropy(function.Function):
         if not (((0 <= t) &
                  (t < x.shape[1])) |
                 (t == self.ignore_label)).all():
-            msg = ('Each label `t` need to satisfty '
+            msg = ('Each label `t` need to satisfy '
                    '`0 <= t < x.shape[1] or t == %d`' % self.ignore_label)
             raise ValueError(msg)
 
