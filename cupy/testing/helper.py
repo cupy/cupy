@@ -399,7 +399,7 @@ def for_dtypes(dtypes, name='dtype'):
         def test_func(self, *args, **kw):
             for dtype in dtypes:
                 if not cupy.cupy_complex_available and \
-                                numpy.dtype(dtype).kind == 'c':
+                        numpy.dtype(dtype).kind == 'c':
                     continue
                 try:
                     kw[name] = numpy.dtype(dtype).type
