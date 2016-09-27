@@ -232,7 +232,7 @@ class TestConvolutionNDCudnnCall(unittest.TestCase):
             self.assertEqual(func.called, self.expect)
 
 
-class TestConvolutionNDNdarraySupplied(unittest.TestCase):
+class TestConvolutionNDarraySupplied(unittest.TestCase):
 
     def setUp(self):
         N = 2
@@ -246,7 +246,7 @@ class TestConvolutionNDNdarraySupplied(unittest.TestCase):
         self.W_data = numpy.random.uniform(-1, 1, W_shape).astype(dtype)
         self.b_data = numpy.random.uniform(-1, 1, out_channels).astype(dtype)
 
-    def check_ndarray_supplied(self, x_ary, W_ary, b_ary):
+    def check_array_supplied(self, x_ary, W_ary, b_ary):
         y_ary = functions.convolution_nd(x_ary, W_ary, b_ary)
 
         x_var = chainer.Variable(x_ary)
@@ -256,11 +256,11 @@ class TestConvolutionNDNdarraySupplied(unittest.TestCase):
 
         testing.assert_allclose(y_ary.data, y_var.data)
 
-    def test_ndarray_supplied_cpu(self):
+    def test_array_supplied_cpu(self):
         self.check_ndarray_supplied(self.x_data, self.W_data, self.b_data)
 
     @attr.gpu
-    def test_ndarray_supplied_gpu(self):
+    def test_array_supplied_gpu(self):
         self.check_ndarray_supplied(cuda.to_gpu(self.x_data),
                                     cuda.to_gpu(self.W_data),
                                     cuda.to_gpu(self.b_data))
