@@ -2,6 +2,7 @@ import numpy
 
 import functools
 from operator import mul
+import six
 
 from chainer import cuda
 from chainer.functions.pooling import max_pooling_nd_kernel
@@ -61,19 +62,23 @@ class MaxPoolingND(pooling_nd.PoolingND):
         return y,
 
     def backward_cpu(self, x, gy):
+        ndim = self.ndim
         n, c = gy[0].shape[:2]
         outs = gy[0].shape[2:]
         dims = x[0].shape[2:]
-        # (n, c, k_1, k_2, ..., k_N, out_1, out_2, ..., out_N)
-        gcol_shape = (n, c) + self.ksize + outs
-        gcol = numpy.zeros(gcol_shape, dtype=x[0].dtype)
+        prod_outs = functools.reduce(mul, outs)
+        prod_ksize = functools.reduce(mul, self.ksize)
 
-        # TODO(takagi) Make it fast
-        gcol_shape = (n, c, -1) + outs
-        gcol_r = numpy.rollaxis(gcol.reshape(gcol_shape), 2)
-        indeces = (n, c) + outs
-        for i in numpy.ndindex(indeces):
-            gcol_r[self.indexes[i]][i] = gy[0][i]
+        gcol = numpy.zeros(n * c * prod_outs * prod_ksize, dtype=x[0].dtype)
+
+        indexes = self.indexes.ravel()
+        indexes += numpy.arange(0, indexes.size * prod_ksize, prod_ksize)
+
+        gcol[indexes] = gy[0].ravel()
+        gcol_shape = (n, c) + outs + self.ksize
+        gcol = gcol.reshape(gcol_shape)
+        for i in six.moves.range(ndim):
+            gcol = numpy.swapaxes(gcol, 2 + i, ndim + 2 + i)
 
         gx = conv_nd.col2im_nd_cpu(gcol, self.stride, self.pad, dims)
         return gx,
