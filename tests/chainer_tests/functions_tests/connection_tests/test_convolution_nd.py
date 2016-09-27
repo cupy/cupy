@@ -257,13 +257,13 @@ class TestConvolutionNDarraySupplied(unittest.TestCase):
         testing.assert_allclose(y_ary.data, y_var.data)
 
     def test_array_supplied_cpu(self):
-        self.check_ndarray_supplied(self.x_data, self.W_data, self.b_data)
+        self.check_array_supplied(self.x_data, self.W_data, self.b_data)
 
     @attr.gpu
     def test_array_supplied_gpu(self):
-        self.check_ndarray_supplied(cuda.to_gpu(self.x_data),
-                                    cuda.to_gpu(self.W_data),
-                                    cuda.to_gpu(self.b_data))
+        self.check_array_supplied(cuda.to_gpu(self.x_data),
+                                  cuda.to_gpu(self.W_data),
+                                  cuda.to_gpu(self.b_data))
 
 
 testing.run_module(__name__, __file__)
