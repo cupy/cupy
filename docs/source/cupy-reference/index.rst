@@ -21,3 +21,4 @@ This is the official documentation of CuPy, a multi-dimensional array on CUDA wi
    kernel
    testing
    environment
+   difference
