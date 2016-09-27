@@ -11,14 +11,14 @@ from chainer.testing import attr
 
 
 @testing.parameterize(*testing.product_dict(
-        [
-            {'in_size': 10, 'out_size': 10},
-            {'in_size': 10, 'out_size': 40},
-        ],
-        [
-            {'input_none': False},
-            {'input_none': True},
-        ]
+    [
+        {'in_size': 10, 'out_size': 10},
+        {'in_size': 10, 'out_size': 40},
+    ],
+    [
+        {'input_none': False},
+        {'input_none': True},
+    ]
 ))
 class TestLSTM(unittest.TestCase):
 
@@ -218,14 +218,14 @@ class TestLSTMInvalidSize(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product_dict(
-        [
-            {'in_size': 10, 'out_size': 10},
-            {'in_size': 10, 'out_size': 40},
-        ],
-        [
-            {'input_none': False},
-            {'input_none': True},
-        ]
+    [
+        {'in_size': 10, 'out_size': 10},
+        {'in_size': 10, 'out_size': 40},
+    ],
+    [
+        {'input_none': False},
+        {'input_none': True},
+    ]
 ))
 class TestStatelessLSTM(unittest.TestCase):
 
