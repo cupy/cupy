@@ -442,7 +442,9 @@ int cublasSgemmEx(
         cublasOperation_t transb, int m, int n, int k,
         const float *alpha, const void *A, cudaDataType Atype,
         int lda, const void *B, cudaDataType Btype, int ldb,
-        const float *beta, void *C, cudaDataType Ctype, int ldc);
+        const float *beta, void *C, cudaDataType Ctype, int ldc) {
+    return 0;
+}
 
 
 // BLAS extension
