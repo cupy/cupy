@@ -61,7 +61,7 @@ from chainer.functions.loss import sigmoid_cross_entropy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer.functions.loss import triplet
 from chainer.functions.loss import vae  # NOQA
-from chainer.functions.math import basic_math  # NOQA
+from chainer.functions.math import basic_math
 from chainer.functions.math import batch_l2_norm_squared
 from chainer.functions.math import bias
 from chainer.functions.math import ceil
@@ -227,6 +227,7 @@ Triplet = triplet.Triplet
 triplet = triplet.triplet
 vstack = vstack.vstack
 
+absolute = basic_math.absolute
 ArgMax = minmax.ArgMax
 argmax = minmax.argmax
 ArgMin = minmax.ArgMin
