@@ -33,7 +33,8 @@ class LSTMBase(link.Chain):
     def _initialize_params(self, in_size):
         for i in six.moves.range(0, 4 * self.state_size, self.state_size):
             initializers.init_weight(
-                self.lateral.W.data[i:i + self.state_size, :], self.lateral_init)
+                self.lateral.W.data[i:i + self.state_size, :],
+                self.lateral_init)
             initializers.init_weight(
                 self.upward.W.data[i:i + self.state_size, :], self.upward_init)
 
