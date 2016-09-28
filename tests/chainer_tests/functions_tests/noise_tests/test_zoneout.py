@@ -33,7 +33,12 @@ class TestZoneout(unittest.TestCase):
         h = chainer.Variable(h_data)
         x = chainer.Variable(x_data)
         h_next = functions.zoneout(h, x, self.ratio)
-        h_next_expect = _zoneout(h_data, x_data, h_next.creator)
+        if self.ratio == 0:
+            h_next_expect = x_data
+        elif self.ratio == 1:
+            h_next_expect = h_data
+        else:
+            h_next_expect = _zoneout(h_data, x_data, h_next.creator)
         testing.assert_allclose(h_next.data, h_next_expect)
 
     def check_backward(self, h_data, x_data, y_grad):
@@ -50,8 +55,8 @@ class TestZoneout(unittest.TestCase):
             return y,
         gh, gx, = gradient_check.numerical_grad(f, (h.data, x.data,),
                                                 (y.grad,))
-        gradient_check.assert_allclose(gh, h.grad, atol=1e-3)
-        gradient_check.assert_allclose(gx, x.grad, atol=1e-3)
+        testing.assert_allclose(gh, h.grad, atol=1e-3)
+        testing.assert_allclose(gx, x.grad, atol=1e-3)
 
     def test_forward_cpu(self):
         self.check_forward(self.h, self.x)

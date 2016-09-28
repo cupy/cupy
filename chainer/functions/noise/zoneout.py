@@ -23,7 +23,7 @@ class Zoneout(function.Function):
         else:
             flag_x = (xp.random.rand(*x.shape) >=
                       self.zoneout_ratio)
-        self.flag_h = xp.ones_like(flag_x) - flag_x
+        self.flag_h = xp.ones_like(flag_x) ^ flag_x
         self.flag_x = flag_x
         return h * self.flag_h + x * self.flag_x,
 
