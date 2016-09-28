@@ -1038,10 +1038,12 @@ class TestMatMulVarVar(unittest.TestCase):
 
     def check_backward(self, x_data, y_data, z_grad):
         if self.right_const:
-            op = lambda x: operator.matmul(x, y_data)
+            def op(x):
+                return operator.matmul(x, y_data)
             data = x_data,
         elif self.left_const:
-            op = lambda y: operator.matmul(x_data, y)
+            def op(y):
+                return operator.matmul(x_data, y)
             data = y_data,
         else:
             op = operator.matmul
