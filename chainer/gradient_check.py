@@ -10,6 +10,11 @@ from chainer import testing
 from chainer import variable
 
 
+def _copy_arrays(xs):
+    xp = cuda.get_array_module(*xs)
+    return [xp.copy(x) for x in xs]
+
+
 def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
     """Computes numerical gradient by finite differences.
 
@@ -43,7 +48,7 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
         xp = cuda.cupy
     else:
         xp = numpy
-    grads = tuple(xp.zeros_like(x) for x in inputs)
+    grads = [xp.zeros_like(x) for x in inputs]
 
     prev_mode = function.Function.type_check_enable
     try:
@@ -52,9 +57,9 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
             for i in numpy.ndindex(x.shape):
                 orig = x[i].copy()  # hold original value
                 x[i] = orig + eps
-                ys1 = [xp.copy(j) for j in f()]
+                ys1 = _copy_arrays(f())
                 x[i] = orig - eps
-                ys2 = [xp.copy(j) for j in f()]
+                ys2 = _copy_arrays(f())
                 x[i] = orig
                 for y1, y2, gy in six.moves.zip(ys1, ys2, grad_outputs):
                     if gy is not None:
