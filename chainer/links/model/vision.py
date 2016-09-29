@@ -44,11 +44,9 @@ class VGG16Layers(chainer.Chain):
     Note that this pre-trained model is released under Creative Commons
     Attribution License.
 
-    If you want to convert the pre-trained caffemodel to a chainer model
-    that can be spesified in the constractor,
-    please make an instance of ``chainer.links.caffe.CaffeFunction``
-    with the pre-trained caffemodel, and serialize it with
-    ``chainer.serializers.save_npz`` function.
+    If you want to manually convert the pre-trained caffemodel to a chainer
+    model that can be spesified in the constractor,
+    please use ``convert_caffemodel_to_npz`` classmethod instead.
 
     [1] ``Very Deep Convolutional Networks for Large-Scale Image
     Recognition <https://arxiv.org/abs/1409.1556>``
@@ -141,6 +139,13 @@ class VGG16Layers(chainer.Chain):
 
     @classmethod
     def convert_caffemodel_to_npz(cls, path_caffemodel, path_npz):
+        """Converts a pre-trained caffemodel to a chainer model.
+
+        Args:
+            path_caffemodel (str): Path of the pre-trained caffemodel.
+            path_npz (str): Path of the converted chainer model.
+        """
+
         caffemodel = CaffeFunction(path_caffemodel)
         serializers.save_npz(path_npz, caffemodel, compression=False)
 
