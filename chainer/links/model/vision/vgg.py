@@ -15,22 +15,6 @@ from chainer import serializers
 from chainer import Variable
 
 
-def _make_npz(path_npz, url, model):
-    path_caffemodel = chainer.dataset.cached_download(url)
-    print('Now loading caffemodel (usually it may take few and ten minutes)')
-    VGG16Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
-    serializers.load_npz(path_npz, model)
-    return model
-
-
-def _retrieve(name, url, model):
-    root = chainer.dataset.get_dataset_directory('pfnet/chainer/models/')
-    path = os.path.join(root, name)
-    return chainer.dataset.cache_or_load_file(
-        path, lambda path: _make_npz(path, url, model),
-        lambda path: serializers.load_npz(path, model))
-
-
 class VGG16Layers(chainer.Chain):
 
     """A pre-trained CNN model with 16 layers provided by VGG team [1].
@@ -60,7 +44,11 @@ class VGG16Layers(chainer.Chain):
             on ``$CHAINER_DATASET_ROOT/pfnet/chainer/models`` directory,
             where ``$CHAINER_DATASET_ROOT`` is set as
             ``$HOME/.chainer/dataset`` unless you specify another value
-            as a environment variable.
+            as a environment variable. The converted chainer model is
+            automatically used from the second time.
+            If the argument is specfied as ``None``, all the parameters
+            are not initialized by the pre-trained model, but the default
+            initializer used in the original paper.
 
     Attributes:
         available_layers (list of str): The list of available layer names
@@ -69,7 +57,7 @@ class VGG16Layers(chainer.Chain):
     """
 
     def __init__(self, pretrained_model='auto'):
-        if pretrained_model:
+        if pretrained_model is not None:
             # As a sampling process is time-consuming,
             # we employ a zero initializer for faster computation.
             init = chainer.initializers.Zero()
@@ -104,7 +92,7 @@ class VGG16Layers(chainer.Chain):
                 'http://www.robots.ox.ac.uk/%7Evgg/software/very_deep/'
                 'caffe/VGG_ILSVRC_16_layers.caffemodel',
                 self)
-        elif pretrained_model:
+        elif pretrained_model is not None:
             serializers.load_npz(pretrained_model, self)
 
         max_pooling_2d = lambda x: F.max_pooling_2d(x, ksize=2)
@@ -250,3 +238,19 @@ class VGG16Layers(chainer.Chain):
         """
 
         return self.extract(images, layers=['prob'])['prob']
+
+
+def _make_npz(path_npz, url, model):
+    path_caffemodel = chainer.dataset.cached_download(url)
+    print('Now loading caffemodel (usually it may take few or ten minutes)')
+    VGG16Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
+    serializers.load_npz(path_npz, model)
+    return model
+
+
+def _retrieve(name, url, model):
+    root = chainer.dataset.get_dataset_directory('pfnet/chainer/models/')
+    path = os.path.join(root, name)
+    return chainer.dataset.cache_or_load_file(
+        path, lambda path: _make_npz(path, url, model),
+        lambda path: serializers.load_npz(path, model))
