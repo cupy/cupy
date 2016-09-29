@@ -35,9 +35,8 @@ class MultiprocessIterator(iterator.Iterator):
         n_processes (int): Number of worker processes. The number of CPUs is
             used by default.
         n_prefetch (int): Number of prefetch batches.
-        shared_mem (int):
-
-
+        shared_mem (int): The size of using shared memory per data.
+            If ``None``, size is adjusted automatically.
 
     """
 
