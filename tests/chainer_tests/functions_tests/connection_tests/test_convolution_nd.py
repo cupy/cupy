@@ -16,13 +16,19 @@ from chainer.testing import condition
 from chainer.utils import conv
 
 
-@testing.parameterize(*testing.product({
-    'dims': [(10,), (10, 8), (10, 8, 6)],
-    'c_contiguous': [True, False],
+@testing.parameterize(*(testing.product({
+    'dims': [(6,), (5, 4), (4, 3, 3)],
     'cover_all': [True, False],
+    'c_contiguous': [True],
+    'x_dtype': [numpy.float32],
+    'W_dtype': [numpy.float32],
+}) + testing.product({
+    'dims': [(4,)],
+    'cover_all': [False],
+    'c_contiguous': [True, False],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
     'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestConvolutionND(unittest.TestCase):
 
     def setUp(self):
@@ -224,5 +230,40 @@ class TestConvolutionNDCudnnCall(unittest.TestCase):
         with mock.patch(name) as func:
             y.backward()
             self.assertEqual(func.called, self.expect)
+
+
+class TestConvolutionNDarraySupplied(unittest.TestCase):
+
+    def setUp(self):
+        N = 2
+        in_channels = 3
+        out_channels = 2
+        dtype = numpy.float32
+
+        x_shape = (N, in_channels, 3, 3, 3)
+        self.x_data = numpy.random.uniform(-1, 1, x_shape).astype(dtype)
+        W_shape = (out_channels, in_channels, 1, 1, 1)
+        self.W_data = numpy.random.uniform(-1, 1, W_shape).astype(dtype)
+        self.b_data = numpy.random.uniform(-1, 1, out_channels).astype(dtype)
+
+    def check_array_supplied(self, x_ary, W_ary, b_ary):
+        y_ary = functions.convolution_nd(x_ary, W_ary, b_ary)
+
+        x_var = chainer.Variable(x_ary)
+        W_var = chainer.Variable(W_ary)
+        b_var = chainer.Variable(b_ary)
+        y_var = functions.convolution_nd(x_var, W_var, b_var)
+
+        testing.assert_allclose(y_ary.data, y_var.data)
+
+    def test_array_supplied_cpu(self):
+        self.check_array_supplied(self.x_data, self.W_data, self.b_data)
+
+    @attr.gpu
+    def test_array_supplied_gpu(self):
+        self.check_array_supplied(cuda.to_gpu(self.x_data),
+                                  cuda.to_gpu(self.W_data),
+                                  cuda.to_gpu(self.b_data))
+
 
 testing.run_module(__name__, __file__)

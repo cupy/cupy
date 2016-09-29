@@ -31,6 +31,7 @@ MODULES = [
             'cupy.cuda.driver',
             'cupy.cuda.memory',
             'cupy.cuda.profiler',
+            'cupy.cuda.nvtx',
             'cupy.cuda.function',
             'cupy.cuda.runtime',
             'cupy.util',
@@ -41,12 +42,14 @@ MODULES = [
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'curand.h',
+            'nvToolsExt.h',
         ],
         'libraries': [
             'cublas',
             'cuda',
             'cudart',
             'curand',
+            'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,
     },
@@ -64,6 +67,12 @@ MODULES = [
         'check_method': build.check_cudnn_version,
     }
 ]
+
+if sys.platform == 'win32':
+    mod_cuda = MODULES[0]
+    mod_cuda['file'].remove('cupy.cuda.nvtx')
+    mod_cuda['include'].remove('nvToolsExt.h')
+    mod_cuda['libraries'].remove('nvToolsExt')
 
 
 def localpath(*args):

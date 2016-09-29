@@ -403,12 +403,12 @@ cdef class ndarray:
             ret._f_contiguous = self._c_contiguous
             return ret
 
-        if axes.size() != ndim:
+        if <Py_ssize_t>axes.size() != ndim:
             raise ValueError('Invalid axes value: %s' % str(axes))
 
         for i in range(ndim):
             a_axes.push_back(i)
-            axis = <Py_ssize_t?>axes[i]
+            axis = axes[i]
             if axis < -ndim or axis >= ndim:
                 raise IndexError('Axes overrun')
             axes[i] = axis % ndim
@@ -518,9 +518,9 @@ cdef class ndarray:
 
         """
         cdef vector.vector[Py_ssize_t] vec_axis, newshape, newstrides
-        cdef Py_ssize_t j, n
+        cdef Py_ssize_t i, j, n
         if axis is None:
-            for i in range(self._shape.size()):
+            for i in range(<Py_ssize_t>self._shape.size()):
                 n = self._shape[i]
                 if n == 1:
                     vec_axis.push_back(i)
@@ -532,9 +532,9 @@ cdef class ndarray:
         if vec_axis.size() == 0:
             return self
         j = 0
-        for i in range(self._shape.size()):
+        for i in range(<Py_ssize_t>self._shape.size()):
             n = self._shape[i]
-            if j < vec_axis.size() and i == vec_axis[j]:
+            if j < <Py_ssize_t>vec_axis.size() and i == vec_axis[j]:
                 if n != 1:
                     raise RuntimeError('Cannot squeeze dimension of size > 1')
                 j += 1
@@ -1183,7 +1183,7 @@ cdef class ndarray:
             return self
         internal.get_reduced_dims(
             self._shape, self._strides, self.itemsize, shape, strides)
-        if ndim == shape.size():
+        if ndim == <Py_ssize_t>shape.size():
             return self
 
         view = self.view(dtype=dtype)
@@ -1208,7 +1208,7 @@ cdef class ndarray:
             for i in self._shape:
                 if i == 1:
                     count += 1
-            self._f_contiguous = self._shape.size() - count <= 1
+            self._f_contiguous = (<Py_ssize_t>self._shape.size()) - count <= 1
             return
         rev_shape.assign(self._shape.rbegin(), self._shape.rend())
         rev_strides.assign(self._strides.rbegin(), self._strides.rend())
@@ -1505,16 +1505,17 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
     if dtype is None:
+        if a._c_contiguous:
+            return a
         dtype = a.dtype
     else:
         dtype = numpy.dtype(dtype)
+        if a._c_contiguous and dtype == a.dtype:
+            return a
 
-    if dtype == a.dtype and a._c_contiguous:
-        return a
-    else:
-        newarray = ndarray(a.shape, dtype)
-        elementwise_copy(a, newarray)
-        return newarray
+    newarray = ndarray(a.shape, dtype)
+    elementwise_copy(a, newarray)
+    return newarray
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -1580,15 +1581,15 @@ cdef class broadcast:
             if not isinstance(x, ndarray):
                 continue
             a = x
-            self.nd = max(self.nd, a._shape.size())
+            self.nd = max(self.nd, <Py_ssize_t>a._shape.size())
             r_shape.assign(a._shape.rbegin(), a._shape.rend())
             shape_arr.push_back(r_shape)
 
         r_shape.clear()
         for i in range(self.nd):
             ss = 0
-            for j in range(shape_arr.size()):
-                if i < shape_arr[j].size():
+            for j in range(<Py_ssize_t>shape_arr.size()):
+                if i < <Py_ssize_t>shape_arr[j].size():
                     s = shape_arr[j][i]
                     ss = max(ss, s)
             r_shape.push_back(ss)
@@ -2050,7 +2051,11 @@ cpdef ndarray tensordot_core(
 cpdef inline tuple _mat_to_cublas_contiguous(ndarray a, Py_ssize_t trans):
     assert a.ndim == 2
     if a._f_contiguous:
-        return a, trans, max(a._strides[1] // a.itemsize, a._shape[0])
+        # builtin max function is not used for Cython 0.23
+        lda = a._strides[1] // a.itemsize
+        if lda < a._shape[0]:
+            lda = a._shape[0]
+        return a, trans, lda
     if not a._c_contiguous:
         a = a.copy()
     return a, 1 - trans, a._strides[0] // a.itemsize
