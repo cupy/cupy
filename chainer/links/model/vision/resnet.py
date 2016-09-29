@@ -86,8 +86,8 @@ class ResNet50Layers(chainer.Chain):
             ('res3', [self.res3]),
             ('res4', [self.res4]),
             ('res5', [self.res5]),
-            ('pool6', [_global_average_pooling_2d]),
-            ('fc', [self.fc]),
+            ('pool5', [_global_average_pooling_2d]),
+            ('fc6', [self.fc]),
             ('prob', [F.softmax]),
         ])
 
@@ -172,7 +172,7 @@ class ResNet50Layers(chainer.Chain):
         image = image.transpose((2, 0, 1))
         return image
 
-    def extract(self, images, layers=['pool6'], size=(224, 224)):
+    def extract(self, images, layers=['pool5'], size=(224, 224)):
         """Extracts all the feature maps of given images.
 
         The difference of directly executing ``__call__`` is that
