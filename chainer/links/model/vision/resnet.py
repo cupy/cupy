@@ -71,7 +71,7 @@ class ResNet50Layers(chainer.Chain):
             res3=BuildingBlock(4, 256, 128, 512, 2, **kwargs),
             res4=BuildingBlock(6, 512, 256, 1024, 2, **kwargs),
             res5=BuildingBlock(3, 1024, 512, 2048, 2, **kwargs),
-            fc=L.Linear(2048, 1000),
+            fc6=L.Linear(2048, 1000),
         )
         if pretrained_model == 'auto':
             _retrieve(
@@ -87,7 +87,7 @@ class ResNet50Layers(chainer.Chain):
             ('res4', [self.res4]),
             ('res5', [self.res5]),
             ('pool5', [_global_average_pooling_2d]),
-            ('fc6', [self.fc]),
+            ('fc6', [self.fc6]),
             ('prob', [F.softmax]),
         ])
 
@@ -376,8 +376,8 @@ def _transfer_resnet50(src, dst):
     _transfer_block(src, dst.res4, ['4a', '4b', '4c', '4d', '4e', '4f'])
     _transfer_block(src, dst.res5, ['5a', '5b', '5c'])
 
-    dst.fc.W.data[:] = src.fc1000.W.data
-    dst.fc.b.data[:] = src.fc1000.b.data
+    dst.fc6.W.data[:] = src.fc1000.W.data
+    dst.fc6.b.data[:] = src.fc1000.b.data
 
 
 def _make_npz(path_npz, path_caffemodel, model):
