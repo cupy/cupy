@@ -294,8 +294,8 @@ class DeconvolutionND(function.Function):
             return self._backward_xp(x, W, b, gy, cuda.cupy)
 
 
-def deconvolution_nd(x, W, b=None, stride=1, pad=0,
-                     outsize=None, use_cudnn=True):
+def deconvolution_nd(x, W, b=None, stride=1, pad=0, outsize=None,
+                     use_cudnn=True):
     """N-dimensional deconvolution function.
 
     This is an implementation of N-dimensional deconvolution which generalizes
