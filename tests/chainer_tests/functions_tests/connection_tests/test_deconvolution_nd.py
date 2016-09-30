@@ -88,6 +88,41 @@ class TestDeconvolutionND(unittest.TestCase):
     def test_forward_consistency_im2col(self):
         self.check_forward_consistency(use_cudnn=False)
 
+    def check_forward_consistency_regression(self, x_data, W_data, b_data,
+                                             use_cudnn=True):
+        x = chainer.Variable(x_data)
+        W = chainer.Variable(W_data)
+        b = None if self.nobias else chainer.Variable(b_data)
+
+        y_nd = F.deconvolution_nd(x, W, b, stride=self.stride, pad=self.pad,
+                                  outsize=self.outsize, use_cudnn=use_cudnn)
+        y_2d = F.deconvolution_2d(x, W, b, stride=self.stride, pad=self.pad,
+                                  outsize=self.outsize, use_cudnn=use_cudnn)
+
+        testing.assert_allclose(
+            y_nd.data, y_2d.data, **self.test_forward_options)
+
+    def test_forward_consistency_regression_cpu(self):
+        # Regression test to deconvolution_nd.
+        if len(self.dims) == 2:
+            self.check_forward_consistency_regression(self.x, self.W, self.b)
+
+    @attr.cudnn
+    def test_forward_consistency_regression_cudnn(self):
+        # Regression test to deconvolution_nd.
+        if len(self.dims) == 2:
+            self.check_forward_consistency_regression(
+                cuda.to_gpu(self.x), cuda.to_gpu(self.W), cuda.to_gpu(self.b),
+                use_cudnn=True)
+
+    @attr.gpu
+    def test_forward_consistency_regression_im2col(self):
+        # Regression test to deconvolution_nd.
+        if len(self.dims) == 2:
+            self.check_forward_consistency_regression(
+                cuda.to_gpu(self.x), cuda.to_gpu(self.W), cuda.to_gpu(self.b),
+                use_cudnn=False)
+
     def check_backward(self, x_data, W_data, b_data, y_grad, use_cudnn=False):
         if not self.c_contiguous:
             xp = cuda.get_array_module(x_data)
