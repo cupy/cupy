@@ -303,12 +303,12 @@ def deconvolution_nd(x, W, b=None, stride=1, pad=0, outsize=None,
     weight ``W``, and the bias vector ``b``.
 
     Args:
-        x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-            Input variable of shape :math:`(n, c_I, d_1, d_2, ..., d_N)`.
-        W (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-            Weight variable of shape :math:`(c_O, c_I, k_1, k_2, ..., k_N)`.
-        b (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-            Bias variable of length :math:`c_O` (optional).
+        x (~chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+            Input data of shape :math:`(n, c_I, d_1, d_2, ..., d_N)`.
+        W (~chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+            Weight data of shape :math:`(c_I, c_O, k_1, k_2, ..., k_N)`.
+        b (~chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+            Bias vector of length :math:`c_O` (optional).
         stride (int or tuple of ints): Stride of filter applications
             :math:`(s_1, s_2, ..., s_N)`. ``stride=s`` is equivalent to
             ``(s, s, ..., s)``.

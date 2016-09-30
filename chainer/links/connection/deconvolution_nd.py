@@ -29,7 +29,8 @@ class DeconvolutionND(link.Link):
             :func:`~chainer.init_weight` function can take.
         initial_bias: Value used to initialize the bias vector. May be an
             initializer instance or another value except ``None`` the same with
-            that :func:`~chainer.init_weight` function can take.
+            that :func:`~chainer.init_weight` function can take. If ``None`` is
+            supplied, this link does not use the bias vector.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
 
     .. seealso::
