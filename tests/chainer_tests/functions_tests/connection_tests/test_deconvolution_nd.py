@@ -19,11 +19,18 @@ from chainer.utils import conv
 
 @parameterize(*testing.product({
     'dims': [(5, 4, 3), (4, 3), (3,)],
+    'nobias': [False],
+    'test_outsize': [False],
+    'c_contiguous': [True],
+    'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
+}) + testing.product({
+    'dims': [(5, 4, 3)],
     'nobias': [True, False],
     'test_outsize': [True, False],
     'c_contiguous': [True, False],
-    'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
-    'W_dtype': [numpy.float16, numpy.float32, numpy.float64],
+    'x_dtype': [numpy.float32],
+    'W_dtype': [numpy.float32],
 }))
 class TestDeconvolutionND(unittest.TestCase):
 
