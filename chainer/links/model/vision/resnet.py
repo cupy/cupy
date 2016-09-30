@@ -126,7 +126,7 @@ class ResNet50Layers(chainer.Chain):
         h = x
         activations = {}
         target_layers = set(layers)
-        for key, funcs in self.functions.iteritems():
+        for key, funcs in self.functions.items():
             if len(target_layers) == 0:
                 break
             for func in funcs:
