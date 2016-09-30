@@ -348,7 +348,7 @@ def deconvolution_nd(x, W, b=None, stride=1, pad=0, outsize=None,
 
     .. seealso:: :class:`links.DeconvolutionND`, :func:`deconvolution_2d`
     """
-    ndim = len(x.data.shape[2:])
+    ndim = len(x.shape[2:])
     func = DeconvolutionND(ndim, stride, pad, outsize, use_cudnn)
     if b is None:
         return func(x, W)
