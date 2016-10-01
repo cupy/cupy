@@ -31,6 +31,7 @@ MODULES = [
             'cupy.cuda.driver',
             'cupy.cuda.memory',
             'cupy.cuda.profiler',
+            'cupy.cuda.nvtx',
             'cupy.cuda.function',
             'cupy.cuda.runtime',
             'cupy.util',
@@ -41,12 +42,14 @@ MODULES = [
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'curand.h',
+            'nvToolsExt.h',
         ],
         'libraries': [
             'cublas',
             'cuda',
             'cudart',
             'curand',
+            'nvToolsExt',
         ],
         'check_method': build.check_cuda_version,
     },
@@ -64,6 +67,12 @@ MODULES = [
         'check_method': build.check_cudnn_version,
     }
 ]
+
+if sys.platform == 'win32':
+    mod_cuda = MODULES[0]
+    mod_cuda['file'].remove('cupy.cuda.nvtx')
+    mod_cuda['include'].remove('nvToolsExt.h')
+    mod_cuda['libraries'].remove('nvToolsExt')
 
 
 def localpath(*args):
@@ -110,6 +119,10 @@ def check_library(compiler, includes=(), libraries=(),
             return False
 
         return True
+
+    except distutils.errors.DistutilsError as e:
+        print('distutils raises an error: %s' % e)
+        return False
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -277,7 +290,7 @@ class chainer_build_ext(build_ext.build_ext):
             cythonize_options = {
                 key: _arg_options[key] for key in cythonize_option_keys}
 
-            compiler = distutils.ccompiler.new_compiler(self.compiler)
+            compiler = distutils.ccompiler.new_compiler(compiler=self.compiler)
             distutils.sysconfig.customize_compiler(compiler)
 
             extensions = make_extensions(_arg_options, compiler)

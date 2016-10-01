@@ -113,7 +113,7 @@ So we can just call its :meth:`~Variable.backward` method to compute gradients o
 
    # Suppose we have a list of word variables x_list.
    rnn.reset_state()
-   model.zerograds()
+   model.cleargrads()
    loss = compute_loss(x_list)
    loss.backward()
    optimizer.update()
@@ -159,7 +159,7 @@ We can write truncated backprop using the model defined above:
        loss += model(cur_word, next_word)
        count += 1
        if count % 30 == 0 or count == seqlen:
-           model.zerograds()
+           model.cleargrads()
            loss.backward()
            loss.unchain_backward()
            optimizer.update()
@@ -306,7 +306,7 @@ Backprop Through Time is implemented as follows.
            x, t = chainer.dataset.concat_example(batch)
            loss += model(chainer.Variable(x), chainer.Variable(t))
 
-       model.zerograds()
+       model.cleargrads()
        loss.backward()
        loss.unchain_backward()  # truncate
        optimizer.update()

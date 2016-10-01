@@ -15,6 +15,7 @@ from libcpp cimport vector
 
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
+from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
 
 
@@ -109,7 +110,7 @@ cdef class ndarray:
 
         """
         return flags.Flags(self._c_contiguous, self._f_contiguous,
-                           self.base is not None)
+                           self.base is None)
 
     property shape:
         """Lengths of axes.
@@ -402,12 +403,12 @@ cdef class ndarray:
             ret._f_contiguous = self._c_contiguous
             return ret
 
-        if axes.size() != ndim:
+        if <Py_ssize_t>axes.size() != ndim:
             raise ValueError('Invalid axes value: %s' % str(axes))
 
         for i in range(ndim):
             a_axes.push_back(i)
-            axis = <Py_ssize_t?>axes[i]
+            axis = axes[i]
             if axis < -ndim or axis >= ndim:
                 raise IndexError('Axes overrun')
             axes[i] = axis % ndim
@@ -517,9 +518,9 @@ cdef class ndarray:
 
         """
         cdef vector.vector[Py_ssize_t] vec_axis, newshape, newstrides
-        cdef Py_ssize_t j, n
+        cdef Py_ssize_t i, j, n
         if axis is None:
-            for i in range(self._shape.size()):
+            for i in range(<Py_ssize_t>self._shape.size()):
                 n = self._shape[i]
                 if n == 1:
                     vec_axis.push_back(i)
@@ -531,9 +532,9 @@ cdef class ndarray:
         if vec_axis.size() == 0:
             return self
         j = 0
-        for i in range(self._shape.size()):
+        for i in range(<Py_ssize_t>self._shape.size()):
             n = self._shape[i]
-            if j < vec_axis.size() and i == vec_axis[j]:
+            if j < <Py_ssize_t>vec_axis.size() and i == vec_axis[j]:
                 if n != 1:
                     raise RuntimeError('Cannot squeeze dimension of size > 1')
                 j += 1
@@ -1182,7 +1183,7 @@ cdef class ndarray:
             return self
         internal.get_reduced_dims(
             self._shape, self._strides, self.itemsize, shape, strides)
-        if ndim == shape.size():
+        if ndim == <Py_ssize_t>shape.size():
             return self
 
         view = self.view(dtype=dtype)
@@ -1207,7 +1208,7 @@ cdef class ndarray:
             for i in self._shape:
                 if i == 1:
                     count += 1
-            self._f_contiguous = self._shape.size() - count <= 1
+            self._f_contiguous = (<Py_ssize_t>self._shape.size()) - count <= 1
             return
         rev_shape.assign(self._shape.rbegin(), self._shape.rend())
         rev_strides.assign(self._strides.rbegin(), self._strides.rend())
@@ -1504,16 +1505,17 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
     if dtype is None:
+        if a._c_contiguous:
+            return a
         dtype = a.dtype
     else:
         dtype = numpy.dtype(dtype)
+        if a._c_contiguous and dtype == a.dtype:
+            return a
 
-    if dtype == a.dtype and a._c_contiguous:
-        return a
-    else:
-        newarray = ndarray(a.shape, dtype)
-        elementwise_copy(a, newarray)
-        return newarray
+    newarray = ndarray(a.shape, dtype)
+    elementwise_copy(a, newarray)
+    return newarray
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -1579,15 +1581,15 @@ cdef class broadcast:
             if not isinstance(x, ndarray):
                 continue
             a = x
-            self.nd = max(self.nd, a._shape.size())
+            self.nd = max(self.nd, <Py_ssize_t>a._shape.size())
             r_shape.assign(a._shape.rbegin(), a._shape.rend())
             shape_arr.push_back(r_shape)
 
         r_shape.clear()
         for i in range(self.nd):
             ss = 0
-            for j in range(shape_arr.size()):
-                if i < shape_arr[j].size():
+            for j in range(<Py_ssize_t>shape_arr.size()):
+                if i < <Py_ssize_t>shape_arr[j].size():
                     s = shape_arr[j][i]
                     ss = max(ss, s)
             r_shape.push_back(ss)
@@ -1956,6 +1958,9 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     return tensordot_core(a, b, out, n, m, k, ret_shape)
 
 
+cdef _cuda_runtime_version = None
+
+
 cpdef ndarray tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
         Py_ssize_t k, vector.vector[Py_ssize_t] ret_shape):
@@ -1963,24 +1968,33 @@ cpdef ndarray tensordot_core(
     cdef int inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode, handle
     cdef str dtype, ret_dtype
+    cdef bint use_sgemmEx
     ret_dtype = a.dtype.char
     if ret_dtype != b.dtype.char:
         ret_dtype = numpy.find_common_type((ret_dtype, b.dtype), ()).char
-
-    # Cast to float32 or float64
-    if ret_dtype == 'f' or ret_dtype == 'd':
-        dtype = ret_dtype
-    else:
-        dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
-
-    a = a.astype(dtype, copy=False)
-    b = b.astype(dtype, copy=False)
 
     if not a.size or not b.size:
         if out is None:
             out = ndarray(ret_shape, dtype=ret_dtype)
         out.fill(0)
         return out
+
+    global _cuda_runtime_version
+    if _cuda_runtime_version is None:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
+
+    use_sgemmEx = (_cuda_runtime_version >= 7500 and
+                   a.dtype == 'e' and b.dtype == 'e' and
+                   (ret_dtype == 'e' or ret_dtype == 'f'))
+
+    if use_sgemmEx or ret_dtype == 'f' or ret_dtype == 'd':
+        dtype = ret_dtype
+    else:
+        dtype = numpy.find_common_type((ret_dtype, 'f'), ()).char
+
+    if not use_sgemmEx:
+        a = a.astype(dtype, copy=False)
+        b = b.astype(dtype, copy=False)
 
     if out is None:
         out = ndarray(ret_shape, dtype)
@@ -2010,91 +2024,25 @@ cpdef ndarray tensordot_core(
         c.shape = (n, m)
 
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
-    if k == 1:
-        if n == 1:
-            # Scalar-vector product
-            multiply(a, b, c)
-        elif m == 1:
-            # Scalar-vector product
-            multiply(a.T, b, c)
-        else:
-            # Outer product A^T * B
-            # c is C-contiguous while cuBLAS requires F-contiguous arrays, so
-            # we compute C^T = B^T * A here.
-            handle = device.get_cublas_handle()
-            c.fill(0)
-            a, inca = _to_cublas_vector(a, 1)
-            b, incb = _to_cublas_vector(b, 1)
-            if dtype == 'f':
-                cublas.sger(handle, m, n, 1, b.data.ptr, incb, a.data.ptr,
-                            inca, c.data.ptr, m)
-            elif dtype == 'd':
-                cublas.dger(handle, m, n, 1, b.data.ptr, incb, a.data.ptr,
-                            inca, c.data.ptr, m)
-        if dtype != ret_dtype:
-            elementwise_copy(out, ret)
-        return ret
-
     handle = device.get_cublas_handle()
-    if n == 1:
-        if m == 1:
-            # Inner product
-            a, inca = _to_cublas_vector(a, 0)
-            b, incb = _to_cublas_vector(b, 0)
-            mode = cublas.getPointerMode(handle)
-            cublas.setPointerMode(handle,
-                                  cublas.CUBLAS_POINTER_MODE_DEVICE)
-            try:
-                if dtype == 'f':
-                    cublas.sdot(handle, k, a.data.ptr, inca, b.data.ptr, incb,
-                                c.data.ptr)
-                elif dtype == 'd':
-                    cublas.ddot(handle, k, a.data.ptr, inca, b.data.ptr, incb,
-                                c.data.ptr)
-            finally:
-                cublas.setPointerMode(handle, mode)
-        else:
-            # Matrix-vector product B^T * A
-            a, inca = _to_cublas_vector(a, 0)
-            b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
-            if transb:
-                # gemv requires (m, k) as the original matrix dimensions
-                # rather than the transposed dimensions.
-                m, k = k, m
-            if dtype == 'f':
-                cublas.sgemv(handle, transb, m, k, 1, b.data.ptr, ldb,
-                             a.data.ptr, inca, 0, c.data.ptr, 1)
-            elif dtype == 'd':
-                cublas.dgemv(handle, transb, m, k, 1, b.data.ptr, ldb,
-                             a.data.ptr, inca, 0, c.data.ptr, 1)
-    elif m == 1:
-        # Matrix-vector product A^T * B
-        a, transa, lda = _mat_to_cublas_contiguous(a, 1)
-        b, incb = _to_cublas_vector(b, 0)
-        if transa:
-            # gemv requires (n, k) as the original matrix dimensions rather
-            # than the transposed dimensions.
-            n, k = k, n
-        if dtype == 'f':
-            cublas.sgemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr,
-                         incb, 0, c.data.ptr, 1)
-        elif dtype == 'd':
-            cublas.dgemv(handle, transa, n, k, 1, a.data.ptr, lda, b.data.ptr,
-                         incb, 0, c.data.ptr, 1)
-    else:
-        # Matrix-Matrix product A^T * B
-        # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
-        # compute C^T = B^T * A here.
-        a, transa, lda = _mat_to_cublas_contiguous(a, 0)
-        b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
-        if dtype == 'f':
-            cublas.sgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
-                         a.data.ptr, lda, 0, c.data.ptr, m)
-        elif dtype == 'd':
-            cublas.dgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
-                         a.data.ptr, lda, 0, c.data.ptr, m)
+    # Matrix-Matrix product A^T * B
+    # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
+    # compute C^T = B^T * A here.
+    a, transa, lda = _mat_to_cublas_contiguous(a, 0)
+    b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
+    if use_sgemmEx:
+        Ctype = runtime.CUDA_R_16F if c.dtype == 'e' else runtime.CUDA_R_32F
+        cublas.sgemmEx(
+            handle, transb, transa, m, n, k, 1, b.data.ptr, runtime.CUDA_R_16F,
+            ldb, a.data.ptr, runtime.CUDA_R_16F, lda, 0, c.data.ptr, Ctype, m)
+    elif dtype == 'f':
+        cublas.sgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
+                     a.data.ptr, lda, 0, c.data.ptr, m)
+    elif dtype == 'd':
+        cublas.dgemm(handle, transb, transa, m, n, k, 1, b.data.ptr, ldb,
+                     a.data.ptr, lda, 0, c.data.ptr, m)
 
-    if dtype != ret_dtype:
+    if out is not ret:
         elementwise_copy(out, ret)
     return ret
 
@@ -2103,7 +2051,11 @@ cpdef ndarray tensordot_core(
 cpdef inline tuple _mat_to_cublas_contiguous(ndarray a, Py_ssize_t trans):
     assert a.ndim == 2
     if a._f_contiguous:
-        return a, trans, a._strides[1] // a.itemsize
+        # builtin max function is not used for Cython 0.23
+        lda = a._strides[1] // a.itemsize
+        if lda < a._shape[0]:
+            lda = a._shape[0]
+        return a, trans, lda
     if not a._c_contiguous:
         a = a.copy()
     return a, 1 - trans, a._strides[0] // a.itemsize
@@ -2372,7 +2324,7 @@ cdef _clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
      'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),
-    'out0 = min(in2, max(in1, in0))')
+    'out0 = in0 < in1 ? in1 : (in0 > in2 ? in2 : in0)')
 
 
 # -----------------------------------------------------------------------------

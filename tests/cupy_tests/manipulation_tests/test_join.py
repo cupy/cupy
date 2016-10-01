@@ -74,6 +74,21 @@ class TestJoin(unittest.TestCase):
         return xp.dstack((a, b, c))
 
     @testing.numpy_cupy_array_equal()
+    def test_dstack_single_element(self, xp):
+        a = testing.shaped_arange((1, 2, 3), xp)
+        return xp.dstack((a,))
+
+    @testing.numpy_cupy_array_equal()
+    def test_dstack_single_element_2(self, xp):
+        a = testing.shaped_arange((1, 2), xp)
+        return xp.dstack((a,))
+
+    @testing.numpy_cupy_array_equal()
+    def test_dstack_single_element_3(self, xp):
+        a = testing.shaped_arange((1,), xp)
+        return xp.dstack((a,))
+
+    @testing.numpy_cupy_array_equal()
     def test_hstack_vectors(self, xp):
         a = xp.arange(3)
         b = xp.arange(2, -1, -1)

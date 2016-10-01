@@ -28,17 +28,21 @@ class Orthogonal(initializer.Initializer):
 
     Attributes:
         scale (float): A constant to be multiplied by.
+        dtype: Data type specifier.
 
     Reference: Saxe et al., http://arxiv.org/abs/1312.6120
 
     """
 
-    def __init__(self, scale=1.1):
+    def __init__(self, scale=1.1, dtype=None):
         self.scale = scale
+        super(Orthogonal, self).__init__(dtype)
 
     # TODO(Kenta Oono)
     # How do we treat overcomplete base-system case?
     def __call__(self, array):
+        if self.dtype is not None:
+            assert array.dtype == self.dtype
         xp = cuda.get_array_module(array)
         if not array.shape:  # 0-dim case
             array[...] = self.scale

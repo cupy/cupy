@@ -23,12 +23,34 @@ def logsumexp(x):
     return m
 
 
+def _log_softmax(x, use_cudnn):
+    if cuda.cudnn_enabled and use_cudnn and _cudnn_version >= 3000:
+        xp = cuda.get_array_module(x)
+        if xp != numpy:
+            oz_dtype = 'd' if x.dtype == 'd' else 'f'
+            one = numpy.array(1, dtype=oz_dtype).ctypes
+            zero = numpy.array(0, dtype=oz_dtype).ctypes
+            handle = cudnn.get_handle()
+            x_cube = x.reshape(x.shape[:2] + (-1, 1))
+            desc = cudnn.create_tensor_descriptor(x_cube)
+            y = xp.empty_like(x)
+            libcudnn.softmaxForward(
+                handle, _algorithm, _mode, one.data, desc.value,
+                x_cube.data.ptr, zero.data, desc.value,
+                y.data.ptr)
+            return y
+    log_z = logsumexp(x)
+    y = x - log_z
+    return y
+
+
 class LogSoftmax(function.Function):
 
     """Log-softmax activation function."""
 
     def __init__(self, use_cudnn=True):
         self.use_cudnn = use_cudnn
+        self.y = None
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -40,27 +62,8 @@ class LogSoftmax(function.Function):
         )
 
     def forward(self, xs):
-        x = xs[0]
-        xp = cuda.get_array_module(x)
-        if (xp != numpy and cuda.cudnn_enabled and self.use_cudnn and
-                _cudnn_version >= 3000):
-            oz_dtype = 'd' if x.dtype == 'd' else 'f'
-            one = numpy.array(1, dtype=oz_dtype).ctypes
-            zero = numpy.array(0, dtype=oz_dtype).ctypes
-            handle = cudnn.get_handle()
-            x_cube = x.reshape(x.shape[:2] + (-1, 1))
-            desc = cudnn.create_tensor_descriptor(x_cube)
-            self.y = xp.empty_like(x)
-            libcudnn.softmaxForward(
-                handle, _algorithm, _mode, one.data, desc.value,
-                x_cube.data.ptr, zero.data, desc.value,
-                self.y.data.ptr)
-            return self.y,
-
-        else:
-            log_z = logsumexp(x)
-            self.y = x - log_z
-            return self.y,
+        self.y = _log_softmax(xs[0], self.use_cudnn)
+        return self.y,
 
     def backward(self, x, gy):
         xp = cuda.get_array_module(*x)
