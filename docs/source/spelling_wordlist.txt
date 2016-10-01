@@ -46,6 +46,7 @@ deserialized
 deserializes
 deserializer
 deserializers
+deserializing
 differentiable
 dimensionalities
 dimensionality
@@ -61,7 +62,8 @@ finalizer
 functionalities
 gaussian
 GPU
-grayscale
+grey
+greyscale
 gzip
 hdf
 huber

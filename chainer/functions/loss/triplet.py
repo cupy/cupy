@@ -64,7 +64,7 @@ def triplet(anchor, positive, negative, margin=0.2):
     It takes a triplet of variables as inputs, :math:`a`, :math:`p` and
     :math:`n`: anchor, positive example and negative example respectively.
     The triplet defines a relative similarity between samples.
-    Let :math:`N` and :math:`K` denote mini-batchsize and the dimension of
+    Let :math:`N` and :math:`K` denote mini-batch size and the dimension of
     input variables, respectively. The shape of all input variables should be
     :math:`(N, K)`.
 

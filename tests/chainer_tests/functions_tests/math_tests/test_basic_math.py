@@ -1021,7 +1021,7 @@ class TestMatMulVarVar(unittest.TestCase):
         else:
             options = {'atol': 1e-7, 'rtol': 1e-7}
         testing.assert_allclose(
-            operator.matmul(self.x, self.y), z.data, **options)
+            self.x.dot(self.y), z.data, **options)
 
     @unittest.skipUnless(sys.version_info >= (3, 5),
                          'Only for Python3.5 or higher')
@@ -1038,10 +1038,12 @@ class TestMatMulVarVar(unittest.TestCase):
 
     def check_backward(self, x_data, y_data, z_grad):
         if self.right_const:
-            op = lambda x: operator.matmul(x, y_data)
+            def op(x):
+                return operator.matmul(x, y_data)
             data = x_data,
         elif self.left_const:
-            op = lambda y: operator.matmul(x_data, y)
+            def op(y):
+                return operator.matmul(x_data, y)
             data = y_data,
         else:
             op = operator.matmul

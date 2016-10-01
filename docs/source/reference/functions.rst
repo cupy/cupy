@@ -111,16 +111,24 @@ copy
 ~~~~
 .. autofunction:: copy
 
+dstack
+~~~~~~
+.. autofunction:: dstack
+
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
+
+flatten
+~~~~~~~
+.. autofunction:: flatten
 
 get_item
 ~~~~~~~~
 .. autofunction:: get_item
 
 hstack
-~~~~~~~~
+~~~~~~
 .. autofunction:: hstack
 
 permutate
@@ -163,6 +171,10 @@ transpose_sequence
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: transpose_sequence
 
+vstack
+~~~~~~
+.. autofunction:: vstack
+
 where
 ~~~~~
 .. autofunction:: where
@@ -179,9 +191,17 @@ convolution_2d
 ~~~~~~~~~~~~~~
 .. autofunction:: convolution_2d
 
+convolution_nd
+~~~~~~~~~~~~~~
+.. autofunction:: convolution_nd
+
 deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
+
+dilated_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: dilated_convolution_2d
 
 embed_id
 ~~~~~~~~
@@ -206,6 +226,10 @@ Loss functions
 bernoulli_nll
 ~~~~~~~~~~~~~
 .. autofunction:: bernoulli_nll
+
+black_out
+~~~~~~~~~
+.. autofunction:: black_out
 
 connectionist_temporal_classification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -287,6 +311,10 @@ bias
 ~~~~
 .. autofunction:: bias
 
+ceil
+~~~~
+.. autofunction:: ceil
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -302,6 +330,10 @@ cosh
 exp
 ~~~
 .. autofunction:: exp
+
+floor
+~~~~~
+.. autofunction:: floor
 
 identity
 ~~~~~~~~
@@ -444,3 +476,11 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
+
+
+Utility functions
+-----------------
+
+forget
+~~~~~~
+.. autofunction:: forget

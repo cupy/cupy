@@ -100,7 +100,7 @@ def dstack(tup):
     .. seealso:: :func:`numpy.dstack`
 
     """
-    return concatenate(cupy.atleast_3d(*tup), 2)
+    return concatenate([cupy.atleast_3d(m) for m in tup], 2)
 
 
 def hstack(tup):

@@ -12,13 +12,17 @@ from chainer.testing import condition
 
 
 def _sigmoid(x):
-    return 1 / (1 + numpy.exp(-x))
+    half = x.dtype.type(0.5)
+    return numpy.tanh(x * half) * half + half
 
 
-@testing.parameterize(*testing.product({
+@testing.parameterize(*(testing.product({
     'batch': [3, 2, 0],
+    'dtype': [numpy.float32],
+}) + testing.product({
+    'batch': [3],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
-}))
+})))
 class TestLSTM(unittest.TestCase):
 
     def setUp(self):
