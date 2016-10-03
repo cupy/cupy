@@ -164,38 +164,6 @@ class VGG16Layers(chainer.Chain):
                 target_layers.remove(key)
         return activations
 
-    def prepare(self, image, size=(224, 224)):
-        """Converts the given image to the numpy array.
-
-        Note that you have to call this method before ``__call__``
-        because the pre-trained vgg model requires to resize the given image,
-        covert the RGB to the BGR, subtract the mean,
-        and permute the dimensions before calling.
-
-        Args:
-            image (PIL.Image or numpy.ndarray): Input image.
-                If an input is ``numpy.ndarray``, its shape must be
-                ``(height, width)`` or ``(height, width, channels)``.
-            size (pair of ints): Size of converted images.
-                If ``None``, the given image is not resized.
-
-        Returns:
-            numpy.ndarray: The converted output array.
-
-        """
-
-        if isinstance(image, numpy.ndarray):
-            image = Image.fromarray(image)
-        image = image.convert('RGB')
-        if size is not None:
-            image = image.resize(size)
-        image = numpy.asarray(image, dtype=numpy.float32)
-        image = image[:, :, ::-1]
-        image -= numpy.array(
-            [103.939, 116.779, 123.68], dtype=numpy.float32)
-        image = image.transpose((2, 0, 1))
-        return image
-
     def extract(self, images, layers=['fc7'], size=(224, 224)):
         """Extracts all the feature maps of given images.
 
@@ -203,7 +171,7 @@ class VGG16Layers(chainer.Chain):
         it directly accepts the list of images as an input, and
         automatically transforms them to a proper variable. That is,
         it is also interpreted as a shortcut method that implicitly call
-        ``prepare`` and ``__call__`` methods.
+        ``prepare`` and ``__call__`` functions.
 
         Args:
             image (list of PIL.Image or numpy.ndarray): Input images.
@@ -221,7 +189,7 @@ class VGG16Layers(chainer.Chain):
         """
 
         x = chainer.dataset.concat_examples(
-            [self.prepare(img, size=size) for img in images])
+            [prepare(img, size=size) for img in images])
         x = Variable(self.xp.asarray(x))
         return self(x, layers=layers)
 
@@ -238,6 +206,39 @@ class VGG16Layers(chainer.Chain):
         """
 
         return self.extract(images, layers=['prob'])['prob']
+
+
+def prepare(image, size=(224, 224)):
+    """Converts the given image to the numpy array for VGG models.
+
+    Note that you have to call this method before ``__call__``
+    because the pre-trained vgg model requires to resize the given image,
+    covert the RGB to the BGR, subtract the mean,
+    and permute the dimensions before calling.
+
+    Args:
+        image (PIL.Image or numpy.ndarray): Input image.
+            If an input is ``numpy.ndarray``, its shape must be
+            ``(height, width)`` or ``(height, width, channels)``.
+        size (pair of ints): Size of converted images.
+            If ``None``, the given image is not resized.
+
+    Returns:
+        numpy.ndarray: The converted output array.
+
+    """
+
+    if isinstance(image, numpy.ndarray):
+        image = Image.fromarray(image)
+    image = image.convert('RGB')
+    if size is not None:
+        image = image.resize(size)
+    image = numpy.asarray(image, dtype=numpy.float32)
+    image = image[:, :, ::-1]
+    image -= numpy.array(
+        [103.939, 116.779, 123.68], dtype=numpy.float32)
+    image = image.transpose((2, 0, 1))
+    return image
 
 
 def _make_npz(path_npz, url, model):
