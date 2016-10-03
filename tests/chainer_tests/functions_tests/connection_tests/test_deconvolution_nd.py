@@ -281,7 +281,6 @@ class TestDeconvolutionNDTypeCheck(unittest.TestCase):
             F.connection.deconvolution_nd.DeconvolutionND(1)(x, W, b, x)
 
     def test_data_and_weight(self):
-
         # dtype of data
         x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.int32)
         W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
