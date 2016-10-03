@@ -15,6 +15,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 from chainer.testing import parameterize
 from chainer.utils import conv
+from chainer.utils import type_check
 
 
 @parameterize(*testing.product({
@@ -262,6 +263,85 @@ class TestDeconvolutionNDarraySupplied(unittest.TestCase):
         self.check_array_supplied(cuda.to_gpu(self.x_data),
                                   cuda.to_gpu(self.W_data),
                                   cuda.to_gpu(self.b_data))
+
+
+class TestDeconvolutionNDTypeCheck(unittest.TestCase):
+
+    def test_number_of_inputs(self):
+        # Too few inputs
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        with self.assertRaises(type_check.InvalidType):
+            F.connection.deconvolution_nd.DeconvolutionND(1)(x)
+
+        # Too much inputs
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
+        b = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
+        with self.assertRaises(type_check.InvalidType):
+            F.connection.deconvolution_nd.DeconvolutionND(1)(x, W, b, x)
+
+    def test_data_and_weight(self):
+
+        # dtype of data
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.int32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
+        with self.assertRaises(type_check.InvalidType):
+            F.deconvolution_nd(x, W)
+
+        # dtype of weight
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.int32)
+        with self.assertRaises(type_check.InvalidType):
+            F.deconvolution_nd(x, W)
+
+        # ndim of weight
+        x = numpy.random.uniform(-1, 1, (2, 3, 4, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
+        with self.assertRaises(type_check.InvalidType):
+            F.deconvolution_nd(x, W)
+
+        # shapes of data and weight
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (2, 2, 2)).astype(numpy.float32)
+        with self.assertRaises(type_check.InvalidType):
+            F.deconvolution_nd(x, W)
+
+    def test_supplied_outsize(self):
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
+        outsize = (10,)
+        with self.assertRaises(type_check.InvalidType):
+            F.deconvolution_nd(x, W, outsize=outsize)
+
+    def test_bias(self):
+        # dtype
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
+        b = numpy.random.uniform(-1, 1, (2,)).astype(numpy.int32)
+        with self.assertRaises(type_check.InvalidType):
+            F.deconvolution_nd(x, W, b=b)
+
+        # ndim
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
+        b = numpy.random.uniform(-1, 1, (2, 2)).astype(numpy.float32)
+        with self.assertRaises(type_check.InvalidType):
+            F.deconvolution_nd(x, W, b=b)
+
+        # shape
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
+        b = numpy.random.uniform(-1, 1, (3,)).astype(numpy.float32)
+        with self.assertRaises(type_check.InvalidType):
+            F.deconvolution_nd(x, W, b=b)
+
+    def test_estimated_outsize(self):
+        x = numpy.random.uniform(-1, 1, (2, 3, 4)).astype(numpy.float32)
+        W = numpy.random.uniform(-1, 1, (3, 2, 2)).astype(numpy.float32)
+        stride = 1
+        pad = 10
+        with self.assertRaises(AssertionError):
+            F.deconvolution_nd(x, W, stride=stride, pad=pad)
 
 
 testing.run_module(__name__, __file__)
