@@ -2,7 +2,7 @@ from chainer.training import extension
 from chainer.training import trainer
 from chainer.training import trigger
 from chainer.training import updater
-
+from chainer.training import evaluator
 
 Extension = extension.Extension
 make_extension = extension.make_extension
@@ -18,3 +18,6 @@ get_trigger = trigger.get_trigger
 Updater = updater.Updater
 StandardUpdater = updater.StandardUpdater
 ParallelUpdater = updater.ParallelUpdater
+
+Evaluator = evaluator.Evaluator
+StandardEvaluator = evaluator.StandardEvaluator
