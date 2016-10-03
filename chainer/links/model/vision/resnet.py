@@ -93,7 +93,7 @@ class ResNet50Layers(chainer.Chain):
 
     @property
     def available_layers(self):
-        return list(self.functions.iterkeys())
+        return list(self.functions.keys())
 
     @classmethod
     def convert_caffemodel_to_npz(cls, path_caffemodel, path_npz):
