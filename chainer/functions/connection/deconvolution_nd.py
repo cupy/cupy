@@ -86,6 +86,8 @@ class DeconvolutionND(function.Function):
             self.outs = tuple(
                 conv.get_deconv_outsize(d, k, s, p)
                 for d, k, s, p in zip(dims, ksize, stride, pad))
+            assert all(out > 0 for out in self.outs), \
+                'Output sizes should be positive.'
         # y: n, C_O, d_1, d_2, ..., d_N
         if xp is numpy:
             y = conv_nd.col2im_nd_cpu(gcol, stride, pad, self.outs)
@@ -110,6 +112,8 @@ class DeconvolutionND(function.Function):
             self.outs = tuple(
                 conv.get_deconv_outsize(d, k, s, p)
                 for d, k, s, p in zip(dims, ksize, self.stride, self.pad))
+            assert all(out > 0 for out in self.outs), \
+                'Output sizes should be positive.'
         y_shape = (n, c) + self.outs  # (n, c_O, out_1, out_2, ..., out_N)
         y = cuda.cupy.empty(y_shape, dtype=x.dtype)
 
