@@ -1,17 +1,9 @@
-import copy
-
-import six
-
 from chainer.dataset import convert
-from chainer.dataset import iterator as iterator_module
-from chainer import link
 from chainer import reporter as reporter_module
-from chainer.training import extension
-from chainer import variable
+from chainer.training import extension, StandardEvaluator
 
 
 class Evaluator(extension.Extension):
-
     """Trainer extension to evaluate models on a validation set.
 
     This extension evaluates the current models by a given evaluation function.
@@ -57,6 +49,8 @@ class Evaluator(extension.Extension):
             object is passed at each call.
         eval_func: Evaluation function called at each iteration. The target
             link to evaluate as a callable is used by default.
+        evaluator: Customizable Evaluator instance. If it is applied, all
+            initial arguments are ignored and given evaluator is used.
 
     Attributes:
         converter: Converter function.
@@ -70,44 +64,36 @@ class Evaluator(extension.Extension):
     priority = extension.PRIORITY_WRITER
 
     def __init__(self, iterator, target, converter=convert.concat_examples,
-                 device=None, eval_hook=None, eval_func=None):
-        if isinstance(iterator, iterator_module.Iterator):
-            iterator = {'main': iterator}
-        self._iterators = iterator
-
-        if isinstance(target, link.Link):
-            target = {'main': target}
-        self._targets = target
-
-        self.converter = converter
-        self.device = device
-        self.eval_hook = eval_hook
-        self.eval_func = eval_func
+                 device=None, eval_hook=None, eval_func=None, evaluator=None):
+        if evaluator is None:
+            evaluator = StandardEvaluator(
+                    iterator=iterator, target=target,
+                    converter=converter, device=device,
+                    eval_hook_before=eval_hook, eval_func=eval_func,
+            )
+        self.evaluator = evaluator
 
     def get_iterator(self, name):
         """Returns the iterator of the given name."""
-        return self._iterators[name]
+        return self.evaluator.get_iterator(name)
 
     def get_all_iterators(self):
         """Returns a dictionary of all iterators."""
-        return dict(self._iterators)
+        return self.evaluator.get_all_iterators()
 
     def get_target(self, name):
         """Returns the target link of the given name."""
-        return self._targets[name]
+        return self.evaluator.get_target(name)
 
     def get_all_targets(self):
         """Returns a dictionary of all target links."""
-        return dict(self._targets)
+        return self.evaluator.get_all_targets()
 
     def __call__(self, trainer=None):
         """Executes the evaluator extension.
 
-        Unlike usual extensions, this extension can be executed without passing
-        a trainer object. This extension reports the performance on validation
-        dataset using the :func:`~chainer.report` function. Thus, users can use
-        this extension independently from any trainer by manually configuring
-        a :class:`~chainer.Reporter` object.
+        This extension reports the performance on validation dataset using
+        the :func:`~chainer.report` function.
 
         Args:
             trainer (~chainer.training.Trainer): Trainer object that invokes
@@ -119,62 +105,12 @@ class Evaluator(extension.Extension):
                 reported by the evaluation function.
 
         """
-        # set up a reporter
-        reporter = reporter_module.Reporter()
         if hasattr(self, 'name'):
             prefix = self.name + '/'
         else:
             prefix = ''
-        for name, target in six.iteritems(self._targets):
-            reporter.add_observer(prefix + name, target)
-            reporter.add_observers(prefix + name,
-                                   target.namedlinks(skipself=True))
 
-        with reporter:
-            result = self.evaluate()
+        result = self.evaluator.run(prefix)
 
         reporter_module.report(result)
         return result
-
-    def evaluate(self):
-        """Evaluates the model and returns a result dictionary.
-
-        This method runs the evaluation loop over the validation dataset. It
-        accumulates the reported values to :class:`~chainer.DictSummary` and
-        returns a dictionary whose values are means computed by the summary.
-
-        Users can override this method to customize the evaluation routine.
-
-        Returns:
-            dict: Result dictionary. This dictionary is further reported via
-                :func:`~chainer.report` without specifying any observer.
-
-        """
-        iterator = self._iterators['main']
-        target = self._targets['main']
-        eval_func = self.eval_func or target
-
-        if self.eval_hook:
-            self.eval_hook(self)
-        it = copy.copy(iterator)
-        summary = reporter_module.DictSummary()
-
-        for batch in it:
-            observation = {}
-            with reporter_module.report_scope(observation):
-                in_arrays = self.converter(batch, self.device)
-                if isinstance(in_arrays, tuple):
-                    in_vars = tuple(variable.Variable(x, volatile='on')
-                                    for x in in_arrays)
-                    eval_func(*in_vars)
-                elif isinstance(in_arrays, dict):
-                    in_vars = {key: variable.Variable(x, volatile='on')
-                               for key, x in six.iteritems(in_arrays)}
-                    eval_func(**in_vars)
-                else:
-                    in_var = variable.Variable(in_arrays, volatile='on')
-                    eval_func(in_var)
-
-            summary.add(observation)
-
-        return summary.compute_mean()
