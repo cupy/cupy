@@ -72,7 +72,6 @@ def im2col_nd_gpu(img, ksize, stride, pad, cover_all=False):
 
 
 def col2im_nd_cpu(col, stride, pad, dims):
-    # Assured consistency of dimensions of parameters by caller.
     n, c = col.shape[:2]  # (n, c, kx_1, ..., kx_N, out_1, ..., out_N)
     mid = (len(col.shape) - 2) // 2 + 2
     ksize = col.shape[2:mid]
@@ -102,7 +101,6 @@ def col2im_nd_cpu(col, stride, pad, dims):
 
 
 def col2im_nd_gpu(col, stride, pad, dims):
-    # Assured consistency of dimensions of parameters by caller.
     n, c = col.shape[:2]        # (n, c, k_1, ..., k_N, out_1, ..., out_N)
     mid = (len(col.shape) - 2) // 2 + 2
     ksize = col.shape[2:mid]
