@@ -4,13 +4,13 @@ import six
 from chainer import link
 from chainer import reporter as reporter_module
 from chainer import variable
+
 from chainer.dataset import convert
 from chainer.dataset import iterator as iterator_module
 
 
 class Evaluator(object):
-    """Base class of all evaluators.
-    """
+    """Base class of all evaluators."""
 
     def run(self):
         raise NotImplementedError
@@ -33,9 +33,7 @@ class Evaluator(object):
 
 def eval_func_with_volatile(eval_func, in_arrays):
     if isinstance(in_arrays, tuple):
-        in_vars = tuple(
-                variable.Variable(x, volatile='on') for x in in_arrays
-        )
+        in_vars = tuple(variable.Variable(x, volatile='on') for x in in_arrays)
         eval_func(*in_vars)
     elif isinstance(in_arrays, dict):
         in_vars = {
