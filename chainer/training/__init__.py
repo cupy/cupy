@@ -1,8 +1,8 @@
+from chainer.training import evaluator
 from chainer.training import extension
 from chainer.training import trainer
 from chainer.training import trigger
 from chainer.training import updater
-from chainer.training import evaluator
 
 Extension = extension.Extension
 make_extension = extension.make_extension
