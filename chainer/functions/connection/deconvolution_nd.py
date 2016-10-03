@@ -320,8 +320,8 @@ def deconvolution_nd(x, W, b=None, stride=1, pad=0, outsize=None,
             :math:`(out_1, out_2, ..., out_N)`. Default value is ``None`` and
             the outsize is estimated by input size, stride and pad.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
-            available. Deconvolution using cuDNN supports more than
-            one-dimensional one.
+            available. Note that cuDNN supports more than one-dimensional
+            deconvolution operations only.
 
     Returns:
         ~chainer.Variable: Output variable.
