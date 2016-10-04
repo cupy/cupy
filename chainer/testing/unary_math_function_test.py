@@ -14,7 +14,7 @@ def make_data_default(shape, dtype):
 
 
 def unary_math_function_unittest(func, func_expected=None, label_expected=None,
-                             make_data=None):
+                                 make_data=None):
     """Decorator for testing unary mathematical Chainer functions.
 
     This decorator makes test classes test unary mathematical Chainer
@@ -92,7 +92,8 @@ def unary_math_function_unittest(func, func_expected=None, label_expected=None,
           ...     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
           ...     return x, gy
           ...
-          >>> @testing.unary_math_function_unittest(F.Sqrt(), make_data=make_data)
+          >>> @testing.unary_math_function_unittest(F.Sqrt(),
+          ...                                       make_data=make_data)
           ... class TestSqrt(unittest.TestCase):
           ...     pass
           ...
