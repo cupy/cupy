@@ -12,7 +12,7 @@ parameterize = parameterized.parameterize
 product = parameterized.product
 product_dict = parameterized.product_dict
 
-unary_math_function_test = unary_math_function_test.unary_math_function_test
+unary_math_function_unittest = unary_math_function_test.unary_math_function_unittest
 
 with_requires = helper.with_requires
 
