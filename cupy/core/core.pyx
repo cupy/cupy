@@ -1505,16 +1505,17 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
     if dtype is None:
+        if a._c_contiguous:
+            return a
         dtype = a.dtype
     else:
         dtype = numpy.dtype(dtype)
+        if a._c_contiguous and dtype == a.dtype:
+            return a
 
-    if dtype == a.dtype and a._c_contiguous:
-        return a
-    else:
-        newarray = ndarray(a.shape, dtype)
-        elementwise_copy(a, newarray)
-        return newarray
+    newarray = ndarray(a.shape, dtype)
+    elementwise_copy(a, newarray)
+    return newarray
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
