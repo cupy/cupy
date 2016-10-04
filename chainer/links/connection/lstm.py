@@ -28,9 +28,9 @@ class LSTMBase(link.Chain):
         self.forget_bias_init = forget_bias_init
 
         if in_size is not None:
-            self._initialize_params(in_size)
+            self._initialize_params()
 
-    def _initialize_params(self, in_size):
+    def _initialize_params(self):
         for i in six.moves.range(0, 4 * self.state_size, self.state_size):
             initializers.init_weight(
                 self.lateral.W.data[i:i + self.state_size, :],
@@ -82,7 +82,7 @@ class StatelessLSTM(LSTMBase):
         if self.upward.has_uninitialized_params:
             in_size = x.size // len(x.data)
             self.upward._initialize_params(in_size)
-            self._initialize_params(in_size)
+            self._initialize_params()
 
         lstm_in = self.upward(x)
         if h is not None:
@@ -214,7 +214,7 @@ class LSTM(LSTMBase):
         if self.upward.has_uninitialized_params:
             in_size = x.size // len(x.data)
             self.upward._initialize_params(in_size)
-            self._initialize_params(in_size)
+            self._initialize_params()
 
         batch = x.shape[0]
         lstm_in = self.upward(x)
