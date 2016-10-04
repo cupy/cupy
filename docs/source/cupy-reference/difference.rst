@@ -31,7 +31,7 @@ In NumPy implementation, ``x ** 2`` is calculated using multiplication operator 
 Because the result of the multiplication of boolean values is boolean, ``True ** 2`` return boolean value.
 However, when you use power operator with other arguments, it returns int values.
 If we aligned the behavior of the squared boolean values of CuPy to that of NumPy, we would have to check their values in advance of the calculation.
-But it would be slow because it would force CPUs to wait until the calculation on GPUs.
+But it would be slow because it would force CPUs to wait until the calculation on GPUs end.
 So we decided not to check its value::
 
   >>> numpy.array([True]) ** 2
