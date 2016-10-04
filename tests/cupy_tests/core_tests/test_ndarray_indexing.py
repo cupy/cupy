@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 from cupy import testing
 
 
@@ -52,6 +54,8 @@ from cupy import testing
     {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -10, -1),)},
     {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -11, -1),)},
     {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -12, -1),)},
+    {'shape': (10,), 'transpose': None,
+     'indexes': numpy.random.choice([False, True], (10,))},
 )
 @testing.gpu
 class TestArrayIndexingParameterized(unittest.TestCase):

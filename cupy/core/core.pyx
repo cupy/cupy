@@ -5,6 +5,7 @@ import sys
 import numpy
 import six
 
+import cupy
 from cupy.core import flags
 from cupy.cuda import stream
 from cupy import util
@@ -1011,14 +1012,19 @@ cdef class ndarray:
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
         cdef vector.vector[Py_ssize_t] shape, strides
-        if not isinstance(slices, tuple):
+        if isinstance(slices, ndarray):
+            pass
+        elif isinstance(slices, numpy.ndarray):
+            slices = cupy.asarray(slices)
+        elif not isinstance(slices, tuple):
             slices = [slices]
         else:
             slices = list(slices)
 
-        for s in slices:
-            if isinstance(s, ndarray):
-                raise ValueError('Advanced indexing is not supported')
+        # boolean array indexing
+        if isinstance(slices, ndarray) and slices.dtype == bool:
+            assert internal.vector_equal(self._shape, slices._shape)
+            return _boolean_array_indexing(self, slices)
 
         # Expand ellipsis into empty slices
         ellipsis = -1
@@ -1832,6 +1838,28 @@ cdef _take_kernel_0axis = ElementwiseKernel(
       out = a[wrap_indices * rdim + i % rdim];
     ''',
     'cupy_take_0axis')
+
+
+cdef _boolean_array_indexing_nth = ElementwiseKernel(
+    'T a, bool boolean_array, S nth',
+    'raw T out',
+    'if (boolean_array) out[nth] = a',
+    'cupy_boolean_array_indexing_nth')
+
+
+cpdef ndarray _boolean_array_indexing(ndarray a, ndarray boolean_array):
+    cdef int i, n_true
+    nth = ndarray(boolean_array.shape, dtype=int)
+    n_true = 0
+    boolean_array = boolean_array.flatten()
+    for i in range(boolean_array.size):
+        if boolean_array[i]:
+            nth[i] = boolean_array[:i + 1].sum() - 1
+            n_true += 1
+
+    out_shape = (n_true,)
+    out = ndarray(out_shape, dtype=a.dtype)
+    return _boolean_array_indexing_nth(a, boolean_array, nth, out)
 
 
 cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
