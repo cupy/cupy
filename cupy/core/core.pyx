@@ -12,7 +12,6 @@ from cupy import util
 cimport cpython
 cimport cython
 from libcpp cimport vector
-from libc.string cimport memset
 
 from cupy.core cimport internal
 from cupy.cuda cimport cublas
@@ -519,21 +518,19 @@ cdef class ndarray:
 
         """
 
-        cdef char axis_flags[MAX_NDIM]
+        cdef vector.vector[char] axis_flags
         cdef vector.vector[Py_ssize_t] newshape, newstrides
         cdef Py_ssize_t ndim, naxes, _axis
 
         ndim = self._shape.size()
+        axis_flags = vector.vector[char](ndim, 0)
 
         # Convert axis to boolean flag.
         if axis is None:
             for idim in range(ndim):
                 if self._shape[idim] == 1:
                     axis_flags[idim] = 1
-                else:
-                    axis_flags[idim] = 0
         elif isinstance(axis, tuple):
-            memset(axis_flags, 0, ndim)
             naxes = <Py_ssize_t>len(axis)
             for i in range(naxes):
                 _axis = <Py_ssize_t>axis[i]
@@ -547,7 +544,6 @@ cdef class ndarray:
                     raise ValueError("duplicate value in 'axis'")
                 axis_flags[_axis] = 1
         else:
-            memset(axis_flags, 0, ndim)
             _axis = <Py_ssize_t>axis
             axis_orig = _axis
             if _axis < 0:
