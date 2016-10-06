@@ -517,29 +517,64 @@ cdef class ndarray:
            :meth:`numpy.ndarray.squeeze`
 
         """
-        cdef vector.vector[Py_ssize_t] vec_axis, newshape, newstrides
-        cdef Py_ssize_t i, j, n
-        if axis is None:
-            for i in range(<Py_ssize_t>self._shape.size()):
-                n = self._shape[i]
-                if n == 1:
-                    vec_axis.push_back(i)
-        elif isinstance(axis, int):
-            vec_axis.push_back(axis)
-        else:
-            vec_axis = axis
 
-        if vec_axis.size() == 0:
-            return self
-        j = 0
-        for i in range(<Py_ssize_t>self._shape.size()):
-            n = self._shape[i]
-            if j < <Py_ssize_t>vec_axis.size() and i == vec_axis[j]:
-                if n != 1:
-                    raise RuntimeError('Cannot squeeze dimension of size > 1')
-                j += 1
+        cdef vector.vector[char] axis_flags
+        cdef vector.vector[Py_ssize_t] newshape, newstrides
+        cdef Py_ssize_t ndim, naxes, _axis
+
+        ndim = self._shape.size()
+        axis_flags = vector.vector[char](ndim, 0)
+
+        # Convert axis to boolean flag.
+        if axis is None:
+            for idim in range(ndim):
+                if self._shape[idim] == 1:
+                    axis_flags[idim] = 1
+        elif isinstance(axis, tuple):
+            naxes = <Py_ssize_t>len(axis)
+            for i in range(naxes):
+                _axis = <Py_ssize_t>axis[i]
+                axis_orig = _axis
+                if _axis < 0:
+                    _axis += ndim
+                if _axis < 0 or _axis >= ndim:
+                    msg = "'axis' entry %d is out of bounds [-%d, %d)"
+                    raise ValueError(msg % (axis_orig, ndim, ndim))
+                if axis_flags[_axis] == 1:
+                    raise ValueError("duplicate value in 'axis'")
+                axis_flags[_axis] = 1
+        else:
+            _axis = <Py_ssize_t>axis
+            axis_orig = _axis
+            if _axis < 0:
+                _axis += ndim
+            if ndim == 0 and (_axis == 0 or _axis == -1):
+                # Special case letting axis={-1,0} slip through for scalars,
+                # for backwards compatibility reasons.
+                pass
             else:
-                newshape.push_back(n)
+                if _axis < 0 or _axis >= ndim:
+                    msg = "'axis' entry %d is out of bounds [-%d, %d)"
+                    raise ValueError(msg % (axis_orig, ndim, ndim))
+                axis_flags[_axis] = 1
+
+        # Verify that the axes requested are all of size one
+        any_ones = 0
+        for idim in range(ndim):
+            if axis_flags[idim] != 0:
+                if self._shape[idim] == 1:
+                    any_ones = 1
+                else:
+                    raise ValueError('cannot select an axis to squeeze out'
+                                     'which has size not equal to one')
+
+        # If there were no axes to squeeze out, return the same array
+        if any_ones == 0:
+            return self
+
+        for i in range(ndim):
+            if axis_flags[i] == 0:
+                newshape.push_back(self._shape[i])
                 newstrides.push_back(self._strides[i])
 
         v = self.view()
