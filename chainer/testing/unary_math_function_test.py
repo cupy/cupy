@@ -7,7 +7,7 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-def make_data_default(shape, dtype):
+def _make_data_default(shape, dtype):
     x = numpy.random.uniform(-1, 1, shape).astype(dtype)
     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
     return x, gy
@@ -131,7 +131,7 @@ def unary_math_function_unittest(func, func_expected=None, label_expected=None,
         label_expected = func.__class__.__name__.lower()
 
     if make_data is None:
-        make_data = make_data_default
+        make_data = _make_data_default
 
     def f(klass):
         assert issubclass(klass, unittest.TestCase)
