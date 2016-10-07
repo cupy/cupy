@@ -14,7 +14,7 @@ def make_data(shape, dtype):
     return x, gy
 
 
-@testing.unary_math_function_test(F.Sqrt(), make_data=make_data)
+@testing.unary_math_function_unittest(F.Sqrt(), make_data=make_data)
 class TestSqrt(unittest.TestCase):
     pass
 

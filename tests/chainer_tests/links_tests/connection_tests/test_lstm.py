@@ -10,23 +10,22 @@ from chainer import testing
 from chainer.testing import attr
 
 
-@testing.parameterize(
-    {'in_size': 10, 'out_size': 10},
-    {'in_size': 10, 'out_size': 40},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'in_size': 10, 'out_size': 10},
+        {'in_size': 10, 'out_size': 40},
+    ],
+    [
+        {'input_none': False},
+        {'input_none': True},
+    ]
+))
 class TestLSTM(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.LSTM(self.in_size, self.out_size)
-        upward = self.link.upward.W.data
-        upward[...] = numpy.random.uniform(-1, 1, upward.shape)
-        lateral = self.link.lateral.W.data
-        lateral[...] = numpy.random.uniform(-1, 1, lateral.shape)
+        in_size = None if self.input_none else self.in_size
+        self.link = links.LSTM(in_size, self.out_size)
         self.link.cleargrads()
-
-        self.upward = upward.copy()  # fixed on CPU
-        self.lateral = lateral.copy()  # fixed on CPU
-
         x1_shape = (4, self.in_size)
         self.x1 = numpy.random.uniform(-1, 1, x1_shape).astype(numpy.float32)
         x2_shape = (3, self.in_size)
@@ -218,22 +217,22 @@ class TestLSTMInvalidSize(unittest.TestCase):
                                         cuda.to_gpu(self.x2))
 
 
-@testing.parameterize(
-    {'in_size': 10, 'out_size': 10},
-    {'in_size': 10, 'out_size': 40},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'in_size': 10, 'out_size': 10},
+        {'in_size': 10, 'out_size': 40},
+    ],
+    [
+        {'input_none': False},
+        {'input_none': True},
+    ]
+))
 class TestStatelessLSTM(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.StatelessLSTM(self.in_size, self.out_size)
-        upward = self.link.upward.W.data
-        upward[...] = numpy.random.uniform(-1, 1, upward.shape)
-        lateral = self.link.lateral.W.data
-        lateral[...] = numpy.random.uniform(-1, 1, lateral.shape)
+        in_size = None if self.input_none else self.in_size
+        self.link = links.StatelessLSTM(in_size, self.out_size)
         self.link.cleargrads()
-
-        self.upward = upward.copy()  # fixed on CPU
-        self.lateral = lateral.copy()  # fixed on CPU
 
         x_shape = (4, self.in_size)
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
