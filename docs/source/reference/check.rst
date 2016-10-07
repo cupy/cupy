@@ -51,4 +51,4 @@ Function testing utilities
 Chainer provides some utilities for testing its functions.
 
 .. automodule:: chainer.testing
-.. autofunction:: unary_math_function_test
+.. autofunction:: unary_math_function_unittest
