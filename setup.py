@@ -38,6 +38,7 @@ setup(
               'chainer.functions.noise',
               'chainer.functions.normalization',
               'chainer.functions.pooling',
+              'chainer.functions.subpixel',
               'chainer.functions.util',
               'chainer.function_hooks',
               'chainer.iterators',
