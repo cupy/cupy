@@ -19,13 +19,13 @@ def black_out(x, t, W, samples):
       -\\log(p(t)) - \\sum_{s \\in S} \\log(1 - p(s)),
 
     where :math:`t` is the correct label, :math:`S` is a set of negative
-    examples and :math:`p(\dot)` is likelihood of a given label.
+    examples and :math:`p(\cdot)` is likelihood of a given label.
     And, :math:`p` is defined as
 
     .. math::
 
-       p(y) = \\frac{\\exp(W_y^\\trans x)}{
-       \\sum_{s \\in samples} \\exp(W_s^\\trans x)}.
+       p(y) = \\frac{\\exp(W_y^\\top x)}{
+       \\sum_{s \\in samples} \\exp(W_s^\\top x)}.
 
     Args:
         x (~chainer.Variable): Batch of input vectors.

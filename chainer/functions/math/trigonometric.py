@@ -69,11 +69,6 @@ def cos(x):
     return Cos()(x)
 
 
-_preamble = '''
-template <typename T> __device__ T sqr(T x) { return x * x; }
-'''
-
-
 class Tan(function.Function):
 
     @property

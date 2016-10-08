@@ -55,7 +55,7 @@ class TestBlackOut(unittest.TestCase):
             expect_y[b] = l
 
         loss = -numpy.sum(expect_y) / self.batch_size
-        gradient_check.assert_allclose(y.data, loss, atol=1.e-4)
+        testing.assert_allclose(y.data, loss, atol=1.e-4)
 
     @condition.retry(3)
     def test_forward_cpu(self):

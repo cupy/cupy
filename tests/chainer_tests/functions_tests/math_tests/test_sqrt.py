@@ -6,7 +6,6 @@ import chainer.functions as F
 from chainer import testing
 
 
-#
 # sqrt
 
 def make_data(shape, dtype):
@@ -15,12 +14,11 @@ def make_data(shape, dtype):
     return x, gy
 
 
-@testing.unary_math_function_test(F.Sqrt(), make_data=make_data)
+@testing.unary_math_function_unittest(F.Sqrt(), make_data=make_data)
 class TestSqrt(unittest.TestCase):
     pass
 
 
-#
 # rsqrt
 
 def rsqrt(x):
