@@ -123,7 +123,7 @@ class Arcsin(function.Function):
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
             'T x, T gy', 'T gx',
-            'gx = rsqrt((T)1.0 - x * x)',
+            'gx = rsqrt((T)1.0 - x * x) * gy',
             'arcsin_bwd'
         )(x[0], gy[0])
         return gx,
@@ -171,7 +171,7 @@ class Arccos(function.Function):
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
             'T x, T gy', 'T gx',
-            'gx = -rsqrt((T)1.0 - x * x)',
+            'gx = -rsqrt((T)1.0 - x * x) * gy',
             'arccos_bwd'
         )(x[0], gy[0])
         return gx,
@@ -216,7 +216,7 @@ class Arctan(function.Function):
     def backward_gpu(self, x, gy):
         gx = cuda.elementwise(
             'T x, T gy', 'T gx',
-            'gx = (T)1.0 / ((T)1.0 + x * x)',
+            'gx = (T)1.0 / ((T)1.0 + x * x) * gy',
             'arctan_bwd'
         )(x[0], gy[0])
         return gx,
