@@ -13,7 +13,7 @@ from chainer.testing import attr
 
 @testing.parameterize(
     {'lengths': [3, 3], 'batches': [2, 2, 2]},
-    {'lengths': [3, 2], 'batches': [2, 2, 1]},
+    {'lengths': [3, 2, 1], 'batches': [3, 2, 1]},
     {'lengths': [3, 1, 1], 'batches': [3, 1, 1]},
     {'lengths': [1, 1], 'batches': [2]},
 )
