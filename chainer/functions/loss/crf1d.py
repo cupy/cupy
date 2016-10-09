@@ -134,6 +134,32 @@ def crf1d(cost, xs, ys):
 
 
 def argmax_crf1d(cost, xs):
+    """Computes a state that maximizes a joint probability of the given CRF.
+
+    Args:
+        cost (Variable): A :math:`K \\times K` matrix which holds transition
+            cost between two labels, where :math:`K` is the number of labels.
+        xs (list of Variable): Input vector for each label.
+            ``len(xs)`` denotes the length of the sequence,
+            and each :class:`~chainer.Variable` holds a :math:`B \\times K`
+            matrix, where :math:`B` is mini-batch size, :math:`K` is the number
+            of labels.
+            Note that :math:`B` s in all the variables are not necessary
+            the same, i.e., it accepts the input sequences with difference
+            lengths.
+
+    Returns:
+        tuple: A tuple of :class:`~chainer.Variable` object ``s`` and a
+            :class:`list` ``ps``.
+            The shape of ``s`` is ``(B,)``, where ``B`` is the mini-batch size.
+            i-th element of ``s``, ``s[i]``, represents log-likelihood of i-th
+            data.
+            ``ps`` is a list of :class:`numpy.ndarray` or
+            :class:`cupy.ndarray`.
+            ``len(ps)`` is equal to ``len(xs)``, and shape of each ``ps[i]`` is
+            the mini-batch size of the corresponding ``xs[i]``. That means,
+            ``ps[i].shape == xs[i].shape[0:1]``.
+    """
     alpha = xs[0]
     alphas = []
     max_inds = []
