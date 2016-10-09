@@ -60,7 +60,7 @@ def crf1d(cost, xs, ys):
         cost (Variable): A :math:`K \\times K` matrix which holds transition
             cost between two labels, where :math:`K` is the number of labels.
         xs (list of Variable): Input vector for each label.
-            :math:`len(xs)` denotes the length of the sequence,
+            ``len(xs)`` denotes the length of the sequence,
             and each :class:`~chainer.Variable` holds a :math:`B \\times K`
             matrix, where :math:`B` is mini-batch size, :math:`K` is the number
             of labels.
@@ -68,11 +68,11 @@ def crf1d(cost, xs, ys):
             the same, i.e., it accepts the input sequences with difference
             lengths.
         ys (list of Variable): Expected output labels. It needs to have the
-            same length as `xs`. Each :class:`~chainer.Variable` holds a
+            same length as ``xs``. Each :class:`~chainer.Variable` holds a
             :math:`B` integer vector.
-            When `x` in `xs` has the different :math:`B`, correspoding `y` has
-            the same :math:`B`. In other words, `ys` must satisfy
-            `ys[i].shape == xx[i].shape[0:1]` for all `i`.
+            When ``x`` in ``xs`` has the different :math:`B`, correspoding
+            ``y`` has the same :math:`B`. In other words, ``ys`` must satisfy
+            ``ys[i].shape == xs[i].shape[0:1]`` for all ``i``.
 
     Returns:
         ~chainer.Variable: A variable holding the average negative
