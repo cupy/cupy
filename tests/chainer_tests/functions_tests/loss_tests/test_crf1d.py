@@ -14,6 +14,7 @@ from chainer.testing import attr
 @testing.parameterize(
     {'lengths': [3, 3], 'batches': [2, 2, 2]},
     {'lengths': [3, 2], 'batches': [2, 2, 1]},
+    {'lengths': [1, 1], 'batches': [2]},
 )
 class TestCRF1d(unittest.TestCase):
 
@@ -71,7 +72,14 @@ class TestCRF1d(unittest.TestCase):
             return functions.crf1d(cost, xs, ys)
 
         args = [cost_data] + xs_data + ys_data
-        gradient_check.check_backward(f, args, None, rtol=1e-3, atol=1e-3)
+        if len(self.batches) == 1:
+            # When each sequence only contains one element, cost matrix
+            # is not used, and its gradient is not updated.
+            no_grads = [True] + [False] * len(xs_data) + [True] * len(ys_data)
+        else:
+            no_grads = None
+        gradient_check.check_backward(
+            f, args, None, no_grads=no_grads, rtol=1e-3, atol=1e-3)
 
     def test_backward_cpu(self):
         self.check_backward(self.cost, self.xs, self.ys)
