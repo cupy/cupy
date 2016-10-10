@@ -68,11 +68,10 @@ class Evaluator(extension.Extension):
                  device=None, eval_hook=None, eval_func=None, evaluator=None):
         if evaluator is None:
             evaluator = evaluator_module.StandardEvaluator(
-                    iterator=iterator, target=target,
-                    converter=converter, device=device,
-                    eval_hook_before=eval_hook,
-                    eval_func=eval_func,
-            )
+                iterator=iterator, target=target,
+                converter=converter, device=device,
+                eval_hook_before=eval_hook,
+                eval_func=eval_func)
         self.evaluator = evaluator
 
     def get_iterator(self, name):
