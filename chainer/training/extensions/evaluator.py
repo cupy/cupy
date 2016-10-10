@@ -1,7 +1,7 @@
 from chainer.dataset import convert
 from chainer import reporter as reporter_module
+from chainer.training import evaluator as evaluator_module
 from chainer.training import extension
-from chainer.training import StandardEvaluator
 
 
 class Evaluator(extension.Extension):
@@ -67,11 +67,12 @@ class Evaluator(extension.Extension):
     def __init__(self, iterator, target, converter=convert.concat_examples,
                  device=None, eval_hook=None, eval_func=None, evaluator=None):
         if evaluator is None:
-            evaluator = StandardEvaluator(iterator=iterator, target=target,
-                                          converter=converter, device=device,
-                                          eval_hook_before=eval_hook,
-                                          eval_func=eval_func,
-                                          )
+            evaluator = evaluator_module.StandardEvaluator(
+                    iterator=iterator, target=target,
+                    converter=converter, device=device,
+                    eval_hook_before=eval_hook,
+                    eval_func=eval_func,
+            )
         self.evaluator = evaluator
 
     def get_iterator(self, name):
