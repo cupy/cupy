@@ -11,8 +11,11 @@ from chainer.training import evaluator as evaluator_module
 
 
 class TestStandardEvaluator(unittest.TestCase):
+
     def test_it(self):
+
         class MyChain(link.Chain):
+
             def __call__(self, x, t):
                 reporter_module.report({
                     'accuracy': accuracy.accuracy(x, t),
@@ -36,3 +39,6 @@ class TestStandardEvaluator(unittest.TestCase):
         result = evaluator.run()
 
         testing.assert_allclose(6. / 8, result['accuracy'])
+
+
+testing.run_module(__name__, __file__)
