@@ -197,6 +197,16 @@ class TestDims(unittest.TestCase):
         return a.squeeze(axis=-1)
 
     @testing.numpy_cupy_raises()
+    def test_squeeze_scalar_failure1(self, xp):
+        a = testing.shaped_arange((), xp)
+        a.squeeze(axis=-2)
+
+    @testing.numpy_cupy_raises()
+    def test_squeeze_scalar_failure2(self, xp):
+        a = testing.shaped_arange((), xp)
+        a.squeeze(axis=1)
+
+    @testing.numpy_cupy_raises()
     def test_squeeze_failure(self, xp):
         a = testing.shaped_arange((2, 1, 3, 4), xp)
         a.squeeze(axis=2)
