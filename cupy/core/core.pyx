@@ -565,7 +565,7 @@ cdef class ndarray:
                 if self._shape[idim] == 1:
                     any_ones = 1
                 else:
-                    raise ValueError('cannot select an axis to squeeze out'
+                    raise ValueError('cannot select an axis to squeeze out '
                                      'which has size not equal to one')
 
         # If there were no axes to squeeze out, return the same array
