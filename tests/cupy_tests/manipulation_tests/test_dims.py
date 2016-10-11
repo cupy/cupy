@@ -142,8 +142,13 @@ class TestDims(unittest.TestCase):
         return xp.expand_dims(a, -4)
 
     @testing.numpy_cupy_array_equal()
-    def test_squeeze(self, xp):
+    def test_squeeze1(self, xp):
         a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+        return a.squeeze()
+
+    @testing.numpy_cupy_array_equal()
+    def test_squeeze2(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
         return a.squeeze()
 
     @testing.numpy_cupy_array_equal()
@@ -175,6 +180,11 @@ class TestDims(unittest.TestCase):
     def test_squeze_tuple_axis3(self, xp):
         a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
         return a.squeeze(axis=(4, 2))
+
+    @testing.numpy_cupy_array_equal()
+    def test_squeze_tuple_axis4(self, xp):
+        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+        return a.squeeze(axis=())
 
     @testing.numpy_cupy_raises()
     def test_squeze_tuple_axis_failure1(self, xp):
