@@ -156,10 +156,10 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
         return a.squeeze(axis=-3)
 
-    def test_squeze_int_axis_failure(self):
-        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1))
-        with self.assertRaises(ValueError):
-            return a.squeeze(axis=-9)
+    @testing.numpy_cupy_raises()
+    def test_squeze_int_axis_failure(self, xp):
+        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+        a.squeeze(axis=-9)
 
     @testing.numpy_cupy_array_equal()
     def test_squeze_tuple_axis1(self, xp):
@@ -176,15 +176,15 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
         return a.squeeze(axis=(4, 2))
 
-    def test_squeze_tuple_axis_failure1(self):
-        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1))
-        with self.assertRaises(ValueError):
-            return a.squeeze(axis=(-9,))
+    @testing.numpy_cupy_raises()
+    def test_squeze_tuple_axis_failure1(self, xp):
+        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+        a.squeeze(axis=(-9,))
 
-    def test_squeze_tuple_axis_failure2(self):
-        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1))
-        with self.assertRaises(ValueError):
-            return a.squeeze(axis=(2, 2))
+    @testing.numpy_cupy_raises()
+    def test_squeze_tuple_axis_failure2(self, xp):
+        a = testing.shaped_arange((1, 2, 1, 3, 1, 1, 4, 1), xp)
+        a.squeeze(axis=(2, 2))
 
     @testing.numpy_cupy_array_equal()
     def test_squeeze_scalar1(self, xp):
@@ -196,10 +196,10 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((), xp)
         return a.squeeze(axis=-1)
 
-    def test_squeeze_failure(self):
-        a = testing.shaped_arange((2, 1, 3, 4))
-        with self.assertRaises(ValueError):
-            a.squeeze(axis=2)
+    @testing.numpy_cupy_raises()
+    def test_squeeze_failure(self, xp):
+        a = testing.shaped_arange((2, 1, 3, 4), xp)
+        a.squeeze(axis=2)
 
     @testing.numpy_cupy_array_equal()
     def test_external_squeeze(self, xp):
