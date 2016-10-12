@@ -13,8 +13,7 @@ from chainer.utils import type_check
 @testing.parameterize(*testing.product({
     'in_shape': [(), 2, (2, 3)],
     'reps': [(), 0, 2, (0, 0), (2, 2)],
-#    'dtype': [numpy.float16, numpy.float32, numpy.float64],
-    'dtype': [numpy.float32],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestTile(unittest.TestCase):
 
@@ -23,11 +22,19 @@ class TestTile(unittest.TestCase):
         out_shape = numpy.tile(self.x, self.reps).shape
         self.g = numpy.random.uniform(-1, 1, out_shape).astype(self.dtype)
 
+        self.check_forward_options = {}
+        self.check_backward_options = {'dtype': numpy.float64}
+        if self.dtype == numpy.float16:
+            self.check_forward_options = {'atol': 5e-4, 'rtol': 5e-3}
+            self.check_backward_options = {
+                'dtype': numpy.float64, 'atol': 2 ** -4, 'rtol': 2 ** -4}
+
     def check_forward(self, x_data):
         y = functions.tile(x_data, self.reps)
         y_expected = numpy.tile(self.x, self.reps)
         self.assertEqual(y.dtype, y_expected.dtype)
-        testing.assert_allclose(y.data, y_expected)
+        testing.assert_allclose(
+            y.data, y_expected, **self.check_forward_options)
 
     def test_forward_cpu(self):
         self.check_forward(self.x)
@@ -38,7 +45,8 @@ class TestTile(unittest.TestCase):
 
     def check_backward(self, x_data, g_data):
         gradient_check.check_backward(
-            functions.Tile(self.reps), x_data, g_data)
+            functions.Tile(self.reps), x_data, g_data,
+            **self.check_backward_options)
 
     def test_backward_cpu(self):
         self.check_backward(self.x, self.g)
