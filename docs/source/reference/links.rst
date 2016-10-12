@@ -152,6 +152,19 @@ Classifier
 .. autoclass:: Classifier
    :members:
 
+Pre-trained models
+------------------
+
+VGG16Layers
+~~~~~~~~~~~
+.. autoclass:: VGG16Layers
+   :members:
+
+ResNet50Layers
+~~~~~~~~~~~~~~
+.. autoclass:: ResNet50Layers
+   :members:
+
 Deprecated links
 ----------------
 

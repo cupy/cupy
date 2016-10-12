@@ -38,14 +38,14 @@ class ResNet50Layers(link.Chain):
     vector from given images, or fine-tune the model on a different dataset.
     Note that unlike ``VGG16Layers``, it does not automatically download a
     pre-trained caffemodel. This caffemodel can be downloaded at
-    ``GitHub <https://github.com/KaimingHe/deep-residual-networks>``.
+    `GitHub <https://github.com/KaimingHe/deep-residual-networks>`_.
 
     If you want to manually convert the pre-trained caffemodel to a chainer
     model that can be spesified in the constractor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
-    [1] ``Deep Residual Learning for Image Recognition
-    <http://arxiv.org/abs/1512.03385>``
+    .. [1] `Deep Residual Learning for Image Recognition
+        <http://arxiv.org/abs/1512.03385>`_
 
     Args:
         pretrained_model (str): the destination of the pre-trained

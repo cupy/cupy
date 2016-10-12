@@ -42,8 +42,8 @@ class VGG16Layers(link.Chain):
     model that can be spesified in the constractor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
-    [1] ``Very Deep Convolutional Networks for Large-Scale Image
-    Recognition <https://arxiv.org/abs/1409.1556>``
+    .. [1] `Very Deep Convolutional Networks for Large-Scale Image
+        Recognition <https://arxiv.org/abs/1409.1556>`_
 
     Args:
         pretrained_model (str): the destination of the pre-trained
