@@ -136,6 +136,16 @@ if available:
     cuda.set_allocator(memory_pool.malloc)
 
 
+if six.PY2:
+    try:
+        from future.types.newint import newint as _newint
+        _integer_types = six.integer_types + (_newint,)
+    except ImportError:
+        _integer_types = six.integer_types
+else:
+    _integer_types = six.integer_types
+
+
 # ------------------------------------------------------------------------------
 # Global states
 # ------------------------------------------------------------------------------
@@ -163,7 +173,7 @@ def get_device(*args):
 
     """
     for arg in args:
-        if type(arg) in six.integer_types:
+        if type(arg) in _integer_types:
             check_cuda_available()
             return Device(arg)
         if isinstance(arg, ndarray):
