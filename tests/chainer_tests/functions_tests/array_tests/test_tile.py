@@ -81,3 +81,6 @@ class TestTileTypeError(unittest.TestCase):
         x = numpy.random.uniform(-1, 1, (2,)).astype(numpy.float32)
         with self.assertRaises(TypeError):
             functions.tile(x, 'a')
+
+
+testing.run_module(__name__, __file__)
