@@ -44,7 +44,7 @@ class ResNet50Layers(link.Chain):
     model that can be spesified in the constractor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
-    .. [1] `Deep Residual Learning for Image Recognition
+    .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
         <http://arxiv.org/abs/1512.03385>`_
 
     Args:
@@ -183,7 +183,7 @@ class ResNet50Layers(link.Chain):
 
         Returns:
             ~chainer.Variable: Output that contains the class probabilities
-                of given images.
+            of given images.
 
         """
 
