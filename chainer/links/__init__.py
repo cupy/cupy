@@ -25,6 +25,8 @@ from chainer.links.loss import crf1d
 from chainer.links.loss import hierarchical_softmax
 from chainer.links.loss import negative_sampling
 from chainer.links.model import classifier
+from chainer.links.model.vision import resnet
+from chainer.links.model.vision import vgg
 from chainer.links.normalization import batch_normalization
 
 
@@ -58,5 +60,7 @@ BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 NegativeSampling = negative_sampling.NegativeSampling
 
 Classifier = classifier.Classifier
+ResNet50Layers = resnet.ResNet50Layers
+VGG16Layers = vgg.VGG16Layers
 
 BatchNormalization = batch_normalization.BatchNormalization

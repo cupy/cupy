@@ -3,19 +3,29 @@ from collections import OrderedDict
 import os
 
 import numpy
-from PIL import Image
+try:
+    from PIL import Image
+    available = True
+except ImportError as e:
+    available = False
+    _import_error = e
 
-import chainer
-import chainer.dataset
-import chainer.functions as F
-import chainer.initializers
-import chainer.links as L
-from chainer.links.caffe import CaffeFunction
-from chainer import serializers
-from chainer import Variable
+from chainer.dataset.convert import concat_examples
+from chainer.dataset import download
+from chainer.functions.activation.relu import relu
+from chainer.functions.activation.softmax import softmax
+from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
+from chainer.initializers import constant
+from chainer.initializers import normal
+from chainer import link
+from chainer.links.caffe.caffe_function import CaffeFunction
+from chainer.links.connection.convolution_2d import Convolution2D
+from chainer.links.connection.linear import Linear
+from chainer.serializers import npz
+from chainer.variable import Variable
 
 
-class VGG16Layers(chainer.Chain):
+class VGG16Layers(link.Chain):
 
     """A pre-trained CNN model with 16 layers provided by VGG team [1].
 
@@ -60,31 +70,31 @@ class VGG16Layers(chainer.Chain):
         if pretrained_model is not None:
             # As a sampling process is time-consuming,
             # we employ a zero initializer for faster computation.
-            init = chainer.initializers.Zero()
+            init = constant.Zero()
             kwargs = {'initialW': init, 'initial_bias': init}
         else:
             # employ default initializers used in the original paper
             kwargs = {
-                'initialW': chainer.initializers.Normal(0.01),
-                'initial_bias': chainer.initializers.Zero(),
+                'initialW': normal.Normal(0.01),
+                'initial_bias': constant.Zero(),
             }
         super(VGG16Layers, self).__init__(
-            conv1_1=L.Convolution2D(3, 64, 3, 1, 1, **kwargs),
-            conv1_2=L.Convolution2D(64, 64, 3, 1, 1, **kwargs),
-            conv2_1=L.Convolution2D(64, 128, 3, 1, 1, **kwargs),
-            conv2_2=L.Convolution2D(128, 128, 3, 1, 1, **kwargs),
-            conv3_1=L.Convolution2D(128, 256, 3, 1, 1, **kwargs),
-            conv3_2=L.Convolution2D(256, 256, 3, 1, 1, **kwargs),
-            conv3_3=L.Convolution2D(256, 256, 3, 1, 1, **kwargs),
-            conv4_1=L.Convolution2D(256, 512, 3, 1, 1, **kwargs),
-            conv4_2=L.Convolution2D(512, 512, 3, 1, 1, **kwargs),
-            conv4_3=L.Convolution2D(512, 512, 3, 1, 1, **kwargs),
-            conv5_1=L.Convolution2D(512, 512, 3, 1, 1, **kwargs),
-            conv5_2=L.Convolution2D(512, 512, 3, 1, 1, **kwargs),
-            conv5_3=L.Convolution2D(512, 512, 3, 1, 1, **kwargs),
-            fc6=L.Linear(512 * 7 * 7, 4096, **kwargs),
-            fc7=L.Linear(4096, 4096, **kwargs),
-            fc8=L.Linear(4096, 1000, **kwargs),
+            conv1_1=Convolution2D(3, 64, 3, 1, 1, **kwargs),
+            conv1_2=Convolution2D(64, 64, 3, 1, 1, **kwargs),
+            conv2_1=Convolution2D(64, 128, 3, 1, 1, **kwargs),
+            conv2_2=Convolution2D(128, 128, 3, 1, 1, **kwargs),
+            conv3_1=Convolution2D(128, 256, 3, 1, 1, **kwargs),
+            conv3_2=Convolution2D(256, 256, 3, 1, 1, **kwargs),
+            conv3_3=Convolution2D(256, 256, 3, 1, 1, **kwargs),
+            conv4_1=Convolution2D(256, 512, 3, 1, 1, **kwargs),
+            conv4_2=Convolution2D(512, 512, 3, 1, 1, **kwargs),
+            conv4_3=Convolution2D(512, 512, 3, 1, 1, **kwargs),
+            conv5_1=Convolution2D(512, 512, 3, 1, 1, **kwargs),
+            conv5_2=Convolution2D(512, 512, 3, 1, 1, **kwargs),
+            conv5_3=Convolution2D(512, 512, 3, 1, 1, **kwargs),
+            fc6=Linear(512 * 7 * 7, 4096, **kwargs),
+            fc7=Linear(4096, 4096, **kwargs),
+            fc8=Linear(4096, 1000, **kwargs),
         )
         if pretrained_model == 'auto':
             _retrieve(
@@ -93,32 +103,31 @@ class VGG16Layers(chainer.Chain):
                 'caffe/VGG_ILSVRC_16_layers.caffemodel',
                 self)
         elif pretrained_model is not None:
-            serializers.load_npz(pretrained_model, self)
+            npz.load_npz(pretrained_model, self)
 
-        max_pooling_2d = lambda x: F.max_pooling_2d(x, ksize=2)
         self.functions = OrderedDict([
-            ('conv1_1', [self.conv1_1, F.relu]),
-            ('conv1_2', [self.conv1_2, F.relu]),
-            ('pool1', [max_pooling_2d]),
-            ('conv2_1', [self.conv2_1, F.relu]),
-            ('conv2_2', [self.conv2_2, F.relu]),
-            ('pool2', [max_pooling_2d]),
-            ('conv3_1', [self.conv3_1, F.relu]),
-            ('conv3_2', [self.conv3_2, F.relu]),
-            ('conv3_3', [self.conv3_3, F.relu]),
-            ('pool3', [max_pooling_2d]),
-            ('conv4_1', [self.conv4_1, F.relu]),
-            ('conv4_2', [self.conv4_2, F.relu]),
-            ('conv4_3', [self.conv4_3, F.relu]),
-            ('pool4', [max_pooling_2d]),
-            ('conv5_1', [self.conv5_1, F.relu]),
-            ('conv5_2', [self.conv5_2, F.relu]),
-            ('conv5_3', [self.conv5_3, F.relu]),
-            ('pool5', [max_pooling_2d]),
-            ('fc6', [self.fc6, F.relu]),
-            ('fc7', [self.fc7, F.relu]),
-            ('fc8', [self.fc8, F.relu]),
-            ('prob', [F.softmax]),
+            ('conv1_1', [self.conv1_1, relu]),
+            ('conv1_2', [self.conv1_2, relu]),
+            ('pool1', [_max_pooling_2d]),
+            ('conv2_1', [self.conv2_1, relu]),
+            ('conv2_2', [self.conv2_2, relu]),
+            ('pool2', [_max_pooling_2d]),
+            ('conv3_1', [self.conv3_1, relu]),
+            ('conv3_2', [self.conv3_2, relu]),
+            ('conv3_3', [self.conv3_3, relu]),
+            ('pool3', [_max_pooling_2d]),
+            ('conv4_1', [self.conv4_1, relu]),
+            ('conv4_2', [self.conv4_2, relu]),
+            ('conv4_3', [self.conv4_3, relu]),
+            ('pool4', [_max_pooling_2d]),
+            ('conv5_1', [self.conv5_1, relu]),
+            ('conv5_2', [self.conv5_2, relu]),
+            ('conv5_3', [self.conv5_3, relu]),
+            ('pool5', [_max_pooling_2d]),
+            ('fc6', [self.fc6, relu]),
+            ('fc7', [self.fc7, relu]),
+            ('fc8', [self.fc8, relu]),
+            ('prob', [softmax]),
         ])
 
     @property
@@ -135,7 +144,7 @@ class VGG16Layers(chainer.Chain):
         """
 
         caffemodel = CaffeFunction(path_caffemodel)
-        serializers.save_npz(path_npz, caffemodel, compression=False)
+        npz.save_npz(path_npz, caffemodel, compression=False)
 
     def __call__(self, x, layers=['prob']):
         """Computes all the feature maps specified by ``layers``.
@@ -188,8 +197,7 @@ class VGG16Layers(chainer.Chain):
 
         """
 
-        x = chainer.dataset.concat_examples(
-            [prepare(img, size=size) for img in images])
+        x = concat_examples([prepare(img, size=size) for img in images])
         x = Variable(self.xp.asarray(x))
         return self(x, layers=layers)
 
@@ -228,6 +236,10 @@ def prepare(image, size=(224, 224)):
 
     """
 
+    if not available:
+        raise ImportError('PIL cannot be loaded. Install Pillow!\n'
+                          'The actual import error is as follows:\n' +
+                          str(_import_error))
     if isinstance(image, numpy.ndarray):
         image = Image.fromarray(image)
     image = image.convert('RGB')
@@ -241,17 +253,21 @@ def prepare(image, size=(224, 224)):
     return image
 
 
+def _max_pooling_2d(x):
+    return max_pooling_2d(x, ksize=2)
+
+
 def _make_npz(path_npz, url, model):
-    path_caffemodel = chainer.dataset.cached_download(url)
+    path_caffemodel = download.cached_download(url)
     print('Now loading caffemodel (usually it may take few or ten minutes)')
     VGG16Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
-    serializers.load_npz(path_npz, model)
+    npz.load_npz(path_npz, model)
     return model
 
 
 def _retrieve(name, url, model):
-    root = chainer.dataset.get_dataset_directory('pfnet/chainer/models/')
+    root = download.get_dataset_directory('pfnet/chainer/models/')
     path = os.path.join(root, name)
-    return chainer.dataset.cache_or_load_file(
+    return download.cache_or_load_file(
         path, lambda path: _make_npz(path, url, model),
-        lambda path: serializers.load_npz(path, model))
+        lambda path: npz.load_npz(path, model))

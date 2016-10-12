@@ -3,19 +3,31 @@ from collections import OrderedDict
 import os
 
 import numpy
-from PIL import Image
+try:
+    from PIL import Image
+    available = True
+except ImportError as e:
+    available = False
+    _import_error = e
 
-import chainer
-import chainer.dataset
-import chainer.functions as F
-import chainer.initializers
-import chainer.links as L
-from chainer.links.caffe import CaffeFunction
-from chainer import serializers
-from chainer import Variable
+from chainer.dataset.convert import concat_examples
+from chainer.dataset import download
+from chainer.functions.activation.relu import relu
+from chainer.functions.activation.softmax import softmax
+from chainer.functions.array.reshape import reshape
+from chainer.functions.pooling.average_pooling_2d import average_pooling_2d
+from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
+from chainer.initializers import constant
+from chainer import link
+from chainer.links.caffe.caffe_function import CaffeFunction
+from chainer.links.connection.convolution_2d import Convolution2D
+from chainer.links.connection.linear import Linear
+from chainer.links.normalization.batch_normalization import BatchNormalization
+from chainer.serializers import npz
+from chainer.variable import Variable
 
 
-class ResNet50Layers(chainer.Chain):
+class ResNet50Layers(link.Chain):
 
     """A pre-trained CNN model with 50 layers provided by MSRA [1].
 
@@ -60,35 +72,34 @@ class ResNet50Layers(chainer.Chain):
         if pretrained_model is not None:
             # As a sampling process is time-consuming,
             # we employ a zero initializer for faster computation.
-            kwargs = {'initialW': chainer.initializers.Zero()}
+            kwargs = {'initialW': constant.Zero()}
         else:
             # employ default initializers used in the original paper
             kwargs = {'initialW': None}
         super(ResNet50Layers, self).__init__(
-            conv1=L.Convolution2D(3, 64, 7, 2, 3, **kwargs),
-            bn1=L.BatchNormalization(64),
+            conv1=Convolution2D(3, 64, 7, 2, 3, **kwargs),
+            bn1=BatchNormalization(64),
             res2=BuildingBlock(3, 64, 64, 256, 1, **kwargs),
             res3=BuildingBlock(4, 256, 128, 512, 2, **kwargs),
             res4=BuildingBlock(6, 512, 256, 1024, 2, **kwargs),
             res5=BuildingBlock(3, 1024, 512, 2048, 2, **kwargs),
-            fc6=L.Linear(2048, 1000),
+            fc6=Linear(2048, 1000),
         )
         if pretrained_model == 'auto':
             _retrieve(
                 'ResNet-50-model.npz', 'ResNet-50-model.caffemodel', self)
         elif pretrained_model is not None:
-            serializers.load_npz(pretrained_model, self)
-        max_pooling_2d = lambda x: F.max_pooling_2d(x, ksize=3, stride=2)
+            npz.load_npz(pretrained_model, self)
         self.functions = OrderedDict([
-            ('conv1', [self.conv1, self.bn1, F.relu]),
-            ('pool1', [max_pooling_2d]),
+            ('conv1', [self.conv1, self.bn1, relu]),
+            ('pool1', [lambda x: max_pooling_2d(x, ksize=3, stride=2)]),
             ('res2', [self.res2]),
             ('res3', [self.res3]),
             ('res4', [self.res4]),
             ('res5', [self.res5]),
             ('pool5', [_global_average_pooling_2d]),
             ('fc6', [self.fc6]),
-            ('prob', [F.softmax]),
+            ('prob', [softmax]),
         ])
 
     @property
@@ -107,7 +118,7 @@ class ResNet50Layers(chainer.Chain):
         caffemodel = CaffeFunction(path_caffemodel)
         chainermodel = cls(pretrained_model=None)
         _transfer_resnet50(caffemodel, chainermodel)
-        serializers.save_npz(path_npz, chainermodel, compression=False)
+        npz.save_npz(path_npz, chainermodel, compression=False)
 
     def __call__(self, x, layers=['prob']):
         """Computes all the feature maps specified by ``layers``.
@@ -160,8 +171,7 @@ class ResNet50Layers(chainer.Chain):
 
         """
 
-        x = chainer.dataset.concat_examples(
-            [prepare(img, size=size) for img in images])
+        x = concat_examples([prepare(img, size=size) for img in images])
         x = Variable(self.xp.asarray(x))
         return self(x, layers=layers)
 
@@ -200,6 +210,10 @@ def prepare(image, size=(224, 224)):
 
     """
 
+    if not available:
+        raise ImportError('PIL cannot be loaded. Install Pillow!\n'
+                          'The actual import error is as follows:\n' +
+                          str(_import_error))
     if isinstance(image, numpy.ndarray):
         image = Image.fromarray(image)
     image = image.convert('RGB')
@@ -217,7 +231,7 @@ def prepare(image, size=(224, 224)):
     return image
 
 
-class BuildingBlock(chainer.Chain):
+class BuildingBlock(link.Chain):
 
     """A building block that consists of several Bottleneck layers.
 
@@ -250,7 +264,7 @@ class BuildingBlock(chainer.Chain):
         return x
 
 
-class BottleneckA(chainer.Chain):
+class BottleneckA(link.Chain):
 
     """A bottleneck layer that reduces the resolution of the feature map.
 
@@ -266,33 +280,33 @@ class BottleneckA(chainer.Chain):
     def __init__(self, in_channels, mid_channels, out_channels,
                  stride=2, initialW=None):
         super(BottleneckA, self).__init__(
-            conv1=L.Convolution2D(
+            conv1=Convolution2D(
                 in_channels, mid_channels, 1, stride, 0,
                 initialW=initialW, nobias=True),
-            bn1=L.BatchNormalization(mid_channels),
-            conv2=L.Convolution2D(
+            bn1=BatchNormalization(mid_channels),
+            conv2=Convolution2D(
                 mid_channels, mid_channels, 3, 1, 1,
                 initialW=initialW, nobias=True),
-            bn2=L.BatchNormalization(mid_channels),
-            conv3=L.Convolution2D(
+            bn2=BatchNormalization(mid_channels),
+            conv3=Convolution2D(
                 mid_channels, out_channels, 1, 1, 0,
                 initialW=initialW, nobias=True),
-            bn3=L.BatchNormalization(out_channels),
-            conv4=L.Convolution2D(
+            bn3=BatchNormalization(out_channels),
+            conv4=Convolution2D(
                 in_channels, out_channels, 1, stride, 0,
                 initialW=initialW, nobias=True),
-            bn4=L.BatchNormalization(out_channels),
+            bn4=BatchNormalization(out_channels),
         )
 
     def __call__(self, x, test=True):
-        h1 = F.relu(self.bn1(self.conv1(x), test=test))
-        h1 = F.relu(self.bn2(self.conv2(h1), test=test))
+        h1 = relu(self.bn1(self.conv1(x), test=test))
+        h1 = relu(self.bn2(self.conv2(h1), test=test))
         h1 = self.bn3(self.conv3(h1), test=test)
         h2 = self.bn4(self.conv4(x), test=test)
-        return F.relu(h1 + h2)
+        return relu(h1 + h2)
 
 
-class BottleneckB(chainer.Chain):
+class BottleneckB(link.Chain):
 
     """A bottleneck layer that maintains the resolution of the feature map.
 
@@ -305,31 +319,31 @@ class BottleneckB(chainer.Chain):
 
     def __init__(self, in_channels, mid_channels, initialW=None):
         super(BottleneckB, self).__init__(
-            conv1=L.Convolution2D(
+            conv1=Convolution2D(
                 in_channels, mid_channels, 1, 1, 0,
                 initialW=initialW, nobias=True),
-            bn1=L.BatchNormalization(mid_channels),
-            conv2=L.Convolution2D(
+            bn1=BatchNormalization(mid_channels),
+            conv2=Convolution2D(
                 mid_channels, mid_channels, 3, 1, 1,
                 initialW=initialW, nobias=True),
-            bn2=L.BatchNormalization(mid_channels),
-            conv3=L.Convolution2D(
+            bn2=BatchNormalization(mid_channels),
+            conv3=Convolution2D(
                 mid_channels, in_channels, 1, 1, 0,
                 initialW=initialW, nobias=True),
-            bn3=L.BatchNormalization(in_channels),
+            bn3=BatchNormalization(in_channels),
         )
 
     def __call__(self, x, test=True):
-        h = F.relu(self.bn1(self.conv1(x), test=test))
-        h = F.relu(self.bn2(self.conv2(h), test=test))
+        h = relu(self.bn1(self.conv1(x), test=test))
+        h = relu(self.bn2(self.conv2(h), test=test))
         h = self.bn3(self.conv3(h), test=test)
-        return F.relu(h + x)
+        return relu(h + x)
 
 
 def _global_average_pooling_2d(x):
     n, channel, rows, cols = x.data.shape
-    h = F.average_pooling_2d(x, (rows, cols), stride=1)
-    h = F.reshape(h, (n, channel))
+    h = average_pooling_2d(x, (rows, cols), stride=1)
+    h = reshape(h, (n, channel))
     return h
 
 
@@ -389,14 +403,14 @@ def _make_npz(path_npz, path_caffemodel, model):
             'from \'https://github.com/KaimingHe/deep-residual-networks\', '
             'and place it on {}'.format(path_caffemodel))
     ResNet50Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
-    serializers.load_npz(path_npz, model)
+    npz.load_npz(path_npz, model)
     return model
 
 
 def _retrieve(name_npz, name_caffemodel, model):
-    root = chainer.dataset.get_dataset_directory('pfnet/chainer/models/')
+    root = download.get_dataset_directory('pfnet/chainer/models/')
     path = os.path.join(root, name_npz)
     path_caffemodel = os.path.join(root, name_caffemodel)
-    return chainer.dataset.cache_or_load_file(
+    return download.cache_or_load_file(
         path, lambda path: _make_npz(path, path_caffemodel, model),
-        lambda path: serializers.load_npz(path, model))
+        lambda path: npz.load_npz(path, model))
