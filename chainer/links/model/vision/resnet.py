@@ -19,7 +19,6 @@ from chainer.functions.pooling.average_pooling_2d import average_pooling_2d
 from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
 from chainer.initializers import constant
 from chainer import link
-from chainer.links.caffe.caffe_function import CaffeFunction
 from chainer.links.connection.convolution_2d import Convolution2D
 from chainer.links.connection.linear import Linear
 from chainer.links.normalization.batch_normalization import BatchNormalization
@@ -115,6 +114,9 @@ class ResNet50Layers(link.Chain):
             path_npz (str): Path of the converted chainer model.
         """
 
+        # As CaffeFunction uses shortcut symbols,
+        # we import CaffeFunction here.
+        from chainer.links.caffe.caffe_function import CaffeFunction
         caffemodel = CaffeFunction(path_caffemodel)
         chainermodel = cls(pretrained_model=None)
         _transfer_resnet50(caffemodel, chainermodel)
