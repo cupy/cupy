@@ -5,11 +5,11 @@ import warnings
 import numpy
 
 from chainer import cuda
-from chainer import Variable
 from chainer import testing
-from chainer.testing import attr
-from chainer.links.model.vision import vgg
+from chainer import Variable
 from chainer.links.model.vision import resnet
+from chainer.links.model.vision import vgg
+from chainer.testing import attr
 
 
 @unittest.skipUnless(resnet.available, 'Pillow is required')
