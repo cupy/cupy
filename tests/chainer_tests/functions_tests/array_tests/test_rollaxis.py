@@ -68,7 +68,7 @@ class TestRollaxisInvalidType(unittest.TestCase):
 
     def check_type_error(self, x):
         with self.assertRaises(type_check.InvalidType):
-            functions.rollaxis(self.x, self.axis, self.start)
+            functions.rollaxis(x, self.axis, self.start)
 
     def test_type_error_cpu(self):
         self.check_type_error(self.x)

@@ -95,3 +95,143 @@ class Tan(function.Function):
 def tan(x):
     """Elementwise tan function."""
     return Tan()(x)
+
+
+class Arcsin(function.Function):
+
+    @property
+    def label(self):
+        return 'arcsin'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
+
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.arcsin(x[0])),
+
+    def backward_cpu(self, x, gy):
+        gx = utils.force_array(numpy.square(x[0]))
+        numpy.negative(gx, out=gx)
+        gx += 1
+        numpy.sqrt(gx, out=gx)
+        numpy.reciprocal(gx, out=gx)
+        gx *= gy[0]
+        return gx,
+
+    def backward_gpu(self, x, gy):
+        gx = cuda.elementwise(
+            'T x, T gy', 'T gx',
+            'gx = rsqrt((T)1.0 - x * x) * gy',
+            'arcsin_bwd'
+        )(x[0], gy[0])
+        return gx,
+
+
+def arcsin(x):
+    """Elementwise arcsine function.
+
+    .. math::
+       y_i = \\arcsin x_i.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+    return Arcsin()(x)
+
+
+class Arccos(function.Function):
+
+    @property
+    def label(self):
+        return 'arccos'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
+
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.arccos(x[0])),
+
+    def backward_cpu(self, x, gy):
+        gx = utils.force_array(numpy.square(x[0]))
+        numpy.negative(gx, out=gx)
+        gx += 1
+        numpy.sqrt(gx, out=gx)
+        numpy.reciprocal(gx, out=gx)
+        numpy.negative(gx, out=gx)
+        gx *= gy[0]
+        return gx,
+
+    def backward_gpu(self, x, gy):
+        gx = cuda.elementwise(
+            'T x, T gy', 'T gx',
+            'gx = -rsqrt((T)1.0 - x * x) * gy',
+            'arccos_bwd'
+        )(x[0], gy[0])
+        return gx,
+
+
+def arccos(x):
+    """Elementwise arccosine function.
+
+    .. math::
+       y_i = \\arccos x_i.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+    return Arccos()(x)
+
+
+class Arctan(function.Function):
+
+    @property
+    def label(self):
+        return 'arctan'
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        type_check.expect(in_types[0].dtype.kind == 'f')
+
+    def forward(self, x):
+        xp = cuda.get_array_module(*x)
+        return utils.force_array(xp.arctan(x[0])),
+
+    def backward_cpu(self, x, gy):
+        gx = utils.force_array(numpy.square(x[0]))
+        gx += 1
+        numpy.reciprocal(gx, out=gx)
+        gx *= gy[0]
+        return gx,
+
+    def backward_gpu(self, x, gy):
+        gx = cuda.elementwise(
+            'T x, T gy', 'T gx',
+            'gx = (T)1.0 / ((T)1.0 + x * x) * gy',
+            'arctan_bwd'
+        )(x[0], gy[0])
+        return gx,
+
+
+def arctan(x):
+    """Elementwise arctangent function.
+
+    .. math::
+       y_i = \\arctan x_i.
+
+    Args:
+        x (~chainer.Variable): Input variable.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+    return Arctan()(x)
