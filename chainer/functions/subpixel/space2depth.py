@@ -23,13 +23,9 @@ class Space2Depth(function.Function):
         xp = cuda.get_array_module(X)
         bsize, c, a, b = X.shape
         X = xp.transpose(X, (0, 2, 3, 1))
-        X = xp.reshape(X, (bsize, a, b * c))
-        X = xp.split(X, b / self.r, 2)
-        X = xp.concatenate([xp.expand_dims(x, 1) for x in X], 1)
-        X = xp.split(X, a / self.r, 2)
-        X = xp.concatenate([xp.expand_dims(x, 1) for x in X], 1)
-        X = xp.transpose(X, (0, 1, 2, 4, 3))
-        X = xp.reshape(X, (bsize, a / self.r, b / self.r, c * self.r ** 2))
+        X = xp.reshape(X, (bsize, a / self.r, b / self.r, self.r, self.r, c))
+        X = xp.transpose(X, (0, 1, 3, 2, 4, 5))
+        X = xp.reshape(X, (bsize, a / self.r, b / self.r, self.r ** 2 * c))
         X = xp.transpose(X, (0, 3, 1, 2))
         return X,
 
@@ -39,12 +35,8 @@ class Space2Depth(function.Function):
         bsize, c, a, b = gy.shape
         c /= self.r ** 2
         gy = xp.transpose(gy, (0, 2, 3, 1))
-        gy = xp.reshape(gy, (bsize, a, b, c * self.r, self.r))
-        gy = xp.transpose(gy, (0, 1, 2, 4, 3))
-        gy = xp.split(gy, a, 1)
-        gy = xp.concatenate([xp.squeeze(x, 1) for x in gy], 2)
-        gy = xp.split(gy, b, 1)
-        gy = xp.concatenate([xp.squeeze(x, 1) for x in gy], 2)
+        gy = xp.reshape(gy, (bsize, a, b, self.r, self.r, c))
+        gy = xp.transpose(gy, (0, 1, 3, 2, 4, 5))
         gy = xp.reshape(gy, (bsize, a * self.r, b * self.r, c))
         gy = xp.transpose(gy, (0, 3, 1, 2))
         return gy,
@@ -55,7 +47,7 @@ def space2depth(X, r):
 
     Args:
         X (Variable): Variable holding a 4d array of
-        shape (batch, dim1, dim2, channel)
+        shape (batch, channel, dim1, dim2)
         r (int): int specifying the upscaling factor.
 
     Returns:
