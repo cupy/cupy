@@ -371,7 +371,7 @@ Actual: {0}'''.format(type(data))
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
             hooks = chainer.get_function_hooks()
-            if func.n_local_function_hooks != 0:
+            if func._n_local_function_hooks != 0:
                 hooks = collections.OrderedDict(hooks)
                 hooks.update(func.local_function_hooks)
             for hook in six.itervalues(hooks):

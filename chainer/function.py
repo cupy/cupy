@@ -189,7 +189,7 @@ class Function(object):
             self._check_data_type_forward(in_data)
 
         hooks = chainer.get_function_hooks()
-        if self.n_local_function_hooks != 0:
+        if self._n_local_function_hooks != 0:
             hooks = collections.OrderedDict(hooks)
             hooks.update(self.local_function_hooks)
         for hook in six.itervalues(hooks):
@@ -246,10 +246,7 @@ class Function(object):
         return self._local_function_hooks
 
     @property
-    def n_local_function_hooks(self):
-        """Number of registered function hooks.
-
-        """
+    def _n_local_function_hooks(self):
         if hasattr(self, '_local_function_hooks'):
             return len(self._local_function_hooks)
         return 0
