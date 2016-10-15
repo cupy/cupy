@@ -23,29 +23,20 @@ class Depth2Space(function.Function):
         bsize, c, a, b = X.shape
         c /= self.r ** 2
         X = xp.transpose(X, (0, 2, 3, 1))
-        X = xp.reshape(X, (bsize, a, b, c * self.r, self.r))
-        X = xp.transpose(X, (0, 1, 2, 4, 3))
-        X = xp.split(X, a, 1)
-        X = xp.concatenate([xp.squeeze(x, 1) for x in X], 2)
-        X = xp.split(X, b, 1)
-        X = xp.concatenate([xp.squeeze(x, 1) for x in X], 2)
+        X = xp.reshape(X, (bsize, a, b, self.r, self.r, c))
+        X = xp.transpose(X, (0, 1, 3, 2, 4, 5))
         X = xp.reshape(X, (bsize, a * self.r, b * self.r, c))
         X = xp.transpose(X, (0, 3, 1, 2))
         return X,
 
     def backward(self, inputs, grad_outputs):
-
         gy, = grad_outputs
         xp = cuda.get_array_module(gy)
         bsize, c, a, b = gy.shape
         gy = xp.transpose(gy, (0, 2, 3, 1))
-        gy = xp.reshape(gy, (bsize, a, b * c))
-        gy = xp.split(gy, b / self.r, 2)
-        gy = xp.concatenate([xp.expand_dims(x, 1) for x in gy], 1)
-        gy = xp.split(gy, a / self.r, 2)
-        gy = xp.concatenate([xp.expand_dims(x, 1) for x in gy], 1)
-        gy = xp.transpose(gy, (0, 1, 2, 4, 3))
-        gy = xp.reshape(gy, (bsize, a / self.r, b / self.r, c * self.r ** 2))
+        gy = xp.reshape(gy, (bsize, a / self.r, b / self.r, self.r, self.r, c))
+        gy = xp.transpose(gy, (0, 1, 3, 2, 4, 5))
+        gy = xp.reshape(gy, (bsize, a / self.r, b / self.r, self.r ** 2 * c))
         gy = xp.transpose(gy, (0, 3, 1, 2))
         return gy,
 
@@ -55,7 +46,7 @@ def depth2space(X, r):
 
     Args:
         X (Variable): Variable holding a 4d array of
-        shape (batch, dim1, dim2, channel*r)
+        shape (batch, channel * r, dim1, dim2)
         r (int): int specifying the upscaling factor.
 
     Returns:
