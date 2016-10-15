@@ -145,8 +145,8 @@ def make_extensions(options, compiler):
     if sys.platform == 'darwin':
         args = settings.setdefault('extra_link_args', [])
         args.append(
-            '-Wl,' + ','.join('-rpath,' + path
-                              for path in settings['library_dirs']))
+            '-Wl,' + ','.join('-rpath,' + p
+                              for p in settings['library_dirs']))
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
 
