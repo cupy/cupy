@@ -12,7 +12,7 @@ cdef class PinnedMemory:
 
     """Pinned memory allocation on host.
 
-    This class provides an RAII interface of the pinned memory allocation.
+    This class provides a RAII interface of the pinned memory allocation.
 
     Args:
         size (int): Size of the memory allocation in bytes.
@@ -36,7 +36,7 @@ cdef class PinnedMemory:
 
 cdef class PinnedMemoryPointer:
 
-    """Pointer to a point on a pinned memory.
+    """Pointer of a pinned memory.
 
     An instance of this class holds a reference to the original memory buffer
     and a pointer to a place within this buffer.
@@ -169,8 +169,8 @@ cdef class PooledPinnedMemory(PinnedMemory):
 
     """Memory allocation for a memory pool.
 
-    The instance of this class is created by memory pool allocator, so user
-    should not instantiate it by hand.
+    As the instance of this class is created by memory pool allocator, users
+    should not instantiate it manually.
 
     """
 
@@ -184,7 +184,7 @@ cdef class PooledPinnedMemory(PinnedMemory):
             self.free()
 
     cpdef free(self):
-        """Frees the memory buffer and returns it to the memory pool.
+        """Releases the memory buffer and sends it to the memory pool.
 
         This function actually does not free the buffer. It just returns the
         buffer to the memory pool for reuse.
@@ -199,11 +199,12 @@ cdef class PooledPinnedMemory(PinnedMemory):
 
 cdef class PinnedMemoryPool:
 
-    """Memory pool on the machine.
+    """Memory pool on the host.
 
-    A memory pool preserves any allocations even if they are freed by the user.
-    Freed memory buffers are held by the memory pool as *free blocks*, and they
-    are reused for further memory allocations of the same sizes.
+    Note that it preserves all allocated memory buffers even if the user
+    explicitly release the one. Those released memory buffers are held by the
+    memory pool as *free blocks*, and reused for further memory allocations of
+    the same size.
 
     Args:
         allocator (function): The base CuPy pinned memory allocator. It is
@@ -254,8 +255,8 @@ cdef class PinnedMemoryPool:
         free = self._free[size]
         free.append(mem)
 
-    cpdef free_all_free(self):
-        """Release free blocks."""
+    cpdef free_all_blocks(self):
+        """Release free all blocks."""
         self._free = collections.defaultdict(list)
 
     cpdef n_free_blocks(self):
