@@ -382,12 +382,17 @@ class TestVariable(unittest.TestCase):
             data2 = cp.ones(3, dtype=np.float32)
         self.check_copydata(data1, data2, expect)
 
-    def check_addgrad(self, src, dst, expect):
+    def check_addgrad(self, src, dst, expect,
+                      clear_src_grad=False, clear_dst_grad=False):
         xp = cuda.get_array_module(dst)
         a = chainer.Variable(src)
         a.grad = src
         b = chainer.Variable(dst)
         b.grad = dst
+        if clear_src_grad:
+            a.cleargrad()
+        if clear_dst_grad:
+            b.cleargrad()
         b.addgrad(a)
         xp.testing.assert_array_equal(b.grad, expect)
 
@@ -426,6 +431,34 @@ class TestVariable(unittest.TestCase):
             b = cp.full(3, 20, dtype=np.float32)
             c = cp.full(3, 30, dtype=np.float32)
         self.check_addgrad(a, b, c)
+
+    def test_addgrad_cpu_to_cpu_none_src(self):
+        self.check_addgrad(np.full(3, 20, dtype=np.float32),
+                           np.full(3, 20, dtype=np.float32),
+                           np.full(3, 20, dtype=np.float32),
+                           clear_src_grad=True)
+
+    @attr.gpu
+    def test_addgrad_gpu_to_gpu_none_src(self):
+        cp = cuda.cupy
+        self.check_addgrad(cp.full(3, 20, dtype=np.float32),
+                           cp.full(3, 20, dtype=np.float32),
+                           cp.full(3, 20, dtype=np.float32),
+                           clear_src_grad=True)
+
+    def test_addgrad_cpu_to_cpu_none_dst(self):
+        self.check_addgrad(np.full(3, 20, dtype=np.float32),
+                           np.full(3, 20, dtype=np.float32),
+                           np.full(3, 20, dtype=np.float32),
+                           clear_dst_grad=True)
+
+    @attr.gpu
+    def test_addgrad_gpu_to_gpu_none_dst(self):
+        cp = cuda.cupy
+        self.check_addgrad(cp.full(3, 20, dtype=np.float32),
+                           cp.full(3, 20, dtype=np.float32),
+                           cp.full(3, 20, dtype=np.float32),
+                           clear_dst_grad=True)
 
     def test_pickle_cpu(self):
         x = chainer.Variable(self.x)
