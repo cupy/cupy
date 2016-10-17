@@ -6,17 +6,6 @@ from chainer import function
 from chainer.utils import type_check
 
 
-def _tile_indices(reps, shape):
-    """Return tile indices from reps and shape of input array."""
-    tile_indices = []
-    ranges = [six.moves.range(x) for x in reps]
-    for index in itertools.product(*ranges):
-        tile_index = tuple(slice(i * d, (i + 1) * d)
-                           for i, d in zip(index, shape))
-        tile_indices.append(tile_index)
-    return tile_indices
-
-
 class Tile(function.Function):
     """Tiling of an array."""
 
@@ -63,7 +52,7 @@ class Tile(function.Function):
 
         # Sum along reps axis
         reps_axis = tuple(range(0, 2 * grads[0].ndim, 2))
-        gy = grads[0].respahe(new_shape).sum(axis=reps_axis)
+        gy = grads[0].reshape(new_shape).sum(axis=reps_axis)
 
         if inputs[0].ndim < len(reps):
             return gy.reshape(inputs[0].shape),

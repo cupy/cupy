@@ -12,7 +12,7 @@ from chainer.utils import type_check
 
 @testing.parameterize(*testing.product({
     'in_shape': [(), 2, (2, 3)],
-    'reps': [(), 0, 2, (0, 0), (2, 2)],
+    'reps': [(), 0, 2, (0, 0), (1, 2), (2, 2), (2, 0)],
     'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestTile(unittest.TestCase):
