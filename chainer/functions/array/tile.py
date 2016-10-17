@@ -40,7 +40,6 @@ class Tile(function.Function):
         return xp.tile(inputs[0], self.reps),
 
     def backward(self, inputs, grads):
-        xp = cuda.get_array_module(*inputs)
         x = inputs[0]
         reps = self.reps
 
@@ -50,9 +49,21 @@ class Tile(function.Function):
         elif x.ndim < len(reps):
             x = x.reshape((1,) * (len(reps) - x.ndim) + x.shape)
 
-        gy = xp.zeros(x.shape).astype(x.dtype, copy=False)
-        for index in _tile_indices(reps, x.shape):
-            gy += grads[0][index]
+        if grads[0].shape == ():
+            # This case should be treated differently because numpy.num would
+            # return a scalar (even if keepdims=True).
+            return grads[0],
+
+        # Reshape so that base axis and reps axis can be distinguished.
+        new_shape = []
+        for i in range(grads[0].ndim):
+            new_shape.append(reps[i])
+            new_shape.append(x.shape[i])
+        new_shape = tuple(new_shape)
+
+        # Sum along reps axis
+        reps_axis = tuple(range(0, 2 * grads[0].ndim, 2))
+        gy = grads[0].respahe(new_shape).sum(axis=reps_axis)
 
         if inputs[0].ndim < len(reps):
             return gy.reshape(inputs[0].shape),
