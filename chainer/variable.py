@@ -301,7 +301,6 @@ Actual: {0}'''.format(type(data))
             src_grad = cuda.to_cpu(src)
         else:
             src_grad = cuda.to_gpu(src, device=dst_dev)
-            print(dst_dev, cuda.get_device(src_grad))
 
         if dst is None:
             self._grad = src_grad
