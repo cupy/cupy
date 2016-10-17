@@ -54,6 +54,11 @@ class TestCuda(unittest.TestCase):
         # from builtin int/long on Python 2.
         self.assertEqual(cuda.get_device(builtins.int(0)), cuda.Device(0))
 
+    @attr.gpu
+    def test_get_device_for_device(self):
+        device = cuda.get_device(0)
+        self.assertIs(cuda.get_device(device), device)
+
     def test_to_gpu_unavailable(self):
         x = numpy.array([1])
         if not cuda.available:
