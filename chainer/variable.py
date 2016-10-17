@@ -304,7 +304,8 @@ Actual: {0}'''.format(type(data))
         if dst is None:
             self._grad = src_grad
         else:
-            self._grad += src_grad
+            with dst_dev:
+                self._grad += src_grad
 
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.
