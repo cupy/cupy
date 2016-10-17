@@ -395,6 +395,7 @@ class TestVariable(unittest.TestCase):
             b.cleargrad()
         b.addgrad(a)
         xp.testing.assert_array_equal(b.grad, expect)
+        self.assertEqual(cuda.get_device(b.data), cuda.get_device(b.grad))
 
     def test_addgrad_cpu_to_cpu(self):
         self.check_addgrad(np.full(3, 10, dtype=np.float32),
@@ -421,6 +422,16 @@ class TestVariable(unittest.TestCase):
         self.check_addgrad(cp.full(3, 10, dtype=np.float32),
                            np.full(3, 20, dtype=np.float32),
                            np.full(3, 30, dtype=np.float32))
+
+    @attr.multi_gpu(2)
+    def test_addgrad_gpu_to_gpu_multi(self):
+        cp = cuda.cupy
+        with cuda.get_device(1):
+            a = cp.full(3, 10, dtype=np.float32)
+            b = cp.full(3, 20, dtype=np.float32)
+            c = cp.full(3, 30, dtype=np.float32)
+        with cuda.get_device(0):
+            self.check_addgrad(a, b, c)
 
     @attr.multi_gpu(2)
     def test_addgrad_gpu_to_another_gpu(self):

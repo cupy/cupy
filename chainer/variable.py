@@ -289,17 +289,19 @@ Actual: {0}'''.format(type(data))
         dst_dev = cuda.get_device(self.data)
 
         if src_dev.id == dst_dev.id:
-            if dst is None:
-                xp = cuda.get_array_module(src)
-                self._grad = xp.copy(src)
-            else:
-                self._grad += src
+            with dst_dev:
+                if dst is None:
+                    xp = cuda.get_array_module(src)
+                    self._grad = xp.copy(src)
+                else:
+                    self._grad += src
             return
 
         if dst_dev.id < 0:
             src_grad = cuda.to_cpu(src)
         else:
             src_grad = cuda.to_gpu(src, device=dst_dev)
+            print(dst_dev, cuda.get_device(src_grad))
 
         if dst is None:
             self._grad = src_grad
