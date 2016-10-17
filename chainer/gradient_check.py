@@ -50,7 +50,7 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
         xp = numpy
     grads = [xp.zeros_like(x) for x in inputs]
 
-    prev_mode = function.Function.type_check_enable
+    prev_mode = function.Function.type_check_enable  # not thread safe
     try:
         function.Function.type_check_enable = False
         for x, gx in six.moves.zip(inputs, grads):
@@ -66,7 +66,7 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
                         dot = ((y1 - y2) * gy).sum()
                         gx[i] += dot / (2 * eps)
     finally:
-        function.Function.type_check_enable = prev_mode
+        function.Function.type_check_enable = prev_mode  # not thread safe
     return grads
 
 
