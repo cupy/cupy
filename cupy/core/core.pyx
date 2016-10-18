@@ -1932,14 +1932,17 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     cdef vector.vector[Py_ssize_t] ret_shape
     cdef vector.vector[Py_ssize_t] shape
 
-    if out is not None and numpy.result_type(a.dtype, b.dtype) != out.dtype:
-        raise ValueError('Not supported dtype combination.')
     a_ndim = a._shape.size()
     b_ndim = b._shape.size()
-    assert a_ndim > 0 and b_ndim > 0
+
+    if out is not None and numpy.result_type(a.dtype, b.dtype) != out.dtype:
+        raise ValueError('Not supported dtype combination.')
+
+    if a_ndim == 0 or b_ndim == 0:
+        return multiply(a, b, out=out)
+
     a_is_vec = a_ndim == 1
     b_is_vec = b_ndim == 1
-
     if a_is_vec:
         shape.clear()
         shape.push_back(1)
@@ -1974,17 +1977,11 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         m = 0
         n = 0
 
-    ret_shape.assign(a._shape.begin() + 1, a._shape.end())
-    ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
-    if out is None:
-        if a_is_vec:
-            if b_is_vec:
-                ret_shape.clear()
-            else:
-                ret_shape.erase(ret_shape.begin())
-        elif b_is_vec:
-            ret_shape.erase(ret_shape.begin())
-    else:
+    if not a_is_vec:
+        ret_shape.insert(ret_shape.end(), a._shape.begin() + 1, a._shape.end())
+    if not b_is_vec:
+        ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
+    if out is not None:
         if k != 0 and out.size != n * m:
             raise ValueError('Output array has an invalid size')
         if not out._c_contiguous:
