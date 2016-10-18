@@ -168,7 +168,7 @@ def make_extensions(options, compiler):
                 utils.print_warning(
                     'Include files not found: %s' % module['include'],
                     'Skip installing %s support' % module['name'],
-                    'Check your CPATH environment variable')
+                    'Check your CFLAGS environment variable')
                 continue
 
             if not check_library(compiler,
@@ -177,7 +177,7 @@ def make_extensions(options, compiler):
                 utils.print_warning(
                     'Cannot link libraries: %s' % module['libraries'],
                     'Skip installing %s support' % module['name'],
-                    'Check your LIBRARY_PATH environment variable')
+                    'Check your LDFLAGS environment variable')
                 continue
 
             if 'check_method' in module and \
