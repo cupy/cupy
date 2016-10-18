@@ -55,7 +55,8 @@ def crf1d(cost, xs, ys):
        You need to make label sequences in the same fashion.
        And then, call the function:
 
-       >>> cost = chainer.Variable(np.random.uniform(-1, 1, (3, 3)).astype('f'))
+       >>> cost = chainer.Variable(
+       ...     np.random.uniform(-1, 1, (3, 3)).astype('f'))
        >>> ys = [np.zeros(x.shape[0:1], dtype='i') for x in xs]
        >>> loss = F.crf1d(cost, xs, ys)
 
