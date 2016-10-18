@@ -18,7 +18,6 @@ from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
 from chainer.initializers import constant
 from chainer.initializers import normal
 from chainer import link
-from chainer.links.caffe.caffe_function import CaffeFunction
 from chainer.links.connection.convolution_2d import Convolution2D
 from chainer.links.connection.linear import Linear
 from chainer.serializers import npz
@@ -143,6 +142,9 @@ class VGG16Layers(link.Chain):
             path_npz (str): Path of the converted chainer model.
         """
 
+        # As CaffeFunction uses shortcut symbols,
+        # we import CaffeFunction here.
+        from chainer.links.caffe.caffe_function import CaffeFunction
         caffemodel = CaffeFunction(path_caffemodel)
         npz.save_npz(path_npz, caffemodel, compression=False)
 

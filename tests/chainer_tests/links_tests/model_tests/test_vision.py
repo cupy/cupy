@@ -4,9 +4,9 @@ import warnings
 import numpy
 
 from chainer import cuda
-from chainer import testing
 from chainer.links.model.vision import resnet
 from chainer.links.model.vision import vgg
+from chainer import testing
 from chainer.testing import attr
 from chainer.variable import Variable
 
