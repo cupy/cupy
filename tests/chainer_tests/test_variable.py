@@ -515,6 +515,12 @@ class TestVariable(unittest.TestCase):
         with cuda.get_device(1):
             self.check_addgrad(a, b, c, clear_dst_grad=True)
 
+    def test_addgrad_none_src_dst(self):
+        x = chainer.Variable(self.x)
+        y = chainer.Variable(self.x)
+        y.addgrad(x)
+        self.assertIsNone(y.grad)
+
     def test_pickle_cpu(self):
         x = chainer.Variable(self.x)
         x.grad = np.ones_like(x.data)
