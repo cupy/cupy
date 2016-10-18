@@ -32,8 +32,8 @@ def square(x):
        y_i = x_i ^ 2.
 
     Args:
-        x (~chainer.Variable): Input variable., :class:`numpy.ndarray` or
-            :class:`cupy.ndarray` objects.
+        x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+            Input variable.
 
     Returns:
         ~chainer.Variable: Output variable.
