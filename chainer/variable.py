@@ -283,22 +283,30 @@ Actual: {0}'''.format(type(data))
         src = var._grad
         dst = self._grad
         if src is None:
-            raise ValueError('Source gradient is not set.')
-        if dst is None:
-            raise ValueError('Target gradient is not set.')
+            return
 
-        xp = cuda.get_array_module(dst)
-        if xp is numpy:
-            dst += cuda.to_cpu(src)
-        elif isinstance(src, numpy.ndarray):
-            dst += cuda.to_gpu(src, device=dst)
+        src_dev = cuda.get_device(src)
+        dst_dev = cuda.get_device(self.data)
+
+        if src_dev.id == dst_dev.id:
+            with dst_dev:
+                if dst is None:
+                    xp = cuda.get_array_module(src)
+                    self._grad = xp.copy(src)
+                else:
+                    self._grad += src
+            return
+
+        if dst_dev.id < 0:
+            src_grad = cuda.to_cpu(src)
         else:
-            dst_dev = dst.device
-            if dst_dev == src.device:
-                dst += src
-            else:
-                with dst_dev:
-                    dst += xp.copy(src)
+            src_grad = cuda.to_gpu(src, device=dst_dev)
+
+        if dst is None:
+            self._grad = src_grad
+        else:
+            with dst_dev:
+                self._grad += src_grad
 
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.

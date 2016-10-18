@@ -64,7 +64,9 @@ class TestMisc(unittest.TestCase):
         a_max = xp.array([[10], [9], [8]], dtype=dtype)
         return a.clip(a_min, a_max)
 
+    @testing.with_requires('numpy>=1.11.2')
     def test_sqrt(self):
+        # numpy.sqrt is broken in numpy<1.11.2
         self.check_unary('sqrt')
 
     def test_square(self):

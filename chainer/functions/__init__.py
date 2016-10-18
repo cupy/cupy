@@ -40,6 +40,7 @@ from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import convolution_nd
 from chainer.functions.connection import deconvolution_2d
+from chainer.functions.connection import deconvolution_nd
 from chainer.functions.connection import dilated_convolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
@@ -168,11 +169,11 @@ Reshape = reshape.Reshape
 reshape = reshape.reshape
 Rollaxis = rollaxis.Rollaxis
 rollaxis = rollaxis.rollaxis
-SplitAxis = split_axis.SplitAxis
-split_axis = split_axis.split_axis
 SelectItem = select_item.SelectItem
 select_item = select_item.select_item
 separate = separate.separate
+SplitAxis = split_axis.SplitAxis
+split_axis = split_axis.split_axis
 stack = stack.stack
 Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
@@ -187,6 +188,7 @@ bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
 convolution_nd = convolution_nd.convolution_nd
 deconvolution_2d = deconvolution_2d.deconvolution_2d
+deconvolution_nd = deconvolution_nd.deconvolution_nd
 dilated_convolution_2d = dilated_convolution_2d.dilated_convolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
@@ -232,6 +234,12 @@ ArgMax = minmax.ArgMax
 argmax = minmax.argmax
 ArgMin = minmax.ArgMin
 argmin = minmax.argmin
+Arccos = trigonometric.Arccos
+arccos = trigonometric.arccos
+Arcsin = trigonometric.Arcsin
+arcsin = trigonometric.arcsin
+Arctan = trigonometric.Arctan
+arctan = trigonometric.arctan
 BatchDet = det.BatchDet
 batch_det = det.batch_det
 BatchInv = inv.BatchInv

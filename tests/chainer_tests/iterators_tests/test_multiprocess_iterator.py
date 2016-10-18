@@ -1,3 +1,4 @@
+import copy
 import unittest
 
 import numpy
@@ -150,5 +151,20 @@ class TestMultiprocessIterator(unittest.TestCase):
         out = sum([it.next() for _ in range(7)], [])
         self.assertNotEqual(out[0:10], out[10:20])
 
+    def test_copy_not_repeat(self):
+        dataset = [1, 2, 3, 4, 5]
+        it = iterators.MultiprocessIterator(
+            dataset, 2, repeat=False, **self.options)
+        copy_it = copy.copy(it)
+        batches = sum([it.next() for _ in range(3)], [])
+        self.assertEqual(sorted(batches), dataset)
+        for _ in range(2):
+            self.assertRaises(StopIteration, it.next)
+        it = None
+
+        batches = sum([copy_it.next() for _ in range(3)], [])
+        self.assertEqual(sorted(batches), dataset)
+        for _ in range(2):
+            self.assertRaises(StopIteration, copy_it.next)
 
 testing.run_module(__name__, __file__)

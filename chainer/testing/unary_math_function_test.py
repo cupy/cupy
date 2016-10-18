@@ -7,14 +7,14 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 
-def make_data_default(shape, dtype):
+def _make_data_default(shape, dtype):
     x = numpy.random.uniform(-1, 1, shape).astype(dtype)
     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
     return x, gy
 
 
-def unary_math_function_test(func, func_expected=None, label_expected=None,
-                             make_data=None):
+def unary_math_function_unittest(func, func_expected=None, label_expected=None,
+                                 make_data=None):
     """Decorator for testing unary mathematical Chainer functions.
 
     This decorator makes test classes test unary mathematical Chainer
@@ -63,7 +63,7 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
           >>> from chainer import testing
           >>> from chainer import functions as F
           >>>
-          >>> @testing.unary_math_function_test(F.Sin())
+          >>> @testing.unary_math_function_unittest(F.Sin())
           ... class TestSin(unittest.TestCase):
           ...     pass
 
@@ -92,7 +92,8 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
           ...     gy = numpy.random.uniform(-1, 1, shape).astype(dtype)
           ...     return x, gy
           ...
-          >>> @testing.unary_math_function_test(F.Sqrt(), make_data=make_data)
+          >>> @testing.unary_math_function_unittest(F.Sqrt(),
+          ...                                       make_data=make_data)
           ... class TestSqrt(unittest.TestCase):
           ...     pass
           ...
@@ -130,7 +131,7 @@ def unary_math_function_test(func, func_expected=None, label_expected=None,
         label_expected = func.__class__.__name__.lower()
 
     if make_data is None:
-        make_data = make_data_default
+        make_data = _make_data_default
 
     def f(klass):
         assert issubclass(klass, unittest.TestCase)

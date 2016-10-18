@@ -42,6 +42,10 @@ Deconvolution2D
 .. autoclass:: Deconvolution2D
    :members:
 
+DeconvolutionND
+~~~~~~~~~~~~~~~
+.. autoclass:: DeconvolutionND
+
 DilatedConvolution2D
 ~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: DilatedConvolution2D

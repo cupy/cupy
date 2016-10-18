@@ -21,6 +21,14 @@ class TestDummyDeviceType(unittest.TestCase):
         self.assertNotEqual(cuda.DummyDeviceType(), 1)
 
 
+_builtins_available = False
+try:
+    import builtins
+    _builtins_available = True
+except ImportError:
+    pass
+
+
 class TestCuda(unittest.TestCase):
 
     def test_get_dummy_device(self):
@@ -37,6 +45,19 @@ class TestCuda(unittest.TestCase):
     @attr.gpu
     def test_get_device_for_int(self):
         self.assertEqual(cuda.get_device(0), cuda.Device(0))
+
+    @attr.gpu
+    @unittest.skipUnless(_builtins_available,
+                         'builtins module is not available')
+    def test_get_device_for_builtin_int(self):
+        # builtins.int is from future package and it is different
+        # from builtin int/long on Python 2.
+        self.assertEqual(cuda.get_device(builtins.int(0)), cuda.Device(0))
+
+    @attr.gpu
+    def test_get_device_for_device(self):
+        device = cuda.get_device(0)
+        self.assertIs(cuda.get_device(device), device)
 
     def test_to_gpu_unavailable(self):
         x = numpy.array([1])

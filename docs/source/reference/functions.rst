@@ -199,6 +199,10 @@ deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
 
+deconvolution_nd
+~~~~~~~~~~~~~~~~
+.. autofunction:: deconvolution_nd
+
 dilated_convolution_2d
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: dilated_convolution_2d
@@ -286,6 +290,18 @@ triplet
 
 Mathematical functions
 ----------------------
+
+arccos
+~~~~~~
+.. autofunction:: arccos
+
+arcsin
+~~~~~~
+.. autofunction:: arcsin
+
+arctan
+~~~~~~
+.. autofunction:: arctan
 
 argmax
 ~~~~~~

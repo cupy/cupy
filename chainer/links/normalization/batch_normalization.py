@@ -126,8 +126,8 @@ class BatchNormalization(link.Link):
                 self.use_cudnn)
             ret = func(x, gamma, beta)
 
-            self.avg_mean = func.running_mean
-            self.avg_var = func.running_var
+            self.avg_mean[:] = func.running_mean
+            self.avg_var[:] = func.running_var
         else:
             # Use running average statistics or fine-tuned statistics.
             mean = variable.Variable(self.avg_mean, volatile='auto')

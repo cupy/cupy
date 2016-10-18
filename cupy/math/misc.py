@@ -26,25 +26,9 @@ def clip(a, a_min, a_max, out=None):
     return a.clip(a_min, a_max, out=out)
 
 
-sqrt = core.create_ufunc(
-    'cupy_sqrt',
-    # I think this order is a bug of NumPy, though we select this "buggy"
-    # behavior for compatibility with NumPy.
-    ('f->f', 'd->d', 'e->e'),
-    'out0 = sqrt(in0)',
-    doc='''Elementwise positive square-root function.
-
-    .. note::
-       This ufunc outputs float32 arrays for float16 arrays input by default as
-       well as NumPy 1.9. If you want to override this behavior, specify the
-       dtype argument explicitly, or use ``cupy.math.misc.sqrt_fixed`` instead.
-
-    .. seealso:: :data:`numpy.sqrt`
-
-    ''')
-
-
-sqrt_fixed = core.sqrt_fixed
+# sqrt_fixed is deprecated.
+# numpy.sqrt is fixed in numpy 1.11.2.
+sqrt = sqrt_fixed = core.sqrt
 
 
 square = core.create_ufunc(
