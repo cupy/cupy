@@ -227,7 +227,8 @@ def prepare(image, size=(224, 224)):
     Args:
         image (PIL.Image or numpy.ndarray): Input image.
             If an input is ``numpy.ndarray``, its shape must be
-            ``(height, width)`` or ``(height, width, channels)``.
+            ``(height, width)``, ``(height, width, channels)``,
+            or ``(channels, height, width)``.
         size (pair of ints): Size of converted images.
             If ``None``, the given image is not resized.
 
@@ -241,7 +242,12 @@ def prepare(image, size=(224, 224)):
                           'The actual import error is as follows:\n' +
                           str(_import_error))
     if isinstance(image, numpy.ndarray):
-        image = Image.fromarray(image)
+        if image.ndim == 3:
+            if image.shape[0] == 1:
+                image = image[0, :, :]
+            elif image.shape[0] == 3:
+                image = image.transpose((1, 2, 0))
+        image = Image.fromarray(image.astype(numpy.uint8))
     image = image.convert('RGB')
     if size is not None:
         image = image.resize(size)

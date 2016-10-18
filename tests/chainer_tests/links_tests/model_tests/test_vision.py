@@ -49,7 +49,9 @@ class TestResNet50Layers(unittest.TestCase):
     def test_prepare(self):
         x1 = numpy.random.uniform(0, 255, (320, 240, 3)).astype(numpy.uint8)
         x2 = numpy.random.uniform(0, 255, (320, 240)).astype(numpy.uint8)
-        x3 = numpy.random.uniform(0, 255, (160, 120, 3)).astype(numpy.uint8)
+        x3 = numpy.random.uniform(0, 255, (160, 120, 3)).astype(numpy.float32)
+        x4 = numpy.random.uniform(0, 255, (1, 160, 120)).astype(numpy.float32)
+        x5 = numpy.random.uniform(0, 255, (3, 160, 120)).astype(numpy.uint8)
 
         y1 = resnet.prepare(x1)
         self.assertEqual(y1.shape, (3, 224, 224))
@@ -60,6 +62,12 @@ class TestResNet50Layers(unittest.TestCase):
         y3 = resnet.prepare(x3, size=None)
         self.assertEqual(y3.shape, (3, 160, 120))
         self.assertEqual(y3.dtype, numpy.float32)
+        y4 = resnet.prepare(x4)
+        self.assertEqual(y4.shape, (3, 224, 224))
+        self.assertEqual(y4.dtype, numpy.float32)
+        y5 = resnet.prepare(x5, size=None)
+        self.assertEqual(y5.shape, (3, 160, 120))
+        self.assertEqual(y5.dtype, numpy.float32)
 
     def check_extract(self):
         x1 = numpy.random.uniform(0, 255, (320, 240, 3)).astype(numpy.uint8)
@@ -138,18 +146,25 @@ class TestVGG16Layers(unittest.TestCase):
     def test_prepare(self):
         x1 = numpy.random.uniform(0, 255, (320, 240, 3)).astype(numpy.uint8)
         x2 = numpy.random.uniform(0, 255, (320, 240)).astype(numpy.uint8)
-        x3 = numpy.random.uniform(0, 255, (160, 120, 3)).astype(numpy.uint8)
+        x3 = numpy.random.uniform(0, 255, (160, 120, 3)).astype(numpy.float32)
+        x4 = numpy.random.uniform(0, 255, (1, 160, 120)).astype(numpy.float32)
+        x5 = numpy.random.uniform(0, 255, (3, 160, 120)).astype(numpy.uint8)
 
         y1 = vgg.prepare(x1)
         self.assertEqual(y1.shape, (3, 224, 224))
         self.assertEqual(y1.dtype, numpy.float32)
         y2 = vgg.prepare(x2)
-
         self.assertEqual(y2.shape, (3, 224, 224))
         self.assertEqual(y2.dtype, numpy.float32)
-        y3 = resnet.prepare(x3, size=None)
+        y3 = vgg.prepare(x3, size=None)
         self.assertEqual(y3.shape, (3, 160, 120))
         self.assertEqual(y3.dtype, numpy.float32)
+        y4 = vgg.prepare(x4)
+        self.assertEqual(y4.shape, (3, 224, 224))
+        self.assertEqual(y4.dtype, numpy.float32)
+        y5 = vgg.prepare(x5, size=None)
+        self.assertEqual(y5.shape, (3, 160, 120))
+        self.assertEqual(y5.dtype, numpy.float32)
 
     def check_extract(self):
         x1 = numpy.random.uniform(0, 255, (320, 240, 3)).astype(numpy.uint8)
