@@ -1,4 +1,3 @@
-import itertools
 import six
 
 from chainer import cuda
