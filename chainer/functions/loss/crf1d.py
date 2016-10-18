@@ -32,6 +32,10 @@ def crf1d(cost, xs, ys):
        lengths and transpose the sequences.
        For example, you have three input seuqnces:
 
+       >>> a1 = a2 = a3 = a4 = np.random.uniform(-1, 1, 3).astype('f')
+       >>> b1 = b2 = b3 = np.random.uniform(-1, 1, 3).astype('f')
+       >>> c1 = c2 = np.random.uniform(-1, 1, 3).astype('f')
+
        >>> a = [a1, a2, a3, a4]
        >>> b = [b1, b2, b3]
        >>> c = [c1, c2]
@@ -51,7 +55,9 @@ def crf1d(cost, xs, ys):
        You need to make label sequences in the same fashion.
        And then, call the function:
 
-       >>> F.crf1d(cost, xs, ys)
+       >>> cost = chainer.Variable(np.random.uniform(-1, 1, (3, 3)).astype('f'))
+       >>> ys = [np.zeros(x.shape[0:1], dtype='i') for x in xs]
+       >>> loss = F.crf1d(cost, xs, ys)
 
        It calculates sum of the negative log-likelihood of the three sequences.
 
