@@ -15,6 +15,7 @@ from chainer.dataset import download
 from chainer.functions.activation.relu import relu
 from chainer.functions.activation.softmax import softmax
 from chainer.functions.array.reshape import reshape
+from chainer.functions.math.sum import sum
 from chainer.functions.pooling.average_pooling_2d import average_pooling_2d
 from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
 from chainer.initializers import constant
@@ -23,6 +24,7 @@ from chainer.links.connection.convolution_2d import Convolution2D
 from chainer.links.connection.linear import Linear
 from chainer.links.normalization.batch_normalization import BatchNormalization
 from chainer.serializers import npz
+from chainer.utils import imgproc
 from chainer.variable import Variable
 
 
@@ -177,11 +179,14 @@ class ResNet50Layers(link.Chain):
         x = Variable(self.xp.asarray(x))
         return self(x, layers=layers)
 
-    def predict(self, images):
+    def predict(self, images, oversample=True):
         """Computes all the probabilities of given images.
 
         Args:
             image (iterable of PIL.Image or numpy.ndarray): Input images.
+            oversample (bool): If ``True``, it avarages results across
+                center, corners, and mirrors. Otherwise, it uses only the
+                center.
 
         Returns:
             ~chainer.Variable: Output that contains the class probabilities
@@ -189,7 +194,19 @@ class ResNet50Layers(link.Chain):
 
         """
 
-        return self.extract(images, layers=['prob'])['prob']
+        x = concat_examples([prepare(img, size=(256, 256)) for img in images])
+        if oversample:
+            x = imgproc.oversample(x, crop_dims=(224, 224))
+        else:
+            x = x[:, :, 16:240, 16:240]
+        x = Variable(self.xp.asarray(x))
+        y = self(x, layers=['prob'])['prob']
+        if oversample:
+            n = y.data.shape[0] // 10
+            y_shape = y.data.shape[1:]
+            y = reshape(y, (n, 10) + y_shape)
+            y = sum(y, axis=1) / 10
+        return y
 
 
 def prepare(image, size=(224, 224)):
