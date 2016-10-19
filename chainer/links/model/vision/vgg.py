@@ -179,13 +179,13 @@ class VGG16Layers(link.Chain):
         """Extracts all the feature maps of given images.
 
         The difference of directly executing ``__call__`` is that
-        it directly accepts the list of images as an input, and
-        automatically transforms them to a proper variable. That is,
+        it directly accepts images as an input and automatically
+        transforms them to a proper variable. That is,
         it is also interpreted as a shortcut method that implicitly call
         ``prepare`` and ``__call__`` functions.
 
         Args:
-            image (list of PIL.Image or numpy.ndarray): Input images.
+            image (iterable of PIL.Image or numpy.ndarray): Input images.
             layers (list of str): The list of layernames you want to extract.
             size (pair of ints): The resolution of resized images used as
                 an input of CNN. All the given images are not resized
