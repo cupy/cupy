@@ -2,17 +2,7 @@ import numpy
 
 
 def oversample(images, crop_dims):
-    """
-    Crop an image into center, corners, and mirror images
-    used in the image recognition.
-
-    Args:
-        image : Iterable of (channels, height, width) ndarrays.
-        crop_dims : (height, width) tuple for the crops.
-
-    Returns:
-        (10*n, channels, height, width) ndarray of crops.
-    """
+    """Crop an image into center, corners, and mirror images."""
 
     # Dimensions and center.
     channels, src_h, src_w = images[0].shape
