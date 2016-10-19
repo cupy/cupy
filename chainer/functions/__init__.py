@@ -83,6 +83,7 @@ from chainer.functions.math import minimum
 from chainer.functions.math import minmax
 from chainer.functions.math import scale
 from chainer.functions.math import sqrt
+from chainer.functions.math import square
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -297,6 +298,8 @@ Sinh = hyperbolic.Sinh
 sinh = hyperbolic.sinh
 Sqrt = sqrt.Sqrt
 sqrt = sqrt.sqrt
+Square = square.Square
+square = square.square
 Sum = sum.Sum
 sum = sum.sum
 Tan = trigonometric.Tan
