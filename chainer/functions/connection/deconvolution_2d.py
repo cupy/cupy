@@ -30,7 +30,8 @@ def _pair(x):
 
 class Deconvolution2DFunction(function.Function):
 
-    def __init__(self, stride=1, pad=0, outsize=None, use_cudnn=True, deterministic=False):
+    def __init__(self, stride=1, pad=0, outsize=None, use_cudnn=True,
+                 deterministic=False):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
         self.use_cudnn = use_cudnn
@@ -140,7 +141,7 @@ class Deconvolution2DFunction(function.Function):
                         self.conv_desc.value, y_desc.value, _bwd_data_pref,
                         workspace_size)
                 else:
-                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1
+                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1  # NOQA
 
                 libcudnn.convolutionBackwardData_v3(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
@@ -241,7 +242,7 @@ class Deconvolution2DFunction(function.Function):
                         self.conv_desc.value, self.filter_desc.value,
                         _bwd_filter_pref, workspace_size)
                 else:
-                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1
+                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1  # NOQA
 
                 libcudnn.convolutionBackwardFilter_v3(
                     handle, one.data, gy_desc.value, gy.data.ptr,
