@@ -864,6 +864,12 @@ cdef class ndarray:
         else:
             return multiply(x, y)
 
+    def __matmul__(x, y):
+        if _should_use_rop(x, y):
+            return y.__rmatmul__(x)
+        else:
+            return matmul(x, y)
+
     def __div__(x, y):
         if _should_use_rop(x, y):
             return y.__rdiv__(x)
@@ -1988,6 +1994,189 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
             raise ValueError('Output array must be C-contiguous')
 
     return tensordot_core(a, b, out, n, m, k, ret_shape)
+
+
+cpdef ndarray _get_all_addresses(size_t start_adr,
+                                 vector.vector[size_t] shape,
+                                 vector.vector[size_t] strides):
+    idx = numpy.array([start_adr])
+    for sh_, st_ in zip(shape, strides):
+        idx = (idx[:, None] + (numpy.arange(sh_) * st_)[None, :]).ravel()
+    idx = idx.astype(numpy.uintp)
+
+    ret = ndarray((idx.size,), dtype=numpy.uintp)
+    ret.set(idx)
+    return ret
+
+
+cdef ndarray _mat_ptrs(ndarray a):
+    """Creates an array of pointers to matrices
+    Args:
+        a: A batch of matrices on GPU.
+           shape: () -> one ptr
+           shape: (A) -> one ptr to mat o size (A)
+           shape: (A, B) -> one ptr to mat o size (A, B)
+           shape: (A, B, C) -> A ptrs to mat o size (B, C)
+           shape: (A_1, ..., A_N, B, C) -> A_1*...*A_N ptrs to mat of
+                  size (B, C)
+    Returns:
+        GPU array of pointers to matrices.
+    """
+    cdef Py_ssize_t stride, ptr, pointer, i
+    cdef ndarray ret
+    if a.ndim <= 2:
+        ret = ndarray((1,), dtype=numpy.uintp)
+        ret.fill(a.data.ptr)
+        return ret
+    else:
+        return _get_all_addresses(a.data.ptr, a.shape[:-2], a.strides[:-2])
+
+
+cpdef ndarray matmul(ndarray a, ndarray b):
+    # ToDo: Argument out=None is missing
+    # ToDo: remove python object .shape
+    # ToDo: remove python object .strides
+    # ToDo: remove python object out_shape
+    # ToDo: remove python object .reshape
+    cdef Py_ssize_t i, n, m, ka, kb
+    cdef int batchCount
+    cdef ndarray out, ap, bp, outp
+
+    dtype = numpy.result_type(a.dtype, b.dtype)
+
+    if a.ndim == 1:
+        a = a.reshape(1, len(a))
+        a_part_outshape = ()
+    else:
+        a_part_outshape = (a.shape[-2],)
+    if b.ndim == 1:
+        b = b.reshape(len(b), 1)
+        b_part_outshape = ()
+        ldout = 1
+    else:
+        b_part_outshape = b.shape[-1:]
+        ldout = b.shape[-1]
+
+    # expand dims
+    if a.ndim < b.ndim:
+        view = a.view()
+        view._set_shape_and_strides(
+            (1,) * (b.ndim - a.ndim) + a.shape,
+            (0,) * (b.ndim - a.ndim) + a.strides)
+        a = view
+    elif a.ndim > b.ndim:
+        view = b.view()
+        view._set_shape_and_strides(
+            (1,) * (a.ndim - b.ndim) + b.shape,
+            (0,) * (a.ndim - b.ndim) + b.strides)
+        b = view
+
+    broatcast_pre_shape = numpy.maximum(a.shape[:-2], b.shape[:-2])
+
+    out_shape = (*broatcast_pre_shape, *a_part_outshape, *b_part_outshape)
+
+    # .reshape(-1, a.shape[-2], a.shape[-1])
+    a = ascontiguousarray(a, dtype=dtype)
+    # .reshape(-1, b.shape[-2], b.shape[-1])
+    b = ascontiguousarray(b, dtype=dtype)
+
+    # broadcast
+    a_strides = list(a.strides)
+    a_shape = list(a.shape)
+    b_strides = list(b.strides)
+    b_shape = list(b.shape)
+    for i in range(len(a_strides) - 2):
+        if a_shape[i] == 1 and broatcast_pre_shape[i] > 1:
+            a_strides[i] = 0
+            a_shape[i] = broatcast_pre_shape[i]
+    for i in range(len(b_strides) - 2):
+        if b_shape[i] == 1 and broatcast_pre_shape[i] > 1:
+            b_strides[i] = 0
+            b_shape[i] = broatcast_pre_shape[i]
+
+    view = a.view()
+    view._set_shape_and_strides(a_shape, a_strides)
+    a = view
+    view = b.view()
+    view._set_shape_and_strides(b_shape, b_strides)
+    b = view
+
+    out = ndarray(out_shape, dtype=dtype)
+    out.data.memset(0, out.nbytes)
+
+    out_view = out.view()
+    out_view_shape = out.shape
+    out_view_strides = out.strides
+    if a_part_outshape == ():
+        out_view_shape += (1,)
+        out_view_strides += (0,)
+    if b_part_outshape == ():
+        out_view_shape += (1,)
+        out_view_strides += (0,)
+
+    out_view._set_shape_and_strides(out_view_shape, out_view_strides)
+
+    # (A B)^T = B^T A^T
+    a, b = b, a
+
+    lda = a.shape[-1]
+    ldb = b.shape[-1]
+
+    *la, ka, n = a.shape
+    *lb, m, kb = b.shape
+
+    assert ka == kb
+    for la_, lb_ in zip(la, lb):
+        assert la_ == lb_ or la_ == 1 or lb_ == 1
+
+    batchCount = 1  # batchCount = numpy.prod(la)
+    for i in la:
+        batchCount *= i
+
+    ap = _mat_ptrs(a)
+    bp = _mat_ptrs(b)
+    outp = _mat_ptrs(out_view)
+
+    if dtype == numpy.float32:
+        cuda.cublas.sgemmBatched(
+            cuda.Device().cublas_handle,
+            0,  # transa
+            0,  # transb
+            n, m, ka, 1.0,
+            ap.data.ptr, lda,
+            bp.data.ptr, ldb,
+            0.0, outp.data.ptr, ldout, batchCount)
+    elif dtype == numpy.float64:
+        cuda.cublas.dgemmBatched(
+            cuda.Device().cublas_handle,
+            0,  # transa
+            0,  # transb
+            n, m, ka, 1.0,
+            ap.data.ptr, lda,
+            bp.data.ptr, ldb,
+            0.0, outp.data.ptr, ldout, batchCount)
+    # elif dtype == numpy.complex64:
+    #     cuda.cublas.cgemmBatched(
+    #         cuda.Device().cublas_handle,
+    #         0,  # transa
+    #         0,  # transb
+    #         n, m, ka, 1,
+    #         ap.data.ptr, lda,
+    #         bp.data.ptr, ldb,
+    #         0, outp.data.ptr, ldout, batchCount)
+    # elif dtype == numpy.complex128:
+    #     cuda.cublas.zgemmBatched(
+    #         cuda.Device().cublas_handle,
+    #         0,  # transa
+    #         0,  # transb
+    #         n, m, ka, 1,
+    #         ap.data.ptr, lda,
+    #         bp.data.ptr, ldb,
+    #         0, outp.data.ptr, ldout, batchCount)
+    else:
+        raise TypeError(dtype, a.dtype, b.dtype)
+
+    return out
 
 
 cdef _cuda_runtime_version = None
