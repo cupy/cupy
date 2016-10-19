@@ -1,12 +1,10 @@
-import unittest
 import operator
+import unittest
 
 import numpy
-import six
 
 from cupy import testing
 
-import cupy
 
 @testing.parameterize(
     *testing.product({
@@ -34,7 +32,7 @@ import cupy
                 ((6, 5, 3, 2), (2, 4)),
                 ((2,), (6, 5, 2, 4)),
                 ((6, 5, 3, 2), (2,)),
-        ]],
+            ]],
     }))
 @testing.gpu
 class TestMatmul(unittest.TestCase):
