@@ -8,8 +8,7 @@ from cupy import testing
 
 @testing.parameterize(
     *testing.product({
-        'arrays': [
-            (numpy.random.randn(*s1), numpy.random.randn(*s2)) for s1, s2 in [
+        'shape_pair': [
                 ((3, 2), (2, 4)),
                 ((2,), (2, 4)),
                 ((3, 2), (2,)),
@@ -32,12 +31,16 @@ from cupy import testing
                 ((6, 5, 3, 2), (2, 4)),
                 ((2,), (6, 5, 2, 4)),
                 ((6, 5, 3, 2), (2,)),
-            ]],
+            ],
     }))
 @testing.gpu
 class TestMatmul(unittest.TestCase):
 
     # _multiprocess_can_split_ = True
+
+    def setUp(self):
+        self.x1 = numpy.random.randn(*self.shape_pair[0])
+        self.x2 = numpy.random.randn(*self.shape_pair[1])
 
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
@@ -45,6 +48,6 @@ class TestMatmul(unittest.TestCase):
     def test_matmul(self, xp, dtype1=numpy.float32, dtype2=numpy.float32):
         if not numpy.result_type(dtype1, dtype2) == numpy.float32:
             return xp.array([])
-        x1, x2 = self.arrays
-        x1, x2 = xp.array(x1, dtype=dtype1), xp.array(x2, dtype=dtype2)
+        x1 = xp.array(self.x1, dtype=dtype1)
+        x2 = xp.array(self.x2, dtype=dtype2)
         return operator.matmul(x1, x2)
