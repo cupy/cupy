@@ -13,6 +13,8 @@
 #include <nvToolsExt.h>
 #endif
 
+extern "C" {
+
 #if CUDA_VERSION < 8000
 #if CUDA_VERSION >= 7050
 typedef cublasDataType_t cudaDataType;
@@ -33,9 +35,11 @@ int cublasSgemmEx(
 }
 #endif // #if CUDA_VERSION < 7050
 
-
+} // extern "C"
 
 #else // #ifndef CUPY_NO_CUDA
+
+extern "C" {
 
 ///////////////////////////////////////////////////////////////////////////////
 // cuda.h
@@ -515,7 +519,9 @@ int cublasSgemmEx(
         cublasOperation_t transb, int m, int n, int k,
         const float *alpha, const void *A, cudaDataType Atype,
         int lda, const void *B, cudaDataType Btype, int ldb,
-        const float *beta, void *C, cudaDataType Ctype, int ldc);
+        const float *beta, void *C, cudaDataType Ctype, int ldc) {
+    return 0;
+}
 
 
 // BLAS extension
@@ -723,6 +729,8 @@ int nvtxRangePushEx(const nvtxEventAttributes_t *eventAttrib) {
 int nvtxRangePop() {
     return 0;
 }
+
+} // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_H

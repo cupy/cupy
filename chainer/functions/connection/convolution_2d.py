@@ -261,8 +261,8 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
     Notation: here is a notation for dimensionalities.
 
     - :math:`n` is the batch size.
-    - :math:`c_I` and :math:`c_O` are the number of the input and output,
-      respectively.
+    - :math:`c_I` and :math:`c_O` are the number of the input and output
+      channels, respectively.
     - :math:`h` and :math:`w` are the height and width of the input image,
       respectively.
     - :math:`k_H` and :math:`k_W` are the height and width of the filters,

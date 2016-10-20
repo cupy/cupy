@@ -163,6 +163,10 @@ swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
 
+tile
+~~~~
+.. autofunction:: tile
+
 transpose
 ~~~~~~~~~
 .. autofunction:: transpose
@@ -198,6 +202,10 @@ convolution_nd
 deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
+
+deconvolution_nd
+~~~~~~~~~~~~~~~~
+.. autofunction:: deconvolution_nd
 
 dilated_convolution_2d
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -286,6 +294,18 @@ triplet
 
 Mathematical functions
 ----------------------
+
+arccos
+~~~~~~
+.. autofunction:: arccos
+
+arcsin
+~~~~~~
+.. autofunction:: arcsin
+
+arctan
+~~~~~~
+.. autofunction:: arctan
 
 argmax
 ~~~~~~
@@ -406,6 +426,10 @@ sinh
 sqrt
 ~~~~
 .. autofunction:: sqrt
+
+square
+~~~~
+.. autofunction:: square
 
 sum
 ~~~

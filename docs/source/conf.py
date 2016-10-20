@@ -20,8 +20,6 @@ import sys
 
 __version__ = pkg_resources.get_distribution('chainer').version
 
-sys.path.insert(0, '../..')
-
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 
