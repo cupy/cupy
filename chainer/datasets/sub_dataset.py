@@ -116,7 +116,8 @@ def split_dataset_random(dataset, first_size, seed=None):
         dataset: Dataset to split.
         first_size (int): Size of the first subset.
         seed (int): Seed the generator used for the permutation of indexes.
-            If an integer is specified, it is guaranteed that each sample
+            If an integer beging convertible to 32 bit unsigned integers is
+            specified, it is guaranteed that each sample
             in the given dataset always belongs to a specific subset.
             If ``None``, the permutation is changed randomly.
 
@@ -181,7 +182,8 @@ def get_cross_validation_datasets_random(dataset, n_fold, seed=None):
         dataset: Dataset to split.
         n_fold (int): Number of splits for cross validation.
         seed (int): Seed the generator used for the permutation of indexes.
-            If an integer is specified, it is guaranteed that each sample
+            If an integer beging convertible to 32 bit unsigned integers is
+            specified, it is guaranteed that each sample
             in the given dataset always belongs to a specific subset.
             If ``None``, the permutation is changed randomly.
 
