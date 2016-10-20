@@ -295,6 +295,11 @@ int cudaEventSynchronize(Event event) {
     return 0;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// cuComplex.h
+///////////////////////////////////////////////////////////////////////////////
+
+#include "cupy_cuComplex.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // cublas_v2.h
@@ -511,6 +516,32 @@ int cublasSgemmBatched(
         int n, int k, const float* alpha, const float** Aarray,
         int lda, const float** Barray, int ldb, const float* beta,
         float** Carray, int ldc, int batchCount) {
+    return 0;
+}
+
+int cublasDgemmBatched(
+        Handle handle, Operation transa, Operation transb, int m,
+        int n, int k, const double* alpha, const double** Aarray,
+        int lda, const double** Barray, int ldb, const double* beta,
+        double** Carray, int ldc, int batchCount) {
+    return 0;
+}
+
+int cublasCgemmBatched(
+    Handle handle, Operation transa, Operation transb, int m,
+    int n, int k, const cuComplex* alpha, const cuComplex** Aarray,
+    int lda, const cuComplex** Barray, int ldb, const cuComplex* beta,
+    cuComplexPtrPtr Carray, int ldc, int batchCount) {
+    return 0;
+}
+
+int cublasZgemmBatched(
+    Handle handle, Operation transa, Operation transb, int m,
+    int n, int k, constCuDoubleComplexPtr alpha,
+    const cuDoubleComplex** Aarray, int lda,
+    const cuDoubleComplex** Barray, int ldb,
+    const cuDoubleComplex* beta, cuDoubleComplex** Carray, int ldc,
+    int batchCount) {
     return 0;
 }
 
