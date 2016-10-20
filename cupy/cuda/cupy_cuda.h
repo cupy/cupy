@@ -401,7 +401,7 @@ int cublasZdotc(Handle handle, int n, cuDoubleComplex* x, int incx,
 }
 
 int cublasZdotu(Handle handle, int n, cuDoubleComplex* x, int incx,
-               cuComplex* y, int incy, cuDoubleComplex* result) {
+               cuDoubleComplex* y, int incy, cuDoubleComplex* result) {
     return 0;
 }
 
@@ -440,8 +440,8 @@ int cublasCgemv(
 
 int cublasZgemv(
         Handle handle, Operation trans, int m, int n, cuDoubleComplex* alpha,
-        cuDoubleComplex* A, int lda, double* x, int incx, cuDoubleComplex* beta,
-        cuDoubleComplex* y, int incy) {
+        cuDoubleComplex* A, int lda, cuDoubleComplex* x, int incx,
+        cuDoubleComplex* beta, cuDoubleComplex* y, int incy) {
     return 0;
 }
 
@@ -506,7 +506,8 @@ int cublasCgemm(
 int cublasZgemm(
         Handle handle, Operation transa, Operation transb, int m,
         int n, int k, cuDoubleComplex* alpha, cuDoubleComplex* A, int lda,
-        cuDoubleComplex* B, int ldb, cuDoubleComplex* beta, double* C,
+        cuDoubleComplex* B, int ldb, cuDoubleComplex* beta,
+        cuDoubleComplex* C,
         int ldc) {
     return 0;
 }

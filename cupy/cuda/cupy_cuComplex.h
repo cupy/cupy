@@ -23,7 +23,7 @@ struct cuComplex{
 struct cuDoubleComplex{
     double real;
     double imag;
-}
+};
 
 } // extern "C"
 
