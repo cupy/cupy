@@ -50,6 +50,7 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
         xp = numpy
     grads = [xp.zeros_like(x) for x in inputs]
 
+    # Test scripts always run in single thread or multi-process.
     prev_mode = function.Function.type_check_enable  # not thread safe
     try:
         function.Function.type_check_enable = False
