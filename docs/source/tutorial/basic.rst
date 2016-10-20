@@ -317,17 +317,23 @@ There are further two ways to use the optimizer directly.
 One is manually computing gradients and then call the :meth:`~Optimizer.update` method with no arguments.
 Do not forget to clear gradients beforehand!
 
+   >>> x = np.random.uniform(-1, 1, (2, 4)).astype('f')
    >>> model.cleargrads()
    >>> # compute gradient here...
+   >>> loss = F.sum(model(chainer.Variable(x)))
+   >>> loss.backward()
    >>> optimizer.update()
 
 The other way is just passing a loss function to the :meth:`~Optimizer.update` method.
 In this case, :meth:`~Link.cleargrads` is automatically called by the update method, so user do not have to call it manually.
 
-   >>> def lossfun(args...):
-   ...     ...
+   >>> def lossfun(arg1, arg2):
+   ...     # calculate loss
+   ...     loss = F.sum(model(arg1 - arg2))
    ...     return loss
-   >>> optimizer.update(lossfun, args...)
+   >>> arg1 = np.random.uniform(-1, 1, (2, 4)).astype('f')
+   >>> arg2 = np.random.uniform(-1, 1, (2, 4)).astype('f')
+   >>> optimizer.update(lossfun, chainer.Variable(arg1), chainer.Variable(arg2))
 
 See :meth:`Optimizer.update` for the full specification.
 
