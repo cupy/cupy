@@ -56,7 +56,8 @@ class C(object):
 class TestParameterize(unittest.TestCase):
 
     def test_callable(self):
-        self.callable(1)
+        y = self.callable(1)
+        self.assertEqual(y, 1)
 
 
 testing.run_module(__name__, __file__)
