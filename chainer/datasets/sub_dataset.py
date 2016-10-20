@@ -127,9 +127,7 @@ def split_dataset_random(dataset, first_size, seed=None):
             dataset.
 
     """
-    numpy.random.seed(seed)
-    order = numpy.random.permutation(len(dataset))
-    numpy.random.seed(None)
+    order = numpy.random.RandomState(seed).permutation(len(dataset))
     return split_dataset(dataset, first_size, order)
 
 
@@ -191,7 +189,5 @@ def get_cross_validation_datasets_random(dataset, n_fold, seed=None):
         list of tuples: List of dataset splits.
 
     """
-    numpy.random.seed(seed)
-    order = numpy.random.permutation(len(dataset))
-    numpy.random.seed(None)
+    order = numpy.random.RandomState(seed).permutation(len(dataset))
     return get_cross_validation_datasets(dataset, n_fold, order)
