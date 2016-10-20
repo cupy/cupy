@@ -531,7 +531,7 @@ int cublasCgemmBatched(
     Handle handle, Operation transa, Operation transb, int m,
     int n, int k, const cuComplex* alpha, const cuComplex** Aarray,
     int lda, const cuComplex** Barray, int ldb, const cuComplex* beta,
-    cuComplexPtrPtr Carray, int ldc, int batchCount) {
+    cuComplex** Carray, int ldc, int batchCount) {
     return 0;
 }
 
