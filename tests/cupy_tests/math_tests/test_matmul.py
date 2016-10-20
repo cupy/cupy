@@ -41,8 +41,10 @@ class TestMatmul(unittest.TestCase):
 
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
-    @testing.numpy_cupy_array_almost_equal()
-    def test_matmul(self, xp, dtype1, dtype2):
+    @testing.numpy_cupy_array_almost_equal(5)  # required for uint8
+    def test_matmul(self, xp, dtype1=numpy.float32, dtype2=numpy.float32):
+        if not numpy.result_type(dtype1, dtype2) == numpy.float32:
+            return xp.array([])
         x1, x2 = self.arrays
-        x1, x2 = xp.array(x1), xp.array(x2)
+        x1, x2 = xp.array(x1, dtype=dtype1), xp.array(x2, dtype=dtype2)
         return operator.matmul(x1, x2)
