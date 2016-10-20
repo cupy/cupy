@@ -6,6 +6,7 @@ import six
 import cupy
 from cupy import core
 from cupy import internal
+from cupy.core import matmul
 
 
 def dot(a, b, out=None):
