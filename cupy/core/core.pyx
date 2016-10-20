@@ -1928,7 +1928,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 
 cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     cdef Py_ssize_t a_ndim, b_ndim, a_axis, b_axis, n, m, k
-    cdef bint a_is_vec, b_is_vec
+    cdef bint input_a_is_vec, input_b_is_vec
     cdef vector.vector[Py_ssize_t] ret_shape
     cdef vector.vector[Py_ssize_t] shape
 
@@ -1941,15 +1941,15 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     if a_ndim == 0 or b_ndim == 0:
         return multiply(a, b, out=out)
 
-    a_is_vec = a_ndim == 1
-    b_is_vec = b_ndim == 1
-    if a_is_vec:
+    input_a_is_vec = a_ndim == 1
+    input_b_is_vec = b_ndim == 1
+    if input_a_is_vec:
         shape.clear()
         shape.push_back(1)
         shape.push_back(a.size)
         a = a._reshape(shape)
         a_ndim = 2
-    if b_is_vec:
+    if input_b_is_vec:
         shape.clear()
         shape.push_back(b.size)
         shape.push_back(1)
@@ -1977,9 +1977,9 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         m = 0
         n = 0
 
-    if not a_is_vec:
+    if not input_a_is_vec:
         ret_shape.insert(ret_shape.end(), a._shape.begin() + 1, a._shape.end())
-    if not b_is_vec:
+    if not input_b_is_vec:
         ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
     if out is not None:
         if k != 0 and out.size != n * m:
