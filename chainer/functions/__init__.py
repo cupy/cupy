@@ -32,6 +32,7 @@ from chainer.functions.array import separate
 from chainer.functions.array import split_axis
 from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
+from chainer.functions.array import tile
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
 from chainer.functions.array import vstack
@@ -177,6 +178,8 @@ split_axis = split_axis.split_axis
 stack = stack.stack
 Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
+Tile = tile.Tile
+tile = tile.tile
 Transpose = transpose.Transpose
 transpose = transpose.transpose
 TransposeSequence = transpose_sequence.TransposeSequence

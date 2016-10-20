@@ -163,6 +163,10 @@ swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
 
+tile
+~~~~
+.. autofunction:: tile
+
 transpose
 ~~~~~~~~~
 .. autofunction:: transpose
