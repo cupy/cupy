@@ -537,7 +537,7 @@ int cublasCgemmBatched(
 
 int cublasZgemmBatched(
     Handle handle, Operation transa, Operation transb, int m,
-    int n, int k, constCuDoubleComplexPtr alpha,
+    int n, int k, const cuDoubleComplex* alpha,
     const cuDoubleComplex** Aarray, int lda,
     const cuDoubleComplex** Barray, int ldb,
     const cuDoubleComplex* beta, cuDoubleComplex** Carray, int ldc,
