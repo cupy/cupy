@@ -9,7 +9,7 @@ from cupy.cuda cimport runtime
 # Extern
 ###############################################################################
 
-cdef extern from "cuda_complex.h":
+cdef extern from "cupy_cuComplex.h":
     ctypedef void* cuComplexPtr 'cuComplex*'
     ctypedef void* cuDoubleComplexPtr 'cuDoubleComplex*'
     ctypedef const void* constCuComplexPtr 'const cuComplex*'

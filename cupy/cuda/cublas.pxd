@@ -5,7 +5,7 @@
 # Types
 ###############################################################################
 
-cdef extern from "cuda_complex.h":
+cdef extern from *:
     ctypedef void* cuComplexPtr 'cuComplex*'
     ctypedef void* cuDoubleComplexPtr 'cuDoubleComplex*'
 
