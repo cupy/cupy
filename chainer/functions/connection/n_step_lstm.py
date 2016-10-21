@@ -67,7 +67,8 @@ class DropoutStates(object):
         cudnn.set_dropout_descriptor(self.desc, handle, dropout)
 
     @staticmethod
-    def create(handle, states, dropout, seed):
+    def create(handle, dropout, seed):
+        states = cudnn.create_dropout_states(handle)
         desc = cudnn.create_dropout_descriptor(
             handle, dropout, states.data.ptr, states.size, seed)
         return DropoutStates(states, desc)
@@ -92,9 +93,7 @@ class DropoutRandomStates(object):
     def create_dropout_states(self, dropout):
         handle = cudnn.get_handle()
         if self._states is None:
-            states = cudnn.create_dropout_states(handle)
-            self._states = DropoutStates.create(
-                handle, states, dropout, self._seed)
+            self._states = DropoutStates.create(handle, dropout, self._seed)
         else:
             self._states.set_dropout_ratio(handle, dropout)
 
