@@ -16,6 +16,7 @@ from chainer.functions.activation.relu import relu
 from chainer.functions.activation.softmax import softmax
 from chainer.functions.array.reshape import reshape
 from chainer.functions.math.sum import sum
+from chainer.functions.noise.dropout import dropout
 from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
 from chainer.initializers import constant
 from chainer.initializers import normal
@@ -126,8 +127,8 @@ class VGG16Layers(link.Chain):
             ('conv5_2', [self.conv5_2, relu]),
             ('conv5_3', [self.conv5_3, relu]),
             ('pool5', [_max_pooling_2d]),
-            ('fc6', [self.fc6, relu]),
-            ('fc7', [self.fc7, relu]),
+            ('fc6', [self.fc6, relu, dropout]),
+            ('fc7', [self.fc7, relu, dropout]),
             ('fc8', [self.fc8, relu]),
             ('prob', [softmax]),
         ])
@@ -151,12 +152,13 @@ class VGG16Layers(link.Chain):
         caffemodel = CaffeFunction(path_caffemodel)
         npz.save_npz(path_npz, caffemodel, compression=False)
 
-    def __call__(self, x, layers=['prob']):
+    def __call__(self, x, layers=['prob'], test=True):
         """Computes all the feature maps specified by ``layers``.
 
         Args:
             x (~chainer.Variable): Input variable.
             layers (list of str): The list of layernames you want to extract.
+            test (bool): If ``True``, it runs in test mode.
 
         Returns:
             Dictionary of ~chainer.Variable: The directory in which
@@ -172,13 +174,16 @@ class VGG16Layers(link.Chain):
             if len(target_layers) == 0:
                 break
             for func in funcs:
-                h = func(h)
+                if func is dropout:
+                    h = func(h, train=not test)
+                else:
+                    h = func(h)
             if key in target_layers:
                 activations[key] = h
                 target_layers.remove(key)
         return activations
 
-    def extract(self, images, layers=['fc7'], size=(224, 224)):
+    def extract(self, images, layers=['fc7'], size=(224, 224), test=True):
         """Extracts all the feature maps of given images.
 
         The difference of directly executing ``__call__`` is that
@@ -194,6 +199,7 @@ class VGG16Layers(link.Chain):
                 an input of CNN. All the given images are not resized
                 if this argument is ``None``, but the resolutions of
                 all the images should be the same.
+            test (bool): If ``True``, it runs in test mode.
 
         Returns:
             Dictionary of ~chainer.Variable: The directory in which
@@ -204,7 +210,7 @@ class VGG16Layers(link.Chain):
 
         x = concat_examples([prepare(img, size=size) for img in images])
         x = Variable(self.xp.asarray(x))
-        return self(x, layers=layers)
+        return self(x, layers=layers, test=test)
 
     def predict(self, images, oversample=True):
         """Computes all the probabilities of given images.

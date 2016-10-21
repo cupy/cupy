@@ -124,12 +124,13 @@ class ResNet50Layers(link.Chain):
         _transfer_resnet50(caffemodel, chainermodel)
         npz.save_npz(path_npz, chainermodel, compression=False)
 
-    def __call__(self, x, layers=['prob']):
+    def __call__(self, x, layers=['prob'], test=True):
         """Computes all the feature maps specified by ``layers``.
 
         Args:
             x (~chainer.Variable): Input variable.
             layers (list of str): The list of layernames you want to extract.
+            test (bool): If ``True``, it runs in test mode.
 
         Returns:
             Dictionary of ~chainer.Variable: The directory in which
@@ -145,13 +146,17 @@ class ResNet50Layers(link.Chain):
             if len(target_layers) == 0:
                 break
             for func in funcs:
-                h = func(h)
+                if isinstance(func, BatchNormalization) or \
+                        isinstance(func, BuildingBlock):
+                    h = func(h, test=test)
+                else:
+                    h = func(h)
             if key in target_layers:
                 activations[key] = h
                 target_layers.remove(key)
         return activations
 
-    def extract(self, images, layers=['pool5'], size=(224, 224)):
+    def extract(self, images, layers=['pool5'], size=(224, 224), test=True):
         """Extracts all the feature maps of given images.
 
         The difference of directly executing ``__call__`` is that
@@ -167,6 +172,7 @@ class ResNet50Layers(link.Chain):
                 an input of CNN. All the given images are not resized
                 if this argument is ``None``, but the resolutions of
                 all the images should be the same.
+            test (bool): If ``True``, it runs in test mode.
 
         Returns:
             Dictionary of ~chainer.Variable: The directory in which
@@ -177,7 +183,7 @@ class ResNet50Layers(link.Chain):
 
         x = concat_examples([prepare(img, size=size) for img in images])
         x = Variable(self.xp.asarray(x))
-        return self(x, layers=layers)
+        return self(x, layers=layers, test=test)
 
     def predict(self, images, oversample=True):
         """Computes all the probabilities of given images.
