@@ -422,15 +422,19 @@ The MNIST dataset consists of 70,000 greyscale images of size 28x28 (i.e. 784 pi
 The dataset is divided into 60,000 training images and 10,000 test images by default.
 We can obtain the vectorized version (i.e., a set of 784 dimensional vectors) by :func:`datasets.get_mnist`.
 
-   >>> train, test = datasets.get_mnist()
-
 .. testcode::
    :hide:
 
-   data = np.random.rand(70000, 784).astype(np.float32)
-   target = np.random.randint(10, size=70000).astype(np.int32)
-   train = datasets.TupleDataset(data[:60000], target[:60000])
-   test = datasets.TupleDataset(data[60000:], target[60000:])
+   data = np.random.rand(70, 784).astype(np.float32)
+   target = np.random.randint(10, size=70).astype(np.int32)
+   datasets.get_mnist = lambda: (datasets.TupleDataset(data[:60], target[:60]), datasets.TupleDataset(data[60:], target[60:]))
+
+
+.. doctest::
+
+   >>> train, test = datasets.get_mnist()
+   ...
+
 
 This code automatically downloads the MNIST dataset and saves the NumPy arrays to the ``$(HOME)/.chainer`` directory.
 The returned ``train`` and ``test`` can be seen as lists of image-label pairs (strictly speaking, they are instances of :class:`~datasets.TupleDataset`).
