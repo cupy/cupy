@@ -7,8 +7,8 @@ class SquaredDifference(function.Function):
     """Squared difference of input variables."""
 
     def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 2)
         type_check.expect(
-            in_types.size() == 2,
             in_types[0].dtype.kind == 'f',
             in_types[0].dtype == in_types[1].dtype,
             in_types[0].shape == in_types[1].shape
@@ -35,6 +35,6 @@ def squared_difference(x1, x2):
         x2 (~chainer.Variable): Input variables to be compared.
 
     Returns:
-        ~chainer.Variable: (x1 - x2)(x1 - x2) element-wise.
+        ~chainer.Variable: `(x1 - x2) ** 2` element-wise.
     """
     return SquaredDifference()(x1, x2)
