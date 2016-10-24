@@ -23,7 +23,7 @@ class Space2Depth(function.Function):
         xp = cuda.get_array_module(X)
         bsize, c, a, b = X.shape
         X = xp.transpose(X, (0, 2, 3, 1))
-        X = xp.reshape(X, (bsize, a / self.r, b / self.r, self.r, self.r, c))
+        X = xp.reshape(X, (bsize, a / self.r, self.r, b / self.r, self.r, c))
         X = xp.transpose(X, (0, 1, 3, 2, 4, 5))
         X = xp.reshape(X, (bsize, a / self.r, b / self.r, self.r ** 2 * c))
         X = xp.transpose(X, (0, 3, 1, 2))
