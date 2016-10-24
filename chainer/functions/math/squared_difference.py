@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
