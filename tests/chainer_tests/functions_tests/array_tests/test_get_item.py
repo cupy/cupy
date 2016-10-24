@@ -41,8 +41,8 @@ class TestGetItem(unittest.TestCase):
 
             self.slices = [slice(None)] * len(self.shape)
             for axis in self.axes:
-                self.slices[axis] = slice(self.offsets[axis],
-                                          self.offsets[axis]+self.shape[axis])
+                self.slices[axis] = slice(
+                    self.offsets[axis], self.offsets[axis] + self.shape[axis])
 
             if hasattr(self, 'new_axes'):
                 self.slices.insert(self.new_axes, None)

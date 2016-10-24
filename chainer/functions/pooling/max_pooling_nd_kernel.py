@@ -1,12 +1,11 @@
-from __future__ import print_function
-
 from chainer.functions.pooling import pooling_nd_kernel
+from chainer.utils.conv_nd_kernel import _map
 from chainer.utils.conv_nd_kernel import muladdexp
 from chainer.utils.conv_nd_kernel import vars
-from chainer.utils.conv_nd_kernel import writer
+from chainer.utils.conv_nd_kernel import Writer
 
 
-class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
+class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
 
     def name(self):
         # max_pool_{N}d_fwd
@@ -23,7 +22,7 @@ class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
         def aux(argmax):
             return 'int {} = 0;'.format(argmax)
         self.argmaxs = vars('argmax', self.ndim)
-        argmax_decls = map(aux, self.argmaxs)
+        argmax_decls = _map(aux, self.argmaxs)
         return '\n'.join(['T maxval = (T)-INFINITY;'] + argmax_decls)
 
     def main(self, offset, xs):
@@ -33,32 +32,32 @@ class MaxPoolingNDKernelFwd(pooling_nd_kernel.PoolingNDKernelFwd):
         #       argmax_0 = x_0;
         #       argmax_1 = x_1;
         #     }
-        w = writer()
-        w('T v = in[{}];'.format(offset))
-        w('if (maxval < v) {', 'inc')
-        w('maxval   = v;')
+        w = Writer()
+        w.write('T v = in[{}];'.format(offset))
+        w.write('if (maxval < v) {', 'inc')
+        w.write('maxval = v;')
         for (argmax, x) in zip(self.argmaxs, xs):
-            w('{} = {};'.format(argmax, x))
-        w('}', 'dec')
-        return w()
+            w.write('{} = {};'.format(argmax, x))
+        w.write('}', 'dec')
+        return w.get()
 
     def after(self, out_xs):
         # 2D: out = maxval;
         #     int argmax_k_0 = argmax_0 + p_0 - out_x_0 * s_0;
         #     int argmax_k_1 = argmax_1 + p_1 - out_x_1 * s_1;
         #     indexes = (argmax_k_1 + k_1 * argmax_k_0);
-        def aux(argmax_k, argmax, p, out, s):
+        def aux(argmax_k, argmax, p, out_x, s):
             return 'int {} = {} + {} - {} * {};'.format(
-                argmax_k, argmax, p, out, s)
+                argmax_k, argmax, p, out_x, s)
         argmax_ks = vars('argmax_k', self.ndim)
-        argmax_k_decls = map(
+        argmax_k_decls = _map(
             aux, argmax_ks, self.argmaxs, self.ps, out_xs, self.ss)
         indexes_set = 'indexes = {};'.format(
             muladdexp(self.ks[1:], argmax_ks[1:], argmax_ks[0]))
         return '\n'.join(['out = maxval;'] + argmax_k_decls + [indexes_set])
 
 
-class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
+class MaxPoolingNDKernelBackward(pooling_nd_kernel.PoolingNDKernelBackward):
 
     def name(self):
         # max_pool_{N}d_bwd
@@ -81,32 +80,13 @@ class MaxPoolingNDKernelBwd(pooling_nd_kernel.PoolingNDKernelBwd):
         #     }
         def aux(x, out_x, s):
             return '{} - {} * {}'.format(x, out_x, s)
-        w = writer()
-        w('int kx = {};'.format(
-            muladdexp(self.ks, map(aux, xs, out_xs, self.ss), '0')))
-        w('if (indexes[{}] == kx) {{'.format(offset), 'inc')
-        w('val = val + gy[{}];'.format(offset))
-        w('}', 'dec')
-        return w()
+        w = Writer()
+        w.write('int kx = {};'.format(
+            muladdexp(self.ks, _map(aux, xs, out_xs, self.ss), '0')))
+        w.write('if (indexes[{}] == kx) {{'.format(offset), 'inc')
+        w.write('val = val + gy[{}];'.format(offset))
+        w.write('}', 'dec')
+        return w.get()
 
     def after(self, xs):
         return 'gx = val;'
-
-
-# just for debug.
-if __name__ == "__main__":
-    ndim = 3
-
-    print("MaxPoolingNDKernelFwd")
-    print("----------------")
-    print()
-    for x in MaxPoolingNDKernelFwd(ndim).generate():
-        print(x)
-        print()
-
-    print("MaxPoolingNDKernelBwd")
-    print("----------------")
-    print()
-    for x in MaxPoolingNDKernelBwd(ndim).generate():
-        print(x)
-        print()

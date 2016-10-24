@@ -234,8 +234,8 @@ def check_backward(func, x_data, y_grad, params=(),
             raise ValueError('`dtype` is allowed only float type')
         if len(params) > 0:
             raise ValueError('`dtype` is available only if `params` is empty')
-        casted_xs = [variable.Variable(x.astype(dtype)
-                     if x.dtype.kind == 'f' else x)
+        casted_xs = [variable.Variable(x.astype(dtype, copy=False)
+                                       if x.dtype.kind == 'f' else x)
                      for x in x_data]
 
     def f():
@@ -244,7 +244,7 @@ def check_backward(func, x_data, y_grad, params=(),
         return tuple(y.data for y in ys)
 
     if no_grads is None:
-        no_grads = [x.data.dtype.kind != 'f' for x in xs]
+        no_grads = [x.dtype.kind != 'f' for x in xs]
     else:
         if len(no_grads) != len(xs):
             raise ValueError(

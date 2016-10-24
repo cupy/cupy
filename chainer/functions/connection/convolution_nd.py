@@ -102,6 +102,7 @@ class ConvolutionND(function.Function):
         outs = tuple(
             conv.get_conv_outsize(d, k, s, p, cover_all=self.cover_all)
             for (d, k, s, p) in zip(dims, ksize, stride, pad))
+        assert all(out > 0 for out in outs), 'Output sizes should be positive.'
         y_shape = (n, out_c) + outs  # (n, c_O, out_1, out_2, ..., out_N)
         y = cuda.cupy.empty(y_shape, dtype=x.dtype)
 
@@ -117,7 +118,8 @@ class ConvolutionND(function.Function):
         y_desc = cudnn.create_tensor_descriptor(y)
 
         self.filter_desc = cudnn.create_filter_descriptor(W)
-        self.conv_desc = cudnn.create_convolution_descriptor(pad, stride)
+        self.conv_desc = cudnn.create_convolution_descriptor(
+            pad, stride, x.dtype)
         if b is not None:
             b_index = (None, colon) + (None,) * ndim
             self.bias_desc = cudnn.create_tensor_descriptor(b[b_index])
@@ -143,9 +145,15 @@ class ConvolutionND(function.Function):
         # Add bias if given.
         # TODO(takagi) Support unshared bias
         if b is not None:
-            cudnn.add_tensor(
-                handle, one.data, self.bias_desc.value, b.data.ptr,
-                one.data, y_desc.value, y.data.ptr)
+            if _cudnn_version >= 3000 or ndim == 2:
+                cudnn.add_tensor(
+                    handle, one.data, self.bias_desc.value, b.data.ptr,
+                    one.data, y_desc.value, y.data.ptr)
+            else:
+                # cuDNN v2 does not seem to support bias addition in spatial
+                # dimensions other than two.
+                b_index = (None, colon) + (None,) * ndim
+                y += b[b_index]
 
         return y,
 
@@ -251,11 +259,19 @@ class ConvolutionND(function.Function):
         # Compute bias gradient if given and return gradients.
         if b is None:
             return gx, gW
-        else:
+        elif _cudnn_version >= 3000 or self.ndim == 2:
             gb = cuda.cupy.empty_like(b)
             libcudnn.convolutionBackwardBias(
                 handle, one.data, gy_desc.value, gy.data.ptr,
                 zero.data, self.bias_desc.value, gb.data.ptr)
+            return gx, gW, gb
+        else:
+            # cuDNN v2 does not seem to support bias backward in spatial
+            # dimensions other than two.
+
+            # (n, _, out_1, out_2, ..., out_N)
+            axis = (0,) + tuple(moves.range(2, self.ndim + 2))
+            gb = gy.sum(axis=axis)
             return gx, gW, gb
 
     def backward(self, inputs, grad_outputs):
@@ -305,12 +321,25 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
             :math:`(p_1, p_2, ..., p_N)`. ``pad=p`` is equivalent to
             ``(p, p, ..., p)``.
         use_cudnn (bool): If ``True``, then this function uses cuDNN if
-            available. cuDNN supports more than one-dimensional convolution.
+            available. See below for the excact conditions.
         cover_all (bool): If ``True``, all spatial locations are convoluted
             into some output pixels. It may make the output size larger.
+            `cover_all` needs to be ``False`` if you want to use cuDNN.
 
     Returns:
         ~chainer.Variable: Output variable.
+
+    This function uses cuDNN implementation for its forward and backward
+    computation if ALL of the following conditions are satisfied:
+
+    - ``cuda.cudnn_enabled`` is ``True``
+    - ``use_cudnn`` is ``True``
+    - The number of spatial dimensions is more than one.
+    - ``cover_all`` is ``False``
+    - The input's ``dtype`` is equal to the filter weight's.
+    - The ``dtype`` is FP32, FP64 or FP16(cuDNN version is equal to or greater
+      than v3)
+
 
     .. seealso:: :class:`ConvolutionND`, :func:`convolution_2d`
     """

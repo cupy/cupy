@@ -36,11 +36,15 @@ class AbstractSerializer(object):
         the ``value`` argument is used just for determining the type of
         restored value to be converted, and the converted value is returned.
         For arrays, the restored elements are directly copied into the
-        ``value`` argument. String values are treated like scalars.
+        ``value`` argument. String values are treated like scalars. If the
+        ``value`` argument is ``None``, the type of the restored value will
+        typically be a numpy array but can depend on the particular subclass
+        implementation.
 
         Args:
             key (str): Name of the serialization entry.
-            value (scalar, array, or str): Object to be (de)serialized.
+            value (scalar, array, None, or str): Object to be (de)serialized.
+                ``None`` is only supported by deserializers.
 
         Returns:
             Serialized or deserialized value.
@@ -52,6 +56,7 @@ class AbstractSerializer(object):
 class Serializer(AbstractSerializer):
 
     """Base class of all serializers."""
+
     def save(self, obj):
         """Saves an object by this serializer.
 
@@ -67,6 +72,7 @@ class Serializer(AbstractSerializer):
 class Deserializer(AbstractSerializer):
 
     """Base class of all deserializers."""
+
     def load(self, obj):
         """Loads an object from this deserializer.
 

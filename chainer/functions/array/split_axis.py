@@ -13,7 +13,9 @@ class SplitAxis(function.Function):
     """Function that splits multiple arrays along the specified axis."""
 
     def __init__(self, indices_or_sections, axis):
-        if not isinstance(indices_or_sections, (int, collections.Iterable)):
+        if not isinstance(
+                indices_or_sections,
+                six.integer_types + (collections.Iterable,)):
             raise TypeError('indices_or_sections must be integer or 1-D array')
         self.indices_or_sections = indices_or_sections
         self.axis = axis

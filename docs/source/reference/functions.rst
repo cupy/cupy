@@ -32,7 +32,7 @@ clipped_relu
 .. autofunction:: clipped_relu
 
 crelu
-~~~~~~~~~~~~
+~~~~~
 .. autofunction:: crelu
 
 elu
@@ -115,9 +115,17 @@ expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
 
+flatten
+~~~~~~~
+.. autofunction:: flatten
+
 get_item
 ~~~~~~~~
 .. autofunction:: get_item
+
+hstack
+~~~~~~~~
+.. autofunction:: hstack
 
 permutate
 ~~~~~~~~~
@@ -128,12 +136,16 @@ reshape
 .. autofunction:: reshape
 
 rollaxis
-~~~~~~~
+~~~~~~~~
 .. autofunction:: rollaxis
 
 select_item
 ~~~~~~~~~~~
 .. autofunction:: select_item
+
+separate
+~~~~~~~~
+.. autofunction:: separate
 
 split_axis
 ~~~~~~~~~~
@@ -154,6 +166,10 @@ transpose
 transpose_sequence
 ~~~~~~~~~~~~~~~~~~
 .. autofunction:: transpose_sequence
+
+vstack
+~~~~~~
+.. autofunction:: vstack
 
 where
 ~~~~~
@@ -179,6 +195,10 @@ deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
 
+dilated_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: dilated_convolution_2d
+
 embed_id
 ~~~~~~~~
 .. autofunction:: embed_id
@@ -203,6 +223,10 @@ bernoulli_nll
 ~~~~~~~~~~~~~
 .. autofunction:: bernoulli_nll
 
+black_out
+~~~~~~~~~
+.. autofunction:: black_out
+
 connectionist_temporal_classification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: connectionist_temporal_classification
@@ -210,6 +234,10 @@ connectionist_temporal_classification
 contrastive
 ~~~~~~~~~~~
 .. autofunction:: contrastive
+
+crf1d
+~~~~~
+.. autofunction:: crf1d
 
 cross_covariance
 ~~~~~~~~~~~~~~~~
@@ -279,6 +307,10 @@ bias
 ~~~~
 .. autofunction:: bias
 
+ceil
+~~~~
+.. autofunction:: ceil
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -287,9 +319,17 @@ cos
 ~~~
 .. autofunction:: cos
 
+cosh
+~~~~
+.. autofunction:: cosh
+
 exp
 ~~~
 .. autofunction:: exp
+
+floor
+~~~~~
+.. autofunction:: floor
 
 identity
 ~~~~~~~~
@@ -306,6 +346,18 @@ linear_interpolate
 log
 ~~~
 .. autofunction:: log
+
+log10
+~~~~~
+.. autofunction:: log10
+
+log1p
+~~~~~
+.. autofunction:: log1p
+
+log2
+~~~~
+.. autofunction:: log2
 
 logsumexp
 ~~~~~~~~~
@@ -331,6 +383,10 @@ minimum
 ~~~~~~~
 .. autofunction:: minimum
 
+rsqrt
+~~~~~
+.. autofunction:: rsqrt
+
 scale
 ~~~~~
 .. autofunction:: scale
@@ -339,9 +395,27 @@ sin
 ~~~
 .. autofunction:: sin
 
+sinh
+~~~~
+.. autofunction:: sinh
+
+sqrt
+~~~~
+.. autofunction:: sqrt
+
 sum
 ~~~
 .. autofunction:: sum
+
+tanh
+~~~~
+Hyperbolic tangent function is described in "Activation functions" section.
+
+.. seealso:: :func:`~chainer.functions.tanh`
+
+tan
+~~~
+.. autofunction:: tan
 
 
 Noise injections
@@ -406,3 +480,11 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
+
+
+Utility functions
+-----------------
+
+forget
+~~~~~~
+.. autofunction:: forget

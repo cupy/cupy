@@ -34,8 +34,8 @@ def scale(x, y, axis=1):
         ~chainer.Variable: Output variable.
 
     """
-    x_shape = x.data.shape
-    y_shape = y.data.shape
+    x_shape = x.shape
+    y_shape = y.shape
     if chainer.is_debug():
         assert x_shape[axis:axis + len(y_shape)] == y_shape
     y1_shape = tuple([1] * axis + list(y_shape) +

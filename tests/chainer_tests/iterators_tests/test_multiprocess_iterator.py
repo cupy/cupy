@@ -57,5 +57,18 @@ class TestMultiprocessIterator(unittest.TestCase):
         self.assertEqual(len(batch3), 1)
         self.assertEqual(sorted(batch1 + batch2 + batch3), dataset)
 
+    def test_iterator_shuffle_divisible(self):
+        dataset = list(range(10))
+        it = iterators.MultiprocessIterator(
+            dataset, 10, n_processes=self.n_processes)
+        self.assertNotEqual(it.next(), it.next())
+
+    def test_iterator_shuffle_nondivisible(self):
+        dataset = list(range(10))
+        it = iterators.MultiprocessIterator(
+            dataset, 3, n_processes=self.n_processes)
+        out = sum([it.next() for _ in range(7)], [])
+        self.assertNotEqual(out[0:10], out[10:20])
+
 
 testing.run_module(__name__, __file__)

@@ -54,7 +54,7 @@ class SigmoidCrossEntropy(function.Function):
 
 
 def sigmoid_cross_entropy(x, t, use_cudnn=True, normalize=True):
-    """Computes cross entropy loss for sigmoid activations.
+    """Computes cross entropy loss for pre-sigmoid activations.
 
     Args:
         x (Variable): A variable object holding a matrix whose (i, j)-th

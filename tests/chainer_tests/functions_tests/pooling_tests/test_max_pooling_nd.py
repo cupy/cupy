@@ -23,14 +23,14 @@ def pooling_patches(dims, ksize, stride, pad, cover_all):
     # Left-top indeces of each pooling patch.
     if cover_all:
         xss = itertools.product(
-            *[six.moves.range(-p, d+p-k+s, s)
+            *[six.moves.range(-p, d + p - k + s, s)
               for (d, k, s, p) in zip(dims, ksize, stride, pad)])
     else:
         xss = itertools.product(
-            *[six.moves.range(-p, d+p-k+1, s)
+            *[six.moves.range(-p, d + p - k + 1, s)
               for (d, k, s, p) in zip(dims, ksize, stride, pad)])
     # Tuple of slices for pooling patches.
-    return [tuple(slice(max(x, 0), min(x+k, d))
+    return [tuple(slice(max(x, 0), min(x + k, d))
                   for (x, d, k) in zip(xs, dims, ksize))
             for xs in xss]
 
@@ -71,7 +71,7 @@ class TestMaxPoolingND(unittest.TestCase):
         stride = self.stride
         pad = self.pad
         x = chainer.Variable(x_data)
-        y = functions.max_pooling_nd(x, ksize, stride, pad,
+        y = functions.max_pooling_nd(x, ksize, stride=stride, pad=pad,
                                      cover_all=self.cover_all,
                                      use_cudnn=use_cudnn)
         self.assertEqual(y.data.dtype, self.dtype)
@@ -109,10 +109,28 @@ class TestMaxPoolingND(unittest.TestCase):
     def test_forward_gpu_no_cudnn(self):
         self.check_forward(cuda.to_gpu(self.x), False)
 
+    def test_forward_consistency_regression(self):
+        # Regression test to max_pooling_2d.
+
+        if len(self.dims) != 2:
+            return
+
+        ksize = self.ksize
+        stride = self.stride
+        pad = self.pad
+
+        y_nd = functions.max_pooling_nd(self.x, ksize, stride=stride, pad=pad,
+                                        use_cudnn=False,
+                                        cover_all=self.cover_all)
+        y_2d = functions.max_pooling_2d(self.x, ksize, stride=stride, pad=pad,
+                                        use_cudnn=False,
+                                        cover_all=self.cover_all)
+        testing.assert_allclose(y_nd.data, y_2d.data)
+
     def check_backward(self, x_data, y_grad, use_cudnn=True):
         gradient_check.check_backward(
             functions.MaxPoolingND(
-                self.ndim, self.ksize, self.stride, self.pad,
+                self.ndim, self.ksize, stride=self.stride, pad=self.pad,
                 cover_all=self.cover_all, use_cudnn=use_cudnn),
             x_data, y_grad, **self.check_backward_options)
 

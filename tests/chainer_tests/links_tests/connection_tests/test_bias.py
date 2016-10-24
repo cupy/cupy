@@ -31,7 +31,7 @@ class TestBias(unittest.TestCase):
             self.link.b.data = self.b
         else:
             self.link = links.Bias(axis, None)
-        self.link.zerograds()
+        self.link.cleargrads()
 
     def test_attribute_presence(self):
         self.assertEqual(self.learn_b, hasattr(self.link, 'b'))

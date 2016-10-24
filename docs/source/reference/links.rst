@@ -32,9 +32,19 @@ Convolution2D
 .. autoclass:: Convolution2D
    :members:
 
+ConvolutionND
+~~~~~~~~~~~~~
+.. autoclass:: ConvolutionND
+   :members:
+
 Deconvolution2D
 ~~~~~~~~~~~~~~~
 .. autoclass:: Deconvolution2D
+   :members:
+
+DilatedConvolution2D
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: DilatedConvolution2D
    :members:
 
 EmbedID
@@ -45,6 +55,11 @@ EmbedID
 GRU
 ~~~
 .. autoclass:: GRU
+   :members:
+
+Highway
+~~~~~~~
+.. autoclass:: Highway
    :members:
 
 Inception
@@ -82,6 +97,11 @@ StatefulGRU
 .. autoclass:: StatefulGRU
    :members:
 
+StatefulPeepholeLSTM
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: StatefulPeepholeLSTM
+   :members:
+
 StatelessLSTM
 ~~~~~~~~~~~~~
 .. autoclass:: StatelessLSTM
@@ -98,6 +118,15 @@ BatchNormalization
 BinaryHierarchicalSoftmax
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: BinaryHierarchicalSoftmax
+   :members:
+
+BlackOut
+~~~~~~~~
+.. autoclass:: BlackOut
+
+CRF1d
+~~~~~
+.. autoclass:: CRF1d
    :members:
 
 PReLU

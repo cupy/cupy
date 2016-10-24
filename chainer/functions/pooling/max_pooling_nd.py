@@ -2,6 +2,7 @@ import numpy
 
 import functools
 from operator import mul
+import six
 
 from chainer import cuda
 from chainer.functions.pooling import max_pooling_nd_kernel
@@ -12,9 +13,6 @@ from chainer.utils import conv_nd
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
     libcudnn = cudnn.cudnn
-
-_forward_cache = {}
-_backward_cache = {}
 
 
 class MaxPoolingND(pooling_nd.PoolingND):
@@ -54,11 +52,8 @@ class MaxPoolingND(pooling_nd.PoolingND):
         y = cuda.cupy.empty(y_shape, dtype=x[0].dtype)
         self.indexes = cuda.cupy.empty(y_shape, dtype=numpy.int32)
 
-        ndim = self.ndim
-        if ndim not in _forward_cache:
-            _forward_cache[ndim] = \
-                max_pooling_nd_kernel.MaxPoolingNDKernelFwd(ndim).generate()
-        in_params, out_params, operation, name = _forward_cache[ndim]
+        in_params, out_params, operation, name = \
+            max_pooling_nd_kernel.MaxPoolingNDKernelForward.generate(self.ndim)
         cuda.elementwise(in_params, out_params, operation, name)(
             x[0].reduced_view(),
             *(dims + ys + self.ksize + self.stride + self.pad +
@@ -67,19 +62,23 @@ class MaxPoolingND(pooling_nd.PoolingND):
         return y,
 
     def backward_cpu(self, x, gy):
+        ndim = self.ndim
         n, c = gy[0].shape[:2]
         outs = gy[0].shape[2:]
         dims = x[0].shape[2:]
-        # (n, c, k_1, k_2, ..., k_N, out_1, out_2, ..., out_N)
-        gcol_shape = (n, c) + self.ksize + outs
-        gcol = numpy.zeros(gcol_shape, dtype=x[0].dtype)
+        prod_outs = functools.reduce(mul, outs)
+        prod_ksize = functools.reduce(mul, self.ksize)
 
-        # TODO(takagi) Make it fast
-        gcol_shape = (n, c, -1) + outs
-        gcol_r = numpy.rollaxis(gcol.reshape(gcol_shape), 2)
-        indeces = (n, c) + outs
-        for i in numpy.ndindex(indeces):
-            gcol_r[self.indexes[i]][i] = gy[0][i]
+        gcol = numpy.zeros(n * c * prod_outs * prod_ksize, dtype=x[0].dtype)
+
+        indexes = self.indexes.ravel()
+        indexes += numpy.arange(0, indexes.size * prod_ksize, prod_ksize)
+
+        gcol[indexes] = gy[0].ravel()
+        gcol_shape = (n, c) + outs + self.ksize
+        gcol = gcol.reshape(gcol_shape)
+        for i in six.moves.range(ndim):
+            gcol = numpy.swapaxes(gcol, 2 + i, ndim + 2 + i)
 
         gx = conv_nd.col2im_nd_cpu(gcol, self.stride, self.pad, dims)
         return gx,
@@ -95,10 +94,8 @@ class MaxPoolingND(pooling_nd.PoolingND):
         gx = cuda.cupy.empty_like(x[0])
 
         ndim = self.ndim
-        if ndim not in _backward_cache:
-            _backward_cache[ndim] = \
-                max_pooling_nd_kernel.MaxPoolingNDKernelBwd(ndim).generate()
-        in_params, out_params, operation, name = _backward_cache[ndim]
+        in_params, out_params, operation, name = \
+            max_pooling_nd_kernel.MaxPoolingNDKernelBackward.generate(ndim)
         cuda.elementwise(in_params, out_params, operation, name)(
             gy[0].reduced_view(), self.indexes.reduced_view(),
             *(dims + ys + self.ksize + self.stride + self.pad + (gx,)))
@@ -139,5 +136,5 @@ def max_pooling_nd(x, ksize, stride=None, pad=0, cover_all=True,
         ~chainer.Variable: Output variable.
 
     """
-    ndim = len(x.data.shape[2:])
+    ndim = len(x.shape[2:])
     return MaxPoolingND(ndim, ksize, stride, pad, cover_all, use_cudnn)(x)

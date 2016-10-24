@@ -2,9 +2,10 @@
 """Example code of learning a large scale convnet from ILSVRC2012 dataset.
 
 Prerequisite: To run this example, crop the center of ILSVRC2012 training and
-validation images and scale them to 256x256, and make two lists of space-
-separated CSV whose first column is full path to image and second column is
-zero-origin label (this format is same as that used by Caffe's ImageDataLayer).
+validation images, scale them to 256x256 and convert them to RGB, and make
+two lists of space-separated CSV whose first column is full path to image and
+second column is zero-origin label (this format is same as that used by Caffe's
+ImageDataLayer).
 
 """
 from __future__ import print_function
@@ -67,8 +68,10 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
 def main():
     archs = {
         'alex': alex.Alex,
+        'alex_fp16': alex.AlexFp16,
         'googlenet': googlenet.GoogLeNet,
         'googlenetbn': googlenetbn.GoogLeNetBN,
+        'googlenetbn_fp16': googlenetbn.GoogLeNetBNFp16,
         'nin': nin.NIN
     }
 
@@ -146,9 +149,10 @@ def main():
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
     trainer.extend(extensions.LogReport(trigger=log_interval))
+    trainer.extend(extensions.observe_lr(), trigger=log_interval)
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/loss', 'validation/main/loss',
-        'main/accuracy', 'validation/main/accuracy',
+        'main/accuracy', 'validation/main/accuracy', 'lr'
     ]), trigger=log_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
 

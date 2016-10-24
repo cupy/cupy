@@ -1,6 +1,7 @@
 import collections
 import heapq
 import traceback
+import warnings
 
 import numpy
 import six
@@ -86,6 +87,7 @@ class Variable(object):
             :class:`~chainer.Flag` for the detail of ternary flags.
 
     """
+
     def __init__(self, data, volatile=flag.OFF, name=None, grad=None):
         if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
             msg = '''numpy.ndarray or cuda.ndarray are expected.
@@ -190,6 +192,22 @@ Actual: {0}'''.format(type(data))
             _check_grad_type(None, self, g)
         self._grad = g
 
+    @property
+    def shape(self):
+        return self.data.shape
+
+    @property
+    def ndim(self):
+        return self.data.ndim
+
+    @property
+    def size(self):
+        return self.data.size
+
+    @property
+    def dtype(self):
+        return self.data.dtype
+
     def to_cpu(self):
         """Copies the data and gradient arrays to CPU."""
         self.data = cuda.to_cpu(self.data)
@@ -209,8 +227,20 @@ Actual: {0}'''.format(type(data))
             if self._grad is not None:
                 self._grad = cuda.to_gpu(self._grad)
 
+    def cleargrad(self):
+        """Clears the gradient array."""
+        self._grad = None
+
     def zerograd(self):
-        """Initializes the gradient array by zeros."""
+        """Initializes the gradient array by zeros.
+
+        .. deprecated:: v1.15
+           Use :meth:`cleargrad` instead.
+
+        """
+        warnings.warn(
+            'Variable.zerograd is deprecated. Use Variable.cleargard instead.',
+            DeprecationWarning)
         with cuda.get_device(self.data) as dev:
             if self._grad is None:
                 xp = numpy if int(dev) == -1 else cuda.cupy
