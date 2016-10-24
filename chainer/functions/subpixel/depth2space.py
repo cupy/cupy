@@ -34,7 +34,7 @@ class Depth2Space(function.Function):
         xp = cuda.get_array_module(gy)
         bsize, c, a, b = gy.shape
         gy = xp.transpose(gy, (0, 2, 3, 1))
-        gy = xp.reshape(gy, (bsize, a / self.r, b / self.r, self.r, self.r, c))
+        gy = xp.reshape(gy, (bsize, a / self.r, self.r, b / self.r, self.r, c))
         gy = xp.transpose(gy, (0, 1, 3, 2, 4, 5))
         gy = xp.reshape(gy, (bsize, a / self.r, b / self.r, self.r ** 2 * c))
         gy = xp.transpose(gy, (0, 3, 1, 2))
