@@ -239,7 +239,7 @@ cdef class PinnedMemoryPool:
             except runtime.CUDARuntimeError as e:
                 if e.status != 2:
                     raise
-                self.free_all_free()
+                self.free_all_blocks()
                 mem = self._alloc(size).mem
 
         self._in_use[mem.ptr] = mem
