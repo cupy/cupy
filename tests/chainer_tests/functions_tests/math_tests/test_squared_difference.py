@@ -22,8 +22,7 @@ class TestSquaredDifference(unittest.TestCase):
     def setUp(self):
         self.x1 = numpy.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
         self.x2 = numpy.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
-        self.g1 = numpy.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
-        self.g2 = numpy.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
+        self.g = numpy.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
 
     def check_forward(self, x1_data, x2_data):
         x1 = chainer.Variable(x1_data)
@@ -39,18 +38,17 @@ class TestSquaredDifference(unittest.TestCase):
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
 
-    def check_backward(self, x1, x2, g1, g2):
-        x_data = tuple([x1, x2])
-        g_data = tuple([g1, g2])
+    def check_backward(self, x1, x2, g_data):
+        x_data = (x1, x2)
         gradient_check.check_backward(
             functions.SquaredDifference(), x_data, g_data, dtype=numpy.float64)
 
     def test_backward_cpu(self):
-        self.check_backward(self.x1, self.x2, self.g1, self.g2)
+        self.check_backward(self.x1, self.x2, self.g)
 
     @attr.gpu
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2), cuda.to_gpu(self.g1), cuda.to_gpu(self.g2))
+        self.check_backward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2), cuda.to_gpu(self.g))
 
 
 testing.run_module(__name__, __file__)
