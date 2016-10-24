@@ -25,7 +25,7 @@ class SquaredDifference(function.Function):
         x1, x2 = inputs
         gy, = grads
         gx = gy * self.difference * 2
-        return gx, gx
+        return gx, -gx
 
 def squared_difference(x1, x2):
     """Squared difference of input variables.

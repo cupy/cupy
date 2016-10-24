@@ -299,6 +299,7 @@ Sinh = hyperbolic.Sinh
 sinh = hyperbolic.sinh
 Sqrt = sqrt.Sqrt
 sqrt = sqrt.sqrt
+SquaredDifference = squared_difference.SquaredDifference
 squared_difference = squared_difference.squared_difference
 Sum = sum.Sum
 sum = sum.sum
