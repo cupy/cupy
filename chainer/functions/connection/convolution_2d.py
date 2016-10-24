@@ -31,11 +31,13 @@ def _pair(x):
 
 class Convolution2DFunction(function.Function):
 
-    def __init__(self, stride=1, pad=0, use_cudnn=True, cover_all=False):
+    def __init__(self, stride=1, pad=0, use_cudnn=True, cover_all=False,
+                 deterministic=False):
         self.sy, self.sx = _pair(stride)
         self.ph, self.pw = _pair(pad)
         self.use_cudnn = use_cudnn
         self.cover_all = cover_all
+        self.deterministic = deterministic
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -188,26 +190,37 @@ class Convolution2DFunction(function.Function):
                 workspace_size = cuda.get_max_workspace_size()
                 workspace = cuda.cupy.empty((workspace_size,), dtype='b')
 
-                algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
-                    handle, x_desc.value, gy_desc.value,
-                    self.conv_desc.value, self.filter_desc.value,
-                    _bwd_filter_pref, workspace_size)
+                if not self.deterministic:
+                    algo = libcudnn.getConvolutionBackwardFilterAlgorithm(
+                        handle, x_desc.value, gy_desc.value,
+                        self.conv_desc.value, self.filter_desc.value,
+                        _bwd_filter_pref, workspace_size)
+                else:
+                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1  # NOQA
+
                 libcudnn.convolutionBackwardFilter_v3(
                     handle, one.data, x_desc.value, x.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
                     algo, workspace.data.ptr, workspace_size,
                     zero.data, self.filter_desc.value, gW.data.ptr)
 
-                algo = libcudnn.getConvolutionBackwardDataAlgorithm(
-                    handle, self.filter_desc.value, gy_desc.value,
-                    self.conv_desc.value, x_desc.value, _bwd_data_pref,
-                    workspace_size)
+                if not self.deterministic:
+                    algo = libcudnn.getConvolutionBackwardDataAlgorithm(
+                        handle, self.filter_desc.value, gy_desc.value,
+                        self.conv_desc.value, x_desc.value, _bwd_data_pref,
+                        workspace_size)
+                else:
+                    algo = cuda.cupy.cuda.cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1  # NOQA
+
                 libcudnn.convolutionBackwardData_v3(
                     handle, one.data, self.filter_desc.value, W.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
                     algo, workspace.data.ptr, workspace_size,
                     zero.data, x_desc.value, gx.data.ptr)
             else:
+                if self.deterministic:
+                    raise ValueError("'deterministic' option not available "
+                                     "for cuDNN versions < v4")
                 libcudnn.convolutionBackwardFilter_v2(
                     handle, one.data, x_desc.value, x.data.ptr,
                     gy_desc.value, gy.data.ptr, self.conv_desc.value,
@@ -251,7 +264,7 @@ class Convolution2DFunction(function.Function):
 
 
 def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
-                   cover_all=False):
+                   cover_all=False, deterministic=False):
     """Two-dimensional convolution function.
 
     This is an implementation of two-dimensional convolution in ConvNets.
@@ -281,6 +294,11 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
             available.
         cover_all (bool): If True, all spatial locations are convoluted into
             some output pixels. It may make the output size larger.
+        deterministic (bool): The output of this function can be
+            non-deterministic when it uses cuDNN.
+            If this option is ``True``, then it forces cuDNN to use
+            a deterministic algorithm. This option is only available for
+            cuDNN version >= v4.
 
 
     Returns:
@@ -311,7 +329,8 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
     .. seealso:: :class:`Convolution2D`
 
     """
-    func = Convolution2DFunction(stride, pad, use_cudnn, cover_all)
+    func = Convolution2DFunction(
+        stride, pad, use_cudnn, cover_all, deterministic)
     if b is None:
         return func(x, W)
     else:
