@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import unittest
 
 import numpy
@@ -16,8 +19,8 @@ from chainer.testing import attr
 class TestSquaredDifference(unittest.TestCase):
 
     def setUp(self):
-        self.x1 = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
-        self.x2 = numpy.random.uniform(-1, 1, self.shape).astype(numpy.float32)
+        self.x1 = numpy.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
+        self.x2 = numpy.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
 
     def check_forward(self, x1_data, x2_data):
         x1 = chainer.Variable(x1_data)
@@ -42,11 +45,11 @@ class TestSquaredDifference(unittest.TestCase):
         testing.assert_allclose(x2.data, x2.grad, atol=0, rtol=0)
 
     def test_backward_cpu(self):
-        self.check_backward(self.x)
+        self.check_backward(self.x1, self.x2)
 
     @attr.gpu
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x))
+        self.check_backward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
 
 
 testing.run_module(__name__, __file__)

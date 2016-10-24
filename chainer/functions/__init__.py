@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """Collection of :class:`~chainer.Function` implementations."""
 
 from chainer.functions.activation import clipped_relu
@@ -82,6 +85,7 @@ from chainer.functions.math import minimum
 from chainer.functions.math import minmax
 from chainer.functions.math import scale
 from chainer.functions.math import sqrt
+from chainer.functions.math import squared_difference
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -295,6 +299,7 @@ Sinh = hyperbolic.Sinh
 sinh = hyperbolic.sinh
 Sqrt = sqrt.Sqrt
 sqrt = sqrt.sqrt
+squared_difference = squared_difference.squared_difference
 Sum = sum.Sum
 sum = sum.sum
 Tan = trigonometric.Tan
