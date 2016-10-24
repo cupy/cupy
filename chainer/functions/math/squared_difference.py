@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy
-
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -29,9 +27,8 @@ class SquaredDifference(function.Function):
     def backward(self, inputs, grads):
         x1, x2 = inputs
         gy, = grads
-        gx1 = gy * self.difference * 2
-        gx2 = gy * self.difference * 2
-        return gx1, gx2
+        gx = gy * self.difference * 2
+        return gx, gx
 
 def squared_difference(x1, x2):
     """Squared difference of input variables.
@@ -41,7 +38,6 @@ def squared_difference(x1, x2):
         x2 (~chainer.Variable): Input variables to be compared.
 
     Returns:
-        ~chainer.Variable: (x1 - x2)(x1 - x2) element-wise. Output variable. 
+        ~chainer.Variable: (x1 - x2)(x1 - x2) element-wise.
     """
     return SquaredDifference()(x1, x2)
-
