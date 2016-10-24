@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """Collection of :class:`~chainer.Function` implementations."""
 
 from chainer.functions.activation import clipped_relu
