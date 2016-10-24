@@ -407,7 +407,7 @@ class ReductionKernel(object):
         axis, raxis = _get_axis(axis, len(broad_shape))
         out_shape = _get_out_shape(broad_shape, axis, raxis, keepdims)
         out_args = _get_out_args_with_params(
-            out_args, out_types, out_shape, self.out_params)
+            out_args, out_types, out_shape, self.out_params, None)
         if 0 in out_shape:
             return out_args[0]
 

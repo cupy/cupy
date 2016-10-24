@@ -365,12 +365,13 @@ cdef list _get_out_args(list out_args, tuple out_types, tuple out_shape,
 
 
 cdef list _get_out_args_with_params(
-        list out_args, tuple out_types, tuple out_shape, tuple out_params):
+        list out_args, tuple out_types, tuple out_shape, tuple out_params, size):
     cdef ParameterInfo p
     if not out_args:
         for p in out_params:
             if p.raw:
-                raise ValueError('Output array size is Undecided')
+                if size is not None:
+                    raise ValueError('Output array size is Undecided')
         return [ndarray(out_shape, t) for t in out_types]
 
     for i in range(len(out_params)):
@@ -518,15 +519,15 @@ cdef class ElementwiseKernel:
             self.in_params, self.out_params,
             in_ndarray_types, out_ndarray_types)
 
+        if size is not None:
+            shape = size,
+
         out_args = _get_out_args_with_params(
-            out_args, out_types, shape, self.out_params)
+            out_args, out_types, shape, self.out_params, size)
         if self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
-
-        if size is not None:
-            shape = size,
 
         if 0 in shape:
             return ret
