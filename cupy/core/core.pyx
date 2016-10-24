@@ -2075,9 +2075,7 @@ cpdef ndarray matmul(ndarray a, ndarray b):
 
     out_shape = (*broatcast_pre_shape, *a_part_outshape, *b_part_outshape)
 
-    # .reshape(-1, a.shape[-2], a.shape[-1])
     a = ascontiguousarray(a, dtype=dtype)
-    # .reshape(-1, b.shape[-2], b.shape[-1])
     b = ascontiguousarray(b, dtype=dtype)
 
     # broadcast
