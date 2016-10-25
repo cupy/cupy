@@ -27,7 +27,7 @@ class TestSquaredDifference(unittest.TestCase):
         x2 = chainer.Variable(x2_data)
         y = functions.squared_difference(x1, x2)
         y_expect = (self.x1 - self.x2) ** 2
-        testing.assert_allclose(y.data, y_expect)
+        testing.assert_allclose(y.data, y_expect, atol=1e-3)
         self.assertEqual(y.data.shape, self.in_shape)
         self.assertEqual(y.data.dtype, self.dtype)
 
@@ -45,7 +45,7 @@ class TestSquaredDifference(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x1, self.x2, self.g, atol=5e-2, rtol=5e-2)
+        self.check_backward(self.x1, self.x2, self.g, atol=1e-2, rtol=1e-2)
 
     @attr.gpu
     @condition.retry(3)
