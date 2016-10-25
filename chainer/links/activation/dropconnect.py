@@ -8,7 +8,7 @@ from chainer import link
 
 class Dropconnect(link.Link):
 
-    """Linear layer using dropconnect.
+    """Fully-connected dropconnect layer.
 
     Args:
         in_size (int): Dimension of input vectors. If None, parameter
@@ -16,65 +16,55 @@ class Dropconnect(link.Link):
             at which time the size will be determined.
         out_size (int): Dimension of output vectors.
         wscale (float): Scaling factor of the weight matrix.
-        bias (float): Initial bias value.
-        nobias (bool): If ``True``, then this function does not use the bias.
-        initialW (2-D array): Initial weight value. If ``None``, then this
-            function uses to initialize ``wscale``.
-            May also be a callable that takes ``numpy.ndarray`` or
-            ``cupy.ndarray`` and edits its value.
-        initial_bias (1-D array): Initial bias value. If ``None``, then this
-            function uses to initialize ``bias``.
-            May also be a callable that takes ``numpy.ndarray`` or
-            ``cupy.ndarray`` and edits its value.
-
-    .. seealso:: :func:`~chainer.functions.dropconnect`
+        initialW (3-D array or None): Initial weight value.
+            If ``None``, then this function uses ``wscale`` to initialize.
+        initial_bias (2-D array, float or None): Initial bias value.
+            If it is float, initial bias is filled with this value.
+            If it is ``None``, bias is omitted.
 
     Attributes:
         W (~chainer.Variable): Weight parameter.
         b (~chainer.Variable): Bias parameter.
 
+    .. seealso:: :func:`~chainer.functions.dropconnect`
+
+    .. seealso::
+        Li, W., Matthew Z., Sixin Z., Yann L., Rob F. (2013).
+        Regularization of Neural Network using DropConnect.
+        International Conference on Machine Learning.
+        `URL <http://cs.nyu.edu/~wanli/dropc/>`_
     """
 
-    def __init__(self, in_size, out_size, wscale=1, bias=0, nobias=False,
+    def __init__(self, in_size, out_size, wscale=1,
                  ratio=.5, initialW=None, initial_bias=None):
         super(Dropconnect, self).__init__()
 
-        # For backward compatibility
-        self.initialW = initialW
-        self.wscale = wscale
-
         self.out_size = out_size
         self.ratio = ratio
-        # For backward compatibility, the scale of weights is proportional to
-        # the square root of wscale.
+
         self._W_initializer = initializers._get_initializer(
             initialW, math.sqrt(wscale))
 
         if in_size is None:
             self.add_uninitialized_param('W')
         else:
-            self._initialize_params(in_size)
+            self.add_param('W', (self.out_size, in_size),
+                           initializer=self._W_initializer)
 
-        if nobias:
-            self.b = None
-        else:
-            if initial_bias is None:
-                initial_bias = bias
-            bias_initializer = initializers._get_initializer(initial_bias)
-            self.add_param('b', out_size, initializer=bias_initializer)
-
-    def _initialize_params(self, in_size):
-        self.add_param('W', (self.out_size, in_size),
-                       initializer=self._W_initializer)
+        if initial_bias is None:
+            initial_bias = bias
+        bias_initializer = initializers._get_initializer(initial_bias)
+        self.add_param('b', out_size, initializer=bias_initializer)
 
     def __call__(self, x, train=True):
         """Applies the dropconnect layer.
 
         Args:
-            x (~chainer.Variable): Batch of input vectors.
+            x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+            Batch of input vectors.
 
         Returns:
-            ~chainer.Variable: Output of the linear layer.
+            ~chainer.Variable: Output of the dropconnect layer.
 
         """
         if self.has_uninitialized_params:

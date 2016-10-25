@@ -2,6 +2,7 @@
 
 from chainer.links.activation import maxout
 from chainer.links.activation import prelu
+from chainer.links.activation import dropconnect
 from chainer.links.connection import bias
 from chainer.links.connection import bilinear
 from chainer.links.connection import convolution_2d
@@ -30,6 +31,7 @@ from chainer.links.normalization import batch_normalization
 
 Maxout = maxout.Maxout
 PReLU = prelu.PReLU
+Dropconnect = dropconnect.Dropconnect
 
 Bias = bias.Bias
 Bilinear = bilinear.Bilinear

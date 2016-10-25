@@ -129,6 +129,11 @@ CRF1d
 .. autoclass:: CRF1d
    :members:
 
+Dropconnect
+~~~~~~~~~~~
+.. autoclass:: Dropconnect
+   :members:
+
 PReLU
 ~~~~~
 .. autoclass:: PReLU

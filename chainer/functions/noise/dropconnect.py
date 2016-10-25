@@ -1,3 +1,6 @@
+import numpy
+
+from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
 
@@ -8,9 +11,9 @@ def _as_mat(x):
     return x.reshape(len(x), -1)
 
 
-class DropConnect(function.Function):
+class Dropconnect(function.Function):
 
-    """Linear unit using dropconnect regularization."""
+    """Linear unit regularized by dropconnect."""
 
     def __init__(self, dropconnect_ratio):
         self.dropconnect_ratio = dropconnect_ratio
@@ -68,7 +71,7 @@ class DropConnect(function.Function):
 
 
 def dropconnect(x, W, b=None, ratio=.5, train=True):
-    """Linear function using dropconnect.
+    """Linear unit regularized by dropconnect.
 
     Dropconnect drops weight matrix elements randomly with probability ``ratio``
     and scales the remaining elements by factor ``1 / (1 - ratio)``.
@@ -80,7 +83,8 @@ def dropconnect(x, W, b=None, ratio=.5, train=True):
     ``ratio``.
 
     Args:
-        x (~chainer.Variable): Input variable. Its first dimension is assumed
+        x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+            Input variable. Its first dimension is assumed
             to be the *minibatch dimension*. The other dimensions are treated
             as concatenated one dimension whose size must be ``N``.
         W (~chainer.Variable): Weight variable of shape ``(M, N)``.
@@ -95,6 +99,6 @@ def dropconnect(x, W, b=None, ratio=.5, train=True):
     if not train:
         ratio = 0
     if b is None:
-        return DropConnect(ratio)(x, W)
+        return Dropconnect(ratio)(x, W)
     else:
-        return DropConnect(ratio)(x, W, b)
+        return Dropconnect(ratio)(x, W, b)
