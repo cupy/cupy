@@ -53,9 +53,9 @@ class Squeeze(function.Function):
             axis.sort()
             axis = tuple(axis)
 
-        shape = grads[0].shape
+        shape = list(grads[0].shape)
         for x in axis:          # axis needs to be sorted
-            shape = shape[0:x] + (1,) + shape[x:]
+            shape.insert(x, 1)
         return grads[0].reshape(shape),
 
 
