@@ -12,8 +12,8 @@ from chainer.testing import condition
 
 
 @testing.parameterize(*testing.product({
-    'in_shape': [(5, 2)],
-    'dtype': [numpy.float16, numpy.float32, numpy.float32],
+    'in_shape': [(5, 2), ()],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64],
 }))
 class TestSquaredDifference(unittest.TestCase):
 
@@ -26,6 +26,8 @@ class TestSquaredDifference(unittest.TestCase):
         x1 = chainer.Variable(x1_data)
         x2 = chainer.Variable(x2_data)
         y = functions.squared_difference(x1, x2)
+        y_expect = (self.x1 - self.x2) ** 2
+        testing.assert_allclose(y.data, y_expect)
         self.assertEqual(y.data.shape, self.in_shape)
         self.assertEqual(y.data.dtype, self.dtype)
 
@@ -39,7 +41,7 @@ class TestSquaredDifference(unittest.TestCase):
     def check_backward(self, x1, x2, g_data):
         x_data = (x1, x2)
         gradient_check.check_backward(
-            functions.SquaredDifference(), x_data, g_data, dtype=numpy.float64, atol=1e-2, rtol=1e-2)
+            functions.SquaredDifference(), x_data, g_data, dtype=self.dtype, atol=1e-2, rtol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
