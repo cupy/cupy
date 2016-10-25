@@ -31,6 +31,7 @@ def fill_diagonal(a, val, wrap=False):
     array([[5, 0, 0],
            [0, 5, 0],
            [0, 0, 5]])
+
      .. seealso:: :func:`numpy.fill_diagonal`
     """
     # The followings are imported from the original numpy

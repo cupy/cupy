@@ -68,10 +68,10 @@ Chainer had `chainer-cuda-deps` module to enable CUDA in previous version.
 Recent version (>=1.3) does not require this module.
 So **you do not have to install** `chainer-cuda-deps`.
 
-If you want to enable cuDNN, add a directory containing `cudnn.h` to `CPATH`, and add a directory containing `libcudnn.so` to `LIBRARY_PATH` and `LD_LIBRARY_PATH`:
+If you want to enable cuDNN, add a directory containing `cudnn.h` to `CFLAGS`, and add a directory containing `libcudnn.so` to `LDFLAGS` and `LD_LIBRARY_PATH`:
 ```
-export CPATH=/path/to/cudnn/include:$CPATH
-export LIBRARY_PATH=/path/to/cudnn/lib:$LIBRARY_PATH
+export CFLAGS=-I/path/to/cudnn/include
+export LDFLAGS=-L/path/to/cudnn/lib
 export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 ```
 Do not forget to restart your terminal session (or `source` it) to enable these changes.
