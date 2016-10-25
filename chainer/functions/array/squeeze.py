@@ -36,10 +36,7 @@ class Squeeze(function.Function):
 
         if self.axis is not None:
             for x in self.axis:
-                if x >= 0:
-                    type_check.expect(x_type.ndim > x)
-                else:
-                    type_check.expect(x_type.ndim > -x - 1)
+                type_check.expect(-x_type.ndim <= x < x_type.ndim)
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
