@@ -25,7 +25,7 @@ class SquaredDifference(function.Function):
     def backward(self, inputs, grads):
         x1, x2 = inputs
         gy, = grads
-        gx = gy * self.difference * 2
+        gx = gy * 2 * self.difference
         return utils.force_array(gx, dtype=x1.dtype), utils.force_array(-gx, dtype=x1.dtype)
 
 def squared_difference(x1, x2):
