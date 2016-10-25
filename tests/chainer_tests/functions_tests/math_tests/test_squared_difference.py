@@ -42,7 +42,7 @@ class TestSquaredDifference(unittest.TestCase):
         x_data = (x1, x2)
         gradient_check.check_backward(
             functions.SquaredDifference(),
-            x_data, g_data, dtype=numpy.float32, atol=1e-2, rtol=1e-2)
+            x_data, g_data, dtype=numpy.float64, atol=1e-2, rtol=2e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
