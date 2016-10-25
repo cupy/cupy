@@ -217,6 +217,7 @@ class Link(object):
 
         """
         class uninitialized_param(object):
+
             def __init__(self):
                 self._cleared = False
                 self._zeroed = False
