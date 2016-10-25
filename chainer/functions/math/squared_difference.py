@@ -20,14 +20,13 @@ class SquaredDifference(function.Function):
         x1, x2 = inputs
         self.difference = x1 - x2
         y = xp.square(self.difference)
-        return utils.force_array(y),
+        return utils.force_array(y, dtype=x1.dtype),
 
     def backward(self, inputs, grads):
         x1, x2 = inputs
         gy, = grads
         gx = gy * self.difference * 2
-        gx = utils.force_array(gx)
-        return gx, -gx
+        return utils.force_array(gx, dtype=x1.dtype), utils.force_array(-gx, dtype=x1.dtype)
 
 def squared_difference(x1, x2):
     """Squared difference of input variables.
