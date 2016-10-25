@@ -38,19 +38,19 @@ class TestSquaredDifference(unittest.TestCase):
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2))
 
-    def check_backward(self, x1, x2, g_data, atol, rtol):
+    def check_backward(self, x1, x2, g_data):
         x_data = (x1, x2)
         gradient_check.check_backward(
-            functions.SquaredDifference(), x_data, g_data, dtype=numpy.float64, atol=atol, rtol=rtol)
+            functions.SquaredDifference(), x_data, g_data, dtype=numpy.float32, atol=1e-2, rtol=1e-2)
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x1, self.x2, self.g, atol=1e-2, rtol=1e-2)
+        self.check_backward(self.x1, self.x2, self.g)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2), cuda.to_gpu(self.g), atol=1e-2, rtol=1e-2)
+        self.check_backward(cuda.to_gpu(self.x1), cuda.to_gpu(self.x2), cuda.to_gpu(self.g))
 
 
 testing.run_module(__name__, __file__)
