@@ -1997,8 +1997,8 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
 
 
 cpdef ndarray _get_all_addresses(size_t start_adr,
-                                 vector.vector[size_t] shape,
-                                 vector.vector[size_t] strides):
+                                 vector.vector[size_t]& shape,
+                                 vector.vector[size_t]& strides):
     idx = numpy.array([start_adr])
     for sh_, st_ in zip(shape, strides):
         idx = (idx[:, None] + (numpy.arange(sh_) * st_)[None, :]).ravel()
