@@ -26,7 +26,10 @@ class SquaredDifference(function.Function):
         x1, x2 = inputs
         gy, = grads
         gx = gy * 2 * self.difference
-        return utils.force_array(gx, dtype=x1.dtype), utils.force_array(-gx, dtype=x1.dtype)
+        gx = utils.force_array(gx, dtype=x1.dtype)
+        gx_minus = utils.force_array(-gx, dtype=x1.dtype)
+        return gx, gx_minus
+
 
 def squared_difference(x1, x2):
     """Squared difference of input variables.
