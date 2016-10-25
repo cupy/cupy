@@ -150,7 +150,7 @@ else:
 # Global states
 # ------------------------------------------------------------------------------
 def get_device(*args):
-    """Gets the device from an ID integer or an array object.
+    """Gets the device from a device object, an ID integer or an array object.
 
     This is a convenient utility to select a correct device if the type of
     ``arg`` is unknown (i.e., one can use this function on arrays that may be
@@ -158,10 +158,11 @@ def get_device(*args):
     protocol of Python for the *with* statement.
 
     Args:
-        args: Values to specify a GPU device. The first integer or
-            :class:`cupy.ndarray` object is used to select a device. If it is
-            an integer, the corresponding device is returned. If it is a CuPy
-            array, the device on which this array reside is returned. If any
+        args: Values to specify a GPU device. The first device object, integer
+            or :class:`cupy.ndarray` object is used to select a device.
+            If it is a device object, it is returned. If it is an integer,
+            the corresponding device is returned. If it is a CuPy array,
+            the device on which this array reside is returned. If any
             arguments are neither integers nor CuPy arrays, a dummy device
             object representing CPU is returned.
 
@@ -180,6 +181,8 @@ def get_device(*args):
             if arg.device is None:
                 continue
             return arg.device
+        if available and isinstance(arg, Device):
+            return arg
 
     return DummyDevice
 

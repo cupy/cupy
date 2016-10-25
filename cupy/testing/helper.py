@@ -136,6 +136,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     For example, this test case checks ``numpy.zeros`` and ``cupy.zeros``
     should return same value.
 
+    >>> import unittest
     >>> from cupy import testing
     ... @testing.gpu
     ... class TestFoo(unittest.TestCase):
@@ -445,6 +446,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     :class:`cupy.ndarray` for various dtypes.
     ``dtype`` is an argument inserted by the decorator.
 
+    >>> import unittest
     >>> from cupy import testing
     >>> @testing.gpu
     ... class TestNpz(unittest.TestCase):
@@ -461,6 +463,7 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False):
     :func:`cupy.testing.numpy_cupy_allclose`.
     The following is such an example.
 
+    >>> import unittest
     >>> from cupy import testing
     >>> @testing.gpu
     ... class TestMean(unittest.TestCase):

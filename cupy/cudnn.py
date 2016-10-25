@@ -235,6 +235,11 @@ def create_dropout_descriptor(
     return desc
 
 
+def set_dropout_descriptor(desc, handle, dropout):
+    # When the fourth argument is NULL, random state is not updated.
+    cudnn.setDropoutDescriptor(desc.value, handle, dropout, 0, 0, 0)
+
+
 def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type):
     desc = Descriptor(cudnn.createRNNDescriptor(),

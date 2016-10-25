@@ -41,6 +41,7 @@ def ix_(*args):
     >>> ixgrid
     (array([[0],
            [1]]), array([[2, 4]]))
+
      .. seealso:: :func:`numpy.ix_`
 
     """

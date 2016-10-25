@@ -1969,7 +1969,7 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         m = b.size // k
         n = a.size // k
     else:
-        # When k==0, the function must returns a matrix filled with zero
+        # When k==0, the function must return a matrix filled with zero
         # like NumPy.
         m = 0
         n = 0
@@ -2348,8 +2348,7 @@ absolute = create_ufunc(
     ''')
 
 
-# Fixed version of sqrt
-sqrt_fixed = create_ufunc(
+sqrt = create_ufunc(
     'cupy_sqrt',
     ('e->e', 'f->f', 'd->d'),
     'out0 = sqrt(in0)')
@@ -2392,7 +2391,7 @@ cpdef ndarray _var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
 
 cpdef _std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     ret = _var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
-    return sqrt_fixed(ret, dtype=dtype, out=out)
+    return sqrt(ret, dtype=dtype, out=out)
 
 
 cdef _var_core = ReductionKernel(

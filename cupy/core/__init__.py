@@ -87,5 +87,5 @@ true_divide = core.true_divide
 floor_divide = core.floor_divide
 remainder = core.remainder
 
-sqrt_fixed = core.sqrt_fixed
+sqrt = core.sqrt
 absolute = core.absolute

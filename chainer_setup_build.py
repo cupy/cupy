@@ -145,8 +145,8 @@ def make_extensions(options, compiler):
     if sys.platform == 'darwin':
         args = settings.setdefault('extra_link_args', [])
         args.append(
-            '-Wl,' + ','.join('-rpath,' + path
-                              for path in settings['library_dirs']))
+            '-Wl,' + ','.join('-rpath,' + p
+                              for p in settings['library_dirs']))
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
 
@@ -168,7 +168,7 @@ def make_extensions(options, compiler):
                 utils.print_warning(
                     'Include files not found: %s' % module['include'],
                     'Skip installing %s support' % module['name'],
-                    'Check your CPATH environment variable')
+                    'Check your CFLAGS environment variable')
                 continue
 
             if not check_library(compiler,
@@ -177,7 +177,7 @@ def make_extensions(options, compiler):
                 utils.print_warning(
                     'Cannot link libraries: %s' % module['libraries'],
                     'Skip installing %s support' % module['name'],
-                    'Check your LIBRARY_PATH environment variable')
+                    'Check your LDFLAGS environment variable')
                 continue
 
             if 'check_method' in module and \

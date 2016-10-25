@@ -242,8 +242,9 @@ cpdef memcpyPeer(size_t dst, int dstDevice, size_t src, int srcDevice,
 
 cpdef memcpyPeerAsync(size_t dst, int dstDevice, size_t src, int srcDevice,
                       size_t size, size_t stream):
-    status = cudaMemcpyPeerAsync(<void*>dst, dstDevice, <void*>src, srcDevice,
-                                 size, <driver.Stream> stream)
+    with nogil:
+        status = cudaMemcpyPeerAsync(<void*>dst, dstDevice, <void*>src,
+                                     srcDevice, size, <driver.Stream> stream)
     check_status(status)
 
 
@@ -254,7 +255,9 @@ cpdef memset(size_t ptr, int value, size_t size):
 
 
 cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream):
-    status = cudaMemsetAsync(<void*>ptr, value, size, <driver.Stream> stream)
+    with nogil:
+        status = cudaMemsetAsync(<void*>ptr, value, size,
+                                 <driver.Stream> stream)
     check_status(status)
 
 
