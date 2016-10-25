@@ -89,6 +89,7 @@ from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
 from chainer.functions.noise import gaussian
+from chainer.functions.noise import zoneout
 from chainer.functions.normalization import batch_normalization
 from chainer.functions.normalization import l2_normalization
 from chainer.functions.normalization import local_response_normalization
@@ -312,6 +313,8 @@ Dropout = dropout.Dropout
 dropout = dropout.dropout
 Gaussian = gaussian.Gaussian
 gaussian = gaussian.gaussian
+Zoneout = zoneout.Zoneout
+zoneout = zoneout.zoneout
 
 fixed_batch_normalization = batch_normalization.fixed_batch_normalization
 batch_normalization = batch_normalization.batch_normalization
