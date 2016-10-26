@@ -7,3 +7,5 @@ from cupy.linalg import eigenvalue  # NOQA
 from cupy.linalg import norms  # NOQA
 from cupy.linalg import product  # NOQA
 from cupy.linalg import solve  # NOQA
+
+norm = norms.norm

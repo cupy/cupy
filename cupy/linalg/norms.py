@@ -1,4 +1,117 @@
-# TODO(okuta): Implement norm
+import numpy
+
+import cupy
+
+
+def norm(x, ord=None, axis=None, keepdims=False):
+    """Returns one of matrix norms specified by ``ord`` parameter.
+
+    Complex valued matrices and vectors are not supported.
+    See numpy.linalg.norm for more detail.
+
+    Args:
+        x (cupy.ndarray): Array to take norm. If ``axis`` is None,
+            ``x`` must be 1-D or 2-D.
+        ord (non-zero int, inf, -inf, 'fro'): Norm type.
+        axis (int, 2-tuple of ints, None): 1-D or 2-D norm is cumputed over
+            ``axis``.
+        keepdims (bool): If this is set True, the axes which are normed over
+            are left.
+
+    Returns:
+        cupy.ndarray
+
+    """
+    if not issubclass(x.dtype.type, (numpy.inexact, numpy.object_)):
+        x = x.astype(float)
+
+    # Immediately handle some default, simple, fast, and common cases.
+    if axis is None:
+        ndim = x.ndim
+        if ((ord is None) or (ord in ('f', 'fro') and ndim == 2) or
+           (ord == 2 and ndim == 1)):
+
+            x = x.ravel()
+            sqnorm = cupy.sum(x**2)
+            ret = cupy.sqrt(sqnorm)
+            if keepdims:
+                ret = ret.reshape(ndim*[1])
+            return ret
+
+    # Normalize the `axis` argument to a tuple.
+    nd = x.ndim
+    if axis is None:
+        axis = tuple(range(nd))
+    elif not isinstance(axis, tuple):
+        try:
+            axis = int(axis)
+        except Exception:
+            raise TypeError(
+                "'axis' must be None, an integer or a tuple of integers")
+        axis = (axis,)
+
+    if len(axis) == 1:
+        if ord == numpy.Inf:
+            return abs(x).max(axis=axis, keepdims=keepdims)
+        elif ord == -numpy.Inf:
+            return abs(x).min(axis=axis, keepdims=keepdims)
+        elif ord == 0:
+            # Zero norm
+            return (x != 0).astype(x.dtype).sum(axis=axis, keepdims=keepdims)
+        elif ord == 1:
+            # special case for speedup
+            return abs(x).sum(axis=axis, keepdims=keepdims)
+        elif ord is None or ord == 2:
+            # special case for speedup
+            s = x**2
+            return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
+        else:
+            try:
+                ord + 1
+            except TypeError:
+                raise ValueError("Invalid norm order for vectors.")
+            absx = abs(x)
+            absx **= ord
+            return absx.sum(axis=axis, keepdims=keepdims) ** (1.0 / ord)
+    elif len(axis) == 2:
+        row_axis, col_axis = axis
+        if row_axis < 0:
+            row_axis += nd
+        if col_axis < 0:
+            col_axis += nd
+        if not (0 <= row_axis < nd and 0 <= col_axis < nd):
+            raise ValueError('Invalid axis %r for an array with shape %r' %
+                             (axis, x.shape))
+        if row_axis == col_axis:
+            raise ValueError('Duplicate axes given.')
+        if ord == 1:
+            if col_axis > row_axis:
+                col_axis -= 1
+            ret = abs(x).sum(axis=row_axis).max(axis=col_axis)
+        elif ord == numpy.Inf:
+            if row_axis > col_axis:
+                row_axis -= 1
+            ret = abs(x).sum(axis=col_axis).max(axis=row_axis)
+        elif ord == -1:
+            if col_axis > row_axis:
+                col_axis -= 1
+            ret = abs(x).sum(axis=row_axis).min(axis=col_axis)
+        elif ord == -numpy.Inf:
+            if row_axis > col_axis:
+                row_axis -= 1
+            ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
+        elif ord in [None, 'fro', 'f']:
+            ret = cupy.sqrt((x**2).sum(axis=axis))
+        else:
+            raise ValueError("Invalid norm order for matrices.")
+        if keepdims:
+            ret_shape = list(x.shape)
+            ret_shape[axis[0]] = 1
+            ret_shape[axis[1]] = 1
+            ret = ret.reshape(ret_shape)
+        return ret
+    else:
+        raise ValueError("Improper number of dimensions to norm.")
 
 
 # TODO(okuta): Implement cond
