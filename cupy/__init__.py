@@ -229,7 +229,7 @@ inner = linalg.product.inner
 outer = linalg.product.outer
 tensordot = linalg.product.tensordot
 
-trace = linalg.norm.trace
+trace = linalg.norms.trace
 
 # -----------------------------------------------------------------------------
 # Logic functions
