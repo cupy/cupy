@@ -54,7 +54,6 @@ class Squeeze(function.Function):
             axis = self.axis
             axis = [x + inputs[0].ndim if x < 0 else x for x in axis]
             axis.sort()
-            axis = tuple(axis)
 
         shape = list(grads[0].shape)
         for x in axis:          # axis needs to be sorted
