@@ -217,3 +217,34 @@ class TestNumPyCuPyRaise(unittest.TestCase, NumPyCuPyDecoratorBase):
         decorated_func = decorator(cupy_error)
         with self.assertRaises(AssertionError):
             decorated_func(self)
+
+
+class Testasdf(unittest.TestCase):
+
+    @helper.for_unsigned_dtypes('dtype1')
+    @helper.for_signed_dtypes('dtype2')
+    @helper.numpy_cupy_allclose()
+    def correct_failure(self, xp, dtype1, dtype2):
+        if xp == numpy:
+            return xp.array(-1, dtype=numpy.float32)
+        else:
+            return xp.array(-2, dtype=numpy.float32)
+
+    def test_correct_failure(self):
+        with numpy.testing.assert_raises_regex(AssertionError,
+                                               'mismatch 100.0%'):
+            self.correct_failure()
+
+    @helper.for_unsigned_dtypes('dtype1')
+    @helper.for_signed_dtypes('dtype2')
+    @helper.numpy_cupy_allclose()
+    def test_correct_success(self, xp, dtype1, dtype2):
+        # Behavior of assigning a negative value to an unsigned integer
+        # variable is undefined.
+        # nVidia GPUs and Intel CPUs behave differently.
+        # To avoid this difference, we need to ignore dimensions whose
+        # values are negative.
+        if xp == numpy:
+            return xp.array(-1, dtype=dtype1)
+        else:
+            return xp.array(-2, dtype=dtype1)

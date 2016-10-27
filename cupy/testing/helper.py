@@ -101,26 +101,18 @@ def _make_decorator(check_func, name, type_check, accept_error):
             # nVidia GPUs and Intel CPUs behave differently.
             # To avoid this difference, we need to ignore dimensions whose
             # values are negative.
-            # skip = False
-            if _contains_signed_and_unsigned(kw):
+            skip = False
+            if _contains_signed_and_unsigned(kw) and \
+                    cupy_result.dtype in _unsigned_dtypes:
                 inds = _make_positive_indices(self, impl, args, kw)
-                # if cupy_result.shape == ():
-                #     skip = inds[0].size == 0
-                # else:
-                #     cupy_result = cupy.asnumpy(cupy_result)[inds]
-                #     numpy_result = cupy.asnumpy(numpy_result)[inds]
-                try:
+                if cupy_result.shape == ():
+                    skip = inds[0].size == 0
+                else:
                     cupy_result = cupy.asnumpy(cupy_result)[inds]
                     numpy_result = cupy.asnumpy(numpy_result)[inds]
-                except IndexError:
-                    # inds does not work with scalars
-                    cupy_result = cupy.asnumpy(cupy_result)
-                    numpy_result = cupy.asnumpy(numpy_result)
- 
-          check_func(cupy_result, numpy_result)
- 
-            # if not skip:
-            #     check_func(cupy_result, numpy_result)
+
+            if not skip:
+                check_func(cupy_result, numpy_result)
             if type_check:
                 self.assertEqual(cupy_result.dtype, numpy_result.dtype)
         return test_func
