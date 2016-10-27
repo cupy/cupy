@@ -30,6 +30,7 @@ from chainer.functions.array import rollaxis
 from chainer.functions.array import select_item
 from chainer.functions.array import separate
 from chainer.functions.array import split_axis
+from chainer.functions.array import squeeze
 from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
 from chainer.functions.array import tile
@@ -176,6 +177,8 @@ select_item = select_item.select_item
 separate = separate.separate
 SplitAxis = split_axis.SplitAxis
 split_axis = split_axis.split_axis
+Squeeze = squeeze.Squeeze
+squeeze = squeeze.squeeze
 stack = stack.stack
 Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes

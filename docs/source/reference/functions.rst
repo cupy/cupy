@@ -155,6 +155,10 @@ split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
 
+squeeze
+~~~~~~~
+.. autofunction:: squeeze
+
 stack
 ~~~~~
 .. autofunction:: stack
