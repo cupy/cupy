@@ -219,7 +219,7 @@ class TestNumPyCuPyRaise(unittest.TestCase, NumPyCuPyDecoratorBase):
             decorated_func(self)
 
 
-class Testasdf(unittest.TestCase):
+class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
 
     @helper.for_unsigned_dtypes('dtype1')
     @helper.for_signed_dtypes('dtype2')
