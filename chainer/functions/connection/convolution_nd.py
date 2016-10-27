@@ -342,7 +342,7 @@ def convolution_nd(x, W, b=None, stride=1, pad=0, use_cudnn=True,
       than v3)
 
 
-    .. seealso:: :class:`ConvolutionND`, :func:`convolution_2d`
+    .. seealso:: :class:`~chainer.links.ConvolutionND`, :func:`convolution_2d`
     """
     ndim = len(x.shape[2:])
     func = ConvolutionND(ndim, stride, pad, use_cudnn, cover_all)

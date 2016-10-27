@@ -326,7 +326,7 @@ def convolution_2d(x, W, b=None, stride=1, pad=0, use_cudnn=True,
     If the bias vector is given, then it is added to all spatial locations of
     the output of convolution.
 
-    .. seealso:: :class:`Convolution2D`
+    .. seealso:: :class:`~chainer.links.Convolution2D`
 
     """
     func = Convolution2DFunction(
