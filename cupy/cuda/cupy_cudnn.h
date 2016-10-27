@@ -8,6 +8,8 @@
 #ifndef CUPY_NO_CUDA
 #include <cudnn.h>
 
+extern "C" {
+
 #if CUDNN_VERSION < 3000
 
 // ***_v3 functions are not declared in cuDNN v4.
@@ -392,8 +394,11 @@ cudnnStatus_t cudnnConvolutionBackwardData_v2(
 
 #endif // CUDNN_VERSION >= 5000
 
+} // extern "C"
+
 #else // #ifndef CUPY_NO_CUDA
 
+extern "C" {
 
 ///////////////////////////////////////////////////////////////////////////////
 // cuda.h
@@ -955,6 +960,7 @@ cudnnStatus_t cudnnRNNBackwardWeights(
     return 0;
 }
 
+} // extern "C"
 
 #endif // #ifndef CUPY_NO_CUDA
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDNN_H

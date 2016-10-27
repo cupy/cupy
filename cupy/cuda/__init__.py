@@ -36,6 +36,7 @@ def profile():
 
     >>> with cupy.cuda.profile():
     ...    # do something you want to measure
+    ...    pass
 
     """
     profiler.start()

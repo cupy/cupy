@@ -82,7 +82,7 @@ class StatelessLSTM(LSTMBase):
 
         """
         if self.upward.has_uninitialized_params:
-            in_size = x.size // len(x.data)
+            in_size = x.size // x.shape[0]
             self.upward._initialize_params(in_size)
             self._initialize_params()
 
@@ -216,7 +216,7 @@ class LSTM(LSTMBase):
 
         """
         if self.upward.has_uninitialized_params:
-            in_size = x.size // len(x.data)
+            in_size = x.size // x.shape[0]
             self.upward._initialize_params(in_size)
             self._initialize_params()
 
