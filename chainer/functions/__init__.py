@@ -99,6 +99,7 @@ from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
+from chainer.functions.subpixel import depth2space as depth2space_
 from chainer.functions.util import forget
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
@@ -359,3 +360,6 @@ Parameter = parameter.Parameter
 NegativeSampling = links_negative_sampling.NegativeSampling
 
 BatchNormalization = links_batch_normalization.BatchNormalization
+
+Depth2Space = depth2space_.Depth2Space
+depth2space = depth2space_.depth2space
