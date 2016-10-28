@@ -19,6 +19,10 @@ class TestDepth2Space(unittest.TestCase):
                                 .reshape(2, 8, 3, 2)
                                 .astype(numpy.float32)
                            )
+        self.rand_grad_array = (numpy.random.randn(96)
+                                .reshape(2, 2, 6, 4)
+                                .astype(numpy.float32)
+                                )
         self.space = numpy.array([[[[0.,  12.,   1.,  13.],
                                     [24.,  36.,  25.,  37.],
                                     [2.,  14.,   3.,  15.],
@@ -68,10 +72,10 @@ class TestDepth2Space(unittest.TestCase):
     def test_forward_gpu(self):
         self.check_forward(cuda.to_gpu(self.depth), cuda.to_gpu(self.space))
 
-    def check_backward(self, random_array):
+    def check_backward(self, random_array, random_grad_array):
         x = chainer.Variable(random_array)
         y = functions.depth2space(x, 2)
-        y.grad = numpy.random.randn(*y.data.shape).astype(numpy.float32)
+        y.grad = random_grad_array
         y.backward()
 
         def func():
@@ -82,12 +86,14 @@ class TestDepth2Space(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.rand_array)
+        self.check_backward(self.rand_array, self.rand_grad_array)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
-        self.check_backward(cuda.to_gpu(self.rand_array))
+        self.check_backward(cuda.to_gpu(self.rand_array),
+                            cuda.to_gpu(self.rand_grad_array)
+                            )
 
 
 testing.run_module(__name__, __file__)
