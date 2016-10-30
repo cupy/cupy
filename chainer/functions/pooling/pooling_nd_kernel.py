@@ -1,8 +1,6 @@
 import chainer
 from chainer.utils import conv_nd_kernel
 
-from chainer.utils.conv_nd_kernel import Writer
-
 
 class PoolingNDKernelForward(object):
 
@@ -110,7 +108,7 @@ class PoolingNDKernelForward(object):
         ), [])
 
         def _loop_main(main):
-            w = Writer()
+            w = conv_nd_kernel.Writer()
 
             # Loop openings.
             xs = conv_nd_kernel.vars('x', self.ndim)
@@ -259,7 +257,7 @@ class PoolingNDKernelBackward(object):
             aux, out_x0s, out_x1s, xs, self.outs, self.ks, self.ss), [])
 
         def _loop_main(main):
-            w = Writer()
+            w = conv_nd_kernel.Writer()
 
             # Loop openings.
             out_xs = conv_nd_kernel.vars('out_x', self.ndim)
