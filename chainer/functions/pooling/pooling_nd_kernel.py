@@ -1,7 +1,6 @@
 import chainer
 from chainer.utils import conv_nd_kernel
 
-from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
 
 
@@ -32,11 +31,11 @@ class PoolingNDKernelForward(object):
 
     def _generate(self, ndim):
         self.ndim = ndim
-        self.ds = vars('d', ndim)
-        self.outs = vars('out', ndim)
-        self.ks = vars('k', ndim)
-        self.ss = vars('s', ndim)
-        self.ps = vars('p', ndim)
+        self.ds = conv_nd_kernel.vars('d', ndim)
+        self.outs = conv_nd_kernel.vars('out', ndim)
+        self.ks = conv_nd_kernel.vars('k', ndim)
+        self.ss = conv_nd_kernel.vars('s', ndim)
+        self.ps = conv_nd_kernel.vars('p', ndim)
 
         in_params = self._in_params()
         out_params = self._out_params()
@@ -80,7 +79,7 @@ class PoolingNDKernelForward(object):
                     out_x, conv_nd_kernel.mulexp(tail), head)
             else:
                 return 'int {} = i % {};'.format(out_x, head)
-        out_xs = vars('out_x', self.ndim)
+        out_xs = conv_nd_kernel.vars('out_x', self.ndim)
         out_xs_decls = conv_nd_kernel._map(
             aux, out_xs, conv_nd_kernel.succ_sublists(self.outs))
         return out_xs_decls, out_xs
@@ -104,8 +103,8 @@ class PoolingNDKernelForward(object):
                 'int {} = max(0, {} * {} - {});'.format(in_x0, out, s, p),
                 'int {} = min({}, {} * {} + {} - {});'.format(
                     in_x1, d, out, s, k, p)]
-        in_x0s = vars('in_x0', self.ndim)
-        in_x1s = vars('in_x1', self.ndim)
+        in_x0s = conv_nd_kernel.vars('in_x0', self.ndim)
+        in_x1s = conv_nd_kernel.vars('in_x1', self.ndim)
         bounds = sum(conv_nd_kernel._map(
             aux, in_x0s, in_x1s, self.ds, out_xs, self.ks, self.ss, self.ps
         ), [])
@@ -114,8 +113,8 @@ class PoolingNDKernelForward(object):
             w = Writer()
 
             # Loop openings.
-            xs = vars('x', self.ndim)
-            offsets = vars('offset', self.ndim)
+            xs = conv_nd_kernel.vars('x', self.ndim)
+            offsets = conv_nd_kernel.vars('offset', self.ndim)
             ds1 = self.ds[1:] + [1]
             offsets1 = ['d_0 * c0'] + offsets[:-1]
             for (x, in_x0, in_x1, offset, offset1, d1) in zip(
@@ -181,11 +180,11 @@ class PoolingNDKernelBackward(object):
 
     def _generate(self, ndim):
         self.ndim = ndim
-        self.ds = vars('d', ndim)
-        self.outs = vars('out', ndim)
-        self.ks = vars('k', ndim)
-        self.ss = vars('s', ndim)
-        self.ps = vars('p', ndim)
+        self.ds = conv_nd_kernel.vars('d', ndim)
+        self.outs = conv_nd_kernel.vars('out', ndim)
+        self.ks = conv_nd_kernel.vars('k', ndim)
+        self.ss = conv_nd_kernel.vars('s', ndim)
+        self.ps = conv_nd_kernel.vars('p', ndim)
 
         in_params = self._in_params()
         out_params = self._out_params()
@@ -229,7 +228,7 @@ class PoolingNDKernelBackward(object):
                     x, conv_nd_kernel.mulexp(tail), head, p)
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
-        xs = vars('x', self.ndim)
+        xs = conv_nd_kernel.vars('x', self.ndim)
         xs_decls = conv_nd_kernel._map(
             aux, xs, conv_nd_kernel.succ_sublists(self.ds), self.ps)
         return xs_decls, xs
@@ -254,8 +253,8 @@ class PoolingNDKernelBackward(object):
                     out_x0, x, k, s, s),
                 'int {} = min({}, ({} + {}) / {});'.format(
                     out_x1, out, x, s, s)]
-        out_x0s = vars('out_x0', self.ndim)
-        out_x1s = vars('out_x1', self.ndim)
+        out_x0s = conv_nd_kernel.vars('out_x0', self.ndim)
+        out_x1s = conv_nd_kernel.vars('out_x1', self.ndim)
         bounds = sum(conv_nd_kernel._map(
             aux, out_x0s, out_x1s, xs, self.outs, self.ks, self.ss), [])
 
@@ -263,8 +262,8 @@ class PoolingNDKernelBackward(object):
             w = Writer()
 
             # Loop openings.
-            out_xs = vars('out_x', self.ndim)
-            offsets = vars('offset', self.ndim)
+            out_xs = conv_nd_kernel.vars('out_x', self.ndim)
+            offsets = conv_nd_kernel.vars('offset', self.ndim)
             outs1 = self.outs[1:] + [1]
             offsets1 = ['out_0 * c0'] + offsets[:-1]
             for (out_x, out_x0, out_x1, offset, offset1, out1) in zip(

@@ -1,7 +1,6 @@
 from chainer.functions.pooling import pooling_nd_kernel
 from chainer.utils import conv_nd_kernel
 
-from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
 
 
@@ -21,7 +20,7 @@ class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
         #     int argmax_1 = 0;
         def aux(argmax):
             return 'int {} = 0;'.format(argmax)
-        self.argmaxs = vars('argmax', self.ndim)
+        self.argmaxs = conv_nd_kernel.vars('argmax', self.ndim)
         argmax_decls = conv_nd_kernel._map(aux, self.argmaxs)
         return '\n'.join(['T maxval = (T)-INFINITY;'] + argmax_decls)
 
@@ -49,7 +48,7 @@ class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
         def aux(argmax_k, argmax, p, out_x, s):
             return 'int {} = {} + {} - {} * {};'.format(
                 argmax_k, argmax, p, out_x, s)
-        argmax_ks = vars('argmax_k', self.ndim)
+        argmax_ks = conv_nd_kernel.vars('argmax_k', self.ndim)
         argmax_k_decls = conv_nd_kernel._map(
             aux, argmax_ks, self.argmaxs, self.ps, out_xs, self.ss)
         indexes_set = 'indexes = {};'.format(
