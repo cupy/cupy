@@ -1,5 +1,6 @@
 import chainer
-from chainer.utils.conv_nd_kernel import _map
+from chainer.utils import conv_nd_kernel
+
 from chainer.utils.conv_nd_kernel import mulexp
 from chainer.utils.conv_nd_kernel import succ_sublists
 from chainer.utils.conv_nd_kernel import vars
@@ -58,7 +59,8 @@ class PoolingNDKernelForward(object):
         else:
             raws = []
         vars = self.ds + self.outs + self.ks + self.ss + self.ps
-        return ', '.join(['raw T in'] + raws + _map(aux, vars) + in_params)
+        return ', '.join(
+            ['raw T in'] + raws + conv_nd_kernel._map(aux, vars) + in_params)
 
     def _out_params(self):
         # T out, ...
@@ -81,7 +83,8 @@ class PoolingNDKernelForward(object):
             else:
                 return 'int {} = i % {};'.format(out_x, head)
         out_xs = vars('out_x', self.ndim)
-        out_xs_decls = _map(aux, out_xs, succ_sublists(self.outs))
+        out_xs_decls = conv_nd_kernel._map(
+            aux, out_xs, succ_sublists(self.outs))
         return out_xs_decls, out_xs
 
     def _compile_loop(self, out_xs):
@@ -105,7 +108,7 @@ class PoolingNDKernelForward(object):
                     in_x1, d, out, s, k, p)]
         in_x0s = vars('in_x0', self.ndim)
         in_x1s = vars('in_x1', self.ndim)
-        bounds = sum(_map(
+        bounds = sum(conv_nd_kernel._map(
             aux, in_x0s, in_x1s, self.ds, out_xs, self.ks, self.ss, self.ps
         ), [])
 
@@ -205,7 +208,8 @@ class PoolingNDKernelBackward(object):
         else:
             raws = []
         vars = self.ds + self.outs + self.ks + self.ss + self.ps
-        return ', '.join(['raw T gy'] + raws + _map(aux, vars) + in_params)
+        return ', '.join(
+            ['raw T gy'] + raws + conv_nd_kernel._map(aux, vars) + in_params)
 
     def _out_params(self):
         # T gx, ...
@@ -228,7 +232,8 @@ class PoolingNDKernelBackward(object):
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
         xs = vars('x', self.ndim)
-        xs_decls = _map(aux, xs, succ_sublists(self.ds), self.ps)
+        xs_decls = conv_nd_kernel._map(
+            aux, xs, succ_sublists(self.ds), self.ps)
         return xs_decls, xs
 
     def _compile_loop(self, xs):
@@ -253,7 +258,7 @@ class PoolingNDKernelBackward(object):
                     out_x1, out, x, s, s)]
         out_x0s = vars('out_x0', self.ndim)
         out_x1s = vars('out_x1', self.ndim)
-        bounds = sum(_map(
+        bounds = sum(conv_nd_kernel._map(
             aux, out_x0s, out_x1s, xs, self.outs, self.ks, self.ss), [])
 
         def _loop_main(main):
