@@ -95,22 +95,22 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         p2 = self.pool.malloc(2000)
         self.assertNotEqual(ptr1, p2.ptr)
 
-    def test_free_all_free(self):
+    def test_free_all_blocks(self):
         p1 = self.pool.malloc(1000)
         ptr1 = p1.ptr
         del p1
-        self.pool.free_all_free()
+        self.pool.free_all_blocks()
         p2 = self.pool.malloc(1000)
         self.assertNotEqual(ptr1, p2.ptr)
 
-    def test_free_all_free2(self):
+    def test_free_all_blocks2(self):
         mem = self.pool.malloc(1).mem
         self.assertIsInstance(mem, pinned_memory.PinnedMemory)
         self.assertIsInstance(mem, pinned_memory.PooledPinnedMemory)
         self.assertEqual(self.pool.n_free_blocks(), 0)
         mem.free()
         self.assertEqual(self.pool.n_free_blocks(), 1)
-        self.pool.free_all_free()
+        self.pool.free_all_blocks()
         self.assertEqual(self.pool.n_free_blocks(), 0)
 
     def test_zero_size_alloc(self):
@@ -123,11 +123,11 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         mem.free()
         mem.free()
 
-    def test_free_all_free_without_malloc(self):
+    def test_free_all_blocks_without_malloc(self):
         # call directly without malloc.
-        self.pool.free_all_free()
+        self.pool.free_all_blocks()
         self.assertEqual(self.pool.n_free_blocks(), 0)
 
     def test_n_free_blocks_without_malloc(self):
-        # call directly without malloc/free_all_free.
+        # call directly without malloc/free_all_blocks.
         self.assertEqual(self.pool.n_free_blocks(), 0)
