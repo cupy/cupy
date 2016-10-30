@@ -1,7 +1,6 @@
 from chainer.functions.pooling import pooling_nd_kernel
 from chainer.utils import conv_nd_kernel
 
-from chainer.utils.conv_nd_kernel import muladdexp
 from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
 
@@ -54,7 +53,7 @@ class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
         argmax_k_decls = conv_nd_kernel._map(
             aux, argmax_ks, self.argmaxs, self.ps, out_xs, self.ss)
         indexes_set = 'indexes = {};'.format(
-            muladdexp(self.ks[1:], argmax_ks[1:], argmax_ks[0]))
+            conv_nd_kernel.muladdexp(self.ks[1:], argmax_ks[1:], argmax_ks[0]))
         return '\n'.join(['out = maxval;'] + argmax_k_decls + [indexes_set])
 
 
@@ -83,7 +82,7 @@ class MaxPoolingNDKernelBackward(pooling_nd_kernel.PoolingNDKernelBackward):
             return '{} - {} * {}'.format(x, out_x, s)
         w = Writer()
         w.write('int kx = {};'.format(
-            muladdexp(self.ks, conv_nd_kernel._map(
+            conv_nd_kernel.muladdexp(self.ks, conv_nd_kernel._map(
                 aux, xs, out_xs, self.ss), '0')))
         w.write('if (indexes[{}] == kx) {{'.format(offset), 'inc')
         w.write('val = val + gy[{}];'.format(offset))
