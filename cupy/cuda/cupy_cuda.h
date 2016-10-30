@@ -3,6 +3,12 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_H
 #define INCLUDE_GUARD_CUPY_CUDA_H
 
+#ifdef __APPLE__
+// To avoid redefinition error of cudaDataType_t
+// https://github.com/pfnet/chainer/issues/1700
+#define __LIBRARY_TYPES_H__
+#endif
+
 #ifndef CUPY_NO_CUDA
 #include <cublas_v2.h>
 #include <cuda.h>
