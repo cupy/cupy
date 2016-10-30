@@ -1,7 +1,6 @@
 import chainer
 from chainer.utils import conv_nd_kernel
 
-from chainer.utils.conv_nd_kernel import mulexp
 from chainer.utils.conv_nd_kernel import succ_sublists
 from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
@@ -69,7 +68,7 @@ class PoolingNDKernelForward(object):
 
     def _compile_c0(self):
         # 2D: int c0 = i / (out_0 * out_1);
-        return ['int c0 = i / ({});'.format(mulexp(self.outs))]
+        return ['int c0 = i / ({});'.format(conv_nd_kernel.mulexp(self.outs))]
 
     def _compile_out_x(self):
         # 2D: int out_x_0 = i / (out_1) % out_0;
@@ -79,7 +78,7 @@ class PoolingNDKernelForward(object):
             tail = outs[1:]
             if tail:
                 return 'int {} = i / ({}) % {};'.format(
-                    out_x, mulexp(tail), head)
+                    out_x, conv_nd_kernel.mulexp(tail), head)
             else:
                 return 'int {} = i % {};'.format(out_x, head)
         out_xs = vars('out_x', self.ndim)
@@ -218,7 +217,7 @@ class PoolingNDKernelBackward(object):
 
     def _compile_c0(self):
         # 2D: int c0  = i / (d_0 * d_1);
-        return ['int c0  = i / ({});'.format(mulexp(self.ds))]
+        return ['int c0  = i / ({});'.format(conv_nd_kernel.mulexp(self.ds))]
 
     def _compile_x(self):
         # 2D: int x_0 = i / (d_1) % d_0 + p_0;
@@ -228,7 +227,7 @@ class PoolingNDKernelBackward(object):
             tail = ds[1:]
             if tail:
                 return 'int {} = i / ({}) % {} + {};'.format(
-                    x, mulexp(tail), head, p)
+                    x, conv_nd_kernel.mulexp(tail), head, p)
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
         xs = vars('x', self.ndim)
