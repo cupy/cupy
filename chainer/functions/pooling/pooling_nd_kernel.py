@@ -1,7 +1,6 @@
 import chainer
 from chainer.utils import conv_nd_kernel
 
-from chainer.utils.conv_nd_kernel import succ_sublists
 from chainer.utils.conv_nd_kernel import vars
 from chainer.utils.conv_nd_kernel import Writer
 
@@ -83,7 +82,7 @@ class PoolingNDKernelForward(object):
                 return 'int {} = i % {};'.format(out_x, head)
         out_xs = vars('out_x', self.ndim)
         out_xs_decls = conv_nd_kernel._map(
-            aux, out_xs, succ_sublists(self.outs))
+            aux, out_xs, conv_nd_kernel.succ_sublists(self.outs))
         return out_xs_decls, out_xs
 
     def _compile_loop(self, out_xs):
@@ -232,7 +231,7 @@ class PoolingNDKernelBackward(object):
                 return 'int {} = i % {} + {};'.format(x, head, p)
         xs = vars('x', self.ndim)
         xs_decls = conv_nd_kernel._map(
-            aux, xs, succ_sublists(self.ds), self.ps)
+            aux, xs, conv_nd_kernel.succ_sublists(self.ds), self.ps)
         return xs_decls, xs
 
     def _compile_loop(self, xs):
