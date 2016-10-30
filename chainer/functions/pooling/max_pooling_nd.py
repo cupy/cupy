@@ -15,7 +15,7 @@ if cuda.cudnn_enabled:
     libcudnn = cudnn.cudnn
 
 
-class MaxPoolingND(pooling_nd.PoolingND):
+class MaxPoolingND(pooling_nd._PoolingND):
 
     """Max pooling over a set of N-dimensional planes."""
 

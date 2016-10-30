@@ -17,7 +17,7 @@ if cuda.cudnn_enabled:
 _check_cudnn_acceptable_type = pooling_2d._check_cudnn_acceptable_type
 
 
-class PoolingND(function.Function):
+class _PoolingND(function.Function):
 
     """Base class of pooling function over a set of N-dimensional planes."""
 
