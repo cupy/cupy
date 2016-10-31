@@ -2033,8 +2033,8 @@ cdef ndarray _mat_ptrs(ndarray a):
 
 
 cpdef ndarray matmul(ndarray a, ndarray b):
-    """ Returns the matrix product of two arrays and is the implemention of the
-    `@` operator introduced in Python 3.5 following PEP465.
+    """ Returns the matrix product of two arrays and is the implementation of
+    the `@` operator introduced in Python 3.5 following PEP465.
 
     The main difference against cupy.dot are the handling of arrays with more
     than 2 dimensions. For more information see :func:`numpy.matmul`.
