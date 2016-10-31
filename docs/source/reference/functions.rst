@@ -435,6 +435,10 @@ square
 ~~~~~~
 .. autofunction:: square
 
+squared_difference
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: squared_difference
+
 sum
 ~~~
 .. autofunction:: sum

@@ -86,6 +86,7 @@ from chainer.functions.math import minmax
 from chainer.functions.math import scale
 from chainer.functions.math import sqrt
 from chainer.functions.math import square
+from chainer.functions.math import squared_difference
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
@@ -307,6 +308,8 @@ Sqrt = sqrt.Sqrt
 sqrt = sqrt.sqrt
 Square = square.Square
 square = square.square
+SquaredDifference = squared_difference.SquaredDifference
+squared_difference = squared_difference.squared_difference
 Sum = sum.Sum
 sum = sum.sum
 Tan = trigonometric.Tan
