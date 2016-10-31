@@ -37,7 +37,7 @@ Chainer depends on these Python packages:
 
 CUDA support
 
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 6.5, 7.0, 7.5
+* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 6.5, 7.0, 7.5, 8.0
 * `filelock <https://filelock.readthedocs.org>`_
 
 cuDNN support
