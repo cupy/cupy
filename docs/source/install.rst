@@ -219,6 +219,20 @@ When you install Chainer without CUDA, and after that you want to use CUDA, plea
 You need to reinstall Chainer when you want to upgrade CUDA.
 
 
+Run Chainer with Docker
+-----------------------
+
+We provide the official Docker image.
+Use `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ command to run Chainer image with GPU.
+You can login to the environment with bash, and run the Python interpreter::
+
+  $ nvidia-docker run -it chainer/chainer /bin/bash
+
+Or, run the interpreter directly::
+
+  $ nvidia-docker run -it chainer/chainer /usr/bin/python
+
+
 What "recommend" means?
 -----------------------
 
