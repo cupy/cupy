@@ -396,6 +396,15 @@ class GradientMethod(Optimizer):
                 self.target.zerograds()
             loss.backward()
             del loss
+
+        # TODO(unno): Some optimizers can skip this process if they does not
+        # affect to a parameter when its gradient is zero.
+        for name, param in self.target.namedparams():
+            if param.grad is None:
+                with cuda.get_device(param.data):
+                    xp = cuda.get_array_module(param.data)
+                    param.grad = xp.zeros_like(param.data)
+
         self.call_hooks()
         self.prepare()
 
