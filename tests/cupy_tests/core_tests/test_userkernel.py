@@ -28,6 +28,4 @@ class TestUserkernel(unittest.TestCase):
             'uesr_kernel_2')
         out2 = uesr_kernel_2(in1, in2, size=n)
 
-        for i in range(n):
-            if out1[i] != out2[i]:
-                raise ValueError('Outputs mismatch found')
+        testing.assert_array_equal(out1, out2)
