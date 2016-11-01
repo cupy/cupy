@@ -49,12 +49,11 @@ class TestDropout(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         x = chainer.Variable(x_data)
         y = functions.dropout(x, self.ratio)
-        d = {'creator': y.creator}
+        creator = y.creator
         y.grad = y_grad
         y.backward()
 
         def f():
-            creator = d['creator']
             y = _dropout(x_data, creator)
             return y,
         gx, = gradient_check.numerical_grad(f, (x_data, ), (y.grad, ), eps=0.1)
