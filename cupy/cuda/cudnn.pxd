@@ -308,4 +308,4 @@ cpdef activationBackward_v3(
 
 cpdef size_t createDropoutDescriptor() except *
 cpdef destroyDropoutDescriptor(size_t dropoutDesc)
-cpdef size_t dropoutGetStatesSize(size_t handle)
+cpdef size_t dropoutGetStatesSize(size_t handle) except *
