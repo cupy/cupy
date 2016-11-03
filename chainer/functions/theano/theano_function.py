@@ -5,7 +5,6 @@ import six
 
 try:
     import theano
-    import theano.sandbox.cuda as theano_cuda
     _available = True
 except ImportError:
     _available = False
@@ -168,7 +167,7 @@ def _cupy_array_to_theano_array(x):
         ptr = int(x.data.ptr)
     # CuPy's stride is written in bytes, but CudaNdarray uses size
     strides = [s // 4 for s in x.strides]
-    return theano_cuda.from_gpu_pointer(ptr, x.shape, strides, x)
+    return theano.sandbox.cuda.from_gpu_pointer(ptr, x.shape, strides, x)
 
 
 class CudaNdarrayMemory(object):
@@ -189,7 +188,7 @@ def _theano_array_to_cupy_array(x, device):
 def _theano_output_to_cupy_array(x, device):
     if x is None:
         return None
-    elif isinstance(x, theano_cuda.CudaNdarray):
+    elif isinstance(x, theano.sandbox.cuda.CudaNdarray):
         return _theano_array_to_cupy_array(x, device)
     else:
         return cuda.to_gpu(x)
