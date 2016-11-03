@@ -113,7 +113,7 @@ pip install h5py
 
 We provide the official Docker image.
 Use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker) command to run Chainer image with GPU.
-You can login to the environment with bash, and the run the Python interpreter.
+You can login to the environment with bash, and run the Python interpreter.
 
 ```
 $ nvidia-docker run -it chainer/chainer /bin/bash
