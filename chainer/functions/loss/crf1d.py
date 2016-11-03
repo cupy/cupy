@@ -72,7 +72,7 @@ def crf1d(cost, xs, ys):
             matrix, where :math:`B` is mini-batch size, :math:`K` is the number
             of labels.
             Note that :math:`B` s in all the variables are not necessary
-            the same, i.e., it accepts the input sequences with difference
+            the same, i.e., it accepts the input sequences with different
             lengths.
         ys (list of Variable): Expected output labels. It needs to have the
             same length as ``xs``. Each :class:`~chainer.Variable` holds a
@@ -155,7 +155,8 @@ def argmax_crf1d(cost, xs):
             i-th element of ``s``, ``s[i]``, represents log-likelihood of i-th
             data.
             ``ps`` is a list of :class:`numpy.ndarray` or
-            :class:`cupy.ndarray`.
+            :class:`cupy.ndarray`, and denotes the state that maximizes the
+            point probability.
             ``len(ps)`` is equal to ``len(xs)``, and shape of each ``ps[i]`` is
             the mini-batch size of the corresponding ``xs[i]``. That means,
             ``ps[i].shape == xs[i].shape[0:1]``.
