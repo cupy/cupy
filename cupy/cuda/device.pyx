@@ -6,7 +6,7 @@ from cupy.cuda cimport cublas
 from cupy.cuda cimport runtime
 
 
-cpdef int get_device_id():
+cpdef int get_device_id() except *:
     return runtime.getDevice()
 
 
