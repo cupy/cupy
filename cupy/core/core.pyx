@@ -1026,7 +1026,7 @@ cdef class ndarray:
         for i, s in enumerate(slices):
             if s is None:
                 n_newaxes += 1
-            elif s == Ellipsis:
+            elif s is Ellipsis:
                 n_ellipses += 1
                 ellipsis = i
         ndim = self._shape.size()
