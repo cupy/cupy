@@ -29,13 +29,13 @@ def norm(x, ord=None, axis=None, keepdims=False):
     if axis is None:
         ndim = x.ndim
         if ((ord is None) or (ord in ('f', 'fro') and ndim == 2) or
-           (ord == 2 and ndim == 1)):
+                (ord == 2 and ndim == 1)):
 
             x = x.ravel()
-            sqnorm = cupy.sum(x**2)
+            sqnorm = cupy.sum(x ** 2)
             ret = cupy.sqrt(sqnorm)
             if keepdims:
-                ret = ret.reshape(ndim*[1])
+                ret = ret.reshape(ndim * [1])
             return ret
 
     # Normalize the `axis` argument to a tuple.
@@ -63,7 +63,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             # special case for speedup
-            s = x**2
+            s = x ** 2
             return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
         else:
             try:
@@ -101,7 +101,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
-            ret = cupy.sqrt((x**2).sum(axis=axis))
+            ret = cupy.sqrt((x ** 2).sum(axis=axis))
         else:
             raise ValueError("Invalid norm order for matrices.")
         if keepdims:
