@@ -13,7 +13,7 @@ class TestArrayGet(unittest.TestCase):
     _multiprocess_can_split_ = True
 
     def setUp(self):
-        self.stream = cuda.NullStream
+        self.stream = cuda.Stream.null
 
     def check_get(self, f, stream):
         a_gpu = f(cupy)

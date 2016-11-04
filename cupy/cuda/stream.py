@@ -52,7 +52,7 @@ class Event(object):
 
         """
         if stream is None:
-            stream = NullStream
+            stream = Stream.null
         runtime.eventRecord(self.ptr, stream.ptr)
 
     def synchronize(self):
@@ -98,6 +98,8 @@ class Stream(object):
             the CUDA Runtime API via ctypes.
 
     """
+
+    null = None
 
     def __init__(self, null=False, non_blocking=False):
         if null:
@@ -164,4 +166,4 @@ class Stream(object):
         runtime.streamWaitEvent(self.ptr, event.ptr)
 
 
-NullStream = Stream(null=True)
+Stream.null = Stream(null=True)

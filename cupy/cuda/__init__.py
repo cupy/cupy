@@ -31,7 +31,6 @@ Module = function.Module
 
 Event = stream.Event
 Stream = stream.Stream
-NullStream = stream.NullStream
 get_elapsed_time = stream.get_elapsed_time
 
 

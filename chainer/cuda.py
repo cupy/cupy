@@ -45,7 +45,6 @@ try:
     Device = cuda.Device
     Event = cuda.Event
     Stream = cuda.Stream
-    NullStream = cuda.NullStream
 
     available = True
 except Exception as e:
