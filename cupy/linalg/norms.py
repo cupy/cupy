@@ -15,7 +15,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ord (non-zero int, inf, -inf, 'fro'): Norm type.
         axis (int, 2-tuple of ints, None): 1-D or 2-D norm is cumputed over
             ``axis``.
-        keepdims (bool): If this is set True, the axes which are normed over
+        keepdims (bool): If this is set ``True``, the axes which are normed over
             are left.
 
     Returns:
@@ -57,7 +57,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).min(axis=axis, keepdims=keepdims)
         elif ord == 0:
             # Zero norm
-            return (x != 0).astype(x.dtype).sum(axis=axis, keepdims=keepdims)
+            return (x != 0).sum(axis=axis, keepdims=keepdims, dtype=x.dtype)
         elif ord == 1:
             # special case for speedup
             return abs(x).sum(axis=axis, keepdims=keepdims)
@@ -67,7 +67,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
         else:
             try:
-                ord + 1
+                float(ord)
             except TypeError:
                 raise ValueError("Invalid norm order for vectors.")
             absx = abs(x)
