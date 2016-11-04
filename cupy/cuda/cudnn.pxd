@@ -5,6 +5,7 @@
 cdef extern from *:
     ctypedef int ActivationMode 'cudnnActivationMode_t'
     ctypedef int AddMode 'cudnnAddMode_t'
+    ctypedef int BatchNormMode 'cudnnBatchNormMode_t'
     ctypedef int ConvolutionBwdDataAlgo 'cudnnConvolutionBwdDataAlgo_t'
     ctypedef int ConvolutionBwdDataPreference \
         'cudnnConvolutionBwdDataPreference_t'
@@ -24,16 +25,15 @@ cdef extern from *:
     ctypedef int SoftmaxMode 'cudnnSoftmaxMode_t'
     ctypedef int Status 'cudnnStatus_t'
     ctypedef int TensorFormat 'cudnnTensorFormat_t'
-    ctypedef int BatchNormMode 'cudnnBatchNormMode_t'
 
     ctypedef void* ConvolutionDescriptor 'cudnnConvolutionDescriptor_t'
+    ctypedef void* DropoutDescriptor 'cudnnDropoutDescriptor_t'
     ctypedef void* FilterDescriptor 'cudnnFilterDescriptor_t'
     ctypedef void* Handle 'cudnnHandle_t'
     ctypedef void* PoolingDescriptor 'cudnnPoolingDescriptor_t'
+    ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
     ctypedef void* TensorDescriptor 'cudnnTensorDescriptor_t'
 
-    ctypedef void* DropoutDescriptor 'cudnnDropoutDescriptor_t'
-    ctypedef void* RNNDescriptor 'cudnnRNNDescriptor_t'
 
 ###############################################################################
 # Enum
