@@ -78,7 +78,7 @@ class TestDropconnect(unittest.TestCase):
             args = args + (b_data,)
 
         gradient_check.check_backward(
-            linear.LinearFunction(), args, y_grad,
+            dropconnect.Dropconnect(self.ratio), args, y_grad,
             eps=1e-2, **self.check_backward_options)
 
     @condition.retry(3)
