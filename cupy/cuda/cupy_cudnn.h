@@ -480,11 +480,11 @@ int cudnnDestroy(Handle handle) {
     return 0;
 }
 
-int cudnnSetStream(Handle handle, Stream stream) {
+int cudnnSetStream(Handle handle, cudaStream_t stream) {
     return 0;
 }
 
-int cudnnGetStream(Handle handle, Stream* stream) {
+int cudnnGetStream(Handle handle, cudaStream_t* stream) {
     return 0;
 }
 
