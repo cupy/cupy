@@ -39,17 +39,14 @@ class TheanoFunction(function.Function):
     and backward calculation from inputs and ouptuts. And then, it sends data
     in :class:`chainer.Variable` to the function and gets results from Theano.
 
-    If a user want to use GPUs, he/she can directly send GPU data to Theano
-    function without copying.
-
     .. admonition:: Example
 
+       >>> import theano
        >>> x = theano.tensor.fvector()
        >>> y = theano.tensor.fvector()
        >>> z = x + y
        >>> w = x - y
-       >>> f = F.TheanoFunction(
-       ...     inputs=[x, y], outputs=[z, w], optimize_gpu=False)
+       >>> f = F.TheanoFunction(inputs=[x, y], outputs=[z, w])
        >>> a = chainer.Variable(numpy.array([1, 2], dtype='f'))
        >>> b = chainer.Variable(numpy.array([2, 3], dtype='f'))
        >>> c, d = f(a, b)
@@ -57,6 +54,10 @@ class TheanoFunction(function.Function):
        array([ 3.,  5.], dtype=float32)
        >>> d.data
        array([-1., -1.], dtype=float32)
+
+    .. note::
+
+       The current implementation always copys :class:`cupy.ndarray` to CPU.
 
     Args:
         inputs (tuple of ~theano.tensor.TensorVariable): Input variables of
