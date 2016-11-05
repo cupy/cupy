@@ -65,14 +65,10 @@ class TheanoFunction(function.Function):
         outputs (tuple of ~theano.tensor.TensorVariable): Output variables of
             Theano. The function returns the same number
             :class:`~chainder.Variable`s as ``outputs``.
-        optimize_gpu (bool): If True, remove CPU/GPU copying as much as
-            possible. If False, it always copies :class:`cupy.ndarray` to CPU
-            before passing it to Theano. Note that this feature only supports
-            ``float32`` data.
 
     """
 
-    def __init__(self, inputs, outputs, optimize_gpu=True):
+    def __init__(self, inputs, outputs):
         if not _available:
             msg = '''theano is not installed on your environment.
 Please install theano to activate theano function.
@@ -82,7 +78,6 @@ Please install theano to activate theano function.
 
         self._inputs = _to_var_tuple(inputs)
         self._outputs = _to_var_tuple(outputs)
-        self.optimize_gpu = optimize_gpu
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == len(self._inputs))
@@ -97,20 +92,20 @@ Please install theano to activate theano function.
 
     def forward(self, inputs):
         gpu = cuda.get_array_module(*inputs) is not numpy
-        if gpu and self.optimize_gpu:
-            outs = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(o)
-                         if o.dtype == 'float32' else o for o in self._outputs)
-            inputs = [_cupy_array_to_theano_input(x) for x in inputs]
-        else:
-            outs = self._outputs
+        # TODO(unno): We can remove redundant gpu-cpu copy using
+        # theano.sandbox.cuda.basic_ops.gpu_from_host
+        outs = self._outputs
+        inputs = [cuda.to_cpu(x) for x in inputs]
 
         self.func = theano.function(inputs=self._inputs, outputs=outs)
         outputs = self.func(*inputs)
 
         if gpu:
-            device = theano.sandbox.cuda.active_device_number()
-            outputs = [_theano_output_to_cupy_array(x, device)
-                       for x in outputs]
+            # TODO(unno): We can remove redundant gpu-cpu copy using
+            # theano.sandbox.cuda.CudaNdarray.gpudata
+            device = cuda.get_device(inputs)
+            outputs = [cuda.to_gpu(x, device) for x in outputs]
+
         return tuple(outputs)
 
     def backward(self, inputs, grads):
@@ -121,74 +116,33 @@ Please install theano to activate theano function.
             o.type('g_{}'.format(i)) for i, o in enumerate(self._outputs))
         known_grads = dict(zip(self._outputs, gs))
 
+        # TODO(unno): We can remove redundant gpu-cpu copy using
+        # theano.sandbox.cuda.basic_ops.gpu_from_host
+        args = [cuda.to_cpu(x) for x in args]
+
         grad = theano.tensor.grad(
             cost=None, wrt=self._inputs, known_grads=known_grads,
             disconnected_inputs='ignore')
-
-        if gpu and self.optimize_gpu:
-            grad = tuple(theano.sandbox.cuda.basic_ops.gpu_from_host(g)
-                         if g.dtype == 'float32' else g for g in grad)
-            args = [_cupy_array_to_theano_input(x) for x in args]
 
         grad_func = theano.function(
             inputs=self._inputs + gs,
             outputs=grad,
             on_unused_input='ignore')
 
-        outs = grad_func(*args)
-        assert len(outs) == len(inputs)
+        outputs = grad_func(*args)
+        assert len(outputs) == len(inputs)
 
         if gpu:
-            device = theano.sandbox.cuda.active_device_number()
-            outs = [_theano_output_to_cupy_array(x, device) for x in outs]
+            # TODO(unno): We can remove redundant gpu-cpu copy using
+            # theano.sandbox.cuda.CudaNdarray.gpudata
+            device = cuda.get_device(inputs)
+            outputs = [cuda.to_gpu(x, device) for x in outputs]
 
-        outputs = []
-        for o, i in zip(outs, inputs):
+        results = []
+        for o, i in zip(outputs, inputs):
             if i.dtype.kind != 'f':
                 o = None
             elif o.dtype != i.dtype:
                 o = o.astype(i.dtype)
-            outputs.append(o)
-        return tuple(outputs)
-
-
-def _cupy_array_to_theano_input(x):
-    # CudaNdarray only supports float32
-    if isinstance(x, cuda.cupy.ndarray) and x.dtype == numpy.float32:
-        return _cupy_array_to_theano_array(x)
-    else:
-        return cuda.to_cpu(x)
-
-
-def _cupy_array_to_theano_array(x):
-    if six.PY2:
-        ptr = long(x.data.ptr)  # NOQA
-    else:
-        ptr = int(x.data.ptr)
-    # CuPy's stride is written in bytes, but CudaNdarray uses size
-    strides = [s // 4 for s in x.strides]
-    return theano.sandbox.cuda.from_gpu_pointer(ptr, x.shape, strides, x)
-
-
-class CudaNdarrayMemory(object):
-
-    def __init__(self, array, device):
-        self._array = array
-        self.device = cuda.Device(device)
-        self.ptr = array.gpudata
-
-
-def _theano_array_to_cupy_array(x, device):
-    mem = CudaNdarrayMemory(x, device)
-    memptr = cuda.cupy.cuda.MemoryPointer(mem, 0)
-    # Theano's CudaNdarray is always float32
-    return cuda.cupy.ndarray(x.shape, dtype=numpy.float32, memptr=memptr)
-
-
-def _theano_output_to_cupy_array(x, device):
-    if x is None:
-        return None
-    elif isinstance(x, theano.sandbox.cuda.CudaNdarray):
-        return _theano_array_to_cupy_array(x, device)
-    else:
-        return cuda.to_gpu(x)
+            results.append(o)
+        return tuple(results)
