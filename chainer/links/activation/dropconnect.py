@@ -36,7 +36,7 @@ class Dropconnect(link.Link):
     """
 
     def __init__(self, in_size, out_size, wscale=1,
-                 ratio=.5, initialW=None, initial_bias=None):
+                 ratio=.5, initialW=None, initial_bias=0):
         super(Dropconnect, self).__init__()
 
         self.out_size = out_size
@@ -48,13 +48,14 @@ class Dropconnect(link.Link):
         if in_size is None:
             self.add_uninitialized_param('W')
         else:
-            self.add_param('W', (self.out_size, in_size),
-                           initializer=self._W_initializer)
+            self._initialize_params(in_size)
 
-        if initial_bias is None:
-            initial_bias = bias
         bias_initializer = initializers._get_initializer(initial_bias)
         self.add_param('b', out_size, initializer=bias_initializer)
+
+    def _initialize_params(self, in_size):
+        self.add_param('W', (self.out_size, in_size),
+                       initializer=self._W_initializer)
 
     def __call__(self, x, train=True):
         """Applies the dropconnect layer.
