@@ -50,9 +50,10 @@ class TestDropconnect(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.link(x)
         self.assertEqual(y.data.dtype, self.x_dtype)
-        # TODO
-##        y_expect = self.x.reshape(4, -1).dot(self.link.W.data.T * self.link.mask.T) + self.link.b.data
-##        testing.assert_allclose(self.y, y.data, **self.check_forward_options)
+        mask = self.link.function.creator.mask
+        W = self.link.W.data
+        y_expect = self.x.reshape(4, -1).dot(W.T * mask.T) + self.link.b.data
+        testing.assert_allclose(y_expect, y.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
