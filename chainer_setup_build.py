@@ -41,6 +41,7 @@ MODULES = [
             'cupy.cuda.nvtx',
             'cupy.cuda.function',
             'cupy.cuda.runtime',
+            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             'cupy.util',
         ],
         'include': [
@@ -50,6 +51,8 @@ MODULES = [
             'cuda_runtime.h',
             'curand.h',
             'nvToolsExt.h',
+            'thrust/device_ptr.h',
+            'thrust/sort.h',
         ],
         'libraries': [
             'cublas',
