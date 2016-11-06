@@ -29,9 +29,8 @@ class TestDropconnect(unittest.TestCase):
         self.link = links.Dropconnect(
             in_size, self.out_size,
             initialW=chainer.initializers.Normal(1, self.W_dtype),
-            initial_bias=chainer.initializers.Normal(1, self.x_dtype))
-        W = self.link.W.data
-        b = self.link.b.data
+            initial_bias=chainer.initializers.Normal(1, self.x_dtype),
+            reuse_mask=True)
         self.link.cleargrads()
 
         x_shape = (4,) + self.in_shape
@@ -80,6 +79,7 @@ class TestDropconnect(unittest.TestCase):
         self.link.to_gpu()
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
+
 class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
 
     in_size = 3
@@ -88,7 +88,8 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
     in_size_or_none = None
 
     def setUp(self):
-        self.link = links.Dropconnect(self.in_size_or_none, self.out_size)
+        self.link = links.Dropconnect(self.in_size_or_none, self.out_size,
+                                      reuse_mask=True)
         temp_x = numpy.random.uniform(-1, 1,
                                       (self.out_size,
                                        self.in_size)).astype(numpy.float32)
@@ -108,9 +109,10 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.link(x)
         self.assertEqual(y.data.dtype, numpy.float32)
-        # TODO
-##        y_expect = self.x.reshape(4, -1).dot(self.link.W.data.T * self.link.mask.T) + self.link.b.data
-##        testing.assert_allclose(self.y, y.data)
+        mask = self.link.function.creator.mask
+        W = self.link.W.data
+        y_expect = self.x.reshape(4, -1).dot(W.T * mask.T) + self.link.b.data
+        testing.assert_allclose(y_expect, y.data)
 
     @condition.retry(3)
     def test_forward_cpu(self):

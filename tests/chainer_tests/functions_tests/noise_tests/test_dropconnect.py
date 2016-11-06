@@ -5,7 +5,7 @@ import numpy
 import chainer
 from chainer import cuda
 from chainer import functions
-from chainer.functions.connection import linear
+from chainer.functions.noise import dropconnect
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr

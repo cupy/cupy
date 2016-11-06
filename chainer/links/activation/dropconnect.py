@@ -21,6 +21,9 @@ class Dropconnect(link.Link):
         initial_bias (2-D array, float or None): Initial bias value.
             If it is float, initial bias is filled with this value.
             If it is ``None``, bias is omitted.
+        reuse_mask (boolean):
+            If ``True``, once dropconnect mask is generated,
+            same mask will be reuse when link is called.
 
     Attributes:
         W (~chainer.Variable): Weight parameter.
@@ -36,13 +39,13 @@ class Dropconnect(link.Link):
     """
 
     def __init__(self, in_size, out_size, wscale=1,
-                 ratio=.5, initialW=None, initial_bias=0, debug=False):
+                 ratio=.5, initialW=None, initial_bias=0, reuse_mask=False):
         super(Dropconnect, self).__init__()
 
         self.out_size = out_size
         self.ratio = ratio
-        self.debug = debug
-        self.function = None
+        self.reuse_mask = reuse_mask
+        self.func = None
 
         self._W_initializer = initializers._get_initializer(
             initialW, math.sqrt(wscale))
@@ -59,12 +62,15 @@ class Dropconnect(link.Link):
         self.add_param('W', (self.out_size, in_size),
                        initializer=self._W_initializer)
 
-    def __call__(self, x, train=True):
+    def __call__(self, x, train=True, debug_mask=None):
         """Applies the dropconnect layer.
 
         Args:
             x (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
-            Batch of input vectors.
+                Batch of input vectors.
+            train (bool):
+                If ``True``, executes dropconnect.
+                Otherwise, does nothing.
 
         Returns:
             ~chainer.Variable: Output of the dropconnect layer.
@@ -73,13 +79,13 @@ class Dropconnect(link.Link):
         if self.has_uninitialized_params:
             with cuda.get_device(self._device_id):
                 self._initialize_params(x.size // len(x.data))
-        if self.debug:
-##            if self.function is not None:
-##                mask = self.function.creator.mask
-##                self.function = dropconnect.dropconnect(x, self.W, self.b, self.ratio, train)
-##                self.function.creator.mask = mask
-##            else:
-            self.function = dropconnect.dropconnect(x, self.W, self.b,
+        if self.reuse_mask:
+            if self.func is not None:
+                mask = self.func.creator.mask
+                self.func = dropconnect.dropconnect(x, self.W, self.b,
+                                                    self.ratio, train, mask)
+            else:
+                self.func = dropconnect.dropconnect(x, self.W, self.b,
                                                     self.ratio, train)
-            return self.function
+            return self.func
         return dropconnect.dropconnect(x, self.W, self.b, self.ratio, train)

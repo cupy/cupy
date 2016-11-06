@@ -15,9 +15,9 @@ class Dropconnect(function.Function):
 
     """Linear unit regularized by dropconnect."""
 
-    def __init__(self, dropconnect_ratio):
+    def __init__(self, dropconnect_ratio, debug_mask=None):
         self.dropconnect_ratio = dropconnect_ratio
-        self.mask = None
+        self.mask = debug_mask
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -72,11 +72,11 @@ class Dropconnect(function.Function):
             return gx, gW
 
 
-def dropconnect(x, W, b=None, ratio=.5, train=True):
+def dropconnect(x, W, b=None, ratio=.5, train=True, debug_mask=None):
     """Linear unit regularized by dropconnect.
 
-    Dropconnect drops weight matrix elements randomly with probability ``ratio``
-    and scales the remaining elements by factor ``1 / (1 - ratio)``.
+    Dropconnect drops weight matrix elements randomly with probability
+    ``ratio`` and scales the remaining elements by factor ``1 / (1 - ratio)``.
     It accepts two or three arguments: an input minibatch ``x``, a weight
     matrix ``W``, and optionally a bias vector ``b``. It computes
     :math:`Y = xW^\\top + b`.
@@ -91,6 +91,13 @@ def dropconnect(x, W, b=None, ratio=.5, train=True):
             as concatenated one dimension whose size must be ``N``.
         W (~chainer.Variable): Weight variable of shape ``(M, N)``.
         b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``.
+        ratio (float): Dropconnect ratio.
+        train (bool):
+            If ``True``, executes dropconnect.
+            Otherwise, does nothing.
+        debug_mask (:class:`numpy.ndarray` or cupy.ndarray):
+            If not ``None``, this value is used as dropconnect mask.
+            Shape must be ``(M, N)``.
 
     Returns:
         ~chainer.Variable: Output variable.
@@ -101,6 +108,6 @@ def dropconnect(x, W, b=None, ratio=.5, train=True):
     if not train:
         ratio = 0
     if b is None:
-        return Dropconnect(ratio)(x, W)
+        return Dropconnect(ratio, debug_mask)(x, W)
     else:
-        return Dropconnect(ratio)(x, W, b)
+        return Dropconnect(ratio, debug_mask)(x, W, b)
