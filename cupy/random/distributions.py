@@ -6,6 +6,33 @@ from cupy.random import generator
 
 
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
+    """Returns an array of smples drawn from a Gumbel distribution.
+
+    The samples are drawn from a Gumbel distribution with location ``loc``
+    and scale ``scale``.
+    Its probability density function is defined as
+
+    .. math::
+       f(x) = \\frac{1}{\\eta} \
+           \\exp\\left\\{ - \\frac{x - \\mu}{\\eta} \\right\\} \
+           \\exp\\left[-\\exp\\left\\{-\\frac{x - \\mu}{\\eta} \
+           \\right\\}\\right],
+
+    where :math:`\\mu` is ``loc`` and :math:`\\eta` is ``scale``.
+
+    Args:
+        loc (float): The location of the mode :math:`\\mu`.
+        scale (float): The scale parameter :math:`\\eta`.
+        size (int or tuple of ints): The shape of the array. If ``None``, a
+            zero-dimensional array is generated.
+        dtype: Data type specifier. Only :class:`numpy.float32` and
+            :class:`numpy.float64` types are allowed.
+
+    Returns:
+        cupy.ndarray: Samples drawn from the Gumbel destribution.
+
+    .. seealso:: :func:`numpy.random.gumbel`
+    """
     rs = uniform(size=size, dtype=dtype)
     return cupy.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
