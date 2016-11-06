@@ -36,11 +36,13 @@ class Dropconnect(link.Link):
     """
 
     def __init__(self, in_size, out_size, wscale=1,
-                 ratio=.5, initialW=None, initial_bias=0):
+                 ratio=.5, initialW=None, initial_bias=0, debug=False):
         super(Dropconnect, self).__init__()
 
         self.out_size = out_size
         self.ratio = ratio
+        self.debug = debug
+        self.function = None
 
         self._W_initializer = initializers._get_initializer(
             initialW, math.sqrt(wscale))
@@ -71,4 +73,13 @@ class Dropconnect(link.Link):
         if self.has_uninitialized_params:
             with cuda.get_device(self._device_id):
                 self._initialize_params(x.size // len(x.data))
+        if self.debug:
+##            if self.function is not None:
+##                mask = self.function.creator.mask
+##                self.function = dropconnect.dropconnect(x, self.W, self.b, self.ratio, train)
+##                self.function.creator.mask = mask
+##            else:
+            self.function = dropconnect.dropconnect(x, self.W, self.b,
+                                                    self.ratio, train)
+            return self.function
         return dropconnect.dropconnect(x, self.W, self.b, self.ratio, train)

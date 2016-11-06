@@ -17,6 +17,7 @@ class Dropconnect(function.Function):
 
     def __init__(self, dropconnect_ratio):
         self.dropconnect_ratio = dropconnect_ratio
+        self.mask = None
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -46,7 +47,8 @@ class Dropconnect(function.Function):
         else:
             flag = (xp.random.rand(*inputs[1].shape, dtype=numpy.float32) >=
                     self.dropconnect_ratio)
-        self.mask = scale * flag
+        if self.mask is None:
+            self.mask = scale * flag
 
         x = _as_mat(inputs[0])
         W = inputs[1] * self.mask
@@ -62,7 +64,7 @@ class Dropconnect(function.Function):
         gy = grad_outputs[0]
 
         gx = gy.dot(W).astype(x.dtype, copy=False).reshape(inputs[0].shape)
-        gW = gy.T.dot(x).astype(W.dtype, copy=False)
+        gW = gy.T.dot(x).astype(W.dtype, copy=False) * self.mask
         if len(inputs) == 3:
             gb = gy.sum(0)
             return gx, gW, gb
