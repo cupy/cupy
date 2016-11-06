@@ -18,6 +18,16 @@ MODULES = [
     {
         'name': 'cuda',
         'file': [
+            # The value of the key 'file' is a list that contains extension
+            # names of tuples of an extension name and a list of other source
+            # files required such as .cpp files and .cu files.
+            #
+            #   <extension name> | (<extension name>, list of <other source>)
+            #
+            # The extension names are interpreted as the names of Python
+            # extensions to be built as well as the names of the Cython source
+            # files with appending '.pyx' extension from which the extensions
+            # are built.
             'cupy.core.core',
             'cupy.core.flags',
             'cupy.core.internal',
@@ -70,6 +80,22 @@ if sys.platform == 'win32':
     mod_cuda['file'].remove('cupy.cuda.nvtx')
     mod_cuda['include'].remove('nvToolsExt.h')
     mod_cuda['libraries'].remove('nvToolsExt')
+
+
+def ensure_module_file(file):
+    if isinstance(file, tuple):
+        return file
+    else:
+        return (file, [])
+
+
+def module_extension_name(file):
+    return ensure_module_file(file)[0]
+
+def module_extension_sources(file, ext):
+    pyx, others = ensure_module_file(file)
+    pyx = path.join(*pyx.split('.')) + ext
+    return [pyx] + others
 
 
 def check_readthedocs_environment():
@@ -149,10 +175,11 @@ def make_extensions(options, compiler, use_cython):
         s = settings.copy()
         if not no_cuda:
             s['libraries'] = module['libraries']
-
-        ret.extend([
-            setuptools.Extension(f, [path.join(*f.split('.')) + ext], **s)
-            for f in module['file']])
+        for f in module['file']:
+            name = module_extension_name(f)
+            sources = module_extension_sources(f, ext)
+            extension = setuptools.Extension(name, sources, **s)
+            ret.append(extension)
     return ret
 
 
