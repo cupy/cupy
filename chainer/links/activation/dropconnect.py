@@ -8,7 +8,7 @@ from chainer import link
 
 class Dropconnect(link.Link):
 
-    """Fully-connected dropconnect layer.
+    """Fully-connected layer with dropconnect regularization.
 
     Args:
         in_size (int): Dimension of input vectors. If None, parameter
@@ -71,6 +71,9 @@ class Dropconnect(link.Link):
             train (bool):
                 If ``True``, executes dropconnect.
                 Otherwise, does nothing.
+            debug_mask (:class:`numpy.ndarray` or cupy.ndarray):
+                If not ``None``, this value is used as dropconnect mask.
+                Shape must be ``(M, N)``.
 
         Returns:
             ~chainer.Variable: Output of the dropconnect layer.
