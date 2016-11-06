@@ -4,6 +4,16 @@ from cupy.random import generator
 # TODO(beam2d): Implement many distributions
 
 
+def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
+    rs = uniform(size=size, dtype=dtype)
+    return cupy.ElementwiseKernel(
+        'T x, T loc, T scale', 'T y',
+        'y = -log(-log(x)) * scale + loc',
+        'gumbel_kernel'
+    )(rs, loc, scale, rs)
+    return rs
+
+
 def lognormal(mean=0.0, sigma=1.0, size=None, dtype=float):
     """Returns an array of samples drawn from a log normal distribution.
 
