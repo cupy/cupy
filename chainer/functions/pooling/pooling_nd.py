@@ -49,7 +49,7 @@ class _PoolingND(function.Function):
         n, c = x.shape[:2]
         dims = x.shape[2:]
         ys = tuple(conv.get_conv_outsize(d, k, s, p, self.cover_all)
-                   for (d, k, s, p) in six.moves.zip(
+                   for d, k, s, p in six.moves.zip(
                        dims, self.ksize, self.stride, self.pad))
         y_shape = (n, c) + ys
         y = cuda.cupy.empty(y_shape, dtype=x.dtype)

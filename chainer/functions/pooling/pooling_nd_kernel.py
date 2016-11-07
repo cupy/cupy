@@ -117,7 +117,7 @@ class PoolingNDKernelForward(object):
             offsets = conv_nd_kernel.vars('offset', self.ndim)
             ds1 = self.ds[1:] + [1]
             offsets1 = ['d_0 * c0'] + offsets[:-1]
-            for (x, in_x0, in_x1, offset, offset1, d1) in moves.zip(
+            for x, in_x0, in_x1, offset, offset1, d1 in moves.zip(
                     xs, in_x0s, in_x1s, offsets, offsets1, ds1):
                 w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     x, in_x0, x, in_x1, x), 'inc')
@@ -266,7 +266,7 @@ class PoolingNDKernelBackward(object):
             offsets = conv_nd_kernel.vars('offset', self.ndim)
             outs1 = self.outs[1:] + [1]
             offsets1 = ['out_0 * c0'] + offsets[:-1]
-            for (out_x, out_x0, out_x1, offset, offset1, out1) in moves.zip(
+            for out_x, out_x0, out_x1, offset, offset1, out1 in moves.zip(
                     out_xs, out_x0s, out_x1s, offsets, offsets1, outs1):
                 w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     out_x, out_x0, out_x, out_x1, out_x), 'inc')
