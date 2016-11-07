@@ -15,9 +15,9 @@ class Dropconnect(function.Function):
 
     """Linear unit regularized by dropconnect."""
 
-    def __init__(self, dropconnect_ratio, debug_mask=None):
+    def __init__(self, dropconnect_ratio, mask=None):
         self.dropconnect_ratio = dropconnect_ratio
-        self.mask = debug_mask
+        self.mask = mask
 
     def check_type_forward(self, in_types):
         n_in = in_types.size()
@@ -72,7 +72,7 @@ class Dropconnect(function.Function):
             return gx, gW
 
 
-def dropconnect(x, W, b=None, ratio=.5, train=True, debug_mask=None):
+def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
     """Linear unit regularized by dropconnect.
 
     Dropconnect drops weight matrix elements randomly with probability
@@ -95,9 +95,12 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, debug_mask=None):
         train (bool):
             If ``True``, executes dropconnect.
             Otherwise, does nothing.
-        debug_mask (:class:`numpy.ndarray` or cupy.ndarray):
+        mask (:class:`numpy.ndarray` or cupy.ndarray):
+            If ``None``, randomized dropconnect mask is generated.
             If not ``None``, this value is used as dropconnect mask.
-            Shape must be ``(M, N)``.
+            And scaling will not be executed.
+            Then mask shape must be ``(M, N)``.
+            Main purpose of latter option is debugging.
 
     Returns:
         ~chainer.Variable: Output variable.
@@ -108,6 +111,6 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, debug_mask=None):
     if not train:
         ratio = 0
     if b is None:
-        return Dropconnect(ratio, debug_mask)(x, W)
+        return Dropconnect(ratio, mask)(x, W)
     else:
-        return Dropconnect(ratio, debug_mask)(x, W, b)
+        return Dropconnect(ratio, mask)(x, W, b)

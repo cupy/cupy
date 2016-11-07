@@ -65,7 +65,7 @@ class Dropconnect(link.Link):
         self.add_param('W', (self.out_size, in_size),
                        initializer=self._W_initializer)
 
-    def __call__(self, x, train=True, debug_mask=None):
+    def __call__(self, x, train=True):
         """Applies the dropconnect layer.
 
         Args:
@@ -74,9 +74,6 @@ class Dropconnect(link.Link):
             train (bool):
                 If ``True``, executes dropconnect.
                 Otherwise, does nothing.
-            debug_mask (:class:`numpy.ndarray` or cupy.ndarray):
-                If not ``None``, this value is used as dropconnect mask.
-                Shape must be ``(M, N)``.
 
         Returns:
             ~chainer.Variable: Output of the dropconnect layer.
