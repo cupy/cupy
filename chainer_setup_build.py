@@ -97,8 +97,9 @@ def module_extension_name(file):
     return ensure_module_file(file)[0]
 
 
-def module_extension_sources(file, ext):
+def module_extension_sources(file, use_cython):
     pyx, others = ensure_module_file(file)
+    ext = '.pyx' if use_cython else '.cpp'
     pyx = path.join(*pyx.split('.')) + ext
     return [pyx] + others
 
@@ -149,7 +150,6 @@ def make_extensions(options, compiler, use_cython):
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
 
     ret = []
-    ext = '.pyx' if use_cython else '.cpp'
     for module in MODULES:
         print('Include directories:', settings['include_dirs'])
         print('Library directories:', settings['library_dirs'])
@@ -182,7 +182,7 @@ def make_extensions(options, compiler, use_cython):
             s['libraries'] = module['libraries']
         for f in module['file']:
             name = module_extension_name(f)
-            sources = module_extension_sources(f, ext)
+            sources = module_extension_sources(f, use_cython)
             extension = setuptools.Extension(name, sources, **s)
             ret.append(extension)
     return ret
