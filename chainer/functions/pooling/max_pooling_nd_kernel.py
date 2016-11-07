@@ -33,7 +33,7 @@ class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
         w.write('T v = in[{}];'.format(offset))
         w.write('if (maxval < v) {', 'inc')
         w.write('maxval = v;')
-        for (argmax, x) in zip(self.argmaxs, xs):
+        for argmax, x in zip(self.argmaxs, xs):
             w.write('{} = {};'.format(argmax, x))
         w.write('}', 'dec')
         return w.get()
