@@ -21,9 +21,12 @@ class Dropconnect(link.Link):
         initial_bias (2-D array, float or None): Initial bias value.
             If it is float, initial bias is filled with this value.
             If it is ``None``, bias is omitted.
-        reuse_mask (boolean):
-            If ``True``, once dropconnect mask is generated,
-            same mask will be reuse when link is called.
+        mask (:class:`numpy.ndarray` or cupy.ndarray):
+            If ``None``, randomized dropconnect mask is generated.
+            If not ``None``, this value is used as dropconnect mask.
+            And scaling will not be executed.
+            Then mask shape must be ``(M, N)``.
+            Main purpose of latter option is debugging.
 
     Attributes:
         W (~chainer.Variable): Weight parameter.
@@ -39,13 +42,12 @@ class Dropconnect(link.Link):
     """
 
     def __init__(self, in_size, out_size, wscale=1,
-                 ratio=.5, initialW=None, initial_bias=0, reuse_mask=False):
+                 ratio=.5, initialW=None, initial_bias=0, mask=None):
         super(Dropconnect, self).__init__()
 
         self.out_size = out_size
         self.ratio = ratio
-        self.reuse_mask = reuse_mask
-        self.func = None
+        self.mask = mask
 
         self._W_initializer = initializers._get_initializer(
             initialW, math.sqrt(wscale))
@@ -55,8 +57,9 @@ class Dropconnect(link.Link):
         else:
             self._initialize_params(in_size)
 
-        bias_initializer = initializers._get_initializer(initial_bias)
-        self.add_param('b', out_size, initializer=bias_initializer)
+        if initial_bias is not None:
+            bias_initializer = initializers._get_initializer(initial_bias)
+            self.add_param('b', out_size, initializer=bias_initializer)
 
     def _initialize_params(self, in_size):
         self.add_param('W', (self.out_size, in_size),
@@ -82,13 +85,5 @@ class Dropconnect(link.Link):
         if self.has_uninitialized_params:
             with cuda.get_device(self._device_id):
                 self._initialize_params(x.size // len(x.data))
-        if self.reuse_mask:
-            if self.func is not None:
-                mask = self.func.creator.mask
-                self.func = dropconnect.dropconnect(x, self.W, self.b,
-                                                    self.ratio, train, mask)
-            else:
-                self.func = dropconnect.dropconnect(x, self.W, self.b,
-                                                    self.ratio, train)
-            return self.func
-        return dropconnect.dropconnect(x, self.W, self.b, self.ratio, train)
+        return dropconnect.dropconnect(x, self.W, self.b,
+                                       self.ratio, train, self.mask)

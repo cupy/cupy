@@ -23,14 +23,20 @@ from chainer.utils import type_check
 class TestDropconnect(unittest.TestCase):
 
     out_size = 2
+    ratio = 0.5
 
     def setUp(self):
         in_size = numpy.prod(self.in_shape)
+
+        scale = self.W_dtype(1. / (1 - self.ratio))
+        flag = numpy.random.rand(self.out_size, in_size) >= self.ratio
+        mask = scale * flag
+
         self.link = links.Dropconnect(
             in_size, self.out_size,
             initialW=chainer.initializers.Normal(1, self.W_dtype),
             initial_bias=chainer.initializers.Normal(1, self.x_dtype),
-            reuse_mask=True)
+            mask=mask)
         self.link.cleargrads()
 
         x_shape = (4,) + self.in_shape
@@ -49,7 +55,7 @@ class TestDropconnect(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.link(x)
         self.assertEqual(y.data.dtype, self.x_dtype)
-        mask = self.link.function.creator.mask
+        mask = self.link.mask
         W = self.link.W.data
         y_expect = self.x.reshape(4, -1).dot(W.T * mask.T) + self.link.b.data
         testing.assert_allclose(y_expect, y.data, **self.check_forward_options)
@@ -86,10 +92,15 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
     in_shape = (in_size,)
     out_size = 2
     in_size_or_none = None
+    ratio = 0.5
 
     def setUp(self):
+        scale = numpy.float32(1. / (1 - self.ratio))
+        flag = numpy.random.rand(self.out_size, self.in_size) >= self.ratio
+        mask = scale * flag
+
         self.link = links.Dropconnect(self.in_size_or_none, self.out_size,
-                                      reuse_mask=True)
+                                      mask=mask)
         temp_x = numpy.random.uniform(-1, 1,
                                       (self.out_size,
                                        self.in_size)).astype(numpy.float32)
@@ -109,7 +120,7 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
         x = chainer.Variable(x_data)
         y = self.link(x)
         self.assertEqual(y.data.dtype, numpy.float32)
-        mask = self.link.function.creator.mask
+        mask = self.link.mask
         W = self.link.W.data
         y_expect = self.x.reshape(4, -1).dot(W.T * mask.T) + self.link.b.data
         testing.assert_allclose(y_expect, y.data)
