@@ -263,10 +263,10 @@ def customize_compiler_for_nvcc(compiler):
     compiler.src_extensions.append('.cu')
     default_compiler_so = compiler.compiler_so
     super = compiler._compile
+    nvcc_path = build.get_nvcc_path()
 
     def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
         if os.path.splitext(src)[1] == '.cu':
-            nvcc_path = build.get_nvcc_path()
             compiler.set_executable('compiler_so', nvcc_path)
             postargs = ['-arch=sm_20',
                         '--ptxas-options=-v',
