@@ -23,9 +23,9 @@ def muladdexp(xs, ys, init=None):
         x, y = arg
         return '({} + {} * {})'.format(y, x, exp)
     if init is not None:
-        return functools.reduce(aux, zip(xs, ys), init)
+        return functools.reduce(aux, six.moves.zip(xs, ys), init)
     else:
-        return functools.reduce(aux, zip(xs, ys))
+        return functools.reduce(aux, six.moves.zip(xs, ys))
 
 
 def map_(fn, *lst):
@@ -120,7 +120,7 @@ class Im2colNDKernel(object):
         w = Writer()
 
         ins = vars('in', ndim)
-        for (_in, kx, out_x, s, p) in zip(ins, kxs, out_xs, ss, ps):
+        for (_in, kx, out_x, s, p) in six.moves.zip(ins, kxs, out_xs, ss, ps):
             w.write('int {} = {} + {} * {} - {};'.format(_in, kx, out_x, s, p))
 
         def rel_aux(_in, d):
@@ -130,7 +130,7 @@ class Im2colNDKernel(object):
 
         idxs = vars('idx', ndim)
         idx0s = ['c0'] + idxs[:-1]
-        for (idx, _in, d, idx0) in zip(idxs, ins, ds, idx0s):
+        for (idx, _in, d, idx0) in six.moves.zip(idxs, ins, ds, idx0s):
             w.write('int {} = {} + {} * {};'.format(idx, _in, d, idx0))
 
         w.write('col = img[{}];'.format(idxs[-1]))
@@ -233,7 +233,7 @@ class Col2imNDKernel(object):
             out_xs = vars('out_x', ndim)
             kxs = vars('kx', ndim)
             kxs1 = ['c0'] + kxs[:-1]
-            for (out_x, out_x0, out_x1, kx, s, x, k, kx1) in zip(
+            for (out_x, out_x0, out_x1, kx, s, x, k, kx1) in six.moves.zip(
                     out_xs, out_x0s, out_x1s, kxs, ss, xs, ks, kxs1):
                 w.write('for (int {} = {}; {} < {}; ++{}) {{'.format(
                     out_x, out_x0, out_x, out_x1, out_x), indent='inc')

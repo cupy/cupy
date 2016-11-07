@@ -45,7 +45,7 @@ class MaxPoolingND(pooling_nd._PoolingND):
         n, c = x[0].shape[:2]
         dims = x[0].shape[2:]
         ys = tuple(conv_nd.get_conv_outsize(d, k, s, p, self.cover_all)
-                   for (d, k, s, p) in zip(
+                   for (d, k, s, p) in six.moves.zip(
                        dims, self.ksize, self.stride, self.pad))
         # (n, c, y_1, y_2, ..., y_N)
         y_shape = (n, c) + ys
