@@ -268,6 +268,7 @@ def customize_compiler_for_nvcc(compiler):
     nvcc_path = build.get_nvcc_path()
 
     def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
+        # TODO(takagi): In case that CUDA SDK is not installed, e.g. CI env.
         if os.path.splitext(src)[1] == '.cu':
             compiler.set_executable('compiler_so', nvcc_path)
             # TODO(takgi): Provide proper nvcc options.
