@@ -83,7 +83,6 @@ setup(
     install_requires=install_requires,
     tests_require=['mock',
                    'nose'],
-    # To trick build into running build_ext
     ext_modules=ext_modules,
     cmdclass={'build_ext': build_ext}
 )
