@@ -95,6 +95,7 @@ def ensure_module_file(file):
 def module_extension_name(file):
     return ensure_module_file(file)[0]
 
+
 def module_extension_sources(file, ext):
     pyx, others = ensure_module_file(file)
     pyx = path.join(*pyx.split('.')) + ext
