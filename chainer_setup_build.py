@@ -270,6 +270,7 @@ def customize_compiler_for_nvcc(compiler):
     def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
         if os.path.splitext(src)[1] == '.cu':
             compiler.set_executable('compiler_so', nvcc_path)
+            # TODO(takgi): Provide proper nvcc options.
             postargs = ['-arch=sm_20',
                         '--ptxas-options=-v',
                         '-c',

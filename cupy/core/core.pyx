@@ -613,6 +613,10 @@ cdef class ndarray:
     # Sorting
     # -------------------------------------------------------------------------
     cpdef sort(self):
+        # TODO(takagi): Types other than FP32.
+        # TODO(takagi): Array rank more than one.
+        # TODO(takagi): Support axis argument.
+        # TODO(takagi): Support kind argument.
         cdef float* ptr
         cdef Py_ssize_t n
 
