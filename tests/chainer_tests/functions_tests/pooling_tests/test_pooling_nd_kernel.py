@@ -24,6 +24,8 @@ class TestPoolingNDKernelMemo(unittest.TestCase):
             pooling_nd_kernel.PoolingNDKernelForward.generate(ndim)
             m.assert_called_once_with(ndim)
             pooling_nd_kernel.PoolingNDKernelForward.generate(ndim)
+            # Check that the mocked _generate() function is called just once
+            # because the result of generate() function is cached.
             m.assert_called_once_with(ndim)
 
     def test_pooling_nd_kernel_backward_memo(self):
@@ -33,6 +35,8 @@ class TestPoolingNDKernelMemo(unittest.TestCase):
             pooling_nd_kernel.PoolingNDKernelBackward.generate(ndim)
             m.assert_called_once_with(ndim)
             pooling_nd_kernel.PoolingNDKernelBackward.generate(ndim)
+            # Check that the mocked _generate() function is called just once
+            # because the result of generate() function is cached.
             m.assert_called_once_with(ndim)
 
 
