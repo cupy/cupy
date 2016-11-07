@@ -55,7 +55,7 @@ class PoolingNDKernelForward(object):
             raws = []
         vars = self.ds + self.outs + self.ks + self.ss + self.ps
         return ', '.join(
-            ['raw T in'] + raws + conv_nd_kernel.map(aux, vars) + in_params)
+            ['raw T in'] + raws + conv_nd_kernel.map_(aux, vars) + in_params)
 
     def _out_params(self):
         # T out, ...
@@ -78,7 +78,7 @@ class PoolingNDKernelForward(object):
             else:
                 return 'int {} = i % {};'.format(out_x, head)
         out_xs = conv_nd_kernel.vars('out_x', self.ndim)
-        out_xs_decls = conv_nd_kernel.map(
+        out_xs_decls = conv_nd_kernel.map_(
             aux, out_xs, conv_nd_kernel.succ_sublists(self.outs))
         return out_xs_decls, out_xs
 
@@ -103,7 +103,7 @@ class PoolingNDKernelForward(object):
                     in_x1, d, out, s, k, p)]
         in_x0s = conv_nd_kernel.vars('in_x0', self.ndim)
         in_x1s = conv_nd_kernel.vars('in_x1', self.ndim)
-        bounds = sum(conv_nd_kernel.map(
+        bounds = sum(conv_nd_kernel.map_(
             aux, in_x0s, in_x1s, self.ds, out_xs, self.ks, self.ss, self.ps
         ), [])
 
@@ -204,7 +204,7 @@ class PoolingNDKernelBackward(object):
             raws = []
         vars = self.ds + self.outs + self.ks + self.ss + self.ps
         return ', '.join(
-            ['raw T gy'] + raws + conv_nd_kernel.map(aux, vars) + in_params)
+            ['raw T gy'] + raws + conv_nd_kernel.map_(aux, vars) + in_params)
 
     def _out_params(self):
         # T gx, ...
@@ -227,7 +227,7 @@ class PoolingNDKernelBackward(object):
             else:
                 return 'int {} = i % {} + {};'.format(x, head, p)
         xs = conv_nd_kernel.vars('x', self.ndim)
-        xs_decls = conv_nd_kernel.map(
+        xs_decls = conv_nd_kernel.map_(
             aux, xs, conv_nd_kernel.succ_sublists(self.ds), self.ps)
         return xs_decls, xs
 
@@ -253,7 +253,7 @@ class PoolingNDKernelBackward(object):
                     out_x1, out, x, s, s)]
         out_x0s = conv_nd_kernel.vars('out_x0', self.ndim)
         out_x1s = conv_nd_kernel.vars('out_x1', self.ndim)
-        bounds = sum(conv_nd_kernel.map(
+        bounds = sum(conv_nd_kernel.map_(
             aux, out_x0s, out_x1s, xs, self.outs, self.ks, self.ss), [])
 
         def _loop_main(main):

@@ -19,7 +19,7 @@ class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
         def aux(argmax):
             return 'int {} = 0;'.format(argmax)
         self.argmaxs = conv_nd_kernel.vars('argmax', self.ndim)
-        argmax_decls = conv_nd_kernel.map(aux, self.argmaxs)
+        argmax_decls = conv_nd_kernel.map_(aux, self.argmaxs)
         return '\n'.join(['T maxval = (T)-INFINITY;'] + argmax_decls)
 
     def main(self, offset, xs):
@@ -47,7 +47,7 @@ class MaxPoolingNDKernelForward(pooling_nd_kernel.PoolingNDKernelForward):
             return 'int {} = {} + {} - {} * {};'.format(
                 argmax_k, argmax, p, out_x, s)
         argmax_ks = conv_nd_kernel.vars('argmax_k', self.ndim)
-        argmax_k_decls = conv_nd_kernel.map(
+        argmax_k_decls = conv_nd_kernel.map_(
             aux, argmax_ks, self.argmaxs, self.ps, out_xs, self.ss)
         indexes_set = 'indexes = {};'.format(
             conv_nd_kernel.muladdexp(self.ks[1:], argmax_ks[1:], argmax_ks[0]))
@@ -79,7 +79,7 @@ class MaxPoolingNDKernelBackward(pooling_nd_kernel.PoolingNDKernelBackward):
             return '{} - {} * {}'.format(x, out_x, s)
         w = conv_nd_kernel.Writer()
         w.write('int kx = {};'.format(
-            conv_nd_kernel.muladdexp(self.ks, conv_nd_kernel.map(
+            conv_nd_kernel.muladdexp(self.ks, conv_nd_kernel.map_(
                 aux, xs, out_xs, self.ss), '0')))
         w.write('if (indexes[{}] == kx) {{'.format(offset), 'inc')
         w.write('val = val + gy[{}];'.format(offset))
