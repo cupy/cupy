@@ -15,6 +15,7 @@ install_requires = [
 ]
 
 ext_modules = chainer_setup_build.get_ext_modules()
+build_ext = chainer_setup_build.custom_build_ext
 
 setup(
     name='chainer',
@@ -84,4 +85,5 @@ setup(
                    'nose'],
     # To trick build into running build_ext
     ext_modules=ext_modules,
+    cmdclass={'build_ext': build_ext}
 )

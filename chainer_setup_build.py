@@ -7,6 +7,7 @@ import sys
 
 import pkg_resources
 import setuptools
+from setuptools.command import build_ext
 
 from install import build
 from install import utils
@@ -264,31 +265,14 @@ def customize_compiler_for_nvcc(compiler):
     compiler._compile = _compile
 
 
-class chainer_build_ext(build_ext.build_ext):
+class custom_build_ext(build_ext.build_ext):
 
-    """`build_ext` command for cython files."""
+    """Custom `build_ext` command to include CUDA C source files."""
 
     def build_extensions(self):
         customize_compiler_for_nvcc(self.compiler)
         build_ext.build_ext.build_extensions(self)
 
-    def finalize_options(self):
-        ext_modules = self.distribution.ext_modules
-        if dummy_extension in ext_modules:
-            print('Executing cythonize')
-            print('Options:', _arg_options)
-
-            directive_keys = ('linetrace', 'profile')
-            directives = {key: _arg_options[key] for key in directive_keys}
-
-            cythonize_option_keys = ('annotate',)
-            cythonize_options = {
-                key: _arg_options[key] for key in cythonize_option_keys}
-
-            compiler = distutils.ccompiler.new_compiler(compiler=self.compiler)
-            distutils.sysconfig.customize_compiler(compiler)
-
-            extensions = make_extensions(_arg_options, compiler)
 
 def get_ext_modules():
     arg_options = parse_args()
