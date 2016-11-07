@@ -55,8 +55,9 @@ class TestMaxPoolingND(unittest.TestCase):
         self.x = 2 * self.x / self.x.size - 1
 
         outs = tuple(conv.get_conv_outsize(d, k, s, p, self.cover_all)
-                     for (d, k, s, p) in six.moves.zip(
-                        self.dims, self.ksize, self.stride, self.pad))
+                     for (d, k, s, p)
+                     in six.moves.zip(
+                         self.dims, self.ksize, self.stride, self.pad))
         gy_shape = (2, 3) + outs
         self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
 
