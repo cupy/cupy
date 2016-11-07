@@ -20,7 +20,7 @@ from chainer.utils import conv
 
 def pooling_patches(dims, ksize, stride, pad, cover_all):
     """Return tuples of slices that indicate pooling patches."""
-    # Left-top indeces of each pooling patch.
+    # Left-top indices of each pooling patch.
     if cover_all:
         xss = itertools.product(
             *[six.moves.range(-p, d + p - k + s, s)
@@ -29,7 +29,7 @@ def pooling_patches(dims, ksize, stride, pad, cover_all):
         xss = itertools.product(
             *[six.moves.range(-p, d + p - k + 1, s)
               for (d, k, s, p) in zip(dims, ksize, stride, pad)])
-    # Tuple of slices for pooling patches.
+    # Tuples of slices for pooling patches.
     return [tuple(slice(max(x, 0), min(x + k, d))
                   for (x, d, k) in zip(xs, dims, ksize))
             for xs in xss]
