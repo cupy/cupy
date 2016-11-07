@@ -626,7 +626,6 @@ cdef class ndarray:
         n = <Py_ssize_t>self.shape[0]
         thrust.stable_sort(ptr, ptr + n)
 
-
     # TODO(okuta): Implement argsort
     # TODO(okuta): Implement partition
     # TODO(okuta): Implement argpartition
