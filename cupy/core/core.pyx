@@ -613,6 +613,8 @@ cdef class ndarray:
     # Sorting
     # -------------------------------------------------------------------------
     cpdef sort(self):
+        # TODO(takagi): Properly handle arrays not C contiguous.
+        # TODO(takagi): Properly handle views.
         # TODO(takagi): Types other than FP32.
         # TODO(takagi): Array rank more than one.
         # TODO(takagi): Support axis argument.
