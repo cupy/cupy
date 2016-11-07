@@ -242,6 +242,23 @@ def check_extensions(extensions):
                 raise RuntimeError(msg)
 
 
+def get_ext_modules():
+    arg_options = parse_args()
+    print('Options:', arg_options)
+
+    compiler = ccompiler.new_compiler()
+    sysconfig.customize_compiler(compiler)
+
+    use_cython = check_cython_version()
+    extensions = make_extensions(arg_options, compiler, use_cython)
+
+    if use_cython:
+        extensions = cythonize(extensions, arg_options)
+
+    check_extensions(extensions)
+    return extensions
+
+
 def customize_compiler_for_nvcc(compiler):
     compiler.src_extensions.append('.cu')
     default_compiler_so = compiler.compiler_so
@@ -272,20 +289,3 @@ class custom_build_ext(build_ext.build_ext):
     def build_extensions(self):
         customize_compiler_for_nvcc(self.compiler)
         build_ext.build_ext.build_extensions(self)
-
-
-def get_ext_modules():
-    arg_options = parse_args()
-    print('Options:', arg_options)
-
-    compiler = ccompiler.new_compiler()
-    sysconfig.customize_compiler(compiler)
-
-    use_cython = check_cython_version()
-    extensions = make_extensions(arg_options, compiler, use_cython)
-
-    if use_cython:
-        extensions = cythonize(extensions, arg_options)
-
-    check_extensions(extensions)
-    return extensions
