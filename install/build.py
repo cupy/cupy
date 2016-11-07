@@ -10,14 +10,23 @@ from install import utils
 minimum_cuda_version = 6050
 minimum_cudnn_version = 2000
 
+get_nvcc_path_warned = False
 
-def get_compiler_setting():
+
+def get_nvcc_path():
+    global get_nvcc_path_warned
     nvcc_path = utils.search_on_path(('nvcc', 'nvcc.exe'))
-    cuda_path_default = None
-    if nvcc_path is None:
+    if nvcc_path is None and not get_nvcc_path_warned:
         utils.print_warning('nvcc not in path.',
                             'Please set path to nvcc.')
-    else:
+        get_nvcc_path_warned = True
+    return nvcc_path
+
+
+def get_compiler_setting():
+    nvcc_path = get_nvcc_path()
+    cuda_path_default = None
+    if nvcc_path is not None:
         cuda_path_default = os.path.normpath(
             os.path.join(os.path.dirname(nvcc_path), '..'))
 
