@@ -106,7 +106,7 @@ CUresult cuLaunchKernel(
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// cuda.h
+// cuda_runtime.h
 ///////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
@@ -191,11 +191,19 @@ cudaError_t cudaMalloc(void** devPtr, size_t size) {
     return cudaSuccess;
 }
 
-cudaError_t cudaFree(void* devPtr) {
+cudaError_t cudaHostAlloc(void** ptr, size_t size, unsigned int flags) {
     return cudaSuccess;
 }
 
-cudaError_t cudaMemGetInfo(size_t* free, size_t* total) {
+int cudaFree(void* devPtr) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaFreeHost(void* ptr) {
+    return cudaSuccess;
+}
+
+int cudaMemGetInfo(size_t* free, size_t* total) {
     return cudaSuccess;
 }
 
