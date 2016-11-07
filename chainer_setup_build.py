@@ -180,11 +180,13 @@ def make_extensions(options, compiler, use_cython):
         s = settings.copy()
         if not no_cuda:
             s['libraries'] = module['libraries']
+
         for f in module['file']:
             name = module_extension_name(f)
             sources = module_extension_sources(f, use_cython)
             extension = setuptools.Extension(name, sources, **s)
             ret.append(extension)
+
     return ret
 
 
