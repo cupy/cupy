@@ -1,6 +1,6 @@
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
-#include "cupy_thrust.cuh"
+#include "cupy_thrust.h"
 
 using namespace thrust;
 

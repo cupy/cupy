@@ -6,5 +6,5 @@
 # Extern
 ###############################################################################
 
-cdef extern from "cupy_thrust.cuh" namespace "cupy::thrust":
+cdef extern from "cupy_thrust.h" namespace "cupy::thrust":
      void stable_sort(float *first, float *last)
