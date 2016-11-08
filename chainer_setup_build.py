@@ -214,6 +214,9 @@ def get_ext_modules():
     arg_options = parse_args()
     print('Options:', arg_options)
 
+    # We need to call get_config_vars to initialize _config_vars in distutils
+    # see #1849
+    sysconfig.get_config_vars()
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
 
