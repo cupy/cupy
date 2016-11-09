@@ -34,9 +34,11 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     .. seealso:: :func:`numpy.random.gumbel`
     """
     rs = uniform(size=size, dtype=dtype)
+    # We use `1 - x` as input of `log` method to prevent underflow.
+    # It obeys numpy implementation.
     return cupy.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
-        'y = -log(-log(x)) * scale + loc',
+        'y = loc - log(-log(1 - x)) * scale',
         'gumbel_kernel'
     )(rs, loc, scale, rs)
     return rs
