@@ -145,7 +145,7 @@ def argmax_crf1d(cost, xs):
             matrix, where :math:`B` is mini-batch size, :math:`K` is the number
             of labels.
             Note that :math:`B` s in all the variables are not necessary
-            the same, i.e., it accepts the input sequences with difference
+            the same, i.e., it accepts the input sequences with different
             lengths.
 
     Returns:
