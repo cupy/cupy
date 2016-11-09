@@ -1661,6 +1661,13 @@ cdef class broadcast:
 
 
 cpdef ndarray broadcast_to(ndarray array, shape):
+    """Broadcast an array to a given shape.
+
+    .. seealso::
+        :func:`cupy.broadcast_to` for full documentation,
+        :meth:`numpy.broadcast_to`
+
+    """
     if array.ndim > len(shape):
         raise ValueError(
             'input operand has more dimensions than allowed by the axis '
