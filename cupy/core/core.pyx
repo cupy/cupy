@@ -1040,6 +1040,9 @@ cdef class ndarray:
         advanced = False
         axis = None
         for i, s in enumerate(slices):
+            if isinstance(s, list):
+                s = numpy.array(s)
+                slices[i] = s
             if isinstance(s, (numpy.ndarray, ndarray)):
                 if issubclass(s.dtype.type, numpy.integer):
                     if advanced:
