@@ -8,7 +8,8 @@ from cupy import testing
 
 @testing.parameterize(
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': (slice(None), [1, 0])},
-    {'shape': (2, 3, 4), 'transpose': (1, 2, 0), 'indexes': (slice(None), [1, 0])},
+    {'shape': (2, 3, 4), 'transpose': (1, 2, 0),
+     'indexes': (slice(None), [1, 0])},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': ([1, -1], slice(None))},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': (Ellipsis, [1, 0])},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': ([1, -1], Ellipsis)},
@@ -28,7 +29,8 @@ class TestArrayAdvancedIndexingParametrized(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'transpose': None, 'indexes': (slice(None), cupy.array([1, 0]))},
+    {'shape': (2, 3, 4), 'transpose': None,
+     'indexes': (slice(None), cupy.array([1, 0]))},
     {'shape': (2, 3, 4), 'transpose': None, 'indexes': (numpy.array([1, 0],))},
 )
 @testing.gpu

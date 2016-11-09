@@ -1107,7 +1107,7 @@ cdef class ndarray:
                     ind += self._shape[j]
                 if not (0 <= ind < self._shape[j]):
                     msg = ('Index %s is out of bounds for axis %s with '
-                            'size %s' % (s, j, self._shape[j]))
+                           'size %s' % (s, j, self._shape[j]))
                     raise IndexError(msg)
                 offset += ind * self._strides[j]
                 j += 1
