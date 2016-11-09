@@ -1036,6 +1036,9 @@ cdef class ndarray:
 
         slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
 
+        if len(slices) > self.ndim + n_newaxes:
+            raise IndexError('too many indices for array')
+
         # Check if advanced is true and if there are multiple integer indexing
         advanced = False
         axis = None
