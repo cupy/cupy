@@ -21,11 +21,6 @@ def _pair(x):
 
 @parameterize(
     *testing.product({
-        'in_channels': [3],
-        'out_channels': [2],
-        'ksize': [3],
-        'stride': [2],
-        'pad': [1],
         'nobias': [True, False],
         'use_cudnn': [True, False]
     })
@@ -33,9 +28,14 @@ def _pair(x):
 class TestDeconvolution2D(unittest.TestCase):
 
     def setUp(self):
+        in_channels = 3
+        out_channels = 2
+        ksize = 3
+        stride = 2
+        pad = 1
         self.link = L.Deconvolution2D(
-            self.in_channels, self.out_channels, self.ksize,
-            stride=self.stride, pad=self.pad, nobias=self.nobias)
+            in_channels, out_channels, ksize,
+            stride=stride, pad=pad, nobias=self.nobias)
         self.link.W.data[...] = numpy.random.uniform(
             -1, 1, self.link.W.data.shape).astype(numpy.float32)
         if not self.nobias:
@@ -46,13 +46,13 @@ class TestDeconvolution2D(unittest.TestCase):
 
         N = 2
         h, w = 3, 2
-        kh, kw = _pair(self.ksize)
-        out_h = conv.get_deconv_outsize(h, kh, self.stride, self.pad)
-        out_w = conv.get_deconv_outsize(w, kw, self.stride, self.pad)
+        kh, kw = _pair(ksize)
+        out_h = conv.get_deconv_outsize(h, kh, stride, pad)
+        out_w = conv.get_deconv_outsize(w, kw, stride, pad)
         self.gy = numpy.random.uniform(
-            -1, 1, (N, self.out_channels, out_h, out_w)).astype(numpy.float32)
+            -1, 1, (N, out_channels, out_h, out_w)).astype(numpy.float32)
         self.x = numpy.random.uniform(
-            -1, 1, (N, self.in_channels, h, w)).astype(numpy.float32)
+            -1, 1, (N, in_channels, h, w)).astype(numpy.float32)
 
     def check_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
@@ -94,10 +94,6 @@ class TestDeconvolution2D(unittest.TestCase):
 
 @parameterize(
     *testing.product({
-        'out_channels': [2],
-        'ksize': [3],
-        'stride': [2],
-        'pad': [1],
         'nobias': [True, False],
         'use_cudnn': [True, False]
     })
@@ -105,21 +101,25 @@ class TestDeconvolution2D(unittest.TestCase):
 class TestDeconvolution2DParameterShapePlaceholder(unittest.TestCase):
 
     def setUp(self):
+        out_channels = 2
+        ksize = 3
+        stride = 2
+        pad = 1
         in_channels = None
         self.link = L.Deconvolution2D(
-            in_channels, self.out_channels, self.ksize,
-            stride=self.stride, pad=self.pad, nobias=self.nobias)
+            in_channels, out_channels, ksize,
+            stride=stride, pad=pad, nobias=self.nobias)
         if not self.nobias:
             self.link.b.data[...] = numpy.random.uniform(
                 -1, 1, self.link.b.data.shape).astype(numpy.float32)
 
         N = 2
         h, w = 3, 2
-        kh, kw = _pair(self.ksize)
-        out_h = conv.get_deconv_outsize(h, kh, self.stride, self.pad)
-        out_w = conv.get_deconv_outsize(w, kw, self.stride, self.pad)
+        kh, kw = _pair(ksize)
+        out_h = conv.get_deconv_outsize(h, kh, stride, pad)
+        out_w = conv.get_deconv_outsize(w, kw, stride, pad)
         self.gy = numpy.random.uniform(
-            -1, 1, (N, self.out_channels, out_h, out_w)).astype(numpy.float32)
+            -1, 1, (N, out_channels, out_h, out_w)).astype(numpy.float32)
         self.x = numpy.random.uniform(
             -1, 1, (N, 3, h, w)).astype(numpy.float32)
         self.link(chainer.Variable(self.x))
