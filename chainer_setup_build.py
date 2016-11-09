@@ -82,9 +82,14 @@ def check_library(compiler, includes=(), libraries=(),
     source = ''.join(['#include <%s>\n' % header for header in includes])
     source += 'int main(int argc, char* argv[]) {return 0;}'
     try:
-        build.build_and_run(compiler, source, libraries,
-                            include_dirs, library_dirs)
-    except Exception:
+        # We need to try to build a shared library because distutils
+        # uses different option to build an executable and a shared library.
+        # Especially when a user build an executable, distutils does not use
+        # LDFLAGS environment variable.
+        build.build_shlib(compiler, source, libraries,
+                          include_dirs, library_dirs)
+    except Exception as e:
+        print(e)
         return False
     return True
 
