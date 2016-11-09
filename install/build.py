@@ -120,7 +120,7 @@ def build_shlib(compiler, source, libraries=(),
 
         objects = compiler.compile([fname], output_dir=temp_dir,
                                    include_dirs=include_dirs)
-        
+
         try:
             postargs = ['/MANIFEST'] if sys.platform == 'win32' else []
             compiler.link_shared_lib(objects,
