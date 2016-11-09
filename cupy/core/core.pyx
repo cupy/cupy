@@ -1022,8 +1022,7 @@ cdef class ndarray:
         axis = None
         for i, s in enumerate(slices):
             if isinstance(s, (numpy.ndarray, ndarray)):
-                if s.dtype in [numpy.int64, numpy.int32,
-                               numpy.int16, numpy.int8]:
+                if issubclass(s.dtype.type, numpy.integer):
                     if advanced:
                         advanced = True
                         axis = None
@@ -1054,63 +1053,65 @@ cdef class ndarray:
         slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
 
         if advanced:
-            if (axis is not None and
-                all(isinstance(a, slice) and
-                    equal_slices(a, slice(None)) for a in slices[:axis]) and
-                all(isinstance(a, slice) and
-                    equal_slices(a, slice(None)) for a in slices[axis + 1:])):
-                return self.take(slices[axis], axis)
+            if axis is not None:
+                flag = True
+                noneslice = slice(None)
+                for i, s in enumerate(slices):
+                    if i != axis and s != noneslice:
+                        flag = False
+                        break
+                if flag:
+                    return self.take(slices[axis], axis)
             else:
-                raise NotImplementedError('Adv indexing with 2 or ' +
-                                          'more arrays is not supported')
+                raise NotImplementedError(
+                    'Adv indexing with 2 or more arrays is not supported')
 
-        else:
-            # Create new shape and stride
-            j = 0
-            offset = 0
-            for i, s in enumerate(slices):
-                if s is None:
-                    shape.push_back(1)
-                    if j < ndim:
-                        strides.push_back(self._strides[j])
-                    elif ndim > 0:
-                        strides.push_back(self._strides[ndim - 1])
-                    else:
-                        strides.push_back(self.itemsize)
-                elif ndim <= j:
-                    raise IndexError("too many indices for array")
-                elif isinstance(s, slice):
-                    s = internal.complete_slice(s, self._shape[j])
-                    s_start = s.start
-                    s_stop = s.stop
-                    s_step = s.step
-                    if s_step > 0:
-                        dim = (s_stop - s_start - 1) // s_step + 1
-                    else:
-                        dim = (s_stop - s_start + 1) // s_step + 1
-
-                    shape.push_back(dim)
-                    strides.push_back(self._strides[j] * s_step)
-
-                    offset += s_start * self._strides[j]
-                    j += 1
-                elif numpy.isscalar(s):
-                    ind = int(s)
-                    if ind < 0:
-                        ind += self._shape[j]
-                    if not (0 <= ind < self._shape[j]):
-                        msg = ('Index %s is out of bounds for axis %s with '
-                               'size %s' % (s, j, self._shape[j]))
-                        raise IndexError(msg)
-                    offset += ind * self._strides[j]
-                    j += 1
+        # Create new shape and stride
+        j = 0
+        offset = 0
+        for i, s in enumerate(slices):
+            if s is None:
+                shape.push_back(1)
+                if j < ndim:
+                    strides.push_back(self._strides[j])
+                elif ndim > 0:
+                    strides.push_back(self._strides[ndim - 1])
                 else:
-                    raise TypeError('Invalid index type: %s' % type(slices[i]))
+                    strides.push_back(self.itemsize)
+            elif ndim <= j:
+                raise IndexError("too many indices for array")
+            elif isinstance(s, slice):
+                s = internal.complete_slice(s, self._shape[j])
+                s_start = s.start
+                s_stop = s.stop
+                s_step = s.step
+                if s_step > 0:
+                    dim = (s_stop - s_start - 1) // s_step + 1
+                else:
+                    dim = (s_stop - s_start + 1) // s_step + 1
 
-            v = self.view()
-            v.data = self.data + offset
-            v._set_shape_and_strides(shape, strides)
-            return v
+                shape.push_back(dim)
+                strides.push_back(self._strides[j] * s_step)
+
+                offset += s_start * self._strides[j]
+                j += 1
+            elif numpy.isscalar(s):
+                ind = int(s)
+                if ind < 0:
+                    ind += self._shape[j]
+                if not (0 <= ind < self._shape[j]):
+                    msg = ('Index %s is out of bounds for axis %s with '
+                            'size %s' % (s, j, self._shape[j]))
+                    raise IndexError(msg)
+                offset += ind * self._strides[j]
+                j += 1
+            else:
+                raise TypeError('Invalid index type: %s' % type(slices[i]))
+
+        v = self.view()
+        v.data = self.data + offset
+        v._set_shape_and_strides(shape, strides)
+        return v
 
     def __setitem__(self, slices, value):
         cdef ndarray v, x, y
@@ -1975,12 +1976,6 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
         a.shape[:-2] + (diag_size,),
         a.strides[:-2] + (a.strides[-1] + a.strides[-2],))
     return ret
-
-
-def equal_slices(s1, s2):
-    return (s1.start == s2.start and
-            s1.stop == s2.stop and
-            s1.step == s2.step)
 
 
 # -----------------------------------------------------------------------------
