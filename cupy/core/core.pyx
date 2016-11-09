@@ -1017,22 +1017,6 @@ cdef class ndarray:
         else:
             slices = list(slices)
 
-        # Check if advanced is true and if there are multiple integer indexing
-        advanced = False
-        axis = None
-        for i, s in enumerate(slices):
-            if isinstance(s, (numpy.ndarray, ndarray)):
-                if issubclass(s.dtype.type, numpy.integer):
-                    if advanced:
-                        advanced = True
-                        axis = None
-                    else:
-                        advanced = True
-                        axis = i
-                else:
-                    raise ValueError('Advanced indexing with ' +
-                                     'non-integer array is not supported')
-
         # Expand ellipsis into empty slices
         ellipsis = -1
         n_newaxes = n_ellipses = 0
@@ -1051,6 +1035,22 @@ cdef class ndarray:
             slices[ellipsis:ellipsis + 1] = noneslices * ellipsis_size
 
         slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
+
+        # Check if advanced is true and if there are multiple integer indexing
+        advanced = False
+        axis = None
+        for i, s in enumerate(slices):
+            if isinstance(s, (numpy.ndarray, ndarray)):
+                if issubclass(s.dtype.type, numpy.integer):
+                    if advanced:
+                        advanced = True
+                        axis = None
+                    else:
+                        advanced = True
+                        axis = i
+                else:
+                    raise ValueError('Advanced indexing with ' +
+                                     'non-integer array is not supported')
 
         if advanced:
             if axis is not None:
