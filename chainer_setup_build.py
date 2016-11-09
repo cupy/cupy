@@ -3,6 +3,7 @@ from distutils import ccompiler
 from distutils import sysconfig
 import os
 from os import path
+from numpy.distutils import conv_template  # for processing .src template files
 import sys
 
 import pkg_resources
@@ -42,7 +43,8 @@ MODULES = [
             'cupy.cuda.nvtx',
             'cupy.cuda.function',
             'cupy.cuda.runtime',
-            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.h.src',
+                                  'cupy/cuda/cupy_thrust.cu.src']),
             'cupy.util',
         ],
         'include': [
@@ -210,6 +212,47 @@ def parse_args():
     return arg_options
 
 
+def process_source_templates(extensions):
+    """Process .src source templates to generate actual source files.
+
+       Additionally, sources in extensions are replaced with actual file names
+       removing `.src` file extension except that C header files are just
+       removed from the sources. For example, an extension is assumed to have
+       the following sources:
+
+           [thrust.pyx, cupy_thrust.h.src, cupy_thrust.cu.src]
+
+       then the sources are replaced with:
+
+           [thrust.pyx, cupy_thrust.cu]
+
+    """
+    for extension in extensions:
+
+        # Process source templates.
+        for source in extension.sources:
+            base, ext = os.path.splitext(source)
+            if ext == '.src':
+                print("processing source template '{}'".format(source))
+                outstr = conv_template.process_file(source)
+                fid = open(base, 'w')
+                fid.write(outstr)
+                fid.close()
+
+        # Replace extension sources.
+        sources = []
+        for source in extension.sources:
+            base, ext = os.path.splitext(source)
+            if ext == '.src':
+                _, ext1 = os.path.splitext(base)
+                if ext1 == '.h':
+                    continue
+                sources.append(base)
+            else:
+                sources.append(source)
+        extension.sources = sources
+
+
 def check_cython_version():
     try:
         import Cython
@@ -253,6 +296,8 @@ def get_ext_modules():
 
     use_cython = check_cython_version()
     extensions = make_extensions(arg_options, compiler, use_cython)
+
+    process_source_templates(extensions)
 
     if use_cython:
         extensions = cythonize(extensions, arg_options)

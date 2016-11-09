@@ -619,12 +619,24 @@ cdef class ndarray:
         # TODO(takagi): Array rank more than one.
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
-        cdef float* ptr
+        cdef void* ptr
         cdef Py_ssize_t n
 
-        ptr = <float *>self.data.ptr
+        ptr = <void *>self.data.ptr
         n = <Py_ssize_t>self.shape[0]
-        thrust.stable_sort(ptr, ptr + n)
+
+        if self.dtype == numpy.int16:
+            thrust.stable_sort_short(<short *>ptr, <short *>ptr + n)
+        elif self.dtype == numpy.int32:
+            thrust.stable_sort_int(<int *>ptr, <int *>ptr + n)
+        elif self.dtype == numpy.int64:
+            thrust.stable_sort_long(<long *>ptr, <long *>ptr + n)
+        elif self.dtype == numpy.float32:
+            thrust.stable_sort_float(<float *>ptr, <float *>ptr + n)
+        elif self.dtype == numpy.float64:
+            thrust.stable_sort_double(<double *>ptr, <double *>ptr + n)
+        else:
+            raise NotImplementedError()
 
     # TODO(okuta): Implement argsort
     # TODO(okuta): Implement partition

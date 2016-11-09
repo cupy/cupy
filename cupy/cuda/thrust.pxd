@@ -1,1 +1,5 @@
-cdef void stable_sort(float *first, float *last)
+cdef void stable_sort_short(short *, short *)
+cdef void stable_sort_int(int *, int *)
+cdef void stable_sort_long(long *, long *)
+cdef void stable_sort_float(float *, float *)
+cdef void stable_sort_double(double *, double *)

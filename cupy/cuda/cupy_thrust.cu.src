@@ -1,0 +1,18 @@
+#include <thrust/device_ptr.h>
+#include <thrust/sort.h>
+#include "cupy_thrust.h"
+
+using namespace thrust;
+
+/**begin repeat
+ *
+ * #type = short, int, long, float, double#
+ */
+
+void cupy::thrust::stable_sort_@type@(@type@ *first, @type@ *last) {
+    device_ptr<@type@> dp_first = device_pointer_cast(first);
+    device_ptr<@type@> dp_last  = device_pointer_cast(last);
+    stable_sort< device_ptr<@type@> >(dp_first, dp_last);
+}
+
+/**end repeat**/

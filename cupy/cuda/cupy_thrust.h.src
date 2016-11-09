@@ -5,7 +5,14 @@ namespace cupy {
 
 namespace thrust {
 
-void stable_sort(float *, float *);
+/**begin repeat
+ *
+ * #type = short, int, long, float, double#
+ */
+
+void stable_sort_@type@(@type@ *, @type@ *);
+
+/**end repeat**/
 
 } // namespace thrust
 
