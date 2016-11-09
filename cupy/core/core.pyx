@@ -1006,6 +1006,20 @@ cdef class ndarray:
         return self._shape[0]
 
     def __getitem__(self, slices):
+        """x.__getitem__(y) <==> x[y]
+
+        .. note::
+
+           CuPy handles out-of-bounds indices differently from NumPy.
+           NumPy handles them by raising an error, but CuPy wraps around them.
+
+           Examples
+           --------
+           >>> a = cupy.arange(3)
+           >>> a[[1, 3]]
+           array([1, 0])
+
+        """
         # supports basic indexing (by slices, ints or Ellipsis).
         # also supports indexing by an array on one axis
         # TODO(beam2d): Support the advanced indexing of NumPy.
