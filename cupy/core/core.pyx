@@ -517,29 +517,64 @@ cdef class ndarray:
            :meth:`numpy.ndarray.squeeze`
 
         """
-        cdef vector.vector[Py_ssize_t] vec_axis, newshape, newstrides
-        cdef Py_ssize_t i, j, n
-        if axis is None:
-            for i in range(<Py_ssize_t>self._shape.size()):
-                n = self._shape[i]
-                if n == 1:
-                    vec_axis.push_back(i)
-        elif isinstance(axis, int):
-            vec_axis.push_back(axis)
-        else:
-            vec_axis = axis
 
-        if vec_axis.size() == 0:
-            return self
-        j = 0
-        for i in range(<Py_ssize_t>self._shape.size()):
-            n = self._shape[i]
-            if j < <Py_ssize_t>vec_axis.size() and i == vec_axis[j]:
-                if n != 1:
-                    raise RuntimeError('Cannot squeeze dimension of size > 1')
-                j += 1
+        cdef vector.vector[char] axis_flags
+        cdef vector.vector[Py_ssize_t] newshape, newstrides
+        cdef Py_ssize_t ndim, naxes, _axis
+
+        ndim = self._shape.size()
+        axis_flags = vector.vector[char](ndim, 0)
+
+        # Convert axis to boolean flag.
+        if axis is None:
+            for idim in range(ndim):
+                if self._shape[idim] == 1:
+                    axis_flags[idim] = 1
+        elif isinstance(axis, tuple):
+            naxes = <Py_ssize_t>len(axis)
+            for i in range(naxes):
+                _axis = <Py_ssize_t>axis[i]
+                axis_orig = _axis
+                if _axis < 0:
+                    _axis += ndim
+                if _axis < 0 or _axis >= ndim:
+                    msg = "'axis' entry %d is out of bounds [-%d, %d)"
+                    raise ValueError(msg % (axis_orig, ndim, ndim))
+                if axis_flags[_axis] == 1:
+                    raise ValueError("duplicate value in 'axis'")
+                axis_flags[_axis] = 1
+        else:
+            _axis = <Py_ssize_t>axis
+            axis_orig = _axis
+            if _axis < 0:
+                _axis += ndim
+            if ndim == 0 and (_axis == 0 or _axis == -1):
+                # Special case letting axis={-1,0} slip through for scalars,
+                # for backwards compatibility reasons.
+                pass
             else:
-                newshape.push_back(n)
+                if _axis < 0 or _axis >= ndim:
+                    msg = "'axis' entry %d is out of bounds [-%d, %d)"
+                    raise ValueError(msg % (axis_orig, ndim, ndim))
+                axis_flags[_axis] = 1
+
+        # Verify that the axes requested are all of size one
+        any_ones = 0
+        for idim in range(ndim):
+            if axis_flags[idim] != 0:
+                if self._shape[idim] == 1:
+                    any_ones = 1
+                else:
+                    raise ValueError('cannot select an axis to squeeze out '
+                                     'which has size not equal to one')
+
+        # If there were no axes to squeeze out, return the same array
+        if any_ones == 0:
+            return self
+
+        for i in range(ndim):
+            if axis_flags[i] == 0:
+                newshape.push_back(self._shape[i])
                 newstrides.push_back(self._strides[i])
 
         v = self.view()
@@ -1505,16 +1540,17 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, Py_ssize_t ndmin=0):
 
 cpdef ndarray ascontiguousarray(ndarray a, dtype=None):
     if dtype is None:
+        if a._c_contiguous:
+            return a
         dtype = a.dtype
     else:
         dtype = numpy.dtype(dtype)
+        if a._c_contiguous and dtype == a.dtype:
+            return a
 
-    if dtype == a.dtype and a._c_contiguous:
-        return a
-    else:
-        newarray = ndarray(a.shape, dtype)
-        elementwise_copy(a, newarray)
-        return newarray
+    newarray = ndarray(a.shape, dtype)
+    elementwise_copy(a, newarray)
+    return newarray
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -1892,25 +1928,28 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 
 cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
     cdef Py_ssize_t a_ndim, b_ndim, a_axis, b_axis, n, m, k
-    cdef bint a_is_vec, b_is_vec
+    cdef bint input_a_is_vec, input_b_is_vec
     cdef vector.vector[Py_ssize_t] ret_shape
     cdef vector.vector[Py_ssize_t] shape
 
-    if out is not None and numpy.result_type(a.dtype, b.dtype) != out.dtype:
-        raise ValueError('Not supported dtype combination.')
     a_ndim = a._shape.size()
     b_ndim = b._shape.size()
-    assert a_ndim > 0 and b_ndim > 0
-    a_is_vec = a_ndim == 1
-    b_is_vec = b_ndim == 1
 
-    if a_is_vec:
+    if out is not None and numpy.result_type(a.dtype, b.dtype) != out.dtype:
+        raise ValueError('Not supported dtype combination.')
+
+    if a_ndim == 0 or b_ndim == 0:
+        return multiply(a, b, out=out)
+
+    input_a_is_vec = a_ndim == 1
+    input_b_is_vec = b_ndim == 1
+    if input_a_is_vec:
         shape.clear()
         shape.push_back(1)
         shape.push_back(a.size)
         a = a._reshape(shape)
         a_ndim = 2
-    if b_is_vec:
+    if input_b_is_vec:
         shape.clear()
         shape.push_back(b.size)
         shape.push_back(1)
@@ -1933,22 +1972,16 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         m = b.size // k
         n = a.size // k
     else:
-        # When k==0, the function must returns a matrix filled with zero
+        # When k==0, the function must return a matrix filled with zero
         # like NumPy.
         m = 0
         n = 0
 
-    ret_shape.assign(a._shape.begin() + 1, a._shape.end())
-    ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
-    if out is None:
-        if a_is_vec:
-            if b_is_vec:
-                ret_shape.clear()
-            else:
-                ret_shape.erase(ret_shape.begin())
-        elif b_is_vec:
-            ret_shape.erase(ret_shape.begin())
-    else:
+    if not input_a_is_vec:
+        ret_shape.insert(ret_shape.end(), a._shape.begin() + 1, a._shape.end())
+    if not input_b_is_vec:
+        ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
+    if out is not None:
         if k != 0 and out.size != n * m:
             raise ValueError('Output array has an invalid size')
         if not out._c_contiguous:
@@ -2312,8 +2345,7 @@ absolute = create_ufunc(
     ''')
 
 
-# Fixed version of sqrt
-sqrt_fixed = create_ufunc(
+sqrt = create_ufunc(
     'cupy_sqrt',
     ('e->e', 'f->f', 'd->d'),
     'out0 = sqrt(in0)')
@@ -2356,7 +2388,7 @@ cpdef ndarray _var(ndarray a, axis=None, dtype=None, out=None, ddof=0,
 
 cpdef _std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     ret = _var(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
-    return sqrt_fixed(ret, dtype=dtype, out=out)
+    return sqrt(ret, dtype=dtype, out=out)
 
 
 cdef _var_core = ReductionKernel(

@@ -111,6 +111,10 @@ copy
 ~~~~
 .. autofunction:: copy
 
+dstack
+~~~~~~
+.. autofunction:: dstack
+
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
@@ -124,7 +128,7 @@ get_item
 .. autofunction:: get_item
 
 hstack
-~~~~~~~~
+~~~~~~
 .. autofunction:: hstack
 
 permutate
@@ -151,6 +155,10 @@ split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
 
+squeeze
+~~~~~~~
+.. autofunction:: squeeze
+
 stack
 ~~~~~
 .. autofunction:: stack
@@ -158,6 +166,10 @@ stack
 swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
+
+tile
+~~~~
+.. autofunction:: tile
 
 transpose
 ~~~~~~~~~
@@ -195,8 +207,12 @@ deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
 
-dilated_convolution_2d
+deconvolution_nd
 ~~~~~~~~~~~~~~~~
+.. autofunction:: deconvolution_nd
+
+dilated_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: dilated_convolution_2d
 
 embed_id
@@ -282,6 +298,18 @@ triplet
 
 Mathematical functions
 ----------------------
+
+arccos
+~~~~~~
+.. autofunction:: arccos
+
+arcsin
+~~~~~~
+.. autofunction:: arcsin
+
+arctan
+~~~~~~
+.. autofunction:: arctan
 
 argmax
 ~~~~~~
@@ -402,6 +430,14 @@ sinh
 sqrt
 ~~~~
 .. autofunction:: sqrt
+
+square
+~~~~~~
+.. autofunction:: square
+
+squared_difference
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: squared_difference
 
 sum
 ~~~

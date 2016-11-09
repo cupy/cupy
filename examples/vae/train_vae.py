@@ -4,6 +4,9 @@
 from __future__ import print_function
 import argparse
 
+import matplotlib
+# Disable interactive backend
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import six
@@ -30,6 +33,8 @@ parser.add_argument('--dimz', '-z', default=20, type=int,
                     help='dimention of encoded vector')
 parser.add_argument('--batchsize', '-b', type=int, default=100,
                     help='learning minibatch size')
+parser.add_argument('--test', action='store_true',
+                    help='Use tiny datasets for quick tests')
 args = parser.parse_args()
 
 batchsize = args.batchsize
@@ -49,7 +54,13 @@ mnist['data'] = mnist['data'].astype(np.float32)
 mnist['data'] /= 255
 mnist['target'] = mnist['target'].astype(np.int32)
 
-N = 60000
+if args.test:
+    mnist['data'] = mnist['data'][0:100]
+    mnist['target'] = mnist['target'][0:100]
+    N = 30
+else:
+    N = 60000
+
 x_train, x_test = np.split(mnist['data'],   [N])
 y_train, y_test = np.split(mnist['target'], [N])
 N_test = y_test.size

@@ -317,17 +317,23 @@ There are further two ways to use the optimizer directly.
 One is manually computing gradients and then call the :meth:`~Optimizer.update` method with no arguments.
 Do not forget to clear gradients beforehand!
 
+   >>> x = np.random.uniform(-1, 1, (2, 4)).astype('f')
    >>> model.cleargrads()
    >>> # compute gradient here...
+   >>> loss = F.sum(model(chainer.Variable(x)))
+   >>> loss.backward()
    >>> optimizer.update()
 
 The other way is just passing a loss function to the :meth:`~Optimizer.update` method.
 In this case, :meth:`~Link.cleargrads` is automatically called by the update method, so user do not have to call it manually.
 
-   >>> def lossfun(args...):
-   ...     ...
+   >>> def lossfun(arg1, arg2):
+   ...     # calculate loss
+   ...     loss = F.sum(model(arg1 - arg2))
    ...     return loss
-   >>> optimizer.update(lossfun, args...)
+   >>> arg1 = np.random.uniform(-1, 1, (2, 4)).astype('f')
+   >>> arg2 = np.random.uniform(-1, 1, (2, 4)).astype('f')
+   >>> optimizer.update(lossfun, chainer.Variable(arg1), chainer.Variable(arg2))
 
 See :meth:`Optimizer.update` for the full specification.
 
@@ -422,15 +428,19 @@ The MNIST dataset consists of 70,000 greyscale images of size 28x28 (i.e. 784 pi
 The dataset is divided into 60,000 training images and 10,000 test images by default.
 We can obtain the vectorized version (i.e., a set of 784 dimensional vectors) by :func:`datasets.get_mnist`.
 
-   >>> train, test = datasets.get_mnist()
-
 .. testcode::
    :hide:
 
-   data = np.random.rand(70000, 784).astype(np.float32)
-   target = np.random.randint(10, size=70000).astype(np.int32)
-   train = datasets.TupleDataset(data[:60000], target[:60000])
-   test = datasets.TupleDataset(data[60000:], target[60000:])
+   data = np.random.rand(70, 784).astype(np.float32)
+   target = np.random.randint(10, size=70).astype(np.int32)
+   datasets.get_mnist = lambda: (datasets.TupleDataset(data[:60], target[:60]), datasets.TupleDataset(data[60:], target[60:]))
+
+
+.. doctest::
+
+   >>> train, test = datasets.get_mnist()
+   ...
+
 
 This code automatically downloads the MNIST dataset and saves the NumPy arrays to the ``$(HOME)/.chainer`` directory.
 The returned ``train`` and ``test`` can be seen as lists of image-label pairs (strictly speaking, they are instances of :class:`~datasets.TupleDataset`).

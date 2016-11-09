@@ -16,12 +16,11 @@ def maxout(x, pool_size, axis=1):
     The following is the example where we use :func:`maxout` in combination
     with a Linear link.
 
-    >>> import numpy, chainer, chainer.links as L
     >>> in_size, out_size, pool_size = 100, 100, 100
     >>> l = L.Linear(in_size, out_size * pool_size)
-    >>> x = chainer.Variable(numpy.zeros((1, in_size), 'f'))  # prepare data
+    >>> x = chainer.Variable(np.zeros((1, in_size), 'f'))  # prepare data
     >>> x = l(x)
-    >>> y = maxout(x, pool_size)
+    >>> y = F.maxout(x, pool_size)
 
     Args:
        x (~chainer.Variable): Input variable. Its first dimension is assumed

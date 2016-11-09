@@ -79,6 +79,9 @@ class TestLinear(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
+@testing.parameterize(
+    {'input_variable': True},
+    {'input_variable': False})
 class TestLinearParameterShapePlaceholder(unittest.TestCase):
 
     in_size = 3
@@ -91,7 +94,10 @@ class TestLinearParameterShapePlaceholder(unittest.TestCase):
         temp_x = numpy.random.uniform(-1, 1,
                                       (self.out_size,
                                        self.in_size)).astype(numpy.float32)
-        self.link(chainer.Variable(temp_x))
+        if self.input_variable:
+            self.link(chainer.Variable(temp_x))
+        else:
+            self.link(temp_x)
         W = self.link.W.data
         W[...] = numpy.random.uniform(-1, 1, W.shape)
         b = self.link.b.data

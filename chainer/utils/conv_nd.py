@@ -21,6 +21,7 @@ def im2col_nd_cpu(img, ksize, stride, pad, pval=0, cover_all=False):
     assert ndim == len(ksize) == len(stride) == len(pad)
     outs = tuple(get_conv_outsize(d, k, s, p, cover_all)
                  for (d, k, s, p) in zip(dims, ksize, stride, pad))
+    assert all(out > 0 for out in outs), 'Output sizes should be positive.'
 
     # Pad around image.
     pad_width = ((0, 0), (0, 0)) + tuple(
@@ -55,6 +56,7 @@ def im2col_nd_gpu(img, ksize, stride, pad, cover_all=False):
     assert ndim == len(ksize) == len(stride) == len(pad)
     outs = tuple(get_conv_outsize(d, k, s, p, cover_all)
                  for (d, k, s, p) in zip(dims, ksize, stride, pad))
+    assert all(out > 0 for out in outs), 'Output sizes should be positive.'
 
     # col_shape: (n, c, k_1, k_2, ..., k_N, out_1, out_2, ..., out_N)
     shape = (n, c) + ksize + outs
@@ -70,7 +72,6 @@ def im2col_nd_gpu(img, ksize, stride, pad, cover_all=False):
 
 
 def col2im_nd_cpu(col, stride, pad, dims):
-    # Assured consistency of dimensions of parameters by caller.
     n, c = col.shape[:2]  # (n, c, kx_1, ..., kx_N, out_1, ..., out_N)
     mid = (len(col.shape) - 2) // 2 + 2
     ksize = col.shape[2:mid]
@@ -100,7 +101,6 @@ def col2im_nd_cpu(col, stride, pad, dims):
 
 
 def col2im_nd_gpu(col, stride, pad, dims):
-    # Assured consistency of dimensions of parameters by caller.
     n, c = col.shape[:2]        # (n, c, k_1, ..., k_N, out_1, ..., out_N)
     mid = (len(col.shape) - 2) // 2 + 2
     ksize = col.shape[2:mid]

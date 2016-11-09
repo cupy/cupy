@@ -22,20 +22,23 @@ def get_deconv_outsize(size, k, s, p, cover_all=False):
 def im2col_cpu(
         img, kh, kw, sy, sx, ph, pw, pval=0, cover_all=False, dy=1, dx=1):
     n, c, h, w = img.shape
-    dkh, dkw = kh + (kh - 1) * (dy - 1), kw + (kw - 1) * (dx - 1)
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all, dy)
+    assert out_h > 0, 'Height in the output should be positive.'
     out_w = get_conv_outsize(w, kw, sx, pw, cover_all, dx)
+    assert out_w > 0, 'Width in the output should be positive.'
 
     img = numpy.pad(img,
                     ((0, 0), (0, 0), (ph, ph + sy - 1), (pw, pw + sx - 1)),
                     mode='constant', constant_values=(pval,))
     col = numpy.ndarray((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
 
-    for j in six.moves.range(0, dkh, dy):
-        j_lim = j + sy * out_h
-        for i in six.moves.range(0, dkw, dx):
-            i_lim = i + sx * out_w
-            col[:, :, j // dy, i // dx] = img[:, :, j:j_lim:sy, i:i_lim:sx]
+    for j in six.moves.range(kh):
+        jdy = j * dy
+        j_lim = jdy + sy * out_h
+        for i in six.moves.range(kw):
+            idx = i * dx
+            i_lim = idx + sx * out_w
+            col[:, :, j, i, :, :] = img[:, :, jdy:j_lim:sy, idx:i_lim:sx]
 
     return col
 
@@ -43,7 +46,9 @@ def im2col_cpu(
 def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False, dy=1, dx=1):
     n, c, h, w = img.shape
     out_h = get_conv_outsize(h, kh, sy, ph, cover_all, dy)
+    assert out_h > 0, 'Height in the output should be positive.'
     out_w = get_conv_outsize(w, kw, sx, pw, cover_all, dx)
+    assert out_w > 0, 'Width in the output should be positive.'
 
     col = cuda.cupy.empty((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
     cuda.elementwise(
@@ -72,62 +77,47 @@ def im2col_gpu(img, kh, kw, sy, sx, ph, pw, cover_all=False, dy=1, dx=1):
 
 def col2im_cpu(col, sy, sx, ph, pw, h, w, dy=1, dx=1):
     n, c, kh, kw, out_h, out_w = col.shape
-    dkh, dkw = kh + (kh - 1) * (dy - 1), kw + (kw - 1) * (dx - 1)
-
     img = numpy.zeros((n, c, h + 2 * ph + sy - 1, w + 2 * pw + sx - 1),
                       dtype=col.dtype)
-    for j in six.moves.range(0, dkh, dy):
-        j_lim = j + sy * out_h
-        for i in six.moves.range(0, dkw, dx):
-            i_lim = i + sx * out_w
-            img[:, :, j:j_lim:sy, i:i_lim:sx] += col[
-                :, :, j // dy, i // dx, :, :]
-
+    for j in six.moves.range(kh):
+        jdy = j * dy
+        j_lim = jdy + sy * out_h
+        for i in six.moves.range(kw):
+            idx = i * dx
+            i_lim = idx + sx * out_w
+            img[:, :, jdy:j_lim:sy, idx:i_lim:sx] += col[:, :, j, i]
     return img[:, :, ph:h + ph, pw:w + pw]
 
 
 def col2im_gpu(col, sy, sx, ph, pw, h, w, dy=1, dx=1):
     n, c, kh, kw, out_h, out_w = col.shape
-
-    if dy == 1 and dx == 1:
-        img = cuda.cupy.empty((n, c, h, w), dtype=col.dtype)
-        cuda.elementwise(
-            'raw T col, int32 h, int32 w, int32 out_h, int32 out_w,'
-            'int32 kh, int32 kw, int32 sy, int32 sx, int32 ph, int32 pw',
-            'T img',
-            '''
-               int c0 = i / (h * w);
-               int y  = i / w % h + ph;
-               int x  = i % w + pw;
-               int out_y_0 = max(0,     (y - kh + sy) / sy);
-               int out_y_1 = min(out_h, (y      + sy) / sy);
-               int out_x_0 = max(0,     (x - kw + sx) / sx);
-               int out_x_1 = min(out_w, (x      + sx) / sx);
-               T val = 0;
-               for (int out_y = out_y_0; out_y < out_y_1; ++out_y) {
-                 int ky = y - out_y * sy;
-                 for (int out_x = out_x_0; out_x < out_x_1; ++out_x) {
-                   int kx = x - out_x * sx;
-                   int k = out_y + out_h * (kx + kw * (ky + kh * c0));
-                   val = val + col[out_x + out_w * k];
-                 }
-               }
-               img = val;
-            ''',
-            'col2im')(col.reduced_view(),
-                      h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, img)
-        return img
-
-    else:
-        # TODO(yasunorikudo): Use cuda.elementwise
-        dkh, dkw = kh + (kh - 1) * (dy - 1), kw + (kw - 1) * (dx - 1)
-        img = cuda.cupy.zeros(
-            (n, c, h + 2 * ph + sy - 1, w + 2 * pw + sx - 1), dtype=col.dtype)
-        for j in six.moves.range(0, dkh, dy):
-            j_lim = j + sy * out_h
-            for i in six.moves.range(0, dkw, dx):
-                i_lim = i + sx * out_w
-                img[:, :, j:j_lim:sy, i:i_lim:sx] += col[
-                    :, :, j // dy, i // dx]
-
-        return img[:, :, ph:h + ph, pw:w + pw]
+    img = cuda.cupy.empty((n, c, h, w), dtype=col.dtype)
+    cuda.elementwise(
+        'raw T col, int32 h, int32 w, int32 out_h, int32 out_w,'
+        'int32 kh, int32 kw, int32 sy, int32 sx, int32 ph, int32 pw,'
+        'int32 dx, int32 dy',
+        'T img',
+        '''
+           int c0 = i / (h * w);
+           int y  = i / w % h;
+           int x  = i % w;
+           T val = 0;
+           for (int ky = 0; ky < kh; ++ky) {
+             int out_y = (y + ph - ky * dy);
+             if (0 > out_y || out_y >= out_h * sy) continue;
+             if (out_y % sy != 0) continue;
+             out_y /= sy;
+             for (int kx = 0; kx < kw; ++kx) {
+               int out_x = (x + pw - kx * dx);
+               if (0 > out_x || out_x >= out_w * sx) continue;
+               if (out_x % sx != 0) continue;
+               out_x /= sx;
+               int k = out_y + out_h * (kx + kw * (ky + kh * c0));
+               val = val + col[out_x + out_w * k];
+             }
+           }
+           img = val;
+        ''',
+        'col2im')(col.reduced_view(),
+                  h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, dx, dy, img)
+    return img

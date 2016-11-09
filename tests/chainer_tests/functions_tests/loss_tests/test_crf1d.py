@@ -1,90 +1,128 @@
+import itertools
 import unittest
 
 import numpy
 
 import chainer
+from chainer import cuda
 from chainer import functions
+from chainer import gradient_check
 from chainer import testing
+from chainer.testing import attr
 
 
+@testing.parameterize(
+    {'lengths': [3, 3], 'batches': [2, 2, 2]},
+    {'lengths': [3, 2, 1], 'batches': [3, 2, 1]},
+    {'lengths': [3, 1, 1], 'batches': [3, 1, 1]},
+    {'lengths': [1, 1], 'batches': [2]},
+)
 class TestCRF1d(unittest.TestCase):
 
-    batch = 2
     n_label = 3
 
     def setUp(self):
         self.cost = numpy.random.uniform(
             -1, 1, (self.n_label, self.n_label)).astype(numpy.float32)
         self.xs = [numpy.random.uniform(
-            -1, 1, (self.batch, 3)).astype(numpy.float32) for _ in range(3)]
+            -1, 1, (b, 3)).astype(numpy.float32) for b in self.batches]
         self.ys = [
             numpy.random.randint(
-                0, self.n_label, (self.batch,)).astype(numpy.int32)
-            for _ in range(3)]
-        self.gy = numpy.random.uniform(
-            -1, 1, (self.batch,)).astype(numpy.float32)
+                0, self.n_label, (b,)).astype(numpy.int32)
+            for b in self.batches]
 
-    def test_forward(self):
-        cost = chainer.Variable(self.cost)
-        xs = [chainer.Variable(x) for x in self.xs]
-        ys = [chainer.Variable(y) for y in self.ys]
+        self.gs = [numpy.random.uniform(
+            -1, 1, (b, 3)).astype(numpy.float32) for b in self.batches]
+
+    def _calc_score(self, batch, ys):
+        return sum(x[batch, y] for x, y in zip(self.xs, ys)) + \
+            sum(self.cost[y1, y2] for y1, y2 in zip(ys[:-1], ys[1:]))
+
+    def check_forward(self, cost_data, xs_data, ys_data):
+        cost = chainer.Variable(cost_data)
+        xs = [chainer.Variable(x) for x in xs_data]
+        ys = [chainer.Variable(y) for y in ys_data]
         log_p = functions.crf1d(cost, xs, ys)
 
-        z = numpy.zeros((self.batch,), numpy.float32)
-        for y1 in range(self.n_label):
-            for y2 in range(self.n_label):
-                for y3 in range(self.n_label):
-                    z += numpy.exp(self.xs[0][range(self.batch), y1] +
-                                   self.xs[1][range(self.batch), y2] +
-                                   self.xs[2][range(self.batch), y3] +
-                                   self.cost[y1, y2] +
-                                   self.cost[y2, y3])
+        z = numpy.zeros((self.batches[0],), numpy.float32)
+        for b, length in enumerate(self.lengths):
+            for ys in itertools.product(range(self.n_label), repeat=length):
+                z[b] += numpy.exp(self._calc_score(b, ys))
 
-        score = (self.xs[0][range(self.batch), self.ys[0]] +
-                 self.xs[1][range(self.batch), self.ys[1]] +
-                 self.xs[2][range(self.batch), self.ys[2]] +
-                 self.cost[self.ys[0], self.ys[1]] +
-                 self.cost[self.ys[1], self.ys[2]])
+        score = numpy.zeros((self.batches[0],), numpy.float32)
+        for b, length in enumerate(self.lengths):
+            ys = [self.ys[i][b] for i in range(length)]
+            score[b] = self._calc_score(b, ys)
 
-        expect = numpy.sum(-(score - numpy.log(z))) / self.batch
+        expect = numpy.sum(-(score - numpy.log(z))) / self.batches[0]
         testing.assert_allclose(log_p.data, expect)
 
-    def test_backward(self):
-        cost = chainer.Variable(self.cost)
-        xs = [chainer.Variable(self.xs[i]) for i in range(3)]
-        ys = [chainer.Variable(self.ys[i]) for i in range(3)]
-        log_p = functions.crf1d(cost, xs, ys)
-        log_p.backward()
+    def test_forward_cpu(self):
+        self.check_forward(self.cost, self.xs, self.ys)
 
-    def test_argmax(self):
-        cost = chainer.Variable(self.cost)
-        xs = [chainer.Variable(self.xs[i]) for i in range(3)]
+    @attr.gpu
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.cost),
+                           [cuda.to_gpu(x) for x in self.xs],
+                           [cuda.to_gpu(y) for y in self.ys])
+
+    def check_backward(self, cost_data, xs_data, ys_data):
+        def f(cost, *args):
+            xs = args[:len(args) // 2]
+            ys = args[len(args) // 2:]
+            return functions.crf1d(cost, xs, ys)
+
+        args = [cost_data] + xs_data + ys_data
+        if len(self.batches) == 1:
+            # When each sequence only contains one element, cost matrix
+            # is not used, and its gradient is not updated.
+            no_grads = [True] + [False] * len(xs_data) + [True] * len(ys_data)
+        else:
+            no_grads = None
+        gradient_check.check_backward(
+            f, args, None, no_grads=no_grads, rtol=1e-3, atol=1e-3)
+
+    def test_backward_cpu(self):
+        self.check_backward(self.cost, self.xs, self.ys)
+
+    @attr.gpu
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(self.cost),
+                            [cuda.to_gpu(x) for x in self.xs],
+                            [cuda.to_gpu(y) for y in self.ys])
+
+    def check_argmax(self, cost_data, xs_data):
+        cost = chainer.Variable(cost_data)
+        xs = [chainer.Variable(x) for x in xs_data]
         s, path = functions.loss.crf1d.argmax_crf1d(cost, xs)
 
-        best_paths = [numpy.empty((self.batch,), numpy.int32)
-                      for i in range(len(xs))]
-        for b in range(self.batch):
+        best_paths = [numpy.empty((length,), numpy.int32)
+                      for length in self.batches]
+        for b, length in enumerate(self.lengths):
             best_path = None
             best_score = 0
-            for y1 in range(3):
-                for y2 in range(3):
-                    for y3 in range(3):
-                        score = (self.xs[0][b, y1] +
-                                 self.xs[1][b, y2] +
-                                 self.xs[2][b, y3] +
-                                 self.cost[y1, y2] +
-                                 self.cost[y2, y3])
-                        if best_path is None or best_score < score:
-                            best_path = [y1, y2, y3]
-                            best_score = score
+            for ys in itertools.product(range(self.n_label), repeat=length):
+                score = self._calc_score(b, ys)
+                if best_path is None or best_score < score:
+                    best_path = ys
+                    best_score = score
 
-            best_paths[0][b] = best_path[0]
-            best_paths[1][b] = best_path[1]
-            best_paths[2][b] = best_path[2]
+            for i, p in enumerate(best_path):
+                best_paths[i][b] = p
 
             testing.assert_allclose(s.data[b], best_score)
 
-        numpy.testing.assert_array_equal(path, best_paths)
+        for t in range(len(self.batches)):
+            numpy.testing.assert_array_equal(
+                cuda.to_cpu(path[t]), best_paths[t])
+
+    def test_argmax_cpu(self):
+        self.check_argmax(self.cost, self.xs)
+
+    @attr.gpu
+    def test_argmax_gpu(self):
+        self.check_argmax(cuda.to_gpu(self.cost),
+                          [cuda.to_gpu(x) for x in self.xs])
 
 
 testing.run_module(__name__, __file__)

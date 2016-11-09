@@ -4,6 +4,7 @@ import numpy
 import six
 
 from chainer import cuda
+from chainer import function
 from chainer.functions.math import identity
 from chainer import testing
 from chainer import variable
@@ -11,7 +12,7 @@ from chainer import variable
 
 def _copy_arrays(xs):
     xp = cuda.get_array_module(*xs)
-    return tuple(xp.copy(x) for x in xs)
+    return [xp.copy(x) for x in xs]
 
 
 def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
@@ -47,19 +48,26 @@ def numerical_grad(f, inputs, grad_outputs, eps=1e-3):
         xp = cuda.cupy
     else:
         xp = numpy
-    grads = tuple(xp.zeros_like(x) for x in inputs)
-    for x, gx in zip(inputs, grads):
-        for i in numpy.ndindex(x.shape):
-            orig = x[i].copy()  # hold original value
-            x[i] = orig + eps
-            ys1 = _copy_arrays(f())
-            x[i] = orig - eps
-            ys2 = _copy_arrays(f())
-            x[i] = orig
-            for y1, y2, gy in zip(ys1, ys2, grad_outputs):
-                if gy is not None:
-                    dot = ((y1 - y2) * gy).sum()
-                    gx[i] += dot / (2 * eps)
+    grads = [xp.zeros_like(x) for x in inputs]
+
+    # Test scripts always run in single thread or multi-process.
+    prev_mode = function.Function.type_check_enable  # not thread safe
+    try:
+        function.Function.type_check_enable = False
+        for x, gx in six.moves.zip(inputs, grads):
+            for i in numpy.ndindex(x.shape):
+                orig = x[i].copy()  # hold original value
+                x[i] = orig + eps
+                ys1 = _copy_arrays(f())
+                x[i] = orig - eps
+                ys2 = _copy_arrays(f())
+                x[i] = orig
+                for y1, y2, gy in six.moves.zip(ys1, ys2, grad_outputs):
+                    if gy is not None:
+                        dot = ((y1 - y2) * gy).sum()
+                        gx[i] += dot / (2 * eps)
+    finally:
+        function.Function.type_check_enable = prev_mode  # not thread safe
     return grads
 
 

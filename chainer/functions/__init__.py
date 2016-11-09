@@ -19,6 +19,7 @@ from chainer.functions.array import broadcast
 from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
+from chainer.functions.array import dstack
 from chainer.functions.array import expand_dims
 from chainer.functions.array import flatten
 from chainer.functions.array import get_item
@@ -29,8 +30,10 @@ from chainer.functions.array import rollaxis
 from chainer.functions.array import select_item
 from chainer.functions.array import separate
 from chainer.functions.array import split_axis
+from chainer.functions.array import squeeze
 from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
+from chainer.functions.array import tile
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
 from chainer.functions.array import vstack
@@ -39,9 +42,11 @@ from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
 from chainer.functions.connection import convolution_nd
 from chainer.functions.connection import deconvolution_2d
+from chainer.functions.connection import deconvolution_nd
 from chainer.functions.connection import dilated_convolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
+from chainer.functions.connection import n_step_lstm
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
 from chainer.functions.evaluation import classification_summary \
@@ -59,7 +64,7 @@ from chainer.functions.loss import sigmoid_cross_entropy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer.functions.loss import triplet
 from chainer.functions.loss import vae  # NOQA
-from chainer.functions.math import basic_math  # NOQA
+from chainer.functions.math import basic_math
 from chainer.functions.math import batch_l2_norm_squared
 from chainer.functions.math import bias
 from chainer.functions.math import ceil
@@ -80,10 +85,13 @@ from chainer.functions.math import minimum
 from chainer.functions.math import minmax
 from chainer.functions.math import scale
 from chainer.functions.math import sqrt
+from chainer.functions.math import square
+from chainer.functions.math import squared_difference
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
 from chainer.functions.noise import gaussian
+from chainer.functions.noise import zoneout
 from chainer.functions.normalization import batch_normalization
 from chainer.functions.normalization import l2_normalization
 from chainer.functions.normalization import local_response_normalization
@@ -151,6 +159,7 @@ Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
+dstack = dstack.dstack
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
 Flatten = flatten.Flatten
@@ -164,14 +173,18 @@ Reshape = reshape.Reshape
 reshape = reshape.reshape
 Rollaxis = rollaxis.Rollaxis
 rollaxis = rollaxis.rollaxis
-SplitAxis = split_axis.SplitAxis
-split_axis = split_axis.split_axis
 SelectItem = select_item.SelectItem
 select_item = select_item.select_item
 separate = separate.separate
+SplitAxis = split_axis.SplitAxis
+split_axis = split_axis.split_axis
+Squeeze = squeeze.Squeeze
+squeeze = squeeze.squeeze
 stack = stack.stack
 Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
+Tile = tile.Tile
+tile = tile.tile
 Transpose = transpose.Transpose
 transpose = transpose.transpose
 TransposeSequence = transpose_sequence.TransposeSequence
@@ -183,9 +196,12 @@ bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
 convolution_nd = convolution_nd.convolution_nd
 deconvolution_2d = deconvolution_2d.deconvolution_2d
+deconvolution_nd = deconvolution_nd.deconvolution_nd
 dilated_convolution_2d = dilated_convolution_2d.dilated_convolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
+NStepLSTM = n_step_lstm.NStepLSTM
+n_step_lstm = n_step_lstm.n_step_lstm
 
 Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
@@ -222,10 +238,17 @@ Triplet = triplet.Triplet
 triplet = triplet.triplet
 vstack = vstack.vstack
 
+absolute = basic_math.absolute
 ArgMax = minmax.ArgMax
 argmax = minmax.argmax
 ArgMin = minmax.ArgMin
 argmin = minmax.argmin
+Arccos = trigonometric.Arccos
+arccos = trigonometric.arccos
+Arcsin = trigonometric.Arcsin
+arcsin = trigonometric.arcsin
+Arctan = trigonometric.Arctan
+arctan = trigonometric.arctan
 BatchDet = det.BatchDet
 batch_det = det.batch_det
 BatchInv = inv.BatchInv
@@ -284,6 +307,10 @@ Sinh = hyperbolic.Sinh
 sinh = hyperbolic.sinh
 Sqrt = sqrt.Sqrt
 sqrt = sqrt.sqrt
+Square = square.Square
+square = square.square
+SquaredDifference = squared_difference.SquaredDifference
+squared_difference = squared_difference.squared_difference
 Sum = sum.Sum
 sum = sum.sum
 Tan = trigonometric.Tan
@@ -293,6 +320,8 @@ Dropout = dropout.Dropout
 dropout = dropout.dropout
 Gaussian = gaussian.Gaussian
 gaussian = gaussian.gaussian
+Zoneout = zoneout.Zoneout
+zoneout = zoneout.zoneout
 
 fixed_batch_normalization = batch_normalization.fixed_batch_normalization
 batch_normalization = batch_normalization.batch_normalization

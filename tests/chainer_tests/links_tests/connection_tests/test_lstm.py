@@ -10,23 +10,26 @@ from chainer import testing
 from chainer.testing import attr
 
 
-@testing.parameterize(
-    {'in_size': 10, 'out_size': 10},
-    {'in_size': 10, 'out_size': 40},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'in_size': 10, 'out_size': 10},
+        {'in_size': 10, 'out_size': 40},
+    ],
+    [
+        {'input_none': False},
+        {'input_none': True},
+    ],
+    [
+        {'input_variable': False},
+        {'input_variable': True},
+    ]
+))
 class TestLSTM(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.LSTM(self.in_size, self.out_size)
-        upward = self.link.upward.W.data
-        upward[...] = numpy.random.uniform(-1, 1, upward.shape)
-        lateral = self.link.lateral.W.data
-        lateral[...] = numpy.random.uniform(-1, 1, lateral.shape)
+        in_size = None if self.input_none else self.in_size
+        self.link = links.LSTM(in_size, self.out_size)
         self.link.cleargrads()
-
-        self.upward = upward.copy()  # fixed on CPU
-        self.lateral = lateral.copy()  # fixed on CPU
-
         x1_shape = (4, self.in_size)
         self.x1 = numpy.random.uniform(-1, 1, x1_shape).astype(numpy.float32)
         x2_shape = (3, self.in_size)
@@ -36,7 +39,7 @@ class TestLSTM(unittest.TestCase):
 
     def check_forward(self, x1_data, x2_data, x3_data):
         xp = self.link.xp
-        x1 = chainer.Variable(x1_data)
+        x1 = chainer.Variable(x1_data) if self.input_variable else x1_data
         h1 = self.link(x1)
         c0 = chainer.Variable(xp.zeros((len(self.x1), self.out_size),
                                        dtype=self.x1.dtype))
@@ -46,7 +49,7 @@ class TestLSTM(unittest.TestCase):
         testing.assert_allclose(self.link.c.data, c1_expect.data)
 
         batch = len(x2_data)
-        x2 = chainer.Variable(x2_data)
+        x2 = chainer.Variable(x2_data) if self.input_variable else x2_data
         h1_in, h1_rest = functions.split_axis(
             self.link.h.data, [batch], axis=0)
         y2 = self.link(x2)
@@ -57,7 +60,7 @@ class TestLSTM(unittest.TestCase):
         testing.assert_allclose(self.link.h.data[:batch], y2_expect.data)
         testing.assert_allclose(self.link.h.data[batch:], h1_rest.data)
 
-        x3 = chainer.Variable(x3_data)
+        x3 = chainer.Variable(x3_data) if self.input_variable else x3_data
         h2_rest = self.link.h
         y3 = self.link(x3)
         c3_expect, y3_expect = \
@@ -218,29 +221,33 @@ class TestLSTMInvalidSize(unittest.TestCase):
                                         cuda.to_gpu(self.x2))
 
 
-@testing.parameterize(
-    {'in_size': 10, 'out_size': 10},
-    {'in_size': 10, 'out_size': 40},
-)
+@testing.parameterize(*testing.product_dict(
+    [
+        {'in_size': 10, 'out_size': 10},
+        {'in_size': 10, 'out_size': 40},
+    ],
+    [
+        {'input_none': False},
+        {'input_none': True},
+    ],
+    [
+        {'input_variable': False},
+        {'input_variable': True},
+    ]
+))
 class TestStatelessLSTM(unittest.TestCase):
 
     def setUp(self):
-        self.link = links.StatelessLSTM(self.in_size, self.out_size)
-        upward = self.link.upward.W.data
-        upward[...] = numpy.random.uniform(-1, 1, upward.shape)
-        lateral = self.link.lateral.W.data
-        lateral[...] = numpy.random.uniform(-1, 1, lateral.shape)
+        in_size = None if self.input_none else self.in_size
+        self.link = links.StatelessLSTM(in_size, self.out_size)
         self.link.cleargrads()
-
-        self.upward = upward.copy()  # fixed on CPU
-        self.lateral = lateral.copy()  # fixed on CPU
 
         x_shape = (4, self.in_size)
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
 
     def check_forward(self, x_data):
         xp = self.link.xp
-        x = chainer.Variable(x_data)
+        x = chainer.Variable(x_data) if self.input_variable else x_data
         c1, h1 = self.link(None, None, x)
         c0 = chainer.Variable(xp.zeros((len(self.x), self.out_size),
                                        dtype=self.x.dtype))
