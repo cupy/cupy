@@ -1659,6 +1659,35 @@ cdef class broadcast:
 
         self.values = tuple(broadcasted)
 
+
+cpdef ndarray broadcast_to(ndarray array, shape):
+    """Broadcast an array to a given shape.
+
+    .. seealso::
+        :func:`cupy.broadcast_to` for full documentation,
+        :meth:`numpy.broadcast_to`
+
+    """
+    if array.ndim > len(shape):
+        raise ValueError(
+            'input operand has more dimensions than allowed by the axis '
+            'remapping')
+
+    strides = [0] * len(shape)
+    for i in range(array.ndim):
+        j = -i - 1
+        sh = shape[j]
+        a_sh = array.shape[j]
+        if sh == a_sh:
+            strides[j] = array._strides[j % array.ndim]
+        elif a_sh != 1:
+            raise ValueError('Broadcasting failed')
+
+    view = array.view()
+    view._set_shape_and_strides(shape, strides)
+    return view
+
+
 cpdef ndarray _repeat(ndarray a, repeats, axis=None):
     """Repeat arrays along an axis.
 
