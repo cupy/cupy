@@ -146,7 +146,7 @@ If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``
 Install Chainer for developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Chainer uses Cython (>=0.23).
+Chainer uses Cython (>=0.24).
 Developers need to use Cython to regenerate C++ sources from ``pyx`` files.
 We recommend to use ``pip`` with ``-e`` option for editable mode::
 
