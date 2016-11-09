@@ -136,7 +136,7 @@ def broadcast_to(array, shape):
     .. seealso:: :func:`numpy.broadcast_to`
 
     """
-    return core.core.broadcast_to(array, shape)
+    return core.broadcast_to(array, shape)
 
 
 def expand_dims(a, axis):
