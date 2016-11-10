@@ -21,12 +21,11 @@ class ConvolutionND(link.Link):
         pad (int or tuple of ints): Spatial padding width for input arrays.
             ``pad=p`` and ``pad=(p, p, ..., p)`` are equivalent.
         initialW: Value used to initialize the filter weight. May be an
-            initializer instance or another value the same with that
-            :func:`~chainer.init_weight` function can take.
+            initializer instance or another value that
+            :func:`~chainer.init_weight` helper function can take.
         initial_bias: Value used to initialize the bias vector. May be an
-            initializer instance or another value except ``None`` the same
-            with that :func:`~chainer.init_weight` function can take. If
-            ``None`` is supplied, the link does not have the bias vector.
+            initializer instance or another value except ``None`` that
+            :func:`~chainer.init_weight` helper function can take.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
             See :func:`~chainer.functions.convolution_nd` for exact conditions
             of cuDNN availability.
