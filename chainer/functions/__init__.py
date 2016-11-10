@@ -29,6 +29,7 @@ from chainer.functions.array import reshape
 from chainer.functions.array import rollaxis
 from chainer.functions.array import select_item
 from chainer.functions.array import separate
+from chainer.functions.array import space2depth
 from chainer.functions.array import split_axis
 from chainer.functions.array import squeeze
 from chainer.functions.array import stack
@@ -99,7 +100,6 @@ from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
-from chainer.functions.subpixel import space2depth as space2depth_
 from chainer.functions.util import forget
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
@@ -361,5 +361,5 @@ NegativeSampling = links_negative_sampling.NegativeSampling
 
 BatchNormalization = links_batch_normalization.BatchNormalization
 
-Space2Depth = space2depth_.Space2Depth
-space2depth = space2depth_.space2depth
+Space2Depth = space2depth.Space2Depth
+space2depth = space2depth.space2depth
