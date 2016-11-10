@@ -15,8 +15,8 @@ class Dropconnect(function.Function):
 
     """Linear unit regularized by dropconnect."""
 
-    def __init__(self, dropconnect_ratio, mask=None):
-        self.dropconnect_ratio = dropconnect_ratio
+    def __init__(self, ratio, mask=None):
+        self.ratio = ratio
         self.mask = mask
 
     def check_type_forward(self, in_types):
@@ -40,13 +40,13 @@ class Dropconnect(function.Function):
             )
 
     def forward(self, inputs):
-        scale = inputs[1].dtype.type(1. / (1 - self.dropconnect_ratio))
+        scale = inputs[1].dtype.type(1. / (1 - self.ratio))
         xp = cuda.get_array_module(*inputs)
         if xp == numpy:
-            flag = xp.random.rand(*inputs[1].shape) >= self.dropconnect_ratio
+            flag = xp.random.rand(*inputs[1].shape) >= self.ratio
         else:
             flag = (xp.random.rand(*inputs[1].shape, dtype=numpy.float32) >=
-                    self.dropconnect_ratio)
+                    self.ratio)
         if self.mask is None:
             self.mask = scale * flag
 
@@ -91,7 +91,9 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
             as concatenated one dimension whose size must be ``N``.
         W (~chainer.Variable): Weight variable of shape ``(M, N)``.
         b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``.
-        ratio (float): Dropconnect ratio.
+        ratio (float):
+            Dropconnect ratio.
+            If mask is not ``None``, this value is ignored.
         train (bool):
             If ``True``, executes dropconnect.
             Otherwise, does nothing.
