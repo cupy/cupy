@@ -25,7 +25,8 @@ class ConvolutionND(link.Link):
             :func:`~chainer.init_weight` helper function can take.
         initial_bias: Value used to initialize the bias vector. May be an
             initializer instance or another value except ``None`` that
-            :func:`~chainer.init_weight` helper function can take.
+            :func:`~chainer.init_weight` helper function can take. If ``None``
+            is given, this link does not use the bias vector.
         use_cudnn (bool): If ``True``, then this link uses cuDNN if available.
             See :func:`~chainer.functions.convolution_nd` for exact conditions
             of cuDNN availability.
