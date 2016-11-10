@@ -1769,6 +1769,20 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
         offset += repeats[i]
     return ret
 
+
+cpdef ndarray concatenate(tup, axis, shape, dtype):
+    cdef ndarray ret
+    ret = ndarray(shape, dtype=dtype)
+
+    skip = (slice(None),) * axis
+    i = 0
+    for a in tup:
+        aw = a.shape[axis]
+        ret[skip + (slice(i, i + aw),)] = a
+        i += aw
+ 
+    return ret
+
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
