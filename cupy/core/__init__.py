@@ -90,3 +90,7 @@ remainder = core.remainder
 
 sqrt = core.sqrt
 absolute = core.absolute
+
+
+nanmax = core.nanmax
+nanmin = core.nanmin

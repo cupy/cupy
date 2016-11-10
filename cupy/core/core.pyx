@@ -1483,6 +1483,24 @@ cdef _amax = create_reduction_func(
     None, _min_max_preamble)
 
 
+nanmin = create_reduction_func(
+    'cupy_nanmin',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+    ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
+     'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
+nanmax = create_reduction_func(
+    'cupy_nanmax',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+    ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
+     'min_max_st<type_in0_raw>'),
+    None, _min_max_preamble)
+
+
 cdef _argmin = create_reduction_func(
     'cupy_argmin',
     ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',

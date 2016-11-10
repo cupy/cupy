@@ -345,6 +345,8 @@ amin = statistics.order.amin
 min = statistics.order.amin
 amax = statistics.order.amax
 max = statistics.order.amax
+nanmin = statistics.order.nanmin
+nanmax = statistics.order.nanmax
 
 mean = statistics.meanvar.mean
 var = statistics.meanvar.var
