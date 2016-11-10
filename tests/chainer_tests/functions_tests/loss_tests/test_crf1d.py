@@ -96,6 +96,13 @@ class TestCRF1d(unittest.TestCase):
         xs = [chainer.Variable(x) for x in xs_data]
         s, path = functions.loss.crf1d.argmax_crf1d(cost, xs)
 
+        self.assertIsInstance(s, chainer.Variable)
+        self.assertIsInstance(path, list)
+        self.assertEqual(s.shape, (self.batches[0],))
+        self.assertEqual(len(path), len(self.batches))
+        for b, p in zip(self.batches, path):
+            self.assertEqual(p.shape, (b,))
+
         best_paths = [numpy.empty((length,), numpy.int32)
                       for length in self.batches]
         for b, length in enumerate(self.lengths):

@@ -213,6 +213,7 @@ precision = classification_summary_.precision
 recall = classification_summary_.recall
 f1_score = classification_summary_.f1_score
 
+argmax_crf1d = crf1d.argmax_crf1d
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
 black_out = black_out.black_out
