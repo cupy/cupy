@@ -38,6 +38,7 @@ ascontiguousarray = core.ascontiguousarray
 rollaxis = core.rollaxis
 broadcast = core.broadcast
 broadcast_to = core.broadcast_to
+concatenate = core.concatenate
 
 
 # -----------------------------------------------------------------------------
