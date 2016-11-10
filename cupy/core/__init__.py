@@ -58,6 +58,7 @@ right_shift = core.right_shift
 
 dot = core.dot
 tensordot_core = core.tensordot_core
+matmul = core.matmul
 
 
 # -----------------------------------------------------------------------------

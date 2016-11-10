@@ -228,6 +228,7 @@ vdot = linalg.product.vdot
 inner = linalg.product.inner
 outer = linalg.product.outer
 tensordot = linalg.product.tensordot
+matmul = linalg.product.matmul
 
 trace = linalg.norms.trace
 
