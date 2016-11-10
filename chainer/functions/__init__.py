@@ -19,6 +19,7 @@ from chainer.functions.array import broadcast
 from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
+from chainer.functions.array import depth2space
 from chainer.functions.array import dstack
 from chainer.functions.array import expand_dims
 from chainer.functions.array import flatten
@@ -99,7 +100,6 @@ from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
-from chainer.functions.subpixel import depth2space as depth2space_
 from chainer.functions.util import forget
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
@@ -159,6 +159,8 @@ Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
+Depth2Space = depth2space.Depth2Space
+depth2space = depth2space.depth2space
 dstack = dstack.dstack
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
@@ -360,6 +362,3 @@ Parameter = parameter.Parameter
 NegativeSampling = links_negative_sampling.NegativeSampling
 
 BatchNormalization = links_batch_normalization.BatchNormalization
-
-Depth2Space = depth2space_.Depth2Space
-depth2space = depth2space_.depth2space
