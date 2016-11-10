@@ -6,7 +6,7 @@ from cupy.random import generator
 
 
 def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
-    """Returns an array of smples drawn from a Gumbel distribution.
+    """Returns an array of samples drawn from a Gumbel distribution.
 
     The samples are drawn from a Gumbel distribution with location ``loc``
     and scale ``scale``.
