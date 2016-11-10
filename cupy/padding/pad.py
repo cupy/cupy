@@ -15,18 +15,18 @@ def pad(array, pad_width, mode=None, **kwargs):
         raise NotImplementedError
 
     if isinstance(pad_width, int):
-        shape = tuple(s + pad_width * 2 for s in array.shape)
+        shape = tuple([s + pad_width * 2 for s in array.shape])
         ret = cupy.full(shape, fill_value, dtype=array.dtype)
-        index = tuple(slice(pad_width, pad_width + s) for s in array.shape)
+        index = tuple([slice(pad_width, pad_width + s) for s in array.shape])
         ret[index] = array
     elif isinstance(pad_width, (list, tuple, cupy.ndarray)):
         if array.ndim == len(pad_width):
-            shape = tuple(s + pad_width[i] * 2
-                          for i, s in enumerate(array.shape))
+            shape = tuple([s + pad_width[i] * 2
+                          for i, s in enumerate(array.shape)])
             ret = cupy.full(shape, fill_value,
                             dtype=array.dtype)
-            index = tuple(slice(pad_width[i], pad_width[i] + s)
-                          for i, s in enumerate(array.shape))
+            index = tuple([slice(pad_width[i], pad_width[i] + s)
+                          for i, s in enumerate(array.shape)])
             ret[index] = array
         elif array.ndim == 1 and len(pad_width) == 2:
             front = cupy.zeros(pad_width[0])  # fix
