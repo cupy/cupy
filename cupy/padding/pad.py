@@ -33,7 +33,8 @@ def pad(array, pad_width, mode=None, **kwargs):
             end = cupy.zeros(pad_width[1])  # fix
             ret = cupy.hstack((cupy.hstack((front, array)), end))
         else:
-            raise ValueError
+            fmt = 'Unable to create correctly shaped tuple from %s'
+            raise ValueError(fmt % (shape,))
     else:
-        raise ValueError
+        raise TypeError('`pad_width` must be of integral type.')
     return ret
