@@ -1780,7 +1780,7 @@ cpdef ndarray concatenate(tup, axis, shape, dtype):
         aw = a.shape[axis]
         ret[skip + (slice(i, i + aw),)] = a
         i += aw
- 
+
     return ret
 
 # -----------------------------------------------------------------------------
