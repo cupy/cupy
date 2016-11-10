@@ -9,6 +9,7 @@ from chainer.datasets import get_cifar10
 from chainer.datasets import get_cifar100
 from chainer.datasets import tuple_dataset
 from chainer import testing
+from chainer.testing import attr
 
 
 @testing.parameterize(*testing.product({
@@ -20,16 +21,17 @@ class TestCifar(unittest.TestCase):
 
     def setUp(self):
         self.root = download.get_dataset_directory(
-            os.path.join('pfnet', 'chainer',
-                         'cifar'))
+            os.path.join('pfnet', 'chainer', 'cifar'))
 
     def tearDown(self):
         if hasattr(self, 'cached_file'):
             os.remove(self.cached_file)
 
+    @attr.slow
     def test_get_cifar10(self):
         self.check_retrieval_once('cifar-10.npz', get_cifar10)
 
+    @attr.slow
     def test_get_cifar100(self):
         self.check_retrieval_once('cifar-100.npz', get_cifar100)
 
@@ -53,9 +55,11 @@ class TestCifar(unittest.TestCase):
                 assert cifar_dataset.shape[2] == cifar_dataset.shape[3]  # 32
 
     # test caching - call twice
+    @attr.slow
     def test_get_cifar10_cached(self):
         self.check_retrieval_twice('cifar-10.npz', get_cifar10)
 
+    @attr.slow
     def test_get_cifar100_cached(self):
         self.check_retrieval_twice('cifar-100.npz', get_cifar100)
 
