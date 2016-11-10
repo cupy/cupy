@@ -1059,38 +1059,62 @@ cdef class ndarray:
         if len(slices) > self.ndim + n_newaxes:
             raise IndexError('too many indices for array')
 
-        # Check if advanced is true and if there are multiple integer indexing
+        # Check if advanced is true, and convert list/NumPy arrays to ndarray
         advanced = False
-        axis = None
         for i, s in enumerate(slices):
             if isinstance(s, (list, numpy.ndarray)):
                 s = array(s)
                 slices[i] = s
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
-                    if advanced:
-                        advanced = True
-                        axis = None
-                    else:
-                        advanced = True
-                        axis = i
+                    advanced = True
                 else:
-                    raise ValueError('Advanced indexing with ' +
+                    raise IndexError('Advanced indexing with ' +
                                      'non-integer array is not supported')
 
         if advanced:
-            if axis is not None:
-                flag = True
-                noneslice = slice(None)
-                for i, s in enumerate(slices):
-                    if i != axis and s != noneslice:
-                        flag = False
-                        break
-                if flag:
-                    return self.take(slices[axis], axis)
-            else:
-                raise NotImplementedError(
-                    'Adv indexing with 2 or more arrays is not supported')
+            # When slices are combination of basic and advanced indexing,
+            # slice and None are handled independently by the basic 
+            # indexing routine.
+            # Integer and ndarray are handled by the adv-indexing routine.
+            # In the routine, Integer and ndarray of dimension zero are
+            # treated as array of shape (1,).
+            basic_slices = []
+            adv_slices = []
+            for i, s in enumerate(slices):
+                if type(s) is slice:
+                    basic_slices.append(s)
+                    adv_slices.append(slice(None))
+                elif s is None:
+                    basic_slices.append(None)
+                    adv_slices.append(slice(None))
+                elif (isinstance(s, ndarray) and 
+                        issubclass(s.dtype.type, numpy.integer)):
+                    basic_slices.append(slice(None))
+                    if s.ndim == 0:
+                        s = s.reshape((1,))
+                    adv_slices.append(s)
+                elif isinstance(s, int):
+                    basic_slices.append(slice(None))
+                    adv_slices.append(array(s, ndmin=1))
+                else:
+                    raise IndexError(
+                        'only integers, slices (`:`), ellipsis (`...`),'
+                        'numpy.newaxis (`None`) and integer or'
+                        'boolean arrays are valid indices')
+
+            # check if this is a combination of basic and advanced indexing
+            a = self
+            for s in basic_slices:
+                if s is None or (isinstance(s, slice) and s != slice(None)):
+                    a = self[tuple(basic_slices)]
+                    break
+
+            arr_slices_mask = [not isinstance(s, slice) for s in adv_slices]
+            if sum(arr_slices_mask) == 1:
+                axis = arr_slices_mask.index(True)
+                return a.take(adv_slices[axis], axis)
+            return _adv_getitem(a, adv_slices)
 
         # Create new shape and stride
         j = 0
@@ -2034,6 +2058,86 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
         a.shape[:-2] + (diag_size,),
         a.strides[:-2] + (a.strides[-1] + a.strides[-2],))
     return ret
+
+
+cpdef ndarray _adv_getitem(ndarray a, slices):
+    # slices consist of either None or ndarray of dim>=1
+    cdef int i, p, li, ri
+    cdef ndarray take_idx, input_flat, out_flat, o
+
+    arr_slices = [s for s in slices if isinstance(s, ndarray)]
+    br_shape = broadcast(*arr_slices).shape
+
+    # broadcast all arrays to the largest shape
+    for i, s in enumerate(list(slices)):
+        if (isinstance(s, ndarray)):
+            slices[i] = broadcast_to(slices[i], br_shape)
+
+    # check if transpose is necessasry
+    # li:  index of the leftmost array in slices
+    # ri:  index of the rightmost array in slices
+    do_transpose = False
+    prev_arr_i = None
+    li = 0
+    ri = 0
+    for i, s in enumerate(list(slices)):
+        if (isinstance(s, ndarray)):
+            if prev_arr_i is None:
+                prev_arr_i = i
+                li = i
+            else:
+                if i - prev_arr_i > 1:
+                    do_transpose = True
+                else:
+                    prev_arr_i = i
+                    ri = i
+
+    if do_transpose:
+        transp = range(a.ndim)
+        p = 0
+        for i, s in enumerate(list(slices)):
+            if isinstance(s, ndarray):
+                transp.remove(i)
+                transp.insert(p, i)
+                tmp = slices.pop(i)
+                slices.insert(p, tmp)
+                p += 1
+        a = a.transpose(*transp)
+
+        li = 0
+        ri = p - 1
+
+    # flatten the array-indexed dimensions
+    shape = a.shape[:li]  + (internal.prod_ssize_t(a.shape[li:ri+1]),) + a.shape[ri+1:]
+    input_flat = a.reshape(shape)
+
+    # build the strides
+    strides = [1]
+    for i in range(ri, li, -1):
+        stride = a.shape[i] * strides[0]
+        strides.insert(0, stride)
+
+    # convert all negative indices to wrap_indices
+    for i in range(li, ri+1):
+        slices[i] = slices[i] % a.shape[i]
+
+    flattened_indexes = []
+    for stride, s in zip(strides, slices[li:ri+1]):
+        flattened_indexes.append(stride * s)
+
+    # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
+    concat_shape = (len(flattened_indexes),) + br_shape
+    flattened_indexes = concatenate(
+        [index.reshape((1,) + index.shape) for index in flattened_indexes],
+        axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
+
+    take_idx = _sum(flattened_indexes, axis=0)
+
+    out_flat = input_flat.take(take_idx.flatten(), axis=li)
+
+    out_flat_shape = a.shape[:li] + take_idx.shape + a.shape[ri+1:]
+    o = out_flat.reshape(out_flat_shape)
+    return o
 
 
 # -----------------------------------------------------------------------------
