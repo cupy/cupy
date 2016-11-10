@@ -46,7 +46,7 @@ class TestTrace(unittest.TestCase):
 })
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.11.2')
+@testing.with_requires('numpy>=1.11.2')  # The old version dtype is strange
 class TestNorm(unittest.TestCase):
 
     _multiprocess_can_split_ = True
