@@ -71,7 +71,6 @@ def nanmin(a, axis=None, out=None, keepdims=False):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
-        dtype: Data type specifier.
 
     Returns:
         cupy.ndarray: The minimum of ``a``, along the axis if specified.
@@ -98,7 +97,6 @@ def nanmax(a, axis=None, out=None, keepdims=False):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
-        dtype: Data type specifier.
 
     Returns:
         cupy.ndarray: The maximum of ``a``, along the axis if specified.
