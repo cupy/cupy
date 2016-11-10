@@ -63,12 +63,12 @@ class TestConvolutionND(unittest.TestCase):
     def check_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
         y_cpu = self.link(x_cpu)
-        self.assertEqual(y_cpu.data.dtype, self.x.dtype)
+        self.assertEqual(y_cpu.data.dtype, self.dtype)
 
         self.link.to_gpu()
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         y_gpu = self.link(x_gpu)
-        self.assertEqual(y_gpu.data.dtype, self.x.dtype)
+        self.assertEqual(y_gpu.data.dtype, self.dtype)
 
         testing.assert_allclose(y_cpu.data, y_gpu.data.get())
 
