@@ -1,35 +1,38 @@
 import unittest
 
+import itertools
 import numpy
 
 import cupy
 from cupy import testing
 
 
+def perm(iterable):
+    return list(itertools.permutations(iterable))
+
+
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [1, 0])},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [1, 0])},
-    {'shape': (2, 3, 4), 'indexes': ([1, -1], slice(None))},
-    {'shape': (2, 3, 4), 'indexes': (Ellipsis, [1, 0])},
-    {'shape': (2, 3, 4), 'indexes': ([1, -1], Ellipsis)},
-    {'shape': (2, 3, 4),
-     'indexes': (slice(None), slice(None), [[1, -1], [0, 3]])},
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], [2, 1])},
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [1, 0], [2, 1])},
-    {'shape': (2, 3), 'indexes': ([[0, 1], [1, 0]], [[1, 1], [2, 1]])},
-    # array appears with split
-    {'shape': (2, 3, 4), 'indexes': ([0, 1], slice(None), [1, 0])},
-    {'shape': (2, 3, 4), 'indexes': ([0, 1], slice(None), 1)},
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], slice(0, 3, 2), [1, 0])},
-    # three arrays
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], [2, 1], [3, 1])},
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], 1, [3, 1])},
-    {'shape': (2, 3, 4), 'indexes': ([1, 0], 1, None, [3, 1])},
-    # index broadcasting
-    {'shape': (2, 3, 4), 'indexes': (slice(None), [1, 2], [[1, 0], [0, 1], [-1, 1]])},
+    *testing.product({
+        'shape': [(4, 4, 4)],
+        'indexes': (
+            perm(([1, 0], slice(None))) + 
+            perm(([1, 0], Ellipsis)) +
+            perm(([1, 2], None, slice(None))) +
+            perm(([1, 0], 1, slice(None))) +
+            perm(([1, 2], slice(0, 2), slice(None))) +
+            perm((1, [1, 2], 1)) +
+            perm(([[1, -1], [0, 3]], slice(None), slice(None))) +
+            perm(([1, 0], [3, 2], slice(None))) +
+            perm((slice(0, 3, 2), [1, 2], [1, 0])) +
+            perm(([1, 0], [2, 1], [3, 1])) +
+            perm(([1, 0], 1, [3, 1])) +
+            perm(([1, 2], [[1, 0], [0, 1], [-1, 1]], slice(None))) +
+            perm((None, [1, 2], [1, 0]))
+        )
+    })
 )
 @testing.gpu
-class TestArrayAdvancedIndexingParametrized(unittest.TestCase):
+class TestArrayAdvancedIndexingPerm(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
