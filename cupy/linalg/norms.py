@@ -54,6 +54,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).min(axis=axis, keepdims=keepdims)
         elif ord == 0:
             # Zero norm
+            # Convert to Python float in accordance with NumPy
             return (x != 0).sum(axis=axis, keepdims=keepdims, dtype='d')
         elif ord == 1:
             # special case for speedup
