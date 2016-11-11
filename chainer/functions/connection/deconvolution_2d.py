@@ -300,7 +300,7 @@ def deconvolution_2d(x, W, b=None, stride=1, pad=0,
 
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`
-    which indicate the number of the number of input channels, output channels,
+    which indicate the number of input channels, output channels,
     height and width of the kernels, respectively.
 
     The bias vector is of size :math:`c_O`.
