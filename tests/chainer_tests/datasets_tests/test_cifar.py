@@ -24,7 +24,7 @@ class TestCifar(unittest.TestCase):
             os.path.join('pfnet', 'chainer', 'cifar'))
 
     def tearDown(self):
-        if hasattr(self, 'cached_file'):
+        if hasattr(self, 'cached_file') and os.path.exists(self.cached_file):
             os.remove(self.cached_file)
 
     @attr.slow
@@ -42,10 +42,11 @@ class TestCifar(unittest.TestCase):
 
         for cifar_dataset in (train, test):
             if self.withlabel:
-                assert isinstance(cifar_dataset, tuple_dataset.TupleDataset)
+                self.assertIsInstance(cifar_dataset,
+                                      tuple_dataset.TupleDataset)
                 cifar_dataset = cifar_dataset._datasets[0]
             else:
-                assert isinstance(cifar_dataset, numpy.ndarray)
+                self.assertIsInstance(cifar_dataset, numpy.ndarray)
 
             if self.ndim == 1:
                 assert cifar_dataset.ndim == 2
