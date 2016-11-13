@@ -97,7 +97,7 @@ def spatial_pyramid_pooling_2d(x, pyramid_height, pooling_class,
     Args:
         x (~chainer.Variable): Input variable. The shape of ``x`` should be
             ``(batchsize, # of channels, height, width)``.
-        pyramid_height (int): the number of pyramid levels
+        pyramid_height (int): Number of pyramid levels
         pooling_class (MaxPooling2D or AveragePooling2D):
             Only MaxPooling2D class can be available for now.
         use_cudnn (bool): If ``True`` and cuDNN is enabled, then this function
