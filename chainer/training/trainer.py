@@ -153,7 +153,7 @@ class Trainer(object):
 
         """
         if self._done:
-            return self._final_total_training_time
+            return self._final_elapsed_time
         return time.time() - self._start_at + self._snapshot_elapsed_time
 
     def extend(self, extension, name=None, trigger=None, priority=None,
