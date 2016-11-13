@@ -26,8 +26,7 @@ class Highway(link.Chain):
     Args:
         in_out_size (int): Dimension of input and output vectors.
         nobias (bool): If ``True``, then this function does not use the bias.
-        activate:
-            Activation function of plain array. :math:`tanh` is also
+        activate: Activation function of plain array. :math:`tanh` is also
             available.
         init_Wh (2-D array): Initial weight value of plain array. If ``None``,
             then this function uses it to initialize ``wscale``.
