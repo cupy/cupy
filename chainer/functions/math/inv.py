@@ -107,7 +107,7 @@ class BatchInv(function.Function):
 
 
 def inv(a):
-    """Computes the inverse of of square matrix.
+    """Computes the inverse of square matrix.
 
     Args:
         a (Variable): Input array to compute the inverse for. Shape of
