@@ -138,7 +138,7 @@ class Trainer(object):
         self._extensions = collections.OrderedDict()
 
         self._start_at = None
-        self._snapshot_at = 0.0
+        self._snapshot_elapsed_time = 0.0
         self._final_elapsed_time = None
 
         updater.connect_trainer(self)
@@ -154,7 +154,7 @@ class Trainer(object):
         """
         if self._done:
             return self._final_total_training_time
-        return time.time() - self._start_at + self._snapshot_at
+        return time.time() - self._start_at + self._snapshot_elapsed_time
 
     def extend(self, extension, name=None, trigger=None, priority=None,
                invoke_before_training=None):
@@ -312,6 +312,7 @@ class Trainer(object):
                 entry.trigger.serialize(t[name])
 
         if isinstance(serializer, serializer_module.Serializer):
-            serializer('_snapshot_at', self.elapsed_time)
+            serializer('_snapshot_elapsed_time', self.elapsed_time)
         else:
-            self._snapshot_at = serializer('_snapshot_at', 0.0)
+            self._snapshot_elapsed_time = serializer(
+                '_snapshot_elapsed_time', 0.0)
