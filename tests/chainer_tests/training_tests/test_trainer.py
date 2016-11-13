@@ -1,5 +1,6 @@
 import collections
 import os
+import shutil
 import tempfile
 import time
 import unittest
@@ -29,15 +30,20 @@ class TestTrainerElapsedTime(unittest.TestCase):
         serialized_time = self.trainer.elapsed_time
 
         tempdir = tempfile.mkdtemp()
-        path = os.path.join(tempdir, 'trainer.npz')
-        serializers.save_npz(path, self.trainer)
+        try:
+            path = os.path.join(tempdir, 'trainer.npz')
+            serializers.save_npz(path, self.trainer)
 
-        trainer = _get_mocked_trainer((20, 'iteration'))
-        serializers.load_npz(path, trainer)
+            trainer = _get_mocked_trainer((20, 'iteration'))
+            serializers.load_npz(path, trainer)
 
-        trainer.run()
+            trainer.run()
 
-        self.assertGreater(trainer.elapsed_time, serialized_time)
+            self.assertGreater(trainer.elapsed_time, serialized_time)
+
+        finally:
+            shutil.rmtree(tempdir)
+            
 
 
 def _get_mocked_trainer(stop_trigger=(10, 'iteration')):
