@@ -16,8 +16,8 @@ def get_trigger(trigger):
 
     This function returns a trigger object based on the argument.
     If ``trigger`` is already a callable, it just returns the trigger. If
-    ``trigger`` is None, it returns a trigger that never fires. Otherwise, it
-    passes the value to :class:`~chainer.training.triggers.IntervalTrigger`.
+    ``trigger`` is ``None``, it returns a trigger that never fires. Otherwise,
+    it passes the value to :class:`~chainer.training.triggers.IntervalTrigger`.
 
     Args:
         trigger: Trigger object. It can be either an already built trigger
