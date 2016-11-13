@@ -169,8 +169,8 @@ def matmul(a, b, transa=False, transb=False):
             :math:`M \\times N` matrix.
         b (Variable): The right operand of the matrix multiplication.
             Its array is treated as a matrix in the same way as ``a``'s array.
-        transa (bool): If ``True``, transpose a.
-        transb (bool): If ``True``, transpose b.
+        transa (bool): If ``True``, transpose ``a``.
+        transb (bool): If ``True``, transpose ``b``.
 
     Returns:
         ~chainer.Variable: The result of the matrix multiplication as a 2-D
@@ -269,8 +269,8 @@ def batch_matmul(a, b, transa=False, transb=False):
             :math:`M \\times N` matrices.
         b (Variable): The right operand of the batch matrix multiplications.
             Its array is treated as matrices in the same way as ``a``'s array.
-        transa (bool): If ``True``, transpose each matrix in a.
-        transb (bool): If ``True``, transpose each matrix in b.
+        transa (bool): If ``True``, transpose each matrix in ``a``.
+        transb (bool): If ``True``, transpose each matrix in ``b``.
 
     Returns:
         ~chainer.Variable: The result of the batch matrix multiplications as a

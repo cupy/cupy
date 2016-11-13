@@ -119,7 +119,7 @@ def average_pooling_2d(x, ksize, stride=None, pad=0, use_cudnn=True):
         ksize (int or pair of ints): Size of pooling window. ``ksize=k`` and
             ``ksize=(k, k)`` are equivalent.
         stride (int or pair of ints or None): Stride of pooling applications.
-            ``stride=s`` and ``stride=(s, s)`` are equivalent. If None is
+            ``stride=s`` and ``stride=(s, s)`` are equivalent. If ``None`` is
             specified, then it uses same stride as the pooling window size.
         pad (int or pair of ints): Spatial padding width for the input array.
             ``pad=p`` and ``pad=(p, p)`` are equivalent.

@@ -253,11 +253,11 @@ def connectionist_temporal_classification(
         blank_symbol (int): Index of blank_symbol.
             This value must be non-negative.
         input_length (Variable): Length of valid sequence for each of mini
-            batch x (optional). If input_length is skipped, It regards that all
-            of x is valid input.
+            batch ``x`` (optional). If input_length is skipped, It regards that
+            all of ``x`` is valid input.
         label_length (Variable): Length of valid sequence for each of mini
-            batch t (optional). If label_length is skipped, It regards that all
-            of t is valid input.
+            batch ``t`` (optional). If label_length is skipped, It regards that
+            all of ``t`` is valid input.
 
     Returns:
         Variable: A variable holding a scalar value of the CTC loss.

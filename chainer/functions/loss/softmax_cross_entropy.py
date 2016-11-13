@@ -151,7 +151,7 @@ def softmax_cross_entropy(
             number of dimensions is greater than 2.
         t (Variable): Variable holding an int32 vector of ground truth labels.
             If ``t[i] == -1``, corresponding ``x[i]`` is ignored.
-        normalize (bool): If true, this function normalizes the cross entropy
+        normalize (bool): If ``True``, this function normalizes the cross entropy
             loss across all instances. If false, it only normalizes along
             a batch size.
         cache_score (bool): When it is ``True``, the function stores result
