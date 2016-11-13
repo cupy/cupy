@@ -51,7 +51,7 @@ class Deconvolution2D(link.Link):
             cuDNN version >= v4.
 
     The filter weight has four dimensions :math:`(c_I, c_O, k_H, k_W)`
-    which indicate the number of the number of input channels, output channels,
+    which indicate the number of input channels, output channels,
     height and width of the kernels, respectively.
     The filter weight is initialized with i.i.d. Gaussian random samples, each
     of which has zero mean and deviation :math:`\\sqrt{1/(c_I k_H k_W)}` by
