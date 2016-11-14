@@ -9,6 +9,7 @@ from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
+import math
 
 
 class UnaryFunctionsTestBase(unittest.TestCase):
@@ -60,6 +61,11 @@ class TestFmod(UnaryFunctionsTestBase):
         x = numpy.random.uniform(-1.0, 1.0, self.shape).astype(self.dtype)
         divisor = numpy.random.uniform(-1.0, 1.0,
                                        self.shape).astype(self.dtype)
+        for i in numpy.ndindex(self.shape):
+            m = math.fabs(x[i] % divisor[i])
+            if m < 0.001 or m > (divisor[i] - 0.001):
+                x[i] = 0.5
+                divisor[i] = 0.3
         gy = numpy.random.uniform(-1, 1, self.shape).astype(self.dtype)
         return x, divisor, gy
 
