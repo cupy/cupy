@@ -15,6 +15,7 @@ ranf = random_sample
 sample = random_sample
 bytes = numpy.random.bytes
 
+gumbel = distributions.gumbel
 lognormal = distributions.lognormal
 normal = distributions.normal
 standard_normal = distributions.standard_normal

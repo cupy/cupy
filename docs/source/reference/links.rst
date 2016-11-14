@@ -42,6 +42,15 @@ Deconvolution2D
 .. autoclass:: Deconvolution2D
    :members:
 
+DeconvolutionND
+~~~~~~~~~~~~~~~
+.. autoclass:: DeconvolutionND
+
+DilatedConvolution2D
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: DilatedConvolution2D
+   :members:
+
 EmbedID
 ~~~~~~~
 .. autoclass:: EmbedID
@@ -50,6 +59,11 @@ EmbedID
 GRU
 ~~~
 .. autoclass:: GRU
+   :members:
+
+Highway
+~~~~~~~
+.. autoclass:: Highway
    :members:
 
 Inception
@@ -109,6 +123,10 @@ BinaryHierarchicalSoftmax
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: BinaryHierarchicalSoftmax
    :members:
+
+BlackOut
+~~~~~~~~
+.. autoclass:: BlackOut
 
 CRF1d
 ~~~~~

@@ -1,3 +1,4 @@
+import threading
 import unittest
 
 import mock
@@ -434,6 +435,54 @@ class TestFunctionBackwardDebug(unittest.TestCase):
         input_value = (cuda.to_gpu(self.one),) * len(self.return_value)
         self.f.backward_gpu = mock.MagicMock(return_value=return_value)
         self.check_debug_backward(*input_value)
+
+
+class TestNoBackpropMode(unittest.TestCase):
+
+    def setUp(self):
+        self.x = chainer.Variable(numpy.array([1.], 'f'), 'auto')
+
+    def test_no_backprop_mode(self):
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        with chainer.no_backprop_mode():
+            y = self.x + 1
+        self.assertTrue(y.creator is None)
+
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+    def test_force_backprop_mode(self):
+        with chainer.no_backprop_mode():
+            with chainer.force_backprop_mode():
+                y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        with chainer.force_backprop_mode():
+            y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+
+class MyThread(threading.Thread):
+
+    def run(self):
+        x = chainer.Variable(numpy.array([1], dtype='f'), volatile='auto')
+        with chainer.no_backprop_mode():
+            y = x + 1
+        self.creator_is_none = y.creator is None
+
+
+class TestBackpropModeMultiThread(unittest.TestCase):
+
+    def test_multi_thread(self):
+        t = MyThread()
+        t.start()
+        t.join()
+        self.assertTrue(t.creator_is_none)
 
 
 testing.run_module(__name__, __file__)

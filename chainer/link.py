@@ -1,3 +1,4 @@
+import collections
 import copy
 import warnings
 
@@ -5,7 +6,33 @@ import numpy
 import six
 
 from chainer import cuda
+from chainer import initializers
 from chainer import variable
+
+
+def _is_shape(value):
+    if value is None:
+        return True
+    elif isinstance(value, collections.Sequence):
+        try:
+            return all(int(x) for x in value)
+        except TypeError:
+            return False
+    try:
+        return int(value)
+    except TypeError:
+        return False
+
+    return False
+
+
+def _ensure_shape_dtype(value):
+    # Return value paired with dtype FP32 if it is a shape.
+    if _is_shape(value):
+        return (value, 'f')
+    # Otherwise, returns it with assuming a shape-dtype pair.
+    else:
+        return value
 
 
 class Link(object):
@@ -82,8 +109,11 @@ class Link(object):
        operator.
 
     Args:
-        params: Shapes of initial parameters. The keywords are used as their
-            names. The names are also set to the parameter variables.
+        params: Names, shapes, and optional dtypes of initial parameters. The
+            keywords are used as the parameter names and the corresponding
+            values consist either of the shape or a tuple of shape and a dtype
+            `(shape, dtype)`. If only the shape is supplied, the default dtype
+            will be used.
 
     Attributes:
         name (str): Name of this link, given by the parent chain (if exists).
@@ -93,12 +123,14 @@ class Link(object):
     def __init__(self, **params):
         self._params = []
         self._persistent = []
-        self._uninitialized_params = set()
+        self._uninitialized_params = {}
         self._cpu = True
+        self._device_id = None
         self.name = None
 
-        for name, shape in six.iteritems(params):
-            self.add_param(name, shape)
+        for name, value in six.iteritems(params):
+            shape, dtype = _ensure_shape_dtype(value)
+            self.add_param(name, shape, dtype=dtype)
 
     @property
     def xp(self):
@@ -110,12 +142,14 @@ class Link(object):
         """
         return numpy if self._cpu else cuda.cupy
 
-    def add_param(self, name, shape, dtype=numpy.float32):
+    def add_param(self, name, shape, dtype=numpy.float32, initializer=None):
         """Registers a parameter to the link.
 
         The registered parameter is saved and loaded on serialization and
         deserialization, and involved in the optimization. The data and
         gradient of the variable are initialized by NaN arrays.
+        If ``initializer`` is not ``None``, the data is initialized by
+        ``initializer``.
 
         If the supplied ``name`` argument corresponds to an uninitialized
         parameter (that is, one that was added with the
@@ -130,6 +164,9 @@ class Link(object):
                 name will be removed.
             shape (int or tuple of ints): Shape of the parameter array.
             dtype: Data type of the parameter array.
+            initializer(chainer.initializer.Initializer): If it is not
+                ``None``, the data is initialized with the given initializer.
+                Note that in this case ``dtype`` argument is ignored.
 
         """
         d = self.__dict__
@@ -137,14 +174,26 @@ class Link(object):
             raise AttributeError(
                 'cannot register a new parameter %s: attribute exists'
                 % name)
-        data = self.xp.full(shape, numpy.nan, dtype=dtype)
-        grad = data.copy()
+        if initializer is None:
+            data = self.xp.full(shape, numpy.nan, dtype=dtype)
+        else:
+            data = initializers.generate_array(initializer, shape, self.xp)
+        u = self._uninitialized_params.get(name)
+        if u is None:
+            grad = self.xp.full_like(data, numpy.nan)
+        else:
+            if u._cleared:
+                grad = None
+            elif u._zeroed:
+                grad = self.xp.zeros_like(data)
+            else:
+                grad = self.xp.full_like(data, numpy.nan)
         var = variable.Variable(data, volatile='auto', name=name)
         var.grad = grad
         self._params.append(name)
         d[name] = var
         if name in self._uninitialized_params:
-            self._uninitialized_params.remove(name)
+            del self._uninitialized_params[name]
 
     def add_uninitialized_param(self, name):
         """Registers an uninitialized parameter to the link.
@@ -167,20 +216,26 @@ class Link(object):
             name: (str): Name of the uninitialized parameter.
 
         """
+        class uninitialized_param(object):
+
+            def __init__(self):
+                self._cleared = False
+                self._zeroed = False
+
         d = self.__dict__
         if (name in self._uninitialized_params) or (name in d):
             raise AttributeError(
                 'cannot register a new uninitialized parameter %s: exists'
                 % name)
-        self._uninitialized_params.add(name)
+        self._uninitialized_params[name] = uninitialized_param()
 
     @property
     def has_uninitialized_params(self):
         """Check if the link has uninitialized parameters.
 
         Returns:
-            bool: True if the link has any uninitialized parameters. Otherwise
-            return False.
+            bool: ``True`` if the link has any uninitialized parameters.
+            Otherwise returns ``False``.
 
         """
         return len(self._uninitialized_params) > 0
@@ -251,6 +306,7 @@ class Link(object):
             if isinstance(value, cuda.ndarray):
                 d[name] = value.get()
         self._cpu = True
+        self._device_id = None
         return self
 
     def to_gpu(self, device=None):
@@ -278,6 +334,7 @@ class Link(object):
                 value = d[name]
                 if isinstance(value, numpy.ndarray):
                     d[name] = cuda.to_gpu(value)
+            self._device_id = cuda.cupy.cuda.get_device_id()
         self._cpu = False
         return self
 
@@ -367,6 +424,8 @@ class Link(object):
         """
         for param in self.params():
             param.cleargrad()
+        for param in self._uninitialized_params.values():
+            param._cleared = True
 
     def zerograds(self):
         """Initializes all gradient arrays by zero.
@@ -383,6 +442,8 @@ class Link(object):
             DeprecationWarning)
         for param in self.params():
             param.zerograd()
+        for param in self._uninitialized_params:
+            param._zeroed = True
 
     def addgrads(self, link):
         """Accumulates gradient values from given link.

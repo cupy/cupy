@@ -168,12 +168,12 @@ class Trainer(object):
                 are invoked in the descending order of priorities in each
                 iteration. If this is ``None``, ``extension.priority`` is used
                 instead.
-            invoke_before_training (bool): If ``True``, the extension is also
-                invoked just before entering the training loop. If this
-                ``None``, ``extension.invoke_before_training`` is used instead.
-                This option is mainly used for extensions that alter the
-                training configuration (e.g., learning rates); in such a case,
-                resuming from snapshots require the call of extension to
+            invoke_before_training (bool or None): If ``True``, the extension
+                is also invoked just before entering the training loop. If this
+                is ``None``, ``extension.invoke_before_training`` is used
+                instead. This option is mainly used for extensions that alter
+                the training configuration (e.g., learning rates); in such a
+                case, resuming from snapshots require the call of extension to
                 recover the configuration before any updates.
 
         """

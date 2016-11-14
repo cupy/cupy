@@ -36,7 +36,7 @@ class TestBatchNormalization(unittest.TestCase):
         self.gamma = numpy.random.uniform(.5, 1, (3,)).astype(self.dtype)
         self.beta = numpy.random.uniform(-1, 1, (3,)).astype(self.dtype)
 
-        shape = (7, 3) + (2,) * self.ndim
+        shape = (5, 3) + (2,) * self.ndim
         self.x = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
 
@@ -107,7 +107,7 @@ class TestFixedBatchNormalization(unittest.TestCase):
         self.beta = numpy.random.uniform(-1, 1, (3,)).astype(self.dtype)
         self.expander = (None, Ellipsis) + (None,) * self.ndim
 
-        shape = (7, 3) + (2,) * self.ndim
+        shape = (5, 3) + (2,) * self.ndim
         self.x = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.gy = numpy.random.uniform(-1, 1, shape).astype(self.dtype)
         self.eps = 2e-5

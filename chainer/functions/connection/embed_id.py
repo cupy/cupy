@@ -100,7 +100,7 @@ def embed_id(x, W, ignore_label=None):
     Returns:
         ~chainer.Variable: Output variable.
 
-    .. seealso:: :class:`EmbedID`
+    .. seealso:: :class:`~chainer.links.EmbedID`
 
     """
     return EmbedIDFunction(ignore_label=ignore_label)(x, W)

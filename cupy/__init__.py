@@ -228,8 +228,9 @@ vdot = linalg.product.vdot
 inner = linalg.product.inner
 outer = linalg.product.outer
 tensordot = linalg.product.tensordot
+matmul = linalg.product.matmul
 
-trace = linalg.norm.trace
+trace = linalg.norms.trace
 
 # -----------------------------------------------------------------------------
 # Logic functions
@@ -346,6 +347,8 @@ amin = statistics.order.amin
 min = statistics.order.amin
 amax = statistics.order.amax
 max = statistics.order.amax
+nanmin = statistics.order.nanmin
+nanmax = statistics.order.nanmax
 
 mean = statistics.meanvar.mean
 var = statistics.meanvar.var

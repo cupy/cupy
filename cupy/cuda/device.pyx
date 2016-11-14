@@ -6,7 +6,7 @@ from cupy.cuda cimport cublas
 from cupy.cuda cimport runtime
 
 
-cpdef int get_device_id():
+cpdef int get_device_id() except *:
     return runtime.getDevice()
 
 
@@ -109,7 +109,7 @@ cdef class Device:
         with self:
             handle = cublas.create()
             _cublas_handles[self.id] = handle
-        return handle
+            return handle
 
     def __richcmp__(Device self, Device other, int op):
         if op == 0:

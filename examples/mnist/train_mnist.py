@@ -12,11 +12,12 @@ from chainer.training import extensions
 # Network definition
 class MLP(chainer.Chain):
 
-    def __init__(self, n_in, n_units, n_out):
+    def __init__(self, n_units, n_out):
         super(MLP, self).__init__(
-            l1=L.Linear(n_in, n_units),  # first layer
-            l2=L.Linear(n_units, n_units),  # second layer
-            l3=L.Linear(n_units, n_out),  # output layer
+            # the size of the inputs to each layer will be inferred
+            l1=L.Linear(None, n_units),  # n_in -> n_units
+            l2=L.Linear(None, n_units),  # n_units -> n_units
+            l3=L.Linear(None, n_out),  # n_units -> n_out
         )
 
     def __call__(self, x):
@@ -50,7 +51,7 @@ def main():
     # Set up a neural network to train
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
-    model = L.Classifier(MLP(784, args.unit, 10))
+    model = L.Classifier(MLP(args.unit, 10))
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         model.to_gpu()  # Copy the model to the GPU

@@ -17,7 +17,7 @@ Minimum requirements:
 
 Requirements for some features:
 - CUDA support
-  - CUDA 6.5, 7.0, 7.5
+  - CUDA 6.5, 7.0, 7.5, 8.0
   - filelock
   - g++ 4.8.4+
 - cuDNN support
@@ -25,6 +25,8 @@ Requirements for some features:
 - Caffe model support
   - Protocol Buffers (pip install protobuf)
     - protobuf>=3.0.0 is required for Py3
+- Image dataset support
+  - Pillow
 - HDF5 serialization support
   - h5py 2.5.0
 - Testing utilities
@@ -66,14 +68,24 @@ Chainer had `chainer-cuda-deps` module to enable CUDA in previous version.
 Recent version (>=1.3) does not require this module.
 So **you do not have to install** `chainer-cuda-deps`.
 
-If you want to enable cuDNN, add a directory containing `cudnn.h` to `CPATH`, and add a directory containing `libcudnn.so` to `LIBRARY_PATH` and `LD_LIBRARY_PATH`:
+If you want to enable cuDNN, add a directory containing `cudnn.h` to `CFLAGS`, and add a directory containing `libcudnn.so` to `LDFLAGS` and `LD_LIBRARY_PATH`:
 ```
-export CPATH=/path/to/cudnn/include:$CPATH
-export LIBRARY_PATH=/path/to/cudnn/lib:$LIBRARY_PATH
+export CFLAGS=-I/path/to/cudnn/include
+export LDFLAGS=-L/path/to/cudnn/lib
 export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
 ```
 Do not forget to restart your terminal session (or `source` it) to enable these changes.
 And then, reinstall Chainer.
+
+
+### Image dataset support
+
+If you want to use Image dataset (`chainer/datasets/ImageDataset`), please install Pillow manually.
+Supported image format depends on your environment.
+
+```
+pip install pillow
+```
 
 
 ### HDF5 Support
@@ -94,6 +106,17 @@ You may need to install Cython for h5py.
 ```
 pip install cython
 pip install h5py
+```
+
+
+## Run with Docker
+
+We provide the official Docker image.
+Use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker) command to run Chainer image with GPU.
+You can login to the environment with bash, and run the Python interpreter.
+
+```
+$ nvidia-docker run -it chainer/chainer /bin/bash
 ```
 
 

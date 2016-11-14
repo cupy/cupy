@@ -317,17 +317,23 @@ There are further two ways to use the optimizer directly.
 One is manually computing gradients and then call the :meth:`~Optimizer.update` method with no arguments.
 Do not forget to clear gradients beforehand!
 
+   >>> x = np.random.uniform(-1, 1, (2, 4)).astype('f')
    >>> model.cleargrads()
    >>> # compute gradient here...
+   >>> loss = F.sum(model(chainer.Variable(x)))
+   >>> loss.backward()
    >>> optimizer.update()
 
 The other way is just passing a loss function to the :meth:`~Optimizer.update` method.
 In this case, :meth:`~Link.cleargrads` is automatically called by the update method, so user do not have to call it manually.
 
-   >>> def lossfun(args...):
-   ...     ...
+   >>> def lossfun(arg1, arg2):
+   ...     # calculate loss
+   ...     loss = F.sum(model(arg1 - arg2))
    ...     return loss
-   >>> optimizer.update(lossfun, args...)
+   >>> arg1 = np.random.uniform(-1, 1, (2, 4)).astype('f')
+   >>> arg2 = np.random.uniform(-1, 1, (2, 4)).astype('f')
+   >>> optimizer.update(lossfun, chainer.Variable(arg1), chainer.Variable(arg2))
 
 See :meth:`Optimizer.update` for the full specification.
 
@@ -422,15 +428,19 @@ The MNIST dataset consists of 70,000 greyscale images of size 28x28 (i.e. 784 pi
 The dataset is divided into 60,000 training images and 10,000 test images by default.
 We can obtain the vectorized version (i.e., a set of 784 dimensional vectors) by :func:`datasets.get_mnist`.
 
-   >>> train, test = datasets.get_mnist()
-
 .. testcode::
    :hide:
 
-   data = np.random.rand(70000, 784).astype(np.float32)
-   target = np.random.randint(10, size=70000).astype(np.int32)
-   train = datasets.TupleDataset(data[:60000], target[:60000])
-   test = datasets.TupleDataset(data[60000:], target[60000:])
+   data = np.random.rand(70, 784).astype(np.float32)
+   target = np.random.randint(10, size=70).astype(np.int32)
+   datasets.get_mnist = lambda: (datasets.TupleDataset(data[:60], target[:60]), datasets.TupleDataset(data[60:], target[60:]))
+
+
+.. doctest::
+
+   >>> train, test = datasets.get_mnist()
+   ...
+
 
 This code automatically downloads the MNIST dataset and saves the NumPy arrays to the ``$(HOME)/.chainer`` directory.
 The returned ``train`` and ``test`` can be seen as lists of image-label pairs (strictly speaking, they are instances of :class:`~datasets.TupleDataset`).
@@ -460,11 +470,12 @@ We use a simple three-layer rectifier network with 100 units per layer as an exa
 .. doctest::
 
    >>> class MLP(Chain):
-   ...     def __init__(self):
+   ...     def __init__(self, n_units, n_out):
    ...         super(MLP, self).__init__(
-   ...             l1=L.Linear(784, 100),
-   ...             l2=L.Linear(100, 100),
-   ...             l3=L.Linear(100, 10),
+   ...             # the size of the inputs to each layer will be inferred
+   ...             l1=L.Linear(None, n_units),  # n_in -> n_units
+   ...             l2=L.Linear(None, n_units),  # n_units -> n_units
+   ...             l3=L.Linear(None, n_out),    # n_units -> n_out
    ...         )
    ...         
    ...     def __call__(self, x):
@@ -502,11 +513,11 @@ For the detailed mechanism of collecting training statistics, see :ref:`reporter
 You can also collect other types of observations like activation statistics in a similar ways.
 
 Note that a class similar to the Classifier above is defined as :class:`chainer.links.Classifier`.
-So instead of using the above example, we will use this predefined Classifier chain instead.
+So instead of using the above example, we will use this predefined Classifier chain.
 
 .. doctest::
 
-   >>> model = L.Classifier(MLP())
+   >>> model = L.Classifier(MLP(100, 10))  # the input size, 784, is inferred
    >>> optimizer = optimizers.SGD()
    >>> optimizer.setup(model)
 
@@ -559,5 +570,4 @@ These extensions perform the following tasks:
 There are many extensions implemented in the :mod:`chainer.training.extensions` module.
 The most important one that is not included above is :func:`~training.extensions.snapshot`, which saves the snapshot of the training procedure (i.e., the Trainer object) to a file in the output directory.
 
-The example code in the `examples/mnist` directory contains GPU support, though the essential part is same as the code in this tutorial.
-We will review in later sections how to use GPU(s).
+The `example code <https://github.com/pfnet/chainer/blob/master/examples/mnist/train_mnist.py>`_ in the `examples/mnist` directory additionally contains GPU support, though the essential part is same as the code in this tutorial. We will review in later sections how to use GPU(s).

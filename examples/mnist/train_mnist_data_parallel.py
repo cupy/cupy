@@ -37,7 +37,9 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-    model = L.Classifier(train_mnist.MLP(784, args.unit, 10))
+    chainer.cuda.get_device(args.gpu0).use()
+
+    model = L.Classifier(train_mnist.MLP(args.unit, 10))
     optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
 

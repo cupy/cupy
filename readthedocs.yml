@@ -1,0 +1,6 @@
+name: chainer
+type: sphinx
+base: docs/source
+requirements_file: docs/requirements.txt
+python:
+  setup_py_install: true
