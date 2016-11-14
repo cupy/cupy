@@ -116,6 +116,11 @@ def make_extensions(options, compiler, use_cython):
         # -rpath is only supported when targetting Mac OS X 10.5 or later
         args.append('-mmacosx-version-min=10.5')
 
+    # This is a workaround for Anaconda.
+    # Anaconda installs libstdc++ from GCC 4.8 and it is not compatible
+    # with GCC 5's new ABI.
+    settings['define_macros'].append(('_GLIBCXX_USE_CXX11_ABI', '0'))
+
     if options['linetrace']:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
