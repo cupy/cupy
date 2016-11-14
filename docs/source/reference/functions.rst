@@ -111,6 +111,10 @@ copy
 ~~~~
 .. autofunction:: copy
 
+dstack
+~~~~~~
+.. autofunction:: dstack
+
 expand_dims
 ~~~~~~~~~~~
 .. autofunction:: expand_dims
@@ -124,7 +128,7 @@ get_item
 .. autofunction:: get_item
 
 hstack
-~~~~~~~~
+~~~~~~
 .. autofunction:: hstack
 
 permutate
@@ -151,6 +155,10 @@ split_axis
 ~~~~~~~~~~
 .. autofunction:: split_axis
 
+squeeze
+~~~~~~~
+.. autofunction:: squeeze
+
 stack
 ~~~~~
 .. autofunction:: stack
@@ -158,6 +166,10 @@ stack
 swapaxes
 ~~~~~~~~
 .. autofunction:: swapaxes
+
+tile
+~~~~
+.. autofunction:: tile
 
 transpose
 ~~~~~~~~~
@@ -195,6 +207,14 @@ deconvolution_2d
 ~~~~~~~~~~~~~~~~
 .. autofunction:: deconvolution_2d
 
+deconvolution_nd
+~~~~~~~~~~~~~~~~
+.. autofunction:: deconvolution_nd
+
+dilated_convolution_2d
+~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: dilated_convolution_2d
+
 embed_id
 ~~~~~~~~
 .. autofunction:: embed_id
@@ -219,6 +239,10 @@ bernoulli_nll
 ~~~~~~~~~~~~~
 .. autofunction:: bernoulli_nll
 
+black_out
+~~~~~~~~~
+.. autofunction:: black_out
+
 connectionist_temporal_classification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: connectionist_temporal_classification
@@ -230,6 +254,7 @@ contrastive
 crf1d
 ~~~~~
 .. autofunction:: crf1d
+.. autofunction:: argmax_crf1d
 
 cross_covariance
 ~~~~~~~~~~~~~~~~
@@ -275,6 +300,18 @@ triplet
 Mathematical functions
 ----------------------
 
+arccos
+~~~~~~
+.. autofunction:: arccos
+
+arcsin
+~~~~~~
+.. autofunction:: arcsin
+
+arctan
+~~~~~~
+.. autofunction:: arctan
+
 argmax
 ~~~~~~
 .. autofunction:: argmax
@@ -299,6 +336,10 @@ bias
 ~~~~
 .. autofunction:: bias
 
+ceil
+~~~~
+.. autofunction:: ceil
+
 clip
 ~~~~
 .. autofunction:: clip
@@ -318,6 +359,10 @@ exp
 fmod
 ~~~~
 .. autofunction:: fmod
+
+floor
+~~~~~
+.. autofunction:: floor
 
 identity
 ~~~~~~~~
@@ -391,6 +436,14 @@ sqrt
 ~~~~
 .. autofunction:: sqrt
 
+square
+~~~~~~
+.. autofunction:: square
+
+squared_difference
+~~~~~~~~~~~~~~~~~~
+.. autofunction:: squared_difference
+
 sum
 ~~~
 .. autofunction:: sum
@@ -460,3 +513,11 @@ spatial_pyramid_pooling_2d
 unpooling_2d
 ~~~~~~~~~~~~
 .. autofunction:: unpooling_2d
+
+
+Utility functions
+-----------------
+
+forget
+~~~~~~
+.. autofunction:: forget
