@@ -310,7 +310,7 @@ class Optimizer(object):
         """Applies weight decay to the parameter/gradient pairs.
 
         Args:
-            decay (float): Coefficient of weight decay
+            decay (float): Coefficient of weight decay.
 
         .. deprecated:: v1.5
            Use the :class:`~chainer.optimizer.WeightDecay` hook function
@@ -454,8 +454,9 @@ class GradientMethod(Optimizer):
         """Enables or disables use of :func:`~chainer.Link.cleargrads` in `update`.
 
         Args:
-            use (bool): If true, this function enables use of `cleargrads`.
-                If false, disables use of `cleargrads` (`zerograds` is used).
+            use (bool): If ``True``, this function enables use of
+                `cleargrads`. If ``False``, disables use of `cleargrads`
+                (`zerograds` is used).
 
         .. note::
            Note that :meth:`update` calls :meth:`~Link.zerograds` by default
@@ -586,10 +587,10 @@ class GradientNoise(object):
     :math:`\\gamma = 0.55`.
 
     Args:
-        eta (float): parameter that defines the scale of the noise, which for
+        eta (float): Parameter that defines the scale of the noise, which for
             the default noise function is recommended to be either 0.01, 0.3
             or 1.0.
-        noise_func (function): the noise generating function which by default
+        noise_func (function): Noise generating function which by default
             is given by `Adding Gradient Noise Improves Learning for Very Deep\
             Networks <http://arxiv.org/pdf/1511.06807>`_.
     """

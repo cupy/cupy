@@ -234,8 +234,8 @@ class Link(object):
         """Check if the link has uninitialized parameters.
 
         Returns:
-            bool: True if the link has any uninitialized parameters. Otherwise
-            return False.
+            bool: ``True`` if the link has any uninitialized parameters.
+            Otherwise returns ``False``.
 
         """
         return len(self._uninitialized_params) > 0
