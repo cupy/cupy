@@ -60,6 +60,7 @@ from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
 from chainer.functions.loss import hinge
 from chainer.functions.loss import huber_loss
+from chainer.functions.loss import mean_absolute_error
 from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
@@ -233,6 +234,8 @@ Hinge = hinge.Hinge
 hinge = hinge.hinge
 HuberLoss = huber_loss.HuberLoss
 huber_loss = huber_loss.huber_loss
+MeanAbsoluteError = mean_absolute_error.MeanAbsoluteError
+mean_absolute_error = mean_absolute_error.mean_absolute_error
 MeanSquaredError = mean_squared_error.MeanSquaredError
 mean_squared_error = mean_squared_error.mean_squared_error
 negative_sampling = negative_sampling.negative_sampling
