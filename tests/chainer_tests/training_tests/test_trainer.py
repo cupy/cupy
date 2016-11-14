@@ -1,8 +1,6 @@
-import collections
 import os
 import shutil
 import tempfile
-import time
 import unittest
 
 import mock
@@ -43,15 +41,16 @@ class TestTrainerElapsedTime(unittest.TestCase):
 
         finally:
             shutil.rmtree(tempdir)
-            
 
 
 def _get_mocked_trainer(stop_trigger=(10, 'iteration')):
     updater = mock.Mock()
     updater.get_all_optimizers.return_value = {}
     updater.iteration = 0
+
     def update():
         updater.iteration += 1
+
     updater.update = update
     return training.Trainer(updater, stop_trigger)
 
