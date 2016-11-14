@@ -36,13 +36,13 @@ class ResNet50Layers(link.Chain):
     a ``.npz`` file in the constructor, this chain model automatically
     initializes all the parameters with it.
     This model would be useful when you want to extract a semantic feature
-    vector from given images, or fine-tune the model on a different dataset.
+    vector per image, or fine-tune the model on a different dataset.
     Note that unlike ``VGG16Layers``, it does not automatically download a
     pre-trained caffemodel. This caffemodel can be downloaded at
     `GitHub <https://github.com/KaimingHe/deep-residual-networks>`_.
 
     If you want to manually convert the pre-trained caffemodel to a chainer
-    model that can be spesified in the constractor,
+    model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
     .. [1] K. He et. al., `Deep Residual Learning for Image Recognition
@@ -59,7 +59,7 @@ class ResNet50Layers(link.Chain):
             as an environment variable. Note that in this case the converted
             chainer model is stored on the same directory and automatically
             used from the second time.
-            If the argument is specfied as ``None``, all the parameters
+            If the argument is specified as ``None``, all the parameters
             are not initialized by the pre-trained model, but the default
             initializer used in the original paper.
 
@@ -70,7 +70,7 @@ class ResNet50Layers(link.Chain):
     """
 
     def __init__(self, pretrained_model='auto'):
-        if pretrained_model is not None:
+        if pretrained_model:
             # As a sampling process is time-consuming,
             # we employ a zero initializer for faster computation.
             kwargs = {'initialW': constant.Zero()}
@@ -89,7 +89,7 @@ class ResNet50Layers(link.Chain):
         if pretrained_model == 'auto':
             _retrieve(
                 'ResNet-50-model.npz', 'ResNet-50-model.caffemodel', self)
-        elif pretrained_model is not None:
+        elif pretrained_model:
             npz.load_npz(pretrained_model, self)
         self.functions = OrderedDict([
             ('conv1', [self.conv1, self.bn1, relu]),
@@ -129,13 +129,13 @@ class ResNet50Layers(link.Chain):
 
         Args:
             x (~chainer.Variable): Input variable.
-            layers (list of str): The list of layernames you want to extract.
-            test (bool): If ``True``, it runs in test mode.
+            layers (list of str): The list of layer names you want to extract.
+            test (bool): If ``True``, BarchNormalization runs in test mode.
 
         Returns:
-            Dictionary of ~chainer.Variable: The directory in which
+            Dictionary of ~chainer.Variable: A directory in which
             the key contains the layer name and the value contains
-            the corresponding variable.
+            the corresponding feature map variable.
 
         """
 
@@ -162,22 +162,22 @@ class ResNet50Layers(link.Chain):
         The difference of directly executing ``__call__`` is that
         it directly accepts images as an input and automatically
         transforms them to a proper variable. That is,
-        it is also interpreted as a shortcut method that implicitly call
+        it is also interpreted as a shortcut method that implicitly calls
         ``prepare`` and ``__call__`` functions.
 
         Args:
-            image (iterable of PIL.Image or numpy.ndarray): Input images.
-            layers (list of str): The list of layernames you want to extract.
+            images (iterable of PIL.Image or numpy.ndarray): Input images.
+            layers (list of str): The list of layer names you want to extract.
             size (pair of ints): The resolution of resized images used as
                 an input of CNN. All the given images are not resized
                 if this argument is ``None``, but the resolutions of
                 all the images should be the same.
-            test (bool): If ``True``, it runs in test mode.
+            test (bool): If ``True``, BatchNormalization runs in test mode.
 
         Returns:
-            Dictionary of ~chainer.Variable: The directory in which
+            Dictionary of ~chainer.Variable: A directory in which
             the key contains the layer name and the value contains
-            the corresponding variable.
+            the corresponding feature map variable.
 
         """
 
@@ -189,8 +189,8 @@ class ResNet50Layers(link.Chain):
         """Computes all the probabilities of given images.
 
         Args:
-            image (iterable of PIL.Image or numpy.ndarray): Input images.
-            oversample (bool): If ``True``, it avarages results across
+            images (iterable of PIL.Image or numpy.ndarray): Input images.
+            oversample (bool): If ``True``, it averages results across
                 center, corners, and mirrors. Otherwise, it uses only the
                 center.
 
@@ -228,6 +228,7 @@ def prepare(image, size=(224, 224)):
             If an input is ``numpy.ndarray``, its shape must be
             ``(height, width)``, ``(height, width, channels)``,
             or ``(channels, height, width)``.
+            Moreover, the order of the channels must be RGB.
         size (pair of ints): Size of converted images.
             If ``None``, the given image is not resized.
 
@@ -248,7 +249,7 @@ def prepare(image, size=(224, 224)):
                 image = image.transpose((1, 2, 0))
         image = Image.fromarray(image.astype(numpy.uint8))
     image = image.convert('RGB')
-    if size is not None:
+    if size None:
         image = image.resize(size)
     image = numpy.asarray(image, dtype=numpy.float32)
     image = image[:, :, ::-1]
