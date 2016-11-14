@@ -14,7 +14,7 @@ install_requires = [
     'six>=1.9.0',
 ]
 
-ext_modules = chainer_setup_build.get_ext_modules()
+chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
@@ -83,5 +83,8 @@ setup(
     tests_require=['mock',
                    'nose'],
     # To trick build into running build_ext
-    ext_modules=ext_modules,
+    ext_modules=[chainer_setup_build.dummy_extension],
+    cmdclass={
+        'build_ext': chainer_setup_build.chainer_build_ext,
+    },
 )
