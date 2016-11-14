@@ -2,6 +2,7 @@ import numpy
 import six
 
 import chainer
+from chainer import cuda
 from chainer.functions.activation import lstm
 from chainer.functions.array import concat
 from chainer.functions.array import split_axis
@@ -91,9 +92,10 @@ class StatelessLSTM(LSTMBase):
             lstm_in += self.lateral(h)
         if c is None:
             xp = self.xp
-            c = variable.Variable(
-                xp.zeros((x.shape[0], self.state_size), dtype=x.dtype),
-                volatile='auto')
+            with cuda.get_device(x.data):
+                c = variable.Variable(
+                    xp.zeros((x.shape[0], self.state_size), dtype=x.dtype),
+                    volatile='auto')
         return lstm.lstm(c, lstm_in)
 
 
@@ -239,9 +241,10 @@ class LSTM(LSTMBase):
                 lstm_in += self.lateral(self.h)
         if self.c is None:
             xp = self.xp
-            self.c = variable.Variable(
-                xp.zeros((batch, self.state_size), dtype=x.dtype),
-                volatile='auto')
+            with cuda.get_device(x.data):
+                self.c = variable.Variable(
+                    xp.zeros((batch, self.state_size), dtype=x.dtype),
+                    volatile='auto')
         self.c, y = lstm.lstm(self.c, lstm_in)
 
         if h_rest is None:

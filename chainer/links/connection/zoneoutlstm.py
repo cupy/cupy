@@ -1,6 +1,7 @@
 import numpy
 
 import chainer
+from chainer import cuda
 from chainer.functions.activation import sigmoid
 from chainer.functions.activation import tanh
 from chainer.functions.array import reshape
@@ -86,14 +87,18 @@ class StatefulZoneoutLSTM(link.Chain):
             lstm_in += self.lateral(self.h)
         else:
             xp = self.xp
-            self.h = variable.Variable(
-                xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
-                volatile='auto')
+            with cuda.get_device(x.data):
+                self.h = variable.Variable(
+                    xp.zeros((len(x.data), self.state_size),
+                             dtype=x.data.dtype),
+                    volatile='auto')
         if self.c is None:
             xp = self.xp
-            self.c = variable.Variable(
-                xp.zeros((len(x.data), self.state_size), dtype=x.data.dtype),
-                volatile='auto')
+            with cuda.get_device(x.data):
+                self.c = variable.Variable(
+                    xp.zeros((len(x.data), self.state_size),
+                             dtype=x.data.dtype),
+                    volatile='auto')
 
         lstm_in = reshape.reshape(lstm_in, (len(lstm_in.data),
                                             lstm_in.data.shape[1] // 4,
