@@ -46,12 +46,14 @@ class TestTrace(unittest.TestCase):
 })
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.11.2')  # The old version dtype is strange
 class TestNorm(unittest.TestCase):
 
     _multiprocess_can_split_ = True
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, type_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_trace(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        return xp.linalg.norm(a, self.ord, self.axis, self.keepdims)
+        with testing.NumpyError(divide='ignore'):
+            return xp.linalg.norm(a, self.ord, self.axis, self.keepdims)

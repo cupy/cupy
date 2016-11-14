@@ -22,20 +22,17 @@ def norm(x, ord=None, axis=None, keepdims=False):
         cupy.ndarray
 
     """
-    if not issubclass(x.dtype.type, (numpy.inexact, numpy.object_)):
+    if not issubclass(x.dtype.type, numpy.inexact):
         x = x.astype(float)
 
     # Immediately handle some default, simple, fast, and common cases.
     if axis is None:
         ndim = x.ndim
-        if ((ord is None) or (ord in ('f', 'fro') and ndim == 2) or
-                (ord == 2 and ndim == 1)):
-
-            x = x.ravel()
-            sqnorm = cupy.sum(x ** 2)
-            ret = cupy.sqrt(sqnorm)
+        if (ord is None or (ndim == 1 and ord == 2) or
+                (ndim == 2 and ord in ('f', 'fro'))):
+            ret = cupy.sqrt(cupy.sum(x.ravel() ** 2))
             if keepdims:
-                ret = ret.reshape(ndim * [1])
+                ret = ret.reshape((1,) * ndim)
             return ret
 
     # Normalize the `axis` argument to a tuple.
@@ -57,7 +54,8 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).min(axis=axis, keepdims=keepdims)
         elif ord == 0:
             # Zero norm
-            return (x != 0).sum(axis=axis, keepdims=keepdims, dtype=x.dtype)
+            # Convert to Python float in accordance with NumPy
+            return (x != 0).sum(axis=axis, keepdims=keepdims, dtype='d')
         elif ord == 1:
             # special case for speedup
             return abs(x).sum(axis=axis, keepdims=keepdims)
@@ -70,9 +68,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 float(ord)
             except TypeError:
                 raise ValueError("Invalid norm order for vectors.")
-            absx = abs(x)
+            absx = abs(x).astype('d')
             absx **= ord
-            return absx.sum(axis=axis, keepdims=keepdims) ** (1.0 / ord)
+            ret = absx.sum(axis=axis, keepdims=keepdims)
+            ret **= (1.0 / ord)
+            return ret
     elif len(axis) == 2:
         row_axis, col_axis = axis
         if row_axis < 0:
