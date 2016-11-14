@@ -1027,7 +1027,7 @@ cdef class ndarray:
 
         """
         # supports basic indexing (by slices, ints or Ellipsis).
-        # also supports indexing by an array on one axis
+        # also supports indexing by integer arrays.
         # TODO(beam2d): Support the advanced indexing of NumPy.
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
@@ -1073,12 +1073,7 @@ cdef class ndarray:
                                      'non-integer array is not supported')
 
         if advanced:
-            # When slices are combination of basic and advanced indexing,
-            # slice and None are handled independently by the basic 
-            # indexing routine.
-            # Integer and ndarray are handled by the adv-indexing routine.
-            # In the routine, Integer and ndarray of dimension zero are
-            # treated as array of shape (1,).
+            # split slices that can be handled by basic-indexing
             basic_slices = []
             adv_slices = []
             for i, s in enumerate(slices):
@@ -1088,7 +1083,7 @@ cdef class ndarray:
                 elif s is None:
                     basic_slices.append(None)
                     adv_slices.append(slice(None))
-                elif (isinstance(s, ndarray) and 
+                elif (isinstance(s, ndarray) and
                         issubclass(s.dtype.type, numpy.integer)):
                     basic_slices.append(slice(None))
                     if s.ndim == 0:
@@ -2108,7 +2103,8 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
         ri = p - 1
 
     # flatten the array-indexed dimensions
-    shape = a.shape[:li]  + (internal.prod_ssize_t(a.shape[li:ri+1]),) + a.shape[ri+1:]
+    shape = a.shape[:li] +\
+        (internal.prod_ssize_t(a.shape[li:ri+1]),) + a.shape[ri+1:]
     input_flat = a.reshape(shape)
 
     # build the strides

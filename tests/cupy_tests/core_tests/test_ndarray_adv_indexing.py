@@ -15,7 +15,7 @@ def perm(iterable):
     *testing.product({
         'shape': [(4, 4, 4)],
         'indexes': (
-            perm(([1, 0], slice(None))) + 
+            perm(([1, 0], slice(None))) +
             perm(([1, 0], Ellipsis)) +
             perm(([1, 2], None, slice(None))) +
             perm(([1, 0], 1, slice(None))) +
@@ -53,6 +53,7 @@ class TestArrayAdvancedIndexingParametrized(unittest.TestCase):
     def test_adv_getitem(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         return a[self.indexes]
+
 
 @testing.parameterize(
     {'shape': (2, 3, 4), 'transpose': (1, 2, 0),
