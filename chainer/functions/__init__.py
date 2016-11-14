@@ -19,6 +19,7 @@ from chainer.functions.array import broadcast
 from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
+from chainer.functions.array import depth2space
 from chainer.functions.array import dstack
 from chainer.functions.array import expand_dims
 from chainer.functions.array import flatten
@@ -149,6 +150,7 @@ softplus = softplus.softplus
 Tanh = tanh.Tanh
 tanh = tanh.tanh
 
+
 Broadcast = broadcast.Broadcast
 BroadcastTo = broadcast.BroadcastTo
 broadcast_to = broadcast.broadcast_to
@@ -159,6 +161,8 @@ Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
+Depth2Space = depth2space.Depth2Space
+depth2space = depth2space.depth2space
 dstack = dstack.dstack
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
