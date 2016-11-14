@@ -61,7 +61,8 @@ class ResNet50Layers(link.Chain):
             used from the second time.
             If the argument is specified as ``None``, all the parameters
             are not initialized by the pre-trained model, but the default
-            initializer used in the original paper.
+            initializer used in the original paper, i.e.,
+            ``chainer.initializers.HeNormal(scale=1.0)``.
 
     Attributes:
         available_layers (list of str): The list of available layer names
