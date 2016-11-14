@@ -227,8 +227,8 @@ def prepare(image, size=(224, 224)):
         image (PIL.Image or numpy.ndarray): Input image.
             If an input is ``numpy.ndarray``, its shape must be
             ``(height, width)``, ``(height, width, channels)``,
-            or ``(channels, height, width)``.
-            Moreover, the order of the channels must be RGB.
+            or ``(channels, height, width)``, and
+            the order of the channels must be RGB.
         size (pair of ints): Size of converted images.
             If ``None``, the given image is not resized.
 
@@ -249,7 +249,7 @@ def prepare(image, size=(224, 224)):
                 image = image.transpose((1, 2, 0))
         image = Image.fromarray(image.astype(numpy.uint8))
     image = image.convert('RGB')
-    if size None:
+    if size:
         image = image.resize(size)
     image = numpy.asarray(image, dtype=numpy.float32)
     image = image[:, :, ::-1]

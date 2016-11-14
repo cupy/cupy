@@ -156,7 +156,7 @@ Pre-trained models
 ------------------
 
 Pre-trained models are mainly used to achieve a good performance with a small
-dataset, or extract a semantic feature vectors. Although ``CaffeFunction``
+dataset, or extract a semantic feature vector. Although ``CaffeFunction``
 automatically loads a pre-trained model released as a caffemodel,
 the following link models provide an interface for automatically converting
 caffemodels, and easily extracting semantic feature vectors.
@@ -173,7 +173,7 @@ users need to write the following few lines::
     feature = model.extract([img], layers=["fc7"])["fc7"]
 
 where ``fc7`` denotes a layer before the last fully-connected layer.
-Unlike the usual links, these pre-trained models automatically load all the
+Unlike the usual links, these classes automatically load all the
 parameters from the pre-trained models during initialization.
 
 VGG16Layers

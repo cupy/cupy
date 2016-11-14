@@ -34,7 +34,7 @@ class VGG16Layers(link.Chain):
 
     During initialization, this chain model automatically downloads
     the pre-trained caffemodel, convert to another chainer model,
-    store it on your local directory, and initialize all the parameters
+    stores it on your local directory, and initializes all the parameters
     with it. This model would be useful when you want to extract a semantic
     feature vector from a given image, or fine-tune the model
     on a different dataset.
@@ -42,7 +42,7 @@ class VGG16Layers(link.Chain):
     Attribution License.
 
     If you want to manually convert the pre-trained caffemodel to a chainer
-    model that can be spesified in the constractor,
+    model that can be specified in the constructor,
     please use ``convert_caffemodel_to_npz`` classmethod instead.
 
     .. [1] K. Simonyan and A. Zisserman, `Very Deep Convolutional Networks
@@ -59,7 +59,7 @@ class VGG16Layers(link.Chain):
             ``$HOME/.chainer/dataset`` unless you specify another value
             as a environment variable. The converted chainer model is
             automatically used from the second time.
-            If the argument is specfied as ``None``, all the parameters
+            If the argument is specified as ``None``, all the parameters
             are not initialized by the pre-trained model, but the default
             initializer used in the original paper.
 
@@ -70,7 +70,7 @@ class VGG16Layers(link.Chain):
     """
 
     def __init__(self, pretrained_model='auto'):
-        if pretrained_model is not None:
+        if pretrained_model:
             # As a sampling process is time-consuming,
             # we employ a zero initializer for faster computation.
             init = constant.Zero()
@@ -105,7 +105,7 @@ class VGG16Layers(link.Chain):
                 'http://www.robots.ox.ac.uk/%7Evgg/software/very_deep/'
                 'caffe/VGG_ILSVRC_16_layers.caffemodel',
                 self)
-        elif pretrained_model is not None:
+        elif pretrained_model:
             npz.load_npz(pretrained_model, self)
 
         self.functions = OrderedDict([
@@ -157,13 +157,13 @@ class VGG16Layers(link.Chain):
 
         Args:
             x (~chainer.Variable): Input variable.
-            layers (list of str): The list of layernames you want to extract.
-            test (bool): If ``True``, it runs in test mode.
+            layers (list of str): The list of layer names you want to extract.
+            test (bool): If ``True``, dropout runs in test mode.
 
         Returns:
-            Dictionary of ~chainer.Variable: The directory in which
+            Dictionary of ~chainer.Variable: A directory in which
             the key contains the layer name and the value contains
-            the corresponding variable.
+            the corresponding feature map variable.
 
         """
 
@@ -189,22 +189,22 @@ class VGG16Layers(link.Chain):
         The difference of directly executing ``__call__`` is that
         it directly accepts images as an input and automatically
         transforms them to a proper variable. That is,
-        it is also interpreted as a shortcut method that implicitly call
+        it is also interpreted as a shortcut method that implicitly calls
         ``prepare`` and ``__call__`` functions.
 
         Args:
-            image (iterable of PIL.Image or numpy.ndarray): Input images.
-            layers (list of str): The list of layernames you want to extract.
+            images (iterable of PIL.Image or numpy.ndarray): Input images.
+            layers (list of str): The list of layer names you want to extract.
             size (pair of ints): The resolution of resized images used as
                 an input of CNN. All the given images are not resized
                 if this argument is ``None``, but the resolutions of
                 all the images should be the same.
-            test (bool): If ``True``, it runs in test mode.
+            test (bool): If ``True``, dropout runs in test mode.
 
         Returns:
-            Dictionary of ~chainer.Variable: The directory in which
+            Dictionary of ~chainer.Variable: A directory in which
             the key contains the layer name and the value contains
-            the corresponding variable.
+            the corresponding feature map variable.
 
         """
 
@@ -216,8 +216,8 @@ class VGG16Layers(link.Chain):
         """Computes all the probabilities of given images.
 
         Args:
-            image (iterable of PIL.Image or numpy.ndarray): Input images.
-            oversample (bool): If ``True``, it avarages results across
+            images (iterable of PIL.Image or numpy.ndarray): Input images.
+            oversample (bool): If ``True``, it averages results across
                 center, corners, and mirrors. Otherwise, it uses only the
                 center.
 
@@ -254,7 +254,8 @@ def prepare(image, size=(224, 224)):
         image (PIL.Image or numpy.ndarray): Input image.
             If an input is ``numpy.ndarray``, its shape must be
             ``(height, width)``, ``(height, width, channels)``,
-            or ``(channels, height, width)``.
+            or ``(channels, height, width)``, and
+            the order of the channels must be RGB.
         size (pair of ints): Size of converted images.
             If ``None``, the given image is not resized.
 
@@ -275,7 +276,7 @@ def prepare(image, size=(224, 224)):
                 image = image.transpose((1, 2, 0))
         image = Image.fromarray(image.astype(numpy.uint8))
     image = image.convert('RGB')
-    if size is not None:
+    if size:
         image = image.resize(size)
     image = numpy.asarray(image, dtype=numpy.float32)
     image = image[:, :, ::-1]
@@ -291,7 +292,7 @@ def _max_pooling_2d(x):
 
 def _make_npz(path_npz, url, model):
     path_caffemodel = download.cached_download(url)
-    print('Now loading caffemodel (usually it may take few or ten minutes)')
+    print('Now loading caffemodel (usually it may take few minutes)')
     VGG16Layers.convert_caffemodel_to_npz(path_caffemodel, path_npz)
     npz.load_npz(path_npz, model)
     return model

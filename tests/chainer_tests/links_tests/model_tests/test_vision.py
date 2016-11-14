@@ -23,7 +23,7 @@ class TestResNet50Layers(unittest.TestCase):
     def test_available_layers(self):
         result = self.link.available_layers
         self.assertIsInstance(result, list)
-        self.assertIsNot(len(result), 0)
+        self.assertEqual(len(result), 9)
 
     def check_call(self):
         xp = self.link.xp
@@ -129,7 +129,7 @@ class TestVGG16Layers(unittest.TestCase):
     def test_available_layers(self):
         result = self.link.available_layers
         self.assertIsInstance(result, list)
-        self.assertIsNot(len(result), 0)
+        self.assertEqual(len(result), 22)
 
     def check_call(self):
         xp = self.link.xp
