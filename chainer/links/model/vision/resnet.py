@@ -286,8 +286,8 @@ class BuildingBlock(link.Chain):
         ]
         for i in range(n_layer - 1):
             name = 'b{}'.format(i + 1)
-            link = BottleneckB(out_channels, mid_channels, initialW)
-            links.append((name, link))
+            bottleneck = BottleneckB(out_channels, mid_channels, initialW)
+            links.append((name, bottleneck))
         super(BuildingBlock, self).__init__(**dict(links))
         self.forward = links
 
