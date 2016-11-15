@@ -11,27 +11,22 @@ def pad(array, pad_width, mode=None, **kwargs):
         constant_value = 0
     if not isinstance(constant_value, int):
         raise NotImplementedError
-    if isinstance(pad_width, int):
-        shape = tuple([s + pad_width * 2 for s in array.shape])
-        ret = cuda.cupy.full(shape, constant_value, dtype=array.dtype)
-        index = tuple([slice(pad_width, pad_width + s) for s in array.shape])
-        ret[index] = array
-    elif isinstance(pad_width, (list, tuple, cuda.cupy.ndarray)):
-        if array.ndim == len(pad_width):
-            shape = tuple([s + pad_width[i] * 2
-                          for i, s in enumerate(array.shape)])
-            ret = cuda.cupy.full(shape, constant_value,
-                            dtype=array.dtype)
-            index = tuple([slice(pad_width[i], pad_width[i] + s)
-                          for i, s in enumerate(array.shape)])
-            ret[index] = array
-        elif array.ndim == 1 and len(pad_width) == 2:
-            front = cuda.cupy.zeros(pad_width[0]) + constant_value
-            end = cuda.cupy.zeros(pad_width[1]) + constant_value
-            ret = cuda.cupy.hstack((front, array, end))
-        else:
-            fmt = 'Unable to create correctly shaped tuple from %s'
-            raise ValueError(fmt % (shape,))
-    else:
+    if not isinstance(pad_width, (int, list, tuple, cuda.cupy.ndarray)):
         raise TypeError('`pad_width` must be of integral type.')
+    if isinstance(pad_width, int):
+        pad_width_seq = [pad_width, pad_width]
+    else:
+        if len(pad_width) == 1:
+            pad_width_seq = [pad_width[0], pad_width[0]]
+        elif len(pad_width) != 2:
+            fmt = 'Unable to create correctly shaped tuple'
+            raise ValueError(fmt)
+        else:
+            pad_width_seq = pad_width
+    shape = tuple([s + pad_width_seq[0] + pad_width_seq[1]
+                  for s in array.shape])
+    ret = cuda.cupy.full(shape, constant_value, dtype=array.dtype)
+    index = tuple([slice(pad_width_seq[0], pad_width_seq[0] + s)
+                  for s in array.shape])
+    ret[index] = array
     return ret
