@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import time
 import unittest
 
 import mock
@@ -49,6 +50,7 @@ def _get_mocked_trainer(stop_trigger=(10, 'iteration')):
     updater.iteration = 0
 
     def update():
+        time.sleep(0.001)
         updater.iteration += 1
 
     updater.update = update
