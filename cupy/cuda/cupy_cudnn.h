@@ -610,6 +610,7 @@ cudnnStatus_t cudnnRNNBackwardWeights(
 #if (CUDNN_VERSION >= 5000) || defined(CUPY_NO_CUDA)
 // ***_v2 functions are deleted in cuDNN v5.
 // Following definitions are for compatibility with cuDNN v5 and higher.
+// This section code is also used instead of cuDNN v2 stub.
 
 typedef enum {} cudnnAddMode_t;
 
