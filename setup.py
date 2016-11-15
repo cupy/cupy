@@ -18,7 +18,7 @@ chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.17.0',
+    version='1.18.0',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
