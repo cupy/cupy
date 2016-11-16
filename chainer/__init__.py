@@ -130,3 +130,5 @@ basic_math.install_variable_arithmetics()
 array.get_item.install_variable_get_item()
 
 init_weight = initializers.init_weight
+
+disable_experimental_feature_warning = False
