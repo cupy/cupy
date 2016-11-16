@@ -25,7 +25,7 @@ def out_generated_image(gen, dis, rows, cols, seed, dst):
         _, _, H, W = x.shape
         x = x.reshape((rows, cols, 3, H, W))
         x = x.transpose(0, 3, 1, 4, 2)
-        x = x.reshape((rows*H, cols*W, 3))
+        x = x.reshape((rows * H, cols * W, 3))
 
         preview_dir = '{}/preview'.format(dst)
         preview_path = preview_dir +\
