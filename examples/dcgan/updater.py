@@ -32,7 +32,7 @@ class DCGANUpdater(chainer.training.StandardUpdater):
         dis_optimizer = self.get_optimizer('dis')
 
         batch = self.get_iterator('main').next()
-        x_real = Variable(self.converter(batch, self.device))
+        x_real = Variable(self.converter(batch, self.device)) / 255.
         xp = chainer.cuda.get_array_module(x_real.data)
 
         gen, dis = self.gen, self.dis
