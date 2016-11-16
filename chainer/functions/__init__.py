@@ -53,6 +53,7 @@ from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
 from chainer.functions.evaluation import classification_summary \
     as classification_summary_
+from chainer.functions.evaluation import r2_score
 from chainer.functions.loss import black_out
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import crf1d
@@ -217,6 +218,8 @@ classification_summary = classification_summary_.classification_summary
 precision = classification_summary_.precision
 recall = classification_summary_.recall
 f1_score = classification_summary_.f1_score
+R2_score = r2_score.R2_score
+r2_score = r2_score.r2_score
 
 argmax_crf1d = crf1d.argmax_crf1d
 bernoulli_nll = vae.bernoulli_nll
