@@ -1012,7 +1012,22 @@ cdef class ndarray:
         return self._shape[0]
 
     def __getitem__(self, slices):
-        # It supports the basic indexing (by slices, ints or Ellipsis) only.
+        """x.__getitem__(y) <==> x[y]
+
+        .. note::
+
+           CuPy handles out-of-bounds indices differently from NumPy.
+           NumPy handles them by raising an error, but CuPy wraps around them.
+
+           Examples
+           --------
+           >>> a = cupy.arange(3)
+           >>> a[[1, 3]]
+           array([1, 0])
+
+        """
+        # supports basic indexing (by slices, ints or Ellipsis).
+        # also supports indexing by an array on one axis
         # TODO(beam2d): Support the advanced indexing of NumPy.
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
@@ -1022,17 +1037,13 @@ cdef class ndarray:
         else:
             slices = list(slices)
 
-        for s in slices:
-            if isinstance(s, ndarray):
-                raise ValueError('Advanced indexing is not supported')
-
         # Expand ellipsis into empty slices
         ellipsis = -1
         n_newaxes = n_ellipses = 0
         for i, s in enumerate(slices):
             if s is None:
                 n_newaxes += 1
-            elif s == Ellipsis:
+            elif s is Ellipsis:
                 n_ellipses += 1
                 ellipsis = i
         ndim = self._shape.size()
@@ -1044,6 +1055,42 @@ cdef class ndarray:
             slices[ellipsis:ellipsis + 1] = noneslices * ellipsis_size
 
         slices += noneslices * (ndim - <Py_ssize_t>len(slices) + n_newaxes)
+
+        if len(slices) > self.ndim + n_newaxes:
+            raise IndexError('too many indices for array')
+
+        # Check if advanced is true and if there are multiple integer indexing
+        advanced = False
+        axis = None
+        for i, s in enumerate(slices):
+            if isinstance(s, list):
+                s = numpy.array(s)
+                slices[i] = s
+            if isinstance(s, (numpy.ndarray, ndarray)):
+                if issubclass(s.dtype.type, numpy.integer):
+                    if advanced:
+                        advanced = True
+                        axis = None
+                    else:
+                        advanced = True
+                        axis = i
+                else:
+                    raise ValueError('Advanced indexing with ' +
+                                     'non-integer array is not supported')
+
+        if advanced:
+            if axis is not None:
+                flag = True
+                noneslice = slice(None)
+                for i, s in enumerate(slices):
+                    if i != axis and s != noneslice:
+                        flag = False
+                        break
+                if flag:
+                    return self.take(slices[axis], axis)
+            else:
+                raise NotImplementedError(
+                    'Adv indexing with 2 or more arrays is not supported')
 
         # Create new shape and stride
         j = 0
@@ -1079,8 +1126,8 @@ cdef class ndarray:
                 if ind < 0:
                     ind += self._shape[j]
                 if not (0 <= ind < self._shape[j]):
-                    msg = ('Index %s is out of bounds for axis %s with size %s'
-                           % (s, j, self._shape[j]))
+                    msg = ('Index %s is out of bounds for axis %s with '
+                           'size %s' % (s, j, self._shape[j]))
                     raise IndexError(msg)
                 offset += ind * self._strides[j]
                 j += 1
