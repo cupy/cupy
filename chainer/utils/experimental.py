@@ -1,6 +1,6 @@
 import chainer
-import warnings
 import inspect
+import warnings
 
 
 def experimental(api_name=None):
@@ -16,5 +16,6 @@ def experimental(api_name=None):
 
     if not chainer.disable_experimental_feature_warning:
         warnings.warn('{} is an experimental API. '
-                      'The interface can change in the future'.format(api_name),
+                      'The interface can change in the future'.format(
+                          api_name),
                       FutureWarning)

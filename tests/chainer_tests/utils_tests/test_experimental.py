@@ -1,15 +1,18 @@
 import unittest
-import chainer
-from chainer import utils
 import warnings
+
+import chainer
+from chainer import testing
+from chainer import utils
 
 
 def f():
     utils.experimental('test.f')
 
+
 def g():
     utils.experimental()
-    
+
 
 def h(x):
     utils.experimental()
@@ -45,7 +48,7 @@ class TestExperimental(unittest.TestCase):
         assert len(w) == 1
         assert issubclass(w[0].category, FutureWarning)
         assert 'g is an experimental API.' in str(w[0].message)
-        
+
     def test_experimental_with_no_api_name_2(self):
         with warnings.catch_warnings(record=True) as w:
             C()
@@ -53,7 +56,6 @@ class TestExperimental(unittest.TestCase):
         assert len(w) == 1
         assert issubclass(w[0].category, FutureWarning)
         assert 'C.__init__ is an experimental API.' in str(w[0].message)
-
 
     def test_multiple_same_function_calls(self):
         with warnings.catch_warnings(record=True) as w:
@@ -87,7 +89,7 @@ class TestExperimental(unittest.TestCase):
 class TestDisableExperimentalWarning(unittest.TestCase):
 
     def setUp(self):
-        self.original = chainer.disable_experimental_feature_warning
+        self.original = chainer.disablpe_experimental_feature_warning
         chainer.disable_experimental_feature_warning = True
 
     def tearDown(self):
@@ -98,3 +100,6 @@ class TestDisableExperimentalWarning(unittest.TestCase):
             f()
 
         assert len(w) == 0
+
+
+testing.run_module(__name__, __file__)

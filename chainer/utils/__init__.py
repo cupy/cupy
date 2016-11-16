@@ -1,7 +1,7 @@
 import numpy
 
-from chainer.utils import walker_alias
 from chainer.utils import experimental as experimental_
+from chainer.utils import walker_alias
 
 WalkerAlias = walker_alias.WalkerAlias
 experimental = experimental_.experimental
