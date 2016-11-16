@@ -1,13 +1,11 @@
 #!/usr/bin/env python
+
 from __future__ import print_function
-import argparse
 
 import chainer
 import chainer.functions as F
-import chainer.links as L
 from chainer import Variable
-from chainer import training
-from chainer.training import extensions
+
 
 class DCGANUpdater(chainer.training.StandardUpdater):
 
@@ -19,10 +17,6 @@ class DCGANUpdater(chainer.training.StandardUpdater):
         batchsize = y_fake.data.shape[0]
         L1 = -F.sum(F.log(F.sigmoid(y_real)+1e-6))
         L2 = -F.sum(F.log(1-F.sigmoid(y_fake)+1e-6))
-        #L1 = F.softmax_cross_entropy(
-        #    y_fake, Variable(xp.zeros((batchsize,), dtype=np.int32)))
-        #L2 = F.softmax_cross_entropy(
-        #    y_real, Variable(xp.ones((batchsize,), dtype=np.int32)))
         loss = (L1 + L2)/batchsize
         chainer.report({'loss': loss}, dis)
         return loss
@@ -43,13 +37,12 @@ class DCGANUpdater(chainer.training.StandardUpdater):
 
         gen, dis = self.gen, self.dis
         batchsize = len(batch)
-        
+
         y_real = dis(x_real, test=False)
-        
+
         z = Variable(xp.asarray(gen.make_hidden(batchsize)))
         x_fake = gen(z, test=False)
         y_fake = dis(x_fake, test=False)
-        
+
         dis_optimizer.update(self.loss_dis, dis, y_fake, y_real)
         gen_optimizer.update(self.loss_gen, gen, y_fake)
-
