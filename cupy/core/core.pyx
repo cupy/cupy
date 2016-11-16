@@ -626,6 +626,11 @@ cdef class ndarray:
             msg = 'Sorting arrays with the rank of zero is not supported'
             raise ValueError(msg)
 
+        if len(self.shape) > 1:
+            msg = ('Sorting arrays with the rank of two or more is '
+                   'not supported')
+            raise ValueError(msg)
+
         if self.base is not None:
             raise ValueError('Sorting views is not supported')
 

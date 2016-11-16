@@ -18,10 +18,10 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((), xp)
         a.sort()
 
-    # def test_sort_two_or_more_dim(self):
-    #     a = testing.shaped_random((2,3), cupy)
-    #     with self.assertRaises(ValueError):
-    #         a.sort()
+    def test_sort_two_or_more_dim(self):
+        a = testing.shaped_random((2, 3), cupy)
+        with self.assertRaises(ValueError):
+            a.sort()
 
     # Test dtypes
 
