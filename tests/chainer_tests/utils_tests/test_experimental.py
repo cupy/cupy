@@ -11,6 +11,10 @@ def g():
     utils.experimental()
     
 
+def h(x):
+    utils.experimental()
+
+
 class C(object):
 
     def __init__(self):
@@ -50,6 +54,34 @@ class TestExperimental(unittest.TestCase):
         assert issubclass(w[0].category, FutureWarning)
         assert 'C.__init__ is an experimental API.' in str(w[0].message)
 
+
+    def test_multiple_same_function_calls(self):
+        with warnings.catch_warnings(record=True) as w:
+            f()
+            f()
+
+        assert len(w) == 1
+
+    def test_different_functions(self):
+        with warnings.catch_warnings(record=True) as w:
+            f()
+            g()
+
+        assert len(w) == 2
+
+    def test_multiple_same_class_instantiation(self):
+        with warnings.catch_warnings(record=True) as w:
+            C()
+            C()
+
+        assert len(w) == 1
+
+    def test_multiple_calls_with_different_argument(self):
+        with warnings.catch_warnings(record=True) as w:
+            h(0)
+            h(1)
+
+        assert len(w) == 1
 
 
 class TestDisableExperimentalWarning(unittest.TestCase):
