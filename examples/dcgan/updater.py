@@ -15,15 +15,15 @@ class DCGANUpdater(chainer.training.StandardUpdater):
 
     def loss_dis(self, dis, y_fake, y_real):
         batchsize = y_fake.data.shape[0]
-        L1 = -F.sum(F.log(F.sigmoid(y_real)+1e-6))
-        L2 = -F.sum(F.log(1-F.sigmoid(y_fake)+1e-6))
-        loss = (L1 + L2)/batchsize
+        L1 = F.sum(F.softplus(-y_real)) / batchsize
+        L2 = F.sum(F.softplus(y_fake)) / batchsize
+        loss = L1 + L2
         chainer.report({'loss': loss}, dis)
         return loss
 
     def loss_gen(self, gen, y_fake):
         batchsize = y_fake.data.shape[0]
-        loss = -F.sum(F.log(F.sigmoid(y_fake)+1e-6)) / batchsize
+        loss = F.sum(F.softplus(-y_fake)) / batchsize
         chainer.report({'loss': loss}, gen)
         return loss
 
