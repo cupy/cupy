@@ -26,7 +26,7 @@ def main():
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
     parser.add_argument('--n_hidden', '-n', type=int, default=100,
-                        help='Number of hidden units')
+                        help='Number of hidden units (z)')
     parser.add_argument('--seed', type=int, default=0,
                         help='Random seed')
     parser.add_argument('--snapshot_interval', type=int, default=1000,

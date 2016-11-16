@@ -12,7 +12,7 @@ from chainer import Variable
 
 def out_generated_image(gen, dis, rows, cols, seed, dst):
     @chainer.training.make_extension()
-    def make_video(trainer):
+    def make_image(trainer):
         np.random.seed(seed)
         n_images = rows * cols
         xp = gen.xp
@@ -22,7 +22,6 @@ def out_generated_image(gen, dis, rows, cols, seed, dst):
         np.random.seed()
 
         x = np.asarray(np.clip(x * 255, 0.0, 255.0), dtype=np.uint8)
-        # shape=(rows*cols, 3, w, h)
         _, _, H, W = x.shape
         x = x.reshape((rows, cols, 3, H, W))
         x = x.transpose(0, 3, 1, 4, 2)
@@ -34,4 +33,4 @@ def out_generated_image(gen, dis, rows, cols, seed, dst):
         if not os.path.exists(preview_dir):
             os.makedirs(preview_dir)
         Image.fromarray(x).save(preview_path)
-    return make_video
+    return make_image
