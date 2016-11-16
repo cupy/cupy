@@ -28,7 +28,7 @@ class TestSort(unittest.TestCase):
     # TODO(takagi): Test 'bqBHILQ' dtypes
     # TODO(takagi): Test numpy.float16
     # TODO(takagi): Test numpy.bool_
-    @testing.for_dtypes(['h', 'i', 'l', numpy.float32, numpy.float64,])
+    @testing.for_dtypes(['h', 'i', 'l', numpy.float32, numpy.float64])
     @testing.numpy_cupy_allclose()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
