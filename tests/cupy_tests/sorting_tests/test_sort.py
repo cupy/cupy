@@ -37,7 +37,7 @@ class TestSort(unittest.TestCase):
 
     # Test views
 
-    # def test_sort_view(self):
-    #     a = testing.shaped_random((10,), cupy)
-    #     with self.assertRaises(ValueError):
-    #         a.sort()
+    def test_sort_view(self):
+        a = testing.shaped_random((10,), cupy)[::]  # with making a view
+        with self.assertRaises(ValueError):
+            a.sort()
