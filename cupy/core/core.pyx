@@ -622,6 +622,10 @@ cdef class ndarray:
         cdef void* ptr
         cdef Py_ssize_t n
 
+        if self.shape == ():
+            msg = 'Sorting arrays with the rank of zero is not supported'
+            raise ValueError(msg)
+
         if self.base is not None:
             raise ValueError('Sorting views is not supported')
 

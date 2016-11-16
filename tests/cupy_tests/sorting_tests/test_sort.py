@@ -13,10 +13,10 @@ class TestSort(unittest.TestCase):
 
     # Test ranks
 
-    # @testing.numpy_cupy_raises()
-    # def test_sort_zero_dim(self, xp):
-    #     a = testing.shaped_random((), xp)
-    #     a.sort()
+    @testing.numpy_cupy_raises()
+    def test_sort_zero_dim(self, xp):
+        a = testing.shaped_random((), xp)
+        a.sort()
 
     # def test_sort_two_or_more_dim(self):
     #     a = testing.shaped_random((2,3), cupy)
