@@ -636,7 +636,7 @@ cdef class ndarray:
         ptr = <void *>self.data.ptr
         n = <Py_ssize_t>self.shape[0]
 
-        # TODO(takagi): Support int128, uint128, float16 and bool
+        # TODO(takagi): Support float16 and bool
         dtype = self.dtype
         if dtype == numpy.int8:
             thrust.stable_sort_byte(<cpy_byte *>ptr, <cpy_byte *>ptr + n)
