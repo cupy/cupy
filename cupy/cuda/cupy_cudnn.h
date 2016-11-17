@@ -13,8 +13,6 @@
 
 extern "C" {
 
-#define CUDNN_VERSION 2000
-
 typedef enum {
     CUDNN_STATUS_SUCCESS = 0,
     CUDNN_STATUS_NOT_SUPPORTED = 9,
@@ -263,7 +261,7 @@ cudnnStatus_t cudnnActivationBackward(
 
 extern "C" {
 
-#if CUDNN_VERSION < 3000
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000)
 // ***_v3 functions are not declared in cuDNN v4.
 // Following definitions are for compatibility with cuDNN v2 and v3.
 
@@ -346,10 +344,10 @@ cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-#endif // #if CUDNN_VERSION < 3000
+#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 3000)
 
 
-#if CUDNN_VERSION < 4000
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 4000)
 
 // ***_v2 functions are not declared in cuDNN v2 and v3.
 // Following definitions are for compatibility with cuDNN v4.
@@ -405,10 +403,10 @@ cudnnStatus_t cudnnBatchNormalizationBackward(
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-#endif // #if CUDNN_VERSION < 4000
+#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 4000)
 
 
-#if CUDNN_VERSION < 5000
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
 // ***_v3 functions are not declared in cuDNN v2, v3 and v4.
 // Following definitions are for compatibility with cuDNN v5.
 
@@ -591,10 +589,10 @@ cudnnStatus_t cudnnRNNBackwardWeights(
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-#endif // #if CUDNN_VERSION < 5000
+#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION < 5000)
 
 
-#if CUDNN_VERSION >= 5000
+#if not defined(CUPY_NO_CUDA) && (CUDNN_VERSION >= 5000)
 // Some functions are renamed in cuDNN v5.
 // Following definitions are for compatibility with cuDNN v5 and higher.
 
@@ -604,10 +602,10 @@ cudnnStatus_t cudnnRNNBackwardWeights(
 #define cudnnSetConvolutionNdDescriptor_v3 cudnnSetConvolutionNdDescriptor
 #define cudnnGetFilterNdDescriptor_v5 cudnnGetFilterNdDescriptor
 
-#endif // CUDNN_VERSION >= 5000
+#endif // #if not defined(CUPY_NO_CUDA) && CUDNN_VERSION >= 5000
 
 
-#if (CUDNN_VERSION >= 5000) || defined(CUPY_NO_CUDA)
+#if defined(CUPY_NO_CUDA) || (CUDNN_VERSION >= 5000)
 // ***_v2 functions are deleted in cuDNN v5.
 // Following definitions are for compatibility with cuDNN v5 and higher.
 // This section code is also used instead of cuDNN v2 stub.
@@ -654,7 +652,7 @@ cudnnStatus_t cudnnConvolutionBackwardData_v2(
     return CUDNN_STATUS_NOT_SUPPORTED;
 }
 
-#endif // #if (CUDNN_VERSION >= 5000) || defined(CUPY_NO_CUDA)
+#endif // #if defined(CUPY_NO_CUDA) || (CUDNN_VERSION >= 5000)
 
 } // extern "C"
 
