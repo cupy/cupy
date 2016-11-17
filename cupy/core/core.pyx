@@ -614,10 +614,6 @@ cdef class ndarray:
     # Sorting
     # -------------------------------------------------------------------------
     cpdef sort(self):
-        # TODO(takagi): Properly handle arrays not C contiguous.
-        # TODO(takagi): Properly handle views.
-        # TODO(takagi): Types other than FP32.
-        # TODO(takagi): Array rank more than one.
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
         cdef void* ptr
@@ -627,17 +623,20 @@ cdef class ndarray:
             msg = 'Sorting arrays with the rank of zero is not supported'
             raise ValueError(msg)
 
+        # TODO(takagi): Support ranks of two or more
         if len(self.shape) > 1:
             msg = ('Sorting arrays with the rank of two or more is '
                    'not supported')
             raise ValueError(msg)
 
+        # TODO(takagi): Support sorting views
         if self.base is not None:
             raise ValueError('Sorting views is not supported')
 
         ptr = <void *>self.data.ptr
         n = <Py_ssize_t>self.shape[0]
 
+        # TODO(takagi): Support int128, uint128, float16 and bool
         dtype = self.dtype
         if dtype == numpy.int8:
             thrust.stable_sort_byte(<cpy_byte *>ptr, <cpy_byte *>ptr + n)
