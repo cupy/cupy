@@ -12,7 +12,7 @@ from install import build
 from install import utils
 
 
-require_cython_version = pkg_resources.parse_version('0.24.0')
+required_cython_version = pkg_resources.parse_version('0.24.0')
 
 MODULES = [
     {
@@ -190,7 +190,7 @@ def check_cython_version():
     try:
         import Cython
         cython_version = pkg_resources.parse_version(Cython.__version__)
-        return cython_version >= require_cython_version
+        return cython_version >= required_cython_version
     except ImportError:
         return False
 
