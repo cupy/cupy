@@ -1,7 +1,11 @@
-from chainer import cuda
+import cupy
 
 
 def pad(array, pad_width, mode=None, **kwargs):
+    if not isinstance(array, (list, tuple, cupy.ndarray)):
+        return cupy.array(array)
+    if isinstance(array, (list, tuple)):
+        array = cupy.array(array)
     if mode != 'constant':
         raise NotImplementedError
     constant_value = kwargs.pop('constant_values', None)
@@ -11,7 +15,7 @@ def pad(array, pad_width, mode=None, **kwargs):
         constant_value = 0
     if not isinstance(constant_value, int):
         raise NotImplementedError
-    if not isinstance(pad_width, (int, list, tuple, cuda.cupy.ndarray)):
+    if not isinstance(pad_width, (int, list, tuple, cupy.ndarray)):
         raise TypeError('`pad_width` must be of integral type.')
     if isinstance(pad_width, int):
         pad_width_seq = [pad_width, pad_width]
@@ -25,7 +29,7 @@ def pad(array, pad_width, mode=None, **kwargs):
             pad_width_seq = pad_width
     shape = tuple([s + pad_width_seq[0] + pad_width_seq[1]
                   for s in array.shape])
-    ret = cuda.cupy.full(shape, constant_value, dtype=array.dtype)
+    ret = cupy.full(shape, constant_value, dtype=array.dtype)
     index = tuple([slice(pad_width_seq[0], pad_width_seq[0] + s)
                   for s in array.shape])
     ret[index] = array

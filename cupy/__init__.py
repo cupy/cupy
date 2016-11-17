@@ -23,8 +23,8 @@ from cupy import linalg
 from cupy import logic
 from cupy import manipulation
 from cupy import math
-import cupy.random
 from cupy import padding
+import cupy.random
 from cupy import sorting
 from cupy import statistics
 from cupy import testing  # NOQA
