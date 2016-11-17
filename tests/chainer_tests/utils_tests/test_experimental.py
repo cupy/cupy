@@ -124,7 +124,7 @@ class TestExperimentalDuplicate(unittest.TestCase):
 class TestDisableExperimentalWarning(unittest.TestCase):
 
     def setUp(self):
-        self.original = chainer.disablpe_experimental_feature_warning
+        self.original = chainer.disable_experimental_feature_warning
         chainer.disable_experimental_feature_warning = True
 
     def tearDown(self):
