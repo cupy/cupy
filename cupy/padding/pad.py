@@ -15,8 +15,10 @@ def pad(array, pad_width, mode=None, **kwargs):
         constant_value = 0
     if not isinstance(constant_value, int):
         raise NotImplementedError
-    if not isinstance(pad_width, (int, list, tuple, cupy.ndarray)):
+    if not cupy.asarray(pad_width).dtype.kind == 'i':
         raise TypeError('`pad_width` must be of integral type.')
+    if cupy.asarray(pad_width).ndim > 1:
+        raise NotImplementedError
     if isinstance(pad_width, int):
         pad_width_seq = [pad_width, pad_width]
     else:
