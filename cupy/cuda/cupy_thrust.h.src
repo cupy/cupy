@@ -1,16 +1,20 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_THRUST_H
 #define INCLUDE_GUARD_CUPY_CUDA_THRUST_H
 
+#include "cupy_common.h"
+
 namespace cupy {
 
 namespace thrust {
 
 /**begin repeat
  *
- * #type = short, int, long, float, double#
+ * #suff = byte, ubyte, short, ushort, int, uint, long, ulong, float, double#
+ * #type = cpy_byte, cpy_ubyte, cpy_short, cpy_ushort, cpy_int, cpy_uint,
+           cpy_long, cpy_ulong, cpy_float, cpy_double#
  */
 
-void stable_sort_@type@(@type@ *, @type@ *);
+void stable_sort_@suff@(@type@ *, @type@ *);
 
 /**end repeat**/
 

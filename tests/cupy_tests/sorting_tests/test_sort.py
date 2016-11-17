@@ -25,15 +25,19 @@ class TestSort(unittest.TestCase):
 
     # Test dtypes
 
-    # TODO(takagi): Test 'bqBHILQ' dtypes
-    # TODO(takagi): Test numpy.float16
-    # TODO(takagi): Test numpy.bool_
-    @testing.for_dtypes(['h', 'i', 'l', numpy.float32, numpy.float64])
+    @testing.for_dtypes(['b', 'h', 'i', 'l', 'B', 'H', 'I', 'L',
+                         numpy.float32, numpy.float64])
     @testing.numpy_cupy_allclose()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a.sort()
         return a
+
+    @testing.for_dtypes(['q', 'Q', numpy.float16, numpy.bool_])
+    def test_sort_unsupported_dtype(self, dtype):
+        a = testing.shaped_random((10,), cupy, dtype)
+        with self.assertRaises(TypeError):
+            a.sort()
 
     # Test views
 

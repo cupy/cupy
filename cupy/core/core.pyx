@@ -14,6 +14,7 @@ cimport cython
 from libcpp cimport vector
 
 from cupy.core cimport internal
+from cupy.cuda.common cimport *
 from cupy.cuda cimport cublas
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory
@@ -637,18 +638,30 @@ cdef class ndarray:
         ptr = <void *>self.data.ptr
         n = <Py_ssize_t>self.shape[0]
 
-        if self.dtype == numpy.int16:
-            thrust.stable_sort_short(<short *>ptr, <short *>ptr + n)
-        elif self.dtype == numpy.int32:
-            thrust.stable_sort_int(<int *>ptr, <int *>ptr + n)
-        elif self.dtype == numpy.int64:
-            thrust.stable_sort_long(<long *>ptr, <long *>ptr + n)
-        elif self.dtype == numpy.float32:
-            thrust.stable_sort_float(<float *>ptr, <float *>ptr + n)
-        elif self.dtype == numpy.float64:
-            thrust.stable_sort_double(<double *>ptr, <double *>ptr + n)
+        dtype = self.dtype
+        if dtype == numpy.int8:
+            thrust.stable_sort_byte(<cpy_byte *>ptr, <cpy_byte *>ptr + n)
+        elif dtype == numpy.uint8:
+            thrust.stable_sort_ubyte(<cpy_ubyte *>ptr, <cpy_ubyte *>ptr + n)
+        elif dtype == numpy.int16:
+            thrust.stable_sort_short(<cpy_short *>ptr, <cpy_short *>ptr + n)
+        elif dtype == numpy.uint16:
+            thrust.stable_sort_ushort(<cpy_ushort *>ptr, <cpy_ushort *>ptr + n)
+        elif dtype == numpy.int32:
+            thrust.stable_sort_int(<cpy_int *>ptr, <cpy_int *>ptr + n)
+        elif dtype == numpy.uint32:
+            thrust.stable_sort_uint(<cpy_uint *>ptr, <cpy_uint *>ptr + n)
+        elif dtype == numpy.int64:
+            thrust.stable_sort_long(<cpy_long *>ptr, <cpy_long *>ptr + n)
+        elif dtype == numpy.uint64:
+            thrust.stable_sort_ulong(<cpy_ulong *>ptr, <cpy_ulong *>ptr + n)
+        elif dtype == numpy.float32:
+            thrust.stable_sort_float(<cpy_float *>ptr, <cpy_float *>ptr + n)
+        elif dtype == numpy.float64:
+            thrust.stable_sort_double(<cpy_double *>ptr, <cpy_double *>ptr + n)
         else:
-            raise NotImplementedError()
+            msg = "Sorting arrays with dtype '{}' is not supported"
+            raise TypeError(msg.format(dtype))
 
     # TODO(okuta): Implement argsort
     # TODO(okuta): Implement partition
