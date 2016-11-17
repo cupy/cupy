@@ -72,8 +72,9 @@ Experimental APIs
 -----------------
 
 Thanks to many contributors, we have introduced many new features to Chainer.
-But sometimes it was only after we released the new features that we noticed that their APIs are not appropriate.
-The objective of experimental APIs is to alleviate the design failure of them.
+
+However, we have sometimes released new features only to later notice that their APIs are not appropriate.
+The objective of experimental APIs is to avoid such issues by allowing the developer to mark any newly added API as experimental.
 
 Any newly added API can be marked as *experimental*.
 Any API that is not experimental is called *stable* in this document.
@@ -84,8 +85,8 @@ Any API that is not experimental is called *stable* in this document.
 
 Chainer can change the interfaces and documents of experimental APIs at **any** version up.
 This change is not considered as a break of backward compatibility.
-Chainer can remove experimental mark of APIs and make them stable at any **minor** or **major** version up.
-Once experimental APIs get stable, they cannot be experimental again.
+Chainer can promote an experimental API to become stable at any **minor** or **major** version up.
+Once experimental APIs become stable, they cannot revert to experimental again.
 
 When users use experimental APIs for the first time, warnings are raised once for each experimental API,
 unless users explicitly disable the emission of the warnings in advance.

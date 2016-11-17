@@ -6,7 +6,7 @@ import warnings
 def experimental(api_name=None):
     """A function for marking APIs as experimental
 
-    Developer of the API can mark it as *experimental* by calling
+    The developer of the API can mark it as *experimental* by calling
     this function. When users call experimental APIs, `FutureWarning`
     is raised once for each experimental API.
     The presentation of `FutureWarning` is disabled by setting
