@@ -90,8 +90,8 @@ Once experimental APIs get stable, they cannot be experimental again.
 When users use experimental APIs for the first time, warnings are raised once for each experimental API,
 unless users explicitly disable the emission of the warnings in advance.
 
-See the document of `chainer.utils.experimental` how developers mark APIs as experimental practically.
-and how users enable or disable the warnings.
+See the document of `chainer.utils.experimental` how developers mark APIs as experimental
+and how users enable or disable the warnings practically..
 
 .. note::
    It is up to developers if APIs should be annotated as experimental or not.
