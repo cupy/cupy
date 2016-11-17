@@ -71,7 +71,8 @@ class TestExperimental(unittest.TestCase):
 
         self.assertEqual(len(w), 1)
         self.assertIs(w[0].category, FutureWarning)
-        self.assertIn('static_method is an experimental API.', str(w[0].message))
+        self.assertIn('static_method is an experimental API.',
+                      str(w[0].message))
 
     def test_experimental_class_method(self):
         with warnings.catch_warnings(record=True) as w:
@@ -79,7 +80,8 @@ class TestExperimental(unittest.TestCase):
 
         self.assertEqual(len(w), 1)
         self.assertIs(w[0].category, FutureWarning)
-        self.assertIn('C.class_method is an experimental API.', str(w[0].message))
+        self.assertIn('C.class_method is an experimental API.',
+                      str(w[0].message))
 
 
 class TestExperimentalDuplicate(unittest.TestCase):
