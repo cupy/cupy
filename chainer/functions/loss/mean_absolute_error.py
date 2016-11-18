@@ -37,10 +37,10 @@ class MeanAbsoluteError(function.Function):
 
 
 def mean_absolute_error(x0, x1):
-    """Mean squared error function.
+    """Mean absolute error function.
 
-    This function computes mean squared error between two variables. The mean
-    is taken over the minibatch. Note that the error is not scaled by 1/2.
+    This function computes mean absolute error between two variables. The mean
+    is taken over the minibatch.
 
     """
     return MeanAbsoluteError()(x0, x1)
