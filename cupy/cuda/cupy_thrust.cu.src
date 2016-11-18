@@ -12,9 +12,9 @@ using namespace thrust;
            cpy_long, cpy_ulong, cpy_float, cpy_double#
  */
 
-void cupy::thrust::stable_sort_@suff@(@type@ *first, @type@ *last) {
-    device_ptr<@type@> dp_first = device_pointer_cast(first);
-    device_ptr<@type@> dp_last  = device_pointer_cast(last);
+void cupy::thrust::stable_sort_@suff@(void *start, ssize_t num) {
+    device_ptr<@type@> dp_first = device_pointer_cast((@type@ *)start);
+    device_ptr<@type@> dp_last  = device_pointer_cast((@type@ *)start + num);
     stable_sort< device_ptr<@type@> >(dp_first, dp_last);
 }
 

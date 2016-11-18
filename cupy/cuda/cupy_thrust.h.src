@@ -10,11 +10,9 @@ namespace thrust {
 /**begin repeat
  *
  * #suff = byte, ubyte, short, ushort, int, uint, long, ulong, float, double#
- * #type = cpy_byte, cpy_ubyte, cpy_short, cpy_ushort, cpy_int, cpy_uint,
-           cpy_long, cpy_ulong, cpy_float, cpy_double#
  */
 
-void stable_sort_@suff@(@type@ *, @type@ *);
+void stable_sort_@suff@(void *, ssize_t);
 
 /**end repeat**/
 
