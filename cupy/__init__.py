@@ -330,6 +330,8 @@ fmin = math.misc.fmin
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
+sort = sorting.sort.sort
+
 count_nonzero = sorting.count.count_nonzero
 nonzero = sorting.search.nonzero
 flatnonzero = sorting.search.flatnonzero

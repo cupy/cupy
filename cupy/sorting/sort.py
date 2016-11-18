@@ -1,7 +1,18 @@
-# flake8: NOQA
-# "flake8: NOQA" to suppress warning "H104  File contains nothing but comments"
+def sort(a):
+    """Returns a sorted copy of an array.
 
-# TODO(okuta): Implement sort
+    Args:
+        a (cupy.ndarray): Array to be sorted.
+
+    Returns:
+        cupy.ndarray: Array of the same type and shape as ``a``.
+
+    .. seealso:: :func:`numpy.sort`
+
+    """
+    ret = a.copy()
+    ret.sort()
+    return ret
 
 
 # TODO(okuta): Implement lexsort

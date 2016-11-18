@@ -18,10 +18,20 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((), xp)
         a.sort()
 
+    @testing.numpy_cupy_raises()
+    def test_external_sort_zero_dim(self, xp):
+        a = testing.shaped_random((), xp)
+        return xp.sort(a)
+
     def test_sort_two_or_more_dim(self):
         a = testing.shaped_random((2, 3), cupy)
         with self.assertRaises(ValueError):
             a.sort()
+
+    def test_external_sort_two_or_more_dim(self):
+        a = testing.shaped_random((2, 3), cupy)
+        with self.assertRaises(ValueError):
+            return cupy.sort(a)
 
     # Test dtypes
 
@@ -33,11 +43,24 @@ class TestSort(unittest.TestCase):
         a.sort()
         return a
 
+    @testing.for_dtypes(['b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
+                         numpy.float32, numpy.float64])
+    @testing.numpy_cupy_allclose()
+    def test_external_sort_dtype(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return xp.sort(a)
+
     @testing.for_dtypes([numpy.float16, numpy.bool_])
     def test_sort_unsupported_dtype(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
         with self.assertRaises(TypeError):
             a.sort()
+
+    @testing.for_dtypes([numpy.float16, numpy.bool_])
+    def test_external_sort_unsupported_dtype(self, dtype):
+        a = testing.shaped_random((10,), cupy, dtype)
+        with self.assertRaises(TypeError):
+            return cupy.sort(a)
 
     # Test views
 
@@ -45,3 +68,8 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((10,), cupy)[::]  # with making a view
         with self.assertRaises(ValueError):
             a.sort()
+
+    @testing.numpy_cupy_allclose()
+    def test_external_sort_view(self, xp):
+        a = testing.shaped_random((10,), xp)[::]  # with making a view
+        return xp.sort(a)
