@@ -231,6 +231,10 @@ accuracy
 ~~~~~~~~
 .. autofunction:: accuracy
 
+r2_score
+~~~~~~~~
+.. autofunction:: r2_score
+
 
 Loss functions
 --------------
