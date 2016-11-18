@@ -610,10 +610,15 @@ cdef class ndarray:
 
     # TODO(okuta): Implement choose
 
-    # -------------------------------------------------------------------------
-    # Sorting
-    # -------------------------------------------------------------------------
     cpdef sort(self):
+        """Sort an array, in-place.
+
+        .. seealso::
+            :func:`cupy.sort` for full documentation,
+            :meth:`numpy.ndarray.sort`
+
+        """
+
         # TODO(takagi): Support axis argument.
         # TODO(takagi): Support kind argument.
         cdef void* ptr
