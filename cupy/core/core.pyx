@@ -611,7 +611,13 @@ cdef class ndarray:
     # TODO(okuta): Implement choose
 
     cpdef sort(self):
-        """Sort an array, in-place.
+        """Sort an array, in-place with a stable sorting algorithm.
+
+        .. note::
+           For its implementation reason, ``ndarray.sort`` currently supports
+           only arrays with their rank of one and their own data, and does not
+           support ``axis``, ``kind`` and ``order`` parameters that
+           ``numpy.ndarray.sort`` does support.
 
         .. seealso::
             :func:`cupy.sort` for full documentation,
