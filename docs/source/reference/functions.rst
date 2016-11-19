@@ -231,6 +231,10 @@ accuracy
 ~~~~~~~~
 .. autofunction:: accuracy
 
+binary_accuracy
+~~~~~~~~
+.. autofunction:: binary_accuracy
+
 
 Loss functions
 --------------
