@@ -77,8 +77,8 @@ cdef class ManagedMemory(Memory):
         global _cuda_version
         if _cuda_version is None:
             _cuda_version = runtime.runtimeGetVersion()
-        print(_cuda_version)
-        runtime.memAdvise(self.ptr, self.size, advice, device)
+        if _cuda_version >= 8000 and int(self.device.compute_capability) >= 60:
+            runtime.memAdvise(self.ptr, self.size, advice, device)
 
 
 cdef set _peer_access_checked = set()
