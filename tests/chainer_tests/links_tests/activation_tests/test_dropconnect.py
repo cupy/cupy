@@ -15,6 +15,12 @@ from chainer.testing import condition
 from chainer.utils import type_check
 
 
+def gen_mask(ratio, shape, dtype):
+    scale = dtype(1. / (1 - ratio))
+    flag = numpy.random.rand(*shape) >= ratio
+    return scale * flag
+
+
 @testing.parameterize(*testing.product({
     'in_shape': [(3,), (3, 2, 2)],
     'x_dtype': [numpy.float16, numpy.float32, numpy.float64],
@@ -28,16 +34,12 @@ class TestDropconnect(unittest.TestCase):
     def setUp(self):
         in_size = numpy.prod(self.in_shape)
 
-        scale = self.W_dtype(1. / (1 - self.ratio))
-        flag = numpy.random.rand(self.out_size, in_size) >= self.ratio
-        mask = scale * flag
-
         self.link = links.Dropconnect(
             in_size, self.out_size,
             initialW=chainer.initializers.Normal(1, self.W_dtype),
-            initial_bias=chainer.initializers.Normal(1, self.x_dtype),
-            mask=mask)
+            initial_bias=chainer.initializers.Normal(1, self.x_dtype))
         self.link.cleargrads()
+        self.mask = gen_mask(self.ratio, self.link.W.shape, self.W_dtype)
 
         x_shape = (4,) + self.in_shape
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.x_dtype)
@@ -52,10 +54,10 @@ class TestDropconnect(unittest.TestCase):
             self.check_backward_options = {'atol': 1e-3, 'rtol': 1e-2}
 
     def check_forward(self, x_data):
+        mask = self.mask
         x = chainer.Variable(x_data)
-        y = self.link(x)
+        y = self.link(x, True, mask)
         self.assertEqual(y.data.dtype, self.x_dtype)
-        mask = self.link.mask
         W = self.link.W.data
         y_expect = self.x.reshape(4, -1).dot(W.T * mask.T) + self.link.b.data
         testing.assert_allclose(y_expect, y.data, **self.check_forward_options)
@@ -70,10 +72,14 @@ class TestDropconnect(unittest.TestCase):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
 
+    def link_wrapper(self, *data):
+        return self.link(data[0], True, data[1])
+
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            self.link, x_data, y_grad, (self.link.W, self.link.b), eps=2 ** -3,
-            **self.check_backward_options)
+            self.link_wrapper, (x_data, self.mask), y_grad,
+            (self.link.W, self.link.b), eps=2 ** -3,
+            no_grads=(False, True), **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -95,12 +101,7 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
     ratio = 0.5
 
     def setUp(self):
-        scale = numpy.float32(1. / (1 - self.ratio))
-        flag = numpy.random.rand(self.out_size, self.in_size) >= self.ratio
-        mask = scale * flag
-
-        self.link = links.Dropconnect(self.in_size_or_none, self.out_size,
-                                      mask=mask)
+        self.link = links.Dropconnect(self.in_size_or_none, self.out_size)
         temp_x = numpy.random.uniform(-1, 1,
                                       (self.out_size,
                                        self.in_size)).astype(numpy.float32)
@@ -110,6 +111,7 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
         b = self.link.b.data
         b[...] = numpy.random.uniform(-1, 1, b.shape)
         self.link.cleargrads()
+        self.mask = gen_mask(self.ratio, self.link.W.shape, numpy.float32)
 
         x_shape = (4,) + self.in_shape
         self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
@@ -117,10 +119,10 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
             -1, 1, (4, self.out_size)).astype(numpy.float32)
 
     def check_forward(self, x_data):
+        mask = self.mask
         x = chainer.Variable(x_data)
-        y = self.link(x)
+        y = self.link(x, True, mask)
         self.assertEqual(y.data.dtype, numpy.float32)
-        mask = self.link.mask
         W = self.link.W.data
         y_expect = self.x.reshape(4, -1).dot(W.T * mask.T) + self.link.b.data
         testing.assert_allclose(y_expect, y.data)
@@ -135,9 +137,13 @@ class TestDropconnectParameterShapePlaceholder(unittest.TestCase):
         self.link.to_gpu()
         self.check_forward(cuda.to_gpu(self.x))
 
+    def link_wrapper(self, *data):
+        return self.link(data[0], True, data[1])
+
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
-            self.link, x_data, y_grad, (self.link.W, self.link.b), eps=1e-2)
+            self.link_wrapper, (x_data, self.mask), y_grad,
+            (self.link.W, self.link.b), eps=1e-2, no_grads=(False, True))
 
     @condition.retry(3)
     def test_backward_cpu(self):

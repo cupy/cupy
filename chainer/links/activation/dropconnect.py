@@ -21,12 +21,6 @@ class Dropconnect(link.Link):
         initial_bias (2-D array, float or None): Initial bias value.
             If it is float, initial bias is filled with this value.
             If it is ``None``, bias is omitted.
-        mask (:class:`numpy.ndarray` or cupy.ndarray):
-            If ``None``, randomized dropconnect mask is generated.
-            If not ``None``, this value is used as dropconnect mask.
-            And scaling will not be executed.
-            Then mask shape must be ``(M, N)``.
-            Main purpose of latter option is debugging.
 
     Attributes:
         W (~chainer.Variable): Weight parameter.
@@ -42,12 +36,11 @@ class Dropconnect(link.Link):
     """
 
     def __init__(self, in_size, out_size, wscale=1,
-                 ratio=.5, initialW=None, initial_bias=0, mask=None):
+                 ratio=.5, initialW=None, initial_bias=0):
         super(Dropconnect, self).__init__()
 
         self.out_size = out_size
         self.ratio = ratio
-        self.mask = mask
 
         self._W_initializer = initializers._get_initializer(
             initialW, math.sqrt(wscale))
@@ -65,7 +58,7 @@ class Dropconnect(link.Link):
         self.add_param('W', (self.out_size, in_size),
                        initializer=self._W_initializer)
 
-    def __call__(self, x, train=True):
+    def __call__(self, x, train=True, mask=None):
         """Applies the dropconnect layer.
 
         Args:
@@ -74,6 +67,12 @@ class Dropconnect(link.Link):
             train (bool):
                 If ``True``, executes dropconnect.
                 Otherwise, does nothing.
+            mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
+                If ``None``, randomized dropconnect mask is generated.
+                If not ``None``, this value is used as dropconnect mask.
+                And scaling will not be executed.
+                Then mask shape must be ``(M, N)``.
+                Main purpose of latter option is debugging.
 
         Returns:
             ~chainer.Variable: Output of the dropconnect layer.

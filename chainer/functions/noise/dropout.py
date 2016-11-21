@@ -11,6 +11,7 @@ class Dropout(function.Function):
 
     def __init__(self, dropout_ratio):
         self.dropout_ratio = dropout_ratio
+        self.mask = None
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)
@@ -24,7 +25,8 @@ class Dropout(function.Function):
         else:
             flag = (xp.random.rand(*x[0].shape, dtype=numpy.float32) >=
                     self.dropout_ratio)
-        self.mask = scale * flag
+        if self.mask is None:
+            self.mask = scale * flag
         return x[0] * self.mask,
 
     def backward(self, x, gy):
