@@ -49,11 +49,12 @@ class TestCifar(unittest.TestCase):
                 self.assertIsInstance(cifar_dataset, numpy.ndarray)
 
             if self.ndim == 1:
-                assert cifar_dataset.ndim == 2
+                self.assertEqual(cifar_dataset.ndim, 2)
             else:
                 assert self.ndim == 3
-                assert cifar_dataset.ndim == 4
-                assert cifar_dataset.shape[2] == cifar_dataset.shape[3]  # 32
+                self.assertEqual(cifar_dataset.ndim == 4)
+                self.assertEqual(cifar_dataset.shape[2],
+                                 cifar_dataset.shape[3])  # 32
 
     # test caching - call twice
     @attr.slow
