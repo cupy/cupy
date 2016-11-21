@@ -43,6 +43,7 @@ class TestExperimental(unittest.TestCase):
 
     def test_experimental_with_api_name(self):
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             f()
 
         self.assertEqual(len(w), 1)
@@ -51,6 +52,7 @@ class TestExperimental(unittest.TestCase):
 
     def test_experimental_with_no_api_name(self):
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             g()
 
         self.assertEqual(len(w), 1)
@@ -59,6 +61,7 @@ class TestExperimental(unittest.TestCase):
 
     def test_experimental_with_no_api_name_2(self):
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             C()
 
         self.assertEqual(len(w), 1)
@@ -67,6 +70,7 @@ class TestExperimental(unittest.TestCase):
 
     def test_experimental_static_method(self):
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             C.static_method()
 
         self.assertEqual(len(w), 1)
@@ -76,50 +80,13 @@ class TestExperimental(unittest.TestCase):
 
     def test_experimental_class_method(self):
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             C.class_method()
 
         self.assertEqual(len(w), 1)
         self.assertIs(w[0].category, FutureWarning)
         self.assertIn('C.class_method is an experimental API.',
                       str(w[0].message))
-
-
-class TestExperimentalDuplicate(unittest.TestCase):
-
-    def setUp(self):
-        self.original = chainer.disable_experimental_feature_warning
-        chainer.disable_experimental_feature_warning = False
-
-    def tearDown(self):
-        chainer.disable_experimental_feature_warning = self.original
-
-    def test_multiple_same_function_calls(self):
-        with warnings.catch_warnings(record=True) as w:
-            f()
-            f()
-
-        self.assertEqual(len(w), 1)
-
-    def test_different_functions(self):
-        with warnings.catch_warnings(record=True) as w:
-            f()
-            g()
-
-        self.assertEqual(len(w), 2)
-
-    def test_multiple_same_class_instantiation(self):
-        with warnings.catch_warnings(record=True) as w:
-            C()
-            C()
-
-        self.assertEqual(len(w), 1)
-
-    def test_multiple_calls_with_different_argument(self):
-        with warnings.catch_warnings(record=True) as w:
-            h(0)
-            h(1)
-
-        self.assertEqual(len(w), 1)
 
 
 class TestDisableExperimentalWarning(unittest.TestCase):
@@ -133,6 +100,7 @@ class TestDisableExperimentalWarning(unittest.TestCase):
 
     def test_experimental(self):
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             f()
 
         self.assertEqual(len(w), 0)
