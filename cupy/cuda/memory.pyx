@@ -14,6 +14,9 @@ from cupy.cuda cimport device
 from cupy.cuda cimport runtime
 
 
+_cuda_version = None
+
+
 cdef class Memory:
 
     """Memory allocation on a CUDA device.
@@ -62,6 +65,21 @@ cdef class ManagedMemory(Memory):
         if size > 0:
             self.device = device.Device()
             self.ptr = runtime.mallocManaged(size)
+
+    cpdef advise(self, int advice, int device):
+        """ Advise about the usage of this memory.
+
+        Args:
+            advice: Advice to be applied for this memory.
+            device: Device to apply the advice for.
+
+        """
+        global _cuda_version
+        if _cuda_version is None:
+            _cuda_version = runtime.runtimeGetVersion()
+        print(_cuda_version)
+        runtime.memAdvise(self.ptr, self.size, advice, device)
+
 
 cdef set _peer_access_checked = set()
 
@@ -321,6 +339,7 @@ cpdef MemoryPointer _malloc(Py_ssize_t size):
 
 cpdef MemoryPointer _mallocManaged(Py_ssize_t size):
     mem = ManagedMemory(size)
+    mem.advise(runtime.cudaMemAdviseSetPreferredLocation, mem.device.id)
     return MemoryPointer(mem, 0)
 
 

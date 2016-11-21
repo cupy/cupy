@@ -33,6 +33,7 @@ cdef class PointerAttributes:
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
     ctypedef int DeviceAttr 'enum cudaDeviceAttr'
+    ctypedef int MemoryAdvise 'enum cudaMemoryAdvise'
     ctypedef int MemoryKind 'enum cudaMemcpyKind'
 
     ctypedef void StreamCallbackDef(
@@ -87,6 +88,8 @@ cdef extern from "cupy_cuda.h":
     int cudaMemset(void* devPtr, int value, size_t count) nogil
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
                         driver.Stream stream) nogil
+    int cudaMemAdvise(const void *devPtr, size_t count,
+                      int advice, int device)
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
                                  const void* ptr) nogil
 
@@ -286,6 +289,11 @@ cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream):
     with nogil:
         status = cudaMemsetAsync(<void*>ptr, value, size,
                                  <driver.Stream> stream)
+    check_status(status)
+
+
+cpdef memAdvise(size_t devPtr, int count, int advice, int device):
+    status = cudaMemAdvise(<void*>devPtr, count, <MemoryAdvise>advice, device)
     check_status(status)
 
 

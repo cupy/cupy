@@ -39,6 +39,13 @@ cpdef enum:
     hostAllocMapped = 2
     hostAllocWriteCombined = 4
 
+    cudaMemAdviseSetReadMostly = 1
+    cudaMemAdviseUnsetReadMostly = 2
+    cudaMemAdviseSetPreferredLocation = 3
+    cudaMemAdviseUnsetPreferredLocation = 4
+    cudaMemAdviseSetAccessedBy = 5
+    cudaMemAdviseUnsetAccessedBy = 6
+
     streamDefault = 0
     streamNonBlocking = 1
 
@@ -110,6 +117,7 @@ cpdef memcpyPeerAsync(size_t dst, int dstDevice,
                       size_t size, size_t stream)
 cpdef memset(size_t ptr, int value, size_t size)
 cpdef memsetAsync(size_t ptr, int value, size_t size, size_t stream)
+cpdef memAdvise(size_t devPtr, int count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(size_t ptr)
 
 

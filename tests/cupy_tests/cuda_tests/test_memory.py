@@ -99,7 +99,6 @@ class TestMemoryPointer(unittest.TestCase):
 # -----------------------------------------------------------------------------
 # Memory pool
 
-
 @testing.gpu
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
@@ -309,11 +308,14 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         del p3
 
 
+@testing.parameterize(*testing.product({
+    'allocator': [memory._malloc, memory._mallocManaged],
+}))
 @testing.gpu
 class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
-        self.pool = memory.MemoryPool()
+        self.pool = memory.MemoryPool(self.allocator)
 
     def test_zero_size_alloc(self):
         with cupy.cuda.Device(0):

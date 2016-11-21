@@ -8,7 +8,8 @@ cdef class Memory:
         public Py_ssize_t size
 
 cdef class ManagedMemory(Memory):
-    pass
+
+    cpdef advise(self, int advice, int device)
 
 cdef class Chunk:
 
