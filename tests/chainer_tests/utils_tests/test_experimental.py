@@ -31,6 +31,9 @@ class C(object):
     def __init__(self):
         utils.experimental()
 
+    def f(self):
+        utils.experimental()
+
 
 class TestExperimental(unittest.TestCase):
 
@@ -63,7 +66,19 @@ class TestExperimental(unittest.TestCase):
 
         self.assertEqual(len(w), 1)
         self.assertIs(w[0].category, FutureWarning)
-        self.assertIn('C.__init__ is an experimental API.', str(w[0].message))
+        self.assertIn('C is an experimental API.', str(w[0].message))
+
+    def test_experimental_with_no_api_name_2(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            c = C()
+
+        with warnings.catch_warnings(record=True) as w:
+            c.f()
+
+        self.assertEqual(len(w), 1)
+        self.assertIs(w[0].category, FutureWarning)
+        self.assertIn('C.f is an experimental API.', str(w[0].message))
 
     def test_experimental_static_method(self):
         with warnings.catch_warnings(record=True) as w:
