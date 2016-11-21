@@ -206,7 +206,7 @@ def cythonize(extensions, arg_options):
                          for key in cythonize_option_keys}
 
     return Cython.Build.cythonize(
-        extensions, language="c++", verbose=True,
+        extensions, verbose=True,
         compiler_directives=directives, **cythonize_options)
 
 

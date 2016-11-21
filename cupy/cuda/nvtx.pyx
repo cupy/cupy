@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 """
 Wrapper for NVIDIA Tools Extension Library (NVTX)
 
