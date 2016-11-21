@@ -2061,12 +2061,14 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
     cdef ndarray take_idx, input_flat, out_flat, o
 
     arr_slices = [s for s in slices if isinstance(s, ndarray)]
-    br_shape = broadcast(*arr_slices).shape
+    br = broadcast(*arr_slices)
 
     # broadcast all arrays to the largest shape
+    j = 0
     for i, s in enumerate(list(slices)):
-        if (isinstance(s, ndarray)):
-            slices[i] = broadcast_to(slices[i], br_shape)
+        if isinstance(s, ndarray):
+            slices[i] = br.values[j]
+            j += 1
 
     # check if transpose is necessasry
     # li:  index of the leftmost array in slices
@@ -2076,16 +2078,15 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
     li = 0
     ri = 0
     for i, s in enumerate(list(slices)):
-        if (isinstance(s, ndarray)):
+        if isinstance(s, ndarray):
             if prev_arr_i is None:
                 prev_arr_i = i
                 li = i
+            elif prev_arr_i is not None and i - prev_arr_i > 1:
+                do_transpose = True
             else:
-                if i - prev_arr_i > 1:
-                    do_transpose = True
-                else:
-                    prev_arr_i = i
-                    ri = i
+                prev_arr_i = i
+                ri = i
 
     if do_transpose:
         transp = range(a.ndim)
@@ -2122,7 +2123,7 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
         flattened_indexes.append(stride * s)
 
     # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
-    concat_shape = (len(flattened_indexes),) + br_shape
+    concat_shape = (len(flattened_indexes),) + br.shape
     flattened_indexes = concatenate(
         [index.reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
