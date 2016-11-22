@@ -48,7 +48,7 @@ class TestAccuracy(unittest.TestCase):
 
         if self.t_input == 'random':
             self.t = numpy.random.uniform(-1, 1, self.t_shape)\
-                    .astype(self.dtype)
+                .astype(self.dtype)
         else:
             self.t = numpy.zeros(self.t_shape).astype(self.dtype)
 

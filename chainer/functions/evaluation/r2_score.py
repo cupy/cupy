@@ -40,7 +40,7 @@ class R2_score(function.Function):
         elif self.multioutput == 'raw_values':
             if xp.any(SS_tot == 0):
                 return xp.where(SS_tot != 0, 1 - SS_res / SS_tot, 0.0)\
-                        .astype(pred.dtype),
+                    .astype(pred.dtype),
             else:
                 return xp.asarray((1 - SS_res / SS_tot), dtype=pred.dtype),
 
