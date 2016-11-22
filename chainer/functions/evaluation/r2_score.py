@@ -49,18 +49,18 @@ def r2_score(pred, true, sample_weight=None, multioutput='uniform_average'):
     """Computes R^2(coefficient of determination) regression score function.
 
     Args:
-        pred(Variable): Variable holding a vector or matrix of estimated \
+        pred(Variable): Variable holding a vector or matrix of estimated
                 target values.
         true(Variable): Variable holding a vector or matrix of correct target \
                 values.
         sample_weight: None.
-        multioutput(string): ['uniform_average', 'raw_values']. if \
-                'uniform_average', this function return an average of R^2\
-                score of multiple output. If 'raw_average', this function \
+        multioutput(string): ['uniform_average', 'raw_values']. if
+                'uniform_average', this function return an average of R^2
+                score of multiple output. If 'raw_average', this function
                 return a set of R^2 score of multiple output.
     Returns:
-        Variable: A Variable holding a scalar array of the R^2 score if \
-                'multioutput' is 'uniform_average' or a vector of R^2 \
+        Variable: A Variable holding a scalar array of the R^2 score if
+                'multioutput' is 'uniform_average' or a vector of R^2
                 scores if 'multioutput' is 'raw_values'.
 
     .. note:: This function is non-differentiable.
