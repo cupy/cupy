@@ -1,4 +1,5 @@
 import numpy
+import six
 
 from chainer import cuda
 from chainer import function
@@ -27,12 +28,12 @@ class Concat(function.Function):
         )
         ndim = in_types[0].ndim.eval()
         axis = self.axis % ndim
-        for i in range(1, in_types.size().eval()):
+        for i in six.moves.range(1, in_types.size().eval()):
             type_check.expect(
                 in_types[0].dtype == in_types[i].dtype,
                 in_types[0].ndim == in_types[i].ndim,
             )
-            for d in range(0, ndim):
+            for d in six.moves.range(0, ndim):
                 if d == axis:
                     continue
                 type_check.expect(in_types[0].shape[d] == in_types[i].shape[d])
@@ -42,7 +43,7 @@ class Concat(function.Function):
         return xp.concatenate(xs, axis=self.axis),
 
     def backward(self, xs, gy):
-        if not xs[:-1]:
+        if len(xs) == 1:
             return gy
 
         xp = cuda.get_array_module(*xs)
