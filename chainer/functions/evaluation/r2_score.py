@@ -4,6 +4,7 @@ from chainer.utils import type_check
 
 
 class R2_score(function.Function):
+
     def __init__(self, sample_weight, multioutput):
         if sample_weight is not None:
             raise NotImplementedError()
@@ -22,15 +23,14 @@ class R2_score(function.Function):
         )
 
         type_check.expect(
-            pred_type.ndim >= true_type.ndim,
             pred_type.shape == true_type.shape,
         )
 
     def forward(self, inputs):
         xp = cuda.get_array_module(*inputs)
         pred, true = inputs
-        SS_res = xp.sum((pred-true)**2, axis=0)
-        SS_tot = xp.sum((true-xp.mean(true, axis=0))**2, axis=0)
+        SS_res = xp.sum((pred - true) ** 2, axis=0)
+        SS_tot = xp.sum((true - xp.mean(true, axis=0)) ** 2, axis=0)
         if self.multioutput == 'uniform_average':
             return xp.asarray((1 - SS_res / SS_tot).mean(), dtype=pred.dtype),
         elif self.multioutput == 'raw_values':
@@ -58,5 +58,5 @@ def r2_score(pred, true, sample_weight=None, multioutput='uniform_average'):
     .. note:: This function is non-differentiable.
 
     """
-    return R2_score(sample_weight=sample_weight, multioutput=multioutput)\
-            (pred, true)
+    return R2_score(sample_weight=sample_weight,
+                    multioutput=multioutput)(pred, true)

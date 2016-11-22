@@ -11,12 +11,12 @@ from chainer.utils import type_check
 
 
 def r2_score(pred, true, sample_weight=None, multioutput="uniform_average"):
-    SS_res = numpy.sum((pred-true)**2, axis=0)
-    SS_tot = numpy.sum((true-numpy.mean(true, axis=0))**2, axis=0)
+    SS_res = numpy.sum((pred - true) ** 2, axis=0)
+    SS_tot = numpy.sum((true - numpy.mean(true, axis=0)) ** 2, axis=0)
     if multioutput == 'uniform_average':
-        return (1-SS_res/SS_tot).mean()
+        return (1 - SS_res / SS_tot).mean()
     elif multioutput == 'raw_values':
-        return 1-SS_res/SS_tot
+        return 1 - SS_res / SS_tot
 
 
 @testing.parameterize(
@@ -33,8 +33,6 @@ def r2_score(pred, true, sample_weight=None, multioutput="uniform_average"):
          {'dtype': numpy.float64}]
     )
 )
-
-
 class TestAccuracy(unittest.TestCase):
 
     def setUp(self):
@@ -47,14 +45,16 @@ class TestAccuracy(unittest.TestCase):
     def check_forward(self, x_data, t_data):
         x = chainer.Variable(x_data)
         t = chainer.Variable(t_data)
-        y = chainer.functions.r2_score(x, t, self.sample_weight, self.multioutput)
+        y = chainer.functions.r2_score(x, t, self.sample_weight,
+                                       self.multioutput)
         self.assertEqual(y.data.dtype, self.dtype)
         if self.multioutput == 'uniform_average':
             self.assertEqual((), y.data.shape)
         elif self.multioutput == 'raw_values':
             self.assertEqual(x_data.shape[1:], y.data.shape)
 
-        expected = r2_score(self.x, self.t, sample_weight=None, multioutput=self.multioutput)
+        expected = r2_score(self.x, self.t, sample_weight=None,
+                            multioutput=self.multioutput)
         testing.assert_allclose(
             expected, cuda.to_cpu(y.data), **self.check_forward_options)
 
@@ -76,8 +76,6 @@ class TestAccuracy(unittest.TestCase):
     {'x_shape': (10, 3, 5, 2), 't_shape': (10, 5)},
     {'x_shape': (10, 3, 5, 1, 2), 't_shape': (10, 5)},
 )
-
-
 class TestInvalidShape(unittest.TestCase):
 
     def setUp(self):
