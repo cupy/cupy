@@ -18,10 +18,10 @@ def experimental(api_name=None):
 
     By default, if the caller is a function, its name is used as an API name.
 
-    >>> from chainer.utils import experiment
+    >>> from chainer.utils import experimental
     ...
     ... def f(x):
-    ...   experiment()
+    ...   experimental()
     ...   # concrete implementation of f follows
     ...
     ... f(1)
@@ -33,7 +33,7 @@ The interface can change in the future.
 
     >>> class C(object):
     ...   def f(self):
-    ...     experiment()
+    ...     experimental()
     ...
     ... c = C()
     ... c.f()
@@ -45,7 +45,7 @@ The interface can change in the future
     This function will use it in the warning issued.
 
     >>> def g(x):
-    ...   experiment('My function')
+    ...   experimental('My function')
     ...
     ... g(1)
     FutureWarning: My function is an experimental API. \
@@ -56,7 +56,7 @@ The interface can change in the future
 
     >>> class C():
     ...   def __init__(self):
-    ...     experiment()
+    ...     experimental()
     ...
     ... C()
     FutureWarning: C is an experimental API. \
@@ -67,7 +67,7 @@ The interface can change in the future
 
     >>> class D():
     ...   def __init__(self):
-    ...     experiment('D.__init__')
+    ...     experimental('D.__init__')
     ...
     ... D()
     FutureWarning: D.__init__ is an experimental API. \
