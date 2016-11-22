@@ -32,9 +32,17 @@ class R2_score(function.Function):
         SS_res = xp.sum((pred - true) ** 2, axis=0)
         SS_tot = xp.sum((true - xp.mean(true, axis=0)) ** 2, axis=0)
         if self.multioutput == 'uniform_average':
-            return xp.asarray((1 - SS_res / SS_tot).mean(), dtype=pred.dtype),
+            if xp.any(SS_tot == 0):
+                return xp.asarray(0.0, dtype=pred.dtype),
+            else:
+                return xp.asarray((1 - SS_res / SS_tot).mean(),
+                                  dtype=pred.dtype),
         elif self.multioutput == 'raw_values':
-            return xp.asarray((1 - SS_res / SS_tot), dtype=pred.dtype),
+            if xp.any(SS_tot == 0):
+                return xp.where(SS_tot != 0, 1 - SS_res / SS_tot, 0.0)\
+                        .astype(pred.dtype),
+            else:
+                return xp.asarray((1 - SS_res / SS_tot), dtype=pred.dtype),
 
 
 def r2_score(pred, true, sample_weight=None, multioutput='uniform_average'):

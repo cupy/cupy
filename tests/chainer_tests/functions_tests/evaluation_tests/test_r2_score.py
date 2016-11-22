@@ -13,10 +13,17 @@ from chainer.utils import type_check
 def r2_score(pred, true, sample_weight=None, multioutput="uniform_average"):
     SS_res = numpy.sum((pred - true) ** 2, axis=0)
     SS_tot = numpy.sum((true - numpy.mean(true, axis=0)) ** 2, axis=0)
+
     if multioutput == 'uniform_average':
-        return (1 - SS_res / SS_tot).mean()
+        if numpy.any(SS_tot == 0):
+            return 0.0
+        else:
+            return (1 - SS_res / SS_tot).mean()
     elif multioutput == 'raw_values':
-        return 1 - SS_res / SS_tot
+        if numpy.any(SS_tot == 0):
+            return numpy.where(SS_tot != 0, 1 - SS_res / SS_tot, 0.0)
+        else:
+            return 1 - SS_res / SS_tot
 
 
 @testing.parameterize(
@@ -25,6 +32,7 @@ def r2_score(pred, true, sample_weight=None, multioutput="uniform_average"):
          {'x_shape': (10, 1), 't_shape': (10, 1)},
          {'x_shape': (10, 5), 't_shape': (10, 5)},
          {'x_shape': (10, 5, 4), 't_shape': (10, 5, 4)}],
+        [{'t_input': 'random'}, {'t_input': 'zero'}],
         [{'multioutput': "uniform_average"},
          {'multioutput': "raw_values"}],
         [{'sample_weight': None}],
@@ -37,7 +45,13 @@ class TestAccuracy(unittest.TestCase):
 
     def setUp(self):
         self.x = numpy.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
-        self.t = numpy.random.uniform(-1, 1, self.t_shape).astype(self.dtype)
+
+        if self.t_input == 'random':
+            self.t = numpy.random.uniform(-1, 1, self.t_shape)\
+                    .astype(self.dtype)
+        else:
+            self.t = numpy.zeros(self.t_shape).astype(self.dtype)
+
         self.check_forward_options = {}
         if self.dtype == numpy.float16:
             self.check_forward_options = {'atol': 1e-2, 'rtol': 1e-2}
