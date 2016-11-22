@@ -71,7 +71,7 @@ class TestExperimental(unittest.TestCase):
         self.assertIs(w[0].category, FutureWarning)
         self.assertIn('C is an experimental API.', str(w[0].message))
 
-    def test_experimental_with_no_api_name_2(self):
+    def test_experimental_with_no_api_name_3(self):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             c = C()
