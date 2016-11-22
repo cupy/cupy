@@ -77,6 +77,7 @@ class TestExperimental(unittest.TestCase):
             c = C()
 
         with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
             c.f()
 
         self.assertEqual(len(w), 1)
