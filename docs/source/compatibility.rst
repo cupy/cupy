@@ -68,6 +68,8 @@ The actual change should be done in the following steps:
 - At the major update announced in the above update, change the API.
 
 
+.. module:: chainer.utils
+
 Experimental APIs
 -----------------
 
@@ -91,7 +93,7 @@ Once experimental APIs become stable, they cannot revert to experimental again.
 When users use experimental APIs for the first time, warnings are raised once for each experimental API,
 unless users explicitly disable the emission of the warnings in advance.
 
-See the document of `chainer.utils.experimental` how developers mark APIs as experimental
+See the document of :meth:`chainer.utils.experimental` how developers mark APIs as experimental
 and how users enable or disable the warnings practically..
 
 .. note::
