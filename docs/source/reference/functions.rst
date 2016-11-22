@@ -232,7 +232,7 @@ accuracy
 .. autofunction:: accuracy
 
 binary_accuracy
-~~~~~~~~
+~~~~~~~~~~~~~~~
 .. autofunction:: binary_accuracy
 
 
@@ -281,7 +281,7 @@ huber_loss
 .. autofunction:: huber_loss
 
 mean_absolute_error
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 .. autofunction:: mean_absolute_error
 
 mean_squared_error
