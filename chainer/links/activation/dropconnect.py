@@ -82,4 +82,4 @@ class Dropconnect(link.Link):
             with cuda.get_device(self._device_id):
                 self._initialize_params(x.size // len(x.data))
         return dropconnect.dropconnect(x, self.W, self.b,
-                                       self.ratio, train, self.mask)
+                                       self.ratio, train, mask)
