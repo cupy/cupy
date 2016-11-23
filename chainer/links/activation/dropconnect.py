@@ -66,7 +66,7 @@ class Dropconnect(link.Link):
                 Batch of input vectors.
             train (bool):
                 If ``True``, executes dropconnect.
-                Otherwise, does nothing.
+                Otherwise, dropconnect link work as linear unit.
             mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
                 If ``None``, randomized dropconnect mask is generated.
                 If not ``None``, this value is used as dropconnect mask.

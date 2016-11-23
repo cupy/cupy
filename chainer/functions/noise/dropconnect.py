@@ -1,5 +1,6 @@
 import numpy
 
+import chainer
 from chainer import cuda
 from chainer import function
 from chainer.utils import type_check
@@ -49,6 +50,8 @@ class Dropconnect(function.Function):
                     self.ratio)
         if self.mask is None:
             self.mask = scale * flag
+        elif isinstance(self.mask, chainer.Variable):
+            self.mask = self.mask.data
 
         x = _as_mat(inputs[0])
         W = inputs[1] * self.mask
@@ -96,8 +99,8 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
             If mask is not ``None``, this value is ignored.
         train (bool):
             If ``True``, executes dropconnect.
-            Otherwise, does nothing.
-        mask (:class:`numpy.ndarray` or cupy.ndarray):
+            Otherwise, dropconnect funcation work as linear function.
+        mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
             If ``None``, randomized dropconnect mask is generated.
             If not ``None``, this value is used as dropconnect mask.
             And scaling will not be executed.
