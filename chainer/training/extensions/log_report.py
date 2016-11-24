@@ -28,8 +28,12 @@ class LogReport(extension.Extension):
     extension makes a new fresh summary object which is used until the next
     time that the trigger fires.
 
-    It also adds ``'epoch'`` and ``'iteration'`` entries to each result
-    dictionary, which are the epoch and iteration counts at the output.
+    It also adds some entries to each result dictionary.
+
+    - ``'epoch'`` and ``'iteration'`` are the epoch and iteration counts at the
+      output, respectively.
+    - ``'elapsed_time'`` is the elapsed time in seconds since the training
+      begins. The value is taken from :attr:`Trainer.elapsed_time`.
 
     Args:
         keys (iterable of strs): Keys of values to accumulate. If this is None,
@@ -81,6 +85,7 @@ class LogReport(extension.Extension):
             updater = trainer.updater
             stats_cpu['epoch'] = updater.epoch
             stats_cpu['iteration'] = updater.iteration
+            stats_cpu['elapsed_time'] = trainer.elapsed_time
 
             if self._postprocess is not None:
                 self._postprocess(stats_cpu)

@@ -30,6 +30,7 @@ def ceil(x):
 
     .. math::
        y_i = \\lceil x_i \\rceil
+
     Args:
         x (~chainer.Variable): Input variable.
 

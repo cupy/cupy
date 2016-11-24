@@ -57,7 +57,7 @@ def concat_examples(batch, device=None, padding=None):
         to_device = cuda.to_cpu
     else:
         def to_device(x):
-            return cuda.to_gpu(x, device)
+            return cuda.to_gpu(x, device, cuda.Stream.null)
 
     first_elem = batch[0]
 

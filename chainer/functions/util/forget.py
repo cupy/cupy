@@ -85,14 +85,14 @@ def forget(func, *xs):
 
        and, ``x`` and ``y`` be :class:`~chainer.Variable`:
 
-       >>> x = chainer.Variable(numpy.random.uniform(-1, 1, 5, 'f'))
-       >>> y = chainer.Variable(numpy.random.uniform(-1, 1, 5, 'f'))
+       >>> x = chainer.Variable(np.random.uniform(-1, 1, 5).astype('f'))
+       >>> y = chainer.Variable(np.random.uniform(-1, 1, 5).astype('f'))
 
        When ``z`` is calculated as ``z = f(x, y)``, its internal result
        ``x + y`` is stored in memory. Instead if you call ``f`` with
        :meth:`forget`:
 
-       >>> z = forget(f, x, y)
+       >>> z = F.forget(f, x, y)
 
        internal ``x + y`` is forgotten.
 

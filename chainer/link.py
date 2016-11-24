@@ -13,12 +13,17 @@ from chainer import variable
 def _is_shape(value):
     if value is None:
         return True
-    elif isinstance(value, six.integer_types):
-        return True
     elif isinstance(value, collections.Sequence):
-        return all(isinstance(x, six.integer_types) for x in value)
-    else:
+        try:
+            return all(int(x) for x in value)
+        except TypeError:
+            return False
+    try:
+        return int(value)
+    except TypeError:
         return False
+
+    return False
 
 
 def _ensure_shape_dtype(value):
@@ -118,7 +123,7 @@ class Link(object):
     def __init__(self, **params):
         self._params = []
         self._persistent = []
-        self._uninitialized_params = set()
+        self._uninitialized_params = {}
         self._cpu = True
         self._device_id = None
         self.name = None
@@ -173,13 +178,22 @@ class Link(object):
             data = self.xp.full(shape, numpy.nan, dtype=dtype)
         else:
             data = initializers.generate_array(initializer, shape, self.xp)
-        grad = self.xp.full_like(data, numpy.nan)
+        u = self._uninitialized_params.get(name)
+        if u is None:
+            grad = self.xp.full_like(data, numpy.nan)
+        else:
+            if u._cleared:
+                grad = None
+            elif u._zeroed:
+                grad = self.xp.zeros_like(data)
+            else:
+                grad = self.xp.full_like(data, numpy.nan)
         var = variable.Variable(data, volatile='auto', name=name)
         var.grad = grad
         self._params.append(name)
         d[name] = var
         if name in self._uninitialized_params:
-            self._uninitialized_params.remove(name)
+            del self._uninitialized_params[name]
 
     def add_uninitialized_param(self, name):
         """Registers an uninitialized parameter to the link.
@@ -202,20 +216,26 @@ class Link(object):
             name: (str): Name of the uninitialized parameter.
 
         """
+        class uninitialized_param(object):
+
+            def __init__(self):
+                self._cleared = False
+                self._zeroed = False
+
         d = self.__dict__
         if (name in self._uninitialized_params) or (name in d):
             raise AttributeError(
                 'cannot register a new uninitialized parameter %s: exists'
                 % name)
-        self._uninitialized_params.add(name)
+        self._uninitialized_params[name] = uninitialized_param()
 
     @property
     def has_uninitialized_params(self):
         """Check if the link has uninitialized parameters.
 
         Returns:
-            bool: True if the link has any uninitialized parameters. Otherwise
-            return False.
+            bool: ``True`` if the link has any uninitialized parameters.
+            Otherwise returns ``False``.
 
         """
         return len(self._uninitialized_params) > 0
@@ -394,6 +414,12 @@ class Link(object):
         dst = self.__dict__
         for name in self._params:
             dst[name].copydata(src[name])
+        # tuple() here is needed to avoid conflicts with add_param
+        for name in tuple(self._uninitialized_params):
+            if name in src:
+                src_param = src[name]
+                self.add_param(name, src_param.shape, src_param.dtype)
+                dst[name].copydata(src_param)
 
     def cleargrads(self):
         """Clears all gradient arrays.
@@ -404,6 +430,8 @@ class Link(object):
         """
         for param in self.params():
             param.cleargrad()
+        for param in self._uninitialized_params.values():
+            param._cleared = True
 
     def zerograds(self):
         """Initializes all gradient arrays by zero.
@@ -420,6 +448,8 @@ class Link(object):
             DeprecationWarning)
         for param in self.params():
             param.zerograd()
+        for param in self._uninitialized_params:
+            param._zeroed = True
 
     def addgrads(self, link):
         """Accumulates gradient values from given link.

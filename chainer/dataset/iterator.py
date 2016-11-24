@@ -17,12 +17,12 @@ class Iterator(object):
     Each implementation should provide the following attributes (not needed to
     be writable).
 
-    - ``batch_size``: the number of examples within each minibatch.
-    - ``epoch``: the number of completed sweeps over the dataset.
-    - ``epoch_detail``: floating point number version of the epoch. For
+    - ``batch_size``: Number of examples within each minibatch.
+    - ``epoch``: Number of completed sweeps over the dataset.
+    - ``epoch_detail``: Floating point number version of the epoch. For
       example, if the iterator is at the middle of the dataset at the third
       epoch, then this value is 2.5.
-    - ``is_new_epoch``: True if the epoch count was incremented at the last
+    - ``is_new_epoch``: ``True`` if the epoch count was incremented at the last
       update.
 
     Each implementation should also support serialization to resume/suspend the

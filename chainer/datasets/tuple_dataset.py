@@ -10,7 +10,7 @@ class TupleDataset(object):
 
     Args:
         datasets: Underlying datasets. The ``i``-th one is used for the
-            ``i``-th item of each example. All datasets must have the
+            ``i``-th item of each example. All datasets must have the same
             length.
 
     """

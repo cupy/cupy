@@ -37,6 +37,8 @@ ascontiguousarray = core.ascontiguousarray
 
 rollaxis = core.rollaxis
 broadcast = core.broadcast
+broadcast_to = core.broadcast_to
+concatenate = core.concatenate
 
 
 # -----------------------------------------------------------------------------
@@ -57,6 +59,7 @@ right_shift = core.right_shift
 
 dot = core.dot
 tensordot_core = core.tensordot_core
+matmul = core.matmul
 
 
 # -----------------------------------------------------------------------------
@@ -87,5 +90,9 @@ true_divide = core.true_divide
 floor_divide = core.floor_divide
 remainder = core.remainder
 
-sqrt_fixed = core.sqrt_fixed
+sqrt = core.sqrt
 absolute = core.absolute
+
+
+nanmax = core.nanmax
+nanmin = core.nanmin

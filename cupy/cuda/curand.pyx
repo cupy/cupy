@@ -10,43 +10,43 @@ from cupy.cuda cimport driver
 
 cdef extern from "cupy_cuda.h":
     # Generator
-    int curandCreateGenerator(Generator* generator, int rng_type)
-    int curandDestroyGenerator(Generator generator)
-    int curandGetVersion(int* version)
+    int curandCreateGenerator(Generator* generator, int rng_type) nogil
+    int curandDestroyGenerator(Generator generator) nogil
+    int curandGetVersion(int* version) nogil
 
     # Stream
-    int curandSetStream(Generator generator, driver.Stream stream)
+    int curandSetStream(Generator generator, driver.Stream stream) nogil
     int curandSetPseudoRandomGeneratorSeed(
-        Generator generator, unsigned long long seed)
+        Generator generator, unsigned long long seed) nogil
     int curandSetGeneratorOffset(
-        Generator generator, unsigned long long offset)
-    int curandSetGeneratorOrdering(Generator generator, Ordering order)
+        Generator generator, unsigned long long offset) nogil
+    int curandSetGeneratorOrdering(Generator generator, Ordering order) nogil
 
     # Generation functions
     int curandGenerate(
-        Generator generator, unsigned int* outputPtr, size_t num)
+        Generator generator, unsigned int* outputPtr, size_t num) nogil
     int curandGenerateLongLong(
         Generator generator, unsigned long long* outputPtr,
-        size_t num)
+        size_t num) nogil
     int curandGenerateUniform(
-        Generator generator, float* outputPtr, size_t num)
+        Generator generator, float* outputPtr, size_t num) nogil
     int curandGenerateUniformDouble(
-        Generator generator, double* outputPtr, size_t num)
+        Generator generator, double* outputPtr, size_t num) nogil
     int curandGenerateNormal(
         Generator generator, float* outputPtr, size_t num,
-        float mean, float stddev)
+        float mean, float stddev) nogil
     int curandGenerateNormalDouble(
         Generator generator, double* outputPtr, size_t n,
-        double mean, double stddev)
+        double mean, double stddev) nogil
     int curandGenerateLogNormal(
         Generator generator, float* outputPtr, size_t n,
-        float mean, float stddev)
+        float mean, float stddev) nogil
     int curandGenerateLogNormalDouble(
         Generator generator, double* outputPtr, size_t n,
-        double mean, double stddev)
+        double mean, double stddev) nogil
     int curandGeneratePoisson(
         Generator generator, unsigned int* outputPtr, size_t n,
-        double lam)
+        double lam) nogil
 
 
 ###############################################################################
@@ -87,9 +87,10 @@ cpdef inline check_status(int status):
 # Generator
 ###############################################################################
 
-cpdef size_t createGenerator(int rng_type):
+cpdef size_t createGenerator(int rng_type) except *:
     cdef Generator generator
-    status = curandCreateGenerator(&generator, <RngType>rng_type)
+    with nogil:
+        status = curandCreateGenerator(&generator, <RngType>rng_type)
     check_status(status)
     return <size_t>generator
 
@@ -99,7 +100,7 @@ cpdef destroyGenerator(size_t generator):
     check_status(status)
 
 
-cpdef int getVersion():
+cpdef int getVersion() except *:
     cdef int version
     status = curandGetVersion(&version)
     check_status(status)

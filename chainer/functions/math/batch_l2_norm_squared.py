@@ -50,8 +50,9 @@ def batch_l2_norm_squared(x):
 
     Args:
         x (~chainer.Variable): Input variable. The first dimension is assumed
-            to be the *minibatch dimension*. If x has more than two dimensions
-            all but the first dimension are flattened to one dimension.
+            to be the *minibatch dimension*. If ``x`` has more than two
+            dimensions all but the first dimension are flattened to one
+            dimension.
 
     Returns:
         ~chainer.Variable: Two dimensional output variable.

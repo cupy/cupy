@@ -88,7 +88,6 @@ class TestClassificationSummary(unittest.TestCase):
 
     def setUp(self):
         t_upper = 3 if self.label_num is None else self.label_num
-        self.label_num = 3
         self.y = numpy.random.uniform(-1, 1, self.y_shape).astype(self.dtype)
         self.t = make_ground_truth(t_upper, self.t_shape,
                                    self.ignore_label, self.has_ignore_label)
@@ -107,12 +106,12 @@ class TestClassificationSummary(unittest.TestCase):
 
         pred = self.y.argmax(axis=1).reshape(self.t.shape)
         p_expect = precision(pred, self.t, self.dtype,
-                             self.label_num, self.ignore_label)
+                             3, self.ignore_label)
         r_expect = recall(pred, self.t, self.dtype,
-                          self.label_num, self.ignore_label)
+                          3, self.ignore_label)
         fbeta_expect = fbeta_score(p_expect, r_expect, self.beta)
         s_expect = support(self.t, self.dtype,
-                           self.label_num, self.ignore_label)
+                           3, self.ignore_label)
         chainer.testing.assert_allclose(p_actual.data, p_expect,
                                         **self.check_forward_options)
         chainer.testing.assert_allclose(r_actual.data, r_expect,
