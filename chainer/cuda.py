@@ -35,16 +35,14 @@ cudnn_enabled = False
 
 try:
     import cupy
-    import cupy.cuda
-    import cupy.cuda.cublas
+    from cupy import cuda  # NOQA
+    from cupy.cuda import cublas  # NOQA
 
-    cuda = cupy.cuda
-    cublas = cuda.cublas
+    from cupy import ndarray  # NOQA
 
-    ndarray = cupy.ndarray
-    Device = cuda.Device
-    Event = cuda.Event
-    Stream = cuda.Stream
+    from cupy.cuda import Device  # NOQA
+    from cupy.cuda import Event  # NOQA
+    from cupy.cuda import Stream  # NOQA
 
     available = True
 except Exception as e:

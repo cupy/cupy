@@ -1,24 +1,25 @@
 import numpy
 
-from chainer import initializer
-from chainer.initializers import constant
-from chainer.initializers import normal
-from chainer.initializers import orthogonal
-from chainer.initializers import uniform
+from chainer import initializer  # NOQA
+from chainer.initializers import constant  # NOQA
+from chainer.initializers import normal  # NOQA
+from chainer.initializers import orthogonal  # NOQA
+from chainer.initializers import uniform  # NOQA
 
 
-Identity = constant.Identity
-Constant = constant.Constant
-Zero = constant.Zero
-One = constant.One
-Normal = normal.Normal
-GlorotNormal = normal.GlorotNormal
-HeNormal = normal.HeNormal
-Orthogonal = orthogonal.Orthogonal
-Uniform = uniform.Uniform
-LeCunUniform = uniform.LeCunUniform
-GlorotUniform = uniform.GlorotUniform
-HeUniform = uniform.HeUniform
+# import class and function
+from chainer.initializers.constant import Constant
+from chainer.initializers.constant import Identity  # NOQA
+from chainer.initializers.constant import One  # NOQA
+from chainer.initializers.constant import Zero  # NOQA
+from chainer.initializers.normal import GlorotNormal  # NOQA
+from chainer.initializers.normal import HeNormal
+from chainer.initializers.normal import Normal  # NOQA
+from chainer.initializers.orthogonal import Orthogonal  # NOQA
+from chainer.initializers.uniform import GlorotUniform  # NOQA
+from chainer.initializers.uniform import HeUniform  # NOQA
+from chainer.initializers.uniform import LeCunUniform  # NOQA
+from chainer.initializers.uniform import Uniform  # NOQA
 
 
 def generate_array(initializer, shape, xp):
