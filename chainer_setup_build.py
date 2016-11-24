@@ -167,20 +167,22 @@ def make_extensions(options, compiler, use_cython):
 
 
 def parse_args():
-    arg_options = dict()
-    arg_options['profile'] = '--cupy-profile' in sys.argv
-    if arg_options['profile']:
+    cupy_profile = '--cupy-profile' in sys.argv
+    if cupy_profile:
         sys.argv.remove('--cupy-profile')
-
     cupy_coverage = '--cupy-coverage' in sys.argv
     if cupy_coverage:
         sys.argv.remove('--cupy-coverage')
-    arg_options['linetrace'] = cupy_coverage
-    arg_options['annotate'] = cupy_coverage
-
-    arg_options['no_cuda'] = '--cupy-no-cuda' in sys.argv
-    if arg_options['no_cuda']:
+    no_cuda = '--cupy-no-cuda' in sys.argv
+    if no_cuda:
         sys.argv.remove('--cupy-no-cuda')
+
+    arg_options = {
+        'profile': cupy_profile,
+        'linetrace': cupy_coverage,
+        'annotate': cupy_coverage,
+        'no_cuda': no_cuda,
+    }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
     return arg_options
