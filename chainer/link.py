@@ -414,6 +414,12 @@ class Link(object):
         dst = self.__dict__
         for name in self._params:
             dst[name].copydata(src[name])
+        # tuple() here is needed to avoid conflicts with add_param
+        for name in tuple(self._uninitialized_params):
+            if name in src:
+                src_param = src[name]
+                self.add_param(name, src_param.shape, src_param.dtype)
+                dst[name].copydata(src_param)
 
     def cleargrads(self):
         """Clears all gradient arrays.
