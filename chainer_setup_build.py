@@ -4,6 +4,8 @@ from distutils import sysconfig
 from numpy.distutils import conv_template  # to process .src template files
 import os
 from os import path
+import re
+import subprocess
 import sys
 
 import pkg_resources
@@ -306,6 +308,52 @@ def get_ext_modules():
     return extensions
 
 
+def _arch_for_code(code_option, arch_options):
+    """Returns the newest --gpu-architecture option corresponding to the given
+       --gpu-code option."""
+    # Get two-digit number from code option 'sm_XX'.
+    match = re.search('\d{2}', code_option)
+    if match is None:
+        msg = 'The value {} is an invalid code option.'.format(code_option)
+        raise ValueError(msg)
+    ver = int(match.group(0))
+
+    # Search corresponding arch option.
+    while ver >= 20:
+        arch_option = 'compute_{}'.format(ver)
+        if arch_option in arch_options:
+            return arch_option
+        ver -= 1
+    msg = 'The value {} is an invalid code option.'.format(code_option)
+    raise ValueError(msg)
+
+
+def _nvcc_gencode_options():
+    """Returns NVCC --generate-code-specification options generated from NVCC
+       command line help."""
+    help_string = subprocess.check_output(
+        ['nvcc', '--help']).decode('ascii').replace('\n', '')
+
+    arch_options = re.findall("'(compute_\d{2})'", help_string)
+    arch_options = sorted(list(set(arch_options)))
+    arch_options = list(filter(lambda x: x >= "compute_20", arch_options))
+
+    code_options = re.findall("'(sm_\d{2})'", help_string)
+    code_options = sorted(list(set(code_options)))
+    code_options = list(filter(lambda x: x >= "sm_20", code_options))
+
+    pairs = []
+    for code_option in code_options:
+        arch_option = _arch_for_code(code_option, arch_options)
+        pairs.append((arch_option, code_option))
+
+    gencode_options = []
+    for pair in pairs:
+        gencode_options.append('-gencode arch={},code={}'.format(*pair))
+
+    return gencode_options
+
+
 def customize_compiler_for_nvcc(compiler):
     compiler.src_extensions.append('.cu')
     default_compiler_so = compiler.compiler_so
@@ -316,12 +364,11 @@ def customize_compiler_for_nvcc(compiler):
         # TODO(takagi): In case that CUDA SDK is not installed, e.g. CI env.
         if os.path.splitext(src)[1] == '.cu':
             compiler.set_executable('compiler_so', nvcc_path)
-            # TODO(takgi): Provide proper nvcc options.
-            postargs = ['-arch=sm_20',
-                        '--ptxas-options=-v',
-                        '-c',
-                        '--compiler-options',
-                        "'-fPIC'"]
+            postargs = _nvcc_gencode_options() + ['--ptxas-options=-v',
+                                                  '-c',
+                                                  '--compiler-options',
+                                                  "'-fPIC'"]
+            print('NVCC options:', postargs)
         else:
             postargs = []
 
