@@ -12,6 +12,7 @@ except ImportError as e:
 
 from chainer.dataset.convert import concat_examples
 from chainer.dataset import download
+from chainer import flag
 from chainer.functions.activation.relu import relu
 from chainer.functions.activation.softmax import softmax
 from chainer.functions.array.reshape import reshape
@@ -184,7 +185,8 @@ class VGG16Layers(link.Chain):
                 target_layers.remove(key)
         return activations
 
-    def extract(self, images, layers=['fc7'], size=(224, 224), test=True):
+    def extract(self, images, layers=['fc7'], size=(224, 224),
+                test=True, volatile=flag.OFF):
         """Extracts all the feature maps of given images.
 
         The difference of directly executing ``__call__`` is that
@@ -201,6 +203,7 @@ class VGG16Layers(link.Chain):
                 if this argument is ``None``, but the resolutions of
                 all the images should be the same.
             test (bool): If ``True``, dropout runs in test mode.
+            volatile (~chainer.Flag): Volatility flag used for input variables.
 
         Returns:
             Dictionary of ~chainer.Variable: A directory in which
@@ -210,7 +213,7 @@ class VGG16Layers(link.Chain):
         """
 
         x = concat_examples([prepare(img, size=size) for img in images])
-        x = Variable(self.xp.asarray(x))
+        x = Variable(self.xp.asarray(x), volatile=volatile)
         return self(x, layers=layers, test=test)
 
     def predict(self, images, oversample=True):
@@ -233,7 +236,8 @@ class VGG16Layers(link.Chain):
             x = imgproc.oversample(x, crop_dims=(224, 224))
         else:
             x = x[:, :, 16:240, 16:240]
-        x = Variable(self.xp.asarray(x))
+        # Set volatile option to ON to reduce memory consumption
+        x = Variable(self.xp.asarray(x), volatile=flag.ON)
         y = self(x, layers=['prob'])['prob']
         if oversample:
             n = y.data.shape[0] // 10
