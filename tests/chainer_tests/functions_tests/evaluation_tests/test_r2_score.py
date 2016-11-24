@@ -70,7 +70,7 @@ class TestAccuracy(unittest.TestCase):
         expected = r2_score(self.x, self.t, sample_weight=None,
                             multioutput=self.multioutput)
         testing.assert_allclose(
-            expected, cuda.to_cpu(y.data), **self.check_forward_options)
+            expected, y.data, **self.check_forward_options)
 
     @condition.retry(3)
     def test_forward_cpu(self):
