@@ -40,13 +40,13 @@ class TestBasic(unittest.TestCase):
         a = xp.pad(array, pad_width, mode='constant', constant_values=1)
         return a
 
-    # @testing.for_all_dtypes()
-    # @testing.numpy_cupy_array_equal()
-    # def test_pad_scalar_constant_sequence(self, xp, dtype):
-    #     array = xp.arange(10).reshape([2, 5])
-    #     pad_width = 2
-    #     a = xp.pad(array, pad_width, mode='constant', constant_values=[1, 2])
-    #     return a
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_pad_scalar_constant_sequence(self, xp, dtype):
+        array = xp.arange(10).reshape([2, 5])
+        pad_width = 2
+        a = xp.pad(array, pad_width, mode='constant', constant_values=[1, 2])
+        return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -64,13 +64,13 @@ class TestBasic(unittest.TestCase):
         a = xp.pad(array, pad_width, mode='constant', constant_values=1)
         return a
 
-    # @testing.for_all_dtypes()
-    # @testing.numpy_cupy_array_equal()
-    # def test_pad_sequence_constant_sequence(self, xp, dtype):
-    #     array = xp.arange(10).reshape([2, 5])
-    #     pad_width = [2, 3]
-    #     a = xp.pad(array, pad_width, mode='constant', constant_values=[1, 2])
-    #     return a
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_pad_sequence_constant_sequence(self, xp, dtype):
+        array = xp.arange(10).reshape([2, 5])
+        pad_width = [2, 3]
+        a = xp.pad(array, pad_width, mode='constant', constant_values=[1, 2])
+        return a
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -78,4 +78,14 @@ class TestBasic(unittest.TestCase):
         array = xp.arange(10).reshape([2, 5])
         pad_width = [2]
         a = xp.pad(array, pad_width, mode='constant')
+        return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_pad_multidim(self, xp, dtype):
+        array = xp.ones([4, 5, 6, 7])
+        pad_width = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        constant_values = [[9, 10], [11, 12], [13, 14], [15, 16]]
+        a = xp.pad(array, pad_width, mode='constant',
+                   constant_values=constant_values)
         return a
