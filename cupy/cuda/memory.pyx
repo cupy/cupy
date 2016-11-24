@@ -66,11 +66,11 @@ cdef class ManagedMemory(Memory):
             self.device = device.Device()
             self.ptr = runtime.mallocManaged(size)
 
-    cpdef advise(self, int advice, int device):
+    cpdef advise(self, int advise, int device):
         """ Advise about the usage of this memory.
 
         Args:
-            advice: Advice to be applied for this memory.
+            advics: Advise to be applied for this memory.
             device: Device to apply the advice for.
 
         """
@@ -78,7 +78,7 @@ cdef class ManagedMemory(Memory):
         if _cuda_version is None:
             _cuda_version = runtime.runtimeGetVersion()
         if _cuda_version >= 8000 and int(self.device.compute_capability) >= 60:
-            runtime.memAdvise(self.ptr, self.size, advice, device)
+            runtime.memAdvise(self.ptr, self.size, advise, device)
 
 
 cdef set _peer_access_checked = set()
