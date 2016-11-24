@@ -42,7 +42,7 @@ class TestArrayAdvancedIndexingParametrizedTransp(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (2, 3, 4), 'indexes': (slice(None), cupy.array([1, 0]))},
+    {'shape': (2, 3, 4), 'indexes': (slice(None),)},
     {'shape': (2, 3, 4), 'indexes': (numpy.array([1, 0],))},
 )
 @testing.gpu
