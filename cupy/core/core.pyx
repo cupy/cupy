@@ -2089,7 +2089,7 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
                 ri = i
 
     if do_transpose:
-        transp = range(a.ndim)
+        transp = list(range(a.ndim))
         p = 0
         for i, s in enumerate(list(slices)):
             if isinstance(s, ndarray):
