@@ -1163,7 +1163,7 @@ cdef class ndarray:
         if not isinstance(slices, tuple):
             slices = (slices,)
 
-        for i, s in enumerate(slices):
+        for s in slices:
             if isinstance(s, (list, numpy.ndarray, ndarray)):
                 raise IndexError(
                     'Only basic indexing is supported for __setitem__')
