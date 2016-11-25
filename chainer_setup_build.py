@@ -308,26 +308,6 @@ def get_ext_modules():
     return extensions
 
 
-def _arch_for_code(code_option, arch_options):
-    """Returns the newest --gpu-architecture option corresponding to the given
-       --gpu-code option."""
-    # Get two-digit number from code option 'sm_XX'.
-    match = re.search('\d{2}', code_option)
-    if match is None:
-        msg = 'The value {} is an invalid code option.'.format(code_option)
-        raise ValueError(msg)
-    ver = int(match.group(0))
-
-    # Search corresponding arch option.
-    while ver >= 20:
-        arch_option = 'compute_{}'.format(ver)
-        if arch_option in arch_options:
-            return arch_option
-        ver -= 1
-    msg = 'The value {} is an invalid code option.'.format(code_option)
-    raise ValueError(msg)
-
-
 def _nvcc_gencode_options():
     """Returns NVCC --generate-code-specification options generated from NVCC
        command line help."""
@@ -336,15 +316,19 @@ def _nvcc_gencode_options():
 
     arch_options = re.findall("'(compute_\d{2})'", help_string)
     arch_options = sorted(list(set(arch_options)))
-    arch_options = list(filter(lambda x: x >= "compute_20", arch_options))
+    arch_options = list(filter(lambda x: x >= "compute_30", arch_options))
 
     code_options = re.findall("'(sm_\d{2})'", help_string)
     code_options = sorted(list(set(code_options)))
-    code_options = list(filter(lambda x: x >= "sm_20", code_options))
+    code_options = list(filter(lambda x: x >= "sm_30", code_options))
 
     pairs = []
     for code_option in code_options:
-        arch_option = _arch_for_code(code_option, arch_options)
+        arch_option = code_option.replace('sm_', 'compute_')
+        if arch_option not in arch_options:
+            msg = "No virtual architecture corresponding to '{}'.".format(
+                code_option)
+            raise ValueError(msg)
         pairs.append((arch_option, code_option))
 
     gencode_options = []
