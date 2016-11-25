@@ -309,8 +309,7 @@ def get_ext_modules():
 
 
 def _nvcc_gencode_options():
-    """Returns NVCC --generate-code-specification options generated from NVCC
-       command line help."""
+    """Returns NVCC gencode options generated from NVCC command line help."""
     help_string = subprocess.check_output(
         ['nvcc', '--help']).decode('ascii').replace('\n', '')
 
