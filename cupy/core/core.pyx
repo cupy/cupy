@@ -1160,6 +1160,14 @@ cdef class ndarray:
 
     def __setitem__(self, slices, value):
         cdef ndarray v, x, y
+        if not isinstance(slices, tuple):
+            slices = (slices,)
+
+        for s in slices:
+            if isinstance(s, (list, numpy.ndarray, ndarray)):
+                raise IndexError(
+                    'Only basic indexing is supported for __setitem__')
+
         v = self[slices]
         if isinstance(value, ndarray):
             y, x = broadcast(v, value).values
