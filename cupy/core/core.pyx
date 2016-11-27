@@ -2376,7 +2376,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
     return ret
 
 
-cpdef ndarray _adv_getitem(ndarray a, slices):
+cpdef ndarray _adv_getitem(ndarray a, list slices):
     # slices consist of either slice(None) or ndarray
     cdef int i, p, li, ri
     cdef ndarray take_idx, input_flat, out_flat, o
@@ -2386,7 +2386,7 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
 
     # broadcast all arrays to the largest shape
     j = 0
-    for i, s in enumerate(list(slices)):
+    for i, s in enumerate(slices):
         if isinstance(s, ndarray):
             slices[i] = br.values[j]
             j += 1
@@ -2398,7 +2398,7 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
     prev_arr_i = None
     li = 0
     ri = 0
-    for i, s in enumerate(list(slices)):
+    for i, s in enumerate(slices):
         if isinstance(s, ndarray):
             if prev_arr_i is None:
                 prev_arr_i = i
@@ -2412,7 +2412,7 @@ cpdef ndarray _adv_getitem(ndarray a, slices):
     if do_transpose:
         transp = list(range(a.ndim))
         p = 0
-        for i, s in enumerate(list(slices)):
+        for i, s in enumerate(slices):
             if isinstance(s, ndarray):
                 transp.remove(i)
                 transp.insert(p, i)
