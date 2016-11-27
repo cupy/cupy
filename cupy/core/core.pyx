@@ -2379,17 +2379,11 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 cpdef ndarray _adv_getitem(ndarray a, list slices):
     # slices consist of either slice(None) or ndarray
     cdef int i, p, li, ri
-    cdef ndarray take_idx, input_flat, out_flat, o
+    cdef ndarray take_idx, input_flat, out_flat, ret
+    cdef tuple a_shape
 
-    arr_slices = [s for s in slices if isinstance(s, ndarray)]
-    br = broadcast(*arr_slices)
-
-    # broadcast all arrays to the largest shape
-    j = 0
-    for i, s in enumerate(slices):
-        if isinstance(s, ndarray):
-            slices[i] = br.values[j]
-            j += 1
+    br = broadcast(*slices)
+    slices = list(br.values)
 
     # check if transpose is necessasry
     # li:  index of the leftmost array in slices
@@ -2410,52 +2404,55 @@ cpdef ndarray _adv_getitem(ndarray a, list slices):
                 ri = i
 
     if do_transpose:
-        transp = list(range(a.ndim))
-        p = 0
+        transp_a = []
+        transp_b = []
+        slices_a = []
+        slices_b = []
+
         for i, s in enumerate(slices):
             if isinstance(s, ndarray):
-                transp.remove(i)
-                transp.insert(p, i)
-                tmp = slices.pop(i)
-                slices.insert(p, tmp)
-                p += 1
-        a = a.transpose(*transp)
-
+                transp_a.append(i)
+                slices_a.append(s)
+            else:
+                transp_b.append(i)
+                slices_b.append(s)
+        a = a.transpose(*(transp_a + transp_b))
+        slices = slices_a + slices_b
         li = 0
-        ri = p - 1
+        ri = len(transp_a) - 1
+
+    a_shepe = a.shape
 
     # flatten the array-indexed dimensions
-    shape = a.shape[:li] +\
-        (internal.prod_ssize_t(a.shape[li:ri+1]),) + a.shape[ri+1:]
-    input_flat = a.reshape(shape)
+    shape = a_shepe[:li] +\
+        (internal.prod_ssize_t(a_shepe[li:ri+1]),) + a_shepe[ri+1:]
+    input_flat = a._reshape(shape)
 
     # build the strides
     strides = [1]
-    for i in range(ri, li, -1):
-        stride = a.shape[i] * strides[0]
-        strides.insert(0, stride)
+    for s in a.shape[ri:li:-1]:
+        strides.insert(0, s * strides[0])
 
     # convert all negative indices to wrap_indices
     for i in range(li, ri+1):
-        slices[i] = slices[i] % a.shape[i]
+        slices[i] %= a_shepe[i]
 
-    flattened_indexes = []
-    for stride, s in zip(strides, slices[li:ri+1]):
-        flattened_indexes.append(stride * s)
+    flattened_indexes = [stride * s
+                         for stride, s in zip(strides, slices[li:ri+1])]
 
     # do stack: flattened_indexes = stack(flattened_indexes, axis=0)
     concat_shape = (len(flattened_indexes),) + br.shape
     flattened_indexes = concatenate(
-        [index.reshape((1,) + index.shape) for index in flattened_indexes],
+        [index._reshape((1,) + index.shape) for index in flattened_indexes],
         axis=0, shape=concat_shape, dtype=flattened_indexes[0].dtype)
 
     take_idx = _sum(flattened_indexes, axis=0)
 
     out_flat = input_flat.take(take_idx.flatten(), axis=li)
 
-    out_flat_shape = a.shape[:li] + take_idx.shape + a.shape[ri+1:]
-    o = out_flat.reshape(out_flat_shape)
-    return o
+    out_flat_shape = a_shepe[:li] + take_idx.shape + a_shepe[ri+1:]
+    ret = out_flat._reshape(out_flat_shape)
+    return ret
 
 
 # -----------------------------------------------------------------------------
