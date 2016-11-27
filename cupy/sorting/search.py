@@ -105,6 +105,8 @@ def where(condition, x=None, y=None):
             ``condition`` is given, return the tuple ``condition.nonzero()``,
             the indices where ``condition`` is True.
 
+    .. seealso:: :func:`numpy.where`
+
     """
 
     missing = (x is None, y is None).count(True)
