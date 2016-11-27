@@ -17,6 +17,7 @@ from chainer.utils import conv_nd
 
 @testing.parameterize(*testing.product({
     'dims': [(5,), (5, 4), (4, 3, 3)],
+    'dtype': [numpy.float16, numpy.float32, numpy.float64]
 }))
 class TestConvolutionND(unittest.TestCase):
 
@@ -28,15 +29,20 @@ class TestConvolutionND(unittest.TestCase):
 
         self.link = convolution_nd.ConvolutionND(
             ndim, 3, 2, self.ksize, stride=self.stride, pad=self.pad,
-            initial_bias=initializers.Uniform(1))
+            initial_bias=initializers.Uniform(scale=1., dtype=self.dtype))
         self.link.cleargrads()
 
         x_shape = (2, 3) + self.dims
-        self.x = numpy.random.uniform(-1, 1, x_shape).astype(numpy.float32)
+        self.x = numpy.random.uniform(-1, 1, x_shape).astype(self.dtype)
         gy_shape = (2, 2) + tuple(
             conv.get_conv_outsize(d, k, s, p) for (d, k, s, p) in zip(
                 self.dims, self.ksize, self.stride, self.pad))
-        self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(numpy.float32)
+        self.gy = numpy.random.uniform(-1, 1, gy_shape).astype(self.dtype)
+
+        self.check_backward_options = {'eps': 1e-2, 'atol': 1e-3, 'rtol': 1e-3}
+        if self.dtype == numpy.float16:
+            self.check_backward_options = {
+                'eps': 2 ** -4, 'atol': 2 ** -4, 'rtol': 2 ** -4}
 
     @attr.gpu
     def test_im2col_consistency(self):
@@ -57,12 +63,12 @@ class TestConvolutionND(unittest.TestCase):
     def check_forward_consistency(self):
         x_cpu = chainer.Variable(self.x)
         y_cpu = self.link(x_cpu)
-        self.assertEqual(y_cpu.data.dtype, numpy.float32)
+        self.assertEqual(y_cpu.data.dtype, self.dtype)
 
         self.link.to_gpu()
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         y_gpu = self.link(x_gpu)
-        self.assertEqual(y_gpu.data.dtype, numpy.float32)
+        self.assertEqual(y_gpu.data.dtype, self.dtype)
 
         testing.assert_allclose(y_cpu.data, y_gpu.data.get())
 
@@ -80,7 +86,7 @@ class TestConvolutionND(unittest.TestCase):
     def check_backward(self, x_data, y_grad):
         gradient_check.check_backward(
             self.link, x_data, y_grad, (self.link.W, self.link.b),
-            eps=1e-2, atol=1e-3, rtol=1e-3)
+            **self.check_backward_options)
 
     @condition.retry(3)
     def test_backward_cpu(self):

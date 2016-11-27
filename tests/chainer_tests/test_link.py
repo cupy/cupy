@@ -138,6 +138,16 @@ class TestLink(unittest.TestCase):
         numpy.testing.assert_array_equal(self.link.y.data, l.y.data)
         numpy.testing.assert_array_equal(self.link.y.grad, gy)
 
+    def test_copyparams_uninitialized(self):
+        l = chainer.Link(x=(2, 3))
+        l.add_uninitialized_param('y')
+        self.link.x.data.fill(2)
+        self.link.y.data.fill(4)
+        l.copyparams(self.link)
+        numpy.testing.assert_array_equal(l.x.data, self.link.x.data)
+        self.assertTrue(hasattr(l, 'y'))
+        numpy.testing.assert_array_equal(l.y.data, self.link.y.data)
+
     def test_cleargrads(self):
         self.link.cleargrads()
         self.assertIsNone(self.link.x.grad)

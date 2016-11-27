@@ -37,7 +37,7 @@ Chainer depends on these Python packages:
 
 CUDA support
 
-* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 6.5, 7.0, 7.5
+* `CUDA <https://developer.nvidia.com/cuda-zone>`_ 6.5, 7.0, 7.5, 8.0
 * `filelock <https://filelock.readthedocs.org>`_
 
 cuDNN support
@@ -146,7 +146,7 @@ If you want to use cuDNN installed in other directory, please use ``CFLAGS``, ``
 Install Chainer for developers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Chainer uses Cython (>=0.23).
+Chainer uses Cython (>=0.24).
 Developers need to use Cython to regenerate C++ sources from ``pyx`` files.
 We recommend to use ``pip`` with ``-e`` option for editable mode::
 
@@ -217,6 +217,20 @@ We recommend to use ``--no-cache-dir`` option as ``pip`` sometimes uses cache::
 
 When you install Chainer without CUDA, and after that you want to use CUDA, please reinstall Chainer.
 You need to reinstall Chainer when you want to upgrade CUDA.
+
+
+Run Chainer with Docker
+-----------------------
+
+We provide the official Docker image.
+Use `nvidia-docker <https://github.com/NVIDIA/nvidia-docker>`_ command to run Chainer image with GPU.
+You can login to the environment with bash, and run the Python interpreter::
+
+  $ nvidia-docker run -it chainer/chainer /bin/bash
+
+Or, run the interpreter directly::
+
+  $ nvidia-docker run -it chainer/chainer /usr/bin/python
 
 
 What "recommend" means?

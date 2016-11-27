@@ -134,6 +134,8 @@ DummyDevice = DummyDeviceType()
 if available:
     memory_pool = cuda.MemoryPool()
     cuda.set_allocator(memory_pool.malloc)
+    pinned_memory_pool = cuda.PinnedMemoryPool()
+    cuda.set_pinned_memory_allocator(pinned_memory_pool.malloc)
 
 
 if six.PY2:
@@ -216,18 +218,26 @@ def to_gpu(array, device=None, stream=None):
 
         if stream is not None:
             ret = cupy.empty_like(array)
+            mem = None
             if array_dev.id == -1:
                 # cpu to gpu
-                src = array.copy(order='C')
+                mem = cupy.cuda.alloc_pinned_memory(array.nbytes)
+                src = numpy.frombuffer(
+                    mem, array.dtype, array.size).reshape(array.shape)
+                src[...] = array
                 ret.set(src, stream)
             else:
                 # gpu to gpu
                 with array_dev:
                     src = array.copy()
+                    event = cupy.cuda.Event()
+                    event.record()
+                stream.wait_event(event)
                 ret.data.copy_from_device_async(src.data, src.nbytes, stream)
 
             # to hold a reference until the end of the asynchronous memcpy
-            stream.add_callback(lambda *x: None, (src, ret))
+            stream.add_callback(lambda *x: None, (src, mem, ret))
+
             return ret
 
         if array_dev.id == -1:

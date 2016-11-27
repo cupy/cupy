@@ -87,9 +87,9 @@ def contrastive(x0, x1, y, margin=1):
     Args:
         x0 (~chainer.Variable): The first input variable. The shape should be
             (N, K), where N denotes the mini-batch size, and K denotes the
-            dimension of x0.
+            dimension of ``x0``.
         x1 (~chainer.Variable): The second input variable. The shape should be
-            the same as x0.
+            the same as ``x0``.
         y (~chainer.Variable): Labels. All values should be 0 or 1. The shape
             should be ``(N,)``, where N denotes the mini-batch size.
         margin (float): A parameter for contrastive loss. It should be positive

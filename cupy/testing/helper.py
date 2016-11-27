@@ -102,7 +102,8 @@ def _make_decorator(check_func, name, type_check, accept_error):
             # To avoid this difference, we need to ignore dimensions whose
             # values are negative.
             skip = False
-            if _contains_signed_and_unsigned(kw):
+            if _contains_signed_and_unsigned(kw) and \
+                    cupy_result.dtype in _unsigned_dtypes:
                 inds = _make_positive_indices(self, impl, args, kw)
                 if cupy_result.shape == ():
                     skip = inds[0].size == 0

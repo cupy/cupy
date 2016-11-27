@@ -17,7 +17,7 @@ Minimum requirements:
 
 Requirements for some features:
 - CUDA support
-  - CUDA 6.5, 7.0, 7.5
+  - CUDA 6.5, 7.0, 7.5, 8.0
   - filelock
   - g++ 4.8.4+
 - cuDNN support
@@ -109,6 +109,17 @@ pip install h5py
 ```
 
 
+## Run with Docker
+
+We provide the official Docker image.
+Use [nvidia-docker](https://github.com/NVIDIA/nvidia-docker) command to run Chainer image with GPU.
+You can login to the environment with bash, and run the Python interpreter.
+
+```
+$ nvidia-docker run -it chainer/chainer /bin/bash
+```
+
+
 ## Reference
 
 Tokui, S., Oono, K., Hido, S. and Clayton, J.,
@@ -127,6 +138,8 @@ The Twenty-ninth Annual Conference on Neural Information Processing Systems (NIP
 - Forum (Japanese): https://groups.google.com/forum/#!forum/chainer-jp
 - Twitter: https://twitter.com/ChainerOfficial
 - Twitter (Japanese): https://twitter.com/chainerjp
+- External examples: https://github.com/pfnet/chainer/wiki/External-examples
+- Research projects using Chainer: https://github.com/pfnet/chainer/wiki/Research-projects-using-Chainer
 
 ## License
 

@@ -441,8 +441,8 @@ Invalid operation is performed in: {0} (Forward)
 
         Args:
             hook(~chainer.function.FunctionHook):
-                the function hook to be registered.
-            name(str): The name of the function hook.
+                Function hook to be registered.
+            name(str): Name of the function hook.
                 name must be unique among function hooks
                 registered to the function. If ``None``,
                 default name of the function hook is used.
@@ -460,7 +460,7 @@ Invalid operation is performed in: {0} (Forward)
 
         Args:
             name(str): the name of the function hook
-            to be unregistered.
+                to be unregistered.
         """
         del self.local_function_hooks[name]
 
