@@ -92,10 +92,7 @@ def flatnonzero(a):
 def where(condition, x=None, y=None):
     """Return elements, either from x or y, depending on condition.
 
-    .. note::
-
-       Currently CuPy doesn't support ``where(condition)``, that NumPy
-       supports.
+    If only condition is given, return ``condition.nonzero()``.
 
     Args:
         condition (cupy.ndarray): When True, take x, otherwise take y.
@@ -104,7 +101,9 @@ def where(condition, x=None, y=None):
 
     Returns:
         cupy.ndarray: Each element of output contains elements of ``x`` when
-            ``condition`` is ``True``, otherwise elements of ``y``.
+            ``condition`` is ``True``, otherwise elements of ``y``. If only
+            ``condition`` is given, return the tuple ``condition.nonzero()``,
+            the indices where ``condition`` is True.
 
     """
 
@@ -113,8 +112,7 @@ def where(condition, x=None, y=None):
     if missing == 1:
         raise ValueError("Must provide both 'x' and 'y' or neither.")
     if missing == 2:
-        # TODO(unno): return nonzero(cond)
-        return NotImplementedError()
+        return nonzero(condition)
 
     return _where_ufunc(condition.astype('?'), x, y)
 
