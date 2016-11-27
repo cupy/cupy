@@ -1,6 +1,7 @@
 import collections
 import os
 import time
+import types
 
 import six
 
@@ -198,6 +199,8 @@ class Trainer(object):
                 recover the configuration before any updates.
 
         """
+        if isinstance(extension, types.FunctionType):
+            name = "lambda"
         if name is None:
             name = getattr(extension, 'name', None)
             if name is None:
