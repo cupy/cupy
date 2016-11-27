@@ -1023,7 +1023,9 @@ cdef class ndarray:
 
         # boolean array indexing
         if isinstance(slices, ndarray) and slices.dtype == bool:
-            assert internal.vector_equal(self._shape, slices._shape)
+            if not internal.vector_equal(self._shape, slices._shape):
+                raise ValueError('Boolean array indexing for different size array '
+                                 'is not supported yet.')
             return _boolean_array_indexing(self, slices)
 
         # Expand ellipsis into empty slices
