@@ -1850,18 +1850,15 @@ cdef _boolean_array_indexing_nth = ElementwiseKernel(
 
 
 cpdef ndarray _boolean_array_indexing(ndarray a, ndarray boolean_array):
-    cdef int i, n_true
-    nth = ndarray(boolean_array.shape, dtype=int)
-    n_true = 0
+    a = a.flatten()
     boolean_array = boolean_array.flatten()
-    for i in range(boolean_array.size):
-        if boolean_array[i]:
-            nth[i] = boolean_array[:i + 1].sum() - 1
-            n_true += 1
+    nth_true_array = scan(boolean_array.astype(int)) - 1  # starts with 0
 
+    n_true = int(nth_true_array.max()) + 1
     out_shape = (n_true,)
     out = ndarray(out_shape, dtype=a.dtype)
-    return _boolean_array_indexing_nth(a, boolean_array, nth, out)
+
+    return _boolean_array_indexing_nth(a, boolean_array, nth_true_array, out)
 
 
 cpdef ndarray _take(ndarray a, indices, axis=None, ndarray out=None):
