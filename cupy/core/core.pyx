@@ -5,7 +5,6 @@ import sys
 import numpy
 import six
 
-import cupy
 from cupy.core import flags
 from cupy.cuda import stream
 from cupy import util
@@ -1033,21 +1032,10 @@ cdef class ndarray:
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
         cdef vector.vector[Py_ssize_t] shape, strides
-        if isinstance(slices, ndarray):
-            pass
-        elif isinstance(slices, numpy.ndarray):
-            slices = cupy.asarray(slices)
-        elif not isinstance(slices, tuple):
+        if not isinstance(slices, tuple):
             slices = [slices]
         else:
             slices = list(slices)
-
-        # boolean array indexing
-        if isinstance(slices, ndarray) and slices.dtype == bool:
-            if not internal.vector_equal(self._shape, slices._shape):
-                raise ValueError('Boolean array indexing for different size array '
-                                 'is not supported yet.')
-            return _boolean_array_indexing(self, slices)
 
         # Expand ellipsis into empty slices
         ellipsis = -1
@@ -1080,9 +1068,15 @@ cdef class ndarray:
             if isinstance(s, ndarray):
                 if issubclass(s.dtype.type, numpy.integer):
                     advanced = True
+                elif issubclass(s.dtype.type, numpy.bool_):
+                    if i == 0 and internal.vector_equal(self._shape, s._shape):
+                        return _boolean_array_indexing(self, s)
+                    else:
+                        raise ValueError('Boolean array indexing is supported '
+                                         'only for same sized array.')
                 else:
-                    raise IndexError('Advanced indexing with ' +
-                                     'non-integer array is not supported')
+                    raise IndexError('Unsupported dtype for indexing: {}'
+                                     .format(s.dtype.type))
 
         if advanced:
             # split slices that can be handled by basic-indexing
