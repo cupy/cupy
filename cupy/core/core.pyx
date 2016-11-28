@@ -1027,8 +1027,8 @@ cdef class ndarray:
            array([1, 0])
 
         """
-        # supports basic indexing (by slices, ints or Ellipsis).
-        # also supports indexing by integer arrays.
+        # supports basic indexing (by slices, ints or Ellipsis) and
+        # some parts of advanced indexing by integer or boolean arrays.
         # TODO(beam2d): Support the advanced indexing of NumPy.
         cdef Py_ssize_t i, j, offset, ndim, n_newaxes, n_ellipses, ellipsis
         cdef Py_ssize_t ellipsis_sizem, s_start, s_stop, s_step, dim, ind
