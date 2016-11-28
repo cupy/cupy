@@ -16,8 +16,6 @@ from cupy import testing
      'indexes': (slice(None), slice(None, -1), slice(-2))},
     {'shape': (2, 3, 4), 'transpose': (2, 0, 1),
      'indexes': (slice(None), slice(None, 1), slice(2))},
-    {'shape': (2, 3, 4), 'transpose': None,
-     'indexes': numpy.random.choice([False, True], (2, 3, 4))},
     {'shape': (2, 3, 5), 'transpose': None,
      'indexes': (slice(None, None, -1), slice(1, None, -1), slice(4, 1, -2))},
     {'shape': (2, 3, 5), 'transpose': (2, 0, 1),
@@ -56,8 +54,6 @@ from cupy import testing
     {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -10, -1),)},
     {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -11, -1),)},
     {'shape': (10,), 'transpose': None, 'indexes': (slice(-5, -12, -1),)},
-    {'shape': (10,), 'transpose': None,
-     'indexes': numpy.random.choice([False, True], (10,))},
 )
 @testing.gpu
 class TestArrayIndexingParameterized(unittest.TestCase):
