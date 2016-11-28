@@ -74,10 +74,10 @@ def pad(array, pad_width, mode, **kwargs):
     pad_width = _validate_lengths(narray, pad_width)
     allowedkwargs = {
         'constant': ['constant_values'],
-        }
+    }
     kwdefaults = {
         'constant_values': 0,
-        }
+    }
     if mode != 'constant':
         raise NotImplementedError
     for key in kwargs:
