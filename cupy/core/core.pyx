@@ -2062,7 +2062,7 @@ cpdef ndarray _diagonal(ndarray a, Py_ssize_t offset=0, Py_ssize_t axis1=0,
 
 
 cpdef ndarray _adv_getitem(ndarray a, slices):
-    # slices consist of either None or ndarray of dim>=1
+    # slices consist of either slice(None) or ndarray
     cdef int i, p, li, ri
     cdef ndarray take_idx, input_flat, out_flat, o
 
