@@ -1086,12 +1086,10 @@ cdef class ndarray:
                 elif (isinstance(s, ndarray) and
                         issubclass(s.dtype.type, numpy.integer)):
                     basic_slices.append(slice(None))
-                    if s.ndim == 0:
-                        s = s.reshape((1,))
                     adv_slices.append(s)
                 elif isinstance(s, int):
                     basic_slices.append(slice(None))
-                    adv_slices.append(array(s, ndmin=1))
+                    adv_slices.append(array(s, ndmin=0))
                 else:
                     raise IndexError(
                         'only integers, slices (`:`), ellipsis (`...`),'
