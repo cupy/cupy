@@ -295,7 +295,10 @@ class Trainer(object):
                             entry.extension(self)
         finally:
             for _, entry in extensions:
-                finalize = entry.extension.finalize
+                if isinstance(entry.extension, types.FunctionType):
+                    finalize = None
+                else:
+                    finalize = entry.extension.finalize
                 if finalize:
                     finalize()
             self.updater.finalize()
