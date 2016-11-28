@@ -43,7 +43,9 @@ class TestArrayAdvancedIndexingPerm(unittest.TestCase):
 
 @testing.parameterize(
     {'shape': (2, 3, 4), 'indexes': (None, [1, 0], [0, 2], slice(None))},
-    {'shape': (2, 3, 4), 'indexes': (None, [0, 1], None, [2, 1], slice(None))}
+    {'shape': (2, 3, 4), 'indexes': (None, [0, 1], None, [2, 1], slice(None))},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0])},
+    {'shape': (2, 3, 4), 'indexes': [1, -1]},
 )
 @testing.gpu
 class TestArrayAdvancedIndexingParametrized(unittest.TestCase):
