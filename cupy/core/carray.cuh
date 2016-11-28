@@ -3,6 +3,10 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
+#ifdef _MSC_VER
+typedef ptrdiff_t ssize_t;
+#endif
+
 // float16
 class float16
 {
