@@ -21,7 +21,8 @@ def packbits(myarray):
     .. seealso:: :func:`numpy.packbits`
     """
     if myarray.dtype.kind not in 'biu':
-        raise TypeError('Expected an input array of integer or boolean data type')
+        raise TypeError(
+            'Expected an input array of integer or boolean data type')
 
     if myarray.size == 0:
         return cupy.empty_like(myarray)
