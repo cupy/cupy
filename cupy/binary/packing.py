@@ -31,11 +31,10 @@ def packbits(myarray):
     packed = cupy.zeros((packed_size,), dtype=cupy.uint8)
 
     cupy.ElementwiseKernel(
-        'raw T myarray, raw int32 myarray_size',
-        'uint8 packed',
+        'raw T myarray, raw int32 myarray_size', 'uint8 packed',
         '''for (int j = 0; j < 8; ++j) {
             int k = i * 8 + j;
-            packed += (k < myarray_size && myarray[k] ? 1 : 0) << (7 - j);
+            packed |= (k < myarray_size && myarray[k] ? 1 : 0) << (7 - j);
         }''',
         'packbits_kernel'
     )(myarray, myarray.size, packed)
