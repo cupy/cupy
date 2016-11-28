@@ -20,10 +20,11 @@ class TestArrayReduction(unittest.TestCase):
         a = testing.shaped_random((3, 1000), xp, dtype)
         return a.max(axis=0)
 
+    @testing.attr.slow
     @testing.for_dtypes(['?', 'b', 'h', 'e'])
     @testing.numpy_cupy_allclose()
     def test_max_axis_huge(self, xp, dtype):
-        a = testing.shaped_random((2, 1024, 1024), xp, dtype)
+        a = testing.shaped_random((2048, 1024, 1024), xp, dtype)
         return a.max(axis=0)
 
     @testing.for_all_dtypes()
@@ -62,10 +63,11 @@ class TestArrayReduction(unittest.TestCase):
         a = testing.shaped_random((3, 1000), xp, dtype)
         return a.min(axis=0)
 
+    @testing.attr.slow
     @testing.for_dtypes(['?', 'b', 'h', 'e'])
     @testing.numpy_cupy_allclose()
     def test_min_axis_huge(self, xp, dtype):
-        a = testing.shaped_random((2, 1024, 1024), xp, dtype)
+        a = testing.shaped_random((2048, 1024, 1024), xp, dtype)
         return a.min(axis=0)
 
     @testing.for_all_dtypes()
