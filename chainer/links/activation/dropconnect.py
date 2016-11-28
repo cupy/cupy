@@ -11,7 +11,7 @@ class Dropconnect(link.Link):
     """Fully-connected layer with dropconnect regularization.
 
     Args:
-        in_size (int): Dimension of input vectors. If None, parameter
+        in_size (int): Dimension of input vectors. If ``None``, parameter
             initialization will be deferred until the first forward data pass
             at which time the size will be determined.
         out_size (int): Dimension of output vectors.
@@ -42,6 +42,7 @@ class Dropconnect(link.Link):
         self.out_size = out_size
         self.ratio = ratio
 
+        # Square root is for the compatibility with Linear Function.
         self._W_initializer = initializers._get_initializer(
             initialW, math.sqrt(wscale))
 
@@ -66,12 +67,12 @@ class Dropconnect(link.Link):
                 Batch of input vectors.
             train (bool):
                 If ``True``, executes dropconnect.
-                Otherwise, dropconnect link work as linear unit.
+                Otherwise, dropconnect link works as a linear unit.
             mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
                 If ``None``, randomized dropconnect mask is generated.
                 If not ``None``, this value is used as dropconnect mask.
-                And scaling will not be executed.
-                Then mask shape must be ``(M, N)``.
+                Scaling will not be executed.
+                The mask shape must be ``(M, N)``.
                 Main purpose of latter option is debugging.
 
         Returns:

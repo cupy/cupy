@@ -62,18 +62,16 @@ class TestDropconnect(unittest.TestCase):
     @condition.retry(3)
     def test_forward_gpu(self):
         self.check_forward(
-            cuda.to_gpu(self.x), cuda.to_gpu(self.W), cuda.to_gpu(self.b),
-            cuda.to_gpu(self.x.dot(self.W.T) + self.b))
+            cuda.to_gpu(self.x), cuda.to_gpu(self.W), cuda.to_gpu(self.b))
 
     @attr.gpu
     @condition.retry(3)
     def test_forward_gpu_nobias(self):
         self.check_forward(
-            cuda.to_gpu(self.x), cuda.to_gpu(self.W), None,
-            cuda.to_gpu(self.x.dot(self.W.T)))
+            cuda.to_gpu(self.x), cuda.to_gpu(self.W), None)
 
     def check_backward(self, x_data, W_data, b_data, y_grad):
-        args = (x_data, W_data)
+        args = x_data, W_data
         if b_data is not None:
             args = args + (b_data,)
 

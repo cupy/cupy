@@ -99,12 +99,12 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
             If mask is not ``None``, this value is ignored.
         train (bool):
             If ``True``, executes dropconnect.
-            Otherwise, dropconnect funcation work as linear function.
+            Otherwise, dropconnect funcation works as a linear function.
         mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
             If ``None``, randomized dropconnect mask is generated.
             If not ``None``, this value is used as dropconnect mask.
-            And scaling will not be executed.
-            Then mask shape must be ``(M, N)``.
+            Scaling will not be executed.
+            The mask shape must be ``(M, N)``.
             Main purpose of latter option is debugging.
 
     Returns:
