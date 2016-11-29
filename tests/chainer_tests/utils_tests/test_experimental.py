@@ -7,32 +7,24 @@ from chainer import utils
 
 
 def f():
-    utils.experimental('test.f')
-
-
-def g():
-    utils.experimental()
-
-
-def h(x):
-    utils.experimental()
+    utils.experimental('f')
 
 
 class C(object):
 
     @staticmethod
     def static_method():
-        utils.experimental()
+        utils.experimental('static_method')
 
     @classmethod
     def class_method(cls):
-        utils.experimental()
+        utils.experimental('C.class_method')
 
     def __init__(self):
-        utils.experimental()
+        utils.experimental('C')
 
     def f(self):
-        utils.experimental()
+        utils.experimental('C.f')
 
 
 class TestExperimental(unittest.TestCase):
@@ -51,16 +43,7 @@ class TestExperimental(unittest.TestCase):
 
         self.assertEqual(len(w), 1)
         self.assertIs(w[0].category, FutureWarning)
-        self.assertIn('test.f is an experimental API.', str(w[0].message))
-
-    def test_experimental_with_no_api_name(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            g()
-
-        self.assertEqual(len(w), 1)
-        self.assertIs(w[0].category, FutureWarning)
-        self.assertIn('g is an experimental API.', str(w[0].message))
+        self.assertIn('f is an experimental API.', str(w[0].message))
 
     def test_experimental_with_no_api_name_2(self):
         with warnings.catch_warnings(record=True) as w:

@@ -1,5 +1,4 @@
 import chainer
-import inspect
 import warnings
 
 
@@ -14,52 +13,27 @@ def experimental(api_name=None):
     which is ``False`` by default.
 
     The basic usage is to call it in the function or method we want to
-    mark as experimental.
-
-    By default, if the caller is a function, its name is used as an API name.
+    mark as experimental along with the API name.
 
     >>> from chainer.utils import experimental
     ...
     ... def f(x):
-    ...   experimental()
+    ...   experimental('chainer.foo.bar.f')
     ...   # concrete implementation of f follows
     ...
     ... f(1)
-    FutureWarning: f is an experimental API. \
+    FutureWarning: chainer.experimental.f is an experimental API. \
 The interface can change in the future.
 
-    If the caller is a method or a class mehtod,
-    ``<class name>.<method name>`` is used instead.
-
-    >>> class C(object):
-    ...   def f(self):
-    ...     experimental()
-    ...
-    ... c = C()
-    ... c.f()
-    FutureWarning: C.f is an experimental API. \
-The interface can change in the future
-
-    We can also define the name of experimental
-    API name with ``api_name`` argument.
-    This function will use it in the warning issued.
-
-    >>> def g(x):
-    ...   experimental('My function')
-    ...
-    ... g(1)
-    FutureWarning: My function is an experimental API. \
-The interface can change in the future
-
-    If we want to mark a whole class, you should call this function
-    in its `__init__` method.
+    We can also make a whole class experimental. In that case,
+    we should call this function in its `__init__` method.
 
     >>> class C():
     ...   def __init__(self):
-    ...     experimental()
+    ...     experimental('chainer.foo.C')
     ...
     ... C()
-    FutureWarning: C is an experimental API. \
+    FutureWarning: chainer.foo.C is an experimental API. \
 The interface can change in the future
 
     If we want to mark ``__init__`` method only, rather than class itself.
@@ -73,32 +47,17 @@ The interface can change in the future
     FutureWarning: D.__init__ is an experimental API. \
 The interface can change in the future
 
+    Currently, we do not have any sophisticated way to mark some usage of
+    non-experimental function as experimental.
+    But we can support such usage by explicitly branching it.
+
+    >>> def g(x, experimental_arg=None):
+    ...   if experimental_arg is not None:
+    ...     experimental('experimental_arg of chainer.foo.g')
+
     Args:
         api_name(str): The name of an API marked as experimental.
-            If it is ``None``, it is inferred from the
-            caller by the following rule:
-            If the caller is a function, its name is used.
-            If the caller is a ``__init__`` method of a class,
-            the name of the class is used.
-            If the caller is a class method or
-            a method other than ``__init__``,
-            ``<class name>.<method name>`` is used.
     """
-
-    if api_name is None:
-        api_name = inspect.stack()[1][3]
-
-        frame = inspect.stack()[1][0]
-        f_locals = frame.f_locals
-        if 'self' in f_locals:  # The caller is a method.
-            class_name = f_locals['self'].__class__.__name__
-            if api_name == '__init__':
-                api_name = class_name
-            else:
-                api_name = class_name + '.' + api_name
-        elif 'cls' in f_locals:  # The caller is class method.
-            class_name = f_locals['cls'].__name__
-            api_name = class_name + '.' + api_name
 
     if not chainer.disable_experimental_feature_warning:
         warnings.warn('{} is an experimental API. '
