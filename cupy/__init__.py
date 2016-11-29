@@ -160,6 +160,9 @@ invert = binary.elementwise.invert
 left_shift = binary.elementwise.left_shift
 right_shift = binary.elementwise.right_shift
 
+packbits = binary.packing.packbits
+unpackbits = binary.packing.unpackbits
+
 binary_repr = numpy.binary_repr
 
 # -----------------------------------------------------------------------------
