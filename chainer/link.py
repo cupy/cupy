@@ -414,6 +414,12 @@ class Link(object):
         dst = self.__dict__
         for name in self._params:
             dst[name].copydata(src[name])
+        # tuple() here is needed to avoid conflicts with add_param
+        for name in tuple(self._uninitialized_params):
+            if name in src:
+                src_param = src[name]
+                self.add_param(name, src_param.shape, src_param.dtype)
+                dst[name].copydata(src_param)
 
     def cleargrads(self):
         """Clears all gradient arrays.
@@ -424,8 +430,9 @@ class Link(object):
         """
         for param in self.params():
             param.cleargrad()
-        for param in self._uninitialized_params.values():
-            param._cleared = True
+        for link in self.links():
+            for param in link._uninitialized_params.values():
+                param._cleared = True
 
     def zerograds(self):
         """Initializes all gradient arrays by zero.
@@ -442,8 +449,9 @@ class Link(object):
             DeprecationWarning)
         for param in self.params():
             param.zerograd()
-        for param in self._uninitialized_params:
-            param._zeroed = True
+        for link in self.links():
+            for param in link._uninitialized_params.values():
+                param._zeroed = True
 
     def addgrads(self, link):
         """Accumulates gradient values from given link.
