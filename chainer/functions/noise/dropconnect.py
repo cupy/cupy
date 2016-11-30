@@ -96,16 +96,16 @@ def dropconnect(x, W, b=None, ratio=.5, train=True, mask=None):
         b (~chainer.Variable): Bias variable (optional) of shape ``(M,)``.
         ratio (float):
             Dropconnect ratio.
-            If mask is not ``None``, this value is ignored.
+            If ``mask`` is not ``None``, this value is ignored.
         train (bool):
             If ``True``, executes dropconnect.
-            Otherwise, dropconnect funcation works as a linear function.
+            Otherwise, dropconnect function works as a linear function.
         mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
             If ``None``, randomized dropconnect mask is generated.
-            If not ``None``, this value is used as dropconnect mask.
+            If not ``None``, this value is used as a dropconnect mask.
             Scaling will not be executed.
             The mask shape must be ``(M, N)``.
-            Main purpose of latter option is debugging.
+            Main purpose of the latter option is debugging.
 
     Returns:
         ~chainer.Variable: Output variable.

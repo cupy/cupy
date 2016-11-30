@@ -70,10 +70,10 @@ class Dropconnect(link.Link):
                 Otherwise, dropconnect link works as a linear unit.
             mask (chainer.Variable or :class:`numpy.ndarray` or cupy.ndarray):
                 If ``None``, randomized dropconnect mask is generated.
-                If not ``None``, this value is used as dropconnect mask.
+                If not ``None``, this value is used as a dropconnect mask.
                 Scaling will not be executed.
                 The mask shape must be ``(M, N)``.
-                Main purpose of latter option is debugging.
+                Main purpose of the latter option is debugging.
 
         Returns:
             ~chainer.Variable: Output of the dropconnect layer.
