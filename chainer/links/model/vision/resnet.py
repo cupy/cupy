@@ -20,6 +20,7 @@ from chainer.functions.math.sum import sum
 from chainer.functions.pooling.average_pooling_2d import average_pooling_2d
 from chainer.functions.pooling.max_pooling_2d import max_pooling_2d
 from chainer.initializers import constant
+from chainer.initializers import normal
 from chainer import link
 from chainer.links.connection.convolution_2d import Convolution2D
 from chainer.links.connection.linear import Linear
@@ -78,7 +79,7 @@ class ResNet50Layers(link.Chain):
             kwargs = {'initialW': constant.Zero()}
         else:
             # employ default initializers used in the original paper
-            kwargs = {'initialW': None}
+            kwargs = {'initialW': normal.HeNormal(scale=1.0)}
         super(ResNet50Layers, self).__init__(
             conv1=Convolution2D(3, 64, 7, 2, 3, **kwargs),
             bn1=BatchNormalization(64),
