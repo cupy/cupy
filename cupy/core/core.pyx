@@ -14,7 +14,6 @@ cimport cython
 from libcpp cimport vector
 
 from cupy.core cimport internal
-from cupy.cuda.common cimport *
 from cupy.cuda cimport cublas
 from cupy.cuda cimport runtime
 from cupy.cuda cimport memory

@@ -1,5 +1,3 @@
-from cupy.cuda.common cimport *
-
 cdef void stable_sort_byte(void *start, ssize_t num)
 cdef void stable_sort_ubyte(void *start, ssize_t num)
 cdef void stable_sort_short(void *start, ssize_t num)
