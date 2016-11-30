@@ -6,7 +6,6 @@ Use ../ptb/download.py to download 'ptb.train.txt'.
 """
 import argparse
 import collections
-import time
 
 import numpy as np
 import six
@@ -14,8 +13,13 @@ import six
 import chainer
 from chainer import cuda
 import chainer.functions as F
+import chainer.initializers as I
 import chainer.links as L
 import chainer.optimizers as O
+from chainer import reporter
+from chainer import training
+from chainer.training import extensions
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', '-g', default=-1, type=int,
@@ -37,13 +41,16 @@ parser.add_argument('--out-type', '-o', choices=['hsm', 'ns', 'original'],
                     default='hsm',
                     help='output model type ("hsm": hierarchical softmax, '
                     '"ns": negative sampling, "original": no approximation)')
+parser.add_argument('--out', default='result',
+                    help='Directory to output the result')
 parser.add_argument('--test', dest='test', action='store_true')
 parser.set_defaults(test=False)
 
 args = parser.parse_args()
+
 if args.gpu >= 0:
+    chainer.cuda.get_device(args.gpu).use()
     cuda.check_cuda_available()
-xp = cuda.cupy if args.gpu >= 0 else np
 
 print('GPU: {}'.format(args.gpu))
 print('# unit: {}'.format(args.unit))
@@ -59,70 +66,124 @@ class ContinuousBoW(chainer.Chain):
 
     def __init__(self, n_vocab, n_units, loss_func):
         super(ContinuousBoW, self).__init__(
-            embed=F.EmbedID(n_vocab, n_units),
+            embed=F.EmbedID(
+                n_vocab, n_units, initialW=I.Uniform(1. / n_units)),
             loss_func=loss_func,
         )
 
     def __call__(self, x, context):
-        e = model.embed(context)
-        h = F.sum(e, axis=0) * (1. / len(context.data))
-        return self.loss_func(h, x)
+        e = self.embed(context)
+        h = F.sum(e, axis=1) * (1. / context.data.shape[1])
+        loss = self.loss_func(h, x)
+        reporter.report({'loss': loss}, self)
+        return loss
 
 
 class SkipGram(chainer.Chain):
 
     def __init__(self, n_vocab, n_units, loss_func):
         super(SkipGram, self).__init__(
-            embed=L.EmbedID(n_vocab, n_units),
+            embed=L.EmbedID(
+                n_vocab, n_units, initialW=I.Uniform(1. / n_units)),
             loss_func=loss_func,
         )
 
     def __call__(self, x, context):
-        e = model.embed(context)
+        e = self.embed(context)
         shape = e.data.shape
-        x = F.broadcast_to(x, (shape[0], shape[1]))
+        x = F.broadcast_to(x[:, None], (shape[0], shape[1]))
         e = F.reshape(e, (shape[0] * shape[1], shape[2]))
         x = F.reshape(x, (shape[0] * shape[1],))
-        return self.loss_func(e, x)
+        loss = self.loss_func(e, x)
+        reporter.report({'loss': loss}, self)
+        return loss
 
 
 class SoftmaxCrossEntropyLoss(chainer.Chain):
+
     def __init__(self, n_in, n_out):
         super(SoftmaxCrossEntropyLoss, self).__init__(
-            out=L.Linear(n_in, n_out),
+            out=L.Linear(n_in, n_out, initialW=0),
         )
-        self.out.W.data[...] = 0
 
     def __call__(self, x, t):
         return F.softmax_cross_entropy(self.out(x), t)
 
 
-def calculate_loss(model, dataset, position):
-    # use random window size in the same way as the original word2vec
-    # implementation.
-    w = np.random.randint(args.window - 1) + 1
-    # offset is [-w, ..., -1, 1, ..., w]
-    offset = np.concatenate([np.arange(-w, 0), np.arange(1, w + 1)])
-    pos = np.expand_dims(position, 0) + np.expand_dims(offset, 1)
-    d = xp.asarray(dataset.take(pos))
-    context = chainer.Variable(d)
-    x_data = xp.asarray(dataset.take(position))
-    x = chainer.Variable(x_data)
-    return model(x, context)
+class WindowIterator(chainer.dataset.Iterator):
+
+    def __init__(self, dataset, window, batch_size, repeat=True):
+        self.dataset = np.array(dataset, np.int32)
+        self.window = window
+        self.batch_size = batch_size
+        self._repeat = repeat
+
+        self.order = np.random.permutation(
+            len(dataset) - window * 2).astype(np.int32)
+        self.order += window
+        self.current_position = 0
+        self.epoch = 0
+        self.is_new_epoch = False
+
+    def __next__(self):
+        if not self._repeat and self.epoch > 0:
+            raise StopIteration
+
+        i = self.current_position
+        i_end = i + self.batch_size
+        position = self.order[i: i_end]
+        w = np.random.randint(self.window - 1) + 1
+        offset = np.concatenate([np.arange(-w, 0), np.arange(1, w + 1)])
+        pos = position[:, None] + offset[None, :]
+        context = self.dataset.take(pos)
+        center = self.dataset.take(position)
+
+        if i_end >= len(self.order):
+            np.random.shuffle(self.order)
+            self.epoch += 1
+            self.is_new_epoch = True
+            self.current_position = 0
+        else:
+            self.is_new_epoch = False
+            self.current_position = i_end
+
+        return center, context
+
+    @property
+    def epoch_detail(self):
+        return self.epoch + float(self.current_position) / len(self.order)
+
+    def serialize(self, serializer):
+        self.current_position = serializer('current_position',
+                                           self.current_position)
+        self.epoch = serializer('epoch', self.epoch)
+        self.is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
+        if self._order is not None:
+            serializer('_order', self._order)
+
+
+def convert(batch, device):
+    center, context = batch
+    if device >= 0:
+        center = cuda.to_gpu(center)
+        context = cuda.to_gpu(context)
+    return center, context
 
 
 if args.gpu >= 0:
     cuda.get_device(args.gpu).use()
 
-train, _, _ = chainer.datasets.get_ptb_words()
+train, val, _ = chainer.datasets.get_ptb_words()
+counts = collections.Counter(train)
+counts.update(collections.Counter(val))
+n_vocab = max(train) + 1
+
 if args.test:
     train = train[:100]
+    val = val[:100]
 
 vocab = chainer.datasets.get_ptb_words_vocabulary()
 index2word = {wid: word for word, wid in six.iteritems(vocab)}
-
-counts = collections.Counter(train)
-n_vocab = max(train) + 1
 
 print('n_vocab: %d' % n_vocab)
 print('data length: %d' % len(train))
@@ -148,49 +209,26 @@ elif args.model == 'cbow':
 else:
     raise Exception('Unknown model type: {}'.format(args.model))
 
-model.embed.W.data[...] = np.random.uniform(-1, 1, (n_vocab, args.unit)) \
-                                   .astype(np.float32) / args.unit
-
 if args.gpu >= 0:
     model.to_gpu()
 
-dataset = np.array(train, dtype=np.int32)
 
 optimizer = O.Adam()
 optimizer.setup(model)
 
-begin_time = time.time()
-cur_at = begin_time
-word_count = 0
-skip = (len(dataset) - args.window * 2) // args.batchsize
-next_count = 100000
-for epoch in range(args.epoch):
-    accum_loss = 0
-    print('epoch: {0}'.format(epoch))
-    indexes = np.random.permutation(skip)
-    position = np.arange(0, args.batchsize * skip, skip) + args.window
-    for i in indexes:
-        if word_count >= next_count:
-            now = time.time()
-            duration = now - cur_at
-            throughput = 100000. / (now - cur_at)
-            print('{} words, {:.2f} sec, {:.2f} Kwords/sec'.format(
-                word_count, duration, throughput / 1000.))
-            next_count += 100000
-            cur_at = now
+train_iter = WindowIterator(train, args.window, args.batchsize)
+val_iter = WindowIterator(val, args.window, args.batchsize, repeat=False)
+updater = training.StandardUpdater(
+    train_iter, optimizer, converter=convert, device=args.gpu)
+trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-        loss = calculate_loss(model, dataset, position)
-        accum_loss += loss.data
-        word_count += args.batchsize
-
-        model.zerograds()
-        loss.backward()
-        del loss
-        optimizer.update()
-
-        position += 1
-
-    print(accum_loss)
+trainer.extend(extensions.Evaluator(
+    val_iter, model, converter=convert, device=args.gpu))
+trainer.extend(extensions.LogReport())
+trainer.extend(extensions.PrintReport(
+    ['epoch', 'main/loss', 'validation/main/loss']))
+trainer.extend(extensions.ProgressBar())
+trainer.run()
 
 with open('word2vec.model', 'w') as f:
     f.write('%d %d\n' % (len(index2word), args.unit))

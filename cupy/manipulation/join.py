@@ -2,6 +2,7 @@ import numpy
 import six
 
 import cupy
+from cupy import core
 
 
 def column_stack(tup):
@@ -75,16 +76,7 @@ def concatenate(tup, axis=0):
         raise ValueError('Cannot concatenate from empty tuple')
 
     dtype = numpy.find_common_type([a.dtype for a in tup], [])
-    ret = cupy.empty(shape, dtype=dtype)
-
-    skip = (slice(None),) * axis
-    i = 0
-    for a in tup:
-        aw = a.shape[axis]
-        ret[skip + (slice(i, i + aw),)] = a
-        i += aw
-
-    return ret
+    return core.concatenate(tup, axis, shape, dtype)
 
 
 def dstack(tup):
@@ -100,7 +92,7 @@ def dstack(tup):
     .. seealso:: :func:`numpy.dstack`
 
     """
-    return concatenate(cupy.atleast_3d(*tup), 2)
+    return concatenate([cupy.atleast_3d(m) for m in tup], 2)
 
 
 def hstack(tup):
@@ -123,7 +115,7 @@ def hstack(tup):
     axis = 1
     if arrs[0].ndim == 1:
         axis = 0
-    return concatenate(tup, axis)
+    return concatenate(arrs, axis)
 
 
 def vstack(tup):
@@ -143,7 +135,7 @@ def vstack(tup):
     .. seealso:: :func:`numpy.dstack`
 
     """
-    return concatenate(cupy.atleast_2d(*tup), 0)
+    return concatenate([cupy.atleast_2d(m) for m in tup], 0)
 
 
 def stack(tup, axis=0):

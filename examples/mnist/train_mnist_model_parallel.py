@@ -14,12 +14,15 @@ import train_mnist
 # Network definition
 class ParallelMLP(chainer.Chain):
 
-    def __init__(self, n_in, n_units, n_out, gpu0, gpu1):
+    def __init__(self, n_units, n_out, gpu0, gpu1):
         super(ParallelMLP, self).__init__(
-            first0=train_mnist.MLP(n_in, n_units // 2, n_units).to_gpu(gpu0),
-            first1=train_mnist.MLP(n_in, n_units // 2, n_units).to_gpu(gpu1),
-            second0=train_mnist.MLP(n_units, n_units // 2, n_out).to_gpu(gpu0),
-            second1=train_mnist.MLP(n_units, n_units // 2, n_out).to_gpu(gpu1),
+            # the input size, 784, is inferred
+            first0=train_mnist.MLP(n_units // 2, n_units).to_gpu(gpu0),
+            first1=train_mnist.MLP(n_units // 2, n_units).to_gpu(gpu1),
+
+            # the input size, n_units, is inferred
+            second0=train_mnist.MLP(n_units // 2, n_out).to_gpu(gpu0),
+            second1=train_mnist.MLP(n_units // 2, n_out).to_gpu(gpu1),
         )
         self.gpu0 = gpu0
         self.gpu1 = gpu1
@@ -46,7 +49,7 @@ class ParallelMLP(chainer.Chain):
 def main():
     parser = argparse.ArgumentParser(description='Chainer example: MNIST')
     parser.add_argument('--batchsize', '-b', type=int, default=100,
-                        help='Number of images in each mini batch')
+                        help='Number of images in each mini-batch')
     parser.add_argument('--epoch', '-e', default=20, type=int,
                         help='Number of sweeps over the dataset to train')
     parser.add_argument('--gpu0', '-g', default=0, type=int,
@@ -69,7 +72,7 @@ def main():
 
     # See train_mnist.py for the meaning of these lines
 
-    model = L.Classifier(ParallelMLP(784, args.unit, 10, args.gpu0, args.gpu1))
+    model = L.Classifier(ParallelMLP(args.unit, 10, args.gpu0, args.gpu1))
     chainer.cuda.get_device(args.gpu0).use()
 
     optimizer = chainer.optimizers.Adam()
@@ -86,11 +89,11 @@ def main():
 
     trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu0))
     trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.snapshot())
+    trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
-         'main/accuracy', 'validation/main/accuracy']))
+         'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
     trainer.extend(extensions.ProgressBar())
 
     if args.resume:

@@ -1,3 +1,4 @@
+import threading
 import unittest
 
 import mock
@@ -277,10 +278,11 @@ class TestFunction(unittest.TestCase):
         y1, y2 = f.outputs
         # As _y1 is alive, this weak ref is also alive
         y1_ref = y1()
-        self.assertTrue(y1_ref is not None and y1_ref.creator is None)
+        self.assertIsNotNone(y1_ref)
+        self.assertIsNone(y1_ref.creator)
         # This weak ref is dead by unchain
         y2_ref = y2()
-        self.assertTrue(y2_ref is None)
+        self.assertIsNone(y2_ref)
 
         self.assertIsNone(f.inputs)
 
@@ -311,6 +313,7 @@ class TestFunctionInvalidType(unittest.TestCase):
 
     def test_forward_invalid1(self):
         class Function(chainer.Function):
+
             def check_type_forward(self, in_types):
                 x_type, = in_types
                 type_check.expect(
@@ -432,6 +435,54 @@ class TestFunctionBackwardDebug(unittest.TestCase):
         input_value = (cuda.to_gpu(self.one),) * len(self.return_value)
         self.f.backward_gpu = mock.MagicMock(return_value=return_value)
         self.check_debug_backward(*input_value)
+
+
+class TestNoBackpropMode(unittest.TestCase):
+
+    def setUp(self):
+        self.x = chainer.Variable(numpy.array([1.], 'f'), 'auto')
+
+    def test_no_backprop_mode(self):
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        with chainer.no_backprop_mode():
+            y = self.x + 1
+        self.assertTrue(y.creator is None)
+
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+    def test_force_backprop_mode(self):
+        with chainer.no_backprop_mode():
+            with chainer.force_backprop_mode():
+                y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+        with chainer.force_backprop_mode():
+            y = self.x + 1
+        self.assertTrue(y.creator is not None)
+
+
+class MyThread(threading.Thread):
+
+    def run(self):
+        x = chainer.Variable(numpy.array([1], dtype='f'), volatile='auto')
+        with chainer.no_backprop_mode():
+            y = x + 1
+        self.creator_is_none = y.creator is None
+
+
+class TestBackpropModeMultiThread(unittest.TestCase):
+
+    def test_multi_thread(self):
+        t = MyThread()
+        t.start()
+        t.join()
+        self.assertTrue(t.creator_is_none)
 
 
 testing.run_module(__name__, __file__)

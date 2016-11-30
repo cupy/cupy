@@ -31,10 +31,11 @@ class Scale(link.Chain):
     Attributes:
         W (~chainer.Variable): Weight parameter if ``W_shape`` is given.
             Otherwise, no W attribute.
-        bias (~chainer.links.Bias): Bias term if ``bias_term`` is True.
+        bias (~chainer.links.Bias): Bias term if ``bias_term`` is ``True``.
             Otherwise, no bias attribute.
 
     """
+
     def __init__(self, axis=1, W_shape=None, bias_term=False, bias_shape=None):
         super(Scale, self).__init__()
 

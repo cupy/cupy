@@ -440,6 +440,7 @@ class InvalidType(Exception):
     """Raised when types of data for forward/backward are invalid.
 
     """
+
     def __init__(self, expect, actual, msg=None):
         if msg is None:
             msg = 'Expect: {0}\nActual: {1}'.format(expect, actual)
@@ -453,7 +454,7 @@ def expect(*bool_exprs):
     """Evaluates and tests all given expressions.
 
     This function evaluates given boolean expressions in order. When at least
-    one expression is evaluated as `False`, that means the given condition is
+    one expression is evaluated as ``False``, that means the given condition is
     not satisfied.
     You can check conditions with this function.
 

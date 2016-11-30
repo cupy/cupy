@@ -2,6 +2,7 @@ import numpy
 
 from chainer import cuda
 from chainer import function
+from chainer.functions.math import matmul as _matmul
 from chainer import utils
 from chainer.utils import type_check
 from chainer import variable
@@ -61,8 +62,13 @@ class Neg(function.Function):
         return utils.force_array(-gy[0]),
 
 
-def neg(x):  # -x
-    return Neg()(x)
+def neg(self):  # -x
+    """Element-wise negation.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+    return Neg()(self)
 
 
 class Absolute(function.Function):
@@ -89,8 +95,13 @@ class Absolute(function.Function):
         return gx0,
 
 
-def absolute(x):
-    return Absolute()(x)
+def absolute(self):
+    """Element-wise absolute.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+    return Absolute()(self)
 
 
 class Add(function.Function):
@@ -134,11 +145,16 @@ class AddConstant(function.Function):
         return gy[0],
 
 
-def add(lhs, rhs):  # lhs + rhs
+def add(self, rhs):  # lhs + rhs
+    """Element-wise addition.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
     if isinstance(rhs, variable.Variable):
-        return Add()(lhs, rhs)
+        return Add()(self, rhs)
     _check_constant_type(rhs)
-    return AddConstant(rhs)(lhs)
+    return AddConstant(rhs)(self)
 
 
 class Sub(function.Function):
@@ -161,11 +177,17 @@ class Sub(function.Function):
         return gy[0], utils.force_array(-gy[0])
 
 
-def sub(lhs, rhs):  # lhs - rhs
+def sub(self, rhs):  # lhs - rhs
+    """Element-wise subtraction.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+
     if isinstance(rhs, variable.Variable):
-        return Sub()(lhs, rhs)
+        return Sub()(self, rhs)
     _check_constant_type(rhs)
-    return AddConstant(-rhs)(lhs)
+    return AddConstant(-rhs)(self)
 
 
 class SubFromConstant(function.Function):
@@ -188,11 +210,16 @@ class SubFromConstant(function.Function):
         return utils.force_array(-gy[0]),
 
 
-def rsub(lhs, rhs):  # rhs - lhs
+def rsub(self, rhs):  # rhs - lhs
+    """Element-wise subtraction.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
     if isinstance(rhs, variable.Variable):
-        return Sub()(rhs, lhs)
+        return Sub()(rhs, self)
     _check_constant_type(rhs)
-    return SubFromConstant(rhs)(lhs)
+    return SubFromConstant(rhs)(self)
 
 
 class Mul(function.Function):
@@ -237,11 +264,17 @@ class MulConstant(function.Function):
         return utils.force_array(value * gy[0]),
 
 
-def mul(lhs, rhs):  # lhs * rhs
+def mul(self, rhs):  # lhs * rhs
+    """Element-wise multiplication.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+
     if isinstance(rhs, variable.Variable):
-        return Mul()(lhs, rhs)
+        return Mul()(self, rhs)
     _check_constant_type(rhs)
-    return MulConstant(rhs)(lhs)
+    return MulConstant(rhs)(self)
 
 
 class Div(function.Function):
@@ -275,11 +308,17 @@ class Div(function.Function):
             ''', 'div_bwd')(x[0], x[1], gy[0])
 
 
-def div(lhs, rhs):  # lhs / rhs
+def div(self, rhs):  # lhs / rhs
+    """Element-wise division
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+
     if isinstance(rhs, variable.Variable):
-        return Div()(lhs, rhs)
+        return Div()(self, rhs)
     _check_constant_type(rhs)
-    return MulConstant(1. / rhs)(lhs)
+    return MulConstant(1. / rhs)(self)
 
 
 class DivFromConstant(function.Function):
@@ -311,11 +350,17 @@ class DivFromConstant(function.Function):
         return gx,
 
 
-def rdiv(lhs, rhs):  # rhs / lhs
+def rdiv(self, rhs):  # rhs / lhs
+    """Element-wise division.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+
     if isinstance(rhs, variable.Variable):
-        return Div()(rhs, lhs)
+        return Div()(rhs, self)
     _check_constant_type(rhs)
-    return DivFromConstant(rhs)(lhs)
+    return DivFromConstant(rhs)(self)
 
 
 class PowVarVar(function.Function):
@@ -385,11 +430,17 @@ class PowVarConst(function.Function):
         return gx,
 
 
-def pow(lhs, rhs):  # lhs ** rhs
+def pow(self, rhs):  # lhs ** rhs
+    """Element-wise power function.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+
     if isinstance(rhs, variable.Variable):
-        return PowVarVar()(lhs, rhs)
+        return PowVarVar()(self, rhs)
     _check_constant_type(rhs)
-    return PowVarConst(rhs)(lhs)
+    return PowVarConst(rhs)(self)
 
 
 class PowConstVar(function.Function):
@@ -424,11 +475,120 @@ class PowConstVar(function.Function):
         return gx,
 
 
-def rpow(lhs, rhs):  # rhs ** lhs
+def rpow(self, rhs):  # rhs ** lhs
+    """Element-wise power function.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+
     if isinstance(rhs, variable.Variable):
-        return PowVarVar()(rhs, lhs)
+        return PowVarVar()(rhs, self)
     _check_constant_type(rhs)
-    return PowConstVar(rhs)(lhs)
+    return PowConstVar(rhs)(self)
+
+
+class MatMulVarVar(_matmul.MatMul):
+
+    @property
+    def label(self):
+        return '_ @ _'
+
+
+class MatMulVarConst(function.Function):
+
+    def __init__(self, value):
+        self.value = value
+
+    @property
+    def label(self):
+        return '_ @ %s' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        a_type = in_types[0]
+        b_type = self.value
+
+        type_check.expect(a_type.dtype.kind == 'f')
+
+        _matmul._check_ndim(a_type)
+
+        a_type = _matmul._convert_type(a_type)
+        a_idx = _matmul._get_check_index(False, False)
+        b_idx = _matmul._get_check_index(False, True)
+        type_check.expect(
+            a_type.shape[a_idx] == b_type.shape[b_idx]
+        )
+
+    def forward(self, x):
+        return _matmul._matmul(x[0], self.value),
+
+    def backward(self, x, gy):
+        gx0 = _matmul._matmul(
+            gy[0], self.value, transb=True, transout=False
+        ).reshape(x[0].shape)
+        return gx0,
+
+
+class MatMulConstVar(function.Function):
+
+    def __init__(self, value):
+        self.value = value
+
+    @property
+    def label(self):
+        return '%s @ _' % _convert_value_to_string(self.value)
+
+    def check_type_forward(self, in_types):
+        type_check.expect(in_types.size() == 1)
+        a_type = self.value
+        b_type = in_types[0]
+
+        type_check.expect(b_type.dtype.kind == 'f')
+
+        _matmul._check_ndim(b_type)
+
+        b_type = _matmul._convert_type(b_type)
+        a_idx = _matmul._get_check_index(False, False)
+        b_idx = _matmul._get_check_index(False, True)
+        type_check.expect(
+            a_type.shape[a_idx] == b_type.shape[b_idx]
+        )
+
+    def forward(self, x):
+        return _matmul._matmul(self.value, x[0]),
+
+    def backward(self, x, gy):
+        gx1 = _matmul._matmul(
+            self.value, gy[0], transa=True, transout=False
+        ).reshape(x[0].shape)
+        return gx1,
+
+
+def matmul(self, rhs):  # lhs @ rhs
+    """Matrix multiplication.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+
+    if isinstance(rhs, variable.Variable):
+        return MatMulVarVar()(self, rhs)
+    _check_constant_type(rhs)
+    return MatMulVarConst(rhs)(self)
+
+
+def rmatmul(self, rhs):  # rhs @ lhs
+    """Matrix multiplication.
+
+    Returns:
+        ~chainer.Variable: Output variable.
+    """
+
+    if isinstance(rhs, variable.Variable):
+        return MatMulVarVar()(rhs, self)
+    _check_constant_type(rhs)
+    return MatMulConstVar(rhs)(self)
 
 
 def install_variable_arithmetics():
@@ -446,3 +606,5 @@ def install_variable_arithmetics():
     variable.Variable.__rtruediv__ = rdiv
     variable.Variable.__pow__ = pow
     variable.Variable.__rpow__ = rpow
+    variable.Variable.__matmul__ = matmul
+    variable.Variable.__rmatmul__ = rmatmul

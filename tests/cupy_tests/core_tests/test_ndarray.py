@@ -69,7 +69,7 @@ class TestNdarrayTake(unittest.TestCase):
     shape = (3, 4, 5)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=False)
+    @testing.numpy_cupy_array_equal()
     def test_take(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         if self.axis is None:
@@ -92,7 +92,7 @@ class TestNdarrayTakeWithInt(unittest.TestCase):
     shape = (3, 4, 5)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=False)
+    @testing.numpy_cupy_array_equal()
     def test_take(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         return wrap_take(a, self.indices, self.axis)
@@ -109,7 +109,7 @@ class TestNdarrayTakeWithIntWithOutParam(unittest.TestCase):
     shape = (3, 4, 5)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=False)
+    @testing.numpy_cupy_array_equal()
     def test_take(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         r1 = wrap_take(a, self.indices, self.axis)
@@ -130,7 +130,7 @@ class TestScalaNdarrayTakeWithIntWithOutParam(unittest.TestCase):
     shape = ()
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=False)
+    @testing.numpy_cupy_array_equal()
     def test_take(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         r1 = wrap_take(a, self.indices, self.axis)

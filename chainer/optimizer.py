@@ -269,7 +269,7 @@ class Optimizer(object):
         """Fills all gradient arrays by zeros.
 
         .. deprecated:: v1.5
-           Use the :meth:`chainer.Link.zerograds` method for the target link
+           Use the :meth:`chainer.Link.cleargrads` method for the target link
            instead.
 
         """
@@ -310,7 +310,7 @@ class Optimizer(object):
         """Applies weight decay to the parameter/gradient pairs.
 
         Args:
-            decay (float): Coefficient of weight decay
+            decay (float): Coefficient of weight decay.
 
         .. deprecated:: v1.5
            Use the :class:`~chainer.optimizer.WeightDecay` hook function
@@ -365,6 +365,10 @@ class GradientMethod(Optimizer):
     - :meth:`update_one` or both :meth:`update_one_cpu` and
       :meth:`update_one_gpu`
 
+    .. note::
+       It is recommended to call :meth:`use_cleargrads` after creating a
+       :class:`GradientMethod` object for efficiency.
+
     """
 
     def update(self, lossfun=None, *args, **kwds):
@@ -384,10 +388,23 @@ class GradientMethod(Optimizer):
 
         """
         if lossfun is not None:
+            use_cleargrads = getattr(self, '_use_cleargrads', False)
             loss = lossfun(*args, **kwds)
-            self.target.zerograds()
+            if use_cleargrads:
+                self.target.cleargrads()
+            else:
+                self.target.zerograds()
             loss.backward()
             del loss
+
+        # TODO(unno): Some optimizers can skip this process if they does not
+        # affect to a parameter when its gradient is zero.
+        for name, param in self.target.namedparams():
+            if param.grad is None:
+                with cuda.get_device(param.data):
+                    xp = cuda.get_array_module(param.data)
+                    param.grad = xp.zeros_like(param.data)
+
         self.call_hooks()
         self.prepare()
 
@@ -432,6 +449,23 @@ class GradientMethod(Optimizer):
 
         """
         raise NotImplementedError
+
+    def use_cleargrads(self, use=True):
+        """Enables or disables use of :func:`~chainer.Link.cleargrads` in `update`.
+
+        Args:
+            use (bool): If ``True``, this function enables use of
+                `cleargrads`. If ``False``, disables use of `cleargrads`
+                (`zerograds` is used).
+
+        .. note::
+           Note that :meth:`update` calls :meth:`~Link.zerograds` by default
+           for backward compatibility. It is recommended to call this method
+           before first call of `update` because `cleargrads` is more
+           efficient than `zerograds`.
+
+        """
+        self._use_cleargrads = use
 
 
 class WeightDecay(object):
@@ -553,10 +587,10 @@ class GradientNoise(object):
     :math:`\\gamma = 0.55`.
 
     Args:
-        eta (float): parameter that defines the scale of the noise, which for
+        eta (float): Parameter that defines the scale of the noise, which for
             the default noise function is recommended to be either 0.01, 0.3
             or 1.0.
-        noise_func (function): the noise generating function which by default
+        noise_func (function): Noise generating function which by default
             is given by `Adding Gradient Noise Improves Learning for Very Deep\
             Networks <http://arxiv.org/pdf/1511.06807>`_.
     """
@@ -609,5 +643,4 @@ class GradientHardClipping(object):
         for param in opt.target.params():
             grad = param.grad
             with cuda.get_device(grad):
-                grad = xp.clip(grad, self.lower_bound, self.upper_bound,
-                               out=grad)
+                xp.clip(grad, self.lower_bound, self.upper_bound, out=grad)

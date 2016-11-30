@@ -40,12 +40,15 @@ class RandomState(object):
                cupy.cuda.curand.CURAND_RNG_PHILOX4_32_10
 
     """
+
     def __init__(self, seed=None, method=curand.CURAND_RNG_PSEUDO_DEFAULT):
         self._generator = curand.createGenerator(method)
         self.seed(seed)
 
     def __del__(self):
-        curand.destroyGenerator(self._generator)
+        # When createGenerator raises an error, _generator is not initialized
+        if hasattr(self, '_generator'):
+            curand.destroyGenerator(self._generator)
 
     def set_stream(self, stream=None):
         if stream is None:

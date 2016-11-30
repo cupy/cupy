@@ -1,3 +1,5 @@
+import operator
+import sys
 import unittest
 
 import numpy
@@ -986,6 +988,87 @@ class TestNegativePow(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
+@testing.parameterize(*testing.product_dict(
+    [
+        {'left_const': False, 'right_const': False},
+        {'left_const': True, 'right_const': False},
+        {'left_const': False, 'right_const': True},
+    ], [
+        {'dtype': numpy.float16},
+        {'dtype': numpy.float32},
+        {'dtype': numpy.float64},
+    ]
+))
+class TestMatMulVarVar(unittest.TestCase):
+
+    def setUp(self):
+        self.x = numpy.random.uniform(-1, 1, (3, 2)).astype(self.dtype)
+        self.y = numpy.random.uniform(-1, 1, (2, 4)).astype(self.dtype)
+        self.gz = numpy.random.uniform(-1, 1, (3, 4)).astype(self.dtype)
+
+    def check_forward(self, x_data, y_data):
+        if self.left_const:
+            x = x_data
+        else:
+            x = chainer.Variable(x_data)
+        if self.right_const:
+            y = y_data
+        else:
+            y = chainer.Variable(y_data)
+        z = operator.matmul(x, y)
+        if self.dtype == numpy.float16:
+            options = {'atol': 1e-3, 'rtol': 1e-3}
+        else:
+            options = {'atol': 1e-7, 'rtol': 1e-7}
+        testing.assert_allclose(
+            self.x.dot(self.y), z.data, **options)
+
+    @unittest.skipUnless(sys.version_info >= (3, 5),
+                         'Only for Python3.5 or higher')
+    @condition.retry(3)
+    def test_forward_cpu(self):
+        self.check_forward(self.x, self.y)
+
+    @unittest.skipUnless(sys.version_info >= (3, 5),
+                         'Only for Python3.5 or higher')
+    @attr.gpu
+    @condition.retry(3)
+    def test_forward_gpu(self):
+        self.check_forward(cuda.to_gpu(self.x), cuda.to_gpu(self.y))
+
+    def check_backward(self, x_data, y_data, z_grad):
+        if self.right_const:
+            def op(x):
+                return operator.matmul(x, y_data)
+            data = x_data,
+        elif self.left_const:
+            def op(y):
+                return operator.matmul(x_data, y)
+            data = y_data,
+        else:
+            op = operator.matmul
+            data = x_data, y_data
+
+        if self.dtype == numpy.float16:
+            options = {'atol': 1e-3, 'rtol': 1e-3}
+        else:
+            options = {'atol': 1e-4, 'rtol': 1e-4}
+        gradient_check.check_backward(
+            op, data, z_grad, dtype=numpy.float64, **options)
+
+    @unittest.skipUnless(sys.version_info >= (3, 5),
+                         'Only for Python3.5 or higher')
+    def test_backward_cpu(self):
+        self.check_backward(self.x, self.y, self.gz)
+
+    @attr.gpu
+    @unittest.skipUnless(sys.version_info >= (3, 5),
+                         'Only for Python3.5 or higher')
+    def test_backward_gpu(self):
+        self.check_backward(
+            cuda.to_gpu(self.x), cuda.to_gpu(self.y), cuda.to_gpu(self.gz))
+
+
 class TestNotSupportOperation(unittest.TestCase):
 
     def setUp(self):
@@ -1101,6 +1184,19 @@ class TestLabel(unittest.TestCase):
 
     def test_pow_const_var(self):
         self.assertEqual(basic_math.PowConstVar(2.0).label, '2.0 ** _')
+
+    def test_matmul_var_var(self):
+        self.assertEqual(basic_math.MatMulVarVar().label, '_ @ _')
+
+    def test_matmul_var_const(self):
+        self.assertEqual(
+            basic_math.MatMulVarConst(numpy.zeros((2, 2))).label,
+            '_ @ constant array')
+
+    def test_matmul_const_var(self):
+        self.assertEqual(
+            basic_math.MatMulConstVar(numpy.zeros((2, 2))).label,
+            'constant array @ _')
 
 
 testing.run_module(__name__, __file__)

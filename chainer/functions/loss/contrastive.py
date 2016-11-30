@@ -70,7 +70,7 @@ def contrastive(x0, x1, y, margin=1):
 
     It takes a pair of variables and a label as inputs. The label is 1 when
     those two input variables are similar, or 0 when they are dissimilar. Let
-    :math:`N` and :math:`K` denote mini-batchsize and the dimension of input
+    :math:`N` and :math:`K` denote mini-batch size and the dimension of input
     variables, respectively. The shape of both input variables should be
     ``(N, K)``.
 
@@ -86,12 +86,12 @@ def contrastive(x0, x1, y, margin=1):
 
     Args:
         x0 (~chainer.Variable): The first input variable. The shape should be
-            (N, K), where N denotes the minibatch size, and K denotes the
-            dimension of x0.
+            (N, K), where N denotes the mini-batch size, and K denotes the
+            dimension of ``x0``.
         x1 (~chainer.Variable): The second input variable. The shape should be
-            the same as x0.
+            the same as ``x0``.
         y (~chainer.Variable): Labels. All values should be 0 or 1. The shape
-            should be ``(N,)``, where N denotes the minibatch size.
+            should be ``(N,)``, where N denotes the mini-batch size.
         margin (float): A parameter for contrastive loss. It should be positive
             value.
 

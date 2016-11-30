@@ -3,7 +3,7 @@ class DatasetMixin(object):
     """Default implementation of dataset indexing.
 
     DatasetMixin provides the :meth:`__getitem__` operator. The default
-    implementation uses :meth:`get_exmample` to extract each example, and
+    implementation uses :meth:`get_example` to extract each example, and
     combines the results into a list. This mixin makes it easy to implement a
     new dataset that does not support efficient slicing.
 
@@ -11,6 +11,7 @@ class DatasetMixin(object):
     :meth:`__len__` operator explicitly.
 
     """
+
     def __getitem__(self, index):
         """Returns an example or a sequence of examples.
 

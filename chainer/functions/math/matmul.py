@@ -120,6 +120,7 @@ def _get_check_index(trans, right, row_idx=0, col_idx=1):
 
 
 class MatMul(function.Function):
+
     def __init__(self, transa=False, transb=False):
         self.transa = transa
         self.transb = transb
@@ -129,8 +130,8 @@ class MatMul(function.Function):
         a_type, b_type = in_types
 
         type_check.expect(
-            a_type.dtype == numpy.float32,
-            b_type.dtype == numpy.float32
+            a_type.dtype.kind == 'f',
+            a_type.dtype == b_type.dtype
         )
 
         _check_ndim(a_type)
@@ -150,10 +151,10 @@ class MatMul(function.Function):
     def backward(self, x, gy):
         gx0 = _matmul(
             gy[0], x[1], transb=not self.transb, transout=self.transa
-            ).reshape(x[0].shape)
+        ).reshape(x[0].shape)
         gx1 = _matmul(
             x[0], gy[0], transa=not self.transa, transout=self.transb
-            ).reshape(x[1].shape)
+        ).reshape(x[1].shape)
         return gx0, gx1
 
 
@@ -168,8 +169,8 @@ def matmul(a, b, transa=False, transb=False):
             :math:`M \\times N` matrix.
         b (Variable): The right operand of the matrix multiplication.
             Its array is treated as a matrix in the same way as ``a``'s array.
-        transa (bool): If ``True``, transpose a.
-        transb (bool): If ``True``, transpose b.
+        transa (bool): If ``True``, transpose ``a``.
+        transb (bool): If ``True``, transpose ``b``.
 
     Returns:
         ~chainer.Variable: The result of the matrix multiplication as a 2-D
@@ -179,6 +180,7 @@ def matmul(a, b, transa=False, transb=False):
 
 
 class BatchMatMul(function.Function):
+
     def __init__(self, transa=False, transb=False):
         self.transa = transa
         self.transb = transb
@@ -267,8 +269,8 @@ def batch_matmul(a, b, transa=False, transb=False):
             :math:`M \\times N` matrices.
         b (Variable): The right operand of the batch matrix multiplications.
             Its array is treated as matrices in the same way as ``a``'s array.
-        transa (bool): If ``True``, transpose each matrix in a.
-        transb (bool): If ``True``, transpose each matrix in b.
+        transa (bool): If ``True``, transpose each matrix in ``a``.
+        transb (bool): If ``True``, transpose each matrix in ``b``.
 
     Returns:
         ~chainer.Variable: The result of the batch matrix multiplications as a

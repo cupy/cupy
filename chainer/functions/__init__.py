@@ -19,45 +19,64 @@ from chainer.functions.array import broadcast
 from chainer.functions.array import cast
 from chainer.functions.array import concat
 from chainer.functions.array import copy
+from chainer.functions.array import depth2space
+from chainer.functions.array import dstack
 from chainer.functions.array import expand_dims
+from chainer.functions.array import flatten
 from chainer.functions.array import get_item
+from chainer.functions.array import hstack
 from chainer.functions.array import permutate
 from chainer.functions.array import reshape
 from chainer.functions.array import rollaxis
 from chainer.functions.array import select_item
 from chainer.functions.array import separate
+from chainer.functions.array import space2depth
 from chainer.functions.array import split_axis
+from chainer.functions.array import squeeze
 from chainer.functions.array import stack
 from chainer.functions.array import swapaxes
+from chainer.functions.array import tile
 from chainer.functions.array import transpose
 from chainer.functions.array import transpose_sequence
+from chainer.functions.array import vstack
 from chainer.functions.array import where
 from chainer.functions.connection import bilinear
 from chainer.functions.connection import convolution_2d
+from chainer.functions.connection import convolution_nd
 from chainer.functions.connection import deconvolution_2d
+from chainer.functions.connection import deconvolution_nd
+from chainer.functions.connection import dilated_convolution_2d
 from chainer.functions.connection import embed_id
 from chainer.functions.connection import linear
+from chainer.functions.connection import n_step_lstm
 from chainer.functions.evaluation import accuracy
 from chainer.functions.evaluation import binary_accuracy
+from chainer.functions.evaluation import classification_summary \
+    as classification_summary_
+from chainer.functions.loss import black_out
 from chainer.functions.loss import contrastive
 from chainer.functions.loss import crf1d
 from chainer.functions.loss import cross_covariance
 from chainer.functions.loss import ctc
 from chainer.functions.loss import hinge
 from chainer.functions.loss import huber_loss
+from chainer.functions.loss import mean_absolute_error
 from chainer.functions.loss import mean_squared_error
 from chainer.functions.loss import negative_sampling
 from chainer.functions.loss import sigmoid_cross_entropy
 from chainer.functions.loss import softmax_cross_entropy
 from chainer.functions.loss import triplet
 from chainer.functions.loss import vae  # NOQA
-from chainer.functions.math import basic_math  # NOQA
+from chainer.functions.math import basic_math
 from chainer.functions.math import batch_l2_norm_squared
 from chainer.functions.math import bias
+from chainer.functions.math import ceil
 from chainer.functions.math import clip
 from chainer.functions.math import det
 from chainer.functions.math import exponential
 from chainer.functions.math import exponential_m1
+from chainer.functions.math import floor
+from chainer.functions.math import hyperbolic
 from chainer.functions.math import identity
 from chainer.functions.math import inv
 from chainer.functions.math import linear_interpolate
@@ -68,10 +87,14 @@ from chainer.functions.math import maximum
 from chainer.functions.math import minimum
 from chainer.functions.math import minmax
 from chainer.functions.math import scale
+from chainer.functions.math import sqrt
+from chainer.functions.math import square
+from chainer.functions.math import squared_difference
 from chainer.functions.math import sum
 from chainer.functions.math import trigonometric
 from chainer.functions.noise import dropout
 from chainer.functions.noise import gaussian
+from chainer.functions.noise import zoneout
 from chainer.functions.normalization import batch_normalization
 from chainer.functions.normalization import l2_normalization
 from chainer.functions.normalization import local_response_normalization
@@ -80,9 +103,12 @@ from chainer.functions.pooling import max_pooling_2d
 from chainer.functions.pooling import roi_pooling_2d
 from chainer.functions.pooling import spatial_pyramid_pooling_2d
 from chainer.functions.pooling import unpooling_2d
+from chainer.functions.util import forget
 from chainer.links.activation import prelu as links_prelu
 from chainer.links.connection import bilinear as links_bilinear
 from chainer.links.connection import convolution_2d as links_convolution_2d
+from chainer.links.connection import dilated_convolution_2d \
+    as links_dilated_convolution_2d
 from chainer.links.connection import embed_id as links_embed_id
 from chainer.links.connection import inception
 from chainer.links.connection import inceptionbn
@@ -126,6 +152,7 @@ softplus = softplus.softplus
 Tanh = tanh.Tanh
 tanh = tanh.tanh
 
+
 Broadcast = broadcast.Broadcast
 BroadcastTo = broadcast.BroadcastTo
 broadcast_to = broadcast.broadcast_to
@@ -136,24 +163,34 @@ Concat = concat.Concat
 concat = concat.concat
 Copy = copy.Copy
 copy = copy.copy
+Depth2Space = depth2space.Depth2Space
+depth2space = depth2space.depth2space
+dstack = dstack.dstack
 ExpandDims = expand_dims.ExpandDims
 expand_dims = expand_dims.expand_dims
+Flatten = flatten.Flatten
+flatten = flatten.flatten
 GetItem = get_item.GetItem
 get_item = get_item.get_item
+hstack = hstack.hstack
 Permutate = permutate.Permutate
 permutate = permutate.permutate
 Reshape = reshape.Reshape
 reshape = reshape.reshape
 Rollaxis = rollaxis.Rollaxis
 rollaxis = rollaxis.rollaxis
-SplitAxis = split_axis.SplitAxis
-split_axis = split_axis.split_axis
 SelectItem = select_item.SelectItem
 select_item = select_item.select_item
 separate = separate.separate
+SplitAxis = split_axis.SplitAxis
+split_axis = split_axis.split_axis
+Squeeze = squeeze.Squeeze
+squeeze = squeeze.squeeze
 stack = stack.stack
 Swapaxes = swapaxes.Swapaxes
 swapaxes = swapaxes.swapaxes
+Tile = tile.Tile
+tile = tile.tile
 Transpose = transpose.Transpose
 transpose = transpose.transpose
 TransposeSequence = transpose_sequence.TransposeSequence
@@ -163,17 +200,29 @@ where = where.where
 
 bilinear = bilinear.bilinear
 convolution_2d = convolution_2d.convolution_2d
+convolution_nd = convolution_nd.convolution_nd
 deconvolution_2d = deconvolution_2d.deconvolution_2d
+deconvolution_nd = deconvolution_nd.deconvolution_nd
+dilated_convolution_2d = dilated_convolution_2d.dilated_convolution_2d
 embed_id = embed_id.embed_id
 linear = linear.linear
+NStepLSTM = n_step_lstm.NStepLSTM
+n_step_lstm = n_step_lstm.n_step_lstm
 
 Accuracy = accuracy.Accuracy
 accuracy = accuracy.accuracy
 BinaryAccuracy = binary_accuracy.BinaryAccuracy
 binary_accuracy = binary_accuracy.binary_accuracy
+ClassificationSummary = classification_summary_.ClassificationSummary
+classification_summary = classification_summary_.classification_summary
+precision = classification_summary_.precision
+recall = classification_summary_.recall
+f1_score = classification_summary_.f1_score
 
+argmax_crf1d = crf1d.argmax_crf1d
 bernoulli_nll = vae.bernoulli_nll
 BinaryHierarchicalSoftmax = hierarchical_softmax.BinaryHierarchicalSoftmax
+black_out = black_out.black_out
 Contrastive = contrastive.Contrastive
 contrastive = contrastive.contrastive
 crf1d = crf1d.crf1d
@@ -185,6 +234,8 @@ Hinge = hinge.Hinge
 hinge = hinge.hinge
 HuberLoss = huber_loss.HuberLoss
 huber_loss = huber_loss.huber_loss
+MeanAbsoluteError = mean_absolute_error.MeanAbsoluteError
+mean_absolute_error = mean_absolute_error.mean_absolute_error
 MeanSquaredError = mean_squared_error.MeanSquaredError
 mean_squared_error = mean_squared_error.mean_squared_error
 negative_sampling = negative_sampling.negative_sampling
@@ -194,11 +245,19 @@ SoftmaxCrossEntropy = softmax_cross_entropy.SoftmaxCrossEntropy
 softmax_cross_entropy = softmax_cross_entropy.softmax_cross_entropy
 Triplet = triplet.Triplet
 triplet = triplet.triplet
+vstack = vstack.vstack
 
+absolute = basic_math.absolute
 ArgMax = minmax.ArgMax
 argmax = minmax.argmax
 ArgMin = minmax.ArgMin
 argmin = minmax.argmin
+Arccos = trigonometric.Arccos
+arccos = trigonometric.arccos
+Arcsin = trigonometric.Arcsin
+arcsin = trigonometric.arcsin
+Arctan = trigonometric.Arctan
+arctan = trigonometric.arctan
 BatchDet = det.BatchDet
 batch_det = det.batch_det
 BatchInv = inv.BatchInv
@@ -208,15 +267,21 @@ batch_l2_norm_squared = batch_l2_norm_squared.batch_l2_norm_squared
 BatchMatMul = matmul.BatchMatMul
 batch_matmul = matmul.batch_matmul
 bias = bias.bias
+Ceil = ceil.Ceil
+ceil = ceil.ceil
 Clip = clip.Clip
 clip = clip.clip
 Cos = trigonometric.Cos
 cos = trigonometric.cos
+Cosh = hyperbolic.Cosh
+cosh = hyperbolic.cosh
 det = det.det
 Exp = exponential.Exp
 exp = exponential.exp
 Expm1 = exponential_m1.Expm1
 expm1 = exponential_m1.expm1
+Floor = floor.Floor
+floor = floor.floor
 Identity = identity.Identity
 identity = identity.identity
 Inv = inv.Inv
@@ -225,8 +290,12 @@ LinearInterpolate = linear_interpolate.LinearInterpolate
 linear_interpolate = linear_interpolate.linear_interpolate
 Log = exponential.Log
 log = exponential.log
+Log10 = exponential.Log10
+log10 = exponential.log10
 Log1p = logarithm_1p.Log1p
 log1p = logarithm_1p.log1p
+Log2 = exponential.Log2
+log2 = exponential.log2
 LogSumExp = logsumexp.LogSumExp
 logsumexp = logsumexp.logsumexp
 MatMul = matmul.MatMul
@@ -239,16 +308,29 @@ Minimum = minimum.Minimum
 minimum = minimum.minimum
 Min = minmax.Min
 min = minmax.min
+rsqrt = sqrt.rsqrt
 scale = scale.scale
 Sin = trigonometric.Sin
 sin = trigonometric.sin
+Sinh = hyperbolic.Sinh
+sinh = hyperbolic.sinh
+Sqrt = sqrt.Sqrt
+sqrt = sqrt.sqrt
+Square = square.Square
+square = square.square
+SquaredDifference = squared_difference.SquaredDifference
+squared_difference = squared_difference.squared_difference
 Sum = sum.Sum
 sum = sum.sum
+Tan = trigonometric.Tan
+tan = trigonometric.tan
 
 Dropout = dropout.Dropout
 dropout = dropout.dropout
 Gaussian = gaussian.Gaussian
 gaussian = gaussian.gaussian
+Zoneout = zoneout.Zoneout
+zoneout = zoneout.zoneout
 
 fixed_batch_normalization = batch_normalization.fixed_batch_normalization
 batch_normalization = batch_normalization.batch_normalization
@@ -272,11 +354,15 @@ spatial_pyramid_pooling_2d = \
 Unpooling2D = unpooling_2d.Unpooling2D
 unpooling_2d = unpooling_2d.unpooling_2d
 
+Forget = forget.Forget
+forget = forget.forget
+
 # Import for backward compatibility
 PReLU = links_prelu.PReLU
 
 Bilinear = links_bilinear.Bilinear
 Convolution2D = links_convolution_2d.Convolution2D
+DilatedConvolution2D = links_dilated_convolution_2d.DilatedConvolution2D
 EmbedID = links_embed_id.EmbedID
 Inception = inception.Inception
 InceptionBN = inceptionbn.InceptionBN
@@ -286,3 +372,6 @@ Parameter = parameter.Parameter
 NegativeSampling = links_negative_sampling.NegativeSampling
 
 BatchNormalization = links_batch_normalization.BatchNormalization
+
+Space2Depth = space2depth.Space2Depth
+space2depth = space2depth.space2depth

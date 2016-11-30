@@ -6,7 +6,8 @@ from chainer.serializers import npz
 from chainer.training import extension
 
 
-def snapshot_object(target, filename, savefun=npz.save_npz):
+def snapshot_object(target, filename, savefun=npz.save_npz,
+                    trigger=(1, 'epoch')):
     """Returns a trainer extension to take snapshots of a given object.
 
     This extension serializes the given object and saves it to the output
@@ -24,12 +25,17 @@ def snapshot_object(target, filename, savefun=npz.save_npz):
             ``'snapshot_10000'`` at the 10,000th iteration.
         savefun: Function to save the object. It takes two arguments: the
             output file path and the object to serialize.
+        trigger: Trigger that decides when to take snapshot. It can be either
+            an already built trigger object (i.e., a callable object that
+            accepts a trainer object and returns a bool value), or a tuple in
+            the form ``<int>, 'epoch'`` or ``<int>, 'iteration'``. In latter
+            case, the tuple is passed to IntervalTrigger.
 
     Returns:
         An extension function.
 
     """
-    @extension.make_extension(trigger=(1, 'epoch'), priority=-100)
+    @extension.make_extension(trigger=trigger, priority=-100)
     def snapshot_object(trainer):
         _snapshot_object(trainer, target, filename.format(trainer), savefun)
 
@@ -37,7 +43,8 @@ def snapshot_object(target, filename, savefun=npz.save_npz):
 
 
 def snapshot(savefun=npz.save_npz,
-             filename='snapshot_iter_{.updater.iteration}'):
+             filename='snapshot_iter_{.updater.iteration}',
+             trigger=(1, 'epoch')):
     """Returns a trainer extension to take snapshots of the trainer.
 
     This extension serializes the trainer object and saves it to the output
@@ -59,9 +66,14 @@ def snapshot(savefun=npz.save_npz,
         filename (str): Name of the file into which the trainer is serialized.
             It can be a format string, where the trainer object is passed to
             the :meth:`str.format` method.
+        trigger: Trigger that decides when to take snapshot. It can be either
+            an already built trigger object (i.e., a callable object that
+            accepts a trainer object and returns a bool value), or a tuple in
+            the form ``<int>, 'epoch'`` or ``<int>, 'iteration'``. In latter
+            case, the tuple is passed to IntervalTrigger.
 
     """
-    @extension.make_extension(trigger=(1, 'epoch'), priority=-100)
+    @extension.make_extension(trigger=trigger, priority=-100)
     def snapshot(trainer):
         _snapshot_object(trainer, trainer, filename.format(trainer), savefun)
 

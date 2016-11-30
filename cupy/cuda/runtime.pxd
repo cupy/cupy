@@ -13,6 +13,7 @@ cdef class PointerAttributes:
 
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
+    ctypedef int DataType 'cudaDataType'
 
 
 ###############################################################################
@@ -29,6 +30,11 @@ cpdef enum:
     cudaMemoryTypeHost = 1
     cudaMemoryTypeDevice = 2
 
+    hostAllocDefault = 0
+    hostAllocPortable = 1
+    hostAllocMapped = 2
+    hostAllocWriteCombined = 4
+
     streamDefault = 0
     streamNonBlocking = 1
 
@@ -36,6 +42,19 @@ cpdef enum:
     eventBlockingSync = 1
     eventDisableTiming = 2
     eventInterprocess = 4
+
+    CUDA_R_32F = 0  # 32 bit real
+    CUDA_R_64F = 1  # 64 bit real
+    CUDA_R_16F = 2  # 16 bit real
+    CUDA_R_8I = 3  # 8 bit real as a signed integer
+    CUDA_C_32F = 4  # 32 bit complex
+    CUDA_C_64F = 5  # 64 bit complex
+    CUDA_C_16F = 6  # 16 bit complex
+    CUDA_C_8I = 7  # 8 bit complex as a pair of signed integers
+    CUDA_R_8U = 8  # 8 bit real as a signed integer
+    CUDA_C_8U = 9  # 8 bit complex as a pair of signed integers
+
+    errorMemoryAllocation = 2
 
 
 ###############################################################################
@@ -50,6 +69,7 @@ cpdef check_status(int status)
 ###############################################################################
 
 cpdef int driverGetVersion() except *
+cpdef int runtimeGetVersion() except *
 
 
 ###############################################################################
@@ -71,7 +91,9 @@ cpdef deviceEnablePeerAccess(int peerDevice)
 ###############################################################################
 
 cpdef size_t malloc(size_t size) except *
+cpdef size_t hostAlloc(size_t size, unsigned int flags) except *
 cpdef free(size_t ptr)
+cpdef freeHost(size_t ptr)
 cpdef memGetInfo()
 cpdef memcpy(size_t dst, size_t src, size_t size, int kind)
 cpdef memcpyAsync(size_t dst, size_t src, size_t size, int kind,

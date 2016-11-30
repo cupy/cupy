@@ -1,14 +1,81 @@
 import collections
+import contextlib
 import os
-import six
+import threading
 import traceback
 import weakref
+
+import six
 
 import chainer
 from chainer import cuda
 from chainer import flag
 from chainer.utils import type_check
 from chainer import variable
+
+
+_thread_local = threading.local()
+
+
+@contextlib.contextmanager
+def no_backprop_mode():
+    """Disable back-propagation for Variable whose volatile is auto.
+
+    In the default setting a :class:`~chainer.Variable` object whose
+    ``volatile`` attribute is ``'auto'`` behaves like a **non-volatile**
+    variable. That means such a :class:`~chainer.Variable` object builds a
+    computational graph, consumes memory to store the graph, and you can
+    execute back-propagation for it. With this context such a
+    :class:`~chainer.Variable` object behaves like a **volatile** variable.
+    So, you can easily switch training and evaluation.
+
+    In this example, the volatility of ``x`` and ``y`` is ``'auto'``. So, ``y``
+    does not have a computational graph.
+
+    >>> x = chainer.Variable(numpy.array([1,], 'f'), volatile='auto')
+    >>> with chainer.no_backprop_mode():
+    ...    y = x + 1
+
+    """
+    default = getattr(_thread_local, 'default_backprop', True)
+    _thread_local.default_backprop = False
+    yield
+    _thread_local.default_backprop = default
+
+
+@contextlib.contextmanager
+def force_backprop_mode():
+    """Enable back-propagation for Variable whose volatile is auto.
+
+    When you want to enable back-propagation in :func:`no_backprop_mode`,
+    call this method. In this context, :class:`~chainer.Variable` object
+    whose ``volatile`` attribute is ``'auto'`` behaves like a **volatile**
+    variable. That means you can disable :func:`no_backprop_mode` in this
+    context.
+
+    If you call this method outside of :func:`no_backprop_mode` context, it
+    changes nothing. :class:`~chainer.Variable` object with ``volatile='auto'``
+    behaves like a volatile variable by default.
+
+    In this example, the volatility of ``x`` and ``y`` is ``'auto'``. In
+    :func:`no_backprop_mode` context, ``y`` does not have a computational graph
+    but in :func:`force_backprop_mode` it has a graph.
+
+    >>> with chainer.no_backprop_mode():
+    ...   # Variable with volatile='auto' behaves like volatile='on'
+    ...   with chainer.force_backprop_mode():
+    ...     # Variable with volatile='auto' behaves like volatile='off'
+    ...     y = x + 1
+
+    .. seealso::
+
+       See :func:`no_backprop_mode` for details of back-prop mode.
+
+    """
+    default = getattr(_thread_local, 'default_backprop', True)
+    _thread_local.default_backprop = True
+    yield
+    _thread_local.default_backprop = default
 
 
 class Function(object):
@@ -121,8 +188,10 @@ class Function(object):
         if self.type_check_enable:
             self._check_data_type_forward(in_data)
 
-        hooks = collections.OrderedDict(chainer.get_function_hooks())
-        hooks.update(self.local_function_hooks)
+        hooks = chainer.get_function_hooks()
+        if self._n_local_function_hooks != 0:
+            hooks = collections.OrderedDict(hooks)
+            hooks.update(self.local_function_hooks)
         for hook in six.itervalues(hooks):
             hook.forward_preprocess(self, in_data)
         # Forward prop
@@ -142,7 +211,14 @@ class Function(object):
         out_v = flag.aggregate_flags([x.volatile for x in inputs])
         ret = tuple([variable.Variable(y, volatile=out_v) for y in outputs])
 
-        if out_v != 'on':
+        if out_v == 'on':
+            build_graph = False
+        elif out_v == 'off':
+            build_graph = True
+        else:
+            build_graph = getattr(_thread_local, 'default_backprop', True)
+
+        if build_graph:
             # Topological ordering
             self.rank = max([x.rank for x in inputs]) if inputs else 0
             # Backward edges
@@ -170,6 +246,12 @@ class Function(object):
         return self._local_function_hooks
 
     @property
+    def _n_local_function_hooks(self):
+        if hasattr(self, '_local_function_hooks'):
+            return len(self._local_function_hooks)
+        return 0
+
+    @property
     def label(self):
         """Short text that represents the function.
 
@@ -194,7 +276,8 @@ class Function(object):
 Invalid operation is performed in: {0} (Forward)
 
 {1}""".format(self.label, str(e))
-            raise type_check.InvalidType(e.expect, e.actual, msg=msg)
+            six.raise_from(
+                type_check.InvalidType(e.expect, e.actual, msg=msg), None)
 
     def check_type_forward(self, in_types):
         """Checks types of input data before forward propagation.
@@ -358,8 +441,8 @@ Invalid operation is performed in: {0} (Forward)
 
         Args:
             hook(~chainer.function.FunctionHook):
-                the function hook to be registered.
-            name(str): The name of the function hook.
+                Function hook to be registered.
+            name(str): Name of the function hook.
                 name must be unique among function hooks
                 registered to the function. If ``None``,
                 default name of the function hook is used.
@@ -377,7 +460,7 @@ Invalid operation is performed in: {0} (Forward)
 
         Args:
             name(str): the name of the function hook
-            to be unregistered.
+                to be unregistered.
         """
         del self.local_function_hooks[name]
 

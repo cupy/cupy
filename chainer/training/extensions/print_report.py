@@ -1,7 +1,9 @@
+import os
 import sys
 
 from chainer.training import extension
 from chainer.training.extensions import log_report as log_report_module
+from chainer.training.extensions import util
 
 
 class PrintReport(extension.Extension):
@@ -16,10 +18,11 @@ class PrintReport(extension.Extension):
         log_report (str or LogReport): Log report to accumulate the
             observations. This is either the name of a LogReport extensions
             registered to the trainer, or a LogReport instance to use
-            interanlly.
+            internally.
         out: Stream to print the bar. Standard output is used by default.
 
     """
+
     def __init__(self, entries, log_report='LogReport', out=sys.stdout):
         self._entries = entries
         self._log_report = log_report
@@ -42,9 +45,6 @@ class PrintReport(extension.Extension):
     def __call__(self, trainer):
         out = self._out
 
-        # delete the printed contents from the current cursor
-        out.write('\033[J')
-
         if self._header:
             out.write(self._header)
             self._header = None
@@ -61,6 +61,11 @@ class PrintReport(extension.Extension):
         log = log_report.log
         log_len = self._log_len
         while len(log) > log_len:
+            # delete the printed contents from the current cursor
+            if os.name == 'nt':
+                util.erase_console(0, 0)
+            else:
+                out.write('\033[J')
             self._print(log[log_len])
             log_len += 1
         self._log_len = log_len

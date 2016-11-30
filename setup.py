@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import sys
-
 from setuptools import setup
 
 import chainer_setup_build
@@ -16,23 +14,16 @@ install_requires = [
     'six>=1.9.0',
 ]
 
-
-# Hack for Read the Docs
-on_rtd = chainer_setup_build.check_readthedocs_environment()
-if on_rtd:
-    print('Add develop command for Read the Docs')
-    sys.argv.insert(1, 'develop')
-    setup_requires = ['Cython>=0.23'] + setup_requires
-
 chainer_setup_build.parse_args()
 
 setup(
     name='chainer',
-    version='1.13.0',
+    version='1.18.0',
     description='A flexible framework of neural networks',
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
     url='http://chainer.org/',
+    license='MIT License',
     packages=['chainer',
               'chainer.dataset',
               'chainer.datasets',
@@ -47,12 +38,15 @@ setup(
               'chainer.functions.noise',
               'chainer.functions.normalization',
               'chainer.functions.pooling',
+              'chainer.functions.util',
               'chainer.function_hooks',
               'chainer.iterators',
               'chainer.initializers',
               'chainer.links',
               'chainer.links.activation',
               'chainer.links.caffe',
+              'chainer.links.caffe.protobuf2',
+              'chainer.links.caffe.protobuf3',
               'chainer.links.connection',
               'chainer.links.loss',
               'chainer.links.model',
@@ -62,6 +56,7 @@ setup(
               'chainer.testing',
               'chainer.training',
               'chainer.training.extensions',
+              'chainer.training.triggers',
               'chainer.utils',
               'cupy',
               'cupy.binary',

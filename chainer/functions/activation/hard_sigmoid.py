@@ -8,7 +8,7 @@ from chainer.utils import type_check
 
 class HardSigmoid(function.Function):
 
-    """Hard-sigmoid funciton."""
+    """Hard-sigmoid function."""
 
     def check_type_forward(self, in_types):
         type_check.expect(in_types.size() == 1)

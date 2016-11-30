@@ -9,6 +9,7 @@ build
 .\#*
 .coverage
 .eggs/
+_readthedocs_build
 chainer.egg-info/
 dist/
 htmlcov/

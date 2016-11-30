@@ -1,6 +1,7 @@
 import collections
 import heapq
 import traceback
+import warnings
 
 import numpy
 import six
@@ -81,11 +82,12 @@ class Variable(object):
         grad: Gradient array.
         creator: The function who creates this variable. It is ``None`` if the
             variable is not created by any function.
-        volatile: Ternary :class:`~chainer.Flag` object. If ON, the variable
-            does not keep track of any function applications. See
+        volatile: Ternary :class:`~chainer.Flag` object. If ``'ON'``, the
+            variable does not keep track of any function applications. See
             :class:`~chainer.Flag` for the detail of ternary flags.
 
     """
+
     def __init__(self, data, volatile=flag.OFF, name=None, grad=None):
         if not isinstance(data, (numpy.ndarray, cuda.ndarray)):
             msg = '''numpy.ndarray or cuda.ndarray are expected.
@@ -159,7 +161,7 @@ Actual: {0}'''.format(type(data))
         """Returns the number of elements of the data array.
 
         Returns:
-            int: the number of elements of the data array.
+            int: Number of elements of the data array.
 
         """
         return self.data.size
@@ -190,6 +192,22 @@ Actual: {0}'''.format(type(data))
             _check_grad_type(None, self, g)
         self._grad = g
 
+    @property
+    def shape(self):
+        return self.data.shape
+
+    @property
+    def ndim(self):
+        return self.data.ndim
+
+    @property
+    def size(self):
+        return self.data.size
+
+    @property
+    def dtype(self):
+        return self.data.dtype
+
     def to_cpu(self):
         """Copies the data and gradient arrays to CPU."""
         self.data = cuda.to_cpu(self.data)
@@ -209,8 +227,20 @@ Actual: {0}'''.format(type(data))
             if self._grad is not None:
                 self._grad = cuda.to_gpu(self._grad)
 
+    def cleargrad(self):
+        """Clears the gradient array."""
+        self._grad = None
+
     def zerograd(self):
-        """Initializes the gradient array by zeros."""
+        """Initializes the gradient array by zeros.
+
+        .. deprecated:: v1.15
+           Use :meth:`cleargrad` instead.
+
+        """
+        warnings.warn(
+            'Variable.zerograd is deprecated. Use Variable.cleargard instead.',
+            DeprecationWarning)
         with cuda.get_device(self.data) as dev:
             if self._grad is None:
                 xp = numpy if int(dev) == -1 else cuda.cupy
@@ -253,22 +283,30 @@ Actual: {0}'''.format(type(data))
         src = var._grad
         dst = self._grad
         if src is None:
-            raise ValueError('Source gradient is not set.')
-        if dst is None:
-            raise ValueError('Target gradient is not set.')
+            return
 
-        xp = cuda.get_array_module(dst)
-        if xp is numpy:
-            dst += cuda.to_cpu(src)
-        elif isinstance(src, numpy.ndarray):
-            dst += cuda.to_gpu(src, device=dst)
+        src_dev = cuda.get_device(src)
+        dst_dev = cuda.get_device(self.data)
+
+        if src_dev.id == dst_dev.id:
+            with dst_dev:
+                if dst is None:
+                    xp = cuda.get_array_module(src)
+                    self._grad = xp.copy(src)
+                else:
+                    self._grad += src
+            return
+
+        if dst_dev.id < 0:
+            src_grad = cuda.to_cpu(src)
         else:
-            dst_dev = dst.device
-            if dst_dev == src.device:
-                dst += src
-            else:
-                with dst_dev:
-                    dst += xp.copy(src)
+            src_grad = cuda.to_gpu(src, device=dst_dev)
+
+        if dst is None:
+            self._grad = src_grad
+        else:
+            with dst_dev:
+                self._grad += src_grad
 
     def set_creator(self, gen_func):
         """Notifies the variable that the given function is its creator.
@@ -295,9 +333,9 @@ Actual: {0}'''.format(type(data))
         This method uses :data:`grad` as the initial error array. User can
         manually set a gradient array before calling this method. If
         :data:`data` contains only one element (i.e., it is scalar) and
-        :data:`grad` is None, then this method automatically complements 1.0 as
-        the initial error. This is useful on starting backprop from some scalar
-        loss value.
+        :data:`grad` is ``None``, then this method automatically complements
+        1.0 as the initial error. This is useful on starting backprop from
+        some scalar loss value.
 
         Args:
             retain_grad (bool): If ``True``, the gradient arrays of all
@@ -305,9 +343,9 @@ Actual: {0}'''.format(type(data))
                 intermediate variables are set to ``None`` on appropriate
                 timing, which may reduce the maximum memory consumption.
 
-                In most cases of training some model, the purpose of backprop
+                In most cases of training some models, the purpose of backprop
                 is to compute gradients of parameters, not of variables, so it
-                is recommended to set this flag False.
+                is recommended to set this flag ``False``.
 
         """
         if self.creator is None:
@@ -340,8 +378,10 @@ Actual: {0}'''.format(type(data))
 
             in_data = tuple(x.data for x in func.inputs)
             out_grad = tuple(None if y is None else y.grad for y in outputs)
-            hooks = collections.OrderedDict(chainer.get_function_hooks())
-            hooks.update(func.local_function_hooks)
+            hooks = chainer.get_function_hooks()
+            if func._n_local_function_hooks != 0:
+                hooks = collections.OrderedDict(hooks)
+                hooks.update(func.local_function_hooks)
             for hook in six.itervalues(hooks):
                 hook.backward_preprocess(func, in_data, out_grad)
             with cuda.get_device(*(in_data + out_grad)):
